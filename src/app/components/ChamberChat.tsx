@@ -325,11 +325,11 @@ function AssistantMessage({
 function StatusStrip({
   execStatus, onCancel, accent, chamberLabel, modelBadge,
 }: {
-  execStatus:   "idle" | "thinking" | "streaming";
-  onCancel:     () => void;
-  accent:       string;
+  execStatus: "idle" | "thinking" | "streaming";
+  onCancel: () => void;
+  accent: string;
   chamberLabel: string;
-  modelBadge:   string;
+  modelBadge: string;
 }) {
   return (
     <div

@@ -1,0 +1,270 @@
+import { type Message, type NavFn, type Tab, type ProfileView } from "../shell-types";
+import { findObject, listObjectsForChamber, openObject } from "../object-graph";
+import { type CSSProperties } from "react";
+import { type ContinuityItem, type ConnectorState, type PreferenceState, type RewardRecord, type RuntimeSignal } from "../runtime-fabric";
+
+interface ProfileModeProps {
+  messages: Record<Tab, Message[]>;
+  profileView: ProfileView;
+  onProfileView: (view: ProfileView) => void;
+  navigate: NavFn;
+  continuity: ContinuityItem[];
+  signals: RuntimeSignal[];
+  rewards: RewardRecord[];
+  connectors: ConnectorState[];
+  preferences: PreferenceState;
+  onTransfer: (continuityId: string, to: Exclude<Tab, "profile">, reason: string) => void;
+  onToggleConnector: (connectorId: string, enabled: boolean) => void;
+  onPreferencePatch: (patch: Partial<PreferenceState>) => void;
+  onExport: (continuityId: string) => void;
+}
+
+type WorkStatus = "in_progress" | "paused" | "completed";
+interface WorkItem {
+  id: string;
+  title: string;
+  chamber: Exclude<Tab, "profile">;
+  status: WorkStatus;
+  route: { tab: Exclude<Tab, "profile">; view: string; id?: string };
+}
+
+function deriveWorkItems(messages: Record<Tab, Message[]>): WorkItem[] {
+  const chambers: Exclude<Tab, "profile">[] = ["school", "lab", "creation"];
+  const items: WorkItem[] = [];
+  for (const chamber of chambers) {
+    const chamberMessages = messages[chamber];
+    if (!chamberMessages.length) continue;
+    const lastUser = [...chamberMessages].reverse().find((m) => m.role === "user");
+    const lastAssistant = [...chamberMessages].reverse().find((m) => m.role === "assistant" && m.content.trim().length > 0);
+    if (!lastUser) continue;
+    items.push({
+      id: lastUser.id,
+      title: lastUser.content.slice(0, 90),
+      chamber,
+      status: lastAssistant ? "completed" : "in_progress",
+      route: { tab: chamber, view: chamber === "creation" ? "terminal" : "chat" },
+    });
+    if (chamberMessages.length > 4) {
+      items.push({
+        id: `${chamber}-paused`,
+        title: `Resume previous ${chamber} chain`,
+        chamber,
+        status: "paused",
+        route: { tab: chamber, view: "archive" },
+      });
+    }
+  }
+  return items;
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{ border: "1px solid var(--r-border)", borderRadius: "8px", background: "var(--r-surface)", padding: "12px" }}>
+      <p style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", margin: "0 0 8px", letterSpacing: "0.08em" }}>{label}</p>
+      <p style={{ fontSize: "20px", margin: 0, color: "var(--r-text)", fontWeight: 600 }}>{value}</p>
+    </div>
+  );
+}
+
+export function ProfileMode({
+  messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, onTransfer, onToggleConnector, onPreferencePatch, onExport,
+}: ProfileModeProps) {
+  const derivedWork = deriveWorkItems(messages);
+  const continuityWork: WorkItem[] = continuity.map((item) => ({
+    id: item.id,
+    title: item.title,
+    chamber: item.chamber,
+    status: item.status === "paused" ? "paused" : item.status === "completed" || item.status === "exported" ? "completed" : "in_progress",
+    route: item.route,
+  }));
+  const workItems = [...continuityWork, ...derivedWork.filter((w) => !continuityWork.some((c) => c.id === w.id))];
+  const active = workItems.filter((w) => w.status === "in_progress");
+  const paused = workItems.filter((w) => w.status === "paused");
+  const completed = workItems.filter((w) => w.status === "completed");
+  const exportables = continuity.filter((c) => c.status === "completed" || c.status === "validated");
+  const exported = continuity.filter((c) => c.status === "exported");
+  const memoryItems = [
+    ...listObjectsForChamber("school"),
+    ...listObjectsForChamber("lab"),
+    ...listObjectsForChamber("creation"),
+  ].slice(0, 20);
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", background: "var(--r-bg)", padding: "24px 30px" }}>
+      <div style={{ maxWidth: "860px", margin: "0 auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+          <p style={{ fontSize: "14px", fontWeight: 600, margin: 0 }}>Profile Ledger</p>
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            {(["overview", "projects", "memory", "settings", "exports"] as ProfileView[]).map((view) => (
+              <button key={view} onClick={() => onProfileView(view)} style={{ border: "1px solid var(--r-border)", background: profileView === view ? "var(--r-elevated)" : "transparent", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontFamily: "monospace", cursor: "pointer" }}>{view}</button>
+            ))}
+          </div>
+        </div>
+
+        {profileView === "overview" && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: "8px", marginBottom: "12px" }}>
+              <StatCard label="ACTIVE" value={active.length} />
+              <StatCard label="PAUSED" value={paused.length} />
+              <StatCard label="COMPLETED" value={completed.length} />
+              <StatCard label="MEMORY" value={memoryItems.length} />
+            </div>
+            <Section title="Active Work" items={active} navigate={navigate} continuity={continuity} onTransfer={onTransfer} />
+            <Section title="Paused Work" items={paused} navigate={navigate} />
+            <Section title="Completed Runs" items={completed} navigate={navigate} />
+            <SignalSection signals={signals} navigate={navigate} />
+            <RewardSection rewards={rewards} />
+          </>
+        )}
+
+        {profileView === "memory" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {memoryItems.map((item) => (
+              <div key={item.id} style={{ border: "1px solid var(--r-border)", borderRadius: "7px", padding: "10px 12px", background: "var(--r-surface)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 500 }}>{item.title}</span>
+                  <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{item.chamber}/{item.type}</span>
+                </div>
+                <p style={{ fontSize: "11px", color: "var(--r-subtext)", margin: "0 0 6px" }}>{item.summary}</p>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button onClick={() => openObject(navigate, item)} style={btn}>Open</button>
+                  {item.related_items.slice(0, 1).map((id) => {
+                    const related = findObject(id);
+                    if (!related) return null;
+                    return <button key={id} onClick={() => openObject(navigate, related)} style={btn}>Related</button>;
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {profileView === "settings" && (
+          <div style={{ border: "1px solid var(--r-border)", borderRadius: "8px", background: "var(--r-surface)", padding: "12px" }}>
+            <p style={{ margin: "0 0 8px", fontSize: "12px" }}>Workspace + AI Settings are now canonicalized to one profile surface.</p>
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              <button onClick={() => navigate("school", "chat")} style={btn}>Study Preferences</button>
+              <button onClick={() => navigate("lab", "code")} style={btn}>Execution Preferences</button>
+              <button onClick={() => navigate("creation", "terminal")} style={btn}>Build Preferences</button>
+            </div>
+            <div style={{ marginTop: "10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+              <button onClick={() => onPreferencePatch({ preferredChamber: "school" })} style={btn}>Prefer School</button>
+              <button onClick={() => onPreferencePatch({ preferredChamber: "lab" })} style={btn}>Prefer Lab</button>
+              <button onClick={() => onPreferencePatch({ outputStyle: preferences.outputStyle === "structured" ? "mixed" : "structured" })} style={btn}>Output: {preferences.outputStyle}</button>
+              <button onClick={() => onPreferencePatch({ autoTransferHints: !preferences.autoTransferHints })} style={btn}>Hints: {preferences.autoTransferHints ? "on" : "off"}</button>
+            </div>
+            <p style={{ margin: "8px 0 0", fontSize: "10px", color: "var(--r-dim)" }}>Preferred chamber: {preferences.preferredChamber}</p>
+          </div>
+        )}
+
+        {profileView === "exports" && (
+          <div style={{ border: "1px solid var(--r-border)", borderRadius: "8px", background: "var(--r-surface)", padding: "12px" }}>
+            <p style={{ margin: "0 0 8px", fontSize: "12px" }}>Export hub routes to chamber archives for packaged outputs.</p>
+            <div style={{ display: "flex", gap: "6px" }}>
+              <button onClick={() => navigate("creation", "archive")} style={btn}>Artifact Exports</button>
+              <button onClick={() => navigate("school", "archive")} style={btn}>Study Exports</button>
+              <button onClick={() => navigate("lab", "archive")} style={btn}>Analysis Exports</button>
+            </div>
+            <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
+              {exportables.map((item) => (
+                <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--r-border-soft)", paddingTop: "6px" }}>
+                  <span style={{ fontSize: "11px" }}>{item.title}</span>
+                  <button onClick={() => onExport(item.id)} style={btn}>Export</button>
+                </div>
+              ))}
+              {exported.slice(0, 4).map((item) => (
+                <div key={`done-${item.id}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--r-border-soft)", paddingTop: "6px" }}>
+                  <span style={{ fontSize: "11px", color: "var(--r-dim)" }}>{item.title}</span>
+                  <span style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--r-ok)" }}>exported</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {profileView === "projects" && (
+          <>
+            <Section title="Projects" items={workItems} navigate={navigate} />
+            <ConnectorSection connectors={connectors} onToggle={onToggleConnector} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, items, navigate, continuity, onTransfer }: { title: string; items: WorkItem[]; navigate: NavFn; continuity?: ContinuityItem[]; onTransfer?: (continuityId: string, to: Exclude<Tab, "profile">, reason: string) => void }) {
+  return (
+    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
+      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>{title.toUpperCase()}</p>
+      {items.length === 0 ? <p style={{ margin: 0, fontSize: "11px", color: "var(--r-dim)" }}>None</p> : items.map((item) => (
+        <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--r-border-soft)" }}>
+          <span style={{ fontSize: "12px" }}>{item.title}</span>
+          <div style={{ display: "flex", gap: "5px" }}>
+            <button onClick={() => navigate(item.route.tab, item.route.view, item.route.id)} style={btn}>Resume</button>
+            {continuity && onTransfer && continuity.find((c) => c.id === item.id)?.transferDestinations.slice(0, 1).map((dest) => (
+              <button key={dest} onClick={() => onTransfer(item.id, dest, "profile_transfer")} style={btn}>Transfer→{dest}</button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RewardSection({ rewards }: { rewards: RewardRecord[] }) {
+  const items = rewards.slice(0, 6);
+  return (
+    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
+      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>REWARDS</p>
+      {items.length === 0 ? <p style={{ margin: 0, fontSize: "11px", color: "var(--r-dim)" }}>No milestones yet</p> : items.map((reward) => (
+        <div key={reward.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--r-border-soft)" }}>
+          <span style={{ fontSize: "11px" }}>{reward.kind} · {reward.title}</span>
+          <span style={{ fontSize: "10px", fontFamily: "monospace" }}>+{reward.points}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ConnectorSection({ connectors, onToggle }: { connectors: ConnectorState[]; onToggle: (id: string, enabled: boolean) => void }) {
+  return (
+    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
+      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>CONNECTORS / PLUGINS</p>
+      {connectors.map((connector) => (
+        <div key={connector.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--r-border-soft)" }}>
+          <div>
+            <span style={{ fontSize: "11px" }}>{connector.label}</span>
+            <span style={{ fontSize: "10px", color: "var(--r-dim)", marginLeft: "6px" }}>{connector.status} · {connector.completeness}%</span>
+          </div>
+          <button onClick={() => onToggle(connector.id, !connector.enabled)} style={btn}>{connector.enabled ? "Disable" : "Enable"}</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SignalSection({ signals, navigate }: { signals: RuntimeSignal[]; navigate: NavFn }) {
+  const items = signals.slice(0, 6);
+  return (
+    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
+      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>SIGNALS</p>
+      {items.length === 0 ? <p style={{ margin: 0, fontSize: "11px", color: "var(--r-dim)" }}>No pending signals</p> : items.map((signal) => (
+        <div key={signal.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--r-border-soft)" }}>
+          <span style={{ fontSize: "11px" }}>{signal.label}</span>
+          <button onClick={() => navigate(signal.destination.tab, signal.destination.view, signal.destination.id)} style={btn}>Open</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const btn: CSSProperties = {
+  border: "1px solid var(--r-border)",
+  background: "transparent",
+  fontSize: "10px",
+  fontFamily: "monospace",
+  padding: "3px 8px",
+  borderRadius: "4px",
+  cursor: "pointer",
+};

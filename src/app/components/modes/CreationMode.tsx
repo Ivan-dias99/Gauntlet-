@@ -14,7 +14,7 @@ import { CreationBlueprintDetail } from "../detail/CreationBlueprintDetail";
 import { CreationEngineDetail } from "../detail/CreationEngineDetail";
 import { RuberraTerminal } from "../RuberraTerminal";
 import { type TaskType } from "../model-orchestration";
-import { buildMessageObject, findObject, listObjectsForChamber, openObject } from "../object-graph";
+import { buildMessageObject, findObject, listObjectsForChamber, mergeObjectsByRecency, openObject } from "../object-graph";
 
 const CREATION_CONFIG: ChamberConfig = {
   id:          "creation",
@@ -29,7 +29,7 @@ const CREATION_CONFIG: ChamberConfig = {
 
 function CreationArchive({ messages, navigate }: { messages: Message[]; navigate: NavFn }) {
   const runtimeObjects = [...messages].reverse().slice(0, 18).map(buildMessageObject);
-  const objects = [...runtimeObjects, ...listObjectsForChamber("creation").slice(0, 18)];
+  const objects = mergeObjectsByRecency(runtimeObjects, listObjectsForChamber("creation")).slice(0, 36);
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", background: "var(--r-bg)" }}>
       <div style={{ maxWidth: "700px", margin: "0 auto" }}>

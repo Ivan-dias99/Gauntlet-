@@ -1,13 +1,13 @@
-import { type Tab } from "./shell-types";
 import {
   CHAMBER_TASKS,
   TASK_LABELS,
   getModelPool,
+  type ChamberTab,
   type TaskType,
 } from "./model-orchestration";
 
 interface ModelSelectorProps {
-  chamber: Tab;
+  chamber: ChamberTab;
   task: TaskType;
   modelId: string;
   onTaskChange: (task: TaskType) => void;
