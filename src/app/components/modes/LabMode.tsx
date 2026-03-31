@@ -13,7 +13,7 @@ import { LabDomainDetail } from "../detail/LabDomainDetail";
 import { LabExperimentDetail } from "../detail/LabExperimentDetail";
 import { RuberraTerminal } from "../RuberraTerminal";
 import { type TaskType } from "../model-orchestration";
-import { buildMessageObject, findObject, listObjectsForChamber, openObject } from "../object-graph";
+import { buildMessageObject, findObject, listObjectsForChamber, mergeObjectsByRecency, openObject } from "../object-graph";
 
 const LAB_CONFIG: ChamberConfig = {
   id:          "lab",
@@ -165,7 +165,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
 
 function LabArchive({ messages, navigate }: { messages: Message[]; navigate: NavFn }) {
   const runtimeObjects = messages.slice(-18).reverse().map(buildMessageObject);
-  const objects = [...runtimeObjects, ...listObjectsForChamber("lab").slice(0, 18)];
+  const objects = mergeObjectsByRecency(runtimeObjects, listObjectsForChamber("lab")).slice(0, 36);
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "24px", background: "var(--r-bg)" }}>
       <div style={{ maxWidth: "700px", margin: "0 auto" }}>
