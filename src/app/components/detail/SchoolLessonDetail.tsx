@@ -9,7 +9,7 @@ interface Props { lessonId: string; navigate: NavFn; onStartChat: (p: string) =>
 
 export function SchoolLessonDetail({ lessonId, navigate, onStartChat }: Props) {
   const result = getLesson(lessonId);
-  if (!result) return null;
+  if (!result) return <EmptyDetail onBack={() => navigate("school", "home")} label="Lesson not found" />;
   const { lesson, track } = result;
 
   const nextLesson = track.lessons[track.lessons.findIndex(l => l.id === lessonId) + 1];

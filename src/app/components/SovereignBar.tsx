@@ -9,17 +9,22 @@ import { type Tab, type Theme } from "./shell-types";
 import { ProfileLedger } from "./ProfileLedger";
 import { useState } from "react";
 
-// Chamber dot colors use the actual R token values for authenticity
+// Chamber dot colors — authentic per-chamber tokens
 const CHAMBER_DOTS: Record<Tab, string> = {
   lab:      "#52796A",  // sage
   school:   "#4A6B84",  // slate
   creation: "#8A6238",  // amber-earth
   profile:  "#7A756D",  // neutral-warm
+  lab:      "#52796A",
+  school:   "#4A6B84",
+  creation: "#8A6238",
+  profile:  "#7A756D",
 };
 
 interface SovereignBarProps {
   activeTab:      Tab;
   onTabChange:    (tab: Tab) => void;
+  onHomeClick?:   () => void;
   isLive?:        boolean;
   theme?:         Theme;
   onThemeToggle?: () => void;
@@ -28,11 +33,11 @@ interface SovereignBarProps {
   hasSignals?: boolean;
 }
 
-const TABS: { id: Tab; label: string; dot: string }[] = [
-  { id: "lab",      label: "Lab",      dot: "var(--r-accent)" },
-  { id: "school",   label: "School",   dot: "var(--r-ok)"     },
-  { id: "creation", label: "Creation", dot: "var(--r-warn)"   },
-  { id: "profile",  label: "Profile",  dot: "var(--r-pulse)"  },
+const TABS: { id: Tab; label: string }[] = [
+  { id: "lab",      label: "Lab"      },
+  { id: "school",   label: "School"   },
+  { id: "creation", label: "Creation" },
+  { id: "profile",  label: "Profile"  },
 ];
 
 function RubMark() {
@@ -103,7 +108,7 @@ function IconBtn({
 }
 
 export function SovereignBar({
-  activeTab, onTabChange, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals,
+  activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals,
 }: SovereignBarProps) {
   const [isLedgerOpen, setLedgerOpen] = useState(false);
 
@@ -126,19 +131,38 @@ export function SovereignBar({
 
       {/* ── Left: Brand ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: "160px" }}>
-        <RubMark />
-        <span
+        <button
+          onClick={onHomeClick ?? (() => onTabChange(activeTab))}
+          title="Home"
           style={{
-            fontSize: "11px",
-            fontWeight: 600,
-            letterSpacing: "0.13em",
-            color: "var(--r-text)",
-            userSelect: "none",
-            fontFamily: "'Inter', system-ui, sans-serif",
+            display: "flex",
+            alignItems: "center",
+            gap: "9px",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            outline: "none",
+            padding: "2px",
+            borderRadius: "5px",
+            transition: "opacity 0.12s ease",
           }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.75"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
         >
-          RUBERRA
-        </span>
+          <RubMark />
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 600,
+              letterSpacing: "0.13em",
+              color: "var(--r-text)",
+              userSelect: "none",
+              fontFamily: "'Inter', system-ui, sans-serif",
+            }}
+          >
+            RUBERRA
+          </span>
+        </button>
 
         {/* Status separator + live indicator */}
         <div

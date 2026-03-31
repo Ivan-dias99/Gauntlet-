@@ -502,6 +502,7 @@ export default function App() {
       <SovereignBar
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
         theme={theme}
         onThemeToggle={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}

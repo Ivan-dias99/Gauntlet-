@@ -23,7 +23,7 @@ interface CmdEntry {
 }
 
 function buildEntries(navigate: NavFn, onClose: () => void): CmdEntry[] {
-  const go = (tab: "lab" | "school" | "creation", view: string, id = "") => {
+  const go = (tab: "lab" | "school" | "creation" | "profile", view: string, id = "") => {
     navigate(tab, view, id);
     onClose();
   };
@@ -44,6 +44,12 @@ function buildEntries(navigate: NavFn, onClose: () => void): CmdEntry[] {
     { id: "nav-cre-chat",      label: "Creation — Chat",      meta: "Chamber",  chamber: "creation", action: () => go("creation", "chat")      },
     { id: "nav-cre-build",     label: "Creation — Build",     meta: "Chamber",  chamber: "creation", action: () => go("creation", "terminal")  },
     { id: "nav-cre-archive",   label: "Creation — Archive",   meta: "Chamber",  chamber: "creation", action: () => go("creation", "archive")   },
+    // ── Profile routes ───────────────────────────────────────────────────────
+    { id: "nav-pro-overview",  label: "Profile — Overview",   meta: "Profile",  chamber: "lab",      action: () => go("profile",  "overview")  },
+    { id: "nav-pro-projects",  label: "Profile — Projects",   meta: "Profile",  chamber: "lab",      action: () => go("profile",  "projects")  },
+    { id: "nav-pro-memory",    label: "Profile — Memory",     meta: "Profile",  chamber: "lab",      action: () => go("profile",  "memory")    },
+    { id: "nav-pro-settings",  label: "Profile — Settings",   meta: "Profile",  chamber: "lab",      action: () => go("profile",  "settings")  },
+    { id: "nav-pro-exports",   label: "Profile — Exports",    meta: "Profile",  chamber: "lab",      action: () => go("profile",  "exports")   },
 
     // ── Lab domains ─────────────────────────────────────────────────────────
     ...LAB_DOMAINS.map((d) => ({

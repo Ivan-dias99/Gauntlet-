@@ -143,7 +143,7 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
         overflowY: "auto",
         paddingTop: "24px",
         paddingBottom: "40px",
-        background: R.ground,
+        background: "var(--r-bg)",
         scrollbarWidth: "none",
       }}
     >

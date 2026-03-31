@@ -3,13 +3,13 @@
  */
 import { type NavFn } from "../shell-types";
 import { getBlueprint, getTrack, getDomain, getEngine } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
 
 interface Props { blueprintId: string; navigate: NavFn; onStartChat: (p: string) => void; }
 
 export function CreationBlueprintDetail({ blueprintId, navigate, onStartChat }: Props) {
   const bp = getBlueprint(blueprintId);
-  if (!bp) return null;
+  if (!bp) return <EmptyDetail onBack={() => navigate("creation", "home")} label="Blueprint not found" />;
 
   return (
     <DetailPage>
