@@ -1,4 +1,17 @@
 import { type Message, type NavFn, type Tab, type ProfileView } from "../shell-types";
+import { findObject, listObjectsForChamber, mergeObjectsByRecency, openObject, type RuberraObject } from "../object-graph";
+import { type CSSProperties } from "react";
+import {
+  type ContinuityItem,
+  type ConnectorState,
+  type ContinuityRecommendation,
+  type PreferenceState,
+  type RewardRecord,
+  type RuntimeSignal,
+  type PluginRuntimeState,
+  type AISettingsState,
+  type WorkspaceKnowledge,
+} from "../runtime-fabric";
 import { findObject, listObjectsForChamber, openObject } from "../object-graph";
 import { type CSSProperties } from "react";
 import { type ContinuityItem, type ConnectorState, type PreferenceState, type RewardRecord, type RuntimeSignal } from "../runtime-fabric";
@@ -13,6 +26,18 @@ interface ProfileModeProps {
   rewards: RewardRecord[];
   connectors: ConnectorState[];
   preferences: PreferenceState;
+  aiSettings: AISettingsState;
+  plugins: PluginRuntimeState[];
+  workspace: WorkspaceKnowledge;
+  objects: RuberraObject[];
+  recommendations: ContinuityRecommendation[];
+  onTransfer: (continuityId: string, to: Exclude<Tab, "profile">, reason: string) => void;
+  onResume: (continuityId: string) => void;
+  onToggleConnector: (connectorId: string, enabled: boolean) => void;
+  onTogglePlugin: (pluginId: string, enabled: boolean) => void;
+  onPreferencePatch: (patch: Partial<PreferenceState>) => void;
+  onAISettingsPatch: (patch: Partial<AISettingsState>) => void;
+  onWorkspacePatch: (patch: Partial<WorkspaceKnowledge>) => void;
   onTransfer: (continuityId: string, to: Exclude<Tab, "profile">, reason: string) => void;
   onToggleConnector: (connectorId: string, enabled: boolean) => void;
   onPreferencePatch: (patch: Partial<PreferenceState>) => void;
@@ -67,6 +92,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
 }
 
 export function ProfileMode({
+  messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport,
   messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, onTransfer, onToggleConnector, onPreferencePatch, onExport,
 }: ProfileModeProps) {
   const derivedWork = deriveWorkItems(messages);
@@ -83,6 +109,12 @@ export function ProfileMode({
   const completed = workItems.filter((w) => w.status === "completed");
   const exportables = continuity.filter((c) => c.status === "completed" || c.status === "validated");
   const exported = continuity.filter((c) => c.status === "exported");
+  const memoryItems = mergeObjectsByRecency(
+    objects,
+    listObjectsForChamber("school"),
+    listObjectsForChamber("lab"),
+    listObjectsForChamber("creation"),
+  ).slice(0, 24);
   const memoryItems = [
     ...listObjectsForChamber("school"),
     ...listObjectsForChamber("lab"),
@@ -112,6 +144,7 @@ export function ProfileMode({
             <Section title="Active Work" items={active} navigate={navigate} continuity={continuity} onTransfer={onTransfer} />
             <Section title="Paused Work" items={paused} navigate={navigate} />
             <Section title="Completed Runs" items={completed} navigate={navigate} />
+            <RecommendationSection recommendations={recommendations} onResume={onResume} onExport={onExport} onTransfer={onTransfer} navigate={navigate} />
             <SignalSection signals={signals} navigate={navigate} />
             <RewardSection rewards={rewards} />
           </>
@@ -152,6 +185,21 @@ export function ProfileMode({
               <button onClick={() => onPreferencePatch({ preferredChamber: "lab" })} style={btn}>Prefer Lab</button>
               <button onClick={() => onPreferencePatch({ outputStyle: preferences.outputStyle === "structured" ? "mixed" : "structured" })} style={btn}>Output: {preferences.outputStyle}</button>
               <button onClick={() => onPreferencePatch({ autoTransferHints: !preferences.autoTransferHints })} style={btn}>Hints: {preferences.autoTransferHints ? "on" : "off"}</button>
+              <button onClick={() => onAISettingsPatch({ modelPolicy: aiSettings.modelPolicy === "balanced" ? "quality_first" : aiSettings.modelPolicy === "quality_first" ? "speed_first" : "balanced" })} style={btn}>Model policy: {aiSettings.modelPolicy}</button>
+              <button onClick={() => onAISettingsPatch({ safetyMode: aiSettings.safetyMode === "standard" ? "strict" : "standard" })} style={btn}>Safety: {aiSettings.safetyMode}</button>
+              <button onClick={() => onAISettingsPatch({ allowFallbackRouting: !aiSettings.allowFallbackRouting })} style={btn}>Fallback routing: {aiSettings.allowFallbackRouting ? "on" : "off"}</button>
+              <button onClick={() => onWorkspacePatch({ activeProject: workspace.activeProject === "Ruberra Generation Next" ? "Ruberra Runtime Closure" : "Ruberra Generation Next" })} style={btn}>Project: {workspace.activeProject}</button>
+            </div>
+            <p style={{ margin: "8px 0 0", fontSize: "10px", color: "var(--r-dim)" }}>Preferred chamber: {preferences.preferredChamber} · owner: {workspace.owner}</p>
+            <div style={{ marginTop: "12px", borderTop: "1px solid var(--r-border-soft)", paddingTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
+              <p style={{ margin: 0, fontSize: "10px", fontFamily: "monospace", color: "var(--r-dim)" }}>Plugins / Runtime Connectors</p>
+              {plugins.map((plugin) => (
+                <div key={plugin.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "11px" }}>{plugin.label} · {plugin.scope}</span>
+                  <button onClick={() => onTogglePlugin(plugin.id, !plugin.enabled)} style={btn}>{plugin.enabled ? "Disable" : "Enable"} ({plugin.status})</button>
+                </div>
+              ))}
+            </div>
             </div>
             <p style={{ margin: "8px 0 0", fontSize: "10px", color: "var(--r-dim)" }}>Preferred chamber: {preferences.preferredChamber}</p>
           </div>
@@ -205,6 +253,43 @@ function Section({ title, items, navigate, continuity, onTransfer }: { title: st
             {continuity && onTransfer && continuity.find((c) => c.id === item.id)?.transferDestinations.slice(0, 1).map((dest) => (
               <button key={dest} onClick={() => onTransfer(item.id, dest, "profile_transfer")} style={btn}>Transfer→{dest}</button>
             ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RecommendationSection({
+  recommendations,
+  onResume,
+  onExport,
+  onTransfer,
+  navigate,
+}: {
+  recommendations: ContinuityRecommendation[];
+  onResume: (continuityId: string) => void;
+  onExport: (continuityId: string) => void;
+  onTransfer: (continuityId: string, to: Exclude<Tab, "profile">, reason: string) => void;
+  navigate: NavFn;
+}) {
+  const items = recommendations.slice(0, 8);
+  return (
+    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
+      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>RECOMMENDATIONS</p>
+      {items.length === 0 ? <p style={{ margin: 0, fontSize: "11px", color: "var(--r-dim)" }}>No continuity recommendations</p> : items.map((item) => (
+        <div key={`${item.continuityId}-${item.action}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", padding: "6px 0", borderTop: "1px solid var(--r-border-soft)" }}>
+          <div>
+            <p style={{ margin: 0, fontSize: "11px" }}>{item.title}</p>
+            <p style={{ margin: 0, fontSize: "10px", color: "var(--r-dim)" }}>{item.reason}</p>
+          </div>
+          <div style={{ display: "flex", gap: "5px" }}>
+            {item.action === "resume" && <button onClick={() => onResume(item.continuityId)} style={btn}>Resume</button>}
+            {item.action === "export" && <button onClick={() => onExport(item.continuityId)} style={btn}>Export</button>}
+            {item.action === "transfer" && item.destination.tab !== "profile" && (
+              <button onClick={() => onTransfer(item.continuityId, item.destination.tab as Exclude<Tab, "profile">, "profile_recommendation")} style={btn}>Transfer</button>
+            )}
+            <button onClick={() => navigate(item.destination.tab, item.destination.view, item.destination.id)} style={btn}>Open</button>
           </div>
         </div>
       ))}

@@ -79,6 +79,52 @@ export interface PreferenceState {
   lastUpdated: number;
 }
 
+export interface AISettingsState {
+  modelPolicy: "balanced" | "quality_first" | "speed_first";
+  safetyMode: "standard" | "strict";
+  autoSummaries: boolean;
+  allowFallbackRouting: boolean;
+  lastUpdated: number;
+}
+
+export interface PluginRuntimeState {
+  id: string;
+  label: string;
+  enabled: boolean;
+  status: "ready" | "needs_auth" | "error";
+  scope: "workspace" | "school" | "lab" | "creation";
+  lastRunAt?: number;
+  lastUpdated: number;
+}
+
+export interface WorkspaceKnowledge {
+  owner: string;
+  workspace: string;
+  activeProject: string;
+  priorities: string[];
+  updatedAt: number;
+}
+
+export interface SearchIndexEntry {
+  id: string;
+  title: string;
+  kind: "object" | "continuity" | "signal";
+  chamber: Tab;
+  status?: string;
+  route: { tab: Tab; view: string; id?: string };
+  searchableText: string;
+  updatedAt: number;
+}
+
+export interface ContinuityRecommendation {
+  continuityId: string;
+  title: string;
+  chamber: Exclude<Tab, "profile">;
+  action: "resume" | "transfer" | "export" | "retry";
+  reason: string;
+  destination: { tab: Tab; view: string; id?: string };
+}
+
 export interface RuntimeFabric {
   objects: RuberraObject[];
   continuity: ContinuityItem[];
@@ -87,6 +133,9 @@ export interface RuntimeFabric {
   rewards: RewardRecord[];
   connectors: ConnectorState[];
   preferences: PreferenceState;
+  aiSettings: AISettingsState;
+  plugins: PluginRuntimeState[];
+  workspace: WorkspaceKnowledge;
 }
 
 const STORAGE_KEY = "ruberra_runtime_fabric_v2";
@@ -107,6 +156,28 @@ const DEFAULT_PREFERENCES: PreferenceState = {
   lastUpdated: Date.now(),
 };
 
+const DEFAULT_AI_SETTINGS: AISettingsState = {
+  modelPolicy: "balanced",
+  safetyMode: "standard",
+  autoSummaries: true,
+  allowFallbackRouting: true,
+  lastUpdated: Date.now(),
+};
+
+const DEFAULT_PLUGINS: PluginRuntimeState[] = [
+  { id: "calendar-sync", label: "Calendar Sync", enabled: false, status: "needs_auth", scope: "workspace", lastUpdated: Date.now() },
+  { id: "repo-bridge", label: "Repo Bridge", enabled: true, status: "ready", scope: "lab", lastUpdated: Date.now() },
+  { id: "lesson-export", label: "Lesson Export", enabled: true, status: "ready", scope: "school", lastUpdated: Date.now() },
+];
+
+const DEFAULT_WORKSPACE: WorkspaceKnowledge = {
+  owner: "Sovereign Architect",
+  workspace: "Ruberra Neural Mesh Workspace",
+  activeProject: "Ruberra Generation Next",
+  priorities: ["continuity truth", "runtime consequence", "profile ledger integrity"],
+  updatedAt: Date.now(),
+};
+
 function initialFabric(): RuntimeFabric {
   return {
     objects: RUBERRA_OBJECTS,
@@ -116,6 +187,9 @@ function initialFabric(): RuntimeFabric {
     rewards: [],
     connectors: DEFAULT_CONNECTORS,
     preferences: DEFAULT_PREFERENCES,
+    aiSettings: DEFAULT_AI_SETTINGS,
+    plugins: DEFAULT_PLUGINS,
+    workspace: DEFAULT_WORKSPACE,
   };
 }
 
@@ -131,6 +205,9 @@ export function loadRuntimeFabric(): RuntimeFabric {
       objects: parsed.objects?.length ? parsed.objects : RUBERRA_OBJECTS,
       connectors: parsed.connectors?.length ? parsed.connectors : DEFAULT_CONNECTORS,
       preferences: parsed.preferences ?? DEFAULT_PREFERENCES,
+      aiSettings: parsed.aiSettings ?? DEFAULT_AI_SETTINGS,
+      plugins: parsed.plugins?.length ? parsed.plugins : DEFAULT_PLUGINS,
+      workspace: parsed.workspace ?? DEFAULT_WORKSPACE,
     };
   } catch {
     return initialFabric();
@@ -242,6 +319,20 @@ export function upsertConnector(
   connectorId: string,
   patch: Partial<ConnectorState>,
 ): RuntimeFabric {
+  const existing = fabric.connectors.find((connector) => connector.id === connectorId);
+  if (!existing) {
+    const created: ConnectorState = {
+      id: connectorId,
+      label: connectorId,
+      chamber: "profile",
+      enabled: true,
+      status: "needs_config",
+      completeness: 40,
+      lastUpdated: Date.now(),
+      ...patch,
+    };
+    return { ...fabric, connectors: [created, ...fabric.connectors] };
+  }
   return {
     ...fabric,
     connectors: fabric.connectors.map((connector) =>
@@ -250,11 +341,148 @@ export function upsertConnector(
   };
 }
 
+export function upsertPlugin(
+  fabric: RuntimeFabric,
+  pluginId: string,
+  patch: Partial<PluginRuntimeState>,
+): RuntimeFabric {
+  const idx = fabric.plugins.findIndex((plugin) => plugin.id === pluginId);
+  if (idx === -1) {
+    const created: PluginRuntimeState = {
+      id: pluginId,
+      label: pluginId,
+      enabled: false,
+      status: "needs_auth",
+      scope: "workspace",
+      lastUpdated: Date.now(),
+      ...patch,
+    };
+    return { ...fabric, plugins: [created, ...fabric.plugins] };
+  }
+  const next = [...fabric.plugins];
+  next[idx] = { ...next[idx], ...patch, lastUpdated: Date.now() };
+  return { ...fabric, plugins: next };
+}
+
 export function updatePreferences(fabric: RuntimeFabric, patch: Partial<PreferenceState>): RuntimeFabric {
   return {
     ...fabric,
     preferences: { ...fabric.preferences, ...patch, lastUpdated: Date.now() },
   };
+}
+
+export function updateAISettings(fabric: RuntimeFabric, patch: Partial<AISettingsState>): RuntimeFabric {
+  return {
+    ...fabric,
+    aiSettings: { ...fabric.aiSettings, ...patch, lastUpdated: Date.now() },
+  };
+}
+
+export function updateWorkspaceKnowledge(fabric: RuntimeFabric, patch: Partial<WorkspaceKnowledge>): RuntimeFabric {
+  return {
+    ...fabric,
+    workspace: { ...fabric.workspace, ...patch, updatedAt: Date.now() },
+  };
+}
+
+export function resumeContinuity(fabric: RuntimeFabric, continuityId: string): RuntimeFabric {
+  const item = fabric.continuity.find((entry) => entry.id === continuityId);
+  if (!item) return fabric;
+  let next = transitionContinuity(fabric, continuityId, "resumed");
+  next = pushSignal(next, {
+    type: "lifecycle",
+    label: `${item.title.slice(0, 48)} resumed`,
+    severity: "info",
+    sourceChamber: "profile",
+    destinationChamber: item.chamber,
+    destination: item.route,
+    linkedObjectId: item.linkedObjectId,
+  });
+  return next;
+}
+
+export function recommendContinuityActions(fabric: RuntimeFabric): ContinuityRecommendation[] {
+  const recs: ContinuityRecommendation[] = [];
+  for (const item of fabric.continuity) {
+    if (item.status === "paused" || item.status === "needs_input") {
+      recs.push({
+        continuityId: item.id,
+        title: item.title,
+        chamber: item.chamber,
+        action: "resume",
+        reason: "run is paused and can be resumed from profile",
+        destination: item.route,
+      });
+      continue;
+    }
+    if (item.status === "blocked") {
+      recs.push({
+        continuityId: item.id,
+        title: item.title,
+        chamber: item.chamber,
+        action: "retry",
+        reason: "run was blocked; retry with chamber model policy",
+        destination: item.route,
+      });
+      continue;
+    }
+    if (item.status === "completed" || item.status === "validated") {
+      const nextTab = item.transferDestinations[0] ?? "profile";
+      recs.push({
+        continuityId: item.id,
+        title: item.title,
+        chamber: item.chamber,
+        action: "transfer",
+        reason: "completed run can be transferred to a linked chamber",
+        destination: { tab: nextTab, view: nextTab === "creation" ? "terminal" : "chat" },
+      });
+      recs.push({
+        continuityId: item.id,
+        title: item.title,
+        chamber: item.chamber,
+        action: "export",
+        reason: "completed run is export-ready for the profile ledger",
+        destination: { tab: "profile", view: "exports", id: item.id },
+      });
+    }
+  }
+  return recs.slice(0, 24);
+}
+
+export function buildSearchIndex(fabric: RuntimeFabric): SearchIndexEntry[] {
+  const objectEntries: SearchIndexEntry[] = fabric.objects.map((object) => ({
+    id: `object:${object.id}`,
+    title: object.title,
+    kind: "object",
+    chamber: object.chamber,
+    status: object.status,
+    route: object.action_route,
+    searchableText: [object.title, object.summary, object.tags.join(" "), object.type].join(" ").toLowerCase(),
+    updatedAt: object.updated_at,
+  }));
+  const continuityEntries: SearchIndexEntry[] = fabric.continuity.map((item) => ({
+    id: `continuity:${item.id}`,
+    title: item.title,
+    kind: "continuity",
+    chamber: item.chamber,
+    status: item.status,
+    route: item.route,
+    searchableText: [item.title, item.status, item.chamber].join(" ").toLowerCase(),
+    updatedAt: item.updatedAt,
+  }));
+  const signalEntries: SearchIndexEntry[] = fabric.signals.map((signal) => ({
+    id: `signal:${signal.id}`,
+    title: signal.label,
+    kind: "signal",
+    chamber: signal.destinationChamber,
+    status: signal.resolved ? "resolved" : signal.read ? "read" : "new",
+    route: signal.destination,
+    searchableText: [signal.label, signal.type, signal.severity].join(" ").toLowerCase(),
+    updatedAt: signal.createdAt,
+  }));
+  return [...objectEntries, ...continuityEntries, ...signalEntries]
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 500);
 }
 
 export function exportContinuity(fabric: RuntimeFabric, continuityId: string): RuntimeFabric {

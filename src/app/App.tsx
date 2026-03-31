@@ -30,15 +30,22 @@ import {
 } from "./components/model-orchestration";
 import {
   awardProgress,
+  buildSearchIndex,
   createOrUpdateContinuity,
   loadRuntimeFabric,
   markSignalRead,
   pushSignal,
   recordRuntimeMessageObject,
+  recommendContinuityActions,
+  resumeContinuity,
   resolveSignal,
   saveRuntimeFabric,
   transitionContinuity,
   transferContinuity,
+  updateAISettings,
+  updatePreferences,
+  updateWorkspaceKnowledge,
+  upsertPlugin,
   updatePreferences,
   upsertConnector,
   exportContinuity,
@@ -460,6 +467,15 @@ export default function App() {
   const [searchText, setSearchText] = useState("");
   const [searchChamberFilter, setSearchChamberFilter] = useState<"all" | ChamberTab>("all");
   const [searchLifecycleFilter, setSearchLifecycleFilter] = useState<"all" | string>("all");
+  const searchIndex = buildSearchIndex(runtimeFabric);
+  const filteredObjects = searchIndex.filter((entry) =>
+    (searchChamberFilter === "all" || entry.chamber === searchChamberFilter) &&
+    (!searchText.trim() || entry.searchableText.includes(searchText.toLowerCase())) &&
+    (searchLifecycleFilter === "all" || entry.status === searchLifecycleFilter)
+  ).slice(0, 12);
+  const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
+  const hasSignals = notificationItems.length > 0;
+  const continuityRecommendations = recommendContinuityActions(runtimeFabric);
   const filteredObjects = runtimeFabric.objects.filter((obj) =>
     (searchChamberFilter === "all" || obj.chamber === searchChamberFilter) &&
     (!searchText.trim() || obj.title.toLowerCase().includes(searchText.toLowerCase()) || obj.tags.join(" ").toLowerCase().includes(searchText.toLowerCase())) &&
@@ -591,6 +607,13 @@ export default function App() {
                   rewards={runtimeFabric.rewards}
                   connectors={runtimeFabric.connectors}
                   preferences={runtimeFabric.preferences}
+                  aiSettings={runtimeFabric.aiSettings}
+                  plugins={runtimeFabric.plugins}
+                  workspace={runtimeFabric.workspace}
+                  objects={runtimeFabric.objects}
+                  recommendations={continuityRecommendations}
+                  onTransfer={(id, to, reason) => setRuntimeFabric((prev) => transferContinuity(prev, id, to, reason))}
+                  onResume={(id) => setRuntimeFabric((prev) => resumeContinuity(prev, id))}
                   onTransfer={(id, to, reason) => setRuntimeFabric((prev) => transferContinuity(prev, id, to, reason))}
                   onToggleConnector={(id, enabled) =>
                     setRuntimeFabric((prev) => upsertConnector(prev, id, {
@@ -599,6 +622,15 @@ export default function App() {
                       completeness: enabled ? 100 : 40,
                     }))
                   }
+                  onTogglePlugin={(id, enabled) =>
+                    setRuntimeFabric((prev) => upsertPlugin(prev, id, {
+                      enabled,
+                      status: enabled ? "ready" : "needs_auth",
+                    }))
+                  }
+                  onPreferencePatch={(patch) => setRuntimeFabric((prev) => updatePreferences(prev, patch))}
+                  onAISettingsPatch={(patch) => setRuntimeFabric((prev) => updateAISettings(prev, patch))}
+                  onWorkspacePatch={(patch) => setRuntimeFabric((prev) => updateWorkspaceKnowledge(prev, patch))}
                   onPreferencePatch={(patch) => setRuntimeFabric((prev) => updatePreferences(prev, patch))}
                   onExport={(continuityId) => setRuntimeFabric((prev) => exportContinuity(prev, continuityId))}
                 />
@@ -629,11 +661,13 @@ export default function App() {
           </div>
           <div style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
             {filteredObjects.map((obj) => (
+              <button key={obj.id} onClick={() => { navigate(obj.route.tab, obj.route.view, obj.route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer" }}>
               <button key={obj.id} onClick={() => { navigate(obj.action_route.tab, obj.action_route.view, obj.action_route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer" }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
                   <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.chamber}</span>
                 </div>
+                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>{obj.kind} · {obj.status ?? "active"}</span>
                 <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>{obj.type}</span>
               </button>
             ))}
