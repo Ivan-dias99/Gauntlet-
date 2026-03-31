@@ -10,6 +10,7 @@ import { projectId, publicAnonKey } from "/utils/supabase/info";
 import { SovereignBar } from "./components/SovereignBar";
 import { ShellSideRail } from "./components/ShellSideRail";
 import { FloatingNoteSystem } from "./components/FloatingNoteSystem";
+import { GlobalCommandPalette } from "./components/GlobalCommandPalette";
 import { LabMode } from "./components/modes/LabMode";
 import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
@@ -116,6 +117,20 @@ export default function App() {
 
   // ── Theme ────────────────────────────────────────────────────────────────────
   const [theme, setTheme] = useState<Theme>("light");
+
+  // ── Command palette ───────────────────────────────────────────────────────────
+  const [cmdOpen, setCmdOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     if (theme === "dark") {
@@ -505,10 +520,10 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0, y: 3 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -2 }}
-              transition={{ duration: 0.18, ease: "easeInOut" }}
+              initial={{ opacity: 0, x: 4 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -4 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
               style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}
             >
               {activeTab === "lab" && (
@@ -646,14 +661,14 @@ export default function App() {
           display: "flex",
           alignItems: "center",
           padding: "0 16px",
-          gap: "0",
           flexShrink: 0,
+          gap: "0",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
           <motion.div
-            animate={{ opacity: [0.3, 0.9, 0.3] }}
-            transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+            animate={{ opacity: isLive ? [0.4, 1, 0.4] : [0.3, 0.7, 0.3] }}
+            transition={{ duration: isLive ? 0.85 : 3.5, repeat: Infinity, ease: "easeInOut" }}
             style={{
               width: "4px",
               height: "4px",
@@ -661,12 +676,12 @@ export default function App() {
               background: isLive ? "var(--r-accent)" : "var(--r-pulse)",
             }}
           />
-          <span style={{ fontFamily: "monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-subtext)", textTransform: "uppercase" }}>
-            {isLive ? "Streaming" : "Connected"}
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-dim)", textTransform: "uppercase" }}>
+            {isLive ? "streaming" : "ready"}
           </span>
         </div>
 
-        <div style={{ width: "1px", height: "10px", background: "var(--r-border)", margin: "0 12px" }} />
+        <div style={{ width: "1px", height: "9px", background: "var(--r-border)", margin: "0 10px" }} />
 
         <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.05em" }}>
           {activeTab === "profile" ? "profile-ledger · memory-fabric" : `${activeModels[activeTab as ChamberTab]} · ${tasks[activeTab as ChamberTab]}`}
@@ -674,19 +689,22 @@ export default function App() {
 
         <div style={{ flex: 1 }} />
 
-        <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.05em" }}>
-          {activeTab.toUpperCase()}
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          {activeTab}
         </span>
 
-        <div style={{ width: "1px", height: "10px", background: "var(--r-border)", margin: "0 12px" }} />
+        <div style={{ width: "1px", height: "9px", background: "var(--r-border)", margin: "0 10px" }} />
 
-        <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.04em" }}>
-          {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.03em" }}>
+          {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </span>
       </div>
 
       {/* Floating notes layer */}
       <FloatingNoteSystem notes={notes} onChange={updateNote} onRemove={removeNote} />
+
+      {/* Global command palette */}
+      <GlobalCommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} navigate={navigate} />
     </div>
   );
 }

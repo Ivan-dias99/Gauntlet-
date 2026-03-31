@@ -27,26 +27,37 @@ export function DiscoveryRail({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div style={{ marginBottom: "32px" }}>
+    <div style={{ marginBottom: "36px" }}>
       {/* Rail header */}
       <div
         style={{
           display: "flex",
-          alignItems: "baseline",
+          alignItems: "center",
           justifyContent: "space-between",
           paddingLeft: "28px",
           paddingRight: "28px",
-          marginBottom: "12px",
+          marginBottom: "13px",
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-          <RLabel>{label}</RLabel>
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 600,
+              letterSpacing: "-0.005em",
+              color: R.ink2,
+              fontFamily: "'Inter', system-ui, sans-serif",
+            }}
+          >
+            {label}
+          </span>
           {sublabel && (
             <span
               style={{
-                ...R.t.micro,
+                fontSize: "10px",
                 color: R.ink5,
                 fontFamily: "'Inter', sans-serif",
+                letterSpacing: "0",
               }}
             >
               {sublabel}
@@ -63,14 +74,16 @@ export function DiscoveryRail({
               border: "none",
               background: "transparent",
               cursor: "pointer",
-              ...R.t.micro,
+              fontSize: "10px",
               color: R.ink4,
               fontFamily: "'Inter', sans-serif",
               outline: "none",
               padding: "2px 0",
               transition: "color 0.12s ease",
+              letterSpacing: "0",
             }}
-            className="hover:text-[#383835]"
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = R.ink2; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = R.ink4; }}
           >
             {action.label}
             <ChevronRight size={10} strokeWidth={1.75} />
@@ -87,11 +100,10 @@ export function DiscoveryRail({
           overflowX: "auto",
           paddingLeft: "28px",
           paddingRight: "28px",
-          paddingBottom: "4px",
+          paddingBottom: "6px",
           scrollbarWidth: "none",
           msOverflowStyle: "none",
         }}
-        // @ts-ignore
         className="hide-scrollbar"
       >
         {children}
@@ -136,13 +148,13 @@ export function FeaturedHero({
     <div
       style={{
         margin: "0 28px 32px",
-        borderRadius: "14px",
-        border: `1px solid ${R.hairline}`,
+        borderRadius: "12px",
+        border: `1px solid ${R.line}`,
         background: R.surface,
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        boxShadow: R.shadow.sm,
+        boxShadow: R.shadow.md,
       }}
     >
       {/* Visual band */}

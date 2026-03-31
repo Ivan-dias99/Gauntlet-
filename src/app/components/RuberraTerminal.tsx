@@ -1,6 +1,6 @@
 /**
- * RUBERRA Terminal — Claude Code-inspired execution surface
- * Warm-dark, semantic, structured. Inspired by claude.ai/code aesthetic.
+ * RUBERRA Terminal — elite execution surface
+ * Warm-dark, semantic, structured. Machine-grade precision.
  * Used in: Lab Code view, Creation Build view
  */
 
@@ -13,25 +13,26 @@ import { type ChamberTab, type TaskType } from "./model-orchestration";
 // ─── Terminal Color System ────────────────────────────────────────────────────
 
 const T = {
-  bg:       "#0C0B0A",
-  surface:  "#131110",
-  line:     "#1D1B18",
-  line2:    "#252220",
-  text:     "#C6C0B8",
-  dim:      "#5A5450",
-  dim2:     "#3D3A36",
-  green:    "#4E8C5E",
-  greenBg:  "rgba(42,78,50,0.35)",
-  red:      "#8C4545",
-  redBg:    "rgba(78,30,30,0.40)",
+  bg:       "#0B0A09",
+  surface:  "#121010",
+  line:     "#1A1816",
+  line2:    "#232120",
+  text:     "#C8C2BA",
+  dim:      "#55504C",
+  dim2:     "#3A3733",
+  green:    "#4D8C5D",
+  greenBg:  "rgba(38,72,46,0.35)",
+  red:      "#8A4444",
+  redBg:    "rgba(72,28,28,0.40)",
   amber:    "#B07830",
-  amberDim: "#6A4818",
+  amberDim: "#664518",
+  amberBg:  "rgba(80,52,16,0.3)",
   pink:     "#B87896",
   cyan:     "#4A8C90",
   purple:   "#7870AA",
-  number:   "#A09060",
-  op:       "#4E8C5E",       // operation dot color
-  prompt:   "#C6C0B8",
+  number:   "#9E8E5E",
+  op:       "#4D8C5D",
+  prompt:   "#C8C2BA",
 } as const;
 
 // ─── Syntax Highlighter ───────────────────────────────────────────────────────
@@ -54,12 +55,14 @@ function tokenizeLine(raw: string): Token[] {
   let i = 0;
 
   while (i < raw.length) {
-    // Comment: // ...
     if (raw[i] === "/" && raw[i + 1] === "/") {
       tokens.push({ text: raw.slice(i), color: T.dim });
       break;
     }
-    // String: " ' `
+    if (raw[i] === "#") {
+      tokens.push({ text: raw.slice(i), color: T.dim });
+      break;
+    }
     if (raw[i] === '"' || raw[i] === "'" || raw[i] === "`") {
       const q = raw[i];
       let j = i + 1;
@@ -72,7 +75,6 @@ function tokenizeLine(raw: string): Token[] {
       i = j;
       continue;
     }
-    // Number
     if (/\d/.test(raw[i]) && (i === 0 || /[\s,=(:+\-*/<>[\{]/.test(raw[i - 1]))) {
       let j = i;
       while (j < raw.length && /[\d._xXa-fA-FbBoO]/.test(raw[j])) j++;
@@ -80,7 +82,6 @@ function tokenizeLine(raw: string): Token[] {
       i = j;
       continue;
     }
-    // Identifier (keyword or name)
     if (/[a-zA-Z_$]/.test(raw[i])) {
       let j = i;
       while (j < raw.length && /[a-zA-Z0-9_$]/.test(raw[j])) j++;
@@ -95,13 +96,11 @@ function tokenizeLine(raw: string): Token[] {
       i = j;
       continue;
     }
-    // Operators / punctuation
     if (/[=<>!+\-*/%&|^?:,;.[\]{}()]/.test(raw[i])) {
       tokens.push({ text: raw[i], color: T.dim });
       i++;
       continue;
     }
-    // Whitespace / other
     tokens.push({ text: raw[i], color: T.text });
     i++;
   }
@@ -175,7 +174,6 @@ function parseMessage(msg: Message, chamberLabel: string, isStreaming: boolean):
     return blocks;
   }
 
-  // AI message
   if (!msg.content && isStreaming) {
     blocks.push({ kind: "status", text: "Thinking", variant: "working" });
     return blocks;
@@ -189,32 +187,20 @@ function parseMessage(msg: Message, chamberLabel: string, isStreaming: boolean):
   for (const part of parts) {
     if (part.type === "code") {
       const codeLines = part.text.trimEnd().split("\n");
-      blocks.push({
-        kind: "code",
-        lang: part.lang ?? "text",
-        lines: codeLines,
-      });
+      blocks.push({ kind: "code", lang: part.lang ?? "text", lines: codeLines });
     } else {
-      // Parse the text part
       const lines = part.text.split("\n");
       const textLines: string[] = [];
 
       for (const line of lines) {
         const trimmed = line.trim();
 
-        // Markdown heading → divider
         if (/^#{1,3}\s/.test(trimmed)) {
           if (textLines.length > 0) {
             blocks.push({ kind: "text", lines: [...textLines] });
             textLines.length = 0;
           }
           blocks.push({ kind: "divider", label: trimmed.replace(/^#+\s/, "") });
-          continue;
-        }
-
-        // Checklist items
-        if (/^\[[ x]\]\s/.test(trimmed)) {
-          textLines.push(line);
           continue;
         }
 
@@ -238,9 +224,30 @@ function parseMessage(msg: Message, chamberLabel: string, isStreaming: boolean):
 
 function BlockPrompt({ content }: { content: string }) {
   return (
-    <div style={{ display: "flex", gap: "8px", marginBottom: "12px", alignItems: "flex-start" }}>
-      <span style={{ color: T.dim, fontSize: "13px", fontFamily: "monospace", marginTop: "1px", flexShrink: 0, userSelect: "none" }}>›</span>
-      <span style={{ color: T.dim, fontSize: "13px", fontFamily: "monospace", lineHeight: "1.55", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+    <div style={{ display: "flex", gap: "10px", marginBottom: "14px", alignItems: "flex-start" }}>
+      <span
+        style={{
+          color: T.amber,
+          fontSize: "13px",
+          fontFamily: "'JetBrains Mono', monospace",
+          marginTop: "0px",
+          flexShrink: 0,
+          userSelect: "none",
+          opacity: 0.8,
+        }}
+      >
+        ›
+      </span>
+      <span
+        style={{
+          color: T.text,
+          fontSize: "13px",
+          fontFamily: "'JetBrains Mono', monospace",
+          lineHeight: "1.6",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}
+      >
         {content}
       </span>
     </div>
@@ -249,10 +256,16 @@ function BlockPrompt({ content }: { content: string }) {
 
 function BlockOperation({ verb, target, sub }: { verb: string; target: string; sub?: string }) {
   return (
-    <div style={{ marginBottom: "4px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ color: T.green, fontSize: "11px", lineHeight: 1, flexShrink: 0 }}>●</span>
-        <span style={{ fontFamily: "monospace", fontSize: "13px", lineHeight: 1.4 }}>
+    <div style={{ marginBottom: "6px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+        <motion.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          style={{ color: T.green, fontSize: "10px", lineHeight: 1, flexShrink: 0 }}
+        >
+          ●
+        </motion.span>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12.5px", lineHeight: 1.5 }}>
           <span style={{ color: T.text, fontWeight: 500 }}>{verb}</span>
           <span style={{ color: T.dim }}>{"("}</span>
           <span style={{ color: T.cyan }}>{target}</span>
@@ -260,9 +273,9 @@ function BlockOperation({ verb, target, sub }: { verb: string; target: string; s
         </span>
       </div>
       {sub && (
-        <div style={{ paddingLeft: "18px", marginTop: "2px" }}>
-          <span style={{ color: T.dim, fontFamily: "monospace", fontSize: "12px" }}>└ </span>
-          <span style={{ color: T.dim, fontFamily: "monospace", fontSize: "12px" }}>{sub}</span>
+        <div style={{ paddingLeft: "19px", marginTop: "2px" }}>
+          <span style={{ color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>└ </span>
+          <span style={{ color: T.dim, fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>{sub}</span>
         </div>
       )}
     </div>
@@ -271,15 +284,16 @@ function BlockOperation({ verb, target, sub }: { verb: string; target: string; s
 
 function BlockCode({ lines, lang, filename }: { lines: string[]; lang: string; filename?: string }) {
   const [collapsed, setCollapsed] = useState(false);
-  const isLong = lines.length > 16;
+  const isLong = lines.length > 18;
 
   return (
     <div
       style={{
-        margin: "8px 0 12px",
+        margin: "8px 0 14px",
         border: `1px solid ${T.line2}`,
-        borderRadius: "4px",
+        borderRadius: "6px",
         overflow: "hidden",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
       }}
     >
       {/* Code header */}
@@ -288,25 +302,45 @@ function BlockCode({ lines, lang, filename }: { lines: string[]; lang: string; f
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "5px 10px",
+          padding: "5px 12px",
           background: T.surface,
           borderBottom: `1px solid ${T.line}`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ color: T.dim, fontSize: "10px", fontFamily: "monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "5px" }}>
+            {[T.dim2, T.dim2, T.dim2].map((c, i) => (
+              <span key={i} style={{ width: "8px", height: "8px", borderRadius: "50%", background: c, display: "inline-block", opacity: 0.7 }} />
+            ))}
+          </div>
+          <span style={{ color: T.dim, fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>
             {lang || "text"}
           </span>
           {filename && (
-            <span style={{ color: T.cyan, fontSize: "10px", fontFamily: "monospace" }}>{filename}</span>
+            <span style={{ color: T.cyan, fontSize: "10px", fontFamily: "'JetBrains Mono', monospace" }}>{filename}</span>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontFamily: "monospace", fontSize: "9px", color: T.dim }}>{lines.length} lines</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: T.dim2 }}>
+            {lines.length} lines
+          </span>
           {isLong && (
             <button
               onClick={() => setCollapsed(c => !c)}
-              style={{ fontFamily: "monospace", fontSize: "9px", color: T.amber, background: "transparent", border: "none", cursor: "pointer", outline: "none", padding: 0 }}
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "9px",
+                color: T.amber,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                outline: "none",
+                padding: 0,
+                letterSpacing: "0.05em",
+                transition: "opacity 0.1s ease",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
             >
               {collapsed ? "expand" : "collapse"}
             </button>
@@ -316,37 +350,36 @@ function BlockCode({ lines, lang, filename }: { lines: string[]; lang: string; f
       {/* Code body */}
       {!collapsed && (
         <div style={{ overflowX: "auto", padding: "10px 0" }}>
-          {(isLong ? lines.slice(0, 24) : lines).map((line, i) => (
+          {(isLong ? lines.slice(0, 26) : lines).map((line, i) => (
             <div
               key={i}
               style={{
                 display: "flex",
                 alignItems: "flex-start",
-                gap: "0",
                 paddingRight: "16px",
-                minHeight: "18px",
+                minHeight: "19px",
               }}
             >
               <span
                 style={{
-                  width: "36px",
+                  width: "38px",
                   flexShrink: 0,
                   textAlign: "right",
-                  paddingRight: "12px",
-                  fontFamily: "monospace",
+                  paddingRight: "14px",
+                  fontFamily: "'JetBrains Mono', monospace",
                   fontSize: "11px",
                   color: T.dim2,
                   userSelect: "none",
-                  lineHeight: "18px",
+                  lineHeight: "19px",
                 }}
               >
                 {i + 1}
               </span>
               <span
                 style={{
-                  fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace",
+                  fontFamily: "'JetBrains Mono', monospace",
                   fontSize: "12px",
-                  lineHeight: "18px",
+                  lineHeight: "19px",
                   whiteSpace: "pre",
                   flex: 1,
                 }}
@@ -355,10 +388,10 @@ function BlockCode({ lines, lang, filename }: { lines: string[]; lang: string; f
               </span>
             </div>
           ))}
-          {isLong && !collapsed && lines.length > 24 && (
-            <div style={{ padding: "4px 0 0 36px" }}>
-              <span style={{ fontFamily: "monospace", fontSize: "10px", color: T.dim }}>
-                … {lines.length - 24} more lines
+          {isLong && !collapsed && lines.length > 26 && (
+            <div style={{ padding: "4px 0 0 38px" }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: T.dim }}>
+                … {lines.length - 26} more lines
               </span>
             </div>
           )}
@@ -370,12 +403,11 @@ function BlockCode({ lines, lang, filename }: { lines: string[]; lang: string; f
 
 function BlockText({ lines }: { lines: string[] }) {
   return (
-    <div style={{ paddingLeft: "0", marginBottom: "8px" }}>
+    <div style={{ marginBottom: "10px" }}>
       {lines.map((line, i) => {
         const trimmed = line.trim();
-        if (!trimmed) return <div key={i} style={{ height: "6px" }} />;
+        if (!trimmed) return <div key={i} style={{ height: "5px" }} />;
 
-        // Checklist
         const doneMatch  = trimmed.match(/^\[x\]\s+(.+)/i);
         const todoMatch  = trimmed.match(/^\[ \]\s+(.+)/);
         const bulletMatch= trimmed.match(/^[-*•]\s+(.+)/);
@@ -383,25 +415,25 @@ function BlockText({ lines }: { lines: string[] }) {
 
         if (doneMatch) {
           return (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "3px", paddingLeft: "2px" }}>
-              <span style={{ color: T.green, fontSize: "11px", fontFamily: "monospace", flexShrink: 0, marginTop: "2px" }}>✓</span>
-              <span style={{ fontFamily: "monospace", fontSize: "12px", color: T.dim, lineHeight: "1.5", textDecoration: "line-through" }}>{doneMatch[1]}</span>
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "9px", marginBottom: "3px", paddingLeft: "2px" }}>
+              <span style={{ color: T.green, fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, marginTop: "2.5px" }}>✓</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.dim, lineHeight: "1.55", textDecoration: "line-through" }}>{doneMatch[1]}</span>
             </div>
           );
         }
         if (todoMatch) {
           return (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "3px", paddingLeft: "2px" }}>
-              <span style={{ color: T.dim2, fontSize: "11px", fontFamily: "monospace", flexShrink: 0, marginTop: "2px", border: `1px solid ${T.dim2}`, width: "10px", height: "10px", borderRadius: "2px", display: "inline-block" }} />
-              <span style={{ fontFamily: "monospace", fontSize: "12px", color: T.text, lineHeight: "1.5" }}>{todoMatch[1]}</span>
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "9px", marginBottom: "3px", paddingLeft: "2px" }}>
+              <span style={{ color: T.dim2, fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, marginTop: "2.5px", border: `1px solid ${T.dim2}`, width: "10px", height: "10px", borderRadius: "2px", display: "inline-block" }} />
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.text, lineHeight: "1.55" }}>{todoMatch[1]}</span>
             </div>
           );
         }
         if (bulletMatch) {
           return (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "3px" }}>
-              <span style={{ color: T.dim, fontSize: "11px", fontFamily: "monospace", flexShrink: 0, marginTop: "3px" }}>–</span>
-              <span style={{ fontFamily: "monospace", fontSize: "12px", color: T.text, lineHeight: "1.55" }}>
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "9px", marginBottom: "3px" }}>
+              <span style={{ color: T.dim, fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, marginTop: "3px" }}>–</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.text, lineHeight: "1.6" }}>
                 <SyntaxLine text={bulletMatch[1]} />
               </span>
             </div>
@@ -410,7 +442,7 @@ function BlockText({ lines }: { lines: string[] }) {
         if (treeMatch) {
           return (
             <div key={i} style={{ paddingLeft: "16px" }}>
-              <span style={{ fontFamily: "monospace", fontSize: "12px", color: T.dim }}>{trimmed}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.dim }}>{trimmed}</span>
             </div>
           );
         }
@@ -424,23 +456,23 @@ function BlockText({ lines }: { lines: string[] }) {
               {parts.map((p, j) => {
                 const m = p.match(/^__BOLD:(.+)__$/);
                 return m
-                  ? <span key={j} style={{ fontFamily: "monospace", fontSize: "12px", color: T.text, fontWeight: 700 }}>{m[1]}</span>
-                  : <span key={j} style={{ fontFamily: "monospace", fontSize: "12px", color: T.text, lineHeight: "1.6" }}>{p}</span>;
+                  ? <span key={j} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.text, fontWeight: 700 }}>{m[1]}</span>
+                  : <span key={j} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.text, lineHeight: "1.6" }}>{p}</span>;
               })}
             </div>
           );
         }
 
-        // Normal text — try inline code
+        // Inline code
         const hasInlineCode = trimmed.includes("`");
         if (hasInlineCode) {
           const inlineParts = trimmed.split(/(`[^`]+`)/g);
           return (
-            <div key={i} style={{ marginBottom: "2px", lineHeight: "1.6" }}>
+            <div key={i} style={{ marginBottom: "2px", lineHeight: "1.65" }}>
               {inlineParts.map((p, j) =>
                 p.startsWith("`") && p.endsWith("`")
-                  ? <span key={j} style={{ fontFamily: "monospace", fontSize: "12px", color: T.amber, background: T.surface, padding: "0 3px", borderRadius: "2px" }}>{p.slice(1, -1)}</span>
-                  : <span key={j} style={{ fontFamily: "monospace", fontSize: "12px", color: T.text }}>{p}</span>
+                  ? <span key={j} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.amber, background: T.surface, padding: "0 4px", borderRadius: "3px", border: `1px solid ${T.line2}` }}>{p.slice(1, -1)}</span>
+                  : <span key={j} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.text }}>{p}</span>
               )}
             </div>
           );
@@ -448,7 +480,7 @@ function BlockText({ lines }: { lines: string[] }) {
 
         return (
           <div key={i} style={{ marginBottom: "2px" }}>
-            <span style={{ fontFamily: "monospace", fontSize: "12px", color: T.text, lineHeight: "1.6" }}>{trimmed}</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.text, lineHeight: "1.65" }}>{trimmed}</span>
           </div>
         );
       })}
@@ -462,18 +494,18 @@ function BlockDiff({ removed, added }: { removed: string; added: string }) {
   const maxLen = Math.max(removedLines.length, addedLines.length);
 
   return (
-    <div style={{ margin: "6px 0 10px", border: `1px solid ${T.line2}`, borderRadius: "3px", overflow: "hidden", fontFamily: "monospace", fontSize: "12px" }}>
+    <div style={{ margin: "6px 0 12px", border: `1px solid ${T.line2}`, borderRadius: "5px", overflow: "hidden", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>
       {Array.from({ length: maxLen }, (_, i) => (
         <div key={i}>
           {removedLines[i] !== undefined && (
-            <div style={{ display: "flex", background: T.redBg, padding: "1px 10px" }}>
-              <span style={{ color: T.red, width: "20px", flexShrink: 0, userSelect: "none" }}>–</span>
+            <div style={{ display: "flex", background: T.redBg, padding: "2px 12px" }}>
+              <span style={{ color: T.red, width: "18px", flexShrink: 0, userSelect: "none" }}>–</span>
               <SyntaxLine text={removedLines[i]} color={T.red} />
             </div>
           )}
           {addedLines[i] !== undefined && (
-            <div style={{ display: "flex", background: T.greenBg, padding: "1px 10px" }}>
-              <span style={{ color: T.green, width: "20px", flexShrink: 0, userSelect: "none" }}>+</span>
+            <div style={{ display: "flex", background: T.greenBg, padding: "2px 12px" }}>
+              <span style={{ color: T.green, width: "18px", flexShrink: 0, userSelect: "none" }}>+</span>
               <SyntaxLine text={addedLines[i]} color={T.green} />
             </div>
           )}
@@ -485,9 +517,12 @@ function BlockDiff({ removed, added }: { removed: string; added: string }) {
 
 function BlockDivider({ label }: { label: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "14px 0 8px", userSelect: "none" }}>
-      <span style={{ fontFamily: "monospace", fontSize: "10px", letterSpacing: "0.10em", textTransform: "uppercase", color: T.dim }}>{label}</span>
-      <div style={{ flex: 1, height: "1px", background: T.line }} />
+    <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "16px 0 8px", userSelect: "none" }}>
+      <div style={{ height: "1px", width: "14px", background: T.line2, flexShrink: 0 }} />
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase", color: T.dim, whiteSpace: "nowrap" }}>
+        {label}
+      </span>
+      <div style={{ flex: 1, height: "1px", background: T.line2 }} />
     </div>
   );
 }
@@ -495,35 +530,35 @@ function BlockDivider({ label }: { label: string }) {
 function BlockStatus({ text, elapsed, tokens, variant }: {
   text: string; elapsed?: string; tokens?: string; variant: "working" | "done" | "error";
 }) {
-  const color = variant === "done" ? T.green : variant === "error" ? T.red : T.amber;
-  const prefix = variant === "done" ? "✓" : variant === "error" ? "✗" : "*";
+  const color  = variant === "done" ? T.green : variant === "error" ? T.red : T.amber;
+  const prefix = variant === "done" ? "✓" : variant === "error" ? "✗" : "◎";
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "8px 0 4px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "8px 0 6px", padding: "5px 10px", background: variant === "working" ? T.amberBg : "transparent", borderRadius: "4px", border: `1px solid ${T.line2}` }}>
       {variant === "working" ? (
         <motion.span
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-          style={{ color, fontFamily: "monospace", fontSize: "12px", userSelect: "none" }}
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+          style={{ color, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", userSelect: "none" }}
         >
           {prefix}
         </motion.span>
       ) : (
-        <span style={{ color, fontFamily: "monospace", fontSize: "12px", userSelect: "none" }}>{prefix}</span>
+        <span style={{ color, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", userSelect: "none" }}>{prefix}</span>
       )}
-      <span style={{ fontFamily: "monospace", fontSize: "12px", color }}>
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11.5px", color }}>
         {text}
         {variant === "working" && (
           <motion.span
             animate={{ opacity: [0, 1, 0] }}
-            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
           >
             …
           </motion.span>
         )}
       </span>
       {(elapsed || tokens) && (
-        <span style={{ fontFamily: "monospace", fontSize: "10px", color: T.dim }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: T.dim, marginLeft: "2px" }}>
           ({[elapsed, tokens ? `↑ ${tokens}` : null].filter(Boolean).join(" · ")})
         </span>
       )}
@@ -550,30 +585,31 @@ function BlinkCursor() {
   return (
     <motion.span
       animate={{ opacity: [1, 0] }}
-      transition={{ duration: 0.53, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+      transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
       style={{
         display: "inline-block",
-        width: "8px",
+        width: "7px",
         height: "14px",
         background: T.text,
         verticalAlign: "middle",
-        marginLeft: "2px",
+        marginLeft: "1px",
         borderRadius: "1px",
+        opacity: 0.85,
       }}
     />
   );
 }
 
-// ─── Input area ────────────────────────────────���──────────────────────────────
+// ─── Input area ───────────────────────────────────────────────────────────────
 
 function TerminalInput({
   value, onChange, onSubmit, onCancel, disabled, placeholder,
 }: {
-  value: string;
-  onChange: (v: string) => void;
-  onSubmit: () => void;
-  onCancel: () => void;
-  disabled: boolean;
+  value:       string;
+  onChange:    (v: string) => void;
+  onSubmit:    () => void;
+  onCancel:    () => void;
+  disabled:    boolean;
   placeholder: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -596,17 +632,18 @@ function TerminalInput({
           display: "flex",
           alignItems: "center",
           padding: "10px 16px",
-          gap: "8px",
+          gap: "10px",
         }}
         onClick={() => inputRef.current?.focus()}
       >
         <span
           style={{
-            fontFamily: "monospace",
+            fontFamily: "'JetBrains Mono', monospace",
             fontSize: "13px",
-            color: T.dim,
+            color: T.amber,
             flexShrink: 0,
             userSelect: "none",
+            opacity: 0.8,
           }}
         >
           ›
@@ -626,10 +663,11 @@ function TerminalInput({
             background: "transparent",
             border: "none",
             outline: "none",
-            fontFamily: "monospace",
+            fontFamily: "'JetBrains Mono', monospace",
             fontSize: "13px",
             color: T.text,
-            caretColor: T.text,
+            caretColor: T.amber,
+            letterSpacing: "0.01em",
           }}
         />
         {disabled && <BlinkCursor />}
@@ -640,15 +678,15 @@ function TerminalInput({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 16px 8px",
+          padding: "0 16px 9px",
         }}
       >
-        <span style={{ fontFamily: "monospace", fontSize: "9px", color: T.dim, letterSpacing: "0.05em" }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: T.dim, letterSpacing: "0.05em" }}>
           {disabled ? (
             <button
               onClick={onCancel}
               style={{
-                fontFamily: "monospace",
+                fontFamily: "'JetBrains Mono', monospace",
                 fontSize: "9px",
                 color: T.amberDim,
                 background: "transparent",
@@ -657,28 +695,38 @@ function TerminalInput({
                 outline: "none",
                 padding: 0,
                 letterSpacing: "0.05em",
+                transition: "color 0.1s ease",
               }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = T.amber; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = T.amberDim; }}
             >
               esc to interrupt
             </button>
           ) : (
-            "↵ execute"
+            "↵ execute  ·  esc to cancel"
           )}
         </span>
         {!disabled && value.trim() && (
           <button
             onClick={onSubmit}
             style={{
-              fontFamily: "monospace",
+              fontFamily: "'JetBrains Mono', monospace",
               fontSize: "9px",
               color: T.green,
               background: "transparent",
               border: `1px solid ${T.dim2}`,
               cursor: "pointer",
               outline: "none",
-              padding: "2px 8px",
+              padding: "2px 10px",
               borderRadius: "3px",
-              letterSpacing: "0.06em",
+              letterSpacing: "0.07em",
+              transition: "border-color 0.1s ease, color 0.1s ease",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.borderColor = T.green;
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.borderColor = T.dim2;
             }}
           >
             execute
@@ -692,19 +740,19 @@ function TerminalInput({
 // ─── Main Terminal Component ──────────────────────────────────────────────────
 
 export interface RuberraTerminalProps {
-  messages:     Message[];
-  isLoading:    boolean;
-  draft:        string;
-  onDraftChange:(v: string) => void;
-  onSend:       (v: string) => void;
-  onCancel:     () => void;
-  chamberLabel: string;
-  chamber: ChamberTab;
-  task: TaskType;
-  modelId: string;
-  onTaskChange: (task: TaskType) => void;
+  messages:      Message[];
+  isLoading:     boolean;
+  draft:         string;
+  onDraftChange: (v: string) => void;
+  onSend:        (v: string) => void;
+  onCancel:      () => void;
+  chamberLabel:  string;
+  chamber:       ChamberTab;
+  task:          TaskType;
+  modelId:       string;
+  onTaskChange:  (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
-  placeholder?: string;
+  placeholder?:  string;
   elapsedLabel?: string;
 }
 
@@ -728,7 +776,6 @@ export function RuberraTerminal({
 
   const allBlocks: TerminalBlock[] = [];
 
-  // Session header
   if (messages.length === 0 && !isLoading) {
     allBlocks.push({
       kind: "status",
@@ -754,7 +801,7 @@ export function RuberraTerminal({
         flexDirection: "column",
         overflow: "hidden",
         background: T.bg,
-        fontFamily: "monospace",
+        fontFamily: "'JetBrains Mono', monospace",
       }}
     >
       {/* Terminal header bar */}
@@ -764,21 +811,37 @@ export function RuberraTerminal({
           alignItems: "center",
           justifyContent: "space-between",
           padding: "0 14px",
-          height: "32px",
+          height: "34px",
           background: T.surface,
           borderBottom: `1px solid ${T.line}`,
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          {/* Traffic lights */}
-          {["#3A3533", "#3A3533", "#3A3533"].map((c, i) => (
-            <span key={i} style={{ width: "10px", height: "10px", borderRadius: "50%", background: c, display: "inline-block" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+          {/* macOS-style traffic lights */}
+          {(["#3D3A36", "#3D3A36", "#3D3A36"] as const).map((c, i) => (
+            <span
+              key={i}
+              style={{
+                width: "10px",
+                height: "10px",
+                borderRadius: "50%",
+                background: c,
+                display: "inline-block",
+                border: "0.5px solid rgba(255,255,255,0.04)",
+              }}
+            />
           ))}
+          <span style={{ marginLeft: "4px", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: T.dim, letterSpacing: "0.05em", userSelect: "none" }}>
+            {chamberLabel.toLowerCase()}
+          </span>
         </div>
-        <span style={{ fontSize: "10px", fontFamily: "monospace", color: T.dim, letterSpacing: "0.06em", userSelect: "none" }}>
-          ruberra — {chamberLabel.toLowerCase()} — {messages.length > 0 ? `${messages.filter(m => m.role === "user").length} commands` : "ready"}
+
+        {/* Center label */}
+        <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: T.dim2, letterSpacing: "0.06em", userSelect: "none", position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+          {messages.length > 0 ? `${messages.filter(m => m.role === "user").length} commands` : "ready"}
         </span>
+
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <ModelSelector
             chamber={chamber}
@@ -788,17 +851,21 @@ export function RuberraTerminal({
             onModelChange={onModelChange}
             mode="terminal"
           />
-          {isLoading && (
-            <motion.span
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
-              style={{ fontSize: "9px", fontFamily: "monospace", color: T.amber, letterSpacing: "0.06em" }}
-            >
-              running
-            </motion.span>
-          )}
-          <span style={{ fontSize: "9px", fontFamily: "monospace", color: T.dim2 }}>
-            {messages.length > 0 ? `${messages.filter(m => m.role === "assistant").length} outputs` : "0 outputs"}
+          <AnimatePresence>
+            {isLoading && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+                style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: T.amber, letterSpacing: "0.07em" }}
+              >
+                running
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: T.dim2 }}>
+            {messages.filter(m => m.role === "assistant").length} outputs
           </span>
         </div>
       </div>
@@ -810,22 +877,32 @@ export function RuberraTerminal({
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "16px 16px 8px",
+          padding: "18px 18px 8px",
         }}
       >
         {messages.length === 0 && !isLoading ? (
-          <div style={{ paddingTop: "32px", display: "flex", flexDirection: "column", gap: "4px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ color: T.green, fontFamily: "monospace", fontSize: "11px" }}>●</span>
-              <span style={{ color: T.dim, fontFamily: "monospace", fontSize: "11px" }}>RUBERRA {chamberLabel.toUpperCase()} TERMINAL</span>
+          <div style={{ paddingTop: "28px", display: "flex", flexDirection: "column", gap: "5px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+              <motion.span
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                style={{ color: T.green, fontFamily: "'JetBrains Mono', monospace", fontSize: "10px" }}
+              >
+                ●
+              </motion.span>
+              <span style={{ color: T.dim, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", letterSpacing: "0.04em" }}>
+                RUBERRA {chamberLabel.toUpperCase()} TERMINAL
+              </span>
             </div>
-            <div style={{ paddingLeft: "18px" }}>
-              <span style={{ color: T.dim2, fontFamily: "monospace", fontSize: "11px" }}>└ </span>
-              <span style={{ color: T.dim2, fontFamily: "monospace", fontSize: "11px" }}>{placeholder}</span>
+            <div style={{ paddingLeft: "19px" }}>
+              <span style={{ color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px" }}>└ </span>
+              <span style={{ color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px" }}>{placeholder}</span>
             </div>
-            <div style={{ height: "8px" }} />
-            <div style={{ color: T.dim2, fontFamily: "monospace", fontSize: "11px", paddingLeft: "2px" }}>
-              ›  <span style={{ color: T.amberDim }}>ready for directive</span>
+            <div style={{ height: "10px" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", paddingLeft: "2px" }}>
+              <span>›</span>
+              <span style={{ color: T.amberDim }}>ready for directive</span>
+              <BlinkCursor />
             </div>
           </div>
         ) : (
