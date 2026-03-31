@@ -248,3 +248,16 @@ export function buildMessageObject(message: Message): RuberraObject {
 export function openObject(navigate: NavFn, object: RuberraObject) {
   navigate(object.action_route.tab, object.action_route.view, object.action_route.id);
 }
+
+export function mergeObjectsByRecency(...sets: RuberraObject[][]): RuberraObject[] {
+  const merged = new Map<string, RuberraObject>();
+  for (const set of sets) {
+    for (const object of set) {
+      const existing = merged.get(object.id);
+      if (!existing || object.updated_at >= existing.updated_at) {
+        merged.set(object.id, object);
+      }
+    }
+  }
+  return Array.from(merged.values()).sort((a, b) => b.updated_at - a.updated_at);
+}

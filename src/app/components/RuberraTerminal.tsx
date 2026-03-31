@@ -6,9 +6,9 @@
 
 import { useRef, useEffect, useState, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { type Message, type Tab } from "./shell-types";
+import { type Message } from "./shell-types";
 import { ModelSelector } from "./ModelSelector";
-import { type TaskType } from "./model-orchestration";
+import { type ChamberTab, type TaskType } from "./model-orchestration";
 
 // ─── Terminal Color System ────────────────────────────────────────────────────
 
@@ -740,6 +740,19 @@ function TerminalInput({
 // ─── Main Terminal Component ──────────────────────────────────────────────────
 
 export interface RuberraTerminalProps {
+  messages:     Message[];
+  isLoading:    boolean;
+  draft:        string;
+  onDraftChange:(v: string) => void;
+  onSend:       (v: string) => void;
+  onCancel:     () => void;
+  chamberLabel: string;
+  chamber: ChamberTab;
+  task: TaskType;
+  modelId: string;
+  onTaskChange: (task: TaskType) => void;
+  onModelChange: (modelId: string) => void;
+  placeholder?: string;
   messages:      Message[];
   isLoading:     boolean;
   draft:         string;
@@ -747,7 +760,7 @@ export interface RuberraTerminalProps {
   onSend:        (v: string) => void;
   onCancel:      () => void;
   chamberLabel:  string;
-  chamber:       Tab;
+  chamber:       ChamberTab;
   task:          TaskType;
   modelId:       string;
   onTaskChange:  (task: TaskType) => void;
@@ -758,8 +771,7 @@ export interface RuberraTerminalProps {
 
 export function RuberraTerminal({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  chamberLabel, chamber, task, modelId, onTaskChange, onModelChange,
-  placeholder = "Enter directive…", elapsedLabel,
+  chamberLabel, chamber, task, modelId, onTaskChange, onModelChange, placeholder = "Enter directive…", elapsedLabel,
 }: RuberraTerminalProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -852,6 +864,17 @@ export function RuberraTerminal({
             onModelChange={onModelChange}
             mode="terminal"
           />
+          {isLoading && (
+            <motion.span
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+              style={{ fontSize: "9px", fontFamily: "monospace", color: T.amber, letterSpacing: "0.06em" }}
+            >
+              running
+            </motion.span>
+          )}
+          <span style={{ fontSize: "9px", fontFamily: "monospace", color: T.dim2 }}>
+            {messages.length > 0 ? `${messages.filter(m => m.role === "assistant").length} outputs` : "0 outputs"}
           <AnimatePresence>
             {isLoading && (
               <motion.span

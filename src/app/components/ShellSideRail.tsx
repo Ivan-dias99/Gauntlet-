@@ -6,7 +6,7 @@
 import { motion } from "motion/react";
 import {
   type Tab, type Message, type SignalStatus,
-  type LabView, type SchoolView, type CreationView, type NavFn,
+  type LabView, type SchoolView, type CreationView, type ProfileView, type NavFn,
 } from "./shell-types";
 
 interface ShellSideRailProps {
@@ -16,22 +16,25 @@ interface ShellSideRailProps {
   labView:        LabView;
   schoolView:     SchoolView;
   creationView:   CreationView;
+  profileView:    ProfileView;
   onLabView:      (v: LabView) => void;
   onSchoolView:   (v: SchoolView) => void;
   onCreationView: (v: CreationView) => void;
+  onProfileView:  (v: ProfileView) => void;
   onNewNote:      () => void;
   onClearTab:     (tab: Tab) => void;
   navigate:       NavFn;
 }
 
-const ALL_TABS: Tab[] = ["lab", "school", "creation"];
+const ALL_TABS: Tab[] = ["lab", "school", "creation", "profile"];
 
 // ─── Chamber accent colors — matches tokens.ts ────────────────────────────────
 
-const CHAMBER_ACCENT: Record<Tab, { primary: string; light: string; label: string }> = {
-  lab:      { primary: "#52796A", light: "#EEF4F1", label: "Lab" },
-  school:   { primary: "#4A6B84", light: "#EEF2F6", label: "School" },
-  creation: { primary: "#8A6238", light: "#F5EFE7", label: "Creation" },
+const TAB_ACCENT: Record<Tab, string> = {
+  lab:      "var(--r-accent)",
+  school:   "var(--r-ok)",
+  creation: "var(--r-warn)",
+  profile: "var(--r-pulse)",
 };
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -296,12 +299,31 @@ function CreationRail({ view, onView, messages, signal, navigate }: {
   );
 }
 
+function ProfileRail({ view, onView }: { view: ProfileView; onView: (v: ProfileView) => void }) {
+  return (
+    <>
+      <section style={{ padding: "11px 10px 10px" }}>
+        <SLabel>Ledger</SLabel>
+        <NavBtn label="Overview" active={view === "overview"} onClick={() => onView("overview")} icon={<IHome />} />
+        <NavBtn label="Projects" active={view === "projects"} onClick={() => onView("projects")} icon={<IArchive />} />
+        <NavBtn label="Memory" active={view === "memory"} onClick={() => onView("memory")} icon={<ILibrary />} />
+        <NavBtn label="Settings" active={view === "settings"} onClick={() => onView("settings")} icon={<IAnalysis />} />
+        <NavBtn label="Exports" active={view === "exports"} onClick={() => onView("exports")} icon={<ITerminal />} />
+      </section>
+      <Divider />
+      <section style={{ padding: "10px", fontSize: "10px", color: "var(--r-subtext)" }}>
+        Profile unifies active, paused, completed, and memory continuity.
+      </section>
+    </>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function ShellSideRail({
   activeTab, messages, signals,
-  labView, schoolView, creationView,
-  onLabView, onSchoolView, onCreationView,
+  labView, schoolView, creationView, profileView,
+  onLabView, onSchoolView, onCreationView, onProfileView,
   onNewNote, onClearTab, navigate,
 }: ShellSideRailProps) {
   const chamber = CHAMBER_ACCENT[activeTab];
@@ -394,6 +416,9 @@ export function ShellSideRail({
         )}
         {activeTab === "creation" && (
           <CreationRail view={creationView} onView={onCreationView} messages={messages.creation} signal={signals.creation} navigate={navigate} />
+        )}
+        {activeTab === "profile" && (
+          <ProfileRail view={profileView} onView={onProfileView} />
         )}
       </div>
 
@@ -525,7 +550,7 @@ function IChat()     { return <svg width="11" height="11" viewBox="0 0 12 12" fi
 function IAnalysis() { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 9.5l3-4 2.5 2.5 2.5-4 2 2.5" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" /><path d="M1 11h10" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.4" /></svg>; }
 function ICode()     { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3.5 3.5L1 6l2.5 2.5M8.5 3.5L11 6l-2.5 2.5" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" /><path d="M6.8 2.5l-1.6 7" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" /></svg>; }
 function IArchive()  { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="3" rx=".5" stroke="currentColor" strokeWidth="1.1" /><path d="M1.5 4v6.5h9V4" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" /><path d="M4.5 7h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" /></svg>; }
-function ILibrary()  { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 2h2v8H1zM5 2h2v8H5z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" /><path d="M9.5 2.5l1.5.75V10l-1.5-.75V2.5z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" /></svg>; }
-function ITerminal() { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1" y="1.5" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.1" /><path d="M3.5 5l1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" /><path d="M7 8.5h2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" /></svg>; }
-function IHome()     { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 5.5L6 1l5 4.5V11H7.5V8h-3v3H1z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" /></svg>; }
-function IRole()     { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="4" r="2.5" stroke="currentColor" strokeWidth="1.1" /><path d="M1.5 11c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" /></svg>; }
+function ILibrary()  { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 2h2v8H1zM5 2h2v8H5zM9 2l2 1v7l-2-1V2z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" /></svg>; }
+function ITerminal() { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1" y="1.5" width="10" height="9" rx="1" stroke="currentColor" strokeWidth="1.1" /><path d="M3 5l2 1.5L3 8M6.5 8h2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
+function IHome()    { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 5.5L6 1l5 4.5V11H7.5V8h-3v3H1V5.5z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" /></svg>; }
+function IRole()    { return <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="4" r="2.5" stroke="currentColor" strokeWidth="1.1" /><path d="M1 11c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" /></svg>; }

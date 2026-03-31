@@ -93,49 +93,6 @@ const experimentTemplates = [
   },
 ];
 
-const toolEcosystem = [
-  {
-    id: "t1",
-    title: "Research Engine",
-    subtitle: "Search, synthesize, cross-reference",
-    itemCount: 8,
-    icon: <Search size={14} color={R.lab} strokeWidth={1.5} />,
-    onClick: null,
-  },
-  {
-    id: "t2",
-    title: "Code Lab",
-    subtitle: "Write, run, debug in isolation",
-    itemCount: 12,
-    icon: <Code2 size={14} color={R.lab} strokeWidth={1.5} />,
-    onClick: null,
-  },
-  {
-    id: "t3",
-    title: "Analysis Suite",
-    subtitle: "Evidence, patterns, insights",
-    itemCount: 6,
-    icon: <BarChart2 size={14} color={R.lab} strokeWidth={1.5} />,
-    onClick: null,
-  },
-  {
-    id: "t4",
-    title: "Audit Framework",
-    subtitle: "Verify, review, source-check",
-    itemCount: 5,
-    icon: <FileSearch size={14} color={R.lab} strokeWidth={1.5} />,
-    onClick: null,
-  },
-  {
-    id: "t5",
-    title: "Data Connectors",
-    subtitle: "DB, APIs, live feeds",
-    itemCount: 9,
-    icon: <Database size={14} color={R.lab} strokeWidth={1.5} />,
-    onClick: null,
-  },
-];
-
 const signals = [
   {
     id: "s1",
@@ -177,6 +134,49 @@ const signals = [
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
+  const toolEcosystem = [
+    {
+      id: "t1",
+      title: "Research Engine",
+      subtitle: "Search, synthesize, cross-reference",
+      itemCount: 8,
+      icon: <Search size={14} color={R.lab} strokeWidth={1.5} />,
+      onClick: () => { navigate("lab", "chat"); onStartSession(); },
+    },
+    {
+      id: "t2",
+      title: "Code Lab",
+      subtitle: "Write, run, debug in isolation",
+      itemCount: 12,
+      icon: <Code2 size={14} color={R.lab} strokeWidth={1.5} />,
+      onClick: () => navigate("lab", "code"),
+    },
+    {
+      id: "t3",
+      title: "Analysis Suite",
+      subtitle: "Evidence, patterns, insights",
+      itemCount: 6,
+      icon: <BarChart2 size={14} color={R.lab} strokeWidth={1.5} />,
+      onClick: () => navigate("lab", "analysis"),
+    },
+    {
+      id: "t4",
+      title: "Audit Framework",
+      subtitle: "Verify, review, source-check",
+      itemCount: 5,
+      icon: <FileSearch size={14} color={R.lab} strokeWidth={1.5} />,
+      onClick: () => navigate("lab", "archive"),
+    },
+    {
+      id: "t5",
+      title: "Data Connectors",
+      subtitle: "DB, APIs, live feeds",
+      itemCount: 9,
+      icon: <Database size={14} color={R.lab} strokeWidth={1.5} />,
+      onClick: () => navigate("lab", "domain", "data-arch"),
+    },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -289,7 +289,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
             accentLight={R.labLight}
             tag="Tool"
             icon={t.icon}
-            onClick={t.onClick ? t.onClick : onStartSession}
+            onClick={t.onClick}
           />
         ))}
       </DiscoveryRail>

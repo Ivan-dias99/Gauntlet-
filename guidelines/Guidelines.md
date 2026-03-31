@@ -1,61 +1,66 @@
-**Add your own guidelines here**
-<!--
+# Ruberra — AI System Guidelines
 
-System Guidelines
+## Product Identity
 
-Use this file to provide the AI with rules and guidelines you want it to follow.
-This template outlines a few examples of things you can add. You can add your own sections and format it to suit your needs
+Ruberra is a sovereign AI intelligence environment with exactly **three chambers**:
+- **Lab** — research, investigation, simulation, analysis
+- **School** — learning, curriculum, mastery, future tracks
+- **Creation** — build, ship, archive, monetize
 
-TIP: More context isn't always better. It can confuse the LLM. Try and add the most important rules you need
+Do not add new chambers, tabs, or product directions.
 
-# General guidelines
+---
 
-Any general rules you want the AI to follow.
-For example:
+## General Guidelines
 
-* Only use absolute positioning when necessary. Opt for responsive and well structured layouts that use flexbox and grid by default
-* Refactor code as you go to keep code clean
-* Keep file sizes small and put helper functions and components in their own files.
+* Preserve the Mineral Shell aesthetic — warm pale stone surfaces, restrained semantic colors, breathable spacing
+* Every visible element must have a real destination (clickable, expandable, navigable, or functional). Remove or wire anything that is purely decorative.
+* Keep file sizes small; put helper functions and components in their own files
+* Refactor as you go to keep code clean; do not leave dead code in place
+* Use the design tokens from `src/app/components/tokens.ts` (the `R` object) for all colors, spacing, and typography — never hard-code visual values that duplicate tokens
+* Use only absolute positioning when necessary; prefer flexbox/grid layouts
 
---------------
+---
 
-# Design system guidelines
-Rules for how the AI should make generations look like your company's design system
+## Design System Guidelines
 
-Additionally, if you select a design system to use in the prompt box, you can reference
-your design system's components, tokens, variables and components.
-For example:
+### Typography
+* Primary UI font: `'Inter', sans-serif`
+* Monospace / terminal surfaces: `'JetBrains Mono', monospace`
+* Use the `R.t` token scale for font sizes — do not invent new size steps
+* Base reading size: `14px` (`R.t.reading`)
 
-* Use a base font-size of 14px
-* Date formats should always be in the format “Jun 10”
-* The bottom toolbar should only ever have a maximum of 4 items
-* Never use the floating action button with the bottom toolbar
-* Chips should always come in sets of 3 or more
-* Don't use a dropdown if there are 2 or fewer options
+### Color
+* Shell surfaces: `var(--r-bg)`, `var(--r-surface)`, `var(--r-border)` CSS variables
+* Chamber accent colors: Lab `#52796A` (sage), School `#4A6B84` (slate), Creation `#8A6238` (amber-earth)
+* No neon, no cyberpunk palette, no gamer colors
+* Status semantics: green = pass/live, amber = warn/pending, red = error/blocked, neutral = idle/draft
 
-You can also create sub sections and add more specific details
-For example:
+### Spacing
+* Use `R.sp` token scale: `xs=4px`, `sm=8px`, `md=12px`, `lg=16px`, `xl=24px`, `xxl=32px`
 
+### Interaction States
+* Hover: `var(--r-hover)` / `R.hover`
+* Selected/active: `var(--r-selected)` / `R.selected`
+* All interactive elements must have visible hover and active states
 
-## Button
-The Button component is a fundamental interactive element in our design system, designed to trigger actions or navigate
-users through the application. It provides visual feedback and clear affordances to enhance user experience.
+---
 
-### Usage
-Buttons should be used for important actions that users need to take, such as form submissions, confirming choices,
-or initiating processes. They communicate interactivity and should have clear, action-oriented labels.
+## Architecture Rules
 
-### Variants
-* Primary Button
-  * Purpose : Used for the main action in a section or page
-  * Visual Style : Bold, filled with the primary brand color
-  * Usage : One primary button per section to guide users toward the most important action
-* Secondary Button
-  * Purpose : Used for alternative or supporting actions
-  * Visual Style : Outlined with the primary color, transparent background
-  * Usage : Can appear alongside a primary button for less important actions
-* Tertiary Button
-  * Purpose : Used for the least important actions
-  * Visual Style : Text-only with no border, using primary color
-  * Usage : For actions that should be available but not emphasized
--->
+* All chamber-level state lives in `App.tsx` — do not lift product state into child components
+* Navigation is driven by `NavFn` — all cross-chamber and cross-view transitions must use `navigate(tab, view, id?)`
+* Product data lives in `product-data.ts` — seeded content must reference real object IDs that exist in that file
+* The `object-graph.ts` connects product objects across chambers — keep `RUBERRA_OBJECTS` consistent with `product-data.ts`
+* Model routing lives in `model-orchestration.ts` — task and model changes must go through `resolveExecutionPlan`
+
+---
+
+## What Not To Do
+
+* Do not redesign the approved Ruberra root
+* Do not add decorative elements with no destination
+* Do not create standalone screens disconnected from the navigation graph
+* Do not introduce neon colors, heavy drop shadows, or animated backgrounds
+* Do not break the Mineral Shell visual regime with Entertainment or Dashboard styling
+* Do not add new dependencies without checking for security advisories first
