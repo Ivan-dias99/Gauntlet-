@@ -1,6 +1,5 @@
 import { type Message, type NavFn, type Tab, type ProfileView } from "../shell-types";
 import { findObject, listObjectsForChamber, mergeObjectsByRecency, openObject, type RuberraObject } from "../object-graph";
-import { type CSSProperties } from "react";
 import { type CSSProperties, useState } from "react";
 import {
   type ContinuityItem,
