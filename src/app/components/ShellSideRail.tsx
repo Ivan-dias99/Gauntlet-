@@ -307,19 +307,27 @@ function CreationRail({ view, onView, messages, signal, navigate }: {
 }
 
 function ProfileRail({ view, onView }: { view: ProfileView; onView: (v: ProfileView) => void }) {
+  const accent = CHAMBER_ACCENT.profile.primary;
   return (
     <>
-      <section style={{ padding: "11px 10px 10px" }}>
+      <section style={{ padding: "10px 10px 8px" }}>
         <SLabel>Ledger</SLabel>
-        <NavBtn label="Overview" active={view === "overview"} onClick={() => onView("overview")} icon={<IHome />} />
-        <NavBtn label="Projects" active={view === "projects"} onClick={() => onView("projects")} icon={<IArchive />} />
-        <NavBtn label="Memory" active={view === "memory"} onClick={() => onView("memory")} icon={<ILibrary />} />
-        <NavBtn label="Settings" active={view === "settings"} onClick={() => onView("settings")} icon={<IAnalysis />} />
-        <NavBtn label="Exports" active={view === "exports"} onClick={() => onView("exports")} icon={<ITerminal />} />
+        <NavBtn label="Overview"   active={view === "overview"}   accent={accent} onClick={() => onView("overview")}   icon={<IHome />}     />
+        <NavBtn label="Projects"   active={view === "projects"}   accent={accent} onClick={() => onView("projects")}   icon={<IArchive />}  />
+        <NavBtn label="Memory"     active={view === "memory"}     accent={accent} onClick={() => onView("memory")}     icon={<ILibrary />}  />
+        <NavBtn label="Exports"    active={view === "exports"}    accent={accent} onClick={() => onView("exports")}    icon={<ITerminal />} />
       </section>
       <Divider />
-      <section style={{ padding: "10px", fontSize: "10px", color: "var(--r-subtext)" }}>
-        Profile unifies active, paused, completed, and memory continuity.
+      <section style={{ padding: "8px 10px 8px" }}>
+        <SLabel>Orchestration</SLabel>
+        <NavBtn label="Pioneers"   active={view === "pioneers"}   accent={accent} onClick={() => onView("pioneers")}   icon={<IRole />}     />
+        <NavBtn label="Workflows"  active={view === "workflows"}  accent={accent} onClick={() => onView("workflows")}  icon={<IAnalysis />} />
+        <NavBtn label="Connectors" active={view === "connectors"} accent={accent} onClick={() => onView("connectors")} icon={<ICode />}     />
+      </section>
+      <Divider />
+      <section style={{ padding: "8px 10px 8px" }}>
+        <SLabel>System</SLabel>
+        <NavBtn label="Settings"   active={view === "settings"}   accent={accent} onClick={() => onView("settings")}   icon={<IChat />}     />
       </section>
     </>
   );

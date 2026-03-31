@@ -10,6 +10,8 @@ import { type Message } from "./shell-types";
 import { BlockRenderer, InlineMarkdown } from "./BlockRenderer";
 import { ModelSelector } from "./ModelSelector";
 import { type TaskType } from "./model-orchestration";
+import { getContractByChamber } from "./routing-contracts";
+import { getPioneer } from "./pioneer-registry";
 
 // ─── Chamber config ───────────────────────────────────────────────────────────
 
@@ -295,6 +297,85 @@ function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: st
   );
 }
 
+// ─── Provenance trace ─────────────────────────────────────────────────────────
+
+function ProvenanceTrace({ chamberId }: { chamberId: "lab" | "school" | "creation" }) {
+  const contract    = getContractByChamber(chamberId);
+  const leadPioneer = getPioneer(contract.lead_pioneer);
+  const supportNames = contract.support_pioneers
+    .map((id) => getPioneer(id)?.name ?? id)
+    .join(" · ");
+
+  const hostingColor = leadPioneer?.hosting_level === "hosted"
+    ? "var(--r-ok)"
+    : leadPioneer?.hosting_level === "wrapped"
+    ? "var(--r-subtext)"
+    : "var(--r-warn)";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        marginBottom: "6px",
+        flexWrap: "wrap",
+      }}
+    >
+      {/* Lead pioneer */}
+      {leadPioneer && (
+        <span
+          style={{
+            fontSize: "8px",
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "0.08em",
+            color: leadPioneer.accent,
+            background: `${leadPioneer.accent}10`,
+            border: `1px solid ${leadPioneer.accent}20`,
+            borderRadius: "3px",
+            padding: "1px 6px",
+            userSelect: "none",
+          }}
+        >
+          {leadPioneer.name}
+        </span>
+      )}
+      {/* Hosting truth */}
+      {leadPioneer && (
+        <span
+          style={{
+            fontSize: "8px",
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "0.07em",
+            color: hostingColor,
+            border: `1px solid ${hostingColor}28`,
+            borderRadius: "3px",
+            padding: "1px 5px",
+            userSelect: "none",
+            textTransform: "uppercase",
+          }}
+        >
+          {leadPioneer.hosting_level}
+        </span>
+      )}
+      {/* Support chain */}
+      {supportNames && (
+        <span
+          style={{
+            fontSize: "8px",
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "0.05em",
+            color: "var(--r-dim)",
+            userSelect: "none",
+          }}
+        >
+          + {supportNames}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ─── Streaming indicator ──────────────────────────────────────────────────────
 
 function ThinkingDots() {
@@ -321,11 +402,12 @@ function ThinkingDots() {
 // ─── Assistant message ────────────────────────────────────────────────────────
 
 function AssistantMessage({
-  msg, accent, chamberLabel,
+  msg, accent, chamberLabel, chamberId,
 }: {
   msg: Message;
   accent: string;
   chamberLabel: string;
+  chamberId: "lab" | "school" | "creation";
 }) {
   return (
     <motion.div
@@ -333,6 +415,7 @@ function AssistantMessage({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
     >
+      <ProvenanceTrace chamberId={chamberId} />
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
       {msg.blocks && msg.blocks.length > 0 ? (
         <BlockRenderer blocks={msg.blocks} />
@@ -708,6 +791,7 @@ export function ChamberChat({
                       msg={msg}
                       accent={config.accent}
                       chamberLabel={chamberLabel}
+                      chamberId={config.id}
                     />
                   )}
                 </div>

@@ -1,6 +1,6 @@
 import { type Message, type NavFn, type Tab, type ProfileView } from "../shell-types";
 import { findObject, listObjectsForChamber, mergeObjectsByRecency, openObject, type RuberraObject } from "../object-graph";
-import { type CSSProperties } from "react";
+import { type CSSProperties, useState } from "react";
 import {
   type ContinuityItem,
   type ConnectorState,
@@ -12,6 +12,15 @@ import {
   type AISettingsState,
   type WorkspaceKnowledge,
 } from "../runtime-fabric";
+import { PIONEER_REGISTRY, getVisiblePioneers, type Pioneer } from "../pioneer-registry";
+import {
+  CONNECTOR_REGISTRY,
+  CONNECTOR_CATEGORY_LABELS,
+  CONNECTOR_CATEGORY_ORDER,
+  type ConnectorDefinition,
+  type ConnectorCategory,
+} from "../connector-registry";
+import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from "../workflow-engine";
 
 interface ProfileModeProps {
   messages: Record<Tab, Message[]>;
@@ -171,79 +180,174 @@ function ConnectorRow({ connector, onToggle }: { connector: ConnectorState; onTo
   );
 }
 
-// ─── Workflow templates ────────────────────────────────────────────────────────
+// ─── Workflow card (from workflow-engine canonical templates) ─────────────────
 
-const WORKFLOW_TEMPLATES = [
-  {
-    id: "maximum-quality",
-    title: "Maximum Quality Pipeline",
-    description: "School first principles → Lab validation → Creation execution. Podium-grade output.",
-    sequence: ["School", "Lab", "Creation"],
-    steps: ["School: First-principles grounding", "Lab: Evidence + audit", "Creation: Build + export"],
-    badge: "Canonical",
-  },
-  {
-    id: "rapid-build",
-    title: "Rapid Build Flow",
-    description: "Direct directive to Creation terminal. Iterate fast, validate later.",
-    sequence: ["Creation", "Lab"],
-    steps: ["Creation: Directive execution", "Lab: Audit pass", "Creation: Refinement"],
-    badge: "Speed",
-  },
-  {
-    id: "deep-research",
-    title: "Deep Research + Synthesis",
-    description: "Lab investigation → School structuring → Creation publication.",
-    sequence: ["Lab", "School", "Creation"],
-    steps: ["Lab: Research + findings", "School: Curriculum structuring", "Creation: Final synthesis"],
-    badge: "Research",
-  },
-  {
-    id: "study-apply",
-    title: "Study → Apply Cycle",
-    description: "Learn in School, experiment in Lab, build in Creation.",
-    sequence: ["School", "Lab", "Creation"],
-    steps: ["School: Core concept acquisition", "Lab: Hypothesis testing", "Creation: Applied build"],
-    badge: "Learning",
-  },
-];
-
-function WorkflowTemplateCard({ template, navigate }: { template: typeof WORKFLOW_TEMPLATES[0]; navigate: NavFn }) {
+function WorkflowCard({ template, navigate }: { template: WorkflowTemplate; navigate: NavFn }) {
+  const [expanded, setExpanded] = useState(false);
   return (
-    <div style={{ border: "1px solid var(--r-border)", borderRadius: "7px", background: "var(--r-surface)", padding: "13px 15px", marginBottom: "8px" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: "7px" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-            <p style={{ fontSize: "12.5px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.01em" }}>{template.title}</p>
-            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "3px", padding: "1px 6px", textTransform: "uppercase" }}>
+    <div style={{ border: "1px solid var(--r-border)", borderRadius: "7px", background: "var(--r-surface)", marginBottom: "8px", overflow: "hidden" }}>
+      {/* Header */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded(e => !e)}
+        onKeyDown={e => { if (e.key === "Enter") setExpanded(v => !v); }}
+        style={{ padding: "12px 14px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", cursor: "pointer" }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "4px", flexWrap: "wrap" }}>
+            <p style={{ fontSize: "12.5px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.01em" }}>{template.name}</p>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", color: template.badge_color, background: `${template.badge_color}12`, border: `1px solid ${template.badge_color}28`, borderRadius: "3px", padding: "1px 6px", textTransform: "uppercase" }}>
               {template.badge}
             </span>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: template.estimated_quality === "elite" ? "var(--r-ok)" : "var(--r-subtext)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              {template.estimated_quality}
+            </span>
           </div>
-          <p style={{ fontSize: "11px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, lineHeight: "1.55" }}>{template.description}</p>
+          <p style={{ fontSize: "11px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, lineHeight: "1.55" }}>{template.purpose}</p>
         </div>
-        <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
-          {template.sequence.map((s) => (
-            <span key={s} style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: CHAMBER_COLOR[s.toLowerCase()] ?? "var(--r-dim)", background: `${CHAMBER_COLOR[s.toLowerCase()] ?? "#888"}14`, border: `1px solid ${CHAMBER_COLOR[s.toLowerCase()] ?? "#888"}24`, borderRadius: "3px", padding: "2px 6px", letterSpacing: "0.05em" }}>
-              {s}
+        <div style={{ display: "flex", gap: "4px", flexShrink: 0, alignItems: "flex-start", flexWrap: "wrap" }}>
+          {template.participating_chambers.map((c) => (
+            <span key={c} style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: CHAMBER_COLOR[c] ?? "var(--r-dim)", background: `${CHAMBER_COLOR[c] ?? "#888"}12`, border: `1px solid ${CHAMBER_COLOR[c] ?? "#888"}20`, borderRadius: "3px", padding: "2px 5px", letterSpacing: "0.05em" }}>
+              {c}
             </span>
           ))}
         </div>
       </div>
-      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
-        {template.steps.map((step, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-            <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.04em" }}>{i + 1}. {step}</span>
-            {i < template.steps.length - 1 && <span style={{ color: "var(--r-dim)", fontSize: "8px" }}>›</span>}
+      {/* Expanded stage view */}
+      {expanded && (
+        <div style={{ borderTop: "1px solid var(--r-border-soft)", background: "var(--r-elevated)" }}>
+          {template.stages.map((stage, i) => (
+            <div key={stage.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "8px 14px", borderBottom: i < template.stages.length - 1 ? "1px solid var(--r-border-soft)" : "none" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: "3px" }}>
+                <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: CHAMBER_COLOR[stage.chamber] ?? "var(--r-dim)", background: `${CHAMBER_COLOR[stage.chamber] ?? "#888"}14`, border: `1px solid ${CHAMBER_COLOR[stage.chamber] ?? "#888"}20`, borderRadius: "2px", padding: "0 4px", letterSpacing: "0.05em", minWidth: "24px", textAlign: "center" }}>
+                  {i + 1}
+                </span>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif" }}>{stage.label}</span>
+                  {stage.optional && (
+                    <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em" }}>optional</span>
+                  )}
+                </div>
+                <p style={{ fontSize: "10.5px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, lineHeight: "1.5" }}>{stage.description}</p>
+              </div>
+            </div>
+          ))}
+          <div style={{ padding: "8px 14px", display: "flex", gap: "6px" }}>
+            <button onClick={() => navigate(template.home_chamber, "chat")} style={btn}>Start in {template.home_chamber}</button>
+            <button onClick={() => navigate(template.home_chamber, "home")} style={btn}>Open {template.home_chamber}</button>
           </div>
-        ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Pioneer card ─────────────────────────────────────────────────────────────
+
+function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn }) {
+  const [expanded, setExpanded] = useState(false);
+  const hostingColor = pioneer.hosting_level === "hosted" ? "var(--r-ok)"
+    : pioneer.hosting_level === "wrapped" ? "var(--r-subtext)"
+    : "var(--r-warn)";
+  return (
+    <div style={{ border: "1px solid var(--r-border)", borderRadius: "7px", background: "var(--r-surface)", marginBottom: "8px", overflow: "hidden" }}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded(e => !e)}
+        onKeyDown={e => { if (e.key === "Enter") setExpanded(v => !v); }}
+        style={{ padding: "11px 14px", display: "flex", alignItems: "flex-start", gap: "12px", cursor: "pointer" }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "12.5px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.01em" }}>{pioneer.name}</span>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: pioneer.accent, background: `${pioneer.accent}10`, border: `1px solid ${pioneer.accent}20`, borderRadius: "3px", padding: "1px 6px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+              {pioneer.short_role}
+            </span>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: hostingColor, border: `1px solid ${hostingColor}28`, borderRadius: "3px", padding: "1px 5px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              {pioneer.hosting_level}
+            </span>
+          </div>
+          <p style={{ fontSize: "11px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, lineHeight: "1.5" }}>{pioneer.description}</p>
+        </div>
+        <div style={{ flexShrink: 0 }}>
+          <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: CHAMBER_COLOR[pioneer.home_chamber] ?? "var(--r-dim)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            {pioneer.home_chamber}
+          </span>
+        </div>
       </div>
-      <div style={{ display: "flex", gap: "6px", marginTop: "10px", paddingTop: "8px", borderTop: "1px solid var(--r-border-soft)" }}>
-        <button onClick={() => navigate(template.sequence[0].toLowerCase() as Tab, "home")} style={btn}>
-          Start in {template.sequence[0]}
-        </button>
-        <button onClick={() => navigate(template.sequence[0].toLowerCase() as Tab, "chat")} style={btn}>
-          Open Chat
-        </button>
+      {expanded && (
+        <div style={{ borderTop: "1px solid var(--r-border-soft)", background: "var(--r-elevated)", padding: "10px 14px" }}>
+          <div style={{ marginBottom: "8px" }}>
+            <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Strengths</p>
+            <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+              {pioneer.strengths.map((s) => (
+                <span key={s} style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", border: "1px solid var(--r-border)", borderRadius: "3px", padding: "1px 7px" }}>{s}</span>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: "8px" }}>
+            <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Triggers</p>
+            <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+              {pioneer.default_triggers.map((t) => (
+                <span key={t} style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", border: "1px solid var(--r-border)", borderRadius: "3px", padding: "1px 7px" }}>{t}</span>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Model Family</p>
+            <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-subtext)" }}>{pioneer.model_family}</span>
+          </div>
+          {pioneer.selectable && (
+            <div style={{ marginTop: "10px", paddingTop: "8px", borderTop: "1px solid var(--r-border-soft)" }}>
+              <button onClick={() => navigate(pioneer.home_chamber, "chat")} style={btn}>Open {pioneer.home_chamber} Chat</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Connector hub card ───────────────────────────────────────────────────────
+
+const CONNECTOR_STATUS_COLOR: Record<string, string> = {
+  connected:    "var(--r-ok)",
+  available:    "var(--r-subtext)",
+  coming_soon:  "var(--r-dim)",
+  disconnected: "var(--r-warn)",
+};
+
+function ConnectorCard({ connector }: { connector: ConnectorDefinition }) {
+  const statusColor = CONNECTOR_STATUS_COLOR[connector.status] ?? "var(--r-dim)";
+  return (
+    <div style={{ border: "1px solid var(--r-border)", borderRadius: "7px", background: "var(--r-surface)", padding: "11px 14px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+      <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: `${connector.accent}14`, border: `1px solid ${connector.accent}20`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <span style={{ fontSize: "13px", color: connector.accent }}>{connector.icon_char}</span>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "3px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+            <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.005em" }}>{connector.name}</span>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: statusColor, border: `1px solid ${statusColor}28`, borderRadius: "3px", padding: "1px 5px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+              {connector.status.replace("_", " ")}
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
+            {connector.capabilities.map((cap) => (
+              <span key={cap} style={{ fontSize: "7.5px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "0 4px", letterSpacing: "0.05em", textTransform: "uppercase" }}>{cap}</span>
+            ))}
+          </div>
+        </div>
+        <p style={{ fontSize: "10.5px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 5px", lineHeight: "1.5" }}>{connector.description}</p>
+        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+          {connector.organs.map((o) => (
+            <span key={o} style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: CHAMBER_COLOR[o] ?? "var(--r-dim)", letterSpacing: "0.05em", textTransform: "uppercase" }}>{o}</span>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -275,7 +379,7 @@ export function ProfileMode({
     listObjectsForChamber("creation"),
   ).slice(0, 24);
 
-  const NAV_VIEWS: ProfileView[] = ["overview", "projects", "memory", "settings", "exports"];
+  const NAV_VIEWS: ProfileView[] = ["overview", "projects", "pioneers", "workflows", "connectors", "memory", "settings", "exports"];
 
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "var(--r-bg)" }} className="hide-scrollbar">
@@ -548,6 +652,56 @@ export function ProfileMode({
             )}
           </>
         )}
+
+        {/* ── PIONEERS ── */}
+        {profileView === "pioneers" && (
+          <>
+            <SectionBlock title={`Pioneer Registry — ${PIONEER_REGISTRY.length} Pioneers`}>
+              <div style={{ padding: "6px 0 0" }}>
+                {getVisiblePioneers().map((pioneer) => (
+                  <PioneerCard key={pioneer.id} pioneer={pioneer} navigate={navigate} />
+                ))}
+              </div>
+            </SectionBlock>
+            <SectionBlock title="Advanced Pioneers" empty>
+              <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0 }}>
+                {PIONEER_REGISTRY.filter(p => p.visibility === "advanced").length} advanced pioneers available — accessible via direct routing or ⌘K.
+              </p>
+            </SectionBlock>
+          </>
+        )}
+
+        {/* ── WORKFLOWS ── */}
+        {profileView === "workflows" && (
+          <SectionBlock title={`Workflow Templates — ${WORKFLOW_TEMPLATES.length} Canonical Workflows`}>
+            <div style={{ padding: "6px 0 0" }}>
+              {WORKFLOW_TEMPLATES.map((template) => (
+                <WorkflowCard key={template.id} template={template} navigate={navigate} />
+              ))}
+            </div>
+          </SectionBlock>
+        )}
+
+        {/* ── CONNECTORS ── */}
+        {profileView === "connectors" && (
+          <>
+            {CONNECTOR_CATEGORY_ORDER.filter((cat) =>
+              CONNECTOR_REGISTRY.some((c) => c.category === cat)
+            ).map((cat) => {
+              const items = CONNECTOR_REGISTRY.filter((c) => c.category === cat);
+              return (
+                <SectionBlock key={cat} title={`${CONNECTOR_CATEGORY_LABELS[cat]} — ${items.filter(c => c.status === "connected").length} connected`}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "10px 14px" }}>
+                    {items.map((connector) => (
+                      <ConnectorCard key={connector.id} connector={connector} />
+                    ))}
+                  </div>
+                </SectionBlock>
+              );
+            })}
+          </>
+        )}
+
       </div>
     </div>
   );
