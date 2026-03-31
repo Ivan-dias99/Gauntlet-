@@ -2,7 +2,7 @@
  * RUBERRA Shell Types — canonical type definitions
  */
 
-export type Tab = "lab" | "school" | "creation";
+export type Tab = "lab" | "school" | "creation" | "profile";
 
 export type BlockType =
   | "verdict" | "execution" | "lesson" | "creation" | "report" | "signal"
@@ -36,6 +36,7 @@ export interface Message {
 export type LabView      = "home" | "chat" | "analysis" | "code" | "archive" | "domain" | "experiment";
 export type SchoolView   = "home" | "chat" | "library"  | "archive" | "track"  | "lesson" | "role" | "browse";
 export type CreationView = "home" | "chat" | "terminal" | "archive" | "blueprint" | "engine" | "artifact";
+export type ProfileView  = "overview" | "projects" | "memory" | "settings" | "exports";
 
 /** Navigation function — the core of the product connectivity system */
 export type NavFn = (tab: Tab, view: string, id?: string) => void;
