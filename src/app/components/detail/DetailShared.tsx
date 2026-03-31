@@ -225,3 +225,21 @@ export function DetailPage({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+// ─── Empty detail fallback ────────────────────────────────────────────────────
+
+export function EmptyDetail({ onBack, label }: { onBack: () => void; label?: string }) {
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--r-bg)", gap: "10px" }}>
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.12em", color: "var(--r-dim)", textTransform: "uppercase" }}>
+        {label ?? "Item not found"}
+      </span>
+      <button
+        onClick={onBack}
+        style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--r-subtext)", background: "transparent", border: "1px solid var(--r-border)", borderRadius: "4px", padding: "4px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.05em" }}
+      >
+        ← Back
+      </button>
+    </div>
+  );
+}

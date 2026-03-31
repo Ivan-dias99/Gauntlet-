@@ -44,7 +44,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
     textTransform: "uppercase" as const,
     padding: "4px 12px",
     border: "none",
-    borderBottom: active ? "2px solid var(--r-accent)" : "2px solid transparent",
+    borderBottom: active ? "2px solid #52796A" : "2px solid transparent",
     background: "transparent",
     color: active ? "var(--r-text)" : "var(--r-dim)",
     cursor: "pointer",

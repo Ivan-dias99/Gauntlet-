@@ -239,26 +239,51 @@ function UserBubble({ content }: { content: string }) {
 
 // ─── Agent label ──────────────────────────────────────────────────────────────
 
+const CHAMBER_ROLE: Record<string, string> = {
+  "LAB":      "Research Agent",
+  "SCHOOL":   "Learning Agent",
+  "CREATION": "Build Agent",
+};
+
 function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: string }) {
+  // chamberLabel is "RUBERRA · LAB" etc — extract chamber key
+  const chamberKey = chamberLabel.split("·").pop()?.trim() ?? "";
+  const roleLabel  = CHAMBER_ROLE[chamberKey] ?? "Agent";
+
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "10px" }}>
-      <motion.span
-        animate={{ opacity: [0.4, 1, 0.4] }}
-        transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-        style={{
-          width: "5px",
-          height: "5px",
-          borderRadius: "50%",
-          background: accent,
-          flexShrink: 0,
-          display: "inline-block",
-        }}
-      />
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "3px 8px 3px 6px", border: `1px solid ${accent}28`, borderRadius: "4px", background: `${accent}0a` }}>
+        <motion.span
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            width: "5px",
+            height: "5px",
+            borderRadius: "50%",
+            background: accent,
+            flexShrink: 0,
+            display: "inline-block",
+          }}
+        />
+        <span
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "8.5px",
+            letterSpacing: "0.10em",
+            color: accent,
+            textTransform: "uppercase",
+            userSelect: "none",
+            fontWeight: 500,
+          }}
+        >
+          {roleLabel}
+        </span>
+      </div>
       <span
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: "9px",
-          letterSpacing: "0.12em",
+          fontSize: "8px",
+          letterSpacing: "0.08em",
           color: "var(--r-dim)",
           textTransform: "uppercase",
           userSelect: "none",

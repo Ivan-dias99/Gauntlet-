@@ -6,7 +6,7 @@ import { type NavFn } from "../shell-types";
 import { getDomain } from "../product-data";
 import { getTrack } from "../product-data";
 import { getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
 
 interface Props {
   domainId: string;
@@ -18,7 +18,7 @@ const COMPLEXITY_COLOR = { Low: "var(--r-ok)", Medium: "var(--r-warn)", High: "v
 
 export function LabDomainDetail({ domainId, navigate, onStartChat }: Props) {
   const domain = getDomain(domainId);
-  if (!domain) return null;
+  if (!domain) return <EmptyDetail onBack={() => navigate("lab", "home")} label="Domain not found" />;
 
   return (
     <DetailPage>

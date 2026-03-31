@@ -3,7 +3,7 @@
  */
 import { type NavFn } from "../shell-types";
 import { getRole, getTrack, getDomain, getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
 
 interface Props { roleId: string; navigate: NavFn; onStartChat: (p: string) => void; }
 
@@ -15,7 +15,7 @@ const DEMAND_COLOR: Record<string, string> = {
 
 export function SchoolRoleDetail({ roleId, navigate, onStartChat }: Props) {
   const role = getRole(roleId);
-  if (!role) return null;
+  if (!role) return <EmptyDetail onBack={() => navigate("school", "home")} label="Role not found" />;
 
   return (
     <DetailPage>
