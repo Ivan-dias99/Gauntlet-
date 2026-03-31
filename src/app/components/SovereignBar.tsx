@@ -11,6 +11,10 @@ import { useState } from "react";
 
 // Chamber dot colors — authentic per-chamber tokens
 const CHAMBER_DOTS: Record<Tab, string> = {
+  lab:      "#52796A",  // sage
+  school:   "#4A6B84",  // slate
+  creation: "#8A6238",  // amber-earth
+  profile:  "#7A756D",  // neutral-warm
   lab:      "#52796A",
   school:   "#4A6B84",
   creation: "#8A6238",
@@ -27,6 +31,7 @@ interface SovereignBarProps {
   onSearchToggle?: () => void;
   onSignalsToggle?: () => void;
   hasSignals?: boolean;
+  onManageMatrix?: () => void;
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -104,7 +109,7 @@ function IconBtn({
 }
 
 export function SovereignBar({
-  activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals,
+  activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals, onManageMatrix,
 }: SovereignBarProps) {
   const [isLedgerOpen, setLedgerOpen] = useState(false);
 
@@ -366,7 +371,7 @@ export function SovereignBar({
             </motion.div>
           </button>
           
-          <ProfileLedger isOpen={isLedgerOpen} onClose={() => setLedgerOpen(false)} />
+          <ProfileLedger isOpen={isLedgerOpen} onClose={() => setLedgerOpen(false)} onManageMatrix={onManageMatrix} />
         </div>
       </div>
     </header>
