@@ -21,7 +21,7 @@ const CREATION_CONFIG: ChamberConfig = {
   label:       "Creation",
   tagline:     "Output engine. Directive in, artifact out.",
   placeholder: "Directive — describe what to build…",
-  accent:      "var(--r-warn)",
+  accent:      "#8A6238",
   glyph:       <CreationGlyph />,
 };
 

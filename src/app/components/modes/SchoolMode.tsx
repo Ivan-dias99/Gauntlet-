@@ -21,7 +21,7 @@ const SCHOOL_CONFIG: ChamberConfig = {
   label:       "School",
   tagline:     "Structured progression. First principles first.",
   placeholder: "Ask School…",
-  accent:      "var(--r-ok)",
+  accent:      "#4A6B84",
   glyph:       <SchoolGlyph />,
 };
 
