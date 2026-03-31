@@ -32,7 +32,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
         overflowY: "auto",
         paddingTop: "24px",
         paddingBottom: "40px",
-        background: R.ground,
+        background: "var(--r-bg)",
         backgroundImage: `radial-gradient(var(--r-border-soft) 0.8px, transparent 0.8px)`,
         backgroundSize: "24px 24px",
         scrollbarWidth: "none",

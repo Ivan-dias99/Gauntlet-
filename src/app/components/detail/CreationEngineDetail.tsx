@@ -9,7 +9,7 @@ interface Props { engineId: string; navigate: NavFn; onStartChat: (p: string) =>
 
 export function CreationEngineDetail({ engineId, navigate, onStartChat }: Props) {
   const engine = getEngine(engineId);
-  if (!engine) return null;
+  if (!engine) return <EmptyDetail onBack={() => navigate("creation", "home")} label="Engine not found" />;
 
   return (
     <DetailPage>

@@ -3,7 +3,7 @@
  */
 import { type NavFn } from "../shell-types";
 import { getTrack, getDomain, getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
 
 interface Props {
   trackId:     string;
@@ -20,7 +20,7 @@ const STATUS_STYLE: Record<string, { color: string; label: string }> = {
 
 export function SchoolTrackDetail({ trackId, navigate, onStartChat }: Props) {
   const track = getTrack(trackId);
-  if (!track) return null;
+  if (!track) return <EmptyDetail onBack={() => navigate("school", "home")} label="Track not found" />;
 
   const doneCount = track.lessons.filter(l => l.status === "done").length;
   const progressPct = Math.round((doneCount / track.lessons.length) * 100);

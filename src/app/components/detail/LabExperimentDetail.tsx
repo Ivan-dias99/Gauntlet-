@@ -3,7 +3,7 @@
  */
 import { type NavFn } from "../shell-types";
 import { getExperiment, getDomain, getLesson, getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
 
 interface Props {
   experimentId: string;
@@ -15,7 +15,7 @@ const COMPLEXITY_COLOR = { Low: "var(--r-ok)", Medium: "var(--r-warn)", High: "v
 
 export function LabExperimentDetail({ experimentId, navigate, onStartChat }: Props) {
   const exp = getExperiment(experimentId);
-  if (!exp) return null;
+  if (!exp) return <EmptyDetail onBack={() => navigate("lab", "home")} label="Experiment not found" />;
   const domain = getDomain(exp.domainId);
 
   return (

@@ -502,12 +502,13 @@ export default function App() {
       <SovereignBar
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
         theme={theme}
         onThemeToggle={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
         onSearchToggle={() => setSearchOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
-        hasSignals
+        hasSignals={hasSignals}
       />
 
       {/* Body */}
