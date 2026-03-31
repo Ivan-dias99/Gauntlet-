@@ -423,7 +423,12 @@ export function ProfileMode({
             </div>
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
               <div style={{ display: "flex", gap: "6px" }}>
-                {([{ label: "Active", value: active.length, color: "var(--r-ok)" }, { label: "Paused", value: paused.length, color: "var(--r-warn)" }, { label: "Memory", value: memoryItems.length, color: "var(--r-dim)" }]).map((stat) => (
+                {([
+                  { label: "Active",   value: active.length,                            color: "var(--r-ok)"   },
+                  { label: "Paused",   value: paused.length,                            color: "var(--r-warn)" },
+                  { label: "Signals",  value: signals.filter(s => !s.read).length,      color: "var(--r-accent)" },
+                  { label: "Memory",   value: memoryItems.length,                       color: "var(--r-dim)"  },
+                ]).map((stat) => (
                   <div key={stat.label} style={{ textAlign: "center", padding: "5px 10px", border: "1px solid var(--r-border)", borderRadius: "6px", background: "var(--r-elevated)" }}>
                     <p style={{ fontSize: "15px", fontWeight: 600, color: stat.color, margin: 0, lineHeight: 1, fontFamily: "'Inter', system-ui, sans-serif" }}>{stat.value}</p>
                     <p style={{ fontSize: "8px", color: "var(--r-dim)", margin: "3px 0 0", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>{stat.label}</p>
