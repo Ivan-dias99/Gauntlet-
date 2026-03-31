@@ -475,7 +475,6 @@ export default function App() {
       }
     }
   }, [activeTab, activeModels, applyParsedBlocks, runtimeFabric.intelligence, tasks]);
-  }, [activeTab, activeModels, applyParsedBlocks, tasks]);
 
   // ── Notes ─────────────────────────────────────────────────────────────────────
   const addNote = useCallback(() => {
@@ -543,7 +542,6 @@ export default function App() {
         onThemeToggle={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
         onSearchToggle={() => setSearchOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
-        hasSignals
         hasSignals={hasSignals}
         onManageMatrix={() => navigate("profile", "settings")}
       />
@@ -698,12 +696,6 @@ export default function App() {
           </div>
           <div style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
             {filteredObjects.map((obj) => (
-              <button key={obj.id} onClick={() => { navigate(obj.route.tab, obj.route.view, obj.route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
-                  <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.chamber}</span>
-                </div>
-                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>{obj.kind} · {obj.status ?? "active"}</span>
               <button key={obj.id} onClick={() => { navigate(obj.action_route.tab, obj.action_route.view, obj.action_route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer", display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
                   <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>

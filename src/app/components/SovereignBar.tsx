@@ -15,10 +15,6 @@ const CHAMBER_DOTS: Record<Tab, string> = {
   school:   "#4A6B84",  // slate
   creation: "#8A6238",  // amber-earth
   profile:  "#7A756D",  // neutral-warm
-  lab:      "#52796A",
-  school:   "#4A6B84",
-  creation: "#8A6238",
-  profile:  "#7A756D",
 };
 
 interface SovereignBarProps {
@@ -31,6 +27,7 @@ interface SovereignBarProps {
   onSearchToggle?: () => void;
   onSignalsToggle?: () => void;
   hasSignals?: boolean;
+  onManageMatrix?: () => void;
 }
 
 const TABS: { id: Tab; label: string; dot: string }[] = [
@@ -38,14 +35,6 @@ const TABS: { id: Tab; label: string; dot: string }[] = [
   { id: "school",   label: "School",   dot: "var(--r-ok)"     },
   { id: "creation", label: "Creation", dot: "var(--r-warn)"   },
   { id: "profile",  label: "Profile",  dot: "var(--r-pulse)"  },
-  onManageMatrix?: () => void;
-}
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: "lab",      label: "Lab"      },
-  { id: "school",   label: "School"   },
-  { id: "creation", label: "Creation" },
-  { id: "profile",  label: "Profile"  },
 ];
 
 function RubMark() {
@@ -116,7 +105,6 @@ function IconBtn({
 }
 
 export function SovereignBar({
-  activeTab, onTabChange, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals,
   activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals, onManageMatrix,
 }: SovereignBarProps) {
   const [isLedgerOpen, setLedgerOpen] = useState(false);
