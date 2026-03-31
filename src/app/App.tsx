@@ -53,6 +53,7 @@ import {
   type RuntimeFabric,
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
+import { getExecutionTruth } from "./components/sovereign-runtime";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
@@ -314,11 +315,25 @@ export default function App() {
       hostingLevel,
       routeReason: routeDecision.reason,
     }));
+    const execTruth = getExecutionTruth(tab);
     setMessages((prev) => ({
       ...prev,
       [tab]: [
         ...prev[tab],
-        { id: assistantId, role: "assistant", content: "", tab, timestamp: Date.now() },
+        {
+          id: assistantId,
+          role: "assistant",
+          content: "",
+          tab,
+          timestamp: Date.now(),
+          execution_truth: {
+            tier:        execTruth.tier,
+            tier_label:  execTruth.tier_label,
+            model_label: plan.selectedModel?.label ?? execTruth.model_label,
+            pioneer:     routeDecision.pioneerId ?? undefined,
+            chamber:     tab,
+          },
+        },
       ],
     }));
 
@@ -557,7 +572,6 @@ export default function App() {
         onSearchToggle={() => setSearchOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
         hasSignals={hasSignals}
-        onManageMatrix={() => navigate("profile", "settings")}
       />
 
       {/* Body */}

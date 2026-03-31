@@ -202,7 +202,49 @@ function ConnectorRow({ connector, onToggle }: { connector: ConnectorState; onTo
   );
 }
 
-// ─── Workflow card (from workflow-engine canonical templates) ─────────────────
+// ─── Connector card (for connector-registry ConnectorDefinition rows) ──────────
+
+const CONNECTOR_STATUS_COLOR: Record<string, string> = {
+  connected:    "var(--r-ok)",
+  available:    "var(--r-subtext)",
+  coming_soon:  "var(--r-dim)",
+  disconnected: "var(--r-warn)",
+};
+
+function ConnectorCard({ connector }: { connector: ConnectorDefinition }) {
+  const statusColor = CONNECTOR_STATUS_COLOR[connector.status] || "var(--r-dim)";
+  const accentStr   = connector.accent;
+  return (
+    <div style={{ border: "1px solid var(--r-border)", borderRadius: "7px", background: "var(--r-surface)", padding: "11px 14px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+      <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: accentStr + "14", border: "1px solid " + accentStr + "20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <span style={{ fontSize: "13px", color: accentStr }}>{connector.icon_char}</span>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "3px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+            <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.005em" }}>{connector.name}</span>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: statusColor, border: "1px solid " + statusColor + "28", borderRadius: "3px", padding: "1px 5px", letterSpacing: "0.07em", textTransform: "uppercase" as const }}>
+              {connector.status.replace("_", " ")}
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
+            {connector.capabilities.map((cap) => (
+              <span key={cap} style={{ fontSize: "7.5px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "0 4px", letterSpacing: "0.05em", textTransform: "uppercase" as const }}>{cap}</span>
+            ))}
+          </div>
+        </div>
+        <p style={{ fontSize: "10.5px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 5px", lineHeight: "1.5" }}>{connector.description}</p>
+        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+          {connector.organs.map((o) => (
+            <span key={o} style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: CHAMBER_COLOR[o] || "var(--r-dim)", letterSpacing: "0.05em", textTransform: "uppercase" as const }}>{o}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Workflow card (from workflow-engine canonical templates) ──────────────────
 
 function WorkflowCard({ template, navigate }: { template: WorkflowTemplate; navigate: NavFn }) {
   const [expanded, setExpanded] = useState(false);
@@ -495,7 +537,7 @@ export function ProfileMode({
         {profileView === "projects" && (
           <>
             <SectionBlock title="Workflow Templates — Orchestration">
-              {WORKFLOW_TEMPLATES.map((t) => <WorkflowTemplateCard key={t.id} template={t} navigate={navigate} />)}
+              {WORKFLOW_TEMPLATES.map((t) => <WorkflowCard key={t.id} template={t} navigate={navigate} />)}
             </SectionBlock>
             <SectionBlock title="All Work">
               {workItems.length === 0 ? (

@@ -832,7 +832,6 @@ export function ChamberChat({
       </div>
 
       {/* Status */}
-      <StatusStrip execStatus={execStatus} onCancel={onCancel} accent={config.accent} chamberLabel={chamberLabel} modelBadge={modelId} />
       <StatusStrip
         execStatus={execStatus}
         onCancel={onCancel}
