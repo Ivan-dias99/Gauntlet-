@@ -530,7 +530,21 @@ export default function App() {
       }}
     >
       <AnimatePresence>
-        {isShellMode && <HeroLanding key="hero" onEnter={() => setIsShellMode(false)} />}
+        {isShellMode && (
+          <HeroLanding
+            key="hero"
+            onEnter={(chamber) => {
+              if (chamber && (chamber === "lab" || chamber === "school" || chamber === "creation" || chamber === "profile")) {
+                setActiveTab(chamber);
+                if (chamber === "lab")      setLabView("home");
+                if (chamber === "school")   setSchoolView("home");
+                if (chamber === "creation") setCreationView("home");
+                if (chamber === "profile")  setProfileView("overview");
+              }
+              setIsShellMode(false);
+            }}
+          />
+        )}
       </AnimatePresence>
 
       {/* Sovereign Bar */}
