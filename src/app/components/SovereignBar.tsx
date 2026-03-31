@@ -6,6 +6,8 @@
 import { motion } from "motion/react";
 import { Search, Bell, ChevronDown } from "lucide-react";
 import { type Tab, type Theme } from "./shell-types";
+import { ProfileLedger } from "./ProfileLedger";
+import { useState } from "react";
 
 // Chamber dot colors use the actual R token values for authenticity
 const CHAMBER_DOTS: Record<Tab, string> = {
@@ -98,6 +100,8 @@ function IconBtn({
 export function SovereignBar({
   activeTab, onTabChange, isLive, theme, onThemeToggle,
 }: SovereignBarProps) {
+  const [isLedgerOpen, setLedgerOpen] = useState(false);
+
   return (
     <header
       style={{
@@ -300,36 +304,43 @@ export function SovereignBar({
           />
         </div>
 
-        {/* Avatar */}
-        <button
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "5px",
-            padding: "3px 5px 3px 3px",
-            borderRadius: "6px",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            outline: "none",
-            marginLeft: "2px",
-            transition: "background 0.12s ease",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--r-rail)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-        >
-          <div
+        {/* Avatar Area with Ledger */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setLedgerOpen(!isLedgerOpen)}
             style={{
-              width: "22px",
-              height: "22px",
-              borderRadius: "5px",
-              background: "linear-gradient(145deg, #D8D3CC 0%, #B4AFA8 100%)",
-              flexShrink: 0,
-              border: "1px solid rgba(0,0,0,0.06)",
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "3px 5px 3px 3px",
+              borderRadius: "6px",
+              border: "none",
+              background: isLedgerOpen ? "var(--r-rail)" : "transparent",
+              cursor: "pointer",
+              outline: "none",
+              marginLeft: "2px",
+              transition: "background 0.12s ease",
             }}
-          />
-          <ChevronDown size={10} color="var(--r-dim)" strokeWidth={1.8} />
-        </button>
+            onMouseEnter={(e) => { if (!isLedgerOpen) (e.currentTarget as HTMLElement).style.background = "var(--r-rail)"; }}
+            onMouseLeave={(e) => { if (!isLedgerOpen) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+          >
+            <div
+              style={{
+                width: "22px",
+                height: "22px",
+                borderRadius: "5px",
+                background: "linear-gradient(145deg, #D8D3CC 0%, #B4AFA8 100%)",
+                flexShrink: 0,
+                border: "1px solid rgba(0,0,0,0.06)",
+              }}
+            />
+            <motion.div animate={{ rotate: isLedgerOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+              <ChevronDown size={10} color="var(--r-dim)" strokeWidth={1.8} />
+            </motion.div>
+          </button>
+          
+          <ProfileLedger isOpen={isLedgerOpen} onClose={() => setLedgerOpen(false)} />
+        </div>
       </div>
     </header>
   );

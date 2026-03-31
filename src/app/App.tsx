@@ -19,6 +19,7 @@ import {
   type FloatingNote, type Theme, type NavFn,
 } from "./components/shell-types";
 import { parseBlocks } from "./components/parseBlocks";
+import { HeroLanding } from "./components/HeroLanding";
 import {
   DEFAULT_TASK_BY_CHAMBER,
   DEFAULT_MODEL_BY_TASK,
@@ -92,6 +93,9 @@ export default function App() {
 
   // ── Floating notes ───────────────────────────────────────────────────────────
   const [notes, setNotes] = useState<FloatingNote[]>([]);
+
+  // ── Shell / Hero Mode ────────────────────────────────────────────────────────
+  const [isShellMode, setIsShellMode] = useState<boolean>(true);
 
   // ── Theme ────────────────────────────────────────────────────────────────────
   const [theme, setTheme] = useState<Theme>("light");
@@ -321,6 +325,10 @@ export default function App() {
         transition: "background 0.2s ease",
       }}
     >
+      <AnimatePresence>
+        {isShellMode && <HeroLanding key="hero" onEnter={() => setIsShellMode(false)} />}
+      </AnimatePresence>
+
       {/* Sovereign Bar */}
       <SovereignBar
         activeTab={activeTab}
