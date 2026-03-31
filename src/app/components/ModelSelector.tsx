@@ -11,7 +11,6 @@ import {
 
 interface ModelSelectorProps {
   chamber: ChamberTab;
-  chamber: Tab;
   task: TaskType;
   modelId: string;
   onTaskChange: (task: TaskType) => void;
@@ -24,8 +23,6 @@ export function ModelSelector({ chamber, task, modelId, onTaskChange, onModelCha
   const tasks = CHAMBER_TASKS[chamber];
   const selectedModel = pool.find((m) => m.id === modelId);
 
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

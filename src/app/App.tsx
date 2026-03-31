@@ -134,7 +134,7 @@ export default function App() {
   const [cmdOpen, setCmdOpen] = useState(false);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+    const handler = (e: any) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setCmdOpen((v) => !v);
@@ -152,7 +152,7 @@ export default function App() {
     }
   }, [theme]);
 
-  // ── Persistence ───────────────────────────────────────────────���──────────────
+  // ── Persistence ───────────────────────────────────────────────────────────────
   const messagesRef = useRef<TabMessages>(messages);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -420,7 +420,7 @@ export default function App() {
         );
       }, 2400);
 
-    } catch (err) {
+    } catch (err: any) {
       const isAbort = err instanceof Error && err.name === "AbortError";
       parseOnComplete = false;
 
@@ -529,7 +529,21 @@ export default function App() {
       }}
     >
       <AnimatePresence>
-        {isShellMode && <HeroLanding key="hero" onEnter={() => setIsShellMode(false)} />}
+        {isShellMode && (
+          <HeroLanding
+            key="hero"
+            onEnter={(chamber) => {
+              if (chamber && (chamber === "lab" || chamber === "school" || chamber === "creation" || chamber === "profile")) {
+                setActiveTab(chamber as Tab);
+                if (chamber === "lab")      setLabView("home");
+                if (chamber === "school")   setSchoolView("home");
+                if (chamber === "creation") setCreationView("home");
+                if (chamber === "profile")  setProfileView("overview");
+              }
+              setIsShellMode(false);
+            }}
+          />
+        )}
       </AnimatePresence>
 
       {/* Sovereign Bar */}
@@ -757,7 +771,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
           <motion.div
             animate={{ opacity: isLive ? [0.4, 1, 0.4] : [0.3, 0.7, 0.3] }}
-            transition={{ duration: isLive ? 0.85 : 3.5, repeat: Infinity, ease: "easeInOut" }}
+            transition={{ duration: 0.85 : 3.5, repeat: Infinity, ease: "easeInOut" }}
             style={{
               width: "4px",
               height: "4px",
@@ -781,19 +795,20 @@ export default function App() {
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
           {activeTab}
         </span>
-
-        <div style={{ width: "1px", height: "9px", background: "var(--r-border)", margin: "0 10px" }} />
-
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.03em" }}>
-          {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </span>
       </div>
 
-      {/* Floating notes layer */}
-      <FloatingNoteSystem notes={notes} onChange={updateNote} onRemove={removeNote} />
+      <GlobalCommandPalette
+        isOpen={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        activeTab={activeTab}
+        onNavigate={navigate}
+      />
 
-      {/* Global command palette */}
-      <GlobalCommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} navigate={navigate} />
+      <FloatingNoteSystem
+        notes={notes}
+        onUpdate={updateNote}
+        onRemove={removeNote}
+      />
     </div>
   );
 }

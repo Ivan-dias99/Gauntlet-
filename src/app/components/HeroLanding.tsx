@@ -146,7 +146,7 @@ function AtmosphericGlow() {
 
 // ─── Top nav ───────────────────────────────────────────────────────────────
 
-function TopNav({ onEnter }: { onEnter: () => void }) {
+function TopNav({ onEnter }: { onEnter: (chamber?: string) => void }) {
   return (
     <div
       style={{
@@ -182,7 +182,7 @@ function TopNav({ onEnter }: { onEnter: () => void }) {
         {CHAMBERS.map((c) => (
           <button
             key={c.id}
-            onClick={onEnter}
+            onClick={() => onEnter(c.id)}
             style={{
               fontSize:     "11px",
               fontFamily:   "'Inter', system-ui, sans-serif",
@@ -205,7 +205,7 @@ function TopNav({ onEnter }: { onEnter: () => void }) {
 
       {/* Enter CTA */}
       <button
-        onClick={onEnter}
+        onClick={() => onEnter()}
         style={{
           padding:      "6px 16px",
           borderRadius: "6px",
@@ -318,7 +318,7 @@ function ChamberChip({
 function CommandPortal({
   onEnter, selected, onSelect,
 }: {
-  onEnter: () => void;
+  onEnter: (chamber?: string) => void;
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
@@ -389,7 +389,7 @@ function CommandPortal({
       <motion.button
         whileHover={{ y: -1, boxShadow: "0 6px 20px rgba(0,0,0,0.14)" }}
         whileTap={{ scale: 0.99 }}
-        onClick={onEnter}
+        onClick={() => onEnter(selected ?? undefined)}
         style={{
           width:          "100%",
           padding:        "13px 20px",
@@ -427,7 +427,7 @@ function CommandPortal({
 
 // ─── Main ─────────────────────────────────────────────────────────────────
 
-export function HeroLanding({ onEnter }: { onEnter: () => void }) {
+export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }) {
   const [mounted, setMounted]   = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -436,14 +436,17 @@ export function HeroLanding({ onEnter }: { onEnter: () => void }) {
     return () => clearTimeout(t);
   }, []);
 
-  // Keyboard: Enter → proceed
+  // Keyboard: Enter → proceed (only when no input is focused)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Enter") onEnter();
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (e.key === "Enter" && tag !== "INPUT" && tag !== "TEXTAREA") {
+        onEnter(selected ?? undefined);
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onEnter]);
+  }, [onEnter, selected]);
 
   const toggleChamber = (id: string) => {
     setSelected((prev) => (prev === id ? null : id));
@@ -609,7 +612,7 @@ export function HeroLanding({ onEnter }: { onEnter: () => void }) {
                 cursor:       "pointer",
                 transition:   "color 0.12s ease",
               }}
-              onClick={onEnter}
+              onClick={() => onEnter(c.id)}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = c.accent; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-dim)"; }}
             >

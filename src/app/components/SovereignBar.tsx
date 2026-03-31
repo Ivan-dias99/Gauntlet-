@@ -26,8 +26,12 @@ interface SovereignBarProps {
   onThemeToggle?: () => void;
   onSearchToggle?: () => void;
   onSignalsToggle?: () => void;
+<<<<<<< HEAD
   hasSignals?:    boolean;
   onManageMatrix?: () => void;
+=======
+  hasSignals?: boolean;
+>>>>>>> ca5d59d51630247def9bae5d1d5c2b54a5f2af7e
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -105,7 +109,11 @@ function IconBtn({
 }
 
 export function SovereignBar({
+<<<<<<< HEAD
   activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals, onManageMatrix,
+=======
+  activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals,
+>>>>>>> ca5d59d51630247def9bae5d1d5c2b54a5f2af7e
 }: SovereignBarProps) {
   const [isLedgerOpen, setLedgerOpen] = useState(false);
 
