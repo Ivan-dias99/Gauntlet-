@@ -34,6 +34,7 @@ const TAB_ACCENT: Record<Tab, string> = {
   lab:      "var(--r-accent)",
   school:   "var(--r-ok)",
   creation: "var(--r-warn)",
+  profile: "var(--r-pulse)",
   profile:  "var(--r-pulse)",
 };
 
@@ -307,6 +308,19 @@ function CreationRail({ view, onView, messages, signal, navigate }: {
 }
 
 function ProfileRail({ view, onView }: { view: ProfileView; onView: (v: ProfileView) => void }) {
+  return (
+    <>
+      <section style={{ padding: "11px 10px 10px" }}>
+        <SLabel>Ledger</SLabel>
+        <NavBtn label="Overview" active={view === "overview"} onClick={() => onView("overview")} icon={<IHome />} />
+        <NavBtn label="Projects" active={view === "projects"} onClick={() => onView("projects")} icon={<IArchive />} />
+        <NavBtn label="Memory" active={view === "memory"} onClick={() => onView("memory")} icon={<ILibrary />} />
+        <NavBtn label="Settings" active={view === "settings"} onClick={() => onView("settings")} icon={<IAnalysis />} />
+        <NavBtn label="Exports" active={view === "exports"} onClick={() => onView("exports")} icon={<ITerminal />} />
+      </section>
+      <Divider />
+      <section style={{ padding: "10px", fontSize: "10px", color: "var(--r-subtext)" }}>
+        Profile unifies active, paused, completed, and memory continuity.
   const accent = CHAMBER_ACCENT.profile.primary;
   return (
     <>

@@ -39,6 +39,7 @@ import {
   recordRuntimeMessageObject,
   recommendContinuityActions,
   resumeContinuity,
+  routeIntelligenceRequest,
   resolveSignal,
   saveRuntimeFabric,
   transitionContinuity,
@@ -51,6 +52,7 @@ import {
   exportContinuity,
   type RuntimeFabric,
 } from "./components/runtime-fabric";
+import { resolveRouteDecision } from "./components/intelligence-foundation";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
@@ -246,6 +248,19 @@ export default function App() {
     }));
     const requestedModelId = activeModels[tab as ChamberTab];
     const plan = resolveExecutionPlan(tab, task, requestedModelId);
+    const workflowId = tab === "creation" ? "build_pipeline" : "canonical_loop";
+    const routeDecision = resolveRouteDecision(runtimeFabric.intelligence, {
+      chamberHint: tab,
+      workflowId,
+      requestText: text,
+    });
+    const leaderPioneer = runtimeFabric.intelligence.pioneers.find((entry) => entry.id === routeDecision.pioneerId);
+    const hostingLevel = leaderPioneer?.hostingLevel ?? "proxy";
+    setRuntimeFabric((prev) => routeIntelligenceRequest(prev, {
+      chamberHint: tab,
+      workflowId,
+      requestText: text,
+    }).fabric);
     const selectedModelId = plan.selectedModel?.id ?? requestedModelId;
     if (selectedModelId !== requestedModelId) {
       setActiveModels((prev) => ({ ...prev, [tab]: selectedModelId }));
@@ -271,6 +286,13 @@ export default function App() {
       content:   text,
       tab,
       timestamp: Date.now(),
+      meta: {
+        routeReason: routeDecision.reason,
+        pioneerId: routeDecision.pioneerId,
+        giId: routeDecision.giId,
+        workflowId,
+        hostingLevel,
+      },
     };
     setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], userMsg] }));
     setRuntimeFabric((prev) => recordRuntimeMessageObject(prev, userMsg));
@@ -286,6 +308,11 @@ export default function App() {
       status: "in_progress",
       route: { tab, view: tab === "creation" ? "terminal" : "chat" },
       linkedObjectId: assistantId,
+      workflowId,
+      pioneerId: routeDecision.pioneerId,
+      giId: routeDecision.giId,
+      hostingLevel,
+      routeReason: routeDecision.reason,
     }));
     setMessages((prev) => ({
       ...prev,
@@ -349,6 +376,13 @@ export default function App() {
         content: assistantContent,
         tab,
         timestamp: Date.now(),
+        meta: {
+          routeReason: routeDecision.reason,
+          pioneerId: routeDecision.pioneerId,
+          giId: routeDecision.giId,
+          workflowId,
+          hostingLevel,
+        },
       }));
       setRuntimeFabric((prev) => {
         let next = transitionContinuity(prev, continuityId, "completed");
@@ -440,6 +474,7 @@ export default function App() {
         applyParsedBlocks(assistantId, tab);
       }
     }
+  }, [activeTab, activeModels, applyParsedBlocks, runtimeFabric.intelligence, tasks]);
   }, [activeTab, activeModels, applyParsedBlocks, tasks]);
 
   // ── Notes ─────────────────────────────────────────────────────────────────────
@@ -508,6 +543,7 @@ export default function App() {
         onThemeToggle={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
         onSearchToggle={() => setSearchOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
+        hasSignals
         hasSignals={hasSignals}
         onManageMatrix={() => navigate("profile", "settings")}
       />
@@ -612,6 +648,7 @@ export default function App() {
                   aiSettings={runtimeFabric.aiSettings}
                   plugins={runtimeFabric.plugins}
                   workspace={runtimeFabric.workspace}
+                  intelligence={runtimeFabric.intelligence}
                   objects={runtimeFabric.objects}
                   recommendations={continuityRecommendations}
                   onTransfer={(id, to, reason) => setRuntimeFabric((prev) => transferContinuity(prev, id, to, reason))}
@@ -661,6 +698,12 @@ export default function App() {
           </div>
           <div style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
             {filteredObjects.map((obj) => (
+              <button key={obj.id} onClick={() => { navigate(obj.route.tab, obj.route.view, obj.route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
+                  <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.chamber}</span>
+                </div>
+                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>{obj.kind} · {obj.status ?? "active"}</span>
               <button key={obj.id} onClick={() => { navigate(obj.action_route.tab, obj.action_route.view, obj.action_route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer", display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
                   <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>

@@ -851,6 +851,17 @@ export function RuberraTerminal({
             onModelChange={onModelChange}
             mode="terminal"
           />
+          {isLoading && (
+            <motion.span
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+              style={{ fontSize: "9px", fontFamily: "monospace", color: T.amber, letterSpacing: "0.06em" }}
+            >
+              running
+            </motion.span>
+          )}
+          <span style={{ fontSize: "9px", fontFamily: "monospace", color: T.dim2 }}>
+            {messages.length > 0 ? `${messages.filter(m => m.role === "assistant").length} outputs` : "0 outputs"}
           <AnimatePresence>
             {isLoading && (
               <motion.span
