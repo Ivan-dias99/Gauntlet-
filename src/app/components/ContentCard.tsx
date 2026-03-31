@@ -127,23 +127,30 @@ interface CardShellProps {
 }
 
 export function CardShell({ onClick, children, width = 220, style }: CardShellProps) {
+  const [hovered, setHovered] = React.useState(false);
+
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => onClick && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         width: typeof width === "number" ? `${width}px` : width,
         flexShrink: 0,
         borderRadius: R.r.xl,
-        border: `1px solid ${R.hairline}`,
+        border: `1px solid ${hovered ? R.line : R.hairline}`,
         background: R.surface,
         cursor: onClick ? "pointer" : "default",
         overflow: "hidden",
         transition: "border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease",
         display: "flex",
         flexDirection: "column",
+        boxShadow: hovered
+          ? "0 4px 14px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)"
+          : R.shadow.xs,
+        transform: hovered && onClick ? "translateY(-1px)" : "none",
         ...style,
       }}
-      className={onClick ? "hover:border-[#D0CEC8] hover:shadow-md" : ""}
     >
       {children}
     </div>

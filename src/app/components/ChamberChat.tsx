@@ -4,7 +4,7 @@
  * Visual-first. Structured outputs. Semantic signals. Zero dead text.
  */
 
-import { useRef, useEffect, type KeyboardEvent } from "react";
+import { useRef, useEffect, useState, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Message } from "./shell-types";
 import { BlockRenderer, InlineMarkdown } from "./BlockRenderer";
@@ -25,27 +25,29 @@ export interface ChamberConfig {
 // ─── Glyphs ───────────────────────────────────────────────────────────────────
 
 export const LabGlyph = () => (
-  <svg width="24" height="24" viewBox="0 0 32 32" fill="none" style={{ color: "var(--r-dim)" }}>
-    <circle cx="16" cy="16" r="5.5" stroke="currentColor" strokeWidth="1.1" />
-    <path d="M16 2v5M16 25v5M2 16h5M25 16h5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-    <path d="M6.1 6.1l3.5 3.5M22.4 22.4l3.5 3.5M25.9 6.1l-3.5 3.5M9.6 22.4l-3.5 3.5" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" />
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "#52796A" }}>
+    <circle cx="16" cy="16" r="5" stroke="currentColor" strokeWidth="1.25" />
+    <path d="M16 2.5v4.5M16 25v4.5M2.5 16H7M25 16h4.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+    <path d="M6.5 6.5l3 3M22.5 22.5l3 3M25.5 6.5l-3 3M9.5 22.5l-3 3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
   </svg>
 );
 
 export const SchoolGlyph = () => (
-  <svg width="24" height="24" viewBox="0 0 32 32" fill="none" style={{ color: "var(--r-dim)" }}>
-    <rect x="4" y="7" width="24" height="18" rx="1.5" stroke="currentColor" strokeWidth="1.1" />
-    <path d="M4 13h24M12 13v12" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" />
-    <path d="M16 4.5l-2.5 2.5h5L16 4.5z" stroke="currentColor" strokeWidth="0.9" strokeLinejoin="round" />
-    <path d="M17 18h5M17 21.5h3.5" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" opacity="0.5" />
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "#4A6B84" }}>
+    <rect x="3.5" y="7" width="25" height="18" rx="2" stroke="currentColor" strokeWidth="1.25" />
+    <path d="M3.5 13h25" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+    <path d="M12 13v12" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+    <path d="M16 4l-3 3h6L16 4z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" opacity="0.7" />
+    <path d="M17 18.5h6M17 22h4.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.55" />
+    <path d="M5 17h4M5 20.5h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.35" />
   </svg>
 );
 
 export const CreationGlyph = () => (
-  <svg width="24" height="24" viewBox="0 0 32 32" fill="none" style={{ color: "var(--r-dim)" }}>
-    <path d="M7 25l5-14 5 9 4-6 5 11" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-    <circle cx="25" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.1" />
-    <path d="M7 10h6M7 15h4" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" opacity="0.4" />
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "#8A6238" }}>
+    <path d="M6 26l5-15 5 10 4-7 5 12" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="25.5" cy="6.5" r="3.5" stroke="currentColor" strokeWidth="1.25" />
+    <path d="M6 10.5h5.5M6 16h3.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
   </svg>
 );
 
@@ -73,47 +75,59 @@ const EMPTY_PROMPTS: Record<string, string[]> = {
 };
 
 function EmptyState({
-  glyph, label, tagline, id, onSend,
+  glyph, label, tagline, id, onSend, accent,
 }: {
-  glyph: React.ReactNode;
-  label: string;
+  glyph:   React.ReactNode;
+  label:   string;
   tagline: string;
-  id: string;
-  onSend: (t: string) => void;
+  id:      string;
+  accent:  string;
+  onSend:  (t: string) => void;
 }) {
   const prompts = EMPTY_PROMPTS[id] ?? [];
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        paddingTop: "72px",
+        paddingTop: "68px",
         paddingBottom: "32px",
       }}
     >
-      <div style={{ marginBottom: "16px", opacity: 0.6 }}>{glyph}</div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 0.7, scale: 1 }}
+        transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+        style={{ marginBottom: "18px" }}
+      >
+        {glyph}
+      </motion.div>
       <p
         style={{
-          fontSize: "13px",
+          fontSize: "14px",
           fontWeight: 500,
           color: "var(--r-text)",
           fontFamily: "'Inter', system-ui, sans-serif",
-          marginBottom: "5px",
-          letterSpacing: "-0.01em",
+          marginBottom: "6px",
+          letterSpacing: "-0.015em",
+          lineHeight: 1.3,
         }}
       >
         {label}
       </p>
       <p
         style={{
-          fontSize: "11px",
+          fontSize: "12px",
           color: "var(--r-subtext)",
           fontFamily: "'Inter', system-ui, sans-serif",
           textAlign: "center",
-          maxWidth: "240px",
-          lineHeight: "1.6",
-          marginBottom: "28px",
+          maxWidth: "260px",
+          lineHeight: "1.65",
+          marginBottom: "32px",
         }}
       >
         {tagline}
@@ -124,52 +138,71 @@ function EmptyState({
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: "6px",
+          gap: "5px",
           width: "100%",
-          maxWidth: "480px",
+          maxWidth: "500px",
           padding: "0 16px",
         }}
       >
         {prompts.map((p, i) => (
-          <button
+          <motion.button
             key={i}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: 0.12 + i * 0.04, ease: [0.16, 1, 0.3, 1] }}
             onClick={() => onSend(p)}
             style={{
               width: "100%",
               padding: "9px 14px",
               border: "1px solid var(--r-border)",
-              borderRadius: "6px",
+              borderRadius: "7px",
               background: "var(--r-surface)",
               cursor: "pointer",
               outline: "none",
               textAlign: "left",
-              fontSize: "12px",
+              fontSize: "12.5px",
               color: "var(--r-subtext)",
               fontFamily: "'Inter', system-ui, sans-serif",
-              lineHeight: 1.4,
-              transition: "all 0.1s ease",
+              lineHeight: 1.45,
+              transition: "all 0.12s ease",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: "10px",
+              gap: "12px",
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = "var(--r-elevated)";
-              (e.currentTarget as HTMLElement).style.color = "var(--r-text)";
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--r-subtext)";
+              const el = e.currentTarget as HTMLElement;
+              el.style.background = "var(--r-elevated)";
+              el.style.color = "var(--r-text)";
+              el.style.borderColor = "var(--r-border-soft)";
+              el.style.transform = "translateY(-1px)";
+              el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)";
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = "var(--r-surface)";
-              (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)";
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--r-border)";
+              const el = e.currentTarget as HTMLElement;
+              el.style.background = "var(--r-surface)";
+              el.style.color = "var(--r-subtext)";
+              el.style.borderColor = "var(--r-border)";
+              el.style.transform = "translateY(0)";
+              el.style.boxShadow = "none";
             }}
           >
             <span>{p}</span>
-            <span style={{ color: "var(--r-dim)", fontSize: "10px", flexShrink: 0 }}>↵</span>
-          </button>
+            <span
+              style={{
+                color: accent,
+                fontSize: "11px",
+                flexShrink: 0,
+                opacity: 0.6,
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
+            >
+              ↵
+            </span>
+          </motion.button>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -177,23 +210,30 @@ function EmptyState({
 
 function UserBubble({ content }: { content: string }) {
   return (
-    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+    <motion.div
+      initial={{ opacity: 0, y: 4, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      style={{ display: "flex", justifyContent: "flex-end" }}
+    >
       <div
         style={{
           background: "var(--r-elevated)",
-          borderRadius: "12px 12px 3px 12px",
+          borderRadius: "14px 14px 3px 14px",
           padding: "10px 15px",
-          maxWidth: "72%",
-          fontSize: "13px",
+          maxWidth: "74%",
+          fontSize: "13.5px",
           color: "var(--r-text)",
           fontFamily: "'Inter', system-ui, sans-serif",
-          lineHeight: "1.62",
+          lineHeight: "1.65",
           border: "1px solid var(--r-border-soft)",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
+          letterSpacing: "-0.003em",
         }}
       >
         {content}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -203,8 +243,8 @@ function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: st
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "10px" }}>
       <motion.span
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        animate={{ opacity: [0.4, 1, 0.4] }}
+        transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
         style={{
           width: "5px",
           height: "5px",
@@ -234,12 +274,12 @@ function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: st
 
 function ThinkingDots() {
   return (
-    <span style={{ display: "inline-flex", gap: "4px", alignItems: "center", height: "20px" }}>
+    <span style={{ display: "inline-flex", gap: "4px", alignItems: "center", height: "22px" }}>
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          animate={{ opacity: [0.2, 0.8, 0.2], y: [0, -2, 0] }}
-          transition={{ duration: 1.1, delay: i * 0.16, repeat: Infinity, ease: "easeInOut" }}
+          animate={{ opacity: [0.15, 0.7, 0.15], y: [0, -2.5, 0] }}
+          transition={{ duration: 1.1, delay: i * 0.18, repeat: Infinity, ease: "easeInOut" }}
           style={{
             width: "4px",
             height: "4px",
@@ -263,7 +303,11 @@ function AssistantMessage({
   chamberLabel: string;
 }) {
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0, y: 5 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+    >
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
       {msg.blocks && msg.blocks.length > 0 ? (
         <BlockRenderer blocks={msg.blocks} />
@@ -272,7 +316,7 @@ function AssistantMessage({
       ) : (
         <ThinkingDots />
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -293,8 +337,8 @@ function StatusStrip({
         maxWidth: "660px",
         margin: "0 auto",
         width: "100%",
-        padding: "2px 32px",
-        height: "22px",
+        padding: "3px 32px",
+        height: "24px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -305,6 +349,20 @@ function StatusStrip({
           {chamberLabel}
         </span>
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.08em", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-dim)" }}>
+          {chamberLabel}
+        </span>
+        <span
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "8px",
+            letterSpacing: "0.06em",
+            color: "var(--r-dim)",
+            border: "1px solid var(--r-border)",
+            borderRadius: "999px",
+            padding: "1px 7px",
+          }}
+        >
           {modelBadge}
         </span>
       </div>
@@ -318,7 +376,7 @@ function StatusStrip({
             style={{ display: "flex", alignItems: "center", gap: "6px" }}
           >
             <motion.span
-              animate={{ opacity: [0.3, 1, 0.3] }}
+              animate={{ opacity: [0.25, 1, 0.25] }}
               transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
               style={{
                 width: "4px",
@@ -353,7 +411,10 @@ function StatusStrip({
                   outline: "none",
                   padding: "0 0 0 6px",
                   letterSpacing: "0.05em",
+                  transition: "color 0.1s ease",
                 }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-dim)"; }}
               >
                 · esc
               </button>
@@ -383,8 +444,21 @@ function Composer({
   modelId: string;
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
+  draft:          string;
+  onDraftChange:  (t: string) => void;
+  onSend:         (t: string) => void;
+  onCancel:       () => void;
+  isLoading:      boolean;
+  placeholder:    string;
+  accent:         string;
+  configId:       "lab" | "school" | "creation";
+  task:           TaskType;
+  modelId:        string;
+  onTaskChange:   (task: TaskType) => void;
+  onModelChange:  (modelId: string) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
@@ -413,19 +487,22 @@ function Composer({
         <div
           style={{
             background: "var(--r-surface)",
-            border: "1px solid var(--r-border)",
+            border: `1px solid ${focused ? "var(--r-border)" : "var(--r-border)"}`,
             borderRadius: "12px",
             padding: "12px 12px 8px 16px",
-            boxShadow: "0 1px 8px rgba(0,0,0,0.04)",
-            transition: "border-color 0.15s ease",
+            boxShadow: focused
+              ? `0 0 0 3px ${accent}15, 0 1px 8px rgba(0,0,0,0.05)`
+              : "0 1px 6px rgba(0,0,0,0.03)",
+            transition: "box-shadow 0.18s ease, border-color 0.18s ease",
           }}
-          onFocus={() => {}}
         >
           <textarea
             ref={ref}
             value={draft}
             onChange={(e) => onDraftChange(e.target.value)}
             onKeyDown={handleKey}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             disabled={isLoading}
             placeholder={placeholder}
             rows={1}
@@ -435,14 +512,15 @@ function Composer({
               outline: "none",
               resize: "none",
               fontFamily: "'Inter', system-ui, sans-serif",
-              fontSize: "13px",
+              fontSize: "13.5px",
               color: "var(--r-text)",
               background: "transparent",
-              lineHeight: "1.6",
+              lineHeight: "1.62",
               minHeight: "36px",
               maxHeight: "160px",
               display: "block",
               caretColor: accent,
+              letterSpacing: "-0.003em",
             }}
           />
           <div
@@ -451,6 +529,7 @@ function Composer({
               alignItems: "center",
               justifyContent: "space-between",
               marginTop: "6px",
+              gap: "8px",
             }}
           >
             <ModelSelector
@@ -468,6 +547,7 @@ function Composer({
                 color: "var(--r-dim)",
                 letterSpacing: "0.05em",
                 userSelect: "none",
+                flexShrink: 0,
               }}
             >
               {isLoading ? (
@@ -483,7 +563,10 @@ function Composer({
                     outline: "none",
                     padding: 0,
                     letterSpacing: "0.05em",
+                    transition: "color 0.1s ease",
                   }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-muted)"; }}
                 >
                   esc to stop
                 </button>
@@ -498,23 +581,29 @@ function Composer({
                 width: "28px",
                 height: "28px",
                 borderRadius: "8px",
-                border: `1px solid ${canSend ? "transparent" : "var(--r-border)"}`,
-                background: canSend ? "var(--r-text)" : "transparent",
+                border: canSend ? "none" : "1px solid var(--r-border)",
+                background: canSend ? accent : "transparent",
                 cursor: canSend ? "pointer" : "default",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 outline: "none",
                 flexShrink: 0,
-                transition: "background 0.15s ease, border-color 0.15s ease",
+                transition: "background 0.15s ease, border-color 0.15s ease, transform 0.1s ease",
+                boxShadow: canSend ? "0 1px 4px rgba(0,0,0,0.15)" : "none",
+              }}
+              onMouseEnter={e => {
+                if (canSend) (e.currentTarget as HTMLElement).style.transform = "scale(1.05)";
+              }}
+              onMouseLeave={e => {
+                if (canSend) (e.currentTarget as HTMLElement).style.transform = "scale(1)";
               }}
             >
               <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
                 <path
                   d="M14 8L2 2l3 6-3 6 12-6z"
-                  stroke={canSend ? "white" : "var(--r-border)"}
-                  strokeWidth="1.6"
-                  strokeLinejoin="round"
+                  fill={canSend ? "white" : "var(--r-border)"}
+                  strokeWidth="0"
                 />
               </svg>
             </button>
@@ -540,9 +629,9 @@ export function ChamberChat({
   onTaskChange,
   onModelChange,
 }: {
-  messages: Message[];
-  isLoading: boolean;
-  draft: string;
+  messages:      Message[];
+  isLoading:     boolean;
+  draft:         string;
   onDraftChange: (t: string) => void;
   onSend: (t: string) => void;
   onCancel: () => void;
@@ -550,6 +639,12 @@ export function ChamberChat({
   task: TaskType;
   modelId: string;
   onTaskChange: (task: TaskType) => void;
+  onSend:        (t: string) => void;
+  onCancel:      () => void;
+  config:        ChamberConfig;
+  task:          TaskType;
+  modelId:       string;
+  onTaskChange:  (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
 }) {
   const threadRef = useRef<HTMLDivElement>(null);
@@ -584,7 +679,7 @@ export function ChamberChat({
       <div
         ref={threadRef}
         className="hide-scrollbar"
-        style={{ flex: 1, overflowY: "auto", padding: "24px 0 4px" }}
+        style={{ flex: 1, overflowY: "auto", padding: "28px 0 4px" }}
       >
         <div style={{ maxWidth: "660px", margin: "0 auto", padding: "0 32px" }}>
           {isEmpty ? (
@@ -593,6 +688,7 @@ export function ChamberChat({
               label={config.label}
               tagline={config.tagline}
               id={config.id}
+              accent={config.accent}
               onSend={onSend}
             />
           ) : (
@@ -620,6 +716,13 @@ export function ChamberChat({
 
       {/* Status */}
       <StatusStrip execStatus={execStatus} onCancel={onCancel} accent={config.accent} chamberLabel={chamberLabel} modelBadge={modelId} />
+      <StatusStrip
+        execStatus={execStatus}
+        onCancel={onCancel}
+        accent={config.accent}
+        chamberLabel={chamberLabel}
+        modelBadge={modelId}
+      />
 
       {/* Composer */}
       <Composer
