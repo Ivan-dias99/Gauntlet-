@@ -34,7 +34,14 @@ const TAB_ACCENT: Record<Tab, string> = {
   lab:      "var(--r-accent)",
   school:   "var(--r-ok)",
   creation: "var(--r-warn)",
-  profile: "var(--r-pulse)",
+  profile:  "var(--r-pulse)",
+};
+
+const CHAMBER_ACCENT: Record<Tab, { primary: string; light: string; label: string }> = {
+  lab:      { primary: "#52796A", light: "#EEF4F1", label: "Lab" },
+  school:   { primary: "#4A6B84", light: "#EEF2F6", label: "School" },
+  creation: { primary: "#8A6238", light: "#F5EFE7", label: "Creation" },
+  profile:  { primary: "#7A756D", light: "#F0EDE8", label: "Profile" },
 };
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
