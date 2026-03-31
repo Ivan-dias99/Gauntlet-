@@ -19,6 +19,12 @@ import {
   type FloatingNote, type Theme, type NavFn,
 } from "./components/shell-types";
 import { parseBlocks } from "./components/parseBlocks";
+import {
+  DEFAULT_TASK_BY_CHAMBER,
+  DEFAULT_MODEL_BY_TASK,
+  resolveExecutionPlan,
+  type TaskType,
+} from "./components/model-orchestration";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation"];
@@ -30,6 +36,8 @@ type TabMessages = Record<Tab, Message[]>;
 type TabLoading  = Record<Tab, boolean>;
 type TabSignals  = Record<Tab, SignalStatus>;
 type TabDrafts   = Record<Tab, string>;
+type TabTasks    = Record<Tab, TaskType>;
+type TabModels   = Record<Tab, string>;
 
 function emptyRecord<T>(value: T): Record<Tab, T> {
   return Object.fromEntries(TABS.map((t) => [t, value])) as Record<Tab, T>;
@@ -54,6 +62,16 @@ export default function App() {
   const [loading,      setLoading]      = useState<TabLoading>(emptyRecord(false));
   const [signals,      setSignals]      = useState<TabSignals>(emptyRecord<SignalStatus>("idle"));
   const [drafts,       setDrafts]       = useState<TabDrafts>(emptyRecord(""));
+  const [tasks, setTasks] = useState<TabTasks>({
+    lab: DEFAULT_TASK_BY_CHAMBER.lab,
+    school: DEFAULT_TASK_BY_CHAMBER.school,
+    creation: DEFAULT_TASK_BY_CHAMBER.creation,
+  });
+  const [activeModels, setActiveModels] = useState<TabModels>({
+    lab: DEFAULT_MODEL_BY_TASK[DEFAULT_TASK_BY_CHAMBER.lab],
+    school: DEFAULT_MODEL_BY_TASK[DEFAULT_TASK_BY_CHAMBER.school],
+    creation: DEFAULT_MODEL_BY_TASK[DEFAULT_TASK_BY_CHAMBER.creation],
+  });
 
   // ── Chamber sub-views ────────────────────────────────────────────────────────
   const [labView,      setLabView]      = useState<LabView>("home");
@@ -125,6 +143,15 @@ export default function App() {
     } catch { /* ignore */ }
   }, []);
 
+  const handleTaskChange = useCallback((tab: Tab, task: TaskType) => {
+    setTasks((prev) => ({ ...prev, [tab]: task }));
+    setActiveModels((prev) => ({ ...prev, [tab]: DEFAULT_MODEL_BY_TASK[task] }));
+  }, []);
+
+  const handleModelChange = useCallback((tab: Tab, modelId: string) => {
+    setActiveModels((prev) => ({ ...prev, [tab]: modelId }));
+  }, []);
+
   const applyParsedBlocks = useCallback((id: string, tab: Tab) => {
     setMessages((prev) => ({
       ...prev,
@@ -139,6 +166,13 @@ export default function App() {
   // ── Stream handler ────────────────────────────────────────────────────────────
   const handleSend = useCallback(async (text: string) => {
     const tab = activeTab;
+    const task = tasks[tab];
+    const requestedModelId = activeModels[tab];
+    const plan = resolveExecutionPlan(tab, task, requestedModelId);
+    const selectedModelId = plan.selectedModel?.id ?? requestedModelId;
+    if (selectedModelId !== requestedModelId) {
+      setActiveModels((prev) => ({ ...prev, [tab]: selectedModelId }));
+    }
 
     abortRefs.current[tab]?.abort();
     const controller = new AbortController();
@@ -179,7 +213,13 @@ export default function App() {
           "Content-Type":  "application/json",
           "Authorization": `Bearer ${publicAnonKey}`,
         },
-        body:   JSON.stringify({ tab, messages: [...history, { role: "user", content: text }] }),
+        body:   JSON.stringify({
+          tab,
+          task,
+          model: selectedModelId,
+          fallbackChain: plan.fallbackChain,
+          messages: [...history, { role: "user", content: text }],
+        }),
         signal: controller.signal,
       });
 
@@ -241,7 +281,7 @@ export default function App() {
         applyParsedBlocks(assistantId, tab);
       }
     }
-  }, [activeTab, applyParsedBlocks]);
+  }, [activeTab, activeModels, applyParsedBlocks, tasks]);
 
   // ── Notes ─────────────────────────────────────────────────────────────────────
   const addNote = useCallback(() => {
@@ -332,6 +372,10 @@ export default function App() {
                   onLabView={(v) => { setLabView(v); setDetailId(""); }}
                   navigate={navigate}
                   detailId={detailId}
+                  task={tasks.lab}
+                  modelId={activeModels.lab}
+                  onTaskChange={(task) => handleTaskChange("lab", task)}
+                  onModelChange={(modelId) => handleModelChange("lab", modelId)}
                 />
               )}
               {activeTab === "school" && (
@@ -346,6 +390,10 @@ export default function App() {
                   onSchoolView={(v) => { setSchoolView(v); setDetailId(""); }}
                   navigate={navigate}
                   detailId={detailId}
+                  task={tasks.school}
+                  modelId={activeModels.school}
+                  onTaskChange={(task) => handleTaskChange("school", task)}
+                  onModelChange={(modelId) => handleModelChange("school", modelId)}
                 />
               )}
               {activeTab === "creation" && (
@@ -360,6 +408,10 @@ export default function App() {
                   onCreationView={(v) => { setCreationView(v); setDetailId(""); }}
                   navigate={navigate}
                   detailId={detailId}
+                  task={tasks.creation}
+                  modelId={activeModels.creation}
+                  onTaskChange={(task) => handleTaskChange("creation", task)}
+                  onModelChange={(modelId) => handleModelChange("creation", modelId)}
                 />
               )}
             </motion.div>
@@ -399,7 +451,7 @@ export default function App() {
         <div style={{ width: "1px", height: "10px", background: "var(--r-border)", margin: "0 12px" }} />
 
         <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.05em" }}>
-          RUBERRA-7B-r1 · 128k ctx
+          {activeModels[activeTab]} · {tasks[activeTab]}
         </span>
 
         <div style={{ flex: 1 }} />
