@@ -14,6 +14,7 @@ import { SchoolLessonDetail } from "../detail/SchoolLessonDetail";
 import { SchoolRoleDetail } from "../detail/SchoolRoleDetail";
 import { SCHOOL_ROLES } from "../product-data";
 import { type TaskType } from "../model-orchestration";
+import { buildMessageObject, findObject, listObjectsForChamber, openObject } from "../object-graph";
 
 const SCHOOL_CONFIG: ChamberConfig = {
   id:          "school",
@@ -57,7 +58,7 @@ const KIND_ACCENT: Record<LibraryResource["kind"], string> = {
 
 const CATS = ["All", "Frameworks", "Blueprints", "Guides", "References", "Tracks"];
 
-function SchoolLibrary() {
+function SchoolLibrary({ navigate }: { navigate: NavFn }) {
   const [filter, setFilter]     = useState("All");
   const [expanded, setExpanded] = useState<string | null>(null);
   const visible = filter === "All" ? LIBRARY : LIBRARY.filter(r => r.category === filter);
@@ -183,6 +184,11 @@ function SchoolLibrary() {
                   <span style={{ fontSize: "10px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>
                     {r.category}
                   </span>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    <button onClick={() => navigate("school", "chat")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 7px", borderRadius: "4px", cursor: "pointer" }}>Ask School</button>
+                    <button onClick={() => navigate("school", "archive")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 7px", borderRadius: "4px", cursor: "pointer" }}>Save Path</button>
+                    <button onClick={() => navigate("school", "browse")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 7px", borderRadius: "4px", cursor: "pointer" }}>Related Roles</button>
+                  </div>
                 </div>
               )}
             </div>
@@ -196,32 +202,32 @@ function SchoolLibrary() {
 // ─── Archive ──────────────────────────────────────────────────────────────────
 
 function SchoolArchive({ messages, navigate }: { messages: Message[]; navigate: NavFn }) {
-  const all = [...messages].reverse();
+  const runtimeObjects = [...messages].reverse().slice(0, 18).map(buildMessageObject);
+  const objects = [...runtimeObjects, ...listObjectsForChamber("school").slice(0, 18)];
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", background: "var(--r-bg)" }}>
       <div style={{ maxWidth: "700px", margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "18px" }}>
           <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.01em" }}>School Archive</p>
-          <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)" }}>{all.length} entries</span>
+          <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)" }}>{objects.length} entries</span>
         </div>
-        {all.length === 0 ? (
-          <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>No messages yet</p>
-        ) : all.map((m) => (
-          <div key={m.id} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", marginBottom: "8px" }}>
-            <div
-              style={{
-                maxWidth: "72%",
-                fontSize: "12px",
-                fontFamily: "'Inter', system-ui, sans-serif",
-                lineHeight: "1.62",
-                padding: "9px 13px",
-                borderRadius: m.role === "user" ? "10px 10px 3px 10px" : "3px 10px 10px 10px",
-                background: m.role === "user" ? "var(--r-elevated)" : "var(--r-surface)",
-                border: "1px solid var(--r-border)",
-                color: "var(--r-text)",
-              }}
-            >
-              {m.content.slice(0, 300)}{m.content.length > 300 ? "…" : ""}
+        {objects.length === 0 ? (
+          <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>No archive objects yet</p>
+        ) : objects.map((obj, i) => (
+          <div key={`${obj.id}-${i}`} style={{ border: "1px solid var(--r-border)", borderRadius: "6px", padding: "10px 12px", marginBottom: "8px", background: "var(--r-surface)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>
+              <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
+              <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.type}</span>
+            </div>
+            <p style={{ fontSize: "11px", color: "var(--r-subtext)", margin: "0 0 8px" }}>{obj.summary}</p>
+            <div style={{ display: "flex", gap: "7px", flexWrap: "wrap" }}>
+              <button onClick={() => openObject(navigate, obj)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Open</button>
+              <button onClick={() => navigate("school", "chat")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Continue in Chat</button>
+              {obj.related_items.slice(0, 1).map((rid) => {
+                const related = findObject(rid);
+                if (!related) return null;
+                return <button key={rid} onClick={() => openObject(navigate, related)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Related → {related.title.slice(0, 18)}</button>;
+              })}
             </div>
           </div>
         ))}
@@ -270,7 +276,7 @@ export function SchoolMode({
   if (schoolView === "lesson") return <SchoolLessonDetail lessonId={detailId} navigate={navigate} onStartChat={(p) => { onSchoolView("chat"); onSend(p); }} />;
   if (schoolView === "role")   return <SchoolRoleDetail   roleId={detailId}   navigate={navigate} onStartChat={(p) => { onSchoolView("chat"); onSend(p); }} />;
   if (schoolView === "browse") return <SchoolBrowse navigate={navigate} />;
-  if (schoolView === "library") return <SchoolLibrary />;
+  if (schoolView === "library") return <SchoolLibrary navigate={navigate} />;
   if (schoolView === "archive") return <SchoolArchive messages={messages} navigate={navigate} />;
 
   return (

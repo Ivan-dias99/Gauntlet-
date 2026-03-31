@@ -13,6 +13,7 @@ import { LabDomainDetail } from "../detail/LabDomainDetail";
 import { LabExperimentDetail } from "../detail/LabExperimentDetail";
 import { RuberraTerminal } from "../RuberraTerminal";
 import { type TaskType } from "../model-orchestration";
+import { buildMessageObject, findObject, listObjectsForChamber, openObject } from "../object-graph";
 
 const LAB_CONFIG: ChamberConfig = {
   id:          "lab",
@@ -163,7 +164,8 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
 // ─── Archive ──────────────────────────────────────────────────────────────────
 
 function LabArchive({ messages, navigate }: { messages: Message[]; navigate: NavFn }) {
-  const sessions = messages.filter(m => m.role === "user").reverse();
+  const runtimeObjects = messages.slice(-18).reverse().map(buildMessageObject);
+  const objects = [...runtimeObjects, ...listObjectsForChamber("lab").slice(0, 18)];
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "24px", background: "var(--r-bg)" }}>
       <div style={{ maxWidth: "700px", margin: "0 auto" }}>
@@ -178,36 +180,25 @@ function LabArchive({ messages, navigate }: { messages: Message[]; navigate: Nav
             ← Home
           </button>
         </div>
-        {sessions.length === 0 ? (
-          <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>No sessions yet</p>
-        ) : sessions.map((m, i) => (
-          <button
-            key={m.id}
-            onClick={() => navigate("lab", "chat")}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              padding: "10px 14px",
-              border: "1px solid var(--r-border)",
-              borderRadius: "6px",
-              background: "var(--r-surface)",
-              marginBottom: "6px",
-              cursor: "pointer",
-              outline: "none",
-              textAlign: "left",
-              transition: "background 0.1s ease",
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--r-elevated)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--r-surface)"; }}
-          >
-            <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", flexShrink: 0 }}>{String(i + 1).padStart(2, "0")}</span>
-            <span style={{ fontSize: "12px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {m.content.slice(0, 80)}{m.content.length > 80 ? "…" : ""}
-            </span>
-            <span style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "monospace", flexShrink: 0 }}>→</span>
-          </button>
+        {objects.length === 0 ? (
+          <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>No archive objects yet</p>
+        ) : objects.map((obj, i) => (
+          <div key={`${obj.id}-${i}`} style={{ border: "1px solid var(--r-border)", borderRadius: "6px", background: "var(--r-surface)", padding: "10px 12px", marginBottom: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+              <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)" }}>{obj.type}</span>
+              <span style={{ fontSize: "12px", color: "var(--r-text)", fontWeight: 500 }}>{obj.title}</span>
+            </div>
+            <p style={{ fontSize: "11px", color: "var(--r-subtext)", margin: "0 0 8px" }}>{obj.summary}</p>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button onClick={() => openObject(navigate, obj)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Open</button>
+              <button onClick={() => navigate("lab", "code")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Run in Code</button>
+              {obj.related_items.slice(0, 1).map((rid) => {
+                const related = findObject(rid);
+                if (!related) return null;
+                return <button key={rid} onClick={() => openObject(navigate, related)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Related → {related.title.slice(0, 18)}</button>;
+              })}
+            </div>
+          </div>
         ))}
       </div>
     </div>
