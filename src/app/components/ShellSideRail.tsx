@@ -30,11 +30,18 @@ const ALL_TABS: Tab[] = ["lab", "school", "creation", "profile"];
 
 // ─── Chamber accent colors — matches tokens.ts ────────────────────────────────
 
+const CHAMBER_ACCENT: Record<Tab, { primary: string; label: string }> = {
+  lab:      { primary: "var(--chamber-lab)",      label: "Research Lab" },
+  school:   { primary: "var(--chamber-school)",   label: "Technical School" },
+  creation: { primary: "var(--chamber-creation)", label: "Creation Forge" },
+  profile:  { primary: "var(--r-pulse)",          label: "Sovereign Profile" },
+};
+
 const TAB_ACCENT: Record<Tab, string> = {
-  lab:      "var(--r-accent)",
-  school:   "var(--r-ok)",
-  creation: "var(--r-warn)",
-  profile: "var(--r-pulse)",
+  lab:      "var(--chamber-lab)",
+  school:   "var(--chamber-school)",
+  creation: "var(--chamber-creation)",
+  profile:  "var(--r-pulse)",
 };
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -334,7 +341,9 @@ export function ShellSideRail({
         width: "188px",
         flexShrink: 0,
         borderRight: "1px solid var(--r-border)",
-        background: "var(--r-rail)",
+        background: "rgba(var(--r-surface-rgb), 0.75)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",

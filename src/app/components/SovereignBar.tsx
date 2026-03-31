@@ -111,9 +111,12 @@ export function SovereignBar({
       style={{
         height: "44px",
         borderBottom: "1px solid var(--r-border)",
-        background: "var(--r-surface)",
-        position: "relative",
-        zIndex: 20,
+        background: "rgba(var(--r-surface-rgb), 0.82)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
@@ -226,7 +229,7 @@ export function SovereignBar({
                     inset: 0,
                     background: "var(--r-surface)",
                     borderRadius: "6px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.05)",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.08)",
                   }}
                   transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
                 />
@@ -347,6 +350,25 @@ export function SovereignBar({
           
           <ProfileLedger isOpen={isLedgerOpen} onClose={() => setLedgerOpen(false)} />
         </div>
+      </div>
+
+      {/* Flagship Watermark: OS-level persistence */}
+      <div
+        style={{
+          position: "absolute",
+          top: "14px",
+          right: "220px", // Adjusted to not overlap avatar
+          pointerEvents: "none",
+          userSelect: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          opacity: 0.25,
+        }}
+      >
+        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.14em", color: "var(--r-dim)", textTransform: "uppercase" }}>mode</span>
+        <div style={{ width: "1px", height: "8px", background: "var(--r-border)" }} />
+        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.14em", color: CHAMBER_DOTS[activeTab === 'profile' ? 'lab' : activeTab as 'lab' | 'school' | 'creation'], textTransform: "uppercase" }}>{activeTab}</span>
       </div>
     </header>
   );

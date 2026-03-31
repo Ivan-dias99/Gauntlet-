@@ -47,7 +47,6 @@ import {
   updatePreferences,
   updateWorkspaceKnowledge,
   upsertPlugin,
-  updatePreferences,
   upsertConnector,
   exportContinuity,
   type RuntimeFabric,

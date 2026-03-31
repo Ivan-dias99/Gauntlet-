@@ -43,6 +43,7 @@
   /* ── RUBERRA r-* design tokens — light mode (default) ── */
   --r-bg:          #f3f1ed;
   --r-surface:     #ffffff;
+  --r-surface-rgb: 255, 255, 255;
   --r-rail:        #edebe7;
   --r-elevated:    #f9f8f6;
   --r-border:      #d6d2ca;
@@ -97,6 +98,7 @@
 [data-theme="dark"] {
   --r-bg:          #0e0d0c;
   --r-surface:     #151412;
+  --r-surface-rgb: 21, 20, 18;
   --r-rail:        #110f0e;
   --r-elevated:    #1c1a18;
   --r-border:      #252220;
