@@ -21,6 +21,18 @@ import {
   type ConnectorCategory,
 } from "../connector-registry";
 import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from "../workflow-engine";
+import {
+  PROVIDER_ADAPTERS,
+  SOVEREIGN_MODEL_REGISTRY,
+  CHAMBER_SOVEREIGN_DEFAULTS,
+  getChamberRuntimeSummary,
+  TIER_LABEL,
+  TIER_COLOR,
+  TIER_DESCRIPTION,
+  type ProviderAdapter,
+  type SovereignModel,
+  type RuntimeTier,
+} from "../sovereign-runtime";
 
 interface ProfileModeProps {
   messages: Record<Tab, Message[]>;
@@ -685,6 +697,102 @@ export function ProfileMode({
         {/* ── CONNECTORS ── */}
         {profileView === "connectors" && (
           <>
+            {/* AI Runtime section — sovereign stack first */}
+            <SectionBlock title="AI Runtime — Sovereign Stack">
+              {/* Tier legend */}
+              <div style={{ padding: "10px 14px 6px", borderBottom: "1px solid var(--r-border-soft)" }}>
+                <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 8px" }}>Execution Tier Legend</p>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  {(["A", "B", "C"] as RuntimeTier[]).map((tier) => (
+                    <div key={tier} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                      <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[tier], border: `1px solid ${TIER_COLOR[tier]}28`, borderRadius: "3px", padding: "1px 5px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                        {TIER_LABEL[tier]}
+                      </span>
+                      <span style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif" }}>{TIER_DESCRIPTION[tier]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Per-chamber defaults */}
+              <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--r-border-soft)" }}>
+                <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 8px" }}>Chamber Sovereign Defaults</p>
+                {(["lab", "school", "creation"] as const).map((chamber) => {
+                  const { primaryModel, fallback, fast, resolution } = getChamberRuntimeSummary(chamber);
+                  const chamberColor = { lab: "#52796A", school: "#4A6B84", creation: "#8A6238" }[chamber];
+                  return (
+                    <div key={chamber} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "6px 0", borderBottom: chamber !== "creation" ? "1px solid var(--r-border-soft)" : "none", gap: "10px" }}>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "3px" }}>
+                          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: chamberColor, letterSpacing: "0.08em", textTransform: "uppercase" }}>{chamber}</span>
+                          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[resolution.tier], border: `1px solid ${TIER_COLOR[resolution.tier]}28`, borderRadius: "3px", padding: "0 4px", letterSpacing: "0.06em" }}>
+                            Tier {resolution.tier}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: "10.5px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0 }}>
+                          {primaryModel?.label ?? "—"}
+                        </p>
+                        <p style={{ fontSize: "9.5px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", margin: "2px 0 0" }}>
+                          fallback: {fallback?.label ?? "—"} · fast: {fast?.label ?? "—"}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: resolution.is_available ? "var(--r-ok)" : "var(--r-warn)", letterSpacing: "0.06em" }}>
+                          {resolution.is_available ? "active" : "not configured"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Provider adapters */}
+              <div style={{ padding: "8px 14px" }}>
+                <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 8px" }}>Provider Adapters</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {PROVIDER_ADAPTERS.map((adapter) => (
+                    <div key={adapter.id} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+                          <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif" }}>{adapter.label}</span>
+                          <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[adapter.tier], border: `1px solid ${TIER_COLOR[adapter.tier]}28`, borderRadius: "3px", padding: "0 4px", letterSpacing: "0.06em" }}>
+                            Tier {adapter.tier}
+                          </span>
+                          {adapter.requires_key && (
+                            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.05em" }}>key required</span>
+                          )}
+                        </div>
+                        <p style={{ fontSize: "10px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", margin: "0 0 1px", letterSpacing: "0.03em" }}>{adapter.base_url || "—"}</p>
+                        <p style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0 }}>{adapter.notes}</p>
+                      </div>
+                      <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: adapter.available ? "var(--r-ok)" : "var(--r-warn)", flexShrink: 0, letterSpacing: "0.06em" }}>
+                        {adapter.available ? "live" : "offline"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Open-weight model list */}
+              <div style={{ borderTop: "1px solid var(--r-border-soft)", padding: "8px 14px" }}>
+                <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 8px" }}>Open-Weight Model Registry — {SOVEREIGN_MODEL_REGISTRY.length} Models</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                  {SOVEREIGN_MODEL_REGISTRY.map((model) => (
+                    <div key={model.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[model.tier], border: `1px solid ${TIER_COLOR[model.tier]}20`, borderRadius: "3px", padding: "0 4px", letterSpacing: "0.05em", flexShrink: 0 }}>
+                          {model.tier === "A" ? "local" : "wrap"}
+                        </span>
+                        <span style={{ fontSize: "11px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{model.label}</span>
+                        <span style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{model.parameters}</span>
+                      </div>
+                      <span style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, letterSpacing: "0.04em" }}>
+                        {model.model_class}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </SectionBlock>
+
+            {/* Other connector categories */}
             {CONNECTOR_CATEGORY_ORDER.filter((cat) =>
               CONNECTOR_REGISTRY.some((c) => c.category === cat)
             ).map((cat) => {

@@ -12,6 +12,7 @@ import { ModelSelector } from "./ModelSelector";
 import { type TaskType } from "./model-orchestration";
 import { getContractByChamber } from "./routing-contracts";
 import { getPioneer } from "./pioneer-registry";
+import { getExecutionTruth, TIER_LABEL, TIER_COLOR } from "./sovereign-runtime";
 
 // ─── Chamber config ───────────────────────────────────────────────────────────
 
@@ -299,77 +300,99 @@ function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: st
 
 // ─── Provenance trace ─────────────────────────────────────────────────────────
 
-function ProvenanceTrace({ chamberId }: { chamberId: "lab" | "school" | "creation" }) {
+function ProvenanceTrace({
+  chamberId,
+  msgTruth,
+}: {
+  chamberId: "lab" | "school" | "creation";
+  msgTruth?: Message["execution_truth"];
+}) {
   const contract    = getContractByChamber(chamberId);
   const leadPioneer = getPioneer(contract.lead_pioneer);
-  const supportNames = contract.support_pioneers
-    .map((id) => getPioneer(id)?.name ?? id)
-    .join(" · ");
 
-  const hostingColor = leadPioneer?.hosting_level === "hosted"
-    ? "var(--r-ok)"
-    : leadPioneer?.hosting_level === "wrapped"
-    ? "var(--r-subtext)"
-    : "var(--r-warn)";
+  // Prefer message-attached truth; fall back to sovereign stack resolution
+  const sovereign   = getExecutionTruth(chamberId);
+  const tier        = msgTruth?.tier        ?? sovereign.tier;
+  const tierLabel   = msgTruth?.tier_label  ?? sovereign.tier_label;
+  const modelLabel  = msgTruth?.model_label ?? sovereign.model_label;
+  const tierColor   = TIER_COLOR[tier];
 
   return (
     <div
       style={{
-        display: "flex",
+        display:    "flex",
         alignItems: "center",
-        gap: "6px",
-        marginBottom: "6px",
-        flexWrap: "wrap",
+        gap:        "5px",
+        marginBottom: "7px",
+        flexWrap:   "wrap",
       }}
     >
-      {/* Lead pioneer */}
+      {/* Lead pioneer chip */}
       {leadPioneer && (
         <span
           style={{
-            fontSize: "8px",
-            fontFamily: "'JetBrains Mono', monospace",
+            fontSize:    "8px",
+            fontFamily:  "'JetBrains Mono', monospace",
             letterSpacing: "0.08em",
-            color: leadPioneer.accent,
-            background: `${leadPioneer.accent}10`,
-            border: `1px solid ${leadPioneer.accent}20`,
+            color:       leadPioneer.accent,
+            background:  `${leadPioneer.accent}10`,
+            border:      `1px solid ${leadPioneer.accent}22`,
             borderRadius: "3px",
-            padding: "1px 6px",
-            userSelect: "none",
+            padding:     "1px 6px",
+            userSelect:  "none",
           }}
         >
           {leadPioneer.name}
         </span>
       )}
-      {/* Hosting truth */}
-      {leadPioneer && (
+      {/* Execution tier — the honest truth */}
+      <span
+        style={{
+          fontSize:    "8px",
+          fontFamily:  "'JetBrains Mono', monospace",
+          letterSpacing: "0.07em",
+          color:       tierColor,
+          border:      `1px solid ${tierColor}28`,
+          borderRadius: "3px",
+          padding:     "1px 5px",
+          userSelect:  "none",
+          textTransform: "uppercase",
+        }}
+        title={
+          tier === "A" ? "Running locally or in self-hosted runtime" :
+          tier === "B" ? "Routing to free external provider — not guaranteed" :
+          "Pioneer behavior via routing contracts — no live model"
+        }
+      >
+        {tierLabel}
+      </span>
+      {/* Model label */}
+      <span
+        style={{
+          fontSize:    "8px",
+          fontFamily:  "'JetBrains Mono', monospace",
+          letterSpacing: "0.05em",
+          color:       "var(--r-dim)",
+          userSelect:  "none",
+        }}
+      >
+        {modelLabel}
+      </span>
+      {/* Support chain (compact) */}
+      {contract.support_pioneers.length > 0 && (
         <span
           style={{
-            fontSize: "8px",
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: "0.07em",
-            color: hostingColor,
-            border: `1px solid ${hostingColor}28`,
-            borderRadius: "3px",
-            padding: "1px 5px",
-            userSelect: "none",
-            textTransform: "uppercase",
+            fontSize:    "8px",
+            fontFamily:  "'JetBrains Mono', monospace",
+            letterSpacing: "0.04em",
+            color:       "var(--r-dim)",
+            userSelect:  "none",
+            opacity:     0.7,
           }}
         >
-          {leadPioneer.hosting_level}
-        </span>
-      )}
-      {/* Support chain */}
-      {supportNames && (
-        <span
-          style={{
-            fontSize: "8px",
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: "0.05em",
-            color: "var(--r-dim)",
-            userSelect: "none",
-          }}
-        >
-          + {supportNames}
+          + {contract.support_pioneers
+              .map((id) => getPioneer(id)?.name ?? id)
+              .join(" · ")}
         </span>
       )}
     </div>
@@ -415,7 +438,7 @@ function AssistantMessage({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
     >
-      <ProvenanceTrace chamberId={chamberId} />
+      <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
       {msg.blocks && msg.blocks.length > 0 ? (
         <BlockRenderer blocks={msg.blocks} />

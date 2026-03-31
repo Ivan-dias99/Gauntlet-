@@ -23,6 +23,14 @@ export interface MessageBlock {
   meta?: { next?: string; tags?: string[]; progress?: string; };
 }
 
+export interface MessageExecutionTruth {
+  tier:        "A" | "B" | "C";
+  tier_label:  string;
+  model_label: string;
+  pioneer?:    string;
+  chamber:     Exclude<Tab, "profile">;
+}
+
 export interface Message {
   id:        string;
   role:      "user" | "assistant";
@@ -30,6 +38,7 @@ export interface Message {
   tab:       Tab;
   timestamp: number;
   blocks?:   MessageBlock[];
+  execution_truth?: MessageExecutionTruth;
 }
 
 /* ── Extended view types — all navigable states per chamber ── */

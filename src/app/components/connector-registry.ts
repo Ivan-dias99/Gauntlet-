@@ -241,6 +241,54 @@ export const CONNECTOR_REGISTRY: ConnectorDefinition[] = [
     icon_char: "◎",
     accent:    "#d4a373",
   },
+
+  // ── Sovereign / Open-Weight Runtime ────────────────────────────────────────
+  {
+    id:           "ollama-local",
+    name:         "Ollama (Local Runtime)",
+    category:     "ai",
+    description:  "Self-hosted open-weight model runtime. Tier A — runs entirely locally. Zero external calls. Configure RUBERRA_OLLAMA_URL to activate.",
+    organs:       ["lab", "school", "creation"],
+    capabilities: ["read", "write"],
+    status:       "available",
+    quick_actions: [
+      { label: "Check health",    description: "Ping Ollama server at configured URL" },
+      { label: "List models",     description: "Show locally pulled models via /api/tags" },
+      { label: "Set as default",  description: "Set Ollama as Tier A primary for all chambers" },
+    ],
+    icon_char: "⊛",
+    accent:    "#52796A",
+  },
+  {
+    id:           "vllm-server",
+    name:         "vLLM Server",
+    category:     "ai",
+    description:  "OpenAI-compatible vLLM inference server. Tier A — self-hosted. Supports tensor-parallel large models. Configure RUBERRA_VLLM_URL to activate.",
+    organs:       ["lab", "creation"],
+    capabilities: ["read", "write"],
+    status:       "available",
+    quick_actions: [
+      { label: "Check health",   description: "Ping vLLM /health endpoint" },
+      { label: "List models",    description: "Show available models on the server" },
+    ],
+    icon_char: "⊗",
+    accent:    "#4A6B84",
+  },
+  {
+    id:           "groq-free",
+    name:         "Groq Cloud (Free Tier)",
+    category:     "ai",
+    description:  "Tier B — wrapped. Groq inference API free tier. Extremely fast Llama 3.3 70B. Rate-limited, non-guaranteed. Set RUBERRA_GROQ_KEY to activate.",
+    organs:       ["lab", "school", "creation"],
+    capabilities: ["read", "write"],
+    status:       "available",
+    quick_actions: [
+      { label: "Check quota",    description: "View current rate limit status" },
+      { label: "Enable fallback", description: "Use Groq as Tier B fallback for all chambers" },
+    ],
+    icon_char: "⊡",
+    accent:    "#786220",
+  },
 ];
 
 // ─── Category metadata ────────────────────────────────────────────────────────
