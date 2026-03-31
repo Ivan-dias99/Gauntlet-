@@ -47,8 +47,8 @@ function parseItem(raw: string): BlockItem {
 }
 
 export function parseBlocks(content: string): MessageBlock[] {
-  // Fast-path: only run if a TYPE: directive is present
-  if (!content.includes("TYPE:")) return [];
+  // Morphology fallback for non-directive responses
+  if (!content.includes("TYPE:")) return inferMorphBlocks(content);
 
   const lines  = content.split("\n");
   const blocks: MessageBlock[] = [];
@@ -134,4 +134,56 @@ export function parseBlocks(content: string): MessageBlock[] {
 
   flushBlock();
   return blocks;
+}
+
+function inferMorphBlocks(content: string): MessageBlock[] {
+  const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return [];
+
+  const checklist = lines
+    .filter((line) => /^[-*•]\s+/.test(line) || /^\[[x ]\]\s+/i.test(line))
+    .slice(0, 8)
+    .map((line) => {
+      const raw = line.replace(/^[-*•]\s+/, "").replace(/^\[[x ]\]\s+/i, "");
+      const checked = /^\[x\]/i.test(line);
+      return { label: raw, status: checked ? "done" as StatusFlag : "pending" as StatusFlag };
+    });
+
+  if (checklist.length >= 3) {
+    return [{
+      type: "execution",
+      title: "Action Checklist",
+      status: "active",
+      sections: [{ heading: "Steps", items: checklist }],
+      meta: { tags: ["metamorphosis", "checklist"] },
+    }];
+  }
+
+  const tableLines = lines.filter((line) => line.includes("|"));
+  if (tableLines.length >= 2) {
+    const rows = tableLines.slice(0, 8).map((row) => row.split("|").map((cell) => cell.trim()).filter(Boolean));
+    const items = rows.map((cells) => ({ label: cells[0] ?? "", value: cells.slice(1).join(" · ") || undefined }));
+    return [{
+      type: "matrix",
+      title: "Comparison Matrix",
+      status: "active",
+      sections: [{ heading: "Rows", items }],
+      meta: { tags: ["metamorphosis", "matrix"] },
+    }];
+  }
+
+  const heading = lines.find((line) => /^#{1,3}\s+/.test(line));
+  if (heading) {
+    const title = heading.replace(/^#{1,3}\s+/, "");
+    const body = lines.filter((line) => !/^#{1,3}\s+/.test(line)).slice(0, 5);
+    return [{
+      type: "dossier",
+      title,
+      status: "active",
+      sections: [{ heading: "Summary", items: body.map((line) => ({ label: line })) }],
+      meta: { tags: ["metamorphosis", "dossier"] },
+    }];
+  }
+
+  return [];
 }

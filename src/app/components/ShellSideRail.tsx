@@ -5,7 +5,7 @@
 
 import {
   type Tab, type Message, type SignalStatus,
-  type LabView, type SchoolView, type CreationView, type NavFn,
+  type LabView, type SchoolView, type CreationView, type ProfileView, type NavFn,
 } from "./shell-types";
 
 interface ShellSideRailProps {
@@ -15,15 +15,17 @@ interface ShellSideRailProps {
   labView:        LabView;
   schoolView:     SchoolView;
   creationView:   CreationView;
+  profileView:    ProfileView;
   onLabView:      (v: LabView) => void;
   onSchoolView:   (v: SchoolView) => void;
   onCreationView: (v: CreationView) => void;
+  onProfileView:  (v: ProfileView) => void;
   onNewNote:      () => void;
   onClearTab:     (tab: Tab) => void;
   navigate:       NavFn;
 }
 
-const ALL_TABS: Tab[] = ["lab", "school", "creation"];
+const ALL_TABS: Tab[] = ["lab", "school", "creation", "profile"];
 
 // ─── Design constants ─────────────────────────────────────────────────────────
 
@@ -31,6 +33,7 @@ const TAB_ACCENT: Record<Tab, string> = {
   lab:      "var(--r-accent)",
   school:   "var(--r-ok)",
   creation: "var(--r-warn)",
+  profile: "var(--r-pulse)",
 };
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -269,12 +272,31 @@ function CreationRail({ view, onView, messages, signal, navigate }: {
   );
 }
 
+function ProfileRail({ view, onView }: { view: ProfileView; onView: (v: ProfileView) => void }) {
+  return (
+    <>
+      <section style={{ padding: "11px 10px 10px" }}>
+        <SLabel>Ledger</SLabel>
+        <NavBtn label="Overview" active={view === "overview"} onClick={() => onView("overview")} icon={<IHome />} />
+        <NavBtn label="Projects" active={view === "projects"} onClick={() => onView("projects")} icon={<IArchive />} />
+        <NavBtn label="Memory" active={view === "memory"} onClick={() => onView("memory")} icon={<ILibrary />} />
+        <NavBtn label="Settings" active={view === "settings"} onClick={() => onView("settings")} icon={<IAnalysis />} />
+        <NavBtn label="Exports" active={view === "exports"} onClick={() => onView("exports")} icon={<ITerminal />} />
+      </section>
+      <Divider />
+      <section style={{ padding: "10px", fontSize: "10px", color: "var(--r-subtext)" }}>
+        Profile unifies active, paused, completed, and memory continuity.
+      </section>
+    </>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function ShellSideRail({
   activeTab, messages, signals,
-  labView, schoolView, creationView,
-  onLabView, onSchoolView, onCreationView,
+  labView, schoolView, creationView, profileView,
+  onLabView, onSchoolView, onCreationView, onProfileView,
   onNewNote, onClearTab, navigate,
 }: ShellSideRailProps) {
   const accent = TAB_ACCENT[activeTab];
@@ -360,6 +382,9 @@ export function ShellSideRail({
         )}
         {activeTab === "creation" && (
           <CreationRail view={creationView} onView={onCreationView} messages={messages.creation} signal={signals.creation} navigate={navigate} />
+        )}
+        {activeTab === "profile" && (
+          <ProfileRail view={profileView} onView={onProfileView} />
         )}
       </div>
 
