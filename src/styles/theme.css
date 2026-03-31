@@ -58,14 +58,39 @@
   --r-warn:        #786220;
   --r-err:         #782e2e;
   --r-pulse:       #3a7845;
-  --rt-bg:         #f0ece6;
-  --rt-surface:    #e8e2da;
-  --rt-border:     #ccc4b8;
-  --rt-text:       #2a2420;
-  --rt-subtext:    #6e6258;
-  --rt-amber:      #9a6e1a;
-  --rt-ok:         #3d6e3d;
-  --rt-err:        #703030;
+  --rt-bg:         #FAFAFA;
+  --rt-surface:    #FFFFFF;
+  --rt-border:     #E5E5E5;
+  --rt-border2:    #D4D4D4;
+  --rt-text:       #2D2A28;
+  --rt-dim:        #8C8885;
+  --rt-dim2:       #BDBAB7;
+  --rt-amber:      #A36F26;
+  --rt-amberDim:   #D6B580;
+  --rt-amberBg:    rgba(163, 111, 38, 0.1);
+  --rt-ok:         #367A48;
+  --rt-okBg:       rgba(54, 122, 72, 0.1);
+  --rt-err:        #B03131;
+  --rt-errBg:      rgba(176, 49, 49, 0.08);
+  --rt-pink:       #9E456A;
+  --rt-cyan:       #2E7276;
+  --rt-purple:     #60559E;
+  --rt-number:     #8F783B;
+  --rt-blue:       #3B5B9D;
+  --rt-blueBg:     rgba(59, 91, 157, 0.08);
+
+  /* ── RUBERRA Chamber accent wires ── */
+  --chamber-lab:           #52796A;
+  --chamber-lab-light:     #EEF4F1;
+  --chamber-school:        #4A6B84;
+  --chamber-school-light:  #EEF2F6;
+  --chamber-creation:      #8A6238;
+  --chamber-creation-light:#F5EFE7;
+
+  /* ── Motion easing curves ── */
+  --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:    cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* ── RUBERRA dark theme ── */
@@ -90,11 +115,31 @@
   --rt-bg:         #1a1714;
   --rt-surface:    #201d19;
   --rt-border:     #2c2822;
+  --rt-border2:    #2C2B2E;
   --rt-text:       #ccc5ba;
+  --rt-dim:        #6B6764;
+  --rt-dim2:       #423F3D;
   --rt-subtext:    #7a6f62;
   --rt-amber:      #b8862a;
+  --rt-amberDim:   #735624;
+  --rt-amberBg:    rgba(179, 130, 52, 0.15);
   --rt-ok:         #5a8c5a;
+  --rt-okBg:       rgba(68, 128, 84, 0.15);
   --rt-err:        #8c4040;
+  --rt-errBg:      rgba(171, 78, 78, 0.15);
+  --rt-pink:       #A87389;
+  --rt-cyan:       #5C9598;
+  --rt-purple:     #7C75A3;
+  --rt-number:     #9E8C56;
+  --rt-blue:       #5C78B3;
+  --rt-blueBg:     rgba(92, 120, 179, 0.15);
+
+  --chamber-lab:           #6A9980;
+  --chamber-lab-light:     #1a2820;
+  --chamber-school:        #5A7E9A;
+  --chamber-school-light:  #1a2230;
+  --chamber-creation:      #A87848;
+  --chamber-creation-light:#2a1e10;
 }
 
 /* ── RUBERRA scroll utility ── */
@@ -141,35 +186,6 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-
-  /* ── RUBERRA dark mode ── */
-  [data-theme="dark"] {
-    --r-bg:          #0e0d0c;
-    --r-surface:     #151412;
-    --r-rail:        #110f0e;
-    --r-elevated:    #1c1a18;
-    --r-border:      #252220;
-    --r-border-soft: #1e1c1a;
-    --r-text:        #e4e0d8;
-    --r-subtext:     #7a756d;
-    --r-dim:         #3d3a36;
-    --r-muted:       #4a4640;
-    --r-accent:      #7c74c0;
-    --r-accent-soft: #5c5699;
-    --r-accent-dim:  #2e2a55;
-    --r-ok:          #5d9467;
-    --r-warn:        #9e8a42;
-    --r-err:         #8c4a4a;
-    --r-pulse:       #5d9467;
-    --rt-bg:         #1a1714;
-    --rt-surface:    #201d19;
-    --rt-border:     #2c2822;
-    --rt-text:       #ccc5ba;
-    --rt-subtext:    #7a6f62;
-    --rt-amber:      #b8862a;
-    --rt-ok:         #5a8c5a;
-    --rt-err:        #8c4040;
-  }
 }
 
 @theme inline {
@@ -216,6 +232,12 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-size: var(--font-size);
+    text-rendering: optimizeLegibility;
   }
 
   body {
@@ -223,12 +245,36 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  }
+
+  /* Precision selection */
+  ::selection {
+    background: rgba(91, 82, 232, 0.15);
+    color: inherit;
+  }
+
+  [data-theme="dark"] ::selection {
+    background: rgba(124, 116, 192, 0.25);
+  }
+
+  /* Focus visible — keyboard navigation only */
+  :focus-visible {
+    outline: 2px solid var(--r-accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  button:focus:not(:focus-visible),
+  input:focus:not(:focus-visible),
+  textarea:focus:not(:focus-visible) {
+    outline: none;
   }
 
   /* Minimal scrollbar */
   ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 3px;
+    height: 3px;
   }
 
   ::-webkit-scrollbar-track {
@@ -236,45 +282,39 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #D8D8D4;
-    border-radius: 4px;
+    background: var(--r-border);
+    border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #B8B8B4;
-  }
-
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
-
-  html {
-    font-size: var(--font-size);
+    background: var(--r-dim);
   }
 
   h1 {
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
   }
 
   h2 {
     font-size: var(--text-xl);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.35;
+    letter-spacing: -0.015em;
   }
 
   h3 {
     font-size: var(--text-lg);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
   }
 
   h4 {
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.45;
   }
 
   label {
@@ -287,11 +327,16 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
+    cursor: pointer;
   }
 
-  input {
+  input, textarea {
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+
+  p {
+    line-height: 1.7;
   }
 }

@@ -20,7 +20,7 @@ const LAB_CONFIG: ChamberConfig = {
   label:       "Lab",
   tagline:     "Operational research. No guardrails.",
   placeholder: "Query the Lab…",
-  accent:      "var(--r-accent)",
+  accent:      "#52796A",
   glyph:       <LabGlyph />,
 };
 
@@ -44,7 +44,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
     textTransform: "uppercase" as const,
     padding: "4px 12px",
     border: "none",
-    borderBottom: active ? "2px solid var(--r-accent)" : "2px solid transparent",
+    borderBottom: active ? "2px solid #52796A" : "2px solid transparent",
     background: "transparent",
     color: active ? "var(--r-text)" : "var(--r-dim)",
     cursor: "pointer",

@@ -3,6 +3,9 @@ export type ChamberTab = Exclude<Tab, "profile">;
 
 export type ProviderId = "openai" | "anthropic" | "google" | "runway" | "elevenlabs";
 
+export type ProviderId = "openai" | "anthropic" | "google" | "runway" | "elevenlabs";
+export type ChamberTab = "lab" | "school" | "creation";
+
 export type TaskType =
   | "creation_image"
   | "creation_video"
@@ -42,6 +45,34 @@ export const MODEL_REGISTRY: ModelDescriptor[] = [
   { id: "runway-gen4", label: "Runway Gen-4", provider: "runway", chamber: "creation", latency: "high", quality: "elite", tags: ["video"] },
   { id: "imagen-4", label: "Imagen 4", provider: "google", chamber: "creation", latency: "medium", quality: "strong", tags: ["image", "design"] },
   { id: "elevenlabs-studio", label: "ElevenLabs Studio", provider: "elevenlabs", chamber: "creation", latency: "low", quality: "strong", tags: ["voice", "audio", "music"], unavailable: true },
+  family: string;
+  provider: ProviderId;
+  latency: "low" | "medium" | "high";
+  quality: "good" | "strong" | "elite";
+  unavailable?: boolean;
+  benchmark: string;
+  role: string;
+}
+
+export const MODEL_REGISTRY: ModelDescriptor[] = [
+  // OpenAI
+  { id: "gpt-5.4-codex", label: "GPT 5.4", family: "GPT", provider: "openai", latency: "medium", quality: "elite", benchmark: "Reasoning & Code", role: "Primary Commander" },
+  { id: "gpt-5.4-tutor", label: "GPT 5.4 Tutor", family: "GPT", provider: "openai", latency: "medium", quality: "elite", benchmark: "Didactic & Mastery", role: "Lead Instructor" },
+  { id: "gpt-5.4-creator", label: "GPT 5.4 Creator", family: "GPT", provider: "openai", latency: "medium", quality: "elite", benchmark: "Artifact & System Design", role: "Primary Builder" },
+  
+  // Anthropic
+  { id: "claude-sonnet-5.0", label: "Sonnet 5.0", family: "Claude", provider: "anthropic", latency: "medium", quality: "strong", benchmark: "Synthesis & Simulation", role: "Secondary Auditor" },
+  { id: "claude-opus-4.6", label: "Opus 4.6", family: "Claude", provider: "anthropic", latency: "high", quality: "elite", benchmark: "Deep Curriculum", role: "Deep Curriculum Architect" },
+
+  // Google
+  { id: "gemini-3.1-pro-high", label: "Gemini 3.1 Pro (High)", family: "Gemini", provider: "google", latency: "medium", quality: "elite", benchmark: "Context & Search", role: "Matrix Core Insight" },
+  { id: "gemini-3.1-pro-low", label: "Gemini 3.1 Pro (Low)", family: "Gemini", provider: "google", latency: "low", quality: "strong", benchmark: "Fast Orchestration", role: "Real-time Coordinator" },
+  { id: "gemini-3.0-flash", label: "Gemini 3 Flash", family: "Gemini", provider: "google", latency: "low", quality: "good", benchmark: "Quick Drills & Reflex", role: "Rapid Support" },
+
+  // Specialist
+  { id: "runway-gen4", label: "Runway Gen-4", family: "Runway", provider: "runway", latency: "high", quality: "elite", benchmark: "Video Generation", role: "Media Specialist" },
+  { id: "imagen-4", label: "Imagen 4", family: "Imagen", provider: "google", latency: "medium", quality: "strong", benchmark: "Image Generation", role: "Visual Specialist" },
+  { id: "elevenlabs-studio", label: "11Labs Studio", family: "ElevenLabs", provider: "elevenlabs", latency: "low", quality: "strong", benchmark: "Voice Generation", role: "Audio Specialist", unavailable: true },
 ];
 
 export const CHAMBER_TASKS: Record<ChamberTab, TaskType[]> = {
@@ -74,6 +105,7 @@ export const DEFAULT_TASK_BY_CHAMBER: Record<ChamberTab, TaskType> = {
 
 export const DEFAULT_MODEL_BY_TASK: Record<TaskType, string> = {
   creation_artifact: "gpt-5.3-creator",
+  creation_artifact: "gpt-5.4-creator",
   creation_image: "imagen-4",
   creation_video: "runway-gen4",
   creation_voice: "elevenlabs-studio",
@@ -106,6 +138,35 @@ export const FALLBACK_CHAIN_BY_TASK: Record<TaskType, string[]> = {
 
 export function getModelPool(chamber: ChamberTab): ModelDescriptor[] {
   return MODEL_REGISTRY.filter((m) => m.chamber === chamber);
+  school_tutor: "gpt-5.4-tutor",
+  school_curriculum: "claude-opus-4.6",
+  school_assessment: "gemini-3.0-flash",
+  lab_research: "gemini-3.1-pro-high",
+  lab_analysis: "claude-sonnet-5.0",
+  lab_simulation: "claude-sonnet-5.0",
+  lab_code: "gpt-5.4-codex",
+  lab_audit: "gpt-5.4-codex",
+};
+
+export const FALLBACK_CHAIN_BY_TASK: Record<TaskType, string[]> = {
+  creation_artifact: ["gpt-5.4-creator", "gemini-3.1-pro-high"],
+  creation_image: ["imagen-4", "gpt-5.4-creator"],
+  creation_video: ["runway-gen4", "gpt-5.4-creator"],
+  creation_voice: ["elevenlabs-studio", "gpt-5.4-creator"],
+  creation_music: ["elevenlabs-studio", "gpt-5.4-creator"],
+  school_tutor: ["gpt-5.4-tutor", "gemini-3.1-pro-low"],
+  school_curriculum: ["claude-opus-4.6", "gpt-5.4-tutor"],
+  school_assessment: ["gemini-3.0-flash", "gpt-5.4-tutor"],
+  lab_research: ["gemini-3.1-pro-high", "gpt-5.4-codex"],
+  lab_analysis: ["claude-sonnet-5.0", "gemini-3.1-pro-high"],
+  lab_simulation: ["claude-sonnet-5.0", "gpt-5.4-codex"],
+  lab_code: ["gpt-5.4-codex", "claude-sonnet-5.0"],
+  lab_audit: ["gpt-5.4-codex", "gemini-3.1-pro-high"],
+};
+
+export function getModelPool(_chamber: ChamberTab): ModelDescriptor[] {
+  // All models are available in the matrix pool, selection depends on user assignment.
+  return MODEL_REGISTRY;
 }
 
 export function resolveExecutionPlan(chamber: ChamberTab, task: TaskType, requestedModelId?: string) {
