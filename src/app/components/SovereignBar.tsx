@@ -30,11 +30,11 @@ interface SovereignBarProps {
   onManageMatrix?: () => void;
 }
 
-const TABS: { id: Tab; label: string; dot: string }[] = [
-  { id: "lab",      label: "Lab",      dot: "var(--r-accent)" },
-  { id: "school",   label: "School",   dot: "var(--r-ok)"     },
-  { id: "creation", label: "Creation", dot: "var(--r-warn)"   },
-  { id: "profile",  label: "Profile",  dot: "var(--r-pulse)"  },
+const TABS: { id: Tab; label: string }[] = [
+  { id: "lab",      label: "Lab"      },
+  { id: "school",   label: "School"   },
+  { id: "creation", label: "Creation" },
+  { id: "profile",  label: "Profile"  },
 ];
 
 function RubMark() {

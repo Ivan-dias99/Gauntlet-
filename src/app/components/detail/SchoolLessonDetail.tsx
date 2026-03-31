@@ -3,7 +3,7 @@
  */
 import { type NavFn } from "../shell-types";
 import { getLesson, getExperiment, getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, DetailPage, PrimaryAction, SecondaryAction } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
 
 interface Props { lessonId: string; navigate: NavFn; onStartChat: (p: string) => void; }
 
