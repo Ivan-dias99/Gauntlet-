@@ -457,6 +457,13 @@ export function routeIntelligenceRequest(
   };
 }
 
+export function recommendedConnectorsForChamber(fabric: RuntimeFabric, chamber: Tab): string[] {
+  return fabric.intelligence.connectorRegistry
+    .filter((connector) => connector.organs.includes(chamber))
+    .slice(0, 3)
+    .map((connector) => connector.id);
+}
+
 export function upsertWorkflowTemplate(fabric: RuntimeFabric, template: WorkflowTemplate): RuntimeFabric {
   const idx = fabric.intelligence.workflowTemplates.findIndex((item) => item.id === template.id);
   if (idx === -1) {
