@@ -253,7 +253,7 @@ export function SovereignBar({
                     borderRadius: "6px",
                     boxShadow: "0 2px 5px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.08)",
                   }}
-                  transition={{ type: "spring", stiffness: 500, damping: 42, stiffness: 500, damping: 42, stiffness: 500, damping: 42, stiffness: 500, damping: 42 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
                 />
               )}
               {/* Chamber color dot — always present, full opacity when active */}
