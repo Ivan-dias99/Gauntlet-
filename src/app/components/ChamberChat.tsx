@@ -316,83 +316,83 @@ function ProvenanceTrace({
   const tierLabel   = msgTruth?.tier_label  ?? sovereign.tier_label;
   const modelLabel  = msgTruth?.model_label ?? sovereign.model_label;
   const tierColor   = TIER_COLOR[tier];
+  const accentStr   = leadPioneer?.accent ?? "var(--r-dim)";
 
   return (
     <div
       style={{
-        display:    "flex",
-        alignItems: "center",
-        gap:        "5px",
-        marginBottom: "7px",
-        flexWrap:   "wrap",
+        display:      "flex",
+        alignItems:   "center",
+        gap:          "4px",
+        marginBottom: "8px",
+        flexWrap:     "wrap",
       }}
     >
-      {/* Lead pioneer chip */}
+      {/* Lead pioneer chip — compact */}
       {leadPioneer && (
         <span
           style={{
-            fontSize:    "8px",
-            fontFamily:  "'JetBrains Mono', monospace",
-            letterSpacing: "0.08em",
-            color:       leadPioneer.accent,
-            background:  `${leadPioneer.accent}10`,
-            border:      `1px solid ${leadPioneer.accent}22`,
-            borderRadius: "3px",
-            padding:     "1px 6px",
-            userSelect:  "none",
+            fontSize:      "7.5px",
+            fontFamily:    "'JetBrains Mono', monospace",
+            letterSpacing: "0.07em",
+            color:         accentStr,
+            background:    accentStr + "0d",
+            border:        "1px solid " + accentStr + "20",
+            borderRadius:  "3px",
+            padding:       "1px 5px",
+            userSelect:    "none",
           }}
         >
-          {leadPioneer.name}
+          {leadPioneer.short_role}
         </span>
       )}
-      {/* Execution tier — the honest truth */}
+      {/* Execution tier — honest, tooltip explains */}
       <span
         style={{
-          fontSize:    "8px",
-          fontFamily:  "'JetBrains Mono', monospace",
+          fontSize:      "7.5px",
+          fontFamily:    "'JetBrains Mono', monospace",
           letterSpacing: "0.07em",
-          color:       tierColor,
-          border:      `1px solid ${tierColor}28`,
-          borderRadius: "3px",
-          padding:     "1px 5px",
-          userSelect:  "none",
-          textTransform: "uppercase",
+          color:         tierColor,
+          border:        "1px solid " + tierColor + "28",
+          borderRadius:  "3px",
+          padding:       "1px 5px",
+          userSelect:    "none",
+          textTransform: "uppercase" as const,
         }}
         title={
-          tier === "A" ? "Running locally or in self-hosted runtime" :
-          tier === "B" ? "Routing to free external provider — not guaranteed" :
-          "Pioneer behavior via routing contracts — no live model"
+          tier === "A" ? "Local/hosted runtime" :
+          tier === "B" ? "Wrapped free provider — not guaranteed" :
+          "Proxy — no live model"
         }
       >
         {tierLabel}
       </span>
-      {/* Model label */}
+      {/* Model — compact */}
       <span
         style={{
-          fontSize:    "8px",
-          fontFamily:  "'JetBrains Mono', monospace",
-          letterSpacing: "0.05em",
-          color:       "var(--r-dim)",
-          userSelect:  "none",
+          fontSize:      "7.5px",
+          fontFamily:    "'JetBrains Mono', monospace",
+          letterSpacing: "0.04em",
+          color:         "var(--r-dim)",
+          userSelect:    "none",
         }}
       >
         {modelLabel}
       </span>
-      {/* Support chain (compact) */}
+      {/* Support chain (compact — first only) */}
       {contract.support_pioneers.length > 0 && (
         <span
           style={{
-            fontSize:    "8px",
-            fontFamily:  "'JetBrains Mono', monospace",
+            fontSize:      "7.5px",
+            fontFamily:    "'JetBrains Mono', monospace",
             letterSpacing: "0.04em",
             color:       "var(--r-dim)",
             userSelect:  "none",
             opacity:     0.7,
           }}
         >
-          + {contract.support_pioneers
-              .map((id) => getPioneer(id)?.name ?? id)
-              .join(" · ")}
+          + {getPioneer(contract.support_pioneers[0])?.short_role ?? contract.support_pioneers[0]}
+            {contract.support_pioneers.length > 1 && ` +${contract.support_pioneers.length - 1}`}
         </span>
       )}
     </div>
