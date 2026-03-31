@@ -37,6 +37,7 @@ import {
   markSignalRead,
   pushSignal,
   recordRuntimeMessageObject,
+  recommendedConnectorsForChamber,
   recommendContinuityActions,
   resumeContinuity,
   routeIntelligenceRequest,
