@@ -4,7 +4,7 @@
  * with Make-environment streaming via Supabase edge function.
  */
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
 import { SovereignBar } from "./components/SovereignBar";
@@ -515,17 +515,8 @@ export default function App() {
   }, []);
 
   const isLive = Object.values(signals).some((s) => s === "streaming");
-  const [searchOpen, setSearchOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [searchChamberFilter, setSearchChamberFilter] = useState<"all" | ChamberTab>("all");
-  const [searchLifecycleFilter, setSearchLifecycleFilter] = useState<"all" | string>("all");
-  const searchIndex = buildSearchIndex(runtimeFabric);
-  const filteredObjects = searchIndex.filter((entry) =>
-    (searchChamberFilter === "all" || entry.chamber === searchChamberFilter) &&
-    (!searchText.trim() || entry.searchableText.includes(searchText.toLowerCase())) &&
-    (searchLifecycleFilter === "all" || entry.status === searchLifecycleFilter)
-  ).slice(0, 12);
+  const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
@@ -570,7 +561,7 @@ export default function App() {
         isLive={isLive}
         theme={theme}
         onThemeToggle={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-        onSearchToggle={() => setSearchOpen((v) => !v)}
+        onSearchToggle={() => setCmdOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
         hasSignals={hasSignals}
       />
@@ -704,61 +695,6 @@ export default function App() {
         </main>
       </div>
 
-      {searchOpen && (
-        <div style={{ position: "absolute", top: 48, right: 18, width: 360, background: "var(--r-surface)", border: "1px solid var(--r-border)", borderRadius: "8px", zIndex: 60, padding: "10px" }}>
-          <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search objects, tags, chambers…" style={{ width: "100%", border: "1px solid var(--r-border)", borderRadius: "6px", padding: "8px", fontSize: "12px", marginBottom: "8px", background: "var(--r-bg)" }} />
-          <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
-            <select value={searchChamberFilter} onChange={(e) => setSearchChamberFilter(e.target.value as "all" | ChamberTab)} style={{ flex: 1, border: "1px solid var(--r-border)", borderRadius: "5px", background: "var(--r-bg)", fontSize: "10px", fontFamily: "monospace", height: "24px" }}>
-              <option value="all">all chambers</option>
-              <option value="school">school</option>
-              <option value="lab">lab</option>
-              <option value="creation">creation</option>
-            </select>
-            <select value={searchLifecycleFilter} onChange={(e) => setSearchLifecycleFilter(e.target.value)} style={{ flex: 1, border: "1px solid var(--r-border)", borderRadius: "5px", background: "var(--r-bg)", fontSize: "10px", fontFamily: "monospace", height: "24px" }}>
-              <option value="all">all lifecycle</option>
-              <option value="in_progress">in_progress</option>
-              <option value="paused">paused</option>
-              <option value="blocked">blocked</option>
-              <option value="completed">completed</option>
-              <option value="transferred">transferred</option>
-            </select>
-          </div>
-          <div style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
-            {filteredObjects.map((obj) => (
-              <button
-                key={obj.id}
-                onClick={() => {
-                  if (obj.action_route) {
-                    navigate(obj.action_route.tab, obj.action_route.view, obj.action_route.id);
-                  } else {
-                    navigate(obj.route.tab, obj.route.view, obj.route.id);
-                  }
-                  setSearchOpen(false);
-                }}
-                style={{
-                  textAlign: "left",
-                  border: "1px solid var(--r-border)",
-                  background: "var(--r-bg)",
-                  borderRadius: "6px",
-                  padding: "8px",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column"
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
-                  <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.chamber}</span>
-                </div>
-                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>
-                  {obj.kind || obj.type} · {obj.status ?? "active"}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {signalsOpen && (
         <div style={{ position: "absolute", top: 48, right: 390, width: 300, background: "var(--r-surface)", border: "1px solid var(--r-border)", borderRadius: "8px", zIndex: 60, padding: "10px" }}>
           <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)" }}>Signals</p>
@@ -813,10 +749,10 @@ export default function App() {
       </div>
 
       <GlobalCommandPalette
-        isOpen={cmdOpen}
+        open={cmdOpen}
         onClose={() => setCmdOpen(false)}
-        activeTab={activeTab}
-        onNavigate={navigate}
+        navigate={navigate}
+        searchIndex={searchIndex}
       />
 
       <FloatingNoteSystem
