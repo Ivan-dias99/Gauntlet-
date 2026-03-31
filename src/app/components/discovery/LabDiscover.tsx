@@ -165,7 +165,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
       subtitle: "Verify, review, source-check",
       itemCount: 5,
       icon: <FileSearch size={14} color={R.lab} strokeWidth={1.5} />,
-      onClick: () => navigate("lab", "analysis"),
+      onClick: () => navigate("lab", "archive"),
     },
     {
       id: "t5",

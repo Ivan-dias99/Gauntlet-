@@ -10,7 +10,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { type NavFn } from "./shell-types";
 import { LAB_DOMAINS, SCHOOL_TRACKS, SCHOOL_ROLES, CREATION_BLUEPRINTS, CREATION_ENGINES } from "./product-data";
 
-// ─── Entry types ──────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const DEFAULT_RESULT_LIMIT = 18;
 
 interface CmdEntry {
   id:      string;
@@ -148,7 +150,7 @@ export function GlobalCommandPalette({ open, onClose, navigate }: GlobalCommandP
           e.label.toLowerCase().includes(query.toLowerCase()) ||
           e.meta.toLowerCase().includes(query.toLowerCase())
       )
-    : entries.slice(0, 18);
+    : entries.slice(0, DEFAULT_RESULT_LIMIT);
 
   // Group by chamber
   const labs      = filtered.filter((e) => e.chamber === "lab");

@@ -189,8 +189,8 @@ const engineIcons: Record<string, React.ReactNode> = {
 const monetizationPaths = [
   { id: "m1", blueprintId: "tech-deep-dive", title: "Digital Product System",      subtitle: "Ebook, course, toolkit, prompt pack",   itemCount: 14, icon: <Package   size={14} color={R.creation} strokeWidth={1.5} /> },
   { id: "m2", blueprintId: "exec-brief",     title: "Freelance Service Packaging", subtitle: "Proposals, offers, deliverables",        itemCount: 9,  icon: <Briefcase size={14} color={R.creation} strokeWidth={1.5} /> },
-  { id: "m3", blueprintId: "ai-agent",       title: "Creator Revenue Engine",      subtitle: "Content monetization systems",           itemCount: 11, icon: <DollarSign size={14} color={R.creation} strokeWidth={1.5} /> },
-  { id: "m4", blueprintId: "ai-interface",   title: "Launch Canvas",               subtitle: "Go-to-market build framework",           itemCount: 7,  icon: <Rocket    size={14} color={R.creation} strokeWidth={1.5} /> },
+  { id: "m3", blueprintId: "exec-brief",     title: "Creator Revenue Engine",      subtitle: "Content monetization systems",           itemCount: 11, icon: <DollarSign size={14} color={R.creation} strokeWidth={1.5} /> },
+  { id: "m4", blueprintId: "tech-deep-dive", title: "Launch Canvas",               subtitle: "Go-to-market build framework",           itemCount: 7,  icon: <Rocket    size={14} color={R.creation} strokeWidth={1.5} /> },
 ];
 
 const artifactPacks = [
