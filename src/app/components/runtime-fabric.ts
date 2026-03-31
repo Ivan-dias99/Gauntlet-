@@ -1,5 +1,14 @@
 import { RUBERRA_OBJECTS, buildMessageObject, type RuberraObject } from "./object-graph";
 import { type Message, type Tab } from "./shell-types";
+import {
+  defaultIntelligenceFoundationState,
+  resolveRouteDecision,
+  type IntelligenceFoundationState,
+  type PresenceMetadata,
+  type ProvenanceTraceEvent,
+  type RouteDecisionInput,
+  type WorkflowTemplate,
+} from "./intelligence-foundation";
 
 export type LifecycleStatus =
   | "draft"
@@ -22,6 +31,12 @@ export interface ContinuityItem {
   status: LifecycleStatus;
   route: { tab: Exclude<Tab, "profile">; view: string; id?: string };
   linkedObjectId?: string;
+  workflowId?: string;
+  pioneerId?: string;
+  giId?: string;
+  hostingLevel?: "hosted" | "wrapped" | "proxy";
+  connectorRefs?: string[];
+  routeReason?: string;
   transferDestinations: Exclude<Tab, "profile">[];
   updatedAt: number;
 }
@@ -136,6 +151,7 @@ export interface RuntimeFabric {
   aiSettings: AISettingsState;
   plugins: PluginRuntimeState[];
   workspace: WorkspaceKnowledge;
+  intelligence: IntelligenceFoundationState;
 }
 
 const STORAGE_KEY = "ruberra_runtime_fabric_v2";
@@ -190,6 +206,7 @@ function initialFabric(): RuntimeFabric {
     aiSettings: DEFAULT_AI_SETTINGS,
     plugins: DEFAULT_PLUGINS,
     workspace: DEFAULT_WORKSPACE,
+    intelligence: defaultIntelligenceFoundationState(),
   };
 }
 
@@ -208,6 +225,7 @@ export function loadRuntimeFabric(): RuntimeFabric {
       aiSettings: parsed.aiSettings ?? DEFAULT_AI_SETTINGS,
       plugins: parsed.plugins?.length ? parsed.plugins : DEFAULT_PLUGINS,
       workspace: parsed.workspace ?? DEFAULT_WORKSPACE,
+      intelligence: parsed.intelligence ?? defaultIntelligenceFoundationState(),
     };
   } catch {
     return initialFabric();
@@ -382,6 +400,82 @@ export function updateWorkspaceKnowledge(fabric: RuntimeFabric, patch: Partial<W
   return {
     ...fabric,
     workspace: { ...fabric.workspace, ...patch, updatedAt: Date.now() },
+  };
+}
+
+export function patchPresenceMetadata(fabric: RuntimeFabric, patch: Partial<PresenceMetadata>): RuntimeFabric {
+  return {
+    ...fabric,
+    intelligence: {
+      ...fabric.intelligence,
+      presence: { ...fabric.intelligence.presence, ...patch },
+    },
+  };
+}
+
+export function recordProvenanceEvent(
+  fabric: RuntimeFabric,
+  payload: Omit<ProvenanceTraceEvent, "id" | "timestamp">,
+): RuntimeFabric {
+  const event: ProvenanceTraceEvent = {
+    ...payload,
+    id: crypto.randomUUID(),
+    timestamp: Date.now(),
+  };
+  return {
+    ...fabric,
+    intelligence: {
+      ...fabric.intelligence,
+      traceEvents: [event, ...fabric.intelligence.traceEvents].slice(0, 500),
+    },
+  };
+}
+
+export function routeIntelligenceRequest(
+  fabric: RuntimeFabric,
+  input: RouteDecisionInput,
+): { fabric: RuntimeFabric; chamber: Tab; pioneerId: string; giId: string; reason: string } {
+  const decision = resolveRouteDecision(fabric.intelligence, input);
+  let next = patchPresenceMetadata(fabric, {
+    chamber: decision.chamber,
+    leaderType: "pioneer",
+    leaderId: decision.pioneerId,
+  });
+  next = recordProvenanceEvent(next, {
+    sourceType: "pioneer",
+    sourceId: decision.pioneerId,
+    chamber: decision.chamber,
+    action: "route_decision",
+    metadata: { giId: decision.giId, reason: decision.reason },
+  });
+  return {
+    fabric: next,
+    chamber: decision.chamber,
+    pioneerId: decision.pioneerId,
+    giId: decision.giId,
+    reason: decision.reason,
+  };
+}
+
+export function upsertWorkflowTemplate(fabric: RuntimeFabric, template: WorkflowTemplate): RuntimeFabric {
+  const idx = fabric.intelligence.workflowTemplates.findIndex((item) => item.id === template.id);
+  if (idx === -1) {
+    return {
+      ...fabric,
+      intelligence: {
+        ...fabric.intelligence,
+        workflowTemplates: [template, ...fabric.intelligence.workflowTemplates],
+      },
+    };
+  }
+  const nextTemplates = [...fabric.intelligence.workflowTemplates];
+  nextTemplates[idx] = template;
+  return {
+    ...fabric,
+    intelligence: {
+      ...fabric.intelligence,
+      workflowTemplates: nextTemplates,
+    },
   };
 }
 

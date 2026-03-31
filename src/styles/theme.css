@@ -114,19 +114,20 @@
   --r-warn:        #9e8a42;
   --r-err:         #8c4a4a;
   --r-pulse:       #5d9467;
-  --rt-bg:         #0B0B0C;
-  --rt-surface:    #121213;
-  --rt-border:     #222124;
+  --rt-bg:         #1a1714;
+  --rt-surface:    #201d19;
+  --rt-border:     #2c2822;
   --rt-border2:    #2C2B2E;
-  --rt-text:       #C8C5C2;
+  --rt-text:       #ccc5ba;
   --rt-dim:        #6B6764;
   --rt-dim2:       #423F3D;
-  --rt-amber:      #B38234;
+  --rt-subtext:    #7a6f62;
+  --rt-amber:      #b8862a;
   --rt-amberDim:   #735624;
   --rt-amberBg:    rgba(179, 130, 52, 0.15);
-  --rt-ok:         #448054;
+  --rt-ok:         #5a8c5a;
   --rt-okBg:       rgba(68, 128, 84, 0.15);
-  --rt-err:        #AB4E4E;
+  --rt-err:        #8c4040;
   --rt-errBg:      rgba(171, 78, 78, 0.15);
   --rt-pink:       #A87389;
   --rt-cyan:       #5C9598;
@@ -187,35 +188,6 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-
-  /* ── RUBERRA dark mode ── */
-  [data-theme="dark"] {
-    --r-bg:          #0e0d0c;
-    --r-surface:     #151412;
-    --r-rail:        #110f0e;
-    --r-elevated:    #1c1a18;
-    --r-border:      #252220;
-    --r-border-soft: #1e1c1a;
-    --r-text:        #e4e0d8;
-    --r-subtext:     #7a756d;
-    --r-dim:         #3d3a36;
-    --r-muted:       #4a4640;
-    --r-accent:      #7c74c0;
-    --r-accent-soft: #5c5699;
-    --r-accent-dim:  #2e2a55;
-    --r-ok:          #5d9467;
-    --r-warn:        #9e8a42;
-    --r-err:         #8c4a4a;
-    --r-pulse:       #5d9467;
-    --rt-bg:         #1a1714;
-    --rt-surface:    #201d19;
-    --rt-border:     #2c2822;
-    --rt-text:       #ccc5ba;
-    --rt-subtext:    #7a6f62;
-    --rt-amber:      #b8862a;
-    --rt-ok:         #5a8c5a;
-    --rt-err:        #8c4040;
-  }
 }
 
 @theme inline {

@@ -440,6 +440,13 @@ function AssistantMessage({
     >
       <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
+      {(msg.meta?.pioneerId || msg.meta?.workflowId) && (
+        <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
+          {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.pioneerId}</span>}
+          {msg.meta?.workflowId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.workflowId}</span>}
+          {msg.meta?.hostingLevel && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{msg.meta.hostingLevel}</span>}
+        </div>
+      )}
       {msg.blocks && msg.blocks.length > 0 ? (
         <BlockRenderer blocks={msg.blocks} />
       ) : msg.content ? (
@@ -476,6 +483,10 @@ function StatusStrip({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "var(--r-dim)" }}>
+          {chamberLabel}
+        </span>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.08em", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-dim)" }}>
           {chamberLabel}
         </span>
@@ -825,6 +836,7 @@ export function ChamberChat({
       </div>
 
       {/* Status */}
+      <StatusStrip execStatus={execStatus} onCancel={onCancel} accent={config.accent} chamberLabel={chamberLabel} modelBadge={modelId} />
       <StatusStrip
         execStatus={execStatus}
         onCancel={onCancel}
