@@ -5,6 +5,7 @@
  */
 
 import { useState } from "react";
+import { motion } from "motion/react";
 import { type MessageBlock, type StatusFlag, type BlockType } from "./shell-types";
 
 // ─── Status system ────────────────────────────────────────────────────────────
@@ -66,22 +67,23 @@ function StatusChip({ status }: { status: StatusFlag }) {
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: "4px",
-        padding: "1px 6px",
-        borderRadius: "2px",
-        border: `1px solid ${color}33`,
-        background: `${color}12`,
+        gap: "3px",
+        padding: "1px 7px",
+        borderRadius: "3px",
+        border: `1px solid ${color}28`,
+        background: `${color}0e`,
         fontFamily: "'JetBrains Mono', monospace",
         fontSize: "9px",
         fontWeight: 500,
-        letterSpacing: "0.08em",
+        letterSpacing: "0.07em",
         textTransform: "uppercase",
         color,
         flexShrink: 0,
         whiteSpace: "nowrap",
+        lineHeight: 1.6,
       }}
     >
-      <span style={{ fontSize: "8px" }}>{icon}</span>
+      <span style={{ fontSize: "8px", opacity: 0.85 }}>{icon}</span>
       {status}
     </span>
   );
@@ -116,14 +118,14 @@ function BlockHeader({ block }: { block: MessageBlock }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "7px 12px",
+        padding: "8px 14px",
         borderBottom: "1px solid var(--r-border-soft)",
         background: "var(--r-elevated)",
         gap: "10px",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-        <span style={{ color: cfg.color, fontSize: "10px", lineHeight: 1, flexShrink: 0 }}>
+        <span style={{ color: cfg.color, fontSize: "11px", lineHeight: 1, flexShrink: 0, opacity: 0.9 }}>
           {cfg.icon}
         </span>
         <span
@@ -131,19 +133,20 @@ function BlockHeader({ block }: { block: MessageBlock }) {
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: "9px",
             fontWeight: 600,
-            letterSpacing: "0.12em",
+            letterSpacing: "0.11em",
             color: cfg.color,
             flexShrink: 0,
+            textTransform: "uppercase",
           }}
         >
           {cfg.label}
         </span>
         {block.title && (
           <>
-            <span style={{ color: "var(--r-border)", fontSize: "10px", flexShrink: 0 }}>│</span>
+            <span style={{ color: "var(--r-border)", fontSize: "9px", flexShrink: 0, opacity: 0.5 }}>│</span>
             <span
               style={{
-                fontSize: "11.5px",
+                fontSize: "12px",
                 fontWeight: 500,
                 color: "var(--r-text)",
                 fontFamily: "'Inter', system-ui, sans-serif",
@@ -151,6 +154,7 @@ function BlockHeader({ block }: { block: MessageBlock }) {
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                lineHeight: 1.4,
               }}
             >
               {block.title}
@@ -613,11 +617,23 @@ function BlockFooter({ block }: { block: MessageBlock }) {
       }}
     >
       {block.meta?.next && (
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1 }}>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.10em", color: "var(--r-dim)", textTransform: "uppercase", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "8px",
+              letterSpacing: "0.11em",
+              color: "var(--r-dim)",
+              textTransform: "uppercase",
+              flexShrink: 0,
+              border: "1px solid var(--r-border)",
+              borderRadius: "2px",
+              padding: "1px 5px",
+            }}
+          >
             NEXT
           </span>
-          <span style={{ fontSize: "11px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: 1.4 }}>
+          <span style={{ fontSize: "11.5px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {block.meta.next}
           </span>
         </div>
@@ -628,13 +644,14 @@ function BlockFooter({ block }: { block: MessageBlock }) {
             <span
               key={tag}
               style={{
-                padding: "1px 6px",
-                borderRadius: "2px",
+                padding: "1px 7px",
+                borderRadius: "3px",
                 border: "1px solid var(--r-border)",
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: "8px",
                 letterSpacing: "0.06em",
                 color: "var(--r-dim)",
+                lineHeight: 1.6,
               }}
             >
               {tag}
@@ -650,15 +667,16 @@ function BlockFooter({ block }: { block: MessageBlock }) {
 
 function SingleBlock({ block }: { block: MessageBlock }) {
   const [collapsed, setCollapsed] = useState(false);
-  const cfg = TYPE_CONFIG[block.type] ?? { label: block.type.toUpperCase(), color: "var(--r-subtext)", icon: "·" };
 
   return (
     <div
       style={{
         border: "1px solid var(--r-border)",
-        borderRadius: "4px",
+        borderRadius: "6px",
         overflow: "hidden",
         background: "var(--r-surface)",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+        transition: "box-shadow 0.15s ease",
       }}
     >
       <div
@@ -693,14 +711,45 @@ export function InlineMarkdown({ content }: { content: string }) {
     <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
       {lines.map((line, i) => {
         const trimmed = line.trim();
-        if (!trimmed) return <div key={i} style={{ height: "8px" }} />;
+        if (!trimmed) return <div key={i} style={{ height: "7px" }} />;
 
-        // Heading
-        if (/^#{1,3}\s/.test(trimmed)) {
-          const text = trimmed.replace(/^#+\s/, "");
+        // Heading h1
+        if (/^#\s/.test(trimmed)) {
+          const text = trimmed.replace(/^#\s/, "");
+          return (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", margin: "16px 0 6px" }}>
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "var(--r-text)",
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  letterSpacing: "-0.01em",
+                  lineHeight: 1.3,
+                }}
+              >
+                {text}
+              </span>
+              <div style={{ flex: 1, height: "1px", background: "var(--r-border-soft)" }} />
+            </div>
+          );
+        }
+
+        // Heading h2/h3
+        if (/^#{2,3}\s/.test(trimmed)) {
+          const text = trimmed.replace(/^#{2,3}\s/, "");
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px", margin: "12px 0 4px" }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--r-subtext)" }}>
+              <span
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "9px",
+                  letterSpacing: "0.10em",
+                  textTransform: "uppercase",
+                  color: "var(--r-subtext)",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {text}
               </span>
               <div style={{ flex: 1, height: "1px", background: "var(--r-border-soft)" }} />
@@ -711,9 +760,9 @@ export function InlineMarkdown({ content }: { content: string }) {
         // Checklist done
         if (/^\[x\]\s/i.test(trimmed)) {
           return (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "2px 0" }}>
-              <span style={{ color: "var(--r-ok)", fontSize: "10px", fontFamily: "monospace", flexShrink: 0, marginTop: "3px" }}>✓</span>
-              <span style={{ fontSize: "13px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.6", textDecoration: "line-through" }}>
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "2.5px 0" }}>
+              <span style={{ color: "var(--r-ok)", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, marginTop: "4px" }}>✓</span>
+              <span style={{ fontSize: "13.5px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.65", textDecoration: "line-through", letterSpacing: "-0.003em" }}>
                 {trimmed.replace(/^\[x\]\s/i, "")}
               </span>
             </div>
@@ -723,10 +772,10 @@ export function InlineMarkdown({ content }: { content: string }) {
         // Checklist pending
         if (/^\[ \]\s/.test(trimmed)) {
           return (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "2px 0" }}>
-              <span style={{ color: "var(--r-dim)", fontSize: "10px", fontFamily: "monospace", flexShrink: 0, marginTop: "3px" }}>○</span>
-              <span style={{ fontSize: "13px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.6" }}>
-                {trimmed.replace(/^\[ \]\s/, "")}
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "2.5px 0" }}>
+              <span style={{ color: "var(--r-dim)", fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, marginTop: "5px" }}>○</span>
+              <span style={{ fontSize: "13.5px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.65", letterSpacing: "-0.003em" }}>
+                <RenderInline text={trimmed.replace(/^\[ \]\s/, "")} />
               </span>
             </div>
           );
@@ -737,8 +786,8 @@ export function InlineMarkdown({ content }: { content: string }) {
           const text = trimmed.replace(/^[-*•]\s/, "");
           return (
             <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "2px 0" }}>
-              <span style={{ color: "var(--r-dim)", fontSize: "9px", fontFamily: "monospace", flexShrink: 0, marginTop: "5px" }}>–</span>
-              <span style={{ fontSize: "13px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.6" }}>
+              <span style={{ color: "var(--r-dim)", fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, marginTop: "6px" }}>–</span>
+              <span style={{ fontSize: "13.5px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.65", letterSpacing: "-0.003em" }}>
                 <RenderInline text={text} />
               </span>
             </div>
@@ -750,9 +799,9 @@ export function InlineMarkdown({ content }: { content: string }) {
           const num  = trimmed.match(/^(\d+)/)?.[1];
           const text = trimmed.replace(/^\d+\.\s/, "");
           return (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "2px 0" }}>
-              <span style={{ color: "var(--r-subtext)", fontSize: "10px", fontFamily: "monospace", flexShrink: 0, marginTop: "3px", minWidth: "16px" }}>{num}.</span>
-              <span style={{ fontSize: "13px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.6" }}>
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "9px", padding: "2px 0" }}>
+              <span style={{ color: "var(--r-subtext)", fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, marginTop: "3px", minWidth: "18px", textAlign: "right" }}>{num}.</span>
+              <span style={{ fontSize: "13.5px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.65", letterSpacing: "-0.003em" }}>
                 <RenderInline text={text} />
               </span>
             </div>
@@ -761,7 +810,7 @@ export function InlineMarkdown({ content }: { content: string }) {
 
         // Normal paragraph
         return (
-          <p key={i} style={{ fontSize: "13.5px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.72", margin: "2px 0" }}>
+          <p key={i} style={{ fontSize: "13.5px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.72", margin: "2px 0", letterSpacing: "-0.003em" }}>
             <RenderInline text={trimmed} />
           </p>
         );
@@ -771,17 +820,28 @@ export function InlineMarkdown({ content }: { content: string }) {
 }
 
 function RenderInline({ text }: { text: string }) {
-  // Split on bold `**`, code `` ` ``, and italic `*`
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g);
   return (
     <>
       {parts.map((part, i) => {
         if (/^\*\*[^*]+\*\*$/.test(part)) {
-          return <strong key={i} style={{ fontWeight: 600, color: "var(--r-text)" }}>{part.slice(2, -2)}</strong>;
+          return <strong key={i} style={{ fontWeight: 600, color: "var(--r-text)", letterSpacing: "-0.01em" }}>{part.slice(2, -2)}</strong>;
         }
         if (/^`[^`]+`$/.test(part)) {
           return (
-            <code key={i} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11.5px", background: "var(--r-elevated)", border: "1px solid var(--r-border-soft)", padding: "0 4px", borderRadius: "3px", color: "var(--r-accent-soft)" }}>
+            <code
+              key={i}
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "12px",
+                background: "var(--r-elevated)",
+                border: "1px solid var(--r-border-soft)",
+                padding: "0 5px",
+                borderRadius: "4px",
+                color: "var(--r-accent-soft)",
+                lineHeight: 1.5,
+              }}
+            >
               {part.slice(1, -1)}
             </code>
           );
@@ -801,7 +861,14 @@ export function BlockRenderer({ blocks }: { blocks: MessageBlock[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
       {blocks.map((block, i) => (
-        <SingleBlock key={i} block={block} />
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.26, delay: i * 0.04, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <SingleBlock block={block} />
+        </motion.div>
       ))}
     </div>
   );

@@ -19,7 +19,7 @@ const LAB_CONFIG: ChamberConfig = {
   label:       "Lab",
   tagline:     "Operational research. No guardrails.",
   placeholder: "Query the Lab…",
-  accent:      "var(--r-accent)",
+  accent:      "#52796A",
   glyph:       <LabGlyph />,
 };
 
