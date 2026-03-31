@@ -224,6 +224,16 @@ export default function App() {
     const selectedModelId = plan.selectedModel?.id ?? requestedModelId;
     if (selectedModelId !== requestedModelId) {
       setActiveModels((prev) => ({ ...prev, [tab]: selectedModelId }));
+      if (plan.fallbackReason) {
+        setRuntimeFabric((prev) => pushSignal(prev, {
+          type: "recommendation",
+          label: plan.fallbackReason,
+          severity: "warn",
+          sourceChamber: tab,
+          destinationChamber: tab,
+          destination: { tab, view: tab === "creation" ? "terminal" : "chat" },
+        }));
+      }
     }
 
     abortRefs.current[tab]?.abort();
@@ -250,6 +260,7 @@ export default function App() {
       chamber: tab,
       status: "in_progress",
       route: { tab, view: tab === "creation" ? "terminal" : "chat" },
+      linkedObjectId: assistantId,
     }));
     setMessages((prev) => ({
       ...prev,
@@ -436,7 +447,7 @@ export default function App() {
   const [searchLifecycleFilter, setSearchLifecycleFilter] = useState<"all" | string>("all");
   const filteredObjects = runtimeFabric.objects.filter((obj) =>
     (searchChamberFilter === "all" || obj.chamber === searchChamberFilter) &&
-    (!searchText.trim() || obj.title.toLowerCase().includes(searchText.toLowerCase()) || obj.tags.join(" ").includes(searchText.toLowerCase())) &&
+    (!searchText.trim() || obj.title.toLowerCase().includes(searchText.toLowerCase()) || obj.tags.join(" ").toLowerCase().includes(searchText.toLowerCase())) &&
     (searchLifecycleFilter === "all" || runtimeFabric.continuity.some((c) => c.linkedObjectId === obj.id && c.status === searchLifecycleFilter))
   ).slice(0, 12);
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
