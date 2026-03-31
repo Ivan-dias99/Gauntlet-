@@ -860,6 +860,9 @@ export function RuberraTerminal({
               running
             </motion.span>
           )}
+          <span style={{ fontSize: "9px", fontFamily: "monospace", color: T.dim2 }}>
+            {messages.length > 0 ? `${messages.filter(m => m.role === "assistant").length} outputs` : "0 outputs"}
+          </span>
           <AnimatePresence>
             {isLoading && (
               <motion.span
