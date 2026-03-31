@@ -15,10 +15,6 @@ const CHAMBER_DOTS: Record<Tab, string> = {
   school:   "#4A6B84",  // slate
   creation: "#8A6238",  // amber-earth
   profile:  "#7A756D",  // neutral-warm
-  lab:      "#52796A",
-  school:   "#4A6B84",
-  creation: "#8A6238",
-  profile:  "#7A756D",
 };
 
 interface SovereignBarProps {
@@ -30,14 +26,7 @@ interface SovereignBarProps {
   onThemeToggle?: () => void;
   onSearchToggle?: () => void;
   onSignalsToggle?: () => void;
-  hasSignals?: boolean;
-}
-
-const TABS: { id: Tab; label: string; dot: string }[] = [
-  { id: "lab",      label: "Lab",      dot: "var(--r-accent)" },
-  { id: "school",   label: "School",   dot: "var(--r-ok)"     },
-  { id: "creation", label: "Creation", dot: "var(--r-warn)"   },
-  { id: "profile",  label: "Profile",  dot: "var(--r-pulse)"  },
+  hasSignals?:    boolean;
   onManageMatrix?: () => void;
 }
 
@@ -116,7 +105,6 @@ function IconBtn({
 }
 
 export function SovereignBar({
-  activeTab, onTabChange, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals,
   activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals, onManageMatrix,
 }: SovereignBarProps) {
   const [isLedgerOpen, setLedgerOpen] = useState(false);
@@ -265,7 +253,7 @@ export function SovereignBar({
                     borderRadius: "6px",
                     boxShadow: "0 2px 5px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.08)",
                   }}
-                  transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 42, stiffness: 500, damping: 42, stiffness: 500, damping: 42, stiffness: 500, damping: 42 }}
                 />
               )}
               {/* Chamber color dot — always present, full opacity when active */}
