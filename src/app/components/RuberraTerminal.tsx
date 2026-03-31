@@ -7,6 +7,8 @@
 import { useRef, useEffect, useState, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Message } from "./shell-types";
+import { ModelSelector } from "./ModelSelector";
+import { type ChamberTab, type TaskType } from "./model-orchestration";
 
 // ─── Terminal Color System ────────────────────────────────────────────────────
 
@@ -697,13 +699,18 @@ export interface RuberraTerminalProps {
   onSend:       (v: string) => void;
   onCancel:     () => void;
   chamberLabel: string;
+  chamber: ChamberTab;
+  task: TaskType;
+  modelId: string;
+  onTaskChange: (task: TaskType) => void;
+  onModelChange: (modelId: string) => void;
   placeholder?: string;
   elapsedLabel?: string;
 }
 
 export function RuberraTerminal({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  chamberLabel, placeholder = "Enter directive…", elapsedLabel,
+  chamberLabel, chamber, task, modelId, onTaskChange, onModelChange, placeholder = "Enter directive…", elapsedLabel,
 }: RuberraTerminalProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -773,6 +780,14 @@ export function RuberraTerminal({
           ruberra — {chamberLabel.toLowerCase()} — {messages.length > 0 ? `${messages.filter(m => m.role === "user").length} commands` : "ready"}
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <ModelSelector
+            chamber={chamber}
+            task={task}
+            modelId={modelId}
+            onTaskChange={onTaskChange}
+            onModelChange={onModelChange}
+            mode="terminal"
+          />
           {isLoading && (
             <motion.span
               animate={{ opacity: [0.4, 1, 0.4] }}
