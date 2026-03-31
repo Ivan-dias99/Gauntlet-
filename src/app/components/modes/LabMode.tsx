@@ -12,6 +12,7 @@ import { LabDiscover } from "../discovery/LabDiscover";
 import { LabDomainDetail } from "../detail/LabDomainDetail";
 import { LabExperimentDetail } from "../detail/LabExperimentDetail";
 import { RuberraTerminal } from "../RuberraTerminal";
+import { type TaskType } from "../model-orchestration";
 
 const LAB_CONFIG: ChamberConfig = {
   id:          "lab",
@@ -217,7 +218,7 @@ function LabArchive({ messages, navigate }: { messages: Message[]; navigate: Nav
 
 export function LabMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  labView, onLabView, navigate, detailId,
+  labView, onLabView, navigate, detailId, task, modelId, onTaskChange, onModelChange,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -229,6 +230,10 @@ export function LabMode({
   onLabView: (v: LabView) => void;
   navigate: NavFn;
   detailId: string;
+  task: TaskType;
+  modelId: string;
+  onTaskChange: (task: TaskType) => void;
+  onModelChange: (modelId: string) => void;
 }) {
   const showHome = labView === "home" || (!messages.length && labView === "chat");
 
@@ -259,6 +264,11 @@ export function LabMode({
       onSend={onSend}
       onCancel={onCancel}
       chamberLabel="Lab · Code"
+      chamber="lab"
+      task={task}
+      modelId={modelId}
+      onTaskChange={onTaskChange}
+      onModelChange={onModelChange}
       placeholder="Write a code directive, analysis command, or research query…"
     />
   );
@@ -268,6 +278,10 @@ export function LabMode({
       messages={messages} isLoading={isLoading} draft={draft}
       onDraftChange={onDraftChange} onSend={onSend} onCancel={onCancel}
       config={LAB_CONFIG}
+      task={task}
+      modelId={modelId}
+      onTaskChange={onTaskChange}
+      onModelChange={onModelChange}
     />
   );
 }
