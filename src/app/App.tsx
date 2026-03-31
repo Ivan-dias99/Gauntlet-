@@ -509,6 +509,7 @@ export default function App() {
         onSearchToggle={() => setSearchOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
         hasSignals={hasSignals}
+        onManageMatrix={() => navigate("profile", "settings")}
       />
 
       {/* Body */}

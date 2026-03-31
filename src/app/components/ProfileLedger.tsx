@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from "motion/react";
 interface ProfileLedgerProps {
   isOpen: boolean;
   onClose: () => void;
+  onManageMatrix?: () => void;
 }
 
-export function ProfileLedger({ isOpen, onClose }: ProfileLedgerProps) {
+export function ProfileLedger({ isOpen, onClose, onManageMatrix }: ProfileLedgerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -105,8 +106,18 @@ export function ProfileLedger({ isOpen, onClose }: ProfileLedgerProps) {
 
           {/* Footer Actions */}
           <div style={{ padding: "10px", borderTop: "1px solid var(--r-border)", background: "var(--r-rail)", display: "flex", gap: "4px" }}>
-            <button style={actionButtonStyle}>Manage Matrix</button>
-            <button style={{ ...actionButtonStyle, background: "rgba(176, 49, 49, 0.08)", color: "#B03131" }}>Disconnect</button>
+            <button
+              style={actionButtonStyle}
+              onClick={() => { onManageMatrix?.(); onClose(); }}
+            >
+              Manage Matrix
+            </button>
+            <button
+              style={{ ...actionButtonStyle, background: "rgba(176, 49, 49, 0.08)", color: "#B03131" }}
+              onClick={onClose}
+            >
+              Disconnect
+            </button>
           </div>
         </motion.div>
       )}
