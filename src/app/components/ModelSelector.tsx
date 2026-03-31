@@ -11,7 +11,6 @@ import {
 
 interface ModelSelectorProps {
   chamber: ChamberTab;
-  chamber: Tab;
   task: TaskType;
   modelId: string;
   onTaskChange: (task: TaskType) => void;
