@@ -20,6 +20,7 @@ interface SovereignBarProps {
   isLive?:        boolean;
   theme?:         Theme;
   onThemeToggle?: () => void;
+  onSearch?:      () => void;
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -96,7 +97,7 @@ function IconBtn({
 }
 
 export function SovereignBar({
-  activeTab, onTabChange, isLive, theme, onThemeToggle,
+  activeTab, onTabChange, isLive, theme, onThemeToggle, onSearch,
 }: SovereignBarProps) {
   return (
     <header
@@ -277,7 +278,7 @@ export function SovereignBar({
         <div style={{ width: "1px", height: "14px", background: "var(--r-border)", margin: "0 5px" }} />
 
         {/* Search */}
-        <IconBtn title="Search (⌘K)">
+        <IconBtn title="Search (⌘K)" onClick={onSearch}>
           <Search size={12} strokeWidth={1.6} />
         </IconBtn>
 

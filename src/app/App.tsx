@@ -10,6 +10,7 @@ import { projectId, publicAnonKey } from "/utils/supabase/info";
 import { SovereignBar } from "./components/SovereignBar";
 import { ShellSideRail } from "./components/ShellSideRail";
 import { FloatingNoteSystem } from "./components/FloatingNoteSystem";
+import { GlobalCommandPalette } from "./components/GlobalCommandPalette";
 import { LabMode } from "./components/modes/LabMode";
 import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
@@ -95,6 +96,20 @@ export default function App() {
 
   // ── Theme ────────────────────────────────────────────────────────────────────
   const [theme, setTheme] = useState<Theme>("light");
+
+  // ── Command palette ───────────────────────────────────────────────────────────
+  const [cmdOpen, setCmdOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     if (theme === "dark") {
@@ -328,6 +343,7 @@ export default function App() {
         isLive={isLive}
         theme={theme}
         onThemeToggle={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+        onSearch={() => setCmdOpen(true)}
       />
 
       {/* Body */}
@@ -469,6 +485,9 @@ export default function App() {
 
       {/* Floating notes layer */}
       <FloatingNoteSystem notes={notes} onChange={updateNote} onRemove={removeNote} />
+
+      {/* Global command palette */}
+      <GlobalCommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} navigate={navigate} />
     </div>
   );
 }
