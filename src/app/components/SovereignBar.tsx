@@ -14,6 +14,7 @@ const CHAMBER_DOTS: Record<Tab, string> = {
   lab:      "#52796A",  // sage
   school:   "#4A6B84",  // slate
   creation: "#8A6238",  // amber-earth
+  profile:  "#7A756D",  // neutral-warm
 };
 
 interface SovereignBarProps {

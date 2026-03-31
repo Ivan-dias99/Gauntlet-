@@ -47,7 +47,6 @@ import {
   updatePreferences,
   updateWorkspaceKnowledge,
   upsertPlugin,
-  updatePreferences,
   upsertConnector,
   exportContinuity,
   type RuntimeFabric,
@@ -508,7 +507,7 @@ export default function App() {
         onThemeToggle={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
         onSearchToggle={() => setSearchOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
-        hasSignals
+        hasSignals={hasSignals}
       />
 
       {/* Body */}
