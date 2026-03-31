@@ -771,7 +771,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
           <motion.div
             animate={{ opacity: isLive ? [0.4, 1, 0.4] : [0.3, 0.7, 0.3] }}
-            transition={{ duration: 0.85 : 3.5, repeat: Infinity, ease: "easeInOut" }}
+            transition={{ duration: isLive ? 0.85 : 3.5, repeat: Infinity, ease: "easeInOut" }}
             style={{
               width: "4px",
               height: "4px",
