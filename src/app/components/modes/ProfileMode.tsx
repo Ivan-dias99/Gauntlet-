@@ -1,5 +1,6 @@
 import { type Message, type NavFn, type Tab, type ProfileView } from "../shell-types";
 import { findObject, listObjectsForChamber, mergeObjectsByRecency, openObject, type RuberraObject } from "../object-graph";
+import { type CSSProperties } from "react";
 import { type CSSProperties, useState } from "react";
 import {
   type ContinuityItem,
@@ -100,8 +101,8 @@ function deriveWorkItems(messages: Record<Tab, Message[]>): WorkItem[] {
     });
     if (chamberMessages.length > 4) {
       items.push({
-        id:     `${chamber}-paused`,
-        title:  `Resume previous ${chamber} chain`,
+        id:     chamber + "-paused",
+        title:  "Resume previous " + chamber + " chain",
         chamber,
         status: "paused",
         route:  { tab: chamber, view: "archive" },
@@ -119,8 +120,6 @@ function StatCard({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
-
-// ─── Primitives ───────────────────────────────────────────────────────────────
 
 const btn: CSSProperties = {
   border:       "1px solid var(--r-border)",
@@ -335,187 +334,9 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
   );
 }
 
-// ─── Connector hub card ───────────────────────────────────────────────────────
-
-const CONNECTOR_STATUS_COLOR: Record<string, string> = {
-  connected:    "var(--r-ok)",
-  available:    "var(--r-subtext)",
-  coming_soon:  "var(--r-dim)",
-  disconnected: "var(--r-warn)",
-};
-
-function ConnectorCard({ connector }: { connector: ConnectorDefinition }) {
-  const statusColor = CONNECTOR_STATUS_COLOR[connector.status] ?? "var(--r-dim)";
-  return (
-    <div style={{ border: "1px solid var(--r-border)", borderRadius: "7px", background: "var(--r-surface)", padding: "11px 14px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
-      <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: `${connector.accent}14`, border: `1px solid ${connector.accent}20`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <span style={{ fontSize: "13px", color: connector.accent }}>{connector.icon_char}</span>
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "3px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-            <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.005em" }}>{connector.name}</span>
-            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: statusColor, border: `1px solid ${statusColor}28`, borderRadius: "3px", padding: "1px 5px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
-              {connector.status.replace("_", " ")}
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
-            {connector.capabilities.map((cap) => (
-              <span key={cap} style={{ fontSize: "7.5px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "0 4px", letterSpacing: "0.05em", textTransform: "uppercase" }}>{cap}</span>
-            ))}
-          </div>
-        </div>
-        <p style={{ fontSize: "10.5px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 5px", lineHeight: "1.5" }}>{connector.description}</p>
-        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-          {connector.organs.map((o) => (
-            <span key={o} style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: CHAMBER_COLOR[o] ?? "var(--r-dim)", letterSpacing: "0.05em", textTransform: "uppercase" }}>{o}</span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
-function Section({ title, items, navigate, continuity, onTransfer }: { title: string; items: WorkItem[]; navigate: NavFn; continuity?: ContinuityItem[]; onTransfer?: (continuityId: string, to: Exclude<Tab, "profile">, reason: string) => void }) {
-  return (
-    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
-      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>{title.toUpperCase()}</p>
-      {items.length === 0 ? <p style={{ margin: 0, fontSize: "11px", color: "var(--r-dim)" }}>None</p> : items.map((item) => (
-        <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--r-border-soft)" }}>
-          <span style={{ fontSize: "12px" }}>{item.title}</span>
-          <div style={{ display: "flex", gap: "5px" }}>
-            <button onClick={() => navigate(item.route.tab, item.route.view, item.route.id)} style={btn}>Resume</button>
-            {continuity && onTransfer && continuity.find((c) => c.id === item.id)?.transferDestinations.slice(0, 1).map((dest) => (
-              <button key={dest} onClick={() => onTransfer(item.id, dest, "profile_transfer")} style={btn}>Transfer→{dest}</button>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RecommendationSection({
-  recommendations,
-  onResume,
-  onExport,
-  onTransfer,
-  navigate,
-}: {
-  recommendations: ContinuityRecommendation[];
-  onResume: (continuityId: string) => void;
-  onExport: (continuityId: string) => void;
-  onTransfer: (continuityId: string, to: Exclude<Tab, "profile">, reason: string) => void;
-  navigate: NavFn;
-}) {
-  const items = recommendations.slice(0, 8);
-  return (
-    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
-      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>RECOMMENDATIONS</p>
-      {items.length === 0 ? <p style={{ margin: 0, fontSize: "11px", color: "var(--r-dim)" }}>No continuity recommendations</p> : items.map((item) => (
-        <div key={`${item.continuityId}-${item.action}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", padding: "6px 0", borderTop: "1px solid var(--r-border-soft)" }}>
-          <div>
-            <p style={{ margin: 0, fontSize: "11px" }}>{item.title}</p>
-            <p style={{ margin: 0, fontSize: "10px", color: "var(--r-dim)" }}>{item.reason}</p>
-          </div>
-          <div style={{ display: "flex", gap: "5px" }}>
-            {item.action === "resume" && <button onClick={() => onResume(item.continuityId)} style={btn}>Resume</button>}
-            {item.action === "export" && <button onClick={() => onExport(item.continuityId)} style={btn}>Export</button>}
-            {item.action === "transfer" && item.destination.tab !== "profile" && (
-              <button onClick={() => onTransfer(item.continuityId, item.destination.tab as Exclude<Tab, "profile">, "profile_recommendation")} style={btn}>Transfer</button>
-            )}
-            <button onClick={() => navigate(item.destination.tab, item.destination.view, item.destination.id)} style={btn}>Open</button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RewardSection({ rewards }: { rewards: RewardRecord[] }) {
-  const items = rewards.slice(0, 6);
-  return (
-    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
-      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>REWARDS</p>
-      {items.length === 0 ? <p style={{ margin: 0, fontSize: "11px", color: "var(--r-dim)" }}>No milestones yet</p> : items.map((reward) => (
-        <div key={reward.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--r-border-soft)" }}>
-          <span style={{ fontSize: "11px" }}>{reward.kind} · {reward.title}</span>
-          <span style={{ fontSize: "10px", fontFamily: "monospace" }}>+{reward.points}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ConnectorSection({ connectors, onToggle }: { connectors: ConnectorState[]; onToggle: (id: string, enabled: boolean) => void }) {
-  return (
-    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
-      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>CONNECTORS / PLUGINS</p>
-      {connectors.map((connector) => (
-        <div key={connector.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--r-border-soft)" }}>
-          <div>
-            <span style={{ fontSize: "11px" }}>{connector.label}</span>
-            <span style={{ fontSize: "10px", color: "var(--r-dim)", marginLeft: "6px" }}>{connector.status} · {connector.completeness}%</span>
-          </div>
-          <button onClick={() => onToggle(connector.id, !connector.enabled)} style={btn}>{connector.enabled ? "Disable" : "Enable"}</button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function SignalSection({ signals, navigate }: { signals: RuntimeSignal[]; navigate: NavFn }) {
-  const items = signals.slice(0, 6);
-  return (
-    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
-      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>SIGNALS</p>
-      {items.length === 0 ? <p style={{ margin: 0, fontSize: "11px", color: "var(--r-dim)" }}>No pending signals</p> : items.map((signal) => (
-        <div key={signal.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--r-border-soft)" }}>
-          <span style={{ fontSize: "11px" }}>{signal.label}</span>
-          <button onClick={() => navigate(signal.destination.tab, signal.destination.view, signal.destination.id)} style={btn}>Open</button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RegistrySection({
-  pioneers,
-  workflows,
-  pairings,
-}: {
-  pioneers: RuntimeFabric["intelligence"]["pioneers"];
-  workflows: RuntimeFabric["intelligence"]["workflowTemplates"];
-  pairings: RuntimeFabric["intelligence"]["workflowPairings"];
-}) {
-  return (
-    <div style={{ marginBottom: "10px", border: "1px solid var(--r-border)", borderRadius: "8px", padding: "10px", background: "var(--r-surface)" }}>
-      <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>PIONEERS · WORKFLOWS</p>
-      {pioneers.slice(0, 6).map((pioneer) => (
-        <div key={pioneer.id} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderTop: "1px solid var(--r-border-soft)" }}>
-          <span style={{ fontSize: "11px" }}>{pioneer.name}</span>
-          <span style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--r-dim)" }}>{pioneer.hostingLevel}</span>
-        </div>
-      ))}
-      {workflows.slice(0, 4).map((workflow) => (
-        <div key={workflow.id} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderTop: "1px solid var(--r-border-soft)" }}>
-          <span style={{ fontSize: "11px" }}>{workflow.label}</span>
-          <span style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--r-dim)" }}>v{workflow.version}</span>
-        </div>
-      ))}
-      {pairings.slice(0, 3).map((pairing) => (
-        <div key={pairing.id} style={{ padding: "5px 0", borderTop: "1px solid var(--r-border-soft)", fontSize: "10px", color: "var(--r-dim)" }}>
-          {pairing.label} · {pairing.reason}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export function ProfileMode({
-  messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, intelligence, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport,
+  messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, intelligence: _intelligence, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport,
 }: ProfileModeProps) {
   const derivedWork = deriveWorkItems(messages);
   const continuityWork: WorkItem[] = continuity.map((item) => ({
@@ -525,10 +346,10 @@ export function ProfileMode({
     status:  item.status === "paused" ? "paused" : item.status === "completed" || item.status === "exported" ? "completed" : "in_progress",
     route:   item.route,
   }));
-  const workItems  = [...continuityWork, ...derivedWork.filter((w) => !continuityWork.some((c) => c.id === w.id))];
-  const active     = workItems.filter((w) => w.status === "in_progress");
-  const paused     = workItems.filter((w) => w.status === "paused");
-  const completed  = workItems.filter((w) => w.status === "completed");
+  const workItems = [...continuityWork, ...derivedWork.filter((w) => !continuityWork.some((c) => c.id === w.id))];
+  const active    = workItems.filter((w) => w.status === "in_progress");
+  const paused    = workItems.filter((w) => w.status === "paused");
+  const completed = workItems.filter((w) => w.status === "completed");
   const exportables = continuity.filter((c) => c.status === "completed" || c.status === "validated");
   const exported    = continuity.filter((c) => c.status === "exported");
   const memoryItems = mergeObjectsByRecency(
@@ -537,7 +358,7 @@ export function ProfileMode({
     listObjectsForChamber("lab"),
     listObjectsForChamber("creation"),
   ).slice(0, 24);
-  const visiblePioneers = getVisiblePioneers();
+
   const NAV_VIEWS: ProfileView[] = ["overview", "projects", "pioneers", "workflows", "connectors", "memory", "settings", "exports"];
 
   return (

@@ -64,7 +64,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
         </p>
         <button
           onClick={() => navigate("lab", "chat")}
-          style={{ fontSize: "10px", color: "var(--r-accent)", fontFamily: "monospace", background: "transparent", border: "none", cursor: "pointer", outline: "none", letterSpacing: "0.05em" }}
+          style={{ fontSize: "10px", color: "#52796A", fontFamily: "monospace", background: "transparent", border: "none", cursor: "pointer", outline: "none", letterSpacing: "0.05em" }}
         >
           → Start a query in Chat
         </button>

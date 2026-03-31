@@ -134,7 +134,7 @@ export default function App() {
   const [cmdOpen, setCmdOpen] = useState(false);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+    const handler = (e: any) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setCmdOpen((v) => !v);
@@ -152,7 +152,7 @@ export default function App() {
     }
   }, [theme]);
 
-  // ── Persistence ───────────────────────────────────────────────���──────────────
+  // ── Persistence ───────────────────────────────────────────────────────────────
   const messagesRef = useRef<TabMessages>(messages);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -420,7 +420,7 @@ export default function App() {
         );
       }, 2400);
 
-    } catch (err) {
+    } catch (err: any) {
       const isAbort = err instanceof Error && err.name === "AbortError";
       parseOnComplete = false;
 
@@ -529,7 +529,21 @@ export default function App() {
       }}
     >
       <AnimatePresence>
-        {isShellMode && <HeroLanding key="hero" onEnter={() => setIsShellMode(false)} />}
+        {isShellMode && (
+          <HeroLanding
+            key="hero"
+            onEnter={(chamber) => {
+              if (chamber && (chamber === "lab" || chamber === "school" || chamber === "creation" || chamber === "profile")) {
+                setActiveTab(chamber as Tab);
+                if (chamber === "lab")      setLabView("home");
+                if (chamber === "school")   setSchoolView("home");
+                if (chamber === "creation") setCreationView("home");
+                if (chamber === "profile")  setProfileView("overview");
+              }
+              setIsShellMode(false);
+            }}
+          />
+        )}
       </AnimatePresence>
 
       {/* Sovereign Bar */}
@@ -696,12 +710,34 @@ export default function App() {
           </div>
           <div style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
             {filteredObjects.map((obj) => (
-              <button key={obj.id} onClick={() => { navigate(obj.action_route.tab, obj.action_route.view, obj.action_route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer", display: "flex", flexDirection: "column" }}>
+              <button
+                key={obj.id}
+                onClick={() => {
+                  if (obj.action_route) {
+                    navigate(obj.action_route.tab, obj.action_route.view, obj.action_route.id);
+                  } else {
+                    navigate(obj.route.tab, obj.route.view, obj.route.id);
+                  }
+                  setSearchOpen(false);
+                }}
+                style={{
+                  textAlign: "left",
+                  border: "1px solid var(--r-border)",
+                  background: "var(--r-bg)",
+                  borderRadius: "6px",
+                  padding: "8px",
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column"
+                }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
                   <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
                   <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.chamber}</span>
                 </div>
-                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>{obj.type} · {obj.status ?? "active"}</span>
+                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>
+                  {obj.kind || obj.type} · {obj.status ?? "active"}
+                </span>
               </button>
             ))}
           </div>
@@ -759,19 +795,20 @@ export default function App() {
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
           {activeTab}
         </span>
-
-        <div style={{ width: "1px", height: "9px", background: "var(--r-border)", margin: "0 10px" }} />
-
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.03em" }}>
-          {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </span>
       </div>
 
-      {/* Floating notes layer */}
-      <FloatingNoteSystem notes={notes} onChange={updateNote} onRemove={removeNote} />
+      <GlobalCommandPalette
+        isOpen={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        activeTab={activeTab}
+        onNavigate={navigate}
+      />
 
-      {/* Global command palette */}
-      <GlobalCommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} navigate={navigate} />
+      <FloatingNoteSystem
+        notes={notes}
+        onUpdate={updateNote}
+        onRemove={removeNote}
+      />
     </div>
   );
 }
