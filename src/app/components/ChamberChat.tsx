@@ -8,6 +8,8 @@ import { useRef, useEffect, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Message } from "./shell-types";
 import { BlockRenderer, InlineMarkdown } from "./BlockRenderer";
+import { ModelSelector } from "./ModelSelector";
+import { type TaskType } from "./model-orchestration";
 
 // ─── Chamber config ───────────────────────────────────────────────────────────
 
@@ -277,11 +279,13 @@ function AssistantMessage({
 // ─── Status strip ─────────────────────────────────────────────────────────────
 
 function StatusStrip({
-  execStatus, onCancel, accent,
+  execStatus, onCancel, accent, chamberLabel, modelBadge,
 }: {
   execStatus: "idle" | "thinking" | "streaming";
   onCancel: () => void;
   accent: string;
+  chamberLabel: string;
+  modelBadge: string;
 }) {
   return (
     <div
@@ -296,6 +300,14 @@ function StatusStrip({
         justifyContent: "space-between",
       }}
     >
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "var(--r-dim)" }}>
+          {chamberLabel}
+        </span>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.08em", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>
+          {modelBadge}
+        </span>
+      </div>
       <AnimatePresence>
         {execStatus !== "idle" && (
           <motion.div
@@ -356,7 +368,8 @@ function StatusStrip({
 // ─── Composer ─────────────────────────────────────────────────────────────────
 
 function Composer({
-  draft, onDraftChange, onSend, onCancel, isLoading, placeholder, accent,
+  draft, onDraftChange, onSend, onCancel, isLoading, placeholder, accent, configId,
+  task, modelId, onTaskChange, onModelChange,
 }: {
   draft: string;
   onDraftChange: (t: string) => void;
@@ -365,6 +378,11 @@ function Composer({
   isLoading: boolean;
   placeholder: string;
   accent: string;
+  configId: "lab" | "school" | "creation";
+  task: TaskType;
+  modelId: string;
+  onTaskChange: (task: TaskType) => void;
+  onModelChange: (modelId: string) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -435,6 +453,14 @@ function Composer({
               marginTop: "6px",
             }}
           >
+            <ModelSelector
+              chamber={configId}
+              task={task}
+              modelId={modelId}
+              onTaskChange={onTaskChange}
+              onModelChange={onModelChange}
+              mode="chat"
+            />
             <span
               style={{
                 fontFamily: "'JetBrains Mono', monospace",
@@ -509,6 +535,10 @@ export function ChamberChat({
   onSend,
   onCancel,
   config,
+  task,
+  modelId,
+  onTaskChange,
+  onModelChange,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -517,6 +547,10 @@ export function ChamberChat({
   onSend: (t: string) => void;
   onCancel: () => void;
   config: ChamberConfig;
+  task: TaskType;
+  modelId: string;
+  onTaskChange: (task: TaskType) => void;
+  onModelChange: (modelId: string) => void;
 }) {
   const threadRef = useRef<HTMLDivElement>(null);
 
@@ -585,7 +619,7 @@ export function ChamberChat({
       </div>
 
       {/* Status */}
-      <StatusStrip execStatus={execStatus} onCancel={onCancel} accent={config.accent} />
+      <StatusStrip execStatus={execStatus} onCancel={onCancel} accent={config.accent} chamberLabel={chamberLabel} modelBadge={modelId} />
 
       {/* Composer */}
       <Composer
@@ -596,6 +630,11 @@ export function ChamberChat({
         isLoading={isLoading}
         placeholder={config.placeholder}
         accent={config.accent}
+        configId={config.id}
+        task={task}
+        modelId={modelId}
+        onTaskChange={onTaskChange}
+        onModelChange={onModelChange}
       />
     </div>
   );

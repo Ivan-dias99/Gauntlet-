@@ -13,6 +13,7 @@ import { CreationDiscover } from "../discovery/CreationDiscover";
 import { CreationBlueprintDetail } from "../detail/CreationBlueprintDetail";
 import { CreationEngineDetail } from "../detail/CreationEngineDetail";
 import { RuberraTerminal } from "../RuberraTerminal";
+import { type TaskType } from "../model-orchestration";
 
 const CREATION_CONFIG: ChamberConfig = {
   id:          "creation",
@@ -557,7 +558,7 @@ function BuildSurface({
 
 export function CreationMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  creationView, onCreationView, navigate, detailId,
+  creationView, onCreationView, navigate, detailId, task, modelId, onTaskChange, onModelChange,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -569,6 +570,10 @@ export function CreationMode({
   onCreationView: (v: CreationView) => void;
   navigate: NavFn;
   detailId: string;
+  task: TaskType;
+  modelId: string;
+  onTaskChange: (task: TaskType) => void;
+  onModelChange: (modelId: string) => void;
 }) {
   const showHome = creationView === "home" || (!messages.length && creationView === "chat");
 
@@ -597,6 +602,11 @@ export function CreationMode({
       onSend={onSend}
       onCancel={onCancel}
       chamberLabel="Creation · Build"
+      chamber="creation"
+      task={task}
+      modelId={modelId}
+      onTaskChange={onTaskChange}
+      onModelChange={onModelChange}
       placeholder="Directive — describe what to build, generate, or forge…"
     />
   );
@@ -606,6 +616,10 @@ export function CreationMode({
       messages={messages} isLoading={isLoading} draft={draft}
       onDraftChange={onDraftChange} onSend={onSend} onCancel={onCancel}
       config={CREATION_CONFIG}
+      task={task}
+      modelId={modelId}
+      onTaskChange={onTaskChange}
+      onModelChange={onModelChange}
     />
   );
 }

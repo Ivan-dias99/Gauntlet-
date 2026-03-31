@@ -13,6 +13,7 @@ import { SchoolTrackDetail } from "../detail/SchoolTrackDetail";
 import { SchoolLessonDetail } from "../detail/SchoolLessonDetail";
 import { SchoolRoleDetail } from "../detail/SchoolRoleDetail";
 import { SCHOOL_ROLES } from "../product-data";
+import { type TaskType } from "../model-orchestration";
 
 const SCHOOL_CONFIG: ChamberConfig = {
   id:          "school",
@@ -233,7 +234,7 @@ function SchoolArchive({ messages, navigate }: { messages: Message[]; navigate: 
 
 export function SchoolMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  schoolView, onSchoolView, navigate, detailId,
+  schoolView, onSchoolView, navigate, detailId, task, modelId, onTaskChange, onModelChange,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -245,6 +246,10 @@ export function SchoolMode({
   onSchoolView: (v: SchoolView) => void;
   navigate: NavFn;
   detailId: string;
+  task: TaskType;
+  modelId: string;
+  onTaskChange: (task: TaskType) => void;
+  onModelChange: (modelId: string) => void;
 }) {
   const showHome = schoolView === "home" || (!messages.length && schoolView === "chat");
 
@@ -273,6 +278,10 @@ export function SchoolMode({
       messages={messages} isLoading={isLoading} draft={draft}
       onDraftChange={onDraftChange} onSend={onSend} onCancel={onCancel}
       config={SCHOOL_CONFIG}
+      task={task}
+      modelId={modelId}
+      onTaskChange={onTaskChange}
+      onModelChange={onModelChange}
     />
   );
 }
