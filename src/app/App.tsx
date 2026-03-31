@@ -480,13 +480,6 @@ export default function App() {
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
-  const filteredObjects = runtimeFabric.objects.filter((obj) =>
-    (searchChamberFilter === "all" || obj.chamber === searchChamberFilter) &&
-    (!searchText.trim() || obj.title.toLowerCase().includes(searchText.toLowerCase()) || obj.tags.join(" ").toLowerCase().includes(searchText.toLowerCase())) &&
-    (searchLifecycleFilter === "all" || runtimeFabric.continuity.some((c) => c.linkedObjectId === obj.id && c.status === searchLifecycleFilter))
-  ).slice(0, 12);
-  const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
-  const hasSignals = notificationItems.length > 0;
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -622,7 +615,6 @@ export default function App() {
                   recommendations={continuityRecommendations}
                   onTransfer={(id, to, reason) => setRuntimeFabric((prev) => transferContinuity(prev, id, to, reason))}
                   onResume={(id) => setRuntimeFabric((prev) => resumeContinuity(prev, id))}
-                  onTransfer={(id, to, reason) => setRuntimeFabric((prev) => transferContinuity(prev, id, to, reason))}
                   onToggleConnector={(id, enabled) =>
                     setRuntimeFabric((prev) => upsertConnector(prev, id, {
                       enabled,
@@ -639,7 +631,6 @@ export default function App() {
                   onPreferencePatch={(patch) => setRuntimeFabric((prev) => updatePreferences(prev, patch))}
                   onAISettingsPatch={(patch) => setRuntimeFabric((prev) => updateAISettings(prev, patch))}
                   onWorkspacePatch={(patch) => setRuntimeFabric((prev) => updateWorkspaceKnowledge(prev, patch))}
-                  onPreferencePatch={(patch) => setRuntimeFabric((prev) => updatePreferences(prev, patch))}
                   onExport={(continuityId) => setRuntimeFabric((prev) => exportContinuity(prev, continuityId))}
                 />
               )}
@@ -669,14 +660,12 @@ export default function App() {
           </div>
           <div style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
             {filteredObjects.map((obj) => (
-              <button key={obj.id} onClick={() => { navigate(obj.route.tab, obj.route.view, obj.route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer" }}>
-              <button key={obj.id} onClick={() => { navigate(obj.action_route.tab, obj.action_route.view, obj.action_route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button key={obj.id} onClick={() => { navigate(obj.action_route.tab, obj.action_route.view, obj.action_route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
                   <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
                   <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.chamber}</span>
                 </div>
-                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>{obj.kind} · {obj.status ?? "active"}</span>
-                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>{obj.type}</span>
+                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>{obj.type} · {obj.status ?? "active"}</span>
               </button>
             ))}
           </div>

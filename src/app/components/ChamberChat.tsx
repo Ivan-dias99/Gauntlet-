@@ -345,10 +345,6 @@ function StatusStrip({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "var(--r-dim)" }}>
-          {chamberLabel}
-        </span>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.08em", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-dim)" }}>
           {chamberLabel}
         </span>
@@ -444,18 +440,6 @@ function Composer({
   modelId: string;
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
-  draft:          string;
-  onDraftChange:  (t: string) => void;
-  onSend:         (t: string) => void;
-  onCancel:       () => void;
-  isLoading:      boolean;
-  placeholder:    string;
-  accent:         string;
-  configId:       "lab" | "school" | "creation";
-  task:           TaskType;
-  modelId:        string;
-  onTaskChange:   (task: TaskType) => void;
-  onModelChange:  (modelId: string) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [focused, setFocused] = useState(false);
@@ -639,12 +623,6 @@ export function ChamberChat({
   task: TaskType;
   modelId: string;
   onTaskChange: (task: TaskType) => void;
-  onSend:        (t: string) => void;
-  onCancel:      () => void;
-  config:        ChamberConfig;
-  task:          TaskType;
-  modelId:       string;
-  onTaskChange:  (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
 }) {
   const threadRef = useRef<HTMLDivElement>(null);
@@ -715,7 +693,6 @@ export function ChamberChat({
       </div>
 
       {/* Status */}
-      <StatusStrip execStatus={execStatus} onCancel={onCancel} accent={config.accent} chamberLabel={chamberLabel} modelBadge={modelId} />
       <StatusStrip
         execStatus={execStatus}
         onCancel={onCancel}

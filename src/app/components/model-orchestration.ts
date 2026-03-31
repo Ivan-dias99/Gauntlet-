@@ -1,6 +1,7 @@
 import { type Tab } from "./shell-types";
 
 export type ProviderId = "openai" | "anthropic" | "google" | "runway" | "elevenlabs";
+export type ChamberTab = "lab" | "school" | "creation";
 
 export type TaskType =
   | "creation_image"
@@ -50,7 +51,7 @@ export const MODEL_REGISTRY: ModelDescriptor[] = [
   { id: "elevenlabs-studio", label: "11Labs Studio", family: "ElevenLabs", provider: "elevenlabs", latency: "low", quality: "strong", benchmark: "Voice Generation", role: "Audio Specialist", unavailable: true },
 ];
 
-export const CHAMBER_TASKS: Record<Tab, TaskType[]> = {
+export const CHAMBER_TASKS: Record<ChamberTab, TaskType[]> = {
   creation: ["creation_artifact", "creation_image", "creation_video", "creation_voice", "creation_music"],
   school: ["school_tutor", "school_curriculum", "school_assessment"],
   lab: ["lab_research", "lab_analysis", "lab_simulation", "lab_code", "lab_audit"],
@@ -72,7 +73,7 @@ export const TASK_LABELS: Record<TaskType, string> = {
   lab_audit: "Audit",
 };
 
-export const DEFAULT_TASK_BY_CHAMBER: Record<Tab, TaskType> = {
+export const DEFAULT_TASK_BY_CHAMBER: Record<ChamberTab, TaskType> = {
   creation: "creation_artifact",
   school: "school_tutor",
   lab: "lab_analysis",
@@ -110,12 +111,12 @@ export const FALLBACK_CHAIN_BY_TASK: Record<TaskType, string[]> = {
   lab_audit: ["gpt-5.4-codex", "gemini-3.1-pro-high"],
 };
 
-export function getModelPool(_chamber: Tab): ModelDescriptor[] {
+export function getModelPool(_chamber: ChamberTab): ModelDescriptor[] {
   // All models are available in the matrix pool, selection depends on user assignment.
   return MODEL_REGISTRY;
 }
 
-export function resolveExecutionPlan(chamber: Tab, task: TaskType, requestedModelId?: string) {
+export function resolveExecutionPlan(chamber: ChamberTab, task: TaskType, requestedModelId?: string) {
   const pool = getModelPool(chamber);
   const preferred = requestedModelId ?? DEFAULT_MODEL_BY_TASK[task];
   const chain = [preferred, ...FALLBACK_CHAIN_BY_TASK[task]].filter((id, i, all) => id && all.indexOf(id) === i);

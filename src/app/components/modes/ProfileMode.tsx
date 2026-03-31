@@ -12,9 +12,6 @@ import {
   type AISettingsState,
   type WorkspaceKnowledge,
 } from "../runtime-fabric";
-import { findObject, listObjectsForChamber, openObject } from "../object-graph";
-import { type CSSProperties } from "react";
-import { type ContinuityItem, type ConnectorState, type PreferenceState, type RewardRecord, type RuntimeSignal } from "../runtime-fabric";
 
 interface ProfileModeProps {
   messages: Record<Tab, Message[]>;
@@ -38,9 +35,6 @@ interface ProfileModeProps {
   onPreferencePatch: (patch: Partial<PreferenceState>) => void;
   onAISettingsPatch: (patch: Partial<AISettingsState>) => void;
   onWorkspacePatch: (patch: Partial<WorkspaceKnowledge>) => void;
-  onTransfer: (continuityId: string, to: Exclude<Tab, "profile">, reason: string) => void;
-  onToggleConnector: (connectorId: string, enabled: boolean) => void;
-  onPreferencePatch: (patch: Partial<PreferenceState>) => void;
   onExport: (continuityId: string) => void;
 }
 
@@ -93,7 +87,6 @@ function StatCard({ label, value }: { label: string; value: number }) {
 
 export function ProfileMode({
   messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport,
-  messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, onTransfer, onToggleConnector, onPreferencePatch, onExport,
 }: ProfileModeProps) {
   const derivedWork = deriveWorkItems(messages);
   const continuityWork: WorkItem[] = continuity.map((item) => ({
@@ -115,11 +108,6 @@ export function ProfileMode({
     listObjectsForChamber("lab"),
     listObjectsForChamber("creation"),
   ).slice(0, 24);
-  const memoryItems = [
-    ...listObjectsForChamber("school"),
-    ...listObjectsForChamber("lab"),
-    ...listObjectsForChamber("creation"),
-  ].slice(0, 20);
 
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "var(--r-bg)", padding: "24px 30px" }}>
@@ -200,8 +188,6 @@ export function ProfileMode({
                 </div>
               ))}
             </div>
-            </div>
-            <p style={{ margin: "8px 0 0", fontSize: "10px", color: "var(--r-dim)" }}>Preferred chamber: {preferences.preferredChamber}</p>
           </div>
         )}
 
