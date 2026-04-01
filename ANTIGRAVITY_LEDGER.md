@@ -5,6 +5,82 @@
 
 ---
 
+## AUDIT 006 — STACK 02: MISSION SUBSTRATE IMPLEMENTATION
+**Date:** April 1, 2026
+**Target:** Stack 02 — Mission Substrate (Phase 1 Birth, second frontier)
+
+### 1. STATE REVIEWED
+- Stack 01 (Canon + Sovereignty) confirmed complete on branch.
+- `canon-sovereignty.ts` active — identity filter, order gate, phase gate all callable.
+- `RUBERRA_CURRENT_PHASE` = "birth" — correct phase for Stack 02 work.
+- No `Mission` type existed anywhere in the codebase — root unit was `ContinuityItem` (session/run scoped).
+- "projects" view in ProfileMode showed Workflow Templates + Work Items — not mission-first.
+
+### 2. PRESERVED
+- All existing runtime-fabric.ts (unchanged — 1145 lines, zero touch)
+- All continuity, signals, ledger, rewards, connector systems
+- All chamber surfaces (Lab, School, Creation) — untouched
+- HeroLanding, SovereignBar, shell-types — all preserved
+- ProfileMode "projects" view structure — workflow templates and work items subordinated below mission repository
+
+### 3. IMPLEMENTED NOW
+**Codex — `src/app/dna/mission-substrate.ts` (NEW):**
+- Stack order guard: asserts "canon" is installed before mission-substrate activates
+- `Mission` root type: identity + workflow + memory + ledger + runtime + artifacts + policy
+- `MissionIdentity`: name, description, notThis, chamberLead, outcomeStatement, successCriteria, scope, tags
+- `MissionWorkflow`: pioneerStack, routingBias, fallbackBias, executionStyle, workflowTemplateId, continuityRefs
+- `MissionMemory`: decisions[], context, constraints[], priorReasoning[], continuityRefs[], lastUpdated
+- `MissionLedger`: runHistory[], transitions[], currentState, lastRunAt, lastRunDigest
+- `MissionRuntime`: testable, previewable, deployable, executionState
+- `MissionArtifactLayer`: artifacts[], exportHistory[]
+- `MissionPolicy`: allowed[], forbidden[], automate[], requiresApproval[], connectorAllowlist[], modelAllowlist[]
+- Factory: `createMission()` — births a mission with minimal required fields, all layers initialized
+- Helpers: `getMission()`, `getMissionsByStatus()`, `getActiveMissions()`, `transitionMission()`, `upsertMission()`, `linkContinuityToMission()`
+- Display constants: `MISSION_STATUS_LABEL`, `MISSION_STATUS_COLOR`, `CHAMBER_ACCENT`
+- Persistence: `loadMissions()`, `saveMissions()`, `MISSIONS_STORAGE_KEY`
+
+**Cursor — `src/app/components/MissionRepository.tsx` (NEW):**
+- Mission repository visible shell: header, mission list, birth form
+- `BirthForm`: inline form (no modal, no wizard) — name + chamber lead + outcome + scope
+- `MissionRow`: dense ledger-weight row — chamber dot, name, outcome, status, run count, artifact count, enter button
+- On birth → navigates operator into the mission's chamber immediately
+- Empty state: honest, action-bearing, no decoration
+- Antigravity surface law: no card grid, no badges, no progress bars — monospace status, 5px chamber dot only
+
+**App.tsx — mission state:**
+- `missions: Mission[]` state initialized from `loadMissions()`
+- `saveMissions(missions)` side effect persists to localStorage
+- `handleMissionUpsert` callback calls `upsertMission()`
+- `missions` and `onMissionUpsert` passed to ProfileMode
+
+**ProfileMode.tsx — mission wiring:**
+- `missions: Mission[]` and `onMissionUpsert: (m: Mission) => void` added to interface + destructure
+- `MissionRepository` rendered at top of "projects" view — mission-first, work items subordinated
+
+### 4. WHAT IS NOW MATERIALLY ALIVE
+- Mission is the root object of work in Ruberra — typed, persistent, consequence-bearing
+- `createMission()` produces a fully initialized Mission with all 9 layers
+- Mission repository visible in Profile → Projects view — list, birth form, enter action
+- Birth flow navigates operator into the correct chamber immediately
+- Missions persist across sessions via localStorage
+- Stack order enforcement runs at module load — warns if "canon" is not installed
+- No SaaS contamination: no project list metaphor, no card grid, no modal wizard
+
+### 5. OPEN RESIDUE
+- None. Stack 02 is materially complete.
+
+### 6. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Stack 02 — Mission Substrate (Phase 1 Birth)
+- **FILES TOUCHED:** `src/app/dna/mission-substrate.ts` (new), `src/app/components/MissionRepository.tsx` (new), `src/app/components/modes/ProfileMode.tsx`, `src/app/App.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `claude/install-ruberra-dna-lT28B`
+- **BUILD STATUS:** VERIFIED (vite build exits 0, 2100 modules, 0 errors)
+- **RUNTIME STATUS:** VERIFIED
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Sovereign authorizes merge to main. Stack 03 opens only on sovereign command.
+
+---
+
 ## AUDIT 005 — STACK 01: CANON + SOVEREIGNTY IMPLEMENTATION
 **Date:** April 1, 2026
 **Target:** Stack 1 material implementation — Phase 1 (Birth) opened

@@ -17,6 +17,12 @@ import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
 import { ProfileMode } from "./components/modes/ProfileMode";
 import {
+  type Mission,
+  loadMissions,
+  saveMissions,
+  upsertMission,
+} from "./dna/mission-substrate";
+import {
   type Tab, type Message, type SignalStatus,
   type LabView, type SchoolView, type CreationView, type ProfileView,
   type FloatingNote, type Theme, type NavFn,
@@ -115,6 +121,7 @@ export default function App() {
   const [creationView, setCreationView] = useState<CreationView>("home");
   const [profileView, setProfileView] = useState<ProfileView>("overview");
   const [runtimeFabric, setRuntimeFabric] = useState<RuntimeFabric>(loadRuntimeFabric);
+  const [missions, setMissions] = useState<Mission[]>(loadMissions);
 
   // ── Detail navigation ────────────────────────────────────────────────────────
   const [detailId, setDetailId] = useState<string>("");
@@ -181,6 +188,14 @@ export default function App() {
   useEffect(() => {
     saveRuntimeFabric(runtimeFabric);
   }, [runtimeFabric]);
+
+  useEffect(() => {
+    saveMissions(missions);
+  }, [missions]);
+
+  const handleMissionUpsert = useCallback((m: Mission) => {
+    setMissions((prev) => upsertMission(prev, m));
+  }, []);
 
   useEffect(() => {
     const needsConfig = runtimeFabric.connectors.filter((c) => c.status === "needs_config");
@@ -890,6 +905,8 @@ export default function App() {
                   onAISettingsPatch={(patch) => setRuntimeFabric((prev) => updateAISettings(prev, patch))}
                   onWorkspacePatch={(patch) => setRuntimeFabric((prev) => updateWorkspaceKnowledge(prev, patch))}
                   onExport={(continuityId) => setRuntimeFabric((prev) => exportContinuity(prev, continuityId))}
+                  missions={missions}
+                  onMissionUpsert={handleMissionUpsert}
                 />
               )}
             </motion.div>
