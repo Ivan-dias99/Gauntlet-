@@ -370,12 +370,16 @@ export function resolveSovereignStack(
 ): SovereignResolution {
   const defaults = CHAMBER_SOVEREIGN_DEFAULTS.find((d) => d.chamber === chamber);
   const preferredId = defaults?.primary_model_id ?? "llama3.3-70b";
+  const preferredClassModelIds = prefer_class
+    ? SOVEREIGN_MODEL_REGISTRY.filter((model) => model.model_class === prefer_class).map((model) => model.id)
+    : [];
 
   // Try primary, then fallback, then any available, then any in registry
   const candidates = [
     preferredId,
     defaults?.fallback_model_id,
     defaults?.fast_model_id,
+    ...preferredClassModelIds,
   ].filter(Boolean) as string[];
 
   let model: SovereignModel | undefined;
