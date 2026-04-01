@@ -1,11 +1,14 @@
+# Ruberra Workspace
 
-  # AI Interface Shell Design
+Ruberra is a sovereign mission operating system.
 
-  This is a code bundle for AI Interface Shell Design. The original project is available at https://www.figma.com/design/1tKBtZazEpEJlPgXITJIlr/AI-Interface-Shell-Design.
+## Canonical operating docs
 
-  ## Running the code
+- `RUBERRA_WORKSPACE_CONSTITUTION.md` — sovereign law, identity, and anti-drift rules.
+- `CLAUDE.md` — compressed execution memory for Claude-role agents.
+- `RUBERRA_STACK_CLOSURE_TRACKER.md` — canonical stack-by-stack closure board and active frontier.
 
-  Run `npm i` to install the dependencies.
+## Development
 
-  Run `npm run dev` to start the development server.
-  
+- `npm i`
+- `npm run dev`
