@@ -573,6 +573,7 @@ export default function App() {
         onSearchToggle={() => setSearchOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
         hasSignals={hasSignals}
+        onManageMatrix={() => { setActiveTab("profile"); setProfileView("pioneers"); }}
       />
 
       {/* Body */}
