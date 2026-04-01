@@ -316,6 +316,14 @@ export function markSignalRead(fabric: RuntimeFabric, id: string): RuntimeFabric
   return { ...fabric, signals: fabric.signals.map((signal) => (signal.id === id ? { ...signal, read: true } : signal)) };
 }
 
+/** Mark every signal read (clears bell badge); does not resolve items. */
+export function markAllSignalsRead(fabric: RuntimeFabric): RuntimeFabric {
+  return {
+    ...fabric,
+    signals: fabric.signals.map((signal) => (signal.read ? signal : { ...signal, read: true })),
+  };
+}
+
 export function resolveSignal(fabric: RuntimeFabric, id: string): RuntimeFabric {
   return { ...fabric, signals: fabric.signals.map((signal) => (signal.id === id ? { ...signal, read: true, resolved: true } : signal)) };
 }

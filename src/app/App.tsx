@@ -11,6 +11,7 @@ import { SovereignBar } from "./components/SovereignBar";
 import { ShellSideRail } from "./components/ShellSideRail";
 import { FloatingNoteSystem } from "./components/FloatingNoteSystem";
 import { GlobalCommandPalette } from "./components/GlobalCommandPalette";
+import { SignalsPanel } from "./components/SignalsPanel";
 import { LabMode } from "./components/modes/LabMode";
 import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
@@ -35,6 +36,7 @@ import {
   createOrUpdateContinuity,
   loadRuntimeFabric,
   markSignalRead,
+  markAllSignalsRead,
   pushSignal,
   recordRuntimeMessageObject,
   recommendedConnectorsForChamber,
@@ -695,16 +697,18 @@ export default function App() {
         </main>
       </div>
 
-      {signalsOpen && (
-        <div style={{ position: "absolute", top: 48, right: 390, width: 300, background: "var(--r-surface)", border: "1px solid var(--r-border)", borderRadius: "8px", zIndex: 60, padding: "10px" }}>
-          <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)" }}>Signals</p>
-          {notificationItems.map((item) => (
-            <button key={item.id} onClick={() => { navigate(item.destination.tab, item.destination.view, item.destination.id); setRuntimeFabric((prev) => resolveSignal(markSignalRead(prev, item.id), item.id)); setSignalsOpen(false); }} style={{ width: "100%", textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", marginBottom: "6px", cursor: "pointer", fontSize: "11px" }}>
-              {item.type} · {item.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <SignalsPanel
+        open={signalsOpen}
+        onClose={() => setSignalsOpen(false)}
+        signals={runtimeFabric.signals}
+        onOpen={(item) => {
+          navigate(item.destination.tab, item.destination.view, item.destination.id);
+          setRuntimeFabric((prev) => resolveSignal(markSignalRead(prev, item.id), item.id));
+          setSignalsOpen(false);
+        }}
+        onDismiss={(id) => setRuntimeFabric((prev) => markSignalRead(prev, id))}
+        onMarkAllRead={() => setRuntimeFabric((prev) => markAllSignalsRead(prev))}
+      />
 
       {/* Status bar */}
       <div
