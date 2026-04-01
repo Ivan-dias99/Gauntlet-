@@ -22,6 +22,11 @@ import {
   type ConnectorCategory,
 } from "../connector-registry";
 import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from "../workflow-engine";
+import { OperationsPanel } from "../OperationsPanel";
+import {
+  defaultAutonomousOperationsState,
+  type AutonomousOperationsState,
+} from "../autonomous-operations";
 import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
 import { ExecutionConsequenceStrip } from "../ExecutionConsequenceStrip";
 import {
@@ -62,6 +67,12 @@ interface ProfileModeProps {
   onAISettingsPatch: (patch: Partial<AISettingsState>) => void;
   onWorkspacePatch: (patch: Partial<WorkspaceKnowledge>) => void;
   onExport: (continuityId: string) => void;
+  /** Stack 04 — Autonomous Operations state. Optional; defaults to empty state when not yet wired. */
+  operations?: AutonomousOperationsState;
+  onOperationSignalRead?:    (id: string) => void;
+  onOperationSignalResolve?: (id: string) => void;
+  onHandoffAccept?:          (id: string) => void;
+  onHandoffReject?:          (id: string, reason: string) => void;
 }
 
 type WorkStatus = "in_progress" | "paused" | "completed";
@@ -395,7 +406,13 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
 
 export function ProfileMode({
   messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, intelligence: _intelligence, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport,
+  operations: operationsProp,
+  onOperationSignalRead,
+  onOperationSignalResolve,
+  onHandoffAccept,
+  onHandoffReject,
 }: ProfileModeProps) {
+  const operations = operationsProp ?? defaultAutonomousOperationsState();
   const derivedWork = deriveWorkItems(messages);
   const continuityWork: WorkItem[] = continuity.map((item) => ({
     id:      item.id,
@@ -427,7 +444,7 @@ export function ProfileMode({
       : undefined;
   const ledgerRows = continuity.filter((c) => c.lastRunDigest);
 
-  const NAV_VIEWS: ProfileView[] = ["overview", "projects", "pioneers", "workflows", "connectors", "memory", "settings", "exports"];
+  const NAV_VIEWS: ProfileView[] = ["overview", "projects", "pioneers", "workflows", "connectors", "operations", "memory", "settings", "exports"];
 
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "var(--r-bg)" }} className="hide-scrollbar">
@@ -845,6 +862,24 @@ export function ProfileMode({
               </div>
             </SectionBlock>
           </>
+        )}
+
+        {/* ── OPERATIONS (Stack 04) ── */}
+        {profileView === "operations" && (
+          <OperationsPanel
+            tasks={operations.tasks}
+            reviews={operations.reviews}
+            approvals={operations.approvals}
+            handoffs={operations.handoffs}
+            flows={operations.flows}
+            signals={operations.signals}
+            governance={operations.governance}
+            navigate={navigate}
+            onSignalRead={(id) => onOperationSignalRead?.(id)}
+            onSignalResolve={(id) => onOperationSignalResolve?.(id)}
+            onHandoffAccept={(id) => onHandoffAccept?.(id)}
+            onHandoffReject={(id, reason) => onHandoffReject?.(id, reason)}
+          />
         )}
 
         {/* ── WORKFLOWS ── */}
