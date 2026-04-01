@@ -466,3 +466,81 @@ export function getExecutionTruth(chamber: Exclude<Tab, "profile">): ExecutionTr
     chamber,
   };
 }
+
+// ─── Live adapter availability probing ───────────────────────────────────────
+
+/** Ping a single adapter's health endpoint. Returns true only on HTTP 200. */
+export async function probeAdapterAvailability(
+  adapter: ProviderAdapter,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  if (!adapter.base_url || !adapter.health_path) return false;
+  const url = `${adapter.base_url.replace(/\/$/, "")}${adapter.health_path}`;
+  try {
+    const res = await fetch(url, { method: "GET", signal });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Probe all configured adapters in parallel.
+ * Returns updated registry with live `available` values.
+ * Use at startup or when settings change.
+ */
+export async function buildLiveAdapterRegistry(signal?: AbortSignal): Promise<ProviderAdapter[]> {
+  const settled = await Promise.allSettled(
+    PROVIDER_ADAPTERS.map(async (adapter) => ({
+      ...adapter,
+      available: await probeAdapterAvailability(adapter, signal),
+    }))
+  );
+  return settled.map((r, i) =>
+    r.status === "fulfilled" ? r.value : { ...PROVIDER_ADAPTERS[i], available: false }
+  );
+}
+
+/**
+ * Resolve sovereign stack using live-probed adapter availability.
+ * Returns the first adapter that is actually reachable right now.
+ */
+export async function resolveLiveSovereignStack(
+  chamber: Exclude<Tab, "profile">,
+  signal?: AbortSignal,
+): Promise<SovereignResolution> {
+  const liveAdapters = await buildLiveAdapterRegistry(signal);
+  const defaults     = CHAMBER_SOVEREIGN_DEFAULTS.find((d) => d.chamber === chamber);
+  const candidates   = [
+    defaults?.primary_model_id,
+    defaults?.fallback_model_id,
+    defaults?.fast_model_id,
+  ].filter(Boolean) as string[];
+
+  for (const id of candidates) {
+    const model   = SOVEREIGN_MODEL_REGISTRY.find((m) => m.id === id);
+    if (!model) continue;
+    const adapter = liveAdapters.find((a) => a.id === model.adapter_id);
+    if (adapter?.available) {
+      return {
+        model,
+        adapter,
+        tier:            model.tier,
+        tier_label:      TIER_LABEL[model.tier],
+        tier_color:      TIER_COLOR[model.tier],
+        execution_truth: `${adapter.kind} · ${model.label}`,
+        is_available:    true,
+      };
+    }
+  }
+
+  return {
+    model:           SOVEREIGN_MODEL_REGISTRY[0] ?? DEGRADED_MODEL,
+    adapter:         DEGRADED_ADAPTER,
+    tier:            "C",
+    tier_label:      TIER_LABEL["C"],
+    tier_color:      TIER_COLOR["C"],
+    execution_truth: "proxy · no local runtime detected",
+    is_available:    false,
+  };
+}
