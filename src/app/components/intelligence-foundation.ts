@@ -381,7 +381,14 @@ export interface RouteDecisionResult {
   reason: string;
 }
 
+/** Safe last-resort IDs when the live registry is empty at call time. */
+const ROUTE_FALLBACK_PIONEER_ID = "claude_architect";
+const ROUTE_FALLBACK_GI_ID      = "profile_ledger_core";
+
 export function resolveRouteDecision(state: IntelligenceFoundationState, input: RouteDecisionInput): RouteDecisionResult {
+  const fallbackGiId      = state.giRegistry[0]?.id ?? ROUTE_FALLBACK_GI_ID;
+  const fallbackPioneerId = state.pioneers[0]?.id   ?? ROUTE_FALLBACK_PIONEER_ID;
+
   if (input.preferredPioneerId) {
     const pioneer = state.pioneers.find((entry) => entry.id === input.preferredPioneerId);
     if (pioneer) {
@@ -389,28 +396,28 @@ export function resolveRouteDecision(state: IntelligenceFoundationState, input: 
       return {
         chamber: pioneer.homeChamber,
         pioneerId: pioneer.id,
-        giId: defaultGi.id,
+        giId: defaultGi?.id ?? fallbackGiId,
         reason: "preferred pioneer selected",
       };
     }
   }
   if (input.workflowId) {
     const workflow = state.workflowTemplates.find((entry) => entry.id === input.workflowId);
-    if (workflow) {
+    if (workflow && workflow.pioneers.length > 0) {
       return {
         chamber: workflow.homeChamber,
         pioneerId: workflow.pioneers[0],
-        giId: state.giRegistry.find((entry) => entry.chamber === workflow.homeChamber)?.id ?? state.giRegistry[0].id,
+        giId: state.giRegistry.find((entry) => entry.chamber === workflow.homeChamber)?.id ?? fallbackGiId,
         reason: "workflow home chamber route",
       };
     }
   }
   if (input.chamberHint) {
-    const chamberPioneer = state.pioneers.find((entry) => entry.homeChamber === input.chamberHint) ?? state.pioneers[0];
+    const chamberPioneer = state.pioneers.find((entry) => entry.homeChamber === input.chamberHint);
     return {
       chamber: input.chamberHint,
-      pioneerId: chamberPioneer.id,
-      giId: state.giRegistry.find((entry) => entry.chamber === input.chamberHint)?.id ?? state.giRegistry[0].id,
+      pioneerId: chamberPioneer?.id ?? fallbackPioneerId,
+      giId: state.giRegistry.find((entry) => entry.chamber === input.chamberHint)?.id ?? fallbackGiId,
       reason: "chamber hint route",
     };
   }

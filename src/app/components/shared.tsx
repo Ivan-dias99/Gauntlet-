@@ -177,6 +177,7 @@ interface RProgressProps {
 }
 
 export function RProgress({ value, color = R.ink, height = 2 }: RProgressProps) {
+  const clamped = Math.min(100, Math.max(0, value));
   return (
     <div
       style={{
@@ -190,7 +191,7 @@ export function RProgress({ value, color = R.ink, height = 2 }: RProgressProps) 
       <div
         style={{
           height: "100%",
-          width: `${value}%`,
+          width: `${clamped}%`,
           background: color,
           borderRadius: "2px",
           transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -208,6 +209,7 @@ interface RSegmentDotsProps {
 }
 
 export function RSegmentDots({ total, filled, color = R.ink }: RSegmentDotsProps) {
+  const safeFilled = Math.min(filled, total);
   return (
     <div style={{ display: "flex", gap: "3px" }}>
       {Array.from({ length: total }).map((_, i) => (
@@ -217,7 +219,7 @@ export function RSegmentDots({ total, filled, color = R.ink }: RSegmentDotsProps
             width: "14px",
             height: "2px",
             borderRadius: "1px",
-            background: i < filled ? color : R.hairline,
+            background: i < safeFilled ? color : R.hairline,
           }}
         />
       ))}
