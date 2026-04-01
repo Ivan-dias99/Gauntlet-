@@ -55,6 +55,7 @@ import {
   upsertPlugin,
   upsertConnector,
   exportContinuity,
+  computeSystemHealth,
   type RuntimeFabric,
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
@@ -717,6 +718,7 @@ export default function App() {
 
   const isLive = Object.values(signals).some((s) => s === "streaming");
   const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
+  const systemHealth = useMemo(() => computeSystemHealth(runtimeFabric), [runtimeFabric]);
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
@@ -950,6 +952,25 @@ export default function App() {
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
           {activeTab}
         </span>
+
+        <div style={{ width: "1px", height: "9px", background: "var(--r-border)", margin: "0 10px" }} />
+
+        {/* System health aggregate — Stack 08 */}
+        <div style={{ display: "flex", alignItems: "center", gap: "4px" }} title={`System health: ${systemHealth.aggregate} (score ${(systemHealth.aggregateScore * 100).toFixed(0)}%)`}>
+          <div style={{
+            width: "4px",
+            height: "4px",
+            borderRadius: "50%",
+            background:
+              systemHealth.aggregate === "nominal"  ? "var(--r-ok, #52796A)"   :
+              systemHealth.aggregate === "degraded" ? "var(--r-warn, #C68A3A)" :
+              systemHealth.aggregate === "critical" ? "var(--r-err, #B94040)"  :
+              "var(--r-dim)",
+          }} />
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+            {systemHealth.aggregate}
+          </span>
+        </div>
       </div>
 
       <GlobalCommandPalette

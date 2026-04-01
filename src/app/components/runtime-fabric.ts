@@ -11,7 +11,13 @@ import {
   type WorkflowTemplate,
   type WorkflowExportPack,
 } from "./intelligence-foundation";
-import { type SystemHealthModel, defaultSystemHealthModel } from "./awareness-substrate";
+import {
+  type SystemHealthModel,
+  type DimensionHealth,
+  type HealthSignal,
+  defaultSystemHealthModel,
+  aggregateHealth,
+} from "./awareness-substrate";
 
 export type LifecycleStatus =
   | "draft"
@@ -1146,4 +1152,120 @@ export function exportContinuity(fabric: RuntimeFabric, continuityId: string): R
     linkedObjectId: item.linkedObjectId,
   });
   return next;
+}
+
+// ─── Stack 08 — Derived System Health ────────────────────────────────────────
+
+/**
+ * Derives a live `SystemHealthModel` from the current runtime fabric.
+ * Computes per-dimension health from connector states, active critical signals,
+ * blocked/failed continuity items, and provider health records.
+ *
+ * Call after any fabric mutation that could affect system health.
+ */
+export function computeSystemHealth(fabric: RuntimeFabric): SystemHealthModel {
+  const now = Date.now();
+  const dimensions: DimensionHealth[] = [];
+  // Minimum score floor when a dimension is degraded but not fully failed.
+  // Each dimension uses 0.3 as a universal degraded floor to keep scores comparable.
+  const DEGRADED_FLOOR = 0.3;
+
+  // ── Connectors dimension ──
+  const connectors = fabric.connectors ?? [];
+  const degradedConnectors = connectors.filter((c) => c.status === "degraded");
+  const needsConfigConnectors = connectors.filter((c) => c.status === "needs_config");
+  const connectorSignal: HealthSignal =
+    degradedConnectors.length > 0  ? "degraded" :
+    needsConfigConnectors.length > 0 ? "degraded" :
+    connectors.length === 0         ? "unknown"  : "nominal";
+  const readyConnectors = connectors.filter((c) => c.status === "ready");
+  const connectorScore =
+    connectors.length === 0 ? 1.0 : readyConnectors.length / connectors.length;
+  dimensions.push({
+    dimension:   "connectors",
+    signal:      connectorSignal,
+    score:       connectorScore,
+    lastChecked: now,
+    description: `${readyConnectors.length}/${connectors.length} connectors ready`,
+    anomalies:   [],
+  });
+
+  // ── Operations dimension — from active continuity ──
+  const activeContinuity = (fabric.continuity ?? []).filter(
+    (c) => c.status === "in_progress" || c.status === "resumed"
+  );
+  const blockedContinuity = (fabric.continuity ?? []).filter(
+    (c) => c.status === "blocked" || c.status === "paused"
+  );
+  const opsSignal: HealthSignal =
+    blockedContinuity.length > 2 ? "degraded" :
+    activeContinuity.length > 0  ? "nominal"  : "nominal";
+  dimensions.push({
+    dimension:   "operations",
+    signal:      opsSignal,
+    score:       blockedContinuity.length === 0 ? 1.0 : Math.max(DEGRADED_FLOOR, 1 - blockedContinuity.length * 0.15),
+    lastChecked: now,
+    description: `${activeContinuity.length} active · ${blockedContinuity.length} blocked`,
+    anomalies:   [],
+  });
+
+  // ── Intelligence dimension — from provider health ──
+  const providers = fabric.providerHealth ?? [];
+  const failedProviders = providers.filter((p) => p.state === "unavailable" || p.state === "degraded");
+  const intelligenceSignal: HealthSignal =
+    providers.length === 0      ? "unknown"  :
+    failedProviders.length > 0  ? "degraded" : "nominal";
+  dimensions.push({
+    dimension:   "intelligence",
+    signal:      intelligenceSignal,
+    score:       providers.length === 0 ? 1.0 : Math.max(DEGRADED_FLOOR, 1 - failedProviders.length / providers.length),
+    lastChecked: now,
+    description: providers.length === 0 ? "no provider telemetry" : `${providers.length - failedProviders.length}/${providers.length} providers healthy`,
+    anomalies:   [],
+  });
+
+  // ── Flow dimension — from workflow runs ──
+  const runs = fabric.workflowRuns ?? [];
+  const stalled = runs.filter((r) => r.status === "failed" || r.status === "degraded");
+  const flowSignal: HealthSignal =
+    stalled.length > 0 ? "degraded" : "nominal";
+  dimensions.push({
+    dimension:   "flow",
+    signal:      flowSignal,
+    score:       runs.length === 0 ? 1.0 : Math.max(DEGRADED_FLOOR, 1 - stalled.length / runs.length),
+    lastChecked: now,
+    description: runs.length === 0 ? "no workflow runs" : `${stalled.length} stalled workflow(s)`,
+    anomalies:   [],
+  });
+
+  // ── Open critical signals contribute to aggregate ──
+  const openCritical = (fabric.signals ?? []).filter(
+    (s) => s.severity === "critical" && !s.read && !s.resolved
+  );
+
+  const aggregate = aggregateHealth(
+    openCritical.length > 0
+      ? [{ ...dimensions[0], signal: "critical" }, ...dimensions.slice(1)]
+      : dimensions
+  );
+
+  const aggregateScore =
+    dimensions.length === 0
+      ? 1.0
+      : dimensions.reduce((sum, d) => sum + d.score, 0) / dimensions.length;
+
+  return {
+    snapshotAt:     now,
+    aggregate,
+    aggregateScore,
+    dimensions,
+    openAnomalies:  [],
+    capabilityModel: (fabric.systemHealth ?? defaultSystemHealthModel()).capabilityModel,
+    trajectory: {
+      sampledAt:   now,
+      metrics:     [],
+      ttsBreachMs: null,
+      ttcBreachMs: null,
+    },
+  };
 }

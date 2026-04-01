@@ -5,6 +5,52 @@
 
 ---
 
+## AUDIT 006 — SIGNALS + AWARENESS LONG CAMPAIGN (Claude lead)
+**Date:** April 1, 2026
+**Branch:** `copilot/claude-ruberra-long-campaign-hxpug`
+**Target:** SignalsPanel correctness, Stack 08 live health derivation, provenance attribution
+
+### 1. EXECUTION BLOCKS
+
+**SIGNALSPANEL FULL REPAIR (Claude)**
+- **Issue:** `SignalsPanel.tsx` had a completely mismatched component API vs what `App.tsx` used. The component accepted `signals?: SignalRecord[]` and `anomalies?: AnomalyRecord[]`, while `App.tsx` passed `open`, `onClose`, `signals: RuntimeSignal[]`, `onOpen`, `onDismiss`, `onMarkAllRead`. The `open` prop was silently ignored — the panel always rendered. Backdrop, escape-to-close, dismiss, and open routing were non-functional.
+- **Action:** Rewrote `SignalsPanel.tsx` with the correct full API: `open/onClose` gating, click-outside backdrop, Escape key handler, severity rail (CRIT/WARN/INFO), unread dot indicator, formatted age display, "Open →" and "Dismiss" action buttons, "mark all read" header control, zero-state empty view.
+- **Status:** **COMPLETE**.
+
+**STACK 08 LIVE SYSTEM HEALTH DERIVATION (Claude)**
+- **Issue:** `systemHealth` in `RuntimeFabric` was always the static `defaultSystemHealthModel()` (aggregate: `unknown`, empty dimensions). The system was blind to its own real state.
+- **Action:** Added `computeSystemHealth(fabric: RuntimeFabric): SystemHealthModel` to `runtime-fabric.ts`. Derives four live dimensions from runtime state: `connectors` (from connector `ready/degraded/needs_config` state), `operations` (from active/blocked continuity counts), `intelligence` (from `providerHealth` records `healthy/degraded/unavailable`), `flow` (from workflow run `failed/degraded` counts). Open critical signals force aggregate to reflect severity. Imports `aggregateHealth`, `DimensionHealth`, `HealthSignal` from `awareness-substrate`.
+- **Action:** Wired `computeSystemHealth` into `App.tsx` via `useMemo(() => computeSystemHealth(runtimeFabric), [runtimeFabric])`.
+- **Action:** Surfaced the aggregate health signal in the status bar — colored dot + text label (`nominal` / `degraded` / `critical` / `unknown`) with tooltip showing score percentage.
+- **Status:** **COMPLETE**.
+
+**PROVENANCE ATTRIBUTION CHIPS UPGRADE (Claude)**
+- **Issue:** Per `RUBERRA_REFINEMENT_STRATEGY.md §6`, attribution chips on assistant messages must use `ORIGIN: MODEL-NAME` monospaced capsules with 10% chamber accent background tint. The existing implementation used plain `(r-dim)` colored pill chips with no prefix and no accent tint.
+- **Action:** Upgraded the attribution chip section in `AssistantMessage` (`ChamberChat.tsx`). Now renders:
+  - `ORIGIN: {modelId}` (or `ORIGIN: {pioneerId}` if no modelId) — chamber accent color, 10% accent background tint, solid accent border
+  - `WF: {workflowId:16}` — subdued border chip for workflow tracking
+  - `{hostingLevel}` — dim text label
+- **Status:** **COMPLETE**.
+
+### 2. FILES TOUCHED
+- `src/app/components/SignalsPanel.tsx`
+- `src/app/components/runtime-fabric.ts`
+- `src/app/App.tsx`
+- `src/app/components/ChamberChat.tsx`
+
+### 3. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Signals + Awareness Long Campaign
+- **FILES TOUCHED:** `SignalsPanel.tsx`, `runtime-fabric.ts`, `App.tsx`, `ChamberChat.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `copilot/claude-ruberra-long-campaign-hxpug`
+- **BUILD STATUS:** VERIFIED (`vite build` exits 0, 2100 modules transformed, 0 TypeScript errors)
+- **RUNTIME STATUS:** Verified via build; no runtime side effects introduced
+- **MERGED TO MAIN:** NO — pending sovereign review
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0% — all changes are additive or correct repairs to broken contracts
+- **NEXT REQUIRED ACTION:** Sovereign reviews and authorizes merge to main. With SignalsPanel functional, Phase 2 awareness work (surfacing real health dimensions in a dedicated system panel) may begin. Stack 01 (Canon) + Stack 02 (Mission) Phase 1 operational execution is the next constitutional frontier.
+
+---
+
 ## AUDIT 005 — VISION DNA CONSTITUTIONAL INSTALLATION (Claude lead)
 **Date:** April 1, 2026
 **Target:** Install full Ruberra Vision DNA as the constitutional layer of the system

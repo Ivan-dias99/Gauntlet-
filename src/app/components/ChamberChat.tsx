@@ -488,11 +488,58 @@ function AssistantMessage({
         />
       )}
       <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
-      {(msg.meta?.pioneerId || msg.meta?.workflowId) && !trace && (
-        <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
-          {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.pioneerId}</span>}
-          {msg.meta?.workflowId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.workflowId}</span>}
-          {msg.meta?.hostingLevel && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{msg.meta.hostingLevel}</span>}
+      {(msg.meta?.pioneerId || msg.meta?.workflowId || msg.meta?.modelId) && !trace && (
+        <div style={{ display: "flex", gap: "5px", marginBottom: "8px", flexWrap: "wrap" }}>
+          {msg.meta?.modelId && (
+            <span style={{
+              fontSize: "8px",
+              fontFamily: "'JetBrains Mono', monospace",
+              color: accent,
+              background: `color-mix(in srgb, ${accent} 10%, transparent)`,
+              border: `1px solid color-mix(in srgb, ${accent} 22%, var(--r-border))`,
+              borderRadius: "4px",
+              padding: "2px 6px",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}>
+              ORIGIN: {msg.meta.modelId}
+            </span>
+          )}
+          {/* Priority: modelId > pioneerId — modelId is the canonical origin when available */}
+          {msg.meta?.pioneerId && !msg.meta?.modelId && (
+            <span style={{
+              fontSize: "8px",
+              fontFamily: "'JetBrains Mono', monospace",
+              color: accent,
+              background: `color-mix(in srgb, ${accent} 10%, transparent)`,
+              border: `1px solid color-mix(in srgb, ${accent} 22%, var(--r-border))`,
+              borderRadius: "4px",
+              padding: "2px 6px",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}>
+              ORIGIN: {msg.meta.pioneerId}
+            </span>
+          )}
+          {msg.meta?.workflowId && (
+            <span style={{
+              fontSize: "8px",
+              fontFamily: "'JetBrains Mono', monospace",
+              color: "var(--r-dim)",
+              background: "transparent",
+              border: "1px solid var(--r-border)",
+              borderRadius: "4px",
+              padding: "2px 6px",
+              letterSpacing: "0.06em",
+            }}>
+              WF: {msg.meta.workflowId.slice(0, 16)}
+            </span>
+          )}
+          {msg.meta?.hostingLevel && (
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.04em" }}>
+              {msg.meta.hostingLevel}
+            </span>
+          )}
         </div>
       )}
       {msg.blocks && msg.blocks.length > 0 ? (
