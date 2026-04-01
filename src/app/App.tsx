@@ -138,14 +138,19 @@ export default function App() {
   // ── Theme ────────────────────────────────────────────────────────────────────
   const [theme, setTheme] = useState<Theme>("light");
 
-  // ── Command palette ───────────────────────────────────────────────────────────
+  // ── Command palette + signals panel ───────────────────────────────────────────
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [signalsOpen, setSignalsOpen] = useState(false);
 
   useEffect(() => {
-    const handler = (e: any) => {
+    const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setCmdOpen((v) => !v);
+      }
+      if (e.key === "Escape") {
+        setCmdOpen(false);
+        setSignalsOpen(false);
       }
     };
     window.addEventListener("keydown", handler);
@@ -191,7 +196,7 @@ export default function App() {
           severity: "warn",
           sourceChamber: "profile",
           destinationChamber: "profile",
-          destination: { tab: "profile", view: "projects" },
+          destination: { tab: "profile", view: "connectors" },
           linkedObjectId: connector.id,
         });
       }
@@ -711,7 +716,6 @@ export default function App() {
   }, []);
 
   const isLive = Object.values(signals).some((s) => s === "streaming");
-  const [signalsOpen, setSignalsOpen] = useState(false);
   const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
   const hasSignals = notificationItems.length > 0;
@@ -761,6 +765,7 @@ export default function App() {
         onSearchToggle={() => setCmdOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
         hasSignals={hasSignals}
+        onManageMatrix={() => { setActiveTab("profile"); setProfileView("pioneers"); }}
       />
 
       {/* Body */}

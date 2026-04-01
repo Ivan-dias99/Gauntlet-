@@ -104,7 +104,7 @@ The following remote branches were found polluting the repository space:
 
 ---
 
-## AUDIT 004 — SHELL SIGNALS & COMMAND SURFACE (Claude lead / Cursor branch)
+## AUDIT 004a — SHELL SIGNALS & COMMAND SURFACE (Cursor branch)
 **Date:** March 31, 2026  
 **Target:** Close gap-map stubs for search + notifications on `cursor/claude-task-force-leadership-97fb`
 
@@ -124,3 +124,34 @@ The following remote branches were found polluting the repository space:
 
 ### 3. BUILD STATUS
 `npm run build` — VERIFIED on branch.
+
+## AUDIT 004b — COPILOT CONSEQUENCE FRONTIER GUARD (merged to `main`)
+**Date:** April 1, 2026  
+**Target:** Consequence frontier null-safety, routing correctness, dead-surface elimination
+
+### 1. EXECUTION BLOCKS
+
+**CONSEQUENCE FRONTIER NULL-SAFETY (Copilot)**
+- **Action:** Fixed `resolveRouteDecision` in `intelligence-foundation.ts` — guarded empty `giRegistry` and `pioneers` array accesses with named fallback constants `ROUTE_FALLBACK_GI_ID` / `ROUTE_FALLBACK_PIONEER_ID`. Added `workflow.pioneers.length > 0` guard before `[0]` access.
+- **Action:** Fixed `resolveSovereignStack` in `sovereign-runtime.ts` — extracted `DEGRADED_MODEL` and `DEGRADED_ADAPTER` sentinel constants; added hard-return degraded proxy resolution when registry is entirely empty; replaced `adapter!` non-null assertion with `?? DEGRADED_ADAPTER`.
+- **Action:** Fixed type mismatch in `recommendContinuityActions` in `runtime-fabric.ts` — fallback `"profile"` excluded by `Exclude<Tab,"profile">` type; corrected to `"lab"`.
+- **Action:** Fixed `RProgress` in `shared.tsx` — value clamped to `[0, 100]` range. Fixed `RSegmentDots` — `filled` clamped to `≤ total`.
+- **Status:** **COMPLETE**.
+
+**CONNECTOR ROUTING BUG (Copilot)**
+- **Action:** Fixed `App.tsx` — connector signals that require configuration were routing to `view: "projects"` in Profile. Corrected to `view: "connectors"` (the actual Profile connectors management view).
+- **Status:** **COMPLETE**.
+
+**DEAD SURFACE ELIMINATION (Copilot)**
+- **Action:** Extended `keydown` handler in `App.tsx` — `Escape` closes command palette (`cmdOpen`) and signals panel (`signalsOpen`). Legacy inline search overlay superseded by `GlobalCommandPalette` on this branch.
+- **Action:** Empty-state copy in signals UI — `SignalsPanel` lists zero-state when no signals (supersedes earlier blank floating panel).
+- **Status:** **COMPLETE**.
+
+### 2. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Copilot Consequence Frontier Guard + Force Task Continuation
+- **FILES TOUCHED:** `intelligence-foundation.ts`, `sovereign-runtime.ts`, `runtime-fabric.ts`, `shared.tsx`, `App.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `copilot/audit-consequence-frontier` → merged via `main`
+- **BUILD STATUS:** VERIFIED (vite build exits 0, 0 TypeScript errors)
+- **RUNTIME STATUS:** VERIFIED
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0%

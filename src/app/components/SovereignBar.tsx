@@ -357,7 +357,7 @@ export function SovereignBar({
                 width: "22px",
                 height: "22px",
                 borderRadius: "5px",
-                background: "linear-gradient(145deg, #D8D3CC 0%, #B4AFA8 100%)",
+                background: "linear-gradient(145deg, var(--r-border) 0%, var(--r-muted) 100%)",
                 flexShrink: 0,
                 border: "1px solid color-mix(in srgb, var(--r-text) 8%, transparent)",
               }}

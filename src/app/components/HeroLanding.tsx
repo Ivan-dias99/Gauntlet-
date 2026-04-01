@@ -148,7 +148,7 @@ function AtmosphericGlow() {
 
 // ─── Top nav ───────────────────────────────────────────────────────────────
 
-function TopNav({ onEnter }: { onEnter: (chamber?: string) => void }) {
+function TopNav({ onEnter, isNarrow }: { onEnter: (chamber?: string) => void; isNarrow: boolean }) {
   return (
     <div
       style={{
@@ -182,29 +182,56 @@ function TopNav({ onEnter }: { onEnter: (chamber?: string) => void }) {
         </span>
       </div>
 
-      {/* Quick chamber dots — full names live in portal + rail below */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }} title="Jump to chamber">
-        {CHAMBERS.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => onEnter(c.id)}
-            style={{
-              width:        "7px",
-              height:       "7px",
-              borderRadius: "50%",
-              background:   c.accent,
-              opacity:      0.45,
-              border:       "none",
-              cursor:       "pointer",
-              padding:      0,
-              transition:   "opacity 0.15s ease, transform 0.15s ease",
-            }}
-            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.opacity = "1"; el.style.transform = "scale(1.15)"; }}
-            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.opacity = "0.45"; el.style.transform = "scale(1)"; }}
-            aria-label={`Enter ${c.label}`}
-          />
-        ))}
-      </div>
+      {/* Wide: chamber labels · narrow: compact dots (names live in portal) */}
+      {!isNarrow ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          {CHAMBERS.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => onEnter(c.id)}
+              style={{
+                fontSize:     "11px",
+                fontFamily:   "'Inter', system-ui, sans-serif",
+                color:        "var(--r-subtext)",
+                background:   "transparent",
+                border:       "none",
+                cursor:       "pointer",
+                outline:      "none",
+                letterSpacing:"0.01em",
+                padding:      "4px 0",
+                transition:   "color 0.12s ease",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-text)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)"; }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }} title="Jump to chamber">
+          {CHAMBERS.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => onEnter(c.id)}
+              style={{
+                width:        "7px",
+                height:       "7px",
+                borderRadius: "50%",
+                background:   c.accent,
+                opacity:      0.45,
+                border:       "none",
+                cursor:       "pointer",
+                padding:      0,
+                transition:   "opacity 0.15s ease, transform 0.15s ease",
+              }}
+              onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.opacity = "1"; el.style.transform = "scale(1.15)"; }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.opacity = "0.45"; el.style.transform = "scale(1)"; }}
+              aria-label={`Enter ${c.label}`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Enter CTA */}
       <button
@@ -452,6 +479,7 @@ function CommandPortal({
 export function HeroLanding({ onEnter, theme }: { onEnter: (chamber?: string) => void; theme: Theme }) {
   const [mounted, setMounted]   = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [isNarrow, setIsNarrow] = useState(() => typeof window !== "undefined" ? window.innerWidth < 520 : false);
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 40);
@@ -462,6 +490,12 @@ export function HeroLanding({ onEnter, theme }: { onEnter: (chamber?: string) =>
     if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
     else document.documentElement.removeAttribute("data-theme");
   }, [theme]);
+
+  useEffect(() => {
+    const handler = () => setIsNarrow(window.innerWidth < 520);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   // Keyboard: Enter → proceed (only when no input is focused)
   useEffect(() => {
@@ -505,7 +539,7 @@ export function HeroLanding({ onEnter, theme }: { onEnter: (chamber?: string) =>
         animate={{ opacity: mounted ? 1 : 0, y: mounted ? 0 : -10 }}
         transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
       >
-        <TopNav onEnter={onEnter} />
+        <TopNav onEnter={onEnter} isNarrow={isNarrow} />
       </motion.div>
 
       {/* ── Center content ── */}
@@ -603,34 +637,61 @@ export function HeroLanding({ onEnter, theme }: { onEnter: (chamber?: string) =>
           zIndex:        20,
         }}
       >
-        {/* Left: system facts — chambers already chosen above */}
-        <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
-          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
-            4 chambers · shared runtime · local memory
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+          {!isNarrow ? (
+            CHAMBERS.map((c) => (
+              <span
+                key={c.id}
+                style={{
+                  fontSize:     "9px",
+                  fontFamily:   "'JetBrains Mono', monospace",
+                  color:        "var(--r-dim)",
+                  letterSpacing:"0.10em",
+                  textTransform:"uppercase" as const,
+                  display:      "flex",
+                  alignItems:   "center",
+                  gap:          "5px",
+                  cursor:       "pointer",
+                  transition:   "color 0.12s ease",
+                }}
+                onClick={() => onEnter(c.id)}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = c.accent; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-dim)"; }}
+              >
+                <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: c.accent, display: "inline-block", opacity: 0.6 }} />
+                {c.label}
+              </span>
+            ))
+          ) : (
+            <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
+              4 chambers · shared runtime · local memory
+            </span>
+          )}
         </div>
 
-        {/* Right: version + key hint */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <span style={{
-            fontSize:     "9px",
-            fontFamily:   "'JetBrains Mono', monospace",
-            color:        "var(--r-dim)",
-            letterSpacing:"0.07em",
-            opacity:      0.6,
-          }}>
-            ↵ enter
-          </span>
-          <span style={{
-            fontSize:     "9px",
-            fontFamily:   "'JetBrains Mono', monospace",
-            color:        "var(--r-dim)",
-            letterSpacing:"0.07em",
-            opacity:      0.6,
-          }}>
-            v10
-          </span>
-        </div>
+        {/* Right: version + key hint — hidden on narrow */}
+        {!isNarrow && (
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <span style={{
+              fontSize:     "9px",
+              fontFamily:   "'JetBrains Mono', monospace",
+              color:        "var(--r-dim)",
+              letterSpacing:"0.07em",
+              opacity:      0.6,
+            }}>
+              ↵ enter
+            </span>
+            <span style={{
+              fontSize:     "9px",
+              fontFamily:   "'JetBrains Mono', monospace",
+              color:        "var(--r-dim)",
+              letterSpacing:"0.07em",
+              opacity:      0.6,
+            }}>
+              v10
+            </span>
+          </div>
+        )}
       </motion.div>
     </div>
   );

@@ -4,10 +4,42 @@
  * The browsing unit of Ruberra's content universe.
  */
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import { motion } from "motion/react";
 import { ChevronRight } from "lucide-react";
 import { R } from "./tokens";
 import { RLabel } from "./shared";
+
+// ─── Action button with proper CSS-var hover ─────────────────────────────────
+
+function ActionBtn({ label, onClick }: { label: string; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "3px",
+        border: "none",
+        background: "transparent",
+        cursor: "pointer",
+        fontSize: "10px",
+        color: hovered ? "var(--r-text)" : "var(--r-subtext)",
+        fontFamily: "'Inter', sans-serif",
+        outline: "none",
+        padding: "2px 0",
+        transition: "color 0.12s ease",
+        letterSpacing: "0",
+      }}
+    >
+      {label}
+      <ChevronRight size={10} strokeWidth={1.75} />
+    </button>
+  );
+}
 
 interface DiscoveryRailProps {
   label: string;
@@ -65,29 +97,7 @@ export function DiscoveryRail({
           )}
         </div>
         {action && (
-          <button
-            onClick={action.onClick}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "3px",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "10px",
-              color: R.ink4,
-              fontFamily: "'Inter', sans-serif",
-              outline: "none",
-              padding: "2px 0",
-              transition: "color 0.12s ease",
-              letterSpacing: "0",
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = R.ink2; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = R.ink4; }}
-          >
-            {action.label}
-            <ChevronRight size={10} strokeWidth={1.75} />
-          </button>
+          <ActionBtn label={action.label} onClick={action.onClick} />
         )}
       </div>
 
@@ -109,6 +119,35 @@ export function DiscoveryRail({
         {children}
       </div>
     </div>
+  );
+}
+
+// ─── Secondary Button (theme-aware hover) ────────────────────────────────────
+
+function SecondaryBtn({ label, onClick }: { label: string; onClick: () => void }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        padding: "8px 14px",
+        borderRadius: R.r.lg,
+        border: `1px solid var(--r-border)`,
+        background: hov ? "var(--r-elevated)" : "transparent",
+        fontSize: "12px",
+        fontWeight: 400,
+        letterSpacing: "0.01em",
+        color: "var(--r-subtext)",
+        cursor: "pointer",
+        fontFamily: "'Inter', sans-serif",
+        outline: "none",
+        transition: "background 0.12s ease, color 0.12s ease",
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -218,8 +257,16 @@ export function FeaturedHero({
               ...R.t.label,
               color: accent,
               fontFamily: "'Inter', sans-serif",
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
             }}
           >
+            <motion.span
+              animate={{ opacity: [0.35, 1, 0.35] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+              style={{ width: "4px", height: "4px", borderRadius: "50%", background: accent, display: "inline-block", flexShrink: 0 }}
+            />
             {badge}
           </div>
         )}
@@ -305,25 +352,7 @@ export function FeaturedHero({
                 <ChevronRight size={12} strokeWidth={2} />
               </button>
               {secondaryLabel && onSecondary && (
-                <button
-                  onClick={onSecondary}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: R.r.lg,
-                    border: "1px solid var(--r-border-soft)",
-                    background: "transparent",
-                    ...R.t.ui,
-                    color: R.ink3,
-                    cursor: "pointer",
-                    fontFamily: "'Inter', sans-serif",
-                    outline: "none",
-                    transition: "background 0.12s ease",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--r-elevated)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-                >
-                  {secondaryLabel}
-                </button>
+                <SecondaryBtn label={secondaryLabel} onClick={onSecondary} />
               )}
             </div>
           </div>
