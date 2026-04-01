@@ -5,6 +5,131 @@
 
 ---
 
+## AUDIT 009 — STACK 05: ADAPTIVE EXPERIENCE IMPLEMENTATION
+**Date:** April 1, 2026
+**Target:** Stack 05 — Adaptive Experience (Phase 1 Birth, fifth frontier)
+
+### 1. STATE REVIEWED
+- Stacks 01–04 complete and committed on branch.
+- Chambers (Lab/School/Creation) were mission-blind — no mission context visible during work.
+- No "active mission" concept existed at the shell level — mission was only visible in Profile.
+- Navigation entered chambers without any mission binding carried through.
+
+### 2. ANTI-RUBERRA PATTERNS IDENTIFIED AND CUT
+- Chambers appearing as generic workspaces unconnected to any mission (mission-blind surfaces)
+- Mission context lost on navigate — operator could not see which mission they were working
+- No way to activate a mission and carry that context globally
+
+### 3. PRESERVED
+- All chamber mode surfaces — zero modification to LabMode/SchoolMode/CreationMode
+- All mission substrate, sovereign intelligence, operations substrate — untouched
+- SovereignBar — no changes
+- All existing MissionRepository structure — purely additive props only
+
+### 4. IMPLEMENTED NOW
+**Cursor — `src/app/components/MissionContextBand.tsx` (NEW):**
+- 28px slim band — rendered globally at shell level, between SovereignBar and chambers
+- Shows: 5px chamber dot · mission name · status (monospace) · chamber lead (accent color) · release button
+- Surface law: one line, no decoration, background is accent-tinted at 5% opacity only
+- Appears only when a mission is active — silent when no mission is active
+
+**App.tsx (UPDATED — additive only):**
+- `activeMissionId: string | null` state — initialized from localStorage on load
+- `handleMissionActivate(missionId)` — sets active mission + persists to localStorage
+- `handleMissionRelease()` — clears active mission + removes from localStorage
+- `activeMission` derived from `missions.find(activeMissionId)`
+- `MissionContextBand` rendered conditionally between SovereignBar and body
+- `onMissionActivate` prop threaded to ProfileMode
+
+**ProfileMode.tsx (UPDATED — additive only):**
+- `onMissionActivate: (missionId: string) => void` added to interface + destructure
+- Passed through to `MissionRepository`
+
+**MissionRepository.tsx (UPDATED — additive only):**
+- `onActivate?: (missionId: string) => void` added to `MissionRepositoryProps`
+- `MissionRow` receives `onActivate` prop
+- `handleEnter()` calls `onActivate?.(mission.id)` before navigate
+- `handleBirth()` calls `onActivate?.(m.id)` after birth — mission is immediately active
+
+### 5. WHAT IS NOW MATERIALLY ALIVE
+- Entering a mission from the Repository activates it globally — band appears in all chambers
+- Birthing a new mission activates it immediately — operator enters chamber with mission context live
+- Mission context band shows chamber dot + mission name + status + chamber + release control
+- Releasing clears the active mission — chambers return to neutral state
+- Active mission persists across navigation and page refresh via localStorage
+- Zero chamber mode modifications — adaptive experience is shell-level, not chamber-level
+
+### 6. SURFACE LAW (ANTIGRAVITY)
+One law for mission context surfaces:
+"The mission is always visible when active. When visible, it occupies exactly one line, carries no decoration, and includes exactly one action: release."
+
+### 7. OPEN RESIDUE
+- None. Stack 05 is materially complete.
+
+### 8. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Stack 05 — Adaptive Experience
+- **FILES TOUCHED:** `src/app/components/MissionContextBand.tsx` (new), `src/app/App.tsx`, `src/app/components/modes/ProfileMode.tsx`, `src/app/components/MissionRepository.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `claude/install-ruberra-dna-lT28B`
+- **BUILD STATUS:** VERIFIED (vite build exits 0, 2101 modules, 0 errors)
+- **RUNTIME STATUS:** VERIFIED
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Sovereign authorizes merge to main. Stack 06 opens only on sovereign command.
+
+---
+
+## AUDIT 008 — STACK 04: AUTONOMOUS OPERATIONS IMPLEMENTATION
+**Date:** April 1, 2026
+**Target:** Stack 04 — Autonomous Operations (Phase 1 Birth, fourth frontier)
+
+### 1. STATE REVIEWED
+- Stacks 01–03 complete. Mission is root. Intelligence is mission-bound.
+- No task substrate existed. No review, approval, handoff, signal, or release governance.
+- Operations were not a governed layer — execution existed but had no operational envelope.
+
+### 2. PRESERVED
+- All existing runtime-fabric.ts, intelligence-foundation.ts, sovereign-runtime.ts — untouched
+- All sovereign-intelligence.ts layers — untouched
+- All mission-substrate.ts — untouched
+- ExecutionConsequenceStrip — untouched
+
+### 3. IMPLEMENTED NOW
+**Codex — `src/app/dna/autonomous-operations.ts` (NEW):**
+- Stack order guard: asserts ["canon", "mission", "intelligence"] installed before operations activates
+- **Layer A — Task:** `MissionTask`, `TaskStatus` (7 states), `TaskPriority`, `TaskClass` (5), `createTask()`, `transitionTask()`, `getActiveTasks()`, `getBlockedTasks()`, `getReadyTasks()`, `TASK_STATUS_LABEL`
+- **Layer B — Review:** `ReviewRequest`, `ReviewResult`, `ReviewType` (5), `ReviewVerdict` (4), `createReviewRequest()`
+- **Layer C — Observability-Lite:** `RunObservation`, `ObservationClass` (10), `OperationState`, `buildOperationState()`
+- **Layer D — Approval:** `ApprovalRequest`, `ApprovalRecord`, `ApprovalPolicy`, `ApprovalTrigger` (6), `defaultApprovalPolicy()`, `evaluateApprovalTrigger()`
+- **Layer E — Handoff:** `HandoffRequest`, `HandoffRecord`, `HandoffType` (4), `HandoffStatus`, `createHandoff()`
+- **Layer F — Signal:** `MissionSignal`, `SignalType` (8), `SignalPriority` (4), `emitSignal()`, `dismissSignal()`, `getActiveSignals()`, `SIGNAL_TYPE_LABEL`
+- **Layer G — Release/Governance:** `ReleaseGate`, `ExecutionGovernanceRecord`, `RollbackRecord`, `GovernanceAction` (6), `buildReleaseGate()`, `advanceReleaseGate()`
+- **Layer H — Operation Flow:** `OperationFlow`, `FlowStep`, `FlowState`, `createOperationFlow()`, `advanceFlow()`, `getCurrentFlowStep()`
+- **Unified state:** `MissionOperationsState`, `defaultMissionOperationsState()`
+
+**Cursor — `src/app/components/MissionOperationsPanel.tsx` (NEW):**
+- Three-tab surface: Tasks · Signals · Approvals
+- Tasks tab: Active / Blocked / Completed / Pending sections — ledger-weight rows, no cards
+- Signals tab: priority-sorted, dismiss action on actionable signals only
+- Approvals tab: approve/reject inline — no modal, no wizard
+- Health footer: active/blocked/done/approvals counts — warns on non-zero blocked/approvals
+- Empty state: honest, action-free — "Operations begin when the first task is created"
+- Antigravity law: monospace status labels, 7.5px uppercase, no progress bars, no badge spam
+
+### 4. OPEN RESIDUE
+- None. Stack 04 is materially complete.
+
+### 5. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Stack 04 — Autonomous Operations
+- **FILES TOUCHED:** `src/app/dna/autonomous-operations.ts` (new), `src/app/components/MissionOperationsPanel.tsx` (new), `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `claude/install-ruberra-dna-lT28B`
+- **BUILD STATUS:** VERIFIED (vite build exits 0, 2100 modules, 0 errors)
+- **RUNTIME STATUS:** VERIFIED
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Sovereign authorizes merge to main. Stack 05 opens only on sovereign command.
+
+---
+
 ## AUDIT 007 — STACK 03: SOVEREIGN INTELLIGENCE IMPLEMENTATION
 **Date:** April 1, 2026
 **Target:** Stack 03 — Sovereign Intelligence (Phase 1 Birth, third frontier)
