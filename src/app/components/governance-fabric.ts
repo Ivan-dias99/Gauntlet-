@@ -164,6 +164,13 @@ export const RUBERRA_TRUST_GATES: Readonly<TrustGate[]> = [
     covers:  ["constitution.modify", "stack-registry.overwrite", "identity.redefine"],
     reason:  "Constitutional substrate is immutable at runtime. Changes require sovereign authorization out-of-band.",
   },
+  {
+    id:      "default-audit-gate",
+    label:   "Default Audit Gate (catch-all)",
+    policy:  "require-audit",
+    covers:  ["*"],
+    reason:  "GOVERNANCE_LAW[0]: every action produces an AuditRecord — no unregistered action may proceed silently.",
+  },
 ] as const;
 
 // ─── CONSEQUENCE TRAIL ────────────────────────────────────────────────────────
@@ -252,7 +259,12 @@ export function buildGovernanceSessionId(): string {
 }
 
 export function resolveGate(action: string, gates: readonly TrustGate[]): TrustGate | undefined {
-  return gates.find((g) => g.covers.some((c) => action === c || action.startsWith(c.replace(".*", ""))));
+  // Exact match or prefix match first; wildcard catch-all last
+  return gates.find((g) =>
+    g.covers.some((c) =>
+      c === "*" ? false : (action === c || action.startsWith(c.replace(".*", "")))
+    )
+  ) ?? gates.find((g) => g.covers.includes("*"));
 }
 
 export function isActionAllowed(
@@ -261,7 +273,8 @@ export function isActionAllowed(
   gates: readonly TrustGate[] = RUBERRA_TRUST_GATES,
 ): { allowed: boolean; gate?: TrustGate; verdict: AuditVerdict } {
   const gate = resolveGate(action, gates);
-  if (!gate) return { allowed: true, verdict: "allowed" };
+  // No gate should never occur with the catch-all installed; guard defensively
+  if (!gate) return { allowed: false, verdict: "blocked" };
 
   switch (gate.policy) {
     case "allow-all":       return { allowed: true,  gate, verdict: "allowed" };
