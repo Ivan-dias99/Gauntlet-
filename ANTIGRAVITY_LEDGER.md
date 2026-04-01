@@ -101,3 +101,26 @@ The following remote branches were found polluting the repository space:
 - **OPEN ISSUES:** 0
 - **OWNER-RISK:** 0%
 - **NEXT REQUIRED ACTION:** Awaiting the Sovereign's final deployment command.
+
+---
+
+## AUDIT 004 — SHELL SIGNALS & COMMAND SURFACE (Claude lead / Cursor branch)
+**Date:** March 31, 2026  
+**Target:** Close gap-map stubs for search + notifications on `cursor/claude-task-force-leadership-97fb`
+
+### 1. EXECUTION BLOCKS
+- **Command palette:** Fixed prop contract (`open` / `navigate`); unified SovereignBar search with ⌘K; merged `buildSearchIndex` into palette; PROFILE group for static routes.
+- **Signals panel:** Replaced floating div with `SignalsPanel.tsx` (backdrop, Escape, click-outside, severity rail, Open / Dismiss / Mark all read). Added `markAllSignalsRead` in `runtime-fabric.ts`.
+
+### 2. PIONEER QUEUE (NEXT PARALLEL WORK)
+| Pioneer | Assignment |
+|---------|------------|
+| **Cursor Builder** | Creation `artifact` view — output bundle surface (gap map §6). |
+| **Codex Systems** | Lab `archive` ↔ experiment list wiring; School `browse` content rail seeding. |
+| **Copilot QA** | Regression pass: bell badge, palette ⌘K, theme toggle on signals panel. |
+| **Gemini Expansion** | Long-context curriculum graph copy where School browse grows. |
+| **Grok Reality** | Smoke test: connector `needs_config` → signal → navigate → resolve. |
+| **Antigravity Director** | Re-audit `object-graph` vs `product-data` after archive/browse changes. |
+
+### 3. BUILD STATUS
+`npm run build` — VERIFIED on branch.
