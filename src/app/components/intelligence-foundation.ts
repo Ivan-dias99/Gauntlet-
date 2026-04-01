@@ -403,10 +403,10 @@ export function resolveRouteDecision(state: IntelligenceFoundationState, input: 
   }
   if (input.workflowId) {
     const workflow = state.workflowTemplates.find((entry) => entry.id === input.workflowId);
-    if (workflow && workflow.pioneers.length > 0) {
+    if (workflow) {
       return {
         chamber: workflow.homeChamber,
-        pioneerId: workflow.pioneers[0],
+        pioneerId: workflow.pioneers[0] ?? fallbackPioneerId,
         giId: state.giRegistry.find((entry) => entry.chamber === workflow.homeChamber)?.id ?? fallbackGiId,
         reason: "workflow home chamber route",
       };
