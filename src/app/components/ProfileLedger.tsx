@@ -56,8 +56,8 @@ export function ProfileLedger({ isOpen, onClose, onManageMatrix }: ProfileLedger
                   width: "48px",
                   height: "48px",
                   borderRadius: "10px",
-                  background: "linear-gradient(145deg, #D8D3CC 0%, #B4AFA8 100%)",
-                  boxShadow: "inset 0 1px 1px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.08)",
+                  background: "linear-gradient(145deg, var(--r-border) 0%, var(--r-muted) 100%)",
+                  boxShadow: "inset 0 1px 1px rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.08)",
                   flexShrink: 0,
                 }}
               />
@@ -113,7 +113,7 @@ export function ProfileLedger({ isOpen, onClose, onManageMatrix }: ProfileLedger
               Manage Matrix
             </button>
             <button
-              style={{ ...actionButtonStyle, background: "rgba(176, 49, 49, 0.08)", color: "#B03131" }}
+              style={{ ...actionButtonStyle, background: "color-mix(in srgb, var(--r-err) 10%, transparent)", color: "var(--r-err)" }}
               onClick={onClose}
             >
               Disconnect
