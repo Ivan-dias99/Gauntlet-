@@ -104,7 +104,7 @@ The following remote branches were found polluting the repository space:
 
 ---
 
-## AUDIT 004a — SHELL SIGNALS & COMMAND SURFACE (Cursor branch)
+## AUDIT 004a — SHELL SIGNALS & COMMAND SURFACE (Claude lead / Cursor branch)
 **Date:** March 31, 2026  
 **Target:** Close gap-map stubs for search + notifications on `cursor/claude-task-force-leadership-97fb`
 
@@ -155,3 +155,4 @@ The following remote branches were found polluting the repository space:
 - **RUNTIME STATUS:** VERIFIED
 - **OPEN ISSUES:** 0
 - **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Copilot guard landed on `main`; keep task-force branch aligned via merge. Delete stale feature branches per hygiene policy.
