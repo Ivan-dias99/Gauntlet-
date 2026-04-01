@@ -329,9 +329,27 @@ function makeFallbackStream(tab: string): ReadableStream<Uint8Array> {
   });
 }
 
+// ─── Provider detection ───────────────────────────────────────────────────────
+function isClaudeModel(modelId: string): boolean {
+  return modelId.startsWith("claude-");
+}
+
+// Normalize registry model IDs to real Anthropic API identifiers.
+// Registry uses suffixed IDs (e.g. "claude-opus-4.6-sch") for chamber
+// disambiguation; strip the suffix before calling the API.
+function toAnthropicModelId(modelId: string): string {
+  const ANTHROPIC_MAP: Record<string, string> = {
+    "claude-opus-4.6":     "claude-opus-4-5",
+    "claude-opus-4.6-sch": "claude-opus-4-5",
+    "claude-sonnet-4.6":   "claude-sonnet-4-5",
+    "claude-haiku-4.5":    "claude-haiku-4-5",
+  };
+  return ANTHROPIC_MAP[modelId] ?? modelId;
+}
+
 // ─── Chat endpoint ────────────────────────────────────────────────────────────
 app.post("/make-server-b9f46b68/chat", async (c) => {
-  let body: { tab: string; messages: { role: string; content: string }[] };
+  let body: { tab: string; model?: string; messages: { role: string; content: string }[] };
 
   try {
     body = await c.req.json();
@@ -339,13 +357,83 @@ app.post("/make-server-b9f46b68/chat", async (c) => {
     return c.text("Bad request", 400);
   }
 
-  const { tab, messages } = body;
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  const { tab, model, messages } = body;
+  const systemPrompt = SYSTEM_PROMPTS[tab] ?? SYSTEM_PROMPTS["lab"];
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
 
-  if (apiKey) {
+  // ── Claude / Anthropic path ──────────────────────────────────────────────
+  if (model && isClaudeModel(model)) {
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (anthropicKey) {
+      try {
+        const upstream = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type":    "application/json",
+            "x-api-key":       anthropicKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model:      toAnthropicModelId(model),
+            max_tokens: 2048,
+            stream:     true,
+            system:     systemPrompt,
+            messages,
+          }),
+        });
+
+        if (upstream.ok && upstream.body) {
+          const stream = new ReadableStream<Uint8Array>({
+            async start(controller) {
+              const reader = upstream.body!.getReader();
+              try {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  const chunk = decoder.decode(value, { stream: true });
+                  for (const line of chunk.split("\n")) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+                    const data = trimmed.slice(5).trim();
+                    if (data === "[DONE]") continue;
+                    try {
+                      const parsed = JSON.parse(data);
+                      if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+                        const text = parsed.delta.text;
+                        if (text) controller.enqueue(encoder.encode(text));
+                      }
+                    } catch {
+                      // malformed SSE line — skip
+                    }
+                  }
+                }
+              } finally {
+                controller.close();
+                reader.releaseLock();
+              }
+            },
+          });
+
+          return new Response(stream, {
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "Access-Control-Allow-Origin": "*",
+            },
+          });
+        }
+      } catch (err) {
+        console.log("[Ruberra] Anthropic fetch failed, using fallback:", err);
+      }
+    }
+  }
+
+  // ── OpenAI path ──────────────────────────────────────────────────────────
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (openaiKey) {
     const systemMessage = {
       role: "system",
-      content: SYSTEM_PROMPTS[tab] ?? SYSTEM_PROMPTS["lab"],
+      content: systemPrompt,
     };
 
     try {
@@ -353,7 +441,7 @@ app.post("/make-server-b9f46b68/chat", async (c) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${openaiKey}`,
         },
         body: JSON.stringify({
           model: "gpt-4o",
@@ -364,9 +452,6 @@ app.post("/make-server-b9f46b68/chat", async (c) => {
       });
 
       if (upstream.ok && upstream.body) {
-        const encoder = new TextEncoder();
-        const decoder = new TextDecoder();
-
         const stream = new ReadableStream<Uint8Array>({
           async start(controller) {
             const reader = upstream.body!.getReader();
