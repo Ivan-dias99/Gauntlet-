@@ -13,12 +13,16 @@ interface SovereignBarProps {
   isLive?:       boolean;
   theme?:        Theme;
   onThemeToggle?: () => void;
+  onSearchToggle?: () => void;
+  onSignalsToggle?: () => void;
+  hasSignals?: boolean;
 }
 
 const TABS: { id: Tab; label: string; dot: string }[] = [
   { id: "lab",      label: "Lab",      dot: "var(--r-accent)" },
   { id: "school",   label: "School",   dot: "var(--r-ok)"     },
   { id: "creation", label: "Creation", dot: "var(--r-warn)"   },
+  { id: "profile",  label: "Profile",  dot: "var(--r-pulse)"  },
 ];
 
 function Mark() {
@@ -78,7 +82,7 @@ function IconBtn({
 }
 
 export function SovereignBar({
-  activeTab, onTabChange, isLive, theme, onThemeToggle,
+  activeTab, onTabChange, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals,
 }: SovereignBarProps) {
   return (
     <header
@@ -255,27 +259,29 @@ export function SovereignBar({
         <div style={{ width: "1px", height: "16px", background: "var(--r-border)", margin: "0 4px" }} />
 
         {/* Search */}
-        <IconBtn title="Search">
+        <IconBtn title="Search" onClick={onSearchToggle}>
           <Search size={12} strokeWidth={1.6} />
         </IconBtn>
 
         {/* Notifications */}
         <div style={{ position: "relative" }}>
-          <IconBtn title="Notifications">
+          <IconBtn title="Notifications" onClick={onSignalsToggle}>
             <Bell size={12} strokeWidth={1.6} />
           </IconBtn>
-          <span
-            style={{
-              position: "absolute",
-              top: "8px",
-              right: "7px",
-              width: "3px",
-              height: "3px",
-              borderRadius: "50%",
-              background: "var(--r-pulse)",
-              pointerEvents: "none",
-            }}
-          />
+          {hasSignals && (
+            <span
+              style={{
+                position: "absolute",
+                top: "8px",
+                right: "7px",
+                width: "3px",
+                height: "3px",
+                borderRadius: "50%",
+                background: "var(--r-pulse)",
+                pointerEvents: "none",
+              }}
+            />
+          )}
         </div>
 
         {/* Avatar */}

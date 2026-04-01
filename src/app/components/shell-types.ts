@@ -2,7 +2,7 @@
  * RUBERRA Shell Types — canonical type definitions
  */
 
-export type Tab = "lab" | "school" | "creation";
+export type Tab = "lab" | "school" | "creation" | "profile";
 
 export type BlockType =
   | "verdict" | "execution" | "lesson" | "creation" | "report" | "signal"
@@ -30,12 +30,27 @@ export interface Message {
   tab:       Tab;
   timestamp: number;
   blocks?:   MessageBlock[];
+  meta?: {
+    routeReason?: string;
+    chamberRoute?: Tab;
+    pioneerId?: string;
+    giId?: string;
+    supportChain?: string[];
+    workflowId?: string;
+    hostingLevel?: "hosted" | "wrapped" | "proxy";
+    providerId?: string;
+    providerLane?: "open_source_local" | "free_provider" | "wrapped_external" | "premium_hosted_future";
+    modelId?: string;
+    executionState?: "live" | "completed" | "degraded" | "blocked" | "failed" | "fallback_used" | "provider_unavailable" | "connector_unavailable" | "scaffold_only";
+    connectorRefs?: string[];
+  };
 }
 
 /* ── Extended view types — all navigable states per chamber ── */
 export type LabView      = "home" | "chat" | "analysis" | "code" | "archive" | "domain" | "experiment";
 export type SchoolView   = "home" | "chat" | "library"  | "archive" | "track"  | "lesson" | "role" | "browse";
 export type CreationView = "home" | "chat" | "terminal" | "archive" | "blueprint" | "engine" | "artifact";
+export type ProfileView  = "overview" | "projects" | "memory" | "settings" | "exports";
 
 /** Navigation function — the core of the product connectivity system */
 export type NavFn = (tab: Tab, view: string, id?: string) => void;

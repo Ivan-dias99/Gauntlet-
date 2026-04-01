@@ -13,6 +13,8 @@ import { CreationDiscover } from "../discovery/CreationDiscover";
 import { CreationBlueprintDetail } from "../detail/CreationBlueprintDetail";
 import { CreationEngineDetail } from "../detail/CreationEngineDetail";
 import { RuberraTerminal } from "../RuberraTerminal";
+import { type TaskType } from "../model-orchestration";
+import { buildMessageObject, findObject, listObjectsForChamber, mergeObjectsByRecency, openObject } from "../object-graph";
 
 const CREATION_CONFIG: ChamberConfig = {
   id:          "creation",
@@ -26,19 +28,20 @@ const CREATION_CONFIG: ChamberConfig = {
 // ─── Archive ──────────────────────────────────────────────────────────────────
 
 function CreationArchive({ messages, navigate }: { messages: Message[]; navigate: NavFn }) {
-  const artifacts = [...messages].filter(m => m.role === "assistant").reverse();
+  const runtimeObjects = [...messages].reverse().slice(0, 18).map(buildMessageObject);
+  const objects = mergeObjectsByRecency(runtimeObjects, listObjectsForChamber("creation")).slice(0, 36);
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", background: "var(--r-bg)" }}>
       <div style={{ maxWidth: "700px", margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "18px" }}>
           <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.01em" }}>Artifact Archive</p>
-          <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)" }}>{artifacts.length} artifacts</span>
+          <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)" }}>{objects.length} artifacts</span>
         </div>
-        {artifacts.length === 0 ? (
+        {objects.length === 0 ? (
           <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>No artifacts yet</p>
-        ) : artifacts.map((m) => (
+        ) : objects.map((obj, i) => (
           <div
-            key={m.id}
+            key={`${obj.id}-${i}`}
             style={{
               border: "1px solid var(--r-border)",
               borderRadius: "6px",
@@ -47,13 +50,22 @@ function CreationArchive({ messages, navigate }: { messages: Message[]; navigate
               marginBottom: "8px",
             }}
           >
-            {m.blocks && m.blocks.length > 0 ? (
-              <BlockRenderer blocks={m.blocks} />
-            ) : (
-              <p style={{ fontSize: "12px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.65" }}>
-                {m.content.slice(0, 300)}{m.content.length > 300 ? "…" : ""}
-              </p>
-            )}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+              <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
+              <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.type}</span>
+            </div>
+            <p style={{ fontSize: "11px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: "1.6", margin: "0 0 8px" }}>
+              {obj.summary}
+            </p>
+            <div style={{ display: "flex", gap: "7px", flexWrap: "wrap" }}>
+              <button onClick={() => openObject(navigate, obj)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Open</button>
+              <button onClick={() => navigate("creation", "terminal")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Send to Build</button>
+              {obj.related_items.slice(0, 1).map((rid) => {
+                const related = findObject(rid);
+                if (!related) return null;
+                return <button key={rid} onClick={() => openObject(navigate, related)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Related → {related.title.slice(0, 18)}</button>;
+              })}
+            </div>
           </div>
         ))}
       </div>
@@ -557,7 +569,7 @@ function BuildSurface({
 
 export function CreationMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  creationView, onCreationView, navigate, detailId,
+  creationView, onCreationView, navigate, detailId, task, modelId, onTaskChange, onModelChange,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -569,6 +581,10 @@ export function CreationMode({
   onCreationView: (v: CreationView) => void;
   navigate: NavFn;
   detailId: string;
+  task: TaskType;
+  modelId: string;
+  onTaskChange: (task: TaskType) => void;
+  onModelChange: (modelId: string) => void;
 }) {
   const showHome = creationView === "home" || (!messages.length && creationView === "chat");
 
@@ -597,6 +613,11 @@ export function CreationMode({
       onSend={onSend}
       onCancel={onCancel}
       chamberLabel="Creation · Build"
+      chamber="creation"
+      task={task}
+      modelId={modelId}
+      onTaskChange={onTaskChange}
+      onModelChange={onModelChange}
       placeholder="Directive — describe what to build, generate, or forge…"
     />
   );
@@ -606,6 +627,10 @@ export function CreationMode({
       messages={messages} isLoading={isLoading} draft={draft}
       onDraftChange={onDraftChange} onSend={onSend} onCancel={onCancel}
       config={CREATION_CONFIG}
+      task={task}
+      modelId={modelId}
+      onTaskChange={onTaskChange}
+      onModelChange={onModelChange}
     />
   );
 }
