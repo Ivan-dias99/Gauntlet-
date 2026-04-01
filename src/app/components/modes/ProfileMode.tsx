@@ -433,39 +433,56 @@ export function ProfileMode({
     <div style={{ flex: 1, overflowY: "auto", background: "var(--r-bg)" }} className="hide-scrollbar">
 
       {/* Profile header */}
-      <div style={{ borderBottom: "1px solid var(--r-border)", background: "var(--r-surface)", padding: "16px 30px 0", flexShrink: 0 }}>
+      <div style={{ borderBottom: "1px solid var(--r-border)", background: "var(--r-surface)", padding: "12px 24px 0", flexShrink: 0 }}>
         <div style={{ maxWidth: "880px", margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ width: "34px", height: "34px", borderRadius: "8px", background: "linear-gradient(145deg, #D8D3CC 0%, #B4AFA8 100%)", border: "1px solid var(--r-border)", flexShrink: 0 }} />
-              <div>
-                <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.01em" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: "10px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+              <div
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  background: "linear-gradient(145deg, color-mix(in srgb, var(--r-subtext) 35%, var(--r-surface)) 0%, color-mix(in srgb, var(--r-dim) 40%, var(--r-surface)) 100%)",
+                  border: "1px solid var(--r-border-soft)",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.01em" }}>
                   {workspace.owner}
                 </p>
-                <p style={{ fontSize: "10px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", margin: "2px 0 0", letterSpacing: "0.05em" }}>
+                <p style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", margin: "2px 0 0", letterSpacing: "0.05em" }}>
                   {workspace.activeProject} · {preferences.preferredChamber} first
                 </p>
               </div>
             </div>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: "6px" }}>
-                {([
-                  { label: "Active",   value: active.length,                            color: "var(--r-ok)"   },
-                  { label: "Paused",   value: paused.length,                            color: "var(--r-warn)" },
-                  { label: "Signals",  value: signals.filter(s => !s.read).length,      color: "var(--r-accent)" },
-                  { label: "Memory",   value: memoryItems.length,                       color: "var(--r-dim)"  },
-                ]).map((stat) => (
-                  <div key={stat.label} style={{ textAlign: "center", padding: "5px 10px", border: "1px solid var(--r-border)", borderRadius: "6px", background: "var(--r-elevated)" }}>
-                    <p style={{ fontSize: "15px", fontWeight: 600, color: stat.color, margin: 0, lineHeight: 1, fontFamily: "'Inter', system-ui, sans-serif" }}>{stat.value}</p>
-                    <p style={{ fontSize: "8px", color: "var(--r-dim)", margin: "3px 0 0", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>{stat.label}</p>
-                  </div>
-                ))}
-              </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", alignItems: "center", justifyContent: "flex-end" }}>
+              {([
+                { label: "Active",   value: active.length,                            color: "var(--r-ok)"   },
+                { label: "Paused",   value: paused.length,                            color: "var(--r-warn)" },
+                { label: "Signals",  value: signals.filter(s => !s.read).length,      color: "var(--r-accent)" },
+                { label: "Memory",   value: memoryItems.length,                       color: "var(--r-dim)"  },
+              ]).map((stat) => (
+                <div
+                  key={stat.label}
+                  style={{
+                    textAlign: "center",
+                    padding: "4px 8px",
+                    minWidth: "52px",
+                    border: "1px solid var(--r-border-soft)",
+                    borderRadius: "6px",
+                    background: "var(--r-elevated)",
+                  }}
+                >
+                  <p style={{ fontSize: "13px", fontWeight: 600, color: stat.color, margin: 0, lineHeight: 1, fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.02em" }}>{stat.value}</p>
+                  <p style={{ fontSize: "7px", color: "var(--r-dim)", margin: "2px 0 0", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.07em", textTransform: "uppercase" }}>{stat.label}</p>
+                </div>
+              ))}
             </div>
           </div>
 
           {meshTrace && meshChamber && (
-            <div style={{ maxWidth: "880px", margin: "0 auto 12px", padding: "0 2px" }}>
+            <div style={{ maxWidth: "880px", margin: "0 auto 10px", padding: "0 2px" }}>
               <p style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.11em", textTransform: "uppercase", color: "var(--r-dim)", margin: "0 0 6px" }}>
                 Neural mesh · last execution · <span style={{ color: meshAccent }}>{meshChamber}</span>
               </p>

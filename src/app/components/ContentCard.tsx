@@ -422,20 +422,22 @@ export function ExperimentCard({
   onClick,
   pattern = "dots",
 }: ExperimentCardProps) {
+  const accent = "var(--chamber-lab)";
+  const accentLight = "var(--chamber-lab-light)";
   const complexityColor =
-    complexity === "High" ? "#8A6238" : complexity === "Medium" ? R.lab : R.ink4;
+    complexity === "High" ? "var(--chamber-creation)" : complexity === "Medium" ? accent : R.ink4;
   const invite = preview ?? `${domain} · ${tools.slice(0, 2).join(" · ")}`;
   return (
     <CardShell onClick={onClick} width={228}>
       <CardVisual
-        accent={R.lab}
-        accentLight={R.labLight}
+        accent={accent}
+        accentLight={accentLight}
         pattern={pattern}
         icon={<BarChart2 size={14} color={R.lab} strokeWidth={1.5} />}
         size="md"
       />
       <CardBody>
-        <CardTag label={type} color={R.lab} />
+        <CardTag label={type} color={accent} />
         <CardTitle>{title}</CardTitle>
         <p
           style={{
@@ -485,8 +487,8 @@ export function ExperimentCard({
             style={{
               padding: "1px 6px",
               borderRadius: R.r.sm,
-              border: `1px solid ${complexityColor}28`,
-              background: `${complexityColor}10`,
+                border: `1px solid color-mix(in srgb, ${complexityColor} 22%, var(--r-border))`,
+                background: `color-mix(in srgb, ${complexityColor} 10%, var(--r-surface))`,
               ...R.t.micro,
               color: complexityColor,
               fontFamily: "'Inter', sans-serif",
@@ -800,8 +802,9 @@ export function SignalCard({
   relevance,
   onClick,
 }: SignalCardProps) {
+  const labAccent = "var(--chamber-lab)";
   const relevanceColor =
-    relevance === "High" ? R.lab : relevance === "Medium" ? R.school : R.ink4;
+    relevance === "High" ? labAccent : relevance === "Medium" ? "var(--chamber-school)" : R.ink4;
 
   return (
     <CardShell onClick={onClick} width={248}>
@@ -814,7 +817,7 @@ export function SignalCard({
             marginBottom: "8px",
           }}
         >
-          <CardTag label={category} color={R.lab} />
+          <CardTag label={category} color={labAccent} />
           <span
             style={{
               ...R.t.micro,
@@ -828,7 +831,7 @@ export function SignalCard({
         <p
           style={{
             ...R.t.body,
-            color: R.ink2,
+            color: "var(--r-text)",
             fontFamily: "'Inter', sans-serif",
             lineHeight: "1.52",
             marginBottom: "6px",
@@ -843,7 +846,7 @@ export function SignalCard({
         <p
           style={{
             ...R.t.micro,
-            color: R.lab,
+            color: labAccent,
             fontFamily: "'JetBrains Mono', monospace",
             letterSpacing: "0.05em",
             margin: "0 0 10px",
@@ -859,7 +862,7 @@ export function SignalCard({
             justifyContent: "space-between",
             marginTop: "auto",
             paddingTop: "8px",
-            borderTop: `1px solid ${R.hairline}`,
+            borderTop: "1px solid var(--r-border-soft)",
           }}
         >
           <span

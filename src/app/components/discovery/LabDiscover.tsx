@@ -146,6 +146,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
       title: "Research Engine",
       subtitle: "Search, synthesize, cross-reference",
       itemCount: 8,
+      invite: "Chamber chat with routing trace — start a live investigation thread.",
       icon: <Search size={14} color={R.lab} strokeWidth={1.5} />,
       onClick: () => { navigate("lab", "chat"); onStartSession(); },
     },
@@ -154,6 +155,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
       title: "Code Lab",
       subtitle: "Write, run, debug in isolation",
       itemCount: 12,
+      invite: "Terminal-native surface with execution consequence strip.",
       icon: <Code2 size={14} color={R.lab} strokeWidth={1.5} />,
       onClick: () => navigate("lab", "code"),
     },
@@ -162,6 +164,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
       title: "Analysis Suite",
       subtitle: "Evidence, patterns, insights",
       itemCount: 6,
+      invite: "Structured board for verdict blocks and metamorphic output.",
       icon: <BarChart2 size={14} color={R.lab} strokeWidth={1.5} />,
       onClick: () => navigate("lab", "analysis"),
     },
@@ -170,6 +173,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
       title: "Audit Framework",
       subtitle: "Verify, review, source-check",
       itemCount: 5,
+      invite: "Archive of runs, objects, and continuity-linked memory.",
       icon: <FileSearch size={14} color={R.lab} strokeWidth={1.5} />,
       onClick: () => navigate("lab", "archive"),
     },
@@ -178,6 +182,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
       title: "Data Connectors",
       subtitle: "DB, APIs, live feeds",
       itemCount: 9,
+      invite: "Domain detail with experiments wired to School and Creation.",
       icon: <Database size={14} color={R.lab} strokeWidth={1.5} />,
       onClick: () => navigate("lab", "domain", "data-arch"),
     },
@@ -205,8 +210,8 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
         title="Distributed Consensus Failure Modes"
         description="Analyzing failure taxonomy in Raft and Paxos under asymmetric partitions. Current context: 3 sources loaded, 2 hypotheses pending verification."
         meta="Research · Distributed Systems · Started 2h ago · 14 context items"
-        accent={R.lab}
-        accentLight={R.labLight}
+        accent="var(--chamber-lab)"
+        accentLight="var(--chamber-lab-light)"
         ctaLabel="Continue investigation"
         onCta={() => navigate("lab", "experiment", "exp-raft")}
         secondaryLabel="New session"
@@ -293,10 +298,11 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
             title={t.title}
             subtitle={t.subtitle}
             itemCount={t.itemCount}
-            accent={R.lab}
-            accentLight={R.labLight}
+            accent="var(--chamber-lab)"
+            accentLight="var(--chamber-lab-light)"
             tag="Tool"
             icon={t.icon}
+            invite={t.invite}
             onClick={t.onClick}
           />
         ))}
@@ -313,12 +319,13 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
           <CollectionCard
             key={d.id}
             title={d.label}
-            subtitle={d.tagline.slice(0, 60)}
+            subtitle={d.tagline.length > 60 ? `${d.tagline.slice(0, 57)}…` : d.tagline}
             itemCount={d.researchCount}
-            accent={R.lab}
-            accentLight={R.labLight}
+            accent="var(--chamber-lab)"
+            accentLight="var(--chamber-lab-light)"
             tag="Domain"
             icon={<Layers size={14} color={R.lab} strokeWidth={1.5} />}
+            invite={`${d.experiments.length} seeded experiments · open domain board`}
             onClick={() => navigate("lab", "domain", d.id)}
           />
         ))}
