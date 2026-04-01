@@ -4,13 +4,14 @@
  * with Make-environment streaming via Supabase edge function.
  */
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
 import { SovereignBar } from "./components/SovereignBar";
 import { ShellSideRail } from "./components/ShellSideRail";
 import { FloatingNoteSystem } from "./components/FloatingNoteSystem";
 import { GlobalCommandPalette } from "./components/GlobalCommandPalette";
+import { SignalsPanel } from "./components/SignalsPanel";
 import { LabMode } from "./components/modes/LabMode";
 import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
@@ -19,6 +20,7 @@ import {
   type Tab, type Message, type SignalStatus,
   type LabView, type SchoolView, type CreationView, type ProfileView,
   type FloatingNote, type Theme, type NavFn,
+  type ExecutionResultEntry, type ExecutionState, type MessageExecutionTrace,
 } from "./components/shell-types";
 import { parseBlocks } from "./components/parseBlocks";
 import { HeroLanding } from "./components/HeroLanding";
@@ -35,6 +37,8 @@ import {
   createOrUpdateContinuity,
   loadRuntimeFabric,
   markSignalRead,
+  markAllSignalsRead,
+  patchContinuityRunTrace,
   pushSignal,
   recordRuntimeMessageObject,
   recommendedConnectorsForChamber,
@@ -55,6 +59,8 @@ import {
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
 import { getExecutionTruth } from "./components/sovereign-runtime";
+import { getContractByIntent, resolveIntent, resolveRoute } from "./components/routing-contracts";
+import { MODEL_REGISTRY } from "./components/model-orchestration";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
@@ -132,18 +138,18 @@ export default function App() {
   // ── Theme ────────────────────────────────────────────────────────────────────
   const [theme, setTheme] = useState<Theme>("light");
 
-  // ── Command palette ───────────────────────────────────────────────────────────
+  // ── Command palette + signals panel ───────────────────────────────────────────
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [signalsOpen, setSignalsOpen] = useState(false);
 
   useEffect(() => {
-    const handler = (e: any) => {
+    const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setCmdOpen((v) => !v);
       }
       if (e.key === "Escape") {
         setCmdOpen(false);
-        setSearchOpen(false);
         setSignalsOpen(false);
       }
     };
@@ -287,6 +293,16 @@ export default function App() {
     const controller = new AbortController();
     abortRefs.current[tab] = controller;
 
+    const resolvedRoute = resolveRoute(text, tab, task);
+    const requestedModelMeta = MODEL_REGISTRY.find((m) => m.id === requestedModelId);
+    const connectorActionRows = recommendedConnectorsForChamber(runtimeFabric, tab).map((cid) => {
+      const row = runtimeFabric.connectors.find((c) => c.id === cid);
+      const reg = runtimeFabric.intelligence.connectorRegistry.find((r) => r.id === cid);
+      const name = reg?.label ?? cid;
+      const st = row ? (row.enabled ? row.status : "disabled") : "unknown";
+      return { id: cid, label: `${name} · ${st}` };
+    });
+
     const userMsg: Message = {
       id:        crypto.randomUUID(),
       role:      "user",
@@ -299,6 +315,9 @@ export default function App() {
         giId: routeDecision.giId,
         workflowId,
         hostingLevel,
+        providerId: requestedModelMeta?.provider,
+        modelId: requestedModelId,
+        supportChain: resolvedRoute.support_chain,
       },
     };
     setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], userMsg] }));
@@ -322,6 +341,34 @@ export default function App() {
       routeReason: routeDecision.reason,
     }));
     const execTruth = getExecutionTruth(tab);
+    const modelDegraded = selectedModelId !== requestedModelId;
+    const contractForDigest = getContractByIntent(resolveIntent(text));
+    const routeDigestLine = `${contractForDigest.label} · ${routeDecision.reason}`;
+    const initialRunState: ExecutionState =
+      hostingLevel === "proxy" ? "scaffold_only" : "streaming";
+    const baseResults: ExecutionResultEntry[] = [
+      { phase: "route", summary: routeDigestLine.slice(0, 140), at: Date.now() },
+    ];
+    if (plan.fallbackReason) {
+      baseResults.push({ phase: "fallback", summary: plan.fallbackReason.slice(0, 120), at: Date.now() });
+    }
+    const giLabel =
+      runtimeFabric.intelligence.giRegistry.find((g) => g.id === routeDecision.giId)?.name ?? routeDecision.giId;
+    const initialTrace: MessageExecutionTrace = {
+      executionState: initialRunState,
+      providerId: plan.selectedModel?.provider,
+      modelId: selectedModelId,
+      supportChain: resolvedRoute.support_chain,
+      workflowId,
+      hostingLevel,
+      executionResults: baseResults,
+      connectorActions: connectorActionRows,
+      fallbackFromModelId: modelDegraded ? requestedModelId : undefined,
+      leadPioneerId: routeDecision.pioneerId,
+      giId: routeDecision.giId,
+      giLabel,
+      routeDigest: routeDigestLine,
+    };
     setMessages((prev) => ({
       ...prev,
       [tab]: [
@@ -339,12 +386,14 @@ export default function App() {
             pioneer:     routeDecision.pioneerId ?? undefined,
             chamber:     tab,
           },
+          execution_trace: initialTrace,
         },
       ],
     }));
 
     let parseOnComplete = true;
     let assistantContent = "";
+    let streamPhaseLogged = false;
 
     try {
       const history = messagesRef.current[tab]
@@ -368,7 +417,36 @@ export default function App() {
         signal: controller.signal,
       });
 
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok || !res.body) {
+        setMessages((prev) => ({
+          ...prev,
+          [tab]: prev[tab].map((m) =>
+            m.id === assistantId && m.role === "assistant" && m.execution_trace
+              ? {
+                  ...m,
+                  content: `Request blocked (${res.status}). Retry or check connector policy.`,
+                  execution_trace: {
+                    ...m.execution_trace,
+                    executionState: "blocked",
+                    executionResults: [
+                      ...m.execution_trace.executionResults,
+                      { phase: "http", summary: `blocked · HTTP ${res.status}`, at: Date.now() },
+                    ],
+                  },
+                }
+              : m
+          ),
+        }));
+        setRuntimeFabric((prev) =>
+          patchContinuityRunTrace(prev, continuityId, {
+            executionState: "blocked",
+            modelId: selectedModelId,
+            providerId: plan.selectedModel?.provider,
+            digest: `blocked · HTTP ${res.status} · ${routeDigestLine}`,
+          })
+        );
+        throw new Error(`HTTP ${res.status}`);
+      }
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -379,32 +457,113 @@ export default function App() {
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
           assistantContent += chunk;
-          setMessages((prev) => ({
-            ...prev,
-            [tab]: prev[tab].map((m) =>
-              m.id === assistantId ? { ...m, content: m.content + chunk } : m
-            ),
-          }));
+          if (!streamPhaseLogged && assistantContent.length > 0) {
+            streamPhaseLogged = true;
+            setMessages((prev) => ({
+              ...prev,
+              [tab]: prev[tab].map((m) => {
+                if (m.id !== assistantId || m.role !== "assistant" || !m.execution_trace) return m;
+                const er = m.execution_trace.executionResults;
+                if (er.some((e) => e.phase === "stream")) return { ...m, content: m.content + chunk };
+                return {
+                  ...m,
+                  content: m.content + chunk,
+                  execution_trace: {
+                    ...m.execution_trace,
+                    executionState: "live",
+                    executionResults: [...er, { phase: "stream", summary: "Upstream tokens received", at: Date.now() }],
+                  },
+                };
+              }),
+            }));
+          } else {
+            setMessages((prev) => ({
+              ...prev,
+              [tab]: prev[tab].map((m) =>
+                m.id === assistantId ? { ...m, content: m.content + chunk } : m
+              ),
+            }));
+          }
         }
       } finally {
         reader.releaseLock();
       }
 
       setSignals((prev) => ({ ...prev, [tab]: "completed" }));
-      setRuntimeFabric((prev) => recordRuntimeMessageObject(prev, {
-        id: assistantId,
-        role: "assistant",
-        content: assistantContent,
-        tab,
-        timestamp: Date.now(),
-        meta: {
-          routeReason: routeDecision.reason,
-          pioneerId: routeDecision.pioneerId,
-          giId: routeDecision.giId,
-          workflowId,
-          hostingLevel,
-        },
+      const finalRunState: ExecutionState =
+        modelDegraded && plan.fallbackReason?.toLowerCase().includes("unavailable")
+          ? "provider_unavailable"
+          : modelDegraded
+            ? "degraded"
+            : "completed";
+      setMessages((prev) => ({
+        ...prev,
+        [tab]: prev[tab].map((m) => {
+          if (m.id !== assistantId || m.role !== "assistant" || !m.execution_trace) return m;
+          const er = m.execution_trace.executionResults.filter((e) => e.phase !== "finalize");
+          return {
+            ...m,
+            execution_trace: {
+              ...m.execution_trace,
+              executionState: finalRunState,
+              executionResults: [
+                ...er,
+                {
+                  phase: "finalize",
+                  summary: `${assistantContent.length} chars · ${plan.selectedModel?.label ?? selectedModelId}`,
+                  at: Date.now(),
+                },
+              ],
+            },
+          };
+        }),
       }));
+      const completedTrace: MessageExecutionTrace = {
+        executionState: finalRunState,
+        providerId: plan.selectedModel?.provider,
+        modelId: selectedModelId,
+        supportChain: resolvedRoute.support_chain,
+        workflowId,
+        hostingLevel,
+        executionResults: [
+          ...baseResults.filter((e) => e.phase !== "finalize"),
+          ...(streamPhaseLogged ? [{ phase: "stream" as const, summary: "Upstream tokens received", at: Date.now() }] : []),
+          { phase: "finalize", summary: `${assistantContent.length} chars · ${plan.selectedModel?.label ?? selectedModelId}`, at: Date.now() },
+        ],
+        connectorActions: connectorActionRows,
+        fallbackFromModelId: modelDegraded ? requestedModelId : undefined,
+        leadPioneerId: routeDecision.pioneerId,
+        giId: routeDecision.giId,
+        giLabel,
+        routeDigest: routeDigestLine,
+      };
+      setRuntimeFabric((prev) => {
+        let next = patchContinuityRunTrace(prev, continuityId, {
+          executionState: completedTrace.executionState,
+          modelId: selectedModelId,
+          providerId: plan.selectedModel?.provider,
+          digest: `${completedTrace.executionState} · ${plan.selectedModel?.label ?? selectedModelId} · ${assistantContent.length} chars`,
+        });
+        next = recordRuntimeMessageObject(next, {
+          id: assistantId,
+          role: "assistant",
+          content: assistantContent,
+          tab,
+          timestamp: Date.now(),
+          meta: {
+            routeReason: routeDecision.reason,
+            pioneerId: routeDecision.pioneerId,
+            giId: routeDecision.giId,
+            workflowId,
+            hostingLevel,
+            providerId: plan.selectedModel?.provider,
+            modelId: selectedModelId,
+            supportChain: resolvedRoute.support_chain,
+          },
+          execution_trace: completedTrace,
+        });
+        return next;
+      });
       setRuntimeFabric((prev) => {
         let next = transitionContinuity(prev, continuityId, "completed");
         next = pushSignal(next, {
@@ -441,11 +600,27 @@ export default function App() {
         );
       }, 2400);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       const isAbort = err instanceof Error && err.name === "AbortError";
       parseOnComplete = false;
 
       if (isAbort) {
+        setMessages((prev) => ({
+          ...prev,
+          [tab]: prev[tab].map((m) =>
+            m.id === assistantId && m.role === "assistant" && m.execution_trace
+              ? { ...m, execution_trace: { ...m.execution_trace, executionState: "aborted" } }
+              : m
+          ),
+        }));
+        setRuntimeFabric((prev) =>
+          patchContinuityRunTrace(prev, continuityId, {
+            executionState: "aborted",
+            modelId: selectedModelId,
+            providerId: plan.selectedModel?.provider,
+            digest: `aborted · ${routeDigestLine.slice(0, 100)}`,
+          })
+        );
         setSignals((prev) => ({ ...prev, [tab]: "idle" }));
         setRuntimeFabric((prev) => {
           let next = transitionContinuity(prev, continuityId, "paused");
@@ -465,11 +640,32 @@ export default function App() {
           ...prev,
           [tab]: prev[tab].map((m) =>
             m.id === assistantId
-              ? { ...m, content: "Error — please try again." }
+              ? {
+                  ...m,
+                  content: "Error — please try again.",
+                  execution_trace: m.execution_trace
+                    ? {
+                        ...m.execution_trace,
+                        executionState: "error",
+                        executionResults: [
+                          ...m.execution_trace.executionResults.filter((e) => e.phase !== "error"),
+                          { phase: "error", summary: String(err instanceof Error ? err.message : "stream failure").slice(0, 120), at: Date.now() },
+                        ],
+                      }
+                    : m.execution_trace,
+                }
               : m
           ),
         }));
         setSignals((prev) => ({ ...prev, [tab]: "error" }));
+        setRuntimeFabric((prev) =>
+          patchContinuityRunTrace(prev, continuityId, {
+            executionState: "error",
+            modelId: selectedModelId,
+            providerId: plan.selectedModel?.provider,
+            digest: `error · ${String(err instanceof Error ? err.message : "failure").slice(0, 120)}`,
+          })
+        );
         setRuntimeFabric((prev) => {
           let next = transitionContinuity(prev, continuityId, "blocked");
           next = pushSignal(next, {
@@ -495,7 +691,7 @@ export default function App() {
         applyParsedBlocks(assistantId, tab);
       }
     }
-  }, [activeTab, activeModels, applyParsedBlocks, runtimeFabric.intelligence, tasks]);
+  }, [activeTab, activeModels, applyParsedBlocks, runtimeFabric, tasks]);
 
   // ── Notes ─────────────────────────────────────────────────────────────────────
   const addNote = useCallback(() => {
@@ -520,17 +716,7 @@ export default function App() {
   }, []);
 
   const isLive = Object.values(signals).some((s) => s === "streaming");
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [signalsOpen, setSignalsOpen] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [searchChamberFilter, setSearchChamberFilter] = useState<"all" | ChamberTab>("all");
-  const [searchLifecycleFilter, setSearchLifecycleFilter] = useState<"all" | string>("all");
-  const searchIndex = buildSearchIndex(runtimeFabric);
-  const filteredObjects = searchIndex.filter((entry) =>
-    (searchChamberFilter === "all" || entry.chamber === searchChamberFilter) &&
-    (!searchText.trim() || entry.searchableText.includes(searchText.toLowerCase())) &&
-    (searchLifecycleFilter === "all" || entry.status === searchLifecycleFilter)
-  ).slice(0, 12);
+  const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
@@ -553,6 +739,7 @@ export default function App() {
         {isShellMode && (
           <HeroLanding
             key="hero"
+            theme={theme}
             onEnter={(chamber) => {
               if (chamber && (chamber === "lab" || chamber === "school" || chamber === "creation" || chamber === "profile")) {
                 setActiveTab(chamber as Tab);
@@ -575,7 +762,7 @@ export default function App() {
         isLive={isLive}
         theme={theme}
         onThemeToggle={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-        onSearchToggle={() => setSearchOpen((v) => !v)}
+        onSearchToggle={() => setCmdOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
         hasSignals={hasSignals}
         onManageMatrix={() => { setActiveTab("profile"); setProfileView("pioneers"); }}
@@ -710,75 +897,18 @@ export default function App() {
         </main>
       </div>
 
-      {searchOpen && (
-        <div style={{ position: "absolute", top: 48, right: 18, width: 360, background: "var(--r-surface)", border: "1px solid var(--r-border)", borderRadius: "8px", zIndex: 60, padding: "10px" }}>
-          <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search objects, tags, chambers…" style={{ width: "100%", border: "1px solid var(--r-border)", borderRadius: "6px", padding: "8px", fontSize: "12px", marginBottom: "8px", background: "var(--r-bg)" }} />
-          <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
-            <select value={searchChamberFilter} onChange={(e) => setSearchChamberFilter(e.target.value as "all" | ChamberTab)} style={{ flex: 1, border: "1px solid var(--r-border)", borderRadius: "5px", background: "var(--r-bg)", fontSize: "10px", fontFamily: "monospace", height: "24px" }}>
-              <option value="all">all chambers</option>
-              <option value="school">school</option>
-              <option value="lab">lab</option>
-              <option value="creation">creation</option>
-            </select>
-            <select value={searchLifecycleFilter} onChange={(e) => setSearchLifecycleFilter(e.target.value)} style={{ flex: 1, border: "1px solid var(--r-border)", borderRadius: "5px", background: "var(--r-bg)", fontSize: "10px", fontFamily: "monospace", height: "24px" }}>
-              <option value="all">all lifecycle</option>
-              <option value="in_progress">in_progress</option>
-              <option value="paused">paused</option>
-              <option value="blocked">blocked</option>
-              <option value="completed">completed</option>
-              <option value="transferred">transferred</option>
-            </select>
-          </div>
-          <div style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
-            {filteredObjects.map((obj) => (
-              <button
-                key={obj.id}
-                onClick={() => {
-                  if (obj.action_route) {
-                    navigate(obj.action_route.tab, obj.action_route.view, obj.action_route.id);
-                  } else {
-                    navigate(obj.route.tab, obj.route.view, obj.route.id);
-                  }
-                  setSearchOpen(false);
-                }}
-                style={{
-                  textAlign: "left",
-                  border: "1px solid var(--r-border)",
-                  background: "var(--r-bg)",
-                  borderRadius: "6px",
-                  padding: "8px",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column"
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
-                  <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.chamber}</span>
-                </div>
-                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>
-                  {obj.kind || obj.type} · {obj.status ?? "active"}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {signalsOpen && (
-        <div style={{ position: "absolute", top: 48, right: 390, width: 300, background: "var(--r-surface)", border: "1px solid var(--r-border)", borderRadius: "8px", zIndex: 60, padding: "10px" }}>
-          <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)" }}>Signals</p>
-          {notificationItems.length === 0 ? (
-            <p style={{ margin: 0, fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", textAlign: "center", padding: "12px 0" }}>No active signals</p>
-          ) : (
-            notificationItems.map((item) => (
-              <button key={item.id} onClick={() => { navigate(item.destination.tab, item.destination.view, item.destination.id); setRuntimeFabric((prev) => resolveSignal(markSignalRead(prev, item.id), item.id)); setSignalsOpen(false); }} style={{ width: "100%", textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", marginBottom: "6px", cursor: "pointer", fontSize: "11px" }}>
-                {item.type} · {item.label}
-              </button>
-            ))
-          )}
-        </div>
-      )}
+      <SignalsPanel
+        open={signalsOpen}
+        onClose={() => setSignalsOpen(false)}
+        signals={runtimeFabric.signals}
+        onOpen={(item) => {
+          navigate(item.destination.tab, item.destination.view, item.destination.id);
+          setRuntimeFabric((prev) => resolveSignal(markSignalRead(prev, item.id), item.id));
+          setSignalsOpen(false);
+        }}
+        onDismiss={(id) => setRuntimeFabric((prev) => markSignalRead(prev, id))}
+        onMarkAllRead={() => setRuntimeFabric((prev) => markAllSignalsRead(prev))}
+      />
 
       {/* Status bar */}
       <div
@@ -823,10 +953,10 @@ export default function App() {
       </div>
 
       <GlobalCommandPalette
-        isOpen={cmdOpen}
+        open={cmdOpen}
         onClose={() => setCmdOpen(false)}
-        activeTab={activeTab}
-        onNavigate={navigate}
+        navigate={navigate}
+        searchIndex={searchIndex}
       />
 
       <FloatingNoteSystem

@@ -6,7 +6,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Message, type LabView, type NavFn } from "../shell-types";
-import { BlockRenderer, InlineMarkdown } from "../BlockRenderer";
+import { BlockRenderer, MetamorphicPlainSurface, inferMetamorphicClassFromText } from "../BlockRenderer";
+import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
 import { ChamberChat, LabGlyph, type ChamberConfig } from "../ChamberChat";
 import { LabDiscover } from "../discovery/LabDiscover";
 import { LabDomainDetail } from "../detail/LabDomainDetail";
@@ -20,7 +21,7 @@ const LAB_CONFIG: ChamberConfig = {
   label:       "Lab",
   tagline:     "Operational research. No guardrails.",
   placeholder: "Query the Lab…",
-  accent:      "#52796A",
+  accent:      "var(--chamber-lab)",
   glyph:       <LabGlyph />,
 };
 
@@ -44,7 +45,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
     textTransform: "uppercase" as const,
     padding: "4px 12px",
     border: "none",
-    borderBottom: active ? "2px solid #52796A" : "2px solid transparent",
+    borderBottom: active ? "2px solid var(--chamber-lab)" : "2px solid transparent",
     background: "transparent",
     color: active ? "var(--r-text)" : "var(--r-dim)",
     cursor: "pointer",
@@ -54,20 +55,14 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
 
   if (assistantMsgs.length === 0) {
     return (
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px", background: "var(--r-bg)", padding: "0 32px" }}>
-        <svg width="20" height="20" viewBox="0 0 28 28" fill="none" style={{ color: "var(--r-dim)" }}>
-          <path d="M4 22l5-7 4 4 4-8 5 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M4 8h5M4 13h8M4 18h3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
-        </svg>
-        <p style={{ fontSize: "12px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", textAlign: "center" }}>
-          Investigation board builds as research accumulates
-        </p>
-        <button
-          onClick={() => navigate("lab", "chat")}
-          style={{ fontSize: "10px", color: "#52796A", fontFamily: "monospace", background: "transparent", border: "none", cursor: "pointer", outline: "none", letterSpacing: "0.05em" }}
-        >
-          → Start a query in Chat
-        </button>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--r-bg)", padding: "24px 28px" }}>
+        <SovereignEmptyFrame
+          accentVar="var(--chamber-lab)"
+          kicker="Lab · analysis board"
+          title="Investigation surface is clear"
+          body="Findings, execution matrices, and evidence blocks populate here from Chat and Code. Nothing is fabricated — the board stays empty until research produces structured output."
+          actions={emptyActionBtn(() => navigate("lab", "chat"), "Open Lab Chat", "var(--chamber-lab)")}
+        />
       </div>
     );
   }
@@ -99,14 +94,19 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
             findings.length > 0 ? (
               findings.map((block, i) => (
                 <div key={i}>
-                  <BlockRenderer blocks={[block]} />
+                  <BlockRenderer blocks={[block]} chamber="lab" />
                 </div>
               ))
             ) : (
-              <div style={{ paddingTop: "24px", textAlign: "center" }}>
-                <p style={{ fontSize: "12px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>
-                  No structured findings yet — query the Lab for verdicts, audits, or evidence blocks
-                </p>
+              <div style={{ paddingTop: "12px" }}>
+                <SovereignEmptyFrame
+                  align="left"
+                  accentVar="var(--chamber-lab)"
+                  kicker="Findings lane"
+                  title="No verdict-class blocks yet"
+                  body="Ask for verdicts, audits, dossiers, or evidence maps in Chat. This lane only shows structured analytical blocks once they exist."
+                  actions={emptyActionBtn(() => navigate("lab", "chat"), "Query Lab", "var(--chamber-lab)")}
+                />
               </div>
             )
           )}
@@ -115,14 +115,19 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
             execBlocks.length > 0 ? (
               execBlocks.map((block, i) => (
                 <div key={i}>
-                  <BlockRenderer blocks={[block]} />
+                  <BlockRenderer blocks={[block]} chamber="lab" />
                 </div>
               ))
             ) : (
-              <div style={{ paddingTop: "24px", textAlign: "center" }}>
-                <p style={{ fontSize: "12px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>
-                  No execution plans or matrices yet
-                </p>
+              <div style={{ paddingTop: "12px" }}>
+                <SovereignEmptyFrame
+                  align="left"
+                  accentVar="var(--chamber-lab)"
+                  kicker="Plans lane"
+                  title="No execution or matrix blocks"
+                  body="Request timelines, execution trees, or comparison matrices. Operational structure appears here when the model returns those block types."
+                  actions={emptyActionBtn(() => navigate("lab", "chat"), "Request plan output", "var(--chamber-lab)")}
+                />
               </div>
             )
           )}
@@ -148,9 +153,13 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
               )}
               <div style={{ padding: "12px 14px" }}>
                 {m.blocks && m.blocks.length > 0 ? (
-                  <BlockRenderer blocks={m.blocks} />
+                  <BlockRenderer blocks={m.blocks} chamber="lab" />
                 ) : (
-                  <InlineMarkdown content={m.content.slice(0, 600) + (m.content.length > 600 ? "…" : "")} />
+                  <MetamorphicPlainSurface
+                    content={m.content.slice(0, 600) + (m.content.length > 600 ? "…" : "")}
+                    responseClass={inferMetamorphicClassFromText(m.content)}
+                    chamber="lab"
+                  />
                 )}
               </div>
             </div>
@@ -181,7 +190,14 @@ function LabArchive({ messages, navigate }: { messages: Message[]; navigate: Nav
           </button>
         </div>
         {objects.length === 0 ? (
-          <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>No archive objects yet</p>
+          <SovereignEmptyFrame
+            align="left"
+            accentVar="var(--chamber-lab)"
+            kicker="Lab · archive"
+            title="Archive is waiting for objects"
+            body="Domains, experiments, and message-derived objects accrue here as you work. Open Chat or Code to generate the first entries."
+            actions={emptyActionBtn(() => navigate("lab", "chat"), "Start in Chat", "var(--chamber-lab)")}
+          />
         ) : objects.map((obj, i) => (
           <div key={`${obj.id}-${i}`} style={{ border: "1px solid var(--r-border)", borderRadius: "6px", background: "var(--r-surface)", padding: "10px 12px", marginBottom: "6px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
@@ -256,6 +272,7 @@ export function LabMode({
       onCancel={onCancel}
       chamberLabel="Lab · Code"
       chamber="lab"
+      chamberAccentVar="var(--chamber-lab)"
       task={task}
       modelId={modelId}
       onTaskChange={onTaskChange}

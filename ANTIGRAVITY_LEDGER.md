@@ -104,8 +104,29 @@ The following remote branches were found polluting the repository space:
 
 ---
 
-## AUDIT 004 - COPILOT CONSEQUENCE FRONTIER GUARD
-**Date:** April 1, 2026
+## AUDIT 004a — SHELL SIGNALS & COMMAND SURFACE (Claude lead / Cursor branch)
+**Date:** March 31, 2026  
+**Target:** Close gap-map stubs for search + notifications on `cursor/claude-task-force-leadership-97fb`
+
+### 1. EXECUTION BLOCKS
+- **Command palette:** Fixed prop contract (`open` / `navigate`); unified SovereignBar search with ⌘K; merged `buildSearchIndex` into palette; PROFILE group for static routes.
+- **Signals panel:** Replaced floating div with `SignalsPanel.tsx` (backdrop, Escape, click-outside, severity rail, Open / Dismiss / Mark all read). Added `markAllSignalsRead` in `runtime-fabric.ts`.
+
+### 2. PIONEER QUEUE (NEXT PARALLEL WORK)
+| Pioneer | Assignment |
+|---------|------------|
+| **Cursor Builder** | Creation `artifact` view — output bundle surface (gap map §6). |
+| **Codex Systems** | Lab `archive` ↔ experiment list wiring; School `browse` content rail seeding. |
+| **Copilot QA** | Regression pass: bell badge, palette ⌘K, theme toggle on signals panel. |
+| **Gemini Expansion** | Long-context curriculum graph copy where School browse grows. |
+| **Grok Reality** | Smoke test: connector `needs_config` → signal → navigate → resolve. |
+| **Antigravity Director** | Re-audit `object-graph` vs `product-data` after archive/browse changes. |
+
+### 3. BUILD STATUS
+`npm run build` — VERIFIED on branch.
+
+## AUDIT 004b — COPILOT CONSEQUENCE FRONTIER GUARD (merged to `main`)
+**Date:** April 1, 2026  
 **Target:** Consequence frontier null-safety, routing correctness, dead-surface elimination
 
 ### 1. EXECUTION BLOCKS
@@ -122,20 +143,16 @@ The following remote branches were found polluting the repository space:
 - **Status:** **COMPLETE**.
 
 **DEAD SURFACE ELIMINATION (Copilot)**
-- **Action:** Extended `keydown` handler in `App.tsx` — `Escape` key now closes `searchOpen` and `signalsOpen` panels. Previously these panels had no keyboard dismiss path (dead dead-end surface).
-- **Action:** Added empty-state message to signals panel — previously showed blank panel when no signals were active. Now shows "No active signals".
+- **Action:** Extended `keydown` handler in `App.tsx` — `Escape` closes command palette (`cmdOpen`) and signals panel (`signalsOpen`). Legacy inline search overlay superseded by `GlobalCommandPalette` on this branch.
+- **Action:** Empty-state copy in signals UI — `SignalsPanel` lists zero-state when no signals (supersedes earlier blank floating panel).
 - **Status:** **COMPLETE**.
 
 ### 2. PIONEER MANDATORY REPORT
 - **TASK BLOCK:** Copilot Consequence Frontier Guard + Force Task Continuation
 - **FILES TOUCHED:** `intelligence-foundation.ts`, `sovereign-runtime.ts`, `runtime-fabric.ts`, `shared.tsx`, `App.tsx`, `ANTIGRAVITY_LEDGER.md`
-- **BRANCH USED:** `copilot/audit-consequence-frontier`
+- **BRANCH USED:** `copilot/audit-consequence-frontier` → merged via `main`
 - **BUILD STATUS:** VERIFIED (vite build exits 0, 0 TypeScript errors)
 - **RUNTIME STATUS:** VERIFIED
-- **PREVIEW STATUS:** VERIFIED
-- **MERGED TO MAIN:** NO (awaiting sovereign merge command)
-- **MAIN COMMIT:** N/A — branch pending merge
-- **BRANCH DELETED:** NO — awaiting merge
 - **OPEN ISSUES:** 0
 - **OWNER-RISK:** 0%
-- **NEXT REQUIRED ACTION:** Sovereign reviews and merges `copilot/audit-consequence-frontier` → `main`. Delete branch after merge.
+- **NEXT REQUIRED ACTION:** Copilot guard landed on `main`; keep task-force branch aligned via merge. Delete stale feature branches per hygiene policy.

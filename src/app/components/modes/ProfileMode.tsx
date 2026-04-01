@@ -1,4 +1,4 @@
-import { type Message, type NavFn, type Tab, type ProfileView } from "../shell-types";
+import { type Message, type MessageExecutionTrace, type NavFn, type Tab, type ProfileView } from "../shell-types";
 import { findObject, listObjectsForChamber, mergeObjectsByRecency, openObject, type RuberraObject } from "../object-graph";
 import { type CSSProperties, useState } from "react";
 import {
@@ -13,7 +13,7 @@ import {
   type WorkspaceKnowledge,
   type RuntimeFabric,
 } from "../runtime-fabric";
-import { PIONEER_REGISTRY, getVisiblePioneers, type Pioneer } from "../pioneer-registry";
+import { PIONEER_REGISTRY, getVisiblePioneers, getPioneerFromRuntimeId, type Pioneer } from "../pioneer-registry";
 import {
   CONNECTOR_REGISTRY,
   CONNECTOR_CATEGORY_LABELS,
@@ -22,11 +22,14 @@ import {
   type ConnectorCategory,
 } from "../connector-registry";
 import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from "../workflow-engine";
+import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
+import { ExecutionConsequenceStrip } from "../ExecutionConsequenceStrip";
 import {
   PROVIDER_ADAPTERS,
   SOVEREIGN_MODEL_REGISTRY,
   CHAMBER_SOVEREIGN_DEFAULTS,
   getChamberRuntimeSummary,
+  getExecutionTruth,
   TIER_LABEL,
   TIER_COLOR,
   TIER_DESCRIPTION,
@@ -71,9 +74,9 @@ interface WorkItem {
 }
 
 const CHAMBER_COLOR: Record<string, string> = {
-  lab:      "#52796A",
-  school:   "#4A6B84",
-  creation: "#8A6238",
+  lab:      "var(--chamber-lab)",
+  school:   "var(--chamber-school)",
+  creation: "var(--chamber-creation)",
 };
 
 const STATUS_COLOR: Record<WorkStatus, string> = {
@@ -81,6 +84,20 @@ const STATUS_COLOR: Record<WorkStatus, string> = {
   paused:      "var(--r-warn)",
   completed:   "var(--r-dim)",
 };
+
+function meshTraceAndChamber(
+  messages: Record<Tab, Message[]>,
+): { trace: MessageExecutionTrace; chamber: Exclude<Tab, "profile"> } | null {
+  const chambers: Exclude<Tab, "profile">[] = ["lab", "school", "creation"];
+  let best: { msg: Message; chamber: Exclude<Tab, "profile"> } | null = null;
+  for (const ch of chambers) {
+    const asst = [...messages[ch]].reverse().find((m) => m.role === "assistant" && m.execution_trace);
+    if (!asst?.execution_trace) continue;
+    if (!best || asst.timestamp > best.msg.timestamp) best = { msg: asst, chamber: ch };
+  }
+  if (!best) return null;
+  return { trace: best.msg.execution_trace!, chamber: best.chamber };
+}
 
 function deriveWorkItems(messages: Record<Tab, Message[]>): WorkItem[] {
   const chambers: Exclude<Tab, "profile">[] = ["school", "lab", "creation"];
@@ -399,6 +416,16 @@ export function ProfileMode({
     listObjectsForChamber("lab"),
     listObjectsForChamber("creation"),
   ).slice(0, 24);
+  const meshMeta = meshTraceAndChamber(messages);
+  const meshTrace = meshMeta?.trace ?? null;
+  const meshChamber = meshMeta?.chamber;
+  const meshAccent = meshChamber ? CHAMBER_COLOR[meshChamber] : "var(--r-accent-soft)";
+  const meshTruth = meshChamber ? getExecutionTruth(meshChamber) : null;
+  const meshLeadShort =
+    meshTrace?.leadPioneerId != null
+      ? getPioneerFromRuntimeId(meshTrace.leadPioneerId)?.short_role ?? meshTrace.leadPioneerId
+      : undefined;
+  const ledgerRows = continuity.filter((c) => c.lastRunDigest);
 
   const NAV_VIEWS: ProfileView[] = ["overview", "projects", "pioneers", "workflows", "connectors", "memory", "settings", "exports"];
 
@@ -406,36 +433,72 @@ export function ProfileMode({
     <div style={{ flex: 1, overflowY: "auto", background: "var(--r-bg)" }} className="hide-scrollbar">
 
       {/* Profile header */}
-      <div style={{ borderBottom: "1px solid var(--r-border)", background: "var(--r-surface)", padding: "16px 30px 0", flexShrink: 0 }}>
+      <div style={{ borderBottom: "1px solid var(--r-border)", background: "var(--r-surface)", padding: "12px 24px 0", flexShrink: 0 }}>
         <div style={{ maxWidth: "880px", margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ width: "34px", height: "34px", borderRadius: "8px", background: "linear-gradient(145deg, #D8D3CC 0%, #B4AFA8 100%)", border: "1px solid var(--r-border)", flexShrink: 0 }} />
-              <div>
-                <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.01em" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: "10px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+              <div
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  background: "linear-gradient(145deg, color-mix(in srgb, var(--r-subtext) 35%, var(--r-surface)) 0%, color-mix(in srgb, var(--r-dim) 40%, var(--r-surface)) 100%)",
+                  border: "1px solid var(--r-border-soft)",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.01em" }}>
                   {workspace.owner}
                 </p>
-                <p style={{ fontSize: "10px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", margin: "2px 0 0", letterSpacing: "0.05em" }}>
+                <p style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", margin: "2px 0 0", letterSpacing: "0.05em" }}>
                   {workspace.activeProject} · {preferences.preferredChamber} first
                 </p>
               </div>
             </div>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: "6px" }}>
-                {([
-                  { label: "Active",   value: active.length,                            color: "var(--r-ok)"   },
-                  { label: "Paused",   value: paused.length,                            color: "var(--r-warn)" },
-                  { label: "Signals",  value: signals.filter(s => !s.read).length,      color: "var(--r-accent)" },
-                  { label: "Memory",   value: memoryItems.length,                       color: "var(--r-dim)"  },
-                ]).map((stat) => (
-                  <div key={stat.label} style={{ textAlign: "center", padding: "5px 10px", border: "1px solid var(--r-border)", borderRadius: "6px", background: "var(--r-elevated)" }}>
-                    <p style={{ fontSize: "15px", fontWeight: 600, color: stat.color, margin: 0, lineHeight: 1, fontFamily: "'Inter', system-ui, sans-serif" }}>{stat.value}</p>
-                    <p style={{ fontSize: "8px", color: "var(--r-dim)", margin: "3px 0 0", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>{stat.label}</p>
-                  </div>
-                ))}
-              </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", alignItems: "center", justifyContent: "flex-end" }}>
+              {([
+                { label: "Active",   value: active.length,                            color: "var(--r-ok)"   },
+                { label: "Paused",   value: paused.length,                            color: "var(--r-warn)" },
+                { label: "Signals",  value: signals.filter(s => !s.read).length,      color: "var(--r-accent)" },
+                { label: "Memory",   value: memoryItems.length,                       color: "var(--r-dim)"  },
+              ]).map((stat) => (
+                <div
+                  key={stat.label}
+                  style={{
+                    textAlign: "center",
+                    padding: "4px 8px",
+                    minWidth: "52px",
+                    border: "1px solid var(--r-border-soft)",
+                    borderRadius: "6px",
+                    background: "var(--r-elevated)",
+                  }}
+                >
+                  <p style={{ fontSize: "13px", fontWeight: 600, color: stat.color, margin: 0, lineHeight: 1, fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.02em" }}>{stat.value}</p>
+                  <p style={{ fontSize: "7px", color: "var(--r-dim)", margin: "2px 0 0", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.07em", textTransform: "uppercase" }}>{stat.label}</p>
+                </div>
+              ))}
             </div>
           </div>
+
+          {meshTrace && meshChamber && (
+            <div style={{ maxWidth: "880px", margin: "0 auto 10px", padding: "0 2px" }}>
+              <p style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.11em", textTransform: "uppercase", color: "var(--r-dim)", margin: "0 0 6px" }}>
+                Neural mesh · last execution · <span style={{ color: meshAccent }}>{meshChamber}</span>
+              </p>
+              <ExecutionConsequenceStrip
+                trace={meshTrace}
+                accent={meshAccent}
+                compact
+                showResultDepth={4}
+                leadPioneerShort={meshLeadShort}
+                giName={meshTrace.giLabel ?? meshTrace.giId}
+                tierLabel={meshTruth ? TIER_LABEL[meshTruth.tier] : undefined}
+                tierColor={meshTruth ? TIER_COLOR[meshTruth.tier] : undefined}
+                modelTruthLabel={meshTruth?.tier_label}
+              />
+            </div>
+          )}
 
           {/* Tab bar */}
           <div style={{ display: "flex", gap: "0" }}>
@@ -446,7 +509,7 @@ export function ProfileMode({
                 style={{
                   padding: "7px 14px",
                   border: "none",
-                  borderBottom: profileView === v ? "2px solid #7A756D" : "2px solid transparent",
+                  borderBottom: profileView === v ? "2px solid color-mix(in srgb, var(--r-subtext) 45%, var(--r-border))" : "2px solid transparent",
                   background: "transparent",
                   fontSize: "11px",
                   fontFamily: "'Inter', system-ui, sans-serif",
@@ -485,7 +548,42 @@ export function ProfileMode({
             )}
             {active.length === 0 && paused.length === 0 && (
               <SectionBlock title="Work Queue" empty>
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0 }}>No active work — start a session in any chamber</p>
+                <div style={{ padding: "4px 0 8px" }}>
+                  <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-accent-soft)"
+                    kicker="Profile · orchestration ledger"
+                    title="No active work threads"
+                    body="The ledger stays empty until Lab, School, or Creation carries a live user message chain. Continuity and signals will populate here as you operate the shell."
+                    actions={emptyActionBtn(() => navigate("lab", "chat"), "Open Lab", "var(--r-accent-soft)")}
+                  />
+                </div>
+              </SectionBlock>
+            )}
+            {ledgerRows.length > 0 && (
+              <SectionBlock title="Run ledger — continuity consequence">
+                {ledgerRows.slice(0, 8).map((row) => (
+                  <div key={row.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid var(--r-border-soft)", gap: "10px" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: "11px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "-0.005em" }}>{row.title}</p>
+                      <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", margin: "3px 0 0", letterSpacing: "0.04em" }}>
+                        <span style={{ color: CHAMBER_COLOR[row.chamber] }}>{row.chamber}</span>
+                        {row.lastExecutionState && (
+                          <>
+                            {" "}
+                            · <span style={{ color: "var(--r-subtext)" }}>{row.lastExecutionState}</span>
+                          </>
+                        )}
+                        {row.lastModelId && ` · ${row.lastModelId}`}
+                      </p>
+                      {row.lastRunDigest && (
+                        <p style={{ fontSize: "9px", color: "var(--r-subtext)", fontFamily: "'JetBrains Mono', monospace", margin: "4px 0 0", lineHeight: 1.4 }}>{row.lastRunDigest}</p>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => navigate(row.route.tab, row.route.view, row.route.id)} style={btn}>Open</button>
+                  </div>
+                ))}
+                <div style={{ height: "1px" }} />
               </SectionBlock>
             )}
             {recommendations.length > 0 && (
@@ -545,13 +643,31 @@ export function ProfileMode({
             </SectionBlock>
             <SectionBlock title="All Work">
               {workItems.length === 0 ? (
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", padding: "10px 14px", margin: 0 }}>No work items yet</p>
+                <div style={{ padding: "6px 14px 12px" }}>
+                  <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-accent-soft)"
+                    kicker="Projects · work graph"
+                    title="No indexed work items"
+                    body="Cross-chamber threads appear after you send prompts in Lab, School, or Creation. This list is derived from real sessions — not seeded filler."
+                    actions={emptyActionBtn(() => navigate("school", "home"), "Enter School", "var(--r-accent-soft)")}
+                  />
+                </div>
               ) : workItems.map((item) => <WorkRow key={item.id} item={item} navigate={navigate} continuity={continuity} onTransfer={onTransfer} />)}
               <div style={{ height: "1px" }} />
             </SectionBlock>
             <SectionBlock title="Connectors">
               {connectors.length === 0 ? (
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", padding: "10px 14px", margin: 0 }}>No connectors configured</p>
+                <div style={{ padding: "6px 14px 12px" }}>
+                  <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-accent-soft)"
+                    kicker="Connectors"
+                    title="No connector rows in fabric"
+                    body="Runtime fabric ships with connector slots; enable them from this row when present. Until then, the control surface stays explicit about the gap."
+                    actions={emptyActionBtn(() => navigate("profile", "settings"), "Open settings", "var(--r-accent-soft)")}
+                  />
+                </div>
               ) : connectors.map((c) => <ConnectorRow key={c.id} connector={c} onToggle={onToggleConnector} />)}
               <div style={{ height: "1px" }} />
             </SectionBlock>
@@ -562,7 +678,16 @@ export function ProfileMode({
         {profileView === "memory" && (
           <SectionBlock title={`Memory — ${memoryItems.length} Objects`}>
             {memoryItems.length === 0 ? (
-              <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", padding: "10px 14px", margin: 0 }}>Memory builds as you work across chambers</p>
+              <div style={{ padding: "6px 14px 12px" }}>
+                <SovereignEmptyFrame
+                  align="left"
+                  accentVar="var(--r-accent-soft)"
+                  kicker="Memory · object fabric"
+                  title="Memory field is pristine"
+                  body="Objects from domains, tracks, blueprints, and chats accumulate into this fabric. Nothing is invented — navigate any chamber and return when artifacts exist."
+                  actions={emptyActionBtn(() => navigate("lab", "home"), "Browse Lab", "var(--r-accent-soft)")}
+                />
+              </div>
             ) : memoryItems.map((item) => (
               <div key={item.id} style={{ padding: "10px 14px", borderBottom: "1px solid var(--r-border-soft)" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
@@ -624,7 +749,16 @@ export function ProfileMode({
             </SectionBlock>
             <SectionBlock title="Plugins">
               {plugins.length === 0 ? (
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", padding: "10px 14px", margin: 0 }}>No plugins registered</p>
+                <div style={{ padding: "6px 14px 12px" }}>
+                  <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-accent-soft)"
+                    kicker="Plugins"
+                    title="No plugin registrations"
+                    body="Extensions attach here when the runtime exposes them. The shell does not pretend fake marketplace rows."
+                    actions={emptyActionBtn(() => navigate("profile", "overview"), "Back to overview", "var(--r-accent-soft)")}
+                  />
+                </div>
               ) : plugins.map((plugin) => (
                 <div key={plugin.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid var(--r-border-soft)" }}>
                   <div>
@@ -653,7 +787,16 @@ export function ProfileMode({
             </SectionBlock>
             <SectionBlock title="Ready to Export">
               {exportables.length === 0 ? (
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", padding: "10px 14px", margin: 0 }}>No completed runs ready for export</p>
+                <div style={{ padding: "6px 14px 12px" }}>
+                  <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-accent-soft)"
+                    kicker="Exports · continuity"
+                    title="Nothing queued for export"
+                    body="Completed continuity items you mark ready will list here. The export rail stays quiet until the ledger has exportable work."
+                    actions={emptyActionBtn(() => navigate("profile", "overview"), "Return to overview", "var(--r-accent-soft)")}
+                  />
+                </div>
               ) : exportables.map((item) => (
                 <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid var(--r-border-soft)" }}>
                   <div>
@@ -690,9 +833,16 @@ export function ProfileMode({
               </div>
             </SectionBlock>
             <SectionBlock title="Advanced Pioneers" empty>
-              <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0 }}>
-                {PIONEER_REGISTRY.filter(p => p.visibility === "advanced").length} advanced pioneers available — accessible via direct routing or ⌘K.
-              </p>
+              <div style={{ padding: "4px 0 8px" }}>
+                <SovereignEmptyFrame
+                  align="left"
+                  accentVar="var(--r-accent-soft)"
+                  kicker="Pioneers · advanced tier"
+                  title={`${PIONEER_REGISTRY.filter((p) => p.visibility === "advanced").length} advanced intelligences`}
+                  body="Advanced pioneers stay out of the default grid by design. Invoke them through routing contracts, palette navigation, or workflows — not as filler tiles."
+                  actions={emptyActionBtn(() => navigate("profile", "workflows"), "View workflows", "var(--r-accent-soft)")}
+                />
+              </div>
             </SectionBlock>
           </>
         )}

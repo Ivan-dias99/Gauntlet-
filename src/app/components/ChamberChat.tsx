@@ -7,12 +7,14 @@
 import { useRef, useEffect, useState, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Message } from "./shell-types";
-import { BlockRenderer, InlineMarkdown } from "./BlockRenderer";
+import { BlockRenderer, MetamorphicPlainSurface, inferMetamorphicClassFromText } from "./BlockRenderer";
 import { ModelSelector } from "./ModelSelector";
 import { type TaskType } from "./model-orchestration";
 import { getContractByChamber } from "./routing-contracts";
-import { getPioneer } from "./pioneer-registry";
+import { getPioneer, getPioneerFromRuntimeId } from "./pioneer-registry";
 import { getExecutionTruth, TIER_LABEL, TIER_COLOR } from "./sovereign-runtime";
+import { SovereignEmptyFrame } from "./SovereignEmptyFrame";
+import { ExecutionConsequenceStrip } from "./ExecutionConsequenceStrip";
 
 // ─── Chamber config ───────────────────────────────────────────────────────────
 
@@ -28,7 +30,7 @@ export interface ChamberConfig {
 // ─── Glyphs ───────────────────────────────────────────────────────────────────
 
 export const LabGlyph = () => (
-  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "#52796A" }}>
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "var(--chamber-lab)" }}>
     <circle cx="16" cy="16" r="5" stroke="currentColor" strokeWidth="1.25" />
     <path d="M16 2.5v4.5M16 25v4.5M2.5 16H7M25 16h4.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
     <path d="M6.5 6.5l3 3M22.5 22.5l3 3M25.5 6.5l-3 3M9.5 22.5l-3 3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
@@ -36,7 +38,7 @@ export const LabGlyph = () => (
 );
 
 export const SchoolGlyph = () => (
-  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "#4A6B84" }}>
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "var(--chamber-school)" }}>
     <rect x="3.5" y="7" width="25" height="18" rx="2" stroke="currentColor" strokeWidth="1.25" />
     <path d="M3.5 13h25" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
     <path d="M12 13v12" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
@@ -47,7 +49,7 @@ export const SchoolGlyph = () => (
 );
 
 export const CreationGlyph = () => (
-  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "#8A6238" }}>
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "var(--chamber-creation)" }}>
     <path d="M6 26l5-15 5 10 4-7 5 12" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
     <circle cx="25.5" cy="6.5" r="3.5" stroke="currentColor" strokeWidth="1.25" />
     <path d="M6 10.5h5.5M6 16h3.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
@@ -55,6 +57,24 @@ export const CreationGlyph = () => (
 );
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
+
+const EMPTY_SOVEREIGN: Record<string, { kicker: string; title: string; body: string }> = {
+  lab: {
+    kicker: "Lab · investigation field",
+    title:  "No trace on the record yet",
+    body:   "This chamber keeps an honest empty: evidence, verdicts, and matrices appear only after you run inquiry. Start below — output lands as structured blocks, not chat fog.",
+  },
+  school: {
+    kicker: "School · curriculum surface",
+    title:  "No lesson arc in motion",
+    body:   "Pick a thread and School sequences mastery checks, paths, and continuity. The surface stays calm until you commit a learning intent.",
+  },
+  creation: {
+    kicker: "Creation · execution field",
+    title:  "No build chain yet",
+    body:   "Directives compile to artifacts, blueprints, and terminal output. Send a concrete build ask — the forge stays quiet until you command it.",
+  },
+};
 
 const EMPTY_PROMPTS: Record<string, string[]> = {
   lab: [
@@ -78,16 +98,20 @@ const EMPTY_PROMPTS: Record<string, string[]> = {
 };
 
 function EmptyState({
-  glyph, label, tagline, id, onSend, accent,
+  glyph, label, id, onSend, accent,
 }: {
   glyph:   React.ReactNode;
   label:   string;
-  tagline: string;
   id:      string;
   accent:  string;
   onSend:  (t: string) => void;
 }) {
   const prompts = EMPTY_PROMPTS[id] ?? [];
+  const sovereign = EMPTY_SOVEREIGN[id] ?? {
+    kicker: "Chamber",
+    title:  `${label} — ready`,
+    body:   "Begin a session. Output accumulates under the same mother shell law as every other chamber.",
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -97,44 +121,24 @@ function EmptyState({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        paddingTop: "68px",
+        paddingTop: "48px",
         paddingBottom: "32px",
       }}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.85 }}
-        animate={{ opacity: 0.7, scale: 1 }}
-        transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-        style={{ marginBottom: "18px" }}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.35, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+        style={{ marginBottom: "16px", opacity: 0.88 }}
       >
         {glyph}
       </motion.div>
-      <p
-        style={{
-          fontSize: "14px",
-          fontWeight: 500,
-          color: "var(--r-text)",
-          fontFamily: "'Inter', system-ui, sans-serif",
-          marginBottom: "6px",
-          letterSpacing: "-0.015em",
-          lineHeight: 1.3,
-        }}
-      >
-        {label}
-      </p>
-      <p
-        style={{
-          fontSize: "12px",
-          color: "var(--r-subtext)",
-          fontFamily: "'Inter', system-ui, sans-serif",
-          textAlign: "center",
-          maxWidth: "260px",
-          lineHeight: "1.65",
-          marginBottom: "32px",
-        }}
-      >
-        {tagline}
-      </p>
+      <SovereignEmptyFrame
+        accentVar={accent}
+        kicker={sovereign.kicker}
+        title={sovereign.title}
+        body={sovereign.body}
+      />
 
       {/* Quick start prompts */}
       <div
@@ -144,9 +148,22 @@ function EmptyState({
           gap: "5px",
           width: "100%",
           maxWidth: "500px",
-          padding: "0 16px",
+          padding: "20px 16px 0",
         }}
       >
+        <p
+          style={{
+            fontSize: "9px",
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--r-dim)",
+            margin: "0 0 10px",
+            textAlign: "center",
+          }}
+        >
+          Open queries
+        </p>
         {prompts.map((p, i) => (
           <motion.button
             key={i}
@@ -179,7 +196,7 @@ function EmptyState({
               el.style.color = "var(--r-text)";
               el.style.borderColor = "var(--r-border-soft)";
               el.style.transform = "translateY(-1px)";
-              el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)";
+              el.style.boxShadow = "0 2px 8px color-mix(in srgb, var(--r-text) 5%, transparent)";
             }}
             onMouseLeave={e => {
               const el = e.currentTarget as HTMLElement;
@@ -230,7 +247,7 @@ function UserBubble({ content }: { content: string }) {
           fontFamily: "'Inter', system-ui, sans-serif",
           lineHeight: "1.65",
           border: "1px solid var(--r-border-soft)",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
+          boxShadow: "0 1px 4px color-mix(in srgb, var(--r-text) 4%, transparent)",
           letterSpacing: "-0.003em",
         }}
       >
@@ -243,57 +260,69 @@ function UserBubble({ content }: { content: string }) {
 // ─── Agent label ──────────────────────────────────────────────────────────────
 
 const CHAMBER_ROLE: Record<string, string> = {
-  "LAB":      "Research Agent",
-  "SCHOOL":   "Learning Agent",
-  "CREATION": "Build Agent",
+  "LAB":      "Lab intelligence",
+  "SCHOOL":   "School intelligence",
+  "CREATION": "Creation intelligence",
+};
+
+const CHAMBER_MANIFESTO: Record<string, string> = {
+  LAB:      "Evidence-first inquiry. Verdicts, matrices, and traces—not chat fog.",
+  SCHOOL:   "Structured mastery. Paths, checks, and continuity—not generic tutoring.",
+  CREATION: "Build-grade output. Blueprints, bundles, and execution—not slide decks.",
 };
 
 function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: string }) {
-  // chamberLabel is "RUBERRA · LAB" etc — extract chamber key
   const chamberKey = chamberLabel.split("·").pop()?.trim() ?? "";
-  const roleLabel  = CHAMBER_ROLE[chamberKey] ?? "Agent";
+  const roleLabel  = CHAMBER_ROLE[chamberKey] ?? "Chamber";
+  const manifesto  = CHAMBER_MANIFESTO[chamberKey] ?? "";
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "3px 8px 3px 6px", border: `1px solid ${accent}28`, borderRadius: "4px", background: `${accent}0a` }}>
-        <motion.span
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-          style={{
-            width: "5px",
-            height: "5px",
-            borderRadius: "50%",
-            background: accent,
-            flexShrink: 0,
-            display: "inline-block",
-          }}
-        />
+    <div style={{ marginBottom: "14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px 4px 8px", border: `1px solid color-mix(in srgb, ${accent} 22%, var(--r-border))`, borderRadius: "6px", background: `color-mix(in srgb, ${accent} 9%, var(--r-surface))` }}>
+          <span
+            style={{
+              width: "5px",
+              height: "5px",
+              borderRadius: "50%",
+              background: accent,
+              flexShrink: 0,
+              display: "inline-block",
+              opacity: 0.9,
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "8px",
+              letterSpacing: "0.11em",
+              color: accent,
+              textTransform: "uppercase",
+              userSelect: "none",
+              fontWeight: 600,
+            }}
+          >
+            {roleLabel}
+          </span>
+        </div>
         <span
           style={{
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: "8.5px",
-            letterSpacing: "0.10em",
-            color: accent,
+            fontSize: "8px",
+            letterSpacing: "0.09em",
+            color: "var(--r-dim)",
             textTransform: "uppercase",
             userSelect: "none",
-            fontWeight: 500,
           }}
         >
-          {roleLabel}
+          {chamberLabel}
         </span>
       </div>
-      <span
-        style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: "8px",
-          letterSpacing: "0.08em",
-          color: "var(--r-dim)",
-          textTransform: "uppercase",
-          userSelect: "none",
-        }}
-      >
-        {chamberLabel}
-      </span>
+      {manifesto && (
+        <p style={{ margin: "8px 0 0", fontSize: "11px", color: "var(--r-subtext)", lineHeight: 1.55, letterSpacing: "-0.01em", maxWidth: "520px" }}>
+          {manifesto}
+        </p>
+      )}
     </div>
   );
 }
@@ -323,9 +352,11 @@ function ProvenanceTrace({
       style={{
         display:      "flex",
         alignItems:   "center",
-        gap:          "4px",
-        marginBottom: "8px",
+        gap:          "6px",
+        marginBottom: "12px",
         flexWrap:     "wrap",
+        paddingBottom: "10px",
+        borderBottom: "1px solid var(--r-border-soft)",
       }}
     >
       {/* Lead pioneer chip — compact */}
@@ -432,15 +463,32 @@ function AssistantMessage({
   chamberLabel: string;
   chamberId: "lab" | "school" | "creation";
 }) {
+  const sovereign = getExecutionTruth(chamberId);
+  const trace = msg.execution_trace;
+  const leadShort =
+    trace?.leadPioneerId != null
+      ? getPioneerFromRuntimeId(trace.leadPioneerId)?.short_role ?? trace.leadPioneerId
+      : undefined;
   return (
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
     >
-      <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
-      {(msg.meta?.pioneerId || msg.meta?.workflowId) && (
+      {trace && (
+        <ExecutionConsequenceStrip
+          trace={trace}
+          accent={accent}
+          leadPioneerShort={leadShort}
+          giName={trace.giLabel ?? trace.giId}
+          tierLabel={TIER_LABEL[sovereign.tier]}
+          tierColor={TIER_COLOR[sovereign.tier]}
+          modelTruthLabel={sovereign.tier_label}
+        />
+      )}
+      <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
+      {(msg.meta?.pioneerId || msg.meta?.workflowId) && !trace && (
         <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
           {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.pioneerId}</span>}
           {msg.meta?.workflowId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.workflowId}</span>}
@@ -448,9 +496,13 @@ function AssistantMessage({
         </div>
       )}
       {msg.blocks && msg.blocks.length > 0 ? (
-        <BlockRenderer blocks={msg.blocks} />
+        <BlockRenderer blocks={msg.blocks} chamber={chamberId} />
       ) : msg.content ? (
-        <InlineMarkdown content={msg.content} />
+        <MetamorphicPlainSurface
+          content={msg.content}
+          responseClass={inferMetamorphicClassFromText(msg.content)}
+          chamber={chamberId}
+        />
       ) : (
         <ThinkingDots />
       )}
@@ -472,29 +524,32 @@ function StatusStrip({
   return (
     <div
       style={{
-        maxWidth: "660px",
+        maxWidth: "680px",
         margin: "0 auto",
         width: "100%",
-        padding: "3px 32px",
-        height: "24px",
+        padding: "8px 32px 10px",
+        minHeight: "28px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        borderTop: "1px solid var(--r-border-soft)",
+        background: "linear-gradient(to bottom, var(--r-surface) 0%, var(--r-bg) 100%)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-dim)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.11em", color: "var(--r-dim)", textTransform: "uppercase" }}>
           {chamberLabel}
         </span>
         <span
           style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: "8px",
-            letterSpacing: "0.06em",
-            color: "var(--r-dim)",
-            border: "1px solid var(--r-border)",
+            letterSpacing: "0.05em",
+            color: "var(--r-subtext)",
+            border: "1px solid var(--r-border-soft)",
             borderRadius: "999px",
-            padding: "1px 7px",
+            padding: "2px 8px",
+            background: "var(--r-surface)",
           }}
         >
           {modelBadge}
@@ -604,18 +659,18 @@ function Composer({
   const canSend = !!draft.trim() && !isLoading;
 
   return (
-    <div style={{ padding: "6px 0 20px", background: "var(--r-bg)" }}>
-      <div style={{ maxWidth: "660px", margin: "0 auto", padding: "0 32px" }}>
+    <div style={{ padding: "10px 0 24px", background: "var(--r-bg)" }}>
+      <div style={{ maxWidth: "680px", margin: "0 auto", padding: "0 32px" }}>
         <div
           style={{
             background: "var(--r-surface)",
-            border: `1px solid ${focused ? "var(--r-border)" : "var(--r-border)"}`,
-            borderRadius: "12px",
-            padding: "12px 12px 8px 16px",
+            border: `1px solid ${focused ? `color-mix(in srgb, ${accent} 32%, var(--r-border))` : "var(--r-border-soft)"}`,
+            borderRadius: "14px",
+            padding: "14px 14px 10px 18px",
             boxShadow: focused
-              ? `0 0 0 3px ${accent}15, 0 1px 8px rgba(0,0,0,0.05)`
-              : "0 1px 6px rgba(0,0,0,0.03)",
-            transition: "box-shadow 0.18s ease, border-color 0.18s ease",
+              ? `0 0 0 1px color-mix(in srgb, ${accent} 22%, transparent), 0 4px 20px color-mix(in srgb, var(--r-text) 6%, transparent)`
+              : "0 2px 12px color-mix(in srgb, var(--r-text) 4%, transparent)",
+            transition: "box-shadow 0.2s ease, border-color 0.2s ease",
           }}
         >
           <textarea
@@ -712,7 +767,7 @@ function Composer({
                 outline: "none",
                 flexShrink: 0,
                 transition: "background 0.15s ease, border-color 0.15s ease, transform 0.1s ease",
-                boxShadow: canSend ? "0 1px 4px rgba(0,0,0,0.15)" : "none",
+                boxShadow: canSend ? "0 1px 4px color-mix(in srgb, var(--r-text) 12%, transparent)" : "none",
               }}
               onMouseEnter={e => {
                 if (canSend) (e.currentTarget as HTMLElement).style.transform = "scale(1.05)";
@@ -724,7 +779,7 @@ function Composer({
               <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
                 <path
                   d="M14 8L2 2l3 6-3 6 12-6z"
-                  fill={canSend ? "white" : "var(--r-border)"}
+                  fill={canSend ? "var(--r-bg)" : "var(--r-border)"}
                   strokeWidth="0"
                 />
               </svg>
@@ -795,14 +850,13 @@ export function ChamberChat({
       <div
         ref={threadRef}
         className="hide-scrollbar"
-        style={{ flex: 1, overflowY: "auto", padding: "28px 0 4px" }}
+        style={{ flex: 1, overflowY: "auto", padding: "32px 0 8px" }}
       >
-        <div style={{ maxWidth: "660px", margin: "0 auto", padding: "0 32px" }}>
+        <div style={{ maxWidth: "680px", margin: "0 auto", padding: "0 32px" }}>
           {isEmpty ? (
             <EmptyState
               glyph={config.glyph}
               label={config.label}
-              tagline={config.tagline}
               id={config.id}
               accent={config.accent}
               onSend={onSend}
@@ -812,10 +866,21 @@ export function ChamberChat({
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  style={{ marginBottom: msg.role === "user" ? "20px" : "28px" }}
+                  style={{ marginBottom: msg.role === "user" ? "22px" : "32px" }}
                 >
                   {msg.role === "user" ? (
-                    <UserBubble content={msg.content} />
+                    <div>
+                      <UserBubble content={msg.content} />
+                      {(msg.meta?.modelId || msg.meta?.workflowId) && (
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px", paddingRight: "4px" }}>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.06em", color: "var(--r-dim)", textTransform: "uppercase" }}>
+                            dispatch
+                            {msg.meta?.modelId && ` · ${msg.meta.modelId}`}
+                            {msg.meta?.workflowId && ` · ${msg.meta.workflowId}`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <AssistantMessage
                       msg={msg}

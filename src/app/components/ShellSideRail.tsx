@@ -97,11 +97,11 @@ function NavBtn({
         transition: "background 0.12s ease, color 0.12s ease",
         marginBottom: "1px",
         letterSpacing: active ? "-0.01em" : "0",
-        boxShadow: active ? "0 1px 3px rgba(0,0,0,0.05), 0 0 0 0.5px rgba(0,0,0,0.04)" : "none",
+        boxShadow: active ? "0 1px 3px color-mix(in srgb, var(--r-text) 5%, transparent), 0 0 0 0.5px color-mix(in srgb, var(--r-text) 4%, var(--r-border-soft))" : "none",
       }}
       onMouseEnter={(e) => {
         if (!active) {
-          (e.currentTarget as HTMLElement).style.background = "var(--r-elevated)";
+          (e.currentTarget as HTMLElement).style.background = "color-mix(in srgb, var(--r-text) 6%, transparent)";
           (e.currentTarget as HTMLElement).style.color = "var(--r-text)";
         }
       }}

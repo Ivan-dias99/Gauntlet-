@@ -7,8 +7,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Command as CommandPrimitive } from "cmdk";
 import { motion, AnimatePresence } from "motion/react";
-import { type NavFn } from "./shell-types";
+import { type NavFn, type Tab } from "./shell-types";
 import { LAB_DOMAINS, SCHOOL_TRACKS, SCHOOL_ROLES, CREATION_BLUEPRINTS, CREATION_ENGINES } from "./product-data";
+import { type SearchIndexEntry } from "./runtime-fabric";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -18,11 +19,13 @@ interface CmdEntry {
   id:      string;
   label:   string;
   meta:    string;
-  chamber: "lab" | "school" | "creation";
+  chamber: Tab;
   action:  () => void;
 }
 
-function buildEntries(navigate: NavFn, onClose: () => void): CmdEntry[] {
+const RUNTIME_RESULT_CAP = 14;
+
+function buildStaticEntries(navigate: NavFn, onClose: () => void): CmdEntry[] {
   const go = (tab: "lab" | "school" | "creation" | "profile", view: string, id = "") => {
     navigate(tab, view, id);
     onClose();
@@ -45,11 +48,11 @@ function buildEntries(navigate: NavFn, onClose: () => void): CmdEntry[] {
     { id: "nav-cre-build",     label: "Creation — Build",     meta: "Chamber",  chamber: "creation", action: () => go("creation", "terminal")  },
     { id: "nav-cre-archive",   label: "Creation — Archive",   meta: "Chamber",  chamber: "creation", action: () => go("creation", "archive")   },
     // ── Profile routes ───────────────────────────────────────────────────────
-    { id: "nav-pro-overview",  label: "Profile — Overview",   meta: "Profile",  chamber: "lab",      action: () => go("profile",  "overview")  },
-    { id: "nav-pro-projects",  label: "Profile — Projects",   meta: "Profile",  chamber: "lab",      action: () => go("profile",  "projects")  },
-    { id: "nav-pro-memory",    label: "Profile — Memory",     meta: "Profile",  chamber: "lab",      action: () => go("profile",  "memory")    },
-    { id: "nav-pro-settings",  label: "Profile — Settings",   meta: "Profile",  chamber: "lab",      action: () => go("profile",  "settings")  },
-    { id: "nav-pro-exports",   label: "Profile — Exports",    meta: "Profile",  chamber: "lab",      action: () => go("profile",  "exports")   },
+    { id: "nav-pro-overview",  label: "Profile — Overview",   meta: "Profile",  chamber: "profile", action: () => go("profile",  "overview")  },
+    { id: "nav-pro-projects",  label: "Profile — Projects",   meta: "Profile",  chamber: "profile", action: () => go("profile",  "projects")  },
+    { id: "nav-pro-memory",    label: "Profile — Memory",     meta: "Profile",  chamber: "profile", action: () => go("profile",  "memory")    },
+    { id: "nav-pro-settings",  label: "Profile — Settings",   meta: "Profile",  chamber: "profile", action: () => go("profile",  "settings")  },
+    { id: "nav-pro-exports",   label: "Profile — Exports",    meta: "Profile",  chamber: "profile", action: () => go("profile",  "exports")   },
 
     // ── Lab domains ─────────────────────────────────────────────────────────
     ...LAB_DOMAINS.map((d) => ({
@@ -111,24 +114,54 @@ function buildEntries(navigate: NavFn, onClose: () => void): CmdEntry[] {
   return entries;
 }
 
+function buildRuntimeEntries(
+  searchIndex: SearchIndexEntry[],
+  navigate: NavFn,
+  onClose: () => void
+): CmdEntry[] {
+  const go = (tab: Tab, view: string, id = "") => {
+    navigate(tab, view, id);
+    onClose();
+  };
+
+  return searchIndex.map((entry) => {
+    const tab = entry.route.tab;
+    const view = entry.route.view;
+    const id = entry.route.id ?? "";
+    const kindLabel =
+      entry.kind === "object" ? "Object" : entry.kind === "continuity" ? "Continuity" : "Signal";
+    return {
+      id:      `rt:${entry.id}`,
+      label:   entry.title,
+      meta:    `${kindLabel} · ${entry.chamber}`,
+      chamber: entry.chamber,
+      action:  () => go(tab, view, id),
+    };
+  });
+}
+
 // ─── Chamber dot ──────────────────────────────────────────────────────────────
 
 const CHAMBER_DOT: Record<string, string> = {
-  lab:      "#52796A",
-  school:   "#4A6B84",
-  creation: "#8A6238",
+  lab:      "var(--chamber-lab)",
+  school:   "var(--chamber-school)",
+  creation: "var(--chamber-creation)",
+  profile:  "var(--r-subtext)",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface GlobalCommandPaletteProps {
-  open:     boolean;
-  onClose:  () => void;
-  navigate: NavFn;
+  open:        boolean;
+  onClose:     () => void;
+  navigate:    NavFn;
+  searchIndex: SearchIndexEntry[];
 }
 
-export function GlobalCommandPalette({ open, onClose, navigate }: GlobalCommandPaletteProps) {
-  const entries = buildEntries(navigate, onClose);
+export function GlobalCommandPalette({ open, onClose, navigate, searchIndex }: GlobalCommandPaletteProps) {
+  const staticEntries = buildStaticEntries(navigate, onClose);
+  const runtimeEntries = buildRuntimeEntries(searchIndex, navigate, onClose);
+  const allEntries = [...staticEntries, ...runtimeEntries];
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
 
@@ -150,18 +183,23 @@ export function GlobalCommandPalette({ open, onClose, navigate }: GlobalCommandP
     return () => window.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  const filtered = query.trim()
-    ? entries.filter(
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? allEntries.filter(
         (e) =>
-          e.label.toLowerCase().includes(query.toLowerCase()) ||
-          e.meta.toLowerCase().includes(query.toLowerCase())
+          e.label.toLowerCase().includes(q) ||
+          e.meta.toLowerCase().includes(q)
       )
-    : entries.slice(0, DEFAULT_RESULT_LIMIT);
+    : [
+        ...staticEntries.slice(0, DEFAULT_RESULT_LIMIT),
+        ...runtimeEntries.slice(0, RUNTIME_RESULT_CAP),
+      ];
 
   // Group by chamber
   const labs      = filtered.filter((e) => e.chamber === "lab");
   const schools   = filtered.filter((e) => e.chamber === "school");
   const creations = filtered.filter((e) => e.chamber === "creation");
+  const profiles  = filtered.filter((e) => e.chamber === "profile");
 
   return (
     <AnimatePresence>
@@ -285,6 +323,9 @@ export function GlobalCommandPalette({ open, onClose, navigate }: GlobalCommandP
                 {creations.length > 0 && (
                   <CmdGroup label="CREATION" entries={creations} />
                 )}
+                {profiles.length > 0 && (
+                  <CmdGroup label="PROFILE" entries={profiles} />
+                )}
               </CommandPrimitive.List>
 
               {/* Footer */}
@@ -370,7 +411,7 @@ function CmdItem({ entry }: { entry: CmdEntry }) {
           width: "5px",
           height: "5px",
           borderRadius: "50%",
-          background: CHAMBER_DOT[entry.chamber],
+          background: CHAMBER_DOT[entry.chamber] ?? "var(--r-dim)",
           flexShrink: 0,
         }}
       />

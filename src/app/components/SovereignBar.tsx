@@ -11,10 +11,10 @@ import { useState } from "react";
 
 // Chamber dot colors — authentic per-chamber tokens
 const CHAMBER_DOTS: Record<Tab, string> = {
-  lab:      "#52796A",  // sage
-  school:   "#4A6B84",  // slate
-  creation: "#8A6238",  // amber-earth
-  profile:  "#7A756D",  // neutral-warm
+  lab:      "var(--chamber-lab)",
+  school:   "var(--chamber-school)",
+  creation: "var(--chamber-creation)",
+  profile:  "var(--r-subtext)",
 };
 
 interface SovereignBarProps {
@@ -123,8 +123,8 @@ export function SovereignBar({
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
-        paddingLeft: "16px",
-        paddingRight: "14px",
+        paddingLeft: "18px",
+        paddingRight: "16px",
         transition: "background 0.25s ease, border-color 0.25s ease",
       }}
     >
@@ -201,18 +201,19 @@ export function SovereignBar({
         </div>
       </div>
 
-      {/* ── Center: Chamber switcher ── */}
+      {/* ── Center: Chamber switcher (flagship restraint) ── */}
       <div
         style={{
           position: "absolute",
           left: "50%",
           transform: "translateX(-50%)",
-          background: "var(--r-rail)",
-          borderRadius: "8px",
-          padding: "3px",
+          background: "color-mix(in srgb, var(--r-rail) 92%, var(--r-surface))",
+          borderRadius: "10px",
+          padding: "4px",
           display: "flex",
+          gap: "2px",
           border: "1px solid var(--r-border-soft)",
-          boxShadow: "inset 0 1px 2px rgba(0,0,0,0.03)",
+          boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--r-text) 4%, transparent)",
         }}
       >
         {TABS.map((tab) => {
@@ -224,21 +225,21 @@ export function SovereignBar({
               onClick={() => onTabChange(tab.id)}
               style={{
                 position: "relative",
-                padding: "4px 14px",
-                borderRadius: "6px",
+                padding: "5px 15px",
+                borderRadius: "7px",
                 border: "none",
                 background: "transparent",
                 cursor: "pointer",
-                fontWeight: isActive ? 500 : 400,
-                color: isActive ? "var(--r-text)" : "var(--r-subtext)",
+                fontWeight: isActive ? 600 : 450,
+                color: isActive ? "var(--r-text)" : "var(--r-dim)",
                 fontFamily: "'Inter', system-ui, sans-serif",
-                fontSize: "12px",
+                fontSize: "11.5px",
                 letterSpacing: "-0.01em",
-                transition: "color 0.14s ease",
+                transition: "color 0.18s ease",
                 outline: "none",
                 display: "flex",
                 alignItems: "center",
-                gap: "6px",
+                gap: "7px",
                 userSelect: "none",
                 whiteSpace: "nowrap",
               }}
@@ -250,19 +251,13 @@ export function SovereignBar({
                     position: "absolute",
                     inset: 0,
                     background: "var(--r-surface)",
-                    borderRadius: "6px",
-                    boxShadow: "0 2px 5px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.08)",
+                    borderRadius: "7px",
+                    boxShadow: "0 1px 3px color-mix(in srgb, var(--r-text) 6%, transparent), 0 0 0 1px color-mix(in srgb, var(--r-text) 5%, var(--r-border-soft))",
                   }}
-                  transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.85 }}
                 />
               )}
-              {/* Chamber color dot — always present, full opacity when active */}
-              <motion.span
-                animate={{
-                  opacity: isActive ? 1 : 0.35,
-                  scale: isActive ? 1 : 0.75,
-                }}
-                transition={{ duration: 0.16 }}
+              <span
                 style={{
                   position: "relative",
                   zIndex: 1,
@@ -272,9 +267,11 @@ export function SovereignBar({
                   background: dot,
                   flexShrink: 0,
                   display: "inline-block",
+                  opacity: isActive ? 1 : 0.4,
+                  transition: "opacity 0.18s ease",
                 }}
               />
-              <span style={{ position: "relative", zIndex: 1 }}>{tab.label}</span>
+              <span style={{ position: "relative", zIndex: 1, opacity: isActive ? 1 : 0.82 }}>{tab.label}</span>
             </button>
           );
         })}
@@ -362,7 +359,7 @@ export function SovereignBar({
                 borderRadius: "5px",
                 background: "linear-gradient(145deg, var(--r-border) 0%, var(--r-muted) 100%)",
                 flexShrink: 0,
-                border: "1px solid rgba(0,0,0,0.06)",
+                border: "1px solid color-mix(in srgb, var(--r-text) 8%, transparent)",
               }}
             />
             <motion.div animate={{ rotate: isLedgerOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>

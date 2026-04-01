@@ -188,12 +188,12 @@ export function FeaturedHero({
       style={{
         margin: "0 28px 32px",
         borderRadius: "12px",
-        border: `1px solid ${R.line}`,
-        background: R.surface,
+        border: "1px solid var(--r-border-soft)",
+        background: "var(--r-surface)",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        boxShadow: R.shadow.md,
+        boxShadow: "0 2px 8px color-mix(in srgb, var(--r-text) 6%, transparent), 0 0 0 1px color-mix(in srgb, var(--r-text) 4%, transparent)",
       }}
     >
       {/* Visual band */}
@@ -211,8 +211,8 @@ export function FeaturedHero({
             position: "absolute",
             inset: 0,
             backgroundImage: `
-              linear-gradient(${accent}12 1px, transparent 1px),
-              linear-gradient(90deg, ${accent}12 1px, transparent 1px)
+              linear-gradient(color-mix(in srgb, ${accent} 10%, transparent) 1px, transparent 1px),
+              linear-gradient(90deg, color-mix(in srgb, ${accent} 10%, transparent) 1px, transparent 1px)
             `,
             backgroundSize: "24px 24px",
           }}
@@ -226,8 +226,8 @@ export function FeaturedHero({
             width: "180px",
             height: "180px",
             borderRadius: "50%",
-            background: `${accent}10`,
-            border: `1px solid ${accent}18`,
+            background: `color-mix(in srgb, ${accent} 8%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${accent} 16%, var(--r-border))`,
           }}
         />
         <div
@@ -238,8 +238,8 @@ export function FeaturedHero({
             width: "80px",
             height: "80px",
             borderRadius: "50%",
-            background: `${accent}14`,
-            border: `1px solid ${accent}20`,
+            background: `color-mix(in srgb, ${accent} 12%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${accent} 20%, var(--r-border))`,
           }}
         />
 
@@ -252,8 +252,8 @@ export function FeaturedHero({
               left: "18px",
               padding: "3px 9px",
               borderRadius: R.r.pill,
-              background: `${accent}20`,
-              border: `1px solid ${accent}30`,
+              background: `color-mix(in srgb, ${accent} 14%, var(--r-surface))`,
+              border: `1px solid color-mix(in srgb, ${accent} 26%, var(--r-border))`,
               ...R.t.label,
               color: accent,
               fontFamily: "'Inter', sans-serif",
@@ -296,7 +296,7 @@ export function FeaturedHero({
             <h3
               style={{
                 ...R.t.title,
-                color: R.ink,
+                color: "var(--r-text)",
                 fontFamily: "'Inter', sans-serif",
                 marginBottom: "6px",
                 fontWeight: 500,
@@ -338,8 +338,8 @@ export function FeaturedHero({
                   padding: "8px 16px",
                   borderRadius: R.r.lg,
                   border: "none",
-                  background: R.ink,
-                  color: R.shell,
+                  background: "var(--r-text)",
+                  color: "var(--r-bg)",
                   ...R.t.uiMed,
                   cursor: "pointer",
                   fontFamily: "'Inter', sans-serif",
@@ -375,7 +375,7 @@ export function FeaturedHero({
                     style={{
                       fontSize: "18px",
                       fontWeight: 600,
-                      color: R.ink,
+                      color: "var(--r-text)",
                       fontFamily: "'Inter', sans-serif",
                       lineHeight: 1,
                       marginBottom: "2px",

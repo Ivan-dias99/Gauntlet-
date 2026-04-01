@@ -49,8 +49,8 @@ export function CardVisual({
             position: "absolute",
             inset: 0,
             backgroundImage: `
-              linear-gradient(${accent}18 1px, transparent 1px),
-              linear-gradient(90deg, ${accent}18 1px, transparent 1px)
+              linear-gradient(color-mix(in srgb, ${accent} 14%, transparent) 1px, transparent 1px),
+              linear-gradient(90deg, color-mix(in srgb, ${accent} 14%, transparent) 1px, transparent 1px)
             `,
             backgroundSize: "16px 16px",
           }}
@@ -65,8 +65,8 @@ export function CardVisual({
               -45deg,
               transparent,
               transparent 6px,
-              ${accent}12 6px,
-              ${accent}12 7px
+              color-mix(in srgb, ${accent} 10%, transparent) 6px,
+              color-mix(in srgb, ${accent} 10%, transparent) 7px
             )`,
           }}
         />
@@ -76,7 +76,7 @@ export function CardVisual({
           style={{
             position: "absolute",
             inset: 0,
-            backgroundImage: `radial-gradient(circle, ${accent}20 1px, transparent 1px)`,
+            backgroundImage: `radial-gradient(circle, color-mix(in srgb, ${accent} 16%, transparent) 1px, transparent 1px)`,
             backgroundSize: "10px 10px",
           }}
         />
@@ -90,7 +90,7 @@ export function CardVisual({
           right: 0,
           width: "48px",
           height: "48px",
-          background: `${accent}14`,
+          background: `color-mix(in srgb, ${accent} 12%, transparent)`,
           borderRadius: "48px 0 0 0",
         }}
       />
@@ -104,8 +104,8 @@ export function CardVisual({
             width: "32px",
             height: "32px",
             borderRadius: "8px",
-            background: `${accent}22`,
-            border: `1px solid ${accent}30`,
+            background: `color-mix(in srgb, ${accent} 18%, var(--r-surface))`,
+            border: `1px solid color-mix(in srgb, ${accent} 28%, var(--r-border))`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -146,9 +146,9 @@ export function CardShell({ onClick, children, width = 220, style }: CardShellPr
         display: "flex",
         flexDirection: "column",
         boxShadow: hovered
-          ? "0 6px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)"
-          : "0 1px 2px rgba(0,0,0,0.05)",
-        transform: hovered && onClick ? "translateY(-2px)" : "none",
+          ? "0 4px 14px color-mix(in srgb, var(--r-text) 7%, transparent), 0 1px 4px color-mix(in srgb, var(--r-text) 5%, transparent)"
+          : "0 1px 2px color-mix(in srgb, var(--r-text) 5%, transparent)",
+        transform: hovered && onClick ? "translateY(-1px)" : "none",
         ...style,
       }}
     >
@@ -174,8 +174,8 @@ export function CardTag({ label, color }: { label: string; color: string }) {
         display: "inline-block",
         padding: "1px 7px",
         borderRadius: R.r.sm,
-        background: `${color}18`,
-        border: `1px solid ${color}28`,
+        background: `color-mix(in srgb, ${color} 14%, var(--r-surface))`,
+        border: `1px solid color-mix(in srgb, ${color} 26%, var(--r-border))`,
         ...R.t.label,
         color,
         fontFamily: "'Inter', sans-serif",
@@ -306,6 +306,8 @@ interface CourseCardProps {
   level: string;
   progress?: number;
   locked?: boolean;
+  /** One-line learning invitation — structured path, not filler */
+  preview?: string;
   onClick?: () => void;
   pattern?: "grid" | "lines" | "dots" | "solid";
 }
@@ -318,14 +320,17 @@ export function CourseCard({
   level,
   progress,
   locked,
+  preview,
   onClick,
   pattern = "grid",
 }: CourseCardProps) {
+  const accent = "var(--chamber-school)";
+  const accentLight = "var(--chamber-school-light)";
   return (
-    <CardShell onClick={!locked ? onClick : undefined} width={220}>
+    <CardShell onClick={!locked ? onClick : undefined} width={228}>
       <CardVisual
-        accent={R.school}
-        accentLight="var(--chamber-school-light)"
+        accent={accent}
+        accentLight={accentLight}
         pattern={pattern}
         icon={
           locked ? (
@@ -337,8 +342,25 @@ export function CourseCard({
         size="md"
       />
       <CardBody>
-        <CardTag label={type} color={R.school} />
+        <CardTag label={type} color={accent} />
         <CardTitle>{title}</CardTitle>
+        {preview && (
+          <p
+            style={{
+              ...R.t.micro,
+              color: R.ink3,
+              fontFamily: "'Inter', sans-serif",
+              lineHeight: 1.45,
+              margin: "0 0 8px",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {preview}
+          </p>
+        )}
         <CardMeta
           items={[
             {
@@ -352,7 +374,7 @@ export function CourseCard({
         {progress !== undefined && (
           <CardProgress
             value={progress}
-            color={R.school}
+            color={accent}
             label={progress > 0 ? `${progress}% complete` : "Not started"}
           />
         )}
@@ -384,6 +406,8 @@ interface ExperimentCardProps {
   domain: string;
   tools: string[];
   complexity: "Low" | "Medium" | "High";
+  /** One-line invitation — real substance, not generic */
+  preview?: string;
   onClick?: () => void;
   pattern?: "grid" | "lines" | "dots" | "solid";
 }
@@ -394,29 +418,49 @@ export function ExperimentCard({
   domain,
   tools,
   complexity,
+  preview,
   onClick,
   pattern = "dots",
 }: ExperimentCardProps) {
+  const accent = "var(--chamber-lab)";
+  const accentLight = "var(--chamber-lab-light)";
   const complexityColor =
-    complexity === "High" ? "#8A6238" : complexity === "Medium" ? R.lab : R.ink4;
+    complexity === "High" ? "var(--chamber-creation)" : complexity === "Medium" ? accent : R.ink4;
+  const invite = preview ?? `${domain} · ${tools.slice(0, 2).join(" · ")}`;
   return (
-    <CardShell onClick={onClick} width={220}>
+    <CardShell onClick={onClick} width={228}>
       <CardVisual
-        accent={R.lab}
-        accentLight="var(--chamber-lab-light)"
+        accent={accent}
+        accentLight={accentLight}
         pattern={pattern}
         icon={<BarChart2 size={14} color={R.lab} strokeWidth={1.5} />}
         size="md"
       />
       <CardBody>
-        <CardTag label={type} color={R.lab} />
+        <CardTag label={type} color={accent} />
         <CardTitle>{title}</CardTitle>
-        <div style={{ marginBottom: "8px" }}>
+        <p
+          style={{
+            ...R.t.micro,
+            color: R.ink3,
+            fontFamily: "'Inter', sans-serif",
+            lineHeight: 1.45,
+            margin: "0 0 8px",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {invite}
+        </p>
+        <div style={{ marginBottom: "6px" }}>
           <span
             style={{
               ...R.t.micro,
-              color: R.ink4,
-              fontFamily: "'Inter', sans-serif",
+              color: R.ink5,
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: "0.04em",
             }}
           >
             {domain}
@@ -443,8 +487,8 @@ export function ExperimentCard({
             style={{
               padding: "1px 6px",
               borderRadius: R.r.sm,
-              border: `1px solid ${complexityColor}28`,
-              background: `${complexityColor}10`,
+                border: `1px solid color-mix(in srgb, ${complexityColor} 22%, var(--r-border))`,
+                background: `color-mix(in srgb, ${complexityColor} 10%, var(--r-surface))`,
               ...R.t.micro,
               color: complexityColor,
               fontFamily: "'Inter', sans-serif",
@@ -466,6 +510,8 @@ interface BlueprintCardProps {
   outputType: string;
   description: string;
   tags: string[];
+  /** Terminal-native path hint (e.g. blueprint → execution field) */
+  artifactPath?: string;
   onClick?: () => void;
   pattern?: "grid" | "lines" | "dots" | "solid";
 }
@@ -476,20 +522,23 @@ export function BlueprintCard({
   outputType,
   description,
   tags,
+  artifactPath,
   onClick,
   pattern = "lines",
 }: BlueprintCardProps) {
+  const accent = "var(--chamber-creation)";
+  const accentLight = "var(--chamber-creation-light)";
   return (
-    <CardShell onClick={onClick} width={220}>
+    <CardShell onClick={onClick} width={228}>
       <CardVisual
-        accent={R.creation}
-        accentLight="var(--chamber-creation-light)"
+        accent={accent}
+        accentLight={accentLight}
         pattern={pattern}
         icon={<Zap size={14} color={R.creation} strokeWidth={1.5} />}
         size="md"
       />
       <CardBody>
-        <CardTag label={type} color={R.creation} />
+        <CardTag label={type} color={accent} />
         <CardTitle>{title}</CardTitle>
         <p
           style={{
@@ -506,6 +555,20 @@ export function BlueprintCard({
         >
           {description}
         </p>
+        {artifactPath && (
+          <p
+            style={{
+              ...R.t.micro,
+              color: accent,
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: "0.04em",
+              margin: "0 0 8px",
+              opacity: 0.9,
+            }}
+          >
+            {artifactPath}
+          </p>
+        )}
         <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "auto" }}>
           {tags.map((t) => (
             <span
@@ -538,6 +601,8 @@ interface CollectionCardProps {
   accentLight: string;
   tag: string;
   icon: React.ReactNode;
+  /** Short invitation line under subtitle */
+  invite?: string;
   onClick?: () => void;
 }
 
@@ -549,6 +614,7 @@ export function CollectionCard({
   accentLight,
   tag,
   icon,
+  invite,
   onClick,
 }: CollectionCardProps) {
   return (
@@ -568,11 +634,28 @@ export function CollectionCard({
             ...R.t.micro,
             color: R.ink4,
             fontFamily: "'Inter', sans-serif",
-            marginBottom: "8px",
+            marginBottom: invite ? "4px" : "8px",
           }}
         >
           {subtitle}
         </p>
+        {invite && (
+          <p
+            style={{
+              ...R.t.micro,
+              color: R.ink3,
+              fontFamily: "'Inter', sans-serif",
+              lineHeight: 1.45,
+              margin: "0 0 8px",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {invite}
+          </p>
+        )}
         <div
           style={{
             display: "flex",
@@ -616,15 +699,17 @@ interface RoleCardProps {
   domain: string;
   skills: string[];
   demand: "Emerging" | "High" | "Critical";
+  /** Role pathway substance */
+  preview?: string;
   onClick?: () => void;
 }
 
-export function RoleCard({ role, domain, skills, demand, onClick }: RoleCardProps) {
+export function RoleCard({ role, domain, skills, demand, preview, onClick }: RoleCardProps) {
   const demandColor =
-    demand === "Critical" ? "#8A6238" : demand === "High" ? R.school : R.ink3;
+    demand === "Critical" ? "var(--r-warn)" : demand === "High" ? "var(--chamber-school)" : R.ink3;
 
   return (
-    <CardShell onClick={onClick} width={200}>
+    <CardShell onClick={onClick} width={216}>
       <CardBody>
         <div
           style={{
@@ -638,8 +723,8 @@ export function RoleCard({ role, domain, skills, demand, onClick }: RoleCardProp
             style={{
               padding: "2px 7px",
               borderRadius: R.r.sm,
-              background: `${demandColor}14`,
-              border: `1px solid ${demandColor}24`,
+              background: `color-mix(in srgb, ${demandColor} 12%, var(--r-surface))`,
+              border: `1px solid color-mix(in srgb, ${demandColor} 22%, var(--r-border))`,
               ...R.t.label,
               color: demandColor,
               fontFamily: "'Inter', sans-serif",
@@ -654,11 +739,28 @@ export function RoleCard({ role, domain, skills, demand, onClick }: RoleCardProp
             ...R.t.micro,
             color: R.ink4,
             fontFamily: "'Inter', sans-serif",
-            marginBottom: "10px",
+            marginBottom: preview ? "6px" : "10px",
           }}
         >
           {domain}
         </p>
+        {preview && (
+          <p
+            style={{
+              ...R.t.micro,
+              color: R.ink3,
+              fontFamily: "'Inter', sans-serif",
+              lineHeight: 1.45,
+              margin: "0 0 10px",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {preview}
+          </p>
+        )}
         <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
           {skills.slice(0, 3).map((s) => (
             <span
@@ -700,11 +802,12 @@ export function SignalCard({
   relevance,
   onClick,
 }: SignalCardProps) {
+  const labAccent = "var(--chamber-lab)";
   const relevanceColor =
-    relevance === "High" ? R.lab : relevance === "Medium" ? R.school : R.ink4;
+    relevance === "High" ? labAccent : relevance === "Medium" ? "var(--chamber-school)" : R.ink4;
 
   return (
-    <CardShell onClick={onClick} width={240}>
+    <CardShell onClick={onClick} width={248}>
       <CardBody>
         <div
           style={{
@@ -714,7 +817,7 @@ export function SignalCard({
             marginBottom: "8px",
           }}
         >
-          <CardTag label={category} color={R.lab} />
+          <CardTag label={category} color={labAccent} />
           <span
             style={{
               ...R.t.micro,
@@ -728,17 +831,29 @@ export function SignalCard({
         <p
           style={{
             ...R.t.body,
-            color: R.ink2,
+            color: "var(--r-text)",
             fontFamily: "'Inter', sans-serif",
-            lineHeight: "1.5",
-            marginBottom: "10px",
+            lineHeight: "1.52",
+            marginBottom: "6px",
             display: "-webkit-box",
-            WebkitLineClamp: 3,
+            WebkitLineClamp: 4,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}
         >
           {signal}
+        </p>
+        <p
+          style={{
+            ...R.t.micro,
+            color: labAccent,
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "0.05em",
+            margin: "0 0 10px",
+            opacity: 0.85,
+          }}
+        >
+          Trace in domain →
         </p>
         <div
           style={{
@@ -746,13 +861,16 @@ export function SignalCard({
             alignItems: "center",
             justifyContent: "space-between",
             marginTop: "auto",
+            paddingTop: "8px",
+            borderTop: "1px solid var(--r-border-soft)",
           }}
         >
           <span
             style={{
               ...R.t.micro,
               color: R.ink4,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: "0.03em",
             }}
           >
             {source}

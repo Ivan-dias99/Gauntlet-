@@ -3,7 +3,7 @@
  * Discover → Chat / Build / Archive
  */
 
-import { useRef, useEffect, useState, type KeyboardEvent } from "react";
+import { Fragment, useRef, useEffect, useState, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Message, type CreationView } from "../shell-types";
 import { type NavFn } from "../shell-types";
@@ -15,13 +15,14 @@ import { CreationEngineDetail } from "../detail/CreationEngineDetail";
 import { RuberraTerminal } from "../RuberraTerminal";
 import { type TaskType } from "../model-orchestration";
 import { buildMessageObject, findObject, listObjectsForChamber, mergeObjectsByRecency, openObject } from "../object-graph";
+import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
 
 const CREATION_CONFIG: ChamberConfig = {
   id:          "creation",
   label:       "Creation",
   tagline:     "Output engine. Directive in, artifact out.",
   placeholder: "Directive — describe what to build…",
-  accent:      "#8A6238",
+  accent:      "var(--chamber-creation)",
   glyph:       <CreationGlyph />,
 };
 
@@ -38,7 +39,19 @@ function CreationArchive({ messages, navigate }: { messages: Message[]; navigate
           <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)" }}>{objects.length} artifacts</span>
         </div>
         {objects.length === 0 ? (
-          <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>No artifacts yet</p>
+          <SovereignEmptyFrame
+            align="left"
+            accentVar="var(--chamber-creation)"
+            kicker="Creation · archive"
+            title="No forged objects in archive"
+            body="Blueprints, engines, and build outputs land here after you work in Chat or Terminal. The archive stays honest until you ship something."
+            actions={
+              <Fragment>
+                {emptyActionBtn(() => navigate("creation", "terminal"), "Open Terminal", "var(--chamber-creation)")}
+                {emptyActionBtn(() => navigate("creation", "chat"), "Open Creation Chat", "var(--chamber-creation)")}
+              </Fragment>
+            }
+          />
         ) : objects.map((obj, i) => (
           <div
             key={`${obj.id}-${i}`}
@@ -439,7 +452,7 @@ function BuildSurface({
             {/* Blocks */}
             {lastAsst?.blocks && lastAsst.blocks.length > 0 && (
               <div style={{ padding: "8px 16px" }}>
-                <BlockRenderer blocks={lastAsst.blocks} />
+                <BlockRenderer blocks={lastAsst.blocks} chamber="creation" />
               </div>
             )}
 
@@ -599,7 +612,7 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
             </button>
             <button
               onClick={onBuild}
-              style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-bg)", background: "#8A6238", border: "none", borderRadius: "5px", padding: "5px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
+              style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-bg)", background: "var(--chamber-creation)", border: "none", borderRadius: "5px", padding: "5px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
             >
               + Build
             </button>
@@ -607,20 +620,14 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
         </div>
 
         {objects.length === 0 ? (
-          /* Empty state */
-          <div style={{ textAlign: "center", paddingTop: "60px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
-            <div style={{ width: "40px", height: "40px", borderRadius: "10px", border: "1px solid var(--r-border)", background: "var(--r-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 16L7 7l4 6 3-4 2 7" stroke="var(--r-dim)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </div>
-            <p style={{ fontSize: "12px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0 }}>
-              No artifacts yet — start a build session
-            </p>
-            <button
-              onClick={onBuild}
-              style={{ fontSize: "11px", color: "#8A6238", fontFamily: "monospace", background: "transparent", border: "none", cursor: "pointer", outline: "none", letterSpacing: "0.05em" }}
-            >
-              → Open Build Terminal
-            </button>
+          <div style={{ paddingTop: "40px" }}>
+            <SovereignEmptyFrame
+              accentVar="var(--chamber-creation)"
+              kicker="Creation · artifact gallery"
+              title="Gallery is empty by design"
+              body="Artifacts appear when build sessions produce concrete outputs. Use Terminal for directive execution or Chat for structured creation blocks."
+              actions={emptyActionBtn(onBuild, "Enter Build Terminal", "var(--chamber-creation)")}
+            />
           </div>
         ) : (
           /* Grid */
@@ -637,7 +644,7 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
                   transition:   "box-shadow 0.14s ease, transform 0.14s ease",
                 }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(0,0,0,0.07)";
+                  (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px color-mix(in srgb, var(--r-text) 7%, transparent)";
                   (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
                 }}
                 onMouseLeave={e => {
@@ -647,10 +654,10 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
                 onClick={() => openObject(navigate, obj)}
               >
                 {/* Visual band */}
-                <div style={{ height: "64px", background: "#8A623810", borderBottom: "1px solid var(--r-border-soft)", position: "relative", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(-45deg, transparent, transparent 5px, #8A623808 5px, #8A623808 6px)" }} />
+                <div style={{ height: "64px", background: "color-mix(in srgb, var(--chamber-creation) 10%, var(--r-surface))", borderBottom: "1px solid var(--r-border-soft)", position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(-45deg, transparent, transparent 5px, color-mix(in srgb, var(--chamber-creation) 12%, transparent) 5px, color-mix(in srgb, var(--chamber-creation) 12%, transparent) 6px)" }} />
                   <div style={{ position: "absolute", top: "10px", left: "12px" }}>
-                    <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: "#8A6238", background: "#8A623814", border: "1px solid #8A623824", borderRadius: "3px", padding: "2px 6px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                    <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: "var(--chamber-creation)", background: "color-mix(in srgb, var(--chamber-creation) 12%, var(--r-surface))", border: "1px solid color-mix(in srgb, var(--chamber-creation) 22%, var(--r-border))", borderRadius: "3px", padding: "2px 6px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
                       {obj.type || "artifact"}
                     </span>
                   </div>
@@ -672,7 +679,7 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); onBuild(); }}
-                      style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "#8A6238", background: "transparent", border: "1px solid #8A623828", borderRadius: "4px", padding: "3px 8px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
+                      style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--chamber-creation)", background: "transparent", border: "1px solid color-mix(in srgb, var(--chamber-creation) 28%, var(--r-border))", borderRadius: "4px", padding: "3px 8px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
                     >
                       Iterate
                     </button>
@@ -745,6 +752,7 @@ export function CreationMode({
       onCancel={onCancel}
       chamberLabel="Creation · Build"
       chamber="creation"
+      chamberAccentVar="var(--chamber-creation)"
       task={task}
       modelId={modelId}
       onTaskChange={onTaskChange}

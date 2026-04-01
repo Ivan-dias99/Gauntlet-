@@ -45,7 +45,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
         title="AI Agent Orchestration System"
         description="End-to-end blueprint for building an AI agent system — from prompt design to tool use, memory, and evaluation infrastructure."
         meta="AI Systems · Blueprint · 5 steps · Started today"
-        accent={R.creation}
+        accent="var(--chamber-creation)"
         accentLight="var(--chamber-creation-light)"
         ctaLabel="Continue build"
         onCta={() => navigate("creation", "blueprint", "ai-agent")}
@@ -73,6 +73,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
             description={d.description}
             tags={d.tags}
             pattern={d.pattern}
+            artifactPath={d.artifactPath}
             onClick={() => navigate("creation", "blueprint", d.blueprintId)}
           />
         ))}
@@ -93,6 +94,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
             description={b.desc}
             tags={b.tags}
             pattern={bpPatterns[b.id] ?? "dots"}
+            artifactPath={`${b.steps.length}-step scaffold → Build surface`}
             onClick={() => navigate("creation", "blueprint", b.id)}
           />
         ))}
@@ -111,10 +113,11 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
             title={e.title}
             subtitle={e.desc}
             itemCount={e.templateCount}
-            accent={R.creation}
+            accent="var(--chamber-creation)"
             accentLight="var(--chamber-creation-light)"
             tag="Engine"
             icon={engineIcons[e.id] ?? <FileText size={14} color={R.creation} strokeWidth={1.5} />}
+            invite="Open in terminal for output-native generation with execution trace."
             onClick={() => navigate("creation", "engine", e.id)}
           />
         ))}
@@ -133,10 +136,11 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
             title={m.title}
             subtitle={m.subtitle}
             itemCount={m.itemCount}
-            accent={R.creation}
+            accent="var(--chamber-creation)"
             accentLight="var(--chamber-creation-light)"
             tag="Path"
             icon={m.icon}
+            invite={m.invite}
             onClick={() => navigate("creation", "blueprint", m.blueprintId ?? "exec-brief")}
           />
         ))}
@@ -157,6 +161,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
             description={a.description}
             tags={a.tags}
             pattern={a.pattern}
+            artifactPath="Pack → terminal execution field"
             onClick={() => navigate("creation", "terminal")}
           />
         ))}
@@ -167,8 +172,8 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const recentDrafts = [
-  { id: 1, blueprintId: "ai-agent",    title: "AI Agent Orchestration System",   type: "Blueprint", outputType: "System",   description: "End-to-end AI agent blueprint from prompt design to production.",   tags: ["AI", "Agents"], pattern: "lines" as const },
-  { id: 2, blueprintId: "tech-deep-dive",title: "Technical Deep-Dive Essay",     type: "Blueprint", outputType: "Prose",    description: "Structured template for long-form technical analysis.",              tags: ["Prose", "Expert"], pattern: "grid" as const },
+  { id: 1, blueprintId: "ai-agent",    title: "AI Agent Orchestration System",   type: "Blueprint", outputType: "System",   description: "End-to-end AI agent blueprint from prompt design to production.",   tags: ["AI", "Agents"], pattern: "lines" as const, artifactPath: "Blueprint → terminal · 5 steps" },
+  { id: 2, blueprintId: "tech-deep-dive",title: "Technical Deep-Dive Essay",     type: "Blueprint", outputType: "Prose",    description: "Structured template for long-form technical analysis.",              tags: ["Prose", "Expert"], pattern: "grid" as const, artifactPath: "Essay scaffold → Build surface" },
 ];
 
 const bpPatterns: Record<string, "lines" | "grid" | "dots" | "solid"> = {
@@ -189,10 +194,10 @@ const engineIcons: Record<string, React.ReactNode> = {
 };
 
 const monetizationPaths = [
-  { id: "m1", blueprintId: "tech-deep-dive", title: "Digital Product System",      subtitle: "Ebook, course, toolkit, prompt pack",   itemCount: 14, icon: <Package   size={14} color={R.creation} strokeWidth={1.5} /> },
-  { id: "m2", blueprintId: "exec-brief",     title: "Freelance Service Packaging", subtitle: "Proposals, offers, deliverables",        itemCount: 9,  icon: <Briefcase size={14} color={R.creation} strokeWidth={1.5} /> },
-  { id: "m3", blueprintId: "exec-brief",     title: "Creator Revenue Engine",      subtitle: "Content monetization systems",           itemCount: 11, icon: <DollarSign size={14} color={R.creation} strokeWidth={1.5} /> },
-  { id: "m4", blueprintId: "tech-deep-dive", title: "Launch Canvas",               subtitle: "Go-to-market build framework",           itemCount: 7,  icon: <Rocket    size={14} color={R.creation} strokeWidth={1.5} /> },
+  { id: "m1", blueprintId: "tech-deep-dive", title: "Digital Product System",      subtitle: "Ebook, course, toolkit, prompt pack",   itemCount: 14, icon: <Package   size={14} color={R.creation} strokeWidth={1.5} />, invite: "Ship sellable artifacts with blueprint-backed sections and export posture." },
+  { id: "m2", blueprintId: "exec-brief",     title: "Freelance Service Packaging", subtitle: "Proposals, offers, deliverables",        itemCount: 9,  icon: <Briefcase size={14} color={R.creation} strokeWidth={1.5} />, invite: "Package scope and proof into client-ready briefs from one orchestration path." },
+  { id: "m3", blueprintId: "exec-brief",     title: "Creator Revenue Engine",      subtitle: "Content monetization systems",           itemCount: 11, icon: <DollarSign size={14} color={R.creation} strokeWidth={1.5} />, invite: "Turn recurring output into a documented revenue loop, not one-off posts." },
+  { id: "m4", blueprintId: "tech-deep-dive", title: "Launch Canvas",               subtitle: "Go-to-market build framework",           itemCount: 7,  icon: <Rocket    size={14} color={R.creation} strokeWidth={1.5} />, invite: "Align narrative, proof, and ship checklist before you open the terminal." },
 ];
 
 const artifactPacks = [

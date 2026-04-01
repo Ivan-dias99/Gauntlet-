@@ -31,6 +31,49 @@ export interface MessageExecutionTruth {
   chamber:     Exclude<Tab, "profile">;
 }
 
+/** Visible runtime consequence — populated by the mother shell after routing + stream */
+export type ExecutionState =
+  | "streaming"
+  | "live"
+  | "completed"
+  | "degraded"
+  | "aborted"
+  | "error"
+  | "blocked"
+  | "scaffold_only"
+  | "provider_unavailable";
+
+export interface ExecutionResultEntry {
+  phase:   string;
+  summary: string;
+  at:      number;
+}
+
+export interface ConnectorActionEntry {
+  id:    string;
+  label: string;
+}
+
+export interface MessageExecutionTrace {
+  executionState:    ExecutionState;
+  providerId?:       string;
+  modelId?:          string;
+  supportChain?:     string[];
+  workflowId?:       string;
+  hostingLevel?:     "hosted" | "wrapped" | "proxy";
+  executionResults: ExecutionResultEntry[];
+  connectorActions: ConnectorActionEntry[];
+  /** Model requested before routing fallback */
+  fallbackFromModelId?: string;
+  /** Routed lead pioneer (mother shell truth) */
+  leadPioneerId?:   string;
+  giId?:            string;
+  /** Resolved GI display name */
+  giLabel?:         string;
+  /** One-line route rationale */
+  routeDigest?:     string;
+}
+
 export interface Message {
   id:        string;
   role:      "user" | "assistant";
@@ -51,8 +94,12 @@ export interface Message {
     modelId?: string;
     executionState?: "live" | "completed" | "degraded" | "blocked" | "failed" | "fallback_used" | "provider_unavailable" | "connector_unavailable" | "scaffold_only";
     connectorRefs?: string[];
+    providerId?: string;
+    modelId?: string;
+    supportChain?: string[];
   };
   execution_truth?: MessageExecutionTruth;
+  execution_trace?: MessageExecutionTrace;
 }
 
 /* ── Extended view types — all navigable states per chamber ── */

@@ -6,12 +6,13 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { type Theme } from "./shell-types";
 
 const CHAMBERS = [
-  { id: "lab",      label: "Lab",      accent: "#52796A", desc: "Investigate" },
-  { id: "school",   label: "School",   accent: "#4A6B84", desc: "Master"      },
-  { id: "creation", label: "Creation", accent: "#8A6238", desc: "Build"        },
-  { id: "profile",  label: "Profile",  accent: "#7A756D", desc: "Orchestrate" },
+  { id: "lab",      label: "Lab",      accent: "var(--chamber-lab)",      desc: "Investigate" },
+  { id: "school",   label: "School",   accent: "var(--chamber-school)",   desc: "Master"      },
+  { id: "creation", label: "Creation", accent: "var(--chamber-creation)", desc: "Build"        },
+  { id: "profile",  label: "Profile",  accent: "var(--r-subtext)",      desc: "Orchestrate" },
 ] as const;
 
 // ─── R mark (same geometry as SovereignBar) ────────────────────────────────
@@ -56,7 +57,7 @@ function StructuralGrid() {
           linear-gradient(90deg, var(--r-border-soft) 1px, transparent 1px)
         `,
         backgroundSize: "52px 52px",
-        opacity:      0.45,
+        opacity:      "var(--hero-grid-opacity)",
         pointerEvents:"none",
       }}
     />
@@ -77,7 +78,7 @@ function GhostedWordmark() {
         fontWeight:   700,
         letterSpacing:"-0.055em",
         color:        "var(--r-text)",
-        opacity:      0.038,
+        opacity:      "var(--hero-wordmark-opacity)",
         userSelect:   "none",
         pointerEvents:"none",
         lineHeight:   1,
@@ -100,16 +101,18 @@ function GhostedGeometry() {
         position:     "absolute",
         right:        "6vw",
         bottom:       "5vw",
-        width:        "22vw",
-        height:       "22vw",
-        maxWidth:     "320px",
-        maxHeight:    "320px",
-        border:       "2px solid var(--r-text)",
+        width:        "clamp(140px, 22vw, 300px)",
+        height:       "clamp(140px, 22vw, 300px)",
+        maxWidth:     "300px",
+        maxHeight:    "300px",
         borderRadius: "18%",
-        opacity:      0.028,
+        opacity:      "var(--hero-geometry-opacity)",
         pointerEvents:"none",
         zIndex:       1,
         transform:    "rotate(8deg)",
+        background:   "var(--hero-geometry-fill)",
+        border:       "1px solid color-mix(in srgb, var(--r-text) 12%, transparent)",
+        boxShadow:    "inset 0 0 80px color-mix(in srgb, var(--r-text) 4%, transparent), 0 0 0 1px color-mix(in srgb, var(--r-text) 3%, transparent)",
       }}
     />
   );
@@ -120,10 +123,8 @@ function GhostedGeometry() {
 function AtmosphericGlow() {
   return (
     <>
-      {/* Central warm presence */}
-      <motion.div
-        animate={{ opacity: [0.08, 0.13, 0.08] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      {/* Central presence — matte, no pulse (sovereign calm) */}
+      <div
         style={{
           position:     "absolute",
           top:          "10%",
@@ -131,15 +132,16 @@ function AtmosphericGlow() {
           transform:    "translateX(-50%)",
           width:        "70vw",
           height:       "60vh",
-          background:   "radial-gradient(ellipse at center, var(--r-accent-dim) 0%, transparent 70%)",
+          background:   "radial-gradient(ellipse at center, var(--r-accent-dim) 0%, transparent 72%)",
+          opacity:      "var(--hero-glow-center-opacity)",
           pointerEvents:"none",
           zIndex:       2,
         }}
       />
       {/* Corner ambient — lab sage */}
-      <div style={{ position: "absolute", top: 0, right: 0, width: "30vw", height: "30vh", background: "radial-gradient(ellipse at top right, #52796A18 0%, transparent 70%)", pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", top: 0, right: 0, width: "30vw", height: "30vh", background: "radial-gradient(ellipse at top right, color-mix(in srgb, var(--chamber-lab) 14%, transparent) 0%, transparent 70%)", pointerEvents: "none", zIndex: 2 }} />
       {/* Corner ambient — creation amber */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, width: "25vw", height: "25vh", background: "radial-gradient(ellipse at bottom left, #8A623810 0%, transparent 70%)", pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, width: "25vw", height: "25vh", background: "radial-gradient(ellipse at bottom left, color-mix(in srgb, var(--chamber-creation) 12%, transparent) 0%, transparent 70%)", pointerEvents: "none", zIndex: 2 }} />
     </>
   );
 }
@@ -152,14 +154,17 @@ function TopNav({ onEnter, isNarrow }: { onEnter: (chamber?: string) => void; is
       style={{
         position:     "absolute",
         top: 0, left: 0, right: 0,
-        height:       "52px",
+        minHeight:    "52px",
         display:      "flex",
         alignItems:   "center",
         justifyContent:"space-between",
-        padding:      "0 28px",
+        flexWrap:     "wrap",
+        gap:          "10px",
+        padding:      "10px max(16px, 4vw) 10px max(16px, 4vw)",
         zIndex:       20,
         borderBottom: "1px solid var(--r-border-soft)",
-        background:   "transparent",
+        background:   "color-mix(in srgb, var(--r-bg) 82%, transparent)",
+        backdropFilter: "blur(8px)",
       }}
     >
       {/* Brand */}
@@ -177,8 +182,8 @@ function TopNav({ onEnter, isNarrow }: { onEnter: (chamber?: string) => void; is
         </span>
       </div>
 
-      {/* Chamber links — hidden on narrow viewports */}
-      {!isNarrow && (
+      {/* Wide: chamber labels · narrow: compact dots (names live in portal) */}
+      {!isNarrow ? (
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           {CHAMBERS.map((c) => (
             <button
@@ -201,6 +206,29 @@ function TopNav({ onEnter, isNarrow }: { onEnter: (chamber?: string) => void; is
             >
               {c.label}
             </button>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }} title="Jump to chamber">
+          {CHAMBERS.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => onEnter(c.id)}
+              style={{
+                width:        "7px",
+                height:       "7px",
+                borderRadius: "50%",
+                background:   c.accent,
+                opacity:      0.45,
+                border:       "none",
+                cursor:       "pointer",
+                padding:      0,
+                transition:   "opacity 0.15s ease, transform 0.15s ease",
+              }}
+              onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.opacity = "1"; el.style.transform = "scale(1.15)"; }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.opacity = "0.45"; el.style.transform = "scale(1)"; }}
+              aria-label={`Enter ${c.label}`}
+            />
           ))}
         </div>
       )}
@@ -261,8 +289,8 @@ function ChamberChip({
       style={{
         padding:      "10px 8px",
         borderRadius: "8px",
-        border:       `1px solid ${selected ? chamber.accent + "50" : "var(--r-border)"}`,
-        background:   selected ? `${chamber.accent}0e` : "transparent",
+        border:       selected ? `1px solid color-mix(in srgb, ${chamber.accent} 38%, var(--r-border))` : "1px solid var(--r-border)",
+        background:   selected ? `color-mix(in srgb, ${chamber.accent} 10%, var(--r-surface))` : "transparent",
         cursor:       "pointer",
         outline:      "none",
         textAlign:    "center" as const,
@@ -329,28 +357,29 @@ function CommandPortal({
       initial={{ opacity: 0, y: 18, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
+      whileHover={{ boxShadow: "0 8px 36px rgba(0,0,0,0.08), 0 0 0 1px color-mix(in srgb, var(--r-text) 6%, var(--r-border))" }}
       style={{
         width:        "100%",
-        maxWidth:     "480px",
+        maxWidth:     "min(480px, 100%)",
         border:       "1px solid var(--r-border)",
-        borderRadius: "14px",
+        borderRadius: "16px",
         background:   "var(--r-surface)",
-        padding:      "22px 22px 20px",
-        boxShadow:    "0 4px 28px rgba(0,0,0,0.06), 0 1px 6px rgba(0,0,0,0.04)",
+        padding:      "20px 20px 18px",
+        boxShadow:    "0 4px 32px rgba(0,0,0,0.05), 0 0 0 1px color-mix(in srgb, var(--r-text) 4%, transparent)",
         position:     "relative",
         overflow:     "hidden",
-        marginBottom: "18px",
+        marginBottom: "12px",
       }}
     >
-      {/* Inner top glow */}
+      {/* Matte top veil — not glossy */}
       <div style={{
         position:     "absolute",
         top: 0, left: 0, right: 0,
-        height:       "60px",
-        background:   "linear-gradient(to bottom, var(--r-accent-dim) 0%, transparent 100%)",
-        opacity:      0.12,
+        height:       "52px",
+        background:   "linear-gradient(to bottom, color-mix(in srgb, var(--r-accent-dim) 35%, transparent) 0%, transparent 100%)",
+        opacity:      0.45,
         pointerEvents:"none",
-        borderRadius: "14px 14px 0 0",
+        borderRadius: "16px 16px 0 0",
       }} />
 
       {/* Portal label */}
@@ -360,18 +389,36 @@ function CommandPortal({
         color:        "var(--r-dim)",
         letterSpacing:"0.12em",
         textTransform:"uppercase" as const,
-        margin:       "0 0 14px",
+        margin:       "0 0 10px",
         position:     "relative",
         zIndex:       1,
       }}>
-        Select entry chamber — or enter directly
+        System gateway
+      </p>
+
+      {/* Single sovereign narrative — no second card below portal */}
+      <p style={{
+        fontSize:     "12.5px",
+        color:        "var(--r-subtext)",
+        fontFamily:   "'Inter', system-ui, sans-serif",
+        lineHeight:   1.58,
+        letterSpacing:"-0.012em",
+        margin:       "0 0 16px",
+        position:     "relative",
+        zIndex:       1,
+        textAlign:    "left",
+      }}>
+        One mother shell — <strong style={{ color: "var(--r-text)", fontWeight: 600 }}>Lab</strong> evidence,{" "}
+        <strong style={{ color: "var(--r-text)", fontWeight: 600 }}>School</strong> mastery,{" "}
+        <strong style={{ color: "var(--r-text)", fontWeight: 600 }}>Creation</strong> build output,{" "}
+        <strong style={{ color: "var(--r-text)", fontWeight: 600 }}>Profile</strong> continuity. Same runtime and law everywhere.
       </p>
 
       {/* Chamber chips */}
       <div style={{
         display:             "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap:                 "7px",
+        gridTemplateColumns: "repeat(auto-fit, minmax(72px, 1fr))",
+        gap:                 "8px",
         marginBottom:        "16px",
         position:            "relative",
         zIndex:              1,
@@ -389,14 +436,14 @@ function CommandPortal({
 
       {/* Enter button */}
       <motion.button
-        whileHover={{ y: -1, boxShadow: "0 6px 20px rgba(0,0,0,0.14)" }}
+        whileHover={{ y: -1, boxShadow: "0 6px 22px rgba(0,0,0,0.12)" }}
         whileTap={{ scale: 0.99 }}
         onClick={() => onEnter(selected ?? undefined)}
         style={{
           width:          "100%",
-          padding:        "13px 20px",
-          borderRadius:   "9px",
-          border:         "none",
+          padding:        "14px 20px",
+          borderRadius:   "10px",
+          border:         "1px solid color-mix(in srgb, var(--r-text) 18%, transparent)",
           background:     "var(--r-text)",
           color:          "var(--r-bg)",
           fontSize:       "13px",
@@ -409,7 +456,7 @@ function CommandPortal({
           alignItems:     "center",
           justifyContent: "center",
           gap:            "8px",
-          boxShadow:      "0 2px 8px rgba(0,0,0,0.10)",
+          boxShadow:      "0 2px 10px rgba(0,0,0,0.08)",
           transition:     "box-shadow 0.15s ease",
           position:       "relative",
           zIndex:         1,
@@ -429,7 +476,7 @@ function CommandPortal({
 
 // ─── Main ─────────────────────────────────────────────────────────────────
 
-export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }) {
+export function HeroLanding({ onEnter, theme }: { onEnter: (chamber?: string) => void; theme: Theme }) {
   const [mounted, setMounted]   = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [isNarrow, setIsNarrow] = useState(() => typeof window !== "undefined" ? window.innerWidth < 520 : false);
@@ -438,6 +485,11 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
     const t = setTimeout(() => setMounted(true), 40);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    else document.documentElement.removeAttribute("data-theme");
+  }, [theme]);
 
   useEffect(() => {
     const handler = () => setIsNarrow(window.innerWidth < 520);
@@ -500,7 +552,7 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
           justifyContent:  "center",
           position:        "relative",
           zIndex:          10,
-          padding:         "52px 24px 0",
+          padding:         "max(56px, 12vh) max(16px, 4vw) 24px",
         }}
       >
         <AnimatePresence>
@@ -511,14 +563,14 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
               transition={{ duration: 0.5, delay: 0.05 }}
               style={{
                 width:     "100%",
-                maxWidth:  "480px",
+                maxWidth:  "min(480px, 100%)",
                 display:   "flex",
                 flexDirection:"column",
                 alignItems:"center",
                 textAlign: "center",
               }}
             >
-              {/* Status pill */}
+              {/* Status — single line, no duplicate “sovereign” claims */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.92 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -527,7 +579,7 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
                   display:       "inline-flex",
                   alignItems:    "center",
                   gap:           "6px",
-                  marginBottom:  "28px",
+                  marginBottom:  "24px",
                   padding:       "4px 13px",
                   borderRadius:  "999px",
                   border:        "1px solid var(--r-border)",
@@ -540,19 +592,18 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
                   boxShadow:     "0 1px 4px rgba(0,0,0,0.04)",
                 }}
               >
-                <motion.span
-                  animate={{ opacity: [0.35, 1, 0.35] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                <span
                   style={{
                     width:        "4px",
                     height:       "4px",
                     borderRadius: "50%",
-                    background:   "#52796A",
+                    background:   "var(--chamber-lab)",
                     display:      "inline-block",
                     flexShrink:   0,
+                    opacity:      0.85,
                   }}
                 />
-                Sovereign System · Online
+                Mother shell · live
               </motion.div>
 
               {/* Command portal */}
@@ -562,24 +613,6 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
                 onSelect={toggleChamber}
               />
 
-              {/* Descriptor */}
-              <motion.p
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.65, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                style={{
-                  fontSize:     "13px",
-                  color:        "var(--r-subtext)",
-                  fontFamily:   "'Inter', system-ui, sans-serif",
-                  lineHeight:   1.65,
-                  letterSpacing:"-0.005em",
-                  margin:       0,
-                  maxWidth:     "360px",
-                }}
-              >
-                Not a tool. Not a workspace.<br />
-                <span style={{ color: "var(--r-dim)" }}>The sovereign AI organism.</span>
-              </motion.p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -599,39 +632,39 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
           display:       "flex",
           alignItems:    "center",
           justifyContent:"space-between",
-          padding:       "0 28px",
+          padding:       "0 max(16px, 4vw)",
           borderTop:     "1px solid var(--r-border-soft)",
           zIndex:        20,
         }}
       >
-        {/* Left: chamber dots — hidden on narrow */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          {!isNarrow && CHAMBERS.map((c) => (
-            <span
-              key={c.id}
-              style={{
-                fontSize:     "9px",
-                fontFamily:   "'JetBrains Mono', monospace",
-                color:        "var(--r-dim)",
-                letterSpacing:"0.10em",
-                textTransform:"uppercase" as const,
-                display:      "flex",
-                alignItems:   "center",
-                gap:          "5px",
-                cursor:       "pointer",
-                transition:   "color 0.12s ease",
-              }}
-              onClick={() => onEnter(c.id)}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = c.accent; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-dim)"; }}
-            >
-              <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: c.accent, display: "inline-block", opacity: 0.6 }} />
-              {c.label}
-            </span>
-          ))}
-          {isNarrow && (
-            <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>
-              sovereign system · v10
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+          {!isNarrow ? (
+            CHAMBERS.map((c) => (
+              <span
+                key={c.id}
+                style={{
+                  fontSize:     "9px",
+                  fontFamily:   "'JetBrains Mono', monospace",
+                  color:        "var(--r-dim)",
+                  letterSpacing:"0.10em",
+                  textTransform:"uppercase" as const,
+                  display:      "flex",
+                  alignItems:   "center",
+                  gap:          "5px",
+                  cursor:       "pointer",
+                  transition:   "color 0.12s ease",
+                }}
+                onClick={() => onEnter(c.id)}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = c.accent; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-dim)"; }}
+              >
+                <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: c.accent, display: "inline-block", opacity: 0.6 }} />
+                {c.label}
+              </span>
+            ))
+          ) : (
+            <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
+              4 chambers · shared runtime · local memory
             </span>
           )}
         </div>
