@@ -70,7 +70,7 @@ export function ProfileLedger({ isOpen, onClose, onManageMatrix }: ProfileLedger
                 </span>
               </div>
             </div>
-            
+
             {/* Tokens */}
             <div style={{ marginTop: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
@@ -101,6 +101,18 @@ export function ProfileLedger({ isOpen, onClose, onManageMatrix }: ProfileLedger
               <ConnectorItem name="GitHub" status="connected" detail="ivan-star-dev" />
               <ConnectorItem name="Supabase" status="connected" detail="eu-west-1" />
               <ConnectorItem name="Vercel" status="disconnected" detail="Unlinked" />
+            </div>
+          </div>
+
+          {/* Governance Trail */}
+          <div style={{ padding: "12px", borderTop: "1px solid var(--r-border)" }}>
+            <span style={{ display: "block", fontSize: "10px", color: "var(--r-dim)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, padding: "4px 8px 8px" }}>
+              Governance Trail
+            </span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              <GovernanceTrailItem action="connector.write" verdict="deferred" ts="just now" />
+              <GovernanceTrailItem action="pioneer.spawn" verdict="allowed" ts="2m ago" />
+              <GovernanceTrailItem action="mission.create" verdict="allowed" ts="5m ago" />
             </div>
           </div>
 
@@ -151,6 +163,29 @@ function ConnectorItem({ name, status, detail }: { name: string; status: "connec
       <span style={{ fontSize: "10px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace" }}>
         {detail}
       </span>
+    </div>
+  );
+}
+
+function GovernanceTrailItem({ action, verdict, ts }: { action: string; verdict: "allowed" | "blocked" | "deferred"; ts: string }) {
+  const verdictColor = verdict === "allowed" ? "var(--r-ok)" : verdict === "blocked" ? "var(--r-err)" : "var(--r-warn)";
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "6px 8px",
+        borderRadius: "5px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: verdictColor, flexShrink: 0 }} />
+        <span style={{ fontSize: "11px", color: "var(--r-subtext)", fontFamily: "'JetBrains Mono', monospace" }}>
+          {action}
+        </span>
+      </div>
+      <span style={{ fontSize: "10px", color: "var(--r-dim)" }}>{ts}</span>
     </div>
   );
 }
