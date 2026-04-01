@@ -23,6 +23,10 @@ import {
   upsertMission,
 } from "./dna/mission-substrate";
 import {
+  defaultAutonomousOperationsState,
+  type AutonomousOperationsState,
+} from "./components/autonomous-operations";
+import {
   type Tab, type Message, type SignalStatus,
   type LabView, type SchoolView, type CreationView, type ProfileView,
   type FloatingNote, type Theme, type NavFn,
@@ -122,6 +126,7 @@ export default function App() {
   const [profileView, setProfileView] = useState<ProfileView>("overview");
   const [runtimeFabric, setRuntimeFabric] = useState<RuntimeFabric>(loadRuntimeFabric);
   const [missions, setMissions] = useState<Mission[]>(loadMissions);
+  const [operations, setOperations] = useState<AutonomousOperationsState>(defaultAutonomousOperationsState);
 
   // ── Detail navigation ────────────────────────────────────────────────────────
   const [detailId, setDetailId] = useState<string>("");
@@ -195,6 +200,35 @@ export default function App() {
 
   const handleMissionUpsert = useCallback((m: Mission) => {
     setMissions((prev) => upsertMission(prev, m));
+  }, []);
+
+  // ── Stack 04 — Autonomous Operations handlers ─────────────────────────────────
+  const handleOperationSignalRead = useCallback((id: string) => {
+    setOperations((prev) => ({
+      ...prev,
+      signals: prev.signals.map((s) => s.id === id ? { ...s, read: true } : s),
+    }));
+  }, []);
+
+  const handleOperationSignalResolve = useCallback((id: string) => {
+    setOperations((prev) => ({
+      ...prev,
+      signals: prev.signals.map((s) => s.id === id ? { ...s, read: true, resolved: true, resolvedAt: Date.now() } : s),
+    }));
+  }, []);
+
+  const handleHandoffAccept = useCallback((id: string) => {
+    setOperations((prev) => ({
+      ...prev,
+      handoffs: prev.handoffs.map((h) => h.id === id ? { ...h, state: "accepted" as const, acceptedAt: Date.now() } : h),
+    }));
+  }, []);
+
+  const handleHandoffReject = useCallback((id: string, reason: string) => {
+    setOperations((prev) => ({
+      ...prev,
+      handoffs: prev.handoffs.map((h) => h.id === id ? { ...h, state: "rejected" as const, rejectionReason: reason } : h),
+    }));
   }, []);
 
   useEffect(() => {
@@ -907,6 +941,11 @@ export default function App() {
                   onExport={(continuityId) => setRuntimeFabric((prev) => exportContinuity(prev, continuityId))}
                   missions={missions}
                   onMissionUpsert={handleMissionUpsert}
+                  operations={operations}
+                  onOperationSignalRead={handleOperationSignalRead}
+                  onOperationSignalResolve={handleOperationSignalResolve}
+                  onHandoffAccept={handleHandoffAccept}
+                  onHandoffReject={handleHandoffReject}
                 />
               )}
             </motion.div>

@@ -17,9 +17,17 @@
  * Dependencies: Stack 01 (canon), Stack 02 (mission), Stack 03 (intelligence)
  */
 
+import { assertStackOrder } from "../dna/canon-sovereignty";
 import { type Tab } from "./shell-types";
 import { type PioneerId } from "./pioneer-registry";
 import { type WorkflowId } from "./workflow-engine";
+
+// ─── Stack order guard ────────────────────────────────────────────────────────
+
+const _orderGuard = assertStackOrder("operations", ["canon", "mission", "intelligence"]);
+if (!_orderGuard.valid) {
+  console.warn("[Ruberra Autonomous Operations] Stack order violation:", _orderGuard.reason);
+}
 
 // ─── TASK LAYER ───────────────────────────────────────────────────────────────
 
@@ -648,6 +656,8 @@ export function getUnreadSignals(signals: OperationSignal[]): OperationSignal[] 
 }
 
 export function getPendingApprovals(approvals: ApprovalRecord[]): ApprovalRecord[] {
+  // "Pending" means the approval required a non-auto decision and has not yet been resolved
+  // (decision is still at its initial state — escalated or timed_out means further action needed)
   return approvals.filter((a) => a.decision === "escalated" || a.decision === "timed_out");
 }
 
