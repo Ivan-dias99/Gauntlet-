@@ -116,7 +116,7 @@ function IconBtn({
 export function SovereignBar({
   activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals, onManageMatrix,
   systemHealth, workspaceOwner, workspaceSubtitle,
-  activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals, onManageMatrix, trustSignal = "healthy", onSecurityAcknowledge,
+  trustSignal = "healthy", onSecurityAcknowledge,
 }: SovereignBarProps) {
   const [isLedgerOpen, setLedgerOpen] = useState(false);
 
