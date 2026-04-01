@@ -144,6 +144,8 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
         paddingTop: "24px",
         paddingBottom: "40px",
         background: "var(--r-bg)",
+        backgroundImage: `radial-gradient(var(--r-border-soft) 0.8px, transparent 0.8px)`,
+        backgroundSize: "24px 24px",
         scrollbarWidth: "none",
       }}
     >
@@ -155,7 +157,7 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
         description="Lesson 3 of 9 — Evaluation Frameworks for LLMs. Learn how to build principled evaluation infrastructure for language model quality and safety."
         meta="AI Systems Engineering · Lesson 3 · 44% complete"
         accent={R.school}
-        accentLight={R.schoolLight}
+        accentLight="var(--chamber-school-light)"
         ctaLabel="Resume lesson"
         onCta={() => navigate("school", "lesson", "lesson-evals")}
         secondaryLabel="View curriculum"
@@ -222,7 +224,7 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
             subtitle={t.tagline.slice(0, 55)}
             itemCount={t.lessonCount}
             accent={R.school}
-            accentLight={R.schoolLight}
+            accentLight="var(--chamber-school-light)"
             tag="Track"
             icon={<Layers size={14} color={R.school} strokeWidth={1.5} />}
             onClick={() => navigate("school", "track", t.id)}

@@ -146,9 +146,9 @@ export function CardShell({ onClick, children, width = 220, style }: CardShellPr
         display: "flex",
         flexDirection: "column",
         boxShadow: hovered
-          ? "0 4px 14px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)"
-          : R.shadow.xs,
-        transform: hovered && onClick ? "translateY(-1px)" : "none",
+          ? "0 6px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)"
+          : "0 1px 2px rgba(0,0,0,0.05)",
+        transform: hovered && onClick ? "translateY(-2px)" : "none",
         ...style,
       }}
     >
@@ -325,7 +325,7 @@ export function CourseCard({
     <CardShell onClick={!locked ? onClick : undefined} width={220}>
       <CardVisual
         accent={R.school}
-        accentLight={R.schoolLight}
+        accentLight="var(--chamber-school-light)"
         pattern={pattern}
         icon={
           locked ? (
@@ -403,7 +403,7 @@ export function ExperimentCard({
     <CardShell onClick={onClick} width={220}>
       <CardVisual
         accent={R.lab}
-        accentLight={R.labLight}
+        accentLight="var(--chamber-lab-light)"
         pattern={pattern}
         icon={<BarChart2 size={14} color={R.lab} strokeWidth={1.5} />}
         size="md"
@@ -483,7 +483,7 @@ export function BlueprintCard({
     <CardShell onClick={onClick} width={220}>
       <CardVisual
         accent={R.creation}
-        accentLight={R.creationLight}
+        accentLight="var(--chamber-creation-light)"
         pattern={pattern}
         icon={<Zap size={14} color={R.creation} strokeWidth={1.5} />}
         size="md"

@@ -46,7 +46,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
         description="End-to-end blueprint for building an AI agent system — from prompt design to tool use, memory, and evaluation infrastructure."
         meta="AI Systems · Blueprint · 5 steps · Started today"
         accent={R.creation}
-        accentLight={R.creationLight}
+        accentLight="var(--chamber-creation-light)"
         ctaLabel="Continue build"
         onCta={() => navigate("creation", "blueprint", "ai-agent")}
         secondaryLabel="New creation"
@@ -112,7 +112,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
             subtitle={e.desc}
             itemCount={e.templateCount}
             accent={R.creation}
-            accentLight={R.creationLight}
+            accentLight="var(--chamber-creation-light)"
             tag="Engine"
             icon={engineIcons[e.id] ?? <FileText size={14} color={R.creation} strokeWidth={1.5} />}
             onClick={() => navigate("creation", "engine", e.id)}
@@ -134,7 +134,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
             subtitle={m.subtitle}
             itemCount={m.itemCount}
             accent={R.creation}
-            accentLight={R.creationLight}
+            accentLight="var(--chamber-creation-light)"
             tag="Path"
             icon={m.icon}
             onClick={() => navigate("creation", "blueprint", m.blueprintId ?? "exec-brief")}
