@@ -564,7 +564,7 @@ export function recommendContinuityActions(fabric: RuntimeFabric): ContinuityRec
       continue;
     }
     if (item.status === "completed" || item.status === "validated") {
-      const nextTab = item.transferDestinations[0] ?? "profile";
+      const nextTab = item.transferDestinations[0] ?? "lab";
       recs.push({
         continuityId: item.id,
         title: item.title,

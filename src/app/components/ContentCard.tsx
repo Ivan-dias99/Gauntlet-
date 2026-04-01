@@ -149,6 +149,9 @@ export function CardShell({ onClick, children, width = 220, style }: CardShellPr
           ? "0 4px 14px color-mix(in srgb, var(--r-text) 7%, transparent), 0 1px 4px color-mix(in srgb, var(--r-text) 5%, transparent)"
           : "0 1px 2px color-mix(in srgb, var(--r-text) 5%, transparent)",
         transform: hovered && onClick ? "translateY(-1px)" : "none",
+          ? "0 6px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)"
+          : "0 1px 2px rgba(0,0,0,0.05)",
+        transform: hovered && onClick ? "translateY(-2px)" : "none",
         ...style,
       }}
     >
@@ -331,6 +334,8 @@ export function CourseCard({
       <CardVisual
         accent={accent}
         accentLight={accentLight}
+        accent={R.school}
+        accentLight="var(--chamber-school-light)"
         pattern={pattern}
         icon={
           locked ? (
@@ -432,6 +437,8 @@ export function ExperimentCard({
       <CardVisual
         accent={accent}
         accentLight={accentLight}
+        accent={R.lab}
+        accentLight="var(--chamber-lab-light)"
         pattern={pattern}
         icon={<BarChart2 size={14} color={R.lab} strokeWidth={1.5} />}
         size="md"
@@ -533,6 +540,8 @@ export function BlueprintCard({
       <CardVisual
         accent={accent}
         accentLight={accentLight}
+        accent={R.creation}
+        accentLight="var(--chamber-creation-light)"
         pattern={pattern}
         icon={<Zap size={14} color={R.creation} strokeWidth={1.5} />}
         size="md"

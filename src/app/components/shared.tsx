@@ -50,16 +50,19 @@ export function RIconButton({
   style,
   className,
 }: RIconButtonProps) {
+  const [hov, setHov] = React.useState(false);
   return (
     <button
       title={title}
       onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
       style={{
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: R.r.lg,
         border: `1px solid ${active ? R.strong : R.hairline}`,
-        background: active ? R.selected : "transparent",
+        background: active ? R.selected : hov ? "var(--r-elevated)" : "transparent",
         cursor: "pointer",
         display: "flex",
         alignItems: "center",
@@ -69,7 +72,7 @@ export function RIconButton({
         flexShrink: 0,
         ...style,
       }}
-      className={className || "hover:bg-[#F0EDE7]"}
+      className={className}
     >
       {children}
     </button>
@@ -174,6 +177,7 @@ interface RProgressProps {
 }
 
 export function RProgress({ value, color = R.ink, height = 2 }: RProgressProps) {
+  const clamped = Math.min(100, Math.max(0, value));
   return (
     <div
       style={{
@@ -187,7 +191,7 @@ export function RProgress({ value, color = R.ink, height = 2 }: RProgressProps) 
       <div
         style={{
           height: "100%",
-          width: `${value}%`,
+          width: `${clamped}%`,
           background: color,
           borderRadius: "2px",
           transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -205,6 +209,7 @@ interface RSegmentDotsProps {
 }
 
 export function RSegmentDots({ total, filled, color = R.ink }: RSegmentDotsProps) {
+  const safeFilled = Math.min(filled, total);
   return (
     <div style={{ display: "flex", gap: "3px" }}>
       {Array.from({ length: total }).map((_, i) => (
@@ -214,7 +219,7 @@ export function RSegmentDots({ total, filled, color = R.ink }: RSegmentDotsProps
             width: "14px",
             height: "2px",
             borderRadius: "1px",
-            background: i < filled ? color : R.hairline,
+            background: i < safeFilled ? color : R.hairline,
           }}
         />
       ))}

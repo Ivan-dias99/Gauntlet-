@@ -124,3 +124,38 @@ The following remote branches were found polluting the repository space:
 
 ### 3. BUILD STATUS
 `npm run build` — VERIFIED on branch.
+## AUDIT 004 - COPILOT CONSEQUENCE FRONTIER GUARD
+**Date:** April 1, 2026
+**Target:** Consequence frontier null-safety, routing correctness, dead-surface elimination
+
+### 1. EXECUTION BLOCKS
+
+**CONSEQUENCE FRONTIER NULL-SAFETY (Copilot)**
+- **Action:** Fixed `resolveRouteDecision` in `intelligence-foundation.ts` — guarded empty `giRegistry` and `pioneers` array accesses with named fallback constants `ROUTE_FALLBACK_GI_ID` / `ROUTE_FALLBACK_PIONEER_ID`. Added `workflow.pioneers.length > 0` guard before `[0]` access.
+- **Action:** Fixed `resolveSovereignStack` in `sovereign-runtime.ts` — extracted `DEGRADED_MODEL` and `DEGRADED_ADAPTER` sentinel constants; added hard-return degraded proxy resolution when registry is entirely empty; replaced `adapter!` non-null assertion with `?? DEGRADED_ADAPTER`.
+- **Action:** Fixed type mismatch in `recommendContinuityActions` in `runtime-fabric.ts` — fallback `"profile"` excluded by `Exclude<Tab,"profile">` type; corrected to `"lab"`.
+- **Action:** Fixed `RProgress` in `shared.tsx` — value clamped to `[0, 100]` range. Fixed `RSegmentDots` — `filled` clamped to `≤ total`.
+- **Status:** **COMPLETE**.
+
+**CONNECTOR ROUTING BUG (Copilot)**
+- **Action:** Fixed `App.tsx` — connector signals that require configuration were routing to `view: "projects"` in Profile. Corrected to `view: "connectors"` (the actual Profile connectors management view).
+- **Status:** **COMPLETE**.
+
+**DEAD SURFACE ELIMINATION (Copilot)**
+- **Action:** Extended `keydown` handler in `App.tsx` — `Escape` key now closes `searchOpen` and `signalsOpen` panels. Previously these panels had no keyboard dismiss path (dead dead-end surface).
+- **Action:** Added empty-state message to signals panel — previously showed blank panel when no signals were active. Now shows "No active signals".
+- **Status:** **COMPLETE**.
+
+### 2. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Copilot Consequence Frontier Guard + Force Task Continuation
+- **FILES TOUCHED:** `intelligence-foundation.ts`, `sovereign-runtime.ts`, `runtime-fabric.ts`, `shared.tsx`, `App.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `copilot/audit-consequence-frontier`
+- **BUILD STATUS:** VERIFIED (vite build exits 0, 0 TypeScript errors)
+- **RUNTIME STATUS:** VERIFIED
+- **PREVIEW STATUS:** VERIFIED
+- **MERGED TO MAIN:** NO (awaiting sovereign merge command)
+- **MAIN COMMIT:** N/A — branch pending merge
+- **BRANCH DELETED:** NO — awaiting merge
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Sovereign reviews and merges `copilot/audit-consequence-frontier` → `main`. Delete branch after merge.

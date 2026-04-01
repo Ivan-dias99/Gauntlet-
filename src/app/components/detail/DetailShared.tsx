@@ -167,7 +167,7 @@ export function PrimaryAction({ label, onClick }: { label: string; onClick: () =
         borderRadius: "6px",
         border: "none",
         background: "var(--r-text)",
-        color: "white",
+        color: "var(--r-bg)",
         cursor: "pointer",
         outline: "none",
         fontSize: "11px",
