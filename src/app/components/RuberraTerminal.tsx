@@ -5,7 +5,7 @@
  */
 
 import { useRef, useEffect, useState, type KeyboardEvent } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { type Message } from "./shell-types";
 import { ModelSelector } from "./ModelSelector";
 import { type ChamberTab, type TaskType } from "./model-orchestration";
@@ -256,16 +256,12 @@ function BlockPrompt({ content }: { content: string }) {
 
 function BlockOperation({ verb, target, sub }: { verb: string; target: string; sub?: string }) {
   return (
-    <div style={{ marginBottom: "6px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-        <motion.span
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          style={{ color: T.green, fontSize: "10px", lineHeight: 1, flexShrink: 0 }}
-        >
-          ●
-        </motion.span>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12.5px", lineHeight: 1.5 }}>
+    <div style={{ marginBottom: "10px", paddingBottom: "8px", borderBottom: `1px solid ${T.line}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <span style={{ color: T.dim2, fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", flexShrink: 0, userSelect: "none" }}>
+          CMD
+        </span>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", lineHeight: 1.55, letterSpacing: "0.01em" }}>
           <span style={{ color: T.text, fontWeight: 500 }}>{verb}</span>
           <span style={{ color: T.dim }}>{"("}</span>
           <span style={{ color: T.cyan }}>{target}</span>
@@ -289,11 +285,12 @@ function BlockCode({ lines, lang, filename }: { lines: string[]; lang: string; f
   return (
     <div
       style={{
-        margin: "8px 0 14px",
-        border: `1px solid ${T.line2}`,
-        borderRadius: "6px",
+        margin: "12px 0 16px",
+        border: `1px solid ${T.line}`,
+        borderRadius: "8px",
         overflow: "hidden",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+        background: T.surface,
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
       }}
     >
       {/* Code header */}
@@ -530,31 +527,18 @@ function BlockDivider({ label }: { label: string }) {
 function BlockStatus({ text, elapsed, tokens, variant }: {
   text: string; elapsed?: string; tokens?: string; variant: "working" | "done" | "error";
 }) {
-  const color  = variant === "done" ? T.green : variant === "error" ? T.red : T.amber;
-  const prefix = variant === "done" ? "✓" : variant === "error" ? "✗" : "◎";
+  const color  = variant === "done" ? T.green : variant === "error" ? T.red : T.dim;
+  const prefix = variant === "done" ? "ok" : variant === "error" ? "err" : "run";
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "8px 0 6px", padding: "5px 10px", background: variant === "working" ? T.amberBg : "transparent", borderRadius: "4px", border: `1px solid ${T.line2}` }}>
-      {variant === "working" ? (
-        <motion.span
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
-          style={{ color, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", userSelect: "none" }}
-        >
-          {prefix}
-        </motion.span>
-      ) : (
-        <span style={{ color, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", userSelect: "none" }}>{prefix}</span>
-      )}
-      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11.5px", color }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "10px 0 8px", padding: "6px 12px", background: variant === "working" ? "color-mix(in srgb, var(--rt-amber) 6%, transparent)" : T.bg, borderRadius: "6px", border: `1px solid ${T.line}` }}>
+      <span style={{ color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.1em", textTransform: "uppercase", userSelect: "none", minWidth: "28px" }}>
+        {prefix}
+      </span>
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: T.text, letterSpacing: "0.02em" }}>
         {text}
         {variant === "working" && (
-          <motion.span
-            animate={{ opacity: [0, 1, 0] }}
-            transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
-          >
-            …
-          </motion.span>
+          <span style={{ color: T.dim2, marginLeft: "4px" }}>…</span>
         )}
       </span>
       {(elapsed || tokens) && (
@@ -776,15 +760,6 @@ export function RuberraTerminal({
 
   const allBlocks: TerminalBlock[] = [];
 
-  if (messages.length === 0 && !isLoading) {
-    allBlocks.push({
-      kind: "status",
-      text: `RUBERRA · ${chamberLabel.toUpperCase()} TERMINAL`,
-      variant: "done",
-    });
-    allBlocks.push({ kind: "divider", label: "Ready" });
-  }
-
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
     const isLastAssistant = msg.role === "assistant" && i === messages.length - 1;
@@ -804,45 +779,35 @@ export function RuberraTerminal({
         fontFamily: "'JetBrains Mono', monospace",
       }}
     >
-      {/* Terminal header bar */}
+      {/* Terminal header — single state strip, no duplicate metrics */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 14px",
-          height: "34px",
+          padding: "0 16px",
+          height: "36px",
           background: T.surface,
           borderBottom: `1px solid ${T.line}`,
           flexShrink: 0,
+          position: "relative",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-          {/* macOS-style traffic lights */}
-          {(["#3D3A36", "#3D3A36", "#3D3A36"] as const).map((c, i) => (
-            <span
-              key={i}
-              style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                background: c,
-                display: "inline-block",
-                border: "0.5px solid rgba(255,255,255,0.04)",
-              }}
-            />
-          ))}
-          <span style={{ marginLeft: "4px", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: T.dim, letterSpacing: "0.05em", userSelect: "none" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: T.dim2, letterSpacing: "0.08em", textTransform: "uppercase", userSelect: "none" }}>
+            ruberra
+          </span>
+          <span style={{ color: T.line2, fontSize: "9px" }}>·</span>
+          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: T.dim, letterSpacing: "0.04em", userSelect: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {chamberLabel.toLowerCase()}
           </span>
         </div>
 
-        {/* Center label */}
-        <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: T.dim2, letterSpacing: "0.06em", userSelect: "none", position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
-          {messages.length > 0 ? `${messages.filter(m => m.role === "user").length} commands` : "ready"}
-        </span>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+          <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: T.dim2, letterSpacing: "0.06em", userSelect: "none" }}>
+            {messages.filter((m) => m.role === "user").length} in · {messages.filter((m) => m.role === "assistant").length} out
+            {isLoading ? " · active" : ""}
+          </span>
           <ModelSelector
             chamber={chamber}
             task={task}
@@ -851,34 +816,6 @@ export function RuberraTerminal({
             onModelChange={onModelChange}
             mode="terminal"
           />
-          {isLoading && (
-            <motion.span
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
-              style={{ fontSize: "9px", fontFamily: "monospace", color: T.amber, letterSpacing: "0.06em" }}
-            >
-              running
-            </motion.span>
-          )}
-          <span style={{ fontSize: "9px", fontFamily: "monospace", color: T.dim2 }}>
-            {messages.length > 0 ? `${messages.filter(m => m.role === "assistant").length} outputs` : "0 outputs"}
-          </span>
-          <AnimatePresence>
-            {isLoading && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0.4, 1, 0.4] }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
-                style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: T.amber, letterSpacing: "0.07em" }}
-              >
-                running
-              </motion.span>
-            )}
-          </AnimatePresence>
-          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: T.dim2 }}>
-            {messages.filter(m => m.role === "assistant").length} outputs
-          </span>
         </div>
       </div>
 
@@ -889,38 +826,32 @@ export function RuberraTerminal({
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "18px 18px 8px",
+          padding: "20px 20px 12px",
+          background: T.bg,
         }}
       >
         {messages.length === 0 && !isLoading ? (
-          <div style={{ paddingTop: "28px", display: "flex", flexDirection: "column", gap: "5px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-              <motion.span
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                style={{ color: T.green, fontFamily: "'JetBrains Mono', monospace", fontSize: "10px" }}
-              >
-                ●
-              </motion.span>
-              <span style={{ color: T.dim, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", letterSpacing: "0.04em" }}>
-                RUBERRA {chamberLabel.toUpperCase()} TERMINAL
+          <div style={{ paddingTop: "32px", maxWidth: "560px" }}>
+            <p style={{ margin: "0 0 8px", fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.12em", color: T.dim2, textTransform: "uppercase" }}>
+              Execution field
+            </p>
+            <p style={{ margin: "0 0 16px", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.text, lineHeight: 1.6, letterSpacing: "0.01em" }}>
+              Directives compile here. Output groups by operation, prose, and fenced code—no theater, no noise.
+            </p>
+            <div style={{ padding: "12px 14px", border: `1px solid ${T.line}`, borderRadius: "8px", background: T.surface }}>
+              <span style={{ color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", display: "block", marginBottom: "6px" }}>
+                {placeholder}
               </span>
-            </div>
-            <div style={{ paddingLeft: "19px" }}>
-              <span style={{ color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px" }}>└ </span>
-              <span style={{ color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px" }}>{placeholder}</span>
-            </div>
-            <div style={{ height: "10px" }} />
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", paddingLeft: "2px" }}>
-              <span>›</span>
-              <span style={{ color: T.amberDim }}>ready for directive</span>
-              <BlinkCursor />
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.dim, fontFamily: "'JetBrains Mono', monospace", fontSize: "10px" }}>
+                <span style={{ color: T.amberDim }}>›</span>
+                <span>Awaiting directive</span>
+              </div>
             </div>
           </div>
         ) : (
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             {allBlocks.map((block, i) => (
-              <div key={i}>{renderBlock(block, i)}</div>
+              <div key={i} style={{ marginBottom: "2px" }}>{renderBlock(block, i)}</div>
             ))}
           </div>
         )}

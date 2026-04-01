@@ -7,7 +7,7 @@
 import { useRef, useEffect, useState, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Message } from "./shell-types";
-import { BlockRenderer, InlineMarkdown } from "./BlockRenderer";
+import { BlockRenderer, InlineMarkdown, MetamorphicPlainSurface, inferMetamorphicClassFromText } from "./BlockRenderer";
 import { ModelSelector } from "./ModelSelector";
 import { type TaskType } from "./model-orchestration";
 import { getContractByChamber } from "./routing-contracts";
@@ -243,57 +243,69 @@ function UserBubble({ content }: { content: string }) {
 // ─── Agent label ──────────────────────────────────────────────────────────────
 
 const CHAMBER_ROLE: Record<string, string> = {
-  "LAB":      "Research Agent",
-  "SCHOOL":   "Learning Agent",
-  "CREATION": "Build Agent",
+  "LAB":      "Lab intelligence",
+  "SCHOOL":   "School intelligence",
+  "CREATION": "Creation intelligence",
+};
+
+const CHAMBER_MANIFESTO: Record<string, string> = {
+  LAB:      "Evidence-first inquiry. Verdicts, matrices, and traces—not chat fog.",
+  SCHOOL:   "Structured mastery. Paths, checks, and continuity—not generic tutoring.",
+  CREATION: "Build-grade output. Blueprints, bundles, and execution—not slide decks.",
 };
 
 function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: string }) {
-  // chamberLabel is "RUBERRA · LAB" etc — extract chamber key
   const chamberKey = chamberLabel.split("·").pop()?.trim() ?? "";
-  const roleLabel  = CHAMBER_ROLE[chamberKey] ?? "Agent";
+  const roleLabel  = CHAMBER_ROLE[chamberKey] ?? "Chamber";
+  const manifesto  = CHAMBER_MANIFESTO[chamberKey] ?? "";
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "3px 8px 3px 6px", border: `1px solid ${accent}28`, borderRadius: "4px", background: `${accent}0a` }}>
-        <motion.span
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-          style={{
-            width: "5px",
-            height: "5px",
-            borderRadius: "50%",
-            background: accent,
-            flexShrink: 0,
-            display: "inline-block",
-          }}
-        />
+    <div style={{ marginBottom: "14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px 4px 8px", border: `1px solid ${accent}22`, borderRadius: "6px", background: `${accent}08` }}>
+          <span
+            style={{
+              width: "5px",
+              height: "5px",
+              borderRadius: "50%",
+              background: accent,
+              flexShrink: 0,
+              display: "inline-block",
+              opacity: 0.9,
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "8px",
+              letterSpacing: "0.11em",
+              color: accent,
+              textTransform: "uppercase",
+              userSelect: "none",
+              fontWeight: 600,
+            }}
+          >
+            {roleLabel}
+          </span>
+        </div>
         <span
           style={{
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: "8.5px",
-            letterSpacing: "0.10em",
-            color: accent,
+            fontSize: "8px",
+            letterSpacing: "0.09em",
+            color: "var(--r-dim)",
             textTransform: "uppercase",
             userSelect: "none",
-            fontWeight: 500,
           }}
         >
-          {roleLabel}
+          {chamberLabel}
         </span>
       </div>
-      <span
-        style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: "8px",
-          letterSpacing: "0.08em",
-          color: "var(--r-dim)",
-          textTransform: "uppercase",
-          userSelect: "none",
-        }}
-      >
-        {chamberLabel}
-      </span>
+      {manifesto && (
+        <p style={{ margin: "8px 0 0", fontSize: "11px", color: "var(--r-subtext)", lineHeight: 1.55, letterSpacing: "-0.01em", maxWidth: "520px" }}>
+          {manifesto}
+        </p>
+      )}
     </div>
   );
 }
@@ -323,9 +335,11 @@ function ProvenanceTrace({
       style={{
         display:      "flex",
         alignItems:   "center",
-        gap:          "4px",
-        marginBottom: "8px",
+        gap:          "6px",
+        marginBottom: "12px",
         flexWrap:     "wrap",
+        paddingBottom: "10px",
+        borderBottom: "1px solid var(--r-border-soft)",
       }}
     >
       {/* Lead pioneer chip — compact */}
@@ -438,8 +452,8 @@ function AssistantMessage({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
     >
-      <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
+      <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
       {(msg.meta?.pioneerId || msg.meta?.workflowId) && (
         <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
           {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.pioneerId}</span>}
@@ -450,7 +464,7 @@ function AssistantMessage({
       {msg.blocks && msg.blocks.length > 0 ? (
         <BlockRenderer blocks={msg.blocks} />
       ) : msg.content ? (
-        <InlineMarkdown content={msg.content} />
+        <MetamorphicPlainSurface content={msg.content} responseClass={inferMetamorphicClassFromText(msg.content)} />
       ) : (
         <ThinkingDots />
       )}
@@ -472,29 +486,32 @@ function StatusStrip({
   return (
     <div
       style={{
-        maxWidth: "660px",
+        maxWidth: "680px",
         margin: "0 auto",
         width: "100%",
-        padding: "3px 32px",
-        height: "24px",
+        padding: "8px 32px 10px",
+        minHeight: "28px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        borderTop: "1px solid var(--r-border-soft)",
+        background: "linear-gradient(to bottom, var(--r-surface) 0%, var(--r-bg) 100%)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-dim)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.11em", color: "var(--r-dim)", textTransform: "uppercase" }}>
           {chamberLabel}
         </span>
         <span
           style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: "8px",
-            letterSpacing: "0.06em",
-            color: "var(--r-dim)",
-            border: "1px solid var(--r-border)",
+            letterSpacing: "0.05em",
+            color: "var(--r-subtext)",
+            border: "1px solid var(--r-border-soft)",
             borderRadius: "999px",
-            padding: "1px 7px",
+            padding: "2px 8px",
+            background: "var(--r-surface)",
           }}
         >
           {modelBadge}
@@ -604,18 +621,18 @@ function Composer({
   const canSend = !!draft.trim() && !isLoading;
 
   return (
-    <div style={{ padding: "6px 0 20px", background: "var(--r-bg)" }}>
-      <div style={{ maxWidth: "660px", margin: "0 auto", padding: "0 32px" }}>
+    <div style={{ padding: "10px 0 24px", background: "var(--r-bg)" }}>
+      <div style={{ maxWidth: "680px", margin: "0 auto", padding: "0 32px" }}>
         <div
           style={{
             background: "var(--r-surface)",
-            border: `1px solid ${focused ? "var(--r-border)" : "var(--r-border)"}`,
-            borderRadius: "12px",
-            padding: "12px 12px 8px 16px",
+            border: `1px solid ${focused ? `${accent}35` : "var(--r-border-soft)"}`,
+            borderRadius: "14px",
+            padding: "14px 14px 10px 18px",
             boxShadow: focused
-              ? `0 0 0 3px ${accent}15, 0 1px 8px rgba(0,0,0,0.05)`
-              : "0 1px 6px rgba(0,0,0,0.03)",
-            transition: "box-shadow 0.18s ease, border-color 0.18s ease",
+              ? `0 0 0 1px ${accent}20, 0 4px 20px rgba(0,0,0,0.06)`
+              : "0 2px 12px rgba(0,0,0,0.04)",
+            transition: "box-shadow 0.2s ease, border-color 0.2s ease",
           }}
         >
           <textarea
@@ -795,9 +812,9 @@ export function ChamberChat({
       <div
         ref={threadRef}
         className="hide-scrollbar"
-        style={{ flex: 1, overflowY: "auto", padding: "28px 0 4px" }}
+        style={{ flex: 1, overflowY: "auto", padding: "32px 0 8px" }}
       >
-        <div style={{ maxWidth: "660px", margin: "0 auto", padding: "0 32px" }}>
+        <div style={{ maxWidth: "680px", margin: "0 auto", padding: "0 32px" }}>
           {isEmpty ? (
             <EmptyState
               glyph={config.glyph}
@@ -812,7 +829,7 @@ export function ChamberChat({
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  style={{ marginBottom: msg.role === "user" ? "20px" : "28px" }}
+                  style={{ marginBottom: msg.role === "user" ? "22px" : "32px" }}
                 >
                   {msg.role === "user" ? (
                     <UserBubble content={msg.content} />

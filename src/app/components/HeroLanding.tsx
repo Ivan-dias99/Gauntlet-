@@ -177,29 +177,27 @@ function TopNav({ onEnter }: { onEnter: (chamber?: string) => void }) {
         </span>
       </div>
 
-      {/* Chamber links */}
-      <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+      {/* Quick chamber dots — full names live in portal + rail below */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }} title="Jump to chamber">
         {CHAMBERS.map((c) => (
           <button
             key={c.id}
             onClick={() => onEnter(c.id)}
             style={{
-              fontSize:     "11px",
-              fontFamily:   "'Inter', system-ui, sans-serif",
-              color:        "var(--r-subtext)",
-              background:   "transparent",
+              width:        "7px",
+              height:       "7px",
+              borderRadius: "50%",
+              background:   c.accent,
+              opacity:      0.45,
               border:       "none",
               cursor:       "pointer",
-              outline:      "none",
-              letterSpacing:"0.01em",
-              padding:      "4px 0",
-              transition:   "color 0.12s ease",
+              padding:      0,
+              transition:   "opacity 0.15s ease, transform 0.15s ease",
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-text)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)"; }}
-          >
-            {c.label}
-          </button>
+            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.opacity = "1"; el.style.transform = "scale(1.15)"; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.opacity = "0.45"; el.style.transform = "scale(1)"; }}
+            aria-label={`Enter ${c.label}`}
+          />
         ))}
       </div>
 
@@ -362,7 +360,7 @@ function CommandPortal({
         position:     "relative",
         zIndex:       1,
       }}>
-        Select entry chamber — or enter directly
+        Choose chamber · same shell inside
       </p>
 
       {/* Chamber chips */}
@@ -509,7 +507,7 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
                 textAlign: "center",
               }}
             >
-              {/* Status pill */}
+              {/* Status — single line, no duplicate “sovereign” claims */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.92 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -518,7 +516,7 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
                   display:       "inline-flex",
                   alignItems:    "center",
                   gap:           "6px",
-                  marginBottom:  "28px",
+                  marginBottom:  "24px",
                   padding:       "4px 13px",
                   borderRadius:  "999px",
                   border:        "1px solid var(--r-border)",
@@ -531,9 +529,7 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
                   boxShadow:     "0 1px 4px rgba(0,0,0,0.04)",
                 }}
               >
-                <motion.span
-                  animate={{ opacity: [0.35, 1, 0.35] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                <span
                   style={{
                     width:        "4px",
                     height:       "4px",
@@ -541,9 +537,10 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
                     background:   "#52796A",
                     display:      "inline-block",
                     flexShrink:   0,
+                    opacity:      0.85,
                   }}
                 />
-                Sovereign System · Online
+                Mother shell · live
               </motion.div>
 
               {/* Command portal */}
@@ -553,24 +550,45 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
                 onSelect={toggleChamber}
               />
 
-              {/* Descriptor */}
-              <motion.p
+              {/* One narrative — Lab investigates, School teaches, Creation ships, Profile orchestrates */}
+              <motion.div
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.65, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ delay: 0.55, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                 style={{
-                  fontSize:     "13px",
-                  color:        "var(--r-subtext)",
-                  fontFamily:   "'Inter', system-ui, sans-serif",
-                  lineHeight:   1.65,
-                  letterSpacing:"-0.005em",
-                  margin:       0,
-                  maxWidth:     "360px",
+                  marginTop:    "8px",
+                  marginBottom: "4px",
+                  maxWidth:     "420px",
+                  padding:      "12px 16px",
+                  borderRadius: "10px",
+                  border:       "1px solid var(--r-border-soft)",
+                  background:   "color-mix(in srgb, var(--r-surface) 88%, transparent)",
                 }}
               >
-                Not a tool. Not a workspace.<br />
-                <span style={{ color: "var(--r-dim)" }}>The sovereign AI organism.</span>
-              </motion.p>
+                <p style={{
+                  fontSize:     "10px",
+                  fontFamily:   "'JetBrains Mono', monospace",
+                  letterSpacing:"0.08em",
+                  textTransform:"uppercase" as const,
+                  color:        "var(--r-dim)",
+                  margin:       "0 0 8px",
+                }}>
+                  What Ruberra is
+                </p>
+                <p style={{
+                  fontSize:     "13px",
+                  color:        "var(--r-text)",
+                  fontFamily:   "'Inter', system-ui, sans-serif",
+                  lineHeight:   1.62,
+                  letterSpacing:"-0.01em",
+                  margin:       0,
+                }}>
+                  One mother shell: <strong style={{ fontWeight: 600, color: "var(--r-text)" }}>Lab</strong> for evidence and verdicts,{" "}
+                  <strong style={{ fontWeight: 600 }}>School</strong> for structured mastery,{" "}
+                  <strong style={{ fontWeight: 600 }}>Creation</strong> for build-grade artifacts,{" "}
+                  <strong style={{ fontWeight: 600 }}>Profile</strong> for continuity and routing. Same law everywhere—no duplicate products inside.
+                </p>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -595,31 +613,11 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
           zIndex:        20,
         }}
       >
-        {/* Left: operational meta */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          {CHAMBERS.map((c, i) => (
-            <span
-              key={c.id}
-              style={{
-                fontSize:     "9px",
-                fontFamily:   "'JetBrains Mono', monospace",
-                color:        "var(--r-dim)",
-                letterSpacing:"0.10em",
-                textTransform:"uppercase" as const,
-                display:      "flex",
-                alignItems:   "center",
-                gap:          "5px",
-                cursor:       "pointer",
-                transition:   "color 0.12s ease",
-              }}
-              onClick={() => onEnter(c.id)}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = c.accent; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-dim)"; }}
-            >
-              <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: c.accent, display: "inline-block", opacity: 0.6 }} />
-              {c.label}
-            </span>
-          ))}
+        {/* Left: system facts — chambers already chosen above */}
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
+            4 chambers · shared runtime · local memory
+          </span>
         </div>
 
         {/* Right: version + key hint */}

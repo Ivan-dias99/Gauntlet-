@@ -8,6 +8,87 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { type MessageBlock, type StatusFlag, type BlockType } from "./shell-types";
 
+/** Metamorphic output class — container hierarchy adapts per response kind */
+export type MetamorphicResponseClass =
+  | "analytical"
+  | "execution"
+  | "lesson"
+  | "artifact"
+  | "status_progress"
+  | "signal_pulse";
+
+function blockTypeToResponseClass(type: BlockType): MetamorphicResponseClass {
+  switch (type) {
+    case "execution":
+    case "blueprint":
+      return "execution";
+    case "lesson":
+      return "lesson";
+    case "creation":
+      return "artifact";
+    case "timeline":
+      return "status_progress";
+    case "signal":
+      return "signal_pulse";
+    default:
+      return "analytical";
+  }
+}
+
+export interface MetamorphicSurfaceStyle {
+  responseClass: MetamorphicResponseClass;
+  rail:          string;
+  railWidth:     string;
+  bg:            string;
+  radius:        string;
+  shadow:        string;
+  headerBg:      string;
+  bodyPad:       string;
+}
+
+export function getMetamorphicSurface(block: MessageBlock): MetamorphicSurfaceStyle {
+  const responseClass = blockTypeToResponseClass(block.type as BlockType);
+  return getMetamorphicSurfaceForClass(responseClass);
+}
+
+export function getMetamorphicSurfaceForClass(responseClass: MetamorphicResponseClass): MetamorphicSurfaceStyle {
+  const base = {
+    railWidth: "3px",
+    radius:    "10px",
+    shadow:    "0 1px 2px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02)",
+    bodyPad:   "0",
+    headerBg:  "var(--r-elevated)",
+  };
+  switch (responseClass) {
+    case "analytical":
+      return { ...base, responseClass, rail: "var(--r-accent)", bg: "var(--r-surface)", headerBg: "var(--r-elevated)", shadow: "0 2px 12px rgba(0,0,0,0.04), 0 0 0 1px var(--r-border-soft)" };
+    case "execution":
+      return { ...base, responseClass, rail: "var(--r-warn)", bg: "var(--r-surface)", headerBg: "color-mix(in srgb, var(--r-warn) 6%, var(--r-elevated))", shadow: "0 2px 14px rgba(0,0,0,0.05), 0 0 0 1px color-mix(in srgb, var(--r-warn) 12%, var(--r-border))" };
+    case "lesson":
+      return { ...base, responseClass, rail: "var(--r-ok)", bg: "var(--r-surface)", headerBg: "color-mix(in srgb, var(--r-ok) 7%, var(--r-elevated))", shadow: "0 2px 12px rgba(0,0,0,0.04), 0 0 0 1px color-mix(in srgb, var(--r-ok) 14%, var(--r-border-soft))" };
+    case "artifact":
+      return { ...base, responseClass, rail: "var(--chamber-creation)", bg: "var(--r-surface)", headerBg: "color-mix(in srgb, var(--chamber-creation) 8%, var(--r-elevated))", shadow: "0 2px 14px rgba(0,0,0,0.05), 0 0 0 1px color-mix(in srgb, var(--chamber-creation) 16%, var(--r-border-soft))" };
+    case "status_progress":
+      return { ...base, responseClass, rail: "var(--r-accent-soft)", bg: "var(--r-surface)", headerBg: "var(--r-elevated)", shadow: "0 1px 8px rgba(0,0,0,0.03), 0 0 0 1px var(--r-border-soft)" };
+    case "signal_pulse":
+      return { ...base, responseClass, rail: "var(--r-subtext)", railWidth: "2px", bg: "var(--r-surface)", headerBg: "var(--r-bg)", shadow: "0 1px 6px rgba(0,0,0,0.03), 0 0 0 1px var(--r-border-soft)" };
+    default:
+      return { ...base, responseClass: "analytical", rail: "var(--r-accent)", bg: "var(--r-surface)", headerBg: "var(--r-elevated)", shadow: base.shadow };
+  }
+}
+
+/** Heuristic class for plain assistant text (no structured blocks) */
+export function inferMetamorphicClassFromText(content: string): MetamorphicResponseClass {
+  const sample = content.slice(0, 1200).toLowerCase();
+  if (/\b(lesson|curriculum|mastery|objective|quiz|practice)\b/.test(sample)) return "lesson";
+  if (/\b(artifact|bundle|export|ship|release)\b/.test(sample) || /```[\s\S]{20,}/.test(content)) return "artifact";
+  if (/\b(phase\s*\d|step\s*\d|progress|checkpoint|milestone|\d+\s*%\s*(complete|done))\b/.test(sample)) return "status_progress";
+  if (/\b(signal|alert|pulse|notable|heads[\s-]?up)\b/.test(sample)) return "signal_pulse";
+  if (/\b(execute|deploy|run\s+pipeline|build\s+and)\b/.test(sample)) return "execution";
+  if (/\b(therefore|hypothesis|trade-?off|evidence|analysis|audit)\b/.test(sample)) return "analytical";
+  return "analytical";
+}
+
 // ─── Status system ────────────────────────────────────────────────────────────
 
 const STATUS_COLOR: Partial<Record<StatusFlag, string>> = {
@@ -109,7 +190,7 @@ const TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }
 
 // ─── Block header ─────────────────────────────────────────────────────────────
 
-function BlockHeader({ block }: { block: MessageBlock }) {
+function BlockHeader({ block, headerBackground }: { block: MessageBlock; headerBackground?: string }) {
   const cfg = TYPE_CONFIG[block.type] ?? { label: block.type.toUpperCase(), color: "var(--r-subtext)", icon: "·" };
 
   return (
@@ -118,9 +199,9 @@ function BlockHeader({ block }: { block: MessageBlock }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "8px 14px",
+        padding: "10px 16px",
         borderBottom: "1px solid var(--r-border-soft)",
-        background: "var(--r-elevated)",
+        background: headerBackground ?? "var(--r-elevated)",
         gap: "10px",
       }}
     >
@@ -667,37 +748,54 @@ function BlockFooter({ block }: { block: MessageBlock }) {
 
 function SingleBlock({ block }: { block: MessageBlock }) {
   const [collapsed, setCollapsed] = useState(false);
+  const surface = getMetamorphicSurface(block);
 
   return (
     <div
       style={{
-        border: "1px solid var(--r-border)",
-        borderRadius: "6px",
+        display: "flex",
+        alignItems: "stretch",
+        borderRadius: surface.radius,
         overflow: "hidden",
-        background: "var(--r-surface)",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-        transition: "box-shadow 0.15s ease",
+        background: surface.bg,
+        boxShadow: surface.shadow,
+        border: "1px solid var(--r-border-soft)",
+        transition: "box-shadow 0.2s ease",
       }}
     >
       <div
-        role="button"
-        tabIndex={0}
-        onClick={() => block.sections.length > 0 && setCollapsed(c => !c)}
         style={{
-          cursor: block.sections.length > 0 ? "pointer" : "default",
+          width: surface.railWidth,
+          flexShrink: 0,
+          background: surface.rail,
+          opacity: 0.92,
         }}
-        onKeyDown={e => { if (e.key === "Enter") setCollapsed(c => !c); }}
-      >
-        <BlockHeader block={block} />
-      </div>
-
-      {!collapsed && block.sections.map((section, j) => (
-        <div key={j} style={{ borderBottom: j < block.sections.length - 1 ? "1px solid var(--r-border-soft)" : "none" }}>
-          <BlockSection section={section} blockType={block.type as BlockType} />
+        aria-hidden
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => block.sections.length > 0 && setCollapsed((c) => !c)}
+          style={{
+            cursor: block.sections.length > 0 ? "pointer" : "default",
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") setCollapsed((c) => !c);
+          }}
+        >
+          <BlockHeader block={block} headerBackground={surface.headerBg} />
         </div>
-      ))}
 
-      <BlockFooter block={block} />
+        {!collapsed &&
+          block.sections.map((section, j) => (
+            <div key={j} style={{ borderBottom: j < block.sections.length - 1 ? "1px solid var(--r-border-soft)" : "none" }}>
+              <BlockSection section={section} blockType={block.type as BlockType} />
+            </div>
+          ))}
+
+        <BlockFooter block={block} />
+      </div>
     </div>
   );
 }
@@ -852,6 +950,56 @@ function RenderInline({ text }: { text: string }) {
         return <span key={i}>{part}</span>;
       })}
     </>
+  );
+}
+
+/** Plain assistant text wrapped in metamorphic surface (no structured blocks) */
+export function MetamorphicPlainSurface({
+  content,
+  responseClass,
+}: {
+  content: string;
+  responseClass: MetamorphicResponseClass;
+}) {
+  const surface = getMetamorphicSurfaceForClass(responseClass);
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "stretch",
+        borderRadius: surface.radius,
+        overflow: "hidden",
+        background: surface.bg,
+        boxShadow: surface.shadow,
+        border: "1px solid var(--r-border-soft)",
+      }}
+    >
+      <div
+        style={{ width: surface.railWidth, flexShrink: 0, background: surface.rail, opacity: 0.88 }}
+        aria-hidden
+      />
+      <div style={{ flex: 1, minWidth: 0, padding: "14px 18px 16px", background: surface.bg }}>
+        <div
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "8px",
+            letterSpacing: "0.11em",
+            textTransform: "uppercase",
+            color: "var(--r-dim)",
+            marginBottom: "12px",
+            userSelect: "none",
+          }}
+        >
+          {responseClass === "analytical" && "Analytical surface"}
+          {responseClass === "execution" && "Execution surface"}
+          {responseClass === "lesson" && "Lesson surface"}
+          {responseClass === "artifact" && "Artifact surface"}
+          {responseClass === "status_progress" && "Progress surface"}
+          {responseClass === "signal_pulse" && "Signal surface"}
+        </div>
+        <InlineMarkdown content={content} />
+      </div>
+    </div>
   );
 }
 

@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Message, type LabView, type NavFn } from "../shell-types";
-import { BlockRenderer, InlineMarkdown } from "../BlockRenderer";
+import { BlockRenderer, MetamorphicPlainSurface, inferMetamorphicClassFromText } from "../BlockRenderer";
 import { ChamberChat, LabGlyph, type ChamberConfig } from "../ChamberChat";
 import { LabDiscover } from "../discovery/LabDiscover";
 import { LabDomainDetail } from "../detail/LabDomainDetail";
@@ -150,7 +150,10 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
                 {m.blocks && m.blocks.length > 0 ? (
                   <BlockRenderer blocks={m.blocks} />
                 ) : (
-                  <InlineMarkdown content={m.content.slice(0, 600) + (m.content.length > 600 ? "…" : "")} />
+                  <MetamorphicPlainSurface
+                    content={m.content.slice(0, 600) + (m.content.length > 600 ? "…" : "")}
+                    responseClass={inferMetamorphicClassFromText(m.content)}
+                  />
                 )}
               </div>
             </div>

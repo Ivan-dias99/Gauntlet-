@@ -37,6 +37,7 @@ const activeExperiments = [
     tools: ["Analysis", "Research"],
     complexity: "High" as const,
     pattern: "dots" as const,
+    preview: "Partition scenarios, leader election windows, and quorum math you can cite in a verdict block.",
   },
   {
     id: 2,
@@ -47,6 +48,7 @@ const activeExperiments = [
     tools: ["Compare", "Audit"],
     complexity: "Medium" as const,
     pattern: "grid" as const,
+    preview: "When to split read/write models vs when event logs become the operational bottleneck.",
   },
 ];
 
@@ -60,6 +62,7 @@ const experimentTemplates = [
     tools: ["Simulate", "Code"],
     complexity: "Medium" as const,
     pattern: "lines" as const,
+    preview: "Model staleness budgets vs replica count—where latency wins stop paying for redundancy.",
   },
   {
     id: 4,
@@ -70,6 +73,7 @@ const experimentTemplates = [
     tools: ["Framework", "Analysis"],
     complexity: "High" as const,
     pattern: "dots" as const,
+    preview: "Grounding, update cadence, and cost curves in one matrix for leadership-ready output.",
   },
   {
     id: 5,
@@ -80,6 +84,7 @@ const experimentTemplates = [
     tools: ["Framework", "Analysis"],
     complexity: "Low" as const,
     pattern: "solid" as const,
+    preview: "Tie user-visible targets to error budgets so incidents have a numerical guardrail.",
   },
   {
     id: 6,
@@ -90,6 +95,7 @@ const experimentTemplates = [
     tools: ["Simulate", "Research"],
     complexity: "High" as const,
     pattern: "grid" as const,
+    preview: "Hypothesis → blast radius → rollback signal. Built for execution blocks, not slides.",
   },
 ];
 
@@ -227,6 +233,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
             tools={e.tools}
             complexity={e.complexity}
             pattern={e.pattern}
+            preview={e.preview}
             onClick={() => navigate("lab", "experiment", e.navId)}
           />
         ))}
@@ -267,6 +274,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
             tools={e.tools}
             complexity={e.complexity}
             pattern={e.pattern}
+            preview={e.preview}
             onClick={() => navigate("lab", "experiment", e.navId)}
           />
         ))}

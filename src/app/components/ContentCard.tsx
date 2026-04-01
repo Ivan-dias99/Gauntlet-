@@ -384,6 +384,8 @@ interface ExperimentCardProps {
   domain: string;
   tools: string[];
   complexity: "Low" | "Medium" | "High";
+  /** One-line invitation — real substance, not generic */
+  preview?: string;
   onClick?: () => void;
   pattern?: "grid" | "lines" | "dots" | "solid";
 }
@@ -394,13 +396,15 @@ export function ExperimentCard({
   domain,
   tools,
   complexity,
+  preview,
   onClick,
   pattern = "dots",
 }: ExperimentCardProps) {
   const complexityColor =
     complexity === "High" ? "#8A6238" : complexity === "Medium" ? R.lab : R.ink4;
+  const invite = preview ?? `${domain} · ${tools.slice(0, 2).join(" · ")}`;
   return (
-    <CardShell onClick={onClick} width={220}>
+    <CardShell onClick={onClick} width={228}>
       <CardVisual
         accent={R.lab}
         accentLight={R.labLight}
@@ -411,12 +415,28 @@ export function ExperimentCard({
       <CardBody>
         <CardTag label={type} color={R.lab} />
         <CardTitle>{title}</CardTitle>
-        <div style={{ marginBottom: "8px" }}>
+        <p
+          style={{
+            ...R.t.micro,
+            color: R.ink3,
+            fontFamily: "'Inter', sans-serif",
+            lineHeight: 1.45,
+            margin: "0 0 8px",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {invite}
+        </p>
+        <div style={{ marginBottom: "6px" }}>
           <span
             style={{
               ...R.t.micro,
-              color: R.ink4,
-              fontFamily: "'Inter', sans-serif",
+              color: R.ink5,
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: "0.04em",
             }}
           >
             {domain}
@@ -704,7 +724,7 @@ export function SignalCard({
     relevance === "High" ? R.lab : relevance === "Medium" ? R.school : R.ink4;
 
   return (
-    <CardShell onClick={onClick} width={240}>
+    <CardShell onClick={onClick} width={248}>
       <CardBody>
         <div
           style={{
@@ -730,15 +750,27 @@ export function SignalCard({
             ...R.t.body,
             color: R.ink2,
             fontFamily: "'Inter', sans-serif",
-            lineHeight: "1.5",
-            marginBottom: "10px",
+            lineHeight: "1.52",
+            marginBottom: "6px",
             display: "-webkit-box",
-            WebkitLineClamp: 3,
+            WebkitLineClamp: 4,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}
         >
           {signal}
+        </p>
+        <p
+          style={{
+            ...R.t.micro,
+            color: R.lab,
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "0.05em",
+            margin: "0 0 10px",
+            opacity: 0.85,
+          }}
+        >
+          Trace in domain →
         </p>
         <div
           style={{
@@ -746,13 +778,16 @@ export function SignalCard({
             alignItems: "center",
             justifyContent: "space-between",
             marginTop: "auto",
+            paddingTop: "8px",
+            borderTop: `1px solid ${R.hairline}`,
           }}
         >
           <span
             style={{
               ...R.t.micro,
               color: R.ink4,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: "0.03em",
             }}
           >
             {source}
