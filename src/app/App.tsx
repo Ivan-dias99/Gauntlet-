@@ -16,6 +16,7 @@ import { LabMode } from "./components/modes/LabMode";
 import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
 import { ProfileMode } from "./components/modes/ProfileMode";
+import { MissionContextBand } from "./components/MissionContextBand";
 import {
   type Mission,
   loadMissions,
@@ -122,6 +123,9 @@ export default function App() {
   const [profileView, setProfileView] = useState<ProfileView>("overview");
   const [runtimeFabric, setRuntimeFabric] = useState<RuntimeFabric>(loadRuntimeFabric);
   const [missions, setMissions] = useState<Mission[]>(loadMissions);
+  const [activeMissionId, setActiveMissionId] = useState<string | null>(() => {
+    try { return localStorage.getItem("ruberra_active_mission_id") ?? null; } catch { return null; }
+  });
 
   // ── Detail navigation ────────────────────────────────────────────────────────
   const [detailId, setDetailId] = useState<string>("");
@@ -195,6 +199,16 @@ export default function App() {
 
   const handleMissionUpsert = useCallback((m: Mission) => {
     setMissions((prev) => upsertMission(prev, m));
+  }, []);
+
+  const handleMissionActivate = useCallback((missionId: string) => {
+    setActiveMissionId(missionId);
+    try { localStorage.setItem("ruberra_active_mission_id", missionId); } catch { /* storage full */ }
+  }, []);
+
+  const handleMissionRelease = useCallback(() => {
+    setActiveMissionId(null);
+    try { localStorage.removeItem("ruberra_active_mission_id"); } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -732,6 +746,7 @@ export default function App() {
 
   const isLive = Object.values(signals).some((s) => s === "streaming");
   const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
+  const activeMission = activeMissionId ? missions.find((m) => m.id === activeMissionId) ?? null : null;
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
@@ -782,6 +797,14 @@ export default function App() {
         hasSignals={hasSignals}
         onManageMatrix={() => { setActiveTab("profile"); setProfileView("pioneers"); }}
       />
+
+      {/* Mission Context Band — global mission binding, shown across all chambers */}
+      {activeMission && (
+        <MissionContextBand
+          mission={activeMission}
+          onRelease={handleMissionRelease}
+        />
+      )}
 
       {/* Body */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
@@ -907,6 +930,7 @@ export default function App() {
                   onExport={(continuityId) => setRuntimeFabric((prev) => exportContinuity(prev, continuityId))}
                   missions={missions}
                   onMissionUpsert={handleMissionUpsert}
+                  onMissionActivate={handleMissionActivate}
                 />
               )}
             </motion.div>

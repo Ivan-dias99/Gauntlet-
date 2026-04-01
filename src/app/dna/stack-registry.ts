@@ -586,8 +586,7 @@ export const CASCADE_LAW_VIOLATIONS: readonly string[] = [
  */
 /**
  * UPDATED: Phase 0 (Constitution) is complete — DNA merged to main 2026-04-01.
- * Stack 01 (Canon + Sovereignty) is now under active implementation.
- * Phase advances to "birth" by sovereign authorization.
+ * Stack 04 (Autonomous Operations) is complete.
+ * Phase advances to "intelligence" by sovereign authorization.
  */
-export const RUBERRA_CURRENT_PHASE: StackPhase = "birth";
 export const RUBERRA_CURRENT_PHASE: StackPhase = "intelligence";

@@ -221,9 +221,11 @@ function BirthForm({
 function MissionRow({
   mission,
   navigate,
+  onActivate,
 }: {
-  mission: Mission;
-  navigate: NavFn;
+  mission:    Mission;
+  navigate:   NavFn;
+  onActivate?: (missionId: string) => void;
 }) {
   const status = mission.ledger.currentState;
   const { chamberLead, name, outcomeStatement } = mission.identity;
@@ -231,6 +233,7 @@ function MissionRow({
   const artifactCount = mission.artifacts.artifacts.length;
 
   function handleEnter() {
+    onActivate?.(mission.id);
     navigate(chamberLead, CHAMBER_DEFAULT_VIEW[chamberLead]);
   }
 
@@ -351,12 +354,13 @@ function MissionRow({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 interface MissionRepositoryProps {
-  missions:  Mission[];
-  onUpsert:  (m: Mission) => void;
-  navigate:  NavFn;
+  missions:   Mission[];
+  onUpsert:   (m: Mission) => void;
+  onActivate?: (missionId: string) => void;
+  navigate:   NavFn;
 }
 
-export function MissionRepository({ missions, onUpsert, navigate }: MissionRepositoryProps) {
+export function MissionRepository({ missions, onUpsert, onActivate, navigate }: MissionRepositoryProps) {
   const [birthing, setBirthing] = useState(false);
 
   const active = getActiveMissions(missions);
@@ -367,7 +371,7 @@ export function MissionRepository({ missions, onUpsert, navigate }: MissionRepos
   function handleBirth(m: Mission) {
     onUpsert(m);
     setBirthing(false);
-    // Navigate into the mission's chamber immediately after birth
+    onActivate?.(m.id);
     navigate(m.identity.chamberLead, CHAMBER_DEFAULT_VIEW[m.identity.chamberLead]);
   }
 
@@ -450,7 +454,7 @@ export function MissionRepository({ missions, onUpsert, navigate }: MissionRepos
       {active.length > 0 && (
         <div>
           {active.map((m) => (
-            <MissionRow key={m.id} mission={m} navigate={navigate} />
+            <MissionRow key={m.id} mission={m} navigate={navigate} onActivate={onActivate} />
           ))}
         </div>
       )}
@@ -464,7 +468,7 @@ export function MissionRepository({ missions, onUpsert, navigate }: MissionRepos
             </span>
           </div>
           {completed.map((m) => (
-            <MissionRow key={m.id} mission={m} navigate={navigate} />
+            <MissionRow key={m.id} mission={m} navigate={navigate} onActivate={onActivate} />
           ))}
         </div>
       )}
