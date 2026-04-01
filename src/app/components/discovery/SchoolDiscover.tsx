@@ -21,7 +21,7 @@ import { R } from "../tokens";
 import { CollectionCard, CourseCard, RoleCard } from "../ContentCard";
 import { DiscoveryRail, FeaturedHero } from "../DiscoveryRail";
 import { type NavFn } from "../shell-types";
-import { SCHOOL_TRACKS, SCHOOL_ROLES } from "../product-data";
+import { SCHOOL_TRACKS, SCHOOL_ROLES, getTrack } from "../product-data";
 
 interface SchoolDiscoverProps {
   onEnterLesson: () => void;
@@ -40,6 +40,7 @@ const continueCourses = [
     level: "Expert",
     progress: 44,
     pattern: "grid" as const,
+    preview: "Structured progression from LLM fundamentals through RAG, eval harnesses, and production serving posture.",
   },
   {
     id: 2,
@@ -51,6 +52,7 @@ const continueCourses = [
     level: "Advanced",
     progress: 25,
     pattern: "lines" as const,
+    preview: "CAP → consensus → event sourcing with Lab experiments wired for verification blocks.",
   },
 ];
 
@@ -64,6 +66,7 @@ const recommendedCourses = [
     duration: "4h 10m",
     level: "Expert",
     pattern: "dots" as const,
+    preview: "Applied crypto through ZK and TLS with Creation blueprints for hardened gateways.",
   },
   {
     id: 4,
@@ -74,6 +77,7 @@ const recommendedCourses = [
     duration: "6h 20m",
     level: "Advanced",
     pattern: "grid" as const,
+    preview: "Mesh, streaming, and feature-store lessons tied to pipeline and agent outputs.",
   },
   {
     id: 5,
@@ -84,6 +88,7 @@ const recommendedCourses = [
     duration: "3h 50m",
     level: "Advanced",
     pattern: "lines" as const,
+    preview: "State machines, APIs, and interface systems — each lesson links Lab + Creation artifacts.",
   },
   {
     id: 6,
@@ -94,6 +99,7 @@ const recommendedCourses = [
     duration: "3h 30m",
     level: "Advanced",
     pattern: "dots" as const,
+    preview: "Evidence hierarchies and analytical writing routed into deep-dive and exec-brief templates.",
   },
 ];
 
@@ -107,6 +113,7 @@ const deepStudyAreas = [
     duration: "1h 10m",
     level: "Expert",
     pattern: "dots" as const,
+    preview: "PACELC framing with partition behavior you can defend in a School lesson + Lab verdict.",
   },
   {
     id: "d2",
@@ -117,6 +124,7 @@ const deepStudyAreas = [
     duration: "2h",
     level: "Expert",
     pattern: "grid" as const,
+    preview: "Raft/Paxos trade space mapped to event-driven Creation blueprints.",
   },
   {
     id: "d3",
@@ -127,6 +135,7 @@ const deepStudyAreas = [
     duration: "40m",
     level: "Advanced",
     pattern: "lines" as const,
+    preview: "Quality and safety gates that feed directly into agent orchestration steps.",
   },
 ];
 
@@ -154,8 +163,8 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
         title="AI Systems Engineering"
         description="Lesson 3 of 9 — Evaluation Frameworks for LLMs. Learn how to build principled evaluation infrastructure for language model quality and safety."
         meta="AI Systems Engineering · Lesson 3 · 44% complete"
-        accent={R.school}
-        accentLight={R.schoolLight}
+        accent="var(--chamber-school)"
+        accentLight="var(--chamber-school-light)"
         ctaLabel="Resume lesson"
         onCta={() => navigate("school", "lesson", "lesson-evals")}
         secondaryLabel="View curriculum"
@@ -183,6 +192,7 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
             level={c.level}
             progress={c.progress}
             pattern={c.pattern}
+            preview={c.preview ?? getTrack(c.trackId)?.tagline}
             onClick={() => navigate("school", "track", c.trackId)}
           />
         ))}
@@ -203,6 +213,7 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
             duration={c.duration}
             level={c.level}
             pattern={c.pattern}
+            preview={c.preview ?? getTrack(c.trackId)?.tagline}
             onClick={() => navigate("school", "track", c.trackId)}
           />
         ))}
@@ -219,12 +230,13 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
           <CollectionCard
             key={t.id}
             title={t.title}
-            subtitle={t.tagline.slice(0, 55)}
+            subtitle={t.tagline.length > 55 ? `${t.tagline.slice(0, 52)}…` : t.tagline}
             itemCount={t.lessonCount}
-            accent={R.school}
-            accentLight={R.schoolLight}
+            accent="var(--chamber-school)"
+            accentLight="var(--chamber-school-light)"
             tag="Track"
             icon={<Layers size={14} color={R.school} strokeWidth={1.5} />}
+            invite={t.lessons[0] ? `Starts · ${t.lessons[0].title}` : undefined}
             onClick={() => navigate("school", "track", t.id)}
           />
         ))}
@@ -243,6 +255,7 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
             domain={r.domain}
             skills={r.skills}
             demand={r.demand}
+            preview={r.desc.length > 120 ? `${r.desc.slice(0, 117)}…` : r.desc}
             onClick={() => navigate("school", "role", r.id)}
           />
         ))}
@@ -263,6 +276,7 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
             duration={c.duration}
             level={c.level}
             pattern={c.pattern}
+            preview={c.preview}
             onClick={() => navigate("school", "track", c.trackId)}
           />
         ))}
