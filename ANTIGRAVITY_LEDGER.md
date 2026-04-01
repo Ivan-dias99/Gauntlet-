@@ -5,6 +5,40 @@
 
 ---
 
+## AUDIT 005 — VISION DNA CONSTITUTIONAL INSTALLATION (Claude lead)
+**Date:** April 1, 2026
+**Target:** Install full Ruberra Vision DNA as the constitutional layer of the system
+
+### 1. EXECUTION BLOCKS
+
+**CONSTITUTIONAL DNA INSTALLATION (Claude)**
+- **Action:** Created `RUBERRA_VISION_DNA.md` — the full constitutional document containing all 7 canonical DNA layers: Stack Canon Registry (20 stacks), Stack Dependency Map, Stack Priority Map, Ruberra Identity Filter, Global Can/Cannot Law, Vision Phase Map (Constitution → Sovereignty Scale), V10 Future Alignment Map for all 20 stacks.
+- **Action:** Created `src/app/dna/stack-registry.ts` — machine-readable TypeScript encoding of the full DNA: typed `StackEntry` registry, dependency graph, priority classifications, phase map, identity filter arrays (`RUBERRA_IS`, `RUBERRA_IS_NOT`, `RUBERRA_CANNOT_BECOME`), cascade law steps and violations, benchmark encoding for all 20 stacks, and `RUBERRA_CURRENT_PHASE` sentinel.
+- **Action:** Appended this audit to `ANTIGRAVITY_LEDGER.md`.
+- **Status:** **COMPLETE**.
+
+### 2. DNA LAYERS INSTALLED
+- **A — Stack Canon Registry:** 20 stacks, canonical order, canonical names, short IDs
+- **B — Stack Dependency Map:** Full dependency graph encoded in TypeScript with lookup helpers
+- **C — Stack Priority Map:** base / core / scale / moat / late-stage classifications
+- **D — Identity Filter:** IS / IS NOT / REPLACE / REMOVE encoded as typed arrays + verdict system
+- **E — Can/Cannot Law:** RUBERRA_CANNOT_BECOME array — the anti-drift wall
+- **F — Vision Phase Map:** 6 phases (Constitution → Sovereignty Scale) with completion criteria
+- **G — V10 Future Alignment Map:** Ten-year forward target for every stack encoded per entry
+
+### 3. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Vision DNA Constitutional Installation
+- **FILES TOUCHED:** `RUBERRA_VISION_DNA.md`, `src/app/dna/stack-registry.ts`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `claude/install-ruberra-dna-lT28B`
+- **BUILD STATUS:** TypeScript registry is clean — no runtime dependencies, no imports from app layer
+- **RUNTIME STATUS:** DNA layer is constitutional — no runtime side effects by design
+- **MERGED TO MAIN:** NO — pending sovereign review
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0% — additive only, no existing code touched
+- **NEXT REQUIRED ACTION:** Sovereign reviews and authorizes merge to main. Phase 0 (Constitution) is then complete. Phase 1 (Birth) may begin — Stacks 01 and 02 operational execution.
+
+---
+
 ## AUDIT 001 - TEMPORARY BRANCH HYGIENE
 **Date:** March 31, 2026
 **Target:** Branch Graveyard & Main Sovereignty
