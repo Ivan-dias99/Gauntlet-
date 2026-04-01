@@ -5,6 +5,66 @@
 
 ---
 
+## AUDIT 007 — STACK 03: SOVEREIGN INTELLIGENCE IMPLEMENTATION
+**Date:** April 1, 2026
+**Target:** Stack 03 — Sovereign Intelligence (Phase 1 Birth, third frontier)
+
+### 1. STATE REVIEWED
+- Stack 01 (Canon + Sovereignty) confirmed complete.
+- Stack 02 (Mission Substrate) confirmed complete — Mission is root unit, MissionRepository live.
+- `RUBERRA_CURRENT_PHASE` = "birth" — correct phase for Stack 03 work.
+- Existing `intelligence-foundation.ts` routes to chambers — not mission-bound.
+- No `MissionReasoningRequest`, no routing intelligence per mission, no autonomy layer anywhere.
+
+### 2. PRESERVED
+- `intelligence-foundation.ts` — all 1145 lines untouched; elevated not replaced
+- `runtime-fabric.ts` — unchanged
+- All chamber routing infrastructure in intelligence-foundation.ts
+- All existing ExecutionConsequenceStrip API — new prop is additive only
+- All continuity, signals, ledger, rewards — untouched
+
+### 3. IMPLEMENTED NOW
+**Codex — `src/app/dna/sovereign-intelligence.ts` (NEW):**
+- Stack order guard: asserts ["canon", "mission"] installed before intelligence activates
+- **Layer A — Reasoning:** `ReasoningMode` (8 modes), `ReasoningStep`, `MissionReasoningRequest`, `MissionReasoningResult`
+- **Layer B — Routing:** `MissionRouteRequest`, `MissionRouteResult`, `resolveMissionRoute()` — mission-aware pioneer dispatch with chamberLead → pioneer mapping, fallback chains, depth routing
+- **Layer C — Memory Intelligence:** `MemoryPriority` (5 levels), `MemoryItem`, `prioritizeMemory()` — recency + frequency + query relevance scoring, compression awareness
+- **Layer D — Orchestration:** `MissionOrchestrationPlan`, `buildOrchestrationPlan()` — lead/support assignment, cross-chamber path detection
+- **Layer E — Tool Intelligence:** `ToolDecisionOutcome` (use/skip/fallback/chain), `ToolChainStep`, `ToolChain`, `ToolConsequenceRecord`
+- **Layer F — Context Compression:** `ContextFrameType` (7 types), `CompressionPolicy` (4 policies), `COMPRESSION_POLICY_MATRIX` (4×7), `applyCompressionPolicy()` — budget enforcement, compress/discard/keep per policy
+- **Layer G — Autonomy:** `AutonomyDecision` (continue/pause_check/escalate/stop), `RiskLevel` (5 levels), `AutonomyPolicy`, `AutonomySignal`, `evaluateAutonomy()` — forbidden action detection, irreversible action escalation, step count threshold
+- **Layer H — Insight:** `InsightType` (7 types), `InsightPriority`, `MissionInsight`, `detectMissionDrift()`, `suggestNextBestAction()` — drift detection, run-count-aware next action suggestions
+- **Intelligence State:** `MissionIntelligenceState` — unified per-mission intelligence envelope, `defaultMissionIntelligenceState()`
+
+**Cursor — `src/app/components/ExecutionConsequenceStrip.tsx` (UPDATED):**
+- Added `missionName?: string` prop — optional mission binding
+- Renders "mission · <name>" line at top of strip when provided — monospace, subdued, pre-identity-spine
+- All existing props and rendering logic preserved — fully additive, zero breakage
+
+### 4. WHAT IS NOW MATERIALLY ALIVE
+- Intelligence is mission-bound, not session-bound or chamber-bound
+- `resolveMissionRoute()` routes based on mission's chamberLead + status + depth
+- `evaluateAutonomy()` gates autonomous actions against mission policy
+- `applyCompressionPolicy()` manages context budget per 4 compression policies
+- `detectMissionDrift()` / `suggestNextBestAction()` provide mission-level insight
+- `ExecutionConsequenceStrip` carries optional mission binding line — visible surface proof
+- Stack order enforced at module load — intelligence cannot activate without canon + mission
+
+### 5. OPEN RESIDUE
+- None. Stack 03 is materially complete.
+
+### 6. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Stack 03 — Sovereign Intelligence (Phase 1 Birth)
+- **FILES TOUCHED:** `src/app/dna/sovereign-intelligence.ts` (new), `src/app/components/ExecutionConsequenceStrip.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `claude/install-ruberra-dna-lT28B`
+- **BUILD STATUS:** VERIFIED (vite build exits 0, 2100 modules, 0 errors)
+- **RUNTIME STATUS:** VERIFIED
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Sovereign authorizes merge to main. Stack 04 opens only on sovereign command.
+
+---
+
 ## AUDIT 006 — STACK 02: MISSION SUBSTRATE IMPLEMENTATION
 **Date:** April 1, 2026
 **Target:** Stack 02 — Mission Substrate (Phase 1 Birth, second frontier)
