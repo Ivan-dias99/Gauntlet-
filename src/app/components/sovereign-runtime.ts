@@ -349,6 +349,21 @@ export interface SovereignResolution {
   is_available:    boolean;
 }
 
+/** Sentinel adapter returned when no real adapter is available. */
+const DEGRADED_ADAPTER: ProviderAdapter = {
+  id: "none", kind: "none", tier: "C", label: "Not configured",
+  base_url: "", config_key: "", health_path: "",
+  requires_key: false, available: false, notes: "",
+};
+
+/** Sentinel model returned when the model registry is completely empty. */
+const DEGRADED_MODEL: SovereignModel = {
+  id: "none", label: "None", family: "none", model_class: "instruction",
+  tier: "C", adapter_id: "none", ollama_name: "", hf_id: "",
+  context_window: 0, quality: "good", latency: "low",
+  parameters: "0B", license: "none", description: "No model available",
+};
+
 export function resolveSovereignStack(
   chamber: Exclude<Tab, "profile">,
   prefer_class?: RuntimeModelClass,
@@ -375,8 +390,23 @@ export function resolveSovereignStack(
 
   // Ultimate fallback: first model in registry
   if (!model) {
-    model   = SOVEREIGN_MODEL_REGISTRY[0];
-    adapter = PROVIDER_ADAPTERS.find((pa) => pa.id === model!.adapter_id) ?? PROVIDER_ADAPTERS[0];
+    model = SOVEREIGN_MODEL_REGISTRY[0];
+    if (model) {
+      adapter = PROVIDER_ADAPTERS.find((pa) => pa.id === model!.adapter_id) ?? PROVIDER_ADAPTERS[0];
+    }
+  }
+
+  // Hard fallback: registry is empty — return a degraded proxy resolution
+  if (!model) {
+    return {
+      model:           DEGRADED_MODEL,
+      adapter:         DEGRADED_ADAPTER,
+      tier:            "C",
+      tier_label:      TIER_LABEL["C"],
+      tier_color:      TIER_COLOR["C"],
+      execution_truth: "proxy · not configured",
+      is_available:    false,
+    };
   }
 
   const tier        = model.tier;
@@ -387,7 +417,7 @@ export function resolveSovereignStack(
 
   return {
     model,
-    adapter:     adapter!,
+    adapter:     (adapter ?? DEGRADED_ADAPTER),
     tier,
     tier_label:  TIER_LABEL[tier],
     tier_color:  TIER_COLOR[tier],
