@@ -20,7 +20,7 @@ import {
   type Tab, type Message, type SignalStatus,
   type LabView, type SchoolView, type CreationView, type ProfileView,
   type FloatingNote, type Theme, type NavFn,
-  type ExecutionResultEntry, type MessageExecutionTrace,
+  type ExecutionResultEntry, type ExecutionState, type MessageExecutionTrace,
 } from "./components/shell-types";
 import { parseBlocks } from "./components/parseBlocks";
 import { HeroLanding } from "./components/HeroLanding";
@@ -38,6 +38,7 @@ import {
   loadRuntimeFabric,
   markSignalRead,
   markAllSignalsRead,
+  patchContinuityRunTrace,
   pushSignal,
   recordRuntimeMessageObject,
   recommendedConnectorsForChamber,
@@ -58,7 +59,7 @@ import {
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
 import { getExecutionTruth } from "./components/sovereign-runtime";
-import { resolveRoute } from "./components/routing-contracts";
+import { getContractByIntent, resolveIntent, resolveRoute } from "./components/routing-contracts";
 import { MODEL_REGISTRY } from "./components/model-orchestration";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -336,14 +337,20 @@ export default function App() {
     }));
     const execTruth = getExecutionTruth(tab);
     const modelDegraded = selectedModelId !== requestedModelId;
+    const contractForDigest = getContractByIntent(resolveIntent(text));
+    const routeDigestLine = `${contractForDigest.label} · ${routeDecision.reason}`;
+    const initialRunState: ExecutionState =
+      hostingLevel === "proxy" ? "scaffold_only" : "streaming";
     const baseResults: ExecutionResultEntry[] = [
-      { phase: "route", summary: routeDecision.reason.slice(0, 96), at: Date.now() },
+      { phase: "route", summary: routeDigestLine.slice(0, 140), at: Date.now() },
     ];
     if (plan.fallbackReason) {
       baseResults.push({ phase: "fallback", summary: plan.fallbackReason.slice(0, 120), at: Date.now() });
     }
+    const giLabel =
+      runtimeFabric.intelligence.giRegistry.find((g) => g.id === routeDecision.giId)?.name ?? routeDecision.giId;
     const initialTrace: MessageExecutionTrace = {
-      executionState: "streaming",
+      executionState: initialRunState,
       providerId: plan.selectedModel?.provider,
       modelId: selectedModelId,
       supportChain: resolvedRoute.support_chain,
@@ -352,6 +359,10 @@ export default function App() {
       executionResults: baseResults,
       connectorActions: connectorActionRows,
       fallbackFromModelId: modelDegraded ? requestedModelId : undefined,
+      leadPioneerId: routeDecision.pioneerId,
+      giId: routeDecision.giId,
+      giLabel,
+      routeDigest: routeDigestLine,
     };
     setMessages((prev) => ({
       ...prev,
@@ -401,7 +412,36 @@ export default function App() {
         signal: controller.signal,
       });
 
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok || !res.body) {
+        setMessages((prev) => ({
+          ...prev,
+          [tab]: prev[tab].map((m) =>
+            m.id === assistantId && m.role === "assistant" && m.execution_trace
+              ? {
+                  ...m,
+                  content: `Request blocked (${res.status}). Retry or check connector policy.`,
+                  execution_trace: {
+                    ...m.execution_trace,
+                    executionState: "blocked",
+                    executionResults: [
+                      ...m.execution_trace.executionResults,
+                      { phase: "http", summary: `blocked · HTTP ${res.status}`, at: Date.now() },
+                    ],
+                  },
+                }
+              : m
+          ),
+        }));
+        setRuntimeFabric((prev) =>
+          patchContinuityRunTrace(prev, continuityId, {
+            executionState: "blocked",
+            modelId: selectedModelId,
+            providerId: plan.selectedModel?.provider,
+            digest: `blocked · HTTP ${res.status} · ${routeDigestLine}`,
+          })
+        );
+        throw new Error(`HTTP ${res.status}`);
+      }
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -425,6 +465,7 @@ export default function App() {
                   content: m.content + chunk,
                   execution_trace: {
                     ...m.execution_trace,
+                    executionState: "live",
                     executionResults: [...er, { phase: "stream", summary: "Upstream tokens received", at: Date.now() }],
                   },
                 };
@@ -444,6 +485,12 @@ export default function App() {
       }
 
       setSignals((prev) => ({ ...prev, [tab]: "completed" }));
+      const finalRunState: ExecutionState =
+        modelDegraded && plan.fallbackReason?.toLowerCase().includes("unavailable")
+          ? "provider_unavailable"
+          : modelDegraded
+            ? "degraded"
+            : "completed";
       setMessages((prev) => ({
         ...prev,
         [tab]: prev[tab].map((m) => {
@@ -453,7 +500,7 @@ export default function App() {
             ...m,
             execution_trace: {
               ...m.execution_trace,
-              executionState: modelDegraded ? "degraded" : "completed",
+              executionState: finalRunState,
               executionResults: [
                 ...er,
                 {
@@ -466,38 +513,52 @@ export default function App() {
           };
         }),
       }));
-      setRuntimeFabric((prev) => recordRuntimeMessageObject(prev, {
-        id: assistantId,
-        role: "assistant",
-        content: assistantContent,
-        tab,
-        timestamp: Date.now(),
-        meta: {
-          routeReason: routeDecision.reason,
-          pioneerId: routeDecision.pioneerId,
-          giId: routeDecision.giId,
-          workflowId,
-          hostingLevel,
-          providerId: plan.selectedModel?.provider,
+      const completedTrace: MessageExecutionTrace = {
+        executionState: finalRunState,
+        providerId: plan.selectedModel?.provider,
+        modelId: selectedModelId,
+        supportChain: resolvedRoute.support_chain,
+        workflowId,
+        hostingLevel,
+        executionResults: [
+          ...baseResults.filter((e) => e.phase !== "finalize"),
+          ...(streamPhaseLogged ? [{ phase: "stream" as const, summary: "Upstream tokens received", at: Date.now() }] : []),
+          { phase: "finalize", summary: `${assistantContent.length} chars · ${plan.selectedModel?.label ?? selectedModelId}`, at: Date.now() },
+        ],
+        connectorActions: connectorActionRows,
+        fallbackFromModelId: modelDegraded ? requestedModelId : undefined,
+        leadPioneerId: routeDecision.pioneerId,
+        giId: routeDecision.giId,
+        giLabel,
+        routeDigest: routeDigestLine,
+      };
+      setRuntimeFabric((prev) => {
+        let next = patchContinuityRunTrace(prev, continuityId, {
+          executionState: completedTrace.executionState,
           modelId: selectedModelId,
-          supportChain: resolvedRoute.support_chain,
-        },
-        execution_trace: {
-          executionState: modelDegraded ? "degraded" : "completed",
           providerId: plan.selectedModel?.provider,
-          modelId: selectedModelId,
-          supportChain: resolvedRoute.support_chain,
-          workflowId,
-          hostingLevel,
-          executionResults: [
-            ...baseResults.filter((e) => e.phase !== "finalize"),
-            ...(streamPhaseLogged ? [{ phase: "stream" as const, summary: "Upstream tokens received", at: Date.now() }] : []),
-            { phase: "finalize", summary: `${assistantContent.length} chars · ${plan.selectedModel?.label ?? selectedModelId}`, at: Date.now() },
-          ],
-          connectorActions: connectorActionRows,
-          fallbackFromModelId: modelDegraded ? requestedModelId : undefined,
-        },
-      }));
+          digest: `${completedTrace.executionState} · ${plan.selectedModel?.label ?? selectedModelId} · ${assistantContent.length} chars`,
+        });
+        next = recordRuntimeMessageObject(next, {
+          id: assistantId,
+          role: "assistant",
+          content: assistantContent,
+          tab,
+          timestamp: Date.now(),
+          meta: {
+            routeReason: routeDecision.reason,
+            pioneerId: routeDecision.pioneerId,
+            giId: routeDecision.giId,
+            workflowId,
+            hostingLevel,
+            providerId: plan.selectedModel?.provider,
+            modelId: selectedModelId,
+            supportChain: resolvedRoute.support_chain,
+          },
+          execution_trace: completedTrace,
+        });
+        return next;
+      });
       setRuntimeFabric((prev) => {
         let next = transitionContinuity(prev, continuityId, "completed");
         next = pushSignal(next, {
@@ -547,6 +608,14 @@ export default function App() {
               : m
           ),
         }));
+        setRuntimeFabric((prev) =>
+          patchContinuityRunTrace(prev, continuityId, {
+            executionState: "aborted",
+            modelId: selectedModelId,
+            providerId: plan.selectedModel?.provider,
+            digest: `aborted · ${routeDigestLine.slice(0, 100)}`,
+          })
+        );
         setSignals((prev) => ({ ...prev, [tab]: "idle" }));
         setRuntimeFabric((prev) => {
           let next = transitionContinuity(prev, continuityId, "paused");
@@ -584,6 +653,14 @@ export default function App() {
           ),
         }));
         setSignals((prev) => ({ ...prev, [tab]: "error" }));
+        setRuntimeFabric((prev) =>
+          patchContinuityRunTrace(prev, continuityId, {
+            executionState: "error",
+            modelId: selectedModelId,
+            providerId: plan.selectedModel?.provider,
+            digest: `error · ${String(err instanceof Error ? err.message : "failure").slice(0, 120)}`,
+          })
+        );
         setRuntimeFabric((prev) => {
           let next = transitionContinuity(prev, continuityId, "blocked");
           next = pushSignal(next, {

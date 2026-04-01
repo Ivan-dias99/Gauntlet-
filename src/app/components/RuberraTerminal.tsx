@@ -10,6 +10,8 @@ import { type Message, type MessageExecutionTrace } from "./shell-types";
 import { ExecutionConsequenceStrip } from "./ExecutionConsequenceStrip";
 import { ModelSelector } from "./ModelSelector";
 import { type ChamberTab, type TaskType } from "./model-orchestration";
+import { getExecutionTruth, TIER_LABEL, TIER_COLOR } from "./sovereign-runtime";
+import { getPioneerFromRuntimeId } from "./pioneer-registry";
 
 // ─── Terminal Color System ────────────────────────────────────────────────────
 
@@ -772,6 +774,11 @@ export function RuberraTerminal({
   }
 
   const lastTrace: MessageExecutionTrace | undefined = [...messages].reverse().find((m) => m.role === "assistant" && m.execution_trace)?.execution_trace;
+  const execTruth = getExecutionTruth(chamber);
+  const leadShort =
+    lastTrace?.leadPioneerId != null
+      ? getPioneerFromRuntimeId(lastTrace.leadPioneerId)?.short_role ?? lastTrace.leadPioneerId
+      : undefined;
 
   return (
     <div
@@ -826,7 +833,17 @@ export function RuberraTerminal({
 
       {lastTrace && (
         <div style={{ padding: "8px 16px 0", flexShrink: 0, background: T.bg, borderBottom: `1px solid ${T.line}` }}>
-          <ExecutionConsequenceStrip trace={lastTrace} accent={chamberAccentVar} compact />
+          <ExecutionConsequenceStrip
+            trace={lastTrace}
+            accent={chamberAccentVar}
+            compact
+            showResultDepth={5}
+            leadPioneerShort={leadShort}
+            giName={lastTrace.giLabel ?? lastTrace.giId}
+            tierLabel={TIER_LABEL[execTruth.tier]}
+            tierColor={TIER_COLOR[execTruth.tier]}
+            modelTruthLabel={execTruth.tier_label}
+          />
         </div>
       )}
 

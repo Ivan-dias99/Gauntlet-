@@ -1,5 +1,5 @@
 import { RUBERRA_OBJECTS, buildMessageObject, type RuberraObject } from "./object-graph";
-import { type Message, type Tab } from "./shell-types";
+import { type Message, type MessageExecutionTrace, type Tab } from "./shell-types";
 import {
   defaultIntelligenceFoundationState,
   resolveRouteDecision,
@@ -39,6 +39,11 @@ export interface ContinuityItem {
   routeReason?: string;
   transferDestinations: Exclude<Tab, "profile">[];
   updatedAt: number;
+  /** Latest completed run snapshot for Profile ledger */
+  lastRunDigest?: string;
+  lastExecutionState?: MessageExecutionTrace["executionState"];
+  lastModelId?: string;
+  lastProviderId?: string;
 }
 
 export type SignalType = "lifecycle" | "transfer" | "connector" | "reward" | "recommendation";
@@ -275,6 +280,29 @@ export function transitionContinuity(fabric: RuntimeFabric, id: string, status: 
   return {
     ...fabric,
     continuity: fabric.continuity.map((item) => (item.id === id ? { ...item, status, updatedAt: Date.now() } : item)),
+  };
+}
+
+/** Attach visible run consequence to a continuity row (Profile orchestration ledger). */
+export function patchContinuityRunTrace(
+  fabric: RuntimeFabric,
+  continuityId: string,
+  trace: Pick<MessageExecutionTrace, "executionState" | "modelId" | "providerId"> & { digest: string },
+): RuntimeFabric {
+  return {
+    ...fabric,
+    continuity: fabric.continuity.map((item) =>
+      item.id === continuityId
+        ? {
+            ...item,
+            lastRunDigest: trace.digest.slice(0, 220),
+            lastExecutionState: trace.executionState,
+            lastModelId: trace.modelId,
+            lastProviderId: trace.providerId,
+            updatedAt: Date.now(),
+          }
+        : item
+    ),
   };
 }
 

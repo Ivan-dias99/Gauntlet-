@@ -288,6 +288,12 @@ export function getPioneer(id: PioneerId): Pioneer | undefined {
   return PIONEER_REGISTRY.find((p) => p.id === id);
 }
 
+/** Map intelligence-foundation ids (underscores) to registry pioneers (kebab-case). */
+export function getPioneerFromRuntimeId(id: string): Pioneer | undefined {
+  const kebab = id.replace(/_/g, "-") as PioneerId;
+  return getPioneer(kebab);
+}
+
 export function getPioneersByChamberId(chamber: Exclude<Tab, "profile">): Pioneer[] {
   return PIONEER_REGISTRY.filter(
     (p) => p.home_chamber === chamber || p.allowed_crossings.includes(chamber)

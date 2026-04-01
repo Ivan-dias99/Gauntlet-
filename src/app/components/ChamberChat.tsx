@@ -11,7 +11,7 @@ import { BlockRenderer, MetamorphicPlainSurface, inferMetamorphicClassFromText }
 import { ModelSelector } from "./ModelSelector";
 import { type TaskType } from "./model-orchestration";
 import { getContractByChamber } from "./routing-contracts";
-import { getPioneer } from "./pioneer-registry";
+import { getPioneer, getPioneerFromRuntimeId } from "./pioneer-registry";
 import { getExecutionTruth, TIER_LABEL, TIER_COLOR } from "./sovereign-runtime";
 import { SovereignEmptyFrame } from "./SovereignEmptyFrame";
 import { ExecutionConsequenceStrip } from "./ExecutionConsequenceStrip";
@@ -463,6 +463,12 @@ function AssistantMessage({
   chamberLabel: string;
   chamberId: "lab" | "school" | "creation";
 }) {
+  const sovereign = getExecutionTruth(chamberId);
+  const trace = msg.execution_trace;
+  const leadShort =
+    trace?.leadPioneerId != null
+      ? getPioneerFromRuntimeId(trace.leadPioneerId)?.short_role ?? trace.leadPioneerId
+      : undefined;
   return (
     <motion.div
       initial={{ opacity: 0, y: 5 }}
@@ -470,11 +476,19 @@ function AssistantMessage({
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
     >
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
-      {msg.execution_trace && (
-        <ExecutionConsequenceStrip trace={msg.execution_trace} accent={accent} />
+      {trace && (
+        <ExecutionConsequenceStrip
+          trace={trace}
+          accent={accent}
+          leadPioneerShort={leadShort}
+          giName={trace.giLabel ?? trace.giId}
+          tierLabel={TIER_LABEL[sovereign.tier]}
+          tierColor={TIER_COLOR[sovereign.tier]}
+          modelTruthLabel={sovereign.tier_label}
+        />
       )}
       <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
-      {(msg.meta?.pioneerId || msg.meta?.workflowId) && (
+      {(msg.meta?.pioneerId || msg.meta?.workflowId) && !trace && (
         <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
           {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.pioneerId}</span>}
           {msg.meta?.workflowId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.workflowId}</span>}

@@ -13,7 +13,7 @@ import {
   type WorkspaceKnowledge,
   type RuntimeFabric,
 } from "../runtime-fabric";
-import { PIONEER_REGISTRY, getVisiblePioneers, type Pioneer } from "../pioneer-registry";
+import { PIONEER_REGISTRY, getVisiblePioneers, getPioneerFromRuntimeId, type Pioneer } from "../pioneer-registry";
 import {
   CONNECTOR_REGISTRY,
   CONNECTOR_CATEGORY_LABELS,
@@ -29,6 +29,7 @@ import {
   SOVEREIGN_MODEL_REGISTRY,
   CHAMBER_SOVEREIGN_DEFAULTS,
   getChamberRuntimeSummary,
+  getExecutionTruth,
   TIER_LABEL,
   TIER_COLOR,
   TIER_DESCRIPTION,
@@ -84,15 +85,18 @@ const STATUS_COLOR: Record<WorkStatus, string> = {
   completed:   "var(--r-dim)",
 };
 
-function meshTraceFromMessages(messages: Record<Tab, Message[]>): MessageExecutionTrace | null {
+function meshTraceAndChamber(
+  messages: Record<Tab, Message[]>,
+): { trace: MessageExecutionTrace; chamber: Exclude<Tab, "profile"> } | null {
   const chambers: Exclude<Tab, "profile">[] = ["lab", "school", "creation"];
-  let best: Message | null = null;
+  let best: { msg: Message; chamber: Exclude<Tab, "profile"> } | null = null;
   for (const ch of chambers) {
     const asst = [...messages[ch]].reverse().find((m) => m.role === "assistant" && m.execution_trace);
     if (!asst?.execution_trace) continue;
-    if (!best || asst.timestamp > best.timestamp) best = asst;
+    if (!best || asst.timestamp > best.msg.timestamp) best = { msg: asst, chamber: ch };
   }
-  return best?.execution_trace ?? null;
+  if (!best) return null;
+  return { trace: best.msg.execution_trace!, chamber: best.chamber };
 }
 
 function deriveWorkItems(messages: Record<Tab, Message[]>): WorkItem[] {
@@ -412,7 +416,16 @@ export function ProfileMode({
     listObjectsForChamber("lab"),
     listObjectsForChamber("creation"),
   ).slice(0, 24);
-  const meshTrace = meshTraceFromMessages(messages);
+  const meshMeta = meshTraceAndChamber(messages);
+  const meshTrace = meshMeta?.trace ?? null;
+  const meshChamber = meshMeta?.chamber;
+  const meshAccent = meshChamber ? CHAMBER_COLOR[meshChamber] : "var(--r-accent-soft)";
+  const meshTruth = meshChamber ? getExecutionTruth(meshChamber) : null;
+  const meshLeadShort =
+    meshTrace?.leadPioneerId != null
+      ? getPioneerFromRuntimeId(meshTrace.leadPioneerId)?.short_role ?? meshTrace.leadPioneerId
+      : undefined;
+  const ledgerRows = continuity.filter((c) => c.lastRunDigest);
 
   const NAV_VIEWS: ProfileView[] = ["overview", "projects", "pioneers", "workflows", "connectors", "memory", "settings", "exports"];
 
@@ -451,12 +464,22 @@ export function ProfileMode({
             </div>
           </div>
 
-          {meshTrace && (
+          {meshTrace && meshChamber && (
             <div style={{ maxWidth: "880px", margin: "0 auto 12px", padding: "0 2px" }}>
               <p style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.11em", textTransform: "uppercase", color: "var(--r-dim)", margin: "0 0 6px" }}>
-                Neural mesh · last execution
+                Neural mesh · last execution · <span style={{ color: meshAccent }}>{meshChamber}</span>
               </p>
-              <ExecutionConsequenceStrip trace={meshTrace} accent="var(--r-accent-soft)" compact />
+              <ExecutionConsequenceStrip
+                trace={meshTrace}
+                accent={meshAccent}
+                compact
+                showResultDepth={4}
+                leadPioneerShort={meshLeadShort}
+                giName={meshTrace.giLabel ?? meshTrace.giId}
+                tierLabel={meshTruth ? TIER_LABEL[meshTruth.tier] : undefined}
+                tierColor={meshTruth ? TIER_COLOR[meshTruth.tier] : undefined}
+                modelTruthLabel={meshTruth?.tier_label}
+              />
             </div>
           )}
 
@@ -518,6 +541,32 @@ export function ProfileMode({
                     actions={emptyActionBtn(() => navigate("lab", "chat"), "Open Lab", "var(--r-accent-soft)")}
                   />
                 </div>
+              </SectionBlock>
+            )}
+            {ledgerRows.length > 0 && (
+              <SectionBlock title="Run ledger — continuity consequence">
+                {ledgerRows.slice(0, 8).map((row) => (
+                  <div key={row.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid var(--r-border-soft)", gap: "10px" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: "11px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "-0.005em" }}>{row.title}</p>
+                      <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", margin: "3px 0 0", letterSpacing: "0.04em" }}>
+                        <span style={{ color: CHAMBER_COLOR[row.chamber] }}>{row.chamber}</span>
+                        {row.lastExecutionState && (
+                          <>
+                            {" "}
+                            · <span style={{ color: "var(--r-subtext)" }}>{row.lastExecutionState}</span>
+                          </>
+                        )}
+                        {row.lastModelId && ` · ${row.lastModelId}`}
+                      </p>
+                      {row.lastRunDigest && (
+                        <p style={{ fontSize: "9px", color: "var(--r-subtext)", fontFamily: "'JetBrains Mono', monospace", margin: "4px 0 0", lineHeight: 1.4 }}>{row.lastRunDigest}</p>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => navigate(row.route.tab, row.route.view, row.route.id)} style={btn}>Open</button>
+                  </div>
+                ))}
+                <div style={{ height: "1px" }} />
               </SectionBlock>
             )}
             {recommendations.length > 0 && (

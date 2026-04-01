@@ -38,7 +38,10 @@ export type ExecutionState =
   | "completed"
   | "degraded"
   | "aborted"
-  | "error";
+  | "error"
+  | "blocked"
+  | "scaffold_only"
+  | "provider_unavailable";
 
 export interface ExecutionResultEntry {
   phase:   string;
@@ -62,6 +65,13 @@ export interface MessageExecutionTrace {
   connectorActions: ConnectorActionEntry[];
   /** Model requested before routing fallback */
   fallbackFromModelId?: string;
+  /** Routed lead pioneer (mother shell truth) */
+  leadPioneerId?:   string;
+  giId?:            string;
+  /** Resolved GI display name */
+  giLabel?:         string;
+  /** One-line route rationale */
+  routeDigest?:     string;
 }
 
 export interface Message {
