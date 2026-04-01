@@ -146,7 +146,7 @@ function AtmosphericGlow() {
 
 // ─── Top nav ───────────────────────────────────────────────────────────────
 
-function TopNav({ onEnter }: { onEnter: (chamber?: string) => void }) {
+function TopNav({ onEnter, isNarrow }: { onEnter: (chamber?: string) => void; isNarrow: boolean }) {
   return (
     <div
       style={{
@@ -177,31 +177,33 @@ function TopNav({ onEnter }: { onEnter: (chamber?: string) => void }) {
         </span>
       </div>
 
-      {/* Chamber links */}
-      <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-        {CHAMBERS.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => onEnter(c.id)}
-            style={{
-              fontSize:     "11px",
-              fontFamily:   "'Inter', system-ui, sans-serif",
-              color:        "var(--r-subtext)",
-              background:   "transparent",
-              border:       "none",
-              cursor:       "pointer",
-              outline:      "none",
-              letterSpacing:"0.01em",
-              padding:      "4px 0",
-              transition:   "color 0.12s ease",
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-text)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)"; }}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
+      {/* Chamber links — hidden on narrow viewports */}
+      {!isNarrow && (
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          {CHAMBERS.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => onEnter(c.id)}
+              style={{
+                fontSize:     "11px",
+                fontFamily:   "'Inter', system-ui, sans-serif",
+                color:        "var(--r-subtext)",
+                background:   "transparent",
+                border:       "none",
+                cursor:       "pointer",
+                outline:      "none",
+                letterSpacing:"0.01em",
+                padding:      "4px 0",
+                transition:   "color 0.12s ease",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-text)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)"; }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Enter CTA */}
       <button
@@ -430,10 +432,17 @@ function CommandPortal({
 export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }) {
   const [mounted, setMounted]   = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [isNarrow, setIsNarrow] = useState(() => typeof window !== "undefined" ? window.innerWidth < 520 : false);
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 40);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsNarrow(window.innerWidth < 520);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
   }, []);
 
   // Keyboard: Enter → proceed (only when no input is focused)
@@ -478,7 +487,7 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
         animate={{ opacity: mounted ? 1 : 0, y: mounted ? 0 : -10 }}
         transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
       >
-        <TopNav onEnter={onEnter} />
+        <TopNav onEnter={onEnter} isNarrow={isNarrow} />
       </motion.div>
 
       {/* ── Center content ── */}
@@ -595,9 +604,9 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
           zIndex:        20,
         }}
       >
-        {/* Left: operational meta */}
+        {/* Left: chamber dots — hidden on narrow */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          {CHAMBERS.map((c, i) => (
+          {!isNarrow && CHAMBERS.map((c) => (
             <span
               key={c.id}
               style={{
@@ -620,29 +629,36 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
               {c.label}
             </span>
           ))}
+          {isNarrow && (
+            <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.08em" }}>
+              sovereign system · v10
+            </span>
+          )}
         </div>
 
-        {/* Right: version + key hint */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <span style={{
-            fontSize:     "9px",
-            fontFamily:   "'JetBrains Mono', monospace",
-            color:        "var(--r-dim)",
-            letterSpacing:"0.07em",
-            opacity:      0.6,
-          }}>
-            ↵ enter
-          </span>
-          <span style={{
-            fontSize:     "9px",
-            fontFamily:   "'JetBrains Mono', monospace",
-            color:        "var(--r-dim)",
-            letterSpacing:"0.07em",
-            opacity:      0.6,
-          }}>
-            v10
-          </span>
-        </div>
+        {/* Right: version + key hint — hidden on narrow */}
+        {!isNarrow && (
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <span style={{
+              fontSize:     "9px",
+              fontFamily:   "'JetBrains Mono', monospace",
+              color:        "var(--r-dim)",
+              letterSpacing:"0.07em",
+              opacity:      0.6,
+            }}>
+              ↵ enter
+            </span>
+            <span style={{
+              fontSize:     "9px",
+              fontFamily:   "'JetBrains Mono', monospace",
+              color:        "var(--r-dim)",
+              letterSpacing:"0.07em",
+              opacity:      0.6,
+            }}>
+              v10
+            </span>
+          </div>
+        )}
       </motion.div>
     </div>
   );
