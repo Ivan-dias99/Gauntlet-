@@ -50,16 +50,19 @@ export function RIconButton({
   style,
   className,
 }: RIconButtonProps) {
+  const [hov, setHov] = React.useState(false);
   return (
     <button
       title={title}
       onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
       style={{
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: R.r.lg,
         border: `1px solid ${active ? R.strong : R.hairline}`,
-        background: active ? R.selected : "transparent",
+        background: active ? R.selected : hov ? "var(--r-elevated)" : "transparent",
         cursor: "pointer",
         display: "flex",
         alignItems: "center",
@@ -69,7 +72,7 @@ export function RIconButton({
         flexShrink: 0,
         ...style,
       }}
-      className={className || "hover:bg-[#F0EDE7]"}
+      className={className}
     >
       {children}
     </button>

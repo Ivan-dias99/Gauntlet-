@@ -101,7 +101,7 @@ function NavBtn({
       }}
       onMouseEnter={(e) => {
         if (!active) {
-          (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)";
+          (e.currentTarget as HTMLElement).style.background = "var(--r-elevated)";
           (e.currentTarget as HTMLElement).style.color = "var(--r-text)";
         }
       }}
