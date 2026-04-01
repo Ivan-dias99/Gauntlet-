@@ -410,7 +410,6 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
 
 export function ProfileMode({
   messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, intelligence: _intelligence, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport, missions, onMissionUpsert,
-  messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, intelligence: _intelligence, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport,
   operations: operationsProp,
   onOperationSignalRead,
   onOperationSignalResolve,
