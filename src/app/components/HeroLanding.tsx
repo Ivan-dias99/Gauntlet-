@@ -9,10 +9,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { type Theme } from "./shell-types";
 
 const CHAMBERS = [
-  { id: "lab",      label: "Lab",      accent: "#52796A", desc: "Investigate" },
-  { id: "school",   label: "School",   accent: "#4A6B84", desc: "Master"      },
-  { id: "creation", label: "Creation", accent: "#8A6238", desc: "Build"        },
-  { id: "profile",  label: "Profile",  accent: "#7A756D", desc: "Orchestrate" },
+  { id: "lab",      label: "Lab",      accent: "var(--chamber-lab)",      desc: "Investigate" },
+  { id: "school",   label: "School",   accent: "var(--chamber-school)",   desc: "Master"      },
+  { id: "creation", label: "Creation", accent: "var(--chamber-creation)", desc: "Build"        },
+  { id: "profile",  label: "Profile",  accent: "var(--r-subtext)",      desc: "Orchestrate" },
 ] as const;
 
 // ─── R mark (same geometry as SovereignBar) ────────────────────────────────
@@ -139,9 +139,9 @@ function AtmosphericGlow() {
         }}
       />
       {/* Corner ambient — lab sage */}
-      <div style={{ position: "absolute", top: 0, right: 0, width: "30vw", height: "30vh", background: "radial-gradient(ellipse at top right, #52796A18 0%, transparent 70%)", pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", top: 0, right: 0, width: "30vw", height: "30vh", background: "radial-gradient(ellipse at top right, color-mix(in srgb, var(--chamber-lab) 14%, transparent) 0%, transparent 70%)", pointerEvents: "none", zIndex: 2 }} />
       {/* Corner ambient — creation amber */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, width: "25vw", height: "25vh", background: "radial-gradient(ellipse at bottom left, #8A623810 0%, transparent 70%)", pointerEvents: "none", zIndex: 2 }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, width: "25vw", height: "25vh", background: "radial-gradient(ellipse at bottom left, color-mix(in srgb, var(--chamber-creation) 12%, transparent) 0%, transparent 70%)", pointerEvents: "none", zIndex: 2 }} />
     </>
   );
 }
@@ -262,8 +262,8 @@ function ChamberChip({
       style={{
         padding:      "10px 8px",
         borderRadius: "8px",
-        border:       `1px solid ${selected ? chamber.accent + "50" : "var(--r-border)"}`,
-        background:   selected ? `${chamber.accent}0e` : "transparent",
+        border:       selected ? `1px solid color-mix(in srgb, ${chamber.accent} 38%, var(--r-border))` : "1px solid var(--r-border)",
+        background:   selected ? `color-mix(in srgb, ${chamber.accent} 10%, var(--r-surface))` : "transparent",
         cursor:       "pointer",
         outline:      "none",
         textAlign:    "center" as const,
@@ -563,7 +563,7 @@ export function HeroLanding({ onEnter, theme }: { onEnter: (chamber?: string) =>
                     width:        "4px",
                     height:       "4px",
                     borderRadius: "50%",
-                    background:   "#52796A",
+                    background:   "var(--chamber-lab)",
                     display:      "inline-block",
                     flexShrink:   0,
                     opacity:      0.85,

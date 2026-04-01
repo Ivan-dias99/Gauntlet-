@@ -22,6 +22,7 @@ import {
   type ConnectorCategory,
 } from "../connector-registry";
 import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from "../workflow-engine";
+import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
 import {
   PROVIDER_ADAPTERS,
   SOVEREIGN_MODEL_REGISTRY,
@@ -71,9 +72,9 @@ interface WorkItem {
 }
 
 const CHAMBER_COLOR: Record<string, string> = {
-  lab:      "#52796A",
-  school:   "#4A6B84",
-  creation: "#8A6238",
+  lab:      "var(--chamber-lab)",
+  school:   "var(--chamber-school)",
+  creation: "var(--chamber-creation)",
 };
 
 const STATUS_COLOR: Record<WorkStatus, string> = {
@@ -446,7 +447,7 @@ export function ProfileMode({
                 style={{
                   padding: "7px 14px",
                   border: "none",
-                  borderBottom: profileView === v ? "2px solid #7A756D" : "2px solid transparent",
+                  borderBottom: profileView === v ? "2px solid color-mix(in srgb, var(--r-subtext) 45%, var(--r-border))" : "2px solid transparent",
                   background: "transparent",
                   fontSize: "11px",
                   fontFamily: "'Inter', system-ui, sans-serif",
@@ -485,7 +486,16 @@ export function ProfileMode({
             )}
             {active.length === 0 && paused.length === 0 && (
               <SectionBlock title="Work Queue" empty>
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0 }}>No active work — start a session in any chamber</p>
+                <div style={{ padding: "4px 0 8px" }}>
+                  <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-accent-soft)"
+                    kicker="Profile · orchestration ledger"
+                    title="No active work threads"
+                    body="The ledger stays empty until Lab, School, or Creation carries a live user message chain. Continuity and signals will populate here as you operate the shell."
+                    actions={emptyActionBtn(() => navigate("lab", "chat"), "Open Lab", "var(--r-accent-soft)")}
+                  />
+                </div>
               </SectionBlock>
             )}
             {recommendations.length > 0 && (
@@ -545,13 +555,31 @@ export function ProfileMode({
             </SectionBlock>
             <SectionBlock title="All Work">
               {workItems.length === 0 ? (
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", padding: "10px 14px", margin: 0 }}>No work items yet</p>
+                <div style={{ padding: "6px 14px 12px" }}>
+                  <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-accent-soft)"
+                    kicker="Projects · work graph"
+                    title="No indexed work items"
+                    body="Cross-chamber threads appear after you send prompts in Lab, School, or Creation. This list is derived from real sessions — not seeded filler."
+                    actions={emptyActionBtn(() => navigate("school", "home"), "Enter School", "var(--r-accent-soft)")}
+                  />
+                </div>
               ) : workItems.map((item) => <WorkRow key={item.id} item={item} navigate={navigate} continuity={continuity} onTransfer={onTransfer} />)}
               <div style={{ height: "1px" }} />
             </SectionBlock>
             <SectionBlock title="Connectors">
               {connectors.length === 0 ? (
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", padding: "10px 14px", margin: 0 }}>No connectors configured</p>
+                <div style={{ padding: "6px 14px 12px" }}>
+                  <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-accent-soft)"
+                    kicker="Connectors"
+                    title="No connector rows in fabric"
+                    body="Runtime fabric ships with connector slots; enable them from this row when present. Until then, the control surface stays explicit about the gap."
+                    actions={emptyActionBtn(() => navigate("profile", "settings"), "Open settings", "var(--r-accent-soft)")}
+                  />
+                </div>
               ) : connectors.map((c) => <ConnectorRow key={c.id} connector={c} onToggle={onToggleConnector} />)}
               <div style={{ height: "1px" }} />
             </SectionBlock>
@@ -562,7 +590,16 @@ export function ProfileMode({
         {profileView === "memory" && (
           <SectionBlock title={`Memory — ${memoryItems.length} Objects`}>
             {memoryItems.length === 0 ? (
-              <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", padding: "10px 14px", margin: 0 }}>Memory builds as you work across chambers</p>
+              <div style={{ padding: "6px 14px 12px" }}>
+                <SovereignEmptyFrame
+                  align="left"
+                  accentVar="var(--r-accent-soft)"
+                  kicker="Memory · object fabric"
+                  title="Memory field is pristine"
+                  body="Objects from domains, tracks, blueprints, and chats accumulate into this fabric. Nothing is invented — navigate any chamber and return when artifacts exist."
+                  actions={emptyActionBtn(() => navigate("lab", "home"), "Browse Lab", "var(--r-accent-soft)")}
+                />
+              </div>
             ) : memoryItems.map((item) => (
               <div key={item.id} style={{ padding: "10px 14px", borderBottom: "1px solid var(--r-border-soft)" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
@@ -624,7 +661,16 @@ export function ProfileMode({
             </SectionBlock>
             <SectionBlock title="Plugins">
               {plugins.length === 0 ? (
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", padding: "10px 14px", margin: 0 }}>No plugins registered</p>
+                <div style={{ padding: "6px 14px 12px" }}>
+                  <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-accent-soft)"
+                    kicker="Plugins"
+                    title="No plugin registrations"
+                    body="Extensions attach here when the runtime exposes them. The shell does not pretend fake marketplace rows."
+                    actions={emptyActionBtn(() => navigate("profile", "overview"), "Back to overview", "var(--r-accent-soft)")}
+                  />
+                </div>
               ) : plugins.map((plugin) => (
                 <div key={plugin.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid var(--r-border-soft)" }}>
                   <div>
@@ -653,7 +699,16 @@ export function ProfileMode({
             </SectionBlock>
             <SectionBlock title="Ready to Export">
               {exportables.length === 0 ? (
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", padding: "10px 14px", margin: 0 }}>No completed runs ready for export</p>
+                <div style={{ padding: "6px 14px 12px" }}>
+                  <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-accent-soft)"
+                    kicker="Exports · continuity"
+                    title="Nothing queued for export"
+                    body="Completed continuity items you mark ready will list here. The export rail stays quiet until the ledger has exportable work."
+                    actions={emptyActionBtn(() => navigate("profile", "overview"), "Return to overview", "var(--r-accent-soft)")}
+                  />
+                </div>
               ) : exportables.map((item) => (
                 <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid var(--r-border-soft)" }}>
                   <div>
@@ -690,9 +745,16 @@ export function ProfileMode({
               </div>
             </SectionBlock>
             <SectionBlock title="Advanced Pioneers" empty>
-              <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0 }}>
-                {PIONEER_REGISTRY.filter(p => p.visibility === "advanced").length} advanced pioneers available — accessible via direct routing or ⌘K.
-              </p>
+              <div style={{ padding: "4px 0 8px" }}>
+                <SovereignEmptyFrame
+                  align="left"
+                  accentVar="var(--r-accent-soft)"
+                  kicker="Pioneers · advanced tier"
+                  title={`${PIONEER_REGISTRY.filter((p) => p.visibility === "advanced").length} advanced intelligences`}
+                  body="Advanced pioneers stay out of the default grid by design. Invoke them through routing contracts, palette navigation, or workflows — not as filler tiles."
+                  actions={emptyActionBtn(() => navigate("profile", "workflows"), "View workflows", "var(--r-accent-soft)")}
+                />
+              </div>
             </SectionBlock>
           </>
         )}

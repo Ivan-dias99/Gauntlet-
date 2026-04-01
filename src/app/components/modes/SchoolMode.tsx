@@ -3,7 +3,7 @@
  * Discover → Chat / Library / Archive
  */
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Message, type SchoolView } from "../shell-types";
 import { type NavFn } from "../shell-types";
@@ -15,13 +15,14 @@ import { SchoolRoleDetail } from "../detail/SchoolRoleDetail";
 import { SCHOOL_ROLES } from "../product-data";
 import { type TaskType } from "../model-orchestration";
 import { buildMessageObject, findObject, listObjectsForChamber, mergeObjectsByRecency, openObject } from "../object-graph";
+import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
 
 const SCHOOL_CONFIG: ChamberConfig = {
   id:          "school",
   label:       "School",
   tagline:     "Structured progression. First principles first.",
   placeholder: "Ask School…",
-  accent:      "#4A6B84",
+  accent:      "var(--chamber-school)",
   glyph:       <SchoolGlyph />,
 };
 
@@ -212,7 +213,19 @@ function SchoolArchive({ messages, navigate }: { messages: Message[]; navigate: 
           <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)" }}>{objects.length} entries</span>
         </div>
         {objects.length === 0 ? (
-          <p style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif" }}>No archive objects yet</p>
+          <SovereignEmptyFrame
+            align="left"
+            accentVar="var(--chamber-school)"
+            kicker="School · archive"
+            title="No saved learning objects"
+            body="Tracks, lessons, and roles you touch will surface here with continuity. Start from Library, Browse, or Chat to seed the archive."
+            actions={
+              <Fragment>
+                {emptyActionBtn(() => navigate("school", "library"), "Open Library", "var(--chamber-school)")}
+                {emptyActionBtn(() => navigate("school", "chat"), "Open School Chat", "var(--chamber-school)")}
+              </Fragment>
+            }
+          />
         ) : objects.map((obj, i) => (
           <div key={`${obj.id}-${i}`} style={{ border: "1px solid var(--r-border)", borderRadius: "6px", padding: "10px 12px", marginBottom: "8px", background: "var(--r-surface)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>

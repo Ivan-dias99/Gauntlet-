@@ -143,10 +143,10 @@ function buildRuntimeEntries(
 // ─── Chamber dot ──────────────────────────────────────────────────────────────
 
 const CHAMBER_DOT: Record<string, string> = {
-  lab:      "#52796A",
-  school:   "#4A6B84",
-  creation: "#8A6238",
-  profile:  "#7A756D",
+  lab:      "var(--chamber-lab)",
+  school:   "var(--chamber-school)",
+  creation: "var(--chamber-creation)",
+  profile:  "var(--r-subtext)",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import { type TaskType } from "./model-orchestration";
 import { getContractByChamber } from "./routing-contracts";
 import { getPioneer } from "./pioneer-registry";
 import { getExecutionTruth, TIER_LABEL, TIER_COLOR } from "./sovereign-runtime";
+import { SovereignEmptyFrame } from "./SovereignEmptyFrame";
 
 // ─── Chamber config ───────────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ export interface ChamberConfig {
 // ─── Glyphs ───────────────────────────────────────────────────────────────────
 
 export const LabGlyph = () => (
-  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "#52796A" }}>
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "var(--chamber-lab)" }}>
     <circle cx="16" cy="16" r="5" stroke="currentColor" strokeWidth="1.25" />
     <path d="M16 2.5v4.5M16 25v4.5M2.5 16H7M25 16h4.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
     <path d="M6.5 6.5l3 3M22.5 22.5l3 3M25.5 6.5l-3 3M9.5 22.5l-3 3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
@@ -36,7 +37,7 @@ export const LabGlyph = () => (
 );
 
 export const SchoolGlyph = () => (
-  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "#4A6B84" }}>
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "var(--chamber-school)" }}>
     <rect x="3.5" y="7" width="25" height="18" rx="2" stroke="currentColor" strokeWidth="1.25" />
     <path d="M3.5 13h25" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
     <path d="M12 13v12" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
@@ -47,7 +48,7 @@ export const SchoolGlyph = () => (
 );
 
 export const CreationGlyph = () => (
-  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "#8A6238" }}>
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style={{ color: "var(--chamber-creation)" }}>
     <path d="M6 26l5-15 5 10 4-7 5 12" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
     <circle cx="25.5" cy="6.5" r="3.5" stroke="currentColor" strokeWidth="1.25" />
     <path d="M6 10.5h5.5M6 16h3.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
@@ -55,6 +56,24 @@ export const CreationGlyph = () => (
 );
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
+
+const EMPTY_SOVEREIGN: Record<string, { kicker: string; title: string; body: string }> = {
+  lab: {
+    kicker: "Lab · investigation field",
+    title:  "No trace on the record yet",
+    body:   "This chamber keeps an honest empty: evidence, verdicts, and matrices appear only after you run inquiry. Start below — output lands as structured blocks, not chat fog.",
+  },
+  school: {
+    kicker: "School · curriculum surface",
+    title:  "No lesson arc in motion",
+    body:   "Pick a thread and School sequences mastery checks, paths, and continuity. The surface stays calm until you commit a learning intent.",
+  },
+  creation: {
+    kicker: "Creation · execution field",
+    title:  "No build chain yet",
+    body:   "Directives compile to artifacts, blueprints, and terminal output. Send a concrete build ask — the forge stays quiet until you command it.",
+  },
+};
 
 const EMPTY_PROMPTS: Record<string, string[]> = {
   lab: [
@@ -78,16 +97,20 @@ const EMPTY_PROMPTS: Record<string, string[]> = {
 };
 
 function EmptyState({
-  glyph, label, tagline, id, onSend, accent,
+  glyph, label, id, onSend, accent,
 }: {
   glyph:   React.ReactNode;
   label:   string;
-  tagline: string;
   id:      string;
   accent:  string;
   onSend:  (t: string) => void;
 }) {
   const prompts = EMPTY_PROMPTS[id] ?? [];
+  const sovereign = EMPTY_SOVEREIGN[id] ?? {
+    kicker: "Chamber",
+    title:  `${label} — ready`,
+    body:   "Begin a session. Output accumulates under the same mother shell law as every other chamber.",
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -97,44 +120,24 @@ function EmptyState({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        paddingTop: "68px",
+        paddingTop: "48px",
         paddingBottom: "32px",
       }}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.85 }}
-        animate={{ opacity: 0.7, scale: 1 }}
-        transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-        style={{ marginBottom: "18px" }}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.35, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+        style={{ marginBottom: "16px", opacity: 0.88 }}
       >
         {glyph}
       </motion.div>
-      <p
-        style={{
-          fontSize: "14px",
-          fontWeight: 500,
-          color: "var(--r-text)",
-          fontFamily: "'Inter', system-ui, sans-serif",
-          marginBottom: "6px",
-          letterSpacing: "-0.015em",
-          lineHeight: 1.3,
-        }}
-      >
-        {label}
-      </p>
-      <p
-        style={{
-          fontSize: "12px",
-          color: "var(--r-subtext)",
-          fontFamily: "'Inter', system-ui, sans-serif",
-          textAlign: "center",
-          maxWidth: "260px",
-          lineHeight: "1.65",
-          marginBottom: "32px",
-        }}
-      >
-        {tagline}
-      </p>
+      <SovereignEmptyFrame
+        accentVar={accent}
+        kicker={sovereign.kicker}
+        title={sovereign.title}
+        body={sovereign.body}
+      />
 
       {/* Quick start prompts */}
       <div
@@ -144,9 +147,22 @@ function EmptyState({
           gap: "5px",
           width: "100%",
           maxWidth: "500px",
-          padding: "0 16px",
+          padding: "20px 16px 0",
         }}
       >
+        <p
+          style={{
+            fontSize: "9px",
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--r-dim)",
+            margin: "0 0 10px",
+            textAlign: "center",
+          }}
+        >
+          Open queries
+        </p>
         {prompts.map((p, i) => (
           <motion.button
             key={i}
@@ -179,7 +195,7 @@ function EmptyState({
               el.style.color = "var(--r-text)";
               el.style.borderColor = "var(--r-border-soft)";
               el.style.transform = "translateY(-1px)";
-              el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)";
+              el.style.boxShadow = "0 2px 8px color-mix(in srgb, var(--r-text) 5%, transparent)";
             }}
             onMouseLeave={e => {
               const el = e.currentTarget as HTMLElement;
@@ -230,7 +246,7 @@ function UserBubble({ content }: { content: string }) {
           fontFamily: "'Inter', system-ui, sans-serif",
           lineHeight: "1.65",
           border: "1px solid var(--r-border-soft)",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
+          boxShadow: "0 1px 4px color-mix(in srgb, var(--r-text) 4%, transparent)",
           letterSpacing: "-0.003em",
         }}
       >
@@ -262,7 +278,7 @@ function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: st
   return (
     <div style={{ marginBottom: "14px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px 4px 8px", border: `1px solid ${accent}22`, borderRadius: "6px", background: `${accent}08` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px 4px 8px", border: `1px solid color-mix(in srgb, ${accent} 22%, var(--r-border))`, borderRadius: "6px", background: `color-mix(in srgb, ${accent} 9%, var(--r-surface))` }}>
           <span
             style={{
               width: "5px",
@@ -630,12 +646,12 @@ function Composer({
         <div
           style={{
             background: "var(--r-surface)",
-            border: `1px solid ${focused ? `${accent}35` : "var(--r-border-soft)"}`,
+            border: `1px solid ${focused ? `color-mix(in srgb, ${accent} 32%, var(--r-border))` : "var(--r-border-soft)"}`,
             borderRadius: "14px",
             padding: "14px 14px 10px 18px",
             boxShadow: focused
-              ? `0 0 0 1px ${accent}20, 0 4px 20px rgba(0,0,0,0.06)`
-              : "0 2px 12px rgba(0,0,0,0.04)",
+              ? `0 0 0 1px color-mix(in srgb, ${accent} 22%, transparent), 0 4px 20px color-mix(in srgb, var(--r-text) 6%, transparent)`
+              : "0 2px 12px color-mix(in srgb, var(--r-text) 4%, transparent)",
             transition: "box-shadow 0.2s ease, border-color 0.2s ease",
           }}
         >
@@ -733,7 +749,7 @@ function Composer({
                 outline: "none",
                 flexShrink: 0,
                 transition: "background 0.15s ease, border-color 0.15s ease, transform 0.1s ease",
-                boxShadow: canSend ? "0 1px 4px rgba(0,0,0,0.15)" : "none",
+                boxShadow: canSend ? "0 1px 4px color-mix(in srgb, var(--r-text) 12%, transparent)" : "none",
               }}
               onMouseEnter={e => {
                 if (canSend) (e.currentTarget as HTMLElement).style.transform = "scale(1.05)";
@@ -745,7 +761,7 @@ function Composer({
               <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
                 <path
                   d="M14 8L2 2l3 6-3 6 12-6z"
-                  fill={canSend ? "white" : "var(--r-border)"}
+                  fill={canSend ? "var(--r-bg)" : "var(--r-border)"}
                   strokeWidth="0"
                 />
               </svg>
@@ -823,7 +839,6 @@ export function ChamberChat({
             <EmptyState
               glyph={config.glyph}
               label={config.label}
-              tagline={config.tagline}
               id={config.id}
               accent={config.accent}
               onSend={onSend}
