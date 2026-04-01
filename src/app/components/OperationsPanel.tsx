@@ -111,7 +111,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       fontSize: "10px",
-      fontWeight: 600,
+      fontWeight: 400,
       letterSpacing: "0.08em",
       textTransform: "uppercase",
       color: "var(--r-subtext)",
@@ -143,10 +143,10 @@ function Pill({ color, label }: { color: string; label: string }) {
       padding: "2px 7px",
       borderRadius: "4px",
       background: `color-mix(in srgb, ${color} 14%, transparent)`,
-      border: `1px solid color-mix(in srgb, ${color} 28%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${color} 16%, transparent)`,
       color,
       fontSize: "10px",
-      fontWeight: 500,
+      fontWeight: 400,
       letterSpacing: "0.04em",
     }}>
       {label}
@@ -292,9 +292,9 @@ function HandoffQueue({
             style={{
               padding: "3px 8px",
               borderRadius: "5px",
-              border: "1px solid var(--r-ok)",
-              background: "color-mix(in srgb, var(--r-ok) 10%, transparent)",
-              color: "var(--r-ok)",
+              border: "1px solid var(--r-border)",
+              background: "transparent",
+              color: "var(--r-subtext)",
               fontSize: "11px",
               cursor: "pointer",
             }}
@@ -573,7 +573,7 @@ function GovernanceTrail({ records }: { records: ExecutionGovernanceRecord[] }) 
               }}>
                 <span style={{
                   fontSize: "13px",
-                  fontWeight: 700,
+                  fontWeight: 500,
                   color: resultColor,
                   letterSpacing: "0.02em",
                   textTransform: "uppercase",
@@ -586,12 +586,11 @@ function GovernanceTrail({ records }: { records: ExecutionGovernanceRecord[] }) 
               </div>
               <div style={{
                 fontSize: "12px",
-                color: "var(--r-text)",
+                color: "var(--r-subtext)",
                 marginTop: "3px",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                fontStyle: "italic",
               }}>
                 {rec.consequence}
               </div>
@@ -665,7 +664,7 @@ export function OperationsPanel({
           : "color-mix(in srgb, var(--r-ok) 6%, var(--r-surface))",
         border: "1px solid",
         borderColor: requiresAttention ? "color-mix(in srgb, var(--r-warn) 20%, var(--r-border))" : "var(--r-border)",
-        borderRadius: "10px",
+        borderRadius: "6px",
         display: "flex",
         alignItems: "center",
         gap: "12px",
@@ -678,7 +677,7 @@ export function OperationsPanel({
           flexShrink: 0,
         }} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--r-text)", letterSpacing: "0.01em" }}>
+          <div style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", letterSpacing: "0.01em" }}>
             {requiresAttention ? "Mission Requires Operator Disposition" : "Mission Execution Nominal"}
           </div>
           <div style={{ fontSize: "11px", color: "var(--r-subtext)", marginTop: "2px", letterSpacing: "0.01em" }}>
