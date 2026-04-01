@@ -6,6 +6,7 @@
 import { motion } from "motion/react";
 import { Search, Bell, ChevronDown } from "lucide-react";
 import { type Tab, type Theme } from "./shell-types";
+import { type SystemHealthModel } from "./awareness-substrate";
 import { ProfileLedger } from "./ProfileLedger";
 import { useState } from "react";
 
@@ -28,6 +29,9 @@ interface SovereignBarProps {
   onSignalsToggle?: () => void;
   hasSignals?:    boolean;
   onManageMatrix?: () => void;
+  systemHealth?: SystemHealthModel | null;
+  workspaceOwner?: string;
+  workspaceSubtitle?: string;
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -106,6 +110,7 @@ function IconBtn({
 
 export function SovereignBar({
   activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals, onManageMatrix,
+  systemHealth, workspaceOwner, workspaceSubtitle,
 }: SovereignBarProps) {
   const [isLedgerOpen, setLedgerOpen] = useState(false);
 
@@ -367,7 +372,14 @@ export function SovereignBar({
             </motion.div>
           </button>
           
-          <ProfileLedger isOpen={isLedgerOpen} onClose={() => setLedgerOpen(false)} onManageMatrix={onManageMatrix} />
+          <ProfileLedger
+            isOpen={isLedgerOpen}
+            onClose={() => setLedgerOpen(false)}
+            onManageMatrix={onManageMatrix}
+            systemHealth={systemHealth}
+            workspaceOwner={workspaceOwner}
+            workspaceSubtitle={workspaceSubtitle}
+          />
         </div>
       </div>
 
