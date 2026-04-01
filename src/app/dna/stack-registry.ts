@@ -585,3 +585,4 @@ export const CASCADE_LAW_VIOLATIONS: readonly string[] = [
  * Changing this field is a constitutional act — it requires sovereign authorization.
  */
 export const RUBERRA_CURRENT_PHASE: StackPhase = "constitution";
+export const RUBERRA_CURRENT_PHASE: StackPhase = "sovereignty";

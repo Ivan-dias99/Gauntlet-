@@ -14,12 +14,13 @@
  *   - Execution governance is consequence-bearing, not deploy buttons
  *   - Operation flows are coordinated systems, not isolated actions
  *
- * Dependencies: Stack 01 (canon), Stack 02 (mission), Stack 03 (intelligence)
+ * Dependencies: Stack 01 (canon), Stack 02 (mission), Stack 03 (intelligence), Stack 07 (governance)
  */
 
 import { type Tab } from "./shell-types";
 import { type PioneerId } from "./pioneer-registry";
 import { type WorkflowId } from "./workflow-engine";
+import { isActionAllowed, RUBERRA_TRUST_GATES, type GovernanceActor } from "./governance-fabric";
 
 // ─── TASK LAYER ───────────────────────────────────────────────────────────────
 
@@ -594,6 +595,23 @@ export function createOperationSignal(
     resolved:   false,
     expiresAt:  partial.expiresAt ?? 0,
     createdAt:  Date.now(),
+  };
+}
+
+/**
+ * Stack 07 — Trust Gate bridge.
+ * Evaluates the governance-fabric trust gate before any consequential action.
+ * Returns allowed=true if the action may proceed, false if blocked or deferred.
+ */
+export function checkGovernanceTrust(
+  action: string,
+  actor: GovernanceActor,
+): { allowed: boolean; verdict: string; reason?: string } {
+  const result = isActionAllowed(action, actor, RUBERRA_TRUST_GATES);
+  return {
+    allowed: result.allowed,
+    verdict: result.verdict,
+    reason:  result.gate?.reason,
   };
 }
 
