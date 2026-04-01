@@ -1147,3 +1147,58 @@ export function exportContinuity(fabric: RuntimeFabric, continuityId: string): R
   });
   return next;
 }
+
+// ─── Cross-chamber context handoff ───────────────────────────────────────────
+
+/**
+ * Build a compact context digest from recent messages.
+ * Safe to store in ContinuityItem.lastRunDigest and carry across chambers.
+ */
+export function buildContextHandoff(
+  messages: Array<{ role: string; content: string }>,
+  maxMessages = 6,
+): { digest: string; messageCount: number; lastRole: string } {
+  const recent = messages.slice(-maxMessages);
+  const digest = recent
+    .map((m) => `[${m.role}] ${m.content.slice(0, 200)}`)
+    .join("\n---\n")
+    .slice(0, 1400);
+  return {
+    digest,
+    messageCount: recent.length,
+    lastRole:     recent[recent.length - 1]?.role ?? "none",
+  };
+}
+
+/**
+ * Transfer a continuity item to another chamber, carrying a context digest
+ * and pushing a cross-chamber transfer signal in one atomic update.
+ * Preferred over raw transferContinuity() when message context must travel.
+ */
+export function handoffContinuity(
+  fabric: RuntimeFabric,
+  continuityId: string,
+  to: Exclude<Tab, "profile">,
+  digest: string,
+  reason: string,
+): RuntimeFabric {
+  let next = transferContinuity(fabric, continuityId, to, reason);
+  const item = fabric.continuity.find((c) => c.id === continuityId);
+  if (!item) return next;
+  next = {
+    ...next,
+    continuity: next.continuity.map((c) =>
+      c.id === continuityId ? { ...c, lastRunDigest: digest.slice(0, 1400) } : c
+    ),
+  };
+  next = pushSignal(next, {
+    type:               "transfer",
+    label:              `${item.title.slice(0, 48)} → ${to}`,
+    severity:           "info",
+    sourceChamber:      item.chamber,
+    destinationChamber: to,
+    destination:        { tab: to, view: to === "creation" ? "terminal" : "chat", id: continuityId },
+    linkedObjectId:     item.linkedObjectId,
+  });
+  return next;
+}

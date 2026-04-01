@@ -269,40 +269,131 @@ async function runLocalProxy(req: ExecutionRequest, onChunk?: (chunk: string) =>
       },
     };
   }
-  const summary = `[local-proxy:${req.modelId}] chamber=${req.chamber} task=${req.task} :: ${req.prompt.slice(0, 180)}`;
-  onChunk?.(summary);
-  providerHealthCache.set(req.providerId, { state: models.length > 0 ? "healthy" : "degraded", updatedAt: Date.now() });
-  return {
-    content: summary,
-    mode: "local",
-    degraded: true,
-    blocked: false,
-    providerTruth: inferProviderTruth(req.providerLane),
-    selectedProviderId: req.providerId,
-    selectedModelId: req.modelId,
-    state: "degraded",
-    providerUnavailable: false,
-    scaffoldOnly: false,
-    localHandshake: { endpoint: req.localEndpoint, ...health },
-    latencyMs: Math.round(performance.now() - started),
-    normalizedRequest: {
-      chamber: req.chamber,
-      task: req.task,
-      promptPreview: req.prompt.slice(0, 120),
-      fallbackCount: req.fallbackChain.length,
-      connectorLinked: (req.connectorIds?.length ?? 0) > 0,
-      connectorCount: req.connectorIds?.length ?? 0,
-      workflowId: req.workflowId,
-      continuityId: req.continuityId,
+  // Attempt live Ollama /api/chat inference
+  const chatEndpoint = `${req.localEndpoint?.replace(/\/$/, "")}/api/chat`;
+  const chatResult = await fetchWithTimeout(
+    chatEndpoint,
+    {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        model:    req.modelId,
+        messages: [...req.context, { role: "user", content: req.prompt }],
+        stream:   true,
+      }),
     },
-    attempts: 1,
-    timedOut: false,
-    providerHealth: models.length > 0 ? "healthy" : "degraded",
+    req.timeoutMs ?? 60_000,
+    req.signal,
+  );
+
+  if (!chatResult.response?.ok || !chatResult.response.body) {
+    // Endpoint reachable but model not available — surface honest degraded state
+    providerHealthCache.set(req.providerId, { state: "degraded", updatedAt: Date.now() });
+    return {
+      content:             `[local: ${req.modelId} not available — pull the model or check endpoint]`,
+      mode:                "local",
+      degraded:            true,
+      blocked:             false,
+      providerTruth:       inferProviderTruth(req.providerLane),
+      selectedProviderId:  req.providerId,
+      selectedModelId:     req.modelId,
+      state:               "degraded",
+      providerUnavailable: false,
+      scaffoldOnly:        false,
+      blockedReason:       "model_not_pulled",
+      localHandshake:      { endpoint: req.localEndpoint, ...health },
+      latencyMs:           Math.round(performance.now() - started),
+      normalizedRequest: {
+        chamber:         req.chamber,
+        task:            req.task,
+        promptPreview:   req.prompt.slice(0, 120),
+        fallbackCount:   req.fallbackChain.length,
+        connectorLinked: (req.connectorIds?.length ?? 0) > 0,
+        connectorCount:  req.connectorIds?.length ?? 0,
+        workflowId:      req.workflowId,
+        continuityId:    req.continuityId,
+      },
+      attempts:      1,
+      timedOut:      chatResult.timedOut,
+      providerHealth:"degraded",
+      localRuntime: {
+        endpoint:      req.localEndpoint,
+        state:         "degraded",
+        models,
+        capabilities:  ["chat"],
+        lastCheckedAt: health.checkedAt,
+      },
+    };
+  }
+
+  // Stream NDJSON response from Ollama /api/chat
+  const reader  = chatResult.response.body.getReader();
+  const decoder = new TextDecoder();
+  let content   = "";
+  let buf       = "";
+
+  try {
+    outer: while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const json = JSON.parse(trimmed) as { message?: { content?: string }; done?: boolean };
+          const token = json.message?.content ?? "";
+          if (token) { content += token; onChunk?.(token); }
+          if (json.done) break outer;
+        } catch { /* malformed chunk — skip */ }
+      }
+    }
+    if (buf.trim()) {
+      try {
+        const json = JSON.parse(buf) as { message?: { content?: string } };
+        const token = json.message?.content ?? "";
+        if (token) { content += token; onChunk?.(token); }
+      } catch { /* ignore */ }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  providerHealthCache.set(req.providerId, { state: "healthy", updatedAt: Date.now() });
+
+  return {
+    content,
+    mode:                "local",
+    degraded:            false,
+    blocked:             false,
+    providerTruth:       inferProviderTruth(req.providerLane),
+    selectedProviderId:  req.providerId,
+    selectedModelId:     req.modelId,
+    state:               "completed",
+    providerUnavailable: false,
+    scaffoldOnly:        false,
+    localHandshake:      { endpoint: req.localEndpoint, ...health },
+    latencyMs:           Math.round(performance.now() - started),
+    normalizedRequest: {
+      chamber:         req.chamber,
+      task:            req.task,
+      promptPreview:   req.prompt.slice(0, 120),
+      fallbackCount:   req.fallbackChain.length,
+      connectorLinked: (req.connectorIds?.length ?? 0) > 0,
+      connectorCount:  req.connectorIds?.length ?? 0,
+      workflowId:      req.workflowId,
+      continuityId:    req.continuityId,
+    },
+    attempts:      1,
+    timedOut:      false,
+    providerHealth:"healthy",
     localRuntime: {
-      endpoint: req.localEndpoint,
-      state: models.length > 0 ? "ready" : "degraded",
+      endpoint:      req.localEndpoint,
+      state:         "ready",
       models,
-      capabilities: ["chat", "summarize", "code"],
+      capabilities:  ["chat"],
       lastCheckedAt: health.checkedAt,
     },
   };

@@ -369,3 +369,58 @@ export function getWorkflowsByPioneer(pioneerId: PioneerId): WorkflowTemplate[] 
     (w) => w.lead_pioneer === pioneerId || w.supporting_pioneers.includes(pioneerId)
   );
 }
+
+// ─── Runtime bridge ───────────────────────────────────────────────────────────
+
+/**
+ * Build the payload required by runtime-fabric.startWorkflowRun().
+ * Bridges the typed WorkflowTemplate definition to the runtime execution record.
+ */
+export function buildWorkflowRunPayload(
+  workflowId: WorkflowId,
+  continuityId: string,
+): { workflowId: string; continuityId: string; chamber: Exclude<Tab, "profile">; stages: string[] } | undefined {
+  const template = getWorkflow(workflowId);
+  if (!template) return undefined;
+  return {
+    workflowId:   template.id,
+    continuityId,
+    chamber:      template.home_chamber,
+    stages:       template.stages.map((s) => s.label),
+  };
+}
+
+/** Stages assigned to a specific chamber within a workflow. */
+export function getStagesForChamber(
+  workflowId: WorkflowId,
+  chamber: Exclude<Tab, "profile">,
+): WorkflowStage[] {
+  const template = getWorkflow(workflowId);
+  if (!template) return [];
+  return template.stages.filter((s) => s.chamber === chamber);
+}
+
+/**
+ * Ordered list of chambers a workflow passes through, deduplicated.
+ * Used to drive cross-chamber handoff signals.
+ */
+export function getWorkflowHandoffChambers(workflowId: WorkflowId): Exclude<Tab, "profile">[] {
+  const template = getWorkflow(workflowId);
+  if (!template) return [];
+  const seen = new Set<Exclude<Tab, "profile">>();
+  const result: Exclude<Tab, "profile">[] = [];
+  for (const stage of template.stages) {
+    if (!seen.has(stage.chamber)) { seen.add(stage.chamber); result.push(stage.chamber); }
+  }
+  return result;
+}
+
+/** Next chamber in the workflow after the current one. Used for auto-transfer signals. */
+export function getNextWorkflowChamber(
+  workflowId: WorkflowId,
+  currentChamber: Exclude<Tab, "profile">,
+): Exclude<Tab, "profile"> | undefined {
+  const chain = getWorkflowHandoffChambers(workflowId);
+  const idx   = chain.indexOf(currentChamber);
+  return idx >= 0 ? chain[idx + 1] : undefined;
+}
