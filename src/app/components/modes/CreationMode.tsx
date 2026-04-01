@@ -439,7 +439,7 @@ function BuildSurface({
             {/* Blocks */}
             {lastAsst?.blocks && lastAsst.blocks.length > 0 && (
               <div style={{ padding: "8px 16px" }}>
-                <BlockRenderer blocks={lastAsst.blocks} />
+                <BlockRenderer blocks={lastAsst.blocks} chamber="creation" />
               </div>
             )}
 

@@ -46,9 +46,21 @@ export interface MetamorphicSurfaceStyle {
   bodyPad:       string;
 }
 
-export function getMetamorphicSurface(block: MessageBlock): MetamorphicSurfaceStyle {
+export type MetamorphicChamber = "lab" | "school" | "creation";
+
+function chamberAccentRail(ch: MetamorphicChamber): string {
+  if (ch === "lab") return "var(--chamber-lab)";
+  if (ch === "school") return "var(--chamber-school)";
+  return "var(--chamber-creation)";
+}
+
+export function getMetamorphicSurface(block: MessageBlock, chamber?: MetamorphicChamber): MetamorphicSurfaceStyle {
   const responseClass = blockTypeToResponseClass(block.type as BlockType);
-  return getMetamorphicSurfaceForClass(responseClass);
+  const surface = getMetamorphicSurfaceForClass(responseClass);
+  if (chamber && responseClass === "analytical") {
+    return { ...surface, rail: chamberAccentRail(chamber) };
+  }
+  return surface;
 }
 
 export function getMetamorphicSurfaceForClass(responseClass: MetamorphicResponseClass): MetamorphicSurfaceStyle {
@@ -357,12 +369,13 @@ function ItemRow({
 
 // ─── Section renderers by block type ─────────────────────────────────────────
 
-function SectionDefault({ section, showBars }: {
+function SectionDefault({ section, showBars, airy }: {
   section: { heading: string; items: { label: string; value?: string; status?: StatusFlag }[] };
   showBars?: boolean;
+  airy?: boolean;
 }) {
   return (
-    <div style={{ padding: "8px 14px 4px" }}>
+    <div style={{ padding: airy ? "12px 18px 10px" : "9px 15px 6px" }}>
       {section.heading && (
         <p
           style={{
@@ -394,7 +407,7 @@ function SectionExecution({ section }: {
   section: { heading: string; items: { label: string; value?: string; status?: StatusFlag }[] };
 }) {
   return (
-    <div style={{ padding: "8px 14px 4px" }}>
+    <div style={{ padding: "12px 16px 10px" }}>
       {section.heading && (
         <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--r-subtext)", marginBottom: "6px" }}>
           {section.heading}
@@ -614,7 +627,7 @@ function SectionEvidence({ section }: {
   section: { heading: string; items: { label: string; value?: string; status?: StatusFlag }[] };
 }) {
   return (
-    <div style={{ padding: "8px 14px 4px" }}>
+    <div style={{ padding: "11px 16px 9px" }}>
       {section.heading && (
         <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--r-subtext)", marginBottom: "6px" }}>
           {section.heading}
@@ -673,7 +686,7 @@ function BlockSection({
     case "evidence":
       return <SectionEvidence section={section} />;
     case "lesson":
-      return <SectionDefault section={section} showBars />;
+      return <SectionDefault section={section} showBars airy />;
     default:
       return <SectionDefault section={section} />;
   }
@@ -746,9 +759,9 @@ function BlockFooter({ block }: { block: MessageBlock }) {
 
 // ─── Single block ─────────────────────────────────────────────────────────────
 
-function SingleBlock({ block }: { block: MessageBlock }) {
+function SingleBlock({ block, chamber }: { block: MessageBlock; chamber?: MetamorphicChamber }) {
   const [collapsed, setCollapsed] = useState(false);
-  const surface = getMetamorphicSurface(block);
+  const surface = getMetamorphicSurface(block, chamber);
 
   return (
     <div
@@ -957,11 +970,16 @@ function RenderInline({ text }: { text: string }) {
 export function MetamorphicPlainSurface({
   content,
   responseClass,
+  chamber,
 }: {
   content: string;
   responseClass: MetamorphicResponseClass;
+  chamber?: MetamorphicChamber;
 }) {
-  const surface = getMetamorphicSurfaceForClass(responseClass);
+  let surface = getMetamorphicSurfaceForClass(responseClass);
+  if (chamber && responseClass === "analytical") {
+    surface = { ...surface, rail: chamberAccentRail(chamber) };
+  }
   return (
     <div
       style={{
@@ -1005,9 +1023,9 @@ export function MetamorphicPlainSurface({
 
 // ─── Main renderer ────────────────────────────────────────────────────────────
 
-export function BlockRenderer({ blocks }: { blocks: MessageBlock[] }) {
+export function BlockRenderer({ blocks, chamber }: { blocks: MessageBlock[]; chamber?: MetamorphicChamber }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
       {blocks.map((block, i) => (
         <motion.div
           key={i}
@@ -1015,7 +1033,7 @@ export function BlockRenderer({ blocks }: { blocks: MessageBlock[] }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.26, delay: i * 0.04, ease: [0.16, 1, 0.3, 1] }}
         >
-          <SingleBlock block={block} />
+          <SingleBlock block={block} chamber={chamber} />
         </motion.div>
       ))}
     </div>

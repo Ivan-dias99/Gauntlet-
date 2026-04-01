@@ -123,8 +123,8 @@ export function SovereignBar({
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
-        paddingLeft: "16px",
-        paddingRight: "14px",
+        paddingLeft: "18px",
+        paddingRight: "16px",
         transition: "background 0.25s ease, border-color 0.25s ease",
       }}
     >

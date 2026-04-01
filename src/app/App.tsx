@@ -541,6 +541,7 @@ export default function App() {
         {isShellMode && (
           <HeroLanding
             key="hero"
+            theme={theme}
             onEnter={(chamber) => {
               if (chamber && (chamber === "lab" || chamber === "school" || chamber === "creation" || chamber === "profile")) {
                 setActiveTab(chamber as Tab);

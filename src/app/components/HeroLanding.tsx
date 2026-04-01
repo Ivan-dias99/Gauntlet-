@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { type Theme } from "./shell-types";
 
 const CHAMBERS = [
   { id: "lab",      label: "Lab",      accent: "#52796A", desc: "Investigate" },
@@ -56,7 +57,7 @@ function StructuralGrid() {
           linear-gradient(90deg, var(--r-border-soft) 1px, transparent 1px)
         `,
         backgroundSize: "52px 52px",
-        opacity:      0.45,
+        opacity:      "var(--hero-grid-opacity)",
         pointerEvents:"none",
       }}
     />
@@ -77,7 +78,7 @@ function GhostedWordmark() {
         fontWeight:   700,
         letterSpacing:"-0.055em",
         color:        "var(--r-text)",
-        opacity:      0.038,
+        opacity:      "var(--hero-wordmark-opacity)",
         userSelect:   "none",
         pointerEvents:"none",
         lineHeight:   1,
@@ -100,16 +101,18 @@ function GhostedGeometry() {
         position:     "absolute",
         right:        "6vw",
         bottom:       "5vw",
-        width:        "22vw",
-        height:       "22vw",
-        maxWidth:     "320px",
-        maxHeight:    "320px",
-        border:       "2px solid var(--r-text)",
+        width:        "clamp(140px, 22vw, 300px)",
+        height:       "clamp(140px, 22vw, 300px)",
+        maxWidth:     "300px",
+        maxHeight:    "300px",
         borderRadius: "18%",
-        opacity:      0.028,
+        opacity:      "var(--hero-geometry-opacity)",
         pointerEvents:"none",
         zIndex:       1,
         transform:    "rotate(8deg)",
+        background:   "var(--hero-geometry-fill)",
+        border:       "1px solid color-mix(in srgb, var(--r-text) 12%, transparent)",
+        boxShadow:    "inset 0 0 80px color-mix(in srgb, var(--r-text) 4%, transparent), 0 0 0 1px color-mix(in srgb, var(--r-text) 3%, transparent)",
       }}
     />
   );
@@ -120,10 +123,8 @@ function GhostedGeometry() {
 function AtmosphericGlow() {
   return (
     <>
-      {/* Central warm presence */}
-      <motion.div
-        animate={{ opacity: [0.08, 0.13, 0.08] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      {/* Central presence — matte, no pulse (sovereign calm) */}
+      <div
         style={{
           position:     "absolute",
           top:          "10%",
@@ -131,7 +132,8 @@ function AtmosphericGlow() {
           transform:    "translateX(-50%)",
           width:        "70vw",
           height:       "60vh",
-          background:   "radial-gradient(ellipse at center, var(--r-accent-dim) 0%, transparent 70%)",
+          background:   "radial-gradient(ellipse at center, var(--r-accent-dim) 0%, transparent 72%)",
+          opacity:      "var(--hero-glow-center-opacity)",
           pointerEvents:"none",
           zIndex:       2,
         }}
@@ -152,14 +154,17 @@ function TopNav({ onEnter }: { onEnter: (chamber?: string) => void }) {
       style={{
         position:     "absolute",
         top: 0, left: 0, right: 0,
-        height:       "52px",
+        minHeight:    "52px",
         display:      "flex",
         alignItems:   "center",
         justifyContent:"space-between",
-        padding:      "0 28px",
+        flexWrap:     "wrap",
+        gap:          "10px",
+        padding:      "10px max(16px, 4vw) 10px max(16px, 4vw)",
         zIndex:       20,
         borderBottom: "1px solid var(--r-border-soft)",
-        background:   "transparent",
+        background:   "color-mix(in srgb, var(--r-bg) 82%, transparent)",
+        backdropFilter: "blur(8px)",
       }}
     >
       {/* Brand */}
@@ -325,28 +330,29 @@ function CommandPortal({
       initial={{ opacity: 0, y: 18, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
+      whileHover={{ boxShadow: "0 8px 36px rgba(0,0,0,0.08), 0 0 0 1px color-mix(in srgb, var(--r-text) 6%, var(--r-border))" }}
       style={{
         width:        "100%",
-        maxWidth:     "480px",
+        maxWidth:     "min(480px, 100%)",
         border:       "1px solid var(--r-border)",
-        borderRadius: "14px",
+        borderRadius: "16px",
         background:   "var(--r-surface)",
-        padding:      "22px 22px 20px",
-        boxShadow:    "0 4px 28px rgba(0,0,0,0.06), 0 1px 6px rgba(0,0,0,0.04)",
+        padding:      "20px 20px 18px",
+        boxShadow:    "0 4px 32px rgba(0,0,0,0.05), 0 0 0 1px color-mix(in srgb, var(--r-text) 4%, transparent)",
         position:     "relative",
         overflow:     "hidden",
-        marginBottom: "18px",
+        marginBottom: "12px",
       }}
     >
-      {/* Inner top glow */}
+      {/* Matte top veil — not glossy */}
       <div style={{
         position:     "absolute",
         top: 0, left: 0, right: 0,
-        height:       "60px",
-        background:   "linear-gradient(to bottom, var(--r-accent-dim) 0%, transparent 100%)",
-        opacity:      0.12,
+        height:       "52px",
+        background:   "linear-gradient(to bottom, color-mix(in srgb, var(--r-accent-dim) 35%, transparent) 0%, transparent 100%)",
+        opacity:      0.45,
         pointerEvents:"none",
-        borderRadius: "14px 14px 0 0",
+        borderRadius: "16px 16px 0 0",
       }} />
 
       {/* Portal label */}
@@ -356,18 +362,36 @@ function CommandPortal({
         color:        "var(--r-dim)",
         letterSpacing:"0.12em",
         textTransform:"uppercase" as const,
-        margin:       "0 0 14px",
+        margin:       "0 0 10px",
         position:     "relative",
         zIndex:       1,
       }}>
-        Choose chamber · same shell inside
+        System gateway
+      </p>
+
+      {/* Single sovereign narrative — no second card below portal */}
+      <p style={{
+        fontSize:     "12.5px",
+        color:        "var(--r-subtext)",
+        fontFamily:   "'Inter', system-ui, sans-serif",
+        lineHeight:   1.58,
+        letterSpacing:"-0.012em",
+        margin:       "0 0 16px",
+        position:     "relative",
+        zIndex:       1,
+        textAlign:    "left",
+      }}>
+        One mother shell — <strong style={{ color: "var(--r-text)", fontWeight: 600 }}>Lab</strong> evidence,{" "}
+        <strong style={{ color: "var(--r-text)", fontWeight: 600 }}>School</strong> mastery,{" "}
+        <strong style={{ color: "var(--r-text)", fontWeight: 600 }}>Creation</strong> build output,{" "}
+        <strong style={{ color: "var(--r-text)", fontWeight: 600 }}>Profile</strong> continuity. Same runtime and law everywhere.
       </p>
 
       {/* Chamber chips */}
       <div style={{
         display:             "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap:                 "7px",
+        gridTemplateColumns: "repeat(auto-fit, minmax(72px, 1fr))",
+        gap:                 "8px",
         marginBottom:        "16px",
         position:            "relative",
         zIndex:              1,
@@ -385,14 +409,14 @@ function CommandPortal({
 
       {/* Enter button */}
       <motion.button
-        whileHover={{ y: -1, boxShadow: "0 6px 20px rgba(0,0,0,0.14)" }}
+        whileHover={{ y: -1, boxShadow: "0 6px 22px rgba(0,0,0,0.12)" }}
         whileTap={{ scale: 0.99 }}
         onClick={() => onEnter(selected ?? undefined)}
         style={{
           width:          "100%",
-          padding:        "13px 20px",
-          borderRadius:   "9px",
-          border:         "none",
+          padding:        "14px 20px",
+          borderRadius:   "10px",
+          border:         "1px solid color-mix(in srgb, var(--r-text) 18%, transparent)",
           background:     "var(--r-text)",
           color:          "var(--r-bg)",
           fontSize:       "13px",
@@ -405,7 +429,7 @@ function CommandPortal({
           alignItems:     "center",
           justifyContent: "center",
           gap:            "8px",
-          boxShadow:      "0 2px 8px rgba(0,0,0,0.10)",
+          boxShadow:      "0 2px 10px rgba(0,0,0,0.08)",
           transition:     "box-shadow 0.15s ease",
           position:       "relative",
           zIndex:         1,
@@ -425,7 +449,7 @@ function CommandPortal({
 
 // ─── Main ─────────────────────────────────────────────────────────────────
 
-export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }) {
+export function HeroLanding({ onEnter, theme }: { onEnter: (chamber?: string) => void; theme: Theme }) {
   const [mounted, setMounted]   = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -433,6 +457,11 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
     const t = setTimeout(() => setMounted(true), 40);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    else document.documentElement.removeAttribute("data-theme");
+  }, [theme]);
 
   // Keyboard: Enter → proceed (only when no input is focused)
   useEffect(() => {
@@ -489,7 +518,7 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
           justifyContent:  "center",
           position:        "relative",
           zIndex:          10,
-          padding:         "52px 24px 0",
+          padding:         "max(56px, 12vh) max(16px, 4vw) 24px",
         }}
       >
         <AnimatePresence>
@@ -500,7 +529,7 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
               transition={{ duration: 0.5, delay: 0.05 }}
               style={{
                 width:     "100%",
-                maxWidth:  "480px",
+                maxWidth:  "min(480px, 100%)",
                 display:   "flex",
                 flexDirection:"column",
                 alignItems:"center",
@@ -550,45 +579,6 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
                 onSelect={toggleChamber}
               />
 
-              {/* One narrative — Lab investigates, School teaches, Creation ships, Profile orchestrates */}
-              <motion.div
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-                style={{
-                  marginTop:    "8px",
-                  marginBottom: "4px",
-                  maxWidth:     "420px",
-                  padding:      "12px 16px",
-                  borderRadius: "10px",
-                  border:       "1px solid var(--r-border-soft)",
-                  background:   "color-mix(in srgb, var(--r-surface) 88%, transparent)",
-                }}
-              >
-                <p style={{
-                  fontSize:     "10px",
-                  fontFamily:   "'JetBrains Mono', monospace",
-                  letterSpacing:"0.08em",
-                  textTransform:"uppercase" as const,
-                  color:        "var(--r-dim)",
-                  margin:       "0 0 8px",
-                }}>
-                  What Ruberra is
-                </p>
-                <p style={{
-                  fontSize:     "13px",
-                  color:        "var(--r-text)",
-                  fontFamily:   "'Inter', system-ui, sans-serif",
-                  lineHeight:   1.62,
-                  letterSpacing:"-0.01em",
-                  margin:       0,
-                }}>
-                  One mother shell: <strong style={{ fontWeight: 600, color: "var(--r-text)" }}>Lab</strong> for evidence and verdicts,{" "}
-                  <strong style={{ fontWeight: 600 }}>School</strong> for structured mastery,{" "}
-                  <strong style={{ fontWeight: 600 }}>Creation</strong> for build-grade artifacts,{" "}
-                  <strong style={{ fontWeight: 600 }}>Profile</strong> for continuity and routing. Same law everywhere—no duplicate products inside.
-                </p>
-              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -608,7 +598,7 @@ export function HeroLanding({ onEnter }: { onEnter: (chamber?: string) => void }
           display:       "flex",
           alignItems:    "center",
           justifyContent:"space-between",
-          padding:       "0 28px",
+          padding:       "0 max(16px, 4vw)",
           borderTop:     "1px solid var(--r-border-soft)",
           zIndex:        20,
         }}

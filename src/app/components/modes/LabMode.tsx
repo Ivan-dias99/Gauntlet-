@@ -99,7 +99,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
             findings.length > 0 ? (
               findings.map((block, i) => (
                 <div key={i}>
-                  <BlockRenderer blocks={[block]} />
+                  <BlockRenderer blocks={[block]} chamber="lab" />
                 </div>
               ))
             ) : (
@@ -115,7 +115,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
             execBlocks.length > 0 ? (
               execBlocks.map((block, i) => (
                 <div key={i}>
-                  <BlockRenderer blocks={[block]} />
+                  <BlockRenderer blocks={[block]} chamber="lab" />
                 </div>
               ))
             ) : (
@@ -148,11 +148,12 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
               )}
               <div style={{ padding: "12px 14px" }}>
                 {m.blocks && m.blocks.length > 0 ? (
-                  <BlockRenderer blocks={m.blocks} />
+                  <BlockRenderer blocks={m.blocks} chamber="lab" />
                 ) : (
                   <MetamorphicPlainSurface
                     content={m.content.slice(0, 600) + (m.content.length > 600 ? "…" : "")}
                     responseClass={inferMetamorphicClassFromText(m.content)}
+                    chamber="lab"
                   />
                 )}
               </div>

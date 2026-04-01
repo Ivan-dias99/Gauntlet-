@@ -7,7 +7,7 @@
 import { useRef, useEffect, useState, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Message } from "./shell-types";
-import { BlockRenderer, InlineMarkdown, MetamorphicPlainSurface, inferMetamorphicClassFromText } from "./BlockRenderer";
+import { BlockRenderer, MetamorphicPlainSurface, inferMetamorphicClassFromText } from "./BlockRenderer";
 import { ModelSelector } from "./ModelSelector";
 import { type TaskType } from "./model-orchestration";
 import { getContractByChamber } from "./routing-contracts";
@@ -462,9 +462,13 @@ function AssistantMessage({
         </div>
       )}
       {msg.blocks && msg.blocks.length > 0 ? (
-        <BlockRenderer blocks={msg.blocks} />
+        <BlockRenderer blocks={msg.blocks} chamber={chamberId} />
       ) : msg.content ? (
-        <MetamorphicPlainSurface content={msg.content} responseClass={inferMetamorphicClassFromText(msg.content)} />
+        <MetamorphicPlainSurface
+          content={msg.content}
+          responseClass={inferMetamorphicClassFromText(msg.content)}
+          chamber={chamberId}
+        />
       ) : (
         <ThinkingDots />
       )}
