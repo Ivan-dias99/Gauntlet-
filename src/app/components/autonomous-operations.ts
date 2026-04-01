@@ -648,7 +648,7 @@ export function getUnreadSignals(signals: OperationSignal[]): OperationSignal[] 
 }
 
 export function getPendingApprovals(approvals: ApprovalRecord[]): ApprovalRecord[] {
-  return approvals.filter((a) => !("decision" in a) || a.decision === undefined);
+  return approvals.filter((a) => a.decision === "escalated" || a.decision === "timed_out");
 }
 
 export function getBlockedTasks(tasks: MissionTask[]): MissionTask[] {
@@ -704,15 +704,15 @@ export function buildMissionOperationState(
 
   const activeTasks    = tasks.filter((t) => t.phase === "active" || t.phase === "in_execution");
   const blockedTasks   = tasks.filter((t) => t.phase === "blocked");
-  const pendingReviews = reviews.filter((r) => r.verdict === "needs_revision");
-  const pendingApprovals = approvals;
+  const pendingReviews = reviews.filter((r) => r.verdict === "needs_revision" || r.verdict === "deferred");
+  const pendingApprovals = getPendingApprovals(approvals);
   const pendingHandoffs  = handoffs.filter((h) => h.state === "pending" || h.state === "accepted");
   const activeFlows      = flows.filter((f) => f.status === "active" || f.status === "initializing");
 
   const operationalPhase = deriveMissionOperationalPhase(tasks, flows);
   const requiresOperator = blockedTasks.length > 0 ||
     signals.some((s) => s.severity === "critical" && !s.resolved) ||
-    pendingApprovals.some((a) => a.decidedBy !== "auto");
+    pendingApprovals.length > 0;
 
   return {
     missionId,
