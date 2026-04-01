@@ -318,3 +318,36 @@ export function buildProvenanceChain(
   const intact = links.length > 0 && links.every((l) => l.verdict === "allowed");
   return { subjectId, subjectKind, links: [...links].sort((a, b) => a.timestamp - b.timestamp), intact };
 }
+
+// ─── Execution gate enforcement ───────────────────────────────────────────────
+
+export interface ExecutionGateResult {
+  allowed:   boolean;
+  verdict:   AuditVerdict;
+  gateName?: string;
+  auditId:   string;
+  reason:    string;
+}
+
+/**
+ * Enforce a trust gate for a named action and actor.
+ * Returns a structured result with audit ID for recording.
+ * This is the single call site for all execution gate enforcement.
+ */
+export function enforceExecutionGate(
+  action: string,
+  actor:  GovernanceActor,
+  gates:  readonly TrustGate[] = RUBERRA_TRUST_GATES,
+): ExecutionGateResult {
+  const result  = isActionAllowed(action, actor, gates);
+  const auditId = buildAuditId();
+  return {
+    allowed:  result.allowed,
+    verdict:  result.verdict,
+    gateName: result.gate?.name,
+    auditId,
+    reason:   result.allowed
+      ? `${result.gate?.name ?? "default"} · ${result.verdict}`
+      : `blocked by ${result.gate?.name ?? "default"} gate`,
+  };
+}

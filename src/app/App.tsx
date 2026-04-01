@@ -68,12 +68,16 @@ import {
   upsertPlugin,
   upsertConnector,
   exportContinuity,
+  startWorkflowRun,
+  buildContextHandoff,
   type RuntimeFabric,
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
 import { getExecutionTruth } from "./components/sovereign-runtime";
 import { getContractByIntent, resolveIntent, resolveRoute } from "./components/routing-contracts";
 import { MODEL_REGISTRY } from "./components/model-orchestration";
+import { enforceExecutionGate } from "./components/governance-fabric";
+import { buildWorkflowRunPayload } from "./components/workflow-engine";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
@@ -395,6 +399,26 @@ export default function App() {
 
     const assistantId = crypto.randomUUID();
     const continuityId = `${tab}-${assistantId}`;
+    // Governance gate — enforce execution policy before dispatch
+    const govResult = enforceExecutionGate(`chamber.${tab}.dispatch`, {
+      kind:      "operator",
+      id:        runtimeFabric.workspace.owner,
+      missionId: activeMissionId ?? undefined,
+    });
+    if (!govResult.allowed) {
+      setRuntimeFabric((prev) => pushSignal(prev, {
+        type:               "lifecycle",
+        label:              `${tab} dispatch blocked — ${govResult.reason}`,
+        severity:           "warn",
+        sourceChamber:      tab,
+        destinationChamber: "profile",
+        destination:        { tab: "profile", view: "overview" },
+      }));
+      setLoading((prev)  => ({ ...prev, [tab]: false }));
+      setSignals((prev)  => ({ ...prev, [tab]: "idle" }));
+      return;
+    }
+
     setRuntimeFabric((prev) => createOrUpdateContinuity(prev, {
       id: continuityId,
       title: text.slice(0, 90),
@@ -408,6 +432,12 @@ export default function App() {
       hostingLevel,
       routeReason: routeDecision.reason,
     }));
+
+    // Creation: start a workflow run record for the directive
+    if (tab === "creation") {
+      const wfPayload = buildWorkflowRunPayload("build-heavy", continuityId);
+      if (wfPayload) setRuntimeFabric((prev) => startWorkflowRun(prev, wfPayload));
+    }
     const execTruth = getExecutionTruth(tab);
     const modelDegraded = selectedModelId !== requestedModelId;
     const contractForDigest = getContractByIntent(resolveIntent(text));
@@ -649,16 +679,51 @@ export default function App() {
           points: 20,
           chamber: tab,
         });
+        if (tab === "lab") {
+          // Lab live signal ingestion — surface finding as a cross-chamber signal
+          next = pushSignal(next, {
+            type:               "lifecycle",
+            label:              `Lab finding: ${text.slice(0, 72)}`,
+            severity:           "info",
+            sourceChamber:      "lab",
+            destinationChamber: "lab",
+            destination:        { tab: "lab", view: "analysis", id: assistantId },
+            linkedObjectId:     assistantId,
+          });
+        }
         if (tab === "school") {
           next = pushSignal(next, {
-            type: "transfer",
-            label: "Lesson completion unlocked a Lab validation route",
-            severity: "info",
-            sourceChamber: "school",
+            type:               "transfer",
+            label:              "Lesson completion unlocked a Lab validation route",
+            severity:           "info",
+            sourceChamber:      "school",
             destinationChamber: "lab",
-            destination: { tab: "lab", view: "analysis" },
-            linkedObjectId: assistantId,
+            destination:        { tab: "lab", view: "analysis" },
+            linkedObjectId:     assistantId,
           });
+          // School continuity recommendations — push signals for any paused/blocked runs
+          const recs = recommendContinuityActions(next).slice(0, 3);
+          for (const rec of recs) {
+            next = pushSignal(next, {
+              type:               "recommendation",
+              label:              `${rec.title.slice(0, 48)} — ${rec.reason}`,
+              severity:           "info",
+              sourceChamber:      "school",
+              destinationChamber: rec.destination.tab,
+              destination:        rec.destination,
+            });
+          }
+        }
+        if (tab === "creation") {
+          // Pack context digest and attach to continuity for cross-chamber carry
+          const history = messagesRef.current[tab].slice(-6).map(({ role, content }) => ({ role, content }));
+          const handoff = buildContextHandoff(history);
+          next = {
+            ...next,
+            continuity: next.continuity.map((c) =>
+              c.id === continuityId ? { ...c, lastRunDigest: handoff.digest } : c
+            ),
+          };
         }
         return next;
       });
