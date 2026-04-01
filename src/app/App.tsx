@@ -6,9 +6,11 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { projectId, publicAnonKey } from "/utils/supabase/info";
 import { SovereignBar } from "./components/SovereignBar";
 import { ShellSideRail } from "./components/ShellSideRail";
 import { FloatingNoteSystem } from "./components/FloatingNoteSystem";
+import { GlobalCommandPalette } from "./components/GlobalCommandPalette";
 import { LabMode } from "./components/modes/LabMode";
 import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
@@ -19,6 +21,7 @@ import {
   type FloatingNote, type Theme, type NavFn,
 } from "./components/shell-types";
 import { parseBlocks } from "./components/parseBlocks";
+import { HeroLanding } from "./components/HeroLanding";
 import {
   DEFAULT_TASK_BY_CHAMBER,
   DEFAULT_MODEL_BY_TASK,
@@ -34,23 +37,10 @@ import {
   markSignalRead,
   pushSignal,
   recordRuntimeMessageObject,
-  recordExecutionResult,
-  upsertExecutionResultByContinuity,
-  recordConnectorAction,
-  recordConnectorIOTrace,
-  upsertProviderHealth,
-  updateConnectorOperationalState,
-  computeConnectorRetryPolicy,
-  appendRunTimeline,
-  startWorkflowRun,
-  transitionWorkflowStage,
-  getChamberExecutionPolicy,
-  resolveProviderPodium,
   recommendedConnectorsForChamber,
   recommendContinuityActions,
   resumeContinuity,
   routeIntelligenceRequest,
-  planWebExecutionPath,
   resolveSignal,
   saveRuntimeFabric,
   transitionContinuity,
@@ -64,12 +54,13 @@ import {
   type RuntimeFabric,
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
-import { executeAIRequest } from "./components/execution-adapters";
+import { getExecutionTruth } from "./components/sovereign-runtime";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
 const STORAGE_KEY = "ruberra_messages_v2";
 const MAX_CONTEXT = 20;
+const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-b9f46b68`;
 
 type TabMessages = Record<Tab, Message[]>;
 type TabLoading  = Record<Tab, boolean>;
@@ -135,8 +126,30 @@ export default function App() {
   // ── Floating notes ───────────────────────────────────────────────────────────
   const [notes, setNotes] = useState<FloatingNote[]>([]);
 
+  // ── Shell / Hero Mode ────────────────────────────────────────────────────────
+  const [isShellMode, setIsShellMode] = useState<boolean>(true);
+
   // ── Theme ────────────────────────────────────────────────────────────────────
   const [theme, setTheme] = useState<Theme>("light");
+
+  // ── Command palette ───────────────────────────────────────────────────────────
+  const [cmdOpen, setCmdOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+      if (e.key === "Escape") {
+        setCmdOpen(false);
+        setSearchOpen(false);
+        setSignalsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     if (theme === "dark") {
@@ -146,7 +159,7 @@ export default function App() {
     }
   }, [theme]);
 
-  // ── Persistence ───────────────────────────────────────────────���──────────────
+  // ── Persistence ───────────────────────────────────────────────────────────────
   const messagesRef = useRef<TabMessages>(messages);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -177,7 +190,7 @@ export default function App() {
           severity: "warn",
           sourceChamber: "profile",
           destinationChamber: "profile",
-          destination: { tab: "profile", view: "projects" },
+          destination: { tab: "profile", view: "connectors" },
           linkedObjectId: connector.id,
         });
       }
@@ -242,31 +255,19 @@ export default function App() {
     }));
     const requestedModelId = activeModels[tab as ChamberTab];
     const plan = resolveExecutionPlan(tab, task, requestedModelId);
-    const workflowId = task.startsWith("creation") ? "build_pipeline" : undefined;
+    const workflowId = tab === "creation" ? "build_pipeline" : "canonical_loop";
     const routeDecision = resolveRouteDecision(runtimeFabric.intelligence, {
+      chamberHint: tab,
       workflowId,
       requestText: text,
     });
-    const providerPodium = resolveProviderPodium(runtimeFabric, routeDecision.chamber, text);
-    const webPath = planWebExecutionPath(runtimeFabric, routeDecision.chamber, text);
-    const chamberPolicy = getChamberExecutionPolicy(runtimeFabric, tab);
     const leaderPioneer = runtimeFabric.intelligence.pioneers.find((entry) => entry.id === routeDecision.pioneerId);
     const hostingLevel = leaderPioneer?.hostingLevel ?? "proxy";
-    const connectorRefs = recommendedConnectorsForChamber(runtimeFabric, routeDecision.chamber);
     setRuntimeFabric((prev) => routeIntelligenceRequest(prev, {
+      chamberHint: tab,
       workflowId,
       requestText: text,
     }).fabric);
-    if (routeDecision.chamber !== tab) {
-      setRuntimeFabric((prev) => pushSignal(prev, {
-        type: "recommendation",
-        label: `Route advisory: ${routeDecision.chamber} is recommended lead for this request`,
-        severity: "info",
-        sourceChamber: "profile",
-        destinationChamber: routeDecision.chamber,
-        destination: { tab: routeDecision.chamber, view: routeDecision.chamber === "creation" ? "terminal" : "chat" },
-      }));
-    }
     const selectedModelId = plan.selectedModel?.id ?? requestedModelId;
     if (selectedModelId !== requestedModelId) {
       setActiveModels((prev) => ({ ...prev, [tab]: selectedModelId }));
@@ -296,15 +297,8 @@ export default function App() {
         routeReason: routeDecision.reason,
         pioneerId: routeDecision.pioneerId,
         giId: routeDecision.giId,
-        supportChain: routeDecision.supportChain,
         workflowId,
         hostingLevel,
-        providerId: providerPodium.primary.id,
-        providerLane: providerPodium.primary.lane,
-        modelId: selectedModelId,
-        executionState: "live",
-        chamberRoute: routeDecision.chamber,
-        connectorRefs,
       },
     };
     setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], userMsg] }));
@@ -324,62 +318,10 @@ export default function App() {
       workflowId,
       pioneerId: routeDecision.pioneerId,
       giId: routeDecision.giId,
-      supportChain: routeDecision.supportChain,
       hostingLevel,
-      providerId: providerPodium.primary.id,
-      providerLane: providerPodium.primary.lane,
-      modelId: selectedModelId,
-      connectorRefs,
       routeReason: routeDecision.reason,
     }));
-    setRuntimeFabric((prev) => recordExecutionResult(prev, {
-      continuityId,
-      chamber: tab,
-      requestedProviderId: providerPodium.primary.id,
-      selectedProviderId: providerPodium.primary.id,
-      requestedModelId: requestedModelId,
-      selectedModelId: selectedModelId,
-      providerLane: providerPodium.primary.lane,
-      executionMode: providerPodium.primary.lane === "open_source_local" ? "local" : providerPodium.primary.lane === "premium_hosted_future" ? "hosted_scaffold" : "wrapped",
-      executionState: "live",
-      fallbackUsed: false,
-      providerUnavailable: false,
-      connectorUnavailable: false,
-      scaffoldOnly: false,
-      connectorPathUsed: !!webPath,
-      workflowId,
-      outcome: "success",
-      latencyMs: 0,
-    }));
-    setRuntimeFabric((prev) => appendRunTimeline(prev, {
-      continuityId,
-      chamber: tab,
-      type: "execution",
-      status: "live",
-      label: `${tab} execution live (${chamberPolicy.bias})`,
-    }));
-    if (workflowId) {
-      const workflow = runtimeFabric.intelligence.workflowTemplates.find((entry) => entry.id === workflowId);
-      if (workflow) {
-        setRuntimeFabric((prev) => startWorkflowRun(prev, {
-          workflowId,
-          continuityId,
-          chamber: tab,
-          stages: workflow.stages,
-        }));
-      }
-    }
-    if (webPath) {
-      setRuntimeFabric((prev) => pushSignal(prev, {
-        type: "connector",
-        label: `Web path armed via ${webPath.mode} (${webPath.intent})`,
-        severity: "info",
-        sourceChamber: routeDecision.chamber,
-        destinationChamber: routeDecision.chamber,
-        destination: { tab: routeDecision.chamber, view: routeDecision.chamber === "creation" ? "terminal" : "chat" },
-        linkedObjectId: assistantId,
-      }));
-    }
+    const execTruth = getExecutionTruth(tab);
     setMessages((prev) => ({
       ...prev,
       [tab]: [
@@ -390,19 +332,12 @@ export default function App() {
           content: "",
           tab,
           timestamp: Date.now(),
-          meta: {
-            routeReason: routeDecision.reason,
-            pioneerId: routeDecision.pioneerId,
-            giId: routeDecision.giId,
-            supportChain: routeDecision.supportChain,
-            workflowId,
-            hostingLevel,
-            providerId: providerPodium.primary.id,
-            providerLane: providerPodium.primary.lane,
-            modelId: selectedModelId,
-            executionState: "live",
-            chamberRoute: routeDecision.chamber,
-            connectorRefs,
+          execution_truth: {
+            tier:        execTruth.tier,
+            tier_label:  execTruth.tier_label,
+            model_label: plan.selectedModel?.label ?? execTruth.model_label,
+            pioneer:     routeDecision.pioneerId ?? undefined,
+            chamber:     tab,
           },
         },
       ],
@@ -417,56 +352,43 @@ export default function App() {
         .slice(-MAX_CONTEXT)
         .map(({ role, content }) => ({ role, content }));
 
-      const execution = await executeAIRequest({
-        chamber: tab,
-        task,
-        prompt: text,
-        modelId: selectedModelId,
-        providerId: providerPodium.primary.id,
-        providerLane: providerPodium.primary.lane,
-        fallbackChain: plan.fallbackChain,
-        context: history,
+      const res = await fetch(`${SERVER_URL}/chat`, {
+        method:  "POST",
+        headers: {
+          "Content-Type":  "application/json",
+          "Authorization": `Bearer ${publicAnonKey}`,
+        },
+        body:   JSON.stringify({
+          tab,
+          task,
+          model: selectedModelId,
+          fallbackChain: plan.fallbackChain,
+          messages: [...history, { role: "user", content: text }],
+        }),
         signal: controller.signal,
-        localEndpoint: runtimeFabric.aiSettings.localRuntimeEndpoint,
-        connectorIds: webPath?.connectorIds,
-        workflowId,
-        continuityId,
-      }, (chunk) => {
-        assistantContent += chunk;
-        setMessages((prev) => ({
-          ...prev,
-          [tab]: prev[tab].map((m) =>
-            m.id === assistantId ? { ...m, content: m.content + chunk } : m
-          ),
-        }));
       });
 
-      if (execution.blocked && execution.error) {
-        throw new Error(execution.error);
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          assistantContent += chunk;
+          setMessages((prev) => ({
+            ...prev,
+            [tab]: prev[tab].map((m) =>
+              m.id === assistantId ? { ...m, content: m.content + chunk } : m
+            ),
+          }));
+        }
+      } finally {
+        reader.releaseLock();
       }
-      if (!assistantContent && execution.content) {
-        assistantContent = execution.content;
-        setMessages((prev) => ({
-          ...prev,
-          [tab]: prev[tab].map((m) =>
-            m.id === assistantId ? { ...m, content: execution.content } : m
-          ),
-        }));
-      }
-      setMessages((prev) => ({
-        ...prev,
-        [tab]: prev[tab].map((m) =>
-          m.id === assistantId
-            ? {
-              ...m,
-              meta: {
-                ...m.meta,
-                executionState: execution.state,
-              },
-            }
-            : m
-        ),
-      }));
 
       setSignals((prev) => ({ ...prev, [tab]: "completed" }));
       setRuntimeFabric((prev) => recordRuntimeMessageObject(prev, {
@@ -479,57 +401,12 @@ export default function App() {
           routeReason: routeDecision.reason,
           pioneerId: routeDecision.pioneerId,
           giId: routeDecision.giId,
-          supportChain: routeDecision.supportChain,
           workflowId,
           hostingLevel,
-          providerId: providerPodium.primary.id,
-          providerLane: providerPodium.primary.lane,
-          modelId: selectedModelId,
-          executionState: execution.state,
-          chamberRoute: routeDecision.chamber,
-          connectorRefs,
         },
       }));
       setRuntimeFabric((prev) => {
         let next = transitionContinuity(prev, continuityId, "completed");
-        next = upsertExecutionResultByContinuity(next, continuityId, {
-          selectedProviderId: execution.selectedProviderId,
-          selectedModelId: execution.selectedModelId,
-          executionMode: execution.mode,
-          executionState: execution.state,
-          fallbackUsed: execution.selectedModelId !== requestedModelId || execution.selectedProviderId !== providerPodium.primary.id,
-          providerUnavailable: execution.providerUnavailable,
-          connectorUnavailable: !!webPath && webPath.connectorIds.length === 0,
-          scaffoldOnly: execution.scaffoldOnly,
-          connectorPathUsed: !!webPath,
-          outcome: execution.blocked ? "blocked" : execution.degraded ? "degraded" : "success",
-          latencyMs: execution.latencyMs,
-          blockedReason: execution.blockedReason,
-          errorMessage: execution.error ?? execution.blockedReason,
-        });
-        next = upsertProviderHealth(next, {
-          providerId: execution.selectedProviderId,
-          state: execution.providerHealth,
-          lastError: execution.error ?? execution.blockedReason,
-          lastLatencyMs: execution.latencyMs,
-        });
-        next = appendRunTimeline(next, {
-          continuityId,
-          chamber: tab,
-          type: "execution",
-          status: execution.blocked ? "blocked" : execution.degraded ? "degraded" : "completed",
-          label: execution.blocked ? "execution blocked" : execution.degraded ? "execution degraded" : "execution completed",
-        });
-        if (workflowId) {
-          next = transitionWorkflowStage(next, continuityId, execution.blocked ? "failed" : execution.degraded ? "degraded" : "completed", execution.error);
-          next = appendRunTimeline(next, {
-            continuityId,
-            chamber: tab,
-            type: "workflow",
-            status: execution.blocked ? "failed" : execution.degraded ? "degraded" : "completed",
-            label: execution.blocked ? "workflow failed" : execution.degraded ? "workflow completed with degradation" : "workflow completed",
-          });
-        }
         next = pushSignal(next, {
           type: "lifecycle",
           label: `${tab} run completed — ready for next step`,
@@ -556,47 +433,6 @@ export default function App() {
             linkedObjectId: assistantId,
           });
         }
-        if (webPath) {
-          for (const connectorId of webPath.connectorIds) {
-            const retryPolicy = computeConnectorRetryPolicy(next, connectorId);
-            next = recordConnectorAction(next, {
-              continuityId,
-              workflowId,
-              requestedConnectorId: connectorId,
-              selectedConnectorId: connectorId,
-              connectorId,
-              chamber: tab,
-              action: "read",
-              status: execution.blocked ? "degraded" : execution.providerUnavailable ? "failed" : "success",
-              phase: execution.blocked ? "failed" : "completed",
-              connectorAvailable: webPath.connectorIds.length > 0,
-              retryCount: retryPolicy.retryCount,
-              payloadSummary: `${webPath.intent} intent`,
-              resultSummary: execution.blocked ? "blocked by provider state" : "connector path armed",
-              errorSummary: execution.error,
-              degradedMode: execution.degraded || execution.blocked,
-            });
-            next = updateConnectorOperationalState(next, connectorId, execution.blocked ? "degraded" : execution.providerUnavailable ? "failed" : "success");
-            next = recordConnectorIOTrace(next, {
-              continuityId,
-              connectorId,
-              service: connectorId,
-              route: webPath.mode,
-              requestPayload: `${webPath.intent}:${text.slice(0, 120)}`,
-              responsePayload: execution.blocked ? "blocked" : "armed",
-              errorPayload: execution.error ?? execution.blockedReason,
-              outcomeClass: execution.blocked ? "failed" : execution.degraded ? "degraded" : "ok",
-              retryScheduled: retryPolicy.shouldRetry && (execution.blocked || execution.providerUnavailable),
-            });
-            next = appendRunTimeline(next, {
-              continuityId,
-              chamber: tab,
-              type: "connector",
-              status: execution.blocked ? "degraded" : "completed",
-              label: `${connectorId} ${execution.blocked ? "degraded" : "completed"}`,
-            });
-          }
-        }
         return next;
       });
       setTimeout(() => {
@@ -605,7 +441,7 @@ export default function App() {
         );
       }, 2400);
 
-    } catch (err) {
+    } catch (err: any) {
       const isAbort = err instanceof Error && err.name === "AbortError";
       parseOnComplete = false;
 
@@ -613,18 +449,6 @@ export default function App() {
         setSignals((prev) => ({ ...prev, [tab]: "idle" }));
         setRuntimeFabric((prev) => {
           let next = transitionContinuity(prev, continuityId, "paused");
-          next = upsertExecutionResultByContinuity(next, continuityId, {
-            executionState: "blocked",
-            outcome: "blocked",
-            errorMessage: "aborted_by_user",
-          });
-          next = appendRunTimeline(next, {
-            continuityId,
-            chamber: tab,
-            type: "execution",
-            status: "blocked",
-            label: "execution paused by user",
-          });
           next = pushSignal(next, {
             type: "lifecycle",
             label: `${tab} task paused — resume from profile or archive`,
@@ -648,26 +472,6 @@ export default function App() {
         setSignals((prev) => ({ ...prev, [tab]: "error" }));
         setRuntimeFabric((prev) => {
           let next = transitionContinuity(prev, continuityId, "blocked");
-          next = upsertExecutionResultByContinuity(next, continuityId, {
-            executionState: "failed",
-            outcome: "error",
-            errorMessage: err instanceof Error ? err.message : "unknown_error",
-          });
-          next = upsertProviderHealth(next, {
-            providerId: providerPodium.primary.id,
-            state: "unavailable",
-            lastError: err instanceof Error ? err.message : "unknown_error",
-          });
-          if (workflowId) {
-            next = transitionWorkflowStage(next, continuityId, "failed", err instanceof Error ? err.message : "unknown_error");
-          }
-          next = appendRunTimeline(next, {
-            continuityId,
-            chamber: tab,
-            type: "execution",
-            status: "failed",
-            label: "execution failed",
-          });
           next = pushSignal(next, {
             type: "recommendation",
             label: `${tab} task blocked — check details and retry`,
@@ -691,7 +495,7 @@ export default function App() {
         applyParsedBlocks(assistantId, tab);
       }
     }
-  }, [activeTab, activeModels, applyParsedBlocks, runtimeFabric, tasks]);
+  }, [activeTab, activeModels, applyParsedBlocks, runtimeFabric.intelligence, tasks]);
 
   // ── Notes ─────────────────────────────────────────────────────────────────────
   const addNote = useCallback(() => {
@@ -745,16 +549,36 @@ export default function App() {
         transition: "background 0.2s ease",
       }}
     >
+      <AnimatePresence>
+        {isShellMode && (
+          <HeroLanding
+            key="hero"
+            onEnter={(chamber) => {
+              if (chamber && (chamber === "lab" || chamber === "school" || chamber === "creation" || chamber === "profile")) {
+                setActiveTab(chamber as Tab);
+                if (chamber === "lab")      setLabView("home");
+                if (chamber === "school")   setSchoolView("home");
+                if (chamber === "creation") setCreationView("home");
+                if (chamber === "profile")  setProfileView("overview");
+              }
+              setIsShellMode(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sovereign Bar */}
       <SovereignBar
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
         theme={theme}
         onThemeToggle={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
         onSearchToggle={() => setSearchOpen((v) => !v)}
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
-        hasSignals
+        hasSignals={hasSignals}
+        onManageMatrix={() => { setActiveTab("profile"); setProfileView("pioneers"); }}
       />
 
       {/* Body */}
@@ -783,10 +607,10 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0, y: 3 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -2 }}
-              transition={{ duration: 0.18, ease: "easeInOut" }}
+              initial={{ opacity: 0, x: 4 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -4 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
               style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}
             >
               {activeTab === "lab" && (
@@ -907,12 +731,34 @@ export default function App() {
           </div>
           <div style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
             {filteredObjects.map((obj) => (
-              <button key={obj.id} onClick={() => { navigate(obj.route.tab, obj.route.view, obj.route.id); setSearchOpen(false); }} style={{ textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button
+                key={obj.id}
+                onClick={() => {
+                  if (obj.action_route) {
+                    navigate(obj.action_route.tab, obj.action_route.view, obj.action_route.id);
+                  } else {
+                    navigate(obj.route.tab, obj.route.view, obj.route.id);
+                  }
+                  setSearchOpen(false);
+                }}
+                style={{
+                  textAlign: "left",
+                  border: "1px solid var(--r-border)",
+                  background: "var(--r-bg)",
+                  borderRadius: "6px",
+                  padding: "8px",
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
                   <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
                   <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.chamber}</span>
                 </div>
-                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>{obj.kind} · {obj.status ?? "active"}</span>
+                <span style={{ fontSize: "10px", color: "var(--r-subtext)" }}>
+                  {obj.kind || obj.type} · {obj.status ?? "active"}
+                </span>
               </button>
             ))}
           </div>
@@ -922,11 +768,15 @@ export default function App() {
       {signalsOpen && (
         <div style={{ position: "absolute", top: 48, right: 390, width: 300, background: "var(--r-surface)", border: "1px solid var(--r-border)", borderRadius: "8px", zIndex: 60, padding: "10px" }}>
           <p style={{ margin: "0 0 8px", fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)" }}>Signals</p>
-          {notificationItems.map((item) => (
-            <button key={item.id} onClick={() => { navigate(item.destination.tab, item.destination.view, item.destination.id); setRuntimeFabric((prev) => resolveSignal(markSignalRead(prev, item.id), item.id)); setSignalsOpen(false); }} style={{ width: "100%", textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", marginBottom: "6px", cursor: "pointer", fontSize: "11px" }}>
-              {item.type} · {item.label}
-            </button>
-          ))}
+          {notificationItems.length === 0 ? (
+            <p style={{ margin: 0, fontSize: "11px", fontFamily: "monospace", color: "var(--r-dim)", textAlign: "center", padding: "12px 0" }}>No active signals</p>
+          ) : (
+            notificationItems.map((item) => (
+              <button key={item.id} onClick={() => { navigate(item.destination.tab, item.destination.view, item.destination.id); setRuntimeFabric((prev) => resolveSignal(markSignalRead(prev, item.id), item.id)); setSignalsOpen(false); }} style={{ width: "100%", textAlign: "left", border: "1px solid var(--r-border)", background: "var(--r-bg)", borderRadius: "6px", padding: "8px", marginBottom: "6px", cursor: "pointer", fontSize: "11px" }}>
+                {item.type} · {item.label}
+              </button>
+            ))
+          )}
         </div>
       )}
 
@@ -939,14 +789,14 @@ export default function App() {
           display: "flex",
           alignItems: "center",
           padding: "0 16px",
-          gap: "0",
           flexShrink: 0,
+          gap: "0",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
           <motion.div
-            animate={{ opacity: [0.3, 0.9, 0.3] }}
-            transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+            animate={{ opacity: isLive ? [0.4, 1, 0.4] : [0.3, 0.7, 0.3] }}
+            transition={{ duration: isLive ? 0.85 : 3.5, repeat: Infinity, ease: "easeInOut" }}
             style={{
               width: "4px",
               height: "4px",
@@ -954,12 +804,12 @@ export default function App() {
               background: isLive ? "var(--r-accent)" : "var(--r-pulse)",
             }}
           />
-          <span style={{ fontFamily: "monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-subtext)", textTransform: "uppercase" }}>
-            {isLive ? "Streaming" : "Connected"}
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-dim)", textTransform: "uppercase" }}>
+            {isLive ? "streaming" : "ready"}
           </span>
         </div>
 
-        <div style={{ width: "1px", height: "10px", background: "var(--r-border)", margin: "0 12px" }} />
+        <div style={{ width: "1px", height: "9px", background: "var(--r-border)", margin: "0 10px" }} />
 
         <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.05em" }}>
           {activeTab === "profile" ? "profile-ledger · memory-fabric" : `${activeModels[activeTab as ChamberTab]} · ${tasks[activeTab as ChamberTab]}`}
@@ -967,19 +817,23 @@ export default function App() {
 
         <div style={{ flex: 1 }} />
 
-        <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.05em" }}>
-          {activeTab.toUpperCase()}
-        </span>
-
-        <div style={{ width: "1px", height: "10px", background: "var(--r-border)", margin: "0 12px" }} />
-
-        <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.04em" }}>
-          {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          {activeTab}
         </span>
       </div>
 
-      {/* Floating notes layer */}
-      <FloatingNoteSystem notes={notes} onChange={updateNote} onRemove={removeNote} />
+      <GlobalCommandPalette
+        isOpen={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        activeTab={activeTab}
+        onNavigate={navigate}
+      />
+
+      <FloatingNoteSystem
+        notes={notes}
+        onUpdate={updateNote}
+        onRemove={removeNote}
+      />
     </div>
   );
 }

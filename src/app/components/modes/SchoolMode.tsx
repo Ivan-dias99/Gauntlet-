@@ -21,7 +21,7 @@ const SCHOOL_CONFIG: ChamberConfig = {
   label:       "School",
   tagline:     "Structured progression. First principles first.",
   placeholder: "Ask School…",
-  accent:      "var(--r-ok)",
+  accent:      "#4A6B84",
   glyph:       <SchoolGlyph />,
 };
 
@@ -49,11 +49,11 @@ const LIBRARY: LibraryResource[] = [
 ];
 
 const KIND_ACCENT: Record<LibraryResource["kind"], string> = {
-  framework: "var(--r-accent)",
-  blueprint: "var(--r-ok)",
-  guide:     "var(--r-warn)",
+  framework: "#4A6B84",
+  blueprint: "#52796A",
+  guide:     "#786220",
   reference: "var(--r-subtext)",
-  track:     "var(--r-pulse)",
+  track:     "#4A6B84",
 };
 
 const CATS = ["All", "Frameworks", "Blueprints", "Guides", "References", "Tracks"];

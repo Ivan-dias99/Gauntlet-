@@ -20,7 +20,7 @@ const LAB_CONFIG: ChamberConfig = {
   label:       "Lab",
   tagline:     "Operational research. No guardrails.",
   placeholder: "Query the Lab…",
-  accent:      "var(--r-accent)",
+  accent:      "#52796A",
   glyph:       <LabGlyph />,
 };
 
@@ -44,7 +44,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
     textTransform: "uppercase" as const,
     padding: "4px 12px",
     border: "none",
-    borderBottom: active ? "2px solid var(--r-accent)" : "2px solid transparent",
+    borderBottom: active ? "2px solid #52796A" : "2px solid transparent",
     background: "transparent",
     color: active ? "var(--r-text)" : "var(--r-dim)",
     cursor: "pointer",
@@ -64,7 +64,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
         </p>
         <button
           onClick={() => navigate("lab", "chat")}
-          style={{ fontSize: "10px", color: "var(--r-accent)", fontFamily: "monospace", background: "transparent", border: "none", cursor: "pointer", outline: "none", letterSpacing: "0.05em" }}
+          style={{ fontSize: "10px", color: "#52796A", fontFamily: "monospace", background: "transparent", border: "none", cursor: "pointer", outline: "none", letterSpacing: "0.05em" }}
         >
           → Start a query in Chat
         </button>

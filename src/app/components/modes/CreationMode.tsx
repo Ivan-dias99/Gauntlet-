@@ -21,7 +21,7 @@ const CREATION_CONFIG: ChamberConfig = {
   label:       "Creation",
   tagline:     "Output engine. Directive in, artifact out.",
   placeholder: "Directive — describe what to build…",
-  accent:      "var(--r-warn)",
+  accent:      "#8A6238",
   glyph:       <CreationGlyph />,
 };
 
@@ -535,7 +535,7 @@ function BuildSurface({
                 padding: "4px 10px",
                 border: "1px solid var(--r-border)",
                 background: draft.trim() && !isLoading ? "var(--r-text)" : "var(--r-rail)",
-                color: draft.trim() && !isLoading ? "white" : "var(--r-dim)",
+                color: draft.trim() && !isLoading ? "var(--r-bg)" : "var(--r-dim)",
                 cursor: draft.trim() && !isLoading ? "pointer" : "default",
                 outline: "none",
                 borderRadius: "4px",
@@ -559,6 +559,136 @@ function BuildSurface({
               </button>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Artifact Gallery ─────────────────────────────────────────────────────────
+
+function ArtifactGallery({ messages, navigate, onBuild }: {
+  messages: Message[];
+  navigate: NavFn;
+  onBuild: () => void;
+}) {
+  const runtimeObjects = [...messages].reverse().slice(0, 24).map(buildMessageObject);
+  const objects = mergeObjectsByRecency(runtimeObjects, listObjectsForChamber("creation")).slice(0, 32);
+  const outputTypes = ["artifact", "blueprint", "code", "document", "system", "build"];
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", background: "var(--r-bg)", padding: "24px 32px" }} className="hide-scrollbar">
+      <div style={{ maxWidth: "860px", margin: "0 auto" }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+          <div>
+            <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.01em", margin: 0 }}>
+              Artifact Gallery
+            </p>
+            <p style={{ fontSize: "10px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", margin: "3px 0 0", letterSpacing: "0.05em" }}>
+              {objects.length} artifacts · creation chamber
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              onClick={() => navigate("creation", "archive")}
+              style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-subtext)", background: "transparent", border: "1px solid var(--r-border)", borderRadius: "5px", padding: "5px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
+            >
+              Archive →
+            </button>
+            <button
+              onClick={onBuild}
+              style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-bg)", background: "#8A6238", border: "none", borderRadius: "5px", padding: "5px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
+            >
+              + Build
+            </button>
+          </div>
+        </div>
+
+        {objects.length === 0 ? (
+          /* Empty state */
+          <div style={{ textAlign: "center", paddingTop: "60px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+            <div style={{ width: "40px", height: "40px", borderRadius: "10px", border: "1px solid var(--r-border)", background: "var(--r-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 16L7 7l4 6 3-4 2 7" stroke="var(--r-dim)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </div>
+            <p style={{ fontSize: "12px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0 }}>
+              No artifacts yet — start a build session
+            </p>
+            <button
+              onClick={onBuild}
+              style={{ fontSize: "11px", color: "#8A6238", fontFamily: "monospace", background: "transparent", border: "none", cursor: "pointer", outline: "none", letterSpacing: "0.05em" }}
+            >
+              → Open Build Terminal
+            </button>
+          </div>
+        ) : (
+          /* Grid */
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "10px" }}>
+            {objects.map((obj, i) => (
+              <div
+                key={`${obj.id}-${i}`}
+                style={{
+                  border:       "1px solid var(--r-border)",
+                  borderRadius: "8px",
+                  background:   "var(--r-surface)",
+                  overflow:     "hidden",
+                  cursor:       "pointer",
+                  transition:   "box-shadow 0.14s ease, transform 0.14s ease",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(0,0,0,0.07)";
+                  (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.boxShadow = "none";
+                  (e.currentTarget as HTMLElement).style.transform = "none";
+                }}
+                onClick={() => openObject(navigate, obj)}
+              >
+                {/* Visual band */}
+                <div style={{ height: "64px", background: "#8A623810", borderBottom: "1px solid var(--r-border-soft)", position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(-45deg, transparent, transparent 5px, #8A623808 5px, #8A623808 6px)" }} />
+                  <div style={{ position: "absolute", top: "10px", left: "12px" }}>
+                    <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: "#8A6238", background: "#8A623814", border: "1px solid #8A623824", borderRadius: "3px", padding: "2px 6px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                      {obj.type || "artifact"}
+                    </span>
+                  </div>
+                </div>
+                {/* Content */}
+                <div style={{ padding: "10px 12px 12px" }}>
+                  <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 5px", letterSpacing: "-0.005em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {obj.title}
+                  </p>
+                  <p style={{ fontSize: "11px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 10px", lineHeight: "1.5", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {obj.summary}
+                  </p>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); openObject(navigate, obj); }}
+                      style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-subtext)", background: "transparent", border: "1px solid var(--r-border)", borderRadius: "4px", padding: "3px 8px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
+                    >
+                      Open
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); onBuild(); }}
+                      style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "#8A6238", background: "transparent", border: "1px solid #8A623828", borderRadius: "4px", padding: "3px 8px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
+                    >
+                      Iterate
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Output type legend */}
+        <div style={{ marginTop: "24px", paddingTop: "16px", borderTop: "1px solid var(--r-border-soft)", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.08em", textTransform: "uppercase", marginRight: "4px" }}>Types:</span>
+          {outputTypes.map(t => (
+            <span key={t} style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "3px", padding: "1px 6px", letterSpacing: "0.04em" }}>{t}</span>
+          ))}
         </div>
       </div>
     </div>
@@ -604,6 +734,7 @@ export function CreationMode({
   if (creationView === "blueprint") return <CreationBlueprintDetail blueprintId={detailId} navigate={navigate} onStartChat={(p) => { onCreationView("terminal"); onSend(p); }} />;
   if (creationView === "engine")    return <CreationEngineDetail    engineId={detailId}    navigate={navigate} onStartChat={(p) => { onCreationView("chat"); onSend(p); }} />;
   if (creationView === "archive")   return <CreationArchive messages={messages} navigate={navigate} />;
+  if (creationView === "artifact")  return <ArtifactGallery messages={messages} navigate={navigate} onBuild={() => onCreationView("terminal")} />;
   if (creationView === "terminal")  return (
     <RuberraTerminal
       messages={messages}

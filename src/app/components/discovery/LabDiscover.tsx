@@ -93,49 +93,6 @@ const experimentTemplates = [
   },
 ];
 
-const toolEcosystem = [
-  {
-    id: "t1",
-    title: "Research Engine",
-    subtitle: "Search, synthesize, cross-reference",
-    itemCount: 8,
-    icon: <Search size={14} color={R.lab} strokeWidth={1.5} />,
-    onClick: null,
-  },
-  {
-    id: "t2",
-    title: "Code Lab",
-    subtitle: "Write, run, debug in isolation",
-    itemCount: 12,
-    icon: <Code2 size={14} color={R.lab} strokeWidth={1.5} />,
-    onClick: null,
-  },
-  {
-    id: "t3",
-    title: "Analysis Suite",
-    subtitle: "Evidence, patterns, insights",
-    itemCount: 6,
-    icon: <BarChart2 size={14} color={R.lab} strokeWidth={1.5} />,
-    onClick: null,
-  },
-  {
-    id: "t4",
-    title: "Audit Framework",
-    subtitle: "Verify, review, source-check",
-    itemCount: 5,
-    icon: <FileSearch size={14} color={R.lab} strokeWidth={1.5} />,
-    onClick: null,
-  },
-  {
-    id: "t5",
-    title: "Data Connectors",
-    subtitle: "DB, APIs, live feeds",
-    itemCount: 9,
-    icon: <Database size={14} color={R.lab} strokeWidth={1.5} />,
-    onClick: null,
-  },
-];
-
 const signals = [
   {
     id: "s1",
@@ -177,6 +134,49 @@ const signals = [
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
+  const toolEcosystem = [
+    {
+      id: "t1",
+      title: "Research Engine",
+      subtitle: "Search, synthesize, cross-reference",
+      itemCount: 8,
+      icon: <Search size={14} color={R.lab} strokeWidth={1.5} />,
+      onClick: () => { navigate("lab", "chat"); onStartSession(); },
+    },
+    {
+      id: "t2",
+      title: "Code Lab",
+      subtitle: "Write, run, debug in isolation",
+      itemCount: 12,
+      icon: <Code2 size={14} color={R.lab} strokeWidth={1.5} />,
+      onClick: () => navigate("lab", "code"),
+    },
+    {
+      id: "t3",
+      title: "Analysis Suite",
+      subtitle: "Evidence, patterns, insights",
+      itemCount: 6,
+      icon: <BarChart2 size={14} color={R.lab} strokeWidth={1.5} />,
+      onClick: () => navigate("lab", "analysis"),
+    },
+    {
+      id: "t4",
+      title: "Audit Framework",
+      subtitle: "Verify, review, source-check",
+      itemCount: 5,
+      icon: <FileSearch size={14} color={R.lab} strokeWidth={1.5} />,
+      onClick: () => navigate("lab", "archive"),
+    },
+    {
+      id: "t5",
+      title: "Data Connectors",
+      subtitle: "DB, APIs, live feeds",
+      itemCount: 9,
+      icon: <Database size={14} color={R.lab} strokeWidth={1.5} />,
+      onClick: () => navigate("lab", "domain", "data-arch"),
+    },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -188,7 +188,9 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
         overflowY: "auto",
         paddingTop: "24px",
         paddingBottom: "40px",
-        background: R.ground,
+        background: "var(--r-bg)",
+        backgroundImage: `radial-gradient(var(--r-border-soft) 0.8px, transparent 0.8px)`,
+        backgroundSize: "24px 24px",
         scrollbarWidth: "none",
       }}
     >
@@ -200,7 +202,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
         description="Analyzing failure taxonomy in Raft and Paxos under asymmetric partitions. Current context: 3 sources loaded, 2 hypotheses pending verification."
         meta="Research · Distributed Systems · Started 2h ago · 14 context items"
         accent={R.lab}
-        accentLight={R.labLight}
+        accentLight="var(--chamber-lab-light)"
         ctaLabel="Continue investigation"
         onCta={() => navigate("lab", "experiment", "exp-raft")}
         secondaryLabel="New session"
@@ -286,10 +288,10 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
             subtitle={t.subtitle}
             itemCount={t.itemCount}
             accent={R.lab}
-            accentLight={R.labLight}
+            accentLight="var(--chamber-lab-light)"
             tag="Tool"
             icon={t.icon}
-            onClick={t.onClick ? t.onClick : onStartSession}
+            onClick={t.onClick}
           />
         ))}
       </DiscoveryRail>
@@ -308,7 +310,7 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
             subtitle={d.tagline.slice(0, 60)}
             itemCount={d.researchCount}
             accent={R.lab}
-            accentLight={R.labLight}
+            accentLight="var(--chamber-lab-light)"
             tag="Domain"
             icon={<Layers size={14} color={R.lab} strokeWidth={1.5} />}
             onClick={() => navigate("lab", "domain", d.id)}

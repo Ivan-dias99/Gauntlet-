@@ -127,23 +127,30 @@ interface CardShellProps {
 }
 
 export function CardShell({ onClick, children, width = 220, style }: CardShellProps) {
+  const [hovered, setHovered] = React.useState(false);
+
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => onClick && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         width: typeof width === "number" ? `${width}px` : width,
         flexShrink: 0,
         borderRadius: R.r.xl,
-        border: `1px solid ${R.hairline}`,
-        background: R.surface,
+        border: `1px solid ${hovered ? "var(--r-border)" : "var(--r-border-soft)"}`,
+        background: "var(--r-surface)",
         cursor: onClick ? "pointer" : "default",
         overflow: "hidden",
         transition: "border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease",
         display: "flex",
         flexDirection: "column",
+        boxShadow: hovered
+          ? "0 6px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)"
+          : "0 1px 2px rgba(0,0,0,0.05)",
+        transform: hovered && onClick ? "translateY(-2px)" : "none",
         ...style,
       }}
-      className={onClick ? "hover:border-[#D0CEC8] hover:shadow-md" : ""}
     >
       {children}
     </div>
@@ -318,7 +325,7 @@ export function CourseCard({
     <CardShell onClick={!locked ? onClick : undefined} width={220}>
       <CardVisual
         accent={R.school}
-        accentLight={R.schoolLight}
+        accentLight="var(--chamber-school-light)"
         pattern={pattern}
         icon={
           locked ? (
@@ -355,7 +362,7 @@ export function CourseCard({
               marginTop: "8px",
               padding: "3px 8px",
               borderRadius: R.r.sm,
-              background: R.ground,
+              background: 'var(--r-elevated)',
               ...R.t.micro,
               color: R.ink5,
               fontFamily: "'Inter', sans-serif",
@@ -396,7 +403,7 @@ export function ExperimentCard({
     <CardShell onClick={onClick} width={220}>
       <CardVisual
         accent={R.lab}
-        accentLight={R.labLight}
+        accentLight="var(--chamber-lab-light)"
         pattern={pattern}
         icon={<BarChart2 size={14} color={R.lab} strokeWidth={1.5} />}
         size="md"
@@ -423,7 +430,7 @@ export function ExperimentCard({
                 padding: "1px 6px",
                 borderRadius: R.r.sm,
                 border: `1px solid ${R.hairline}`,
-                background: R.ground,
+                background: 'var(--r-elevated)',
                 ...R.t.micro,
                 color: R.ink4,
                 fontFamily: "'Inter', sans-serif",
@@ -476,7 +483,7 @@ export function BlueprintCard({
     <CardShell onClick={onClick} width={220}>
       <CardVisual
         accent={R.creation}
-        accentLight={R.creationLight}
+        accentLight="var(--chamber-creation-light)"
         pattern={pattern}
         icon={<Zap size={14} color={R.creation} strokeWidth={1.5} />}
         size="md"
@@ -507,7 +514,7 @@ export function BlueprintCard({
                 padding: "1px 6px",
                 borderRadius: R.r.sm,
                 border: `1px solid ${R.hairline}`,
-                background: R.ground,
+                background: 'var(--r-elevated)',
                 ...R.t.micro,
                 color: R.ink4,
                 fontFamily: "'Inter', sans-serif",
@@ -660,7 +667,7 @@ export function RoleCard({ role, domain, skills, demand, onClick }: RoleCardProp
                 padding: "1px 6px",
                 borderRadius: R.r.sm,
                 border: `1px solid ${R.hairline}`,
-                background: R.ground,
+                background: 'var(--r-elevated)',
                 ...R.t.micro,
                 color: R.ink4,
                 fontFamily: "'Inter', sans-serif",

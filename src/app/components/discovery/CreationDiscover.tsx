@@ -32,7 +32,9 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
         overflowY: "auto",
         paddingTop: "24px",
         paddingBottom: "40px",
-        background: R.ground,
+        background: "var(--r-bg)",
+        backgroundImage: `radial-gradient(var(--r-border-soft) 0.8px, transparent 0.8px)`,
+        backgroundSize: "24px 24px",
         scrollbarWidth: "none",
       }}
     >
@@ -44,7 +46,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
         description="End-to-end blueprint for building an AI agent system — from prompt design to tool use, memory, and evaluation infrastructure."
         meta="AI Systems · Blueprint · 5 steps · Started today"
         accent={R.creation}
-        accentLight={R.creationLight}
+        accentLight="var(--chamber-creation-light)"
         ctaLabel="Continue build"
         onCta={() => navigate("creation", "blueprint", "ai-agent")}
         secondaryLabel="New creation"
@@ -110,7 +112,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
             subtitle={e.desc}
             itemCount={e.templateCount}
             accent={R.creation}
-            accentLight={R.creationLight}
+            accentLight="var(--chamber-creation-light)"
             tag="Engine"
             icon={engineIcons[e.id] ?? <FileText size={14} color={R.creation} strokeWidth={1.5} />}
             onClick={() => navigate("creation", "engine", e.id)}
@@ -132,7 +134,7 @@ export function CreationDiscover({ onEnterGenerator, navigate }: CreationDiscove
             subtitle={m.subtitle}
             itemCount={m.itemCount}
             accent={R.creation}
-            accentLight={R.creationLight}
+            accentLight="var(--chamber-creation-light)"
             tag="Path"
             icon={m.icon}
             onClick={() => navigate("creation", "blueprint", m.blueprintId ?? "exec-brief")}
@@ -189,8 +191,8 @@ const engineIcons: Record<string, React.ReactNode> = {
 const monetizationPaths = [
   { id: "m1", blueprintId: "tech-deep-dive", title: "Digital Product System",      subtitle: "Ebook, course, toolkit, prompt pack",   itemCount: 14, icon: <Package   size={14} color={R.creation} strokeWidth={1.5} /> },
   { id: "m2", blueprintId: "exec-brief",     title: "Freelance Service Packaging", subtitle: "Proposals, offers, deliverables",        itemCount: 9,  icon: <Briefcase size={14} color={R.creation} strokeWidth={1.5} /> },
-  { id: "m3", blueprintId: null,             title: "Creator Revenue Engine",      subtitle: "Content monetization systems",           itemCount: 11, icon: <DollarSign size={14} color={R.creation} strokeWidth={1.5} /> },
-  { id: "m4", blueprintId: null,             title: "Launch Canvas",               subtitle: "Go-to-market build framework",           itemCount: 7,  icon: <Rocket    size={14} color={R.creation} strokeWidth={1.5} /> },
+  { id: "m3", blueprintId: "exec-brief",     title: "Creator Revenue Engine",      subtitle: "Content monetization systems",           itemCount: 11, icon: <DollarSign size={14} color={R.creation} strokeWidth={1.5} /> },
+  { id: "m4", blueprintId: "tech-deep-dive", title: "Launch Canvas",               subtitle: "Go-to-market build framework",           itemCount: 7,  icon: <Rocket    size={14} color={R.creation} strokeWidth={1.5} /> },
 ];
 
 const artifactPacks = [

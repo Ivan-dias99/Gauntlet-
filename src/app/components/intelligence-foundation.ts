@@ -382,8 +382,15 @@ export interface RouteDecisionResult {
   supportChain: string[];
 }
 
+/** Safe last-resort IDs when the live registry is empty at call time. */
+const ROUTE_FALLBACK_PIONEER_ID = "claude_architect";
+const ROUTE_FALLBACK_GI_ID      = "profile_ledger_core";
+
 export function resolveRouteDecision(state: IntelligenceFoundationState, input: RouteDecisionInput): RouteDecisionResult {
-  const supportChainFor = (chamber: Tab) =>
+  const fallbackGiId      = state.giRegistry[0]?.id ?? ROUTE_FALLBACK_GI_ID;
+  const fallbackPioneerId = state.pioneers[0]?.id   ?? ROUTE_FALLBACK_PIONEER_ID;
+
+  const supportChainFor = (chamber: Tab): string[] =>
     state.routingContracts.find((entry) => entry.chamber === chamber)?.leadIntelligences.slice(0, 3) ?? [];
 
   if (input.preferredPioneerId) {
@@ -393,7 +400,7 @@ export function resolveRouteDecision(state: IntelligenceFoundationState, input: 
       return {
         chamber: pioneer.homeChamber,
         pioneerId: pioneer.id,
-        giId: defaultGi.id,
+        giId: defaultGi?.id ?? fallbackGiId,
         reason: "preferred pioneer selected",
         supportChain: supportChainFor(pioneer.homeChamber),
       };
@@ -404,19 +411,19 @@ export function resolveRouteDecision(state: IntelligenceFoundationState, input: 
     if (workflow) {
       return {
         chamber: workflow.homeChamber,
-        pioneerId: workflow.pioneers[0],
-        giId: state.giRegistry.find((entry) => entry.chamber === workflow.homeChamber)?.id ?? state.giRegistry[0].id,
+        pioneerId: workflow.pioneers[0] ?? fallbackPioneerId,
+        giId: state.giRegistry.find((entry) => entry.chamber === workflow.homeChamber)?.id ?? fallbackGiId,
         reason: "workflow home chamber route",
         supportChain: supportChainFor(workflow.homeChamber),
       };
     }
   }
   if (input.chamberHint) {
-    const chamberPioneer = state.pioneers.find((entry) => entry.homeChamber === input.chamberHint) ?? state.pioneers[0];
+    const chamberPioneer = state.pioneers.find((entry) => entry.homeChamber === input.chamberHint);
     return {
       chamber: input.chamberHint,
-      pioneerId: chamberPioneer.id,
-      giId: state.giRegistry.find((entry) => entry.chamber === input.chamberHint)?.id ?? state.giRegistry[0].id,
+      pioneerId: chamberPioneer?.id ?? fallbackPioneerId,
+      giId: state.giRegistry.find((entry) => entry.chamber === input.chamberHint)?.id ?? fallbackGiId,
       reason: "chamber hint route",
       supportChain: supportChainFor(input.chamberHint),
     };

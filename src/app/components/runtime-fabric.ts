@@ -148,6 +148,7 @@ export interface ContinuityRecommendation {
   destination: { tab: Tab; view: string; id?: string };
 }
 
+
 export interface ExecutionResultRecord {
   id: string;
   continuityId: string;
@@ -283,6 +284,20 @@ export interface RunOutcomeBundle {
   lastTimelineLabel?: string;
 }
 
+export interface ProviderPodiumPlan {
+  primary: ModelProviderDefinition;
+  fallback?: ModelProviderDefinition;
+  routeClass: "coding" | "reasoning" | "fast";
+}
+
+function pickProvider(
+  providers: ModelProviderDefinition[],
+  lane: ModelProviderDefinition["lane"],
+  chamber: Tab,
+): ModelProviderDefinition | undefined {
+  return providers.find((provider) => provider.lane === lane && provider.chamberSafety.includes(chamber));
+}
+
 export interface RuntimeFabric {
   objects: RuberraObject[];
   continuity: ContinuityItem[];
@@ -331,6 +346,12 @@ const DEFAULT_AI_SETTINGS: AISettingsState = {
   lastUpdated: Date.now(),
 };
 
+const DEFAULT_CHAMBER_POLICIES: ChamberExecutionPolicy[] = [
+  { chamber: "lab",      priorityRoutes: ["research", "analysis", "audit"],      bias: "evidence_heavy",  fallbackPolicy: "code_audit_fallback" },
+  { chamber: "school",   priorityRoutes: ["tutor", "curriculum", "assessment"],  bias: "clarity_safe",    fallbackPolicy: "lighter_fast_fallback" },
+  { chamber: "creation", priorityRoutes: ["build", "artifact", "code", "drafting"], bias: "terminal_strong", fallbackPolicy: "build_terminal_fallback" },
+];
+
 const DEFAULT_PLUGINS: PluginRuntimeState[] = [
   { id: "calendar-sync", label: "Calendar Sync", enabled: false, status: "needs_auth", scope: "workspace", lastUpdated: Date.now() },
   { id: "repo-bridge", label: "Repo Bridge", enabled: true, status: "ready", scope: "lab", lastUpdated: Date.now() },
@@ -344,12 +365,6 @@ const DEFAULT_WORKSPACE: WorkspaceKnowledge = {
   priorities: ["continuity truth", "runtime consequence", "profile ledger integrity"],
   updatedAt: Date.now(),
 };
-
-const DEFAULT_CHAMBER_POLICIES: ChamberExecutionPolicy[] = [
-  { chamber: "lab", priorityRoutes: ["research", "analysis", "audit"], bias: "evidence_heavy", fallbackPolicy: "code_audit_fallback" },
-  { chamber: "school", priorityRoutes: ["tutor", "curriculum", "assessment"], bias: "clarity_safe", fallbackPolicy: "lighter_fast_fallback" },
-  { chamber: "creation", priorityRoutes: ["build", "artifact", "code", "drafting"], bias: "terminal_strong", fallbackPolicy: "build_terminal_fallback" },
-];
 
 function initialFabric(): RuntimeFabric {
   return {
@@ -636,19 +651,28 @@ export function recommendedConnectorsForChamber(fabric: RuntimeFabric, chamber: 
     .map((connector) => connector.id);
 }
 
-export interface ProviderPodiumPlan {
-  primary: ModelProviderDefinition;
-  fallback?: ModelProviderDefinition;
-  routeClass: "coding" | "reasoning" | "fast";
+export function upsertWorkflowTemplate(fabric: RuntimeFabric, template: WorkflowTemplate): RuntimeFabric {
+  const idx = fabric.intelligence.workflowTemplates.findIndex((item) => item.id === template.id);
+  if (idx === -1) {
+    return {
+      ...fabric,
+      intelligence: {
+        ...fabric.intelligence,
+        workflowTemplates: [template, ...fabric.intelligence.workflowTemplates],
+      },
+    };
+  }
+  const nextTemplates = [...fabric.intelligence.workflowTemplates];
+  nextTemplates[idx] = template;
+  return {
+    ...fabric,
+    intelligence: {
+      ...fabric.intelligence,
+      workflowTemplates: nextTemplates,
+    },
+  };
 }
 
-function pickProvider(
-  providers: ModelProviderDefinition[],
-  lane: ModelProviderDefinition["lane"],
-  chamber: Tab,
-): ModelProviderDefinition | undefined {
-  return providers.find((provider) => provider.lane === lane && provider.chamberSafety.includes(chamber));
-}
 
 export function resolveProviderPodium(fabric: RuntimeFabric, chamber: Tab, text: string): ProviderPodiumPlan {
   const providers = fabric.intelligence.providerRegistry;
@@ -925,28 +949,6 @@ export function computeConnectorRetryPolicy(
   };
 }
 
-export function upsertWorkflowTemplate(fabric: RuntimeFabric, template: WorkflowTemplate): RuntimeFabric {
-  const idx = fabric.intelligence.workflowTemplates.findIndex((item) => item.id === template.id);
-  if (idx === -1) {
-    return {
-      ...fabric,
-      intelligence: {
-        ...fabric.intelligence,
-        workflowTemplates: [template, ...fabric.intelligence.workflowTemplates],
-      },
-    };
-  }
-  const nextTemplates = [...fabric.intelligence.workflowTemplates];
-  nextTemplates[idx] = template;
-  return {
-    ...fabric,
-    intelligence: {
-      ...fabric.intelligence,
-      workflowTemplates: nextTemplates,
-    },
-  };
-}
-
 export function exportWorkflowTemplatePack(fabric: RuntimeFabric, workflowId: string): { fabric: RuntimeFabric; pack?: WorkflowExportPack } {
   const workflow = fabric.intelligence.workflowTemplates.find((item) => item.id === workflowId);
   if (!workflow) return { fabric };
@@ -1026,7 +1028,7 @@ export function recommendContinuityActions(fabric: RuntimeFabric): ContinuityRec
       continue;
     }
     if (item.status === "completed" || item.status === "validated") {
-      const nextTab = item.transferDestinations[0] ?? "profile";
+      const nextTab = item.transferDestinations[0] ?? "lab";
       recs.push({
         continuityId: item.id,
         title: item.title,

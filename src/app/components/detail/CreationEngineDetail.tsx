@@ -3,13 +3,13 @@
  */
 import { type NavFn } from "../shell-types";
 import { getEngine, getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, DetailPage, PrimaryAction, SecondaryAction } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
 
 interface Props { engineId: string; navigate: NavFn; onStartChat: (p: string) => void; }
 
 export function CreationEngineDetail({ engineId, navigate, onStartChat }: Props) {
   const engine = getEngine(engineId);
-  if (!engine) return null;
+  if (!engine) return <EmptyDetail onBack={() => navigate("creation", "home")} label="Engine not found" />;
 
   return (
     <DetailPage>

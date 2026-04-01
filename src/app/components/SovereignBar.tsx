@@ -1,48 +1,65 @@
 /**
  * RUBERRA Sovereign Bar — polished topbar
- * Precision header. Less chrome, more authority.
+ * Precision header. Chamber-authentic colors. Quiet authority.
  */
 
 import { motion } from "motion/react";
 import { Search, Bell, ChevronDown } from "lucide-react";
 import { type Tab, type Theme } from "./shell-types";
+import { ProfileLedger } from "./ProfileLedger";
+import { useState } from "react";
+
+// Chamber dot colors — authentic per-chamber tokens
+const CHAMBER_DOTS: Record<Tab, string> = {
+  lab:      "#52796A",  // sage
+  school:   "#4A6B84",  // slate
+  creation: "#8A6238",  // amber-earth
+  profile:  "#7A756D",  // neutral-warm
+};
 
 interface SovereignBarProps {
-  activeTab:     Tab;
-  onTabChange:   (tab: Tab) => void;
-  isLive?:       boolean;
-  theme?:        Theme;
+  activeTab:      Tab;
+  onTabChange:    (tab: Tab) => void;
+  onHomeClick?:   () => void;
+  isLive?:        boolean;
+  theme?:         Theme;
   onThemeToggle?: () => void;
   onSearchToggle?: () => void;
   onSignalsToggle?: () => void;
-  hasSignals?: boolean;
+  hasSignals?:    boolean;
+  onManageMatrix?: () => void;
 }
 
-const TABS: { id: Tab; label: string; dot: string }[] = [
-  { id: "lab",      label: "Lab",      dot: "var(--r-accent)" },
-  { id: "school",   label: "School",   dot: "var(--r-ok)"     },
-  { id: "creation", label: "Creation", dot: "var(--r-warn)"   },
-  { id: "profile",  label: "Profile",  dot: "var(--r-pulse)"  },
+const TABS: { id: Tab; label: string }[] = [
+  { id: "lab",      label: "Lab"      },
+  { id: "school",   label: "School"   },
+  { id: "creation", label: "Creation" },
+  { id: "profile",  label: "Profile"  },
 ];
 
-function Mark() {
+function RubMark() {
   return (
     <div
       style={{
-        width: "18px",
-        height: "18px",
+        width: "20px",
+        height: "20px",
         background: "var(--r-text)",
-        borderRadius: "4px",
+        borderRadius: "5px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
         position: "relative",
         overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.14)",
       }}
     >
-      <div style={{ position: "absolute", width: "1px", height: "9px", background: "rgba(255,255,255,0.85)", top: "4.5px", left: "50%", transform: "translateX(-50%)" }} />
-      <div style={{ position: "absolute", width: "5px", height: "1px", background: "rgba(255,255,255,0.85)", left: "6.5px", top: "7px" }} />
+      {/* R letterform — vertical stroke */}
+      <div style={{ position: "absolute", width: "1.5px", height: "10px", background: "rgba(255,255,255,0.90)", top: "5px", left: "7px", borderRadius: "1px" }} />
+      {/* R letterform — upper bowl */}
+      <div style={{ position: "absolute", width: "5px", height: "5px", border: "1.5px solid rgba(255,255,255,0.90)", borderRadius: "2px 2px 0 0", borderBottom: "none", top: "5px", left: "7px" }} />
+      {/* R letterform — leg */}
+      <div style={{ position: "absolute", width: "4px", height: "1.5px", background: "rgba(255,255,255,0.90)", top: "12px", left: "9px", borderRadius: "1px", transform: "rotate(38deg)", transformOrigin: "0 50%" }} />
     </div>
   );
 }
@@ -70,11 +87,17 @@ function IconBtn({
         justifyContent: "center",
         outline: "none",
         color: "var(--r-subtext)",
-        transition: "background 0.1s ease, color 0.1s ease",
+        transition: "background 0.12s ease, color 0.12s ease",
         flexShrink: 0,
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--r-rail)"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.background = "var(--r-rail)";
+        (e.currentTarget as HTMLElement).style.color = "var(--r-text)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.background = "transparent";
+        (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)";
+      }}
     >
       {children}
     </button>
@@ -82,55 +105,79 @@ function IconBtn({
 }
 
 export function SovereignBar({
-  activeTab, onTabChange, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals,
+  activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals, onManageMatrix,
 }: SovereignBarProps) {
+  const [isLedgerOpen, setLedgerOpen] = useState(false);
+
   return (
     <header
       style={{
         height: "44px",
         borderBottom: "1px solid var(--r-border)",
-        background: "var(--r-surface)",
-        position: "relative",
-        zIndex: 20,
+        background: "rgba(var(--r-surface-rgb), 0.82)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
         paddingLeft: "16px",
         paddingRight: "14px",
-        transition: "background 0.2s ease, border-color 0.2s ease",
+        transition: "background 0.25s ease, border-color 0.25s ease",
       }}
     >
 
       {/* ── Left: Brand ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: "160px" }}>
-        <Mark />
-        <span
+      <div style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: "160px" }}>
+        <button
+          onClick={onHomeClick ?? (() => onTabChange(activeTab))}
+          title="Home"
           style={{
-            fontSize: "11px",
-            fontWeight: 600,
-            letterSpacing: "0.12em",
-            color: "var(--r-text)",
-            userSelect: "none",
-            fontFamily: "'Inter', system-ui, sans-serif",
+            display: "flex",
+            alignItems: "center",
+            gap: "9px",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            outline: "none",
+            padding: "2px",
+            borderRadius: "5px",
+            transition: "opacity 0.12s ease",
           }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.75"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
         >
-          RUBERRA
-        </span>
+          <RubMark />
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 600,
+              letterSpacing: "0.13em",
+              color: "var(--r-text)",
+              userSelect: "none",
+              fontFamily: "'Inter', system-ui, sans-serif",
+            }}
+          >
+            RUBERRA
+          </span>
+        </button>
 
-        {/* Status */}
+        {/* Status separator + live indicator */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: "5px",
-            marginLeft: "6px",
+            marginLeft: "4px",
             borderLeft: "1px solid var(--r-border)",
             paddingLeft: "10px",
           }}
         >
           <motion.div
-            animate={{ opacity: isLive ? [0.5, 1, 0.5] : [0.4, 0.8, 0.4] }}
-            transition={{ duration: isLive ? 0.9 : 3.2, repeat: Infinity, ease: "easeInOut" }}
+            animate={{ opacity: isLive ? [0.4, 1, 0.4] : [0.3, 0.7, 0.3] }}
+            transition={{ duration: isLive ? 0.85 : 3.5, repeat: Infinity, ease: "easeInOut" }}
             style={{
               width: "4px",
               height: "4px",
@@ -143,8 +190,8 @@ export function SovereignBar({
             style={{
               fontSize: "9px",
               letterSpacing: "0.10em",
-              color: "var(--r-subtext)",
-              fontFamily: "monospace",
+              color: "var(--r-dim)",
+              fontFamily: "'JetBrains Mono', monospace",
               textTransform: "uppercase",
               userSelect: "none",
             }}
@@ -154,30 +201,31 @@ export function SovereignBar({
         </div>
       </div>
 
-      {/* ── Center: Tab switcher ── */}
+      {/* ── Center: Chamber switcher ── */}
       <div
         style={{
           position: "absolute",
           left: "50%",
           transform: "translateX(-50%)",
           background: "var(--r-rail)",
-          borderRadius: "7px",
+          borderRadius: "8px",
           padding: "3px",
           display: "flex",
-          gap: "0",
           border: "1px solid var(--r-border-soft)",
+          boxShadow: "inset 0 1px 2px rgba(0,0,0,0.03)",
         }}
       >
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
+          const dot = CHAMBER_DOTS[tab.id];
           return (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               style={{
                 position: "relative",
-                padding: "4px 15px",
-                borderRadius: "5px",
+                padding: "4px 14px",
+                borderRadius: "6px",
                 border: "none",
                 background: "transparent",
                 cursor: "pointer",
@@ -186,12 +234,13 @@ export function SovereignBar({
                 fontFamily: "'Inter', system-ui, sans-serif",
                 fontSize: "12px",
                 letterSpacing: "-0.01em",
-                transition: "color 0.12s ease",
+                transition: "color 0.14s ease",
                 outline: "none",
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
                 userSelect: "none",
+                whiteSpace: "nowrap",
               }}
             >
               {isActive && (
@@ -201,28 +250,30 @@ export function SovereignBar({
                     position: "absolute",
                     inset: 0,
                     background: "var(--r-surface)",
-                    borderRadius: "5px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.04)",
+                    borderRadius: "6px",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.08)",
                   }}
-                  transition={{ type: "spring", stiffness: 460, damping: 40 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
                 />
               )}
-              {isActive && (
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  style={{
-                    position: "relative",
-                    zIndex: 1,
-                    width: "4px",
-                    height: "4px",
-                    borderRadius: "50%",
-                    background: tab.dot,
-                    flexShrink: 0,
-                    display: "inline-block",
-                  }}
-                />
-              )}
+              {/* Chamber color dot — always present, full opacity when active */}
+              <motion.span
+                animate={{
+                  opacity: isActive ? 1 : 0.35,
+                  scale: isActive ? 1 : 0.75,
+                }}
+                transition={{ duration: 0.16 }}
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  width: "5px",
+                  height: "5px",
+                  borderRadius: "50%",
+                  background: dot,
+                  flexShrink: 0,
+                  display: "inline-block",
+                }}
+              />
               <span style={{ position: "relative", zIndex: 1 }}>{tab.label}</span>
             </button>
           );
@@ -244,19 +295,19 @@ export function SovereignBar({
           <IconBtn title={theme === "dark" ? "Light mode" : "Dark mode"} onClick={onThemeToggle}>
             {theme === "dark" ? (
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.2" />
-                <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M10.01 3.99l-1.06 1.06M3.99 10.01l-1.06 1.06" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.25" />
+                <path d="M7 1.5v1.25M7 11.25V12.5M1.5 7h1.25M11.25 7H12.5M3.05 3.05l.88.88M10.07 10.07l.88.88M10.07 3.93l-.88.88M3.93 10.07l-.88.88" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
               </svg>
             ) : (
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                <path d="M12 7.5A5.5 5.5 0 016.5 2 5.5 5.5 0 1012 7.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                <path d="M11.5 8A5 5 0 016 2.5 5 5 0 1011.5 8z" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" />
               </svg>
             )}
           </IconBtn>
         )}
 
         {/* Divider */}
-        <div style={{ width: "1px", height: "16px", background: "var(--r-border)", margin: "0 4px" }} />
+        <div style={{ width: "1px", height: "14px", background: "var(--r-border)", margin: "0 5px" }} />
 
         {/* Search */}
         <IconBtn title="Search" onClick={onSearchToggle}>
@@ -284,35 +335,62 @@ export function SovereignBar({
           )}
         </div>
 
-        {/* Avatar */}
-        <button
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "5px",
-            padding: "3px 6px 3px 4px",
-            borderRadius: "6px",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            outline: "none",
-            marginLeft: "2px",
-            transition: "background 0.1s ease",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--r-rail)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-        >
-          <div
+        {/* Avatar Area with Ledger */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setLedgerOpen(!isLedgerOpen)}
             style={{
-              width: "22px",
-              height: "22px",
-              borderRadius: "5px",
-              background: "linear-gradient(135deg, #D4CFC9 0%, #B8B3AC 100%)",
-              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "3px 5px 3px 3px",
+              borderRadius: "6px",
+              border: "none",
+              background: isLedgerOpen ? "var(--r-rail)" : "transparent",
+              cursor: "pointer",
+              outline: "none",
+              marginLeft: "2px",
+              transition: "background 0.12s ease",
             }}
-          />
-          <ChevronDown size={10} color="var(--r-dim)" strokeWidth={1.6} />
-        </button>
+            onMouseEnter={(e) => { if (!isLedgerOpen) (e.currentTarget as HTMLElement).style.background = "var(--r-rail)"; }}
+            onMouseLeave={(e) => { if (!isLedgerOpen) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+          >
+            <div
+              style={{
+                width: "22px",
+                height: "22px",
+                borderRadius: "5px",
+                background: "linear-gradient(145deg, var(--r-border) 0%, var(--r-muted) 100%)",
+                flexShrink: 0,
+                border: "1px solid rgba(0,0,0,0.06)",
+              }}
+            />
+            <motion.div animate={{ rotate: isLedgerOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+              <ChevronDown size={10} color="var(--r-dim)" strokeWidth={1.8} />
+            </motion.div>
+          </button>
+          
+          <ProfileLedger isOpen={isLedgerOpen} onClose={() => setLedgerOpen(false)} onManageMatrix={onManageMatrix} />
+        </div>
+      </div>
+
+      {/* Flagship Watermark: OS-level persistence */}
+      <div
+        style={{
+          position: "absolute",
+          top: "14px",
+          right: "220px", // Adjusted to not overlap avatar
+          pointerEvents: "none",
+          userSelect: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          opacity: 0.25,
+        }}
+      >
+        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.14em", color: "var(--r-dim)", textTransform: "uppercase" }}>mode</span>
+        <div style={{ width: "1px", height: "8px", background: "var(--r-border)" }} />
+        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.14em", color: CHAMBER_DOTS[activeTab === 'profile' ? 'lab' : activeTab as 'lab' | 'school' | 'creation'], textTransform: "uppercase" }}>{activeTab}</span>
       </div>
     </header>
   );
