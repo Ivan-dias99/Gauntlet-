@@ -584,4 +584,9 @@ export const CASCADE_LAW_VIOLATIONS: readonly string[] = [
  * Update this only when a phase is formally closed and the next begins.
  * Changing this field is a constitutional act — it requires sovereign authorization.
  */
-export const RUBERRA_CURRENT_PHASE: StackPhase = "constitution";
+/**
+ * UPDATED: Phase 0 (Constitution) is complete — DNA merged to main 2026-04-01.
+ * Stack 01 (Canon + Sovereignty) is now under active implementation.
+ * Phase advances to "birth" by sovereign authorization.
+ */
+export const RUBERRA_CURRENT_PHASE: StackPhase = "birth";

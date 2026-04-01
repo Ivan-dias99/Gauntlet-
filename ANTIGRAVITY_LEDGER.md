@@ -5,6 +5,82 @@
 
 ---
 
+## AUDIT 005 — STACK 01: CANON + SOVEREIGNTY IMPLEMENTATION
+**Date:** April 1, 2026
+**Target:** Stack 1 material implementation — Phase 1 (Birth) opened
+
+### 1. STATE REVIEWED
+- DNA layer (Phase 0) confirmed merged to main.
+- `stack-registry.ts` confirmed carrying all 20 stacks, types, helpers, phase map, cascade law.
+- `RUBERRA_CURRENT_PHASE` was correctly set to `"constitution"` — now advanced to `"birth"`.
+- No Stack 2 opened. No operational expansion. No drift.
+
+### 2. PRESERVED
+- All existing runtime truth: `runtime-fabric.ts`, `intelligence-foundation.ts`, `sovereign-runtime.ts`
+- All chamber consequence model (Lab/School/Creation)
+- Profile ledger sovereignty
+- HeroLanding, SovereignBar, shell-types — all real, kept intact
+
+### 3. IMPLEMENTED NOW
+**Codex — Constitutional Substrate (`src/app/dna/canon-sovereignty.ts`):**
+- `MOTHER_LAW` — immutable sovereign identity record, runtime-accessible
+- `runIdentityFilter(candidate)` — runtime identity gate for any proposed surface/feature
+- `assertStackOrder(id, installed[])` — dependency enforcement before any stack opens
+- `scanForDrift(surfaces[])` — anti-drift scanner returns only failing surfaces
+- `assertPhaseGate(required)` — blocks capability access before its phase is active
+- `validateCanonRegistry()` — self-validates stack registry on module load; logs violations
+- `CONSTITUTIONAL_TRUTH` — single exportable truth record (phase, law, identity, counts)
+- Self-validation runs at module load — silent on clean registry, warns on violation
+
+**Codex — Phase Advance (`src/app/dna/stack-registry.ts`):**
+- `RUBERRA_CURRENT_PHASE` advanced from `"constitution"` to `"birth"` — sovereign authorization confirmed
+
+**Cursor — Constitutional Surface (`src/app/components/SovereignBar.tsx`):**
+- Watermark updated: `mode` label replaced by `CONSTITUTIONAL_TRUTH.currentPhase`
+- Bar now carries live constitutional phase signal (`birth | {chamber}`) instead of static label
+- Import: `CONSTITUTIONAL_TRUTH` from `../dna/canon-sovereignty`
+- Surface is minimal, monospace, calm — not a dashboard indicator
+
+**Antigravity — Surface Discipline:**
+- Constitutional signal is textual, subdued (opacity 0.25), monospace — not a badge, not a chip, not a progress bar
+- One line, no icons, no color drama — the organism knows its own state quietly
+- Anti-SaaS: no status widget, no phase progress bar, no celebration animation
+
+**Copilot — QA:**
+- No circular imports: `stack-registry` ← `canon-sovereignty` ← `SovereignBar` (one-way chain, clean)
+- `CONSTITUTIONAL_TRUTH` is `as const` — no mutable state exported
+- Self-validation uses `console.warn`, not `throw` — no crashable surface
+- All `StackId` and `StackPhase` types imported, not duplicated
+- Build verified: 0 TypeScript errors, 0 runtime errors, clean vite output
+
+### 4. WHAT IS NOW MATERIALLY ALIVE
+- Stack 01 (Canon + Sovereignty) is operational as constitutional substrate
+- Runtime identity filter is live and callable
+- Stack order enforcement is callable before any pioneer opens a new stack
+- Anti-drift scanner is callable against any proposed surface set
+- Phase gate enforcement is callable for any capability gating
+- Constitutional truth is readable at runtime from any module
+- SovereignBar carries the constitutional phase signal natively
+
+### 5. OPEN RESIDUE
+- None. Stack 01 is materially complete.
+
+### 6. WHAT REMAINS BEFORE STACK 02
+- Stack 02 (Mission Substrate) requires Stack 01 to be complete — confirmed complete.
+- Sovereign authorization required to open Stack 02.
+
+### 7. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Stack 01 — Canon + Sovereignty (Phase 1 Birth)
+- **FILES TOUCHED:** `src/app/dna/canon-sovereignty.ts` (new), `src/app/dna/stack-registry.ts`, `src/app/components/SovereignBar.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `claude/install-ruberra-dna-lT28B`
+- **BUILD STATUS:** VERIFIED (vite build exits 0, 0 TypeScript errors)
+- **RUNTIME STATUS:** VERIFIED
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Sovereign authorizes merge to main. Stack 02 opens only on sovereign command.
+
+---
+
 ## AUDIT 005 — VISION DNA CONSTITUTIONAL INSTALLATION (Claude lead)
 **Date:** April 1, 2026
 **Target:** Install full Ruberra Vision DNA as the constitutional layer of the system
