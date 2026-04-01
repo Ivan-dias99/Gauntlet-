@@ -11,6 +11,7 @@ import {
   type WorkflowTemplate,
   type WorkflowExportPack,
 } from "./intelligence-foundation";
+import { type SystemHealthModel, defaultSystemHealthModel } from "./awareness-substrate";
 
 export type LifecycleStatus =
   | "draft"
@@ -322,6 +323,8 @@ export interface RuntimeFabric {
   runTimeline: RunTimelineEvent[];
   chamberPolicies: ChamberExecutionPolicy[];
   intelligence: IntelligenceFoundationState;
+  /** Stack 08 — live system health model */
+  systemHealth?: SystemHealthModel;
 }
 
 const STORAGE_KEY = "ruberra_runtime_fabric_v2";
@@ -391,6 +394,7 @@ function initialFabric(): RuntimeFabric {
     runTimeline: [],
     chamberPolicies: DEFAULT_CHAMBER_POLICIES,
     intelligence: defaultIntelligenceFoundationState(),
+    systemHealth: defaultSystemHealthModel(),
   };
 }
 
