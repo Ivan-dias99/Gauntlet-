@@ -590,3 +590,4 @@ export const CASCADE_LAW_VIOLATIONS: readonly string[] = [
  * Phase advances to "birth" by sovereign authorization.
  */
 export const RUBERRA_CURRENT_PHASE: StackPhase = "birth";
+export const RUBERRA_CURRENT_PHASE: StackPhase = "intelligence";
