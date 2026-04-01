@@ -1,4 +1,6 @@
 import { type Message, type MessageExecutionTrace, type NavFn, type Tab, type ProfileView } from "../shell-types";
+import { type Mission } from "../../dna/mission-substrate";
+import { MissionRepository } from "../MissionRepository";
 import { findObject, listObjectsForChamber, mergeObjectsByRecency, openObject, type RuberraObject } from "../object-graph";
 import { type CSSProperties, useState } from "react";
 import {
@@ -67,6 +69,8 @@ interface ProfileModeProps {
   onAISettingsPatch: (patch: Partial<AISettingsState>) => void;
   onWorkspacePatch: (patch: Partial<WorkspaceKnowledge>) => void;
   onExport: (continuityId: string) => void;
+  missions: Mission[];
+  onMissionUpsert: (m: Mission) => void;
   /** Stack 04 — Autonomous Operations state. Optional; defaults to empty state when not yet wired. */
   operations?: AutonomousOperationsState;
   onOperationSignalRead?:    (id: string) => void;
@@ -405,6 +409,7 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
 
 
 export function ProfileMode({
+  messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, intelligence: _intelligence, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport, missions, onMissionUpsert,
   messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, intelligence: _intelligence, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport,
   operations: operationsProp,
   onOperationSignalRead,
@@ -655,6 +660,7 @@ export function ProfileMode({
         {/* ── PROJECTS ── */}
         {profileView === "projects" && (
           <>
+            <MissionRepository missions={missions} onUpsert={onMissionUpsert} navigate={navigate} />
             <SectionBlock title="Workflow Templates — Orchestration">
               {WORKFLOW_TEMPLATES.map((t) => <WorkflowCard key={t.id} template={t} navigate={navigate} />)}
             </SectionBlock>

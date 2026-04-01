@@ -5,6 +5,218 @@
 
 ---
 
+## AUDIT 007 — STACK 03: SOVEREIGN INTELLIGENCE IMPLEMENTATION
+**Date:** April 1, 2026
+**Target:** Stack 03 — Sovereign Intelligence (Phase 1 Birth, third frontier)
+
+### 1. STATE REVIEWED
+- Stack 01 (Canon + Sovereignty) confirmed complete.
+- Stack 02 (Mission Substrate) confirmed complete — Mission is root unit, MissionRepository live.
+- `RUBERRA_CURRENT_PHASE` = "birth" — correct phase for Stack 03 work.
+- Existing `intelligence-foundation.ts` routes to chambers — not mission-bound.
+- No `MissionReasoningRequest`, no routing intelligence per mission, no autonomy layer anywhere.
+
+### 2. PRESERVED
+- `intelligence-foundation.ts` — all 1145 lines untouched; elevated not replaced
+- `runtime-fabric.ts` — unchanged
+- All chamber routing infrastructure in intelligence-foundation.ts
+- All existing ExecutionConsequenceStrip API — new prop is additive only
+- All continuity, signals, ledger, rewards — untouched
+
+### 3. IMPLEMENTED NOW
+**Codex — `src/app/dna/sovereign-intelligence.ts` (NEW):**
+- Stack order guard: asserts ["canon", "mission"] installed before intelligence activates
+- **Layer A — Reasoning:** `ReasoningMode` (8 modes), `ReasoningStep`, `MissionReasoningRequest`, `MissionReasoningResult`
+- **Layer B — Routing:** `MissionRouteRequest`, `MissionRouteResult`, `resolveMissionRoute()` — mission-aware pioneer dispatch with chamberLead → pioneer mapping, fallback chains, depth routing
+- **Layer C — Memory Intelligence:** `MemoryPriority` (5 levels), `MemoryItem`, `prioritizeMemory()` — recency + frequency + query relevance scoring, compression awareness
+- **Layer D — Orchestration:** `MissionOrchestrationPlan`, `buildOrchestrationPlan()` — lead/support assignment, cross-chamber path detection
+- **Layer E — Tool Intelligence:** `ToolDecisionOutcome` (use/skip/fallback/chain), `ToolChainStep`, `ToolChain`, `ToolConsequenceRecord`
+- **Layer F — Context Compression:** `ContextFrameType` (7 types), `CompressionPolicy` (4 policies), `COMPRESSION_POLICY_MATRIX` (4×7), `applyCompressionPolicy()` — budget enforcement, compress/discard/keep per policy
+- **Layer G — Autonomy:** `AutonomyDecision` (continue/pause_check/escalate/stop), `RiskLevel` (5 levels), `AutonomyPolicy`, `AutonomySignal`, `evaluateAutonomy()` — forbidden action detection, irreversible action escalation, step count threshold
+- **Layer H — Insight:** `InsightType` (7 types), `InsightPriority`, `MissionInsight`, `detectMissionDrift()`, `suggestNextBestAction()` — drift detection, run-count-aware next action suggestions
+- **Intelligence State:** `MissionIntelligenceState` — unified per-mission intelligence envelope, `defaultMissionIntelligenceState()`
+
+**Cursor — `src/app/components/ExecutionConsequenceStrip.tsx` (UPDATED):**
+- Added `missionName?: string` prop — optional mission binding
+- Renders "mission · <name>" line at top of strip when provided — monospace, subdued, pre-identity-spine
+- All existing props and rendering logic preserved — fully additive, zero breakage
+
+### 4. WHAT IS NOW MATERIALLY ALIVE
+- Intelligence is mission-bound, not session-bound or chamber-bound
+- `resolveMissionRoute()` routes based on mission's chamberLead + status + depth
+- `evaluateAutonomy()` gates autonomous actions against mission policy
+- `applyCompressionPolicy()` manages context budget per 4 compression policies
+- `detectMissionDrift()` / `suggestNextBestAction()` provide mission-level insight
+- `ExecutionConsequenceStrip` carries optional mission binding line — visible surface proof
+- Stack order enforced at module load — intelligence cannot activate without canon + mission
+
+### 5. OPEN RESIDUE
+- None. Stack 03 is materially complete.
+
+### 6. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Stack 03 — Sovereign Intelligence (Phase 1 Birth)
+- **FILES TOUCHED:** `src/app/dna/sovereign-intelligence.ts` (new), `src/app/components/ExecutionConsequenceStrip.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `claude/install-ruberra-dna-lT28B`
+- **BUILD STATUS:** VERIFIED (vite build exits 0, 2100 modules, 0 errors)
+- **RUNTIME STATUS:** VERIFIED
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Sovereign authorizes merge to main. Stack 04 opens only on sovereign command.
+
+---
+
+## AUDIT 006 — STACK 02: MISSION SUBSTRATE IMPLEMENTATION
+**Date:** April 1, 2026
+**Target:** Stack 02 — Mission Substrate (Phase 1 Birth, second frontier)
+
+### 1. STATE REVIEWED
+- Stack 01 (Canon + Sovereignty) confirmed complete on branch.
+- `canon-sovereignty.ts` active — identity filter, order gate, phase gate all callable.
+- `RUBERRA_CURRENT_PHASE` = "birth" — correct phase for Stack 02 work.
+- No `Mission` type existed anywhere in the codebase — root unit was `ContinuityItem` (session/run scoped).
+- "projects" view in ProfileMode showed Workflow Templates + Work Items — not mission-first.
+
+### 2. PRESERVED
+- All existing runtime-fabric.ts (unchanged — 1145 lines, zero touch)
+- All continuity, signals, ledger, rewards, connector systems
+- All chamber surfaces (Lab, School, Creation) — untouched
+- HeroLanding, SovereignBar, shell-types — all preserved
+- ProfileMode "projects" view structure — workflow templates and work items subordinated below mission repository
+
+### 3. IMPLEMENTED NOW
+**Codex — `src/app/dna/mission-substrate.ts` (NEW):**
+- Stack order guard: asserts "canon" is installed before mission-substrate activates
+- `Mission` root type: identity + workflow + memory + ledger + runtime + artifacts + policy
+- `MissionIdentity`: name, description, notThis, chamberLead, outcomeStatement, successCriteria, scope, tags
+- `MissionWorkflow`: pioneerStack, routingBias, fallbackBias, executionStyle, workflowTemplateId, continuityRefs
+- `MissionMemory`: decisions[], context, constraints[], priorReasoning[], continuityRefs[], lastUpdated
+- `MissionLedger`: runHistory[], transitions[], currentState, lastRunAt, lastRunDigest
+- `MissionRuntime`: testable, previewable, deployable, executionState
+- `MissionArtifactLayer`: artifacts[], exportHistory[]
+- `MissionPolicy`: allowed[], forbidden[], automate[], requiresApproval[], connectorAllowlist[], modelAllowlist[]
+- Factory: `createMission()` — births a mission with minimal required fields, all layers initialized
+- Helpers: `getMission()`, `getMissionsByStatus()`, `getActiveMissions()`, `transitionMission()`, `upsertMission()`, `linkContinuityToMission()`
+- Display constants: `MISSION_STATUS_LABEL`, `MISSION_STATUS_COLOR`, `CHAMBER_ACCENT`
+- Persistence: `loadMissions()`, `saveMissions()`, `MISSIONS_STORAGE_KEY`
+
+**Cursor — `src/app/components/MissionRepository.tsx` (NEW):**
+- Mission repository visible shell: header, mission list, birth form
+- `BirthForm`: inline form (no modal, no wizard) — name + chamber lead + outcome + scope
+- `MissionRow`: dense ledger-weight row — chamber dot, name, outcome, status, run count, artifact count, enter button
+- On birth → navigates operator into the mission's chamber immediately
+- Empty state: honest, action-bearing, no decoration
+- Antigravity surface law: no card grid, no badges, no progress bars — monospace status, 5px chamber dot only
+
+**App.tsx — mission state:**
+- `missions: Mission[]` state initialized from `loadMissions()`
+- `saveMissions(missions)` side effect persists to localStorage
+- `handleMissionUpsert` callback calls `upsertMission()`
+- `missions` and `onMissionUpsert` passed to ProfileMode
+
+**ProfileMode.tsx — mission wiring:**
+- `missions: Mission[]` and `onMissionUpsert: (m: Mission) => void` added to interface + destructure
+- `MissionRepository` rendered at top of "projects" view — mission-first, work items subordinated
+
+### 4. WHAT IS NOW MATERIALLY ALIVE
+- Mission is the root object of work in Ruberra — typed, persistent, consequence-bearing
+- `createMission()` produces a fully initialized Mission with all 9 layers
+- Mission repository visible in Profile → Projects view — list, birth form, enter action
+- Birth flow navigates operator into the correct chamber immediately
+- Missions persist across sessions via localStorage
+- Stack order enforcement runs at module load — warns if "canon" is not installed
+- No SaaS contamination: no project list metaphor, no card grid, no modal wizard
+
+### 5. OPEN RESIDUE
+- None. Stack 02 is materially complete.
+
+### 6. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Stack 02 — Mission Substrate (Phase 1 Birth)
+- **FILES TOUCHED:** `src/app/dna/mission-substrate.ts` (new), `src/app/components/MissionRepository.tsx` (new), `src/app/components/modes/ProfileMode.tsx`, `src/app/App.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `claude/install-ruberra-dna-lT28B`
+- **BUILD STATUS:** VERIFIED (vite build exits 0, 2100 modules, 0 errors)
+- **RUNTIME STATUS:** VERIFIED
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Sovereign authorizes merge to main. Stack 03 opens only on sovereign command.
+
+---
+
+## AUDIT 005 — STACK 01: CANON + SOVEREIGNTY IMPLEMENTATION
+**Date:** April 1, 2026
+**Target:** Stack 1 material implementation — Phase 1 (Birth) opened
+
+### 1. STATE REVIEWED
+- DNA layer (Phase 0) confirmed merged to main.
+- `stack-registry.ts` confirmed carrying all 20 stacks, types, helpers, phase map, cascade law.
+- `RUBERRA_CURRENT_PHASE` was correctly set to `"constitution"` — now advanced to `"birth"`.
+- No Stack 2 opened. No operational expansion. No drift.
+
+### 2. PRESERVED
+- All existing runtime truth: `runtime-fabric.ts`, `intelligence-foundation.ts`, `sovereign-runtime.ts`
+- All chamber consequence model (Lab/School/Creation)
+- Profile ledger sovereignty
+- HeroLanding, SovereignBar, shell-types — all real, kept intact
+
+### 3. IMPLEMENTED NOW
+**Codex — Constitutional Substrate (`src/app/dna/canon-sovereignty.ts`):**
+- `MOTHER_LAW` — immutable sovereign identity record, runtime-accessible
+- `runIdentityFilter(candidate)` — runtime identity gate for any proposed surface/feature
+- `assertStackOrder(id, installed[])` — dependency enforcement before any stack opens
+- `scanForDrift(surfaces[])` — anti-drift scanner returns only failing surfaces
+- `assertPhaseGate(required)` — blocks capability access before its phase is active
+- `validateCanonRegistry()` — self-validates stack registry on module load; logs violations
+- `CONSTITUTIONAL_TRUTH` — single exportable truth record (phase, law, identity, counts)
+- Self-validation runs at module load — silent on clean registry, warns on violation
+
+**Codex — Phase Advance (`src/app/dna/stack-registry.ts`):**
+- `RUBERRA_CURRENT_PHASE` advanced from `"constitution"` to `"birth"` — sovereign authorization confirmed
+
+**Cursor — Constitutional Surface (`src/app/components/SovereignBar.tsx`):**
+- Watermark updated: `mode` label replaced by `CONSTITUTIONAL_TRUTH.currentPhase`
+- Bar now carries live constitutional phase signal (`birth | {chamber}`) instead of static label
+- Import: `CONSTITUTIONAL_TRUTH` from `../dna/canon-sovereignty`
+- Surface is minimal, monospace, calm — not a dashboard indicator
+
+**Antigravity — Surface Discipline:**
+- Constitutional signal is textual, subdued (opacity 0.25), monospace — not a badge, not a chip, not a progress bar
+- One line, no icons, no color drama — the organism knows its own state quietly
+- Anti-SaaS: no status widget, no phase progress bar, no celebration animation
+
+**Copilot — QA:**
+- No circular imports: `stack-registry` ← `canon-sovereignty` ← `SovereignBar` (one-way chain, clean)
+- `CONSTITUTIONAL_TRUTH` is `as const` — no mutable state exported
+- Self-validation uses `console.warn`, not `throw` — no crashable surface
+- All `StackId` and `StackPhase` types imported, not duplicated
+- Build verified: 0 TypeScript errors, 0 runtime errors, clean vite output
+
+### 4. WHAT IS NOW MATERIALLY ALIVE
+- Stack 01 (Canon + Sovereignty) is operational as constitutional substrate
+- Runtime identity filter is live and callable
+- Stack order enforcement is callable before any pioneer opens a new stack
+- Anti-drift scanner is callable against any proposed surface set
+- Phase gate enforcement is callable for any capability gating
+- Constitutional truth is readable at runtime from any module
+- SovereignBar carries the constitutional phase signal natively
+
+### 5. OPEN RESIDUE
+- None. Stack 01 is materially complete.
+
+### 6. WHAT REMAINS BEFORE STACK 02
+- Stack 02 (Mission Substrate) requires Stack 01 to be complete — confirmed complete.
+- Sovereign authorization required to open Stack 02.
+
+### 7. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Stack 01 — Canon + Sovereignty (Phase 1 Birth)
+- **FILES TOUCHED:** `src/app/dna/canon-sovereignty.ts` (new), `src/app/dna/stack-registry.ts`, `src/app/components/SovereignBar.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `claude/install-ruberra-dna-lT28B`
+- **BUILD STATUS:** VERIFIED (vite build exits 0, 0 TypeScript errors)
+- **RUNTIME STATUS:** VERIFIED
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Sovereign authorizes merge to main. Stack 02 opens only on sovereign command.
+
+---
+
 ## AUDIT 005 — VISION DNA CONSTITUTIONAL INSTALLATION (Claude lead)
 **Date:** April 1, 2026
 **Target:** Install full Ruberra Vision DNA as the constitutional layer of the system
