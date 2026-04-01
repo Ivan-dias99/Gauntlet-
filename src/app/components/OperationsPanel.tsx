@@ -76,10 +76,10 @@ const PHASE_COLOR: Record<MissionTaskPhase, string> = {
 
 const FLOW_STATUS_LABEL: Record<OperationFlowStatus, string> = {
   initializing: "Initializing",
-  active:       "Active",
-  paused:       "Paused",
-  completing:   "Completing",
-  completed:    "Completed",
+  active:       "Live",
+  paused:       "Suspended",
+  completing:   "Closing",
+  completed:    "Closed",
   blocked:      "Blocked",
   aborted:      "Aborted",
 };
@@ -172,7 +172,7 @@ function Row({ children, style }: { children: React.ReactNode; style?: CSSProper
 // ─── Task list ────────────────────────────────────────────────────────────────
 
 function TaskList({ tasks, navigate }: { tasks: MissionTask[]; navigate: NavFn }) {
-  if (tasks.length === 0) return <EmptySlate label="No active tasks" />;
+  if (tasks.length === 0) return <EmptySlate label="No active mission tasks" />;
 
   return (
     <div>
@@ -193,18 +193,20 @@ function TaskList({ tasks, navigate }: { tasks: MissionTask[]; navigate: NavFn }
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
+              letterSpacing: "0.01em",
             }}>
-              {task.title}
+              {task.intent}
             </div>
             <div style={{
               fontSize: "11px",
-              color: "var(--r-subtext)",
+              color: "var(--r-dim)",
               marginTop: "2px",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
+              letterSpacing: "0.02em",
             }}>
-              {task.intent}
+              {task.title}
             </div>
           </div>
           <Pill color={CHAMBER_COLOR[task.chamber]} label={task.chamber} />
@@ -255,7 +257,7 @@ function HandoffQueue({
   onReject:  (id: string, reason: string) => void;
 }) {
   const pending = handoffs.filter((h) => h.state === "pending");
-  if (pending.length === 0) return <EmptySlate label="No pending handoffs" />;
+  if (pending.length === 0) return <EmptySlate label="No pending mission handoffs" />;
 
   return (
     <div>
@@ -297,10 +299,10 @@ function HandoffQueue({
               cursor: "pointer",
             }}
           >
-            Accept
+            Receive
           </button>
           <button
-            onClick={() => onReject(h.id, "rejected by operator")}
+            onClick={() => onReject(h.id, "declined by operator")}
             style={{
               padding: "3px 8px",
               borderRadius: "5px",
@@ -311,7 +313,7 @@ function HandoffQueue({
               cursor: "pointer",
             }}
           >
-            Reject
+            Decline
           </button>
         </Row>
       ))}
@@ -323,7 +325,7 @@ function HandoffQueue({
 
 function FlowList({ flows }: { flows: OperationFlow[] }) {
   const live = flows.filter((f) => f.status !== "completed" && f.status !== "aborted");
-  if (live.length === 0) return <EmptySlate label="No active operation flows" />;
+  if (live.length === 0) return <EmptySlate label="No execution flows in motion" />;
 
   return (
     <div>
@@ -347,38 +349,66 @@ function FlowList({ flows }: { flows: OperationFlow[] }) {
               <Pill color={FLOW_STATUS_COLOR[flow.status]} label={FLOW_STATUS_LABEL[flow.status]} />
             </div>
 
-            {/* Progress bar */}
-            <div style={{ width: "100%", height: "3px", background: "var(--r-border)", borderRadius: "2px", overflow: "hidden" }}>
-              <div style={{
-                width: `${progress}%`,
-                height: "100%",
-                background: FLOW_STATUS_COLOR[flow.status],
-                borderRadius: "2px",
-                transition: "width 0.3s ease",
-              }} />
+            {/* Execution progress */}
+            <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ flex: 1, height: "2px", background: "var(--r-border)", borderRadius: "2px", overflow: "hidden" }}>
+                <div style={{
+                  width: `${progress}%`,
+                  height: "100%",
+                  background: FLOW_STATUS_COLOR[flow.status],
+                  borderRadius: "2px",
+                  transition: "width 0.3s ease",
+                }} />
+              </div>
+              <span style={{
+                fontSize: "9px",
+                fontFamily: "'JetBrains Mono', monospace",
+                color: "var(--r-dim)",
+                letterSpacing: "0.04em",
+                flexShrink: 0,
+              }}>
+                {done}/{total}
+              </span>
             </div>
 
-            {/* Phase trail */}
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-              {flow.phases.map((phase) => (
-                <span
-                  key={phase.id}
-                  style={{
-                    fontSize: "10px",
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                    background: phase.status === "active"    ? "color-mix(in srgb, var(--r-ok) 14%, transparent)"
-                              : phase.status === "completed" ? "color-mix(in srgb, var(--r-dim) 14%, transparent)"
-                              : phase.status === "blocked"   ? "color-mix(in srgb, var(--r-err) 14%, transparent)"
-                              : "var(--r-border)",
-                    color: phase.status === "active"    ? "var(--r-ok)"
-                         : phase.status === "completed" ? "var(--r-dim)"
-                         : phase.status === "blocked"   ? "var(--r-err)"
-                         : "var(--r-subtext)",
-                    fontWeight: phase.status === "active" ? 600 : 400,
-                  }}
-                >
-                  {phase.label}
+            {/* Execution trace — phase sequence */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0", flexWrap: "wrap" }}>
+              {flow.phases.map((phase, idx) => (
+                <span key={phase.id} style={{ display: "inline-flex", alignItems: "center" }}>
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      padding: "2px 8px",
+                      borderRadius: "3px",
+                      background: phase.status === "active"    ? "color-mix(in srgb, var(--r-ok) 14%, transparent)"
+                                : phase.status === "completed" ? "transparent"
+                                : phase.status === "blocked"   ? "color-mix(in srgb, var(--r-err) 14%, transparent)"
+                                : "transparent",
+                      border: phase.status === "active"    ? "1px solid color-mix(in srgb, var(--r-ok) 32%, transparent)"
+                            : phase.status === "completed" ? "1px solid transparent"
+                            : phase.status === "blocked"   ? "1px solid color-mix(in srgb, var(--r-err) 28%, transparent)"
+                            : "1px solid transparent",
+                      color: phase.status === "active"    ? "var(--r-ok)"
+                           : phase.status === "completed" ? "var(--r-dim)"
+                           : phase.status === "blocked"   ? "var(--r-err)"
+                           : "color-mix(in srgb, var(--r-subtext) 35%, transparent)",
+                      fontWeight: phase.status === "active" ? 600 : 400,
+                      letterSpacing: "0.04em",
+                      textTransform: phase.status === "active" ? "uppercase" : "none",
+                      fontFamily: phase.status === "active" ? "'JetBrains Mono', monospace" : "inherit",
+                      fontSize: phase.status === "active" ? "9px" : "10px",
+                    }}
+                  >
+                    {phase.label}
+                  </span>
+                  {idx < flow.phases.length - 1 && (
+                    <span style={{
+                      fontSize: "9px",
+                      color: "color-mix(in srgb, var(--r-dim) 35%, transparent)",
+                      padding: "0 1px",
+                      userSelect: "none",
+                    }}>→</span>
+                  )}
                 </span>
               ))}
             </div>
@@ -410,7 +440,7 @@ function SignalFeed({
   navigate:  NavFn;
 }) {
   const live = signals.filter((s) => !s.resolved).slice(0, 12);
-  if (live.length === 0) return <EmptySlate label="No active signals" />;
+  if (live.length === 0) return <EmptySlate label="No mission signals active" />;
 
   return (
     <div>
@@ -430,8 +460,21 @@ function SignalFeed({
             flexShrink: 0,
           }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)" }}>
-              {SIGNAL_KIND_LABEL[sig.kind]}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--r-text)", letterSpacing: "0.01em" }}>
+                {SIGNAL_KIND_LABEL[sig.kind]}
+              </div>
+              <span style={{
+                fontSize: "9px",
+                fontWeight: 600,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                color: sig.severity === "critical" ? "var(--r-err)"
+                     : sig.severity === "warn"     ? "var(--r-warn)"
+                     : "var(--r-accent)",
+              }}>
+                {sig.severity}
+              </span>
             </div>
             <div style={{
               fontSize: "11px",
@@ -439,6 +482,7 @@ function SignalFeed({
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
+              marginTop: "2px",
             }}>
               {sig.body}
             </div>
@@ -454,6 +498,7 @@ function SignalFeed({
                 color: "var(--r-dim)",
                 fontSize: "10px",
                 cursor: "pointer",
+                letterSpacing: "0.03em",
               }}
             >
               Read
@@ -488,7 +533,7 @@ function SignalFeed({
                 cursor: "pointer",
               }}
             >
-              Resolve
+              Clear
             </button>
           )}
         </Row>
@@ -501,7 +546,7 @@ function SignalFeed({
 
 function GovernanceTrail({ records }: { records: ExecutionGovernanceRecord[] }) {
   const recent = records.slice(0, 8);
-  if (recent.length === 0) return <EmptySlate label="No governance records yet" />;
+  if (recent.length === 0) return <EmptySlate label="Governance ledger is clear" />;
 
   return (
     <div>
@@ -516,25 +561,31 @@ function GovernanceTrail({ records }: { records: ExecutionGovernanceRecord[] }) 
           <Row key={rec.id}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontSize: "12px",
-                fontWeight: 500,
-                color: "var(--r-text)",
                 display: "flex",
-                gap: "6px",
-                alignItems: "center",
+                gap: "8px",
+                alignItems: "baseline",
               }}>
-                <span style={{ color: resultColor }}>{GOV_ACTION_LABEL[rec.action]}</span>
-                <span style={{ color: "var(--r-dim)", fontWeight: 400, fontSize: "11px" }}>
-                  by {rec.triggeredBy}
+                <span style={{
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  color: resultColor,
+                  letterSpacing: "0.02em",
+                  textTransform: "uppercase",
+                }}>
+                  {GOV_ACTION_LABEL[rec.action]}
+                </span>
+                <span style={{ color: "var(--r-dim)", fontWeight: 400, fontSize: "11px", letterSpacing: "0.01em" }}>
+                  — {rec.triggeredBy}
                 </span>
               </div>
               <div style={{
-                fontSize: "11px",
-                color: "var(--r-subtext)",
-                marginTop: "2px",
+                fontSize: "12px",
+                color: "var(--r-text)",
+                marginTop: "3px",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
+                fontStyle: "italic",
               }}>
                 {rec.consequence}
               </div>
@@ -546,7 +597,7 @@ function GovernanceTrail({ records }: { records: ExecutionGovernanceRecord[] }) 
               />
             )}
             {!rec.result && (
-              <Pill color="var(--r-warn)" label="in flight" />
+              <Pill color="var(--r-warn)" label="executing" />
             )}
           </Row>
         );
@@ -620,46 +671,49 @@ export function OperationsPanel({
           background: requiresAttention ? "var(--r-warn)" : "var(--r-ok)",
           flexShrink: 0,
         }} />
-        <div>
-          <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--r-text)" }}>
-            {requiresAttention ? "Requires Attention" : "Operations Nominal"}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--r-text)", letterSpacing: "0.01em" }}>
+            {requiresAttention ? "Mission Requires Operator Disposition" : "Mission Execution Nominal"}
           </div>
-          <div style={{ fontSize: "11px", color: "var(--r-subtext)", marginTop: "1px" }}>
-            {activeTasks.length} active · {blockedTasks.length} blocked · {flows.filter((f) => f.status === "active").length} flows running · {pendingHandoffs.length} handoffs pending
+          <div style={{ fontSize: "11px", color: "var(--r-subtext)", marginTop: "2px", letterSpacing: "0.01em" }}>
+            {activeTasks.length} {activeTasks.length === 1 ? "task" : "tasks"} in execution
+            {blockedTasks.length > 0 ? ` · ${blockedTasks.length} blocked` : ""}
+            {" · "}{flows.filter((f) => f.status === "active").length} {flows.filter((f) => f.status === "active").length === 1 ? "flow" : "flows"} live
+            {pendingHandoffs.length > 0 ? ` · ${pendingHandoffs.length} ${pendingHandoffs.length === 1 ? "handoff" : "handoffs"} awaiting disposition` : ""}
           </div>
         </div>
       </div>
 
-      {/* Active tasks */}
+      {/* Mission tasks */}
       <div style={sectionStyle}>
-        <SectionLabel>Active Tasks</SectionLabel>
+        <SectionLabel>Mission Tasks</SectionLabel>
         <div style={cardStyle}>
           <TaskList tasks={activeTasks} navigate={navigate} />
         </div>
       </div>
 
-      {/* Blocked tasks */}
+      {/* Mission blockers */}
       {blockedTasks.length > 0 && (
         <div style={sectionStyle}>
-          <SectionLabel>Blocked</SectionLabel>
+          <SectionLabel>Mission Blockers</SectionLabel>
           <div style={cardStyle}>
             <TaskList tasks={blockedTasks} navigate={navigate} />
           </div>
         </div>
       )}
 
-      {/* Operation flows */}
+      {/* Execution flows */}
       <div style={sectionStyle}>
-        <SectionLabel>Operation Flows</SectionLabel>
+        <SectionLabel>Active Execution Flows</SectionLabel>
         <div style={cardStyle}>
           <FlowList flows={flows} />
         </div>
       </div>
 
-      {/* Handoff queue */}
+      {/* Mission handoffs */}
       {pendingHandoffs.length > 0 && (
         <div style={sectionStyle}>
-          <SectionLabel>Handoff Queue</SectionLabel>
+          <SectionLabel>Mission Handoffs</SectionLabel>
           <div style={cardStyle}>
             <HandoffQueue
               handoffs={handoffs}
@@ -672,7 +726,7 @@ export function OperationsPanel({
 
       {/* Signal feed */}
       <div style={sectionStyle}>
-        <SectionLabel>Signals</SectionLabel>
+        <SectionLabel>Execution Signals</SectionLabel>
         <div style={cardStyle}>
           <SignalFeed
             signals={signals}
@@ -685,7 +739,7 @@ export function OperationsPanel({
 
       {/* Governance trail */}
       <div style={sectionStyle}>
-        <SectionLabel>Execution Governance</SectionLabel>
+        <SectionLabel>Governance Ledger</SectionLabel>
         <div style={cardStyle}>
           <GovernanceTrail records={governance} />
         </div>
