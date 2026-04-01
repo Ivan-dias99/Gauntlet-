@@ -8,6 +8,8 @@ import { Search, Bell, ChevronDown } from "lucide-react";
 import { type Tab, type Theme } from "./shell-types";
 import { ProfileLedger } from "./ProfileLedger";
 import { CONSTITUTIONAL_TRUTH } from "../dna/canon-sovereignty";
+import { SecurityTrustSignal } from "./SecurityTrustSignal";
+import { type TrustSignal } from "../dna/sovereign-security";
 import { useState } from "react";
 
 // Chamber dot colors — authentic per-chamber tokens
@@ -29,6 +31,8 @@ interface SovereignBarProps {
   onSignalsToggle?: () => void;
   hasSignals?:    boolean;
   onManageMatrix?: () => void;
+  trustSignal?:   TrustSignal;
+  onSecurityAcknowledge?: () => void;
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -106,7 +110,7 @@ function IconBtn({
 }
 
 export function SovereignBar({
-  activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals, onManageMatrix,
+  activeTab, onTabChange, onHomeClick, isLive, theme, onThemeToggle, onSearchToggle, onSignalsToggle, hasSignals, onManageMatrix, trustSignal = "healthy", onSecurityAcknowledge,
 }: SovereignBarProps) {
   const [isLedgerOpen, setLedgerOpen] = useState(false);
 
@@ -303,6 +307,9 @@ export function SovereignBar({
             )}
           </IconBtn>
         )}
+
+        {/* Security trust signal — silent when healthy */}
+        <SecurityTrustSignal signal={trustSignal} onAcknowledge={onSecurityAcknowledge} />
 
         {/* Divider */}
         <div style={{ width: "1px", height: "14px", background: "var(--r-border)", margin: "0 5px" }} />
