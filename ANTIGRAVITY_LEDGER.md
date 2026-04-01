@@ -138,6 +138,40 @@ The following remote branches were found polluting the repository space:
 
 ---
 
+## AUDIT 006 — SIGNALS PANEL FUNCTIONAL REPAIR (Copilot)
+**Date:** April 1, 2026
+**Target:** Fix non-functional `SignalsPanel.tsx` — interface mismatch with `App.tsx`
+
+### 1. EXECUTION BLOCKS
+
+**SIGNALS PANEL COMPLETE REWRITE (Copilot)**
+- **Action:** `SignalsPanel.tsx` had a dead interface (`signals?: SignalRecord[]`, `anomalies?: AnomalyRecord[]`) that did not match the `App.tsx` call site which passes `open`, `onClose`, `signals: RuntimeSignal[]`, `onOpen`, `onDismiss`, `onMarkAllRead`. The panel never opened or closed — entirely non-functional.
+- **Action:** Rewrote `SignalsPanel.tsx` from scratch with the correct interface matching `App.tsx`:
+  - `open: boolean` — conditional render via `AnimatePresence`
+  - `onClose: () => void` — close button + click-outside (`pointerdown` listener)
+  - `signals: RuntimeSignal[]` — reads severity, type, label, read state from runtime fabric
+  - `onOpen: (signal) => void` — navigates to signal destination + marks read + closes
+  - `onDismiss: (id) => void` — marks signal read without navigating
+  - `onMarkAllRead: () => void` — clears all unread badges
+- **Action:** Severity rail — 2px left border colored by `var(--r-ok)` / `var(--r-warn)` / `var(--r-err)` per signal severity.
+- **Action:** Signals sorted: critical first, then warn, then info; unread first within each group.
+- **Action:** Unread pulse dot per signal row + unread count badge in panel header.
+- **Action:** "Mark all read" button visible only when unread > 0.
+- **Action:** Slide-in animation from top-right, 340px wide, max-height 480px, scrollable list.
+- **Status:** **COMPLETE**.
+
+### 2. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Signals Panel Functional Repair
+- **FILES TOUCHED:** `src/app/components/SignalsPanel.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `copilot/do-your-task-on-this-branch`
+- **BUILD STATUS:** VERIFIED (vite build exits 0)
+- **RUNTIME STATUS:** VERIFIED — panel now opens/closes, signals render, Open/Dismiss/Mark all read work
+- **OPEN ISSUES:** 0
+- **OWNER-RISK:** 0% — prior `SignalRecord`/`AnomalyRecord` export types removed (were unused by all callers)
+- **NEXT REQUIRED ACTION:** Merge to `main` after sovereign review.
+
+---
+
 ## AUDIT 004a — SHELL SIGNALS & COMMAND SURFACE (Claude lead / Cursor branch)
 **Date:** March 31, 2026  
 **Target:** Close gap-map stubs for search + notifications on `cursor/claude-task-force-leadership-97fb`
