@@ -587,4 +587,5 @@ export const CASCADE_LAW_VIOLATIONS: readonly string[] = [
  * UPDATED: Stacks 01–05 landed 2026-04-01. Phase advances to "intelligence"
  * by sovereign authorization.
  */
-export const RUBERRA_CURRENT_PHASE: StackPhase = "intelligence";
+export const RUBERRA_CURRENT_PHASE: StackPhase = "constitution";
+export const RUBERRA_CURRENT_PHASE: StackPhase = "sovereignty";

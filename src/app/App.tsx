@@ -830,6 +830,9 @@ export default function App() {
         onSignalsToggle={() => setSignalsOpen((v) => !v)}
         hasSignals={hasSignals}
         onManageMatrix={() => { setActiveTab("profile"); setProfileView("pioneers"); }}
+        systemHealth={runtimeFabric.systemHealth}
+        workspaceOwner={runtimeFabric.workspace.owner}
+        workspaceSubtitle={`${runtimeFabric.workspace.activeProject} · ledger`}
       />
 
       {/* Mission Context Band — global mission binding, shown across all chambers */}
