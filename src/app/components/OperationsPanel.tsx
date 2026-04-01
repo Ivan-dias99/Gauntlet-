@@ -377,7 +377,7 @@ function FlowList({ flows }: { flows: OperationFlow[] }) {
                 <span key={phase.id} style={{ display: "inline-flex", alignItems: "center" }}>
                   <span
                     style={{
-                      fontSize: "10px",
+                      fontSize: phase.status === "active" ? "9px" : "10px",
                       padding: "2px 8px",
                       borderRadius: "3px",
                       background: phase.status === "active"    ? "color-mix(in srgb, var(--r-ok) 14%, transparent)"
@@ -396,7 +396,6 @@ function FlowList({ flows }: { flows: OperationFlow[] }) {
                       letterSpacing: "0.04em",
                       textTransform: phase.status === "active" ? "uppercase" : "none",
                       fontFamily: phase.status === "active" ? "'JetBrains Mono', monospace" : "inherit",
-                      fontSize: phase.status === "active" ? "9px" : "10px",
                     }}
                   >
                     {phase.label}
@@ -460,21 +459,28 @@ function SignalFeed({
             flexShrink: 0,
           }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--r-text)", letterSpacing: "0.01em" }}>
-                {SIGNAL_KIND_LABEL[sig.kind]}
-              </div>
-              <span style={{
-                fontSize: "9px",
+            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+              <div style={{
+                fontSize: "12px",
                 fontWeight: 600,
-                letterSpacing: "0.07em",
-                textTransform: "uppercase",
                 color: sig.severity === "critical" ? "var(--r-err)"
                      : sig.severity === "warn"     ? "var(--r-warn)"
-                     : "var(--r-accent)",
+                     : "var(--r-text)",
+                letterSpacing: "0.01em",
               }}>
-                {sig.severity}
-              </span>
+                {SIGNAL_KIND_LABEL[sig.kind]}
+              </div>
+              {sig.chamber && (
+                <span style={{
+                  fontSize: "9px",
+                  fontWeight: 500,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "var(--r-dim)",
+                }}>
+                  {sig.chamber}
+                </span>
+              )}
             </div>
             <div style={{
               fontSize: "11px",
