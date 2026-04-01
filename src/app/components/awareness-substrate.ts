@@ -268,6 +268,7 @@ export function buildAnomalyRecord(
 }
 
 export function aggregateHealth(dimensions: DimensionHealth[]): HealthSignal {
+  if (dimensions.length === 0) return "unknown";
   if (dimensions.some((d) => d.signal === "critical")) return "critical";
   if (dimensions.some((d) => d.signal === "degraded")) return "degraded";
   if (dimensions.some((d) => d.signal === "unknown"))  return "unknown";
