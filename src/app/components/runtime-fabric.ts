@@ -3,11 +3,13 @@ import { type Message, type Tab } from "./shell-types";
 import {
   defaultIntelligenceFoundationState,
   resolveRouteDecision,
+  type ModelProviderDefinition,
   type IntelligenceFoundationState,
   type PresenceMetadata,
   type ProvenanceTraceEvent,
   type RouteDecisionInput,
   type WorkflowTemplate,
+  type WorkflowExportPack,
 } from "./intelligence-foundation";
 
 export type LifecycleStatus =
@@ -36,6 +38,10 @@ export interface ContinuityItem {
   giId?: string;
   hostingLevel?: "hosted" | "wrapped" | "proxy";
   connectorRefs?: string[];
+  supportChain?: string[];
+  providerId?: string;
+  providerLane?: "open_source_local" | "free_provider" | "wrapped_external" | "premium_hosted_future";
+  modelId?: string;
   routeReason?: string;
   transferDestinations: Exclude<Tab, "profile">[];
   updatedAt: number;
@@ -82,6 +88,7 @@ export interface ConnectorState {
   enabled: boolean;
   status: "ready" | "needs_config" | "degraded";
   completeness: number;
+  lastOutcome?: "success" | "failed" | "degraded";
   lastUpdated: number;
 }
 
@@ -99,6 +106,7 @@ export interface AISettingsState {
   safetyMode: "standard" | "strict";
   autoSummaries: boolean;
   allowFallbackRouting: boolean;
+  localRuntimeEndpoint?: string;
   lastUpdated: number;
 }
 
@@ -140,6 +148,156 @@ export interface ContinuityRecommendation {
   destination: { tab: Tab; view: string; id?: string };
 }
 
+
+export interface ExecutionResultRecord {
+  id: string;
+  continuityId: string;
+  chamber: Exclude<Tab, "profile">;
+  requestedProviderId?: string;
+  selectedProviderId: string;
+  requestedModelId?: string;
+  selectedModelId: string;
+  providerLane?: "open_source_local" | "free_provider" | "wrapped_external" | "premium_hosted_future";
+  executionMode: "local" | "wrapped" | "hosted_scaffold";
+  executionState:
+    | "live"
+    | "completed"
+    | "degraded"
+    | "blocked"
+    | "failed"
+    | "fallback_used"
+    | "provider_unavailable"
+    | "connector_unavailable"
+    | "scaffold_only";
+  fallbackUsed: boolean;
+  providerUnavailable: boolean;
+  connectorUnavailable: boolean;
+  scaffoldOnly: boolean;
+  connectorPathUsed: boolean;
+  workflowId?: string;
+  outcome: "success" | "degraded" | "blocked" | "error";
+  latencyMs?: number;
+  blockedReason?: string;
+  errorMessage?: string;
+  createdAt: number;
+}
+
+export interface ConnectorActionRecord {
+  id: string;
+  continuityId: string;
+  workflowId?: string;
+  requestedConnectorId: string;
+  selectedConnectorId: string;
+  connectorId: string;
+  chamber: Tab;
+  action: "read" | "write" | "sync" | "export" | "deploy" | "webhook";
+  phase: "requested" | "executing" | "completed" | "failed";
+  status: "success" | "failed" | "degraded";
+  connectorAvailable: boolean;
+  retryCount: number;
+  payloadSummary: string;
+  resultSummary: string;
+  errorSummary?: string;
+  degradedMode: boolean;
+  createdAt: number;
+}
+
+export interface ConnectorIOTrace {
+  id: string;
+  continuityId: string;
+  connectorId: string;
+  service: string;
+  route: string;
+  requestPayload: string;
+  responsePayload: string;
+  errorPayload?: string;
+  outcomeClass: "ok" | "degraded" | "failed";
+  retryScheduled: boolean;
+  createdAt: number;
+}
+
+export interface ProviderHealthRecord {
+  providerId: string;
+  state: "healthy" | "degraded" | "unavailable";
+  lastError?: string;
+  lastLatencyMs?: number;
+  updatedAt: number;
+}
+
+export interface WorkflowStageState {
+  id: string;
+  label: string;
+  status: "pending" | "running" | "completed" | "failed";
+  startedAt?: number;
+  endedAt?: number;
+  error?: string;
+}
+
+export interface WorkflowRunRecord {
+  id: string;
+  workflowId: string;
+  continuityId: string;
+  chamber: Exclude<Tab, "profile">;
+  status: "running" | "completed" | "failed" | "degraded";
+  activeStageId: string;
+  stages: WorkflowStageState[];
+  startedAt: number;
+  endedAt?: number;
+  outcomeSummary?: string;
+}
+
+export interface RunTimelineEvent {
+  id: string;
+  continuityId: string;
+  chamber: Tab;
+  type: "execution" | "workflow" | "connector" | "signal";
+  status: "live" | "completed" | "degraded" | "blocked" | "failed";
+  label: string;
+  timestamp: number;
+}
+
+export interface ChamberExecutionPolicy {
+  chamber: Exclude<Tab, "profile">;
+  priorityRoutes: string[];
+  bias: "evidence_heavy" | "clarity_safe" | "terminal_strong";
+  fallbackPolicy: "code_audit_fallback" | "lighter_fast_fallback" | "build_terminal_fallback";
+}
+
+export interface RunDigestCard {
+  continuityId: string;
+  title: string;
+  chamber: Exclude<Tab, "profile">;
+  executionState: ExecutionResultRecord["executionState"];
+  workflowId?: string;
+  connectorCount: number;
+  lastEventLabel?: string;
+  updatedAt: number;
+}
+
+export interface RunOutcomeBundle {
+  continuityId: string;
+  chamber: Exclude<Tab, "profile">;
+  executionState: ExecutionResultRecord["executionState"];
+  provider: { id?: string; state: "healthy" | "degraded" | "unavailable" | "unknown" };
+  connectors: { total: number; degraded: number; failed: number };
+  workflow?: { id: string; status: WorkflowRunRecord["status"] };
+  lastTimelineLabel?: string;
+}
+
+export interface ProviderPodiumPlan {
+  primary: ModelProviderDefinition;
+  fallback?: ModelProviderDefinition;
+  routeClass: "coding" | "reasoning" | "fast";
+}
+
+function pickProvider(
+  providers: ModelProviderDefinition[],
+  lane: ModelProviderDefinition["lane"],
+  chamber: Tab,
+): ModelProviderDefinition | undefined {
+  return providers.find((provider) => provider.lane === lane && provider.chamberSafety.includes(chamber));
+}
+
 export interface RuntimeFabric {
   objects: RuberraObject[];
   continuity: ContinuityItem[];
@@ -151,6 +309,13 @@ export interface RuntimeFabric {
   aiSettings: AISettingsState;
   plugins: PluginRuntimeState[];
   workspace: WorkspaceKnowledge;
+  executionResults: ExecutionResultRecord[];
+  connectorActions: ConnectorActionRecord[];
+  connectorIO: ConnectorIOTrace[];
+  providerHealth: ProviderHealthRecord[];
+  workflowRuns: WorkflowRunRecord[];
+  runTimeline: RunTimelineEvent[];
+  chamberPolicies: ChamberExecutionPolicy[];
   intelligence: IntelligenceFoundationState;
 }
 
@@ -177,8 +342,15 @@ const DEFAULT_AI_SETTINGS: AISettingsState = {
   safetyMode: "standard",
   autoSummaries: true,
   allowFallbackRouting: true,
+  localRuntimeEndpoint: "http://127.0.0.1:11434",
   lastUpdated: Date.now(),
 };
+
+const DEFAULT_CHAMBER_POLICIES: ChamberExecutionPolicy[] = [
+  { chamber: "lab",      priorityRoutes: ["research", "analysis", "audit"],      bias: "evidence_heavy",  fallbackPolicy: "code_audit_fallback" },
+  { chamber: "school",   priorityRoutes: ["tutor", "curriculum", "assessment"],  bias: "clarity_safe",    fallbackPolicy: "lighter_fast_fallback" },
+  { chamber: "creation", priorityRoutes: ["build", "artifact", "code", "drafting"], bias: "terminal_strong", fallbackPolicy: "build_terminal_fallback" },
+];
 
 const DEFAULT_PLUGINS: PluginRuntimeState[] = [
   { id: "calendar-sync", label: "Calendar Sync", enabled: false, status: "needs_auth", scope: "workspace", lastUpdated: Date.now() },
@@ -206,6 +378,13 @@ function initialFabric(): RuntimeFabric {
     aiSettings: DEFAULT_AI_SETTINGS,
     plugins: DEFAULT_PLUGINS,
     workspace: DEFAULT_WORKSPACE,
+    executionResults: [],
+    connectorActions: [],
+    connectorIO: [],
+    providerHealth: [],
+    workflowRuns: [],
+    runTimeline: [],
+    chamberPolicies: DEFAULT_CHAMBER_POLICIES,
     intelligence: defaultIntelligenceFoundationState(),
   };
 }
@@ -225,6 +404,13 @@ export function loadRuntimeFabric(): RuntimeFabric {
       aiSettings: parsed.aiSettings ?? DEFAULT_AI_SETTINGS,
       plugins: parsed.plugins?.length ? parsed.plugins : DEFAULT_PLUGINS,
       workspace: parsed.workspace ?? DEFAULT_WORKSPACE,
+      executionResults: parsed.executionResults ?? [],
+      connectorActions: parsed.connectorActions ?? [],
+      connectorIO: parsed.connectorIO ?? [],
+      providerHealth: parsed.providerHealth ?? [],
+      workflowRuns: parsed.workflowRuns ?? [],
+      runTimeline: parsed.runTimeline ?? [],
+      chamberPolicies: parsed.chamberPolicies?.length ? parsed.chamberPolicies : DEFAULT_CHAMBER_POLICIES,
       intelligence: parsed.intelligence ?? defaultIntelligenceFoundationState(),
     };
   } catch {
@@ -434,7 +620,7 @@ export function recordProvenanceEvent(
 export function routeIntelligenceRequest(
   fabric: RuntimeFabric,
   input: RouteDecisionInput,
-): { fabric: RuntimeFabric; chamber: Tab; pioneerId: string; giId: string; reason: string } {
+): { fabric: RuntimeFabric; chamber: Tab; pioneerId: string; giId: string; reason: string; supportChain: string[] } {
   const decision = resolveRouteDecision(fabric.intelligence, input);
   let next = patchPresenceMetadata(fabric, {
     chamber: decision.chamber,
@@ -446,7 +632,7 @@ export function routeIntelligenceRequest(
     sourceId: decision.pioneerId,
     chamber: decision.chamber,
     action: "route_decision",
-    metadata: { giId: decision.giId, reason: decision.reason },
+    metadata: { giId: decision.giId, reason: decision.reason, supportChain: decision.supportChain.join(",") },
   });
   return {
     fabric: next,
@@ -454,6 +640,7 @@ export function routeIntelligenceRequest(
     pioneerId: decision.pioneerId,
     giId: decision.giId,
     reason: decision.reason,
+    supportChain: decision.supportChain,
   };
 }
 
@@ -484,6 +671,319 @@ export function upsertWorkflowTemplate(fabric: RuntimeFabric, template: Workflow
       workflowTemplates: nextTemplates,
     },
   };
+}
+
+
+export function resolveProviderPodium(fabric: RuntimeFabric, chamber: Tab, text: string): ProviderPodiumPlan {
+  const providers = fabric.intelligence.providerRegistry;
+  const normalized = text.toLowerCase();
+  const routeClass: ProviderPodiumPlan["routeClass"] =
+    normalized.includes("code") || normalized.includes("build")
+      ? "coding"
+      : normalized.includes("fast") || normalized.includes("quick")
+        ? "fast"
+        : "reasoning";
+
+  const primary =
+    (routeClass === "coding" && (pickProvider(providers, "wrapped_external", chamber) ?? pickProvider(providers, "open_source_local", chamber)))
+    || (routeClass === "fast" && (pickProvider(providers, "free_provider", chamber) ?? pickProvider(providers, "wrapped_external", chamber)))
+    || (pickProvider(providers, "open_source_local", chamber) ?? pickProvider(providers, "wrapped_external", chamber))
+    || providers[0];
+  const fallback = providers.find((provider) => provider.id !== primary.id && provider.chamberSafety.includes(chamber));
+  return { primary, fallback, routeClass };
+}
+
+export interface WebExecutionPath {
+  mode: "connector" | "provider_gateway";
+  connectorIds: string[];
+  providerId?: string;
+  intent: "research" | "validation" | "fetch";
+}
+
+export function planWebExecutionPath(fabric: RuntimeFabric, chamber: Tab, text: string): WebExecutionPath | undefined {
+  const normalized = text.toLowerCase();
+  if (!normalized.includes("web") && !normalized.includes("research") && !normalized.includes("source")) return undefined;
+  const connectorIds = recommendedConnectorsForChamber(fabric, chamber);
+  const provider = resolveProviderPodium(fabric, chamber, text).primary;
+  return {
+    mode: connectorIds.length > 0 ? "connector" : "provider_gateway",
+    connectorIds,
+    providerId: provider?.id,
+    intent: normalized.includes("validate") ? "validation" : normalized.includes("fetch") ? "fetch" : "research",
+  };
+}
+
+export function recordExecutionResult(
+  fabric: RuntimeFabric,
+  payload: Omit<ExecutionResultRecord, "id" | "createdAt">,
+): RuntimeFabric {
+  const item: ExecutionResultRecord = { ...payload, id: crypto.randomUUID(), createdAt: Date.now() };
+  return { ...fabric, executionResults: [item, ...fabric.executionResults].slice(0, 300) };
+}
+
+export function upsertExecutionResultByContinuity(
+  fabric: RuntimeFabric,
+  continuityId: string,
+  patch: Partial<ExecutionResultRecord>,
+): RuntimeFabric {
+  const idx = fabric.executionResults.findIndex((entry) => entry.continuityId === continuityId);
+  if (idx === -1) return fabric;
+  const next = [...fabric.executionResults];
+  next[idx] = { ...next[idx], ...patch };
+  return { ...fabric, executionResults: next };
+}
+
+export function recordConnectorAction(
+  fabric: RuntimeFabric,
+  payload: Omit<ConnectorActionRecord, "id" | "createdAt">,
+): RuntimeFabric {
+  const item: ConnectorActionRecord = { ...payload, id: crypto.randomUUID(), createdAt: Date.now() };
+  return { ...fabric, connectorActions: [item, ...fabric.connectorActions].slice(0, 300) };
+}
+
+export function recordConnectorIOTrace(
+  fabric: RuntimeFabric,
+  payload: Omit<ConnectorIOTrace, "id" | "createdAt">,
+): RuntimeFabric {
+  const item: ConnectorIOTrace = { ...payload, id: crypto.randomUUID(), createdAt: Date.now() };
+  return { ...fabric, connectorIO: [item, ...fabric.connectorIO].slice(0, 400) };
+}
+
+export function upsertProviderHealth(
+  fabric: RuntimeFabric,
+  payload: Omit<ProviderHealthRecord, "updatedAt">,
+): RuntimeFabric {
+  const idx = fabric.providerHealth.findIndex((entry) => entry.providerId === payload.providerId);
+  const record: ProviderHealthRecord = { ...payload, updatedAt: Date.now() };
+  if (idx === -1) return { ...fabric, providerHealth: [record, ...fabric.providerHealth] };
+  const next = [...fabric.providerHealth];
+  next[idx] = record;
+  return { ...fabric, providerHealth: next };
+}
+
+export function updateConnectorOperationalState(
+  fabric: RuntimeFabric,
+  connectorId: string,
+  outcome: "success" | "failed" | "degraded",
+): RuntimeFabric {
+  return {
+    ...fabric,
+    connectors: fabric.connectors.map((connector) =>
+      connector.id === connectorId
+        ? {
+          ...connector,
+          status: outcome === "failed" ? "degraded" : connector.status,
+          completeness: outcome === "success" ? Math.min(100, connector.completeness + 2) : Math.max(30, connector.completeness - 6),
+          lastOutcome: outcome,
+          lastUpdated: Date.now(),
+        }
+        : connector,
+    ),
+  };
+}
+
+export function appendRunTimeline(
+  fabric: RuntimeFabric,
+  payload: Omit<RunTimelineEvent, "id" | "timestamp">,
+): RuntimeFabric {
+  const event: RunTimelineEvent = { ...payload, id: crypto.randomUUID(), timestamp: Date.now() };
+  return { ...fabric, runTimeline: [event, ...fabric.runTimeline].slice(0, 1000) };
+}
+
+export function startWorkflowRun(
+  fabric: RuntimeFabric,
+  payload: { workflowId: string; continuityId: string; chamber: Exclude<Tab, "profile">; stages: string[] },
+): RuntimeFabric {
+  const startedAt = Date.now();
+  const stages: WorkflowStageState[] = payload.stages.map((label, idx) => ({
+    id: `${payload.continuityId}-${idx}`,
+    label,
+    status: idx === 0 ? "running" : "pending",
+    startedAt: idx === 0 ? startedAt : undefined,
+  }));
+  const run: WorkflowRunRecord = {
+    id: crypto.randomUUID(),
+    workflowId: payload.workflowId,
+    continuityId: payload.continuityId,
+    chamber: payload.chamber,
+    status: "running",
+    activeStageId: stages[0]?.id ?? "",
+    stages,
+    startedAt,
+  };
+  return { ...fabric, workflowRuns: [run, ...fabric.workflowRuns].slice(0, 300) };
+}
+
+export function transitionWorkflowStage(
+  fabric: RuntimeFabric,
+  continuityId: string,
+  status: WorkflowRunRecord["status"],
+  error?: string,
+): RuntimeFabric {
+  const idx = fabric.workflowRuns.findIndex((entry) => entry.continuityId === continuityId);
+  if (idx === -1) return fabric;
+  const run = fabric.workflowRuns[idx];
+  const runningStageIndex = run.stages.findIndex((stage) => stage.status === "running");
+  const nextStages = run.stages.map((stage, i) => {
+    if (i === runningStageIndex) {
+      return { ...stage, status: status === "failed" ? "failed" : "completed", endedAt: Date.now(), error };
+    }
+    if (i === runningStageIndex + 1 && status === "running") {
+      return { ...stage, status: "running", startedAt: Date.now() };
+    }
+    return stage;
+  });
+  const nextRun: WorkflowRunRecord = {
+    ...run,
+    status,
+    stages: nextStages,
+    activeStageId: status === "running"
+      ? (nextStages.find((s) => s.status === "running")?.id ?? run.activeStageId)
+      : run.activeStageId,
+    endedAt: status === "running" ? undefined : Date.now(),
+    outcomeSummary: status === "failed" ? error ?? "workflow stage failed" : status === "degraded" ? "workflow completed with degradation" : status === "completed" ? "workflow completed" : run.outcomeSummary,
+  };
+  const nextRuns = [...fabric.workflowRuns];
+  nextRuns[idx] = nextRun;
+  return { ...fabric, workflowRuns: nextRuns };
+}
+
+export function getChamberExecutionPolicy(fabric: RuntimeFabric, chamber: Exclude<Tab, "profile">): ChamberExecutionPolicy {
+  return fabric.chamberPolicies.find((entry) => entry.chamber === chamber) ?? DEFAULT_CHAMBER_POLICIES.find((entry) => entry.chamber === chamber)!;
+}
+
+export function buildRunDigestCards(fabric: RuntimeFabric): RunDigestCard[] {
+  return fabric.continuity.map((item) => {
+    const execution = fabric.executionResults.find((entry) => entry.continuityId === item.id);
+    const lastEvent = fabric.runTimeline.find((entry) => entry.continuityId === item.id);
+    const connectorCount = fabric.connectorActions.filter((entry) => entry.continuityId === item.id).length;
+    return {
+      continuityId: item.id,
+      title: item.title,
+      chamber: item.chamber,
+      executionState: execution?.executionState ?? "blocked",
+      workflowId: item.workflowId,
+      connectorCount,
+      lastEventLabel: lastEvent?.label,
+      updatedAt: item.updatedAt,
+    };
+  }).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 100);
+}
+
+export function buildCursorConsumptionPack(fabric: RuntimeFabric) {
+  const runCards = buildRunDigestCards(fabric).slice(0, 24);
+  const chatIdentityRows = runCards.map((card) => ({
+    continuityId: card.continuityId,
+    chamber: card.chamber,
+    executionState: card.executionState,
+    workflowId: card.workflowId,
+  }));
+  const terminalExecutionStrip = fabric.executionResults.slice(0, 24).map((result) => ({
+    continuityId: result.continuityId,
+    executionState: result.executionState,
+    outcome: result.outcome,
+    fallbackUsed: result.fallbackUsed,
+    latencyMs: result.latencyMs,
+  }));
+  const connectorPanels = fabric.connectorActions.slice(0, 24).map((action) => ({
+    continuityId: action.continuityId,
+    connectorId: action.connectorId,
+    phase: action.phase,
+    status: action.status,
+    degradedMode: action.degradedMode,
+    errorSummary: action.errorSummary,
+  }));
+  const statusPanels = fabric.executionResults.slice(0, 24).map((result) => ({
+    continuityId: result.continuityId,
+    state: result.executionState,
+    providerUnavailable: result.providerUnavailable,
+    connectorUnavailable: result.connectorUnavailable,
+    scaffoldOnly: result.scaffoldOnly,
+    blockedReason: result.blockedReason,
+  }));
+  return {
+    chatIdentityRows,
+    terminalExecutionStrip,
+    profileRunCards: runCards,
+    connectorPanels,
+    workflowPanels: fabric.workflowRuns.slice(0, 24),
+    statusPanels,
+    providerHealth: fabric.providerHealth.slice(0, 24),
+    connectorIO: fabric.connectorIO.slice(0, 24),
+  };
+}
+
+export function buildRunOutcomeBundles(fabric: RuntimeFabric): RunOutcomeBundle[] {
+  return fabric.continuity.map((item) => {
+    const execution = fabric.executionResults.find((entry) => entry.continuityId === item.id);
+    const providerState = execution?.selectedProviderId
+      ? fabric.providerHealth.find((entry) => entry.providerId === execution.selectedProviderId)?.state ?? "unknown"
+      : "unknown";
+    const connectorSlice = fabric.connectorActions.filter((entry) => entry.continuityId === item.id);
+    const degraded = connectorSlice.filter((entry) => entry.status === "degraded").length;
+    const failed = connectorSlice.filter((entry) => entry.status === "failed").length;
+    const workflow = fabric.workflowRuns.find((entry) => entry.continuityId === item.id);
+    const lastTimelineLabel = fabric.runTimeline.find((entry) => entry.continuityId === item.id)?.label;
+    return {
+      continuityId: item.id,
+      chamber: item.chamber,
+      executionState: execution?.executionState ?? "blocked",
+      provider: { id: execution?.selectedProviderId, state: providerState },
+      connectors: { total: connectorSlice.length, degraded, failed },
+      workflow: workflow ? { id: workflow.workflowId, status: workflow.status } : undefined,
+      lastTimelineLabel,
+    };
+  }).slice(0, 200);
+}
+
+export function computeConnectorRetryPolicy(
+  fabric: RuntimeFabric,
+  connectorId: string,
+): { retryCount: number; shouldRetry: boolean } {
+  const recent = fabric.connectorActions.filter((entry) => entry.connectorId === connectorId).slice(0, 5);
+  const failures = recent.filter((entry) => entry.status !== "success").length;
+  const retryCount = Math.min(3, failures);
+  return {
+    retryCount,
+    shouldRetry: retryCount > 0 && retryCount < 3,
+  };
+}
+
+export function exportWorkflowTemplatePack(fabric: RuntimeFabric, workflowId: string): { fabric: RuntimeFabric; pack?: WorkflowExportPack } {
+  const workflow = fabric.intelligence.workflowTemplates.find((item) => item.id === workflowId);
+  if (!workflow) return { fabric };
+  const pack: WorkflowExportPack = {
+    schemaVersion: "ruberra.workflow-pack.v1",
+    workflowId,
+    exportedAt: Date.now(),
+    includePolicies: true,
+  };
+  return {
+    fabric: {
+      ...fabric,
+      intelligence: {
+        ...fabric.intelligence,
+        workflowExports: [pack, ...fabric.intelligence.workflowExports].slice(0, 50),
+      },
+    },
+    pack,
+  };
+}
+
+export function importWorkflowTemplatePack(
+  fabric: RuntimeFabric,
+  pack: WorkflowExportPack,
+  template: WorkflowTemplate,
+): RuntimeFabric {
+  let next = upsertWorkflowTemplate(fabric, template);
+  next = {
+    ...next,
+    intelligence: {
+      ...next.intelligence,
+      workflowExports: [pack, ...next.intelligence.workflowExports].slice(0, 50),
+    },
+  };
+  return next;
 }
 
 export function resumeContinuity(fabric: RuntimeFabric, continuityId: string): RuntimeFabric {

@@ -379,6 +379,7 @@ export interface RouteDecisionResult {
   pioneerId: string;
   giId: string;
   reason: string;
+  supportChain: string[];
 }
 
 /** Safe last-resort IDs when the live registry is empty at call time. */
@@ -389,6 +390,9 @@ export function resolveRouteDecision(state: IntelligenceFoundationState, input: 
   const fallbackGiId      = state.giRegistry[0]?.id ?? ROUTE_FALLBACK_GI_ID;
   const fallbackPioneerId = state.pioneers[0]?.id   ?? ROUTE_FALLBACK_PIONEER_ID;
 
+  const supportChainFor = (chamber: Tab): string[] =>
+    state.routingContracts.find((entry) => entry.chamber === chamber)?.leadIntelligences.slice(0, 3) ?? [];
+
   if (input.preferredPioneerId) {
     const pioneer = state.pioneers.find((entry) => entry.id === input.preferredPioneerId);
     if (pioneer) {
@@ -398,6 +402,7 @@ export function resolveRouteDecision(state: IntelligenceFoundationState, input: 
         pioneerId: pioneer.id,
         giId: defaultGi?.id ?? fallbackGiId,
         reason: "preferred pioneer selected",
+        supportChain: supportChainFor(pioneer.homeChamber),
       };
     }
   }
@@ -409,6 +414,7 @@ export function resolveRouteDecision(state: IntelligenceFoundationState, input: 
         pioneerId: workflow.pioneers[0] ?? fallbackPioneerId,
         giId: state.giRegistry.find((entry) => entry.chamber === workflow.homeChamber)?.id ?? fallbackGiId,
         reason: "workflow home chamber route",
+        supportChain: supportChainFor(workflow.homeChamber),
       };
     }
   }
@@ -419,17 +425,18 @@ export function resolveRouteDecision(state: IntelligenceFoundationState, input: 
       pioneerId: chamberPioneer?.id ?? fallbackPioneerId,
       giId: state.giRegistry.find((entry) => entry.chamber === input.chamberHint)?.id ?? fallbackGiId,
       reason: "chamber hint route",
+      supportChain: supportChainFor(input.chamberHint),
     };
   }
   const text = input.requestText.toLowerCase();
   if (text.includes("build") || text.includes("ship") || text.includes("deploy")) {
-    return { chamber: "creation", pioneerId: "cursor_builder", giId: "creation_build_core", reason: "keyword build route" };
+    return { chamber: "creation", pioneerId: "cursor_builder", giId: "creation_build_core", reason: "keyword build route", supportChain: supportChainFor("creation") };
   }
   if (text.includes("learn") || text.includes("curriculum") || text.includes("lesson")) {
-    return { chamber: "school", pioneerId: "gemini_expansion", giId: "school_tutor_core", reason: "keyword learning route" };
+    return { chamber: "school", pioneerId: "gemini_expansion", giId: "school_tutor_core", reason: "keyword learning route", supportChain: supportChainFor("school") };
   }
   if (text.includes("analy") || text.includes("audit") || text.includes("research")) {
-    return { chamber: "lab", pioneerId: "codex_systems", giId: "lab_analyst_core", reason: "keyword analysis route" };
+    return { chamber: "lab", pioneerId: "codex_systems", giId: "lab_analyst_core", reason: "keyword analysis route", supportChain: supportChainFor("lab") };
   }
-  return { chamber: "profile", pioneerId: "claude_architect", giId: "profile_ledger_core", reason: "default sovereign route" };
+  return { chamber: "profile", pioneerId: "claude_architect", giId: "profile_ledger_core", reason: "default sovereign route", supportChain: supportChainFor("profile") };
 }

@@ -81,6 +81,14 @@ export const DEFAULT_TASK_BY_CHAMBER: Record<ChamberTab, TaskType> = {
   lab:      "lab_analysis",
 };
 
+export const CHAMBER_EXECUTION_MAP: Record<ChamberTab, { focus: string[]; fastFallbackTask: TaskType }> = {
+  lab:      { focus: ["reasoning", "analysis", "research", "audit"], fastFallbackTask: "lab_analysis" },
+  school:   { focus: ["tutor", "synthesis", "curriculum"],           fastFallbackTask: "school_tutor" },
+  creation: { focus: ["build", "code", "artifact", "drafting"],      fastFallbackTask: "creation_artifact" },
+};
+
+
+
 export const DEFAULT_MODEL_BY_TASK: Record<TaskType, string> = {
   creation_artifact: "gpt-5.4-creator",
   creation_image:    "imagen-4",

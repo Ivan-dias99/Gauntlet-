@@ -40,10 +40,16 @@ export interface Message {
   blocks?:   MessageBlock[];
   meta?: {
     routeReason?: string;
+    chamberRoute?: Tab;
     pioneerId?: string;
     giId?: string;
+    supportChain?: string[];
     workflowId?: string;
     hostingLevel?: "hosted" | "wrapped" | "proxy";
+    providerId?: string;
+    providerLane?: "open_source_local" | "free_provider" | "wrapped_external" | "premium_hosted_future";
+    modelId?: string;
+    executionState?: "live" | "completed" | "degraded" | "blocked" | "failed" | "fallback_used" | "provider_unavailable" | "connector_unavailable" | "scaffold_only";
     connectorRefs?: string[];
   };
   execution_truth?: MessageExecutionTruth;
