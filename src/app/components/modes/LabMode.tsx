@@ -272,6 +272,7 @@ export function LabMode({
       onCancel={onCancel}
       chamberLabel="Lab · Code"
       chamber="lab"
+      chamberAccentVar="var(--chamber-lab)"
       task={task}
       modelId={modelId}
       onTaskChange={onTaskChange}

@@ -14,6 +14,7 @@ import { getContractByChamber } from "./routing-contracts";
 import { getPioneer } from "./pioneer-registry";
 import { getExecutionTruth, TIER_LABEL, TIER_COLOR } from "./sovereign-runtime";
 import { SovereignEmptyFrame } from "./SovereignEmptyFrame";
+import { ExecutionConsequenceStrip } from "./ExecutionConsequenceStrip";
 
 // ─── Chamber config ───────────────────────────────────────────────────────────
 
@@ -469,6 +470,9 @@ function AssistantMessage({
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
     >
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
+      {msg.execution_trace && (
+        <ExecutionConsequenceStrip trace={msg.execution_trace} accent={accent} />
+      )}
       <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
       {(msg.meta?.pioneerId || msg.meta?.workflowId) && (
         <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
@@ -851,7 +855,18 @@ export function ChamberChat({
                   style={{ marginBottom: msg.role === "user" ? "22px" : "32px" }}
                 >
                   {msg.role === "user" ? (
-                    <UserBubble content={msg.content} />
+                    <div>
+                      <UserBubble content={msg.content} />
+                      {(msg.meta?.modelId || msg.meta?.workflowId) && (
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px", paddingRight: "4px" }}>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.06em", color: "var(--r-dim)", textTransform: "uppercase" }}>
+                            dispatch
+                            {msg.meta?.modelId && ` · ${msg.meta.modelId}`}
+                            {msg.meta?.workflowId && ` · ${msg.meta.workflowId}`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <AssistantMessage
                       msg={msg}

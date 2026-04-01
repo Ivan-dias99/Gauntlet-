@@ -752,6 +752,7 @@ export function CreationMode({
       onCancel={onCancel}
       chamberLabel="Creation · Build"
       chamber="creation"
+      chamberAccentVar="var(--chamber-creation)"
       task={task}
       modelId={modelId}
       onTaskChange={onTaskChange}

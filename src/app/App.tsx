@@ -20,6 +20,7 @@ import {
   type Tab, type Message, type SignalStatus,
   type LabView, type SchoolView, type CreationView, type ProfileView,
   type FloatingNote, type Theme, type NavFn,
+  type ExecutionResultEntry, type MessageExecutionTrace,
 } from "./components/shell-types";
 import { parseBlocks } from "./components/parseBlocks";
 import { HeroLanding } from "./components/HeroLanding";
@@ -57,6 +58,8 @@ import {
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
 import { getExecutionTruth } from "./components/sovereign-runtime";
+import { resolveRoute } from "./components/routing-contracts";
+import { MODEL_REGISTRY } from "./components/model-orchestration";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
@@ -284,6 +287,16 @@ export default function App() {
     const controller = new AbortController();
     abortRefs.current[tab] = controller;
 
+    const resolvedRoute = resolveRoute(text, tab, task);
+    const requestedModelMeta = MODEL_REGISTRY.find((m) => m.id === requestedModelId);
+    const connectorActionRows = recommendedConnectorsForChamber(runtimeFabric, tab).map((cid) => {
+      const row = runtimeFabric.connectors.find((c) => c.id === cid);
+      const reg = runtimeFabric.intelligence.connectorRegistry.find((r) => r.id === cid);
+      const name = reg?.label ?? cid;
+      const st = row ? (row.enabled ? row.status : "disabled") : "unknown";
+      return { id: cid, label: `${name} · ${st}` };
+    });
+
     const userMsg: Message = {
       id:        crypto.randomUUID(),
       role:      "user",
@@ -296,6 +309,9 @@ export default function App() {
         giId: routeDecision.giId,
         workflowId,
         hostingLevel,
+        providerId: requestedModelMeta?.provider,
+        modelId: requestedModelId,
+        supportChain: resolvedRoute.support_chain,
       },
     };
     setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], userMsg] }));
@@ -319,6 +335,24 @@ export default function App() {
       routeReason: routeDecision.reason,
     }));
     const execTruth = getExecutionTruth(tab);
+    const modelDegraded = selectedModelId !== requestedModelId;
+    const baseResults: ExecutionResultEntry[] = [
+      { phase: "route", summary: routeDecision.reason.slice(0, 96), at: Date.now() },
+    ];
+    if (plan.fallbackReason) {
+      baseResults.push({ phase: "fallback", summary: plan.fallbackReason.slice(0, 120), at: Date.now() });
+    }
+    const initialTrace: MessageExecutionTrace = {
+      executionState: "streaming",
+      providerId: plan.selectedModel?.provider,
+      modelId: selectedModelId,
+      supportChain: resolvedRoute.support_chain,
+      workflowId,
+      hostingLevel,
+      executionResults: baseResults,
+      connectorActions: connectorActionRows,
+      fallbackFromModelId: modelDegraded ? requestedModelId : undefined,
+    };
     setMessages((prev) => ({
       ...prev,
       [tab]: [
@@ -336,12 +370,14 @@ export default function App() {
             pioneer:     routeDecision.pioneerId ?? undefined,
             chamber:     tab,
           },
+          execution_trace: initialTrace,
         },
       ],
     }));
 
     let parseOnComplete = true;
     let assistantContent = "";
+    let streamPhaseLogged = false;
 
     try {
       const history = messagesRef.current[tab]
@@ -376,18 +412,60 @@ export default function App() {
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
           assistantContent += chunk;
-          setMessages((prev) => ({
-            ...prev,
-            [tab]: prev[tab].map((m) =>
-              m.id === assistantId ? { ...m, content: m.content + chunk } : m
-            ),
-          }));
+          if (!streamPhaseLogged && assistantContent.length > 0) {
+            streamPhaseLogged = true;
+            setMessages((prev) => ({
+              ...prev,
+              [tab]: prev[tab].map((m) => {
+                if (m.id !== assistantId || m.role !== "assistant" || !m.execution_trace) return m;
+                const er = m.execution_trace.executionResults;
+                if (er.some((e) => e.phase === "stream")) return { ...m, content: m.content + chunk };
+                return {
+                  ...m,
+                  content: m.content + chunk,
+                  execution_trace: {
+                    ...m.execution_trace,
+                    executionResults: [...er, { phase: "stream", summary: "Upstream tokens received", at: Date.now() }],
+                  },
+                };
+              }),
+            }));
+          } else {
+            setMessages((prev) => ({
+              ...prev,
+              [tab]: prev[tab].map((m) =>
+                m.id === assistantId ? { ...m, content: m.content + chunk } : m
+              ),
+            }));
+          }
         }
       } finally {
         reader.releaseLock();
       }
 
       setSignals((prev) => ({ ...prev, [tab]: "completed" }));
+      setMessages((prev) => ({
+        ...prev,
+        [tab]: prev[tab].map((m) => {
+          if (m.id !== assistantId || m.role !== "assistant" || !m.execution_trace) return m;
+          const er = m.execution_trace.executionResults.filter((e) => e.phase !== "finalize");
+          return {
+            ...m,
+            execution_trace: {
+              ...m.execution_trace,
+              executionState: modelDegraded ? "degraded" : "completed",
+              executionResults: [
+                ...er,
+                {
+                  phase: "finalize",
+                  summary: `${assistantContent.length} chars · ${plan.selectedModel?.label ?? selectedModelId}`,
+                  at: Date.now(),
+                },
+              ],
+            },
+          };
+        }),
+      }));
       setRuntimeFabric((prev) => recordRuntimeMessageObject(prev, {
         id: assistantId,
         role: "assistant",
@@ -400,6 +478,24 @@ export default function App() {
           giId: routeDecision.giId,
           workflowId,
           hostingLevel,
+          providerId: plan.selectedModel?.provider,
+          modelId: selectedModelId,
+          supportChain: resolvedRoute.support_chain,
+        },
+        execution_trace: {
+          executionState: modelDegraded ? "degraded" : "completed",
+          providerId: plan.selectedModel?.provider,
+          modelId: selectedModelId,
+          supportChain: resolvedRoute.support_chain,
+          workflowId,
+          hostingLevel,
+          executionResults: [
+            ...baseResults.filter((e) => e.phase !== "finalize"),
+            ...(streamPhaseLogged ? [{ phase: "stream" as const, summary: "Upstream tokens received", at: Date.now() }] : []),
+            { phase: "finalize", summary: `${assistantContent.length} chars · ${plan.selectedModel?.label ?? selectedModelId}`, at: Date.now() },
+          ],
+          connectorActions: connectorActionRows,
+          fallbackFromModelId: modelDegraded ? requestedModelId : undefined,
         },
       }));
       setRuntimeFabric((prev) => {
@@ -438,11 +534,19 @@ export default function App() {
         );
       }, 2400);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       const isAbort = err instanceof Error && err.name === "AbortError";
       parseOnComplete = false;
 
       if (isAbort) {
+        setMessages((prev) => ({
+          ...prev,
+          [tab]: prev[tab].map((m) =>
+            m.id === assistantId && m.role === "assistant" && m.execution_trace
+              ? { ...m, execution_trace: { ...m.execution_trace, executionState: "aborted" } }
+              : m
+          ),
+        }));
         setSignals((prev) => ({ ...prev, [tab]: "idle" }));
         setRuntimeFabric((prev) => {
           let next = transitionContinuity(prev, continuityId, "paused");
@@ -462,7 +566,20 @@ export default function App() {
           ...prev,
           [tab]: prev[tab].map((m) =>
             m.id === assistantId
-              ? { ...m, content: "Error — please try again." }
+              ? {
+                  ...m,
+                  content: "Error — please try again.",
+                  execution_trace: m.execution_trace
+                    ? {
+                        ...m.execution_trace,
+                        executionState: "error",
+                        executionResults: [
+                          ...m.execution_trace.executionResults.filter((e) => e.phase !== "error"),
+                          { phase: "error", summary: String(err instanceof Error ? err.message : "stream failure").slice(0, 120), at: Date.now() },
+                        ],
+                      }
+                    : m.execution_trace,
+                }
               : m
           ),
         }));
@@ -492,7 +609,7 @@ export default function App() {
         applyParsedBlocks(assistantId, tab);
       }
     }
-  }, [activeTab, activeModels, applyParsedBlocks, runtimeFabric.intelligence, tasks]);
+  }, [activeTab, activeModels, applyParsedBlocks, runtimeFabric, tasks]);
 
   // ── Notes ─────────────────────────────────────────────────────────────────────
   const addNote = useCallback(() => {

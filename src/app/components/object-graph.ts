@@ -222,16 +222,24 @@ export function listObjectsForChamber(chamber: Tab) {
 export function buildMessageObject(message: Message): RuberraObject {
   const inferredType: RuberraObjectType =
     message.tab === "school" ? "deep_study" : message.tab === "lab" ? "signal_report" : "artifact_pack";
+  const tr = message.execution_trace;
+  const traceSummary = tr
+    ? `${tr.executionState} · ${tr.modelId ?? ""} · ${(tr.executionResults ?? []).slice(-1)[0]?.summary ?? ""}`.trim()
+    : "";
+  const baseSummary = message.content.slice(0, 180);
+  const summary = message.role === "assistant" && tr && traceSummary.length > 12
+    ? `${traceSummary.slice(0, 200)}${baseSummary ? ` — ${baseSummary.slice(0, 120)}` : ""}`
+    : baseSummary;
 
   return {
     id: message.id,
     title: message.content.slice(0, 80) || `Untitled ${message.tab}`,
     chamber: message.tab,
     type: inferredType,
-    summary: message.content.slice(0, 180),
+    summary,
     why_it_matters: "Captured runtime output for chamber continuity and archive reopen.",
     status: message.role === "assistant" ? "captured" : "query",
-    tags: [message.role, "runtime"],
+    tags: [message.role, "runtime", ...(tr ? [`exec:${tr.executionState}`] : [])],
     prerequisites: [],
     related_items: [],
     next_steps: ["Open chamber chat", "Continue from archive", "Bridge to related object"],

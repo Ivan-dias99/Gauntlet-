@@ -1,4 +1,4 @@
-import { type Message, type NavFn, type Tab, type ProfileView } from "../shell-types";
+import { type Message, type MessageExecutionTrace, type NavFn, type Tab, type ProfileView } from "../shell-types";
 import { findObject, listObjectsForChamber, mergeObjectsByRecency, openObject, type RuberraObject } from "../object-graph";
 import { type CSSProperties, useState } from "react";
 import {
@@ -23,6 +23,7 @@ import {
 } from "../connector-registry";
 import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from "../workflow-engine";
 import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
+import { ExecutionConsequenceStrip } from "../ExecutionConsequenceStrip";
 import {
   PROVIDER_ADAPTERS,
   SOVEREIGN_MODEL_REGISTRY,
@@ -82,6 +83,17 @@ const STATUS_COLOR: Record<WorkStatus, string> = {
   paused:      "var(--r-warn)",
   completed:   "var(--r-dim)",
 };
+
+function meshTraceFromMessages(messages: Record<Tab, Message[]>): MessageExecutionTrace | null {
+  const chambers: Exclude<Tab, "profile">[] = ["lab", "school", "creation"];
+  let best: Message | null = null;
+  for (const ch of chambers) {
+    const asst = [...messages[ch]].reverse().find((m) => m.role === "assistant" && m.execution_trace);
+    if (!asst?.execution_trace) continue;
+    if (!best || asst.timestamp > best.timestamp) best = asst;
+  }
+  return best?.execution_trace ?? null;
+}
 
 function deriveWorkItems(messages: Record<Tab, Message[]>): WorkItem[] {
   const chambers: Exclude<Tab, "profile">[] = ["school", "lab", "creation"];
@@ -400,6 +412,7 @@ export function ProfileMode({
     listObjectsForChamber("lab"),
     listObjectsForChamber("creation"),
   ).slice(0, 24);
+  const meshTrace = meshTraceFromMessages(messages);
 
   const NAV_VIEWS: ProfileView[] = ["overview", "projects", "pioneers", "workflows", "connectors", "memory", "settings", "exports"];
 
@@ -437,6 +450,15 @@ export function ProfileMode({
               </div>
             </div>
           </div>
+
+          {meshTrace && (
+            <div style={{ maxWidth: "880px", margin: "0 auto 12px", padding: "0 2px" }}>
+              <p style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.11em", textTransform: "uppercase", color: "var(--r-dim)", margin: "0 0 6px" }}>
+                Neural mesh · last execution
+              </p>
+              <ExecutionConsequenceStrip trace={meshTrace} accent="var(--r-accent-soft)" compact />
+            </div>
+          )}
 
           {/* Tab bar */}
           <div style={{ display: "flex", gap: "0" }}>

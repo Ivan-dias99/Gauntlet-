@@ -31,6 +31,39 @@ export interface MessageExecutionTruth {
   chamber:     Exclude<Tab, "profile">;
 }
 
+/** Visible runtime consequence — populated by the mother shell after routing + stream */
+export type ExecutionState =
+  | "streaming"
+  | "live"
+  | "completed"
+  | "degraded"
+  | "aborted"
+  | "error";
+
+export interface ExecutionResultEntry {
+  phase:   string;
+  summary: string;
+  at:      number;
+}
+
+export interface ConnectorActionEntry {
+  id:    string;
+  label: string;
+}
+
+export interface MessageExecutionTrace {
+  executionState:    ExecutionState;
+  providerId?:       string;
+  modelId?:          string;
+  supportChain?:     string[];
+  workflowId?:       string;
+  hostingLevel?:     "hosted" | "wrapped" | "proxy";
+  executionResults: ExecutionResultEntry[];
+  connectorActions: ConnectorActionEntry[];
+  /** Model requested before routing fallback */
+  fallbackFromModelId?: string;
+}
+
 export interface Message {
   id:        string;
   role:      "user" | "assistant";
@@ -45,8 +78,12 @@ export interface Message {
     workflowId?: string;
     hostingLevel?: "hosted" | "wrapped" | "proxy";
     connectorRefs?: string[];
+    providerId?: string;
+    modelId?: string;
+    supportChain?: string[];
   };
   execution_truth?: MessageExecutionTruth;
+  execution_trace?: MessageExecutionTrace;
 }
 
 /* ── Extended view types — all navigable states per chamber ── */

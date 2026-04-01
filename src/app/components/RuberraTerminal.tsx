@@ -6,7 +6,8 @@
 
 import { useRef, useEffect, useState, type KeyboardEvent } from "react";
 import { motion } from "motion/react";
-import { type Message } from "./shell-types";
+import { type Message, type MessageExecutionTrace } from "./shell-types";
+import { ExecutionConsequenceStrip } from "./ExecutionConsequenceStrip";
 import { ModelSelector } from "./ModelSelector";
 import { type ChamberTab, type TaskType } from "./model-orchestration";
 
@@ -738,11 +739,13 @@ export interface RuberraTerminalProps {
   onModelChange: (modelId: string) => void;
   placeholder?: string;
   elapsedLabel?: string;
+  chamberAccentVar?: string;
 }
 
 export function RuberraTerminal({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
   chamberLabel, chamber, task, modelId, onTaskChange, onModelChange, placeholder = "Enter directive…", elapsedLabel,
+  chamberAccentVar = "var(--chamber-creation)",
 }: RuberraTerminalProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -767,6 +770,8 @@ export function RuberraTerminal({
     const parsed = parseMessage(msg, chamberLabel, streaming);
     allBlocks.push(...parsed);
   }
+
+  const lastTrace: MessageExecutionTrace | undefined = [...messages].reverse().find((m) => m.role === "assistant" && m.execution_trace)?.execution_trace;
 
   return (
     <div
@@ -818,6 +823,12 @@ export function RuberraTerminal({
           />
         </div>
       </div>
+
+      {lastTrace && (
+        <div style={{ padding: "8px 16px 0", flexShrink: 0, background: T.bg, borderBottom: `1px solid ${T.line}` }}>
+          <ExecutionConsequenceStrip trace={lastTrace} accent={chamberAccentVar} compact />
+        </div>
+      )}
 
       {/* Output area */}
       <div
