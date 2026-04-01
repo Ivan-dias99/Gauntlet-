@@ -39,8 +39,10 @@ export const MODEL_REGISTRY: ModelDescriptor[] = [
   { id: "gpt-5.4-creator",     label: "GPT 5.4 Creator",      family: "GPT",        provider: "openai",      chamber: "creation", latency: "medium", quality: "elite",  benchmark: "Artifact & System Design", role: "Primary Builder",            tags: ["artifact", "design", "docs", "code"] },
 
   // Anthropic
-  { id: "claude-sonnet-5.0",   label: "Sonnet 5.0",           family: "Claude",     provider: "anthropic",   chamber: "lab",      latency: "medium", quality: "strong", benchmark: "Synthesis & Simulation",   role: "Secondary Auditor",          tags: ["analysis", "reasoning", "simulation"] },
-  { id: "claude-opus-4.6",     label: "Opus 4.6",             family: "Claude",     provider: "anthropic",   chamber: "school",   latency: "high",   quality: "elite",  benchmark: "Deep Curriculum",          role: "Deep Curriculum Architect",  tags: ["didactic", "explanation", "mastery"] },
+  { id: "claude-opus-4.6",     label: "Opus 4.6",             family: "Claude",     provider: "anthropic",   chamber: "lab",      latency: "high",   quality: "elite",  benchmark: "Synthesis & Reasoning",    role: "Elite Analyst",              tags: ["analysis", "reasoning", "audit"] },
+  { id: "claude-sonnet-4.6",   label: "Sonnet 4.6",           family: "Claude",     provider: "anthropic",   chamber: "lab",      latency: "medium", quality: "strong", benchmark: "Synthesis & Simulation",   role: "Secondary Auditor",          tags: ["analysis", "reasoning", "simulation"] },
+  { id: "claude-opus-4.6-sch", label: "Opus 4.6",             family: "Claude",     provider: "anthropic",   chamber: "school",   latency: "high",   quality: "elite",  benchmark: "Deep Curriculum",          role: "Deep Curriculum Architect",  tags: ["didactic", "explanation", "mastery"] },
+  { id: "claude-haiku-4.5",    label: "Haiku 4.5",            family: "Claude",     provider: "anthropic",   chamber: "school",   latency: "low",    quality: "good",   benchmark: "Quick Drills & Reflex",    role: "Rapid Assessment Engine",    tags: ["quick tutoring", "assessment", "study drills"] },
 
   // Google
   { id: "gemini-3.1-pro-high", label: "Gemini 3.1 Pro (High)",family: "Gemini",     provider: "google",      chamber: "lab",      latency: "medium", quality: "elite",  benchmark: "Context & Search",         role: "Matrix Core Insight",        tags: ["research", "synthesis"] },
@@ -96,13 +98,13 @@ export const DEFAULT_MODEL_BY_TASK: Record<TaskType, string> = {
   creation_voice:    "elevenlabs-studio",
   creation_music:    "elevenlabs-studio",
   school_tutor:      "gpt-5.4-tutor",
-  school_curriculum: "claude-opus-4.6",
-  school_assessment: "gemini-3.0-flash",
+  school_curriculum: "claude-opus-4.6-sch",
+  school_assessment: "claude-haiku-4.5",
   lab_research:      "gemini-3.1-pro-high",
-  lab_analysis:      "claude-sonnet-5.0",
-  lab_simulation:    "claude-sonnet-5.0",
+  lab_analysis:      "claude-sonnet-4.6",
+  lab_simulation:    "claude-sonnet-4.6",
   lab_code:          "gpt-5.4-codex",
-  lab_audit:         "gpt-5.4-codex",
+  lab_audit:         "claude-opus-4.6",
 };
 
 export const FALLBACK_CHAIN_BY_TASK: Record<TaskType, string[]> = {
@@ -112,13 +114,13 @@ export const FALLBACK_CHAIN_BY_TASK: Record<TaskType, string[]> = {
   creation_voice:    ["elevenlabs-studio", "gpt-5.4-creator"],
   creation_music:    ["elevenlabs-studio", "gpt-5.4-creator"],
   school_tutor:      ["gpt-5.4-tutor", "gemini-3.1-pro-low"],
-  school_curriculum: ["claude-opus-4.6", "gpt-5.4-tutor"],
-  school_assessment: ["gemini-3.0-flash", "gpt-5.4-tutor"],
+  school_curriculum: ["claude-opus-4.6-sch", "gpt-5.4-tutor"],
+  school_assessment: ["claude-haiku-4.5", "gemini-3.0-flash"],
   lab_research:      ["gemini-3.1-pro-high", "gpt-5.4-codex"],
-  lab_analysis:      ["claude-sonnet-5.0", "gemini-3.1-pro-high"],
-  lab_simulation:    ["claude-sonnet-5.0", "gpt-5.4-codex"],
-  lab_code:          ["gpt-5.4-codex", "claude-sonnet-5.0"],
-  lab_audit:         ["gpt-5.4-codex", "gemini-3.1-pro-high"],
+  lab_analysis:      ["claude-sonnet-4.6", "gemini-3.1-pro-high"],
+  lab_simulation:    ["claude-sonnet-4.6", "gpt-5.4-codex"],
+  lab_code:          ["gpt-5.4-codex", "claude-sonnet-4.6"],
+  lab_audit:         ["claude-opus-4.6", "gpt-5.4-codex"],
 };
 
 export function getModelPool(chamber: ChamberTab): ModelDescriptor[] {
