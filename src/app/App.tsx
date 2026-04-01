@@ -16,6 +16,17 @@ import { LabMode } from "./components/modes/LabMode";
 import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
 import { ProfileMode } from "./components/modes/ProfileMode";
+import { MissionContextBand } from "./components/MissionContextBand";
+import {
+  type Mission,
+  loadMissions,
+  saveMissions,
+  upsertMission,
+} from "./dna/mission-substrate";
+import {
+  defaultAutonomousOperationsState,
+  type AutonomousOperationsState,
+} from "./components/autonomous-operations";
 import {
   type Tab, type Message, type SignalStatus,
   type LabView, type SchoolView, type CreationView, type ProfileView,
@@ -115,6 +126,11 @@ export default function App() {
   const [creationView, setCreationView] = useState<CreationView>("home");
   const [profileView, setProfileView] = useState<ProfileView>("overview");
   const [runtimeFabric, setRuntimeFabric] = useState<RuntimeFabric>(loadRuntimeFabric);
+  const [missions, setMissions] = useState<Mission[]>(loadMissions);
+  const [operations, setOperations] = useState<AutonomousOperationsState>(defaultAutonomousOperationsState);
+  const [activeMissionId, setActiveMissionId] = useState<string | null>(() => {
+    try { return localStorage.getItem("ruberra_active_mission_id") ?? null; } catch { return null; }
+  });
 
   // ── Detail navigation ────────────────────────────────────────────────────────
   const [detailId, setDetailId] = useState<string>("");
@@ -181,6 +197,53 @@ export default function App() {
   useEffect(() => {
     saveRuntimeFabric(runtimeFabric);
   }, [runtimeFabric]);
+
+  useEffect(() => {
+    saveMissions(missions);
+  }, [missions]);
+
+  const handleMissionUpsert = useCallback((m: Mission) => {
+    setMissions((prev) => upsertMission(prev, m));
+  }, []);
+
+  // ── Stack 04 — Autonomous Operations handlers ─────────────────────────────────
+  const handleOperationSignalRead = useCallback((id: string) => {
+    setOperations((prev) => ({
+      ...prev,
+      signals: prev.signals.map((s) => s.id === id ? { ...s, read: true } : s),
+    }));
+  }, []);
+
+  const handleOperationSignalResolve = useCallback((id: string) => {
+    setOperations((prev) => ({
+      ...prev,
+      signals: prev.signals.map((s) => s.id === id ? { ...s, read: true, resolved: true, resolvedAt: Date.now() } : s),
+    }));
+  }, []);
+
+  const handleHandoffAccept = useCallback((id: string) => {
+    setOperations((prev) => ({
+      ...prev,
+      handoffs: prev.handoffs.map((h) => h.id === id ? { ...h, state: "accepted" as const, acceptedAt: Date.now() } : h),
+    }));
+  }, []);
+
+  const handleHandoffReject = useCallback((id: string, reason: string) => {
+    setOperations((prev) => ({
+      ...prev,
+      handoffs: prev.handoffs.map((h) => h.id === id ? { ...h, state: "rejected" as const, rejectionReason: reason } : h),
+    }));
+  }, []);
+
+  const handleMissionActivate = useCallback((missionId: string) => {
+    setActiveMissionId(missionId);
+    try { localStorage.setItem("ruberra_active_mission_id", missionId); } catch { /* storage full */ }
+  }, []);
+
+  const handleMissionRelease = useCallback(() => {
+    setActiveMissionId(null);
+    try { localStorage.removeItem("ruberra_active_mission_id"); } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     const needsConfig = runtimeFabric.connectors.filter((c) => c.status === "needs_config");
@@ -717,6 +780,7 @@ export default function App() {
 
   const isLive = Object.values(signals).some((s) => s === "streaming");
   const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
+  const activeMission = activeMissionId ? missions.find((m) => m.id === activeMissionId) ?? null : null;
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
@@ -770,6 +834,14 @@ export default function App() {
         workspaceOwner={runtimeFabric.workspace.owner}
         workspaceSubtitle={`${runtimeFabric.workspace.activeProject} · ledger`}
       />
+
+      {/* Mission Context Band — global mission binding, shown across all chambers */}
+      {activeMission && (
+        <MissionContextBand
+          mission={activeMission}
+          onRelease={handleMissionRelease}
+        />
+      )}
 
       {/* Body */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
@@ -893,6 +965,14 @@ export default function App() {
                   onAISettingsPatch={(patch) => setRuntimeFabric((prev) => updateAISettings(prev, patch))}
                   onWorkspacePatch={(patch) => setRuntimeFabric((prev) => updateWorkspaceKnowledge(prev, patch))}
                   onExport={(continuityId) => setRuntimeFabric((prev) => exportContinuity(prev, continuityId))}
+                  missions={missions}
+                  onMissionUpsert={handleMissionUpsert}
+                  onMissionActivate={handleMissionActivate}
+                  operations={operations}
+                  onOperationSignalRead={handleOperationSignalRead}
+                  onOperationSignalResolve={handleOperationSignalResolve}
+                  onHandoffAccept={handleHandoffAccept}
+                  onHandoffReject={handleHandoffReject}
                 />
               )}
             </motion.div>

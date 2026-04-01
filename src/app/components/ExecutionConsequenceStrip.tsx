@@ -36,6 +36,7 @@ export function ExecutionConsequenceStrip({
   tierLabel,
   tierColor,
   modelTruthLabel,
+  missionName,
 }: {
   trace:              MessageExecutionTrace;
   accent:             string;
@@ -48,6 +49,8 @@ export function ExecutionConsequenceStrip({
   tierLabel?:         string;
   tierColor?:         string;
   modelTruthLabel?:   string;
+  /** Mission binding — renders mission context line at top of strip */
+  missionName?:       string;
 }) {
   const chain = trace.supportChain?.filter(Boolean) ?? [];
   const connectors = trace.connectorActions ?? [];
@@ -68,6 +71,22 @@ export function ExecutionConsequenceStrip({
         background: "color-mix(in srgb, var(--r-elevated) 92%, transparent)",
       }}
     >
+      {/* Mission binding line */}
+      {missionName && (
+        <div
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "7px",
+            letterSpacing: "0.09em",
+            textTransform: "uppercase",
+            color: "var(--r-dim)",
+            marginBottom: "6px",
+          }}
+        >
+          <span style={{ color: "var(--r-border)" }}>mission · </span>
+          <span style={{ color: "var(--r-subtext)", letterSpacing: "0.04em", textTransform: "none" }}>{missionName}</span>
+        </div>
+      )}
       {/* Identity spine — routed sovereign surface */}
       <div
         style={{

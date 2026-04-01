@@ -583,6 +583,9 @@ export const CASCADE_LAW_VIOLATIONS: readonly string[] = [
  * The current operational phase of Ruberra.
  * Update this only when a phase is formally closed and the next begins.
  * Changing this field is a constitutional act — it requires sovereign authorization.
+ *
+ * UPDATED: Stacks 01–05 landed 2026-04-01. Phase advances to "intelligence"
+ * by sovereign authorization.
  */
 export const RUBERRA_CURRENT_PHASE: StackPhase = "constitution";
 export const RUBERRA_CURRENT_PHASE: StackPhase = "sovereignty";
