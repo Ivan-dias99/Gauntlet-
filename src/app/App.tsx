@@ -17,6 +17,8 @@ import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
 import { ProfileMode } from "./components/modes/ProfileMode";
 import { MissionContextBand } from "./components/MissionContextBand";
+import { SystemHealthBand } from "./components/SystemHealthBand";
+import { defaultSystemModel, type SystemModel } from "./dna/system-awareness";
 import {
   type Mission,
   loadMissions,
@@ -153,6 +155,9 @@ export default function App() {
 
   // ── Theme ────────────────────────────────────────────────────────────────────
   const [theme, setTheme] = useState<Theme>("light");
+
+  // ── System model (awareness) ─────────────────────────────────────────────────
+  const [systemModel, setSystemModel] = useState<SystemModel>(defaultSystemModel);
 
   // ── Command palette + signals panel ───────────────────────────────────────────
   const [cmdOpen, setCmdOpen] = useState(false);
@@ -834,6 +839,9 @@ export default function App() {
         workspaceOwner={runtimeFabric.workspace.owner}
         workspaceSubtitle={`${runtimeFabric.workspace.activeProject} · ledger`}
       />
+
+      {/* System Health Band — silent unless degraded or critical */}
+      <SystemHealthBand model={systemModel} />
 
       {/* Mission Context Band — global mission binding, shown across all chambers */}
       {activeMission && (
