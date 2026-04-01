@@ -535,7 +535,7 @@ function BuildSurface({
                 padding: "4px 10px",
                 border: "1px solid var(--r-border)",
                 background: draft.trim() && !isLoading ? "var(--r-text)" : "var(--r-rail)",
-                color: draft.trim() && !isLoading ? "white" : "var(--r-dim)",
+                color: draft.trim() && !isLoading ? "var(--r-bg)" : "var(--r-dim)",
                 cursor: draft.trim() && !isLoading ? "pointer" : "default",
                 outline: "none",
                 borderRadius: "4px",
