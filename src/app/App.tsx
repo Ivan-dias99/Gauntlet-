@@ -84,6 +84,8 @@ import {
   updateWorkspaceKnowledge,
   updateRuntimePatterns,
   recordRuntimeAttribution,
+  updateRuntimePresence,
+  heartbeatRuntimePresence,
   upsertPlugin,
   upsertConnector,
   exportContinuity,
@@ -2157,15 +2159,37 @@ export default function App() {
 
   // 3. Presence manifest: always register the web channel; add active chambers
   const presenceManifest = useMemo(() => {
-    let manifest = _presenceBase;
-    const webCh = createChannel("web", { runtime: "browser", app: "ruberra-shell" });
-    manifest = registerChannel(manifest, webCh);
+    const owner = runtimeFabric.workspace.owner;
+    let manifest = runtimeFabric.presenceManifests[owner];
+    if (!manifest) {
+      manifest = defaultPresenceManifest(owner);
+    }
+    // Context-sensitive updates for the active channel
     if (messages.lab.length > 0)      manifest = registerChannel(manifest, createChannel("api",  { chamber: "lab" }));
     if (messages.creation.length > 0) manifest = registerChannel(manifest, createChannel("cli",  { chamber: "creation" }));
-    // Heartbeat: refresh lastSeenAt on all channels every 30s tick
-    manifest = { ...manifest, channels: manifest.channels.map(heartbeatChannel) };
+    
+    // Auto-update context to reflect current Shell state
+    manifest = {
+      ...manifest,
+      context: {
+        ...manifest.context,
+        activeChamber: activeTab === "profile" ? undefined : activeTab as any,
+        missionId: activeMissionId ?? undefined,
+      },
+      lastUpdated: Date.now(),
+    };
+
     return manifest;
-  }, [_presenceBase, messages.lab.length, messages.creation.length, heartbeatTick]);
+  }, [runtimeFabric.presenceManifests, runtimeFabric.workspace.owner, messages.lab.length, messages.creation.length, activeTab, activeMissionId]);
+
+  // Sync presence heartbeat into substrate
+  useEffect(() => {
+    setRuntimeFabric((prev) => {
+      let next = updateRuntimePresence(prev, presenceManifest);
+      next = heartbeatRuntimePresence(next, prev.workspace.owner);
+      return next;
+    });
+  }, [heartbeatTick]);
 
   // 4. Exchange ledger: exported continuity items become governance-verified value units
   const exchangeLedger = useMemo(() => {

@@ -25,7 +25,7 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 | 11 | Living Knowledge | CLOSED | Persistent mission memory, retrieval contracts, knowledge freshness | Mission memory is durable and queryable |
 | 12 | Intelligence Analytics | MATERIALIZED | Outcome quality metrics, reasoning quality KPIs | Mission intelligence quality is measurable |
 | 13 | Collective Execution | MATERIALIZED | Team participation model, collaboration permissions, shared execution | Human + agent work is coordinated in one mission plane |
-| 14 | Distribution + Presence | CLOSED | Packaging, deployment channels, runtime presence surfaces | Mission artifacts can be distributed with traceable lineage |
+| 14 | Distribution + Presence | MATERIALIZED | Packaging, deployment channels, runtime presence surfaces | Mission artifacts can be distributed with traceable lineage |
 | 15 | Value Exchange | CLOSED | Billing/value capture model tied to mission consequence | Value events map directly to mission outcomes |
 | 16 | Ecosystem Network | CLOSED | Connector contracts, external system sync boundaries | External integrations remain subordinate to mission truth |
 | 17 | Platform Infrastructure | CLOSED | Infrastructure abstraction, scaling envelope, reliability baseline | Platform reliability targets are met and validated |

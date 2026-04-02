@@ -21,6 +21,7 @@ import {
 } from "../dna/compound-intelligence";
 import { type ConsequenceAttribution } from "../dna/collective-execution";
 import { type AnalyticsPattern } from "../dna/intelligence-analytics";
+import { type PresenceManifest } from "../dna/distribution-presence";
 
 export type LifecycleStatus =
   | "draft"
@@ -340,9 +341,11 @@ export interface RuntimeFabric {
   analyticsPatterns: AnalyticsPattern[];
   /** Stack 13 — attribution records for collective work consequence */
   attributions: ConsequenceAttribution[];
+  /** Stack 14 — distribution manifests, persisted for session presence */
+  presenceManifests: Record<string, PresenceManifest>;
 }
 
-const STORAGE_KEY = "ruberra_runtime_fabric_v5";
+const STORAGE_KEY = "ruberra_runtime_fabric_v6";
 
 const DEFAULT_CONNECTORS: ConnectorState[] = [
   { id: "knowledge-pack", label: "Knowledge Pack", chamber: "school", enabled: true, status: "ready", completeness: 100, lastUpdated: Date.now() },
@@ -413,6 +416,7 @@ function initialFabric(): RuntimeFabric {
     compoundNetwork: defaultCompoundNetwork(),
     analyticsPatterns: [],
     attributions: [],
+    presenceManifests: {},
   };
 }
 
@@ -441,6 +445,7 @@ export function loadRuntimeFabric(): RuntimeFabric {
       intelligence: parsed.intelligence ?? defaultIntelligenceFoundationState(),
       analyticsPatterns: parsed.analyticsPatterns ?? [],
       attributions: parsed.attributions ?? [],
+      presenceManifests: parsed.presenceManifests ?? {},
     };
   } catch {
     return initialFabric();
@@ -1282,4 +1287,30 @@ export function recordRuntimeAttribution(fabric: RuntimeFabric, attribution: Con
 
 export function updateRuntimePatterns(fabric: RuntimeFabric, patterns: AnalyticsPattern[]): RuntimeFabric {
   return { ...fabric, analyticsPatterns: patterns };
+}
+
+export function updateRuntimePresence(fabric: RuntimeFabric, manifest: PresenceManifest): RuntimeFabric {
+  return {
+    ...fabric,
+    presenceManifests: {
+      ...fabric.presenceManifests,
+      [manifest.operatorId]: manifest,
+    },
+  };
+}
+
+export function heartbeatRuntimePresence(fabric: RuntimeFabric, operatorId: string): RuntimeFabric {
+  const manifest = fabric.presenceManifests[operatorId];
+  if (!manifest) return fabric;
+  return {
+    ...fabric,
+    presenceManifests: {
+      ...fabric.presenceManifests,
+      [operatorId]: {
+        ...manifest,
+        channels: manifest.channels.map((c) => ({ ...c, lastSeenAt: Date.now() })),
+        lastUpdated: Date.now(),
+      },
+    },
+  };
 }
