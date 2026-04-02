@@ -964,6 +964,7 @@ export default function App() {
                   modelId={activeModels.lab}
                   onTaskChange={(task) => handleTaskChange("lab", task)}
                   onModelChange={(modelId) => handleModelChange("lab", modelId)}
+                  missionName={activeMission?.name}
                 />
               )}
               {activeTab === "school" && (
@@ -982,6 +983,7 @@ export default function App() {
                   modelId={activeModels.school}
                   onTaskChange={(task) => handleTaskChange("school", task)}
                   onModelChange={(modelId) => handleModelChange("school", modelId)}
+                  missionName={activeMission?.name}
                 />
               )}
               {activeTab === "creation" && (
@@ -1000,6 +1002,7 @@ export default function App() {
                   modelId={activeModels.creation}
                   onTaskChange={(task) => handleTaskChange("creation", task)}
                   onModelChange={(modelId) => handleModelChange("creation", modelId)}
+                  missionName={activeMission?.name}
                 />
               )}
               {activeTab === "profile" && (
