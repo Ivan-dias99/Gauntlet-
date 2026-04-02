@@ -706,7 +706,7 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
 
 export function CreationMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  creationView, onCreationView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName,
+  creationView, onCreationView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName, missionStatus,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -723,6 +723,7 @@ export function CreationMode({
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
   missionName?: string;
+  missionStatus?: string;
 }) {
   const showHome = creationView === "home" || (!messages.length && creationView === "chat");
 
@@ -773,6 +774,7 @@ export function CreationMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
+      missionStatus={missionStatus}
     />
   );
 }

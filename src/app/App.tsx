@@ -505,6 +505,10 @@ export default function App() {
   }, []);
 
   const handleMissionActivate = useCallback((missionId: string) => {
+    // Stack 05: ghost-safe activation — abort all in-flight chamber requests before binding new mission
+    Object.values(abortRefs.current).forEach((c) => c?.abort());
+    setLoading({ lab: false, school: false, creation: false });
+    setSignals({ lab: "idle", school: "idle", creation: "idle" });
     setActiveMissionId(missionId);
     setActiveMissionOps(defaultMissionOperationsState(missionId));
     try { localStorage.setItem("ruberra_active_mission_id", missionId); } catch { /* storage full */ }
@@ -819,6 +823,24 @@ export default function App() {
       continuityId: `${tab}-pre-dispatch`,
       label:        `governance.${govResult.verdict}: ${govResult.reason}`,
     }));
+
+    // ── Stack 05: Terminal mission dispatch gate ──────────────────────────────────
+    // Completed and archived missions cannot receive new dispatches.
+    // Emit a consequential recommendation signal and abort — operator must open a new mission.
+    if (activeMission && (activeMission.ledger.currentState === "completed" || activeMission.ledger.currentState === "archived")) {
+      setRuntimeFabric((prev) => pushSignal(prev, {
+        type:               "recommendation",
+        label:              `Mission "${activeMission.identity.name}" is ${activeMission.ledger.currentState} — open a new mission to continue`,
+        severity:           "critical",
+        sourceChamber:      tab,
+        destinationChamber: "profile",
+        destination:        { tab: "profile", view: "projects" },
+      }));
+      setLoading((prev)  => ({ ...prev, [tab]: false }));
+      setSignals((prev)  => ({ ...prev, [tab]: "idle" }));
+      return;
+    }
+    // ── End Stack 05 terminal gate ────────────────────────────────────────────────
 
     // ── Stack 04: Operations substrate — pre-dispatch lifecycle ─────────────────
     // Task enters in_progress BEFORE execution. OperationFlow created for this run.
@@ -1578,6 +1600,20 @@ export default function App() {
     });
   }, [activeMissionId]);
 
+  // Stack 05: mission ledger → awareness model sync
+  // When the mission ledger state transitions to "blocked", propagate to SystemModel
+  // so SystemHealthBand surfaces the anomaly via real mission-state events.
+  useEffect(() => {
+    if (!activeMissionId || !activeMission) return;
+    const ledgerState = activeMission.ledger.currentState;
+    if (ledgerState === "blocked") {
+      setSystemModel((prev) => setMissionState(prev, activeMissionId, "blocked"));
+    } else if (ledgerState === "completed" || ledgerState === "archived") {
+      // Terminal — resolve any blocked anomaly, set idle in awareness
+      setSystemModel((prev) => setMissionState(prev, activeMissionId, "idle"));
+    }
+  }, [activeMission?.ledger.currentState, activeMissionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!activeMissionId || !activeMission) return;
     const chambers: Exclude<Tab, "profile">[] = ["lab", "school", "creation"];
@@ -2112,6 +2148,7 @@ export default function App() {
                   onTaskChange={(task) => handleTaskChange("lab", task)}
                   onModelChange={(modelId) => handleModelChange("lab", modelId)}
                   missionName={activeMission?.identity.name}
+                  missionStatus={activeMission?.ledger.currentState}
                 />
               )}
               {activeTab === "school" && (
@@ -2131,6 +2168,7 @@ export default function App() {
                   onTaskChange={(task) => handleTaskChange("school", task)}
                   onModelChange={(modelId) => handleModelChange("school", modelId)}
                   missionName={activeMission?.identity.name}
+                  missionStatus={activeMission?.ledger.currentState}
                 />
               )}
               {activeTab === "creation" && (
@@ -2150,6 +2188,7 @@ export default function App() {
                   onTaskChange={(task) => handleTaskChange("creation", task)}
                   onModelChange={(modelId) => handleModelChange("creation", modelId)}
                   missionName={activeMission?.identity.name}
+                  missionStatus={activeMission?.ledger.currentState}
                 />
               )}
               {activeTab === "profile" && (

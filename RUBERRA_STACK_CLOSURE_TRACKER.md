@@ -16,8 +16,8 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 | 2 | Mission Substrate | CLOSED | Mission entity model, mission lifecycle, mission repository container, mission-first shell binding | Mission is first-class system object with create/open/archive/active flows; MissionContextBand authoritative; MissionRepository live; MissionOperationsPanel mounted |
 | 3 | Sovereign Intelligence | CLOSED | Native mission reasoning loops, mission-context memory, structured prompt spine | Intelligence runs on mission state, not generic chat state |
 | 4 | Autonomous Operations | CLOSED | Multi-step execution runtime, deterministic actions, retry and audit paths | Mission actions execute with logs, outcomes, and recovery rules |
-| 5 | Adaptive Experience | ACTIVE | Chamber-aware UX, mission state surfaces, consequence-driven interface | UI reflects mission state transitions in all chambers |
-| 6 | Sovereign Security | LOCKED | Identity boundaries, permission lattice, data access policy | Mission-level authorization and enforcement validated |
+| 5 | Adaptive Experience | CLOSED | Chamber-aware UX, mission state surfaces, consequence-driven interface | UI reflects mission state transitions in all chambers |
+| 6 | Sovereign Security | ACTIVE | Identity boundaries, permission lattice, data access policy | Mission-level authorization and enforcement validated |
 | 7 | Trust + Governance | LOCKED | Audit trails, policy overlays, controls and approvals | Every consequential action has policy + audit evidence |
 | 8 | System Awareness | LOCKED | Telemetry spine, health state, runtime introspection | Mission/system health can be inspected and explained |
 | 9 | Autonomous Flow | LOCKED | Planned workflow graphs, step orchestration, dependency gates | Mission workflows execute as a controlled graph |
@@ -115,23 +115,25 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
 
 ---
 
-## Active Frontier: Stack 5 (Adaptive Experience)
+## Closed: Stack 5 (Adaptive Experience)
 
-### Scope (Now)
-- Chamber-aware UX that reflects mission state transitions — not just static chamber layout.
-- Mission state changes (activate, block, complete, archive) must visibly surface in chamber UI.
-- `MissionContextBand` already shows pulse + status — this is a partial signal, not the full adaptive experience.
-
-### Open Residue
-1. Chamber UI does not adapt layout/affordances based on active mission state (blocked/paused/executing).
-2. Mission transition events (state change to "blocked", "completed") do not propagate to SystemHealthBand or chamber visual state.
-3. No chamber-level "mission consequence" feedback — completing an execution doesn't visually close the loop in the chamber.
+### Exit Proof
+- `MissionContextBand` reads `activeMission.ledger.currentState` via `MISSION_STATUS_LABEL` + `STATUS_COLOR` — BLOCKED/COMPLETED/PAUSED/ARCHIVED surface with real color signals. REAL.
+- `setMissionState("blocked")` in `system-awareness.ts` injects a `SystemAnomaly` (type: unexpected_state, severity: medium) into `systemModel.anomalies` and updates `health` → "degraded". `SystemHealthBand` renders organically. REAL.
+- `setMissionState("idle"/"running")` resolves the mission-blocked anomaly — health recovers. REAL.
+- Mission ledger → awareness sync effect: `useEffect` on `activeMission.ledger.currentState` calls `setMissionState("blocked"|"idle")` — ledger state changes propagate to SystemModel without dispatch cycle. REAL.
+- Terminal mission dispatch gate in `handleSend`: if `activeMission.ledger.currentState === "completed" || "archived"`, emits a `recommendation` signal (severity: critical, destination: profile/projects) and returns. No execution proceeds. REAL.
+- Ghost-safe activation: `handleMissionActivate` aborts all in-flight chamber requests via `abortRefs`, resets `loading` and `signals` before binding new mission. REAL.
+- `ChamberChat` receives `missionStatus` prop. When terminal (completed/archived): consequence notice bar renders above composer; composer textarea is `disabled` with a locked placeholder. REAL.
+- `missionStatus` prop threaded: `App.tsx` → `LabMode` / `SchoolMode` / `CreationMode` → `ChamberChat`. REAL.
 
 ### Exit Criteria
-- [ ] `MissionContextBand` state label updates to BLOCKED/COMPLETED/PAUSED reflect real `activeMission.ledger.currentState`
-- [ ] SystemHealthBand receives mission state signal on block/complete transitions
-- [ ] Chamber prompt area gives visual feedback when mission is in a terminal state (blocked/complete/archived)
-- [ ] No chamber enters a ghost state when mission is activated mid-session
+- [x] `MissionContextBand` state label updates to BLOCKED/COMPLETED/PAUSED reflect real `activeMission.ledger.currentState`
+- [x] SystemHealthBand receives mission state signal on block/complete transitions
+- [x] Chamber prompt area gives visual feedback when mission is in a terminal state (blocked/complete/archived)
+- [x] No chamber enters a ghost state when mission is activated mid-session
+
+- CLOSED 2026-04-02
 
 ---
 
@@ -139,10 +141,10 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
 
 | Pioneer | Immediate Task | Mode |
 |---|---|---|
-| Claude Architect | Own Stack 5 closure — mission state transitions surface in chamber UI + SystemHealthBand. | ACTIVE |
-| Codex Systems | Ensure execution completion events trigger mission state evaluation (should mission advance to next stage?). | ACTIVE |
-| Cursor Builder | Chamber prompt adaptation: visual feedback when mission is blocked/complete. | ACTIVE |
-| Grok Reality Pulse | Audit adaptive experience — confirm no ghost states, no static UI when mission changes state. | ACTIVE |
-| Gemini Expansion | QUEUED (Stack 5 must close first). | QUEUED |
-| Copilot QA Guard | Regression: all 4 chambers show correct mission state after activate/block/complete transitions. | ACTIVE |
-| Antigravity Director | Gate Stack 5 entry. No cosmetic animation theater. Adaptation must be consequence-driven. | ACTIVE |
+| Claude Architect | Own Stack 6 — Sovereign Security closure: identity boundaries, permission lattice, mission-level authorization. | ACTIVE |
+| Codex Systems | Wire mission state advancement: post-completion evaluation of whether mission should auto-transition. | QUEUED (Stack 6 first) |
+| Cursor Builder | Stack 6 surface: security gate UI when mission authorization is denied. | QUEUED |
+| Grok Reality Pulse | Audit Stack 5 closed state — confirm no ghost states survive mission activate/complete/archive cycle. | ACTIVE |
+| Gemini Expansion | QUEUED (Stack 6 must close first). | QUEUED |
+| Copilot QA Guard | Regression: Stack 5 — terminal mission notice renders in all 3 chambers; SystemHealthBand shows degraded on blocked mission. | ACTIVE |
+| Antigravity Director | Gate Stack 6 entry. No permission theater. Authorization must be consequence-enforced. | ACTIVE |

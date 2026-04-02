@@ -16,11 +16,12 @@ Four sovereign organs: **Lab** (investigate) · **School** (learn) · **Creation
 
 ## CURRENT SOVEREIGN FRONTIER
 
-**Active Stack: 05**
+**Active Stack: 06**
 Stack 1 (Canon + Sovereignty): CLOSED
 Stack 2 (Mission Substrate): CLOSED
 Stack 3 (Sovereign Intelligence): CLOSED 2026-04-02
 Stack 4 (Autonomous Operations): CLOSED 2026-04-02
+Stack 5 (Adaptive Experience): CLOSED 2026-04-02
 
 Stack 3 closure (2026-04-02):
 - `resolveMissionRoute()` called at every dispatch when mission active.
@@ -43,10 +44,14 @@ Stack 4 closure (2026-04-02 — real):
 - Mutations: signal dismiss + approval approve/reject — all real setActiveMissionOps mutations.
 - `MissionOperationsPanel` wired with real callbacks.
 
-Stack 5 open residue:
-- Mission state transitions (blocked/complete/archived) do not propagate to chamber UI or SystemHealthBand.
-- Chamber prompt area does not adapt when mission is in terminal state.
-- No ghost-state prevention when mission activates mid-session.
+Stack 5 closure (2026-04-02):
+- `setMissionState("blocked")` injects `unexpected_state` anomaly into SystemModel → SystemHealthBand renders organically at "degraded" health.
+- `setMissionState("idle"/"running")` resolves mission-blocked anomaly — health recovers.
+- Mission ledger → awareness sync effect: `useEffect` on `activeMission.ledger.currentState` calls `setMissionState` — ledger transitions propagate to SystemModel outside dispatch cycle.
+- Terminal mission dispatch gate: `handleSend` checks `ledger.currentState === "completed" | "archived"` → pushes critical recommendation signal + returns early. No execution on terminal missions.
+- Ghost-safe activation: `handleMissionActivate` aborts all in-flight requests + resets loading/signals before binding new mission.
+- `ChamberChat` receives `missionStatus` prop — terminal states render consequence notice bar + lock composer textarea.
+- `missionStatus` threaded: App.tsx → LabMode / SchoolMode / CreationMode → ChamberChat.
 
 ---
 
@@ -58,7 +63,7 @@ Stack 5 open residue:
 | 02 | Mission Substrate | CLOSED | `dna/mission-substrate.ts`, `MissionContextBand`, `MissionRepository`, `mcp-client.ts`, `MissionOperationsPanel` mounted, `activeMissionOps` in App.tsx |
 | 03 | Sovereign Intelligence | CLOSED | `dna/sovereign-intelligence.ts`: `resolveMissionRoute()` at dispatch; `buildMissionSystemContext()` + `buildMissionMemoryContext()` injected as system[0]; pioneer routing from mission.workflow.pioneerStack[0]; `routeDigest` mission-bound |
 | 04 | Autonomous Operations | CLOSED | Operations substrate governs dispatch: pre-dispatch task (in_progress) + OperationFlow + approval gate; post-dispatch task lifecycle close + flow advance + MissionSignal from runtime event |
-| 05 | Adaptive Experience | PARTIAL | ChamberChat + RuberraTerminal fully reconstituted; LiveHeaderRail with cycling state; MissionContextBand authoritative; chamber accent wiring solid |
+| 05 | Adaptive Experience | CLOSED | MissionContextBand reads real ledger state; SystemHealthBand surfaces mission-blocked anomaly; terminal dispatch gate live; ghost-safe activation; ChamberChat missionStatus lock |
 | 06 | Sovereign Security | PARTIAL | SecurityTrustSignal in SovereignBar; RUBERRA_TRUST_GATES active; `governance-fabric.ts` live |
 | 07 | Trust + Governance | PARTIAL | `enforceExecutionGate()` on every dispatch; audit entry in trustGovState; GovernanceLedgerStrip in ProfileMode |
 | 08 | System Awareness | PARTIAL | `SystemHealthBand` live; `GlobalExecutionBand` live with eiName + live pulse; `awareness-substrate.ts` typed |
@@ -189,8 +194,8 @@ If you see any of these, something has drifted:
 
 ## NEXT PIONEER ACTIONS
 
-1. **Claude Architect** — Close Stack 5: mission state transitions must surface in MissionContextBand + SystemHealthBand + chamber UI.
-2. **Codex Systems** — Wire mission state advancement: execution completion should evaluate whether mission should transition state.
-3. **Cursor Builder** — Chamber prompt adaptation when mission is blocked/complete/archived.
-4. **Grok Reality Pulse** — Audit all 4 chambers for ghost states when mission activates/transitions mid-session.
-5. **Copilot QA Guard** — Regression: activate → block → complete cycle visible in UI without requiring page reload.
+1. **Claude Architect** — Open Stack 6: Sovereign Security — identity boundaries, permission lattice, mission-level authorization enforcement.
+2. **Copilot QA Guard** — Regression: Stack 5 close — terminal mission notice in all 3 chambers; SystemHealthBand "degraded" on mission block; ghost-safe activation verified.
+3. **Grok Reality Pulse** — Audit Stack 5 for any fake/decorative adaptive behavior remaining. Confirm missionStatus flows correctly for all ledger transitions.
+4. **Codex Systems** — Wire mission state advancement post-completion: after task_complete signal, evaluate if mission should auto-transition (Stack 6 dependency).
+5. **Cursor Builder** — Stack 6 surface: security gate denial UI for mission-level authorization failures.

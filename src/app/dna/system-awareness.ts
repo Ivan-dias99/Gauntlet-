@@ -313,9 +313,40 @@ export function setMissionState(
   missionId: MissionId,
   state: "running" | "idle" | "blocked",
 ): SystemModel {
+  const anomalyId = `anomaly_mission_${missionId}`;
+  let anomalies = model.anomalies;
+
+  if (state === "blocked") {
+    // Inject mission-blocked anomaly if not already present
+    const alreadyPresent = anomalies.some((a) => a.id === anomalyId && !a.resolved);
+    if (!alreadyPresent) {
+      const now = Date.now();
+      anomalies = [
+        ...anomalies,
+        {
+          id:          anomalyId,
+          type:        "unexpected_state" as AnomalyType,
+          severity:    "medium" as const,
+          description: `Mission blocked — cannot advance without resolution. Mission: ${missionId.slice(0, 40)}`,
+          detectedAt:  now,
+          resolved:    false,
+        },
+      ];
+    }
+  } else {
+    // Resolve mission-blocked anomaly when returning to running/idle
+    anomalies = anomalies.map((a) =>
+      a.id === anomalyId && !a.resolved ? { ...a, resolved: true } : a
+    );
+  }
+
+  const health = deriveSystemHealth(model.snapshot, anomalies);
+
   return {
     ...model,
     missionStates: { ...model.missionStates, [missionId]: state },
+    anomalies,
+    health,
     lastUpdated:   Date.now(),
   };
 }

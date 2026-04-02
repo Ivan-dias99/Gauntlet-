@@ -253,7 +253,7 @@ function SchoolArchive({ messages, navigate }: { messages: Message[]; navigate: 
 
 export function SchoolMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  schoolView, onSchoolView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName,
+  schoolView, onSchoolView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName, missionStatus,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -270,6 +270,7 @@ export function SchoolMode({
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
   missionName?: string;
+  missionStatus?: string;
 }) {
   const showHome = schoolView === "home" || (!messages.length && schoolView === "chat");
 
@@ -303,6 +304,7 @@ export function SchoolMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
+      missionStatus={missionStatus}
     />
   );
 }
