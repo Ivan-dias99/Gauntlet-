@@ -278,8 +278,8 @@ export function LabMode({
       modelId={modelId}
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
-      placeholder="Write a code directive, analysis command, or research query…"
       missionName={missionName}
+      placeholder="Write a code directive, analysis command, or research query…"
     />
   );
 

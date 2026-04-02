@@ -12,6 +12,7 @@ import { ShellSideRail } from "./components/ShellSideRail";
 import { FloatingNoteSystem } from "./components/FloatingNoteSystem";
 import { GlobalCommandPalette } from "./components/GlobalCommandPalette";
 import { SignalsPanel } from "./components/SignalsPanel";
+import { GlobalExecutionBand, type GlobalExecutionSnapshot } from "./components/GlobalExecutionBand";
 import { LabMode } from "./components/modes/LabMode";
 import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
@@ -196,6 +197,7 @@ export default function App() {
   // ── Command palette + signals panel ───────────────────────────────────────────
   const [cmdOpen, setCmdOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
+  const [railCollapsed, setRailCollapsed] = useState(false);
   // ── Presence heartbeat tick ───────────────────────────────────────────────────
   const [heartbeatTick, setHeartbeatTick] = useState(0);
   // ── Stack substrates ─────────────────────────────────────────────────────────
@@ -333,6 +335,22 @@ export default function App() {
     setActiveMissionId(null);
     try { localStorage.removeItem("ruberra_active_mission_id"); } catch { /* ignore */ }
   }, []);
+  const handleMissionPaletteNew = useCallback(() => {
+    setActiveTab("profile");
+    setProfileView("projects");
+  }, []);
+
+  const handleMissionPaletteSwitch = useCallback(() => {
+    setActiveTab("profile");
+    setProfileView("projects");
+  }, []);
+
+  const handleMissionPaletteHandoff = useCallback(() => {
+    if (!activeMissionId) return;
+    mcpMissionBuildHandoff(activeMissionId).catch(() => { /* non-fatal */ });
+    setActiveTab("profile");
+    setProfileView("operations");
+  }, [activeMissionId]);
 
   // ── Sovereign runtime probe — live adapter availability on mount ─────────────
   useEffect(() => {
@@ -1165,6 +1183,28 @@ export default function App() {
   const isLive = Object.values(signals).some((s) => s === "streaming");
   const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
   const activeMission = activeMissionId ? missions.find((m) => m.id === activeMissionId) ?? null : null;
+  const lastExecutionSnapshot = useMemo<GlobalExecutionSnapshot | null>(() => {
+    const latestMessageTrace = Object.values(messages)
+      .flatMap((bucket) => bucket)
+      .filter((m) => m.role === "assistant" && m.execution_trace)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+    if (!latestMessageTrace?.execution_trace || latestMessageTrace.tab === "profile") return null;
+    const chamber = latestMessageTrace.tab as Exclude<Tab, "profile">;
+    const latestResult = [...runtimeFabric.executionResults]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .find((r) => r.chamber === chamber);
+    return {
+      state: latestMessageTrace.execution_trace.executionState,
+      chamber,
+      modelId: latestResult?.selectedModelId ?? latestMessageTrace.execution_trace.modelId,
+      providerId: latestResult?.selectedProviderId ?? latestMessageTrace.execution_trace.providerId,
+      latencyMs: latestResult?.latencyMs,
+    };
+  }, [messages, runtimeFabric.executionResults]);
+  const lastExecutionProviderHealth = useMemo(() => {
+    if (!lastExecutionSnapshot?.providerId) return "unknown" as const;
+    return runtimeFabric.providerHealth.find((p) => p.providerId === lastExecutionSnapshot.providerId)?.state ?? "unknown";
+  }, [runtimeFabric.providerHealth, lastExecutionSnapshot]);
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
@@ -1393,6 +1433,9 @@ export default function App() {
           onNewNote={addNote}
           onClearTab={handleClearTab}
           navigate={navigate}
+          onTabChange={setActiveTab}
+          collapsed={railCollapsed}
+          onToggleCollapsed={() => setRailCollapsed((v) => !v)}
         />
 
         {/* Operational Surface */}
@@ -1423,7 +1466,6 @@ export default function App() {
                   onTaskChange={(task) => handleTaskChange("lab", task)}
                   onModelChange={(modelId) => handleModelChange("lab", modelId)}
                   missionName={activeMission?.identity.name}
-                  missionName={activeMission?.name}
                 />
               )}
               {activeTab === "school" && (
@@ -1443,7 +1485,6 @@ export default function App() {
                   onTaskChange={(task) => handleTaskChange("school", task)}
                   onModelChange={(modelId) => handleModelChange("school", modelId)}
                   missionName={activeMission?.identity.name}
-                  missionName={activeMission?.name}
                 />
               )}
               {activeTab === "creation" && (
@@ -1463,7 +1504,6 @@ export default function App() {
                   onTaskChange={(task) => handleTaskChange("creation", task)}
                   onModelChange={(modelId) => handleModelChange("creation", modelId)}
                   missionName={activeMission?.identity.name}
-                  missionName={activeMission?.name}
                 />
               )}
               {activeTab === "profile" && (
@@ -1557,53 +1597,21 @@ export default function App() {
         onMarkAllRead={() => setRuntimeFabric((prev) => markAllSignalsRead(prev))}
       />
 
-      {/* Status bar */}
-      <div
-        style={{
-          height: "22px",
-          borderTop: "1px solid var(--r-border)",
-          background: "var(--r-surface)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 16px",
-          flexShrink: 0,
-          gap: "0",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-          <motion.div
-            animate={{ opacity: isLive ? [0.4, 1, 0.4] : [0.3, 0.7, 0.3] }}
-            transition={{ duration: isLive ? 0.85 : 3.5, repeat: Infinity, ease: "easeInOut" }}
-            style={{
-              width: "4px",
-              height: "4px",
-              borderRadius: "50%",
-              background: isLive ? "var(--r-accent)" : "var(--r-pulse)",
-            }}
-          />
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-dim)", textTransform: "uppercase" }}>
-            {isLive ? "streaming" : "ready"}
-          </span>
-        </div>
-
-        <div style={{ width: "1px", height: "9px", background: "var(--r-border)", margin: "0 10px" }} />
-
-        <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.05em" }}>
-          {activeTab === "profile" ? "profile-ledger · memory-fabric" : `${activeModels[activeTab as ChamberTab]} · ${tasks[activeTab as ChamberTab]}`}
-        </span>
-
-        <div style={{ flex: 1 }} />
-
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-          {activeTab}
-        </span>
-      </div>
+      <GlobalExecutionBand
+        snapshot={lastExecutionSnapshot}
+        missionName={activeMission?.identity.name}
+        providerHealth={lastExecutionProviderHealth}
+      />
 
       <GlobalCommandPalette
         open={cmdOpen}
         onClose={() => setCmdOpen(false)}
         navigate={navigate}
         searchIndex={searchIndex}
+        onMissionNew={handleMissionPaletteNew}
+        onMissionSwitch={handleMissionPaletteSwitch}
+        onMissionHandoff={activeMission ? handleMissionPaletteHandoff : undefined}
+        activeMissionName={activeMission?.identity.name}
         missions={missions}
       />
 

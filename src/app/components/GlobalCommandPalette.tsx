@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { type NavFn, type Tab } from "./shell-types";
 import { LAB_DOMAINS, SCHOOL_TRACKS, SCHOOL_ROLES, CREATION_BLUEPRINTS, CREATION_ENGINES } from "./product-data";
 import { type SearchIndexEntry } from "./runtime-fabric";
+import { CHAMBER_ACCENT } from "../dna/chamber-accent";
 import { type Mission } from "../dna/mission-substrate";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -26,13 +27,28 @@ interface CmdEntry {
 
 const RUNTIME_RESULT_CAP = 14;
 
-function buildStaticEntries(navigate: NavFn, onClose: () => void): CmdEntry[] {
+function buildStaticEntries(
+  navigate: NavFn,
+  onClose: () => void,
+  missionCommands?: { onMissionNew: () => void; onMissionSwitch: () => void; onMissionHandoff?: () => void; activeMissionName?: string },
+): CmdEntry[] {
   const go = (tab: "lab" | "school" | "creation" | "profile", view: string, id = "") => {
     navigate(tab, view, id);
     onClose();
   };
 
   const entries: CmdEntry[] = [
+    { id: "mission-new", label: "Mission — New", meta: "Mission", chamber: "profile", action: () => { missionCommands?.onMissionNew(); onClose(); } },
+    { id: "mission-switch", label: "Mission — Switch", meta: "Mission", chamber: "profile", action: () => { missionCommands?.onMissionSwitch(); onClose(); } },
+    ...(missionCommands?.onMissionHandoff
+      ? [{
+          id: "mission-handoff",
+          label: "Mission — Handoff",
+          meta: missionCommands.activeMissionName ? `Mission · ${missionCommands.activeMissionName}` : "Mission",
+          chamber: "profile" as const,
+          action: () => { missionCommands.onMissionHandoff?.(); onClose(); },
+        }]
+      : []),
     // ── Navigation shortcuts ────────────────────────────────────────────────
     { id: "nav-lab-home",      label: "Lab — Home",           meta: "Chamber",  chamber: "lab",      action: () => go("lab",      "home")      },
     { id: "nav-lab-chat",      label: "Lab — Chat",           meta: "Chamber",  chamber: "lab",      action: () => go("lab",      "chat")      },
@@ -163,9 +179,9 @@ function buildMissionEntries(
 // ─── Chamber dot ──────────────────────────────────────────────────────────────
 
 const CHAMBER_DOT: Record<string, string> = {
-  lab:      "var(--chamber-lab)",
-  school:   "var(--chamber-school)",
-  creation: "var(--chamber-creation)",
+  lab:      CHAMBER_ACCENT.lab,
+  school:   CHAMBER_ACCENT.school,
+  creation: CHAMBER_ACCENT.creation,
   profile:  "var(--r-subtext)",
 };
 
@@ -176,12 +192,23 @@ interface GlobalCommandPaletteProps {
   onClose:     () => void;
   navigate:    NavFn;
   searchIndex: SearchIndexEntry[];
+  onMissionNew: () => void;
+  onMissionSwitch: () => void;
+  onMissionHandoff?: () => void;
+  activeMissionName?: string;
   /** Optional mission list for mission-level navigation commands */
   missions?:   Mission[];
 }
 
-export function GlobalCommandPalette({ open, onClose, navigate, searchIndex, missions = [] }: GlobalCommandPaletteProps) {
-  const staticEntries = buildStaticEntries(navigate, onClose);
+export function GlobalCommandPalette({
+  open, onClose, navigate, searchIndex, onMissionNew, onMissionSwitch, onMissionHandoff, activeMissionName, missions = [],
+}: GlobalCommandPaletteProps) {
+  const staticEntries = buildStaticEntries(navigate, onClose, {
+    onMissionNew,
+    onMissionSwitch,
+    onMissionHandoff,
+    activeMissionName,
+  });
   const runtimeEntries = buildRuntimeEntries(searchIndex, navigate, onClose);
   const missionEntries = buildMissionEntries(missions, navigate, onClose);
   const allEntries = [...staticEntries, ...runtimeEntries, ...missionEntries];

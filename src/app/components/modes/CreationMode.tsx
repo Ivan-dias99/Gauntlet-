@@ -758,8 +758,8 @@ export function CreationMode({
       modelId={modelId}
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
-      placeholder="Directive — describe what to build, generate, or forge…"
       missionName={missionName}
+      placeholder="Directive — describe what to build, generate, or forge…"
     />
   );
 
