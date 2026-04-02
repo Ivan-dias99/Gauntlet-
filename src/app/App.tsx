@@ -219,7 +219,7 @@ export default function App() {
   const [_platformStateBase] = useState(defaultPlatformState);
   const [_orgStateBase]     = useState(defaultOrgState);
   const [_personalOSBase]   = useState(() => defaultPersonalOS("operator-1"));
-  const [compoundNetwork]   = useState(defaultCompoundNetwork);
+  // compoundNetwork is live in runtimeFabric — removed dead useState duplicate
   const [trustGovState, setTrustGovState] = useState(loadTrustGov);
   const [flowState, setFlowState] = useState(defaultAutonomousFlowState);
 
@@ -1138,14 +1138,22 @@ export default function App() {
   }, [missions, runtimeFabric.continuity, runtimeFabric.signals, _orgStateBase]);
 
   const platformState = useMemo(() => {
-    const execTruth = getExecutionTruth("lab");
-    const inferenceStatus = execTruth.is_available ? "nominal" as const : "degraded" as const;
+    // Derive inference status from live-probed providerHealth, fall back to static resolution
+    const liveHealthy = runtimeFabric.providerHealth.some(
+      (ph) => ph.state === "healthy" && (ph.providerId === "ollama-local" || ph.providerId.startsWith("vllm"))
+    );
+    const execTruth = getExecutionTruth(activeTab === "profile" ? "lab" : activeTab as Exclude<typeof activeTab, "profile">);
+    const inferenceStatus: "nominal" | "degraded" =
+      liveHealthy ? "nominal" : execTruth.is_available ? "nominal" : "degraded";
+    const providerLabel = liveHealthy
+      ? (runtimeFabric.providerHealth.find((ph) => ph.state === "healthy")?.providerId ?? "local")
+      : (execTruth.adapter ?? "sovereign");
     let state = _platformStateBase;
-    state = addLayer(state, { ...createInfraLayer("intelligence", execTruth.adapter ?? "sovereign", true), status: inferenceStatus });
+    state = addLayer(state, { ...createInfraLayer("intelligence", providerLabel, liveHealthy), status: inferenceStatus });
     state = addLayer(state, { ...createInfraLayer("network", "supabase", false), status: "nominal" });
     state = addLayer(state, { ...createInfraLayer("storage", "supabase", false), status: "nominal" });
     return state;
-  }, [_platformStateBase]);
+  }, [_platformStateBase, runtimeFabric.providerHealth, activeTab]);
 
   const personalOS = useMemo(() => {
     const memories = [
@@ -1457,7 +1465,7 @@ export default function App() {
                   platformState={platformState}
                   orgState={orgState}
                   personalOS={personalOS}
-                  compoundNetwork={compoundNetwork}
+                  compoundNetwork={runtimeFabric.compoundNetwork ?? defaultCompoundNetwork()}
                   governanceEntries={Object.values(trustGovState.ledgers).flatMap(l => l.auditTrail.entries)}
                   flowState={flowState}
                 />
