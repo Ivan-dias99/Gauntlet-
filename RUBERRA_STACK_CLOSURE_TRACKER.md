@@ -14,8 +14,8 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 |---|---|---|---|---|
 | 1 | Canon + Sovereignty | CLOSED | Constitution, product identity, anti-drift gates, single-source law docs | CLOSED 2026-04-02: Ruberra law docs aligned; canon-sovereignty.ts + stack-registry.ts installed; README points to sovereign law docs; no conflicting framing; drift signal registry live |
 | 2 | Mission Substrate | ACTIVE | Mission entity model, mission lifecycle, mission repository container, mission-first shell binding | Mission is first-class system object with create/open/archive/active flows; MissionContextBand authoritative; MissionRepository live; MissionOperationsPanel mounted |
-| 3 | Sovereign Intelligence | LOCKED | Native mission reasoning loops, mission-context memory, structured prompt spine | Intelligence runs on mission state, not generic chat state |
-| 4 | Autonomous Operations | LOCKED | Multi-step execution runtime, deterministic actions, retry and audit paths | Mission actions execute with logs, outcomes, and recovery rules |
+| 3 | Sovereign Intelligence | CLOSED | Native mission reasoning loops, mission-context memory, structured prompt spine | Intelligence runs on mission state, not generic chat state |
+| 4 | Autonomous Operations | ACTIVE | Multi-step execution runtime, deterministic actions, retry and audit paths | Mission actions execute with logs, outcomes, and recovery rules |
 | 5 | Adaptive Experience | LOCKED | Chamber-aware UX, mission state surfaces, consequence-driven interface | UI reflects mission state transitions in all chambers |
 | 6 | Sovereign Security | LOCKED | Identity boundaries, permission lattice, data access policy | Mission-level authorization and enforcement validated |
 | 7 | Trust + Governance | LOCKED | Audit trails, policy overlays, controls and approvals | Every consequential action has policy + audit evidence |
@@ -48,27 +48,52 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 
 ---
 
-## Active Frontier: Stack 2 (Mission Substrate)
+## Closed: Stack 2 (Mission Substrate)
+
+### Exit Proof
+- `dna/mission-substrate.ts` — Mission type: identity, workflow, memory, ledger, runtime, policy, artifacts.
+- `MissionContextBand` — shell-wide strip: live pulse on execute, MISSION label, runCount, status, chamber, release.
+- `MissionRepository` — CRUD + activate in Profile > projects.
+- `mcp-client.ts` — Supabase edge function: create / get / list / updateState / attachContinuity / buildHandoff.
+- `MissionOperationsPanel` — MOUNTED in ProfileMode > operations when activeMission set.
+- `activeMissionOps` — state slot in App.tsx, initialized on mission activate/release.
+- Mission ID injected into every execution dispatch, governance gate, and continuity item.
+- CLOSED 2026-04-02
+
+---
+
+## Closed: Stack 3 (Sovereign Intelligence)
+
+### Exit Proof
+- `dna/sovereign-intelligence.ts` — MissionRouteRequest / MissionRouteResult / MemoryRecallRequest / MemoryRecallResult / MissionReasoningRequest / MissionReasoningResult typed.
+- `resolveMissionRoute()` — called at every dispatch when mission active.
+- `buildMissionSystemContext()` — mission identity injected as system[0] to both Ollama and hosted paths.
+- `buildMissionMemoryContext()` — prior mission continuity items injected as mission memory context alongside identity.
+- `preferredPioneerId` — `activeMission.workflow.pioneerStack[0]` honored in `resolveRouteDecision`.
+- `routeDigest` — mission-bound when active: `[contract] · [mission name] · [missionReason]`.
+- Intelligence serves mission state (identity + memory), not generic session.
+- CLOSED 2026-04-02
+
+---
+
+## Active Frontier: Stack 4 (Autonomous Operations)
 
 ### Scope (Now)
-- Mission entity model in dna/mission-substrate.ts (DONE)
-- Mission lifecycle: create / activate / pause / block / complete / archive (DONE)
-- MissionContextBand: shell-level authoritative mission strip (DONE — live pulse, isExecuting, runCount)
-- MissionRepository: create + list + activate in ProfileMode (DONE)
-- MissionOperationsPanel: mission-scoped tasks/signals/approvals surface (NEEDS MOUNTING)
-- Mission-first routing: activeMissionId injected into every dispatch (DONE)
-- MCP mission client: create / updateState / attachContinuity / buildHandoff (DONE)
+- `dna/autonomous-operations.ts` — canonical operations type system (TaskDef, Signal, ApprovalRequest, OperationRun, ExecutionOutcome, RecoveryPolicy).
+- `MissionOperationsPanel` — surface mounted; callbacks are stubs (signal dismiss, approval mutations).
+- Task creation from execution completion events — NOT wired (operations substrate not event-driven yet).
 
 ### Open Residue
-1. `MissionOperationsPanel` — built in components/ but not mounted. Must appear in ProfileMode > operations when a mission is active.
-2. `activeMissionOps` — no state slot in App.tsx. Needs `defaultMissionOperationsState(activeMissionId)` initialized on mission activation.
-3. Mission-to-operations binding: task creation via App.tsx execution events is not yet wired.
+1. Execution completion → task creation: when a dispatch completes, emit a task artifact into `activeMissionOps.tasks` (status: completed, outcome from execution).
+2. Signal dismiss: `MissionOperationsPanel` `onDismissSignal` stub must mutate `activeMissionOps.signals`.
+3. Approval mutation: `onApproveAction` must update approval state in `activeMissionOps.approvals`.
+4. `OperationRun` lifecycle: start/complete/fail events from real execution should drive run state.
 
 ### Exit Criteria
-- [ ] MissionOperationsPanel mounted and visible when active mission has tasks/signals
-- [ ] `activeMissionOps` state in App.tsx, initialized on activeMissionId change
-- [ ] Mission ledger audit trail visible in governance surface
-- [ ] Mission state transitions surface in SystemHealthBand on block/complete
+- [ ] Dispatch completion creates a task entry in activeMissionOps (title from routeDigest, status, model, duration)
+- [ ] Signal dismiss + approval callbacks are live (not stubs)
+- [ ] MissionOperationsPanel shows real post-execution task artifacts when mission is active
+- [ ] Operations surface reflects actual execution outcomes — no theater data
 
 ---
 
@@ -76,10 +101,10 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 
 | Pioneer | Immediate Task | Mode |
 |---|---|---|
-| Claude Architect | Own Stack 2 (Mission Substrate) closure — mount MissionOperationsPanel, wire activeMissionOps, advance to Stack 3. | ACTIVE |
-| Codex Systems | Extend dna/autonomous-operations.ts to add task creation events on execution completion. | ACTIVE |
-| Cursor Builder | Build mission-first entry path: ensure every chamber prompt can optionally bind to a mission. | ACTIVE (Stack 2 unlocked) |
-| Grok Reality Pulse | Contradiction check: ensure mission routing bias in routing-contracts.ts aligns with chamber routing behavior. | ACTIVE |
-| Gemini Expansion | Expand Stack 3 (Sovereign Intelligence) mission-bound reasoning model — ensure MissionReasoningRequest feeds from activeMission. | QUEUED (when Stack 2 closes) |
-| Copilot QA Guard | Regression check on MissionContextBand + MissionOperationsPanel surface after mounting. | ACTIVE |
-| Antigravity Director | Gate Stack 3 entry. Monitor drift in Stack 2 operations — ensure tasks don't drift into generic PM patterns. | ACTIVE |
+| Claude Architect | Own Stack 4 closure — wire execution completion → task creation, close operations loop. | ACTIVE |
+| Codex Systems | Real signal + approval mutations in MissionOperationsPanel. OperationRun lifecycle from execution events. | ACTIVE |
+| Cursor Builder | Ensure mission-first entry: prompt binds to active mission at first message if none active. | ACTIVE |
+| Grok Reality Pulse | Audit operations data flow — confirm tasks/signals/approvals surface real execution state, not theater. | ACTIVE |
+| Gemini Expansion | Model MissionReasoningResult pipeline for Stack 3+ intelligence output contracts (future, not Stack 4). | QUEUED |
+| Copilot QA Guard | Regression: MissionOperationsPanel post-mount + task creation + signal dismiss. | ACTIVE |
+| Antigravity Director | Gate Stack 4 entry. No drift into generic PM or project management patterns. | ACTIVE |

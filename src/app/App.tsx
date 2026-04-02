@@ -138,6 +138,30 @@ function buildMissionSystemContext(mission: Mission): string {
   }
   return lines.join("\n");
 }
+
+/**
+ * Stack 03 — Mission memory recall.
+ * Surfaces the last N execution continuity items bound to this mission
+ * as prior context. Intelligence must know what has happened in this
+ * mission, not just what the mission is.
+ */
+function buildMissionMemoryContext(mission: Mission, continuity: import("./components/runtime-fabric").ContinuityItem[]): string | null {
+  const missionName = mission.identity.name.toLowerCase();
+  const relevant = continuity
+    .filter((c) =>
+      c.workflowId === mission.id ||
+      c.title.toLowerCase().includes(missionName)
+    )
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 4);
+  if (relevant.length === 0) return null;
+  const lines = ["PRIOR MISSION RUNS:"];
+  for (const c of relevant) {
+    const digest = c.lastRunDigest ?? `${c.status}: ${c.title}`;
+    lines.push(`- [${c.chamber}] ${digest.slice(0, 120)}`);
+  }
+  return lines.join("\n");
+}
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-b9f46b68`;
 
 type TabMessages = Record<Tab, Message[]>;
@@ -735,7 +759,11 @@ export default function App() {
         .map(({ role, content }) => ({ role, content }));
 
       // Stack 03: mission context injection — intelligence serves the mission, not the session
-      const missionCtx = activeMission ? buildMissionSystemContext(activeMission) : null;
+      const missionIdentityCtx = activeMission ? buildMissionSystemContext(activeMission) : null;
+      const missionMemoryCtx   = activeMission ? buildMissionMemoryContext(activeMission, runtimeFabric.continuity) : null;
+      const missionCtx = missionIdentityCtx
+        ? (missionMemoryCtx ? `${missionIdentityCtx}\n\n${missionMemoryCtx}` : missionIdentityCtx)
+        : null;
       const contextualHistory: Array<{ role: string; content: string }> = missionCtx
         ? [{ role: "system", content: missionCtx }, ...history]
         : history;
