@@ -25,13 +25,28 @@ interface CmdEntry {
 
 const RUNTIME_RESULT_CAP = 14;
 
-function buildStaticEntries(navigate: NavFn, onClose: () => void): CmdEntry[] {
+function buildStaticEntries(
+  navigate: NavFn,
+  onClose: () => void,
+  missionCommands?: { onMissionNew: () => void; onMissionSwitch: () => void; onMissionHandoff?: () => void; activeMissionName?: string },
+): CmdEntry[] {
   const go = (tab: "lab" | "school" | "creation" | "profile", view: string, id = "") => {
     navigate(tab, view, id);
     onClose();
   };
 
   const entries: CmdEntry[] = [
+    { id: "mission-new", label: "Mission — New", meta: "Mission", chamber: "profile", action: () => { missionCommands?.onMissionNew(); onClose(); } },
+    { id: "mission-switch", label: "Mission — Switch", meta: "Mission", chamber: "profile", action: () => { missionCommands?.onMissionSwitch(); onClose(); } },
+    ...(missionCommands?.onMissionHandoff
+      ? [{
+          id: "mission-handoff",
+          label: "Mission — Handoff",
+          meta: missionCommands.activeMissionName ? `Mission · ${missionCommands.activeMissionName}` : "Mission",
+          chamber: "profile" as const,
+          action: () => { missionCommands.onMissionHandoff?.(); onClose(); },
+        }]
+      : []),
     // ── Navigation shortcuts ────────────────────────────────────────────────
     { id: "nav-lab-home",      label: "Lab — Home",           meta: "Chamber",  chamber: "lab",      action: () => go("lab",      "home")      },
     { id: "nav-lab-chat",      label: "Lab — Chat",           meta: "Chamber",  chamber: "lab",      action: () => go("lab",      "chat")      },
@@ -156,10 +171,21 @@ interface GlobalCommandPaletteProps {
   onClose:     () => void;
   navigate:    NavFn;
   searchIndex: SearchIndexEntry[];
+  onMissionNew: () => void;
+  onMissionSwitch: () => void;
+  onMissionHandoff?: () => void;
+  activeMissionName?: string;
 }
 
-export function GlobalCommandPalette({ open, onClose, navigate, searchIndex }: GlobalCommandPaletteProps) {
-  const staticEntries = buildStaticEntries(navigate, onClose);
+export function GlobalCommandPalette({
+  open, onClose, navigate, searchIndex, onMissionNew, onMissionSwitch, onMissionHandoff, activeMissionName,
+}: GlobalCommandPaletteProps) {
+  const staticEntries = buildStaticEntries(navigate, onClose, {
+    onMissionNew,
+    onMissionSwitch,
+    onMissionHandoff,
+    activeMissionName,
+  });
   const runtimeEntries = buildRuntimeEntries(searchIndex, navigate, onClose);
   const allEntries = [...staticEntries, ...runtimeEntries];
   const inputRef = useRef<HTMLInputElement>(null);

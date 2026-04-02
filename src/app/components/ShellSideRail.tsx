@@ -8,6 +8,7 @@ import {
   type Tab, type Message, type SignalStatus,
   type LabView, type SchoolView, type CreationView, type ProfileView, type NavFn,
 } from "./shell-types";
+import { CHAMBER_ACCENT, CHAMBER_ACCENT_LIGHT, CHAMBER_LABEL } from "../dna/chamber-accent";
 
 interface ShellSideRailProps {
   activeTab:      Tab;
@@ -24,24 +25,18 @@ interface ShellSideRailProps {
   onNewNote:      () => void;
   onClearTab:     (tab: Tab) => void;
   navigate:       NavFn;
+  onTabChange:    (tab: Tab) => void;
+  collapsed:      boolean;
+  onToggleCollapsed: () => void;
 }
 
 const ALL_TABS: Tab[] = ["lab", "school", "creation", "profile"];
 
-// ─── Chamber accent colors — matches tokens.ts ────────────────────────────────
-
-const TAB_ACCENT = {
-  lab:      "var(--chamber-lab)",
-  school:   "var(--chamber-school)",
-  creation: "var(--chamber-creation)",
-  profile:  "var(--r-pulse)",
-};
-
-const CHAMBER_ACCENT: Record<Tab, { primary: string; light: string; label: string }> = {
-  lab:      { primary: "var(--chamber-lab)",      light: "var(--chamber-lab-light)",      label: "Research Lab" },
-  school:   { primary: "var(--chamber-school)",   light: "var(--chamber-school-light)",   label: "Technical School" },
-  creation: { primary: "var(--chamber-creation)", light: "var(--chamber-creation-light)", label: "Creation Forge" },
-  profile:  { primary: "var(--r-pulse)",          light: "var(--r-rail)",                label: "Sovereign Profile" },
+const CHAMBER_SURFACE: Record<Tab, { primary: string; light: string; label: string }> = {
+  lab:      { primary: CHAMBER_ACCENT.lab,      light: CHAMBER_ACCENT_LIGHT.lab,      label: CHAMBER_LABEL.lab },
+  school:   { primary: CHAMBER_ACCENT.school,   light: CHAMBER_ACCENT_LIGHT.school,   label: CHAMBER_LABEL.school },
+  creation: { primary: CHAMBER_ACCENT.creation, light: CHAMBER_ACCENT_LIGHT.creation, label: CHAMBER_LABEL.creation },
+  profile:  { primary: CHAMBER_ACCENT.profile,  light: CHAMBER_ACCENT_LIGHT.profile,  label: CHAMBER_LABEL.profile },
 };
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -67,13 +62,14 @@ function SLabel({ children }: { children: React.ReactNode }) {
 }
 
 function NavBtn({
-  label, icon, active, accent, onClick,
+  label, icon, active, accent, onClick, collapsed = false,
 }: {
   label:   string;
   icon:    React.ReactNode;
   active:  boolean;
   accent:  string;
   onClick: () => void;
+  collapsed?: boolean;
 }) {
   return (
     <button
@@ -82,8 +78,9 @@ function NavBtn({
         width: "100%",
         display: "flex",
         alignItems: "center",
-        gap: "7px",
-        padding: "5px 7px",
+        gap: collapsed ? "0" : "7px",
+        justifyContent: collapsed ? "center" : "flex-start",
+        padding: collapsed ? "6px 0" : "5px 7px",
         borderRadius: "5px",
         border: "none",
         background: active ? "var(--r-surface)" : "transparent",
@@ -123,7 +120,7 @@ function NavBtn({
       >
         {icon}
       </span>
-      {label}
+      {!collapsed && label}
     </button>
   );
 }
@@ -339,14 +336,14 @@ export function ShellSideRail({
   activeTab, messages, signals,
   labView, schoolView, creationView, profileView,
   onLabView, onSchoolView, onCreationView, onProfileView,
-  onNewNote, onClearTab, navigate,
+  onNewNote, onClearTab, navigate, onTabChange, collapsed, onToggleCollapsed,
 }: ShellSideRailProps) {
-  const chamber = CHAMBER_ACCENT[activeTab];
+  const chamber = CHAMBER_SURFACE[activeTab];
 
   return (
     <aside
       style={{
-        width: "188px",
+        width: collapsed ? "44px" : "180px",
         flexShrink: 0,
         borderRight: "1px solid var(--r-border)",
         background: "rgba(var(--r-surface-rgb), 0.75)",
@@ -358,6 +355,38 @@ export function ShellSideRail({
         transition: "background 0.25s ease",
       }}
     >
+      {collapsed ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: "8px" }}>
+          <button onClick={onToggleCollapsed} title="Expand rail" style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "11px" }}>»</button>
+          {ALL_TABS.map((tab) => {
+            const isActive = activeTab === tab;
+            const accentColor = CHAMBER_SURFACE[tab].primary;
+            const icon = tab === "lab" ? <IHome /> : tab === "school" ? <ILibrary /> : tab === "creation" ? <ITerminal /> : <IRole />;
+            return (
+              <button
+                key={tab}
+                onClick={() => onTabChange(tab)}
+                title={tab}
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--r-border-soft)",
+                  background: isActive ? "var(--r-elevated)" : "transparent",
+                  color: isActive ? accentColor : "var(--r-dim)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                {icon}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+      <>
       {/* Chamber header — color-identified */}
       <div
         style={{
@@ -394,33 +423,34 @@ export function ShellSideRail({
             {chamber.label}
           </span>
         </div>
-        <button
-          onClick={onNewNote}
-          title="New floating note"
-          style={{
-            fontSize: "9px",
-            fontFamily: "'JetBrains Mono', monospace",
-            color: "var(--r-dim)",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            outline: "none",
-            padding: "2px 4px",
-            borderRadius: "3px",
-            letterSpacing: "0.04em",
-            transition: "color 0.1s ease, background 0.1s ease",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.color = "var(--r-text)";
-            (e.currentTarget as HTMLElement).style.background = "var(--r-border-soft)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.color = "var(--r-dim)";
-            (e.currentTarget as HTMLElement).style.background = "transparent";
-          }}
-        >
-          + note
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <button
+            onClick={onToggleCollapsed}
+            title="Collapse rail"
+            style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "10px" }}
+          >
+            «
+          </button>
+          <button
+            onClick={onNewNote}
+            title="New floating note"
+            style={{
+              fontSize: "9px",
+              fontFamily: "'JetBrains Mono', monospace",
+              color: "var(--r-dim)",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              outline: "none",
+              padding: "2px 4px",
+              borderRadius: "3px",
+              letterSpacing: "0.04em",
+              transition: "color 0.1s ease, background 0.1s ease",
+            }}
+          >
+            + note
+          </button>
+        </div>
       </div>
 
       {/* Chamber nav */}
@@ -445,7 +475,7 @@ export function ShellSideRail({
         {ALL_TABS.map((tab) => {
           const count    = messages[tab].filter((m) => m.role === "assistant" && m.content.length > 0).length;
           const isActive = tab === activeTab;
-          const accentColor = CHAMBER_ACCENT[tab].primary;
+          const accentColor = CHAMBER_SURFACE[tab].primary;
           return (
             <div
               key={tab}
@@ -558,6 +588,8 @@ export function ShellSideRail({
           v2
         </span>
       </div>
+      </>
+      )}
     </aside>
   );
 }

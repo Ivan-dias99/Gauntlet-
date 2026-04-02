@@ -14,6 +14,7 @@
  */
 
 import { assertStackOrder } from "./canon-sovereignty";
+import { MISSION_CHAMBER_ACCENT } from "./chamber-accent";
 
 // ─── Guard: Stack 01 must be installed before this module is active ──────────
 const _orderGuard = assertStackOrder("mission", ["canon"]);
@@ -405,11 +406,7 @@ export const MISSION_STATUS_COLOR: Record<MissionStatus, string> = {
   archived:  "var(--r-dim)",
 };
 
-export const CHAMBER_ACCENT: Record<MissionChamberLead, string> = {
-  lab:      "var(--chamber-lab)",
-  school:   "var(--chamber-school)",
-  creation: "var(--chamber-creation)",
-};
+export const CHAMBER_ACCENT: Record<MissionChamberLead, string> = MISSION_CHAMBER_ACCENT;
 
 // ─── MISSION STORAGE KEY ─────────────────────────────────────────────────────
 

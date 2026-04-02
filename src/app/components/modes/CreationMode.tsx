@@ -706,7 +706,7 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
 
 export function CreationMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  creationView, onCreationView, navigate, detailId, task, modelId, onTaskChange, onModelChange,
+  creationView, onCreationView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -722,6 +722,7 @@ export function CreationMode({
   modelId: string;
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
+  missionName?: string;
 }) {
   const showHome = creationView === "home" || (!messages.length && creationView === "chat");
 
@@ -757,6 +758,7 @@ export function CreationMode({
       modelId={modelId}
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
+      missionName={missionName}
       placeholder="Directive — describe what to build, generate, or forge…"
     />
   );
@@ -770,6 +772,7 @@ export function CreationMode({
       modelId={modelId}
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
+      missionName={missionName}
     />
   );
 }

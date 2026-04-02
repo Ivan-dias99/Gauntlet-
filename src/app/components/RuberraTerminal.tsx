@@ -742,12 +742,13 @@ export interface RuberraTerminalProps {
   placeholder?: string;
   elapsedLabel?: string;
   chamberAccentVar?: string;
+  missionName?: string;
 }
 
 export function RuberraTerminal({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
   chamberLabel, chamber, task, modelId, onTaskChange, onModelChange, placeholder = "Enter directive…", elapsedLabel,
-  chamberAccentVar = "var(--chamber-creation)",
+  chamberAccentVar = "var(--chamber-creation)", missionName,
 }: RuberraTerminalProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -779,6 +780,9 @@ export function RuberraTerminal({
     lastTrace?.leadPioneerId != null
       ? getPioneerFromRuntimeId(lastTrace.leadPioneerId)?.short_role ?? lastTrace.leadPioneerId
       : undefined;
+  const hasArtifactMutation = chamber === "creation" && (lastTrace?.executionResults ?? []).some((r) =>
+    /artifact|build|package|finalize/i.test(r.phase) || /artifact|build|package/i.test(r.summary)
+  );
 
   return (
     <div
@@ -843,6 +847,8 @@ export function RuberraTerminal({
             tierLabel={TIER_LABEL[execTruth.tier]}
             tierColor={TIER_COLOR[execTruth.tier]}
             modelTruthLabel={execTruth.tier_label}
+            missionName={missionName}
+            artifactDiff={hasArtifactMutation ? { summary: lastTrace.executionResults.slice(-1)[0]?.summary ?? "artifact mutation captured" } : undefined}
           />
         </div>
       )}
