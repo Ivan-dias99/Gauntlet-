@@ -4,6 +4,7 @@
  */
 
 import { motion } from "motion/react";
+import { type ReactNode } from "react";
 import {
   type Tab, type Message, type SignalStatus,
   type LabView, type SchoolView, type CreationView, type ProfileView, type NavFn,
@@ -41,7 +42,7 @@ const CHAMBER_SURFACE: Record<Tab, { primary: string; light: string; label: stri
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-function SLabel({ children }: { children: React.ReactNode }) {
+function SLabel({ children }: { children: ReactNode }) {
   return (
     <p
       style={{
@@ -65,7 +66,7 @@ function NavBtn({
   label, icon, active, accent, onClick, collapsed = false,
 }: {
   label:   string;
-  icon:    React.ReactNode;
+  icon:    ReactNode;
   active:  boolean;
   accent:  string;
   onClick: () => void;
@@ -166,7 +167,7 @@ function SMeta({ label, value }: { label: string; value: string }) {
 function LabRail({ view, onView, messages, signal, navigate }: {
   view: LabView; onView: (v: LabView) => void; messages: Message[]; signal: SignalStatus; navigate: NavFn;
 }) {
-  const accent = CHAMBER_ACCENT.lab.primary;
+  const accent = CHAMBER_ACCENT.lab;
   const history = messages.filter((m) => m.role === "user").slice().reverse().slice(0, 5);
   return (
     <>
@@ -214,7 +215,7 @@ function LabRail({ view, onView, messages, signal, navigate }: {
 function SchoolRail({ view, onView, messages, signal, navigate }: {
   view: SchoolView; onView: (v: SchoolView) => void; messages: Message[]; signal: SignalStatus; navigate: NavFn;
 }) {
-  const accent = CHAMBER_ACCENT.school.primary;
+  const accent = CHAMBER_ACCENT.school;
   const history = messages.filter((m) => m.role === "user").slice().reverse().slice(0, 5);
   return (
     <>
@@ -261,7 +262,7 @@ function SchoolRail({ view, onView, messages, signal, navigate }: {
 function CreationRail({ view, onView, messages, signal, navigate }: {
   view: CreationView; onView: (v: CreationView) => void; messages: Message[]; signal: SignalStatus; navigate: NavFn;
 }) {
-  const accent = CHAMBER_ACCENT.creation.primary;
+  const accent = CHAMBER_ACCENT.creation;
   const artifacts = messages.filter(m => m.role === "assistant" && m.content.length > 0).slice().reverse().slice(0, 5);
   return (
     <>
@@ -304,7 +305,7 @@ function CreationRail({ view, onView, messages, signal, navigate }: {
 }
 
 function ProfileRail({ view, onView }: { view: ProfileView; onView: (v: ProfileView) => void }) {
-  const accent = CHAMBER_ACCENT.profile.primary;
+  const accent = CHAMBER_ACCENT.profile;
   return (
     <>
       <section style={{ padding: "10px 10px 8px" }}>
