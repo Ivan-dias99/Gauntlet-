@@ -31,6 +31,32 @@ import {
 } from "../autonomous-operations";
 import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
 import { ExecutionConsequenceStrip } from "../ExecutionConsequenceStrip";
+import { GovernanceLedgerStrip } from "../GovernanceLedgerStrip";
+import { FlowRunStrip } from "../FlowRunStrip";
+import { AgentCivilizationStrip } from "../AgentCivilizationStrip";
+import { AnalyticsPatternStrip } from "../AnalyticsPatternStrip";
+import { KnowledgeGraphStrip } from "../KnowledgeGraphStrip";
+import { CollectiveExecutionStrip } from "../CollectiveExecutionStrip";
+import { DistributionPresenceStrip } from "../DistributionPresenceStrip";
+import { ValueExchangeStrip } from "../ValueExchangeStrip";
+import { EcosystemNetworkStrip } from "../EcosystemNetworkStrip";
+import { PlatformInfraStrip } from "../PlatformInfraStrip";
+import { OrgIntelligenceStrip } from "../OrgIntelligenceStrip";
+import { PersonalSovereignOSStrip } from "../PersonalSovereignOSStrip";
+import { CompoundNetworkStrip } from "../CompoundNetworkStrip";
+import { type AgentCivilization } from "../../dna/multi-agent";
+import { type AnalyticsPattern } from "../../dna/intelligence-analytics";
+import { type KnowledgeGraph } from "../../dna/living-knowledge";
+import { type CollectiveState } from "../../dna/collective-execution";
+import { type PresenceManifest } from "../../dna/distribution-presence";
+import { type ExchangeLedger } from "../../dna/value-exchange";
+import { type EcosystemNetworkState } from "../../dna/ecosystem-network";
+import { type PlatformInfraState } from "../../dna/platform-infrastructure";
+import { type OrgIntelligenceState } from "../../dna/org-intelligence";
+import { type PersonalSovereignOSState } from "../../dna/personal-sovereign-os";
+import { type CompoundNetwork } from "../../dna/compound-intelligence";
+import { type AuditEntry } from "../../dna/trust-governance";
+import { type AutonomousFlowState } from "../../dna/autonomous-flow";
 import {
   PROVIDER_ADAPTERS,
   SOVEREIGN_MODEL_REGISTRY,
@@ -78,6 +104,20 @@ interface ProfileModeProps {
   onOperationSignalResolve?: (id: string) => void;
   onHandoffAccept?:          (id: string) => void;
   onHandoffReject?:          (id: string, reason: string) => void;
+  // Stack substrate strips
+  civilization?:      AgentCivilization;
+  analyticsPatterns?: AnalyticsPattern[];
+  knowledgeGraph?:    KnowledgeGraph;
+  collectiveState?:   CollectiveState;
+  presenceManifest?:  PresenceManifest;
+  exchangeLedger?:    ExchangeLedger;
+  ecosystemState?:    EcosystemNetworkState;
+  platformState?:     PlatformInfraState;
+  orgState?:          OrgIntelligenceState;
+  personalOS?:        PersonalSovereignOSState;
+  compoundNetwork?:   CompoundNetwork;
+  governanceEntries?: AuditEntry[];
+  flowState?:         AutonomousFlowState;
 }
 
 type WorkStatus = "in_progress" | "paused" | "completed";
@@ -416,6 +456,19 @@ export function ProfileMode({
   onOperationSignalResolve,
   onHandoffAccept,
   onHandoffReject,
+  civilization,
+  analyticsPatterns,
+  knowledgeGraph,
+  collectiveState,
+  presenceManifest,
+  exchangeLedger,
+  ecosystemState,
+  platformState,
+  orgState,
+  personalOS,
+  compoundNetwork,
+  governanceEntries,
+  flowState,
 }: ProfileModeProps) {
   const operations = operationsProp ?? defaultAutonomousOperationsState();
   const derivedWork = deriveWorkItems(messages);
@@ -654,6 +707,27 @@ export function ProfileMode({
                 </div>
               </SectionBlock>
             )}
+            {analyticsPatterns && analyticsPatterns.length > 0 && (
+              <SectionBlock title="Intelligence Analytics">
+                <div style={{ padding: "10px 14px" }}>
+                  <AnalyticsPatternStrip patterns={analyticsPatterns} />
+                </div>
+              </SectionBlock>
+            )}
+            {orgState && (
+              <SectionBlock title="Org Intelligence">
+                <div style={{ padding: "10px 14px" }}>
+                  <OrgIntelligenceStrip org={orgState} />
+                </div>
+              </SectionBlock>
+            )}
+            {platformState && (
+              <SectionBlock title="Platform Infrastructure">
+                <div style={{ padding: "10px 14px" }}>
+                  <PlatformInfraStrip platform={platformState} />
+                </div>
+              </SectionBlock>
+            )}
           </>
         )}
 
@@ -699,6 +773,7 @@ export function ProfileMode({
 
         {/* ── MEMORY ── */}
         {profileView === "memory" && (
+          <>
           <SectionBlock title={`Memory — ${memoryItems.length} Objects`}>
             {memoryItems.length === 0 ? (
               <div style={{ padding: "6px 14px 12px" }}>
@@ -733,6 +808,14 @@ export function ProfileMode({
             ))}
             <div style={{ height: "1px" }} />
           </SectionBlock>
+          {knowledgeGraph && knowledgeGraph.nodes.length > 0 && (
+            <SectionBlock title="Knowledge Graph">
+              <div style={{ padding: "10px 14px" }}>
+                <KnowledgeGraphStrip graph={knowledgeGraph} />
+              </div>
+            </SectionBlock>
+          )}
+          </>
         )}
 
         {/* ── SETTINGS ── */}
@@ -795,6 +878,13 @@ export function ProfileMode({
               ))}
               <div style={{ height: "1px" }} />
             </SectionBlock>
+            {personalOS && (
+              <SectionBlock title="Personal Sovereign OS">
+                <div style={{ padding: "10px 14px" }}>
+                  <PersonalSovereignOSStrip os={personalOS} />
+                </div>
+              </SectionBlock>
+            )}
           </>
         )}
 
@@ -842,6 +932,20 @@ export function ProfileMode({
                 <div style={{ height: "1px" }} />
               </SectionBlock>
             )}
+            {presenceManifest && (
+              <SectionBlock title="Distribution & Presence">
+                <div style={{ padding: "10px 14px" }}>
+                  <DistributionPresenceStrip manifest={presenceManifest} />
+                </div>
+              </SectionBlock>
+            )}
+            {exchangeLedger && (
+              <SectionBlock title="Value Exchange Ledger">
+                <div style={{ padding: "10px 14px" }}>
+                  <ValueExchangeStrip ledger={exchangeLedger} />
+                </div>
+              </SectionBlock>
+            )}
           </>
         )}
 
@@ -867,11 +971,26 @@ export function ProfileMode({
                 />
               </div>
             </SectionBlock>
+            {civilization && (
+              <SectionBlock title="Agent Civilization">
+                <div style={{ padding: "10px 14px" }}>
+                  <AgentCivilizationStrip civilization={civilization} />
+                </div>
+              </SectionBlock>
+            )}
+            {compoundNetwork && (
+              <SectionBlock title="Compound Intelligence Network">
+                <div style={{ padding: "10px 14px" }}>
+                  <CompoundNetworkStrip network={compoundNetwork} />
+                </div>
+              </SectionBlock>
+            )}
           </>
         )}
 
         {/* ── OPERATIONS (Stack 04) ── */}
         {profileView === "operations" && (
+          <>
           <OperationsPanel
             tasks={operations.tasks}
             reviews={operations.reviews}
@@ -886,10 +1005,26 @@ export function ProfileMode({
             onHandoffAccept={(id) => onHandoffAccept?.(id)}
             onHandoffReject={(id, reason) => onHandoffReject?.(id, reason)}
           />
+          {collectiveState && (
+            <SectionBlock title="Collective Execution">
+              <div style={{ padding: "10px 14px" }}>
+                <CollectiveExecutionStrip collective={collectiveState} />
+              </div>
+            </SectionBlock>
+          )}
+          {governanceEntries && governanceEntries.length > 0 && (
+            <SectionBlock title="Governance Audit Trail">
+              <div style={{ padding: "10px 14px" }}>
+                <GovernanceLedgerStrip entries={governanceEntries} />
+              </div>
+            </SectionBlock>
+          )}
+          </>
         )}
 
         {/* ── WORKFLOWS ── */}
         {profileView === "workflows" && (
+          <>
           <SectionBlock title={`Workflow Templates — ${WORKFLOW_TEMPLATES.length} Canonical Workflows`}>
             <div style={{ padding: "6px 0 0" }}>
               {WORKFLOW_TEMPLATES.map((template) => (
@@ -897,6 +1032,18 @@ export function ProfileMode({
               ))}
             </div>
           </SectionBlock>
+          {flowState && Object.values(flowState.runs).length > 0 && (() => {
+            const activeRun = Object.values(flowState.runs).find(r => r.state === "running" || r.state === "pending");
+            const def = activeRun ? flowState.defs[activeRun.defId] : null;
+            return activeRun && def ? (
+              <SectionBlock title="Active Flow Run">
+                <div style={{ padding: "10px 14px" }}>
+                  <FlowRunStrip run={activeRun} def={def} />
+                </div>
+              </SectionBlock>
+            ) : null;
+          })()}
+          </>
         )}
 
         {/* ── CONNECTORS ── */}
@@ -1012,6 +1159,13 @@ export function ProfileMode({
                 </SectionBlock>
               );
             })}
+            {ecosystemState && (
+              <SectionBlock title="Ecosystem Network">
+                <div style={{ padding: "10px 14px" }}>
+                  <EcosystemNetworkStrip ecosystem={ecosystemState} />
+                </div>
+              </SectionBlock>
+            )}
           </>
         )}
 

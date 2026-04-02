@@ -78,6 +78,19 @@ import { getContractByIntent, resolveIntent, resolveRoute } from "./components/r
 import { MODEL_REGISTRY } from "./components/model-orchestration";
 import { enforceExecutionGate } from "./components/governance-fabric";
 import { buildWorkflowRunPayload } from "./components/workflow-engine";
+import { defaultCivilization } from "./dna/multi-agent";
+import { defaultAnalyticsState } from "./dna/intelligence-analytics";
+import { defaultKnowledgeGraph } from "./dna/living-knowledge";
+import { defaultCollectiveState } from "./dna/collective-execution";
+import { defaultPresenceManifest } from "./dna/distribution-presence";
+import { defaultExchangeLedger } from "./dna/value-exchange";
+import { defaultEcosystemState } from "./dna/ecosystem-network";
+import { defaultPlatformState } from "./dna/platform-infrastructure";
+import { defaultOrgState } from "./dna/org-intelligence";
+import { defaultPersonalOS } from "./dna/personal-sovereign-os";
+import { defaultCompoundNetwork } from "./dna/compound-intelligence";
+import { defaultTrustGovernanceState } from "./dna/trust-governance";
+import { defaultAutonomousFlowState } from "./dna/autonomous-flow";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
@@ -166,6 +179,20 @@ export default function App() {
   // ── Command palette + signals panel ───────────────────────────────────────────
   const [cmdOpen, setCmdOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
+  // ── Stack substrates ─────────────────────────────────────────────────────────
+  const [civilization]      = useState(defaultCivilization);
+  const [analyticsState]    = useState(defaultAnalyticsState);
+  const [knowledgeGraph]    = useState(defaultKnowledgeGraph);
+  const [collectiveState]   = useState(defaultCollectiveState);
+  const [presenceManifest]  = useState(() => defaultPresenceManifest("operator-1"));
+  const [exchangeLedger]    = useState(defaultExchangeLedger);
+  const [ecosystemState]    = useState(defaultEcosystemState);
+  const [platformState]     = useState(defaultPlatformState);
+  const [orgState]          = useState(defaultOrgState);
+  const [personalOS]        = useState(() => defaultPersonalOS("operator-1"));
+  const [compoundNetwork]   = useState(defaultCompoundNetwork);
+  const [trustGovState]     = useState(defaultTrustGovernanceState);
+  const [flowState]         = useState(defaultAutonomousFlowState);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1046,6 +1073,19 @@ export default function App() {
                   onOperationSignalResolve={handleOperationSignalResolve}
                   onHandoffAccept={handleHandoffAccept}
                   onHandoffReject={handleHandoffReject}
+                  civilization={civilization}
+                  analyticsPatterns={analyticsState.patterns}
+                  knowledgeGraph={knowledgeGraph}
+                  collectiveState={collectiveState}
+                  presenceManifest={presenceManifest}
+                  exchangeLedger={exchangeLedger}
+                  ecosystemState={ecosystemState}
+                  platformState={platformState}
+                  orgState={orgState}
+                  personalOS={personalOS}
+                  compoundNetwork={compoundNetwork}
+                  governanceEntries={trustGovState.ledger.auditTrail.entries}
+                  flowState={flowState}
                 />
               )}
             </motion.div>
