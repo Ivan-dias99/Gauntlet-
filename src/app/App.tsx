@@ -78,12 +78,12 @@ import { getContractByIntent, resolveIntent, resolveRoute } from "./components/r
 import { MODEL_REGISTRY } from "./components/model-orchestration";
 import { enforceExecutionGate } from "./components/governance-fabric";
 import { buildWorkflowRunPayload } from "./components/workflow-engine";
-import { defaultCivilization, registerAgent, admitAgent, type AgentDomain } from "./dna/multi-agent";
+import { defaultCivilization, registerAgent, admitAgent, activateAgent, type AgentDomain } from "./dna/multi-agent";
 import { detectPatterns } from "./dna/intelligence-analytics";
 import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
-import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph } from "./dna/collective-execution";
+import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph, claimCollectiveResource } from "./dna/collective-execution";
 import { defaultPresenceManifest, createChannel, registerChannel } from "./dna/distribution-presence";
-import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit } from "./dna/value-exchange";
+import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit, verifyValueUnit } from "./dna/value-exchange";
 import { defaultEcosystemState, proposeExtension, admitToNetwork } from "./dna/ecosystem-network";
 import { defaultPlatformState } from "./dna/platform-infrastructure";
 import { defaultOrgState, assessMissionHealth, surfaceOrgInsights, defaultCapabilityMap } from "./dna/org-intelligence";
@@ -972,16 +972,20 @@ export default function App() {
         domain:       p.home_chamber as AgentDomain,
         capabilities: p.strengths.map((s) => ({ id: s, label: s, domain: p.home_chamber as AgentDomain })),
       });
-      const boundMissions = runtimeFabric.continuity
-        .filter((c) => c.pioneerId === p.id)
-        .map((c) => c.id);
-      const bound = boundMissions.reduce((m, mid) => ({ ...m, boundMissions: [...m.boundMissions, mid], lastActiveAt: Date.now() }), manifest);
-      civ = admitAgent(civ, bound);
+      const activeContinuity = runtimeFabric.continuity.filter((c) => c.pioneerId === p.id);
+      const isActive = activeContinuity.some((c) => c.status === "in_progress");
+      const boundMissions = activeContinuity.map((c) => c.id);
+      let agent = boundMissions.reduce(
+        (m, mid) => ({ ...m, boundMissions: [...m.boundMissions, mid], lastActiveAt: Date.now() }),
+        manifest
+      );
+      if (isActive) agent = activateAgent(agent);
+      civ = admitAgent(civ, agent);
     }
     return civ;
   }, [_civBase, runtimeFabric.continuity]);
 
-  // 2. Collective: operator as sovereign + mission graph from active missions
+  // 2. Collective: operator as sovereign + mission graph + real collision map
   const collectiveState = useMemo(() => {
     const owner = runtimeFabric.workspace.owner;
     let state = _collectiveBase;
@@ -989,8 +993,15 @@ export default function App() {
     for (const m of missions) {
       state = addToMissionGraph(state, buildMissionGraphNode(m.id));
     }
-    return state;
-  }, [_collectiveBase, missions, runtimeFabric.workspace.owner]);
+    // Collision map: each in-progress continuity thread claims its chamber resource
+    // Multiple claimants on the same chamber → riskLevel escalates to "high"
+    let collisionMap = state.collisionMap;
+    for (const c of runtimeFabric.continuity.filter((x) => x.status === "in_progress")) {
+      const claimant = c.pioneerId ?? owner;
+      collisionMap = claimCollectiveResource(collisionMap, `chamber.${c.chamber}`, claimant);
+    }
+    return { ...state, collisionMap, lastUpdated: Date.now() };
+  }, [_collectiveBase, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity]);
 
   // 3. Presence manifest: always register the web channel; add active chambers
   const presenceManifest = useMemo(() => {
@@ -1002,15 +1013,16 @@ export default function App() {
     return manifest;
   }, [_presenceBase, messages.lab.length, messages.creation.length]);
 
-  // 4. Exchange ledger: exported continuity items become available value units
+  // 4. Exchange ledger: exported continuity items become governance-verified value units
   const exchangeLedger = useMemo(() => {
     let ledger = _ledgerBase;
     for (const c of runtimeFabric.continuity.filter((x) => x.status === "exported")) {
-      const unit = makeAvailable(mintValue(c.id, runtimeFabric.workspace.owner, {
+      // verifyValueUnit: sets verifiedAt — governance gate already enforced on export path
+      const unit = verifyValueUnit(makeAvailable(mintValue(c.id, runtimeFabric.workspace.owner, {
         type:        "knowledge_artifact",
         label:       c.title.slice(0, 60),
         description: `${c.chamber} · exported continuity`,
-      }));
+      })));
       ledger = addValueUnit(ledger, unit);
     }
     return ledger;
