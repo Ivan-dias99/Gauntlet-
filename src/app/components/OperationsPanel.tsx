@@ -2,12 +2,11 @@
  * RUBERRA — Operations Panel
  * Stack 04 · Autonomous Operations visible surface
  *
- * Visual law:
- *   - flagship · premium · calm · consequence over decoration
- *   - no dashboard card spam
- *   - no noisy alert badges
- *   - operational truth only: what is running, what is blocked, what requires action
- *   - Ruberra-native tone — not SaaS project management
+ * Antigravity law:
+ *   - ledger rows, not cards
+ *   - consequence over decoration
+ *   - no progress bars, no badge pills, no status theater
+ *   - empty = honest silence, not marketing copy
  */
 
 import { type CSSProperties } from "react";
@@ -53,14 +52,14 @@ const CHAMBER_COLOR: Record<Exclude<Tab, "profile">, string> = {
 };
 
 const PHASE_LABEL: Record<MissionTaskPhase, string> = {
-  draft:        "Draft",
-  active:       "Active",
-  review:       "Review",
-  approved:     "Approved",
-  in_execution: "Executing",
-  completed:    "Completed",
-  blocked:      "Blocked",
-  archived:     "Archived",
+  draft:        "draft",
+  active:       "active",
+  review:       "review",
+  approved:     "approved",
+  in_execution: "exec",
+  completed:    "done",
+  blocked:      "blocked",
+  archived:     "archived",
 };
 
 const PHASE_COLOR: Record<MissionTaskPhase, string> = {
@@ -75,13 +74,13 @@ const PHASE_COLOR: Record<MissionTaskPhase, string> = {
 };
 
 const FLOW_STATUS_LABEL: Record<OperationFlowStatus, string> = {
-  initializing: "Initializing",
-  active:       "Live",
-  paused:       "Suspended",
-  completing:   "Closing",
-  completed:    "Closed",
-  blocked:      "Blocked",
-  aborted:      "Aborted",
+  initializing: "init",
+  active:       "live",
+  paused:       "suspended",
+  completing:   "closing",
+  completed:    "closed",
+  blocked:      "blocked",
+  aborted:      "aborted",
 };
 
 const FLOW_STATUS_COLOR: Record<OperationFlowStatus, string> = {
@@ -95,27 +94,32 @@ const FLOW_STATUS_COLOR: Record<OperationFlowStatus, string> = {
 };
 
 const GOV_ACTION_LABEL: Record<GovernanceAction, string> = {
-  release:  "Release",
-  preview:  "Preview",
-  deploy:   "Deploy",
-  retry:    "Retry",
-  rollback: "Rollback",
-  abort:    "Abort",
-  pause:    "Pause",
-  resume:   "Resume",
+  release:  "release",
+  preview:  "preview",
+  deploy:   "deploy",
+  retry:    "retry",
+  rollback: "rollback",
+  abort:    "abort",
+  pause:    "pause",
+  resume:   "resume",
 };
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
+const mono8: CSSProperties = {
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: "8px",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      fontSize: "10px",
-      fontWeight: 400,
-      letterSpacing: "0.08em",
-      textTransform: "uppercase",
+      ...mono8,
       color: "var(--r-subtext)",
-      marginBottom: "10px",
+      marginBottom: "6px",
+      fontWeight: 600,
     }}>
       {children}
     </div>
@@ -125,29 +129,25 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function EmptySlate({ label }: { label: string }) {
   return (
     <div style={{
-      padding: "20px 0",
+      ...mono8,
+      padding: "10px 0",
       color: "var(--r-dim)",
-      fontSize: "12px",
       textAlign: "center",
-      letterSpacing: "0.02em",
+      fontSize: "7.5px",
     }}>
       {label}
     </div>
   );
 }
 
-function Pill({ color, label }: { color: string; label: string }) {
+function PhaseTag({ color, label }: { color: string; label: string }) {
   return (
     <span style={{
-      display: "inline-block",
-      padding: "2px 7px",
-      borderRadius: "4px",
-      background: `color-mix(in srgb, ${color} 14%, transparent)`,
-      border: `1px solid color-mix(in srgb, ${color} 16%, transparent)`,
+      ...mono8,
+      fontSize: "7.5px",
       color,
-      fontSize: "10px",
-      fontWeight: 400,
-      letterSpacing: "0.04em",
+      minWidth: "52px",
+      flexShrink: 0,
     }}>
       {label}
     </span>
@@ -160,8 +160,8 @@ function Row({ children, style }: { children: React.ReactNode; style?: CSSProper
       display: "flex",
       alignItems: "center",
       gap: "8px",
-      padding: "10px 14px",
-      borderBottom: "1px solid var(--r-border)",
+      padding: "6px 10px",
+      borderBottom: "1px solid var(--r-border-soft)",
       ...style,
     }}>
       {children}
@@ -172,50 +172,39 @@ function Row({ children, style }: { children: React.ReactNode; style?: CSSProper
 // ─── Task list ────────────────────────────────────────────────────────────────
 
 function TaskList({ tasks, navigate }: { tasks: MissionTask[]; navigate: NavFn }) {
-  if (tasks.length === 0) return <EmptySlate label="No active mission tasks" />;
+  if (tasks.length === 0) return <EmptySlate label="— idle —" />;
 
   return (
     <div>
       {tasks.map((task) => (
         <Row key={task.id}>
+          <PhaseTag color={PHASE_COLOR[task.phase]} label={PHASE_LABEL[task.phase]} />
           <span style={{
-            width: "7px",
-            height: "7px",
-            borderRadius: "50%",
-            background: PHASE_COLOR[task.phase],
+            flex: 1,
+            minWidth: 0,
+            fontSize: "11px",
+            color: task.phase === "completed" ? "var(--r-dim)" : "var(--r-text)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            lineHeight: 1.4,
+          }}>
+            {task.title}
+          </span>
+          <span style={{
+            ...mono8,
+            fontSize: "7.5px",
+            color: CHAMBER_COLOR[task.chamber],
             flexShrink: 0,
-          }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontSize: "13px",
-              fontWeight: 500,
-              color: "var(--r-text)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              letterSpacing: "0.01em",
-            }}>
-              {task.intent}
-            </div>
-            <div style={{
-              fontSize: "11px",
-              color: "var(--r-dim)",
-              marginTop: "2px",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              letterSpacing: "0.02em",
-            }}>
-              {task.title}
-            </div>
-          </div>
-          <Pill color={CHAMBER_COLOR[task.chamber]} label={task.chamber} />
-          <Pill color={PHASE_COLOR[task.phase]}   label={PHASE_LABEL[task.phase]} />
+          }}>
+            {task.chamber}
+          </span>
           {task.phase === "blocked" && task.blockerReason && (
             <span style={{
-              fontSize: "11px",
+              ...mono8,
+              fontSize: "7.5px",
               color: "var(--r-err)",
-              maxWidth: "140px",
+              maxWidth: "120px",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -227,12 +216,13 @@ function TaskList({ tasks, navigate }: { tasks: MissionTask[]; navigate: NavFn }
             <button
               onClick={() => navigate(task.handoffTarget!.chamber, "chat")}
               style={{
-                padding: "3px 8px",
-                borderRadius: "5px",
+                ...mono8,
+                fontSize: "7.5px",
+                padding: "2px 6px",
+                borderRadius: "3px",
                 border: "1px solid var(--r-border)",
                 background: "transparent",
-                color: "var(--r-subtext)",
-                fontSize: "11px",
+                color: "var(--r-dim)",
                 cursor: "pointer",
               }}
             >
@@ -257,63 +247,62 @@ function HandoffQueue({
   onReject:  (id: string, reason: string) => void;
 }) {
   const pending = handoffs.filter((h) => h.state === "pending");
-  if (pending.length === 0) return <EmptySlate label="No pending mission handoffs" />;
+  if (pending.length === 0) return <EmptySlate label="— idle —" />;
 
   return (
     <div>
       {pending.map((h) => (
         <Row key={h.id}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontSize: "12px",
-              fontWeight: 500,
-              color: "var(--r-text)",
-            }}>
-              {h.fromChamber} → {h.toChamber}
-              {h.toPioneerId && (
-                <span style={{ color: "var(--r-subtext)", fontWeight: 400 }}>
-                  {" "}· {h.toPioneerId}
-                </span>
-              )}
-            </div>
-            <div style={{
-              fontSize: "11px",
-              color: "var(--r-subtext)",
-              marginTop: "2px",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}>
-              {h.context}
-            </div>
-          </div>
+          <span style={{
+            ...mono8,
+            fontSize: "7.5px",
+            color: "var(--r-warn)",
+            minWidth: "52px",
+            flexShrink: 0,
+          }}>
+            handoff
+          </span>
+          <span style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: "11px",
+            color: "var(--r-text)",
+            lineHeight: 1.4,
+          }}>
+            {h.fromChamber} → {h.toChamber}
+            {h.toPioneerId && (
+              <span style={{ color: "var(--r-dim)" }}> · {h.toPioneerId}</span>
+            )}
+          </span>
           <button
             onClick={() => onAccept(h.id)}
             style={{
-              padding: "3px 8px",
-              borderRadius: "5px",
-              border: "1px solid var(--r-border)",
+              ...mono8,
+              fontSize: "7.5px",
+              padding: "2px 6px",
+              borderRadius: "3px",
+              border: "1px solid color-mix(in srgb, var(--r-ok) 40%, var(--r-border))",
               background: "transparent",
-              color: "var(--r-subtext)",
-              fontSize: "11px",
+              color: "var(--r-ok)",
               cursor: "pointer",
             }}
           >
-            Receive
+            receive
           </button>
           <button
             onClick={() => onReject(h.id, "declined by operator")}
             style={{
-              padding: "3px 8px",
-              borderRadius: "5px",
+              ...mono8,
+              fontSize: "7.5px",
+              padding: "2px 6px",
+              borderRadius: "3px",
               border: "1px solid var(--r-border)",
               background: "transparent",
-              color: "var(--r-subtext)",
-              fontSize: "11px",
+              color: "var(--r-dim)",
               cursor: "pointer",
             }}
           >
-            Decline
+            decline
           </button>
         </Row>
       ))}
@@ -325,88 +314,54 @@ function HandoffQueue({
 
 function FlowList({ flows }: { flows: OperationFlow[] }) {
   const live = flows.filter((f) => f.status !== "completed" && f.status !== "aborted");
-  if (live.length === 0) return <EmptySlate label="No execution flows in motion" />;
+  if (live.length === 0) return <EmptySlate label="— idle —" />;
 
   return (
     <div>
       {live.map((flow) => {
-        const total    = flow.phases.length;
-        const done     = flow.phases.filter((p) => p.status === "completed" || p.status === "skipped").length;
-        const progress = total > 0 ? Math.round((done / total) * 100) : 0;
+        const total = flow.phases.length;
+        const done  = flow.phases.filter((p) => p.status === "completed" || p.status === "skipped").length;
 
         return (
-          <Row key={flow.id} style={{ flexDirection: "column", alignItems: "flex-start", gap: "8px" }}>
-            <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "8px" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  color: "var(--r-text)",
-                }}>
-                  {flow.label}
-                </span>
-              </div>
-              <Pill color={FLOW_STATUS_COLOR[flow.status]} label={FLOW_STATUS_LABEL[flow.status]} />
-            </div>
-
-            {/* Execution progress */}
-            <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px" }}>
-              <div style={{ flex: 1, height: "2px", background: "var(--r-border)", borderRadius: "2px", overflow: "hidden" }}>
-                <div style={{
-                  width: `${progress}%`,
-                  height: "100%",
-                  background: FLOW_STATUS_COLOR[flow.status],
-                  borderRadius: "2px",
-                  transition: "width 0.3s ease",
-                }} />
-              </div>
+          <div key={flow.id} style={{ padding: "6px 10px", borderBottom: "1px solid var(--r-border-soft)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "4px" }}>
+              <PhaseTag color={FLOW_STATUS_COLOR[flow.status]} label={FLOW_STATUS_LABEL[flow.status]} />
               <span style={{
-                fontSize: "9px",
-                fontFamily: "'JetBrains Mono', monospace",
+                flex: 1,
+                fontSize: "11px",
+                color: "var(--r-text)",
+                lineHeight: 1.4,
+              }}>
+                {flow.label}
+              </span>
+              <span style={{
+                ...mono8,
+                fontSize: "7.5px",
                 color: "var(--r-dim)",
-                letterSpacing: "0.04em",
                 flexShrink: 0,
               }}>
                 {done}/{total}
               </span>
             </div>
 
-            {/* Execution trace — phase sequence */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0", flexWrap: "wrap" }}>
+            {/* Phase sequence — flat text, no decorative backgrounds */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0", flexWrap: "wrap", marginLeft: "52px" }}>
               {flow.phases.map((phase, idx) => (
                 <span key={phase.id} style={{ display: "inline-flex", alignItems: "center" }}>
-                  <span
-                    style={{
-                      fontSize: phase.status === "active" ? "9px" : "10px",
-                      padding: "2px 8px",
-                      borderRadius: "3px",
-                      background: phase.status === "active"    ? "color-mix(in srgb, var(--r-ok) 14%, transparent)"
-                                : phase.status === "completed" ? "transparent"
-                                : phase.status === "blocked"   ? "color-mix(in srgb, var(--r-err) 14%, transparent)"
-                                : "transparent",
-                      border: phase.status === "active"    ? "1px solid color-mix(in srgb, var(--r-ok) 32%, transparent)"
-                            : phase.status === "completed" ? "1px solid transparent"
-                            : phase.status === "blocked"   ? "1px solid color-mix(in srgb, var(--r-err) 28%, transparent)"
-                            : "1px solid transparent",
-                      color: phase.status === "active"    ? "var(--r-ok)"
-                           : phase.status === "completed" ? "var(--r-dim)"
-                           : phase.status === "blocked"   ? "var(--r-err)"
-                           : "color-mix(in srgb, var(--r-subtext) 35%, transparent)",
-                      fontWeight: phase.status === "active" ? 600 : 400,
-                      letterSpacing: "0.04em",
-                      textTransform: phase.status === "active" ? "uppercase" : "none",
-                      fontFamily: phase.status === "active" ? "'JetBrains Mono', monospace" : "inherit",
-                    }}
-                  >
+                  <span style={{
+                    ...mono8,
+                    fontSize: phase.status === "active" ? "7.5px" : "7.5px",
+                    color: phase.status === "active"    ? "var(--r-ok)"
+                         : phase.status === "completed" ? "var(--r-dim)"
+                         : phase.status === "blocked"   ? "var(--r-err)"
+                         : "var(--r-dim)",
+                    fontWeight: phase.status === "active" ? 600 : 400,
+                    padding: "1px 4px",
+                  }}>
                     {phase.label}
                   </span>
                   {idx < flow.phases.length - 1 && (
-                    <span style={{
-                      fontSize: "9px",
-                      color: "color-mix(in srgb, var(--r-dim) 35%, transparent)",
-                      padding: "0 1px",
-                      userSelect: "none",
-                    }}>→</span>
+                    <span style={{ fontSize: "7px", color: "var(--r-dim)", padding: "0 1px", userSelect: "none" }}>→</span>
                   )}
                 </span>
               ))}
@@ -414,11 +369,11 @@ function FlowList({ flows }: { flows: OperationFlow[] }) {
 
             {/* Blockers */}
             {flow.blockers.length > 0 && (
-              <div style={{ fontSize: "11px", color: "var(--r-err)" }}>
-                Blocked: {flow.blockers.join(" · ")}
+              <div style={{ ...mono8, fontSize: "7.5px", color: "var(--r-err)", marginTop: "3px", marginLeft: "52px" }}>
+                blocked: {flow.blockers.join(" · ")}
               </div>
             )}
-          </Row>
+          </div>
         );
       })}
     </div>
@@ -439,107 +394,89 @@ function SignalFeed({
   navigate:  NavFn;
 }) {
   const live = signals.filter((s) => !s.resolved).slice(0, 12);
-  if (live.length === 0) return <EmptySlate label="No mission signals active" />;
+  if (live.length === 0) return <EmptySlate label="— idle —" />;
 
   return (
     <div>
       {live.map((sig) => (
-        <Row
-          key={sig.id}
-          style={{ opacity: sig.read ? 0.6 : 1, cursor: sig.actionRoute ? "pointer" : "default" }}
-          // onClick ignored — use explicit buttons
-        >
+        <Row key={sig.id} style={{ opacity: sig.read ? 0.55 : 1 }}>
           <span style={{
-            width: "6px",
-            height: "6px",
-            borderRadius: "50%",
-            background: sig.severity === "critical" ? "var(--r-err)"
-                      : sig.severity === "warn"     ? "var(--r-warn)"
-                      : "var(--r-accent)",
+            ...mono8,
+            fontSize: "7.5px",
+            color: sig.severity === "critical" ? "var(--r-err)"
+                 : sig.severity === "warn"     ? "var(--r-warn)"
+                 : "var(--r-accent)",
+            minWidth: "76px",
             flexShrink: 0,
-          }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-              <div style={{
-                fontSize: "12px",
-                fontWeight: 600,
-                color: sig.severity === "critical" ? "var(--r-err)"
-                     : sig.severity === "warn"     ? "var(--r-warn)"
-                     : "var(--r-text)",
-                letterSpacing: "0.01em",
-              }}>
-                {SIGNAL_KIND_LABEL[sig.kind]}
-              </div>
-              {sig.chamber && (
-                <span style={{
-                  fontSize: "9px",
-                  fontWeight: 500,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  color: "var(--r-dim)",
-                }}>
-                  {sig.chamber}
-                </span>
-              )}
-            </div>
-            <div style={{
-              fontSize: "11px",
-              color: "var(--r-subtext)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              marginTop: "2px",
-            }}>
-              {sig.body}
-            </div>
-          </div>
+          }}>
+            {SIGNAL_KIND_LABEL[sig.kind]}
+          </span>
+          <span style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: "11px",
+            color: sig.severity === "critical" ? "var(--r-err)" : "var(--r-text)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            lineHeight: 1.4,
+          }}>
+            {sig.title}
+          </span>
+          {sig.chamber && (
+            <span style={{ ...mono8, fontSize: "7.5px", color: "var(--r-dim)", flexShrink: 0 }}>
+              {sig.chamber}
+            </span>
+          )}
           {!sig.read && (
             <button
               onClick={() => onRead(sig.id)}
               style={{
+                ...mono8,
+                fontSize: "7.5px",
                 padding: "2px 6px",
-                borderRadius: "4px",
+                borderRadius: "3px",
                 border: "1px solid var(--r-border)",
                 background: "transparent",
                 color: "var(--r-dim)",
-                fontSize: "10px",
                 cursor: "pointer",
-                letterSpacing: "0.03em",
               }}
             >
-              Read
+              ack
             </button>
           )}
           {sig.actionRoute && (
             <button
               onClick={() => navigate(sig.actionRoute!.tab, sig.actionRoute!.view, sig.actionRoute?.id)}
               style={{
+                ...mono8,
+                fontSize: "7.5px",
                 padding: "2px 6px",
-                borderRadius: "4px",
-                border: "1px solid var(--r-accent)",
-                background: "color-mix(in srgb, var(--r-accent) 10%, transparent)",
+                borderRadius: "3px",
+                border: "1px solid var(--r-border)",
+                background: "transparent",
                 color: "var(--r-accent)",
-                fontSize: "10px",
                 cursor: "pointer",
               }}
             >
-              →
+              go
             </button>
           )}
           {!sig.resolved && (
             <button
               onClick={() => onResolve(sig.id)}
               style={{
+                ...mono8,
+                fontSize: "7.5px",
                 padding: "2px 6px",
-                borderRadius: "4px",
+                borderRadius: "3px",
                 border: "1px solid var(--r-border)",
                 background: "transparent",
                 color: "var(--r-dim)",
-                fontSize: "10px",
                 cursor: "pointer",
               }}
             >
-              Clear
+              clear
             </button>
           )}
         </Row>
@@ -552,7 +489,7 @@ function SignalFeed({
 
 function GovernanceTrail({ records }: { records: ExecutionGovernanceRecord[] }) {
   const recent = records.slice(0, 8);
-  if (recent.length === 0) return <EmptySlate label="Governance ledger is clear" />;
+  if (recent.length === 0) return <EmptySlate label="— idle —" />;
 
   return (
     <div>
@@ -565,45 +502,33 @@ function GovernanceTrail({ records }: { records: ExecutionGovernanceRecord[] }) 
 
         return (
           <Row key={rec.id}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                display: "flex",
-                gap: "8px",
-                alignItems: "baseline",
-              }}>
-                <span style={{
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  color: resultColor,
-                  letterSpacing: "0.02em",
-                  textTransform: "uppercase",
-                }}>
-                  {GOV_ACTION_LABEL[rec.action]}
-                </span>
-                <span style={{ color: "var(--r-dim)", fontWeight: 400, fontSize: "11px", letterSpacing: "0.01em" }}>
-                  — {rec.triggeredBy}
-                </span>
-              </div>
-              <div style={{
-                fontSize: "12px",
-                color: "var(--r-subtext)",
-                marginTop: "3px",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}>
-                {rec.consequence}
-              </div>
-            </div>
-            {rec.result && (
-              <Pill
-                color={resultColor}
-                label={rec.result.replace("_", " ")}
-              />
-            )}
-            {!rec.result && (
-              <Pill color="var(--r-warn)" label="executing" />
-            )}
+            <PhaseTag
+              color={resultColor}
+              label={rec.result ? rec.result.replace("_", " ") : "exec"}
+            />
+            <span style={{
+              ...mono8,
+              fontSize: "7.5px",
+              color: resultColor,
+              flexShrink: 0,
+            }}>
+              {GOV_ACTION_LABEL[rec.action]}
+            </span>
+            <span style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: "11px",
+              color: "var(--r-text)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              lineHeight: 1.4,
+            }}>
+              {rec.consequence}
+            </span>
+            <span style={{ ...mono8, fontSize: "7.5px", color: "var(--r-dim)", flexShrink: 0 }}>
+              {rec.triggeredBy}
+            </span>
           </Row>
         );
       })}
@@ -630,11 +555,6 @@ export function OperationsPanel({
   const activeTasks    = tasks.filter((t) => t.phase === "active" || t.phase === "in_execution" || t.phase === "review" || t.phase === "approved");
   const blockedTasks   = tasks.filter((t) => t.phase === "blocked");
   const pendingHandoffs = handoffs.filter((h) => h.state === "pending");
-  const unresolvedSignals = signals.filter((s) => !s.resolved);
-
-  const requiresAttention = blockedTasks.length > 0 ||
-    pendingHandoffs.length > 0 ||
-    unresolvedSignals.some((s) => s.severity === "critical");
 
   const containerStyle: CSSProperties = {
     fontFamily: "'Inter', system-ui, sans-serif",
@@ -643,83 +563,48 @@ export function OperationsPanel({
   };
 
   const sectionStyle: CSSProperties = {
-    marginBottom: "28px",
+    marginBottom: "16px",
   };
 
-  const cardStyle: CSSProperties = {
-    background: "var(--r-surface-raised, color-mix(in srgb, var(--r-surface) 85%, var(--r-bg)))",
-    border: "1px solid var(--r-border)",
-    borderRadius: "10px",
+  const ledgerStyle: CSSProperties = {
+    border: "1px solid var(--r-border-soft)",
+    borderRadius: "4px",
     overflow: "hidden",
   };
 
   return (
     <div style={containerStyle}>
-      {/* Status bar */}
-      <div style={{
-        padding: "12px 16px",
-        marginBottom: "24px",
-        background: requiresAttention
-          ? "color-mix(in srgb, var(--r-warn) 8%, var(--r-surface))"
-          : "color-mix(in srgb, var(--r-ok) 6%, var(--r-surface))",
-        border: "1px solid",
-        borderColor: requiresAttention ? "color-mix(in srgb, var(--r-warn) 20%, var(--r-border))" : "var(--r-border)",
-        borderRadius: "6px",
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-      }}>
-        <span style={{
-          width: "8px",
-          height: "8px",
-          borderRadius: "50%",
-          background: requiresAttention ? "var(--r-warn)" : "var(--r-ok)",
-          flexShrink: 0,
-        }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", letterSpacing: "0.01em" }}>
-            {requiresAttention ? "Mission Requires Operator Disposition" : "Mission Execution Nominal"}
-          </div>
-          <div style={{ fontSize: "11px", color: "var(--r-subtext)", marginTop: "2px", letterSpacing: "0.01em" }}>
-            {activeTasks.length} {activeTasks.length === 1 ? "task" : "tasks"} in execution
-            {blockedTasks.length > 0 ? ` · ${blockedTasks.length} blocked` : ""}
-            {" · "}{flows.filter((f) => f.status === "active").length} {flows.filter((f) => f.status === "active").length === 1 ? "flow" : "flows"} live
-            {pendingHandoffs.length > 0 ? ` · ${pendingHandoffs.length} ${pendingHandoffs.length === 1 ? "handoff" : "handoffs"} awaiting disposition` : ""}
-          </div>
-        </div>
-      </div>
-
-      {/* Mission tasks */}
+      {/* Tasks */}
       <div style={sectionStyle}>
-        <SectionLabel>Mission Tasks</SectionLabel>
-        <div style={cardStyle}>
+        <SectionLabel>tasks</SectionLabel>
+        <div style={ledgerStyle}>
           <TaskList tasks={activeTasks} navigate={navigate} />
         </div>
       </div>
 
-      {/* Mission blockers */}
+      {/* Blockers */}
       {blockedTasks.length > 0 && (
         <div style={sectionStyle}>
-          <SectionLabel>Mission Blockers</SectionLabel>
-          <div style={cardStyle}>
+          <SectionLabel>blocked</SectionLabel>
+          <div style={ledgerStyle}>
             <TaskList tasks={blockedTasks} navigate={navigate} />
           </div>
         </div>
       )}
 
-      {/* Execution flows */}
+      {/* Flows */}
       <div style={sectionStyle}>
-        <SectionLabel>Active Execution Flows</SectionLabel>
-        <div style={cardStyle}>
+        <SectionLabel>flows</SectionLabel>
+        <div style={ledgerStyle}>
           <FlowList flows={flows} />
         </div>
       </div>
 
-      {/* Mission handoffs */}
+      {/* Handoffs */}
       {pendingHandoffs.length > 0 && (
         <div style={sectionStyle}>
-          <SectionLabel>Mission Handoffs</SectionLabel>
-          <div style={cardStyle}>
+          <SectionLabel>handoffs</SectionLabel>
+          <div style={ledgerStyle}>
             <HandoffQueue
               handoffs={handoffs}
               onAccept={onHandoffAccept}
@@ -729,10 +614,10 @@ export function OperationsPanel({
         </div>
       )}
 
-      {/* Signal feed */}
+      {/* Signals */}
       <div style={sectionStyle}>
-        <SectionLabel>Execution Signals</SectionLabel>
-        <div style={cardStyle}>
+        <SectionLabel>signals</SectionLabel>
+        <div style={ledgerStyle}>
           <SignalFeed
             signals={signals}
             onRead={onSignalRead}
@@ -742,10 +627,10 @@ export function OperationsPanel({
         </div>
       </div>
 
-      {/* Governance trail */}
+      {/* Governance */}
       <div style={sectionStyle}>
-        <SectionLabel>Governance Ledger</SectionLabel>
-        <div style={cardStyle}>
+        <SectionLabel>governance</SectionLabel>
+        <div style={ledgerStyle}>
           <GovernanceTrail records={governance} />
         </div>
       </div>
