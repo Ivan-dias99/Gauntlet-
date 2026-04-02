@@ -350,7 +350,7 @@ function FlowList({ flows }: { flows: OperationFlow[] }) {
                 <span key={phase.id} style={{ display: "inline-flex", alignItems: "center" }}>
                   <span style={{
                     ...mono8,
-                    fontSize: phase.status === "active" ? "7.5px" : "7.5px",
+                    fontSize: "7.5px",
                     color: phase.status === "active"    ? "var(--r-ok)"
                          : phase.status === "completed" ? "var(--r-dim)"
                          : phase.status === "blocked"   ? "var(--r-err)"
