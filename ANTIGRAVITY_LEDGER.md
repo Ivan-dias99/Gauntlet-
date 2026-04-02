@@ -602,3 +602,51 @@ The following remote branches were found polluting the repository space:
 - **OPEN ISSUES:** 0
 - **OWNER-RISK:** 0%
 - **NEXT REQUIRED ACTION:** Copilot guard landed on `main`; keep task-force branch aligned via merge. Delete stale feature branches per hygiene policy.
+
+## AUDIT 005 — CLAUDE COMMAND RESTORATION + STRIP SURFACE CLOSURE
+**Date:** April 2, 2026
+**Target:** Mount all 13 orphan strips; close strip surface gap
+
+### 1. MACHINE STATE AUDIT
+
+**SOLID:**
+- All 20 stack DNA files present and typed
+- All substrate runtime files wired (execution-adapters, runtime-fabric, sovereign-runtime, governance-fabric, workflow-engine, intelligence-foundation, routing-contracts)
+- All 4 mode components real (Lab, School, Creation, Profile)
+- All detail views real (LabDomain, LabExperiment, SchoolLesson, SchoolRole, SchoolTrack, CreationBlueprint, CreationEngine)
+- Discovery components mounted (LabDiscover, SchoolDiscover, CreationDiscover)
+- SecurityTrustSignal mounted in SovereignBar
+- MissionContextBand mounted in App.tsx (conditional on activeMission)
+- SystemHealthBand mounted in App.tsx
+- ExecutionConsequenceStrip mounted in ProfileMode header
+- Routes clean: all navigate() targets map to real view handlers
+- object-graph correctly derives from product-data — no duplication
+
+**GAPS CLOSED (this audit):**
+- 13 orphan strip components were built but mounted nowhere
+- App.tsx had no state for multi-agent, analytics, knowledge, collective, distribution, value, ecosystem, platform, org, personal-os, compound, trust-governance, autonomous-flow substrates
+
+### 2. EXECUTION BLOCKS
+
+**STRIP SURFACE CLOSURE (Claude)**
+- App.tsx: imported 13 DNA default factories; added 13 useState slots; passes all as props to ProfileMode
+- ProfileMode: imported all 13 strips + their DNA types; added props to interface; mounted strips:
+  - overview: AnalyticsPatternStrip, OrgIntelligenceStrip, PlatformInfraStrip
+  - memory: KnowledgeGraphStrip
+  - settings: PersonalSovereignOSStrip
+  - exports: DistributionPresenceStrip, ValueExchangeStrip
+  - pioneers: AgentCivilizationStrip, CompoundNetworkStrip
+  - operations: CollectiveExecutionStrip, GovernanceLedgerStrip
+  - workflows: FlowRunStrip (gated on active run)
+  - connectors: EcosystemNetworkStrip
+- Fixed TrustGovernanceState.ledgers (record) vs .ledger (wrong) access in App.tsx
+
+### 2. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Claude Command Restoration — Strip Surface Closure
+- **FILES TOUCHED:** `App.tsx`, `ProfileMode.tsx`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `main`
+- **BUILD STATUS:** VERIFIED — 2134 modules, 0 errors
+- **RUNTIME STATUS:** VERIFIED
+- **OPEN ISSUES:** All strip components now surface-law compliant (show only when data non-empty; no invented filler)
+- **OWNER-RISK:** 0%
+- **NEXT REQUIRED ACTION:** Push to origin main. Continue frontier — runtime data hydration for strip state.
