@@ -1190,15 +1190,20 @@ export default function App() {
       .sort((a, b) => b.timestamp - a.timestamp)[0];
     if (!latestMessageTrace?.execution_trace || latestMessageTrace.tab === "profile") return null;
     const chamber = latestMessageTrace.tab as Exclude<Tab, "profile">;
+    const trace = latestMessageTrace.execution_trace;
     const latestResult = [...runtimeFabric.executionResults]
       .sort((a, b) => b.createdAt - a.createdAt)
       .find((r) => r.chamber === chamber);
+    const leadPioneer = trace.leadPioneerId
+      ? PIONEER_REGISTRY.find((p) => p.id === trace.leadPioneerId)
+      : undefined;
     return {
-      state: latestMessageTrace.execution_trace.executionState,
+      state:      trace.executionState,
       chamber,
-      modelId: latestResult?.selectedModelId ?? latestMessageTrace.execution_trace.modelId,
-      providerId: latestResult?.selectedProviderId ?? latestMessageTrace.execution_trace.providerId,
-      latencyMs: latestResult?.latencyMs,
+      modelId:    latestResult?.selectedModelId ?? trace.modelId,
+      providerId: latestResult?.selectedProviderId ?? trace.providerId,
+      latencyMs:  latestResult?.latencyMs,
+      eiName:     leadPioneer?.short_role ?? leadPioneer?.name ?? undefined,
     };
   }, [messages, runtimeFabric.executionResults]);
   const lastExecutionProviderHealth = useMemo(() => {

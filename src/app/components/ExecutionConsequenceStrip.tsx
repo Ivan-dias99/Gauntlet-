@@ -65,7 +65,10 @@ export function ExecutionConsequenceStrip({
   const [diffOpen, setDiffOpen] = useState(false);
   const chain = trace.supportChain?.filter(Boolean) ?? [];
   const connectors = trace.connectorActions ?? [];
-  const results = trace.executionResults ?? [];
+  // Filter debug-level phases: stream/finalize captured in state; route captured in digest
+  const results = (trace.executionResults ?? []).filter(
+    (r) => r.phase !== "stream" && r.phase !== "finalize" && !(r.phase === "route" && !!digest)
+  );
   const tail = results.slice(-showResultDepth);
   const digest = trace.routeDigest ?? routeDigest;
   const modelLine = modelTruthLabel && trace.modelId
