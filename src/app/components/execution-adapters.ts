@@ -207,7 +207,7 @@ export async function checkLocalRuntimeHealth(endpoint?: string, signal?: AbortS
   if (!endpoint) return { reachable: false, checkedAt };
   try {
     const start = performance.now();
-    const res = await fetch(`${endpoint.replace(/\\/$/, "")}/api/tags`, { method: "GET", signal });
+    const res = await fetch(`${endpoint.replace(/\/$/, "")}/api/tags`, { method: "GET", signal });
     const latencyMs = Math.round(performance.now() - start);
     return { reachable: res.ok, latencyMs, checkedAt };
   } catch {
@@ -218,7 +218,7 @@ export async function checkLocalRuntimeHealth(endpoint?: string, signal?: AbortS
 async function fetchLocalModels(endpoint?: string, signal?: AbortSignal): Promise<string[]> {
   if (!endpoint) return [];
   try {
-    const res = await fetch(`${endpoint.replace(/\\/$/, "")}/api/tags`, { method: "GET", signal });
+    const res = await fetch(`${endpoint.replace(/\/$/, "")}/api/tags`, { method: "GET", signal });
     if (!res.ok) return [];
     const json = await res.json() as { models?: Array<{ name?: string }> };
     return (json.models ?? []).map((m) => m.name).filter(Boolean) as string[];

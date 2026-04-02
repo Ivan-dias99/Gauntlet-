@@ -47,16 +47,18 @@ export type ProviderAdapterKind =
   | "none";             // No live provider
 
 export interface ProviderAdapter {
-  id:          string;
-  kind:        ProviderAdapterKind;
-  tier:        RuntimeTier;
-  label:       string;
-  base_url:    string;          // empty string = not yet configured
-  config_key:  string;          // env var or settings key that enables this adapter
-  health_path: string;          // GET path to check liveness, empty = no health endpoint
-  requires_key: boolean;
-  available:   boolean;         // current availability (false = needs setup or unavailable)
-  notes:       string;
+  id:                 string;
+  kind:               ProviderAdapterKind;
+  tier:               RuntimeTier;
+  label:              string;
+  base_url:           string;          // empty string = not yet configured
+  config_key:         string;          // env var or settings key that enables this adapter
+  health_path:        string;          // GET path to check liveness, empty = no health endpoint
+  requires_key:       boolean;
+  available:          boolean;         // current availability (false = needs setup or unavailable)
+  /** Maps to model-orchestration ProviderId for cross-registry health lookup */
+  registryProviderId?: string;
+  notes:              string;
 }
 
 export const PROVIDER_ADAPTERS: ProviderAdapter[] = [
@@ -100,28 +102,28 @@ export const PROVIDER_ADAPTERS: ProviderAdapter[] = [
 
   // ── Tier B: Wrapped Free Providers ────────────────────────────────────────
   {
-    id:           "groq-free",
-    kind:         "groq",
-    tier:         "B",
-    label:        "Groq Cloud (Free Tier)",
-    base_url:     "https://api.groq.com/openai/v1",
-    config_key:   "RUBERRA_GROQ_KEY",
-    health_path:  "",
-    requires_key: true,
-    available:    false,
-    notes:        "Free tier. Rate-limited. Not guaranteed uptime. Set RUBERRA_GROQ_KEY.",
+    id:                   "groq-free",
+    kind:                 "groq",
+    tier:                 "B",
+    label:                "Groq Cloud (Free Tier)",
+    base_url:             "https://api.groq.com/openai/v1",
+    config_key:           "RUBERRA_GROQ_KEY",
+    health_path:          "",
+    requires_key:         true,
+    available:            false,
+    notes:                "Free tier. Rate-limited. Not guaranteed uptime. Set RUBERRA_GROQ_KEY.",
   },
   {
-    id:           "together-free",
-    kind:         "together",
-    tier:         "B",
-    label:        "Together AI (Free Tier)",
-    base_url:     "https://api.together.xyz/v1",
-    config_key:   "RUBERRA_TOGETHER_KEY",
-    health_path:  "",
-    requires_key: true,
-    available:    false,
-    notes:        "Free credits. Rate-limited. Not guaranteed. Set RUBERRA_TOGETHER_KEY.",
+    id:                   "together-free",
+    kind:                 "together",
+    tier:                 "B",
+    label:                "Together AI (Free Tier)",
+    base_url:             "https://api.together.xyz/v1",
+    config_key:           "RUBERRA_TOGETHER_KEY",
+    health_path:          "",
+    requires_key:         true,
+    available:            false,
+    notes:                "Free credits. Rate-limited. Not guaranteed. Set RUBERRA_TOGETHER_KEY.",
   },
   {
     id:           "hf-inference",
@@ -138,16 +140,17 @@ export const PROVIDER_ADAPTERS: ProviderAdapter[] = [
 
   // ── Tier B: Gemini (Google AI) ────────────────────────────────────────────
   {
-    id:           "gemini-google",
-    kind:         "proprietary",
-    tier:         "B",
-    label:        "Gemini (Google AI)",
-    base_url:     "https://generativelanguage.googleapis.com/v1beta",
-    config_key:   "GEMINI_API_KEY",
-    health_path:  "",
-    requires_key: true,
-    available:    false,
-    notes:        "Google Generative Language API. Set GEMINI_API_KEY (or GOOGLE_AI_API_KEY). Tier B — proprietary, non-sovereign.",
+    id:                   "gemini-google",
+    kind:                 "proprietary",
+    tier:                 "B",
+    label:                "Gemini (Google AI)",
+    base_url:             "https://generativelanguage.googleapis.com/v1beta",
+    config_key:           "GEMINI_API_KEY",
+    health_path:          "",
+    requires_key:         true,
+    available:            false,
+    registryProviderId:   "google",   // maps to MODEL_REGISTRY ProviderId "google"
+    notes:                "Google Generative Language API. Set GEMINI_API_KEY (or GOOGLE_AI_API_KEY). Tier B — proprietary, non-sovereign.",
   },
 ];
 

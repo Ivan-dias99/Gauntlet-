@@ -322,10 +322,13 @@ export default function App() {
         setRuntimeFabric((prev) => {
           let next = prev;
           for (const adapter of liveAdapters) {
-            next = upsertProviderHealth(next, {
-              providerId: adapter.id,
-              state:      adapter.available ? "healthy" : "unavailable",
-            });
+            const healthState = adapter.available ? "healthy" : "unavailable";
+            // Store by adapter id (sovereign-runtime id space)
+            next = upsertProviderHealth(next, { providerId: adapter.id, state: healthState });
+            // Also store by model-registry provider id so execution trace lookups resolve correctly
+            if (adapter.registryProviderId) {
+              next = upsertProviderHealth(next, { providerId: adapter.registryProviderId, state: healthState });
+            }
           }
           return next;
         });
@@ -1138,10 +1141,9 @@ export default function App() {
   }, [missions, runtimeFabric.continuity, runtimeFabric.signals, _orgStateBase]);
 
   const platformState = useMemo(() => {
-    // Derive inference status from live-probed providerHealth, fall back to static resolution
-    const liveHealthy = runtimeFabric.providerHealth.some(
-      (ph) => ph.state === "healthy" && (ph.providerId === "ollama-local" || ph.providerId.startsWith("vllm"))
-    );
+    // Derive inference status from live-probed providerHealth, fall back to static resolution.
+    // Any healthy provider (Tier A local or Tier B wrapped) makes inference "nominal".
+    const liveHealthy = runtimeFabric.providerHealth.some((ph) => ph.state === "healthy");
     const execTruth = getExecutionTruth(activeTab === "profile" ? "lab" : activeTab as Exclude<typeof activeTab, "profile">);
     const inferenceStatus: "nominal" | "degraded" =
       liveHealthy ? "nominal" : execTruth.is_available ? "nominal" : "degraded";

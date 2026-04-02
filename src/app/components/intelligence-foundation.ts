@@ -294,10 +294,12 @@ export const CHAMBER_ROUTING_CONTRACTS: ChamberRoutingContract[] = [
 ];
 
 export const PROVIDER_REGISTRY: ModelProviderDefinition[] = [
-  { id: "ollama_local", label: "Ollama Local", lane: "open_source_local", status: "can_host_now", capabilities: ["chat", "code", "summarize"], chamberSafety: ["lab", "creation"] },
-  { id: "hf_inference", label: "HF Inference", lane: "free_provider", status: "future_integration", capabilities: ["chat", "classify"], chamberSafety: ["lab", "school"] },
-  { id: "openai_wrapped", label: "OpenAI Wrapped", lane: "wrapped_external", status: "can_host_now", capabilities: ["chat", "tooling", "code"], chamberSafety: ["lab", "school", "creation"] },
-  { id: "premium_hosted", label: "Premium Hosted Future", lane: "premium_hosted_future", status: "future_integration", capabilities: ["multimodal orchestration"], chamberSafety: ["lab", "school", "creation", "profile"] },
+  { id: "ollama_local",    label: "Ollama Local",              lane: "open_source_local",        status: "can_host_now",        capabilities: ["chat", "code", "summarize"],            chamberSafety: ["lab", "creation"] },
+  { id: "hf_inference",   label: "HF Inference",              lane: "free_provider",            status: "future_integration",  capabilities: ["chat", "classify"],                    chamberSafety: ["lab", "school"] },
+  { id: "openai_wrapped", label: "OpenAI Wrapped",            lane: "wrapped_external",         status: "can_host_now",        capabilities: ["chat", "tooling", "code"],              chamberSafety: ["lab", "school", "creation"] },
+  { id: "google",         label: "Gemini (Google AI)",        lane: "wrapped_external",         status: "can_host_now",        capabilities: ["chat", "research", "synthesis"],        chamberSafety: ["lab", "school", "creation"] },
+  { id: "anthropic",      label: "Claude (Anthropic)",        lane: "wrapped_external",         status: "can_host_now",        capabilities: ["chat", "analysis", "code"],             chamberSafety: ["lab", "school", "creation"] },
+  { id: "premium_hosted", label: "Premium Hosted Future",     lane: "premium_hosted_future",    status: "future_integration",  capabilities: ["multimodal orchestration"],             chamberSafety: ["lab", "school", "creation", "profile"] },
 ];
 
 export const PROJECT_CANVAS_SEEDS: ProjectCanvas[] = [
