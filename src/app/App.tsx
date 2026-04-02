@@ -100,7 +100,17 @@ import { PIONEER_REGISTRY } from "./components/pioneer-registry";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
-const STORAGE_KEY = "ruberra_messages_v2";
+const STORAGE_KEY      = "ruberra_messages_v2";
+const GOV_STORAGE_KEY  = "ruberra_trust_gov_v1";
+
+function loadTrustGov() {
+  if (typeof window === "undefined") return defaultTrustGovernanceState();
+  try {
+    const raw = localStorage.getItem(GOV_STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as ReturnType<typeof defaultTrustGovernanceState>;
+  } catch { /* corrupt */ }
+  return defaultTrustGovernanceState();
+}
 const MAX_CONTEXT = 20;
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-b9f46b68`;
 
@@ -210,7 +220,7 @@ export default function App() {
   const [_orgStateBase]     = useState(defaultOrgState);
   const [_personalOSBase]   = useState(() => defaultPersonalOS("operator-1"));
   const [compoundNetwork]   = useState(defaultCompoundNetwork);
-  const [trustGovState, setTrustGovState] = useState(defaultTrustGovernanceState);
+  const [trustGovState, setTrustGovState] = useState(loadTrustGov);
   const [flowState, setFlowState] = useState(defaultAutonomousFlowState);
 
   useEffect(() => {
@@ -256,6 +266,10 @@ export default function App() {
   useEffect(() => {
     saveMissions(missions);
   }, [missions]);
+
+  useEffect(() => {
+    try { localStorage.setItem(GOV_STORAGE_KEY, JSON.stringify(trustGovState)); } catch { /* storage full */ }
+  }, [trustGovState]);
 
   const handleMissionUpsert = useCallback((m: Mission) => {
     setMissions((prev) => upsertMission(prev, m));
@@ -1399,7 +1413,14 @@ export default function App() {
                   onPreferencePatch={(patch) => setRuntimeFabric((prev) => updatePreferences(prev, patch))}
                   onAISettingsPatch={(patch) => setRuntimeFabric((prev) => updateAISettings(prev, patch))}
                   onWorkspacePatch={(patch) => setRuntimeFabric((prev) => updateWorkspaceKnowledge(prev, patch))}
-                  onExport={(continuityId) => setRuntimeFabric((prev) => exportContinuity(prev, continuityId))}
+                  onExport={(continuityId) => {
+                    setRuntimeFabric((prev) => exportContinuity(prev, continuityId));
+                    setTrustGovState((prev) => {
+                      const ledger  = getMissionLedger(prev, activeMissionId ?? continuityId);
+                      const updated = appendAuditToLedger(ledger, `export.${continuityId.slice(0, 12)}`, runtimeFabric.workspace.owner, `continuity exported · ${continuityId}`);
+                      return upsertLedger(prev, updated);
+                    });
+                  }}
                   missions={missions}
                   onMissionUpsert={handleMissionUpsert}
                   onMissionActivate={handleMissionActivate}
