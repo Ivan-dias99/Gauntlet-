@@ -94,9 +94,6 @@ export interface Message {
     modelId?: string;
     executionState?: "live" | "completed" | "degraded" | "blocked" | "failed" | "fallback_used" | "provider_unavailable" | "connector_unavailable" | "scaffold_only";
     connectorRefs?: string[];
-    providerId?: string;
-    modelId?: string;
-    supportChain?: string[];
   };
   execution_truth?: MessageExecutionTruth;
   execution_trace?: MessageExecutionTrace;

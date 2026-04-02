@@ -1422,6 +1422,7 @@ export default function App() {
                   modelId={activeModels.lab}
                   onTaskChange={(task) => handleTaskChange("lab", task)}
                   onModelChange={(modelId) => handleModelChange("lab", modelId)}
+                  missionName={activeMission?.identity.name}
                   missionName={activeMission?.name}
                 />
               )}
@@ -1441,6 +1442,7 @@ export default function App() {
                   modelId={activeModels.school}
                   onTaskChange={(task) => handleTaskChange("school", task)}
                   onModelChange={(modelId) => handleModelChange("school", modelId)}
+                  missionName={activeMission?.identity.name}
                   missionName={activeMission?.name}
                 />
               )}
@@ -1460,6 +1462,7 @@ export default function App() {
                   modelId={activeModels.creation}
                   onTaskChange={(task) => handleTaskChange("creation", task)}
                   onModelChange={(modelId) => handleModelChange("creation", modelId)}
+                  missionName={activeMission?.identity.name}
                   missionName={activeMission?.name}
                 />
               )}
@@ -1601,6 +1604,7 @@ export default function App() {
         onClose={() => setCmdOpen(false)}
         navigate={navigate}
         searchIndex={searchIndex}
+        missions={missions}
       />
 
       <FloatingNoteSystem

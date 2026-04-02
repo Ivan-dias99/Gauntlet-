@@ -149,7 +149,8 @@ export function SideRail({ activeMode, activeSection, onSectionChange }: SideRai
                 outline: "none",
                 position: "relative",
               }}
-              className={!isActive ? "hover:bg-[#EDEAE4]" : ""}
+              onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = R.hover; }}
+              onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
               {/* Active chamber-colored left indicator */}
               {isActive && (
@@ -205,7 +206,8 @@ export function SideRail({ activeMode, activeSection, onSectionChange }: SideRai
           outline: "none",
           flexShrink: 0,
         }}
-        className="hover:bg-[#EDEAE4]"
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = R.hover; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
       >
         <Settings size={14} color={R.ink5} strokeWidth={1.5} />
       </button>
