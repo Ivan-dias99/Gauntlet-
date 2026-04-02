@@ -1,6 +1,7 @@
 import { type Message, type MessageExecutionTrace, type NavFn, type Tab, type ProfileView } from "../shell-types";
 import { type Mission } from "../../dna/mission-substrate";
 import { MissionRepository } from "../MissionRepository";
+import { MissionOperationsPanel } from "../MissionOperationsPanel";
 import { findObject, listObjectsForChamber, mergeObjectsByRecency, openObject, type RuberraObject } from "../object-graph";
 import { type CSSProperties, useState } from "react";
 import {
@@ -57,6 +58,7 @@ import { type PersonalSovereignOSState } from "../../dna/personal-sovereign-os";
 import { type CompoundNetwork } from "../../dna/compound-intelligence";
 import { type AuditEntry } from "../../dna/trust-governance";
 import { type AutonomousFlowState } from "../../dna/autonomous-flow";
+import { type MissionOperationsState } from "../../dna/autonomous-operations";
 import {
   PROVIDER_ADAPTERS,
   SOVEREIGN_MODEL_REGISTRY,
@@ -98,6 +100,11 @@ interface ProfileModeProps {
   missions: Mission[];
   onMissionUpsert: (m: Mission) => void;
   onMissionActivate: (missionId: string) => void;
+  activeMissionId?: string | null;
+  activeMissionOps?: MissionOperationsState | null;
+  onMissionOpsSignalDismiss?: (signalId: string) => void;
+  onMissionOpsApprovalApprove?: (requestId: string) => void;
+  onMissionOpsApprovalReject?: (requestId: string) => void;
   /** Stack 04 — Autonomous Operations state. Optional; defaults to empty state when not yet wired. */
   operations?: AutonomousOperationsState;
   onOperationSignalRead?:    (id: string) => void;
@@ -451,6 +458,11 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
 
 export function ProfileMode({
   messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, intelligence: _intelligence, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport, missions, onMissionUpsert, onMissionActivate,
+  activeMissionId,
+  activeMissionOps,
+  onMissionOpsSignalDismiss,
+  onMissionOpsApprovalApprove,
+  onMissionOpsApprovalReject,
   operations: operationsProp,
   onOperationSignalRead,
   onOperationSignalResolve,
@@ -991,6 +1003,19 @@ export function ProfileMode({
         {/* ── OPERATIONS (Stack 04) ── */}
         {profileView === "operations" && (
           <>
+          {activeMissionId && activeMissionOps && (
+            <SectionBlock title="Mission Operations">
+              <div style={{ padding: "10px 14px" }}>
+                <MissionOperationsPanel
+                  missionId={activeMissionId}
+                  ops={activeMissionOps}
+                  onSignalDismiss={(id) => onMissionOpsSignalDismiss?.(id)}
+                  onApprovalApprove={(id) => onMissionOpsApprovalApprove?.(id)}
+                  onApprovalReject={(id) => onMissionOpsApprovalReject?.(id)}
+                />
+              </div>
+            </SectionBlock>
+          )}
           <OperationsPanel
             tasks={operations.tasks}
             reviews={operations.reviews}

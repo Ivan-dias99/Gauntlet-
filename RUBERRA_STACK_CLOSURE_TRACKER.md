@@ -13,7 +13,7 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 | # | Stack | Status | Scope Lock | Exit Criteria (Definition of Done) |
 |---|---|---|---|---|
 | 1 | Canon + Sovereignty | ACTIVE | Constitution, product identity, anti-drift gates, single-source law docs | All Ruberra law docs aligned; conflicting legacy framing removed; governance language is canonical and non-duplicative |
-| 2 | Mission Substrate | LOCKED | Mission entity model, mission lifecycle, mission repository container | Mission is first-class system object with create/open/archive flows |
+| 2 | Mission Substrate | CLOSED | Mission entity model, mission lifecycle, mission repository container | Mission is first-class system object with create/open/archive flows |
 | 3 | Sovereign Intelligence | LOCKED | Native mission reasoning loops, mission-context memory, structured prompt spine | Intelligence runs on mission state, not generic chat state |
 | 4 | Autonomous Operations | LOCKED | Multi-step execution runtime, deterministic actions, retry and audit paths | Mission actions execute with logs, outcomes, and recovery rules |
 | 5 | Adaptive Experience | LOCKED | Chamber-aware UX, mission state surfaces, consequence-driven interface | UI reflects mission state transitions in all chambers |
@@ -68,3 +68,12 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 1. Replace legacy README framing with Ruberra mission-operating-system framing.
 2. Add mission-first architecture brief (single source) referenced from README.
 3. Open first implementation task under stack 2 (Mission Substrate) only after stack 1 close checklist is signed.
+
+## Stack 02 Closure Evidence (Operational)
+
+- Mission operations callbacks now mutate live mission-ops state:
+  - signal dismiss
+  - approval approve
+  - approval reject
+- Completed execution traces now generate real mission tasks (derived from execution trace digest) and append into mission-bound operations state.
+- Profile → Operations now mounts MissionOperationsPanel with active mission operations state and shows generated tasks when mission activity exists.

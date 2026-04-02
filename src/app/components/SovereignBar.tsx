@@ -5,6 +5,7 @@
 
 import { motion } from "motion/react";
 import { Search, Bell, ChevronDown } from "lucide-react";
+import { type ReactNode } from "react";
 import { type Tab, type Theme } from "./shell-types";
 import { type SystemHealthModel } from "./awareness-substrate";
 import { ProfileLedger } from "./ProfileLedger";
@@ -75,7 +76,7 @@ function RubMark() {
 function IconBtn({
   children, title, onClick,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   title?: string;
   onClick?: () => void;
 }) {

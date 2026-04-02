@@ -3,10 +3,11 @@
  * Calm, precise chamber navigation. Chamber identity through color + tone.
  */
 
+import { motion } from "motion/react";
 import { type ReactNode } from "react";
 import {
   type Tab, type Message, type SignalStatus,
-  type LabView, type SchoolView, type CreationView, type ProfileView, type NavFn,
+  type LabView, type SchoolView, type CreationView, type ProfileView,
 } from "./shell-types";
 import { CHAMBER_ACCENT, CHAMBER_ACCENT_LIGHT, CHAMBER_LABEL } from "../dna/chamber-accent";
 
@@ -127,10 +128,33 @@ function Divider() {
   return <div style={{ height: "1px", background: "var(--r-border-soft)", margin: "6px 0" }} />;
 }
 
+function StatusDot({ status, accent }: { status: SignalStatus; accent: string }) {
+  const color =
+    status === "streaming"  ? accent               :
+    status === "completed"  ? "var(--r-ok)"        :
+    status === "error"      ? "var(--r-err)"       :
+    "var(--r-dim)";
+  const isActive = status === "streaming";
+  return (
+    <motion.span
+      animate={isActive ? { opacity: [0.5, 1, 0.5] } : {}}
+      transition={isActive ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" } : {}}
+      style={{
+        width: "5px",
+        height: "5px",
+        borderRadius: "50%",
+        background: color,
+        flexShrink: 0,
+        display: "inline-block",
+      }}
+    />
+  );
+}
+
 // ─── Lab rail ─────────────────────────────────────────────────────────────────
 
-function LabRail({ view, onView, messages, signal, navigate }: {
-  view: LabView; onView: (v: LabView) => void; messages: Message[]; signal: SignalStatus; navigate: NavFn;
+function LabRail({ view, onView }: {
+  view: LabView; onView: (v: LabView) => void;
 }) {
   const accent = CHAMBER_ACCENT.lab;
   return (
@@ -149,10 +173,11 @@ function LabRail({ view, onView, messages, signal, navigate }: {
 
 // ─── School rail ──────────────────────────────────────────────────────────────
 
-function SchoolRail({ view, onView, messages, signal, navigate }: {
-  view: SchoolView; onView: (v: SchoolView) => void; messages: Message[]; signal: SignalStatus; navigate: NavFn;
+function SchoolRail({ view, onView, messages, signal }: {
+  view: SchoolView; onView: (v: SchoolView) => void; messages: Message[]; signal: SignalStatus;
 }) {
   const accent = CHAMBER_ACCENT.school;
+  const history = messages.filter((m) => m.role === "user").slice().reverse().slice(0, 5);
   return (
     <>
       <section style={{ padding: "10px 10px 8px" }}>
@@ -169,10 +194,11 @@ function SchoolRail({ view, onView, messages, signal, navigate }: {
 
 // ─── Creation rail ────────────────────────────────────────────────────────────
 
-function CreationRail({ view, onView, messages, signal, navigate }: {
-  view: CreationView; onView: (v: CreationView) => void; messages: Message[]; signal: SignalStatus; navigate: NavFn;
+function CreationRail({ view, onView, messages, signal }: {
+  view: CreationView; onView: (v: CreationView) => void; messages: Message[]; signal: SignalStatus;
 }) {
   const accent = CHAMBER_ACCENT.creation;
+  const artifacts = messages.filter(m => m.role === "assistant" && m.content.length > 0).slice().reverse().slice(0, 5);
   return (
     <>
       <section style={{ padding: "10px 10px 8px" }}>
@@ -181,6 +207,35 @@ function CreationRail({ view, onView, messages, signal, navigate }: {
         <NavBtn label="Chat"    active={view === "chat"}     accent={accent} onClick={() => onView("chat")}     icon={<IChat />} />
         <NavBtn label="Build"   active={view === "terminal"} accent={accent} onClick={() => onView("terminal")} icon={<ITerminal />} />
         <NavBtn label="Archive" active={view === "archive"}  accent={accent} onClick={() => onView("archive")}  icon={<IArchive />} />
+      </section>
+      <Divider />
+      <section style={{ padding: "8px 10px", flex: 1, overflowY: "auto" }}>
+        <SLabel>Artifacts</SLabel>
+        {artifacts.length === 0 ? (
+          <p style={{ fontSize: "10px", color: "var(--r-dim)", paddingLeft: "2px", fontFamily: "'Inter', system-ui, sans-serif" }}>—</p>
+        ) : artifacts.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => onView("chat")}
+            title={m.content}
+            style={{ width: "100%", display: "block", fontSize: "10px", color: "var(--r-subtext)", padding: "3px 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "'Inter', system-ui, sans-serif", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", outline: "none", transition: "color 0.1s ease", lineHeight: 1.5 }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-text)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)"; }}
+          >
+            {m.content.slice(0, 36)}{m.content.length > 36 ? "…" : ""}
+          </button>
+        ))}
+      </section>
+      <Divider />
+      <section style={{ padding: "8px 10px" }}>
+        <SLabel>Forge</SLabel>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", paddingLeft: "1px", marginBottom: "5px" }}>
+          <StatusDot status={signal} accent={accent} />
+          <span style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", textTransform: "capitalize" }}>{signal}</span>
+        </div>
+        <span style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.04em", paddingLeft: "1px" }}>
+          outputs · {artifacts.length}
+        </span>
       </section>
     </>
   );
@@ -219,6 +274,7 @@ export function ShellSideRail({
   activeTab, messages, signals,
   labView, schoolView, creationView, profileView,
   onLabView, onSchoolView, onCreationView, onProfileView,
+  onTabChange, collapsed, onToggleCollapsed,
   navigate, onTabChange, collapsed, onToggleCollapsed,
 }: ShellSideRailProps) {
   const chamber = CHAMBER_SURFACE[activeTab];
@@ -240,6 +296,7 @@ export function ShellSideRail({
     >
       {collapsed ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: "8px" }}>
+          <button onClick={onToggleCollapsed} title="Expand rail" aria-label="Expand side rail" style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "11px" }}>»</button>
           <button onClick={onToggleCollapsed} title="Expand rail" style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "11px" }}>»</button>
           {ALL_TABS.map((tab) => {
             const isActive = activeTab === tab;
@@ -306,6 +363,14 @@ export function ShellSideRail({
             {chamber.label}
           </span>
         </div>
+        <button
+          onClick={onToggleCollapsed}
+          title="Collapse rail"
+          aria-label="Collapse side rail"
+          style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "10px" }}
+        >
+          «
+        </button>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <button
             onClick={onToggleCollapsed}
@@ -320,18 +385,19 @@ export function ShellSideRail({
       {/* Chamber nav */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
         {activeTab === "lab" && (
-          <LabRail view={labView} onView={onLabView} messages={messages.lab} signal={signals.lab} navigate={navigate} />
+          <LabRail view={labView} onView={onLabView} />
         )}
         {activeTab === "school" && (
-          <SchoolRail view={schoolView} onView={onSchoolView} messages={messages.school} signal={signals.school} navigate={navigate} />
+          <SchoolRail view={schoolView} onView={onSchoolView} messages={messages.school} signal={signals.school} />
         )}
         {activeTab === "creation" && (
-          <CreationRail view={creationView} onView={onCreationView} messages={messages.creation} signal={signals.creation} navigate={navigate} />
+          <CreationRail view={creationView} onView={onCreationView} messages={messages.creation} signal={signals.creation} />
         )}
         {activeTab === "profile" && (
           <ProfileRail view={profileView} onView={onProfileView} />
         )}
       </div>
+
       </>
       )}
     </aside>
