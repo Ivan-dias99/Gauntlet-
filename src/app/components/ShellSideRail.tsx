@@ -320,7 +320,7 @@ export function ShellSideRail({
     >
       {collapsed ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: "8px" }}>
-          <button onClick={onToggleCollapsed} title="Expand rail" style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "11px" }}>»</button>
+          <button onClick={onToggleCollapsed} title="Expand rail" aria-label="Expand side rail" style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "11px" }}>»</button>
           {ALL_TABS.map((tab) => {
             const isActive = activeTab === tab;
             const accentColor = CHAMBER_SURFACE[tab].primary;
@@ -389,6 +389,7 @@ export function ShellSideRail({
         <button
           onClick={onToggleCollapsed}
           title="Collapse rail"
+          aria-label="Collapse side rail"
           style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "10px" }}
         >
           «
