@@ -3,6 +3,7 @@
  * Same language everywhere; no badge spam.
  */
 
+import { useState } from "react";
 import { type MessageExecutionTrace } from "./shell-types";
 
 const STATE_LABEL: Record<MessageExecutionTrace["executionState"], string> = {
@@ -37,6 +38,7 @@ export function ExecutionConsequenceStrip({
   tierColor,
   modelTruthLabel,
   missionName,
+  artifactDiff,
 }: {
   trace:              MessageExecutionTrace;
   accent:             string;
@@ -51,7 +53,13 @@ export function ExecutionConsequenceStrip({
   modelTruthLabel?:   string;
   /** Mission binding — renders mission context line at top of strip */
   missionName?:       string;
+  artifactDiff?: {
+    summary: string;
+    beforeSnippet?: string;
+    afterSnippet?: string;
+  };
 }) {
+  const [diffOpen, setDiffOpen] = useState(false);
   const chain = trace.supportChain?.filter(Boolean) ?? [];
   const connectors = trace.connectorActions ?? [];
   const results = trace.executionResults ?? [];
@@ -194,6 +202,39 @@ export function ExecutionConsequenceStrip({
               {r.summary}
             </div>
           ))}
+        </div>
+      )}
+
+      {artifactDiff && (
+        <div style={{ marginTop: "7px", borderTop: "1px solid var(--r-border-soft)", paddingTop: "6px" }}>
+          <button
+            onClick={() => setDiffOpen((v) => !v)}
+            style={{
+              border: "1px solid var(--r-border)",
+              background: "var(--r-surface)",
+              color: "var(--r-subtext)",
+              borderRadius: "4px",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "7.5px",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              padding: "2px 6px",
+              cursor: "pointer",
+            }}
+          >
+            artifact diff {diffOpen ? "−" : "+"}
+          </button>
+          <p style={{ margin: "5px 0 0", fontSize: "9px", color: "var(--r-subtext)" }}>{artifactDiff.summary}</p>
+          {diffOpen && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginTop: "5px" }}>
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: "8px", color: "var(--r-dim)", border: "1px solid var(--r-border-soft)", borderRadius: "5px", padding: "5px" }}>
+                {artifactDiff.beforeSnippet ?? "before unavailable"}
+              </pre>
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: "8px", color: "var(--r-subtext)", border: "1px solid var(--r-border-soft)", borderRadius: "5px", padding: "5px" }}>
+                {artifactDiff.afterSnippet ?? "after unavailable"}
+              </pre>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -12,6 +12,7 @@ import { ShellSideRail } from "./components/ShellSideRail";
 import { FloatingNoteSystem } from "./components/FloatingNoteSystem";
 import { GlobalCommandPalette } from "./components/GlobalCommandPalette";
 import { SignalsPanel } from "./components/SignalsPanel";
+import { GlobalExecutionBand, type GlobalExecutionSnapshot } from "./components/GlobalExecutionBand";
 import { LabMode } from "./components/modes/LabMode";
 import { SchoolMode } from "./components/modes/SchoolMode";
 import { CreationMode } from "./components/modes/CreationMode";
@@ -25,6 +26,15 @@ import {
   saveMissions,
   upsertMission,
 } from "./dna/mission-substrate";
+import {
+  type MissionOperationsState,
+  buildOperationState,
+  createTask,
+  defaultMissionOperationsState,
+  dismissSignal,
+  emitSignal,
+  transitionTask,
+} from "./dna/autonomous-operations";
 import {
   defaultAutonomousOperationsState,
   type AutonomousOperationsState,
@@ -167,6 +177,7 @@ export default function App() {
   const [activeMissionId, setActiveMissionId] = useState<string | null>(() => {
     try { return localStorage.getItem("ruberra_active_mission_id") ?? null; } catch { return null; }
   });
+  const [activeMissionOps, setActiveMissionOps] = useState<MissionOperationsState | null>(null);
 
   // ── Detail navigation ────────────────────────────────────────────────────────
   const [detailId, setDetailId] = useState<string>("");
@@ -179,6 +190,15 @@ export default function App() {
     if (tab === "creation") setCreationView(view as CreationView);
     if (tab === "profile") setProfileView(view as ProfileView);
     setDetailId(id);
+  }, []);
+
+  const handleTabChange = useCallback((tab: Tab) => {
+    setActiveTab(tab);
+    setDetailId("");
+    if (tab === "lab") setLabView("home");
+    if (tab === "school") setSchoolView("home");
+    if (tab === "creation") setCreationView("home");
+    if (tab === "profile") setProfileView("overview");
   }, []);
 
   // ── Floating notes ───────────────────────────────────────────────────────────
@@ -196,6 +216,7 @@ export default function App() {
   // ── Command palette + signals panel ───────────────────────────────────────────
   const [cmdOpen, setCmdOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
+  const [railCollapsed, setRailCollapsed] = useState(false);
   // ── Presence heartbeat tick ───────────────────────────────────────────────────
   const [heartbeatTick, setHeartbeatTick] = useState(0);
   // ── Stack substrates ─────────────────────────────────────────────────────────
@@ -333,6 +354,22 @@ export default function App() {
     setActiveMissionId(null);
     try { localStorage.removeItem("ruberra_active_mission_id"); } catch { /* ignore */ }
   }, []);
+  const handleMissionPaletteNew = useCallback(() => {
+    setActiveTab("profile");
+    setProfileView("projects");
+  }, []);
+
+  const handleMissionPaletteSwitch = useCallback(() => {
+    setActiveTab("profile");
+    setProfileView("projects");
+  }, []);
+
+  const handleMissionPaletteHandoff = useCallback(() => {
+    if (!activeMissionId) return;
+    mcpMissionBuildHandoff(activeMissionId).catch(() => { /* non-fatal */ });
+    setActiveTab("profile");
+    setProfileView("operations");
+  }, [activeMissionId]);
 
   // ── Sovereign runtime probe — live adapter availability on mount ─────────────
   useEffect(() => {
@@ -409,18 +446,6 @@ export default function App() {
   const handleDraftChange = useCallback((text: string) => {
     setDrafts((prev) => ({ ...prev, [activeTab]: text }));
   }, [activeTab]);
-
-  const handleClearTab = useCallback((tab: Tab) => {
-    setMessages((prev) => ({ ...prev, [tab]: [] }));
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as TabMessages;
-        parsed[tab] = [];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-      }
-    } catch { /* ignore */ }
-  }, []);
 
   const handleTaskChange = useCallback((tab: ChamberTab, task: TaskType) => {
     setTasks((prev) => ({ ...prev, [tab]: task }));
@@ -1165,6 +1190,186 @@ export default function App() {
   const isLive = Object.values(signals).some((s) => s === "streaming");
   const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
   const activeMission = activeMissionId ? missions.find((m) => m.id === activeMissionId) ?? null : null;
+  const generatedMissionTaskRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!activeMissionId) {
+      setActiveMissionOps(null);
+      generatedMissionTaskRef.current.clear();
+      return;
+    }
+    setActiveMissionOps((prev) => {
+      if (prev?.missionId === activeMissionId) return prev;
+      return defaultMissionOperationsState(activeMissionId);
+    });
+  }, [activeMissionId]);
+
+  useEffect(() => {
+    if (!activeMissionId || !activeMission) return;
+    const chambers: Exclude<Tab, "profile">[] = ["lab", "school", "creation"];
+    const completedEvents: Array<{ id: string; chamber: Exclude<Tab, "profile">; title: string; digest: string }> = [];
+    for (const chamber of chambers) {
+      for (const m of messages[chamber]) {
+        const trace = m.execution_trace;
+        if (!trace || m.role !== "assistant") continue;
+        if (trace.executionState !== "completed") continue;
+        if (generatedMissionTaskRef.current.has(m.id)) continue;
+        const lastResult = trace.executionResults?.slice(-1)[0];
+        const digest = lastResult?.summary ?? trace.routeDigest ?? m.content.slice(0, 160) ?? "Execution completed";
+        const title = (trace.routeDigest ?? m.content ?? "Mission execution").slice(0, 96);
+        completedEvents.push({ id: m.id, chamber, title, digest });
+      }
+    }
+    if (!completedEvents.length) return;
+    setActiveMissionOps((prev) => {
+      const base = prev?.missionId === activeMissionId ? prev : defaultMissionOperationsState(activeMissionId);
+      let next = { ...base };
+      for (const ev of completedEvents) {
+        const rawTask = createTask(activeMissionId, {
+          title: ev.title || "Execution completion",
+          objective: ev.digest,
+          notThis: activeMission.identity.notThis || "No mission drift.",
+          class: ev.chamber === "lab" ? "investigation" : ev.chamber === "school" ? "mastery" : "construction",
+          chamberLead: ev.chamber,
+          priority: "standard",
+          riskLevel: "low",
+        });
+        const task = transitionTask(rawTask, "completed", { outputDigest: ev.digest });
+        next = {
+          ...next,
+          tasks: [...next.tasks, task],
+          observations: [
+            ...next.observations,
+            {
+              id: `obs_${Date.now()}_${ev.id.slice(0, 6)}`,
+              missionId: activeMissionId,
+              taskId: task.id,
+              class: "run_complete",
+              summary: ev.digest.slice(0, 140),
+              pioneerId: task.pioneerId,
+              at: Date.now(),
+            },
+          ],
+          signals: [
+            ...next.signals,
+            emitSignal(activeMissionId, {
+              type: "task_complete",
+              priority: "standard",
+              taskId: task.id,
+              headline: `Task completed · ${task.title.slice(0, 52)}`,
+              body: ev.digest.slice(0, 140),
+              actionable: false,
+            }),
+          ],
+          lastUpdated: Date.now(),
+        };
+        generatedMissionTaskRef.current.add(ev.id);
+      }
+      return {
+        ...next,
+        operationState: buildOperationState(
+          activeMissionId,
+          next.tasks,
+          next.observations,
+          next.pendingApprovals.length,
+        ),
+      };
+    });
+  }, [activeMission, activeMissionId, messages]);
+
+  const handleMissionOpsSignalDismiss = useCallback((signalId: string) => {
+    if (!activeMissionId) return;
+    setActiveMissionOps((prev) => {
+      if (!prev || prev.missionId !== activeMissionId) return prev;
+      const signals = prev.signals.map((s) => (s.id === signalId ? dismissSignal(s) : s));
+      return {
+        ...prev,
+        signals,
+        operationState: buildOperationState(activeMissionId, prev.tasks, prev.observations, prev.pendingApprovals.length),
+        lastUpdated: Date.now(),
+      };
+    });
+  }, [activeMissionId]);
+
+  const handleMissionOpsApprovalApprove = useCallback((requestId: string) => {
+    if (!activeMissionId) return;
+    setActiveMissionOps((prev) => {
+      if (!prev || prev.missionId !== activeMissionId) return prev;
+      const request = prev.pendingApprovals.find((r) => r.id === requestId);
+      if (!request) return prev;
+      const next = {
+        ...prev,
+        pendingApprovals: prev.pendingApprovals.filter((r) => r.id !== requestId),
+        approvalHistory: [
+          ...prev.approvalHistory,
+          {
+            requestId,
+            missionId: activeMissionId,
+            decision: "approved",
+            decidedBy: "operator",
+            rationale: "approved from mission operations panel",
+            resolvedAt: Date.now(),
+          },
+        ],
+        lastUpdated: Date.now(),
+      };
+      return {
+        ...next,
+        operationState: buildOperationState(activeMissionId, next.tasks, next.observations, next.pendingApprovals.length),
+      };
+    });
+  }, [activeMissionId]);
+
+  const handleMissionOpsApprovalReject = useCallback((requestId: string) => {
+    if (!activeMissionId) return;
+    setActiveMissionOps((prev) => {
+      if (!prev || prev.missionId !== activeMissionId) return prev;
+      const request = prev.pendingApprovals.find((r) => r.id === requestId);
+      if (!request) return prev;
+      const next = {
+        ...prev,
+        pendingApprovals: prev.pendingApprovals.filter((r) => r.id !== requestId),
+        approvalHistory: [
+          ...prev.approvalHistory,
+          {
+            requestId,
+            missionId: activeMissionId,
+            decision: "rejected",
+            decidedBy: "operator",
+            rationale: "rejected from mission operations panel",
+            resolvedAt: Date.now(),
+          },
+        ],
+        lastUpdated: Date.now(),
+      };
+      return {
+        ...next,
+        operationState: buildOperationState(activeMissionId, next.tasks, next.observations, next.pendingApprovals.length),
+      };
+    });
+  }, [activeMissionId]);
+  const lastExecutionSnapshot = useMemo<GlobalExecutionSnapshot | null>(() => {
+    const latestMessageTrace = Object.values(messages)
+      .flatMap((bucket) => bucket)
+      .filter((m) => m.role === "assistant" && m.execution_trace)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+    if (!latestMessageTrace?.execution_trace || latestMessageTrace.tab === "profile") return null;
+    const chamber = latestMessageTrace.tab as Exclude<Tab, "profile">;
+    const latestResult = [...runtimeFabric.executionResults]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .find((r) => r.chamber === chamber);
+    return {
+      state: latestMessageTrace.execution_trace.executionState,
+      chamber,
+      modelId: latestResult?.selectedModelId ?? latestMessageTrace.execution_trace.modelId,
+      providerId: latestResult?.selectedProviderId ?? latestMessageTrace.execution_trace.providerId,
+      latencyMs: latestResult?.latencyMs,
+    };
+  }, [messages, runtimeFabric.executionResults]);
+  const lastExecutionProviderHealth = useMemo(() => {
+    if (!lastExecutionSnapshot?.providerId) return "unknown" as const;
+    return runtimeFabric.providerHealth.find((p) => p.providerId === lastExecutionSnapshot.providerId)?.state ?? "unknown";
+  }, [runtimeFabric.providerHealth, lastExecutionSnapshot]);
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
@@ -1349,7 +1554,7 @@ export default function App() {
       {/* Sovereign Bar */}
       <SovereignBar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
         theme={theme}
@@ -1390,9 +1595,9 @@ export default function App() {
           onSchoolView={(v) => { setSchoolView(v); setDetailId(""); }}
           onCreationView={(v) => { setCreationView(v); setDetailId(""); }}
           onProfileView={setProfileView}
-          onNewNote={addNote}
-          onClearTab={handleClearTab}
-          navigate={navigate}
+          onTabChange={handleTabChange}
+          collapsed={railCollapsed}
+          onToggleCollapsed={() => setRailCollapsed((v) => !v)}
         />
 
         {/* Operational Surface */}
@@ -1422,6 +1627,7 @@ export default function App() {
                   modelId={activeModels.lab}
                   onTaskChange={(task) => handleTaskChange("lab", task)}
                   onModelChange={(modelId) => handleModelChange("lab", modelId)}
+                  missionName={activeMission?.identity.name}
                 />
               )}
               {activeTab === "school" && (
@@ -1440,6 +1646,7 @@ export default function App() {
                   modelId={activeModels.school}
                   onTaskChange={(task) => handleTaskChange("school", task)}
                   onModelChange={(modelId) => handleModelChange("school", modelId)}
+                  missionName={activeMission?.identity.name}
                 />
               )}
               {activeTab === "creation" && (
@@ -1458,6 +1665,7 @@ export default function App() {
                   modelId={activeModels.creation}
                   onTaskChange={(task) => handleTaskChange("creation", task)}
                   onModelChange={(modelId) => handleModelChange("creation", modelId)}
+                  missionName={activeMission?.identity.name}
                 />
               )}
               {activeTab === "profile" && (
@@ -1513,6 +1721,11 @@ export default function App() {
                   missions={missions}
                   onMissionUpsert={handleMissionUpsert}
                   onMissionActivate={handleMissionActivate}
+                  activeMissionId={activeMissionId}
+                  activeMissionOps={activeMissionOps}
+                  onMissionOpsSignalDismiss={handleMissionOpsSignalDismiss}
+                  onMissionOpsApprovalApprove={handleMissionOpsApprovalApprove}
+                  onMissionOpsApprovalReject={handleMissionOpsApprovalReject}
                   operations={operations}
                   onOperationSignalRead={handleOperationSignalRead}
                   onOperationSignalResolve={handleOperationSignalResolve}
@@ -1551,53 +1764,21 @@ export default function App() {
         onMarkAllRead={() => setRuntimeFabric((prev) => markAllSignalsRead(prev))}
       />
 
-      {/* Status bar */}
-      <div
-        style={{
-          height: "22px",
-          borderTop: "1px solid var(--r-border)",
-          background: "var(--r-surface)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 16px",
-          flexShrink: 0,
-          gap: "0",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-          <motion.div
-            animate={{ opacity: isLive ? [0.4, 1, 0.4] : [0.3, 0.7, 0.3] }}
-            transition={{ duration: isLive ? 0.85 : 3.5, repeat: Infinity, ease: "easeInOut" }}
-            style={{
-              width: "4px",
-              height: "4px",
-              borderRadius: "50%",
-              background: isLive ? "var(--r-accent)" : "var(--r-pulse)",
-            }}
-          />
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.10em", color: "var(--r-dim)", textTransform: "uppercase" }}>
-            {isLive ? "streaming" : "ready"}
-          </span>
-        </div>
-
-        <div style={{ width: "1px", height: "9px", background: "var(--r-border)", margin: "0 10px" }} />
-
-        <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.05em" }}>
-          {activeTab === "profile" ? "profile-ledger · memory-fabric" : `${activeModels[activeTab as ChamberTab]} · ${tasks[activeTab as ChamberTab]}`}
-        </span>
-
-        <div style={{ flex: 1 }} />
-
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-          {activeTab}
-        </span>
-      </div>
+      <GlobalExecutionBand
+        snapshot={lastExecutionSnapshot}
+        missionName={activeMission?.identity.name}
+        providerHealth={lastExecutionProviderHealth}
+      />
 
       <GlobalCommandPalette
         open={cmdOpen}
         onClose={() => setCmdOpen(false)}
         navigate={navigate}
         searchIndex={searchIndex}
+        onMissionNew={handleMissionPaletteNew}
+        onMissionSwitch={handleMissionPaletteSwitch}
+        onMissionHandoff={activeMission ? handleMissionPaletteHandoff : undefined}
+        activeMissionName={activeMission?.identity.name}
       />
 
       <FloatingNoteSystem

@@ -13,6 +13,7 @@ import {
   type TaskType,
   type ModelDescriptor,
 } from "./model-orchestration";
+import { CHAMBER_ACCENT } from "../dna/chamber-accent";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,12 +27,6 @@ interface ModelSelectorProps {
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-
-const CHAMBER_ACCENT: Record<ChamberTab, string> = {
-  lab:      "#52796A",
-  school:   "#4A6B84",
-  creation: "#8A6238",
-};
 
 const QUALITY_DOT: Record<ModelDescriptor["quality"], string> = {
   good:   "var(--r-dim)",

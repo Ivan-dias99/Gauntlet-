@@ -4,10 +4,12 @@
  */
 
 import { motion } from "motion/react";
+import { type ReactNode } from "react";
 import {
   type Tab, type Message, type SignalStatus,
-  type LabView, type SchoolView, type CreationView, type ProfileView, type NavFn,
+  type LabView, type SchoolView, type CreationView, type ProfileView,
 } from "./shell-types";
+import { CHAMBER_ACCENT, CHAMBER_ACCENT_LIGHT, CHAMBER_LABEL } from "../dna/chamber-accent";
 
 interface ShellSideRailProps {
   activeTab:      Tab;
@@ -21,32 +23,23 @@ interface ShellSideRailProps {
   onSchoolView:   (v: SchoolView) => void;
   onCreationView: (v: CreationView) => void;
   onProfileView:  (v: ProfileView) => void;
-  onNewNote:      () => void;
-  onClearTab:     (tab: Tab) => void;
-  navigate:       NavFn;
+  onTabChange:    (tab: Tab) => void;
+  collapsed:      boolean;
+  onToggleCollapsed: () => void;
 }
 
 const ALL_TABS: Tab[] = ["lab", "school", "creation", "profile"];
 
-// ─── Chamber accent colors — matches tokens.ts ────────────────────────────────
-
-const TAB_ACCENT = {
-  lab:      "var(--chamber-lab)",
-  school:   "var(--chamber-school)",
-  creation: "var(--chamber-creation)",
-  profile:  "var(--r-pulse)",
-};
-
-const CHAMBER_ACCENT: Record<Tab, { primary: string; light: string; label: string }> = {
-  lab:      { primary: "var(--chamber-lab)",      light: "var(--chamber-lab-light)",      label: "Research Lab" },
-  school:   { primary: "var(--chamber-school)",   light: "var(--chamber-school-light)",   label: "Technical School" },
-  creation: { primary: "var(--chamber-creation)", light: "var(--chamber-creation-light)", label: "Creation Forge" },
-  profile:  { primary: "var(--r-pulse)",          light: "var(--r-rail)",                label: "Sovereign Profile" },
+const CHAMBER_SURFACE: Record<Tab, { primary: string; light: string; label: string }> = {
+  lab:      { primary: CHAMBER_ACCENT.lab,      light: CHAMBER_ACCENT_LIGHT.lab,      label: CHAMBER_LABEL.lab },
+  school:   { primary: CHAMBER_ACCENT.school,   light: CHAMBER_ACCENT_LIGHT.school,   label: CHAMBER_LABEL.school },
+  creation: { primary: CHAMBER_ACCENT.creation, light: CHAMBER_ACCENT_LIGHT.creation, label: CHAMBER_LABEL.creation },
+  profile:  { primary: CHAMBER_ACCENT.profile,  light: CHAMBER_ACCENT_LIGHT.profile,  label: CHAMBER_LABEL.profile },
 };
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-function SLabel({ children }: { children: React.ReactNode }) {
+function SLabel({ children }: { children: ReactNode }) {
   return (
     <p
       style={{
@@ -67,13 +60,14 @@ function SLabel({ children }: { children: React.ReactNode }) {
 }
 
 function NavBtn({
-  label, icon, active, accent, onClick,
+  label, icon, active, accent, onClick, collapsed = false,
 }: {
   label:   string;
-  icon:    React.ReactNode;
+  icon:    ReactNode;
   active:  boolean;
   accent:  string;
   onClick: () => void;
+  collapsed?: boolean;
 }) {
   return (
     <button
@@ -82,8 +76,9 @@ function NavBtn({
         width: "100%",
         display: "flex",
         alignItems: "center",
-        gap: "7px",
-        padding: "5px 7px",
+        gap: collapsed ? "0" : "7px",
+        justifyContent: collapsed ? "center" : "flex-start",
+        padding: collapsed ? "6px 0" : "5px 7px",
         borderRadius: "5px",
         border: "none",
         background: active ? "var(--r-surface)" : "transparent",
@@ -123,7 +118,7 @@ function NavBtn({
       >
         {icon}
       </span>
-      {label}
+      {!collapsed && label}
     </button>
   );
 }
@@ -155,22 +150,12 @@ function StatusDot({ status, accent }: { status: SignalStatus; accent: string })
   );
 }
 
-function SMeta({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "1.5px 1px" }}>
-      <span style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.04em" }}>{label}</span>
-      <span style={{ fontSize: "9px", color: "var(--r-subtext)", fontFamily: "'JetBrains Mono', monospace" }}>{value}</span>
-    </div>
-  );
-}
-
 // ─── Lab rail ─────────────────────────────────────────────────────────────────
 
-function LabRail({ view, onView, messages, signal, navigate }: {
-  view: LabView; onView: (v: LabView) => void; messages: Message[]; signal: SignalStatus; navigate: NavFn;
+function LabRail({ view, onView }: {
+  view: LabView; onView: (v: LabView) => void;
 }) {
-  const accent = CHAMBER_ACCENT.lab.primary;
-  const history = messages.filter((m) => m.role === "user").slice().reverse().slice(0, 5);
+  const accent = CHAMBER_ACCENT.lab;
   return (
     <>
       <section style={{ padding: "10px 10px 8px" }}>
@@ -181,43 +166,16 @@ function LabRail({ view, onView, messages, signal, navigate }: {
         <NavBtn label="Code"     active={view === "code"}     accent={accent} onClick={() => onView("code")}     icon={<ICode />} />
         <NavBtn label="Archive"  active={view === "archive"}  accent={accent} onClick={() => onView("archive")}  icon={<IArchive />} />
       </section>
-      <Divider />
-      <section style={{ padding: "8px 10px", flex: 1, overflowY: "auto" }}>
-        <SLabel>Session</SLabel>
-        {history.length === 0 ? (
-          <p style={{ fontSize: "10px", color: "var(--r-dim)", paddingLeft: "2px", fontFamily: "'Inter', system-ui, sans-serif" }}>—</p>
-        ) : history.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => onView("chat")}
-            title={m.content}
-            style={{ width: "100%", display: "block", fontSize: "10px", color: "var(--r-subtext)", padding: "3px 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "'Inter', system-ui, sans-serif", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", outline: "none", transition: "color 0.1s ease", lineHeight: 1.5 }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-text)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)"; }}
-          >
-            {m.content.slice(0, 36)}{m.content.length > 36 ? "…" : ""}
-          </button>
-        ))}
-      </section>
-      <Divider />
-      <section style={{ padding: "8px 10px" }}>
-        <SLabel>Kernel</SLabel>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", paddingLeft: "1px", marginBottom: "5px" }}>
-          <StatusDot status={signal} accent={accent} />
-          <span style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", textTransform: "capitalize" }}>{signal}</span>
-        </div>
-        <SMeta label="exchanges" value={String(messages.filter(m => m.role === "assistant" && m.content.length > 0).length)} />
-      </section>
     </>
   );
 }
 
 // ─── School rail ──────────────────────────────────────────────────────────────
 
-function SchoolRail({ view, onView, messages, signal, navigate }: {
-  view: SchoolView; onView: (v: SchoolView) => void; messages: Message[]; signal: SignalStatus; navigate: NavFn;
+function SchoolRail({ view, onView, messages, signal }: {
+  view: SchoolView; onView: (v: SchoolView) => void; messages: Message[]; signal: SignalStatus;
 }) {
-  const accent = CHAMBER_ACCENT.school.primary;
+  const accent = CHAMBER_ACCENT.school;
   const history = messages.filter((m) => m.role === "user").slice().reverse().slice(0, 5);
   return (
     <>
@@ -261,10 +219,10 @@ function SchoolRail({ view, onView, messages, signal, navigate }: {
 
 // ─── Creation rail ────────────────────────────────────────────────────────────
 
-function CreationRail({ view, onView, messages, signal, navigate }: {
-  view: CreationView; onView: (v: CreationView) => void; messages: Message[]; signal: SignalStatus; navigate: NavFn;
+function CreationRail({ view, onView, messages, signal }: {
+  view: CreationView; onView: (v: CreationView) => void; messages: Message[]; signal: SignalStatus;
 }) {
-  const accent = CHAMBER_ACCENT.creation.primary;
+  const accent = CHAMBER_ACCENT.creation;
   const artifacts = messages.filter(m => m.role === "assistant" && m.content.length > 0).slice().reverse().slice(0, 5);
   return (
     <>
@@ -300,14 +258,16 @@ function CreationRail({ view, onView, messages, signal, navigate }: {
           <StatusDot status={signal} accent={accent} />
           <span style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", textTransform: "capitalize" }}>{signal}</span>
         </div>
-        <SMeta label="outputs" value={String(artifacts.length)} />
+        <span style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.04em", paddingLeft: "1px" }}>
+          outputs · {artifacts.length}
+        </span>
       </section>
     </>
   );
 }
 
 function ProfileRail({ view, onView }: { view: ProfileView; onView: (v: ProfileView) => void }) {
-  const accent = CHAMBER_ACCENT.profile.primary;
+  const accent = CHAMBER_ACCENT.profile;
   return (
     <>
       <section style={{ padding: "10px 10px 8px" }}>
@@ -339,14 +299,14 @@ export function ShellSideRail({
   activeTab, messages, signals,
   labView, schoolView, creationView, profileView,
   onLabView, onSchoolView, onCreationView, onProfileView,
-  onNewNote, onClearTab, navigate,
+  onTabChange, collapsed, onToggleCollapsed,
 }: ShellSideRailProps) {
-  const chamber = CHAMBER_ACCENT[activeTab];
+  const chamber = CHAMBER_SURFACE[activeTab];
 
   return (
     <aside
       style={{
-        width: "188px",
+        width: collapsed ? "44px" : "180px",
         flexShrink: 0,
         borderRight: "1px solid var(--r-border)",
         background: "rgba(var(--r-surface-rgb), 0.75)",
@@ -358,6 +318,38 @@ export function ShellSideRail({
         transition: "background 0.25s ease",
       }}
     >
+      {collapsed ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: "8px" }}>
+          <button onClick={onToggleCollapsed} title="Expand rail" style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "11px" }}>»</button>
+          {ALL_TABS.map((tab) => {
+            const isActive = activeTab === tab;
+            const accentColor = CHAMBER_SURFACE[tab].primary;
+            const icon = tab === "lab" ? <IHome /> : tab === "school" ? <ILibrary /> : tab === "creation" ? <ITerminal /> : <IRole />;
+            return (
+              <button
+                key={tab}
+                onClick={() => onTabChange(tab)}
+                title={tab}
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--r-border-soft)",
+                  background: isActive ? "var(--r-elevated)" : "transparent",
+                  color: isActive ? accentColor : "var(--r-dim)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                {icon}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+      <>
       {/* Chamber header — color-identified */}
       <div
         style={{
@@ -395,169 +387,32 @@ export function ShellSideRail({
           </span>
         </div>
         <button
-          onClick={onNewNote}
-          title="New floating note"
-          style={{
-            fontSize: "9px",
-            fontFamily: "'JetBrains Mono', monospace",
-            color: "var(--r-dim)",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            outline: "none",
-            padding: "2px 4px",
-            borderRadius: "3px",
-            letterSpacing: "0.04em",
-            transition: "color 0.1s ease, background 0.1s ease",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.color = "var(--r-text)";
-            (e.currentTarget as HTMLElement).style.background = "var(--r-border-soft)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.color = "var(--r-dim)";
-            (e.currentTarget as HTMLElement).style.background = "transparent";
-          }}
+          onClick={onToggleCollapsed}
+          title="Collapse rail"
+          style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "10px" }}
         >
-          + note
+          «
         </button>
       </div>
 
       {/* Chamber nav */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
         {activeTab === "lab" && (
-          <LabRail view={labView} onView={onLabView} messages={messages.lab} signal={signals.lab} navigate={navigate} />
+          <LabRail view={labView} onView={onLabView} />
         )}
         {activeTab === "school" && (
-          <SchoolRail view={schoolView} onView={onSchoolView} messages={messages.school} signal={signals.school} navigate={navigate} />
+          <SchoolRail view={schoolView} onView={onSchoolView} messages={messages.school} signal={signals.school} />
         )}
         {activeTab === "creation" && (
-          <CreationRail view={creationView} onView={onCreationView} messages={messages.creation} signal={signals.creation} navigate={navigate} />
+          <CreationRail view={creationView} onView={onCreationView} messages={messages.creation} signal={signals.creation} />
         )}
         {activeTab === "profile" && (
           <ProfileRail view={profileView} onView={onProfileView} />
         )}
       </div>
 
-      {/* Session summary */}
-      <div style={{ borderTop: "1px solid var(--r-border)", padding: "8px 10px 6px" }}>
-        <SLabel>Sessions</SLabel>
-        {ALL_TABS.map((tab) => {
-          const count    = messages[tab].filter((m) => m.role === "assistant" && m.content.length > 0).length;
-          const isActive = tab === activeTab;
-          const accentColor = CHAMBER_ACCENT[tab].primary;
-          return (
-            <div
-              key={tab}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "2.5px 1px",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <span
-                  style={{
-                    width: "4px",
-                    height: "4px",
-                    borderRadius: "50%",
-                    background: isActive ? accentColor : "var(--r-dim)",
-                    display: "inline-block",
-                    flexShrink: 0,
-                    opacity: isActive ? 1 : 0.5,
-                    transition: "opacity 0.15s ease",
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: "10px",
-                    fontFamily: "'Inter', system-ui, sans-serif",
-                    color: isActive ? "var(--r-text)" : "var(--r-subtext)",
-                    textTransform: "capitalize",
-                    fontWeight: isActive ? 500 : 400,
-                    transition: "color 0.15s ease",
-                  }}
-                >
-                  {tab}
-                </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <span
-                  style={{
-                    fontSize: "9px",
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: isActive ? accentColor : "var(--r-dim)",
-                  }}
-                >
-                  {count > 0 ? count : "—"}
-                </span>
-                {count > 0 && (
-                  <button
-                    onClick={() => onClearTab(tab)}
-                    title={`Clear ${tab}`}
-                    style={{
-                      fontSize: "8px",
-                      color: "var(--r-dim)",
-                      background: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      outline: "none",
-                      lineHeight: 1,
-                      padding: "1px 2px",
-                      borderRadius: "2px",
-                      opacity: 0.5,
-                      transition: "opacity 0.1s ease",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.5"; }}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Footer */}
-      <div
-        style={{
-          padding: "5px 11px 7px",
-          borderTop: "1px solid var(--r-border-soft)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "8px",
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: "0.10em",
-            color: "var(--r-dim)",
-            textTransform: "uppercase",
-            userSelect: "none",
-          }}
-        >
-          mode · <span style={{ color: chamber.primary }}>{activeTab}</span>
-        </span>
-        <span
-          style={{
-            fontSize: "7px",
-            fontFamily: "'JetBrains Mono', monospace",
-            color: "var(--r-dim)",
-            letterSpacing: "0.06em",
-            opacity: 0.6,
-            userSelect: "none",
-          }}
-        >
-          v2
-        </span>
-      </div>
+      </>
+      )}
     </aside>
   );
 }

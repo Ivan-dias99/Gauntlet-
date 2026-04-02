@@ -456,12 +456,13 @@ function ThinkingDots() {
 // ─── Assistant message ────────────────────────────────────────────────────────
 
 function AssistantMessage({
-  msg, accent, chamberLabel, chamberId,
+  msg, accent, chamberLabel, chamberId, missionName,
 }: {
   msg: Message;
   accent: string;
   chamberLabel: string;
   chamberId: "lab" | "school" | "creation";
+  missionName?: string;
 }) {
   const sovereign = getExecutionTruth(chamberId);
   const trace = msg.execution_trace;
@@ -469,6 +470,9 @@ function AssistantMessage({
     trace?.leadPioneerId != null
       ? getPioneerFromRuntimeId(trace.leadPioneerId)?.short_role ?? trace.leadPioneerId
       : undefined;
+  const hasArtifactMutation = chamberId === "creation" && (trace?.executionResults ?? []).some((r) =>
+    /artifact|build|package|finalize/i.test(r.phase) || /artifact|build|package/i.test(r.summary)
+  );
   return (
     <motion.div
       initial={{ opacity: 0, y: 5 }}
@@ -485,6 +489,8 @@ function AssistantMessage({
           tierLabel={TIER_LABEL[sovereign.tier]}
           tierColor={TIER_COLOR[sovereign.tier]}
           modelTruthLabel={sovereign.tier_label}
+          missionName={missionName}
+          artifactDiff={hasArtifactMutation ? { summary: trace.executionResults.slice(-1)[0]?.summary ?? "artifact mutation captured" } : undefined}
         />
       )}
       <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
@@ -805,6 +811,7 @@ export function ChamberChat({
   modelId,
   onTaskChange,
   onModelChange,
+  missionName,
 }: {
   messages:      Message[];
   isLoading:     boolean;
@@ -817,6 +824,7 @@ export function ChamberChat({
   modelId: string;
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
+  missionName?: string;
 }) {
   const threadRef = useRef<HTMLDivElement>(null);
 
@@ -887,6 +895,7 @@ export function ChamberChat({
                       accent={config.accent}
                       chamberLabel={chamberLabel}
                       chamberId={config.id}
+                      missionName={missionName}
                     />
                   )}
                 </div>

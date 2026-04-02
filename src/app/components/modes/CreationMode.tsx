@@ -72,7 +72,7 @@ function CreationArchive({ messages, navigate }: { messages: Message[]; navigate
             </p>
             <div style={{ display: "flex", gap: "7px", flexWrap: "wrap" }}>
               <button onClick={() => openObject(navigate, obj)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Open</button>
-              <button onClick={() => navigate("creation", "terminal")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Send to Build</button>
+              <button onClick={() => navigate("creation", "terminal")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Open Forge</button>
               {obj.related_items.slice(0, 1).map((rid) => {
                 const related = findObject(rid);
                 if (!related) return null;
@@ -706,7 +706,7 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
 
 export function CreationMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  creationView, onCreationView, navigate, detailId, task, modelId, onTaskChange, onModelChange,
+  creationView, onCreationView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -722,6 +722,7 @@ export function CreationMode({
   modelId: string;
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
+  missionName?: string;
 }) {
   const showHome = creationView === "home" || (!messages.length && creationView === "chat");
 
@@ -757,6 +758,7 @@ export function CreationMode({
       modelId={modelId}
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
+      missionName={missionName}
       placeholder="Directive — describe what to build, generate, or forge…"
     />
   );
@@ -770,6 +772,7 @@ export function CreationMode({
       modelId={modelId}
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
+      missionName={missionName}
     />
   );
 }

@@ -1,126 +1,97 @@
-/**
- * RUBERRA SignalsPanel — Stack 08 · System Awareness
- * Surfaces live signals and critical anomaly sentinels.
- */
+import { motion, AnimatePresence } from "motion/react";
 
-import React from "react";
-import { type AnomalyRecord } from "./awareness-substrate";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface SignalRecord {
+interface RuntimeSignalItem {
   id: string;
   label: string;
-  value?: string;
-  meta?: string;
+  severity: "info" | "warn" | "critical";
+  read: boolean;
+  destination: { tab: "lab" | "school" | "creation" | "profile"; view: string; id?: string };
 }
 
 interface SignalsPanelProps {
-  signals?: SignalRecord[];
-  anomalies?: AnomalyRecord[];
+  open: boolean;
+  onClose: () => void;
+  signals: RuntimeSignalItem[];
+  onOpen: (item: RuntimeSignalItem) => void;
+  onDismiss: (id: string) => void;
+  onMarkAllRead: () => void;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+const severityColor: Record<RuntimeSignalItem["severity"], string> = {
+  info: "var(--r-accent)",
+  warn: "var(--r-warn)",
+  critical: "var(--r-err)",
+};
 
-export function SignalsPanel({ signals = [], anomalies }: SignalsPanelProps) {
-  const criticalOpen = (anomalies ?? []).filter(
-    (a) => a.severity === "critical" && a.state === "open"
-  );
-
-  const hasSignals = signals.length > 0;
+export function SignalsPanel({ open, onClose, signals, onOpen, onDismiss, onMarkAllRead }: SignalsPanelProps) {
+  const unread = signals.filter((s) => !s.read);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 0,
-        width: "100%",
-      }}
-    >
-      {/* ── Critical Anomaly Sentinels ── */}
-      {criticalOpen.map((a) => (
-        <div
-          key={a.id}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "8px 12px",
-            background: "color-mix(in srgb, var(--r-err) 8%, transparent)",
-            borderLeft: "2px solid var(--r-err)",
-            marginBottom: "2px",
-          }}
-        >
-          <span
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            style={{ position: "fixed", inset: 0, zIndex: 210, background: "rgba(26,23,20,0.24)" }}
+          />
+          <motion.aside
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 16 }}
+            transition={{ duration: 0.16 }}
             style={{
-              fontSize: "10px",
-              color: "var(--r-err)",
-              fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 600,
-            }}
-          >
-            CRITICAL
-          </span>
-          <span
-            style={{
-              fontSize: "11px",
-              color: "var(--r-subtext)",
-              flex: 1,
-            }}
-          >
-            {a.description}
-          </span>
-        </div>
-      ))}
-
-      {/* ── Signals List ── */}
-      {hasSignals ? (
-        signals.map((s) => (
-          <div
-            key={s.id}
-            style={{
+              position: "fixed",
+              right: "14px",
+              top: "62px",
+              zIndex: 211,
+              width: "360px",
+              maxHeight: "calc(100vh - 88px)",
+              overflow: "hidden",
+              border: "1px solid var(--r-border)",
+              borderRadius: "10px",
+              background: "var(--r-surface)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.14)",
               display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "6px 12px",
-              borderBottom: "1px solid var(--r-hairline, #ECEAE4)",
+              flexDirection: "column",
             }}
           >
-            <span
-              style={{
-                fontSize: "12px",
-                color: "var(--r-ink2, #383835)",
-              }}
-            >
-              {s.label}
-            </span>
-            {s.value != null && (
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: "var(--r-ink4, #9E9E99)",
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}
-              >
-                {s.value}
+            <div style={{ height: "40px", padding: "0 12px", borderBottom: "1px solid var(--r-border-soft)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "var(--r-text)", textTransform: "uppercase" }}>
+                Signals · {unread.length} unread
               </span>
-            )}
-          </div>
-        ))
-      ) : (
-        <div
-          style={{
-            padding: "12px",
-            fontSize: "11px",
-            color: "var(--r-ink5, #C0C0BB)",
-            textAlign: "center",
-          }}
-        >
-          No signals
-        </div>
+              <button onClick={onMarkAllRead} style={{ border: "none", background: "transparent", color: "var(--r-dim)", fontSize: "10px", cursor: "pointer" }}>
+                mark all read
+              </button>
+            </div>
+            <div style={{ overflowY: "auto", padding: "6px" }}>
+              {signals.length === 0 && (
+                <p style={{ fontSize: "11px", color: "var(--r-dim)", textAlign: "center", margin: "14px 0" }}>No signals</p>
+              )}
+              {signals.map((s) => (
+                <div key={s.id} style={{ border: "1px solid var(--r-border-soft)", borderRadius: "7px", padding: "8px", marginBottom: "6px", background: s.read ? "var(--r-surface)" : "color-mix(in srgb, var(--r-elevated) 85%, transparent)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "6px" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: severityColor[s.severity] }} />
+                    <span style={{ fontSize: "11px", color: "var(--r-text)", flex: 1 }}>{s.label}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
+                      {s.destination.tab} · {s.destination.view}
+                    </span>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button onClick={() => onDismiss(s.id)} style={{ border: "1px solid var(--r-border)", borderRadius: "4px", background: "transparent", color: "var(--r-dim)", fontSize: "10px", padding: "2px 6px", cursor: "pointer" }}>dismiss</button>
+                      <button onClick={() => onOpen(s)} style={{ border: "1px solid var(--r-border)", borderRadius: "4px", background: "var(--r-elevated)", color: "var(--r-subtext)", fontSize: "10px", padding: "2px 6px", cursor: "pointer" }}>open</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.aside>
+        </>
       )}
-    </div>
+    </AnimatePresence>
   );
 }
 
