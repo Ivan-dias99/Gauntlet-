@@ -9,6 +9,9 @@ No task opens before the constitution is loaded and active.
 Also read `RUBERRA_REPO_SELF_KNOWLEDGE.md` before any code task.  
 It tells you where reality is: what is closed, what is partial, what is open, what is aspirational.
 
+Also read `RUBERRA_TOKEN_DISCIPLINE.md` before any task.  
+It governs all prompt and output compression. Non-compliant outputs must be regenerated before action.
+
 ---
 
 ## Output Format Law
