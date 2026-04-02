@@ -31,7 +31,6 @@ import {
   type AutonomousOperationsState,
 } from "../autonomous-operations";
 import { MissionOperationsPanel } from "../MissionOperationsPanel";
-import { type MissionOperationsState } from "../../dna/autonomous-operations";
 import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
 import { ExecutionConsequenceStrip } from "../ExecutionConsequenceStrip";
 import { GovernanceLedgerStrip } from "../GovernanceLedgerStrip";

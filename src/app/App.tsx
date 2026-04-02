@@ -31,11 +31,16 @@ import {
   type TaskStatus,
   TASK_STATUS_LABEL,
   buildOperationState,
+  createOperationFlow,
+  advanceFlow,
   createTask,
+  defaultApprovalPolicy,
   defaultMissionOperationsState,
   dismissSignal,
   emitSignal,
+  evaluateApprovalTrigger,
   transitionTask,
+  type ApprovalRequest,
 } from "./dna/autonomous-operations";
 import {
   defaultAutonomousOperationsState,
@@ -815,6 +820,80 @@ export default function App() {
       label:        `governance.${govResult.verdict}: ${govResult.reason}`,
     }));
 
+    // ── Stack 04: Operations substrate — pre-dispatch lifecycle ─────────────────
+    // Task enters in_progress BEFORE execution. OperationFlow created for this run.
+    // Approval gate evaluated when external effects are present.
+    let _opsTaskId: string | null = null;
+    if (activeMission && activeMissionId) {
+      const hasExternalEffect = connectorActionRows.length > 0;
+      const policy             = defaultApprovalPolicy(activeMissionId);
+      const approvalEval        = hasExternalEffect
+        ? evaluateApprovalTrigger("external_effect", policy)
+        : null;
+
+      const dispatchTask = transitionTask(
+        createTask(activeMissionId, {
+          title:      (text.slice(0, 96) || "Dispatch").trim(),
+          objective:  text.slice(0, 200),
+          notThis:    activeMission.identity.notThis || "No mission drift.",
+          class:      tab === "lab" ? "investigation" : tab === "school" ? "mastery" : "construction",
+          chamberLead: tab,
+          priority:   "standard",
+          riskLevel:  hasExternalEffect ? "high" : "low",
+        }),
+        "in_progress"
+      );
+      _opsTaskId = dispatchTask.id;
+
+      const dispatchFlow = advanceFlow({
+        ...createOperationFlow(
+          activeMissionId,
+          `${tab} · ${text.slice(0, 40).trim()}`,
+          [
+            { label: "Route",   taskId: dispatchTask.id },
+            { label: "Execute", taskId: dispatchTask.id },
+            { label: "Settle",  taskId: dispatchTask.id },
+          ],
+          activeMission.ledger.currentState
+        ),
+        state: "running" as const,
+      });
+
+      const newApprovals: ApprovalRequest[] =
+        approvalEval?.decision === "escalate_sovereign"
+          ? [{
+              id:          `apr_${Date.now()}`,
+              missionId:   activeMissionId,
+              taskId:      dispatchTask.id,
+              trigger:     "external_effect" as const,
+              requestedBy: routeDecision.pioneerId ?? "sovereign",
+              description: `External connector effect: ${connectorActionRows.map((r) => r.label).join(", ")}`,
+              consequence: "Execution proceeds; external connector state may change.",
+              riskLevel:   "high" as const,
+              createdAt:   Date.now(),
+            }]
+          : [];
+
+      // Pre-mark assistant message ID — prevents useEffect from double-processing
+      generatedMissionTaskRef.current.add(assistantId);
+
+      setActiveMissionOps((prev) => {
+        const base = prev?.missionId === activeMissionId ? prev : defaultMissionOperationsState(activeMissionId);
+        const pendingApprovals = [...base.pendingApprovals, ...newApprovals];
+        return {
+          ...base,
+          tasks:            [...base.tasks, dispatchTask],
+          activeFlow:       dispatchFlow,
+          pendingApprovals,
+          operationState:   buildOperationState(
+            activeMissionId, [...base.tasks, dispatchTask], base.observations, pendingApprovals.length
+          ),
+          lastUpdated: Date.now(),
+        };
+      });
+    }
+    // ── End Stack 04 pre-dispatch ────────────────────────────────────────────────
+
     setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "running"));
     setRuntimeFabric((prev) => createOrUpdateContinuity(prev, {
       id: continuityId,
@@ -1402,6 +1481,56 @@ export default function App() {
         }, 2400);
       }
     } finally {
+      // ── Stack 04: Close task lifecycle + advance flow + emit completion signal ─
+      if (activeMission && activeMissionId && _opsTaskId) {
+        const finalStatus = parseOnComplete ? "completed" : "failed";
+        const contentDigest = assistantContent.slice(0, 140) || routeDigestLine.slice(0, 140);
+        setActiveMissionOps((prev) => {
+          if (!prev || prev.missionId !== activeMissionId) return prev;
+          const tasks = prev.tasks.map((t) =>
+            t.id === _opsTaskId
+              ? transitionTask(t, finalStatus, { outputDigest: contentDigest })
+              : t
+          );
+          // Advance flow through Execute → Settle → complete
+          const closedFlow = prev.activeFlow
+            ? advanceFlow(advanceFlow(prev.activeFlow))
+            : prev.activeFlow;
+          const completionSignal = emitSignal(activeMissionId, {
+            type:     "task_complete",
+            priority: finalStatus === "failed" ? "high" : "standard",
+            taskId:   _opsTaskId!,
+            headline: `${finalStatus === "completed" ? "Settled" : "Failed"} · ${tab} · ${contentDigest.slice(0, 52)}`,
+            body:     contentDigest,
+            actionable: finalStatus === "failed",
+          });
+          const observations = [
+            ...prev.observations,
+            {
+              id:         `obs_${Date.now()}_${_opsTaskId!.slice(-6)}`,
+              missionId:  activeMissionId,
+              taskId:     _opsTaskId!,
+              class:      "run_complete" as const,
+              summary:    contentDigest,
+              pioneerId:  routeDecision.pioneerId ?? undefined,
+              at:         Date.now(),
+            },
+          ];
+          return {
+            ...prev,
+            tasks,
+            activeFlow:    closedFlow,
+            signals:       [...prev.signals, completionSignal],
+            observations,
+            operationState: buildOperationState(
+              activeMissionId, tasks, observations, prev.pendingApprovals.length
+            ),
+            lastUpdated: Date.now(),
+          };
+        });
+      }
+      // ── End Stack 04 post-dispatch ───────────────────────────────────────────
+
       setLoading((prev) => ({ ...prev, [tab]: false }));
       abortRefs.current[tab] = null;
       if (parseOnComplete) {
@@ -1905,6 +2034,7 @@ export default function App() {
       <SovereignBar
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
         onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
         theme={theme}
@@ -1950,7 +2080,6 @@ export default function App() {
           onSchoolView={(v) => { setSchoolView(v); setDetailId(""); }}
           onCreationView={(v) => { setCreationView(v); setDetailId(""); }}
           onProfileView={setProfileView}
-          onTabChange={handleTabChange}
           navigate={navigate}
           collapsed={railCollapsed}
           onToggleCollapsed={() => setRailCollapsed((v) => !v)}

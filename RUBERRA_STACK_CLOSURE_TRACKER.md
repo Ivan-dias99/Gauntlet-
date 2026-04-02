@@ -15,8 +15,8 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 | 1 | Canon + Sovereignty | CLOSED | Constitution, product identity, anti-drift gates, single-source law docs | CLOSED 2026-04-02: Ruberra law docs aligned; canon-sovereignty.ts + stack-registry.ts installed; README points to sovereign law docs; no conflicting framing; drift signal registry live |
 | 2 | Mission Substrate | CLOSED | Mission entity model, mission lifecycle, mission repository container, mission-first shell binding | Mission is first-class system object with create/open/archive/active flows; MissionContextBand authoritative; MissionRepository live; MissionOperationsPanel mounted |
 | 3 | Sovereign Intelligence | CLOSED | Native mission reasoning loops, mission-context memory, structured prompt spine | Intelligence runs on mission state, not generic chat state |
-| 4 | Autonomous Operations | ACTIVE | Multi-step execution runtime, deterministic actions, retry and audit paths | Mission actions execute with logs, outcomes, and recovery rules |
-| 5 | Adaptive Experience | LOCKED | Chamber-aware UX, mission state surfaces, consequence-driven interface | UI reflects mission state transitions in all chambers |
+| 4 | Autonomous Operations | CLOSED | Multi-step execution runtime, deterministic actions, retry and audit paths | Mission actions execute with logs, outcomes, and recovery rules |
+| 5 | Adaptive Experience | ACTIVE | Chamber-aware UX, mission state surfaces, consequence-driven interface | UI reflects mission state transitions in all chambers |
 | 6 | Sovereign Security | LOCKED | Identity boundaries, permission lattice, data access policy | Mission-level authorization and enforcement validated |
 | 7 | Trust + Governance | LOCKED | Audit trails, policy overlays, controls and approvals | Every consequential action has policy + audit evidence |
 | 8 | System Awareness | LOCKED | Telemetry spine, health state, runtime introspection | Mission/system health can be inspected and explained |
@@ -76,24 +76,53 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 
 ---
 
-## Active Frontier: Stack 4 (Autonomous Operations)
+## Closed: Stack 4 (Autonomous Operations)
+
+### Exit Proof
+Execution is governed by the operations substrate. MissionTask is a real lifecycle object. OperationFlow tracks the dispatch run. Approval gate is evaluated pre-dispatch. MissionSignal is emitted from runtime events, not post-hoc strings.
+
+**Pre-dispatch (handleSend, App.tsx — after governance clears):**
+- `createTask()` → `transitionTask("in_progress")` — task created BEFORE execution starts
+- `createOperationFlow()` + `advanceFlow()` — OperationFlow created and advanced to "running" state
+- `evaluateApprovalTrigger("external_effect", policy)` — approval gate evaluated when connectors are present; `escalate_sovereign` → `ApprovalRequest` created in `pendingApprovals`
+- `generatedMissionTaskRef.current.add(assistantId)` — pre-marks message to prevent useEffect double-processing
+
+**Post-dispatch (finally block, App.tsx):**
+- `transitionTask(t, "completed" | "failed", { outputDigest })` — task lifecycle closed with real content digest
+- `advanceFlow(advanceFlow(flow))` — Execute + Settle steps advanced → flow state "complete"
+- `emitSignal(activeMissionId, { type: "task_complete", ... })` — MissionSignal emitted from real runtime event (not string residue)
+- `RunObservation` appended with real pioneerId and content digest
+- `buildOperationState()` recomputed from real task/observation arrays
+
+**Mutation handlers (real, not stubs):**
+- `handleMissionOpsSignalDismiss` — `dismissSignal()` mutates `activeMissionOps.signals`
+- `handleMissionOpsApprovalApprove` / `handleMissionOpsApprovalReject` — moves approval from `pendingApprovals` to `approvalHistory`
+
+**Surface:**
+- `MissionOperationsPanel` — real callbacks wired, renders live state
+- ProfileMode.tsx — duplicate import + duplicate prop fixed
+
+- CLOSED 2026-04-02
+
+---
+
+## Active Frontier: Stack 5 (Adaptive Experience)
 
 ### Scope (Now)
-- `dna/autonomous-operations.ts` — canonical operations type system (TaskDef, Signal, ApprovalRequest, OperationRun, ExecutionOutcome, RecoveryPolicy).
-- `MissionOperationsPanel` — surface mounted; callbacks are stubs (signal dismiss, approval mutations).
-- Task creation from execution completion events — NOT wired (operations substrate not event-driven yet).
+- Chamber-aware UX that reflects mission state transitions — not just static chamber layout.
+- Mission state changes (activate, block, complete, archive) must visibly surface in chamber UI.
+- `MissionContextBand` already shows pulse + status — this is a partial signal, not the full adaptive experience.
 
 ### Open Residue
-1. Execution completion → task creation: when a dispatch completes, emit a task artifact into `activeMissionOps.tasks` (status: completed, outcome from execution).
-2. Signal dismiss: `MissionOperationsPanel` `onDismissSignal` stub must mutate `activeMissionOps.signals`.
-3. Approval mutation: `onApproveAction` must update approval state in `activeMissionOps.approvals`.
-4. `OperationRun` lifecycle: start/complete/fail events from real execution should drive run state.
+1. Chamber UI does not adapt layout/affordances based on active mission state (blocked/paused/executing).
+2. Mission transition events (state change to "blocked", "completed") do not propagate to SystemHealthBand or chamber visual state.
+3. No chamber-level "mission consequence" feedback — completing an execution doesn't visually close the loop in the chamber.
 
 ### Exit Criteria
-- [ ] Dispatch completion creates a task entry in activeMissionOps (title from routeDigest, status, model, duration)
-- [ ] Signal dismiss + approval callbacks are live (not stubs)
-- [ ] MissionOperationsPanel shows real post-execution task artifacts when mission is active
-- [ ] Operations surface reflects actual execution outcomes — no theater data
+- [ ] `MissionContextBand` state label updates to BLOCKED/COMPLETED/PAUSED reflect real `activeMission.ledger.currentState`
+- [ ] SystemHealthBand receives mission state signal on block/complete transitions
+- [ ] Chamber prompt area gives visual feedback when mission is in a terminal state (blocked/complete/archived)
+- [ ] No chamber enters a ghost state when mission is activated mid-session
 
 ---
 
@@ -101,10 +130,10 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 
 | Pioneer | Immediate Task | Mode |
 |---|---|---|
-| Claude Architect | Own Stack 4 closure — wire execution completion → task creation, close operations loop. | ACTIVE |
-| Codex Systems | Real signal + approval mutations in MissionOperationsPanel. OperationRun lifecycle from execution events. | ACTIVE |
-| Cursor Builder | Ensure mission-first entry: prompt binds to active mission at first message if none active. | ACTIVE |
-| Grok Reality Pulse | Audit operations data flow — confirm tasks/signals/approvals surface real execution state, not theater. | ACTIVE |
-| Gemini Expansion | Model MissionReasoningResult pipeline for Stack 3+ intelligence output contracts (future, not Stack 4). | QUEUED |
-| Copilot QA Guard | Regression: MissionOperationsPanel post-mount + task creation + signal dismiss. | ACTIVE |
-| Antigravity Director | Gate Stack 4 entry. No drift into generic PM or project management patterns. | ACTIVE |
+| Claude Architect | Own Stack 5 closure — mission state transitions surface in chamber UI + SystemHealthBand. | ACTIVE |
+| Codex Systems | Ensure execution completion events trigger mission state evaluation (should mission advance to next stage?). | ACTIVE |
+| Cursor Builder | Chamber prompt adaptation: visual feedback when mission is blocked/complete. | ACTIVE |
+| Grok Reality Pulse | Audit adaptive experience — confirm no ghost states, no static UI when mission changes state. | ACTIVE |
+| Gemini Expansion | QUEUED (Stack 5 must close first). | QUEUED |
+| Copilot QA Guard | Regression: all 4 chambers show correct mission state after activate/block/complete transitions. | ACTIVE |
+| Antigravity Director | Gate Stack 5 entry. No cosmetic animation theater. Adaptation must be consequence-driven. | ACTIVE |

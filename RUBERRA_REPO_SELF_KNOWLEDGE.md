@@ -16,10 +16,11 @@ Four sovereign organs: **Lab** (investigate) · **School** (learn) · **Creation
 
 ## CURRENT SOVEREIGN FRONTIER
 
-**Active Stack: 04**
+**Active Stack: 05**
 Stack 1 (Canon + Sovereignty): CLOSED
 Stack 2 (Mission Substrate): CLOSED
 Stack 3 (Sovereign Intelligence): CLOSED 2026-04-02
+Stack 4 (Autonomous Operations): CLOSED 2026-04-02
 
 Stack 3 closure (2026-04-02):
 - `resolveMissionRoute()` called at every dispatch when mission active.
@@ -30,10 +31,22 @@ Stack 3 closure (2026-04-02):
 - Intelligence now serves mission identity AND mission memory — not generic session.
 - detectPatterns ingests signals + continuity events (mission-linked via workflowId/title).
 
-Stack 4 open residue:
-- Execution completion → task creation in activeMissionOps not wired.
-- MissionOperationsPanel signal dismiss + approval callbacks are stubs.
-- OperationRun lifecycle not event-driven from real executions.
+Stack 4 closure (2026-04-02 — real):
+- Pre-dispatch: `createTask()` → `transitionTask("in_progress")` BEFORE execution starts.
+- Pre-dispatch: `createOperationFlow()` + `advanceFlow()` — OperationFlow in "running" state at dispatch.
+- Pre-dispatch: `evaluateApprovalTrigger("external_effect", policy)` — approval gate evaluated for connector actions; `escalate_sovereign` creates real `ApprovalRequest`.
+- Pre-dispatch: `generatedMissionTaskRef.current.add(assistantId)` — deduplication, prevents useEffect double-emit.
+- Post-dispatch (finally): `transitionTask(t, "completed"|"failed", {outputDigest})` — real lifecycle close.
+- Post-dispatch (finally): `advanceFlow(advanceFlow(flow))` — Execute + Settle steps done → flow "complete".
+- Post-dispatch (finally): `emitSignal()` — `task_complete` MissionSignal from real runtime event with content digest.
+- Post-dispatch (finally): `RunObservation` appended with pioneerId + digest.
+- Mutations: signal dismiss + approval approve/reject — all real setActiveMissionOps mutations.
+- `MissionOperationsPanel` wired with real callbacks.
+
+Stack 5 open residue:
+- Mission state transitions (blocked/complete/archived) do not propagate to chamber UI or SystemHealthBand.
+- Chamber prompt area does not adapt when mission is in terminal state.
+- No ghost-state prevention when mission activates mid-session.
 
 ---
 
@@ -44,7 +57,7 @@ Stack 4 open residue:
 | 01 | Canon + Sovereignty | CLOSED | `dna/canon-sovereignty.ts`, `dna/stack-registry.ts`, `assertStackOrder()` live |
 | 02 | Mission Substrate | CLOSED | `dna/mission-substrate.ts`, `MissionContextBand`, `MissionRepository`, `mcp-client.ts`, `MissionOperationsPanel` mounted, `activeMissionOps` in App.tsx |
 | 03 | Sovereign Intelligence | CLOSED | `dna/sovereign-intelligence.ts`: `resolveMissionRoute()` at dispatch; `buildMissionSystemContext()` + `buildMissionMemoryContext()` injected as system[0]; pioneer routing from mission.workflow.pioneerStack[0]; `routeDigest` mission-bound |
-| 04 | Autonomous Operations | ACTIVE | `dna/autonomous-operations.ts` canonical; `MissionOperationsPanel` mounted; callbacks stub; execution→task creation not wired |
+| 04 | Autonomous Operations | CLOSED | Operations substrate governs dispatch: pre-dispatch task (in_progress) + OperationFlow + approval gate; post-dispatch task lifecycle close + flow advance + MissionSignal from runtime event |
 | 05 | Adaptive Experience | PARTIAL | ChamberChat + RuberraTerminal fully reconstituted; LiveHeaderRail with cycling state; MissionContextBand authoritative; chamber accent wiring solid |
 | 06 | Sovereign Security | PARTIAL | SecurityTrustSignal in SovereignBar; RUBERRA_TRUST_GATES active; `governance-fabric.ts` live |
 | 07 | Trust + Governance | PARTIAL | `enforceExecutionGate()` on every dispatch; audit entry in trustGovState; GovernanceLedgerStrip in ProfileMode |
@@ -176,8 +189,8 @@ If you see any of these, something has drifted:
 
 ## NEXT PIONEER ACTIONS
 
-1. **Claude Architect** — Close Stack 4: wire execution completion → task entry in activeMissionOps. Completion event creates task (title from routeDigest, status, model, duration).
-2. **Codex Systems** — Live signal dismiss + approval callbacks in MissionOperationsPanel. OperationRun lifecycle from dispatch events.
-3. **Cursor Builder** — Mission-first entry: prompt binds to active mission at first message if none is active.
-4. **Grok Reality Pulse** — Audit MissionOperationsPanel data — confirm no theater (all tasks/signals from real execution events).
-5. **Copilot QA Guard** — Regression: confirm buildMissionMemoryContext() injects correctly; MissionOperationsPanel shows real artifacts after Stack 4 close.
+1. **Claude Architect** — Close Stack 5: mission state transitions must surface in MissionContextBand + SystemHealthBand + chamber UI.
+2. **Codex Systems** — Wire mission state advancement: execution completion should evaluate whether mission should transition state.
+3. **Cursor Builder** — Chamber prompt adaptation when mission is blocked/complete/archived.
+4. **Grok Reality Pulse** — Audit all 4 chambers for ghost states when mission activates/transitions mid-session.
+5. **Copilot QA Guard** — Regression: activate → block → complete cycle visible in UI without requiring page reload.
