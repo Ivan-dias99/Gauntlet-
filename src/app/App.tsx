@@ -83,6 +83,20 @@ import { MODEL_REGISTRY } from "./components/model-orchestration";
 import { enforceExecutionGate } from "./components/governance-fabric";
 import { buildWorkflowRunPayload } from "./components/workflow-engine";
 import { executeAIRequest, type ExecutionRequest } from "./components/execution-adapters";
+import { defaultCivilization, registerAgent, admitAgent, activateAgent, type AgentDomain } from "./dna/multi-agent";
+import { detectPatterns } from "./dna/intelligence-analytics";
+import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
+import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph, claimCollectiveResource } from "./dna/collective-execution";
+import { defaultPresenceManifest, createChannel, registerChannel } from "./dna/distribution-presence";
+import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit, verifyValueUnit } from "./dna/value-exchange";
+import { defaultEcosystemState, proposeExtension, admitToNetwork } from "./dna/ecosystem-network";
+import { defaultPlatformState, createInfraLayer, addLayer } from "./dna/platform-infrastructure";
+import { defaultOrgState, assessMissionHealth, surfaceOrgInsights, defaultCapabilityMap } from "./dna/org-intelligence";
+import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dna/personal-sovereign-os";
+import { defaultCompoundNetwork } from "./dna/compound-intelligence";
+import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
+import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
+import { PIONEER_REGISTRY } from "./components/pioneer-registry";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
