@@ -87,7 +87,7 @@ import { defaultExchangeLedger } from "./dna/value-exchange";
 import { defaultEcosystemState } from "./dna/ecosystem-network";
 import { defaultPlatformState } from "./dna/platform-infrastructure";
 import { defaultOrgState, assessMissionHealth, surfaceOrgInsights, defaultCapabilityMap } from "./dna/org-intelligence";
-import { defaultPersonalOS, createMemoryEntry } from "./dna/personal-sovereign-os";
+import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dna/personal-sovereign-os";
 import { createInfraLayer, addLayer } from "./dna/platform-infrastructure";
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
 import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
@@ -945,7 +945,8 @@ export default function App() {
         createMemoryEntry("mission_history", `${c.chamber} · ${c.title.slice(0, 60)}`)
       ),
     ];
-    return { ..._personalOSBase, memory: memories, lastUpdated: Date.now() };
+    const context = buildOperatorContext(_personalOSBase.profile, memories, _personalOSBase.agent);
+    return { ..._personalOSBase, memory: memories, context, lastUpdated: Date.now() };
   }, [runtimeFabric.preferences, runtimeFabric.aiSettings, runtimeFabric.continuity, _personalOSBase]);
 
   // ── Render ────────────────────────────────────────────────────────────────────
