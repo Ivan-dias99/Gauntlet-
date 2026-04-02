@@ -5,10 +5,10 @@
 
 import { motion } from "motion/react";
 import { Search, Bell, ChevronDown } from "lucide-react";
+import { type ReactNode } from "react";
 import { type Tab, type Theme } from "./shell-types";
 import { type SystemHealthModel } from "./awareness-substrate";
 import { ProfileLedger } from "./ProfileLedger";
-import { CONSTITUTIONAL_TRUTH } from "../dna/canon-sovereignty";
 import { SecurityTrustSignal } from "./SecurityTrustSignal";
 import { type TrustSignal } from "../dna/sovereign-security";
 import { useState } from "react";
@@ -76,7 +76,7 @@ function RubMark() {
 function IconBtn({
   children, title, onClick,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   title?: string;
   onClick?: () => void;
 }) {
@@ -392,24 +392,7 @@ export function SovereignBar({
         </div>
       </div>
 
-      {/* Flagship Watermark: constitutional phase + chamber — OS-level persistence */}
-      <div
-        style={{
-          position: "absolute",
-          top: "14px",
-          right: "220px",
-          pointerEvents: "none",
-          userSelect: "none",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          opacity: 0.25,
-        }}
-      >
-        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.14em", color: "var(--r-dim)", textTransform: "uppercase" }}>{CONSTITUTIONAL_TRUTH.currentPhase}</span>
-        <div style={{ width: "1px", height: "8px", background: "var(--r-border)" }} />
-        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.14em", color: CHAMBER_DOTS[activeTab === 'profile' ? 'lab' : activeTab as 'lab' | 'school' | 'creation'], textTransform: "uppercase" }}>{activeTab}</span>
-      </div>
+
     </header>
   );
 }

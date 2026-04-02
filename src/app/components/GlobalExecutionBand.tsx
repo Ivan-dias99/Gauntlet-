@@ -8,6 +8,20 @@ export interface GlobalExecutionSnapshot {
   chamber: "lab" | "school" | "creation";
   providerId?: string;
   latencyMs?: number;
+}
+
+const STATE_LABEL: Record<ExecutionState, string> = {
+  streaming: "streaming",
+  live: "live",
+  completed: "completed",
+  degraded: "degraded",
+  aborted: "aborted",
+  error: "error",
+  blocked: "blocked",
+  scaffold_only: "scaffold",
+  provider_unavailable: "provider unavailable",
+};
+
   /** EI / agent display name */
   eiName?: string;
 }
@@ -68,6 +82,30 @@ export function GlobalExecutionBand({
         flexShrink: 0,
       }}
     >
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: stateColor(snapshot.state), letterSpacing: "0.08em", textTransform: "uppercase" }}>
+        {STATE_LABEL[snapshot.state]}
+      </span>
+      <span style={{ width: "1px", height: "10px", background: "var(--r-border)" }} />
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "var(--r-subtext)", letterSpacing: "0.05em" }}>
+        {snapshot.modelId ?? "—"}
+      </span>
+      {snapshot.latencyMs != null && (
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "var(--r-dim)", letterSpacing: "0.05em" }}>
+          {snapshot.latencyMs}ms
+        </span>
+      )}
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: accent, letterSpacing: "0.07em", textTransform: "uppercase" }}>
+        {snapshot.chamber}
+      </span>
+      {missionName && (
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "var(--r-subtext)", letterSpacing: "0.04em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "280px" }}>
+          mission · {missionName}
+        </span>
+      )}
+      <div style={{ flex: 1 }} />
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "var(--r-dim)", letterSpacing: "0.05em" }}>
+        {snapshot.providerId ?? "provider · —"}
+      </span>
       {/* State — with live pulse when active */}
       <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: stateColor(snapshot.state), letterSpacing: "0.09em", textTransform: "uppercase" }}>
         {isLive && (

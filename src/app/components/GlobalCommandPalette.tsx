@@ -196,6 +196,10 @@ interface GlobalCommandPaletteProps {
   onMissionSwitch: () => void;
   onMissionHandoff?: () => void;
   activeMissionName?: string;
+}
+
+export function GlobalCommandPalette({
+  open, onClose, navigate, searchIndex, onMissionNew, onMissionSwitch, onMissionHandoff, activeMissionName,
   /** Optional mission list for mission-level navigation commands */
   missions?:   Mission[];
 }
@@ -408,10 +412,7 @@ export function GlobalCommandPalette({
 
 function CmdGroup({ label, entries }: { label: string; entries: CmdEntry[] }) {
   return (
-    <CommandPrimitive.Group
-      heading={label}
-      style={{ marginBottom: "2px" }}
-    >
+    <CommandPrimitive.Group style={{ marginBottom: "2px" }}>
       <div
         style={{
           fontSize: "8px",
@@ -424,6 +425,10 @@ function CmdGroup({ label, entries }: { label: string; entries: CmdEntry[] }) {
       >
         {label}
       </div>
+    <CommandPrimitive.Group
+      heading={label}
+      style={{ marginBottom: "2px" }}
+    >
       {entries.map((e) => (
         <CmdItem key={e.id} entry={e} />
       ))}

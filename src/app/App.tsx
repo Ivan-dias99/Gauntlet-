@@ -27,6 +27,15 @@ import {
   upsertMission,
 } from "./dna/mission-substrate";
 import {
+  type MissionOperationsState,
+  buildOperationState,
+  createTask,
+  defaultMissionOperationsState,
+  dismissSignal,
+  emitSignal,
+  transitionTask,
+} from "./dna/autonomous-operations";
+import {
   defaultAutonomousOperationsState,
   type AutonomousOperationsState,
 } from "./components/autonomous-operations";
@@ -79,7 +88,7 @@ import {
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
 import { getExecutionTruth, buildLiveAdapterRegistry, resolveSovereignStack } from "./components/sovereign-runtime";
-import { getContractByIntent, resolveIntent, resolveRoute } from "./components/routing-contracts";
+import { getContractByIntent, resolveIntent } from "./components/routing-contracts";
 import { MODEL_REGISTRY } from "./components/model-orchestration";
 import { enforceExecutionGate } from "./components/governance-fabric";
 import { buildWorkflowRunPayload } from "./components/workflow-engine";
@@ -99,6 +108,13 @@ import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAudi
 import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
 import { defaultMissionOperationsState, type MissionOperationsState } from "./dna/autonomous-operations";
 import { resolveMissionRoute } from "./dna/sovereign-intelligence";
+import {
+  prioritizeMemory,
+  resolveMissionRoute,
+  type MemoryItem,
+  type MemoryRecallRequest,
+  type MissionReasoningResult,
+} from "./dna/sovereign-intelligence";
 import { PIONEER_REGISTRY } from "./components/pioneer-registry";
 import { mcpMissionCreate, mcpMissionUpdateState, mcpMissionAttachContinuity, mcpMissionBuildHandoff } from "./components/mcp-client";
 
@@ -187,6 +203,78 @@ function loadMessages(): TabMessages {
   return emptyRecord<Message[]>([]);
 }
 
+function recallMissionPriorContext(
+  mission: Mission,
+  requestText: string,
+): { request: MemoryRecallRequest; items: MemoryItem[]; priorContext: string } {
+  const now = Date.now();
+  const decisionItems: MemoryItem[] = mission.memory.decisions.map((d) => ({
+    id: d.id,
+    missionId: mission.id,
+    content: `${d.statement} — ${d.rationale}`,
+    sourceType: "decision",
+    priority: d.reversible ? "standard" : "high",
+    createdAt: d.at,
+    lastAccessAt: now,
+    accessCount: 1,
+    compressed: false,
+  }));
+  const contextItems: MemoryItem[] = [
+    ...(mission.memory.context
+      ? [{
+          id: `${mission.id}-context`,
+          missionId: mission.id,
+          content: mission.memory.context,
+          sourceType: "context" as const,
+          priority: "high" as const,
+          createdAt: mission.memory.lastUpdated,
+          lastAccessAt: now,
+          accessCount: 1,
+          compressed: false,
+        }]
+      : []),
+    ...mission.memory.constraints.map((c, i) => ({
+      id: `${mission.id}-constraint-${i}`,
+      missionId: mission.id,
+      content: c,
+      sourceType: "constraint" as const,
+      priority: "high" as const,
+      createdAt: mission.memory.lastUpdated,
+      lastAccessAt: now,
+      accessCount: 1,
+      compressed: false,
+    })),
+    ...mission.memory.priorReasoning.map((r, i) => ({
+      id: `${mission.id}-reasoning-${i}`,
+      missionId: mission.id,
+      content: r,
+      sourceType: "reasoning" as const,
+      priority: "standard" as const,
+      createdAt: mission.memory.lastUpdated,
+      lastAccessAt: now,
+      accessCount: 1,
+      compressed: true,
+      compressedSummary: r.slice(0, 140),
+    })),
+  ];
+  const all = [...decisionItems, ...contextItems];
+  const request: MemoryRecallRequest = {
+    missionId: mission.id,
+    query: requestText,
+    maxItems: 6,
+    minPriority: "standard",
+    sourceTypes: ["decision", "constraint", "reasoning", "context"],
+  };
+  const scoped = all.filter((item) => {
+    const pRank = { critical: 4, high: 3, standard: 2, low: 1, discard: 0 } as const;
+    return pRank[item.priority] >= pRank[request.minPriority] &&
+      (!request.sourceTypes || request.sourceTypes.includes(item.sourceType));
+  });
+  const recalled = prioritizeMemory(scoped, request.query, request.maxItems);
+  const priorContext = recalled.map((i) => i.compressedSummary ?? i.content).join(" | ");
+  return { request, items: recalled, priorContext };
+}
+
 export default function App() {
   // ── Core state ──────────────────────────────────────────────────────────────
   const [activeTab,    setActiveTab]    = useState<Tab>("lab");
@@ -219,6 +307,7 @@ export default function App() {
   const [activeMissionOps, setActiveMissionOps] = useState<MissionOperationsState | null>(() =>
     activeMissionId ? defaultMissionOperationsState(activeMissionId) : null
   );
+  const [activeMissionOps, setActiveMissionOps] = useState<MissionOperationsState | null>(null);
 
   // ── Detail navigation ────────────────────────────────────────────────────────
   const [detailId, setDetailId] = useState<string>("");
@@ -231,6 +320,15 @@ export default function App() {
     if (tab === "creation") setCreationView(view as CreationView);
     if (tab === "profile") setProfileView(view as ProfileView);
     setDetailId(id);
+  }, []);
+
+  const handleTabChange = useCallback((tab: Tab) => {
+    setActiveTab(tab);
+    setDetailId("");
+    if (tab === "lab") setLabView("home");
+    if (tab === "school") setSchoolView("home");
+    if (tab === "creation") setCreationView("home");
+    if (tab === "profile") setProfileView("overview");
   }, []);
 
   // ── Floating notes ───────────────────────────────────────────────────────────
@@ -481,18 +579,6 @@ export default function App() {
     setDrafts((prev) => ({ ...prev, [activeTab]: text }));
   }, [activeTab]);
 
-  const handleClearTab = useCallback((tab: Tab) => {
-    setMessages((prev) => ({ ...prev, [tab]: [] }));
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as TabMessages;
-        parsed[tab] = [];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-      }
-    } catch { /* ignore */ }
-  }, []);
-
   const handleTaskChange = useCallback((tab: ChamberTab, task: TaskType) => {
     setTasks((prev) => ({ ...prev, [tab]: task }));
     setActiveModels((prev) => ({ ...prev, [tab]: DEFAULT_MODEL_BY_TASK[task] }));
@@ -530,11 +616,64 @@ export default function App() {
       tab === "school"   ? "learning-heavy" : "balanced-trinity";
     // Stack 03: when mission is active, honor declared pioneer stack in routing
     const routeDecision = resolveRouteDecision(runtimeFabric.intelligence, {
+    const baseRouteDecision = resolveRouteDecision(runtimeFabric.intelligence, {
       chamberHint: tab,
       workflowId,
       requestText: text,
       preferredPioneerId: activeMission?.workflow.pioneerStack[0],
     });
+    const missionMemoryRecall = activeMission ? recallMissionPriorContext(activeMission, text) : null;
+    const missionRoute = activeMission ? resolveMissionRoute({
+      missionId: activeMission.id,
+      missionStatus: activeMission.ledger.currentState,
+      chamberLead: activeMission.identity.chamberLead,
+      requestText: text,
+      preferredPioneer: undefined,
+      depth: "standard",
+      sessionChamber: tab,
+    }) : null;
+    const missionRoutePinned = missionRoute && missionRoute.chamber === tab ? missionRoute : null;
+    const routeDecision = {
+      ...baseRouteDecision,
+      pioneerId: missionRoutePinned?.pioneerId ?? baseRouteDecision.pioneerId,
+      giId: missionRoutePinned?.giId ?? baseRouteDecision.giId,
+      supportChain: missionRoutePinned
+        ? Array.from(new Set([...(missionRoutePinned.supportChain ?? []), ...baseRouteDecision.supportChain]))
+        : baseRouteDecision.supportChain,
+      reason: missionRoutePinned
+        ? `${baseRouteDecision.reason} · ${missionRoutePinned.missionReason}`
+        : baseRouteDecision.reason,
+    };
+    const missionReasoning: MissionReasoningResult | null = missionRoutePinned ? {
+      requestId: `reason_${Date.now()}`,
+      missionId: missionRoutePinned.missionId,
+      mode: "planning",
+      steps: [
+        {
+          id: `step_context_${Date.now()}`,
+          at: Date.now(),
+          operation: "prior-context-recall",
+          input: text.slice(0, 120),
+          output: missionMemoryRecall?.priorContext?.slice(0, 180) ?? "no prior context",
+          confidence: missionMemoryRecall?.items.length ? "high" : "medium",
+        },
+        {
+          id: `step_route_${Date.now()}`,
+          at: Date.now(),
+          operation: "mission-route-resolution",
+          input: missionRoutePinned.reason,
+          output: missionRoutePinned.missionReason,
+          confidence: "high",
+        },
+      ],
+      conclusion: missionRoutePinned.reason,
+      confidence: "high",
+      nextActions: [
+        `dispatch.${tab}`,
+        `workflow.${missionRoutePinned.workflowId ?? workflowId}`,
+      ],
+      producedAt: Date.now(),
+    } : null;
     const leaderPioneer = runtimeFabric.intelligence.pioneers.find((entry) => entry.id === routeDecision.pioneerId);
     const hostingLevel = leaderPioneer?.hostingLevel ?? "proxy";
     setRuntimeFabric((prev) => routeIntelligenceRequest(prev, {
@@ -561,7 +700,6 @@ export default function App() {
     const controller = new AbortController();
     abortRefs.current[tab] = controller;
 
-    const resolvedRoute = resolveRoute(text, tab, task);
     const requestedModelMeta = MODEL_REGISTRY.find((m) => m.id === requestedModelId);
     const connectorActionRows = recommendedConnectorsForChamber(runtimeFabric, tab).map((cid) => {
       const row = runtimeFabric.connectors.find((c) => c.id === cid);
@@ -585,7 +723,7 @@ export default function App() {
         hostingLevel,
         providerId: requestedModelMeta?.provider,
         modelId: requestedModelId,
-        supportChain: resolvedRoute.support_chain,
+        supportChain: routeDecision.supportChain,
       },
     };
     setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], userMsg] }));
@@ -706,6 +844,20 @@ export default function App() {
     const baseResults: ExecutionResultEntry[] = [
       { phase: "route", summary: routeDigestLine.slice(0, 140), at: Date.now() },
     ];
+    if (missionReasoning) {
+      baseResults.push({
+        phase: "mission",
+        summary: missionReasoning.conclusion.slice(0, 140),
+        at: missionReasoning.producedAt,
+      });
+      if (missionReasoning.nextActions[0]) {
+        baseResults.push({
+          phase: "next",
+          summary: missionReasoning.nextActions.join(" → ").slice(0, 140),
+          at: missionReasoning.producedAt,
+        });
+      }
+    }
     if (plan.fallbackReason) {
       baseResults.push({ phase: "fallback", summary: plan.fallbackReason.slice(0, 120), at: Date.now() });
     }
@@ -715,7 +867,7 @@ export default function App() {
       executionState: initialRunState,
       providerId: plan.selectedModel?.provider,
       modelId: selectedModelId,
-      supportChain: resolvedRoute.support_chain,
+      supportChain: routeDecision.supportChain,
       workflowId,
       hostingLevel,
       executionResults: baseResults,
@@ -757,6 +909,9 @@ export default function App() {
         .filter((m) => m.id !== assistantId)
         .slice(-MAX_CONTEXT)
         .map(({ role, content }) => ({ role, content }));
+      const contextualHistory = missionMemoryRecall?.priorContext
+        ? [{ role: "system", content: `mission-context: ${missionMemoryRecall.priorContext}` }, ...history]
+        : history;
 
       // Stack 03: mission context injection — intelligence serves the mission, not the session
       const missionIdentityCtx = activeMission ? buildMissionSystemContext(activeMission) : null;
@@ -937,7 +1092,7 @@ export default function App() {
         executionState: finalRunState,
         providerId: plan.selectedModel?.provider,
         modelId: selectedModelId,
-        supportChain: resolvedRoute.support_chain,
+        supportChain: routeDecision.supportChain,
         workflowId,
         hostingLevel,
         executionResults: [
@@ -973,7 +1128,7 @@ export default function App() {
             hostingLevel,
             providerId: plan.selectedModel?.provider,
             modelId: selectedModelId,
-            supportChain: resolvedRoute.support_chain,
+            supportChain: routeDecision.supportChain,
           },
           execution_trace: completedTrace,
         });
@@ -1261,6 +1416,164 @@ export default function App() {
   const isLive = Object.values(signals).some((s) => s === "streaming");
   const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
   const activeMission = activeMissionId ? missions.find((m) => m.id === activeMissionId) ?? null : null;
+  const generatedMissionTaskRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!activeMissionId) {
+      setActiveMissionOps(null);
+      generatedMissionTaskRef.current.clear();
+      return;
+    }
+    setActiveMissionOps((prev) => {
+      if (prev?.missionId === activeMissionId) return prev;
+      return defaultMissionOperationsState(activeMissionId);
+    });
+  }, [activeMissionId]);
+
+  useEffect(() => {
+    if (!activeMissionId || !activeMission) return;
+    const chambers: Exclude<Tab, "profile">[] = ["lab", "school", "creation"];
+    const completedEvents: Array<{ id: string; chamber: Exclude<Tab, "profile">; title: string; digest: string }> = [];
+    for (const chamber of chambers) {
+      for (const m of messages[chamber]) {
+        const trace = m.execution_trace;
+        if (!trace || m.role !== "assistant") continue;
+        if (trace.executionState !== "completed") continue;
+        if (generatedMissionTaskRef.current.has(m.id)) continue;
+        const lastResult = trace.executionResults?.slice(-1)[0];
+        const digest = lastResult?.summary ?? trace.routeDigest ?? m.content.slice(0, 160) ?? "Execution completed";
+        const title = (trace.routeDigest ?? m.content ?? "Mission execution").slice(0, 96);
+        completedEvents.push({ id: m.id, chamber, title, digest });
+      }
+    }
+    if (!completedEvents.length) return;
+    setActiveMissionOps((prev) => {
+      const base = prev?.missionId === activeMissionId ? prev : defaultMissionOperationsState(activeMissionId);
+      let next = { ...base };
+      for (const ev of completedEvents) {
+        const rawTask = createTask(activeMissionId, {
+          title: ev.title || "Execution completion",
+          objective: ev.digest,
+          notThis: activeMission.identity.notThis || "No mission drift.",
+          class: ev.chamber === "lab" ? "investigation" : ev.chamber === "school" ? "mastery" : "construction",
+          chamberLead: ev.chamber,
+          priority: "standard",
+          riskLevel: "low",
+        });
+        const task = transitionTask(rawTask, "completed", { outputDigest: ev.digest });
+        next = {
+          ...next,
+          tasks: [...next.tasks, task],
+          observations: [
+            ...next.observations,
+            {
+              id: `obs_${Date.now()}_${ev.id.slice(0, 6)}`,
+              missionId: activeMissionId,
+              taskId: task.id,
+              class: "run_complete",
+              summary: ev.digest.slice(0, 140),
+              pioneerId: task.pioneerId,
+              at: Date.now(),
+            },
+          ],
+          signals: [
+            ...next.signals,
+            emitSignal(activeMissionId, {
+              type: "task_complete",
+              priority: "standard",
+              taskId: task.id,
+              headline: `Task completed · ${task.title.slice(0, 52)}`,
+              body: ev.digest.slice(0, 140),
+              actionable: true,
+            }),
+          ],
+          lastUpdated: Date.now(),
+        };
+        generatedMissionTaskRef.current.add(ev.id);
+      }
+      return {
+        ...next,
+        operationState: buildOperationState(
+          activeMissionId,
+          next.tasks,
+          next.observations,
+          next.pendingApprovals.length,
+        ),
+      };
+    });
+  }, [activeMission, activeMissionId, messages]);
+
+  const handleMissionOpsSignalDismiss = useCallback((signalId: string) => {
+    if (!activeMissionId) return;
+    setActiveMissionOps((prev) => {
+      if (!prev || prev.missionId !== activeMissionId) return prev;
+      const signals = prev.signals.map((s) => (s.id === signalId ? dismissSignal(s) : s));
+      return {
+        ...prev,
+        signals,
+        operationState: buildOperationState(activeMissionId, prev.tasks, prev.observations, prev.pendingApprovals.length),
+        lastUpdated: Date.now(),
+      };
+    });
+  }, [activeMissionId]);
+
+  const handleMissionOpsApprovalApprove = useCallback((requestId: string) => {
+    if (!activeMissionId) return;
+    setActiveMissionOps((prev) => {
+      if (!prev || prev.missionId !== activeMissionId) return prev;
+      const request = prev.pendingApprovals.find((r) => r.id === requestId);
+      if (!request) return prev;
+      const next = {
+        ...prev,
+        pendingApprovals: prev.pendingApprovals.filter((r) => r.id !== requestId),
+        approvalHistory: [
+          ...prev.approvalHistory,
+          {
+            requestId,
+            missionId: activeMissionId,
+            decision: "approved",
+            decidedBy: "operator",
+            rationale: "approved from mission operations panel",
+            resolvedAt: Date.now(),
+          },
+        ],
+        lastUpdated: Date.now(),
+      };
+      return {
+        ...next,
+        operationState: buildOperationState(activeMissionId, next.tasks, next.observations, next.pendingApprovals.length),
+      };
+    });
+  }, [activeMissionId]);
+
+  const handleMissionOpsApprovalReject = useCallback((requestId: string) => {
+    if (!activeMissionId) return;
+    setActiveMissionOps((prev) => {
+      if (!prev || prev.missionId !== activeMissionId) return prev;
+      const request = prev.pendingApprovals.find((r) => r.id === requestId);
+      if (!request) return prev;
+      const next = {
+        ...prev,
+        pendingApprovals: prev.pendingApprovals.filter((r) => r.id !== requestId),
+        approvalHistory: [
+          ...prev.approvalHistory,
+          {
+            requestId,
+            missionId: activeMissionId,
+            decision: "rejected",
+            decidedBy: "operator",
+            rationale: "rejected from mission operations panel",
+            resolvedAt: Date.now(),
+          },
+        ],
+        lastUpdated: Date.now(),
+      };
+      return {
+        ...next,
+        operationState: buildOperationState(activeMissionId, next.tasks, next.observations, next.pendingApprovals.length),
+      };
+    });
+  }, [activeMissionId]);
   const lastExecutionSnapshot = useMemo<GlobalExecutionSnapshot | null>(() => {
     const latestMessageTrace = Object.values(messages)
       .flatMap((bucket) => bucket)
@@ -1294,8 +1607,14 @@ export default function App() {
   const analyticsPatterns = useMemo(() => {
     const signalEvents = runtimeFabric.signals.map((s) => s.label);
     const continuityEvents = runtimeFabric.continuity.map((c) => `${c.status} ${c.title}`);
-    return detectPatterns([...signalEvents, ...continuityEvents]);
-  }, [runtimeFabric.signals, runtimeFabric.continuity]);
+    const missionOutcomeEvents = activeMissionOps
+      ? [
+          ...activeMissionOps.tasks.map((t) => `${t.status} ${t.title} ${t.outputDigest ?? ""}`.trim()),
+          ...activeMissionOps.observations.map((o) => `${o.class} ${o.summary}`),
+        ]
+      : [];
+    return detectPatterns([...signalEvents, ...continuityEvents, ...missionOutcomeEvents]);
+  }, [runtimeFabric.signals, runtimeFabric.continuity, activeMissionOps]);
 
   const orgState = useMemo(() => {
     const missionHealth = missions.map((m) => {
@@ -1472,7 +1791,8 @@ export default function App() {
       {/* Sovereign Bar */}
       <SovereignBar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
+        onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
         onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
         theme={theme}
@@ -1518,10 +1838,9 @@ export default function App() {
           onSchoolView={(v) => { setSchoolView(v); setDetailId(""); }}
           onCreationView={(v) => { setCreationView(v); setDetailId(""); }}
           onProfileView={setProfileView}
-          onNewNote={addNote}
-          onClearTab={handleClearTab}
+          onTabChange={handleTabChange}
           navigate={navigate}
-          onTabChange={setActiveTab}
+          onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
           collapsed={railCollapsed}
           onToggleCollapsed={() => setRailCollapsed((v) => !v)}
         />
@@ -1648,6 +1967,11 @@ export default function App() {
                   onMissionUpsert={handleMissionUpsert}
                   onMissionActivate={handleMissionActivate}
                   activeMissionOps={activeMissionOps ?? undefined}
+                  activeMissionId={activeMissionId}
+                  activeMissionOps={activeMissionOps}
+                  onMissionOpsSignalDismiss={handleMissionOpsSignalDismiss}
+                  onMissionOpsApprovalApprove={handleMissionOpsApprovalApprove}
+                  onMissionOpsApprovalReject={handleMissionOpsApprovalReject}
                   operations={operations}
                   onOperationSignalRead={handleOperationSignalRead}
                   onOperationSignalResolve={handleOperationSignalResolve}
