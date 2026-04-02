@@ -18,7 +18,7 @@ import { CreationMode } from "./components/modes/CreationMode";
 import { ProfileMode } from "./components/modes/ProfileMode";
 import { MissionContextBand } from "./components/MissionContextBand";
 import { SystemHealthBand } from "./components/SystemHealthBand";
-import { defaultSystemModel, type SystemModel } from "./dna/system-awareness";
+import { defaultSystemModel, buildResourceSnapshot, updateSystemModel, setMissionState, type SystemModel } from "./dna/system-awareness";
 import {
   type Mission,
   loadMissions,
@@ -316,6 +316,17 @@ export default function App() {
     });
   }, [runtimeFabric.connectors]);
 
+  // ── System model health — periodic real snapshot ──────────────────────────────
+  useEffect(() => {
+    const tick = () => {
+      const snapshot = buildResourceSnapshot();
+      setSystemModel((prev) => updateSystemModel(prev, snapshot));
+    };
+    tick();
+    const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   // ── Abort refs ───────────────────────────────────────────────────────────────
   const abortRefs = useRef<Record<Tab, AbortController | null>>(
     emptyRecord<AbortController | null>(null)
@@ -471,6 +482,7 @@ export default function App() {
       return;
     }
 
+    setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "running"));
     setRuntimeFabric((prev) => createOrUpdateContinuity(prev, {
       id: continuityId,
       title: text.slice(0, 90),
@@ -724,6 +736,7 @@ export default function App() {
         });
         return next;
       });
+      setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "idle"));
       setRuntimeFabric((prev) => {
         let next = transitionContinuity(prev, continuityId, "completed");
         next = pushSignal(next, {
@@ -817,6 +830,7 @@ export default function App() {
           })
         );
         setSignals((prev) => ({ ...prev, [tab]: "idle" }));
+        setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "idle"));
         setRuntimeFabric((prev) => {
           let next = transitionContinuity(prev, continuityId, "paused");
           next = pushSignal(next, {
@@ -861,6 +875,7 @@ export default function App() {
             digest: `error · ${String(err instanceof Error ? err.message : "failure").slice(0, 120)}`,
           })
         );
+        setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "blocked"));
         setRuntimeFabric((prev) => {
           let next = transitionContinuity(prev, continuityId, "blocked");
           next = pushSignal(next, {
