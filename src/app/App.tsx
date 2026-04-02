@@ -737,6 +737,13 @@ export default function App() {
         return next;
       });
       setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "idle"));
+      if (tab === "creation") {
+        setFlowState((prev) => {
+          const run = prev.runs.find((r) => r.missionId === continuityId);
+          if (!run) return prev;
+          return upsertFlowRun(prev, { ...run, state: "complete", completedAt: Date.now() });
+        });
+      }
       setRuntimeFabric((prev) => {
         let next = transitionContinuity(prev, continuityId, "completed");
         next = pushSignal(next, {
@@ -876,6 +883,13 @@ export default function App() {
           })
         );
         setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "blocked"));
+        if (tab === "creation") {
+          setFlowState((prev) => {
+            const run = prev.runs.find((r) => r.missionId === continuityId);
+            if (!run) return prev;
+            return upsertFlowRun(prev, { ...run, state: "failed", completedAt: Date.now() });
+          });
+        }
         setRuntimeFabric((prev) => {
           let next = transitionContinuity(prev, continuityId, "blocked");
           next = pushSignal(next, {
