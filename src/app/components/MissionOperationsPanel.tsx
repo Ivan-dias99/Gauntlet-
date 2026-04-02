@@ -370,8 +370,7 @@ export function MissionOperationsPanel({
     return (
       <div
         style={{
-          padding:       "20px 0",
-          textAlign:     "center",
+          padding:       "14px 0",
         }}
       >
         <div
@@ -381,22 +380,9 @@ export function MissionOperationsPanel({
             letterSpacing: "0.10em",
             textTransform: "uppercase",
             color:         "var(--r-dim)",
-            marginBottom:  "6px",
           }}
         >
           operations · idle
-        </div>
-        <div
-          style={{
-            fontFamily:    "'Inter', system-ui, sans-serif",
-            fontSize:      "11px",
-            color:         "var(--r-subtext)",
-            lineHeight:    1.5,
-            maxWidth:      "320px",
-            margin:        "0 auto",
-          }}
-        >
-          No tasks, signals, or approvals are active for this mission. Operations begin when the first task is created.
         </div>
       </div>
     );
