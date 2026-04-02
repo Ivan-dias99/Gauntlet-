@@ -113,7 +113,7 @@ import { defaultPlatformState, createInfraLayer, addLayer } from "./dna/platform
 import { defaultOrgState, assessMissionHealth, surfaceOrgInsights, defaultCapabilityMap } from "./dna/org-intelligence";
 import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dna/personal-sovereign-os";
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
-import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
+import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger, appendConsequenceToLedger } from "./dna/trust-governance";
 import {
   defaultSovereignSecurityState,
   type SovereignSecurityState,
@@ -1391,6 +1391,22 @@ export default function App() {
       });
       setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "idle"));
 
+      // ── Stack 07: consequence record — dispatch execution is irreversible ────────
+      // Every AI execution produces a consequence that cannot be undone.
+      // Record it in the governance ledger so the audit trail includes outcome truth.
+      setTrustGovState((prev) => {
+        const govMissionId = activeMissionId ?? continuityId;
+        const ledger = getMissionLedger(prev, govMissionId);
+        const consequenceLedger = appendConsequenceToLedger(
+          ledger,
+          `dispatch.completion.${tab}`,
+          `${finalRunState} · ${selectedModelId} · ${assistantContent.length} chars · continuity:${continuityId.slice(-8)}`,
+          false, // irreversible — execution cannot be undone
+        );
+        return upsertLedger(prev, consequenceLedger);
+      });
+      // ── End Stack 07 consequence record ──────────────────────────────────────────
+
       // MCP: attach continuity to active mission + build handoff digest — fire-and-forget
       if (activeMissionId) {
         mcpMissionAttachContinuity(activeMissionId, continuityId).catch(() => { /* non-fatal */ });
@@ -2405,7 +2421,9 @@ export default function App() {
                   personalOS={personalOS}
                   compoundNetwork={runtimeFabric.compoundNetwork ?? defaultCompoundNetwork()}
                   governanceEntries={Object.values(trustGovState.ledgers).flatMap(l => l.auditTrail.entries)}
+                  governanceConsequences={Object.values(trustGovState.ledgers).flatMap(l => l.consequenceTrail)}
                   flowState={flowState}
+                  systemModel={systemModel}
                 />
               )}
             </motion.div>
