@@ -886,7 +886,7 @@ export default function App() {
           chamber: tab,
         });
         if (tab === "lab") {
-          // Lab finding extraction — prefer first heading from response, fall back to prompt slice
+          // Lab finding extraction — prefer first heading from response, fall back to content slice
           const headingMatch = assistantContent.match(/^#{1,3}\s+(.+)$/m);
           const findingLabel = headingMatch
             ? headingMatch[1].slice(0, 72)
@@ -900,11 +900,29 @@ export default function App() {
             destination:        { tab: "lab", view: "analysis", id: assistantId },
             linkedObjectId:     assistantId,
           });
+          // Cross-chamber propagation: if Creation has an active continuity, route finding there
+          const activeCreation = next.continuity.find((c) => c.chamber === "creation" && c.status === "in_progress");
+          if (activeCreation) {
+            next = pushSignal(next, {
+              type:               "transfer",
+              label:              `Lab → Creation: ${findingLabel.slice(0, 52)}`,
+              severity:           "info",
+              sourceChamber:      "lab",
+              destinationChamber: "creation",
+              destination:        { tab: "creation", view: "terminal", id: activeCreation.id },
+              linkedObjectId:     assistantId,
+            });
+          }
         }
         if (tab === "school") {
+          // Dynamic lesson signal — extract subject from response instead of static label
+          const lessonHeading = assistantContent.match(/^#{1,3}\s+(.+)$/m);
+          const lessonLabel = lessonHeading
+            ? lessonHeading[1].slice(0, 60)
+            : assistantContent.replace(/\s+/g, " ").trim().slice(0, 60);
           next = pushSignal(next, {
             type:               "transfer",
-            label:              "Lesson completion unlocked a Lab validation route",
+            label:              `School → Lab: "${lessonLabel}" validated — lab route unlocked`,
             severity:           "info",
             sourceChamber:      "school",
             destinationChamber: "lab",
