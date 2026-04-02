@@ -23,8 +23,8 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 | 9 | Autonomous Flow | CLOSED | Planned workflow graphs, step orchestration, dependency gates | Mission workflows execute as a controlled graph |
 | 10 | Multi-Agent Civilization | CLOSED | Agent roles, delegation contracts, shared memory contract | Agents collaborate with explicit role boundaries |
 | 11 | Living Knowledge | CLOSED | Persistent mission memory, retrieval contracts, knowledge freshness | Mission memory is durable and queryable |
-| 12 | Intelligence Analytics | CLOSED | Outcome quality metrics, reasoning quality KPIs | Mission intelligence quality is measurable |
-| 13 | Collective Execution | CLOSED | Team participation model, collaboration permissions, shared execution | Human + agent work is coordinated in one mission plane |
+| 12 | Intelligence Analytics | MATERIALIZED | Outcome quality metrics, reasoning quality KPIs | Mission intelligence quality is measurable |
+| 13 | Collective Execution | MATERIALIZED | Team participation model, collaboration permissions, shared execution | Human + agent work is coordinated in one mission plane |
 | 14 | Distribution + Presence | CLOSED | Packaging, deployment channels, runtime presence surfaces | Mission artifacts can be distributed with traceable lineage |
 | 15 | Value Exchange | CLOSED | Billing/value capture model tied to mission consequence | Value events map directly to mission outcomes |
 | 16 | Ecosystem Network | CLOSED | Connector contracts, external system sync boundaries | External integrations remain subordinate to mission truth |
@@ -105,15 +105,26 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
 - `handleMissionOpsSignalDismiss` — `dismissSignal()` mutates `activeMissionOps.signals`
 - `handleMissionOpsApprovalApprove` / `handleMissionOpsApprovalReject` — moves approval from `pendingApprovals` to `approvalHistory`
 
-**Surface:**
-- `MissionOperationsPanel` — real callbacks wired, renders live state
-- ProfileMode.tsx — duplicate `MissionOperationsPanel` import removed (line 33, QA gate 2026-04-02)
-- App.tsx — duplicate `onTabChange` attribute on `SovereignBar` removed (QA gate 2026-04-02)
+## Materialized: Stack 12 (Intelligence Analytics)
 
-**Legacy / parallel path (non-canonical, non-governing):**
-- `AutonomousOperationsState` / `operations` state (from `components/autonomous-operations.ts`) remains in App.tsx.
-  Governs only handoff and legacy signal mutation (handleHandoffAccept/Reject, handleOperationSignalRead/Resolve).
-  Does NOT participate in the real execution loop. Real execution: `activeMissionOps` path only.
+### Exit Proof
+- `dna/intelligence-analytics.ts` — `detectPatterns` core logic.
+- `runtime-fabric.ts` — `analyticsPatterns` substrate array added (v5).
+- `recordRuntimePatterns()` — persistence bridge initialized.
+- `App.tsx` — `handleSend` completion calculates and saves patterns to substrate.
+- `App.tsx` — `analyticsPatterns` useMemo pulls directly from substrate (sovereign truth).
+- `AnalyticsPatternStrip.tsx` — renders live patterns with confidence dots.
+
+## Materialized: Stack 13 (Collective Execution)
+
+### Exit Proof
+- `dna/collective-execution.ts` — `attributions` ledger model.
+- `runtime-fabric.ts` — `attributions` substrate array added (v5).
+- `recordRuntimeAttribution()` — consequence recording bridge initialized.
+- `App.tsx` — `handleSend` (creation tab) records social consequence on every run.
+- `App.tsx` — `collectiveState` useMemo injects substrate attributions into collective state.
+- `CollectiveExecutionStrip.tsx` — "Consequence Attributions" section rendered on surface.
+- `npm run build` — verified type safety of attribution flow.
 - `OperationsPanel` still rendered below `MissionOperationsPanel` in ProfileMode > operations view.
   Shows legacy/empty state. Non-canonical. Harmless. Acknowledged.
 - `components/autonomous-operations.ts` retained for backward compat per its own ownership comment. Canonical types live in `dna/autonomous-operations.ts`.
