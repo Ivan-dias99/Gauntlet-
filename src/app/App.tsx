@@ -82,6 +82,8 @@ import {
   updateAISettings,
   updatePreferences,
   updateWorkspaceKnowledge,
+  updateRuntimePatterns,
+  recordRuntimeAttribution,
   upsertPlugin,
   upsertConnector,
   exportContinuity,
@@ -1387,6 +1389,27 @@ export default function App() {
           },
           execution_trace: completedTrace,
         });
+
+        // ── Stack 12 & 13: Collective & Analytics Persistence ──────────────────
+        // Persist the attribution record for the Creation completion.
+        if (tab === "creation") {
+          const attr = attributeConsequence(
+            activeMissionId ?? continuityId,
+            next.workspace.owner,
+            `creation.build · ${assistantContent.length} chars`,
+            "primary",
+            continuityId,
+            false,
+          );
+          next = recordRuntimeAttribution(next, attr);
+        }
+
+        // Detect and persist intelligence patterns from the updated signals/runs.
+        const currentSignals = next.signals.map((s) => s.label);
+        const currentContinuity = next.continuity.map((c) => `${c.status} ${c.title}`);
+        const nextPatterns = detectPatterns([...currentSignals, ...currentContinuity]);
+        next = updateRuntimePatterns(next, nextPatterns);
+
         return next;
       });
       setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "idle"));
@@ -2036,16 +2059,8 @@ export default function App() {
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
   const analyticsPatterns = useMemo(() => {
-    const signalEvents = runtimeFabric.signals.map((s) => s.label);
-    const continuityEvents = runtimeFabric.continuity.map((c) => `${c.status} ${c.title}`);
-    const missionOutcomeEvents = activeMissionOps
-      ? [
-          ...activeMissionOps.tasks.map((t) => `${t.status} ${t.title} ${t.outputDigest ?? ""}`.trim()),
-          ...activeMissionOps.observations.map((o) => `${o.class} ${o.summary}`),
-        ]
-      : [];
-    return detectPatterns([...signalEvents, ...continuityEvents, ...missionOutcomeEvents]);
-  }, [runtimeFabric.signals, runtimeFabric.continuity, activeMissionOps]);
+    return runtimeFabric.analyticsPatterns ?? [];
+  }, [runtimeFabric.analyticsPatterns]);
 
   const orgState = useMemo(() => {
     const missionHealth = missions.map((m) => {
@@ -2137,8 +2152,8 @@ export default function App() {
       const claimant = c.pioneerId ?? owner;
       collisionMap = claimCollectiveResource(collisionMap, `chamber.${c.chamber}`, claimant);
     }
-    return { ...state, collisionMap, lastUpdated: Date.now() };
-  }, [_collectiveBase, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity, _collectiveBase.attributions]);
+    return { ...state, attributions: runtimeFabric.attributions, collisionMap, lastUpdated: Date.now() };
+  }, [_collectiveBase, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity, runtimeFabric.attributions]);
 
   // 3. Presence manifest: always register the web channel; add active chambers
   const presenceManifest = useMemo(() => {

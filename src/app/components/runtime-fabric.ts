@@ -19,6 +19,8 @@ import {
   createCompoundNode,
   estimateReplicationBarrier,
 } from "../dna/compound-intelligence";
+import { type ConsequenceAttribution } from "../dna/collective-execution";
+import { type AnalyticsPattern } from "../dna/intelligence-analytics";
 
 export type LifecycleStatus =
   | "draft"
@@ -334,9 +336,13 @@ export interface RuntimeFabric {
   systemHealth?: SystemHealthModel;
   /** Stack 20 — compound intelligence network, grows with each completed run */
   compoundNetwork?: CompoundNetwork;
+  /** Stack 12 — analytics patterns, persisted results */
+  analyticsPatterns: AnalyticsPattern[];
+  /** Stack 13 — attribution records for collective work consequence */
+  attributions: ConsequenceAttribution[];
 }
 
-const STORAGE_KEY = "ruberra_runtime_fabric_v2";
+const STORAGE_KEY = "ruberra_runtime_fabric_v5";
 
 const DEFAULT_CONNECTORS: ConnectorState[] = [
   { id: "knowledge-pack", label: "Knowledge Pack", chamber: "school", enabled: true, status: "ready", completeness: 100, lastUpdated: Date.now() },
@@ -405,6 +411,8 @@ function initialFabric(): RuntimeFabric {
     intelligence: defaultIntelligenceFoundationState(),
     systemHealth: defaultSystemHealthModel(),
     compoundNetwork: defaultCompoundNetwork(),
+    analyticsPatterns: [],
+    attributions: [],
   };
 }
 
@@ -431,6 +439,8 @@ export function loadRuntimeFabric(): RuntimeFabric {
       runTimeline: parsed.runTimeline ?? [],
       chamberPolicies: parsed.chamberPolicies?.length ? parsed.chamberPolicies : DEFAULT_CHAMBER_POLICIES,
       intelligence: parsed.intelligence ?? defaultIntelligenceFoundationState(),
+      analyticsPatterns: parsed.analyticsPatterns ?? [],
+      attributions: parsed.attributions ?? [],
     };
   } catch {
     return initialFabric();
@@ -834,9 +844,16 @@ export function updateConnectorOperationalState(
 
 export function appendRunTimeline(
   fabric: RuntimeFabric,
-  payload: Omit<RunTimelineEvent, "id" | "timestamp">,
+  payload: Partial<Omit<RunTimelineEvent, "id" | "timestamp">> & { label: string; continuityId: string },
 ): RuntimeFabric {
-  const event: RunTimelineEvent = { ...payload, id: crypto.randomUUID(), timestamp: Date.now() };
+  const event: RunTimelineEvent = {
+    status:  "info" as any,
+    chamber: "lab" as any,
+    type:    "log" as any,
+    ...payload,
+    id:        crypto.randomUUID() as string,
+    timestamp: Date.now(),
+  };
   return { ...fabric, runTimeline: [event, ...fabric.runTimeline].slice(0, 1000) };
 }
 
@@ -1238,14 +1255,14 @@ export function upsertCompoundRun(
           ? { ...n, advantageScore: Math.min(1, n.advantageScore + advantage * 0.3), lastUpdated: Date.now() }
           : n
       )
-    : [...network.nodes, createCompoundNode("chamber", opts.continuityId, `${opts.chamber} run`, advantage)];
+    : [...network.nodes, createCompoundNode("output", opts.continuityId, `${opts.chamber} run`, advantage)];
 
   const barrier = estimateReplicationBarrier(
     fabric.continuity.filter((c) => c.status === "completed").length,
     fabric.objects.length,
     0,
     updatedNodes.length,
-    Date.now() - (fabric.runTimeline[0]?.at ?? Date.now()),
+    Date.now() - (fabric.runTimeline[0]?.timestamp ?? Date.now()),
   );
 
   return {
@@ -1257,4 +1274,12 @@ export function upsertCompoundRun(
       lastUpdated: Date.now(),
     },
   };
+}
+
+export function recordRuntimeAttribution(fabric: RuntimeFabric, attribution: ConsequenceAttribution): RuntimeFabric {
+  return { ...fabric, attributions: [attribution, ...fabric.attributions].slice(0, 400) };
+}
+
+export function updateRuntimePatterns(fabric: RuntimeFabric, patterns: AnalyticsPattern[]): RuntimeFabric {
+  return { ...fabric, analyticsPatterns: patterns };
 }
