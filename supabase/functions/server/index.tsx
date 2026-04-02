@@ -1,6 +1,7 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
+import * as kv from "./kv_store.tsx";
 
 const app = new Hono();
 
@@ -334,17 +335,32 @@ function isClaudeModel(modelId: string): boolean {
   return modelId.startsWith("claude-");
 }
 
+function isGeminiModel(modelId: string): boolean {
+  return modelId.startsWith("gemini-") || modelId.startsWith("imagen-");
+}
+
 // Normalize registry model IDs to real Anthropic API identifiers.
 // Registry uses suffixed IDs (e.g. "claude-opus-4.6-sch") for chamber
 // disambiguation; strip the suffix before calling the API.
 function toAnthropicModelId(modelId: string): string {
   const ANTHROPIC_MAP: Record<string, string> = {
-    "claude-opus-4.6":     "claude-opus-4-5",
-    "claude-opus-4.6-sch": "claude-opus-4-5",
-    "claude-sonnet-4.6":   "claude-sonnet-4-5",
-    "claude-haiku-4.5":    "claude-haiku-4-5",
+    "claude-opus-4.6":     "claude-opus-4-6",
+    "claude-opus-4.6-sch": "claude-opus-4-6",
+    "claude-sonnet-4.6":   "claude-sonnet-4-6",
+    "claude-haiku-4.5":    "claude-haiku-4-5-20251001",
   };
   return ANTHROPIC_MAP[modelId] ?? modelId;
+}
+
+// Normalize registry Gemini IDs to real Google Generative Language model names.
+function toGeminiModelId(modelId: string): string {
+  const GEMINI_MAP: Record<string, string> = {
+    "gemini-3.1-pro-high": "gemini-2.5-pro",
+    "gemini-3.1-pro-low":  "gemini-2.0-flash",
+    "gemini-3.0-flash":    "gemini-2.0-flash",
+    "imagen-4":            "gemini-2.0-flash",  // imagen is image-only; route to flash for chat
+  };
+  return GEMINI_MAP[modelId] ?? "gemini-2.0-flash";
 }
 
 // ─── Chat endpoint ────────────────────────────────────────────────────────────
@@ -493,12 +509,276 @@ app.post("/make-server-b9f46b68/chat", async (c) => {
     }
   }
 
+  // ── Gemini / Google path ─────────────────────────────────────────────────
+  if (model && isGeminiModel(model)) {
+    const geminiKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_AI_API_KEY");
+    if (geminiKey) {
+      const geminiModelId = toGeminiModelId(model);
+      // Map assistant → model role for Gemini API
+      const geminiMessages = messages.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+      try {
+        const upstream = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModelId}:streamGenerateContent?alt=sse&key=${geminiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: geminiMessages,
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              generationConfig: { maxOutputTokens: 2048 },
+            }),
+          },
+        );
+
+        if (upstream.ok && upstream.body) {
+          const stream = new ReadableStream<Uint8Array>({
+            async start(controller) {
+              const reader = upstream.body!.getReader();
+              try {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  const chunk = decoder.decode(value, { stream: true });
+                  for (const line of chunk.split("\n")) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+                    const data = trimmed.slice(5).trim();
+                    if (data === "[DONE]") continue;
+                    try {
+                      const parsed = JSON.parse(data);
+                      const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                      if (text) controller.enqueue(encoder.encode(text));
+                    } catch {
+                      // malformed SSE chunk — skip
+                    }
+                  }
+                }
+              } finally {
+                controller.close();
+                reader.releaseLock();
+              }
+            },
+          });
+
+          return new Response(stream, {
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "Access-Control-Allow-Origin": "*",
+            },
+          });
+        }
+      } catch (err) {
+        console.log("[Ruberra] Gemini fetch failed, using fallback:", err);
+      }
+    }
+  }
+
   return new Response(makeFallbackStream(tab), {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Access-Control-Allow-Origin": "*",
     },
   });
+});
+
+// ─── MCP Sovereign Endpoint — Mission v1 ─────────────────────────────────────
+// Tools: mission.create · mission.get · mission.list
+//        mission.updateState · mission.attachContinuity · mission.buildHandoff
+//
+// Storage: kv_store keys
+//   ruberra:mission:{id}        — full mission object
+//   ruberra:missions:index      — array of { id, name, status, chamberLead, updatedAt }
+
+type MissionStatus = "birth" | "active" | "paused" | "blocked" | "completed" | "archived";
+type MissionChamberLead = "lab" | "school" | "creation";
+
+interface MissionIndexEntry {
+  id: string;
+  name: string;
+  status: MissionStatus;
+  chamberLead: MissionChamberLead;
+  updatedAt: number;
+}
+
+function makeMissionId(): string {
+  return `mission-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function buildMission(params: {
+  name: string;
+  chamberLead: MissionChamberLead;
+  description?: string;
+  outcomeStatement?: string;
+  tags?: string[];
+}) {
+  const id  = makeMissionId();
+  const now = Date.now();
+  return {
+    id,
+    identity: {
+      name:             params.name,
+      description:      params.description      ?? "",
+      notThis:          "",
+      chamberLead:      params.chamberLead,
+      outcomeStatement: params.outcomeStatement  ?? "",
+      successCriteria:  [],
+      scope:            "",
+      tags:             params.tags             ?? [],
+    },
+    workflow:  { pioneerStack: [], routingBias: params.chamberLead, fallbackBias: params.chamberLead === "lab" ? "creation" : "lab", executionStyle: "focused", continuityRefs: [] },
+    memory:    { decisions: [], context: "", constraints: [], priorReasoning: [], continuityRefs: [], lastUpdated: now },
+    ledger:    { runHistory: [], transitions: [{ from: "birth", to: "birth", at: now, reason: "Mission born" }], currentState: "birth" as MissionStatus },
+    runtime:   { testable: false, previewable: false, deployable: false, executionState: "idle" },
+    artifacts: { artifacts: [], exportHistory: [] },
+    policy:    { allowed: [], forbidden: [], automate: [], requiresApproval: [], connectorAllowlist: [], modelAllowlist: [] },
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+async function getIndex(): Promise<MissionIndexEntry[]> {
+  const idx = await kv.get("ruberra:missions:index");
+  return Array.isArray(idx) ? idx : [];
+}
+
+async function saveIndex(idx: MissionIndexEntry[]): Promise<void> {
+  await kv.set("ruberra:missions:index", idx);
+}
+
+app.post("/make-server-b9f46b68/mcp", async (c) => {
+  let body: { tool: string; params?: Record<string, unknown> };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "bad_request" }, 400);
+  }
+
+  const { tool, params = {} } = body;
+
+  try {
+    // ── mission.create ─────────────────────────────────────────────────────
+    if (tool === "mission.create") {
+      const name       = (params.name as string | undefined)?.trim();
+      const chamberLead = (params.chamberLead as MissionChamberLead | undefined) ?? "lab";
+      if (!name) return c.json({ error: "name_required" }, 400);
+
+      const mission = buildMission({
+        name,
+        chamberLead,
+        description:      params.description      as string | undefined,
+        outcomeStatement: params.outcomeStatement  as string | undefined,
+        tags:             params.tags              as string[] | undefined,
+      });
+
+      await kv.set(`ruberra:mission:${mission.id}`, mission);
+      const idx = await getIndex();
+      idx.push({ id: mission.id, name, status: "birth", chamberLead, updatedAt: mission.createdAt });
+      await saveIndex(idx);
+
+      return c.json({ ok: true, mission });
+    }
+
+    // ── mission.get ────────────────────────────────────────────────────────
+    if (tool === "mission.get") {
+      const id = params.id as string | undefined;
+      if (!id) return c.json({ error: "id_required" }, 400);
+      const mission = await kv.get(`ruberra:mission:${id}`);
+      if (!mission) return c.json({ error: "not_found" }, 404);
+      return c.json({ ok: true, mission });
+    }
+
+    // ── mission.list ───────────────────────────────────────────────────────
+    if (tool === "mission.list") {
+      const idx = await getIndex();
+      const statusFilter = params.status as MissionStatus | undefined;
+      const list = statusFilter ? idx.filter((e) => e.status === statusFilter) : idx;
+      return c.json({ ok: true, missions: list, total: list.length });
+    }
+
+    // ── mission.updateState ────────────────────────────────────────────────
+    if (tool === "mission.updateState") {
+      const id     = params.id     as string | undefined;
+      const toState = params.state as MissionStatus | undefined;
+      const reason  = (params.reason as string | undefined) ?? "";
+      if (!id || !toState) return c.json({ error: "id_and_state_required" }, 400);
+
+      const mission = await kv.get(`ruberra:mission:${id}`);
+      if (!mission) return c.json({ error: "not_found" }, 404);
+
+      const now = Date.now();
+      const fromState: MissionStatus = mission.ledger?.currentState ?? "birth";
+      mission.ledger.currentState = toState;
+      mission.ledger.transitions  = [
+        ...(mission.ledger.transitions ?? []),
+        { from: fromState, to: toState, at: now, reason },
+      ];
+      mission.updatedAt = now;
+
+      await kv.set(`ruberra:mission:${id}`, mission);
+
+      const idx = await getIndex();
+      const entry = idx.find((e: MissionIndexEntry) => e.id === id);
+      if (entry) { entry.status = toState; entry.updatedAt = now; }
+      await saveIndex(idx);
+
+      return c.json({ ok: true, id, from: fromState, to: toState });
+    }
+
+    // ── mission.attachContinuity ───────────────────────────────────────────
+    if (tool === "mission.attachContinuity") {
+      const id            = params.id            as string | undefined;
+      const continuityId  = params.continuityId  as string | undefined;
+      if (!id || !continuityId) return c.json({ error: "id_and_continuityId_required" }, 400);
+
+      const mission = await kv.get(`ruberra:mission:${id}`);
+      if (!mission) return c.json({ error: "not_found" }, 404);
+
+      const now = Date.now();
+      const existing: string[] = mission.workflow?.continuityRefs ?? [];
+      if (!existing.includes(continuityId)) {
+        mission.workflow.continuityRefs  = [...existing, continuityId];
+        mission.memory.continuityRefs    = [...(mission.memory.continuityRefs ?? []), continuityId];
+      }
+      mission.updatedAt = now;
+
+      await kv.set(`ruberra:mission:${id}`, mission);
+      return c.json({ ok: true, id, continuityId, refs: mission.workflow.continuityRefs });
+    }
+
+    // ── mission.buildHandoff ───────────────────────────────────────────────
+    if (tool === "mission.buildHandoff") {
+      const id = params.id as string | undefined;
+      if (!id) return c.json({ error: "id_required" }, 400);
+
+      const mission = await kv.get(`ruberra:mission:${id}`);
+      if (!mission) return c.json({ error: "not_found" }, 404);
+
+      const handoff = {
+        missionId:       id,
+        name:            mission.identity?.name ?? "",
+        chamberLead:     mission.identity?.chamberLead ?? "lab",
+        currentState:    mission.ledger?.currentState ?? "birth",
+        outcomeStatement:mission.identity?.outcomeStatement ?? "",
+        continuityRefs:  mission.workflow?.continuityRefs ?? [],
+        decisions:       mission.memory?.decisions ?? [],
+        lastRunDigest:   mission.ledger?.lastRunDigest ?? null,
+        artifacts:       (mission.artifacts?.artifacts ?? []).map((a: Record<string, unknown>) => ({ id: a.id, label: a.label, type: a.type })),
+        builtAt:         Date.now(),
+        schemaVersion:   "1.0",
+      };
+
+      return c.json({ ok: true, handoff });
+    }
+
+    return c.json({ error: "unknown_tool", tool }, 400);
+
+  } catch (err) {
+    console.error("[Ruberra MCP] error:", err);
+    return c.json({ error: "internal_error", detail: String(err) }, 500);
+  }
 });
 
 Deno.serve(app.fetch);

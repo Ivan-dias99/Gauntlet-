@@ -135,6 +135,20 @@ export const PROVIDER_ADAPTERS: ProviderAdapter[] = [
     available:    false,
     notes:        "Free inference API. Highly variable latency and availability. Set RUBERRA_HF_KEY.",
   },
+
+  // ── Tier B: Gemini (Google AI) ────────────────────────────────────────────
+  {
+    id:           "gemini-google",
+    kind:         "proprietary",
+    tier:         "B",
+    label:        "Gemini (Google AI)",
+    base_url:     "https://generativelanguage.googleapis.com/v1beta",
+    config_key:   "GEMINI_API_KEY",
+    health_path:  "",
+    requires_key: true,
+    available:    false,
+    notes:        "Google Generative Language API. Set GEMINI_API_KEY (or GOOGLE_AI_API_KEY). Tier B — proprietary, non-sovereign.",
+  },
 ];
 
 // ─── Open-weight model registry ───────────────────────────────────────────────
@@ -264,6 +278,40 @@ export const SOVEREIGN_MODEL_REGISTRY: SovereignModel[] = [
     license:        "Apache 2.0",
     description:    "High-quality local text embeddings. Powers Lab semantic search and School memory recall when Supabase pgvector is configured.",
   },
+  // ── Tier B: Gemini wrapped ────────────────────────────────────────────────
+  {
+    id:             "gemini-2.5-pro",
+    label:          "Gemini 2.5 Pro",
+    family:         "Gemini",
+    model_class:    "reasoning",
+    tier:           "B",
+    adapter_id:     "gemini-google",
+    ollama_name:    "",
+    hf_id:          "",
+    context_window: 1000000,
+    quality:        "elite",
+    latency:        "medium",
+    parameters:     "proprietary",
+    license:        "Google Proprietary",
+    description:    "Google Gemini 2.5 Pro via Generative Language API. Requires GEMINI_API_KEY. Tier B — external provider, not sovereign. First live Gemini path in Ruberra.",
+  },
+  {
+    id:             "gemini-2.0-flash",
+    label:          "Gemini 2.0 Flash",
+    family:         "Gemini",
+    model_class:    "fast",
+    tier:           "B",
+    adapter_id:     "gemini-google",
+    ollama_name:    "",
+    hf_id:          "",
+    context_window: 1000000,
+    quality:        "strong",
+    latency:        "low",
+    parameters:     "proprietary",
+    license:        "Google Proprietary",
+    description:    "Gemini 2.0 Flash — fast, low-latency Gemini path. Fallback for lab/school/creation when Groq is unavailable.",
+  },
+
   // ── Tier B: Wrapped free fallback ─────────────────────────────────────────
   {
     id:             "groq-llama3.3-70b",
