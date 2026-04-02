@@ -86,7 +86,7 @@ import { executeAIRequest, type ExecutionRequest } from "./components/execution-
 import { defaultCivilization, registerAgent, admitAgent, activateAgent, type AgentDomain } from "./dna/multi-agent";
 import { detectPatterns } from "./dna/intelligence-analytics";
 import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
-import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph, claimCollectiveResource } from "./dna/collective-execution";
+import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph, claimCollectiveResource, checkCollectiveCollision, attributeConsequence, recordAttribution } from "./dna/collective-execution";
 import { defaultPresenceManifest, createChannel, registerChannel } from "./dna/distribution-presence";
 import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit, verifyValueUnit } from "./dna/value-exchange";
 import { defaultEcosystemState, proposeExtension, admitToNetwork } from "./dna/ecosystem-network";
@@ -495,6 +495,28 @@ export default function App() {
       );
       return upsertLedger(prev, updated);
     });
+    // Collective collision check — warn if another in-progress continuity holds this chamber
+    const existingRun = runtimeFabric.continuity.find(
+      (c) => c.chamber === tab && c.status === "in_progress"
+    );
+    if (existingRun) {
+      const collision = checkCollectiveCollision(
+        collectiveState.collisionMap,
+        `chamber.${tab}`,
+        runtimeFabric.workspace.owner,
+      );
+      if (!collision.safe) {
+        setRuntimeFabric((prev) => pushSignal(prev, {
+          type:               "lifecycle",
+          label:              `Collision: ${tab} chamber already held by ${collision.conflictWith ?? "another run"} — contention risk`,
+          severity:           "warn",
+          sourceChamber:      tab,
+          destinationChamber: tab,
+          destination:        { tab, view: "chat" },
+        }));
+      }
+    }
+
     if (!govResult.allowed) {
       setRuntimeFabric((prev) => pushSignal(prev, {
         type:               "lifecycle",
@@ -892,6 +914,24 @@ export default function App() {
           };
           // Advance workflow stage to completed for the Creation run
           next = transitionWorkflowStage(next, continuityId, "completed");
+          // Attribution consequence — record that this operator produced a build artifact
+          const attr = attributeConsequence(
+            activeMissionId ?? continuityId,
+            next.workspace.owner,
+            `creation.build · ${assistantContent.length} chars`,
+            "primary",
+            continuityId,
+            false,
+          );
+          next = pushSignal(next, {
+            type:               "lifecycle",
+            label:              `Creation attributed: ${attr.consequenceRef.slice(0, 60)} — ${next.workspace.owner}`,
+            severity:           "info",
+            sourceChamber:      "creation",
+            destinationChamber: "profile",
+            destination:        { tab: "profile", view: "overview" },
+            linkedObjectId:     continuityId,
+          });
         }
         // Compound network: register this run as a compound node on every completion
         next = upsertCompoundRun(next, { chamber: tab, continuityId, contentLen: assistantContent.length });
