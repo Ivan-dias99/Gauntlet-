@@ -570,7 +570,7 @@ export function HeroLanding({ onEnter, theme }: { onEnter: (chamber?: string) =>
                 textAlign: "center",
               }}
             >
-{/* Command portal */}
+              {/* Command portal */}
               <CommandPortal
                 onEnter={onEnter}
                 selected={selected}
