@@ -28,9 +28,9 @@ interface ModelSelectorProps {
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
 const CHAMBER_ACCENT: Record<ChamberTab, string> = {
-  lab:      "#52796A",
-  school:   "#4A6B84",
-  creation: "#8A6238",
+  lab:      "var(--chamber-lab)",
+  school:   "var(--chamber-school)",
+  creation: "var(--chamber-creation)",
 };
 
 const QUALITY_DOT: Record<ModelDescriptor["quality"], string> = {

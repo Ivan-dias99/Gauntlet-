@@ -742,12 +742,14 @@ export interface RuberraTerminalProps {
   placeholder?: string;
   elapsedLabel?: string;
   chamberAccentVar?: string;
+  /** Mission binding — shown in execution trace when a mission is active */
+  missionName?: string;
 }
 
 export function RuberraTerminal({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
   chamberLabel, chamber, task, modelId, onTaskChange, onModelChange, placeholder = "Enter directive…", elapsedLabel,
-  chamberAccentVar = "var(--chamber-creation)",
+  chamberAccentVar = "var(--chamber-creation)", missionName,
 }: RuberraTerminalProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -843,6 +845,7 @@ export function RuberraTerminal({
             tierLabel={TIER_LABEL[execTruth.tier]}
             tierColor={TIER_COLOR[execTruth.tier]}
             modelTruthLabel={execTruth.tier_label}
+            missionName={missionName}
           />
         </div>
       )}

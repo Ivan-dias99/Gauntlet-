@@ -456,12 +456,13 @@ function ThinkingDots() {
 // ─── Assistant message ────────────────────────────────────────────────────────
 
 function AssistantMessage({
-  msg, accent, chamberLabel, chamberId,
+  msg, accent, chamberLabel, chamberId, missionName,
 }: {
   msg: Message;
   accent: string;
   chamberLabel: string;
   chamberId: "lab" | "school" | "creation";
+  missionName?: string;
 }) {
   const sovereign = getExecutionTruth(chamberId);
   const trace = msg.execution_trace;
@@ -485,6 +486,7 @@ function AssistantMessage({
           tierLabel={TIER_LABEL[sovereign.tier]}
           tierColor={TIER_COLOR[sovereign.tier]}
           modelTruthLabel={sovereign.tier_label}
+          missionName={missionName}
         />
       )}
       <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
@@ -805,6 +807,7 @@ export function ChamberChat({
   modelId,
   onTaskChange,
   onModelChange,
+  missionName,
 }: {
   messages:      Message[];
   isLoading:     boolean;
@@ -817,6 +820,8 @@ export function ChamberChat({
   modelId: string;
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
+  /** Mission binding — propagated into each assistant message execution strip */
+  missionName?: string;
 }) {
   const threadRef = useRef<HTMLDivElement>(null);
 
@@ -887,6 +892,7 @@ export function ChamberChat({
                       accent={config.accent}
                       chamberLabel={chamberLabel}
                       chamberId={config.id}
+                      missionName={missionName}
                     />
                   )}
                 </div>

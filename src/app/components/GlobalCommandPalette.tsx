@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { type NavFn, type Tab } from "./shell-types";
 import { LAB_DOMAINS, SCHOOL_TRACKS, SCHOOL_ROLES, CREATION_BLUEPRINTS, CREATION_ENGINES } from "./product-data";
 import { type SearchIndexEntry } from "./runtime-fabric";
+import { type Mission } from "../dna/mission-substrate";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -140,6 +141,25 @@ function buildRuntimeEntries(
   });
 }
 
+function buildMissionEntries(
+  missions: Mission[],
+  navigate: NavFn,
+  onClose: () => void
+): CmdEntry[] {
+  if (!missions.length) return [];
+  const go = (tab: Tab, view: string, id = "") => {
+    navigate(tab, view, id);
+    onClose();
+  };
+  return missions.map((m) => ({
+    id:      `mission-${m.id}`,
+    label:   m.identity.name,
+    meta:    `Mission · ${m.identity.chamberLead} · ${m.ledger.currentState}`,
+    chamber: m.identity.chamberLead as Tab,
+    action:  () => go("profile", "projects"),
+  }));
+}
+
 // ─── Chamber dot ──────────────────────────────────────────────────────────────
 
 const CHAMBER_DOT: Record<string, string> = {
@@ -156,12 +176,15 @@ interface GlobalCommandPaletteProps {
   onClose:     () => void;
   navigate:    NavFn;
   searchIndex: SearchIndexEntry[];
+  /** Optional mission list for mission-level navigation commands */
+  missions?:   Mission[];
 }
 
-export function GlobalCommandPalette({ open, onClose, navigate, searchIndex }: GlobalCommandPaletteProps) {
+export function GlobalCommandPalette({ open, onClose, navigate, searchIndex, missions = [] }: GlobalCommandPaletteProps) {
   const staticEntries = buildStaticEntries(navigate, onClose);
   const runtimeEntries = buildRuntimeEntries(searchIndex, navigate, onClose);
-  const allEntries = [...staticEntries, ...runtimeEntries];
+  const missionEntries = buildMissionEntries(missions, navigate, onClose);
+  const allEntries = [...staticEntries, ...runtimeEntries, ...missionEntries];
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
 

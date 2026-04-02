@@ -84,13 +84,13 @@ export function SignalsPanel({ signals = [], anomalies }: SignalsPanelProps) {
               alignItems: "center",
               justifyContent: "space-between",
               padding: "6px 12px",
-              borderBottom: "1px solid var(--r-hairline, #ECEAE4)",
+              borderBottom: "1px solid var(--r-border-soft)",
             }}
           >
             <span
               style={{
                 fontSize: "12px",
-                color: "var(--r-ink2, #383835)",
+                color: "var(--r-text)",
               }}
             >
               {s.label}
@@ -99,7 +99,7 @@ export function SignalsPanel({ signals = [], anomalies }: SignalsPanelProps) {
               <span
                 style={{
                   fontSize: "11px",
-                  color: "var(--r-ink4, #9E9E99)",
+                  color: "var(--r-subtext)",
                   fontFamily: "'JetBrains Mono', monospace",
                 }}
               >
@@ -113,7 +113,7 @@ export function SignalsPanel({ signals = [], anomalies }: SignalsPanelProps) {
           style={{
             padding: "12px",
             fontSize: "11px",
-            color: "var(--r-ink5, #C0C0BB)",
+            color: "var(--r-muted)",
             textAlign: "center",
           }}
         >
