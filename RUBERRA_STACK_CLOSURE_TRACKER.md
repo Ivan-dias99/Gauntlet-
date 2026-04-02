@@ -100,9 +100,18 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
 
 **Surface:**
 - `MissionOperationsPanel` — real callbacks wired, renders live state
-- ProfileMode.tsx — duplicate import + duplicate prop fixed
+- ProfileMode.tsx — duplicate `MissionOperationsPanel` import removed (line 33, QA gate 2026-04-02)
+- App.tsx — duplicate `onTabChange` attribute on `SovereignBar` removed (QA gate 2026-04-02)
 
-- CLOSED 2026-04-02
+**Legacy / parallel path (non-canonical, non-governing):**
+- `AutonomousOperationsState` / `operations` state (from `components/autonomous-operations.ts`) remains in App.tsx.
+  Governs only handoff and legacy signal mutation (handleHandoffAccept/Reject, handleOperationSignalRead/Resolve).
+  Does NOT participate in the real execution loop. Real execution: `activeMissionOps` path only.
+- `OperationsPanel` still rendered below `MissionOperationsPanel` in ProfileMode > operations view.
+  Shows legacy/empty state. Non-canonical. Harmless. Acknowledged.
+- `components/autonomous-operations.ts` retained for backward compat per its own ownership comment. Canonical types live in `dna/autonomous-operations.ts`.
+
+- CLOSED 2026-04-02 · QA VERIFIED 2026-04-02
 
 ---
 
