@@ -12,8 +12,8 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 
 | # | Stack | Status | Scope Lock | Exit Criteria (Definition of Done) |
 |---|---|---|---|---|
-| 1 | Canon + Sovereignty | ACTIVE | Constitution, product identity, anti-drift gates, single-source law docs | All Ruberra law docs aligned; conflicting legacy framing removed; governance language is canonical and non-duplicative |
-| 2 | Mission Substrate | LOCKED | Mission entity model, mission lifecycle, mission repository container | Mission is first-class system object with create/open/archive flows |
+| 1 | Canon + Sovereignty | CLOSED | Constitution, product identity, anti-drift gates, single-source law docs | CLOSED 2026-04-02: Ruberra law docs aligned; canon-sovereignty.ts + stack-registry.ts installed; README points to sovereign law docs; no conflicting framing; drift signal registry live |
+| 2 | Mission Substrate | ACTIVE | Mission entity model, mission lifecycle, mission repository container, mission-first shell binding | Mission is first-class system object with create/open/archive/active flows; MissionContextBand authoritative; MissionRepository live; MissionOperationsPanel mounted |
 | 3 | Sovereign Intelligence | LOCKED | Native mission reasoning loops, mission-context memory, structured prompt spine | Intelligence runs on mission state, not generic chat state |
 | 4 | Autonomous Operations | LOCKED | Multi-step execution runtime, deterministic actions, retry and audit paths | Mission actions execute with logs, outcomes, and recovery rules |
 | 5 | Adaptive Experience | LOCKED | Chamber-aware UX, mission state surfaces, consequence-driven interface | UI reflects mission state transitions in all chambers |
@@ -33,38 +33,53 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 | 19 | Personal Sovereign OS | LOCKED | Individual operator control plane and personal mission continuity | Personal system continuity works without fragmentation |
 | 20 | Compound Intelligence Network | LOCKED | Networked intelligence across missions and entities | Compound reasoning emerges from closed lower stacks |
 
-## Active Frontier: Stack 1 (Canon + Sovereignty)
+## Closed: Stack 1 (Canon + Sovereignty)
+
+### Exit Proof
+- `RUBERRA_WORKSPACE_CONSTITUTION.md` — sovereign law, identity, anti-drift rules. Non-negotiable.
+- `CLAUDE.md` — compressed execution memory for agents. Non-negotiable.
+- `RUBERRA_STACK_CLOSURE_TRACKER.md` — canonical sequencing authority.
+- `src/app/dna/canon-sovereignty.ts` — runtime materialization of constitutional kernel. `MOTHER_LAW` enforced.
+- `src/app/dna/stack-registry.ts` — machine-readable stack canon with all 20 stacks typed.
+- `assertStackOrder()` — runtime guard preventing stack order violations.
+- README correctly points to sovereign law docs.
+- Drift signal registry live (`DRIFT_SIGNALS` in canon-sovereignty.ts).
+- No conflicting framing present in root docs.
+
+---
+
+## Active Frontier: Stack 2 (Mission Substrate)
 
 ### Scope (Now)
-- Eliminate conflicting identity language from repository-facing docs.
-- Centralize constitutional references to one authoritative law source.
-- Add stack-closure operating discipline so work cannot skip order.
+- Mission entity model in dna/mission-substrate.ts (DONE)
+- Mission lifecycle: create / activate / pause / block / complete / archive (DONE)
+- MissionContextBand: shell-level authoritative mission strip (DONE — live pulse, isExecuting, runCount)
+- MissionRepository: create + list + activate in ProfileMode (DONE)
+- MissionOperationsPanel: mission-scoped tasks/signals/approvals surface (NEEDS MOUNTING)
+- Mission-first routing: activeMissionId injected into every dispatch (DONE)
+- MCP mission client: create / updateState / attachContinuity / buildHandoff (DONE)
 
-### Deliverables
-- `RUBERRA_WORKSPACE_CONSTITUTION.md` remains the sovereign law source.
-- `CLAUDE.md` remains the compressed execution memory for agents.
-- `RUBERRA_STACK_CLOSURE_TRACKER.md` (this file) governs closure sequencing.
+### Open Residue
+1. `MissionOperationsPanel` — built in components/ but not mounted. Must appear in ProfileMode > operations when a mission is active.
+2. `activeMissionOps` — no state slot in App.tsx. Needs `defaultMissionOperationsState(activeMissionId)` initialized on mission activation.
+3. Mission-to-operations binding: task creation via App.tsx execution events is not yet wired.
 
-### Verification Proof
-- Documentation exists and is mutually non-conflicting.
-- Stack board explicitly locks stacks 2-20 until stack 1 is closed.
-- Root README points contributors to Ruberra canonical operating docs.
+### Exit Criteria
+- [ ] MissionOperationsPanel mounted and visible when active mission has tasks/signals
+- [ ] `activeMissionOps` state in App.tsx, initialized on activeMissionId change
+- [ ] Mission ledger audit trail visible in governance surface
+- [ ] Mission state transitions surface in SystemHealthBand on block/complete
 
+---
 
 ## Pioneer Continuous Task Activation
 
 | Pioneer | Immediate Task | Mode |
 |---|---|---|
-| Claude Architect | Own constitutional coherence audits and Stack 1 closure validation. | ACTIVE |
-| Codex Systems | Maintain typed stack execution queue and mission-substrate contract drafts. | ACTIVE |
-| Cursor Builder | Prepare mission-first shell entry implementation path for Stack 2. | QUEUED (unlocks when Stack 1 closes) |
-| Grok Reality Pulse | Run fast contradiction checks on mission-substrate assumptions. | QUEUED |
-| Gemini Expansion | Expand benchmark intelligence inputs for each stack gate package. | QUEUED |
-| Copilot QA Guard | Enforce consistency checks and regression review on every stack close PR. | ACTIVE |
-| Antigravity Director | Maintain strategic sequencing, anti-drift governance, and close/open gate decisions. | ACTIVE |
-
-## Next Gate to Close Stack 1
-
-1. Replace legacy README framing with Ruberra mission-operating-system framing.
-2. Add mission-first architecture brief (single source) referenced from README.
-3. Open first implementation task under stack 2 (Mission Substrate) only after stack 1 close checklist is signed.
+| Claude Architect | Own Stack 2 (Mission Substrate) closure — mount MissionOperationsPanel, wire activeMissionOps, advance to Stack 3. | ACTIVE |
+| Codex Systems | Extend dna/autonomous-operations.ts to add task creation events on execution completion. | ACTIVE |
+| Cursor Builder | Build mission-first entry path: ensure every chamber prompt can optionally bind to a mission. | ACTIVE (Stack 2 unlocked) |
+| Grok Reality Pulse | Contradiction check: ensure mission routing bias in routing-contracts.ts aligns with chamber routing behavior. | ACTIVE |
+| Gemini Expansion | Expand Stack 3 (Sovereign Intelligence) mission-bound reasoning model — ensure MissionReasoningRequest feeds from activeMission. | QUEUED (when Stack 2 closes) |
+| Copilot QA Guard | Regression check on MissionContextBand + MissionOperationsPanel surface after mounting. | ACTIVE |
+| Antigravity Director | Gate Stack 3 entry. Monitor drift in Stack 2 operations — ensure tasks don't drift into generic PM patterns. | ACTIVE |

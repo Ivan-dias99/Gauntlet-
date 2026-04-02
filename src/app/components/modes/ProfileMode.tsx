@@ -29,6 +29,8 @@ import {
   defaultAutonomousOperationsState,
   type AutonomousOperationsState,
 } from "../autonomous-operations";
+import { MissionOperationsPanel } from "../MissionOperationsPanel";
+import { type MissionOperationsState } from "../../dna/autonomous-operations";
 import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
 import { ExecutionConsequenceStrip } from "../ExecutionConsequenceStrip";
 import { GovernanceLedgerStrip } from "../GovernanceLedgerStrip";
@@ -98,6 +100,8 @@ interface ProfileModeProps {
   missions: Mission[];
   onMissionUpsert: (m: Mission) => void;
   onMissionActivate: (missionId: string) => void;
+  /** Stack 02 — Mission-scoped operations. Present when a mission is active. */
+  activeMissionOps?: MissionOperationsState;
   /** Stack 04 — Autonomous Operations state. Optional; defaults to empty state when not yet wired. */
   operations?: AutonomousOperationsState;
   onOperationSignalRead?:    (id: string) => void;
@@ -451,6 +455,7 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
 
 export function ProfileMode({
   messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, intelligence: _intelligence, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport, missions, onMissionUpsert, onMissionActivate,
+  activeMissionOps,
   operations: operationsProp,
   onOperationSignalRead,
   onOperationSignalResolve,
@@ -991,6 +996,20 @@ export function ProfileMode({
         {/* ── OPERATIONS (Stack 04) ── */}
         {profileView === "operations" && (
           <>
+          {/* Mission-scoped operations — shown when a mission is active (Stack 02) */}
+          {activeMissionOps && (
+            <SectionBlock title={`Mission Operations · ${activeMissionOps.missionId.slice(0, 8)}`}>
+              <div style={{ padding: "0 14px 12px" }}>
+                <MissionOperationsPanel
+                  missionId={activeMissionOps.missionId}
+                  ops={activeMissionOps}
+                  onSignalDismiss={() => { /* future: update activeMissionOps */ }}
+                  onApprovalApprove={() => { /* future: update activeMissionOps */ }}
+                  onApprovalReject={() => { /* future: update activeMissionOps */ }}
+                />
+              </div>
+            </SectionBlock>
+          )}
           <OperationsPanel
             tasks={operations.tasks}
             reviews={operations.reviews}

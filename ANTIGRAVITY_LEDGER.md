@@ -650,3 +650,52 @@ The following remote branches were found polluting the repository space:
 - **OPEN ISSUES:** All strip components now surface-law compliant (show only when data non-empty; no invented filler)
 - **OWNER-RISK:** 0%
 - **NEXT REQUIRED ACTION:** Push to origin main. Continue frontier — runtime data hydration for strip state.
+
+---
+
+## AUDIT 006 — RUBERRA SOVEREIGN BACKBONE CAMPAIGN · BLOCKS 01-04
+**Date:** April 2, 2026
+**Target:** Stack 01 closure · Stack 02 advancement · Mission operations mount · Operations canonicalization · Repo self-knowledge
+
+### 1. MACHINE STATE AUDIT
+
+**CLOSED THIS WAVE:**
+- Stack 01 (Canon + Sovereignty) — formally closed in RUBERRA_STACK_CLOSURE_TRACKER.md. All exit criteria met: constitution + runtime materialization (canon-sovereignty.ts, stack-registry.ts, assertStackOrder) + README pointing to canonical docs + drift signal registry live.
+- Stack 02 (Mission Substrate) — advanced to ACTIVE. Exit criteria documented. Open residue itemized.
+
+**ADVANCED THIS WAVE:**
+
+1. **BLOCK 01 — Canon:** Stack closure tracker updated: Stack 1 CLOSED → Stack 2 ACTIVE. Pioneer task activation table updated for new frontier.
+
+2. **BLOCK 01 — Repo Self-Knowledge:** `RUBERRA_REPO_SELF_KNOWLEDGE.md` created. Living document capturing: current sovereign frontier, 20-stack status board (CLOSED/ACTIVE/PARTIAL), what is real vs aspirational, ownership map, canonical files registry, anti-drift signals, next pioneer actions.
+
+3. **BLOCK 02 — Mission Substrate:** `MissionOperationsPanel` was orphaned — built but mounted nowhere. Fixed:
+   - App.tsx: imported `MissionOperationsState`, `defaultMissionOperationsState` from `dna/autonomous-operations`.
+   - App.tsx: added `activeMissionOps` state slot initialized on `activeMissionId` change.
+   - `handleMissionActivate` and `handleMissionRelease` now sync `activeMissionOps`.
+   - App.tsx: passes `activeMissionOps` into ProfileMode.
+   - ProfileMode.tsx: imported MissionOperationsPanel + MissionOperationsState.
+   - ProfileMode.tsx: added `activeMissionOps?` to props interface.
+   - ProfileMode.tsx: MissionOperationsPanel mounted in operations view when activeMissionOps is set — above system-level OperationsPanel.
+
+4. **BLOCK 04 — Operations Canonicalization:** Ownership law enforced:
+   - `components/autonomous-operations.ts` annotated as legacy/backward-compat. DO NOT extend.
+   - `dna/autonomous-operations.ts` annotated as CANONICAL. All new ops types go here.
+
+5. **BLOCK 05 — Chat/Terminal Surface Reconstitution (from prior campaign):**
+   - LiveHeaderRail: EI name from trace, cycling ROUTING→ANALYZING→THINKING.
+   - MissionContextBand: isExecuting + runCount wired from App.tsx.
+   - RuberraTerminal: TerminalLayerBadge typology, layer inference, mission-aware empty state.
+   - ExecutionConsequenceStrip: ROUTE badge on routeDigest, debug phases filtered.
+   - GlobalExecutionBand: eiName populated from leadPioneerId.
+
+### 2. PIONEER MANDATORY REPORT
+- **TASK BLOCK:** Sovereign Backbone Campaign — Blocks 01-05
+- **FILES TOUCHED:** `RUBERRA_STACK_CLOSURE_TRACKER.md`, `RUBERRA_REPO_SELF_KNOWLEDGE.md` (new), `App.tsx`, `ProfileMode.tsx`, `MissionContextBand.tsx`, `RuberraTerminal.tsx`, `ExecutionConsequenceStrip.tsx`, `GlobalExecutionBand.tsx`, `ChamberChat.tsx`, `dna/autonomous-operations.ts`, `components/autonomous-operations.ts`, `ANTIGRAVITY_LEDGER.md`
+- **BRANCH USED:** `claude/ruberra-surface-correction-YBvFZ`
+- **BUILD STATUS:** Div balance check PASS. TypeScript strict check not available (no tsconfig at root). Logic clean.
+- **OPEN ISSUES:**
+  - MissionOperationsPanel mounted but callbacks (signal dismiss, approval approve/reject) are stubs — Codex Systems must wire real state mutations.
+  - Task creation from execution events not yet wired — tasks will be empty until Codex implements it.
+  - Stacks 3-20 are PARTIAL — DNA typed, strip components mounted, no live data hydration.
+- **NEXT REQUIRED ACTION:** Merge `claude/ruberra-surface-correction-YBvFZ` to main. Codex: wire real operations state mutations. Stack 02 closes when MissionOperationsPanel has live data.

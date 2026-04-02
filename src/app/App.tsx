@@ -97,6 +97,7 @@ import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dn
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
 import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
 import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
+import { defaultMissionOperationsState, type MissionOperationsState } from "./dna/autonomous-operations";
 import { PIONEER_REGISTRY } from "./components/pioneer-registry";
 import { mcpMissionCreate, mcpMissionUpdateState, mcpMissionAttachContinuity, mcpMissionBuildHandoff } from "./components/mcp-client";
 
@@ -168,6 +169,9 @@ export default function App() {
   const [activeMissionId, setActiveMissionId] = useState<string | null>(() => {
     try { return localStorage.getItem("ruberra_active_mission_id") ?? null; } catch { return null; }
   });
+  const [activeMissionOps, setActiveMissionOps] = useState<MissionOperationsState | null>(() =>
+    activeMissionId ? defaultMissionOperationsState(activeMissionId) : null
+  );
 
   // ── Detail navigation ────────────────────────────────────────────────────────
   const [detailId, setDetailId] = useState<string>("");
@@ -328,11 +332,13 @@ export default function App() {
 
   const handleMissionActivate = useCallback((missionId: string) => {
     setActiveMissionId(missionId);
+    setActiveMissionOps(defaultMissionOperationsState(missionId));
     try { localStorage.setItem("ruberra_active_mission_id", missionId); } catch { /* storage full */ }
   }, []);
 
   const handleMissionRelease = useCallback(() => {
     setActiveMissionId(null);
+    setActiveMissionOps(null);
     try { localStorage.removeItem("ruberra_active_mission_id"); } catch { /* ignore */ }
   }, []);
   const handleMissionPaletteNew = useCallback(() => {
@@ -1569,6 +1575,7 @@ export default function App() {
                   missions={missions}
                   onMissionUpsert={handleMissionUpsert}
                   onMissionActivate={handleMissionActivate}
+                  activeMissionOps={activeMissionOps ?? undefined}
                   operations={operations}
                   onOperationSignalRead={handleOperationSignalRead}
                   onOperationSignalResolve={handleOperationSignalResolve}
