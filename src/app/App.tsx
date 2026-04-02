@@ -1405,7 +1405,7 @@ export default function App() {
               taskId: task.id,
               headline: `Task completed · ${task.title.slice(0, 52)}`,
               body: ev.digest.slice(0, 140),
-              actionable: false,
+              actionable: true,
             }),
           ],
           lastUpdated: Date.now(),
