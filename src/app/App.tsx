@@ -85,6 +85,7 @@ import {
   upsertProviderHealth,
   upsertCompoundRun,
   type RuntimeFabric,
+  type ContinuityItem,
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
 import { getExecutionTruth, buildLiveAdapterRegistry, resolveSovereignStack } from "./components/sovereign-runtime";
@@ -161,7 +162,7 @@ function buildMissionSystemContext(mission: Mission): string {
  * as prior context. Intelligence must know what has happened in this
  * mission, not just what the mission is.
  */
-function buildMissionMemoryContext(mission: Mission, continuity: import("./components/runtime-fabric").ContinuityItem[]): string | null {
+function buildMissionMemoryContext(mission: Mission, continuity: ContinuityItem[]): string | null {
   const missionName = mission.identity.name.toLowerCase();
   const relevant = continuity
     .filter((c) =>
