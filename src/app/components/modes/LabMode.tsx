@@ -225,7 +225,7 @@ function LabArchive({ messages, navigate }: { messages: Message[]; navigate: Nav
 
 export function LabMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  labView, onLabView, navigate, detailId, task, modelId, onTaskChange, onModelChange,
+  labView, onLabView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -241,6 +241,7 @@ export function LabMode({
   modelId: string;
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
+  missionName?: string;
 }) {
   const showHome = labView === "home" || (!messages.length && labView === "chat");
 
@@ -290,6 +291,7 @@ export function LabMode({
       modelId={modelId}
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
+      missionName={missionName}
     />
   );
 }
