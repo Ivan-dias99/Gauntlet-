@@ -97,6 +97,7 @@ import { defaultCompoundNetwork } from "./dna/compound-intelligence";
 import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
 import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
 import { PIONEER_REGISTRY } from "./components/pioneer-registry";
+import { mcpMissionCreate, mcpMissionUpdateState, mcpMissionAttachContinuity, mcpMissionBuildHandoff } from "./components/mcp-client";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
@@ -272,7 +273,26 @@ export default function App() {
   }, [trustGovState]);
 
   const handleMissionUpsert = useCallback((m: Mission) => {
-    setMissions((prev) => upsertMission(prev, m));
+    setMissions((prev) => {
+      const isNew = !prev.find((existing) => existing.id === m.id);
+      if (isNew) {
+        // Persist to MCP KV store — fire-and-forget, non-blocking
+        mcpMissionCreate({
+          name:             m.identity.name,
+          chamberLead:      m.identity.chamberLead,
+          description:      m.identity.description || undefined,
+          outcomeStatement: m.identity.outcomeStatement || undefined,
+          tags:             m.identity.tags.length ? m.identity.tags : undefined,
+        }).catch(() => { /* non-fatal */ });
+      } else {
+        // Sync state transition to MCP if ledger state changed
+        const existing = prev.find((ex) => ex.id === m.id);
+        if (existing && existing.ledger.currentState !== m.ledger.currentState) {
+          mcpMissionUpdateState(m.id, m.ledger.currentState, "mission state sync").catch(() => { /* non-fatal */ });
+        }
+      }
+      return upsertMission(prev, m);
+    });
   }, []);
 
   // ── Stack 04 — Autonomous Operations handlers ─────────────────────────────────
@@ -864,6 +884,13 @@ export default function App() {
         return next;
       });
       setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "idle"));
+
+      // MCP: attach continuity to active mission + build handoff digest — fire-and-forget
+      if (activeMissionId) {
+        mcpMissionAttachContinuity(activeMissionId, continuityId).catch(() => { /* non-fatal */ });
+        mcpMissionBuildHandoff(activeMissionId).catch(() => { /* non-fatal */ });
+      }
+
       if (tab === "creation") {
         setFlowState((prev) => {
           const run = prev.runs.find((r) => r.missionId === continuityId);
