@@ -570,42 +570,6 @@ export function HeroLanding({ onEnter, theme }: { onEnter: (chamber?: string) =>
                 textAlign: "center",
               }}
             >
-              {/* Status — single line, no duplicate “sovereign” claims */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                style={{
-                  display:       "inline-flex",
-                  alignItems:    "center",
-                  gap:           "6px",
-                  marginBottom:  "24px",
-                  padding:       "4px 13px",
-                  borderRadius:  "999px",
-                  border:        "1px solid var(--r-border)",
-                  background:    "var(--r-surface)",
-                  fontSize:      "9px",
-                  fontFamily:    "'JetBrains Mono', monospace",
-                  color:         "var(--r-dim)",
-                  letterSpacing: "0.10em",
-                  textTransform: "uppercase" as const,
-                  boxShadow:     "0 1px 4px rgba(0,0,0,0.04)",
-                }}
-              >
-                <span
-                  style={{
-                    width:        "4px",
-                    height:       "4px",
-                    borderRadius: "50%",
-                    background:   "var(--chamber-lab)",
-                    display:      "inline-block",
-                    flexShrink:   0,
-                    opacity:      0.85,
-                  }}
-                />
-                Mother shell · live
-              </motion.div>
-
               {/* Command portal */}
               <CommandPortal
                 onEnter={onEnter}
