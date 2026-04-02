@@ -114,6 +114,21 @@ import { defaultOrgState, assessMissionHealth, surfaceOrgInsights, defaultCapabi
 import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dna/personal-sovereign-os";
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
 import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
+import {
+  defaultSovereignSecurityState,
+  type SovereignSecurityState,
+  createSession,
+  buildFingerprint,
+  updateTrustSignal,
+  createSecurityEvent,
+  acknowledgeEvent,
+  deriveTrustSignal,
+  evaluateAccess,
+  defaultAccessPolicy,
+  scanConnectorOutput,
+  checkStorageSafety,
+  DEFAULT_RUNTIME_SAFETY_POLICY,
+} from "./dna/sovereign-security";
 import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
 import {
   prioritizeMemory,
@@ -402,6 +417,7 @@ export default function App() {
   const [_personalOSBase]   = useState(() => defaultPersonalOS("operator-1"));
   // compoundNetwork is live in runtimeFabric — removed dead useState duplicate
   const [trustGovState, setTrustGovState] = useState(loadTrustGov);
+  const [securityState, setSecurityState] = useState<SovereignSecurityState>(defaultSovereignSecurityState);
   const [flowState, setFlowState] = useState(defaultAutonomousFlowState);
 
   useEffect(() => {
@@ -598,6 +614,39 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
+  // ── Stack 06: Operator session init — identity integrity substrate ─────────────
+  useEffect(() => {
+    setSecurityState((prev) => {
+      if (prev.session) return prev;
+      const session = createSession(buildFingerprint());
+      return updateTrustSignal({ ...prev, session });
+    });
+  }, []);
+
+  // ── Stack 06: Runtime safety — periodic storage safety check ──────────────────
+  useEffect(() => {
+    const check = () => {
+      const result = checkStorageSafety(DEFAULT_RUNTIME_SAFETY_POLICY);
+      if (!result.safe) {
+        setSecurityState((prev) => {
+          const alreadyFlagged = prev.events.some(
+            (e) => !e.acknowledged && e.type === "storage_overflow"
+          );
+          if (alreadyFlagged) return prev;
+          const event = createSecurityEvent({
+            type:     "storage_overflow",
+            severity: "warn",
+            summary:  `localStorage usage ${Math.round((result.usageBytes ?? 0) / 1024)}KB exceeds safety threshold.`,
+          });
+          return updateTrustSignal({ ...prev, events: [...prev.events, event] });
+        });
+      }
+    };
+    check();
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   // ── Abort refs ───────────────────────────────────────────────────────────────
   const abortRefs = useRef<Record<Tab, AbortController | null>>(
     emptyRecord<AbortController | null>(null)
@@ -630,6 +679,14 @@ export default function App() {
         return blocks.length > 0 ? { ...m, blocks } : m;
       }),
     }));
+  }, []);
+
+  // ── Stack 06: Security acknowledge — dismiss all active events, re-derive signal ─
+  const handleSecurityAcknowledge = useCallback(() => {
+    setSecurityState((prev) => {
+      const acknowledged = prev.events.map(acknowledgeEvent);
+      return updateTrustSignal({ ...prev, events: acknowledged });
+    });
   }, []);
 
   // ── Stream handler ────────────────────────────────────────────────────────────
@@ -823,6 +880,44 @@ export default function App() {
       continuityId: `${tab}-pre-dispatch`,
       label:        `governance.${govResult.verdict}: ${govResult.reason}`,
     }));
+
+    // ── Stack 06: Mission-level access authorization ───────────────────────────────
+    // Enforce permission lattice: pioneer must be permitted to execute on this mission.
+    // evaluateAccess returns "permit" | "deny" | "require_approval".
+    // Default policy is open (allowedPioneers: []) — enforcement activates when policy restricts.
+    if (activeMission && activeMissionId) {
+      const missionAccessPolicy = defaultAccessPolicy(activeMissionId);
+      const accessDecision = evaluateAccess(
+        "mission_execute",
+        routeDecision.pioneerId ?? "operator",
+        missionAccessPolicy
+      );
+      if (accessDecision !== "permit") {
+        setSecurityState((prev) => {
+          const event = createSecurityEvent({
+            type:      "scope_violation",
+            severity:  accessDecision === "deny" ? "critical" : "warn",
+            summary:   `Pioneer access ${accessDecision} for mission_execute on "${activeMission.identity.name}" — pioneer: ${routeDecision.pioneerId ?? "unknown"}`,
+            missionId: activeMissionId,
+          });
+          return updateTrustSignal({ ...prev, events: [...prev.events, event] });
+        });
+        if (accessDecision === "deny") {
+          setRuntimeFabric((prev) => pushSignal(prev, {
+            type:               "lifecycle",
+            label:              `Mission execute denied — ${routeDecision.pioneerId ?? "unknown pioneer"} not authorized for "${activeMission.identity.name}"`,
+            severity:           "warn",
+            sourceChamber:      tab,
+            destinationChamber: "profile",
+            destination:        { tab: "profile", view: "overview" },
+          }));
+          setLoading((prev)  => ({ ...prev, [tab]: false }));
+          setSignals((prev)  => ({ ...prev, [tab]: "idle" }));
+          return;
+        }
+      }
+    }
+    // ── End Stack 06 access gate ──────────────────────────────────────────────────
 
     // ── Stack 05: Terminal mission dispatch gate ──────────────────────────────────
     // Completed and archived missions cannot receive new dispatches.
@@ -1180,6 +1275,25 @@ export default function App() {
       } // end if (!usedLocalPath)
 
       setSignals((prev) => ({ ...prev, [tab]: "completed" }));
+
+      // ── Stack 06: Connector output security scan ──────────────────────────────
+      // Scan completed AI response for prompt injection, scope escalation, exfiltration.
+      // Creates a SecurityEvent if patterns detected — drives the trust signal.
+      if (assistantContent.length > 0) {
+        const scanResult = scanConnectorOutput(assistantContent);
+        if (!scanResult.safe) {
+          setSecurityState((prev) => {
+            const event = createSecurityEvent({
+              type:      "injection_attempt",
+              severity:  scanResult.risk === "high" ? "critical" : "warn",
+              summary:   `Security vectors detected in ${tab} response: ${scanResult.vectors.join(", ")}`,
+              missionId: activeMissionId ?? undefined,
+            });
+            return updateTrustSignal({ ...prev, events: [...prev.events, event] });
+          });
+        }
+      }
+      // ── End Stack 06 connector scan ───────────────────────────────────────────
       const finalRunState: ExecutionState =
         modelDegraded && plan.fallbackReason?.toLowerCase().includes("unavailable")
           ? "provider_unavailable"
@@ -1584,6 +1698,8 @@ export default function App() {
   }, []);
 
   const isLive = Object.values(signals).some((s) => s === "streaming");
+  // ── Stack 06: Derive live trust signal from sovereign security state ──────────
+  const trustSignal = deriveTrustSignal(securityState.events);
   const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
   const activeMission = activeMissionId ? missions.find((m) => m.id === activeMissionId) ?? null : null;
   const generatedMissionTaskRef = useRef<Set<string>>(new Set());
@@ -2081,6 +2197,8 @@ export default function App() {
         systemHealth={runtimeFabric.systemHealth}
         workspaceOwner={runtimeFabric.workspace.owner}
         workspaceSubtitle={`${runtimeFabric.workspace.activeProject} · ledger`}
+        trustSignal={trustSignal}
+        onSecurityAcknowledge={handleSecurityAcknowledge}
       />
 
       {/* System Health Band — silent unless degraded or critical */}

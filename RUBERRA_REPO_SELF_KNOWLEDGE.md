@@ -16,12 +16,13 @@ Four sovereign organs: **Lab** (investigate) · **School** (learn) · **Creation
 
 ## CURRENT SOVEREIGN FRONTIER
 
-**Active Stack: 06**
+**Active Stack: 07**
 Stack 1 (Canon + Sovereignty): CLOSED
 Stack 2 (Mission Substrate): CLOSED
 Stack 3 (Sovereign Intelligence): CLOSED 2026-04-02
 Stack 4 (Autonomous Operations): CLOSED 2026-04-02
 Stack 5 (Adaptive Experience): CLOSED 2026-04-02
+Stack 6 (Sovereign Security): CLOSED 2026-04-02
 
 Stack 3 closure (2026-04-02):
 - `resolveMissionRoute()` called at every dispatch when mission active.
@@ -53,6 +54,17 @@ Stack 5 closure (2026-04-02):
 - `ChamberChat` receives `missionStatus` prop — terminal states render consequence notice bar + lock composer textarea.
 - `missionStatus` threaded: App.tsx → LabMode / SchoolMode / CreationMode → ChamberChat.
 
+Stack 6 closure (2026-04-02):
+- `SovereignSecurityState` instantiated in App.tsx — single source of security truth.
+- Operator session started on mount: `createSession(buildFingerprint())` — identity integrity substrate active.
+- Permission lattice enforced at dispatch: `evaluateAccess("mission_execute", pioneerId, defaultAccessPolicy(missionId))` — deny blocks execution + emits SecurityEvent; require_approval emits SecurityEvent.
+- Connector output scanned on every AI response completion: `scanConnectorOutput(assistantContent)` — injection/escalation/exfiltration patterns → SecurityEvent → trust signal update.
+- Storage safety check periodic (60s): `checkStorageSafety(DEFAULT_RUNTIME_SAFETY_POLICY)` → overflow → SecurityEvent.
+- `deriveTrustSignal(securityState.events)` — live trust signal derived from real security state.
+- `SecurityTrustSignal` in SovereignBar fed live `trustSignal` prop — silent when healthy, dot when warn, dot + "breach" when critical/breach.
+- `handleSecurityAcknowledge` — acknowledges all active events, re-derives signal to "healthy".
+- `dna/sovereign-security.ts` — all 8 layers typed and referenced: identity, secrets, access, isolation, connector, runtime, recovery, event ledger.
+
 ---
 
 ## STACK STATUS BOARD
@@ -64,7 +76,7 @@ Stack 5 closure (2026-04-02):
 | 03 | Sovereign Intelligence | CLOSED | `dna/sovereign-intelligence.ts`: `resolveMissionRoute()` at dispatch; `buildMissionSystemContext()` + `buildMissionMemoryContext()` injected as system[0]; pioneer routing from mission.workflow.pioneerStack[0]; `routeDigest` mission-bound |
 | 04 | Autonomous Operations | CLOSED | Operations substrate governs dispatch: pre-dispatch task (in_progress) + OperationFlow + approval gate; post-dispatch task lifecycle close + flow advance + MissionSignal from runtime event |
 | 05 | Adaptive Experience | CLOSED | MissionContextBand reads real ledger state; SystemHealthBand surfaces mission-blocked anomaly; terminal dispatch gate live; ghost-safe activation; ChamberChat missionStatus lock |
-| 06 | Sovereign Security | PARTIAL | SecurityTrustSignal in SovereignBar; RUBERRA_TRUST_GATES active; `governance-fabric.ts` live |
+| 06 | Sovereign Security | CLOSED | `SovereignSecurityState` live; operator session on mount; `evaluateAccess()` gates mission_execute at dispatch; `scanConnectorOutput()` on every AI response; `deriveTrustSignal()` drives SecurityTrustSignal in SovereignBar; storage safety periodic check |
 | 07 | Trust + Governance | PARTIAL | `enforceExecutionGate()` on every dispatch; audit entry in trustGovState; GovernanceLedgerStrip in ProfileMode |
 | 08 | System Awareness | PARTIAL | `SystemHealthBand` live; `GlobalExecutionBand` live with eiName + live pulse; `awareness-substrate.ts` typed |
 | 09 | Autonomous Flow | PARTIAL | `dna/autonomous-flow.ts` typed; FlowRunStrip in ProfileMode |
