@@ -89,7 +89,7 @@ import { defaultPlatformState } from "./dna/platform-infrastructure";
 import { defaultOrgState } from "./dna/org-intelligence";
 import { defaultPersonalOS } from "./dna/personal-sovereign-os";
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
-import { defaultTrustGovernanceState } from "./dna/trust-governance";
+import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
 import { defaultAutonomousFlowState } from "./dna/autonomous-flow";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ export default function App() {
   const [orgState]          = useState(defaultOrgState);
   const [personalOS]        = useState(() => defaultPersonalOS("operator-1"));
   const [compoundNetwork]   = useState(defaultCompoundNetwork);
-  const [trustGovState]     = useState(defaultTrustGovernanceState);
+  const [trustGovState, setTrustGovState] = useState(defaultTrustGovernanceState);
   const [flowState]         = useState(defaultAutonomousFlowState);
 
   useEffect(() => {
@@ -431,6 +431,18 @@ export default function App() {
       kind:      "operator",
       id:        runtimeFabric.workspace.owner,
       missionId: activeMissionId ?? undefined,
+    });
+    // Record audit entry into trust governance state
+    const _govMissionId = activeMissionId ?? "session";
+    setTrustGovState((prev) => {
+      const ledger  = getMissionLedger(prev, _govMissionId);
+      const updated = appendAuditToLedger(
+        ledger,
+        `chamber.${tab}.dispatch`,
+        runtimeFabric.workspace.owner,
+        govResult.allowed ? `dispatch allowed · ${tab}` : `dispatch blocked · ${govResult.reason}`,
+      );
+      return upsertLedger(prev, updated);
     });
     if (!govResult.allowed) {
       setRuntimeFabric((prev) => pushSignal(prev, {
@@ -1084,7 +1096,7 @@ export default function App() {
                   orgState={orgState}
                   personalOS={personalOS}
                   compoundNetwork={compoundNetwork}
-                  governanceEntries={trustGovState.ledger.auditTrail.entries}
+                  governanceEntries={Object.values(trustGovState.ledgers).flatMap(l => l.auditTrail.entries)}
                   flowState={flowState}
                 />
               )}
