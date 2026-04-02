@@ -78,20 +78,21 @@ import { getContractByIntent, resolveIntent, resolveRoute } from "./components/r
 import { MODEL_REGISTRY } from "./components/model-orchestration";
 import { enforceExecutionGate } from "./components/governance-fabric";
 import { buildWorkflowRunPayload } from "./components/workflow-engine";
-import { defaultCivilization } from "./dna/multi-agent";
+import { defaultCivilization, registerAgent, admitAgent, type AgentDomain } from "./dna/multi-agent";
 import { detectPatterns } from "./dna/intelligence-analytics";
 import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
-import { defaultCollectiveState } from "./dna/collective-execution";
-import { defaultPresenceManifest } from "./dna/distribution-presence";
-import { defaultExchangeLedger } from "./dna/value-exchange";
-import { defaultEcosystemState } from "./dna/ecosystem-network";
+import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph } from "./dna/collective-execution";
+import { defaultPresenceManifest, createChannel, registerChannel } from "./dna/distribution-presence";
+import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit } from "./dna/value-exchange";
+import { defaultEcosystemState, proposeExtension, admitToNetwork } from "./dna/ecosystem-network";
 import { defaultPlatformState } from "./dna/platform-infrastructure";
 import { defaultOrgState, assessMissionHealth, surfaceOrgInsights, defaultCapabilityMap } from "./dna/org-intelligence";
 import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dna/personal-sovereign-os";
 import { createInfraLayer, addLayer } from "./dna/platform-infrastructure";
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
 import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
-import { defaultAutonomousFlowState } from "./dna/autonomous-flow";
+import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
+import { PIONEER_REGISTRY } from "./components/pioneer-registry";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
@@ -181,7 +182,7 @@ export default function App() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
   // ── Stack substrates ─────────────────────────────────────────────────────────
-  const [civilization]      = useState(defaultCivilization);
+  const [_civBase]          = useState(defaultCivilization);
   const knowledgeGraph = useMemo(() => {
     let g = defaultKnowledgeGraph();
     for (const obj of runtimeFabric.objects.slice(0, 20)) {
@@ -195,16 +196,16 @@ export default function App() {
     }
     return g;
   }, [runtimeFabric.objects]);
-  const [collectiveState]   = useState(defaultCollectiveState);
-  const [presenceManifest]  = useState(() => defaultPresenceManifest("operator-1"));
-  const [exchangeLedger]    = useState(defaultExchangeLedger);
-  const [ecosystemState]    = useState(defaultEcosystemState);
+  const [_collectiveBase]   = useState(defaultCollectiveState);
+  const [_presenceBase]     = useState(() => defaultPresenceManifest("operator-1"));
+  const [_ledgerBase]       = useState(defaultExchangeLedger);
+  const [_ecoBase]          = useState(defaultEcosystemState);
   const [_platformStateBase] = useState(defaultPlatformState);
   const [_orgStateBase]     = useState(defaultOrgState);
   const [_personalOSBase]   = useState(() => defaultPersonalOS("operator-1"));
   const [compoundNetwork]   = useState(defaultCompoundNetwork);
   const [trustGovState, setTrustGovState] = useState(defaultTrustGovernanceState);
-  const [flowState]         = useState(defaultAutonomousFlowState);
+  const [flowState, setFlowState] = useState(defaultAutonomousFlowState);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -488,6 +489,16 @@ export default function App() {
     if (tab === "creation") {
       const wfPayload = buildWorkflowRunPayload("build-heavy", continuityId);
       if (wfPayload) setRuntimeFabric((prev) => startWorkflowRun(prev, wfPayload));
+      // Autonomous flow: create a FlowDef + running FlowRun for the directive
+      setFlowState((prev) => {
+        const def = createFlowDef(continuityId, text.slice(0, 60), [
+          createFlowStepDef("step-plan",   "Plan",    "creation.plan"),
+          createFlowStepDef("step-build",  "Build",   "creation.build"),
+          createFlowStepDef("step-verify", "Verify",  "creation.verify"),
+        ]);
+        const run = { ...createFlowRun(def, continuityId), state: "running" as const };
+        return upsertFlowRun(upsertFlowDef(prev, def), run);
+      });
     }
     const execTruth = getExecutionTruth(tab);
     const modelDegraded = selectedModelId !== requestedModelId;
@@ -948,6 +959,81 @@ export default function App() {
     const context = buildOperatorContext(_personalOSBase.profile, memories, _personalOSBase.agent);
     return { ..._personalOSBase, memory: memories, context, lastUpdated: Date.now() };
   }, [runtimeFabric.preferences, runtimeFabric.aiSettings, runtimeFabric.continuity, _personalOSBase]);
+
+  // ── Event-pathway substrates ──────────────────────────────────────────────────
+
+  // 1. Civilization: pioneer registry + mission bindings from continuity
+  const civilization = useMemo(() => {
+    let civ = _civBase;
+    for (const p of PIONEER_REGISTRY.slice(0, 10)) {
+      const manifest = registerAgent({
+        id:           p.id,
+        name:         p.name,
+        domain:       p.home_chamber as AgentDomain,
+        capabilities: p.strengths.map((s) => ({ id: s, label: s, domain: p.home_chamber as AgentDomain })),
+      });
+      const boundMissions = runtimeFabric.continuity
+        .filter((c) => c.pioneerId === p.id)
+        .map((c) => c.id);
+      const bound = boundMissions.reduce((m, mid) => ({ ...m, boundMissions: [...m.boundMissions, mid], lastActiveAt: Date.now() }), manifest);
+      civ = admitAgent(civ, bound);
+    }
+    return civ;
+  }, [_civBase, runtimeFabric.continuity]);
+
+  // 2. Collective: operator as sovereign + mission graph from active missions
+  const collectiveState = useMemo(() => {
+    const owner = runtimeFabric.workspace.owner;
+    let state = _collectiveBase;
+    state = admitMember(state, createMember(owner, "sovereign", missions.map((m) => m.id)));
+    for (const m of missions) {
+      state = addToMissionGraph(state, buildMissionGraphNode(m.id));
+    }
+    return state;
+  }, [_collectiveBase, missions, runtimeFabric.workspace.owner]);
+
+  // 3. Presence manifest: always register the web channel; add active chambers
+  const presenceManifest = useMemo(() => {
+    let manifest = _presenceBase;
+    const webCh = createChannel("web", { runtime: "browser", app: "ruberra-shell" });
+    manifest = registerChannel(manifest, webCh);
+    if (messages.lab.length > 0)      manifest = registerChannel(manifest, createChannel("api",  { chamber: "lab" }));
+    if (messages.creation.length > 0) manifest = registerChannel(manifest, createChannel("cli",  { chamber: "creation" }));
+    return manifest;
+  }, [_presenceBase, messages.lab.length, messages.creation.length]);
+
+  // 4. Exchange ledger: exported continuity items become available value units
+  const exchangeLedger = useMemo(() => {
+    let ledger = _ledgerBase;
+    for (const c of runtimeFabric.continuity.filter((x) => x.status === "exported")) {
+      const unit = makeAvailable(mintValue(c.id, runtimeFabric.workspace.owner, {
+        type:        "knowledge_artifact",
+        label:       c.title.slice(0, 60),
+        description: `${c.chamber} · exported continuity`,
+      }));
+      ledger = addValueUnit(ledger, unit);
+    }
+    return ledger;
+  }, [_ledgerBase, runtimeFabric.continuity, runtimeFabric.workspace.owner]);
+
+  // 5. Ecosystem: enabled connectors become admitted extensions
+  const ecosystemState = useMemo(() => {
+    let state = _ecoBase;
+    for (const c of runtimeFabric.connectors.filter((x) => x.enabled)) {
+      const ext = proposeExtension({
+        id:           c.id,
+        name:         c.id,
+        type:         "data_connector",
+        authorId:     "ruberra-core",
+        description:  `${c.id} connector — enabled`,
+        capabilities: ["read", "sync"],
+        consequences: ["external-data-ingested"],
+        version:      "1.0.0",
+      });
+      state = admitToNetwork(state, { ...ext, status: "admitted" });
+    }
+    return state;
+  }, [_ecoBase, runtimeFabric.connectors]);
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
