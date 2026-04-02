@@ -2,6 +2,13 @@
  * RUBERRA — Autonomous Operations Stack (Stack 04)
  * Constitutional Layer: Stack 04 · Phase: intelligence
  *
+ * OWNERSHIP NOTE:
+ *   The canonical Stack 04 type system lives in src/app/dna/autonomous-operations.ts.
+ *   This file (components/autonomous-operations.ts) is the original implementation
+ *   and is retained for backward compatibility with OperationsPanel.tsx and App.tsx.
+ *   DO NOT extend this file with new types. New operations types go in dna/autonomous-operations.ts.
+ *   MissionOperationsPanel uses dna/autonomous-operations.ts exclusively.
+ *
  * This file is the machine-readable substrate of the Autonomous Operations layer.
  * It is NOT a generic task manager, PM tool, or workflow SaaS.
  *

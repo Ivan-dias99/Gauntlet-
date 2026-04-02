@@ -106,6 +106,8 @@ import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dn
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
 import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
 import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
+import { defaultMissionOperationsState, type MissionOperationsState } from "./dna/autonomous-operations";
+import { resolveMissionRoute } from "./dna/sovereign-intelligence";
 import {
   prioritizeMemory,
   resolveMissionRoute,
@@ -130,6 +132,52 @@ function loadTrustGov() {
   return defaultTrustGovernanceState();
 }
 const MAX_CONTEXT = 20;
+
+// ─── Stack 03 — Mission context builder ──────────────────────────────────────
+/**
+ * Compresses the active mission identity into a system message prefix.
+ * Injected at position 0 of every dispatch when a mission is active.
+ * This is the core mechanism by which sovereign intelligence serves
+ * the mission rather than the generic session.
+ */
+function buildMissionSystemContext(mission: Mission): string {
+  const lines = [
+    "You are serving a Ruberra sovereign mission. Stay strictly within mission scope.",
+    `MISSION: ${mission.identity.name}`,
+    `OBJECTIVE: ${mission.identity.outcomeStatement}`,
+    `SCOPE: ${mission.identity.scope}`,
+    `NOT THIS: ${mission.identity.notThis}`,
+    `CHAMBER: ${mission.identity.chamberLead}`,
+  ];
+  if (mission.identity.successCriteria.length > 0) {
+    lines.push(`SUCCESS CRITERIA: ${mission.identity.successCriteria.slice(0, 3).join("; ")}`);
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Stack 03 — Mission memory recall.
+ * Surfaces the last N execution continuity items bound to this mission
+ * as prior context. Intelligence must know what has happened in this
+ * mission, not just what the mission is.
+ */
+function buildMissionMemoryContext(mission: Mission, continuity: import("./components/runtime-fabric").ContinuityItem[]): string | null {
+  const missionName = mission.identity.name.toLowerCase();
+  const relevant = continuity
+    .filter((c) =>
+      c.workflowId === mission.id ||
+      c.title.toLowerCase().includes(missionName)
+    )
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 4);
+  if (relevant.length === 0) return null;
+  const lines = ["PRIOR MISSION RUNS:"];
+  for (const c of relevant) {
+    const digest = c.lastRunDigest ?? `${c.status}: ${c.title}`;
+    lines.push(`- [${c.chamber}] ${digest.slice(0, 120)}`);
+  }
+  return lines.join("\n");
+}
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-b9f46b68`;
 
 type TabMessages = Record<Tab, Message[]>;
@@ -256,6 +304,9 @@ export default function App() {
   const [activeMissionId, setActiveMissionId] = useState<string | null>(() => {
     try { return localStorage.getItem("ruberra_active_mission_id") ?? null; } catch { return null; }
   });
+  const [activeMissionOps, setActiveMissionOps] = useState<MissionOperationsState | null>(() =>
+    activeMissionId ? defaultMissionOperationsState(activeMissionId) : null
+  );
   const [activeMissionOps, setActiveMissionOps] = useState<MissionOperationsState | null>(null);
 
   // ── Detail navigation ────────────────────────────────────────────────────────
@@ -426,11 +477,13 @@ export default function App() {
 
   const handleMissionActivate = useCallback((missionId: string) => {
     setActiveMissionId(missionId);
+    setActiveMissionOps(defaultMissionOperationsState(missionId));
     try { localStorage.setItem("ruberra_active_mission_id", missionId); } catch { /* storage full */ }
   }, []);
 
   const handleMissionRelease = useCallback(() => {
     setActiveMissionId(null);
+    setActiveMissionOps(null);
     try { localStorage.removeItem("ruberra_active_mission_id"); } catch { /* ignore */ }
   }, []);
   const handleMissionPaletteNew = useCallback(() => {
@@ -561,10 +614,13 @@ export default function App() {
       tab === "creation" ? "build-heavy"    :
       tab === "lab"      ? "research-heavy" :
       tab === "school"   ? "learning-heavy" : "balanced-trinity";
+    // Stack 03: when mission is active, honor declared pioneer stack in routing
+    const routeDecision = resolveRouteDecision(runtimeFabric.intelligence, {
     const baseRouteDecision = resolveRouteDecision(runtimeFabric.intelligence, {
       chamberHint: tab,
       workflowId,
       requestText: text,
+      preferredPioneerId: activeMission?.workflow.pioneerStack[0],
     });
     const missionMemoryRecall = activeMission ? recallMissionPriorContext(activeMission, text) : null;
     const missionRoute = activeMission ? resolveMissionRoute({
@@ -769,7 +825,20 @@ export default function App() {
     const execTruth = getExecutionTruth(tab);
     const modelDegraded = selectedModelId !== requestedModelId;
     const contractForDigest = getContractByIntent(resolveIntent(text));
-    const routeDigestLine = `${contractForDigest.label} · ${routeDecision.reason}`;
+    // Stack 03: when mission is active, surface mission-bound route reason
+    const missionRouteReason = activeMission
+      ? resolveMissionRoute({
+          missionId:     activeMission.id,
+          missionStatus: activeMission.ledger.currentState,
+          chamberLead:   activeMission.identity.chamberLead,
+          requestText:   text,
+          depth:         "standard",
+          sessionChamber: tab,
+        }).missionReason
+      : null;
+    const routeDigestLine = activeMission
+      ? `${contractForDigest.label} · ${activeMission.identity.name} · ${missionRouteReason ?? routeDecision.reason}`
+      : `${contractForDigest.label} · ${routeDecision.reason}`;
     const initialRunState: ExecutionState =
       hostingLevel === "proxy" ? "scaffold_only" : "streaming";
     const baseResults: ExecutionResultEntry[] = [
@@ -842,6 +911,16 @@ export default function App() {
         .map(({ role, content }) => ({ role, content }));
       const contextualHistory = missionMemoryRecall?.priorContext
         ? [{ role: "system", content: `mission-context: ${missionMemoryRecall.priorContext}` }, ...history]
+        : history;
+
+      // Stack 03: mission context injection — intelligence serves the mission, not the session
+      const missionIdentityCtx = activeMission ? buildMissionSystemContext(activeMission) : null;
+      const missionMemoryCtx   = activeMission ? buildMissionMemoryContext(activeMission, runtimeFabric.continuity) : null;
+      const missionCtx = missionIdentityCtx
+        ? (missionMemoryCtx ? `${missionIdentityCtx}\n\n${missionMemoryCtx}` : missionIdentityCtx)
+        : null;
+      const contextualHistory: Array<{ role: string; content: string }> = missionCtx
+        ? [{ role: "system", content: missionCtx }, ...history]
         : history;
 
       // ── Sovereign routing: try live local runtime first ──────────────────────
@@ -1502,15 +1581,20 @@ export default function App() {
       .sort((a, b) => b.timestamp - a.timestamp)[0];
     if (!latestMessageTrace?.execution_trace || latestMessageTrace.tab === "profile") return null;
     const chamber = latestMessageTrace.tab as Exclude<Tab, "profile">;
+    const trace = latestMessageTrace.execution_trace;
     const latestResult = [...runtimeFabric.executionResults]
       .sort((a, b) => b.createdAt - a.createdAt)
       .find((r) => r.chamber === chamber);
+    const leadPioneer = trace.leadPioneerId
+      ? PIONEER_REGISTRY.find((p) => p.id === trace.leadPioneerId)
+      : undefined;
     return {
-      state: latestMessageTrace.execution_trace.executionState,
+      state:      trace.executionState,
       chamber,
-      modelId: latestResult?.selectedModelId ?? latestMessageTrace.execution_trace.modelId,
-      providerId: latestResult?.selectedProviderId ?? latestMessageTrace.execution_trace.providerId,
-      latencyMs: latestResult?.latencyMs,
+      modelId:    latestResult?.selectedModelId ?? trace.modelId,
+      providerId: latestResult?.selectedProviderId ?? trace.providerId,
+      latencyMs:  latestResult?.latencyMs,
+      eiName:     leadPioneer?.short_role ?? leadPioneer?.name ?? undefined,
     };
   }, [messages, runtimeFabric.executionResults]);
   const lastExecutionProviderHealth = useMemo(() => {
@@ -1730,6 +1814,11 @@ export default function App() {
         <MissionContextBand
           mission={activeMission}
           onRelease={handleMissionRelease}
+          isExecuting={Object.values(loading).some(Boolean)}
+          runCount={runtimeFabric.continuity.filter(
+            (c) => (c.workflowId === activeMission.id || c.title.includes(activeMission.label)) &&
+              (c.status === "completed" || c.status === "exported")
+          ).length}
         />
       )}
 
@@ -1877,6 +1966,7 @@ export default function App() {
                   missions={missions}
                   onMissionUpsert={handleMissionUpsert}
                   onMissionActivate={handleMissionActivate}
+                  activeMissionOps={activeMissionOps ?? undefined}
                   activeMissionId={activeMissionId}
                   activeMissionOps={activeMissionOps}
                   onMissionOpsSignalDismiss={handleMissionOpsSignalDismiss}

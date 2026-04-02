@@ -6,6 +6,9 @@ Before any task, read `RUBERRA_WORKSPACE_CONSTITUTION.md` in full.
 It is the sovereign operating law of this workspace.  
 No task opens before the constitution is loaded and active.
 
+Also read `RUBERRA_REPO_SELF_KNOWLEDGE.md` before any code task.  
+It tells you where reality is: what is closed, what is partial, what is open, what is aspirational.
+
 ---
 
 ## Output Format Law

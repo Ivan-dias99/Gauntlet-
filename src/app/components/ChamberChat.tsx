@@ -265,64 +265,21 @@ const CHAMBER_ROLE: Record<string, string> = {
   "CREATION": "Creation intelligence",
 };
 
-const CHAMBER_MANIFESTO: Record<string, string> = {
-  LAB:      "Evidence-first inquiry. Verdicts, matrices, and traces—not chat fog.",
-  SCHOOL:   "Structured mastery. Paths, checks, and continuity—not generic tutoring.",
-  CREATION: "Build-grade output. Blueprints, bundles, and execution—not slide decks.",
-};
-
 function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: string }) {
   const chamberKey = chamberLabel.split("·").pop()?.trim() ?? "";
   const roleLabel  = CHAMBER_ROLE[chamberKey] ?? "Chamber";
-  const manifesto  = CHAMBER_MANIFESTO[chamberKey] ?? "";
 
   return (
-    <div style={{ marginBottom: "14px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px 4px 8px", border: `1px solid color-mix(in srgb, ${accent} 22%, var(--r-border))`, borderRadius: "6px", background: `color-mix(in srgb, ${accent} 9%, var(--r-surface))` }}>
-          <span
-            style={{
-              width: "5px",
-              height: "5px",
-              borderRadius: "50%",
-              background: accent,
-              flexShrink: 0,
-              display: "inline-block",
-              opacity: 0.9,
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: "8px",
-              letterSpacing: "0.11em",
-              color: accent,
-              textTransform: "uppercase",
-              userSelect: "none",
-              fontWeight: 600,
-            }}
-          >
-            {roleLabel}
-          </span>
-        </div>
-        <span
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: "8px",
-            letterSpacing: "0.09em",
-            color: "var(--r-dim)",
-            textTransform: "uppercase",
-            userSelect: "none",
-          }}
-        >
-          {chamberLabel}
+    <div style={{ marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "3px 8px 3px 7px", border: `1px solid color-mix(in srgb, ${accent} 22%, var(--r-border))`, borderRadius: "5px", background: `color-mix(in srgb, ${accent} 8%, var(--r-surface))` }}>
+        <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: accent, flexShrink: 0, display: "inline-block" }} />
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.1em", color: accent, textTransform: "uppercase", userSelect: "none", fontWeight: 600 }}>
+          {roleLabel}
         </span>
       </div>
-      {manifesto && (
-        <p style={{ margin: "8px 0 0", fontSize: "11px", color: "var(--r-subtext)", lineHeight: 1.55, letterSpacing: "-0.01em", maxWidth: "520px" }}>
-          {manifesto}
-        </p>
-      )}
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.08em", color: "var(--r-dim)", textTransform: "uppercase", userSelect: "none" }}>
+        {chamberLabel}
+      </span>
     </div>
   );
 }
@@ -532,7 +489,7 @@ function AssistantMessage({
             missionName={missionName}
           />
         )}
-        <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
+        {!trace && <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />}
         {(msg.meta?.pioneerId || msg.meta?.workflowId) && !trace && (
           <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
             {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.pioneerId}</span>}
@@ -851,20 +808,29 @@ function Composer({
 
 // ─── Live Header Rail ─────────────────────────────────────────────────────────
 
+const THINKING_CYCLE = ["ROUTING", "ANALYZING", "THINKING"] as const;
+
 function LiveHeaderRail({
-  accent, chamberId, modelId, providerId, missionName, execStatus, eiName,
+  accent, chamberId, modelId, providerId, execStatus, eiName,
 }: {
   accent: string;
   chamberId: "lab" | "school" | "creation";
   modelId: string;
   providerId?: string;
-  missionName?: string;
   execStatus: "idle" | "thinking" | "streaming";
   eiName?: string;
 }) {
+  const [thinkIdx, setThinkIdx] = useState(0);
+
+  useEffect(() => {
+    if (execStatus !== "thinking") { setThinkIdx(0); return; }
+    const id = setInterval(() => setThinkIdx((i) => (i + 1) % THINKING_CYCLE.length), 1800);
+    return () => clearInterval(id);
+  }, [execStatus]);
+
   const isLive = execStatus !== "idle";
   const stateLabel =
-    execStatus === "thinking"  ? "ROUTING"   :
+    execStatus === "thinking"  ? THINKING_CYCLE[thinkIdx] :
     execStatus === "streaming" ? "STREAMING" : "";
 
   return (
@@ -933,28 +899,7 @@ function LiveHeaderRail({
         {modelId}{providerId ? ` · ${providerId}` : ""}
       </span>
 
-      {/* Mission binding */}
-      {missionName && (
-        <>
-          <span style={{ color: "var(--r-border)", fontSize: "9px", userSelect: "none" }}>·</span>
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: "7.5px",
-              color: "var(--r-subtext)",
-              letterSpacing: "0.03em",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              flex: 1,
-              minWidth: 0,
-            }}
-          >
-            {missionName}
-          </span>
-        </>
-      )}
-      {!missionName && <div style={{ flex: 1 }} />}
+      <div style={{ flex: 1 }} />
 
       {/* Runtime state — live pulse when active */}
       {isLive && stateLabel && (
@@ -1155,6 +1100,14 @@ export function ChamberChat({
     ? "streaming"
     : "thinking";
 
+  // Derive EI name + active provider from the last assistant trace
+  const lastAssistantTrace = [...messages].reverse()
+    .find((m) => m.role === "assistant" && m.execution_trace)?.execution_trace;
+  const eiName = lastAssistantTrace?.leadPioneerId != null
+    ? getPioneerFromRuntimeId(lastAssistantTrace.leadPioneerId)?.short_role ?? undefined
+    : undefined;
+  const activeProviderId = lastAssistantTrace?.providerId;
+
   const isEmpty = messages.length === 0;
   const chamberLabel = `RUBERRA · ${config.label.toUpperCase()}`;
 
@@ -1168,13 +1121,14 @@ export function ChamberChat({
         background: "var(--r-bg)",
       }}
     >
-      {/* Live Header Rail */}
+      {/* Live Header Rail — chamber · EI · model · state (mission owned by MissionContextBand) */}
       <LiveHeaderRail
         accent={config.accent}
         chamberId={config.id}
         modelId={modelId}
-        missionName={missionName}
+        providerId={activeProviderId}
         execStatus={execStatus}
+        eiName={eiName}
       />
 
       {/* Thread */}

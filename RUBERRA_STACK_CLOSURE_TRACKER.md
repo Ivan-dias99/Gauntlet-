@@ -12,6 +12,10 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 
 | # | Stack | Status | Scope Lock | Exit Criteria (Definition of Done) |
 |---|---|---|---|---|
+| 1 | Canon + Sovereignty | CLOSED | Constitution, product identity, anti-drift gates, single-source law docs | CLOSED 2026-04-02: Ruberra law docs aligned; canon-sovereignty.ts + stack-registry.ts installed; README points to sovereign law docs; no conflicting framing; drift signal registry live |
+| 2 | Mission Substrate | ACTIVE | Mission entity model, mission lifecycle, mission repository container, mission-first shell binding | Mission is first-class system object with create/open/archive/active flows; MissionContextBand authoritative; MissionRepository live; MissionOperationsPanel mounted |
+| 3 | Sovereign Intelligence | CLOSED | Native mission reasoning loops, mission-context memory, structured prompt spine | Intelligence runs on mission state, not generic chat state |
+| 4 | Autonomous Operations | ACTIVE | Multi-step execution runtime, deterministic actions, retry and audit paths | Mission actions execute with logs, outcomes, and recovery rules |
 | 1 | Canon + Sovereignty | ACTIVE | Constitution, product identity, anti-drift gates, single-source law docs | All Ruberra law docs aligned; conflicting legacy framing removed; governance language is canonical and non-duplicative |
 | 2 | Mission Substrate | CLOSED | Mission entity model, mission lifecycle, mission repository container | Mission is first-class system object with create/open/archive flows |
 | 3 | Sovereign Intelligence | LOCKED | Native mission reasoning loops, mission-context memory, structured prompt spine | Intelligence runs on mission state, not generic chat state |
@@ -33,28 +37,81 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 | 19 | Personal Sovereign OS | LOCKED | Individual operator control plane and personal mission continuity | Personal system continuity works without fragmentation |
 | 20 | Compound Intelligence Network | LOCKED | Networked intelligence across missions and entities | Compound reasoning emerges from closed lower stacks |
 
-## Active Frontier: Stack 1 (Canon + Sovereignty)
+## Closed: Stack 1 (Canon + Sovereignty)
+
+### Exit Proof
+- `RUBERRA_WORKSPACE_CONSTITUTION.md` — sovereign law, identity, anti-drift rules. Non-negotiable.
+- `CLAUDE.md` — compressed execution memory for agents. Non-negotiable.
+- `RUBERRA_STACK_CLOSURE_TRACKER.md` — canonical sequencing authority.
+- `src/app/dna/canon-sovereignty.ts` — runtime materialization of constitutional kernel. `MOTHER_LAW` enforced.
+- `src/app/dna/stack-registry.ts` — machine-readable stack canon with all 20 stacks typed.
+- `assertStackOrder()` — runtime guard preventing stack order violations.
+- README correctly points to sovereign law docs.
+- Drift signal registry live (`DRIFT_SIGNALS` in canon-sovereignty.ts).
+- No conflicting framing present in root docs.
+
+---
+
+## Closed: Stack 2 (Mission Substrate)
+
+### Exit Proof
+- `dna/mission-substrate.ts` — Mission type: identity, workflow, memory, ledger, runtime, policy, artifacts.
+- `MissionContextBand` — shell-wide strip: live pulse on execute, MISSION label, runCount, status, chamber, release.
+- `MissionRepository` — CRUD + activate in Profile > projects.
+- `mcp-client.ts` — Supabase edge function: create / get / list / updateState / attachContinuity / buildHandoff.
+- `MissionOperationsPanel` — MOUNTED in ProfileMode > operations when activeMission set.
+- `activeMissionOps` — state slot in App.tsx, initialized on mission activate/release.
+- Mission ID injected into every execution dispatch, governance gate, and continuity item.
+- CLOSED 2026-04-02
+
+---
+
+## Closed: Stack 3 (Sovereign Intelligence)
+
+### Exit Proof
+- `dna/sovereign-intelligence.ts` — MissionRouteRequest / MissionRouteResult / MemoryRecallRequest / MemoryRecallResult / MissionReasoningRequest / MissionReasoningResult typed.
+- `resolveMissionRoute()` — called at every dispatch when mission active.
+- `buildMissionSystemContext()` — mission identity injected as system[0] to both Ollama and hosted paths.
+- `buildMissionMemoryContext()` — prior mission continuity items injected as mission memory context alongside identity.
+- `preferredPioneerId` — `activeMission.workflow.pioneerStack[0]` honored in `resolveRouteDecision`.
+- `routeDigest` — mission-bound when active: `[contract] · [mission name] · [missionReason]`.
+- Intelligence serves mission state (identity + memory), not generic session.
+- CLOSED 2026-04-02
+
+---
+
+## Active Frontier: Stack 4 (Autonomous Operations)
 
 ### Scope (Now)
-- Eliminate conflicting identity language from repository-facing docs.
-- Centralize constitutional references to one authoritative law source.
-- Add stack-closure operating discipline so work cannot skip order.
+- `dna/autonomous-operations.ts` — canonical operations type system (TaskDef, Signal, ApprovalRequest, OperationRun, ExecutionOutcome, RecoveryPolicy).
+- `MissionOperationsPanel` — surface mounted; callbacks are stubs (signal dismiss, approval mutations).
+- Task creation from execution completion events — NOT wired (operations substrate not event-driven yet).
 
-### Deliverables
-- `RUBERRA_WORKSPACE_CONSTITUTION.md` remains the sovereign law source.
-- `CLAUDE.md` remains the compressed execution memory for agents.
-- `RUBERRA_STACK_CLOSURE_TRACKER.md` (this file) governs closure sequencing.
+### Open Residue
+1. Execution completion → task creation: when a dispatch completes, emit a task artifact into `activeMissionOps.tasks` (status: completed, outcome from execution).
+2. Signal dismiss: `MissionOperationsPanel` `onDismissSignal` stub must mutate `activeMissionOps.signals`.
+3. Approval mutation: `onApproveAction` must update approval state in `activeMissionOps.approvals`.
+4. `OperationRun` lifecycle: start/complete/fail events from real execution should drive run state.
 
-### Verification Proof
-- Documentation exists and is mutually non-conflicting.
-- Stack board explicitly locks stacks 2-20 until stack 1 is closed.
-- Root README points contributors to Ruberra canonical operating docs.
+### Exit Criteria
+- [ ] Dispatch completion creates a task entry in activeMissionOps (title from routeDigest, status, model, duration)
+- [ ] Signal dismiss + approval callbacks are live (not stubs)
+- [ ] MissionOperationsPanel shows real post-execution task artifacts when mission is active
+- [ ] Operations surface reflects actual execution outcomes — no theater data
 
+---
 
 ## Pioneer Continuous Task Activation
 
 | Pioneer | Immediate Task | Mode |
 |---|---|---|
+| Claude Architect | Own Stack 4 closure — wire execution completion → task creation, close operations loop. | ACTIVE |
+| Codex Systems | Real signal + approval mutations in MissionOperationsPanel. OperationRun lifecycle from execution events. | ACTIVE |
+| Cursor Builder | Ensure mission-first entry: prompt binds to active mission at first message if none active. | ACTIVE |
+| Grok Reality Pulse | Audit operations data flow — confirm tasks/signals/approvals surface real execution state, not theater. | ACTIVE |
+| Gemini Expansion | Model MissionReasoningResult pipeline for Stack 3+ intelligence output contracts (future, not Stack 4). | QUEUED |
+| Copilot QA Guard | Regression: MissionOperationsPanel post-mount + task creation + signal dismiss. | ACTIVE |
+| Antigravity Director | Gate Stack 4 entry. No drift into generic PM or project management patterns. | ACTIVE |
 | Claude Architect | Own constitutional coherence audits and Stack 1 closure validation. | ACTIVE |
 | Codex Systems | Maintain typed stack execution queue and mission-substrate contract drafts. | ACTIVE |
 | Cursor Builder | Prepare mission-first shell entry implementation path for Stack 2. | QUEUED (unlocks when Stack 1 closes) |

@@ -1,5 +1,6 @@
 /**
  * RUBERRA STACK 04 — Autonomous Operations
+ * CANONICAL SOURCE — all new operations types and functions go here.
  * The first true operational execution layer.
  *
  * All 8 layers of autonomous operations are defined here.
@@ -11,6 +12,7 @@
  *
  * DO NOT introduce generic project management patterns here.
  * DO NOT allow operations to detach from their mission.
+ * MissionOperationsPanel imports exclusively from this file.
  */
 
 import { assertStackOrder } from "./canon-sovereignty";
