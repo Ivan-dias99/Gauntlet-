@@ -86,8 +86,9 @@ import { defaultPresenceManifest } from "./dna/distribution-presence";
 import { defaultExchangeLedger } from "./dna/value-exchange";
 import { defaultEcosystemState } from "./dna/ecosystem-network";
 import { defaultPlatformState } from "./dna/platform-infrastructure";
-import { defaultOrgState } from "./dna/org-intelligence";
-import { defaultPersonalOS } from "./dna/personal-sovereign-os";
+import { defaultOrgState, assessMissionHealth, surfaceOrgInsights, defaultCapabilityMap } from "./dna/org-intelligence";
+import { defaultPersonalOS, createMemoryEntry } from "./dna/personal-sovereign-os";
+import { createInfraLayer, addLayer } from "./dna/platform-infrastructure";
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
 import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
 import { defaultAutonomousFlowState } from "./dna/autonomous-flow";
@@ -198,9 +199,9 @@ export default function App() {
   const [presenceManifest]  = useState(() => defaultPresenceManifest("operator-1"));
   const [exchangeLedger]    = useState(defaultExchangeLedger);
   const [ecosystemState]    = useState(defaultEcosystemState);
-  const [platformState]     = useState(defaultPlatformState);
-  const [orgState]          = useState(defaultOrgState);
-  const [personalOS]        = useState(() => defaultPersonalOS("operator-1"));
+  const [_platformStateBase] = useState(defaultPlatformState);
+  const [_orgStateBase]     = useState(defaultOrgState);
+  const [_personalOSBase]   = useState(() => defaultPersonalOS("operator-1"));
   const [compoundNetwork]   = useState(defaultCompoundNetwork);
   const [trustGovState, setTrustGovState] = useState(defaultTrustGovernanceState);
   const [flowState]         = useState(defaultAutonomousFlowState);
@@ -909,6 +910,43 @@ export default function App() {
     const continuityEvents = runtimeFabric.continuity.map((c) => `${c.status} ${c.title}`);
     return detectPatterns([...signalEvents, ...continuityEvents]);
   }, [runtimeFabric.signals, runtimeFabric.continuity]);
+
+  const orgState = useMemo(() => {
+    const missionHealth = missions.map((m) => {
+      const missionContinuity = runtimeFabric.continuity.filter((c) => c.workflowId === m.id || c.title.includes(m.label));
+      const runs      = missionContinuity.length;
+      const completed = missionContinuity.filter((c) => c.status === "completed" || c.status === "exported").length;
+      const velocity  = runs > 0 ? completed / runs : 0;
+      const blockers  = runtimeFabric.signals.filter((s) => s.severity === "critical" || s.severity === "warn").length;
+      const quality   = runs > 0 ? Math.max(0, 1 - blockers * 0.1) : 0.5;
+      return assessMissionHealth(m.id, velocity, quality, blockers, runs);
+    });
+    const capMap   = defaultCapabilityMap();
+    const insights = surfaceOrgInsights(capMap, missionHealth);
+    return { ..._orgStateBase, missionHealth, insights, lastUpdated: Date.now() };
+  }, [missions, runtimeFabric.continuity, runtimeFabric.signals, _orgStateBase]);
+
+  const platformState = useMemo(() => {
+    const execTruth = getExecutionTruth("lab");
+    const inferenceStatus = execTruth.is_available ? "nominal" as const : "degraded" as const;
+    let state = _platformStateBase;
+    state = addLayer(state, { ...createInfraLayer("intelligence", execTruth.adapter ?? "sovereign", true), status: inferenceStatus });
+    state = addLayer(state, { ...createInfraLayer("network", "supabase", false), status: "nominal" });
+    state = addLayer(state, { ...createInfraLayer("storage", "supabase", false), status: "nominal" });
+    return state;
+  }, [_platformStateBase]);
+
+  const personalOS = useMemo(() => {
+    const memories = [
+      createMemoryEntry("preference", `Preferred chamber: ${runtimeFabric.preferences.preferredChamber}`),
+      createMemoryEntry("preference", `Output style: ${runtimeFabric.preferences.outputStyle}`),
+      createMemoryEntry("preference", `AI model policy: ${runtimeFabric.aiSettings.modelPolicy}`),
+      ...runtimeFabric.continuity.slice(0, 5).map((c) =>
+        createMemoryEntry("mission_history", `${c.chamber} · ${c.title.slice(0, 60)}`)
+      ),
+    ];
+    return { ..._personalOSBase, memory: memories, lastUpdated: Date.now() };
+  }, [runtimeFabric.preferences, runtimeFabric.aiSettings, runtimeFabric.continuity, _personalOSBase]);
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
