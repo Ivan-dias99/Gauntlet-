@@ -265,12 +265,6 @@ const CHAMBER_ROLE: Record<string, string> = {
   "CREATION": "Creation intelligence",
 };
 
-const CHAMBER_MANIFESTO: Record<string, string> = {
-  LAB:      "Evidence-first inquiry. Verdicts, matrices, and traces—not chat fog.",
-  SCHOOL:   "Structured mastery. Paths, checks, and continuity—not generic tutoring.",
-  CREATION: "Build-grade output. Blueprints, bundles, and execution—not slide decks.",
-};
-
 function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: string }) {
   const chamberKey = chamberLabel.split("·").pop()?.trim() ?? "";
   const roleLabel  = CHAMBER_ROLE[chamberKey] ?? "Chamber";
@@ -785,13 +779,12 @@ function Composer({
 const THINKING_CYCLE = ["ROUTING", "ANALYZING", "THINKING"] as const;
 
 function LiveHeaderRail({
-  accent, chamberId, modelId, providerId, missionName, execStatus, eiName,
+  accent, chamberId, modelId, providerId, execStatus, eiName,
 }: {
   accent: string;
   chamberId: "lab" | "school" | "creation";
   modelId: string;
   providerId?: string;
-  missionName?: string;
   execStatus: "idle" | "thinking" | "streaming";
   eiName?: string;
 }) {
@@ -874,28 +867,7 @@ function LiveHeaderRail({
         {modelId}{providerId ? ` · ${providerId}` : ""}
       </span>
 
-      {/* Mission binding */}
-      {missionName && (
-        <>
-          <span style={{ color: "var(--r-border)", fontSize: "9px", userSelect: "none" }}>·</span>
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: "7.5px",
-              color: "var(--r-subtext)",
-              letterSpacing: "0.03em",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              flex: 1,
-              minWidth: 0,
-            }}
-          >
-            {missionName}
-          </span>
-        </>
-      )}
-      {!missionName && <div style={{ flex: 1 }} />}
+      <div style={{ flex: 1 }} />
 
       {/* Runtime state — live pulse when active */}
       {isLive && stateLabel && (
@@ -1117,13 +1089,12 @@ export function ChamberChat({
         background: "var(--r-bg)",
       }}
     >
-      {/* Live Header Rail */}
+      {/* Live Header Rail — chamber · EI · model · state (mission owned by MissionContextBand) */}
       <LiveHeaderRail
         accent={config.accent}
         chamberId={config.id}
         modelId={modelId}
         providerId={activeProviderId}
-        missionName={missionName}
         execStatus={execStatus}
         eiName={eiName}
       />

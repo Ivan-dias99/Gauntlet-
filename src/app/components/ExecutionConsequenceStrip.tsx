@@ -200,9 +200,14 @@ export function ExecutionConsequenceStrip({
       </div>
 
       {digest && (
-        <p style={{ margin: "0 0 6px", fontSize: "10px", lineHeight: 1.45, color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.01em" }}>
-          {digest.length > 200 ? `${digest.slice(0, 197)}…` : digest}
-        </p>
+        <div style={{ margin: "0 0 6px", display: "flex", alignItems: "flex-start", gap: "7px" }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.10em", color: accent, textTransform: "uppercase", userSelect: "none", flexShrink: 0, marginTop: "2px", fontWeight: 600 }}>
+            ROUTE
+          </span>
+          <span style={{ fontSize: "10px", lineHeight: 1.45, color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.01em" }}>
+            {digest.length > 200 ? `${digest.slice(0, 197)}…` : digest}
+          </span>
+        </div>
       )}
 
       {chain.length > 0 && (

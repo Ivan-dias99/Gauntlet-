@@ -1416,6 +1416,11 @@ export default function App() {
         <MissionContextBand
           mission={activeMission}
           onRelease={handleMissionRelease}
+          isExecuting={Object.values(loading).some(Boolean)}
+          runCount={runtimeFabric.continuity.filter(
+            (c) => (c.workflowId === activeMission.id || c.title.includes(activeMission.label)) &&
+              (c.status === "completed" || c.status === "exported")
+          ).length}
         />
       )}
 

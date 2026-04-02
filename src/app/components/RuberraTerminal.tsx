@@ -132,7 +132,7 @@ type TerminalBlock =
   | { kind: "tree";      lines: { prefix: string; text: string; color?: string }[] }
   | { kind: "code";      lang: string; filename?: string; lines: string[] }
   | { kind: "diff";      removed: string; added: string }
-  | { kind: "text";      lines: string[] }
+  | { kind: "text";      lines: string[]; layer?: "RESULT" | "WARN" | "HANDOFF" }
   | { kind: "status";    text: string; elapsed?: string; tokens?: string; variant: "working" | "done" | "error" }
   | { kind: "divider";   label: string };
 
@@ -211,7 +211,13 @@ function parseMessage(msg: Message, chamberLabel: string, isStreaming: boolean):
       }
 
       if (textLines.some(l => l.trim())) {
-        blocks.push({ kind: "text", lines: textLines });
+        const joined = textLines.join(" ").toLowerCase();
+        const textLayer: "RESULT" | "WARN" | "HANDOFF" | undefined =
+          /\b(handoff|forwarding|passing to|transfer)\b/.test(joined) ? "HANDOFF"
+          : /\b(warn|caution|alert|danger|risk)\b/.test(joined) ? "WARN"
+          : /\b(result|output|finding|verdict|conclusion|answer)\b/.test(joined) ? "RESULT"
+          : undefined;
+        blocks.push({ kind: "text", lines: textLines, layer: textLayer });
       }
     }
   }
@@ -400,9 +406,16 @@ function BlockCode({ lines, lang, filename }: { lines: string[]; lang: string; f
   );
 }
 
-function BlockText({ lines }: { lines: string[] }) {
+const LAYER_COLOR: Record<string, string> = { RESULT: T.cyan, WARN: T.amber, HANDOFF: T.green };
+
+function BlockText({ lines, layer }: { lines: string[]; layer?: "RESULT" | "WARN" | "HANDOFF" }) {
   return (
     <div style={{ marginBottom: "10px" }}>
+      {layer && (
+        <div style={{ marginBottom: "5px" }}>
+          <TerminalLayerBadge layer={layer} color={LAYER_COLOR[layer] ?? T.dim} />
+        </div>
+      )}
       {lines.map((line, i) => {
         const trimmed = line.trim();
         if (!trimmed) return <div key={i} style={{ height: "5px" }} />;
@@ -605,7 +618,7 @@ function renderBlock(block: TerminalBlock, idx: number): React.ReactNode {
     case "operation": return <BlockOperation key={idx} verb={block.verb} target={block.target} sub={block.sub} />;
     case "code":      return <BlockCode      key={idx} lines={block.lines} lang={block.lang} filename={block.filename} />;
     case "diff":      return <BlockDiff      key={idx} removed={block.removed} added={block.added} />;
-    case "text":      return <BlockText      key={idx} lines={block.lines} />;
+    case "text":      return <BlockText      key={idx} lines={block.lines} layer={block.layer} />;
     case "status":    return <BlockStatus    key={idx} text={block.text} elapsed={block.elapsed} tokens={block.tokens} variant={block.variant} />;
     case "divider":   return <BlockDivider   key={idx} label={block.label} />;
     default:          return null;
@@ -947,12 +960,18 @@ export function RuberraTerminal({
               Directives compile here. Output groups by operation, prose, and fenced code—no theater, no noise.
             </p>
             <div style={{ padding: "12px 14px", border: `1px solid ${T.line}`, borderRadius: "8px", background: T.surface }}>
+              {missionName && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.10em", color: chamberAccentVar, textTransform: "uppercase", userSelect: "none" }}>MISSION</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{missionName}</span>
+                </div>
+              )}
               <span style={{ color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", display: "block", marginBottom: "6px" }}>
                 {placeholder}
               </span>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.dim, fontFamily: "'JetBrains Mono', monospace", fontSize: "10px" }}>
                 <span style={{ color: T.amberDim }}>›</span>
-                <span>Awaiting directive</span>
+                <span>Awaiting directive{missionName ? ` — ${missionName}` : ""}</span>
               </div>
             </div>
           </div>
