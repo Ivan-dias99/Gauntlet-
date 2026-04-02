@@ -2034,7 +2034,6 @@ export default function App() {
       <SovereignBar
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
         onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
         theme={theme}
