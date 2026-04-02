@@ -94,6 +94,13 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
 - `RunObservation` appended with real pioneerId and content digest
 - `buildOperationState()` recomputed from real task/observation arrays
 
+**Secondary event-driven path (useEffect, App.tsx:1617-1718):**
+- Monitors all chamber message arrays for terminal execution states not yet in `generatedMissionTaskRef`
+- For each new terminal event: `createTask()` + `transitionTask()` + `RunObservation` + `emitSignal()` bound to active mission
+- `generatedMissionTaskRef.current.add(ev.id)` — dedup guard prevents double-processing vs. primary pre/post-dispatch path
+- `buildOperationState()` recomputed after all events processed
+- REAL and EVENT-DRIVEN. Not decorative. This is the secondary substrate path for messages that did not originate in the primary handleSend flow.
+
 **Mutation handlers (real, not stubs):**
 - `handleMissionOpsSignalDismiss` — `dismissSignal()` mutates `activeMissionOps.signals`
 - `handleMissionOpsApprovalApprove` / `handleMissionOpsApprovalReject` — moves approval from `pendingApprovals` to `approvalHistory`
@@ -111,7 +118,7 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
   Shows legacy/empty state. Non-canonical. Harmless. Acknowledged.
 - `components/autonomous-operations.ts` retained for backward compat per its own ownership comment. Canonical types live in `dna/autonomous-operations.ts`.
 
-- CLOSED 2026-04-02 · QA VERIFIED 2026-04-02
+- CLOSED 2026-04-02 · QA VERIFIED 2026-04-02 · BASTION RECONFIRMED 2026-04-02
 
 ---
 
@@ -133,7 +140,7 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
 - [x] Chamber prompt area gives visual feedback when mission is in a terminal state (blocked/complete/archived)
 - [x] No chamber enters a ghost state when mission is activated mid-session
 
-- CLOSED 2026-04-02
+- CLOSED 2026-04-02 · BASTION RECONFIRMED 2026-04-02
 
 ---
 

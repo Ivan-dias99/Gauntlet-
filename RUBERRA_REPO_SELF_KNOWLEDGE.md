@@ -89,7 +89,7 @@ Stack 5 closure (2026-04-02):
 ## WHAT IS REAL (VERIFIED LIVE)
 
 ### Execution core
-- `App.tsx` — ~1630 lines. Shell-level owner of all state. Routing, execution, MCP, mission, governance gate all here.
+- `App.tsx` — ~2315 lines. Shell-level owner of all state. Routing, execution, MCP, mission, governance gate all here.
 - `runtime-fabric.ts` — single persisted authority for continuity, signals, connectors, intelligence, workspace.
 - `routing-contracts.ts` — real route resolution: resolveRoute() → leads pioneer selection → feeds leadPioneerId into trace.
 - `pioneer-registry.ts` — 7 pioneers typed with home_chamber, allowed_crossings, model_family, strengths.
@@ -131,7 +131,7 @@ Stack 5 closure (2026-04-02):
 | Mission pioneer routing | DONE | pioneerStack[0] honored in resolveRouteDecision |
 | Mission context at execution time | DONE | Identity + memory system message injected to both Ollama + hosted paths |
 | Mission memory recall at dispatch | DONE | buildMissionMemoryContext() injects last 4 continuity items for mission |
-| Task creation from execution events | NOT DONE | Stack 04 — operations substrate not yet event-driven (Codex) |
+| Task creation from execution events | DONE | useEffect in App.tsx:1617-1718 — terminal execution states create MissionTask + RunObservation + MissionSignal; Stack 04 closed |
 | Live agent spawning (multi-agent) | NOT DONE | dna/multi-agent.ts typed, no runtime spawn |
 | Knowledge retrieval from missions | NOT DONE | dna/living-knowledge.ts typed, no retrieval |
 | Flow graph execution | NOT DONE | dna/autonomous-flow.ts typed, no actual execution |
