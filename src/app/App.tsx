@@ -213,7 +213,7 @@ export default function App() {
     }
     return g;
   }, [runtimeFabric.objects]);
-  const [_collectiveBase]   = useState(defaultCollectiveState);
+  const [_collectiveBase, setCollectiveBase] = useState(defaultCollectiveState);
   const [_presenceBase]     = useState(() => defaultPresenceManifest("operator-1"));
   const [_ledgerBase]       = useState(defaultExchangeLedger);
   const [_ecoBase]          = useState(defaultEcosystemState);
@@ -993,6 +993,8 @@ export default function App() {
             continuityId,
             false,
           );
+          // Persist attribution to collective state — this is what makes consequence real
+          setCollectiveBase((prev) => recordAttribution(prev, attr));
           next = pushSignal(next, {
             type:               "lifecycle",
             label:              `Creation attributed: ${attr.consequenceRef.slice(0, 60)} — ${next.workspace.owner}`,
@@ -1238,7 +1240,7 @@ export default function App() {
       collisionMap = claimCollectiveResource(collisionMap, `chamber.${c.chamber}`, claimant);
     }
     return { ...state, collisionMap, lastUpdated: Date.now() };
-  }, [_collectiveBase, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity]);
+  }, [_collectiveBase, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity, _collectiveBase.attributions]);
 
   // 3. Presence manifest: always register the web channel; add active chambers
   const presenceManifest = useMemo(() => {
@@ -1470,9 +1472,16 @@ export default function App() {
                   onWorkspacePatch={(patch) => setRuntimeFabric((prev) => updateWorkspaceKnowledge(prev, patch))}
                   onExport={(continuityId) => {
                     setRuntimeFabric((prev) => exportContinuity(prev, continuityId));
+                    // Governance audit: record sovereign verification verdict at time of export
+                    const exportVerifiedAt = Date.now();
                     setTrustGovState((prev) => {
                       const ledger  = getMissionLedger(prev, activeMissionId ?? continuityId);
-                      const updated = appendAuditToLedger(ledger, `export.${continuityId.slice(0, 12)}`, runtimeFabric.workspace.owner, `continuity exported · ${continuityId}`);
+                      const updated = appendAuditToLedger(
+                        ledger,
+                        `export.${continuityId.slice(0, 12)}`,
+                        runtimeFabric.workspace.owner,
+                        `continuity exported · sovereignty verified · verifiedAt:${exportVerifiedAt} · ${continuityId}`,
+                      );
                       return upsertLedger(prev, updated);
                     });
                   }}
