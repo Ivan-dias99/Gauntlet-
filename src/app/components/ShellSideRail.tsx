@@ -23,6 +23,7 @@ interface ShellSideRailProps {
   onSchoolView:   (v: SchoolView) => void;
   onCreationView: (v: CreationView) => void;
   onProfileView:  (v: ProfileView) => void;
+  navigate:       NavFn;
   onTabChange:    (tab: Tab) => void;
   collapsed:      boolean;
   onToggleCollapsed: () => void;
@@ -187,32 +188,6 @@ function SchoolRail({ view, onView, messages, signal }: {
         <NavBtn label="Library" active={view === "library"} accent={accent} onClick={() => onView("library")} icon={<ILibrary />} />
         <NavBtn label="Archive" active={view === "archive"} accent={accent} onClick={() => onView("archive")} icon={<IArchive />} />
       </section>
-      <Divider />
-      <section style={{ padding: "8px 10px", flex: 1, overflowY: "auto" }}>
-        <SLabel>Queries</SLabel>
-        {history.length === 0 ? (
-          <p style={{ fontSize: "10px", color: "var(--r-dim)", paddingLeft: "2px", fontFamily: "'Inter', system-ui, sans-serif" }}>—</p>
-        ) : history.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => onView("chat")}
-            title={m.content}
-            style={{ width: "100%", display: "block", fontSize: "10px", color: "var(--r-subtext)", padding: "3px 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "'Inter', system-ui, sans-serif", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", outline: "none", transition: "color 0.1s ease", lineHeight: 1.5 }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-text)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--r-subtext)"; }}
-          >
-            {m.content.slice(0, 36)}{m.content.length > 36 ? "…" : ""}
-          </button>
-        ))}
-      </section>
-      <Divider />
-      <section style={{ padding: "8px 10px" }}>
-        <SLabel>Status</SLabel>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", paddingLeft: "1px" }}>
-          <StatusDot status={signal} accent={accent} />
-          <span style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", textTransform: "capitalize" }}>{signal}</span>
-        </div>
-      </section>
     </>
   );
 }
@@ -300,6 +275,7 @@ export function ShellSideRail({
   labView, schoolView, creationView, profileView,
   onLabView, onSchoolView, onCreationView, onProfileView,
   onTabChange, collapsed, onToggleCollapsed,
+  navigate, onTabChange, collapsed, onToggleCollapsed,
 }: ShellSideRailProps) {
   const chamber = CHAMBER_SURFACE[activeTab];
 
@@ -321,6 +297,7 @@ export function ShellSideRail({
       {collapsed ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", gap: "8px" }}>
           <button onClick={onToggleCollapsed} title="Expand rail" aria-label="Expand side rail" style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "11px" }}>»</button>
+          <button onClick={onToggleCollapsed} title="Expand rail" style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "11px" }}>»</button>
           {ALL_TABS.map((tab) => {
             const isActive = activeTab === tab;
             const accentColor = CHAMBER_SURFACE[tab].primary;
@@ -394,6 +371,15 @@ export function ShellSideRail({
         >
           «
         </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <button
+            onClick={onToggleCollapsed}
+            title="Collapse rail"
+            style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "10px" }}
+          >
+            «
+          </button>
+        </div>
       </div>
 
       {/* Chamber nav */}

@@ -1708,6 +1708,7 @@ export default function App() {
       <SovereignBar
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
         onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
         theme={theme}
@@ -1749,6 +1750,8 @@ export default function App() {
           onCreationView={(v) => { setCreationView(v); setDetailId(""); }}
           onProfileView={setProfileView}
           onTabChange={handleTabChange}
+          navigate={navigate}
+          onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
           collapsed={railCollapsed}
           onToggleCollapsed={() => setRailCollapsed((v) => !v)}
         />
@@ -1932,6 +1935,7 @@ export default function App() {
         onMissionSwitch={handleMissionPaletteSwitch}
         onMissionHandoff={activeMission ? handleMissionPaletteHandoff : undefined}
         activeMissionName={activeMission?.identity.name}
+        missions={missions}
       />
 
       <FloatingNoteSystem

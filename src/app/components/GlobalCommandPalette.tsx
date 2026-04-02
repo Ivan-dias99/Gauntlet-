@@ -11,6 +11,7 @@ import { type NavFn, type Tab } from "./shell-types";
 import { LAB_DOMAINS, SCHOOL_TRACKS, SCHOOL_ROLES, CREATION_BLUEPRINTS, CREATION_ENGINES } from "./product-data";
 import { type SearchIndexEntry } from "./runtime-fabric";
 import { CHAMBER_ACCENT } from "../dna/chamber-accent";
+import { type Mission } from "../dna/mission-substrate";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -156,6 +157,25 @@ function buildRuntimeEntries(
   });
 }
 
+function buildMissionEntries(
+  missions: Mission[],
+  navigate: NavFn,
+  onClose: () => void
+): CmdEntry[] {
+  if (!missions.length) return [];
+  const go = (tab: Tab, view: string, id = "") => {
+    navigate(tab, view, id);
+    onClose();
+  };
+  return missions.map((m) => ({
+    id:      `mission-${m.id}`,
+    label:   m.identity.name,
+    meta:    `Mission · ${m.identity.chamberLead} · ${m.ledger.currentState}`,
+    chamber: m.identity.chamberLead as Tab,
+    action:  () => go("profile", "projects"),
+  }));
+}
+
 // ─── Chamber dot ──────────────────────────────────────────────────────────────
 
 const CHAMBER_DOT: Record<string, string> = {
@@ -180,6 +200,12 @@ interface GlobalCommandPaletteProps {
 
 export function GlobalCommandPalette({
   open, onClose, navigate, searchIndex, onMissionNew, onMissionSwitch, onMissionHandoff, activeMissionName,
+  /** Optional mission list for mission-level navigation commands */
+  missions?:   Mission[];
+}
+
+export function GlobalCommandPalette({
+  open, onClose, navigate, searchIndex, onMissionNew, onMissionSwitch, onMissionHandoff, activeMissionName, missions = [],
 }: GlobalCommandPaletteProps) {
   const staticEntries = buildStaticEntries(navigate, onClose, {
     onMissionNew,
@@ -188,7 +214,8 @@ export function GlobalCommandPalette({
     activeMissionName,
   });
   const runtimeEntries = buildRuntimeEntries(searchIndex, navigate, onClose);
-  const allEntries = [...staticEntries, ...runtimeEntries];
+  const missionEntries = buildMissionEntries(missions, navigate, onClose);
+  const allEntries = [...staticEntries, ...runtimeEntries, ...missionEntries];
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
 
@@ -398,6 +425,10 @@ function CmdGroup({ label, entries }: { label: string; entries: CmdEntry[] }) {
       >
         {label}
       </div>
+    <CommandPrimitive.Group
+      heading={label}
+      style={{ marginBottom: "2px" }}
+    >
       {entries.map((e) => (
         <CmdItem key={e.id} entry={e} />
       ))}

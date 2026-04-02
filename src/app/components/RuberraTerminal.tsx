@@ -261,9 +261,7 @@ function BlockOperation({ verb, target, sub }: { verb: string; target: string; s
   return (
     <div style={{ marginBottom: "10px", paddingBottom: "8px", borderBottom: `1px solid ${T.line}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <span style={{ color: T.dim2, fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", flexShrink: 0, userSelect: "none" }}>
-          CMD
-        </span>
+        <TerminalLayerBadge layer="TRACE" color={T.dim} />
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", lineHeight: 1.55, letterSpacing: "0.01em" }}>
           <span style={{ color: T.text, fontWeight: 500 }}>{verb}</span>
           <span style={{ color: T.dim }}>{"("}</span>
@@ -313,7 +311,8 @@ function BlockCode({ lines, lang, filename }: { lines: string[]; lang: string; f
               <span key={i} style={{ width: "8px", height: "8px", borderRadius: "50%", background: c, display: "inline-block", opacity: 0.7 }} />
             ))}
           </div>
-          <span style={{ color: T.dim, fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          <TerminalLayerBadge layer={lang === "diff" || lang === "patch" ? "DIFF" : "ARTIFACT"} color={lang === "diff" || lang === "patch" ? T.green : T.cyan} />
+          <span style={{ color: T.dim, fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase" }}>
             {lang || "text"}
           </span>
           {filename && (
@@ -494,23 +493,31 @@ function BlockDiff({ removed, added }: { removed: string; added: string }) {
   const maxLen = Math.max(removedLines.length, addedLines.length);
 
   return (
-    <div style={{ margin: "6px 0 12px", border: `1px solid ${T.line2}`, borderRadius: "5px", overflow: "hidden", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>
-      {Array.from({ length: maxLen }, (_, i) => (
-        <div key={i}>
-          {removedLines[i] !== undefined && (
-            <div style={{ display: "flex", background: T.redBg, padding: "2px 12px" }}>
-              <span style={{ color: T.red, width: "18px", flexShrink: 0, userSelect: "none" }}>–</span>
-              <SyntaxLine text={removedLines[i]} color={T.red} />
-            </div>
-          )}
-          {addedLines[i] !== undefined && (
-            <div style={{ display: "flex", background: T.greenBg, padding: "2px 12px" }}>
-              <span style={{ color: T.green, width: "18px", flexShrink: 0, userSelect: "none" }}>+</span>
-              <SyntaxLine text={addedLines[i]} color={T.green} />
-            </div>
-          )}
-        </div>
-      ))}
+    <div style={{ margin: "6px 0 12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "5px" }}>
+        <TerminalLayerBadge layer="DIFF" color={T.green} />
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: T.dim }}>
+          {removedLines.length} removed · {addedLines.length} added
+        </span>
+      </div>
+      <div style={{ border: `1px solid ${T.line2}`, borderRadius: "5px", overflow: "hidden", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>
+        {Array.from({ length: maxLen }, (_, i) => (
+          <div key={i}>
+            {removedLines[i] !== undefined && (
+              <div style={{ display: "flex", background: T.redBg, padding: "2px 12px" }}>
+                <span style={{ color: T.red, width: "18px", flexShrink: 0, userSelect: "none" }}>–</span>
+                <SyntaxLine text={removedLines[i]} color={T.red} />
+              </div>
+            )}
+            {addedLines[i] !== undefined && (
+              <div style={{ display: "flex", background: T.greenBg, padding: "2px 12px" }}>
+                <span style={{ color: T.green, width: "18px", flexShrink: 0, userSelect: "none" }}>+</span>
+                <SyntaxLine text={addedLines[i]} color={T.green} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -527,23 +534,62 @@ function BlockDivider({ label }: { label: string }) {
   );
 }
 
+// Terminal layer badge for typed output
+function TerminalLayerBadge({ layer, color }: { layer: string; color: string }) {
+  return (
+    <span
+      style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: "7px",
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+        color,
+        border: `1px solid color-mix(in srgb, ${color} 28%, ${T.line})`,
+        borderRadius: "3px",
+        padding: "1px 5px",
+        userSelect: "none",
+        flexShrink: 0,
+      }}
+    >
+      {layer}
+    </span>
+  );
+}
+
+// Operational state labels for terminal
+const TERMINAL_STATE_LABEL: Record<string, { label: string; color: string }> = {
+  Thinking:  { label: "ROUTING",    color: T.amberDim },
+  Streaming: { label: "STREAMING",  color: T.amberDim },
+  Routing:   { label: "ROUTING",    color: T.amberDim },
+  Analyzing: { label: "ANALYZING",  color: T.amberDim },
+  Building:  { label: "BUILDING",   color: T.cyan },
+  Validating:{ label: "VALIDATING", color: T.amberDim },
+  Done:      { label: "SETTLED",    color: T.green },
+  Error:     { label: "ERROR",      color: T.red },
+};
+
 function BlockStatus({ text, elapsed, tokens, variant }: {
   text: string; elapsed?: string; tokens?: string; variant: "working" | "done" | "error";
 }) {
-  const color  = variant === "done" ? T.green : variant === "error" ? T.red : T.dim;
-  const prefix = variant === "done" ? "ok" : variant === "error" ? "err" : "run";
+  const stateInfo = TERMINAL_STATE_LABEL[text] ?? {
+    label: text.toUpperCase(),
+    color: variant === "done" ? T.green : variant === "error" ? T.red : T.amberDim,
+  };
+  const color  = stateInfo.color;
+  const label  = stateInfo.label;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "10px 0 8px", padding: "6px 12px", background: variant === "working" ? "color-mix(in srgb, var(--rt-amber) 6%, transparent)" : T.bg, borderRadius: "6px", border: `1px solid ${T.line}` }}>
-      <span style={{ color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.1em", textTransform: "uppercase", userSelect: "none", minWidth: "28px" }}>
-        {prefix}
+    <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "10px 0 8px", padding: "6px 12px", background: variant === "working" ? `color-mix(in srgb, ${T.amber} 5%, transparent)` : T.bg, borderRadius: "6px", border: `1px solid ${T.line}` }}>
+      <span style={{ color, fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.11em", textTransform: "uppercase", userSelect: "none" }}>
+        {label}
       </span>
-      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: T.text, letterSpacing: "0.02em" }}>
-        {text}
-        {variant === "working" && (
-          <span style={{ color: T.dim2, marginLeft: "4px" }}>…</span>
-        )}
-      </span>
+      {variant === "working" && (
+        <motion.span
+          animate={{ opacity: [0.2, 1, 0.2] }}
+          transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+          style={{ width: "4px", height: "4px", borderRadius: "50%", background: color, display: "inline-block" }}
+        />
+      )}
       {(elapsed || tokens) && (
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: T.dim, marginLeft: "2px" }}>
           ({[elapsed, tokens ? `↑ ${tokens}` : null].filter(Boolean).join(" · ")})
@@ -742,6 +788,7 @@ export interface RuberraTerminalProps {
   placeholder?: string;
   elapsedLabel?: string;
   chamberAccentVar?: string;
+  /** Mission binding — shown in execution trace when a mission is active */
   missionName?: string;
 }
 
@@ -795,44 +842,71 @@ export function RuberraTerminal({
         fontFamily: "'JetBrains Mono', monospace",
       }}
     >
-      {/* Terminal header — single state strip, no duplicate metrics */}
+      {/* Terminal command strip — chamber · mission · EI · provider/model · runtime state */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          gap: "8px",
           padding: "0 16px",
-          height: "36px",
+          height: "34px",
           background: T.surface,
           borderBottom: `1px solid ${T.line}`,
           flexShrink: 0,
-          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: T.dim2, letterSpacing: "0.08em", textTransform: "uppercase", userSelect: "none" }}>
-            ruberra
-          </span>
-          <span style={{ color: T.line2, fontSize: "9px" }}>·</span>
-          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: T.dim, letterSpacing: "0.04em", userSelect: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {chamberLabel.toLowerCase()}
-          </span>
-        </div>
+        {/* Chamber accent anchor */}
+        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: chamberAccentVar, letterSpacing: "0.12em", textTransform: "uppercase", userSelect: "none", fontWeight: 600, flexShrink: 0 }}>
+          {chamber}
+        </span>
+        <span style={{ color: T.line2, fontSize: "9px", userSelect: "none", flexShrink: 0 }}>·</span>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
-          <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: T.dim2, letterSpacing: "0.06em", userSelect: "none" }}>
-            {messages.filter((m) => m.role === "user").length} in · {messages.filter((m) => m.role === "assistant").length} out
-            {isLoading ? " · active" : ""}
-          </span>
-          <ModelSelector
-            chamber={chamber}
-            task={task}
-            modelId={modelId}
-            onTaskChange={onTaskChange}
-            onModelChange={onModelChange}
-            mode="terminal"
-          />
-        </div>
+        {/* Model / provider */}
+        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: T.dim, letterSpacing: "0.03em", userSelect: "none", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "140px" }}>
+          {modelId}
+          {lastTrace?.providerId ? ` · ${lastTrace.providerId}` : ""}
+        </span>
+
+        {/* Mission binding */}
+        {missionName && (
+          <>
+            <span style={{ color: T.line2, fontSize: "9px", userSelect: "none", flexShrink: 0 }}>·</span>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: T.dim, letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+              {missionName}
+            </span>
+          </>
+        )}
+        {!missionName && <div style={{ flex: 1 }} />}
+
+        {/* Runtime state — live when executing */}
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ display: "flex", alignItems: "center", gap: "5px", flexShrink: 0 }}
+          >
+            <motion.span
+              animate={{ opacity: [0.2, 1, 0.2] }}
+              transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+              style={{ width: "4px", height: "4px", borderRadius: "50%", background: chamberAccentVar, display: "inline-block" }}
+            />
+            <span style={{ fontSize: "7.5px", fontFamily: "'JetBrains Mono', monospace", color: chamberAccentVar, letterSpacing: "0.11em", textTransform: "uppercase", userSelect: "none" }}>
+              {allBlocks.length > 1 ? "STREAMING" : "ROUTING"}
+            </span>
+          </motion.div>
+        )}
+
+        {/* Model selector — always present, right-anchored */}
+        <ModelSelector
+          chamber={chamber}
+          task={task}
+          modelId={modelId}
+          onTaskChange={onTaskChange}
+          onModelChange={onModelChange}
+          mode="terminal"
+        />
       </div>
 
       {lastTrace && (

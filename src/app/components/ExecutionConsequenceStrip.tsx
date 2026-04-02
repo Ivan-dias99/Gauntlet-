@@ -4,19 +4,22 @@
  */
 
 import { useState } from "react";
+import { motion } from "motion/react";
 import { type MessageExecutionTrace } from "./shell-types";
 
 const STATE_LABEL: Record<MessageExecutionTrace["executionState"], string> = {
-  streaming:            "routing",
-  live:                 "live",
-  completed:              "settled",
-  degraded:               "degraded",
-  aborted:                "aborted",
-  error:                  "error",
-  blocked:                "blocked",
-  scaffold_only:          "scaffold",
-  provider_unavailable:   "provider off",
+  streaming:            "STREAMING",
+  live:                 "LIVE",
+  completed:            "SETTLED",
+  degraded:             "DEGRADED",
+  aborted:              "ABORTED",
+  error:                "ERROR",
+  blocked:              "BLOCKED",
+  scaffold_only:        "SCAFFOLD",
+  provider_unavailable: "PROVIDER OFF",
 };
+
+const IS_LIVE_STATE = new Set(["streaming", "live"]);
 
 function stateColor(state: MessageExecutionTrace["executionState"]): string {
   if (state === "error" || state === "blocked") return "var(--r-err)";
@@ -109,6 +112,9 @@ export function ExecutionConsequenceStrip({
       >
         <span
           style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "5px",
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: "7.5px",
             letterSpacing: "0.1em",
@@ -119,6 +125,20 @@ export function ExecutionConsequenceStrip({
             padding: "2px 6px",
           }}
         >
+          {IS_LIVE_STATE.has(trace.executionState) && (
+            <motion.span
+              animate={{ opacity: [0.2, 1, 0.2] }}
+              transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+              style={{
+                width: "4px",
+                height: "4px",
+                borderRadius: "50%",
+                background: stateColor(trace.executionState),
+                display: "inline-block",
+                flexShrink: 0,
+              }}
+            />
+          )}
           {STATE_LABEL[trace.executionState]}
         </span>
         {tierLabel && (

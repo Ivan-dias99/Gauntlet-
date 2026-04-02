@@ -512,11 +512,71 @@ function AssistantMessage({
       ) : (
         <ThinkingDots />
       )}
+      {/* ── Provenance bar — 2px vertical chamber attribution line ── */}
+      <div
+        style={{
+          borderLeft: `2px solid color-mix(in srgb, ${accent} 48%, transparent)`,
+          paddingLeft: "14px",
+          marginLeft: "1px",
+        }}
+      >
+        {trace && (
+          <ExecutionConsequenceStrip
+            trace={trace}
+            accent={accent}
+            leadPioneerShort={leadShort}
+            giName={trace.giLabel ?? trace.giId}
+            tierLabel={TIER_LABEL[sovereign.tier]}
+            tierColor={TIER_COLOR[sovereign.tier]}
+            modelTruthLabel={sovereign.tier_label}
+            missionName={missionName}
+          />
+        )}
+        <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
+        {(msg.meta?.pioneerId || msg.meta?.workflowId) && !trace && (
+          <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
+            {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.pioneerId}</span>}
+            {msg.meta?.workflowId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.workflowId}</span>}
+            {msg.meta?.hostingLevel && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{msg.meta.hostingLevel}</span>}
+          </div>
+        )}
+        {msg.content && (
+          <ConsequenceTypeTag
+            type={inferConsequenceType(msg.content, chamberId, msg.blocks)}
+            accent={accent}
+          />
+        )}
+        {msg.blocks && msg.blocks.length > 0 ? (
+          <BlockRenderer blocks={msg.blocks} chamber={chamberId} />
+        ) : msg.content ? (
+          <MetamorphicPlainSurface
+            content={msg.content}
+            responseClass={inferMetamorphicClassFromText(msg.content)}
+            chamber={chamberId}
+          />
+        ) : (
+          <ThinkingDots />
+        )}
+        {msg.content && (
+          <MutableFooter
+            content={msg.content}
+            chamberId={chamberId}
+            accent={accent}
+            missionName={missionName}
+          />
+        )}
+      </div>
     </motion.div>
   );
 }
 
 // ─── Status strip ─────────────────────────────────────────────────────────────
+
+const EXEC_STATE_LABEL: Record<"idle" | "thinking" | "streaming", string> = {
+  idle:      "",
+  thinking:  "ROUTING",
+  streaming: "STREAMING",
+};
 
 function StatusStrip({
   execStatus, onCancel, accent, chamberLabel, modelBadge,
@@ -527,14 +587,15 @@ function StatusStrip({
   chamberLabel: string;
   modelBadge: string;
 }) {
+  const stateLabel = EXEC_STATE_LABEL[execStatus];
   return (
     <div
       style={{
         maxWidth: "680px",
         margin: "0 auto",
         width: "100%",
-        padding: "8px 32px 10px",
-        minHeight: "28px",
+        padding: "6px 32px 8px",
+        minHeight: "26px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -542,22 +603,12 @@ function StatusStrip({
         background: "linear-gradient(to bottom, var(--r-surface) 0%, var(--r-bg) 100%)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.11em", color: "var(--r-dim)", textTransform: "uppercase" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.1em", color: "var(--r-dim)", textTransform: "uppercase", userSelect: "none" }}>
           {chamberLabel}
         </span>
-        <span
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: "8px",
-            letterSpacing: "0.05em",
-            color: "var(--r-subtext)",
-            border: "1px solid var(--r-border-soft)",
-            borderRadius: "999px",
-            padding: "2px 8px",
-            background: "var(--r-surface)",
-          }}
-        >
+        <span style={{ color: "var(--r-border)", fontSize: "9px", userSelect: "none" }}>·</span>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", color: "var(--r-dim)", letterSpacing: "0.03em", userSelect: "none" }}>
           {modelBadge}
         </span>
       </div>
@@ -571,8 +622,8 @@ function StatusStrip({
             style={{ display: "flex", alignItems: "center", gap: "6px" }}
           >
             <motion.span
-              animate={{ opacity: [0.25, 1, 0.25] }}
-              transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+              animate={{ opacity: [0.2, 1, 0.2] }}
+              transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
               style={{
                 width: "4px",
                 height: "4px",
@@ -585,20 +636,21 @@ function StatusStrip({
             <span
               style={{
                 fontFamily: "'JetBrains Mono', monospace",
-                fontSize: "9px",
-                letterSpacing: "0.10em",
+                fontSize: "8px",
+                letterSpacing: "0.11em",
                 color: accent,
                 textTransform: "uppercase",
+                userSelect: "none",
               }}
             >
-              {execStatus}
+              {stateLabel}
             </span>
             {execStatus === "streaming" && (
               <button
                 onClick={onCancel}
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: "9px",
+                  fontSize: "8px",
                   color: "var(--r-dim)",
                   background: "transparent",
                   border: "none",
@@ -797,6 +849,267 @@ function Composer({
   );
 }
 
+// ─── Live Header Rail ─────────────────────────────────────────────────────────
+
+function LiveHeaderRail({
+  accent, chamberId, modelId, providerId, missionName, execStatus, eiName,
+}: {
+  accent: string;
+  chamberId: "lab" | "school" | "creation";
+  modelId: string;
+  providerId?: string;
+  missionName?: string;
+  execStatus: "idle" | "thinking" | "streaming";
+  eiName?: string;
+}) {
+  const isLive = execStatus !== "idle";
+  const stateLabel =
+    execStatus === "thinking"  ? "ROUTING"   :
+    execStatus === "streaming" ? "STREAMING" : "";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "0 32px",
+        height: "30px",
+        background: "var(--r-surface)",
+        borderBottom: "1px solid var(--r-border-soft)",
+        flexShrink: 0,
+        overflow: "hidden",
+      }}
+    >
+      {/* Chamber accent anchor */}
+      <span
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "7.5px",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: accent,
+          fontWeight: 600,
+          flexShrink: 0,
+          userSelect: "none",
+        }}
+      >
+        {chamberId}
+      </span>
+      <span style={{ color: "var(--r-border)", fontSize: "9px", userSelect: "none" }}>·</span>
+
+      {/* EI / agent — if known */}
+      {eiName && (
+        <>
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "7.5px",
+              color: "var(--r-subtext)",
+              letterSpacing: "0.04em",
+              flexShrink: 0,
+            }}
+          >
+            {eiName}
+          </span>
+          <span style={{ color: "var(--r-border)", fontSize: "9px", userSelect: "none" }}>·</span>
+        </>
+      )}
+
+      {/* Model · provider */}
+      <span
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "7.5px",
+          color: "var(--r-dim)",
+          letterSpacing: "0.03em",
+          flexShrink: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          maxWidth: "140px",
+        }}
+      >
+        {modelId}{providerId ? ` · ${providerId}` : ""}
+      </span>
+
+      {/* Mission binding */}
+      {missionName && (
+        <>
+          <span style={{ color: "var(--r-border)", fontSize: "9px", userSelect: "none" }}>·</span>
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "7.5px",
+              color: "var(--r-subtext)",
+              letterSpacing: "0.03em",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {missionName}
+          </span>
+        </>
+      )}
+      {!missionName && <div style={{ flex: 1 }} />}
+
+      {/* Runtime state — live pulse when active */}
+      {isLive && stateLabel && (
+        <div style={{ display: "flex", alignItems: "center", gap: "5px", flexShrink: 0 }}>
+          <motion.span
+            animate={{ opacity: [0.25, 1, 0.25] }}
+            transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+            style={{
+              width: "4px",
+              height: "4px",
+              borderRadius: "50%",
+              background: accent,
+              display: "inline-block",
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "7.5px",
+              letterSpacing: "0.11em",
+              textTransform: "uppercase",
+              color: accent,
+            }}
+          >
+            {stateLabel}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Consequence type ─────────────────────────────────────────────────────────
+
+type ConsequenceType = "FINDING" | "VERDICT" | "DOSSIER" | "DIRECTIVE" | "BUILD NOTE" | "ARTIFACT DELTA" | "HANDOFF" | "LESSON" | "WARNING";
+
+function inferConsequenceType(
+  content: string,
+  chamberId: "lab" | "school" | "creation",
+  blocks?: Message["blocks"],
+): ConsequenceType {
+  if (blocks && blocks.length > 0) {
+    const bt = blocks[0].type;
+    if (bt === "verdict" || bt === "audit")        return "VERDICT";
+    if (bt === "evidence" || bt === "matrix")      return "FINDING";
+    if (bt === "dossier")                          return "DOSSIER";
+    if (bt === "blueprint" || bt === "execution")  return "DIRECTIVE";
+    if (bt === "lesson")                           return "LESSON";
+  }
+  const c = content.toLowerCase();
+  if (chamberId === "lab") {
+    if (c.includes("verdict") || c.includes("conclusion") || c.includes("result")) return "VERDICT";
+    if (c.includes("warning") || c.includes("risk") || c.includes("critical"))     return "WARNING";
+    return "FINDING";
+  }
+  if (chamberId === "school") {
+    if (c.includes("handoff") || c.includes("transfer"))   return "HANDOFF";
+    if (c.includes("warning") || c.includes("important"))  return "WARNING";
+    return "LESSON";
+  }
+  // creation
+  if (c.includes("artifact") || c.includes("diff") || c.includes("changed"))      return "ARTIFACT DELTA";
+  if (c.includes("directive") || c.includes("deploy"))                             return "DIRECTIVE";
+  return "BUILD NOTE";
+}
+
+function ConsequenceTypeTag({ type, accent }: { type: ConsequenceType; accent: string }) {
+  const color =
+    type === "WARNING"        ? "var(--r-warn)" :
+    type === "VERDICT"        ? "var(--r-ok)"   :
+    type === "ARTIFACT DELTA" || type === "DIRECTIVE" || type === "BUILD NOTE" ? accent :
+    "var(--r-dim)";
+
+  return (
+    <div style={{ marginBottom: "10px" }}>
+      <span
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "7px",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color,
+          border: `1px solid color-mix(in srgb, ${color} 28%, var(--r-border))`,
+          borderRadius: "3px",
+          padding: "1px 6px",
+          userSelect: "none",
+        }}
+      >
+        {type}
+      </span>
+    </div>
+  );
+}
+
+// ─── Mutable footer ───────────────────────────────────────────────────────────
+
+function inferNextStep(content: string, chamberId: "lab" | "school" | "creation"): string | null {
+  const c = content.toLowerCase();
+  if (chamberId === "lab") {
+    if (c.includes("recommend") || c.includes("suggest")) return "Run deeper audit";
+    if (c.includes("compare")   || c.includes("versus"))  return "Build decision matrix";
+    if (c.includes("evidence")  || c.includes("finding")) return "Validate evidence chain";
+  }
+  if (chamberId === "school") {
+    if (c.includes("mastery") || c.includes("check"))  return "Attempt mastery check";
+    if (c.includes("module")  || c.includes("next"))   return "Advance to next module";
+    if (c.includes("lesson")  || c.includes("learn"))  return "Continue learning path";
+  }
+  if (chamberId === "creation") {
+    if (c.includes("build")     || c.includes("generate"))   return "Execute build directive";
+    if (c.includes("blueprint") || c.includes("architect"))  return "Compile blueprint";
+    if (c.includes("artifact")  || c.includes("package"))    return "Finalize artifact";
+  }
+  return null;
+}
+
+function MutableFooter({
+  content, chamberId, accent, missionName,
+}: {
+  content: string;
+  chamberId: "lab" | "school" | "creation";
+  accent: string;
+  missionName?: string;
+}) {
+  const next = inferNextStep(content, chamberId);
+  if (!next && !missionName) return null;
+
+  return (
+    <div
+      style={{
+        marginTop: "12px",
+        paddingTop: "8px",
+        borderTop: "1px solid var(--r-border-soft)",
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "16px",
+        alignItems: "center",
+      }}
+    >
+      {next && (
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.07em", color: "var(--r-dim)" }}>
+          <span style={{ color: accent, textTransform: "uppercase", letterSpacing: "0.1em", marginRight: "6px" }}>NEXT</span>
+          {next}
+        </span>
+      )}
+      {missionName && (
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.06em", color: "var(--r-dim)" }}>
+          <span style={{ textTransform: "uppercase", letterSpacing: "0.1em", marginRight: "6px" }}>MISSION STATE</span>
+          {missionName}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ChamberChat({
@@ -824,6 +1137,7 @@ export function ChamberChat({
   modelId: string;
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
+  /** Mission binding — propagated into each assistant message execution strip */
   missionName?: string;
 }) {
   const threadRef = useRef<HTMLDivElement>(null);
@@ -854,6 +1168,15 @@ export function ChamberChat({
         background: "var(--r-bg)",
       }}
     >
+      {/* Live Header Rail */}
+      <LiveHeaderRail
+        accent={config.accent}
+        chamberId={config.id}
+        modelId={modelId}
+        missionName={missionName}
+        execStatus={execStatus}
+      />
+
       {/* Thread */}
       <div
         ref={threadRef}

@@ -392,6 +392,7 @@ export function SovereignBar({
         </div>
       </div>
 
+
     </header>
   );
 }
