@@ -88,7 +88,7 @@ import {
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
 import { getExecutionTruth, buildLiveAdapterRegistry, resolveSovereignStack } from "./components/sovereign-runtime";
-import { getContractByIntent, resolveIntent, resolveRoute } from "./components/routing-contracts";
+import { getContractByIntent, resolveIntent } from "./components/routing-contracts";
 import { MODEL_REGISTRY } from "./components/model-orchestration";
 import { enforceExecutionGate } from "./components/governance-fabric";
 import { buildWorkflowRunPayload } from "./components/workflow-engine";
@@ -106,6 +106,13 @@ import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dn
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
 import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
 import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
+import {
+  prioritizeMemory,
+  resolveMissionRoute,
+  type MemoryItem,
+  type MemoryRecallRequest,
+  type MissionReasoningResult,
+} from "./dna/sovereign-intelligence";
 import { PIONEER_REGISTRY } from "./components/pioneer-registry";
 import { mcpMissionCreate, mcpMissionUpdateState, mcpMissionAttachContinuity, mcpMissionBuildHandoff } from "./components/mcp-client";
 
@@ -146,6 +153,78 @@ function loadMessages(): TabMessages {
     }
   } catch { /* corrupt storage */ }
   return emptyRecord<Message[]>([]);
+}
+
+function recallMissionPriorContext(
+  mission: Mission,
+  requestText: string,
+): { request: MemoryRecallRequest; items: MemoryItem[]; priorContext: string } {
+  const now = Date.now();
+  const decisionItems: MemoryItem[] = mission.memory.decisions.map((d) => ({
+    id: d.id,
+    missionId: mission.id,
+    content: `${d.statement} — ${d.rationale}`,
+    sourceType: "decision",
+    priority: d.reversible ? "standard" : "high",
+    createdAt: d.at,
+    lastAccessAt: now,
+    accessCount: 1,
+    compressed: false,
+  }));
+  const contextItems: MemoryItem[] = [
+    ...(mission.memory.context
+      ? [{
+          id: `${mission.id}-context`,
+          missionId: mission.id,
+          content: mission.memory.context,
+          sourceType: "context" as const,
+          priority: "high" as const,
+          createdAt: mission.memory.lastUpdated,
+          lastAccessAt: now,
+          accessCount: 1,
+          compressed: false,
+        }]
+      : []),
+    ...mission.memory.constraints.map((c, i) => ({
+      id: `${mission.id}-constraint-${i}`,
+      missionId: mission.id,
+      content: c,
+      sourceType: "constraint" as const,
+      priority: "high" as const,
+      createdAt: mission.memory.lastUpdated,
+      lastAccessAt: now,
+      accessCount: 1,
+      compressed: false,
+    })),
+    ...mission.memory.priorReasoning.map((r, i) => ({
+      id: `${mission.id}-reasoning-${i}`,
+      missionId: mission.id,
+      content: r,
+      sourceType: "reasoning" as const,
+      priority: "standard" as const,
+      createdAt: mission.memory.lastUpdated,
+      lastAccessAt: now,
+      accessCount: 1,
+      compressed: true,
+      compressedSummary: r.slice(0, 140),
+    })),
+  ];
+  const all = [...decisionItems, ...contextItems];
+  const request: MemoryRecallRequest = {
+    missionId: mission.id,
+    query: requestText,
+    maxItems: 6,
+    minPriority: "standard",
+    sourceTypes: ["decision", "constraint", "reasoning", "context"],
+  };
+  const scoped = all.filter((item) => {
+    const pRank = { critical: 4, high: 3, standard: 2, low: 1, discard: 0 } as const;
+    return pRank[item.priority] >= pRank[request.minPriority] &&
+      (!request.sourceTypes || request.sourceTypes.includes(item.sourceType));
+  });
+  const recalled = prioritizeMemory(scoped, request.query, request.maxItems);
+  const priorContext = recalled.map((i) => i.compressedSummary ?? i.content).join(" | ");
+  return { request, items: recalled, priorContext };
 }
 
 export default function App() {
@@ -482,11 +561,63 @@ export default function App() {
       tab === "creation" ? "build-heavy"    :
       tab === "lab"      ? "research-heavy" :
       tab === "school"   ? "learning-heavy" : "balanced-trinity";
-    const routeDecision = resolveRouteDecision(runtimeFabric.intelligence, {
+    const baseRouteDecision = resolveRouteDecision(runtimeFabric.intelligence, {
       chamberHint: tab,
       workflowId,
       requestText: text,
     });
+    const missionMemoryRecall = activeMission ? recallMissionPriorContext(activeMission, text) : null;
+    const missionRoute = activeMission ? resolveMissionRoute({
+      missionId: activeMission.id,
+      missionStatus: activeMission.ledger.currentState,
+      chamberLead: activeMission.identity.chamberLead,
+      requestText: text,
+      preferredPioneer: undefined,
+      depth: "standard",
+      sessionChamber: tab,
+    }) : null;
+    const missionRoutePinned = missionRoute && missionRoute.chamber === tab ? missionRoute : null;
+    const routeDecision = {
+      ...baseRouteDecision,
+      pioneerId: missionRoutePinned?.pioneerId ?? baseRouteDecision.pioneerId,
+      giId: missionRoutePinned?.giId ?? baseRouteDecision.giId,
+      supportChain: missionRoutePinned
+        ? Array.from(new Set([...(missionRoutePinned.supportChain ?? []), ...baseRouteDecision.supportChain]))
+        : baseRouteDecision.supportChain,
+      reason: missionRoutePinned
+        ? `${baseRouteDecision.reason} · ${missionRoutePinned.missionReason}`
+        : baseRouteDecision.reason,
+    };
+    const missionReasoning: MissionReasoningResult | null = missionRoutePinned ? {
+      requestId: `reason_${Date.now()}`,
+      missionId: missionRoutePinned.missionId,
+      mode: "planning",
+      steps: [
+        {
+          id: `step_context_${Date.now()}`,
+          at: Date.now(),
+          operation: "prior-context-recall",
+          input: text.slice(0, 120),
+          output: missionMemoryRecall?.priorContext?.slice(0, 180) ?? "no prior context",
+          confidence: missionMemoryRecall?.items.length ? "high" : "medium",
+        },
+        {
+          id: `step_route_${Date.now()}`,
+          at: Date.now(),
+          operation: "mission-route-resolution",
+          input: missionRoutePinned.reason,
+          output: missionRoutePinned.missionReason,
+          confidence: "high",
+        },
+      ],
+      conclusion: missionRoutePinned.reason,
+      confidence: "high",
+      nextActions: [
+        `dispatch.${tab}`,
+        `workflow.${missionRoutePinned.workflowId ?? workflowId}`,
+      ],
+      producedAt: Date.now(),
+    } : null;
     const leaderPioneer = runtimeFabric.intelligence.pioneers.find((entry) => entry.id === routeDecision.pioneerId);
     const hostingLevel = leaderPioneer?.hostingLevel ?? "proxy";
     setRuntimeFabric((prev) => routeIntelligenceRequest(prev, {
@@ -513,7 +644,6 @@ export default function App() {
     const controller = new AbortController();
     abortRefs.current[tab] = controller;
 
-    const resolvedRoute = resolveRoute(text, tab, task);
     const requestedModelMeta = MODEL_REGISTRY.find((m) => m.id === requestedModelId);
     const connectorActionRows = recommendedConnectorsForChamber(runtimeFabric, tab).map((cid) => {
       const row = runtimeFabric.connectors.find((c) => c.id === cid);
@@ -537,7 +667,7 @@ export default function App() {
         hostingLevel,
         providerId: requestedModelMeta?.provider,
         modelId: requestedModelId,
-        supportChain: resolvedRoute.support_chain,
+        supportChain: routeDecision.supportChain,
       },
     };
     setMessages((prev) => ({ ...prev, [tab]: [...prev[tab], userMsg] }));
@@ -645,6 +775,20 @@ export default function App() {
     const baseResults: ExecutionResultEntry[] = [
       { phase: "route", summary: routeDigestLine.slice(0, 140), at: Date.now() },
     ];
+    if (missionReasoning) {
+      baseResults.push({
+        phase: "mission",
+        summary: missionReasoning.conclusion.slice(0, 140),
+        at: missionReasoning.producedAt,
+      });
+      if (missionReasoning.nextActions[0]) {
+        baseResults.push({
+          phase: "next",
+          summary: missionReasoning.nextActions.join(" → ").slice(0, 140),
+          at: missionReasoning.producedAt,
+        });
+      }
+    }
     if (plan.fallbackReason) {
       baseResults.push({ phase: "fallback", summary: plan.fallbackReason.slice(0, 120), at: Date.now() });
     }
@@ -654,7 +798,7 @@ export default function App() {
       executionState: initialRunState,
       providerId: plan.selectedModel?.provider,
       modelId: selectedModelId,
-      supportChain: resolvedRoute.support_chain,
+      supportChain: routeDecision.supportChain,
       workflowId,
       hostingLevel,
       executionResults: baseResults,
@@ -696,6 +840,9 @@ export default function App() {
         .filter((m) => m.id !== assistantId)
         .slice(-MAX_CONTEXT)
         .map(({ role, content }) => ({ role, content }));
+      const contextualHistory = missionMemoryRecall?.priorContext
+        ? [{ role: "system", content: `mission-context: ${missionMemoryRecall.priorContext}` }, ...history]
+        : history;
 
       // ── Sovereign routing: try live local runtime first ──────────────────────
       let usedLocalPath = false;
@@ -713,7 +860,7 @@ export default function App() {
             providerId:    localHealth.providerId,
             providerLane:  "open_source_local",
             fallbackChain: plan.fallbackChain,
-            context:       history,
+            context:       contextualHistory,
             signal:        controller.signal,
             localEndpoint: runtimeFabric.aiSettings.localRuntimeEndpoint ?? "http://localhost:11434",
             continuityId,
@@ -755,7 +902,7 @@ export default function App() {
           task,
           model: selectedModelId,
           fallbackChain: plan.fallbackChain,
-          messages: [...history, { role: "user", content: text }],
+          messages: [...contextualHistory, { role: "user", content: text }],
         }),
         signal: controller.signal,
       });
@@ -866,7 +1013,7 @@ export default function App() {
         executionState: finalRunState,
         providerId: plan.selectedModel?.provider,
         modelId: selectedModelId,
-        supportChain: resolvedRoute.support_chain,
+        supportChain: routeDecision.supportChain,
         workflowId,
         hostingLevel,
         executionResults: [
@@ -902,7 +1049,7 @@ export default function App() {
             hostingLevel,
             providerId: plan.selectedModel?.provider,
             modelId: selectedModelId,
-            supportChain: resolvedRoute.support_chain,
+            supportChain: routeDecision.supportChain,
           },
           execution_trace: completedTrace,
         });
@@ -1376,8 +1523,14 @@ export default function App() {
   const analyticsPatterns = useMemo(() => {
     const signalEvents = runtimeFabric.signals.map((s) => s.label);
     const continuityEvents = runtimeFabric.continuity.map((c) => `${c.status} ${c.title}`);
-    return detectPatterns([...signalEvents, ...continuityEvents]);
-  }, [runtimeFabric.signals, runtimeFabric.continuity]);
+    const missionOutcomeEvents = activeMissionOps
+      ? [
+          ...activeMissionOps.tasks.map((t) => `${t.status} ${t.title} ${t.outputDigest ?? ""}`.trim()),
+          ...activeMissionOps.observations.map((o) => `${o.class} ${o.summary}`),
+        ]
+      : [];
+    return detectPatterns([...signalEvents, ...continuityEvents, ...missionOutcomeEvents]);
+  }, [runtimeFabric.signals, runtimeFabric.continuity, activeMissionOps]);
 
   const orgState = useMemo(() => {
     const missionHealth = missions.map((m) => {

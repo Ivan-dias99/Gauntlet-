@@ -110,9 +110,9 @@ export function resolveMissionRoute(req: MissionRouteRequest): MissionRouteResul
 
   // Pioneer selection by chamber lead
   const CHAMBER_PIONEER: Record<MissionChamberLead, string> = {
-    lab:      "claude_architect",
-    school:   "gemini_expansion",
-    creation: "cursor_builder",
+    lab:      "claude-architect",
+    school:   "gemini-expansion",
+    creation: "cursor-builder",
   };
   const CHAMBER_GI: Record<MissionChamberLead, string> = {
     lab:      "lab_analyst_core",
