@@ -943,6 +943,16 @@ export default function App() {
               linkedObjectId:     assistantId,
             });
           }
+          // Cross-chamber consequence: Lab always tells Profile about findings
+          next = pushSignal(next, {
+            type:               "lifecycle",
+            label:              `Lab → Profile: finding logged · ${findingLabel.slice(0, 52)}`,
+            severity:           "info",
+            sourceChamber:      "lab",
+            destinationChamber: "profile",
+            destination:        { tab: "profile", view: "overview" },
+            linkedObjectId:     assistantId,
+          });
         }
         if (tab === "school") {
           // Dynamic lesson signal — extract subject from response instead of static label
@@ -971,6 +981,16 @@ export default function App() {
               destination:        rec.destination,
             });
           }
+          // Cross-chamber consequence: School always tells Profile about mastery progress
+          next = pushSignal(next, {
+            type:               "lifecycle",
+            label:              `School → Profile: mastery logged · "${lessonLabel.slice(0, 48)}"`,
+            severity:           "info",
+            sourceChamber:      "school",
+            destinationChamber: "profile",
+            destination:        { tab: "profile", view: "overview" },
+            linkedObjectId:     assistantId,
+          });
         }
         if (tab === "creation") {
           // Pack context digest and attach to continuity for cross-chamber carry
