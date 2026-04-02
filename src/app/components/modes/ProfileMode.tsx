@@ -31,7 +31,6 @@ import {
   type AutonomousOperationsState,
 } from "../autonomous-operations";
 import { MissionOperationsPanel } from "../MissionOperationsPanel";
-import { type MissionOperationsState } from "../../dna/autonomous-operations";
 import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
 import { ExecutionConsequenceStrip } from "../ExecutionConsequenceStrip";
 import { GovernanceLedgerStrip } from "../GovernanceLedgerStrip";
@@ -103,7 +102,6 @@ interface ProfileModeProps {
   onMissionUpsert: (m: Mission) => void;
   onMissionActivate: (missionId: string) => void;
   /** Stack 02 — Mission-scoped operations. Present when a mission is active. */
-  activeMissionOps?: MissionOperationsState;
   activeMissionId?: string | null;
   activeMissionOps?: MissionOperationsState | null;
   onMissionOpsSignalDismiss?: (signalId: string) => void;
