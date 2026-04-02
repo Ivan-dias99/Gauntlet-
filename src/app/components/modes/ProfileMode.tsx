@@ -103,7 +103,6 @@ interface ProfileModeProps {
   onMissionUpsert: (m: Mission) => void;
   onMissionActivate: (missionId: string) => void;
   /** Stack 02 — Mission-scoped operations. Present when a mission is active. */
-  activeMissionOps?: MissionOperationsState;
   activeMissionId?: string | null;
   activeMissionOps?: MissionOperationsState | null;
   onMissionOpsSignalDismiss?: (signalId: string) => void;
