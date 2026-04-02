@@ -79,8 +79,8 @@ import { MODEL_REGISTRY } from "./components/model-orchestration";
 import { enforceExecutionGate } from "./components/governance-fabric";
 import { buildWorkflowRunPayload } from "./components/workflow-engine";
 import { defaultCivilization } from "./dna/multi-agent";
-import { defaultAnalyticsState } from "./dna/intelligence-analytics";
-import { defaultKnowledgeGraph } from "./dna/living-knowledge";
+import { detectPatterns } from "./dna/intelligence-analytics";
+import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
 import { defaultCollectiveState } from "./dna/collective-execution";
 import { defaultPresenceManifest } from "./dna/distribution-presence";
 import { defaultExchangeLedger } from "./dna/value-exchange";
@@ -181,8 +181,19 @@ export default function App() {
   const [signalsOpen, setSignalsOpen] = useState(false);
   // ── Stack substrates ─────────────────────────────────────────────────────────
   const [civilization]      = useState(defaultCivilization);
-  const [analyticsState]    = useState(defaultAnalyticsState);
-  const [knowledgeGraph]    = useState(defaultKnowledgeGraph);
+  const knowledgeGraph = useMemo(() => {
+    let g = defaultKnowledgeGraph();
+    for (const obj of runtimeFabric.objects.slice(0, 20)) {
+      const node = createNode({
+        type:       obj.type === "investigation" ? "concept" : obj.type === "lesson" ? "concept" : "artifact",
+        content:    obj.title,
+        tags:       obj.tags ?? [],
+        confidence: "medium",
+      });
+      g = addNode(g, node);
+    }
+    return g;
+  }, [runtimeFabric.objects]);
   const [collectiveState]   = useState(defaultCollectiveState);
   const [presenceManifest]  = useState(() => defaultPresenceManifest("operator-1"));
   const [exchangeLedger]    = useState(defaultExchangeLedger);
@@ -893,6 +904,11 @@ export default function App() {
   const notificationItems = runtimeFabric.signals.filter((s) => !s.read).slice(0, 12);
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
+  const analyticsPatterns = useMemo(() => {
+    const signalEvents = runtimeFabric.signals.map((s) => s.label);
+    const continuityEvents = runtimeFabric.continuity.map((c) => `${c.status} ${c.title}`);
+    return detectPatterns([...signalEvents, ...continuityEvents]);
+  }, [runtimeFabric.signals, runtimeFabric.continuity]);
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -1086,7 +1102,7 @@ export default function App() {
                   onHandoffAccept={handleHandoffAccept}
                   onHandoffReject={handleHandoffReject}
                   civilization={civilization}
-                  analyticsPatterns={analyticsState.patterns}
+                  analyticsPatterns={analyticsPatterns}
                   knowledgeGraph={knowledgeGraph}
                   collectiveState={collectiveState}
                   presenceManifest={presenceManifest}
