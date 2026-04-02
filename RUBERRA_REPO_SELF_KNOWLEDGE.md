@@ -16,14 +16,29 @@ Four sovereign organs: **Lab** (investigate) · **School** (learn) · **Creation
 
 ## CURRENT SOVEREIGN FRONTIER
 
-**Active Stack: 02 — Mission Substrate**
+**Active Stack: 02 + 03 concurrent**
+Stack 2 (Mission Substrate): Codex owns remaining closure — real ops state mutations.
+Stack 3 (Sovereign Intelligence): partially advanced — mission context now injected at execution time.
 
-Stack 1 closed 2026-04-02. Stack 2 is open.
+Stack 2 resolved residue (2026-04-02):
+- `MissionOperationsPanel` — MOUNTED in ProfileMode > operations when activeMission is set.
+- `activeMissionOps` — state slot in App.tsx, initialized on `activeMissionId` change, synced on activate/release.
 
-Stack 2 open residue:
-- `MissionOperationsPanel` is built (`src/app/components/MissionOperationsPanel.tsx`) but not yet mounted. Must appear in ProfileMode when a mission is active.
-- `activeMissionOps` state not yet in App.tsx. Needs `defaultMissionOperationsState(activeMissionId)` on mission activation.
-- Mission-to-operations binding (task creation from execution events) not yet wired.
+Stack 2 remaining residue (Codex owns):
+- MissionOperationsPanel callbacks are stubs — real signal dismiss + approval mutations needed.
+- Task creation from execution completion events not yet wired.
+
+Stack 3 advance (2026-04-02):
+- `resolveMissionRoute()` from `dna/sovereign-intelligence.ts` now called at every dispatch when a mission is active.
+- Mission pioneer stack honored: `activeMission.workflow.pioneerStack[0]` passed as `preferredPioneerId` to `resolveRouteDecision`.
+- `routeDigest` now mission-bound when active: `[contract] · [mission name] · [missionReason]`.
+- Mission context system message injected at position 0 of every dispatch: name, objective, scope, notThis, chamber, success criteria.
+- Applies to both Ollama/local path and hosted path.
+
+Stack 3 remaining residue:
+- `MissionReasoningRequest` type exists but no pipeline to execute it — intelligence can receive mission context but doesn't produce structured `MissionReasoningResult` objects yet.
+- `MemoryRecallRequest` exists but mission memory is not retrieved and injected as `priorContext` before dispatch.
+- Intelligence analytics (detectPatterns) not yet fed from real mission execution outcomes.
 
 ---
 
@@ -33,7 +48,7 @@ Stack 2 open residue:
 |---|---|---|---|
 | 01 | Canon + Sovereignty | CLOSED | `dna/canon-sovereignty.ts`, `dna/stack-registry.ts`, `assertStackOrder()` live |
 | 02 | Mission Substrate | ACTIVE | `dna/mission-substrate.ts`, `MissionContextBand`, `MissionRepository`, `mcp-client.ts` wired |
-| 03 | Sovereign Intelligence | PARTIAL | `dna/sovereign-intelligence.ts` typed; routing-contracts.ts + pioneer-registry.ts live; EI name surfaces in LiveHeaderRail and GlobalExecutionBand |
+| 03 | Sovereign Intelligence | ACTIVE | `dna/sovereign-intelligence.ts` wired: `resolveMissionRoute()` called at dispatch; mission context system message injected; mission pioneer stack honored in routing; `routeDigest` shows mission name; EI name surfaces in LiveHeaderRail + GlobalExecutionBand |
 | 04 | Autonomous Operations | PARTIAL | `dna/autonomous-operations.ts` canonical; `components/autonomous-operations.ts` legacy (OperationsPanel uses it); MissionOperationsPanel uses dna/ version |
 | 05 | Adaptive Experience | PARTIAL | ChamberChat + RuberraTerminal fully reconstituted; LiveHeaderRail with cycling state; MissionContextBand authoritative; chamber accent wiring solid |
 | 06 | Sovereign Security | PARTIAL | SecurityTrustSignal in SovereignBar; RUBERRA_TRUST_GATES active; `governance-fabric.ts` live |
@@ -67,6 +82,10 @@ Stack 2 open residue:
 - `pioneer-registry.ts` — 7 pioneers typed with home_chamber, allowed_crossings, model_family, strengths.
 - `model-orchestration.ts` — MODEL_REGISTRY with provider/tier/task mapping.
 - Every chat dispatch goes through: `resolveRouteDecision → resolveRoute → execution → trace → surface`.
+- **Stack 03 wired**: when mission active, dispatch now goes: `resolveRouteDecision (mission pioneer hint) → resolveMissionRoute (missionReason) → buildMissionSystemContext → contextualHistory injection → execution`.
+- Mission pioneer preference: `activeMission.workflow.pioneerStack[0]` → `preferredPioneerId` in routing.
+- Mission context system message: name + objective + scope + notThis + chamber — prepended to every message array sent to both Ollama and hosted endpoints.
+- routeDigest when mission active: `[contract label] · [mission name] · [missionReason from resolveMissionRoute]`.
 
 ### Mission surface
 - `dna/mission-substrate.ts` — Mission type: identity, workflow, memory, ledger, runtime, policy, artifacts.
@@ -94,9 +113,11 @@ Stack 2 open residue:
 
 | Feature | Status | File |
 |---|---|---|
-| MissionOperationsPanel mounted | NOT DONE | `components/MissionOperationsPanel.tsx` — orphaned |
-| activeMissionOps state in App.tsx | NOT DONE | No slot, no defaultMissionOperationsState wiring |
-| Task creation from execution events | NOT DONE | Operations substrate not yet event-driven |
+| MissionOperationsPanel mounted | DONE | Mounted in ProfileMode > operations when activeMissionOps set |
+| activeMissionOps state in App.tsx | DONE | State slot + defaultMissionOperationsState on mission activate |
+| Mission pioneer routing | DONE | pioneerStack[0] honored in resolveRouteDecision |
+| Mission context at execution time | DONE | System message injected to both Ollama + hosted paths |
+| Task creation from execution events | NOT DONE | Operations substrate not yet event-driven (Codex) |
 | Live agent spawning (multi-agent) | NOT DONE | dna/multi-agent.ts typed, no runtime spawn |
 | Knowledge retrieval from missions | NOT DONE | dna/living-knowledge.ts typed, no retrieval |
 | Flow graph execution | NOT DONE | dna/autonomous-flow.ts typed, no actual execution |

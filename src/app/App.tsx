@@ -98,6 +98,7 @@ import { defaultCompoundNetwork } from "./dna/compound-intelligence";
 import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
 import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
 import { defaultMissionOperationsState, type MissionOperationsState } from "./dna/autonomous-operations";
+import { resolveMissionRoute } from "./dna/sovereign-intelligence";
 import { PIONEER_REGISTRY } from "./components/pioneer-registry";
 import { mcpMissionCreate, mcpMissionUpdateState, mcpMissionAttachContinuity, mcpMissionBuildHandoff } from "./components/mcp-client";
 
@@ -115,6 +116,28 @@ function loadTrustGov() {
   return defaultTrustGovernanceState();
 }
 const MAX_CONTEXT = 20;
+
+// ─── Stack 03 — Mission context builder ──────────────────────────────────────
+/**
+ * Compresses the active mission identity into a system message prefix.
+ * Injected at position 0 of every dispatch when a mission is active.
+ * This is the core mechanism by which sovereign intelligence serves
+ * the mission rather than the generic session.
+ */
+function buildMissionSystemContext(mission: Mission): string {
+  const lines = [
+    "You are serving a Ruberra sovereign mission. Stay strictly within mission scope.",
+    `MISSION: ${mission.identity.name}`,
+    `OBJECTIVE: ${mission.identity.outcomeStatement}`,
+    `SCOPE: ${mission.identity.scope}`,
+    `NOT THIS: ${mission.identity.notThis}`,
+    `CHAMBER: ${mission.identity.chamberLead}`,
+  ];
+  if (mission.identity.successCriteria.length > 0) {
+    lines.push(`SUCCESS CRITERIA: ${mission.identity.successCriteria.slice(0, 3).join("; ")}`);
+  }
+  return lines.join("\n");
+}
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-b9f46b68`;
 
 type TabMessages = Record<Tab, Message[]>;
@@ -481,10 +504,12 @@ export default function App() {
       tab === "creation" ? "build-heavy"    :
       tab === "lab"      ? "research-heavy" :
       tab === "school"   ? "learning-heavy" : "balanced-trinity";
+    // Stack 03: when mission is active, honor declared pioneer stack in routing
     const routeDecision = resolveRouteDecision(runtimeFabric.intelligence, {
       chamberHint: tab,
       workflowId,
       requestText: text,
+      preferredPioneerId: activeMission?.workflow.pioneerStack[0],
     });
     const leaderPioneer = runtimeFabric.intelligence.pioneers.find((entry) => entry.id === routeDecision.pioneerId);
     const hostingLevel = leaderPioneer?.hostingLevel ?? "proxy";
@@ -638,7 +663,20 @@ export default function App() {
     const execTruth = getExecutionTruth(tab);
     const modelDegraded = selectedModelId !== requestedModelId;
     const contractForDigest = getContractByIntent(resolveIntent(text));
-    const routeDigestLine = `${contractForDigest.label} · ${routeDecision.reason}`;
+    // Stack 03: when mission is active, surface mission-bound route reason
+    const missionRouteReason = activeMission
+      ? resolveMissionRoute({
+          missionId:     activeMission.id,
+          missionStatus: activeMission.ledger.currentState,
+          chamberLead:   activeMission.identity.chamberLead,
+          requestText:   text,
+          depth:         "standard",
+          sessionChamber: tab,
+        }).missionReason
+      : null;
+    const routeDigestLine = activeMission
+      ? `${contractForDigest.label} · ${activeMission.identity.name} · ${missionRouteReason ?? routeDecision.reason}`
+      : `${contractForDigest.label} · ${routeDecision.reason}`;
     const initialRunState: ExecutionState =
       hostingLevel === "proxy" ? "scaffold_only" : "streaming";
     const baseResults: ExecutionResultEntry[] = [
@@ -696,6 +734,12 @@ export default function App() {
         .slice(-MAX_CONTEXT)
         .map(({ role, content }) => ({ role, content }));
 
+      // Stack 03: mission context injection — intelligence serves the mission, not the session
+      const missionCtx = activeMission ? buildMissionSystemContext(activeMission) : null;
+      const contextualHistory: Array<{ role: string; content: string }> = missionCtx
+        ? [{ role: "system", content: missionCtx }, ...history]
+        : history;
+
       // ── Sovereign routing: try live local runtime first ──────────────────────
       let usedLocalPath = false;
       const localHealth = runtimeFabric.providerHealth.find(
@@ -712,7 +756,7 @@ export default function App() {
             providerId:    localHealth.providerId,
             providerLane:  "open_source_local",
             fallbackChain: plan.fallbackChain,
-            context:       history,
+            context:       contextualHistory,
             signal:        controller.signal,
             localEndpoint: runtimeFabric.aiSettings.localRuntimeEndpoint ?? "http://localhost:11434",
             continuityId,
@@ -754,7 +798,7 @@ export default function App() {
           task,
           model: selectedModelId,
           fallbackChain: plan.fallbackChain,
-          messages: [...history, { role: "user", content: text }],
+          messages: [...contextualHistory, { role: "user", content: text }],
         }),
         signal: controller.signal,
       });
