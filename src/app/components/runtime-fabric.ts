@@ -1155,6 +1155,11 @@ export function exportContinuity(fabric: RuntimeFabric, continuityId: string): R
     destination: { tab: "profile", view: "exports" },
     linkedObjectId: item.linkedObjectId,
   });
+  // Governance audit: persist export event into run timeline (consequence record)
+  next = appendRunTimeline(next, {
+    continuityId,
+    label: `governance.export: ${item.chamber} · ${item.title.slice(0, 60)} → profile ledger`,
+  });
   return next;
 }
 

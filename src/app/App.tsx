@@ -87,7 +87,7 @@ import { defaultCivilization, registerAgent, admitAgent, activateAgent, type Age
 import { detectPatterns } from "./dna/intelligence-analytics";
 import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
 import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph, claimCollectiveResource, checkCollectiveCollision, attributeConsequence, recordAttribution } from "./dna/collective-execution";
-import { defaultPresenceManifest, createChannel, registerChannel } from "./dna/distribution-presence";
+import { defaultPresenceManifest, createChannel, registerChannel, heartbeatChannel } from "./dna/distribution-presence";
 import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit, verifyValueUnit } from "./dna/value-exchange";
 import { defaultEcosystemState, proposeExtension, admitToNetwork } from "./dna/ecosystem-network";
 import { defaultPlatformState, createInfraLayer, addLayer } from "./dna/platform-infrastructure";
@@ -185,6 +185,8 @@ export default function App() {
   // ── Command palette + signals panel ───────────────────────────────────────────
   const [cmdOpen, setCmdOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
+  // ── Presence heartbeat tick ───────────────────────────────────────────────────
+  const [heartbeatTick, setHeartbeatTick] = useState(0);
   // ── Stack substrates ─────────────────────────────────────────────────────────
   const [_civBase]          = useState(defaultCivilization);
   const knowledgeGraph = useMemo(() => {
@@ -316,6 +318,12 @@ export default function App() {
       })
       .catch(() => { /* probe failures are non-fatal */ });
     return () => controller.abort();
+  }, []);
+
+  // ── Presence heartbeat — update channel lastSeenAt every 30s ─────────────────
+  useEffect(() => {
+    const id = setInterval(() => setHeartbeatTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -1170,8 +1178,10 @@ export default function App() {
     manifest = registerChannel(manifest, webCh);
     if (messages.lab.length > 0)      manifest = registerChannel(manifest, createChannel("api",  { chamber: "lab" }));
     if (messages.creation.length > 0) manifest = registerChannel(manifest, createChannel("cli",  { chamber: "creation" }));
+    // Heartbeat: refresh lastSeenAt on all channels every 30s tick
+    manifest = { ...manifest, channels: manifest.channels.map(heartbeatChannel) };
     return manifest;
-  }, [_presenceBase, messages.lab.length, messages.creation.length]);
+  }, [_presenceBase, messages.lab.length, messages.creation.length, heartbeatTick]);
 
   // 4. Exchange ledger: exported continuity items become governance-verified value units
   const exchangeLedger = useMemo(() => {
