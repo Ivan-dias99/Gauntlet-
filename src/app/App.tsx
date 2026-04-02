@@ -28,6 +28,8 @@ import {
 } from "./dna/mission-substrate";
 import {
   type MissionOperationsState,
+  type TaskStatus,
+  TASK_STATUS_LABEL,
   buildOperationState,
   createOperationFlow,
   advanceFlow,
@@ -89,6 +91,7 @@ import {
   transitionWorkflowStage,
   upsertProviderHealth,
   upsertCompoundRun,
+  type ExecutionResultRecord,
   type RuntimeFabric,
   type ContinuityItem,
 } from "./components/runtime-fabric";
@@ -112,8 +115,6 @@ import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dn
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
 import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
 import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
-import { defaultMissionOperationsState, type MissionOperationsState } from "./dna/autonomous-operations";
-import { resolveMissionRoute } from "./dna/sovereign-intelligence";
 import {
   prioritizeMemory,
   resolveMissionRoute,
@@ -138,6 +139,29 @@ function loadTrustGov() {
   return defaultTrustGovernanceState();
 }
 const MAX_CONTEXT = 20;
+
+const TERMINAL_EXECUTION_STATES = new Set<MessageExecutionTrace["executionState"]>([
+  "completed",
+  "degraded",
+  "blocked",
+  "error",
+  "aborted",
+  "provider_unavailable",
+  "scaffold_only",
+]);
+
+function mapExecutionStateToTaskStatus(state: MessageExecutionTrace["executionState"]): TaskStatus {
+  if (state === "completed") return "completed";
+  if (state === "degraded" || state === "scaffold_only") return "review";
+  if (state === "aborted") return "cancelled";
+  return "blocked";
+}
+
+function buildExecutionTaskTitle(message: Message, result?: ExecutionResultRecord): string {
+  const base = (message.execution_trace?.routeDigest ?? message.content ?? "Mission execution").slice(0, 72).trim();
+  const providerModel = [result?.selectedProviderId, result?.selectedModelId].filter(Boolean).join(" · ");
+  return providerModel ? `${base} · ${providerModel}`.slice(0, 96) : base.slice(0, 96);
+}
 
 // ─── Stack 03 — Mission context builder ──────────────────────────────────────
 /**
@@ -1557,24 +1581,54 @@ export default function App() {
   useEffect(() => {
     if (!activeMissionId || !activeMission) return;
     const chambers: Exclude<Tab, "profile">[] = ["lab", "school", "creation"];
-    const completedEvents: Array<{ id: string; chamber: Exclude<Tab, "profile">; title: string; digest: string }> = [];
+    const executionEvents: Array<{
+      id: string;
+      chamber: Exclude<Tab, "profile">;
+      status: TaskStatus;
+      title: string;
+      digest: string;
+      blockedBy?: string;
+    }> = [];
     for (const chamber of chambers) {
       for (const m of messages[chamber]) {
         const trace = m.execution_trace;
         if (!trace || m.role !== "assistant") continue;
-        if (trace.executionState !== "completed") continue;
         if (generatedMissionTaskRef.current.has(m.id)) continue;
+        if (!TERMINAL_EXECUTION_STATES.has(trace.executionState)) continue;
+
+        const executionResult = runtimeFabric.executionResults.find((result) =>
+          result.chamber === chamber &&
+          (!trace.providerId || result.selectedProviderId === trace.providerId) &&
+          (!trace.modelId || result.selectedModelId === trace.modelId)
+        );
+        const modelProvider = [executionResult?.selectedProviderId ?? trace.providerId, executionResult?.selectedModelId ?? trace.modelId]
+          .filter(Boolean)
+          .join(" · ");
+        const durationLabel = executionResult?.latencyMs ? `${Math.round(executionResult.latencyMs)}ms` : undefined;
+        const status = mapExecutionStateToTaskStatus(trace.executionState);
         const lastResult = trace.executionResults?.slice(-1)[0];
-        const digest = lastResult?.summary ?? trace.routeDigest ?? m.content.slice(0, 160) ?? "Execution completed";
-        const title = (trace.routeDigest ?? m.content ?? "Mission execution").slice(0, 96);
-        completedEvents.push({ id: m.id, chamber, title, digest });
+        const digestSegments = [
+          `status:${trace.executionState}`,
+          modelProvider ? `runtime:${modelProvider}` : undefined,
+          durationLabel ? `duration:${durationLabel}` : undefined,
+          `mission:${activeMissionId}`,
+          lastResult?.summary ?? trace.routeDigest ?? m.content.slice(0, 120),
+        ].filter(Boolean);
+        executionEvents.push({
+          id: m.id,
+          chamber,
+          status,
+          title: buildExecutionTaskTitle(m, executionResult),
+          digest: digestSegments.join(" · "),
+          blockedBy: executionResult?.blockedReason ?? executionResult?.errorMessage,
+        });
       }
     }
-    if (!completedEvents.length) return;
+    if (!executionEvents.length) return;
     setActiveMissionOps((prev) => {
       const base = prev?.missionId === activeMissionId ? prev : defaultMissionOperationsState(activeMissionId);
       let next = { ...base };
-      for (const ev of completedEvents) {
+      for (const ev of executionEvents) {
         const rawTask = createTask(activeMissionId, {
           title: ev.title || "Execution completion",
           objective: ev.digest,
@@ -1584,7 +1638,7 @@ export default function App() {
           priority: "standard",
           riskLevel: "low",
         });
-        const task = transitionTask(rawTask, "completed", { outputDigest: ev.digest });
+        const task = transitionTask(rawTask, ev.status, { outputDigest: ev.digest, blockedBy: ev.blockedBy });
         next = {
           ...next,
           tasks: [...next.tasks, task],
@@ -1594,7 +1648,7 @@ export default function App() {
               id: `obs_${Date.now()}_${ev.id.slice(0, 6)}`,
               missionId: activeMissionId,
               taskId: task.id,
-              class: "run_complete",
+              class: ev.status === "completed" ? "run_complete" : "state_change",
               summary: ev.digest.slice(0, 140),
               pioneerId: task.pioneerId,
               at: Date.now(),
@@ -1603,10 +1657,10 @@ export default function App() {
           signals: [
             ...next.signals,
             emitSignal(activeMissionId, {
-              type: "task_complete",
-              priority: "standard",
+              type: ev.status === "completed" ? "task_complete" : "blocker",
+              priority: ev.status === "completed" ? "standard" : "high",
               taskId: task.id,
-              headline: `Task completed · ${task.title.slice(0, 52)}`,
+              headline: `${TASK_STATUS_LABEL[task.status]} · ${task.title.slice(0, 52)}`,
               body: ev.digest.slice(0, 140),
               actionable: true,
             }),
@@ -1625,17 +1679,25 @@ export default function App() {
         ),
       };
     });
-  }, [activeMission, activeMissionId, messages]);
+  }, [activeMission, activeMissionId, messages, runtimeFabric.executionResults]);
 
   const handleMissionOpsSignalDismiss = useCallback((signalId: string) => {
     if (!activeMissionId) return;
     setActiveMissionOps((prev) => {
       if (!prev || prev.missionId !== activeMissionId) return prev;
       const signals = prev.signals.map((s) => (s.id === signalId ? dismissSignal(s) : s));
+      const observation = {
+        id: `obs_${Date.now()}_${signalId.slice(0, 6)}`,
+        missionId: activeMissionId,
+        class: "state_change" as const,
+        summary: `signal dismissed · ${signalId}`,
+        at: Date.now(),
+      };
       return {
         ...prev,
         signals,
-        operationState: buildOperationState(activeMissionId, prev.tasks, prev.observations, prev.pendingApprovals.length),
+        observations: [...prev.observations, observation],
+        operationState: buildOperationState(activeMissionId, prev.tasks, [...prev.observations, observation], prev.pendingApprovals.length),
         lastUpdated: Date.now(),
       };
     });
@@ -1647,8 +1709,24 @@ export default function App() {
       if (!prev || prev.missionId !== activeMissionId) return prev;
       const request = prev.pendingApprovals.find((r) => r.id === requestId);
       if (!request) return prev;
+      const tasks = request.taskId
+        ? prev.tasks.map((task) =>
+            task.id === request.taskId && (task.status === "review" || task.status === "pending")
+              ? transitionTask(task, "approved")
+              : task
+          )
+        : prev.tasks;
+      const observation = {
+        id: `obs_${Date.now()}_${requestId.slice(0, 6)}`,
+        missionId: activeMissionId,
+        taskId: request.taskId,
+        class: "state_change" as const,
+        summary: `approval approved · ${request.description.slice(0, 80)}`,
+        at: Date.now(),
+      };
       const next = {
         ...prev,
+        tasks,
         pendingApprovals: prev.pendingApprovals.filter((r) => r.id !== requestId),
         approvalHistory: [
           ...prev.approvalHistory,
@@ -1660,6 +1738,18 @@ export default function App() {
             rationale: "approved from mission operations panel",
             resolvedAt: Date.now(),
           },
+        ],
+        observations: [...prev.observations, observation],
+        signals: [
+          ...prev.signals,
+          emitSignal(activeMissionId, {
+            type: "mission_advance",
+            priority: "standard",
+            taskId: request.taskId,
+            headline: `approval accepted · ${request.description.slice(0, 52)}`,
+            body: request.consequence.slice(0, 140),
+            actionable: false,
+          }),
         ],
         lastUpdated: Date.now(),
       };
@@ -1676,8 +1766,24 @@ export default function App() {
       if (!prev || prev.missionId !== activeMissionId) return prev;
       const request = prev.pendingApprovals.find((r) => r.id === requestId);
       if (!request) return prev;
+      const tasks = request.taskId
+        ? prev.tasks.map((task) =>
+            task.id === request.taskId
+              ? transitionTask(task, "blocked", { blockedBy: `approval rejected · ${request.description.slice(0, 80)}` })
+              : task
+          )
+        : prev.tasks;
+      const observation = {
+        id: `obs_${Date.now()}_${requestId.slice(0, 6)}`,
+        missionId: activeMissionId,
+        taskId: request.taskId,
+        class: "blocker_hit" as const,
+        summary: `approval rejected · ${request.description.slice(0, 80)}`,
+        at: Date.now(),
+      };
       const next = {
         ...prev,
+        tasks,
         pendingApprovals: prev.pendingApprovals.filter((r) => r.id !== requestId),
         approvalHistory: [
           ...prev.approvalHistory,
@@ -1689,6 +1795,18 @@ export default function App() {
             rationale: "rejected from mission operations panel",
             resolvedAt: Date.now(),
           },
+        ],
+        observations: [...prev.observations, observation],
+        signals: [
+          ...prev.signals,
+          emitSignal(activeMissionId, {
+            type: "blocker",
+            priority: "high",
+            taskId: request.taskId,
+            headline: `approval rejected · ${request.description.slice(0, 52)}`,
+            body: request.consequence.slice(0, 140),
+            actionable: true,
+          }),
         ],
         lastUpdated: Date.now(),
       };
@@ -1915,6 +2033,7 @@ export default function App() {
       {/* Sovereign Bar */}
       <SovereignBar
         activeTab={activeTab}
+        onTabChange={handleTabChange}
         onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
         onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
@@ -1962,7 +2081,6 @@ export default function App() {
           onCreationView={(v) => { setCreationView(v); setDetailId(""); }}
           onProfileView={setProfileView}
           navigate={navigate}
-          onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
           collapsed={railCollapsed}
           onToggleCollapsed={() => setRailCollapsed((v) => !v)}
         />
