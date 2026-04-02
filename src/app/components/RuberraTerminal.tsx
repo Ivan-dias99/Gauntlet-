@@ -742,6 +742,7 @@ export interface RuberraTerminalProps {
   placeholder?: string;
   elapsedLabel?: string;
   chamberAccentVar?: string;
+  /** Mission binding — shown in execution trace when a mission is active */
   missionName?: string;
 }
 

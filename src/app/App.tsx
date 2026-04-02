@@ -1612,6 +1612,7 @@ export default function App() {
         onMissionSwitch={handleMissionPaletteSwitch}
         onMissionHandoff={activeMission ? handleMissionPaletteHandoff : undefined}
         activeMissionName={activeMission?.identity.name}
+        missions={missions}
       />
 
       <FloatingNoteSystem

@@ -28,6 +28,7 @@ interface ModelSelectorProps {
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
+
 const QUALITY_DOT: Record<ModelDescriptor["quality"], string> = {
   good:   "var(--r-dim)",
   strong: "var(--r-warn)",

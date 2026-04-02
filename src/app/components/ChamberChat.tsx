@@ -480,6 +480,46 @@ function AssistantMessage({
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
     >
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
+      {/* ── Provenance bar — 2px vertical chamber attribution line ── */}
+      <div
+        style={{
+          borderLeft: `2px solid color-mix(in srgb, ${accent} 48%, transparent)`,
+          paddingLeft: "14px",
+          marginLeft: "1px",
+        }}
+      >
+        {trace && (
+          <ExecutionConsequenceStrip
+            trace={trace}
+            accent={accent}
+            leadPioneerShort={leadShort}
+            giName={trace.giLabel ?? trace.giId}
+            tierLabel={TIER_LABEL[sovereign.tier]}
+            tierColor={TIER_COLOR[sovereign.tier]}
+            modelTruthLabel={sovereign.tier_label}
+            missionName={missionName}
+          />
+        )}
+        <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
+        {(msg.meta?.pioneerId || msg.meta?.workflowId) && !trace && (
+          <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
+            {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.pioneerId}</span>}
+            {msg.meta?.workflowId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.workflowId}</span>}
+            {msg.meta?.hostingLevel && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{msg.meta.hostingLevel}</span>}
+          </div>
+        )}
+        {msg.blocks && msg.blocks.length > 0 ? (
+          <BlockRenderer blocks={msg.blocks} chamber={chamberId} />
+        ) : msg.content ? (
+          <MetamorphicPlainSurface
+            content={msg.content}
+            responseClass={inferMetamorphicClassFromText(msg.content)}
+            chamber={chamberId}
+          />
+        ) : (
+          <ThinkingDots />
+        )}
+      </div>
       {trace && (
         <ExecutionConsequenceStrip
           trace={trace}
@@ -824,6 +864,7 @@ export function ChamberChat({
   modelId: string;
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
+  /** Mission binding — propagated into each assistant message execution strip */
   missionName?: string;
 }) {
   const threadRef = useRef<HTMLDivElement>(null);
