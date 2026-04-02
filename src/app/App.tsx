@@ -1389,7 +1389,7 @@ export default function App() {
       {/* Sovereign Bar */}
       <SovereignBar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
         onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
         theme={theme}
@@ -1430,10 +1430,8 @@ export default function App() {
           onSchoolView={(v) => { setSchoolView(v); setDetailId(""); }}
           onCreationView={(v) => { setCreationView(v); setDetailId(""); }}
           onProfileView={setProfileView}
-          onNewNote={addNote}
-          onClearTab={handleClearTab}
           navigate={navigate}
-          onTabChange={setActiveTab}
+          onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
           collapsed={railCollapsed}
           onToggleCollapsed={() => setRailCollapsed((v) => !v)}
         />

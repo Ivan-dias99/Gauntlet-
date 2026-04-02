@@ -412,18 +412,6 @@ function CmdGroup({ label, entries }: { label: string; entries: CmdEntry[] }) {
       heading={label}
       style={{ marginBottom: "2px" }}
     >
-      <div
-        style={{
-          fontSize: "8px",
-          fontFamily: "'JetBrains Mono', monospace",
-          letterSpacing: "0.12em",
-          color: "var(--r-dim)",
-          padding: "4px 8px 2px",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </div>
       {entries.map((e) => (
         <CmdItem key={e.id} entry={e} />
       ))}
