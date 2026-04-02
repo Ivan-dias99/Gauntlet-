@@ -1211,13 +1211,18 @@ export default function App() {
       createMemoryEntry("preference", `Preferred chamber: ${runtimeFabric.preferences.preferredChamber}`),
       createMemoryEntry("preference", `Output style: ${runtimeFabric.preferences.outputStyle}`),
       createMemoryEntry("preference", `AI model policy: ${runtimeFabric.aiSettings.modelPolicy}`),
+      // Active and completed missions — sovereign work compound memory
+      ...missions.filter((m) => m.ledger.currentState !== "archived").slice(0, 6).map((m) =>
+        createMemoryEntry("mission_history", `mission · ${m.identity.chamberLead} · ${m.identity.name.slice(0, 60)} · ${m.ledger.currentState}`)
+      ),
+      // Recent continuity sessions — execution compound memory
       ...runtimeFabric.continuity.slice(0, 5).map((c) =>
         createMemoryEntry("mission_history", `${c.chamber} · ${c.title.slice(0, 60)}`)
       ),
     ];
     const context = buildOperatorContext(_personalOSBase.profile, memories, _personalOSBase.agent);
     return { ..._personalOSBase, memory: memories, context, lastUpdated: Date.now() };
-  }, [runtimeFabric.preferences, runtimeFabric.aiSettings, runtimeFabric.continuity, _personalOSBase]);
+  }, [runtimeFabric.preferences, runtimeFabric.aiSettings, runtimeFabric.continuity, missions, _personalOSBase]);
 
   // ── Event-pathway substrates ──────────────────────────────────────────────────
 
