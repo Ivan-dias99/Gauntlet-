@@ -119,6 +119,7 @@ import {
   type SovereignSecurityState,
   createSession,
   buildFingerprint,
+  verifyFingerprint,
   updateTrustSignal,
   createSecurityEvent,
   acknowledgeEvent,
@@ -822,6 +823,26 @@ export default function App() {
 
     const assistantId = crypto.randomUUID();
     const continuityId = `${tab}-${assistantId}`;
+
+    // ── Stack 06: Session identity re-verification at dispatch ────────────────
+    // Re-verify the operator session fingerprint at every dispatch.
+    // A mismatch means the browser environment changed mid-session — emit a security event.
+    if (securityState.session) {
+      const fpCheck = verifyFingerprint(securityState.session, buildFingerprint());
+      if (!fpCheck.valid && fpCheck.anomaly) {
+        setSecurityState((prev) => {
+          const event = createSecurityEvent({
+            type:      "session_anomaly",
+            severity:  "critical",
+            summary:   `Session identity mismatch at dispatch — anomaly: ${fpCheck.anomaly}`,
+            missionId: activeMissionId ?? undefined,
+          });
+          return updateTrustSignal({ ...prev, events: [...prev.events, event] });
+        });
+      }
+    }
+    // ── End Stack 06 session identity check ───────────────────────────────────
+
     // Governance gate — enforce execution policy before dispatch
     const govResult = enforceExecutionGate(`chamber.${tab}.dispatch`, {
       kind:      "operator",
