@@ -150,26 +150,29 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
 - `dna/sovereign-security.ts` — 8-layer security substrate: identity (OperatorSession), secrets (detectPlaintextSecret), access (evaluateAccess), isolation (verifyIsolation), connector (scanConnectorOutput), runtime (checkStorageSafety), recovery (RECOVERY_PLANS), event ledger (SecurityEvent + deriveTrustSignal).
 - `SovereignSecurityState` instantiated in App.tsx as `securityState` state slot — single source of security truth.
 - Operator session started on mount: `createSession(buildFingerprint())` — identity integrity substrate live.
+- **Session fingerprint re-verified at every dispatch**: `verifyFingerprint(session, buildFingerprint())` — mismatch emits `session_anomaly` SecurityEvent (critical) before governance gate fires. QA gap closed 2026-04-02.
 - Permission lattice enforced at dispatch: `evaluateAccess("mission_execute", pioneerId, defaultAccessPolicy(missionId))` — deny blocks execution + emits `scope_violation` SecurityEvent; require_approval emits warn SecurityEvent.
 - Connector output scanned on every AI response: `scanConnectorOutput(assistantContent)` — injection/escalation/exfiltration → `injection_attempt` SecurityEvent → `updateTrustSignal()`.
 - Storage safety checked periodically (60s): `checkStorageSafety(DEFAULT_RUNTIME_SAFETY_POLICY)` — overflow → `storage_overflow` SecurityEvent.
 - `trustSignal` derived: `deriveTrustSignal(securityState.events)` — live, real, not hardcoded.
 - `SecurityTrustSignal` in SovereignBar receives live `trustSignal` prop + `onSecurityAcknowledge` callback — silent when healthy, consequence signal when not.
 - `handleSecurityAcknowledge` acknowledges all active events, re-derives signal.
+- **governance-fabric.ts bug fixed**: `gate?.name` → `gate?.id ?? gate?.label` — TrustGate has no `.name` property; gateName and reason strings were always reporting "undefined". QA gap closed 2026-04-02.
 - Build passes. Stacks 03/04/05 paths unchanged.
 - `RUBERRA_TRUST_GATES` + `enforceExecutionGate()` remain live (governance-fabric.ts, unchanged).
 
 ### Exit Criteria
 - [x] Identity boundaries materially enforced — operator session started, fingerprint-based identity integrity active
+- [x] Session identity integrity enforced at dispatch — `verifyFingerprint()` called at every dispatch; mismatch → critical SecurityEvent
 - [x] Permission lattice real and used — `evaluateAccess()` called at every mission dispatch
 - [x] Mission-level authorization real — deny blocks execution; require_approval creates security event
-- [x] High-impact actions cannot bypass — access check runs before dispatch proceeds
+- [x] High-impact actions cannot bypass — access check + governance gate run before dispatch proceeds; `evaluateApprovalTrigger()` for connector (external-effect) actions
 - [x] SecurityTrustSignal reflects real trust/authz truth — `deriveTrustSignal(securityState.events)` drives the signal
-- [x] Governance fabric stable — `enforceExecutionGate()` + audit trail unchanged
+- [x] Governance fabric stable — `enforceExecutionGate()` + audit trail real; gateName bug fixed
 - [x] Stacks 03/04/05 remain stable — no changes to those paths
 - [x] Build/runtime truth holds — clean build, no TypeScript errors
 
-- CLOSED 2026-04-02 · QA VERIFIED 2026-04-02
+- CLOSED 2026-04-02 · QA FREEZE GATE PASSED 2026-04-02
 
 ---
 
@@ -180,7 +183,7 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
 | Claude Architect | Stack 7 — Trust + Governance: full audit trail, policy overlays, consequence records. | ACTIVE |
 | Codex Systems | Wire mission state advancement: post-completion evaluation of whether mission should auto-transition. | QUEUED |
 | Cursor Builder | Stack 7 surface: GovernanceLedgerStrip with live audit data. | QUEUED |
-| Grok Reality Pulse | Audit Stack 6 closed state — confirm SecurityTrustSignal renders correctly; session started on mount. | ACTIVE |
+| Grok Reality Pulse | Audit Stack 6 closed state — session fingerprint re-verification at dispatch confirmed; SecurityTrustSignal renders correctly. | DONE |
 | Gemini Expansion | QUEUED (Stack 7 must close first). | QUEUED |
 | Copilot QA Guard | Regression: Stack 6 — access gate fires on dispatch; trust signal responds to security events. | DONE |
 | Antigravity Director | Gate Stack 7 entry. No compliance theater. Governance is consequence-bearing and silent until consulted. | ACTIVE |
