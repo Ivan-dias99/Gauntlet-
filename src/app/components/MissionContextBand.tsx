@@ -25,6 +25,7 @@ export function MissionContextBand({
   onRelease,
   isExecuting = false,
   runCount = 0,
+  runtimeState,
 }: {
   mission:      Mission;
   onRelease:    () => void;
@@ -32,11 +33,13 @@ export function MissionContextBand({
   isExecuting?: boolean;
   /** Number of completed continuity runs attributed to this mission */
   runCount?:    number;
+  /** Runtime awareness state derived from live system events */
+  runtimeState?: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived";
 }) {
   const accent     = CHAMBER_ACCENT[mission.identity.chamberLead];
-  const statusKey  = mission.ledger.currentState;
+  const statusKey  = isExecuting ? "running" : (runtimeState ?? mission.ledger.currentState);
   const status     = MISSION_STATUS_LABEL[statusKey] ?? statusKey;
-  const statusColor = isExecuting ? "var(--r-accent)" : (STATUS_COLOR[statusKey] ?? "var(--r-dim)");
+  const statusColor = STATUS_COLOR[statusKey] ?? "var(--r-dim)";
 
   return (
     <div
@@ -81,7 +84,7 @@ export function MissionContextBand({
 
       {/* Execution state or status */}
       <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.09em", textTransform: "uppercase", color: statusColor, flexShrink: 0 }}>
-        {isExecuting ? "EXECUTING" : status}
+        {status}
       </span>
 
       {/* Chamber lead */}

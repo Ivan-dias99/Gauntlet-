@@ -634,7 +634,7 @@ function StatusStrip({
 
 function Composer({
   draft, onDraftChange, onSend, onCancel, isLoading, placeholder, accent, configId,
-  task, modelId, onTaskChange, onModelChange,
+  task, modelId, onTaskChange, onModelChange, composerLocked = false, composerLockLabel,
 }: {
   draft: string;
   onDraftChange: (t: string) => void;
@@ -648,6 +648,8 @@ function Composer({
   modelId: string;
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
+  composerLocked?: boolean;
+  composerLockLabel?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [focused, setFocused] = useState(false);
@@ -661,7 +663,7 @@ function Composer({
 
   function submit() {
     const text = draft.trim();
-    if (!text || isLoading) return;
+    if (!text || isLoading || composerLocked) return;
     onDraftChange("");
     onSend(text);
   }
@@ -671,7 +673,7 @@ function Composer({
     if (e.key === "Escape" && isLoading) onCancel();
   }
 
-  const canSend = !!draft.trim() && !isLoading;
+  const canSend = !!draft.trim() && !isLoading && !composerLocked;
 
   return (
     <div style={{ padding: "10px 0 24px", background: "var(--r-bg)" }}>
@@ -695,8 +697,8 @@ function Composer({
             onKeyDown={handleKey}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            disabled={isLoading}
-            placeholder={placeholder}
+            disabled={isLoading || composerLocked}
+            placeholder={composerLocked ? (composerLockLabel ?? placeholder) : placeholder}
             rows={1}
             style={{
               width: "100%",
@@ -762,6 +764,8 @@ function Composer({
                 >
                   esc to stop
                 </button>
+              ) : composerLocked ? (
+                composerLockLabel ?? "mission state locked"
               ) : (
                 "↵ send · ⇧↵ newline"
               )}
@@ -1070,6 +1074,8 @@ export function ChamberChat({
   onTaskChange,
   onModelChange,
   missionName,
+  composerLocked = false,
+  composerLockLabel,
 }: {
   messages:      Message[];
   isLoading:     boolean;
@@ -1084,6 +1090,8 @@ export function ChamberChat({
   onModelChange: (modelId: string) => void;
   /** Mission binding — propagated into each assistant message execution strip */
   missionName?: string;
+  composerLocked?: boolean;
+  composerLockLabel?: string;
 }) {
   const threadRef = useRef<HTMLDivElement>(null);
 
@@ -1205,6 +1213,8 @@ export function ChamberChat({
         modelId={modelId}
         onTaskChange={onTaskChange}
         onModelChange={onModelChange}
+        composerLocked={composerLocked}
+        composerLockLabel={composerLockLabel}
       />
     </div>
   );

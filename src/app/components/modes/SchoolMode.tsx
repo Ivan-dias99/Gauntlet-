@@ -270,7 +270,14 @@ export function SchoolMode({
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
   missionName?: string;
+  missionState?: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived";
 }) {
+  const composerLocked = missionState === "completed" || missionState === "archived";
+  const composerLockLabel = composerLocked
+    ? `Mission ${missionState} — release or activate a mission to continue`
+    : missionState === "blocked"
+      ? "Mission blocked — resolve blockers in Profile → Operations"
+      : undefined;
   const showHome = schoolView === "home" || (!messages.length && schoolView === "chat");
 
   if (showHome) {
@@ -303,6 +310,8 @@ export function SchoolMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
+      composerLocked={composerLocked}
+      composerLockLabel={composerLockLabel}
     />
   );
 }
