@@ -76,21 +76,32 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 
 ---
 
-## Active Frontier: Stack 4 (Autonomous Operations)
-
 ## Closed: Stack 4 (Autonomous Operations)
 
 ### Exit Proof
-- `dna/autonomous-operations.ts` — TaskDef, MissionTask, MissionSignal, ApprovalRequest, ApprovalRecord, RunObservation, OperationState, MissionOperationsState typed and exported.
-- `createTask()` / `transitionTask()` / `dismissSignal()` / `buildOperationState()` — live functions imported and called in App.tsx.
-- `generatedMissionTaskRef` — deduplication ref prevents re-emitting task for same execution message.
-- `useEffect` (App.tsx ~1428) — watches `messages` across all chambers; for each completed assistant message with `executionState === "completed"`, creates a real `MissionTask` + `RunObservation` + `MissionSignal` in `activeMissionOps.tasks/observations/signals`.
-- `handleMissionOpsSignalDismiss` — calls `dismissSignal()`, mutates `activeMissionOps.signals`, recomputes `operationState`.
-- `handleMissionOpsApprovalApprove` — moves approval from `pendingApprovals` to `approvalHistory` with `decision: "approved"`.
-- `handleMissionOpsApprovalReject` — same with `decision: "rejected"`.
-- `MissionOperationsPanel` — real callbacks wired via props (not stubs); renders tasks/signals/approvals from live state.
-- No theater data. No hardcoded placeholder tasks. All data originates from execution events.
-- ProfileMode.tsx — duplicate import + duplicate prop artifacts from merge fixed.
+Execution is governed by the operations substrate. MissionTask is a real lifecycle object. OperationFlow tracks the dispatch run. Approval gate is evaluated pre-dispatch. MissionSignal is emitted from runtime events, not post-hoc strings.
+
+**Pre-dispatch (handleSend, App.tsx — after governance clears):**
+- `createTask()` → `transitionTask("in_progress")` — task created BEFORE execution starts
+- `createOperationFlow()` + `advanceFlow()` — OperationFlow created and advanced to "running" state
+- `evaluateApprovalTrigger("external_effect", policy)` — approval gate evaluated when connectors are present; `escalate_sovereign` → `ApprovalRequest` created in `pendingApprovals`
+- `generatedMissionTaskRef.current.add(assistantId)` — pre-marks message to prevent useEffect double-processing
+
+**Post-dispatch (finally block, App.tsx):**
+- `transitionTask(t, "completed" | "failed", { outputDigest })` — task lifecycle closed with real content digest
+- `advanceFlow(advanceFlow(flow))` — Execute + Settle steps advanced → flow state "complete"
+- `emitSignal(activeMissionId, { type: "task_complete", ... })` — MissionSignal emitted from real runtime event (not string residue)
+- `RunObservation` appended with real pioneerId and content digest
+- `buildOperationState()` recomputed from real task/observation arrays
+
+**Mutation handlers (real, not stubs):**
+- `handleMissionOpsSignalDismiss` — `dismissSignal()` mutates `activeMissionOps.signals`
+- `handleMissionOpsApprovalApprove` / `handleMissionOpsApprovalReject` — moves approval from `pendingApprovals` to `approvalHistory`
+
+**Surface:**
+- `MissionOperationsPanel` — real callbacks wired, renders live state
+- ProfileMode.tsx — duplicate import + duplicate prop fixed
+
 - CLOSED 2026-04-02
 
 ---

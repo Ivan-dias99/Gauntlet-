@@ -31,13 +31,17 @@ Stack 3 closure (2026-04-02):
 - Intelligence now serves mission identity AND mission memory — not generic session.
 - detectPatterns ingests signals + continuity events (mission-linked via workflowId/title).
 
-Stack 4 closure (2026-04-02):
-- `useEffect` in App.tsx watches all chamber messages for `executionState === "completed"`.
-- Each completed message creates a real `MissionTask` + `RunObservation` + `MissionSignal` in `activeMissionOps`.
-- `handleMissionOpsSignalDismiss` / `handleMissionOpsApprovalApprove` / `handleMissionOpsApprovalReject` — all live mutations.
-- `generatedMissionTaskRef` deduplicates task creation per message ID.
-- `MissionOperationsPanel` wired with real callbacks — no stubs.
-- ProfileMode.tsx duplicate import + duplicate prop from merge artifacts fixed.
+Stack 4 closure (2026-04-02 — real):
+- Pre-dispatch: `createTask()` → `transitionTask("in_progress")` BEFORE execution starts.
+- Pre-dispatch: `createOperationFlow()` + `advanceFlow()` — OperationFlow in "running" state at dispatch.
+- Pre-dispatch: `evaluateApprovalTrigger("external_effect", policy)` — approval gate evaluated for connector actions; `escalate_sovereign` creates real `ApprovalRequest`.
+- Pre-dispatch: `generatedMissionTaskRef.current.add(assistantId)` — deduplication, prevents useEffect double-emit.
+- Post-dispatch (finally): `transitionTask(t, "completed"|"failed", {outputDigest})` — real lifecycle close.
+- Post-dispatch (finally): `advanceFlow(advanceFlow(flow))` — Execute + Settle steps done → flow "complete".
+- Post-dispatch (finally): `emitSignal()` — `task_complete` MissionSignal from real runtime event with content digest.
+- Post-dispatch (finally): `RunObservation` appended with pioneerId + digest.
+- Mutations: signal dismiss + approval approve/reject — all real setActiveMissionOps mutations.
+- `MissionOperationsPanel` wired with real callbacks.
 
 Stack 5 open residue:
 - Mission state transitions (blocked/complete/archived) do not propagate to chamber UI or SystemHealthBand.
@@ -53,7 +57,7 @@ Stack 5 open residue:
 | 01 | Canon + Sovereignty | CLOSED | `dna/canon-sovereignty.ts`, `dna/stack-registry.ts`, `assertStackOrder()` live |
 | 02 | Mission Substrate | CLOSED | `dna/mission-substrate.ts`, `MissionContextBand`, `MissionRepository`, `mcp-client.ts`, `MissionOperationsPanel` mounted, `activeMissionOps` in App.tsx |
 | 03 | Sovereign Intelligence | CLOSED | `dna/sovereign-intelligence.ts`: `resolveMissionRoute()` at dispatch; `buildMissionSystemContext()` + `buildMissionMemoryContext()` injected as system[0]; pioneer routing from mission.workflow.pioneerStack[0]; `routeDigest` mission-bound |
-| 04 | Autonomous Operations | CLOSED | `dna/autonomous-operations.ts` live; `MissionOperationsPanel` real callbacks; execution→task creation wired via useEffect; signal dismiss + approval mutations real |
+| 04 | Autonomous Operations | CLOSED | Operations substrate governs dispatch: pre-dispatch task (in_progress) + OperationFlow + approval gate; post-dispatch task lifecycle close + flow advance + MissionSignal from runtime event |
 | 05 | Adaptive Experience | PARTIAL | ChamberChat + RuberraTerminal fully reconstituted; LiveHeaderRail with cycling state; MissionContextBand authoritative; chamber accent wiring solid |
 | 06 | Sovereign Security | PARTIAL | SecurityTrustSignal in SovereignBar; RUBERRA_TRUST_GATES active; `governance-fabric.ts` live |
 | 07 | Trust + Governance | PARTIAL | `enforceExecutionGate()` on every dispatch; audit entry in trustGovState; GovernanceLedgerStrip in ProfileMode |
