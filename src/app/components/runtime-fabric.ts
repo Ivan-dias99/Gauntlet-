@@ -12,6 +12,13 @@ import {
   type WorkflowExportPack,
 } from "./intelligence-foundation";
 import { type SystemHealthModel, defaultSystemHealthModel } from "./awareness-substrate";
+import {
+  type CompoundNetwork,
+  defaultCompoundNetwork,
+  addCompoundNode,
+  createCompoundNode,
+  estimateReplicationBarrier,
+} from "../dna/compound-intelligence";
 
 export type LifecycleStatus =
   | "draft"
@@ -325,6 +332,8 @@ export interface RuntimeFabric {
   intelligence: IntelligenceFoundationState;
   /** Stack 08 — live system health model */
   systemHealth?: SystemHealthModel;
+  /** Stack 20 — compound intelligence network, grows with each completed run */
+  compoundNetwork?: CompoundNetwork;
 }
 
 const STORAGE_KEY = "ruberra_runtime_fabric_v2";
@@ -395,6 +404,7 @@ function initialFabric(): RuntimeFabric {
     chamberPolicies: DEFAULT_CHAMBER_POLICIES,
     intelligence: defaultIntelligenceFoundationState(),
     systemHealth: defaultSystemHealthModel(),
+    compoundNetwork: defaultCompoundNetwork(),
   };
 }
 
@@ -1201,4 +1211,45 @@ export function handoffContinuity(
     linkedObjectId:     item.linkedObjectId,
   });
   return next;
+}
+
+// ─── Compound network update ──────────────────────────────────────────────────
+/**
+ * Called on each successful run completion. Adds or reinforces the compound
+ * node for this chamber session and refreshes the replication barrier score.
+ */
+export function upsertCompoundRun(
+  fabric: RuntimeFabric,
+  opts: { chamber: string; continuityId: string; contentLen: number },
+): RuntimeFabric {
+  const network = fabric.compoundNetwork ?? defaultCompoundNetwork();
+  const nodeId  = `cn_chamber_${opts.chamber}_${opts.continuityId.slice(-8)}`;
+  const existing = network.nodes.find((n) => n.id === nodeId);
+  const advantage = Math.min(1, (opts.contentLen / 4000) * 0.4 + 0.05);
+
+  const updatedNodes = existing
+    ? network.nodes.map((n) =>
+        n.id === nodeId
+          ? { ...n, advantageScore: Math.min(1, n.advantageScore + advantage * 0.3), lastUpdated: Date.now() }
+          : n
+      )
+    : [...network.nodes, createCompoundNode("chamber", opts.continuityId, `${opts.chamber} run`, advantage)];
+
+  const barrier = estimateReplicationBarrier(
+    fabric.continuity.filter((c) => c.status === "completed").length,
+    fabric.objects.length,
+    0,
+    updatedNodes.length,
+    Date.now() - (fabric.runTimeline[0]?.at ?? Date.now()),
+  );
+
+  return {
+    ...fabric,
+    compoundNetwork: {
+      ...network,
+      nodes:       updatedNodes,
+      barrier,
+      lastUpdated: Date.now(),
+    },
+  };
 }

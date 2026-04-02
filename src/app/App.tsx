@@ -70,29 +70,19 @@ import {
   exportContinuity,
   startWorkflowRun,
   buildContextHandoff,
+  appendRunTimeline,
+  transitionWorkflowStage,
+  upsertProviderHealth,
+  upsertCompoundRun,
   type RuntimeFabric,
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
-import { getExecutionTruth } from "./components/sovereign-runtime";
+import { getExecutionTruth, buildLiveAdapterRegistry, resolveSovereignStack } from "./components/sovereign-runtime";
 import { getContractByIntent, resolveIntent, resolveRoute } from "./components/routing-contracts";
 import { MODEL_REGISTRY } from "./components/model-orchestration";
 import { enforceExecutionGate } from "./components/governance-fabric";
 import { buildWorkflowRunPayload } from "./components/workflow-engine";
-import { defaultCivilization, registerAgent, admitAgent, activateAgent, type AgentDomain } from "./dna/multi-agent";
-import { detectPatterns } from "./dna/intelligence-analytics";
-import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
-import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph, claimCollectiveResource } from "./dna/collective-execution";
-import { defaultPresenceManifest, createChannel, registerChannel } from "./dna/distribution-presence";
-import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit, verifyValueUnit } from "./dna/value-exchange";
-import { defaultEcosystemState, proposeExtension, admitToNetwork } from "./dna/ecosystem-network";
-import { defaultPlatformState } from "./dna/platform-infrastructure";
-import { defaultOrgState, assessMissionHealth, surfaceOrgInsights, defaultCapabilityMap } from "./dna/org-intelligence";
-import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dna/personal-sovereign-os";
-import { createInfraLayer, addLayer } from "./dna/platform-infrastructure";
-import { defaultCompoundNetwork } from "./dna/compound-intelligence";
-import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
-import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
-import { PIONEER_REGISTRY } from "./components/pioneer-registry";
+import { executeAIRequest, type ExecutionRequest } from "./components/execution-adapters";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
@@ -294,6 +284,26 @@ export default function App() {
     try { localStorage.removeItem("ruberra_active_mission_id"); } catch { /* ignore */ }
   }, []);
 
+  // ── Sovereign runtime probe — live adapter availability on mount ─────────────
+  useEffect(() => {
+    const controller = new AbortController();
+    buildLiveAdapterRegistry(controller.signal)
+      .then((liveAdapters) => {
+        setRuntimeFabric((prev) => {
+          let next = prev;
+          for (const adapter of liveAdapters) {
+            next = upsertProviderHealth(next, {
+              providerId: adapter.id,
+              state:      adapter.available ? "healthy" : "unavailable",
+            });
+          }
+          return next;
+        });
+      })
+      .catch(() => { /* probe failures are non-fatal */ });
+    return () => controller.abort();
+  }, []);
+
   useEffect(() => {
     const needsConfig = runtimeFabric.connectors.filter((c) => c.status === "needs_config");
     if (!needsConfig.length) return;
@@ -384,7 +394,10 @@ export default function App() {
     }));
     const requestedModelId = activeModels[tab as ChamberTab];
     const plan = resolveExecutionPlan(tab, task, requestedModelId);
-    const workflowId = tab === "creation" ? "build_pipeline" : "canonical_loop";
+    const workflowId =
+      tab === "creation" ? "build-heavy"    :
+      tab === "lab"      ? "research-heavy" :
+      tab === "school"   ? "learning-heavy" : "balanced-trinity";
     const routeDecision = resolveRouteDecision(runtimeFabric.intelligence, {
       chamberHint: tab,
       workflowId,
@@ -481,6 +494,11 @@ export default function App() {
       setSignals((prev)  => ({ ...prev, [tab]: "idle" }));
       return;
     }
+    // Persist governance audit as timeline event
+    setRuntimeFabric((prev) => appendRunTimeline(prev, {
+      continuityId: `${tab}-pre-dispatch`,
+      label:        `governance.${govResult.verdict}: ${govResult.reason}`,
+    }));
 
     setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "running"));
     setRuntimeFabric((prev) => createOrUpdateContinuity(prev, {
@@ -573,6 +591,53 @@ export default function App() {
         .slice(-MAX_CONTEXT)
         .map(({ role, content }) => ({ role, content }));
 
+      // ── Sovereign routing: try live local runtime first ──────────────────────
+      let usedLocalPath = false;
+      const localHealth = runtimeFabric.providerHealth.find(
+        (ph) => ph.state === "healthy" && (ph.providerId === "ollama-local" || ph.providerId.startsWith("vllm"))
+      );
+      if (localHealth) {
+        const sovereign = resolveSovereignStack(tab);
+        if (sovereign.is_available) {
+          const localReq: ExecutionRequest = {
+            chamber:       tab,
+            task,
+            prompt:        text,
+            modelId:       sovereign.model.ollama_name || sovereign.model.id,
+            providerId:    localHealth.providerId,
+            providerLane:  "open_source_local",
+            fallbackChain: plan.fallbackChain,
+            context:       history,
+            signal:        controller.signal,
+            localEndpoint: runtimeFabric.aiSettings.localRuntimeEndpoint ?? "http://localhost:11434",
+            continuityId,
+          };
+          const localRes = await executeAIRequest(localReq, (chunk) => {
+            assistantContent += chunk;
+            if (!streamPhaseLogged && chunk.length > 0) {
+              streamPhaseLogged = true;
+              setMessages((prev) => ({
+                ...prev,
+                [tab]: prev[tab].map((m) => {
+                  if (m.id !== assistantId || m.role !== "assistant" || !m.execution_trace) return m;
+                  const er = m.execution_trace.executionResults;
+                  return er.some((e) => e.phase === "stream")
+                    ? { ...m, content: m.content + chunk }
+                    : { ...m, content: m.content + chunk, execution_trace: { ...m.execution_trace, executionState: "live", executionResults: [...er, { phase: "stream", summary: "Local sovereign runtime", at: Date.now() }] } };
+                }),
+              }));
+            } else {
+              setMessages((prev) => ({
+                ...prev,
+                [tab]: prev[tab].map((m) => m.id === assistantId ? { ...m, content: m.content + chunk } : m),
+              }));
+            }
+          });
+          usedLocalPath = !localRes.blocked && !localRes.providerUnavailable && localRes.content.length > 0;
+        }
+      }
+
+      if (!usedLocalPath) {
       const res = await fetch(`${SERVER_URL}/chat`, {
         method:  "POST",
         headers: {
@@ -660,6 +725,7 @@ export default function App() {
       } finally {
         reader.releaseLock();
       }
+      } // end if (!usedLocalPath)
 
       setSignals((prev) => ({ ...prev, [tab]: "completed" }));
       const finalRunState: ExecutionState =
@@ -762,10 +828,14 @@ export default function App() {
           chamber: tab,
         });
         if (tab === "lab") {
-          // Lab live signal ingestion — surface finding as a cross-chamber signal
+          // Lab finding extraction — prefer first heading from response, fall back to prompt slice
+          const headingMatch = assistantContent.match(/^#{1,3}\s+(.+)$/m);
+          const findingLabel = headingMatch
+            ? headingMatch[1].slice(0, 72)
+            : assistantContent.replace(/\s+/g, " ").trim().slice(0, 72);
           next = pushSignal(next, {
             type:               "lifecycle",
-            label:              `Lab finding: ${text.slice(0, 72)}`,
+            label:              `Lab finding: ${findingLabel}`,
             severity:           "info",
             sourceChamber:      "lab",
             destinationChamber: "lab",
@@ -806,7 +876,11 @@ export default function App() {
               c.id === continuityId ? { ...c, lastRunDigest: handoff.digest } : c
             ),
           };
+          // Advance workflow stage to completed for the Creation run
+          next = transitionWorkflowStage(next, continuityId, "completed");
         }
+        // Compound network: register this run as a compound node on every completion
+        next = upsertCompoundRun(next, { chamber: tab, continuityId, contentLen: assistantContent.length });
         return next;
       });
       setTimeout(() => {
@@ -900,6 +974,9 @@ export default function App() {
             destinationChamber: tab,
             destination: { tab, view: tab === "creation" ? "terminal" : "chat" },
           });
+          if (tab === "creation") {
+            next = transitionWorkflowStage(next, continuityId, "failed");
+          }
           return next;
         });
         setTimeout(() => {
