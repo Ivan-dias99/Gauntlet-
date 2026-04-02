@@ -1786,7 +1786,6 @@ export default function App() {
       {/* Sovereign Bar */}
       <SovereignBar
         activeTab={activeTab}
-        onTabChange={handleTabChange}
         onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
         onHomeClick={() => navigate(activeTab, "home")}
         isLive={isLive}
@@ -1833,7 +1832,6 @@ export default function App() {
           onSchoolView={(v) => { setSchoolView(v); setDetailId(""); }}
           onCreationView={(v) => { setCreationView(v); setDetailId(""); }}
           onProfileView={setProfileView}
-          onTabChange={handleTabChange}
           navigate={navigate}
           onTabChange={(tab) => { setActiveTab(tab); setDetailId(""); }}
           collapsed={railCollapsed}
@@ -1961,7 +1959,6 @@ export default function App() {
                   missions={missions}
                   onMissionUpsert={handleMissionUpsert}
                   onMissionActivate={handleMissionActivate}
-                  activeMissionOps={activeMissionOps ?? undefined}
                   activeMissionId={activeMissionId}
                   activeMissionOps={activeMissionOps}
                   onMissionOpsSignalDismiss={handleMissionOpsSignalDismiss}
