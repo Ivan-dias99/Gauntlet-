@@ -462,7 +462,6 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
 
 export function ProfileMode({
   messages, profileView, onProfileView, navigate, continuity, signals, rewards, connectors, preferences, aiSettings, plugins, workspace, intelligence: _intelligence, objects, recommendations, onTransfer, onResume, onToggleConnector, onTogglePlugin, onPreferencePatch, onAISettingsPatch, onWorkspacePatch, onExport, missions, onMissionUpsert, onMissionActivate,
-  activeMissionOps,
   activeMissionId,
   activeMissionOps,
   onMissionOpsSignalDismiss,
@@ -1009,15 +1008,6 @@ export function ProfileMode({
         {profileView === "operations" && (
           <>
           {/* Mission-scoped operations — shown when a mission is active (Stack 02) */}
-          {activeMissionOps && (
-            <SectionBlock title={`Mission Operations · ${activeMissionOps.missionId.slice(0, 8)}`}>
-              <div style={{ padding: "0 14px 12px" }}>
-                <MissionOperationsPanel
-                  missionId={activeMissionOps.missionId}
-                  ops={activeMissionOps}
-                  onSignalDismiss={() => { /* future: update activeMissionOps */ }}
-                  onApprovalApprove={() => { /* future: update activeMissionOps */ }}
-                  onApprovalReject={() => { /* future: update activeMissionOps */ }}
           {activeMissionId && activeMissionOps && (
             <SectionBlock title="Mission Operations">
               <div style={{ padding: "10px 14px" }}>

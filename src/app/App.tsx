@@ -308,7 +308,6 @@ export default function App() {
   const [activeMissionOps, setActiveMissionOps] = useState<MissionOperationsState | null>(() =>
     activeMissionId ? defaultMissionOperationsState(activeMissionId) : null
   );
-  const [activeMissionOps, setActiveMissionOps] = useState<MissionOperationsState | null>(null);
 
   // ── Detail navigation ────────────────────────────────────────────────────────
   const [detailId, setDetailId] = useState<string>("");
@@ -616,7 +615,6 @@ export default function App() {
       tab === "lab"      ? "research-heavy" :
       tab === "school"   ? "learning-heavy" : "balanced-trinity";
     // Stack 03: when mission is active, honor declared pioneer stack in routing
-    const routeDecision = resolveRouteDecision(runtimeFabric.intelligence, {
     const baseRouteDecision = resolveRouteDecision(runtimeFabric.intelligence, {
       chamberHint: tab,
       workflowId,
@@ -910,16 +908,12 @@ export default function App() {
         .filter((m) => m.id !== assistantId)
         .slice(-MAX_CONTEXT)
         .map(({ role, content }) => ({ role, content }));
-      const contextualHistory = missionMemoryRecall?.priorContext
-        ? [{ role: "system", content: `mission-context: ${missionMemoryRecall.priorContext}` }, ...history]
-        : history;
-
-      // Stack 03: mission context injection — intelligence serves the mission, not the session
+      // Stack 03: mission context injection — identity + deep memory — intelligence serves mission, not session
       const missionIdentityCtx = activeMission ? buildMissionSystemContext(activeMission) : null;
-      const missionMemoryCtx   = activeMission ? buildMissionMemoryContext(activeMission, runtimeFabric.continuity) : null;
-      const missionCtx = missionIdentityCtx
-        ? (missionMemoryCtx ? `${missionIdentityCtx}\n\n${missionMemoryCtx}` : missionIdentityCtx)
-        : null;
+      const missionMemoryPrefix = missionMemoryRecall?.priorContext
+        ? `\n\nPRIOR MISSION CONTEXT:\n${missionMemoryRecall.priorContext}`
+        : (activeMission ? (buildMissionMemoryContext(activeMission, runtimeFabric.continuity) ? `\n\n${buildMissionMemoryContext(activeMission, runtimeFabric.continuity)}` : "") : "");
+      const missionCtx = missionIdentityCtx ? `${missionIdentityCtx}${missionMemoryPrefix}` : null;
       const contextualHistory: Array<{ role: string; content: string }> = missionCtx
         ? [{ role: "system", content: missionCtx }, ...history]
         : history;

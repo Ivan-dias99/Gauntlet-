@@ -274,7 +274,6 @@ export function ShellSideRail({
   activeTab, messages, signals,
   labView, schoolView, creationView, profileView,
   onLabView, onSchoolView, onCreationView, onProfileView,
-  onTabChange, collapsed, onToggleCollapsed,
   navigate, onTabChange, collapsed, onToggleCollapsed,
 }: ShellSideRailProps) {
   const chamber = CHAMBER_SURFACE[activeTab];

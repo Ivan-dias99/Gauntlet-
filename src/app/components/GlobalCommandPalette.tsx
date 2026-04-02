@@ -196,12 +196,8 @@ interface GlobalCommandPaletteProps {
   onMissionSwitch: () => void;
   onMissionHandoff?: () => void;
   activeMissionName?: string;
-}
-
-export function GlobalCommandPalette({
-  open, onClose, navigate, searchIndex, onMissionNew, onMissionSwitch, onMissionHandoff, activeMissionName,
   /** Optional mission list for mission-level navigation commands */
-  missions?:   Mission[];
+  missions?: Mission[];
 }
 
 export function GlobalCommandPalette({
@@ -412,19 +408,6 @@ export function GlobalCommandPalette({
 
 function CmdGroup({ label, entries }: { label: string; entries: CmdEntry[] }) {
   return (
-    <CommandPrimitive.Group style={{ marginBottom: "2px" }}>
-      <div
-        style={{
-          fontSize: "8px",
-          fontFamily: "'JetBrains Mono', monospace",
-          letterSpacing: "0.12em",
-          color: "var(--r-dim)",
-          padding: "4px 8px 2px",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </div>
     <CommandPrimitive.Group
       heading={label}
       style={{ marginBottom: "2px" }}
