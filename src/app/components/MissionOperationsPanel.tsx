@@ -342,10 +342,10 @@ export function MissionOperationsPanel({
       onClick={() => setView(id)}
       style={{
         fontFamily:    "'JetBrains Mono', monospace",
-        fontSize:      "9px",
+        fontSize:      "8px",
         letterSpacing: "0.08em",
         textTransform: "uppercase",
-        padding:       "5px 12px",
+        padding:       "4px 10px",
         border:        "none",
         borderBottom:  view === id
           ? "2px solid var(--r-accent)"
@@ -359,7 +359,7 @@ export function MissionOperationsPanel({
     >
       {label}
       {badge !== undefined && badge > 0 && (
-        <span style={{ marginLeft: "5px", color: "var(--r-warn)" }}>
+        <span style={{ marginLeft: "4px", color: "var(--r-warn)", fontSize: "7.5px" }}>
           {badge}
         </span>
       )}
@@ -371,12 +371,13 @@ export function MissionOperationsPanel({
       <div
         style={{
           padding:       "14px 0",
+          textAlign:     "center",
         }}
       >
         <div
           style={{
             fontFamily:    "'JetBrains Mono', monospace",
-            fontSize:      "8px",
+            fontSize:      "7.5px",
             letterSpacing: "0.10em",
             textTransform: "uppercase",
             color:         "var(--r-dim)",
@@ -446,13 +447,16 @@ export function MissionOperationsPanel({
           {activeSignals.length === 0 ? (
             <div
               style={{
-                fontFamily:    "'Inter', system-ui, sans-serif",
-                fontSize:      "11px",
+                fontFamily:    "'JetBrains Mono', monospace",
+                fontSize:      "7.5px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
                 color:         "var(--r-dim)",
-                padding:       "12px 0",
+                padding:       "10px 0",
+                textAlign:     "center",
               }}
             >
-              No active signals.
+              — idle —
             </div>
           ) : (
             activeSignals.map((s) => (
@@ -472,13 +476,16 @@ export function MissionOperationsPanel({
           {pendingApprovals.length === 0 ? (
             <div
               style={{
-                fontFamily:    "'Inter', system-ui, sans-serif",
-                fontSize:      "11px",
+                fontFamily:    "'JetBrains Mono', monospace",
+                fontSize:      "7.5px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
                 color:         "var(--r-dim)",
-                padding:       "12px 0",
+                padding:       "10px 0",
+                textAlign:     "center",
               }}
             >
-              No pending approvals.
+              — idle —
             </div>
           ) : (
             pendingApprovals.map((a) => (
