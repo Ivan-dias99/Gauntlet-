@@ -2704,10 +2704,6 @@ export default function App() {
     return runtimeFabric.analyticsPatterns ?? [];
   }, [runtimeFabric.analyticsPatterns]);
 
-  // Stack 11: Knowledge graph from canonical RuntimeFabric
-  const knowledgeGraph = useMemo(() => {
-    return runtimeFabric.knowledgeGraph?.graph ?? defaultKnowledgeGraph();
-  }, [runtimeFabric.knowledgeGraph]);
 
   const orgState = useMemo(() => {
     // Start from persisted state or default
@@ -2769,8 +2765,6 @@ export default function App() {
 
   // 1. Civilization: pioneer registry + mission bindings from continuity
   const civilization = useMemo(() => {
-    let civ = _civBase;
-    for (const p of PIONEER_REGISTRY) {
     let civ = civBase;
     for (const p of PIONEER_REGISTRY.slice(0, 10)) {
       const manifest = registerAgent({
