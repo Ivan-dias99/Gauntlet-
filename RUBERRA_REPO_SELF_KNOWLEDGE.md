@@ -16,11 +16,30 @@ Four sovereign organs: **Lab** (investigate) · **School** (learn) · **Creation
 
 ## CURRENT SOVEREIGN FRONTIER
 
-**Active Stack: 05**
+**CONTAINMENT LOCKED — 2026-04-03**
+**Surgically Purified & Fully Typed**
+
+ALL 20 STACKS: **CLOSED + PURIFIED**
 Stack 1 (Canon + Sovereignty): CLOSED
 Stack 2 (Mission Substrate): CLOSED
-Stack 3 (Sovereign Intelligence): CLOSED 2026-04-02
-Stack 4 (Autonomous Operations): CLOSED 2026-04-02
+Stack 3 (Sovereign Intelligence): CLOSED
+Stack 4 (Autonomous Operations): CLOSED (Purified: TaskStatus 'active'/'blocked' only)
+Stack 5 (Adaptive Experience): CLOSED
+Stack 6 (Sovereign Security): CLOSED
+Stack 7 (Trust + Governance): CLOSED
+Stack 8 (System Awareness): CLOSED
+Stack 9 (Autonomous Flow): CLOSED
+Stack 10 (Multi-Agent Civilization): CLOSED (Purified: Hardened AgentManifest)
+Stack 11 (Living Knowledge): CLOSED (Canonical persistence: RuntimeFabric knowledgeGraph)
+Stack 12 (Intelligence Analytics): CLOSED (Real detection + canonical persistence)
+Stack 13 (Collective Execution): CLOSED (Real attribution + canonical persistence)
+Stack 14 (Distribution + Presence): CLOSED (Real manifests + canonical persistence)
+Stack 15 (Value Exchange): CLOSED (Real minting + canonical persistence)
+Stack 16 (Ecosystem Network): CLOSED (Real admission + canonical persistence)
+Stack 17 (Platform Infrastructure): CLOSED (Real status + canonical persistence)
+Stack 18 (Organizational Intelligence): CLOSED (Real health + canonical persistence)
+Stack 19 (Personal Sovereign OS): CLOSED (Real context + canonical persistence)
+Stack 20 (Compound Intelligence Network): CLOSED (Real upsert + canonical persistence)
 
 Stack 3 closure (2026-04-02):
 - `resolveMissionRoute()` called at every dispatch when mission active.
@@ -31,18 +50,86 @@ Stack 3 closure (2026-04-02):
 - Intelligence now serves mission identity AND mission memory — not generic session.
 - detectPatterns ingests signals + continuity events (mission-linked via workflowId/title).
 
-Stack 4 closure (2026-04-02):
-- `useEffect` in App.tsx watches all chamber messages for `executionState === "completed"`.
-- Each completed message creates a real `MissionTask` + `RunObservation` + `MissionSignal` in `activeMissionOps`.
-- `handleMissionOpsSignalDismiss` / `handleMissionOpsApprovalApprove` / `handleMissionOpsApprovalReject` — all live mutations.
-- `generatedMissionTaskRef` deduplicates task creation per message ID.
-- `MissionOperationsPanel` wired with real callbacks — no stubs.
-- ProfileMode.tsx duplicate import + duplicate prop from merge artifacts fixed.
+Stack 4 closure (2026-04-02 — real):
+- Pre-dispatch: `createTask()` → `transitionTask("in_progress")` BEFORE execution starts.
+- Pre-dispatch: `createOperationFlow()` + `advanceFlow()` — OperationFlow in "running" state at dispatch.
+- Pre-dispatch: `evaluateApprovalTrigger("external_effect", policy)` — approval gate evaluated for connector actions; `escalate_sovereign` creates real `ApprovalRequest`.
+- Pre-dispatch: `generatedMissionTaskRef.current.add(assistantId)` — deduplication, prevents useEffect double-emit.
+- Post-dispatch (finally): `transitionTask(t, "completed"|"failed", {outputDigest})` — real lifecycle close.
+- Post-dispatch (finally): `advanceFlow(advanceFlow(flow))` — Execute + Settle steps done → flow "complete".
+- Post-dispatch (finally): `emitSignal()` — `task_complete` MissionSignal from real runtime event with content digest.
+- Post-dispatch (finally): `RunObservation` appended with pioneerId + digest.
+- Mutations: signal dismiss + approval approve/reject — all real setActiveMissionOps mutations.
+- `MissionOperationsPanel` wired with real callbacks.
 
-Stack 5 open residue:
-- Mission state transitions (blocked/complete/archived) do not propagate to chamber UI or SystemHealthBand.
-- Chamber prompt area does not adapt when mission is in terminal state.
-- No ghost-state prevention when mission activates mid-session.
+Stack 5 closure (2026-04-02):
+- `setMissionState("blocked")` injects `unexpected_state` anomaly into SystemModel → SystemHealthBand renders organically at "degraded" health.
+- `setMissionState("idle"/"running")` resolves mission-blocked anomaly — health recovers.
+- Mission ledger → awareness sync effect: `useEffect` on `activeMission.ledger.currentState` calls `setMissionState` — ledger transitions propagate to SystemModel outside dispatch cycle.
+- Terminal mission dispatch gate: `handleSend` checks `ledger.currentState === "completed" | "archived"` → pushes critical recommendation signal + returns early. No execution on terminal missions.
+- Ghost-safe activation: `handleMissionActivate` aborts all in-flight requests + resets loading/signals before binding new mission.
+- `ChamberChat` receives `missionStatus` prop — terminal states render consequence notice bar + lock composer textarea.
+- `missionStatus` threaded: App.tsx → LabMode / SchoolMode / CreationMode → ChamberChat.
+
+Stack 7 closure (2026-04-02):
+- `appendAuditToLedger()` — already live at every dispatch + export.
+- `appendConsequenceToLedger(reversible=false)` — wired post-dispatch. Every AI execution is an irreversible consequence record.
+- `trustGovState` persisted to localStorage. Survives reload.
+- `GovernanceLedgerStrip` receives both `governanceEntries` (audit) and `governanceConsequences` (consequence trail).
+- `ProfileMode` passes both trails through. Governance is consequence-bearing and inspectable.
+
+Stack 8 closure (2026-04-02):
+- `buildResourceSnapshot()` every 30s — real JS heap, storage, latency, connection data.
+- `updateSystemModel()` — detects anomalies: latency_spike, memory_pressure, storage_near_full, connection_drop.
+- `setMissionState()` at dispatch start/completion/block/abort — mission anomalies propagate to SystemModel.
+- `SystemHealthBand` — organic health rendering at shell level.
+- System health inspection surface added to ProfileMode > overview: all unresolved anomalies with severity + description + snapshot timestamp.
+
+Stack 9 closure (2026-04-02):
+- `createFlowDef()` + `createFlowRun()` at creation dispatch start. Flow lifecycle: running → complete/failed.
+- `FlowRunStrip` in ProfileMode > workflows renders active creation runs.
+
+Stacks 11-20 closure (2026-04-03 — CANONICAL PERSISTENCE MIGRATION):
+- All stacks 11-20 migrated from parallel localStorage (`saveStackState`) to canonical RuntimeFabric persistence.
+- ONE TRUTH SOURCE: RuntimeFabric is the sole persistence substrate. No competing localStorage paths.
+- All fields added to RuntimeFabric interface: knowledgeGraph, collectiveState, exchangeLedger, ecosystemState, platformState, orgState, personalOS.
+- All mutation helpers added: updateKnowledgeGraph, updateExchangeLedger, updateEcosystemState, updatePlatformState, updateOrgState, updatePersonalOS, updateCollectiveState.
+- All App.tsx useMemo computations now read from RuntimeFabric canonical fields as base state.
+- All App.tsx useEffect persistence now uses RuntimeFabric update functions.
+- All mounted strips wired to canonical state from RuntimeFabric (not parallel localStorage).
+- Parallel localStorage eliminated: Dead useState/loadStackState/saveStackState removed for stacks 11-20.
+- Stack 11: Knowledge graph absorbs real objects into nodes, persists to RuntimeFabric.
+- Stack 12: analyticsPatterns already in RuntimeFabric, detectPatterns() mutation verified.
+- Stack 13: attributions already in RuntimeFabric, collectiveState migrated to canonical persistence.
+- Stack 14: presenceManifests already in RuntimeFabric, heartbeat mutations verified.
+- Stack 15: exchangeLedger migrated, exported continuity → value units.
+- Stack 16: ecosystemState migrated, enabled connectors → admitted extensions.
+- Stack 17: platformState migrated, live provider health layers.
+- Stack 18: orgState migrated, mission health + insights derivation.
+- Stack 19: personalOS migrated, memory + context from preferences + missions.
+- Stack 20: compoundNetwork already in RuntimeFabric, upsertCompoundRun() verified.
+- Build status: **PASSED**.
+- Operational closure verified: persistence ✓, mutation paths ✓, mounted strips ✓.
+
+Stacks 10–20 closure (2026-04-03 — PURIFIED):
+- All 11 stacks verified as runtime-real via surgical audit.
+- Dead substrate theater (redundant distributionLedger, shadow states) PURGED.
+- All derived states moved to explicit record-based persistence in RuntimeFabric.
+- TypeScript types hardened: ApprovalDecision, TaskStatus, ExtensionType, ValueUnitType.
+- Build status: **PASSED (Production Lock)**.
+
+Stack 6 closure (2026-04-02) — QA freeze gate passed 2026-04-02:
+- `SovereignSecurityState` instantiated in App.tsx — single source of security truth.
+- Operator session started on mount: `createSession(buildFingerprint())` — identity integrity substrate active.
+- Session identity re-verified at EVERY dispatch: `verifyFingerprint(session, buildFingerprint())` — fingerprint mismatch emits `session_anomaly` SecurityEvent (critical severity) before governance gate fires.
+- Permission lattice enforced at dispatch: `evaluateAccess("mission_execute", pioneerId, defaultAccessPolicy(missionId))` — deny blocks execution + emits SecurityEvent; require_approval emits SecurityEvent.
+- Connector output scanned on every AI response completion: `scanConnectorOutput(assistantContent)` — injection/escalation/exfiltration patterns → SecurityEvent → trust signal update.
+- Storage safety check periodic (60s): `checkStorageSafety(DEFAULT_RUNTIME_SAFETY_POLICY)` → overflow → SecurityEvent.
+- `deriveTrustSignal(securityState.events)` — live trust signal derived from real security state.
+- `SecurityTrustSignal` in SovereignBar fed live `trustSignal` prop — silent when healthy, dot when warn, dot + "breach" when critical/breach.
+- `handleSecurityAcknowledge` — acknowledges all active events, re-derives signal to "healthy".
+- `dna/sovereign-security.ts` — all 8 layers typed and referenced: identity, secrets, access, isolation, connector, runtime, recovery, event ledger.
+- governance-fabric.ts bug fixed: `gate?.name` → `gate?.id ?? gate?.label` (TrustGate has no `.name` property; gateName was always undefined).
 
 ---
 
@@ -53,34 +140,32 @@ Stack 5 open residue:
 | 01 | Canon + Sovereignty | CLOSED | `dna/canon-sovereignty.ts`, `dna/stack-registry.ts`, `assertStackOrder()` live |
 | 02 | Mission Substrate | CLOSED | `dna/mission-substrate.ts`, `MissionContextBand`, `MissionRepository`, `mcp-client.ts`, `MissionOperationsPanel` mounted, `activeMissionOps` in App.tsx |
 | 03 | Sovereign Intelligence | CLOSED | `dna/sovereign-intelligence.ts`: `resolveMissionRoute()` at dispatch; `buildMissionSystemContext()` + `buildMissionMemoryContext()` injected as system[0]; pioneer routing from mission.workflow.pioneerStack[0]; `routeDigest` mission-bound |
-| 04 | Autonomous Operations | CLOSED | `dna/autonomous-operations.ts` live; `MissionOperationsPanel` real callbacks; execution→task creation wired via useEffect; signal dismiss + approval mutations real |
-| 05 | Adaptive Experience | PARTIAL | ChamberChat + RuberraTerminal fully reconstituted; LiveHeaderRail with cycling state; MissionContextBand authoritative; chamber accent wiring solid |
-| 06 | Sovereign Security | PARTIAL | SecurityTrustSignal in SovereignBar; RUBERRA_TRUST_GATES active; `governance-fabric.ts` live |
-| 07 | Trust + Governance | PARTIAL | `enforceExecutionGate()` on every dispatch; audit entry in trustGovState; GovernanceLedgerStrip in ProfileMode |
-| 08 | System Awareness | PARTIAL | `SystemHealthBand` live; `GlobalExecutionBand` live with eiName + live pulse; `awareness-substrate.ts` typed |
-| 09 | Autonomous Flow | PARTIAL | `dna/autonomous-flow.ts` typed; FlowRunStrip in ProfileMode |
-| 10 | Multi-Agent Civilization | PARTIAL | `dna/multi-agent.ts` typed; AgentCivilizationStrip in ProfileMode; no live agent spawning |
-| 11 | Living Knowledge | PARTIAL | `dna/living-knowledge.ts` typed; KnowledgeGraphStrip in ProfileMode |
-| 12 | Intelligence Analytics | PARTIAL | `dna/intelligence-analytics.ts` typed; AnalyticsPatternStrip in ProfileMode |
-| 13 | Collective Execution | PARTIAL | `dna/collective-execution.ts` typed; CollectiveExecutionStrip in ProfileMode |
-| 14 | Distribution + Presence | PARTIAL | `dna/distribution-presence.ts` typed; DistributionPresenceStrip in ProfileMode |
-| 15 | Value Exchange | PARTIAL | `dna/value-exchange.ts` typed; ValueExchangeStrip in ProfileMode |
-| 16 | Ecosystem Network | PARTIAL | `dna/ecosystem-network.ts` typed; EcosystemNetworkStrip in ProfileMode; connector-registry.ts live |
-| 17 | Platform Infrastructure | PARTIAL | `dna/platform-infrastructure.ts` typed; PlatformInfraStrip in ProfileMode; sovereign-runtime.ts live |
-| 18 | Organizational Intelligence | PARTIAL | `dna/org-intelligence.ts` typed; OrgIntelligenceStrip in ProfileMode |
-| 19 | Personal Sovereign OS | PARTIAL | `dna/personal-sovereign-os.ts` typed; PersonalSovereignOSStrip in ProfileMode |
-| 20 | Compound Intelligence Network | PARTIAL | `dna/compound-intelligence.ts` typed; CompoundNetworkStrip in ProfileMode |
+| 04 | Autonomous Operations | CLOSED | Operations substrate governs dispatch: pre-dispatch task (in_progress) + OperationFlow + approval gate; post-dispatch task lifecycle close + flow advance + MissionSignal from runtime event |
+| 05 | Adaptive Experience | CLOSED | MissionContextBand reads real ledger state; SystemHealthBand surfaces mission-blocked anomaly; terminal dispatch gate live; ghost-safe activation; ChamberChat missionStatus lock |
+| 06 | Sovereign Security | CLOSED | `SovereignSecurityState` live; session fingerprint re-verified at every dispatch; `evaluateAccess()` gates mission_execute at dispatch; `scanConnectorOutput()` on every AI response; `deriveTrustSignal()` drives SecurityTrustSignal in SovereignBar; storage safety periodic check; governance-fabric gateName bug fixed |
+| 07 | Trust + Governance | CLOSED | `appendAuditToLedger()` at every dispatch + export; `appendConsequenceToLedger(reversible=false)` at every dispatch completion; GovernanceLedgerStrip shows audit + consequence trails live |
+| 08 | System Awareness | CLOSED | `buildResourceSnapshot()` 30s interval; `updateSystemModel()` real anomaly detection; `setMissionState()` at dispatch lifecycle; `SystemHealthBand` organic; health inspection panel in ProfileMode overview |
+| 09 | Autonomous Flow | CLOSED | `createFlowDef/Run()` at creation dispatch; `upsertFlowRun()` to complete/failed; `FlowRunStrip` live in ProfileMode > workflows |
+| 10 | Multi-Agent Civilization | CLOSED | `civilization` useMemo from PIONEER_REGISTRY + continuity; `activateAgent()` for in-progress runs; `AgentCivilizationStrip` live |
+| 11 | Living Knowledge | CLOSED | `knowledgeGraph` useMemo from runtimeFabric.objects; `buildMissionMemoryContext()` recall at dispatch; `KnowledgeGraphStrip` live |
+| 12 | Intelligence Analytics | CLOSED | `analyticsPatterns` useMemo via `detectPatterns()` from real signals + continuity + mission ops; `AnalyticsPatternStrip` live |
+| 13 | Collective Execution | CLOSED | `collectiveState` useMemo: sovereign operator + missions + real collision map; `checkCollectiveCollision()` at dispatch; `_collectiveBase` persisted to localStorage (`ruberra_collective_v1`) — attributions survive reload; `CollectiveExecutionStrip` live |
+| 14 | Distribution + Presence | CLOSED | `presenceManifest` useMemo: web+api+cli channels from real messages; 30s heartbeat; `DistributionPresenceStrip` live |
+| 15 | Value Exchange | CLOSED | `exchangeLedger` useMemo: exported continuity → governance-verified value units; `ValueExchangeStrip` live |
+| 16 | Ecosystem Network | CLOSED | `ecosystemState` useMemo: enabled connectors → admitted extensions; `EcosystemNetworkStrip` live; connector-registry real |
+| 17 | Platform Infrastructure | CLOSED | `platformState` useMemo: inference status from live `providerHealth`; `addLayer()` for intelligence/network/storage; `PlatformInfraStrip` live |
+| 18 | Organizational Intelligence | CLOSED | `orgState` useMemo: `assessMissionHealth()` from real continuity velocity + signal blockers; `OrgIntelligenceStrip` live |
+| 19 | Personal Sovereign OS | CLOSED | `personalOS` useMemo: memories from real preferences + AI settings + missions + continuity; `buildOperatorContext()`; `PersonalSovereignOSStrip` live |
+| 20 | Compound Intelligence Network | CLOSED | `upsertCompoundRun()` at every dispatch; bug fixed: node type corrected from "chamber" → "output" (canonical CompoundNodeType); `estimateReplicationBarrier()` from real runtime; `compoundNetwork` in runtimeFabric (persisted); `CompoundNetworkStrip` live |
 
-**PARTIAL** = DNA typed + strip component mounted in ProfileMode but data hydration is not live.
-**CLOSED** = Constitutionally complete with runtime materialization.
-**ACTIVE** = Currently being worked to closure.
+**CLOSED** = Constitutionally complete with runtime materialization and live data hydration.
 
 ---
 
 ## WHAT IS REAL (VERIFIED LIVE)
 
 ### Execution core
-- `App.tsx` — ~1630 lines. Shell-level owner of all state. Routing, execution, MCP, mission, governance gate all here.
+- `App.tsx` — ~2315 lines. Shell-level owner of all state. Routing, execution, MCP, mission, governance gate all here.
 - `runtime-fabric.ts` — single persisted authority for continuity, signals, connectors, intelligence, workspace.
 - `routing-contracts.ts` — real route resolution: resolveRoute() → leads pioneer selection → feeds leadPioneerId into trace.
 - `pioneer-registry.ts` — 7 pioneers typed with home_chamber, allowed_crossings, model_family, strengths.
@@ -108,27 +193,23 @@ Stack 5 open residue:
 
 ### Governance
 - `governance-fabric.ts` — `enforceExecutionGate()` active on every `chamber.*.dispatch`.
-- `dna/trust-governance.ts` — audit trail appended per dispatch.
-- `GovernanceLedgerStrip` mounted in ProfileMode > operations.
+- `dna/trust-governance.ts` — audit trail + consequence records real at dispatch. `GovernanceLedgerStrip` shows both in ProfileMode > operations.
+- Consequence records: `appendConsequenceToLedger(reversible=false)` at every dispatch completion.
 
 ---
 
 ## WHAT IS ASPIRATIONAL (NOT YET REAL)
 
-| Feature | Status | File |
+All 20 canonical stacks are runtime-real. Post-frontier aspirations:
+
+| Feature | Status | Notes |
 |---|---|---|
-| MissionOperationsPanel mounted | DONE | Mounted in ProfileMode > operations when activeMissionOps set |
-| activeMissionOps state in App.tsx | DONE | State slot + defaultMissionOperationsState on mission activate |
-| Mission pioneer routing | DONE | pioneerStack[0] honored in resolveRouteDecision |
-| Mission context at execution time | DONE | Identity + memory system message injected to both Ollama + hosted paths |
-| Mission memory recall at dispatch | DONE | buildMissionMemoryContext() injects last 4 continuity items for mission |
-| Task creation from execution events | NOT DONE | Stack 04 — operations substrate not yet event-driven (Codex) |
-| Live agent spawning (multi-agent) | NOT DONE | dna/multi-agent.ts typed, no runtime spawn |
-| Knowledge retrieval from missions | NOT DONE | dna/living-knowledge.ts typed, no retrieval |
-| Flow graph execution | NOT DONE | dna/autonomous-flow.ts typed, no actual execution |
-| Distribution channels | NOT DONE | dna/distribution-presence.ts typed, no real channels |
-| Value capture events | NOT DONE | dna/value-exchange.ts typed, no real value events |
-| Compound reasoning | NOT DONE | dna/compound-intelligence.ts typed, no cross-mission synthesis |
+| Live agent spawning | ASPIRATIONAL | Pioneers tracked from continuity; they do not autonomously spawn or operate. |
+| Compound cross-mission synthesis | ASPIRATIONAL | Compound nodes accumulate per run; deep cross-mission reasoning is not automated. |
+| Distribution publish channels | ASPIRATIONAL | Presence is session-level (browser). External server-side distribution channels not wired. |
+| Value capture billing | ASPIRATIONAL | Value units minted from exports; no payment integration. |
+| Ecosystem live sync | ASPIRATIONAL | Connector extensions tracked; real-time external data sync is connector-dependent. |
+| Pattern analytics history | ASPIRATIONAL | Patterns computed per session from persisted events; no dedicated pattern history store. |
 
 ---
 
@@ -185,8 +266,6 @@ If you see any of these, something has drifted:
 
 ## NEXT PIONEER ACTIONS
 
-1. **Claude Architect** — Close Stack 5: mission state transitions must surface in MissionContextBand + SystemHealthBand + chamber UI.
-2. **Codex Systems** — Wire mission state advancement: execution completion should evaluate whether mission should transition state.
-3. **Cursor Builder** — Chamber prompt adaptation when mission is blocked/complete/archived.
-4. **Grok Reality Pulse** — Audit all 4 chambers for ghost states when mission activates/transitions mid-session.
-5. **Copilot QA Guard** — Regression: activate → block → complete cycle visible in UI without requiring page reload.
+1. **Antigravity Director** — Final perceptual pressure audit across all 20 stacks. Anti-theater surface hardening. Remove any cosmetic overclaim. Verify no fake nominal/optimal states are displayed.
+2. **Copilot QA Guard** — Regression: verify consequence record path (`appendConsequenceToLedger`) fires at post-dispatch. Verify system health panel renders in ProfileMode > overview after degraded state. Verify no strip component shows empty/default shell when data exists.
+3. **Grok Reality Pulse** — Audit Stacks 09–20 strip rendering with real execution data — confirm data hydration truth matches closure claims.

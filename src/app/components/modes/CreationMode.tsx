@@ -706,7 +706,7 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
 
 export function CreationMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  creationView, onCreationView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName,
+  creationView, onCreationView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName, missionStatus,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -723,7 +723,14 @@ export function CreationMode({
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
   missionName?: string;
+  missionStatus?: string;
 }) {
+  const composerLocked = missionStatus === "completed" || missionStatus === "archived";
+  const composerLockLabel = composerLocked
+    ? `Mission ${missionStatus} — release or activate a mission to continue`
+    : missionStatus === "blocked"
+      ? "Mission blocked — resolve blockers in Profile → Operations"
+      : undefined;
   const showHome = creationView === "home" || (!messages.length && creationView === "chat");
 
   if (showHome) {
@@ -759,7 +766,9 @@ export function CreationMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
-      placeholder="Directive — describe what to build, generate, or forge…"
+      inputLocked={composerLocked}
+      lockLabel={composerLockLabel}
+      placeholder={composerLocked ? "Mission locked" : "Directive — describe what to build, generate, or forge…"}
     />
   );
 
@@ -773,6 +782,9 @@ export function CreationMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
+      composerLocked={composerLocked}
+      composerLockLabel={composerLockLabel}
+      missionStatus={missionStatus}
     />
   );
 }

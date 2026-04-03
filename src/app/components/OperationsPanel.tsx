@@ -474,6 +474,8 @@ function SignalFeed({
                 background: "transparent",
                 color: "var(--r-dim)",
                 cursor: "pointer",
+                letterSpacing: "0.03em",
+                textTransform: "uppercase",
               }}
             >
               clear
