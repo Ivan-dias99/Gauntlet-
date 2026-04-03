@@ -30,8 +30,6 @@ import {
   defaultAutonomousOperationsState,
   type AutonomousOperationsState,
 } from "../autonomous-operations";
-import { MissionOperationsPanel } from "../MissionOperationsPanel";
-import { type MissionOperationsState } from "../../dna/autonomous-operations";
 import { SovereignEmptyFrame, emptyActionBtn } from "../SovereignEmptyFrame";
 import { ExecutionConsequenceStrip } from "../ExecutionConsequenceStrip";
 import { GovernanceLedgerStrip } from "../GovernanceLedgerStrip";
@@ -58,8 +56,9 @@ import { type PlatformInfraState } from "../../dna/platform-infrastructure";
 import { type OrgIntelligenceState } from "../../dna/org-intelligence";
 import { type PersonalSovereignOSState } from "../../dna/personal-sovereign-os";
 import { type CompoundNetwork } from "../../dna/compound-intelligence";
-import { type AuditEntry } from "../../dna/trust-governance";
+import { type AuditEntry, type ConsequenceRecord } from "../../dna/trust-governance";
 import { type AutonomousFlowState } from "../../dna/autonomous-flow";
+import { type SystemModel } from "../../dna/system-awareness";
 import { type MissionOperationsState } from "../../dna/autonomous-operations";
 import {
   PROVIDER_ADAPTERS,
@@ -126,8 +125,11 @@ interface ProfileModeProps {
   orgState?:          OrgIntelligenceState;
   personalOS?:        PersonalSovereignOSState;
   compoundNetwork?:   CompoundNetwork;
-  governanceEntries?: AuditEntry[];
-  flowState?:         AutonomousFlowState;
+  governanceEntries?:       AuditEntry[];
+  governanceConsequences?:  ConsequenceRecord[];
+  flowState?:               AutonomousFlowState;
+  systemModel?:             SystemModel;
+  distributionLedger?:      Array<{ id: string; continuityId: string; title: string; publishedAt: number; uri: string; checksum: string }>;
 }
 
 type WorkStatus = "in_progress" | "paused" | "completed";
@@ -483,7 +485,10 @@ export function ProfileMode({
   personalOS,
   compoundNetwork,
   governanceEntries,
+  governanceConsequences,
   flowState,
+  systemModel,
+  distributionLedger,
 }: ProfileModeProps) {
   const operations = operationsProp ?? defaultAutonomousOperationsState();
   const derivedWork = deriveWorkItems(messages);
@@ -743,6 +748,32 @@ export function ProfileMode({
                 </div>
               </SectionBlock>
             )}
+            {/* Stack 08 — System Awareness: health inspection surface */}
+            {systemModel && (
+              <SectionBlock title={`System Health · ${systemModel.health}`}>
+                <div style={{ padding: "10px 14px" }}>
+                  {systemModel.anomalies.filter(a => !a.resolved).length === 0 ? (
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "var(--r-dim)", letterSpacing: "0.04em" }}>
+                      no active anomalies
+                    </span>
+                  ) : (
+                    systemModel.anomalies.filter(a => !a.resolved).map(a => (
+                      <div key={a.id} style={{ padding: "4px 0", borderBottom: "1px solid var(--r-border-soft)", display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", color: a.severity === "high" ? "var(--r-err)" : "var(--r-warn)", letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0, paddingTop: "1px" }}>
+                          {a.severity}
+                        </span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "var(--r-subtext)", letterSpacing: "0.03em", lineHeight: 1.4 }}>
+                          {a.description}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                  <div style={{ paddingTop: "6px", fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", color: "var(--r-dim)", letterSpacing: "0.04em" }}>
+                    snapshot · {new Date(systemModel.snapshot.at).toLocaleTimeString()}
+                  </div>
+                </div>
+              </SectionBlock>
+            )}
           </>
         )}
 
@@ -947,6 +978,25 @@ export function ProfileMode({
                 <div style={{ height: "1px" }} />
               </SectionBlock>
             )}
+            {distributionLedger && distributionLedger.length > 0 && (
+              <SectionBlock title="Distribution Ledger — Artifact Lineage">
+                <div style={{ padding: "0" }}>
+                  {distributionLedger.map((art) => (
+                    <div key={art.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid var(--r-border-soft)", gap: "10px" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontSize: "11px", fontWeight: 500, color: "var(--r-text)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{art.title}</p>
+                        <p style={{ fontSize: "8.5px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", margin: "3px 0 0", letterSpacing: "0.02em" }}>
+                           {art.id} · {art.checksum} · {new Date(art.publishedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <button onClick={() => window.open(art.uri, "_blank")} style={btn}>URI</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SectionBlock>
+            )}
             {presenceManifest && (
               <SectionBlock title="Distribution & Presence">
                 <div style={{ padding: "10px 14px" }}>
@@ -1044,7 +1094,7 @@ export function ProfileMode({
           {governanceEntries && governanceEntries.length > 0 && (
             <SectionBlock title="Governance Audit Trail">
               <div style={{ padding: "10px 14px" }}>
-                <GovernanceLedgerStrip entries={governanceEntries} />
+                <GovernanceLedgerStrip entries={governanceEntries} consequences={governanceConsequences} />
               </div>
             </SectionBlock>
           )}

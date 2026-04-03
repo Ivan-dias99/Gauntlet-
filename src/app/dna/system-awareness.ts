@@ -14,6 +14,7 @@
 
 import { assertStackOrder } from "./canon-sovereignty";
 import { type MissionId } from "./mission-substrate";
+import { type MissionOperationsState } from "../autonomous-operations";
 
 // ─── Stack order guard ────────────────────────────────────────────────────────
 
@@ -258,6 +259,8 @@ export interface SystemModel {
   health:        SystemHealthSignal;
   anomalies:     SystemAnomaly[];
   missionStates: Record<MissionId, "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived">;
+  /** Stack 04: Mission-bound autonomous execution substrate. Persisted in fabric. */
+  missionOperations: Record<MissionId, MissionOperationsState>;
   lastUpdated:   number;
 }
 
@@ -270,10 +273,11 @@ export function defaultSystemModel(): SystemModel {
       latencyMs:         0,
       at:                0,
     },
-    health:        "unknown",
-    anomalies:     [],
-    missionStates: {},
-    lastUpdated:   Date.now(),
+    health:            "unknown",
+    anomalies:         [],
+    missionStates:     {},
+    missionOperations: {},
+    lastUpdated:       Date.now(),
   };
 }
 
@@ -313,9 +317,40 @@ export function setMissionState(
   missionId: MissionId,
   state: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived",
 ): SystemModel {
+  const anomalyId = `anomaly_mission_${missionId}`;
+  let anomalies = model.anomalies;
+
+  if (state === "blocked") {
+    // Inject mission-blocked anomaly if not already present
+    const alreadyPresent = anomalies.some((a) => a.id === anomalyId && !a.resolved);
+    if (!alreadyPresent) {
+      const now = Date.now();
+      anomalies = [
+        ...anomalies,
+        {
+          id:          anomalyId,
+          type:        "unexpected_state" as AnomalyType,
+          severity:    "medium" as const,
+          description: `Mission blocked — cannot advance without resolution. Mission: ${missionId.slice(0, 40)}`,
+          detectedAt:  now,
+          resolved:    false,
+        },
+      ];
+    }
+  } else {
+    // Resolve mission-blocked anomaly when returning to running/idle
+    anomalies = anomalies.map((a) =>
+      a.id === anomalyId && !a.resolved ? { ...a, resolved: true } : a
+    );
+  }
+
+  const health = deriveSystemHealth(model.snapshot, anomalies);
+
   return {
     ...model,
     missionStates: { ...model.missionStates, [missionId]: state },
+    anomalies,
+    health,
     lastUpdated:   Date.now(),
   };
 }

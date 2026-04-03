@@ -1076,6 +1076,7 @@ export function ChamberChat({
   missionName,
   composerLocked = false,
   composerLockLabel,
+  missionStatus,
 }: {
   messages:      Message[];
   isLoading:     boolean;
@@ -1092,6 +1093,8 @@ export function ChamberChat({
   missionName?: string;
   composerLocked?: boolean;
   composerLockLabel?: string;
+  /** Mission ledger state — drives terminal-state consequence lock */
+  missionStatus?: string;
 }) {
   const threadRef = useRef<HTMLDivElement>(null);
 
@@ -1199,14 +1202,37 @@ export function ChamberChat({
         modelBadge={modelId}
       />
 
+      {/* Stack 05: Terminal mission consequence notice */}
+      {(missionStatus === "completed" || missionStatus === "archived") && (
+        <div
+          style={{
+            padding: "8px 32px",
+            background: "color-mix(in srgb, var(--r-dim) 8%, var(--r-surface))",
+            borderTop: "1px solid var(--r-border-soft)",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--r-dim)", flexShrink: 0 }} />
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--r-dim)" }}>
+            MISSION {missionStatus.toUpperCase()} · open a new mission to continue
+          </span>
+        </div>
+      )}
+
       {/* Composer */}
       <Composer
         draft={draft}
         onDraftChange={onDraftChange}
         onSend={onSend}
         onCancel={onCancel}
-        isLoading={isLoading}
-        placeholder={config.placeholder}
+        isLoading={isLoading || missionStatus === "completed" || missionStatus === "archived"}
+        placeholder={
+          missionStatus === "completed" ? "Mission completed — open a new mission to continue"
+          : missionStatus === "archived" ? "Mission archived — open a new mission to continue"
+          : config.placeholder
+        }
         accent={config.accent}
         configId={config.id}
         task={task}
