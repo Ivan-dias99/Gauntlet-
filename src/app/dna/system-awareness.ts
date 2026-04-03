@@ -14,6 +14,7 @@
 
 import { assertStackOrder } from "./canon-sovereignty";
 import { type MissionId } from "./mission-substrate";
+import { type MissionOperationsState } from "../autonomous-operations";
 
 // ─── Stack order guard ────────────────────────────────────────────────────────
 
@@ -257,7 +258,9 @@ export interface SystemModel {
   snapshot:      ResourceSnapshot;
   health:        SystemHealthSignal;
   anomalies:     SystemAnomaly[];
-  missionStates: Record<MissionId, "running" | "idle" | "blocked">;
+  missionStates: Record<MissionId, "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived">;
+  /** Stack 04: Mission-bound autonomous execution substrate. Persisted in fabric. */
+  missionOperations: Record<MissionId, MissionOperationsState>;
   lastUpdated:   number;
 }
 
@@ -270,10 +273,11 @@ export function defaultSystemModel(): SystemModel {
       latencyMs:         0,
       at:                0,
     },
-    health:        "unknown",
-    anomalies:     [],
-    missionStates: {},
-    lastUpdated:   Date.now(),
+    health:            "unknown",
+    anomalies:         [],
+    missionStates:     {},
+    missionOperations: {},
+    lastUpdated:       Date.now(),
   };
 }
 
@@ -311,7 +315,7 @@ export function resolveAnomaly(model: SystemModel, anomalyId: string): SystemMod
 export function setMissionState(
   model: SystemModel,
   missionId: MissionId,
-  state: "running" | "idle" | "blocked",
+  state: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived",
 ): SystemModel {
   const anomalyId = `anomaly_mission_${missionId}`;
   let anomalies = model.anomalies;

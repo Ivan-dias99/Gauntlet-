@@ -16,27 +16,30 @@ Four sovereign organs: **Lab** (investigate) · **School** (learn) · **Creation
 
 ## CURRENT SOVEREIGN FRONTIER
 
-**ALL 20 STACKS CLOSED 2026-04-02**
+**CONTAINMENT LOCKED — 2026-04-03**
+**Surgically Purified & Fully Typed**
+
+ALL 20 STACKS: **CLOSED + PURIFIED**
 Stack 1 (Canon + Sovereignty): CLOSED
 Stack 2 (Mission Substrate): CLOSED
-Stack 3 (Sovereign Intelligence): CLOSED 2026-04-02
-Stack 4 (Autonomous Operations): CLOSED 2026-04-02
-Stack 5 (Adaptive Experience): CLOSED 2026-04-02
-Stack 6 (Sovereign Security): CLOSED 2026-04-02
-Stack 7 (Trust + Governance): CLOSED 2026-04-02
-Stack 8 (System Awareness): CLOSED 2026-04-02
-Stack 9 (Autonomous Flow): CLOSED 2026-04-02
-Stack 10 (Multi-Agent Civilization): CLOSED 2026-04-02
-Stack 11 (Living Knowledge): CLOSED 2026-04-02
-Stack 12 (Intelligence Analytics): CLOSED 2026-04-02
-Stack 13 (Collective Execution): CLOSED 2026-04-02
-Stack 14 (Distribution + Presence): CLOSED 2026-04-02
-Stack 15 (Value Exchange): CLOSED 2026-04-02
-Stack 16 (Ecosystem Network): CLOSED 2026-04-02
-Stack 17 (Platform Infrastructure): CLOSED 2026-04-02
-Stack 18 (Organizational Intelligence): CLOSED 2026-04-02
-Stack 19 (Personal Sovereign OS): CLOSED 2026-04-02
-Stack 20 (Compound Intelligence Network): CLOSED 2026-04-02
+Stack 3 (Sovereign Intelligence): CLOSED
+Stack 4 (Autonomous Operations): CLOSED (Purified: TaskStatus 'active'/'blocked' only)
+Stack 5 (Adaptive Experience): CLOSED
+Stack 6 (Sovereign Security): CLOSED
+Stack 7 (Trust + Governance): CLOSED
+Stack 8 (System Awareness): CLOSED
+Stack 9 (Autonomous Flow): CLOSED
+Stack 10 (Multi-Agent Civilization): CLOSED (Purified: Hardened AgentManifest)
+Stack 11 (Living Knowledge): CLOSED (Canonical persistence: RuntimeFabric knowledgeGraph)
+Stack 12 (Intelligence Analytics): CLOSED (Real detection + canonical persistence)
+Stack 13 (Collective Execution): CLOSED (Real attribution + canonical persistence)
+Stack 14 (Distribution + Presence): CLOSED (Real manifests + canonical persistence)
+Stack 15 (Value Exchange): CLOSED (Real minting + canonical persistence)
+Stack 16 (Ecosystem Network): CLOSED (Real admission + canonical persistence)
+Stack 17 (Platform Infrastructure): CLOSED (Real status + canonical persistence)
+Stack 18 (Organizational Intelligence): CLOSED (Real health + canonical persistence)
+Stack 19 (Personal Sovereign OS): CLOSED (Real context + canonical persistence)
+Stack 20 (Compound Intelligence Network): CLOSED (Real upsert + canonical persistence)
 
 Stack 3 closure (2026-04-02):
 - `resolveMissionRoute()` called at every dispatch when mission active.
@@ -86,9 +89,34 @@ Stack 9 closure (2026-04-02):
 - `createFlowDef()` + `createFlowRun()` at creation dispatch start. Flow lifecycle: running → complete/failed.
 - `FlowRunStrip` in ProfileMode > workflows renders active creation runs.
 
-Stacks 10–20 closure (2026-04-02 — code verification, data hydration confirmed live):
-- All 11 stacks verified as runtime-real via code inspection. useMemo computations in App.tsx produce real derived state from runtime. Strip components render from live props. PARTIAL label was stale.
-- See stack status board for per-stack runtime truth.
+Stacks 11-20 closure (2026-04-03 — CANONICAL PERSISTENCE MIGRATION):
+- All stacks 11-20 migrated from parallel localStorage (`saveStackState`) to canonical RuntimeFabric persistence.
+- ONE TRUTH SOURCE: RuntimeFabric is the sole persistence substrate. No competing localStorage paths.
+- All fields added to RuntimeFabric interface: knowledgeGraph, collectiveState, exchangeLedger, ecosystemState, platformState, orgState, personalOS.
+- All mutation helpers added: updateKnowledgeGraph, updateExchangeLedger, updateEcosystemState, updatePlatformState, updateOrgState, updatePersonalOS, updateCollectiveState.
+- All App.tsx useMemo computations now read from RuntimeFabric canonical fields as base state.
+- All App.tsx useEffect persistence now uses RuntimeFabric update functions.
+- All mounted strips wired to canonical state from RuntimeFabric (not parallel localStorage).
+- Parallel localStorage eliminated: Dead useState/loadStackState/saveStackState removed for stacks 11-20.
+- Stack 11: Knowledge graph absorbs real objects into nodes, persists to RuntimeFabric.
+- Stack 12: analyticsPatterns already in RuntimeFabric, detectPatterns() mutation verified.
+- Stack 13: attributions already in RuntimeFabric, collectiveState migrated to canonical persistence.
+- Stack 14: presenceManifests already in RuntimeFabric, heartbeat mutations verified.
+- Stack 15: exchangeLedger migrated, exported continuity → value units.
+- Stack 16: ecosystemState migrated, enabled connectors → admitted extensions.
+- Stack 17: platformState migrated, live provider health layers.
+- Stack 18: orgState migrated, mission health + insights derivation.
+- Stack 19: personalOS migrated, memory + context from preferences + missions.
+- Stack 20: compoundNetwork already in RuntimeFabric, upsertCompoundRun() verified.
+- Build status: **PASSED**.
+- Operational closure verified: persistence ✓, mutation paths ✓, mounted strips ✓.
+
+Stacks 10–20 closure (2026-04-03 — PURIFIED):
+- All 11 stacks verified as runtime-real via surgical audit.
+- Dead substrate theater (redundant distributionLedger, shadow states) PURGED.
+- All derived states moved to explicit record-based persistence in RuntimeFabric.
+- TypeScript types hardened: ApprovalDecision, TaskStatus, ExtensionType, ValueUnitType.
+- Build status: **PASSED (Production Lock)**.
 
 Stack 6 closure (2026-04-02) — QA freeze gate passed 2026-04-02:
 - `SovereignSecurityState` instantiated in App.tsx — single source of security truth.

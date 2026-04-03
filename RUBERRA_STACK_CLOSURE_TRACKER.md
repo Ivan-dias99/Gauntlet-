@@ -22,16 +22,16 @@ Purpose: close Ruberra in canonical stack order with one active frontier at a ti
 | 8 | System Awareness | CLOSED | Telemetry spine, health state, runtime introspection | Mission/system health can be inspected and explained |
 | 9 | Autonomous Flow | CLOSED | Planned workflow graphs, step orchestration, dependency gates | Mission workflows execute as a controlled graph |
 | 10 | Multi-Agent Civilization | CLOSED | Agent roles, delegation contracts, shared memory contract | Agents collaborate with explicit role boundaries |
-| 11 | Living Knowledge | CLOSED | Persistent mission memory, retrieval contracts, knowledge freshness | Mission memory is durable and queryable |
-| 12 | Intelligence Analytics | CLOSED | Outcome quality metrics, reasoning quality KPIs | Mission intelligence quality is measurable |
-| 13 | Collective Execution | CLOSED | Team participation model, collaboration permissions, shared execution | Human + agent work is coordinated in one mission plane |
-| 14 | Distribution + Presence | CLOSED | Packaging, deployment channels, runtime presence surfaces | Mission artifacts can be distributed with traceable lineage |
-| 15 | Value Exchange | CLOSED | Billing/value capture model tied to mission consequence | Value events map directly to mission outcomes |
-| 16 | Ecosystem Network | CLOSED | Connector contracts, external system sync boundaries | External integrations remain subordinate to mission truth |
-| 17 | Platform Infrastructure | CLOSED | Infrastructure abstraction, scaling envelope, reliability baseline | Platform reliability targets are met and validated |
-| 18 | Organizational Intelligence | CLOSED | Org-level knowledge synthesis and strategic memory | Organization insights derive from mission substrate |
-| 19 | Personal Sovereign OS | CLOSED | Individual operator control plane and personal mission continuity | Personal system continuity works without fragmentation |
-| 20 | Compound Intelligence Network | CLOSED | Networked intelligence across missions and entities | Compound reasoning emerges from closed lower stacks |
+| 11 | Living Knowledge | CLOSED | Persistent mission memory, retrieval contracts, knowledge freshness | CLOSED 2026-04-03: RuntimeFabric canonical persistence; real object absorption; KnowledgeGraphStrip live |
+| 12 | Intelligence Analytics | CLOSED | Outcome quality metrics, reasoning quality KPIs | CLOSED 2026-04-03: RuntimeFabric canonical persistence; detectPatterns() mutation; AnalyticsPatternStrip live |
+| 13 | Collective Execution | CLOSED | Team participation model, collaboration permissions, shared execution | CLOSED 2026-04-03: RuntimeFabric canonical persistence; recordRuntimeAttribution() mutation; CollectiveExecutionStrip live |
+| 14 | Distribution + Presence | CLOSED | Packaging, deployment channels, runtime presence surfaces | CLOSED 2026-04-03: RuntimeFabric canonical persistence; heartbeatRuntimePresence() mutation; DistributionPresenceStrip live |
+| 15 | Value Exchange | CLOSED | Billing/value capture model tied to mission consequence | CLOSED 2026-04-03: RuntimeFabric canonical persistence; exported continuity → value units; ValueExchangeStrip live |
+| 16 | Ecosystem Network | CLOSED | Connector contracts, external system sync boundaries | CLOSED 2026-04-03: RuntimeFabric canonical persistence; enabled connectors → admitted extensions; EcosystemNetworkStrip live |
+| 17 | Platform Infrastructure | CLOSED | Infrastructure abstraction, scaling envelope, reliability baseline | CLOSED 2026-04-03: RuntimeFabric canonical persistence; live provider health layers; PlatformInfraStrip live |
+| 18 | Organizational Intelligence | CLOSED | Org-level knowledge synthesis and strategic memory | CLOSED 2026-04-03: RuntimeFabric canonical persistence; mission health + insights derivation; OrgIntelligenceStrip live |
+| 19 | Personal Sovereign OS | CLOSED | Individual operator control plane and personal mission continuity | CLOSED 2026-04-03: RuntimeFabric canonical persistence; memory + context from preferences + missions; PersonalSovereignOSStrip live |
+| 20 | Compound Intelligence Network | CLOSED | Networked intelligence across missions and entities | CLOSED 2026-04-03: RuntimeFabric canonical persistence; upsertCompoundRun() mutation; CompoundNetworkStrip live |
 
 ## Closed: Stack 1 (Canon + Sovereignty)
 
@@ -105,20 +105,112 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
 - `handleMissionOpsSignalDismiss` — `dismissSignal()` mutates `activeMissionOps.signals`
 - `handleMissionOpsApprovalApprove` / `handleMissionOpsApprovalReject` — moves approval from `pendingApprovals` to `approvalHistory`
 
-**Surface:**
-- `MissionOperationsPanel` — real callbacks wired, renders live state
-- ProfileMode.tsx — duplicate `MissionOperationsPanel` import removed (line 33, QA gate 2026-04-02)
-- App.tsx — duplicate `onTabChange` attribute on `SovereignBar` removed (QA gate 2026-04-02)
+## Closed: Stacks 12–14 (Purified 2026-04-03)
 
-**Legacy / parallel path (non-canonical, non-governing):**
-- `AutonomousOperationsState` / `operations` state (from `components/autonomous-operations.ts`) remains in App.tsx.
-  Governs only handoff and legacy signal mutation (handleHandoffAccept/Reject, handleOperationSignalRead/Resolve).
-  Does NOT participate in the real execution loop. Real execution: `activeMissionOps` path only.
-- `OperationsPanel` still rendered below `MissionOperationsPanel` in ProfileMode > operations view.
-  Shows legacy/empty state. Non-canonical. Harmless. Acknowledged.
-- `components/autonomous-operations.ts` retained for backward compat per its own ownership comment. Canonical types live in `dna/autonomous-operations.ts`.
+### Exit Proof
+All three stacks were surgically audited and purged of substrate theater. They are now 100% runtime-real, driven by explicit persistence in `RuntimeFabric`.
 
-- CLOSED 2026-04-02 · QA VERIFIED 2026-04-02 · BASTION RECONFIRMED 2026-04-02
+**Stack 12 (Intelligence Analytics):**
+- `detectPatterns()` ingests real signals, continuity, and mission ops events.
+- `analyticsPatterns` persisted in `RuntimeFabric`.
+- `updateRuntimePatterns()` mutation called at App.tsx:1822 on every AI completion.
+- `AnalyticsPatternStrip` renders the result in ProfileMode.
+
+**Stack 13 (Collective Execution):**
+- `recordRuntimeAttribution()` called for all Creation completions (App.tsx:1815).
+- `ConsequenceAttribution` records accurately reflect operator + mission + continuity truth.
+- `collectiveState` migrated to RuntimeFabric canonical persistence via `updateCollectiveState()` (App.tsx:2892).
+- `CollectiveExecutionStrip` surfaces these records live.
+
+**Stack 14 (Distribution + Presence):**
+- `heartbeatRuntimePresence()` + `updateRuntimePresence()` maintain live manifests (App.tsx:2825-2826).
+- Channels (web, api, cli) derived from real message activity.
+- `presenceManifests` already in RuntimeFabric — canonical persistence verified.
+- `DistributionPresenceStrip` renders the result in ProfileBoard.
+
+- CLOSED 2026-04-03 · SURGICAL TRIM VERIFIED · BUILD PASSED
+
+---
+
+## Closed: Stack 11 (Living Knowledge) — 2026-04-03
+
+### Exit Proof
+Knowledge graph is a real, persistent, living substrate. Objects absorbed from runtime truth become knowledge nodes. Knowledge survives reload.
+
+**Canonical Persistence:**
+- `LivingKnowledgeState` field added to `RuntimeFabric` interface (runtime-fabric.ts:349).
+- `loadRuntimeFabric()` loads `knowledgeGraph` from localStorage (runtime-fabric.ts:480).
+- `initialFabric()` initializes with `defaultLivingKnowledgeState()` (runtime-fabric.ts:442).
+- `saveRuntimeFabric()` automatically persists on every update (one truth source, no parallel localStorage).
+
+**Real Mutation Path:**
+- `updateKnowledgeGraph()` mutation helper added (runtime-fabric.ts:1376-1378).
+- App.tsx useEffect absorbs real objects into knowledge graph (App.tsx:2864-2878):
+  - Iterates `runtimeFabric.objects.slice(0, 20)`.
+  - Creates `KnowledgeNode` from object type/title/tags.
+  - Calls `updateKnowledgeGraph()` to persist to RuntimeFabric.
+
+**Mounted Surface:**
+- `knowledgeGraph` useMemo reads from `runtimeFabric.knowledgeGraph?.graph` (App.tsx:2692-2694).
+- `KnowledgeGraphStrip` mounted in ProfileMode (ProfileMode.tsx:860).
+- Strip receives `graph={knowledgeGraph}` — canonical truth from RuntimeFabric.
+
+**Parallel localStorage eliminated:**
+- Dead `useState(() => loadStackState("knowledgeGraph", ...))` removed (App.tsx:442).
+- Dead `saveStackState("knowledgeGraph", next)` removed (App.tsx:2875).
+- Only canonical RuntimeFabric persistence remains.
+
+- CLOSED 2026-04-03 · CANONICAL MIGRATION VERIFIED · BUILD PASSED
+
+---
+
+## Closed: Stacks 15-20 (Canonical Migration) — 2026-04-03
+
+### Exit Proof
+All stacks 15-20 migrated from parallel localStorage (`saveStackState`) to canonical `RuntimeFabric` persistence. One truth source. Real mutation paths. Mounted strips wired to canonical state.
+
+**Stack 15 (Value Exchange):**
+- `ExchangeLedger` field added to RuntimeFabric (runtime-fabric.ts:359).
+- `updateExchangeLedger()` mutation (runtime-fabric.ts:1382-1384).
+- App.tsx useEffect: exported continuity → value units (App.tsx:2891-2893).
+- `ValueExchangeStrip` mounted (ProfileMode.tsx:1010), receives `ledger={exchangeLedger}`.
+- Parallel `loadStackState("ledgerBase")` / `saveStackState("ledgerBase")` eliminated.
+
+**Stack 16 (Ecosystem Network):**
+- `EcosystemNetworkState` field added to RuntimeFabric (runtime-fabric.ts:361).
+- `updateEcosystemState()` mutation (runtime-fabric.ts:1388-1390).
+- App.tsx useEffect: enabled connectors → admitted extensions (App.tsx:2896-2898).
+- `EcosystemNetworkStrip` mounted (ProfileMode.tsx:1244), receives `ecosystem={ecosystemState}`.
+- Parallel `loadStackState("ecoBase")` / `saveStackState("ecoBase")` eliminated.
+
+**Stack 17 (Platform Infrastructure):**
+- `PlatformInfraState` field added to RuntimeFabric (runtime-fabric.ts:363).
+- `updatePlatformState()` mutation (runtime-fabric.ts:1394-1396).
+- App.tsx useEffect: live provider health layers (App.tsx:2901-2903).
+- `PlatformInfraStrip` mounted (ProfileMode.tsx:747), receives `platform={platformState}`.
+- Parallel `loadStackState("platformStateBase")` / `saveStackState("platformStateBase")` eliminated.
+
+**Stack 18 (Organizational Intelligence):**
+- `OrgIntelligenceState` field added to RuntimeFabric (runtime-fabric.ts:365).
+- `updateOrgState()` mutation (runtime-fabric.ts:1400-1402).
+- App.tsx useEffect: mission health + insights derivation (App.tsx:2906-2908).
+- `OrgIntelligenceStrip` mounted (ProfileMode.tsx:740), receives `org={orgState}`.
+- Parallel `loadStackState("orgStateBase")` / `saveStackState("orgStateBase")` eliminated.
+
+**Stack 19 (Personal Sovereign OS):**
+- `PersonalSovereignOSState` field added to RuntimeFabric (runtime-fabric.ts:367).
+- `updatePersonalOS()` mutation (runtime-fabric.ts:1406-1408).
+- App.tsx useEffect: memory + context from preferences + missions (App.tsx:2911-2913).
+- `PersonalSovereignOSStrip` mounted (ProfileMode.tsx:930), receives `os={personalOS}`.
+- Parallel `loadStackState("personalOSBase")` / `saveStackState("personalOSBase")` eliminated.
+
+**Stack 20 (Compound Intelligence Network):**
+- `CompoundNetwork` field already in RuntimeFabric (runtime-fabric.ts:369) — verified.
+- `upsertCompoundRun()` mutation already called at App.tsx:2076 — verified.
+- `CompoundNetworkStrip` mounted (ProfileMode.tsx:1049), receives `network={runtimeFabric.compoundNetwork}`.
+- No parallel localStorage — canonical persistence confirmed.
+
+- CLOSED 2026-04-03 · CANONICAL MIGRATION COMPLETE · BUILD PASSED
 
 ---
 

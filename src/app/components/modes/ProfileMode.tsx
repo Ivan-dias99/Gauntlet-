@@ -129,6 +129,7 @@ interface ProfileModeProps {
   governanceConsequences?:  ConsequenceRecord[];
   flowState?:               AutonomousFlowState;
   systemModel?:             SystemModel;
+  distributionLedger?:      Array<{ id: string; continuityId: string; title: string; publishedAt: number; uri: string; checksum: string }>;
 }
 
 type WorkStatus = "in_progress" | "paused" | "completed";
@@ -487,6 +488,7 @@ export function ProfileMode({
   governanceConsequences,
   flowState,
   systemModel,
+  distributionLedger,
 }: ProfileModeProps) {
   const operations = operationsProp ?? defaultAutonomousOperationsState();
   const derivedWork = deriveWorkItems(messages);
@@ -974,6 +976,25 @@ export function ProfileMode({
                   </div>
                 ))}
                 <div style={{ height: "1px" }} />
+              </SectionBlock>
+            )}
+            {distributionLedger && distributionLedger.length > 0 && (
+              <SectionBlock title="Distribution Ledger — Artifact Lineage">
+                <div style={{ padding: "0" }}>
+                  {distributionLedger.map((art) => (
+                    <div key={art.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid var(--r-border-soft)", gap: "10px" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontSize: "11px", fontWeight: 500, color: "var(--r-text)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{art.title}</p>
+                        <p style={{ fontSize: "8.5px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", margin: "3px 0 0", letterSpacing: "0.02em" }}>
+                           {art.id} · {art.checksum} · {new Date(art.publishedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <button onClick={() => window.open(art.uri, "_blank")} style={btn}>URI</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </SectionBlock>
             )}
             {presenceManifest && (

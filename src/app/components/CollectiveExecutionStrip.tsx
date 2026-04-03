@@ -130,6 +130,64 @@ export function CollectiveExecutionStrip({ collective, maxMembers = 5 }: Props) 
           </div>
         );
       })}
+
+      {/* Consequence attributions */}
+      {collective.attributions.length > 0 && (
+        <>
+          <div
+            style={{
+              ...MONO,
+              fontSize: "8px",
+              textTransform: "uppercase",
+              color: "var(--r-dim)",
+              letterSpacing: "0.08em",
+              marginTop: "10px",
+              marginBottom: "6px",
+            }}
+          >
+            consequence attributions · {collective.attributions.length}
+          </div>
+          {collective.attributions.slice(0, 4).map((attr, i) => {
+            const isLast = i === Math.min(collective.attributions.length, 4) - 1;
+            return (
+              <div
+                key={attr.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "3px 0",
+                  borderBottom: isLast ? undefined : "1px solid var(--r-border-soft)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "2px",
+                    height: "2px",
+                    background: "var(--r-accent)",
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    ...MONO,
+                    color: "var(--r-subtext)",
+                    flex: 1,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {attr.action}
+                </span>
+                <span style={{ ...MONO, color: "var(--r-dim)", whiteSpace: "nowrap" }}>
+                  @{attr.operatorId}
+                </span>
+              </div>
+            );
+          })}
+        </>
+      )}
     </div>
   );
 }
