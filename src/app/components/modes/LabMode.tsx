@@ -225,7 +225,7 @@ function LabArchive({ messages, navigate }: { messages: Message[]; navigate: Nav
 
 export function LabMode({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
-  labView, onLabView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName,
+  labView, onLabView, navigate, detailId, task, modelId, onTaskChange, onModelChange, missionName, missionStatus,
 }: {
   messages: Message[];
   isLoading: boolean;
@@ -242,12 +242,12 @@ export function LabMode({
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
   missionName?: string;
-  missionState?: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived";
+  missionStatus?: string;
 }) {
-  const composerLocked = missionState === "completed" || missionState === "archived";
+  const composerLocked = missionStatus === "completed" || missionStatus === "archived";
   const composerLockLabel = composerLocked
-    ? `Mission ${missionState} — release or activate a mission to continue`
-    : missionState === "blocked"
+    ? `Mission ${missionStatus} — release or activate a mission to continue`
+    : missionStatus === "blocked"
       ? "Mission blocked — resolve blockers in Profile → Operations"
       : undefined;
   const showHome = labView === "home" || (!messages.length && labView === "chat");
@@ -302,8 +302,7 @@ export function LabMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
-      composerLocked={composerLocked}
-      composerLockLabel={composerLockLabel}
+      missionStatus={missionStatus}
     />
   );
 }

@@ -31,14 +31,17 @@ import {
   type TaskStatus,
   TASK_STATUS_LABEL,
   buildOperationState,
-  createTask,
   createOperationFlow,
+  advanceFlow,
+  createTask,
+  defaultApprovalPolicy,
   defaultMissionOperationsState,
   dismissSignal,
   emitSignal,
+  evaluateApprovalTrigger,
   buildReleaseGate,
-  advanceFlow,
   transitionTask,
+  type ApprovalRequest,
 } from "./dna/autonomous-operations";
 import {
   defaultAutonomousOperationsState,
@@ -80,6 +83,10 @@ import {
   updateAISettings,
   updatePreferences,
   updateWorkspaceKnowledge,
+  updateRuntimePatterns,
+  recordRuntimeAttribution,
+  updateRuntimePresence,
+  heartbeatRuntimePresence,
   upsertPlugin,
   upsertConnector,
   exportContinuity,
@@ -111,20 +118,25 @@ import { defaultPlatformState, createInfraLayer, addLayer } from "./dna/platform
 import { defaultOrgState, assessMissionHealth, surfaceOrgInsights, defaultCapabilityMap } from "./dna/org-intelligence";
 import { defaultPersonalOS, createMemoryEntry, buildOperatorContext } from "./dna/personal-sovereign-os";
 import { defaultCompoundNetwork } from "./dna/compound-intelligence";
-import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger } from "./dna/trust-governance";
-import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
+import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAuditToLedger, appendConsequenceToLedger } from "./dna/trust-governance";
 import {
   defaultSovereignSecurityState,
-  updateTrustSignal,
+  type SovereignSecurityState,
   createSession,
   buildFingerprint,
   verifyFingerprint,
+  updateTrustSignal,
   createSecurityEvent,
   acknowledgeEvent,
   getUnacknowledgedEvents,
-  defaultAccessPolicy,
+  deriveTrustSignal,
   evaluateAccess,
+  defaultAccessPolicy,
+  scanConnectorOutput,
+  checkStorageSafety,
+  DEFAULT_RUNTIME_SAFETY_POLICY,
 } from "./dna/sovereign-security";
+import { defaultAutonomousFlowState, createFlowDef, createFlowRun, createFlowStepDef, upsertFlowDef, upsertFlowRun } from "./dna/autonomous-flow";
 import {
   prioritizeMemory,
   resolveMissionRoute,
@@ -150,6 +162,16 @@ function loadTrustGov() {
   return defaultTrustGovernanceState();
 }
 const MAX_CONTEXT = 20;
+
+const TERMINAL_EXECUTION_STATES = new Set<MessageExecutionTrace["executionState"]>([
+  "completed",
+  "degraded",
+  "blocked",
+  "error",
+  "aborted",
+  "provider_unavailable",
+  "scaffold_only",
+]);
 
 function mapExecutionStateToTaskStatus(state: MessageExecutionTrace["executionState"]): TaskStatus {
   if (state === "completed") return "completed";
@@ -338,7 +360,7 @@ export default function App() {
   const [activeMissionOps, setActiveMissionOps] = useState<MissionOperationsState | null>(() =>
     activeMissionId ? defaultMissionOperationsState(activeMissionId) : null
   );
-  const [securityState, setSecurityState] = useState(defaultSovereignSecurityState);
+  const [securityState, setSecurityState] = useState<SovereignSecurityState>(defaultSovereignSecurityState);
 
   // ── Detail navigation ────────────────────────────────────────────────────────
   const [detailId, setDetailId] = useState<string>("");
@@ -626,6 +648,39 @@ export default function App() {
     };
     tick();
     const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── Stack 06: Operator session init — identity integrity substrate ─────────────
+  useEffect(() => {
+    setSecurityState((prev) => {
+      if (prev.session) return prev;
+      const session = createSession(buildFingerprint());
+      return updateTrustSignal({ ...prev, session });
+    });
+  }, []);
+
+  // ── Stack 06: Runtime safety — periodic storage safety check ──────────────────
+  useEffect(() => {
+    const check = () => {
+      const result = checkStorageSafety(DEFAULT_RUNTIME_SAFETY_POLICY);
+      if (!result.safe) {
+        setSecurityState((prev) => {
+          const alreadyFlagged = prev.events.some(
+            (e) => !e.acknowledged && e.type === "storage_overflow"
+          );
+          if (alreadyFlagged) return prev;
+          const event = createSecurityEvent({
+            type:     "storage_overflow",
+            severity: "warn",
+            summary:  `localStorage usage ${Math.round((result.usageBytes ?? 0) / 1024)}KB exceeds safety threshold.`,
+          });
+          return updateTrustSignal({ ...prev, events: [...prev.events, event] });
+        });
+      }
+    };
+    check();
+    const id = setInterval(check, 60_000);
     return () => clearInterval(id);
   }, []);
 
@@ -999,6 +1054,26 @@ export default function App() {
 
     const assistantId = crypto.randomUUID();
     const continuityId = `${tab}-${assistantId}`;
+
+    // ── Stack 06: Session identity re-verification at dispatch ────────────────
+    // Re-verify the operator session fingerprint at every dispatch.
+    // A mismatch means the browser environment changed mid-session — emit a security event.
+    if (securityState.session) {
+      const fpCheck = verifyFingerprint(securityState.session, buildFingerprint());
+      if (!fpCheck.valid && fpCheck.anomaly) {
+        setSecurityState((prev) => {
+          const event = createSecurityEvent({
+            type:      "session_anomaly",
+            severity:  "critical",
+            summary:   `Session identity mismatch at dispatch — anomaly: ${fpCheck.anomaly}`,
+            missionId: activeMissionId ?? undefined,
+          });
+          return updateTrustSignal({ ...prev, events: [...prev.events, event] });
+        });
+      }
+    }
+    // ── End Stack 06 session identity check ───────────────────────────────────
+
     // Governance gate — enforce execution policy before dispatch
     const govResult = enforceExecutionGate(`chamber.${tab}.dispatch`, {
       kind:      "operator",
@@ -1064,6 +1139,136 @@ export default function App() {
       continuityId: `${tab}-pre-dispatch`,
       label:        `governance.${govResult.verdict}: ${govResult.reason}`,
     }));
+
+    // ── Stack 06: Mission-level access authorization ───────────────────────────────
+    // Enforce permission lattice: pioneer must be permitted to execute on this mission.
+    // evaluateAccess returns "permit" | "deny" | "require_approval".
+    // Default policy is open (allowedPioneers: []) — enforcement activates when policy restricts.
+    if (activeMission && activeMissionId) {
+      const missionAccessPolicy = defaultAccessPolicy(activeMissionId);
+      const accessDecision = evaluateAccess(
+        "mission_execute",
+        routeDecision.pioneerId ?? "operator",
+        missionAccessPolicy
+      );
+      if (accessDecision !== "permit") {
+        setSecurityState((prev) => {
+          const event = createSecurityEvent({
+            type:      "scope_violation",
+            severity:  accessDecision === "deny" ? "critical" : "warn",
+            summary:   `Pioneer access ${accessDecision} for mission_execute on "${activeMission.identity.name}" — pioneer: ${routeDecision.pioneerId ?? "unknown"}`,
+            missionId: activeMissionId,
+          });
+          return updateTrustSignal({ ...prev, events: [...prev.events, event] });
+        });
+        if (accessDecision === "deny") {
+          setRuntimeFabric((prev) => pushSignal(prev, {
+            type:               "lifecycle",
+            label:              `Mission execute denied — ${routeDecision.pioneerId ?? "unknown pioneer"} not authorized for "${activeMission.identity.name}"`,
+            severity:           "warn",
+            sourceChamber:      tab,
+            destinationChamber: "profile",
+            destination:        { tab: "profile", view: "overview" },
+          }));
+          setLoading((prev)  => ({ ...prev, [tab]: false }));
+          setSignals((prev)  => ({ ...prev, [tab]: "idle" }));
+          return;
+        }
+      }
+    }
+    // ── End Stack 06 access gate ──────────────────────────────────────────────────
+
+    // ── Stack 05: Terminal mission dispatch gate ──────────────────────────────────
+    // Completed and archived missions cannot receive new dispatches.
+    // Emit a consequential recommendation signal and abort — operator must open a new mission.
+    if (activeMission && (activeMission.ledger.currentState === "completed" || activeMission.ledger.currentState === "archived")) {
+      setRuntimeFabric((prev) => pushSignal(prev, {
+        type:               "recommendation",
+        label:              `Mission "${activeMission.identity.name}" is ${activeMission.ledger.currentState} — open a new mission to continue`,
+        severity:           "critical",
+        sourceChamber:      tab,
+        destinationChamber: "profile",
+        destination:        { tab: "profile", view: "projects" },
+      }));
+      setLoading((prev)  => ({ ...prev, [tab]: false }));
+      setSignals((prev)  => ({ ...prev, [tab]: "idle" }));
+      return;
+    }
+    // ── End Stack 05 terminal gate ────────────────────────────────────────────────
+
+    // ── Stack 04: Operations substrate — pre-dispatch lifecycle ─────────────────
+    // Task enters in_progress BEFORE execution. OperationFlow created for this run.
+    // Approval gate evaluated when external effects are present.
+    let _opsTaskId: string | null = null;
+    if (activeMission && activeMissionId) {
+      const hasExternalEffect = connectorActionRows.length > 0;
+      const policy             = defaultApprovalPolicy(activeMissionId);
+      const approvalEval        = hasExternalEffect
+        ? evaluateApprovalTrigger("external_effect", policy)
+        : null;
+
+      const dispatchTask = transitionTask(
+        createTask(activeMissionId, {
+          title:      (text.slice(0, 96) || "Dispatch").trim(),
+          objective:  text.slice(0, 200),
+          notThis:    activeMission.identity.notThis || "No mission drift.",
+          class:      tab === "lab" ? "investigation" : tab === "school" ? "mastery" : "construction",
+          chamberLead: tab,
+          priority:   "standard",
+          riskLevel:  hasExternalEffect ? "high" : "low",
+        }),
+        "in_progress"
+      );
+      _opsTaskId = dispatchTask.id;
+
+      const dispatchFlow = advanceFlow({
+        ...createOperationFlow(
+          activeMissionId,
+          `${tab} · ${text.slice(0, 40).trim()}`,
+          [
+            { label: "Route",   taskId: dispatchTask.id },
+            { label: "Execute", taskId: dispatchTask.id },
+            { label: "Settle",  taskId: dispatchTask.id },
+          ],
+          activeMission.ledger.currentState
+        ),
+        state: "running" as const,
+      });
+
+      const newApprovals: ApprovalRequest[] =
+        approvalEval?.decision === "escalate_sovereign"
+          ? [{
+              id:          `apr_${Date.now()}`,
+              missionId:   activeMissionId,
+              taskId:      dispatchTask.id,
+              trigger:     "external_effect" as const,
+              requestedBy: routeDecision.pioneerId ?? "sovereign",
+              description: `External connector effect: ${connectorActionRows.map((r) => r.label).join(", ")}`,
+              consequence: "Execution proceeds; external connector state may change.",
+              riskLevel:   "high" as const,
+              createdAt:   Date.now(),
+            }]
+          : [];
+
+      // Pre-mark assistant message ID — prevents useEffect from double-processing
+      generatedMissionTaskRef.current.add(assistantId);
+
+      setActiveMissionOps((prev) => {
+        const base = prev?.missionId === activeMissionId ? prev : defaultMissionOperationsState(activeMissionId);
+        const pendingApprovals = [...base.pendingApprovals, ...newApprovals];
+        return {
+          ...base,
+          tasks:            [...base.tasks, dispatchTask],
+          activeFlow:       dispatchFlow,
+          pendingApprovals,
+          operationState:   buildOperationState(
+            activeMissionId, [...base.tasks, dispatchTask], base.observations, pendingApprovals.length
+          ),
+          lastUpdated: Date.now(),
+        };
+      });
+    }
+    // ── End Stack 04 pre-dispatch ────────────────────────────────────────────────
 
     setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "running"));
     setRuntimeFabric((prev) => createOrUpdateContinuity(prev, {
@@ -1416,6 +1621,25 @@ export default function App() {
       } // end if (!usedLocalPath)
 
       setSignals((prev) => ({ ...prev, [tab]: "completed" }));
+
+      // ── Stack 06: Connector output security scan ──────────────────────────────
+      // Scan completed AI response for prompt injection, scope escalation, exfiltration.
+      // Creates a SecurityEvent if patterns detected — drives the trust signal.
+      if (assistantContent.length > 0) {
+        const scanResult = scanConnectorOutput(assistantContent);
+        if (!scanResult.safe) {
+          setSecurityState((prev) => {
+            const event = createSecurityEvent({
+              type:      "injection_attempt",
+              severity:  scanResult.risk === "high" ? "critical" : "warn",
+              summary:   `Security vectors detected in ${tab} response: ${scanResult.vectors.join(", ")}`,
+              missionId: activeMissionId ?? undefined,
+            });
+            return updateTrustSignal({ ...prev, events: [...prev.events, event] });
+          });
+        }
+      }
+      // ── End Stack 06 connector scan ───────────────────────────────────────────
       const finalRunState: ExecutionState =
         modelDegraded && plan.fallbackReason?.toLowerCase().includes("unavailable")
           ? "provider_unavailable"
@@ -1488,6 +1712,27 @@ export default function App() {
           },
           execution_trace: completedTrace,
         });
+
+        // ── Stack 12 & 13: Collective & Analytics Persistence ──────────────────
+        // Persist the attribution record for the Creation completion.
+        if (tab === "creation") {
+          const attr = attributeConsequence(
+            activeMissionId ?? continuityId,
+            next.workspace.owner,
+            `creation.build · ${assistantContent.length} chars`,
+            "primary",
+            continuityId,
+            false,
+          );
+          next = recordRuntimeAttribution(next, attr);
+        }
+
+        // Detect and persist intelligence patterns from the updated signals/runs.
+        const currentSignals = next.signals.map((s) => s.label);
+        const currentContinuity = next.continuity.map((c) => `${c.status} ${c.title}`);
+        const nextPatterns = detectPatterns([...currentSignals, ...currentContinuity]);
+        next = updateRuntimePatterns(next, nextPatterns);
+
         return next;
       });
       setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "idle"));
@@ -1584,6 +1829,19 @@ export default function App() {
           };
         });
       }
+
+      // ── Stack 07: consequence record — dispatch execution is irreversible ────────
+      setTrustGovState((prev) => {
+        const govMissionId = activeMissionId ?? continuityId;
+        const ledger = getMissionLedger(prev, govMissionId);
+        const consequenceLedger = appendConsequenceToLedger(
+          ledger,
+          `dispatch.completion.${tab}`,
+          `${finalRunState} · ${selectedModelId} · ${assistantContent.length} chars · continuity:${continuityId.slice(-8)}`,
+          false,
+        );
+        return upsertLedger(prev, consequenceLedger);
+      });
 
       // MCP: attach continuity to active mission + build handoff digest — fire-and-forget
       if (activeMissionId) {
@@ -1944,6 +2202,56 @@ export default function App() {
         }, 2400);
       }
     } finally {
+      // ── Stack 04: Close task lifecycle + advance flow + emit completion signal ─
+      if (activeMission && activeMissionId && _opsTaskId) {
+        const finalStatus = parseOnComplete ? "completed" : "failed";
+        const contentDigest = assistantContent.slice(0, 140) || routeDigestLine.slice(0, 140);
+        setActiveMissionOps((prev) => {
+          if (!prev || prev.missionId !== activeMissionId) return prev;
+          const tasks = prev.tasks.map((t) =>
+            t.id === _opsTaskId
+              ? transitionTask(t, finalStatus, { outputDigest: contentDigest })
+              : t
+          );
+          // Advance flow through Execute → Settle → complete
+          const closedFlow = prev.activeFlow
+            ? advanceFlow(advanceFlow(prev.activeFlow))
+            : prev.activeFlow;
+          const completionSignal = emitSignal(activeMissionId, {
+            type:     "task_complete",
+            priority: finalStatus === "failed" ? "high" : "standard",
+            taskId:   _opsTaskId!,
+            headline: `${finalStatus === "completed" ? "Settled" : "Failed"} · ${tab} · ${contentDigest.slice(0, 52)}`,
+            body:     contentDigest,
+            actionable: finalStatus === "failed",
+          });
+          const observations = [
+            ...prev.observations,
+            {
+              id:         `obs_${Date.now()}_${_opsTaskId!.slice(-6)}`,
+              missionId:  activeMissionId,
+              taskId:     _opsTaskId!,
+              class:      "run_complete" as const,
+              summary:    contentDigest,
+              pioneerId:  routeDecision.pioneerId ?? undefined,
+              at:         Date.now(),
+            },
+          ];
+          return {
+            ...prev,
+            tasks,
+            activeFlow:    closedFlow,
+            signals:       [...prev.signals, completionSignal],
+            observations,
+            operationState: buildOperationState(
+              activeMissionId, tasks, observations, prev.pendingApprovals.length
+            ),
+            lastUpdated: Date.now(),
+          };
+        });
+      }
+      // ── End Stack 04 post-dispatch ───────────────────────────────────────────
+
       setLoading((prev) => ({ ...prev, [tab]: false }));
       abortRefs.current[tab] = null;
       delete missionTaskByContinuityRef.current[continuityId];
@@ -1976,14 +2284,18 @@ export default function App() {
   }, []);
 
   const isLive = Object.values(signals).some((s) => s === "streaming");
+  // ── Stack 06: Derive live trust signal from sovereign security state ──────────
+  const trustSignal = deriveTrustSignal(securityState.events);
   const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
   const activeMission = activeMissionId ? missions.find((m) => m.id === activeMissionId) ?? null : null;
   const missionTaskByContinuityRef = useRef<Record<string, string>>({});
+  const generatedMissionTaskRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!activeMissionId) {
       setActiveMissionOps(null);
       missionTaskByContinuityRef.current = {};
+      generatedMissionTaskRef.current.clear();
       return;
     }
     setActiveMissionOps((prev) => {
@@ -1991,6 +2303,20 @@ export default function App() {
       return defaultMissionOperationsState(activeMissionId);
     });
   }, [activeMissionId]);
+
+  // Stack 05: mission ledger → awareness model sync
+  // When the mission ledger state transitions to "blocked", propagate to SystemModel
+  // so SystemHealthBand surfaces the anomaly via real mission-state events.
+  useEffect(() => {
+    if (!activeMissionId || !activeMission) return;
+    const ledgerState = activeMission.ledger.currentState;
+    if (ledgerState === "blocked") {
+      setSystemModel((prev) => setMissionState(prev, activeMissionId, "blocked"));
+    } else if (ledgerState === "completed" || ledgerState === "archived") {
+      // Terminal — resolve any blocked anomaly, set idle in awareness
+      setSystemModel((prev) => setMissionState(prev, activeMissionId, "idle"));
+    }
+  }, [activeMission?.ledger.currentState, activeMissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!activeMissionId || !activeMission) return;
@@ -2000,6 +2326,109 @@ export default function App() {
       return setMissionState(prev, activeMissionId, activeMission.ledger.currentState);
     });
   }, [activeMissionId, activeMission?.ledger.currentState]);
+
+  useEffect(() => {
+    if (!activeMissionId || !activeMission) return;
+    const chambers: Exclude<Tab, "profile">[] = ["lab", "school", "creation"];
+    const executionEvents: Array<{
+      id: string;
+      chamber: Exclude<Tab, "profile">;
+      status: TaskStatus;
+      title: string;
+      digest: string;
+      blockedBy?: string;
+    }> = [];
+    for (const chamber of chambers) {
+      for (const m of messages[chamber]) {
+        const trace = m.execution_trace;
+        if (!trace || m.role !== "assistant") continue;
+        if (generatedMissionTaskRef.current.has(m.id)) continue;
+        if (!TERMINAL_EXECUTION_STATES.has(trace.executionState)) continue;
+
+        const executionResult = runtimeFabric.executionResults.find((result) =>
+          result.chamber === chamber &&
+          (!trace.providerId || result.selectedProviderId === trace.providerId) &&
+          (!trace.modelId || result.selectedModelId === trace.modelId)
+        );
+        const modelProvider = [executionResult?.selectedProviderId ?? trace.providerId, executionResult?.selectedModelId ?? trace.modelId]
+          .filter(Boolean)
+          .join(" · ");
+        const durationLabel = executionResult?.latencyMs ? `${Math.round(executionResult.latencyMs)}ms` : undefined;
+        const status = mapExecutionStateToTaskStatus(trace.executionState);
+        const lastResult = trace.executionResults?.slice(-1)[0];
+        const digestSegments = [
+          `status:${trace.executionState}`,
+          modelProvider ? `runtime:${modelProvider}` : undefined,
+          durationLabel ? `duration:${durationLabel}` : undefined,
+          `mission:${activeMissionId}`,
+          lastResult?.summary ?? trace.routeDigest ?? m.content.slice(0, 120),
+        ].filter(Boolean);
+        executionEvents.push({
+          id: m.id,
+          chamber,
+          status,
+          title: buildExecutionTaskTitle(m, executionResult),
+          digest: digestSegments.join(" · "),
+          blockedBy: executionResult?.blockedReason ?? executionResult?.errorMessage,
+        });
+      }
+    }
+    if (!executionEvents.length) return;
+    setActiveMissionOps((prev) => {
+      const base = prev?.missionId === activeMissionId ? prev : defaultMissionOperationsState(activeMissionId);
+      let next = { ...base };
+      for (const ev of executionEvents) {
+        const rawTask = createTask(activeMissionId, {
+          title: ev.title || "Execution completion",
+          objective: ev.digest,
+          notThis: activeMission.identity.notThis || "No mission drift.",
+          class: ev.chamber === "lab" ? "investigation" : ev.chamber === "school" ? "mastery" : "construction",
+          chamberLead: ev.chamber,
+          priority: "standard",
+          riskLevel: "low",
+        });
+        const task = transitionTask(rawTask, ev.status, { outputDigest: ev.digest, blockedBy: ev.blockedBy });
+        next = {
+          ...next,
+          tasks: [...next.tasks, task],
+          observations: [
+            ...next.observations,
+            {
+              id: `obs_${Date.now()}_${ev.id.slice(0, 6)}`,
+              missionId: activeMissionId,
+              taskId: task.id,
+              class: ev.status === "completed" ? "run_complete" : "state_change",
+              summary: ev.digest.slice(0, 140),
+              pioneerId: task.pioneerId,
+              at: Date.now(),
+            },
+          ],
+          signals: [
+            ...next.signals,
+            emitSignal(activeMissionId, {
+              type: ev.status === "completed" ? "task_complete" : "blocker",
+              priority: ev.status === "completed" ? "standard" : "high",
+              taskId: task.id,
+              headline: `${TASK_STATUS_LABEL[task.status]} · ${task.title.slice(0, 52)}`,
+              body: ev.digest.slice(0, 140),
+              actionable: true,
+            }),
+          ],
+          lastUpdated: Date.now(),
+        };
+        generatedMissionTaskRef.current.add(ev.id);
+      }
+      return {
+        ...next,
+        operationState: buildOperationState(
+          activeMissionId,
+          next.tasks,
+          next.observations,
+          next.pendingApprovals.length,
+        ),
+      };
+    });
+  }, [activeMission, activeMissionId, messages, runtimeFabric.executionResults]);
 
   const handleMissionOpsSignalDismiss = useCallback((signalId: string) => {
     if (!activeMissionId) return;
@@ -2167,16 +2596,8 @@ export default function App() {
   const hasSignals = notificationItems.length > 0;
   const continuityRecommendations = recommendContinuityActions(runtimeFabric);
   const analyticsPatterns = useMemo(() => {
-    const signalEvents = runtimeFabric.signals.map((s) => s.label);
-    const continuityEvents = runtimeFabric.continuity.map((c) => `${c.status} ${c.title}`);
-    const missionOutcomeEvents = activeMissionOps
-      ? [
-          ...activeMissionOps.tasks.map((t) => `${t.status} ${t.title} ${t.outputDigest ?? ""}`.trim()),
-          ...activeMissionOps.observations.map((o) => `${o.class} ${o.summary}`),
-        ]
-      : [];
-    return detectPatterns([...signalEvents, ...continuityEvents, ...missionOutcomeEvents]);
-  }, [runtimeFabric.signals, runtimeFabric.continuity, activeMissionOps]);
+    return runtimeFabric.analyticsPatterns ?? [];
+  }, [runtimeFabric.analyticsPatterns]);
 
   const orgState = useMemo(() => {
     const missionHealth = missions.map((m) => {
@@ -2268,20 +2689,42 @@ export default function App() {
       const claimant = c.pioneerId ?? owner;
       collisionMap = claimCollectiveResource(collisionMap, `chamber.${c.chamber}`, claimant);
     }
-    return { ...state, collisionMap, lastUpdated: Date.now() };
-  }, [_collectiveBase, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity, _collectiveBase.attributions]);
+    return { ...state, attributions: runtimeFabric.attributions, collisionMap, lastUpdated: Date.now() };
+  }, [_collectiveBase, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity, runtimeFabric.attributions]);
 
   // 3. Presence manifest: always register the web channel; add active chambers
   const presenceManifest = useMemo(() => {
-    let manifest = _presenceBase;
-    const webCh = createChannel("web", { runtime: "browser", app: "ruberra-shell" });
-    manifest = registerChannel(manifest, webCh);
+    const owner = runtimeFabric.workspace.owner;
+    let manifest = runtimeFabric.presenceManifests[owner];
+    if (!manifest) {
+      manifest = defaultPresenceManifest(owner);
+    }
+    // Context-sensitive updates for the active channel
     if (messages.lab.length > 0)      manifest = registerChannel(manifest, createChannel("api",  { chamber: "lab" }));
     if (messages.creation.length > 0) manifest = registerChannel(manifest, createChannel("cli",  { chamber: "creation" }));
-    // Heartbeat: refresh lastSeenAt on all channels every 30s tick
-    manifest = { ...manifest, channels: manifest.channels.map(heartbeatChannel) };
+    
+    // Auto-update context to reflect current Shell state
+    manifest = {
+      ...manifest,
+      context: {
+        ...manifest.context,
+        activeChamber: activeTab === "profile" ? undefined : activeTab as any,
+        missionId: activeMissionId ?? undefined,
+      },
+      lastUpdated: Date.now(),
+    };
+
     return manifest;
-  }, [_presenceBase, messages.lab.length, messages.creation.length, heartbeatTick]);
+  }, [runtimeFabric.presenceManifests, runtimeFabric.workspace.owner, messages.lab.length, messages.creation.length, activeTab, activeMissionId]);
+
+  // Sync presence heartbeat into substrate
+  useEffect(() => {
+    setRuntimeFabric((prev) => {
+      let next = updateRuntimePresence(prev, presenceManifest);
+      next = heartbeatRuntimePresence(next, prev.workspace.owner);
+      return next;
+    });
+  }, [heartbeatTick]);
 
   // 4. Exchange ledger: exported continuity items become governance-verified value units
   const exchangeLedger = useMemo(() => {
@@ -2382,7 +2825,7 @@ export default function App() {
         systemHealth={runtimeFabric.systemHealth}
         workspaceOwner={runtimeFabric.workspace.owner}
         workspaceSubtitle={`${runtimeFabric.workspace.activeProject} · ledger`}
-        trustSignal={securityState.trustSignal}
+        trustSignal={trustSignal}
         onSecurityAcknowledge={handleSecurityAcknowledge}
       />
 
@@ -2423,7 +2866,6 @@ export default function App() {
           onSchoolView={(v) => { setSchoolView(v); setDetailId(""); }}
           onCreationView={(v) => { setCreationView(v); setDetailId(""); }}
           onProfileView={setProfileView}
-          onTabChange={handleTabChange}
           navigate={navigate}
           collapsed={railCollapsed}
           onToggleCollapsed={() => setRailCollapsed((v) => !v)}
@@ -2457,7 +2899,7 @@ export default function App() {
                   onTaskChange={(task) => handleTaskChange("lab", task)}
                   onModelChange={(modelId) => handleModelChange("lab", modelId)}
                   missionName={activeMission?.identity.name}
-                  missionState={adaptiveMissionState}
+                  missionStatus={activeMission?.ledger.currentState}
                 />
               )}
               {activeTab === "school" && (
@@ -2477,7 +2919,7 @@ export default function App() {
                   onTaskChange={(task) => handleTaskChange("school", task)}
                   onModelChange={(modelId) => handleModelChange("school", modelId)}
                   missionName={activeMission?.identity.name}
-                  missionState={adaptiveMissionState}
+                  missionStatus={activeMission?.ledger.currentState}
                 />
               )}
               {activeTab === "creation" && (
@@ -2497,7 +2939,7 @@ export default function App() {
                   onTaskChange={(task) => handleTaskChange("creation", task)}
                   onModelChange={(modelId) => handleModelChange("creation", modelId)}
                   missionName={activeMission?.identity.name}
-                  missionState={adaptiveMissionState}
+                  missionStatus={activeMission?.ledger.currentState}
                 />
               )}
               {activeTab === "profile" && (
@@ -2575,7 +3017,9 @@ export default function App() {
                   personalOS={personalOS}
                   compoundNetwork={runtimeFabric.compoundNetwork ?? defaultCompoundNetwork()}
                   governanceEntries={Object.values(trustGovState.ledgers).flatMap(l => l.auditTrail.entries)}
+                  governanceConsequences={Object.values(trustGovState.ledgers).flatMap(l => l.consequenceTrail)}
                   flowState={flowState}
+                  systemModel={systemModel}
                 />
               )}
             </motion.div>

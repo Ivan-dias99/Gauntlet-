@@ -1,7 +1,8 @@
-import { type AuditEntry } from "../dna/trust-governance";
+import { type AuditEntry, type ConsequenceRecord } from "../dna/trust-governance";
 
 interface GovernanceLedgerStripProps {
   entries: AuditEntry[];
+  consequences?: ConsequenceRecord[];
   maxVisible?: number;
 }
 
@@ -17,9 +18,11 @@ function truncate(str: string, max: number): string {
 
 export function GovernanceLedgerStrip({
   entries,
+  consequences = [],
   maxVisible = 5,
 }: GovernanceLedgerStripProps) {
-  const visible = entries.slice(-maxVisible);
+  const visibleAudit = entries.slice(-maxVisible);
+  const visibleConsequences = consequences.slice(-3);
 
   return (
     <div style={{ background: "transparent", border: "none" }}>
@@ -35,10 +38,10 @@ export function GovernanceLedgerStrip({
         governance · audit
       </div>
 
-      {visible.length === 0 ? (
+      {visibleAudit.length === 0 ? (
         <div style={{ ...FONT, color: "var(--r-dim)" }}>no audit entries</div>
       ) : (
-        visible.map((entry) => {
+        visibleAudit.map((entry) => {
           const row = truncate(
             `${entry.actor} → ${entry.action} · ${entry.consequence}`,
             80
@@ -60,6 +63,39 @@ export function GovernanceLedgerStrip({
             </div>
           );
         })
+      )}
+
+      {visibleConsequences.length > 0 && (
+        <>
+          <div
+            style={{
+              ...FONT,
+              fontSize: "8px",
+              textTransform: "uppercase",
+              color: "var(--r-dim)",
+              paddingTop: "8px",
+              paddingBottom: "4px",
+            }}
+          >
+            consequence · irreversible
+          </div>
+          {visibleConsequences.map((rec) => (
+            <div
+              key={rec.id}
+              style={{
+                ...FONT,
+                color: rec.reversible ? "var(--r-subtext)" : "var(--r-text)",
+                borderBottom: "1px solid var(--r-border-soft)",
+                padding: "5px 0",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {truncate(`${rec.action} · ${rec.consequence}`, 80)}
+            </div>
+          ))}
+        </>
       )}
     </div>
   );
