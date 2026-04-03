@@ -416,7 +416,7 @@ export default function App() {
   // ── Presence heartbeat tick ───────────────────────────────────────────────────
   const [heartbeatTick, setHeartbeatTick] = useState(0);
   // ── Stack substrates ─────────────────────────────────────────────────────────
-  // Stacks 10-20 now use canonical RuntimeFabric persistence only. No saveStackState parallel localStorage.
+  // Stacks 10-20 now use canonical RuntimeFabric persistence only.
 
   const knowledgeGraph = useMemo(() => {
     let g = defaultKnowledgeGraph();
@@ -432,7 +432,13 @@ export default function App() {
     return g;
   }, [runtimeFabric.objects]);
 
-  const [civBase] = useState(() => loadStackState("civBase", defaultCivilization()));
+  const [civBase] = useState(() => {
+    try {
+      const raw = localStorage.getItem("ruberra_stack_civBase");
+      if (raw) return JSON.parse(raw);
+    } catch { /* corrupt */ }
+    return defaultCivilization();
+  });
   const [trustGovState, setTrustGovState] = useState(loadTrustGov);
   const [flowState, setFlowState] = useState(defaultAutonomousFlowState);
 
@@ -2059,8 +2065,8 @@ export default function App() {
             continuityId,
             false,
           );
-          // Persist attribution to collective state — this is what makes consequence real
-          setCollectiveBase((prev) => recordAttribution(prev, attr));
+          // Persist attribution to RuntimeFabric — canonical persistence
+          next = { ...next, attributions: [...(next.attributions ?? []), attr] };
           next = pushSignal(next, {
             type:               "lifecycle",
             label:              `Creation attributed: ${attr.consequenceRef.slice(0, 60)} — ${next.workspace.owner}`,
@@ -2879,7 +2885,7 @@ export default function App() {
 
   // Stack 10: Civilization persistence
   useEffect(() => {
-    saveStackState("civBase", civilization);
+    try { localStorage.setItem("ruberra_stack_civBase", JSON.stringify(civilization)); } catch { /* storage full */ }
   }, [civilization]);
 
   // Stack 13: Collective State — persist to RuntimeFabric
