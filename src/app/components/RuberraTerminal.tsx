@@ -294,7 +294,7 @@ function BlockCode({ lines, lang, filename }: { lines: string[]; lang: string; f
       style={{
         margin: "12px 0 16px",
         border: `1px solid ${T.line}`,
-        borderRadius: "8px",
+        borderRadius: "2px",
         overflow: "hidden",
         background: T.surface,
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
@@ -961,7 +961,7 @@ export function RuberraTerminal({
             <p style={{ margin: "0 0 16px", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.text, lineHeight: 1.6, letterSpacing: "0.01em" }}>
               Directives compile here. Output groups by operation, prose, and fenced code—no theater, no noise.
             </p>
-            <div style={{ padding: "12px 14px", border: `1px solid ${T.line}`, borderRadius: "8px", background: T.surface }}>
+            <div style={{ padding: "12px 14px", border: `1px solid ${T.line}`, borderRadius: "2px", background: T.surface }}>
               {missionName && (
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.10em", color: chamberAccentVar, textTransform: "uppercase", userSelect: "none" }}>MISSION</span>

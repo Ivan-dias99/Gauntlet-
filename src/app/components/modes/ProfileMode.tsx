@@ -198,7 +198,7 @@ function deriveWorkItems(messages: Record<Tab, Message[]>): WorkItem[] {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div style={{ border: "1px solid var(--r-border)", borderRadius: "8px", background: "var(--r-surface)", padding: "12px" }}>
+    <div style={{ border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", padding: "12px" }}>
       <p style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", margin: "0 0 8px", letterSpacing: "0.08em" }}>{label}</p>
       <p style={{ fontSize: "20px", margin: 0, color: "var(--r-text)", fontWeight: 600 }}>{value}</p>
     </div>
@@ -221,7 +221,7 @@ const btn: CSSProperties = {
 
 function SectionBlock({ title, empty, children }: { title: string; empty?: boolean; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: "14px", border: "1px solid var(--r-border)", borderRadius: "8px", background: "var(--r-surface)", overflow: "hidden" }}>
+    <div style={{ marginBottom: "14px", border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", overflow: "hidden" }}>
       <div style={{ padding: "9px 14px", borderBottom: "1px solid var(--r-border-soft)", background: "var(--r-elevated)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.12em", color: "var(--r-dim)", textTransform: "uppercase" }}>{title}</span>
       </div>
@@ -299,7 +299,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDefinition }) {
   const statusColor = CONNECTOR_STATUS_COLOR[connector.status] || "var(--r-dim)";
   const accentStr   = connector.accent;
   return (
-    <div style={{ border: "1px solid var(--r-border)", borderRadius: "7px", background: "var(--r-surface)", padding: "11px 14px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+    <div style={{ border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", padding: "11px 14px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
       <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: accentStr + "14", border: "1px solid " + accentStr + "20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
         <span style={{ fontSize: "13px", color: accentStr }}>{connector.icon_char}</span>
       </div>
@@ -333,7 +333,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDefinition }) {
 function WorkflowCard({ template, navigate }: { template: WorkflowTemplate; navigate: NavFn }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div style={{ border: "1px solid var(--r-border)", borderRadius: "7px", background: "var(--r-surface)", marginBottom: "8px", overflow: "hidden" }}>
+    <div style={{ border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", marginBottom: "8px", overflow: "hidden" }}>
       {/* Header */}
       <div
         role="button"
@@ -536,7 +536,7 @@ export function ProfileMode({
                 style={{
                   width: "32px",
                   height: "32px",
-                  borderRadius: "8px",
+                  borderRadius: "2px",
                   background: "linear-gradient(145deg, color-mix(in srgb, var(--r-subtext) 35%, var(--r-surface)) 0%, color-mix(in srgb, var(--r-dim) 40%, var(--r-surface)) 100%)",
                   border: "1px solid var(--r-border-soft)",
                   flexShrink: 0,
@@ -565,7 +565,7 @@ export function ProfileMode({
                     padding: "4px 8px",
                     minWidth: "52px",
                     border: "1px solid var(--r-border-soft)",
-                    borderRadius: "6px",
+                    borderRadius: "2px",
                     background: "var(--r-elevated)",
                   }}
                 >

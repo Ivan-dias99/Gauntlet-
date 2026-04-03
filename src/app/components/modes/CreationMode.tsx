@@ -382,7 +382,7 @@ function BuildSurface({
             style={{
               border: "1px solid var(--r-border)",
               background: "var(--r-surface)",
-              borderRadius: "8px",
+              borderRadius: "2px",
               overflow: "hidden",
             }}
           >
@@ -509,7 +509,7 @@ function BuildSurface({
               alignItems: "flex-end",
               border: "1px solid var(--r-border)",
               background: "var(--r-surface)",
-              borderRadius: "8px",
+              borderRadius: "2px",
               padding: "10px 12px 9px 14px",
             }}
           >
@@ -637,7 +637,7 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
                 key={`${obj.id}-${i}`}
                 style={{
                   border:       "1px solid var(--r-border)",
-                  borderRadius: "8px",
+                  borderRadius: "2px",
                   background:   "var(--r-surface)",
                   overflow:     "hidden",
                   cursor:       "pointer",

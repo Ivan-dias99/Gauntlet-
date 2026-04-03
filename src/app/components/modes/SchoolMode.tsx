@@ -333,7 +333,7 @@ function SchoolBrowse({ navigate }: { navigate: NavFn }) {
             <button
               key={role.id}
               onClick={() => navigate("school", "role", role.id)}
-              style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: "14px", padding: "14px 16px", border: "1px solid var(--r-border)", borderRadius: "8px", background: "var(--r-surface)", cursor: "pointer", outline: "none", textAlign: "left", transition: "background 0.1s ease" }}
+              style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: "14px", padding: "14px 16px", border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", cursor: "pointer", outline: "none", textAlign: "left", transition: "background 0.1s ease" }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--r-elevated)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--r-surface)"; }}
             >

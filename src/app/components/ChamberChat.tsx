@@ -239,7 +239,7 @@ function UserBubble({ content }: { content: string }) {
       <div
         style={{
           background: "var(--r-elevated)",
-          borderRadius: "14px 14px 3px 14px",
+          borderRadius: "6px 6px 2px 6px",
           padding: "10px 15px",
           maxWidth: "74%",
           fontSize: "13.5px",
@@ -437,38 +437,6 @@ function AssistantMessage({
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
     >
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
-      {trace && (
-        <ExecutionConsequenceStrip
-          trace={trace}
-          accent={accent}
-          leadPioneerShort={leadShort}
-          giName={trace.giLabel ?? trace.giId}
-          tierLabel={TIER_LABEL[sovereign.tier]}
-          tierColor={TIER_COLOR[sovereign.tier]}
-          modelTruthLabel={sovereign.tier_label}
-          missionName={missionName}
-          artifactDiff={hasArtifactMutation ? { summary: trace.executionResults.slice(-1)[0]?.summary ?? "artifact mutation captured" } : undefined}
-        />
-      )}
-      <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
-      {(msg.meta?.pioneerId || msg.meta?.workflowId) && !trace && (
-        <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
-          {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.pioneerId}</span>}
-          {msg.meta?.workflowId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.workflowId}</span>}
-          {msg.meta?.hostingLevel && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{msg.meta.hostingLevel}</span>}
-        </div>
-      )}
-      {msg.blocks && msg.blocks.length > 0 ? (
-        <BlockRenderer blocks={msg.blocks} chamber={chamberId} />
-      ) : msg.content ? (
-        <MetamorphicPlainSurface
-          content={msg.content}
-          responseClass={inferMetamorphicClassFromText(msg.content)}
-          chamber={chamberId}
-        />
-      ) : (
-        <ThinkingDots />
-      )}
       {/* ── Provenance bar — 2px vertical chamber attribution line ── */}
       <div
         style={{
@@ -477,7 +445,7 @@ function AssistantMessage({
           marginLeft: "1px",
         }}
       >
-        {trace && (
+        {trace ? (
           <ExecutionConsequenceStrip
             trace={trace}
             accent={accent}
@@ -487,14 +455,16 @@ function AssistantMessage({
             tierColor={TIER_COLOR[sovereign.tier]}
             modelTruthLabel={sovereign.tier_label}
             missionName={missionName}
+            artifactDiff={hasArtifactMutation ? { summary: trace.executionResults.slice(-1)[0]?.summary ?? "artifact mutation captured" } : undefined}
           />
+        ) : (
+          <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />
         )}
-        {!trace && <ProvenanceTrace chamberId={chamberId} msgTruth={msg.execution_truth} />}
         {(msg.meta?.pioneerId || msg.meta?.workflowId) && !trace && (
           <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
-            {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.pioneerId}</span>}
-            {msg.meta?.workflowId && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "999px", padding: "1px 6px" }}>{msg.meta.workflowId}</span>}
-            {msg.meta?.hostingLevel && <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{msg.meta.hostingLevel}</span>}
+            {msg.meta?.pioneerId && <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "1px 6px", letterSpacing: "0.04em" }}>{msg.meta.pioneerId}</span>}
+            {msg.meta?.workflowId && <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "1px 6px", letterSpacing: "0.04em" }}>{msg.meta.workflowId}</span>}
+            {msg.meta?.hostingLevel && <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.04em" }}>{msg.meta.hostingLevel}</span>}
           </div>
         )}
         {msg.content && (
@@ -682,7 +652,7 @@ function Composer({
           style={{
             background: "var(--r-surface)",
             border: `1px solid ${focused ? `color-mix(in srgb, ${accent} 32%, var(--r-border))` : "var(--r-border-soft)"}`,
-            borderRadius: "14px",
+            borderRadius: "6px",
             padding: "14px 14px 10px 18px",
             boxShadow: focused
               ? `0 0 0 1px color-mix(in srgb, ${accent} 22%, transparent), 0 4px 20px color-mix(in srgb, var(--r-text) 6%, transparent)`
@@ -776,7 +746,7 @@ function Composer({
               style={{
                 width: "28px",
                 height: "28px",
-                borderRadius: "8px",
+                borderRadius: "4px",
                 border: canSend ? "none" : "1px solid var(--r-border)",
                 background: canSend ? accent : "transparent",
                 cursor: canSend ? "pointer" : "default",

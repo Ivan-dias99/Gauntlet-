@@ -8,6 +8,7 @@ import { type ReactNode } from "react";
 import {
   type Tab, type Message, type SignalStatus,
   type LabView, type SchoolView, type CreationView, type ProfileView,
+  type NavFn,
 } from "./shell-types";
 import { CHAMBER_ACCENT, CHAMBER_ACCENT_LIGHT, CHAMBER_LABEL } from "../dna/chamber-accent";
 
@@ -258,6 +259,7 @@ function ProfileRail({ view, onView }: { view: ProfileView; onView: (v: ProfileV
         <NavBtn label="Pioneers"   active={view === "pioneers"}   accent={accent} onClick={() => onView("pioneers")}   icon={<IRole />}     />
         <NavBtn label="Workflows"  active={view === "workflows"}  accent={accent} onClick={() => onView("workflows")}  icon={<IAnalysis />} />
         <NavBtn label="Connectors" active={view === "connectors"} accent={accent} onClick={() => onView("connectors")} icon={<ICode />}     />
+        <NavBtn label="Operations" active={view === "operations"} accent={accent} onClick={() => onView("operations")} icon={<ITerminal />} />
       </section>
       <Divider />
       <section style={{ padding: "8px 10px 8px" }}>
@@ -370,15 +372,6 @@ export function ShellSideRail({
         >
           «
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <button
-            onClick={onToggleCollapsed}
-            title="Collapse rail"
-            style={{ border: "none", background: "transparent", color: "var(--r-dim)", cursor: "pointer", fontSize: "10px" }}
-          >
-            «
-          </button>
-        </div>
       </div>
 
       {/* Chamber nav */}

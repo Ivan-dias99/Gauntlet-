@@ -5,7 +5,7 @@
  */
 
 import React from "react";
-import { ChevronRight, Clock, BookOpen, Layers, Zap, Flask, BarChart2, Lock } from "lucide-react";
+import { ChevronRight, Clock, BookOpen, Layers, Zap, Beaker, BarChart2, Lock } from "lucide-react";
 import { R } from "./tokens";
 
 // ─── Card Visual Area ─────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ export function CardVisual({
             zIndex: 1,
             width: "32px",
             height: "32px",
-            borderRadius: "8px",
+            borderRadius: "2px",
             background: `color-mix(in srgb, ${accent} 18%, var(--r-surface))`,
             border: `1px solid color-mix(in srgb, ${accent} 28%, var(--r-border))`,
             display: "flex",
