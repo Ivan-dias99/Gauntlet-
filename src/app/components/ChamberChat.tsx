@@ -121,15 +121,26 @@ function EmptyState({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        paddingTop: "48px",
+        paddingTop: "56px",
         paddingBottom: "32px",
+        position: "relative",
       }}
     >
+      {/* Chamber ambient background */}
+      <div style={{
+        position: "absolute",
+        top: 0, left: "50%",
+        transform: "translateX(-50%)",
+        width: "400px",
+        height: "200px",
+        background: `radial-gradient(ellipse at 50% 0%, color-mix(in srgb, ${accent} 14%, transparent) 0%, transparent 70%)`,
+        pointerEvents: "none",
+      }} />
       <motion.div
-        initial={{ opacity: 0, scale: 0.92 }}
+        initial={{ opacity: 0, scale: 0.88 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.35, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
-        style={{ marginBottom: "16px", opacity: 0.88 }}
+        transition={{ duration: 0.4, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+        style={{ marginBottom: "20px", opacity: 0.9, position: "relative" }}
       >
         {glyph}
       </motion.div>
@@ -238,16 +249,15 @@ function UserBubble({ content }: { content: string }) {
     >
       <div
         style={{
-          background: "var(--r-elevated)",
+          background: "var(--r-text)",
           borderRadius: "6px 6px 2px 6px",
-          padding: "10px 15px",
+          padding: "11px 16px",
           maxWidth: "74%",
           fontSize: "13.5px",
-          color: "var(--r-text)",
+          color: "var(--r-bg)",
           fontFamily: "'Inter', system-ui, sans-serif",
           lineHeight: "1.65",
-          border: "1px solid var(--r-border-soft)",
-          boxShadow: "0 1px 4px color-mix(in srgb, var(--r-text) 4%, transparent)",
+          boxShadow: "0 2px 8px color-mix(in srgb, var(--r-text) 14%, transparent)",
           letterSpacing: "-0.003em",
         }}
       >
@@ -271,9 +281,22 @@ function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: st
 
   return (
     <div style={{ marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "3px 8px 3px 7px", border: `1px solid color-mix(in srgb, ${accent} 22%, var(--r-border))`, borderRadius: "5px", background: `color-mix(in srgb, ${accent} 8%, var(--r-surface))` }}>
-        <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: accent, flexShrink: 0, display: "inline-block" }} />
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.1em", color: accent, textTransform: "uppercase", userSelect: "none", fontWeight: 600 }}>
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "5px",
+        padding: "3px 9px 3px 7px",
+        border: `1px solid color-mix(in srgb, ${accent} 32%, var(--r-border))`,
+        borderRadius: "5px",
+        background: `color-mix(in srgb, ${accent} 10%, var(--r-surface))`,
+        boxShadow: `0 0 8px color-mix(in srgb, ${accent} 10%, transparent)`,
+      }}>
+        <motion.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          style={{ width: "5px", height: "5px", borderRadius: "50%", background: accent, flexShrink: 0, display: "inline-block" }}
+        />
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.1em", color: accent, textTransform: "uppercase", userSelect: "none", fontWeight: 700 }}>
           {roleLabel}
         </span>
       </div>
@@ -437,10 +460,10 @@ function AssistantMessage({
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
     >
       <AgentLabel accent={accent} chamberLabel={chamberLabel} />
-      {/* ── Provenance bar — 2px vertical chamber attribution line ── */}
+      {/* ── Provenance bar — chamber attribution line ── */}
       <div
         style={{
-          borderLeft: `2px solid color-mix(in srgb, ${accent} 48%, transparent)`,
+          borderLeft: `3px solid color-mix(in srgb, ${accent} 55%, transparent)`,
           paddingLeft: "14px",
           marginLeft: "1px",
         }}
@@ -648,6 +671,14 @@ function Composer({
   return (
     <div style={{ padding: "10px 0 24px", background: "var(--r-bg)" }}>
       <div style={{ maxWidth: "680px", margin: "0 auto", padding: "0 32px" }}>
+        {/* Chamber accent scan line above composer */}
+        <div style={{
+          height: "1px",
+          marginBottom: "8px",
+          background: `linear-gradient(90deg, transparent 0%, ${accent} 30%, ${accent} 70%, transparent 100%)`,
+          opacity: focused ? 0.65 : 0.2,
+          transition: "opacity 0.2s ease",
+        }} />
         <div
           style={{
             background: "var(--r-surface)",
@@ -814,24 +845,34 @@ function LiveHeaderRail({
         alignItems: "center",
         gap: "8px",
         padding: "0 32px",
-        height: "30px",
-        background: "var(--r-surface)",
-        borderBottom: "1px solid var(--r-border-soft)",
+        height: "34px",
+        background: `color-mix(in srgb, var(--chamber-${chamberId}) 6%, var(--r-surface))`,
+        borderBottom: `1px solid color-mix(in srgb, ${accent} 18%, var(--r-border-soft))`,
         flexShrink: 0,
         overflow: "hidden",
+        position: "relative",
       }}
     >
+      {/* Chamber ambient glow */}
+      <div style={{
+        position: "absolute",
+        left: 0, top: 0, bottom: 0,
+        width: "4px",
+        background: accent,
+        opacity: 0.85,
+      }} />
       {/* Chamber accent anchor */}
       <span
         style={{
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: "7.5px",
-          letterSpacing: "0.12em",
+          letterSpacing: "0.14em",
           textTransform: "uppercase",
           color: accent,
-          fontWeight: 600,
+          fontWeight: 700,
           flexShrink: 0,
           userSelect: "none",
+          paddingLeft: "8px",
         }}
       >
         {chamberId}

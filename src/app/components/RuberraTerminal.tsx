@@ -864,15 +864,18 @@ export function RuberraTerminal({
           alignItems: "center",
           gap: "8px",
           padding: "0 16px",
-          height: "34px",
-          background: T.surface,
-          borderBottom: `1px solid ${T.line}`,
+          height: "36px",
+          background: `color-mix(in srgb, ${chamberAccentVar} 8%, ${T.surface})`,
+          borderBottom: `1px solid color-mix(in srgb, ${chamberAccentVar} 22%, ${T.line})`,
           flexShrink: 0,
           overflow: "hidden",
+          position: "relative",
         }}
       >
+        {/* Left accent bar */}
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", background: chamberAccentVar, opacity: 0.9 }} />
         {/* Chamber accent anchor */}
-        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: chamberAccentVar, letterSpacing: "0.12em", textTransform: "uppercase", userSelect: "none", fontWeight: 600, flexShrink: 0 }}>
+        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: chamberAccentVar, letterSpacing: "0.14em", textTransform: "uppercase", userSelect: "none", fontWeight: 700, flexShrink: 0, paddingLeft: "8px" }}>
           {chamber}
         </span>
         <span style={{ color: T.line2, fontSize: "9px", userSelect: "none", flexShrink: 0 }}>·</span>
@@ -951,29 +954,43 @@ export function RuberraTerminal({
           overflowY: "auto",
           padding: "20px 20px 12px",
           background: T.bg,
+          position: "relative",
         }}
       >
         {messages.length === 0 && !isLoading ? (
-          <div style={{ paddingTop: "32px", maxWidth: "560px" }}>
-            <p style={{ margin: "0 0 8px", fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.12em", color: T.dim2, textTransform: "uppercase" }}>
-              Execution field
+          <div style={{ paddingTop: "40px", maxWidth: "560px" }}>
+            {/* Ambient glow */}
+            <div style={{
+              position: "absolute",
+              top: "30px",
+              left: 0,
+              right: 0,
+              height: "200px",
+              background: `radial-gradient(ellipse at 30% 0%, color-mix(in srgb, ${chamberAccentVar} 14%, transparent) 0%, transparent 65%)`,
+              pointerEvents: "none",
+            }} />
+            <p style={{ margin: "0 0 8px", fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.14em", color: chamberAccentVar, textTransform: "uppercase", opacity: 0.85, position: "relative" }}>
+              Execution field · ready
             </p>
-            <p style={{ margin: "0 0 16px", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.text, lineHeight: 1.6, letterSpacing: "0.01em" }}>
+            <p style={{ margin: "0 0 20px", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", color: T.text, lineHeight: 1.6, letterSpacing: "0.01em", fontWeight: 500, position: "relative" }}>
               Directives compile here. Output groups by operation, prose, and fenced code—no theater, no noise.
             </p>
-            <div style={{ padding: "12px 14px", border: `1px solid ${T.line}`, borderRadius: "2px", background: T.surface }}>
+            <div style={{ padding: "14px 16px", border: `1px solid color-mix(in srgb, ${chamberAccentVar} 20%, ${T.line})`, borderRadius: "2px", background: T.surface, position: "relative" }}>
+              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "2px", background: chamberAccentVar, borderRadius: "2px 0 0 2px" }} />
               {missionName && (
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.10em", color: chamberAccentVar, textTransform: "uppercase", userSelect: "none" }}>MISSION</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px", paddingLeft: "6px" }}>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.12em", color: chamberAccentVar, textTransform: "uppercase", userSelect: "none", fontWeight: 600 }}>MISSION</span>
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{missionName}</span>
                 </div>
               )}
-              <span style={{ color: T.dim2, fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", display: "block", marginBottom: "6px" }}>
-                {placeholder}
-              </span>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.dim, fontFamily: "'JetBrains Mono', monospace", fontSize: "10px" }}>
-                <span style={{ color: T.amberDim }}>›</span>
-                <span>Awaiting directive{missionName ? ` — ${missionName}` : ""}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.dim, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", paddingLeft: "6px" }}>
+                <span style={{ color: T.amber, fontSize: "14px", lineHeight: 1 }}>›</span>
+                <span>{placeholder}</span>
+                <motion.span
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+                  style={{ display: "inline-block", width: "7px", height: "13px", background: T.amber, verticalAlign: "middle", borderRadius: "1px", opacity: 0.6 }}
+                />
               </div>
             </div>
           </div>

@@ -92,74 +92,156 @@ function StructuralGrid() {
 function AtmosphericGlow() {
   return (
     <>
+      {/* Primary center glow — much stronger */}
       <div
         style={{
           position:     "fixed",
-          top:          "0",
+          top:          "-10%",
           left:         "50%",
           transform:    "translateX(-50%)",
-          width:        "80vw",
-          height:       "60vh",
-          background:   "radial-gradient(ellipse at center, var(--r-accent-dim) 0%, transparent 72%)",
+          width:        "100vw",
+          height:       "80vh",
+          background:   "radial-gradient(ellipse at 50% 10%, color-mix(in srgb, var(--r-accent) 22%, transparent) 0%, color-mix(in srgb, var(--r-accent-dim) 18%, transparent) 30%, transparent 70%)",
           opacity:      "var(--hero-glow-center-opacity)",
           pointerEvents:"none",
           zIndex:       1,
         }}
       />
-      <div style={{ position: "fixed", top: 0, right: 0, width: "30vw", height: "30vh", background: "radial-gradient(ellipse at top right, color-mix(in srgb, var(--chamber-lab) 14%, transparent) 0%, transparent 70%)", pointerEvents: "none", zIndex: 1 }} />
-      <div style={{ position: "fixed", bottom: 0, left: 0, width: "25vw", height: "25vh", background: "radial-gradient(ellipse at bottom left, color-mix(in srgb, var(--chamber-creation) 12%, transparent) 0%, transparent 70%)", pointerEvents: "none", zIndex: 1 }} />
+      {/* Lab corner — deep green */}
+      <div style={{
+        position: "fixed", top: 0, right: 0,
+        width: "40vw", height: "45vh",
+        background: "radial-gradient(ellipse at top right, color-mix(in srgb, var(--chamber-lab) 28%, transparent) 0%, transparent 65%)",
+        opacity: 0.18,
+        pointerEvents: "none", zIndex: 1,
+      }} />
+      {/* Creation corner — warm amber */}
+      <div style={{
+        position: "fixed", bottom: "10%", left: 0,
+        width: "35vw", height: "40vh",
+        background: "radial-gradient(ellipse at bottom left, color-mix(in srgb, var(--chamber-creation) 24%, transparent) 0%, transparent 65%)",
+        opacity: 0.16,
+        pointerEvents: "none", zIndex: 1,
+      }} />
+      {/* School bottom-right — blue */}
+      <div style={{
+        position: "fixed", bottom: 0, right: "10%",
+        width: "30vw", height: "30vh",
+        background: "radial-gradient(ellipse at bottom right, color-mix(in srgb, var(--chamber-school) 20%, transparent) 0%, transparent 65%)",
+        opacity: 0.12,
+        pointerEvents: "none", zIndex: 1,
+      }} />
     </>
   );
 }
 
 // ─── Living Organism Visual ──────────────────────────────────────────────────
-// A minimal animated constellation that feels like a living AI substrate
+// A sovereign constellation that feels like a living AI substrate
 
 function OrganismVisual() {
   const nodes = [
-    { x: 50, y: 48, r: 3.5, color: "var(--r-text)", delay: 0, label: "core" },
-    { x: 50, y: 20, r: 2.5, color: "var(--chamber-lab)", delay: 0.2, label: "lab" },
-    { x: 74, y: 34, r: 2.5, color: "var(--chamber-creation)", delay: 0.35, label: "creation" },
-    { x: 26, y: 34, r: 2.5, color: "var(--chamber-school)", delay: 0.5, label: "school" },
-    { x: 50, y: 76, r: 2, color: "var(--r-subtext)", delay: 0.65, label: "profile" },
-    { x: 78, y: 62, r: 1.5, color: "var(--r-accent)", delay: 0.8, label: "memory" },
-    { x: 22, y: 62, r: 1.5, color: "var(--r-accent)", delay: 0.95, label: "signal" },
+    { x: 50, y: 46, r: 5,   color: "var(--r-text)",          delay: 0,    label: "CORE",     isPrimary: true },
+    { x: 50, y: 14, r: 3.5, color: "var(--chamber-lab)",     delay: 0.18, label: "LAB",      isPrimary: false },
+    { x: 77, y: 30, r: 3.5, color: "var(--chamber-creation)",delay: 0.30, label: "CREATION", isPrimary: false },
+    { x: 23, y: 30, r: 3.5, color: "var(--chamber-school)",  delay: 0.42, label: "SCHOOL",   isPrimary: false },
+    { x: 50, y: 78, r: 2.8, color: "var(--r-subtext)",       delay: 0.55, label: "PROFILE",  isPrimary: false },
+    { x: 82, y: 60, r: 2,   color: "var(--r-accent)",        delay: 0.68, label: "MEMORY",   isPrimary: false },
+    { x: 18, y: 60, r: 2,   color: "var(--r-accent)",        delay: 0.80, label: "SIGNAL",   isPrimary: false },
+    { x: 66, y: 84, r: 1.6, color: "var(--r-dim)",           delay: 0.90, label: "FLOW",     isPrimary: false },
+    { x: 34, y: 84, r: 1.6, color: "var(--r-dim)",           delay: 0.98, label: "VALUE",    isPrimary: false },
   ];
   const edges = [
-    [0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[1,2],[1,3],[2,5],[3,6],
+    [0,1],[0,2],[0,3],[0,4],[0,5],[0,6],
+    [1,2],[1,3],[2,5],[3,6],[4,7],[4,8],[5,7],[6,8],
   ];
 
   return (
-    <div style={{ width: "100%", maxWidth: "320px", aspectRatio: "1/1", position: "relative", margin: "0 auto" }}>
+    <div style={{ width: "100%", maxWidth: "460px", aspectRatio: "1/1", position: "relative", margin: "0 auto" }}>
+      {/* Outer ambient glow */}
+      <div style={{
+        position: "absolute",
+        inset: "-20%",
+        background: "radial-gradient(ellipse at center, color-mix(in srgb, var(--r-accent-dim) 60%, transparent) 0%, transparent 65%)",
+        opacity: 0.45,
+        pointerEvents: "none",
+      }} />
       <svg
         viewBox="0 0 100 100"
         style={{ width: "100%", height: "100%", overflow: "visible" }}
       >
-        {/* Edges */}
+        {/* Orbit ring around core */}
+        <motion.circle
+          cx={nodes[0].x} cy={nodes[0].y} r={18}
+          fill="none"
+          stroke="var(--r-border)"
+          strokeWidth="0.35"
+          strokeDasharray="2 4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0.12, 0.26, 0.12] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+        />
+        <motion.circle
+          cx={nodes[0].x} cy={nodes[0].y} r={32}
+          fill="none"
+          stroke="var(--r-border-soft)"
+          strokeWidth="0.25"
+          strokeDasharray="1 6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0.06, 0.15, 0.06] }}
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        />
+
+        {/* Edges — animated draw-in */}
         {edges.map(([a, b], i) => (
           <motion.line
             key={i}
             x1={nodes[a].x} y1={nodes[a].y}
             x2={nodes[b].x} y2={nodes[b].y}
-            stroke="var(--r-border)"
-            strokeWidth="0.5"
+            stroke={i < 6 ? "var(--r-border)" : "var(--r-border-soft)"}
+            strokeWidth={i < 6 ? "0.55" : "0.35"}
+            strokeDasharray={i < 6 ? "none" : "1 3"}
             initial={{ opacity: 0, pathLength: 0 }}
-            animate={{ opacity: 1, pathLength: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+            animate={{ opacity: i < 6 ? 0.7 : 0.4, pathLength: 1 }}
+            transition={{ duration: 0.9, delay: 0.4 + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
           />
         ))}
-        {/* Pulse rings */}
-        {nodes.slice(0, 3).map((node, i) => (
-          <motion.circle
-            key={`pulse-${i}`}
-            cx={node.x} cy={node.y} r={node.r + 1.5}
-            fill="none"
-            stroke={node.color}
-            strokeWidth="0.4"
-            animate={{ opacity: [0.08, 0.30, 0.08], r: [node.r + 1, node.r + 5.5, node.r + 1] }}
-            transition={{ duration: 3.5 + i * 0.8, delay: i * 0.4, repeat: Infinity, ease: "easeInOut" }}
-          />
-        ))}
+
+        {/* Deep pulse rings on primary nodes */}
+        {[0, 1, 2, 3].map((idx) => {
+          const node = nodes[idx];
+          const pulseRadiusScale = idx === 0 ? 1.6 : 1.4;
+          const rBase = node.r * pulseRadiusScale;
+          return (
+            <motion.circle
+              key={`pulse-outer-${idx}`}
+              cx={node.x} cy={node.y}
+              fill="none"
+              stroke={node.color}
+              strokeWidth="0.35"
+              initial={{ r: rBase, opacity: 0.04 }}
+              animate={{ opacity: [0.04, 0.22, 0.04], r: [rBase, rBase + 7, rBase] }}
+              transition={{ duration: 4 + idx * 0.7, delay: idx * 0.5, repeat: Infinity, ease: "easeInOut" }}
+            />
+          );
+        })}
+        {/* Inner pulse rings */}
+        {[0, 1, 2, 3].map((idx) => {
+          const node = nodes[idx];
+          const rBase = node.r + 1;
+          return (
+            <motion.circle
+              key={`pulse-inner-${idx}`}
+              cx={node.x} cy={node.y}
+              fill="none"
+              stroke={node.color}
+              strokeWidth="0.5"
+              initial={{ r: rBase, opacity: 0.08 }}
+              animate={{ opacity: [0.08, 0.35, 0.08], r: [rBase, rBase + 3, rBase] }}
+              transition={{ duration: 3 + idx * 0.6, delay: 0.3 + idx * 0.4, repeat: Infinity, ease: "easeInOut" }}
+            />
+          );
+        })}
+
         {/* Nodes */}
         {nodes.map((node, i) => (
           <motion.circle
@@ -169,43 +251,65 @@ function OrganismVisual() {
             r={node.r}
             fill={node.color}
             initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: i === 0 ? [0.7, 1, 0.7] : 0.85, scale: 1 }}
-            transition={i === 0
-              ? { scale: { duration: 0.5, delay: node.delay, ease: [0.16, 1, 0.3, 1] }, opacity: { duration: 2, repeat: Infinity, ease: "easeInOut", delay: 1 } }
+            animate={{
+              opacity: node.isPrimary ? [0.75, 1, 0.75] : 0.9,
+              scale: 1,
+            }}
+            transition={node.isPrimary
+              ? { scale: { duration: 0.5, delay: node.delay, ease: [0.16, 1, 0.3, 1] }, opacity: { duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.8 } }
               : { duration: 0.5, delay: node.delay, ease: [0.16, 1, 0.3, 1] }
             }
           />
         ))}
+
         {/* Node labels */}
         {nodes.slice(1).map((node, i) => (
           <motion.text
             key={`label-${i}`}
             x={node.x}
-            y={node.y + node.r + 4.5}
+            y={node.y + node.r + 5}
             textAnchor="middle"
-            fontSize="3.2"
-            fill="var(--r-dim)"
+            fontSize="2.9"
+            fill={node.color}
             fontFamily="'JetBrains Mono', monospace"
-            letterSpacing="0.08em"
+            letterSpacing="0.10em"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.65 }}
-            transition={{ duration: 0.6, delay: node.delay + 0.3 }}
+            animate={{ opacity: 0.72 }}
+            transition={{ duration: 0.6, delay: node.delay + 0.35 }}
           >
-            {node.label.toUpperCase()}
+            {node.label}
           </motion.text>
         ))}
-        {/* Flow particles along edges */}
-        {[[0,1],[0,2],[0,3]].map(([a, b], i) => (
+
+        {/* Flow particles along primary edges */}
+        {[[0,1],[0,2],[0,3],[0,4]].map(([a, b], i) => (
           <motion.circle
             key={`flow-${i}`}
-            r={0.9}
+            r={1.1}
             fill={nodes[b].color}
-            opacity={0.7}
+            opacity={0.75}
+            initial={{ cx: nodes[a].x, cy: nodes[a].y }}
             animate={{
               cx: [nodes[a].x, nodes[b].x, nodes[a].x],
               cy: [nodes[a].y, nodes[b].y, nodes[a].y],
             }}
-            transition={{ duration: 2.5 + i * 0.4, delay: 1.5 + i * 0.6, repeat: Infinity, ease: "easeInOut" }}
+            transition={{ duration: 2.8 + i * 0.5, delay: 2 + i * 0.7, repeat: Infinity, ease: "easeInOut" }}
+          />
+        ))}
+
+        {/* Secondary flow particles */}
+        {[[2,5],[3,6],[4,7]].map(([a, b], i) => (
+          <motion.circle
+            key={`flow2-${i}`}
+            r={0.7}
+            fill={nodes[b].color}
+            opacity={0.5}
+            initial={{ cx: nodes[a].x, cy: nodes[a].y }}
+            animate={{
+              cx: [nodes[a].x, nodes[b].x, nodes[a].x],
+              cy: [nodes[a].y, nodes[b].y, nodes[a].y],
+            }}
+            transition={{ duration: 3.5 + i * 0.6, delay: 3 + i * 0.8, repeat: Infinity, ease: "easeInOut" }}
           />
         ))}
       </svg>
@@ -335,7 +439,7 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
         display:             "grid",
         gridTemplateColumns: "1fr 1fr",
         gap:                 "clamp(32px, 5vw, 80px)",
-        maxWidth:            "1040px",
+        maxWidth:            "1100px",
         width:               "100%",
         alignItems:          "center",
       }}>
@@ -353,11 +457,15 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
               marginBottom:  "24px",
             }}
           >
-            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--r-ok)", opacity: 0.7 }} />
+            <motion.div
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+              style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--r-ok)" }}
+            />
             <span style={{
               fontSize:      "10px",
               fontFamily:    "'JetBrains Mono', monospace",
-              color:         "var(--r-dim)",
+              color:         "var(--r-subtext)",
               letterSpacing: "0.12em",
               textTransform: "uppercase" as const,
             }}>
@@ -371,21 +479,30 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
             style={{
-              fontSize:      "clamp(32px, 4.8vw, 58px)",
-              fontWeight:    600,
+              fontSize:      "clamp(34px, 5vw, 62px)",
+              fontWeight:    700,
               color:         "var(--r-text)",
               fontFamily:    "'Inter', system-ui, sans-serif",
-              lineHeight:    1.1,
-              letterSpacing: "-0.04em",
-              margin:        "0 0 20px",
+              lineHeight:    1.06,
+              letterSpacing: "-0.045em",
+              margin:        "0 0 22px",
             }}
           >
             Your AI doesn't{" "}
-            <span style={{ color: "var(--r-accent)" }}>remember</span>,{" "}
+            <span style={{
+              background: "linear-gradient(135deg, var(--r-accent) 0%, var(--chamber-school) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}>remember</span>,{" "}
             doesn't{" "}
-            <span style={{ color: "var(--r-accent)" }}>compound</span>,{" "}
-            doesn't{" "}
-            <span style={{ color: "var(--r-accent)" }}>work with you</span>.
+            <span style={{
+              background: "linear-gradient(135deg, var(--chamber-lab) 0%, var(--r-accent) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}>compound</span>,{" "}
+            doesn't work with you.
           </motion.h1>
 
           {/* Subline — the answer */}
@@ -403,7 +520,7 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
               maxWidth:      "480px",
             }}
           >
-            Ruberra is a <span style={{ color: "var(--r-text)", fontWeight: 500 }}>sovereign workstation</span> — one shell, continuous memory, consequence-bearing execution. Every session compounds. Nothing resets. Nothing fragments.
+            Ruberra is a <span style={{ color: "var(--r-text)", fontWeight: 600 }}>sovereign workstation</span> — one shell, continuous memory, consequence-bearing execution. Every session compounds. Nothing resets. Nothing fragments.
           </motion.p>
 
           {/* CTA group */}
@@ -414,13 +531,13 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
             style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}
           >
             <motion.button
-              whileHover={{ y: -1, boxShadow: "0 8px 28px rgba(0,0,0,0.14)" }}
-              whileTap={{ scale: 0.99 }}
+              whileHover={{ y: -2, boxShadow: "0 12px 36px rgba(0,0,0,0.18)" }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => onEnter()}
               style={{
-                padding:        "14px 32px",
+                padding:        "15px 34px",
                 borderRadius:   "2px",
-                border:         "1px solid color-mix(in srgb, var(--r-text) 18%, transparent)",
+                border:         "1px solid color-mix(in srgb, var(--r-text) 22%, transparent)",
                 background:     "var(--r-text)",
                 color:          "var(--r-bg)",
                 fontSize:       "13px",
@@ -432,7 +549,7 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
                 display:        "flex",
                 alignItems:     "center",
                 gap:            "8px",
-                boxShadow:      "0 2px 12px rgba(0,0,0,0.1)",
+                boxShadow:      "0 4px 18px rgba(0,0,0,0.14)",
                 transition:     "box-shadow 0.15s ease",
               }}
             >
@@ -460,21 +577,26 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
             transition={{ delay: 0.9, duration: 0.6 }}
             style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "28px" }}
           >
-            {["Mission-bound", "Memory-bearing", "Consequence-driven", "Chamber-native"].map((tag) => (
+            {[
+              { label: "Mission-bound",     color: "var(--r-accent)" },
+              { label: "Memory-bearing",    color: "var(--chamber-lab)" },
+              { label: "Consequence-driven",color: "var(--chamber-creation)" },
+              { label: "Chamber-native",    color: "var(--chamber-school)" },
+            ].map(({ label, color }) => (
               <span
-                key={tag}
+                key={label}
                 style={{
                   padding:       "4px 10px",
                   borderRadius:  "2px",
-                  border:        "1px solid var(--r-border)",
-                  background:    "color-mix(in srgb, var(--r-surface) 70%, var(--r-bg))",
+                  border:        `1px solid color-mix(in srgb, ${color} 28%, var(--r-border))`,
+                  background:    `color-mix(in srgb, ${color} 6%, var(--r-surface))`,
                   fontSize:      "9px",
                   fontFamily:    "'JetBrains Mono', monospace",
-                  color:         "var(--r-subtext)",
+                  color:         color,
                   letterSpacing: "0.05em",
                 }}
               >
-                {tag}
+                {label}
               </span>
             ))}
           </motion.div>
@@ -518,11 +640,11 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
           </motion.div>
         </div>
 
-        {/* Right: Living organism */}
+        {/* Right: Living organism — larger, more dramatic */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.92 }}
+          initial={{ opacity: 0, scale: 0.88 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+          transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -530,11 +652,17 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
             position: "relative",
           }}
         >
-          {/* Organism glow */}
+          {/* Multi-layer organism glow */}
           <div style={{
             position:    "absolute",
-            inset:       "-40px",
-            background:  "radial-gradient(ellipse at center, color-mix(in srgb, var(--r-accent-dim) 45%, transparent) 0%, transparent 70%)",
+            inset:       "-60px",
+            background:  "radial-gradient(ellipse at center, color-mix(in srgb, var(--chamber-lab) 18%, transparent) 0%, color-mix(in srgb, var(--r-accent-dim) 35%, transparent) 40%, transparent 70%)",
+            pointerEvents: "none",
+          }} />
+          <div style={{
+            position:    "absolute",
+            inset:       "-30px",
+            background:  "radial-gradient(ellipse at 60% 40%, color-mix(in srgb, var(--chamber-creation) 12%, transparent) 0%, transparent 60%)",
             pointerEvents: "none",
           }} />
           <OrganismVisual />
@@ -737,13 +865,13 @@ function ChambersSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
 
       <div style={{
         display:             "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap:                 "12px",
+        gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+        gap:                 "10px",
       }}>
         {CHAMBERS.map((c, i) => (
           <RevealSection key={c.id} delay={i * 0.07}>
             <motion.button
-              whileHover={{ y: -2 }}
+              whileHover={{ y: -3 }}
               whileTap={{ scale: 0.99 }}
               transition={{ duration: 0.15 }}
               onClick={() => onEnter(c.id)}
@@ -751,54 +879,72 @@ function ChambersSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
               onMouseLeave={() => setHovered(null)}
               style={{
                 width:         "100%",
-                padding:       "22px 20px",
+                padding:       "26px 22px 22px",
                 borderRadius:  "2px",
                 border:        `1px solid ${hovered === c.id ? c.accent : "var(--r-border-soft)"}`,
                 background:    hovered === c.id
-                  ? `color-mix(in srgb, ${c.accent} 4%, var(--r-surface))`
+                  ? `color-mix(in srgb, ${c.accent} 6%, var(--r-surface))`
                   : "var(--r-surface)",
                 textAlign:     "left" as const,
                 cursor:        "pointer",
                 outline:       "none",
                 position:      "relative",
-                transition:    "border-color 0.15s ease, background 0.15s ease",
+                transition:    "border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease",
                 overflow:      "hidden",
+                boxShadow:     hovered === c.id
+                  ? `0 8px 32px color-mix(in srgb, ${c.accent} 12%, transparent), 0 2px 8px color-mix(in srgb, var(--r-text) 6%, transparent)`
+                  : "0 1px 4px color-mix(in srgb, var(--r-text) 4%, transparent)",
               }}
             >
-              {/* Accent line */}
+              {/* Strong accent bar at top */}
               <div style={{
                 position:     "absolute",
                 top:          0, left: 0, right: 0,
-                height:       "2px",
-                background:   c.accent,
-                opacity:      hovered === c.id ? 0.9 : 0.35,
-                transition:   "opacity 0.15s ease",
+                height:       "3px",
+                background:   `linear-gradient(90deg, ${c.accent} 0%, color-mix(in srgb, ${c.accent} 40%, transparent) 100%)`,
+                opacity:      hovered === c.id ? 1 : 0.5,
+                transition:   "opacity 0.18s ease",
               }} />
 
-              {/* Label */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+              {/* Ambient chamber glow */}
+              <div style={{
+                position:     "absolute",
+                top:          0, right: 0,
+                width:        "60%",
+                height:       "50%",
+                background:   `radial-gradient(ellipse at top right, color-mix(in srgb, ${c.accent} 14%, transparent) 0%, transparent 70%)`,
+                opacity:      hovered === c.id ? 1 : 0.3,
+                transition:   "opacity 0.18s ease",
+                pointerEvents:"none",
+              }} />
+
+              {/* Label row */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", position: "relative" }}>
                 <div style={{
-                  width:        "6px",
-                  height:       "6px",
+                  width:        "8px",
+                  height:       "8px",
                   borderRadius: "50%",
                   background:   c.accent,
-                  opacity:      0.85,
+                  opacity:      0.9,
+                  flexShrink:   0,
+                  boxShadow:    `0 0 8px ${c.accent}`,
                 }} />
                 <span style={{
-                  fontSize:      "12px",
-                  fontWeight:    600,
+                  fontSize:      "13px",
+                  fontWeight:    700,
                   color:         "var(--r-text)",
                   fontFamily:    "'Inter', system-ui, sans-serif",
-                  letterSpacing: "-0.01em",
+                  letterSpacing: "-0.02em",
                 }}>
                   {c.label}
                 </span>
                 <span style={{
                   fontSize:      "9px",
                   fontFamily:    "'JetBrains Mono', monospace",
-                  color:         "var(--r-dim)",
-                  letterSpacing: "0.06em",
-                  textTransform: "lowercase" as const,
+                  color:         c.accent,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase" as const,
+                  opacity:       0.85,
                 }}>
                   {c.verb}
                 </span>
@@ -806,11 +952,12 @@ function ChambersSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
 
               {/* Description */}
               <p style={{
-                fontSize:   "12px",
+                fontSize:   "12.5px",
                 color:      "var(--r-subtext)",
                 fontFamily: "'Inter', system-ui, sans-serif",
                 lineHeight: 1.55,
                 margin:     0,
+                position:   "relative",
               }}>
                 {c.desc}
               </p>
@@ -820,15 +967,17 @@ function ChambersSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
                 display:    "flex",
                 alignItems: "center",
                 gap:        "4px",
-                marginTop:  "16px",
+                marginTop:  "18px",
+                position:   "relative",
               }}>
                 <span style={{
                   fontSize:      "8px",
                   fontFamily:    "'JetBrains Mono', monospace",
                   color:         hovered === c.id ? c.accent : "var(--r-dim)",
-                  letterSpacing: "0.07em",
+                  letterSpacing: "0.08em",
                   textTransform: "uppercase" as const,
                   transition:    "color 0.15s ease",
+                  fontWeight:    hovered === c.id ? 600 : 400,
                 }}>
                   Enter {c.label} →
                 </span>

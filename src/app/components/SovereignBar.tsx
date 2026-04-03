@@ -123,11 +123,11 @@ export function SovereignBar({
   return (
     <header
       style={{
-        height: "44px",
+        height: "46px",
         borderBottom: "1px solid var(--r-border)",
-        background: "rgba(var(--r-surface-rgb), 0.82)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        background: "rgba(var(--r-surface-rgb), 0.88)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
         position: "sticky",
         top: 0,
         zIndex: 100,
@@ -137,8 +137,27 @@ export function SovereignBar({
         paddingLeft: "18px",
         paddingRight: "16px",
         transition: "background 0.25s ease, border-color 0.25s ease",
+        boxShadow: "var(--shell-depth-shadow, 0 1px 0 color-mix(in srgb, var(--r-text) 5%, transparent))",
       }}
     >
+      {/* Chamber accent glow line — shifts with active tab */}
+      <motion.div
+        key={activeTab}
+        initial={{ opacity: 0, scaleX: 0.5 }}
+        animate={{ opacity: 1, scaleX: 1 }}
+        transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: "2px",
+          background: `linear-gradient(90deg, transparent 0%, ${CHAMBER_DOTS[activeTab]} 25%, ${CHAMBER_DOTS[activeTab]} 75%, transparent 100%)`,
+          opacity: 0.5,
+          pointerEvents: "none",
+          transformOrigin: "center",
+        }}
+      />
 
       {/* ── Left: Brand ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: "160px" }}>
@@ -278,9 +297,23 @@ export function SovereignBar({
                   style={{
                     position: "absolute",
                     inset: 0,
-                    background: "var(--r-surface)",
+                    background: `color-mix(in srgb, ${dot} 8%, var(--r-surface))`,
                     borderRadius: "2px",
-                    boxShadow: "0 1px 3px color-mix(in srgb, var(--r-text) 6%, transparent), 0 0 0 1px color-mix(in srgb, var(--r-text) 5%, var(--r-border-soft))",
+                    boxShadow: `0 1px 3px color-mix(in srgb, var(--r-text) 6%, transparent), 0 0 0 1px color-mix(in srgb, ${dot} 20%, var(--r-border-soft))`,
+                  }}
+                  transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.85 }}
+                />
+              )}
+              {isActive && (
+                <motion.div
+                  layoutId="sovereign-tab-accent"
+                  style={{
+                    position: "absolute",
+                    top: 0, left: "20%", right: "20%",
+                    height: "1.5px",
+                    background: dot,
+                    borderRadius: "0 0 2px 2px",
+                    opacity: 0.9,
                   }}
                   transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.85 }}
                 />

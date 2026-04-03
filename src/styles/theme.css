@@ -95,12 +95,17 @@
   --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* ── Hero entry surface (light) ── */
-  --hero-grid-opacity:       0.38;
+  --hero-grid-opacity:       0.28;
   --hero-wordmark-opacity:   0.034;
   --hero-geometry-opacity:   0.026;
   --hero-geometry-fill:      transparent;
-  --hero-glow-center-opacity: 0.11;
+  --hero-glow-center-opacity: 0.18;
   --hero-glow-static:         1;
+
+  /* ── Chamber ambient glow (interior shell) ── */
+  --chamber-glow-opacity:    0.08;
+  --chamber-header-bg-opacity: 0.07;
+  --shell-depth-shadow:      0 1px 0 color-mix(in srgb, var(--r-text) 6%, transparent), 0 4px 24px color-mix(in srgb, var(--r-text) 4%, transparent);
 }
 
 /* ── RUBERRA dark theme ── */
@@ -154,12 +159,17 @@
   --chamber-creation-light:#221a0e;
 
   /* ── Hero entry surface (dark — sovereign / matte) ── */
-  --hero-grid-opacity:       0.12;
+  --hero-grid-opacity:       0.10;
   --hero-wordmark-opacity:   0.055;
   --hero-geometry-opacity:   0.045;
   --hero-geometry-fill:      color-mix(in srgb, var(--r-text) 3%, transparent);
-  --hero-glow-center-opacity: 0.06;
+  --hero-glow-center-opacity: 0.11;
   --hero-glow-static:         1;
+
+  /* ── Chamber ambient glow (interior shell, dark) ── */
+  --chamber-glow-opacity:    0.14;
+  --chamber-header-bg-opacity: 0.12;
+  --shell-depth-shadow:      0 1px 0 color-mix(in srgb, var(--r-text) 10%, transparent), 0 4px 24px rgba(0,0,0,0.32);
 }
 
 /* ── RUBERRA scroll utility ── */
@@ -359,4 +369,47 @@
   p {
     line-height: 1.7;
   }
+}
+
+/* ── Ruberra motion keyframes ── */
+@keyframes ruberra-pulse-ring {
+  0%   { opacity: 0.06; transform: scale(1); }
+  50%  { opacity: 0.20; transform: scale(1.04); }
+  100% { opacity: 0.06; transform: scale(1); }
+}
+
+@keyframes ruberra-breathe {
+  0%   { opacity: 0.6; }
+  50%  { opacity: 1.0; }
+  100% { opacity: 0.6; }
+}
+
+@keyframes ruberra-orbit {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes ruberra-scan {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 0.5; }
+  90%  { opacity: 0.5; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes ruberra-flow {
+  0%   { stroke-dashoffset: 100; opacity: 0; }
+  20%  { opacity: 0.7; }
+  80%  { opacity: 0.7; }
+  100% { stroke-dashoffset: -100; opacity: 0; }
+}
+
+/* ── Chamber ambient strip ── */
+.chamber-lab-ambient {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--chamber-lab) 7%, transparent) 0%, transparent 60%);
+}
+.chamber-school-ambient {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--chamber-school) 7%, transparent) 0%, transparent 60%);
+}
+.chamber-creation-ambient {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--chamber-creation) 7%, transparent) 0%, transparent 60%);
 }
