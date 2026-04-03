@@ -29,6 +29,7 @@ import {
 import {
   type MissionOperationsState,
   type TaskStatus,
+  type ApprovalDecision,
   TASK_STATUS_LABEL,
   buildOperationState,
   createOperationFlow,
@@ -111,8 +112,8 @@ import { defaultCivilization, registerAgent, admitAgent, activateAgent, type Age
 import { detectPatterns } from "./dna/intelligence-analytics";
 import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
 import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph, claimCollectiveResource, checkCollectiveCollision, attributeConsequence, recordAttribution } from "./dna/collective-execution";
-import { defaultPresenceManifest, createChannel, registerChannel, heartbeatChannel } from "./dna/distribution-presence";
 import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit, verifyValueUnit } from "./dna/value-exchange";
+import { defaultPresenceManifest, createChannel, registerChannel, heartbeatChannel } from "./dna/distribution-presence";
 import { defaultEcosystemState, proposeExtension, admitToNetwork } from "./dna/ecosystem-network";
 import { defaultPlatformState, createInfraLayer, addLayer } from "./dna/platform-infrastructure";
 import { defaultOrgState, assessMissionHealth, surfaceOrgInsights, defaultCapabilityMap } from "./dna/org-intelligence";
@@ -552,6 +553,13 @@ export default function App() {
       if (activeMissionId) next = setMissionState(next, activeMissionId, "idle");
       return setMissionState(next, missionId, mission?.ledger.currentState ?? "active");
     });
+    // Stack 05: ghost-safe activation — abort all in-flight chamber requests before binding new mission
+    Object.values(abortRefs.current).forEach((c) => c?.abort());
+    setLoading({ lab: false, school: false, creation: false, profile: false });
+    setSignals({ lab: "idle", school: "idle", creation: "idle", profile: "idle" });
+    setActiveMissionId(missionId);
+    const existing = systemModel.missionOperations[missionId];
+    setActiveMissionOps(existing || defaultMissionOperationsState(missionId));
     try { localStorage.setItem("ruberra_active_mission_id", missionId); } catch { /* storage full */ }
   }, [activeMissionId, missions]);
 
@@ -755,6 +763,25 @@ export default function App() {
       }));
       return;
     }
+
+    // ── Stack 04: Sovereign Dispatch Guard ──────────────────────────────────
+    // If the mission substrate is blocked or awaiting sovereign approval,
+    // the execution chain is frozen. Directives cannot bypass operational law.
+    if (activeMissionOps && !activeMissionOps.operationState.isHealthy) {
+      setSignals((prev) => ({ ...prev, [tab]: "error" }));
+      setRuntimeFabric((prev) => pushSignal(prev, {
+        type:               "lifecycle",
+        label:              `Dispatch Blocked · Mission: "${activeMission?.identity.name || activeMissionId}" is unhealthy`,
+        severity:           "critical",
+        sourceChamber:      tab,
+        destinationChamber: "profile",
+        destination:        { tab: "profile", view: "overview" },
+        body: "The operational substrate has hit a blocker or requires approval. Execution is suspended until the mission state is restored to 'healthy'.",
+      }));
+      return;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const task = tasks[tab as ChamberTab];
     setRuntimeFabric((prev) => updatePreferences(prev, {
       preferredChamber: tab,
@@ -1008,7 +1035,7 @@ export default function App() {
       if (plan.fallbackReason) {
         setRuntimeFabric((prev) => pushSignal(prev, {
           type: "recommendation",
-          label: plan.fallbackReason,
+          label: plan.fallbackReason ?? "fallback triggered",
           severity: "warn",
           sourceChamber: tab,
           destinationChamber: tab,
@@ -1078,6 +1105,7 @@ export default function App() {
     const govResult = enforceExecutionGate(`chamber.${tab}.dispatch`, {
       kind:      "operator",
       id:        runtimeFabric.workspace.owner,
+      label:     "Sovereign Operator",
       missionId: activeMissionId ?? undefined,
     });
     // Record audit entry into trust governance state
@@ -1217,7 +1245,7 @@ export default function App() {
           priority:   "standard",
           riskLevel:  hasExternalEffect ? "high" : "low",
         }),
-        "in_progress"
+        "active"
       );
       _opsTaskId = dispatchTask.id;
 
@@ -1732,6 +1760,7 @@ export default function App() {
         const currentContinuity = next.continuity.map((c) => `${c.status} ${c.title}`);
         const nextPatterns = detectPatterns([...currentSignals, ...currentContinuity]);
         next = updateRuntimePatterns(next, nextPatterns);
+        
 
         return next;
       });
@@ -1851,7 +1880,7 @@ export default function App() {
 
       if (tab === "creation") {
         setFlowState((prev) => {
-          const run = prev.runs.find((r) => r.missionId === continuityId);
+          const run = Object.values(prev.runs).find((r) => r.missionId === continuityId);
           if (!run) return prev;
           return upsertFlowRun(prev, { ...run, state: "complete", completedAt: Date.now() });
         });
@@ -2175,7 +2204,7 @@ export default function App() {
         setSystemModel((prev) => setMissionState(prev, activeMissionId ?? continuityId, "blocked"));
         if (tab === "creation") {
           setFlowState((prev) => {
-            const run = prev.runs.find((r) => r.missionId === continuityId);
+            const run = Object.values(prev.runs).find((r) => r.missionId === continuityId);
             if (!run) return prev;
             return upsertFlowRun(prev, { ...run, state: "failed", completedAt: Date.now() });
           });
@@ -2204,7 +2233,7 @@ export default function App() {
     } finally {
       // ── Stack 04: Close task lifecycle + advance flow + emit completion signal ─
       if (activeMission && activeMissionId && _opsTaskId) {
-        const finalStatus = parseOnComplete ? "completed" : "failed";
+        const finalStatus: TaskStatus = parseOnComplete ? "completed" : "blocked";
         const contentDigest = assistantContent.slice(0, 140) || routeDigestLine.slice(0, 140);
         setActiveMissionOps((prev) => {
           if (!prev || prev.missionId !== activeMissionId) return prev;
@@ -2219,11 +2248,11 @@ export default function App() {
             : prev.activeFlow;
           const completionSignal = emitSignal(activeMissionId, {
             type:     "task_complete",
-            priority: finalStatus === "failed" ? "high" : "standard",
+            priority: finalStatus === "blocked" ? "high" : "standard",
             taskId:   _opsTaskId!,
-            headline: `${finalStatus === "completed" ? "Settled" : "Failed"} · ${tab} · ${contentDigest.slice(0, 52)}`,
+            headline: `${finalStatus === "completed" ? "Settled" : "Blocked"} · ${tab} · ${contentDigest.slice(0, 52)}`,
             body:     contentDigest,
-            actionable: finalStatus === "failed",
+            actionable: finalStatus === "blocked",
           });
           const observations = [
             ...prev.observations,
@@ -2482,7 +2511,7 @@ export default function App() {
           {
             requestId,
             missionId: activeMissionId,
-            decision: "approved",
+            decision: "approved" as ApprovalDecision,
             decidedBy: "operator",
             rationale: "approved from mission operations panel",
             resolvedAt: Date.now(),
@@ -2539,7 +2568,7 @@ export default function App() {
           {
             requestId,
             missionId: activeMissionId,
-            decision: "rejected",
+            decision: "rejected" as ApprovalDecision,
             decidedBy: "operator",
             rationale: "rejected from mission operations panel",
             resolvedAt: Date.now(),
@@ -2601,7 +2630,7 @@ export default function App() {
 
   const orgState = useMemo(() => {
     const missionHealth = missions.map((m) => {
-      const missionContinuity = runtimeFabric.continuity.filter((c) => c.workflowId === m.id || c.title.includes(m.label));
+      const missionContinuity = runtimeFabric.continuity.filter((c) => c.workflowId === m.id || c.title.includes(m.identity.name));
       const runs      = missionContinuity.length;
       const completed = missionContinuity.filter((c) => c.status === "completed" || c.status === "exported").length;
       const velocity  = runs > 0 ? completed / runs : 0;
@@ -2623,7 +2652,7 @@ export default function App() {
       liveHealthy ? "nominal" : execTruth.is_available ? "nominal" : "degraded";
     const providerLabel = liveHealthy
       ? (runtimeFabric.providerHealth.find((ph) => ph.state === "healthy")?.providerId ?? "local")
-      : (execTruth.adapter ?? "sovereign");
+      : (execTruth.adapter_kind ?? "sovereign");
     let state = _platformStateBase;
     state = addLayer(state, { ...createInfraLayer("intelligence", providerLabel, liveHealthy), status: inferenceStatus });
     state = addLayer(state, { ...createInfraLayer("network", "supabase", false), status: "nominal" });
@@ -2659,7 +2688,7 @@ export default function App() {
         id:           p.id,
         name:         p.name,
         domain:       p.home_chamber as AgentDomain,
-        capabilities: p.strengths.map((s) => ({ id: s, label: s, domain: p.home_chamber as AgentDomain })),
+        capabilities: p.strengths.map((s) => ({ id: s, label: s, domain: p.home_chamber as AgentDomain, actions: [s], exclusiveOwnership: false, maxConcurrent: 2 })),
       });
       const activeContinuity = runtimeFabric.continuity.filter((c) => c.pioneerId === p.id);
       const isActive = activeContinuity.some((c) => c.status === "in_progress");
@@ -2732,7 +2761,7 @@ export default function App() {
     for (const c of runtimeFabric.continuity.filter((x) => x.status === "exported")) {
       // verifyValueUnit: sets verifiedAt — governance gate already enforced on export path
       const unit = verifyValueUnit(makeAvailable(mintValue(c.id, runtimeFabric.workspace.owner, {
-        type:        "knowledge_artifact",
+        type:        "artifact",
         label:       c.title.slice(0, 60),
         description: `${c.chamber} · exported continuity`,
       })));
@@ -2748,7 +2777,7 @@ export default function App() {
       const ext = proposeExtension({
         id:           c.id,
         name:         c.id,
-        type:         "data_connector",
+        type:         "connector",
         authorId:     "ruberra-core",
         description:  `${c.id} connector — enabled`,
         capabilities: ["read", "sync"],
@@ -2844,7 +2873,7 @@ export default function App() {
           isExecuting={Object.values(loading).some(Boolean)}
           runtimeState={adaptiveMissionState}
           runCount={runtimeFabric.continuity.filter(
-            (c) => (c.workflowId === activeMission.id || c.title.includes(activeMission.label)) &&
+            (c) => (c.workflowId === activeMission.id || c.title.includes(activeMission.identity.name)) &&
               (c.status === "completed" || c.status === "exported")
           ).length}
         />
@@ -2856,6 +2885,7 @@ export default function App() {
         {/* Side Rail */}
         <ShellSideRail
           activeTab={activeTab}
+          onTabChange={handleTabChange}
           messages={messages}
           signals={signals}
           labView={labView}
@@ -3020,6 +3050,7 @@ export default function App() {
                   governanceConsequences={Object.values(trustGovState.ledgers).flatMap(l => l.consequenceTrail)}
                   flowState={flowState}
                   systemModel={systemModel}
+                  distributionLedger={[]}
                 />
               )}
             </motion.div>
@@ -3060,7 +3091,7 @@ export default function App() {
 
       <FloatingNoteSystem
         notes={notes}
-        onUpdate={updateNote}
+        onChange={updateNote}
         onRemove={removeNote}
       />
     </div>
