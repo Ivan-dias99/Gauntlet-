@@ -85,6 +85,7 @@ import {
   updatePreferences,
   updateWorkspaceKnowledge,
   updateRuntimePatterns,
+  syncRuntimeKnowledge,
   recordRuntimeAttribution,
   updateRuntimePresence,
   heartbeatRuntimePresence,
@@ -117,7 +118,6 @@ import { buildWorkflowRunPayload } from "./components/workflow-engine";
 import { executeAIRequest, type ExecutionRequest } from "./components/execution-adapters";
 import { defaultCivilization, registerAgent, admitAgent, activateAgent, type AgentDomain } from "./dna/multi-agent";
 import { detectPatterns } from "./dna/intelligence-analytics";
-import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
 import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph, claimCollectiveResource, checkCollectiveCollision, attributeConsequence, recordAttribution } from "./dna/collective-execution";
 import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit, verifyValueUnit } from "./dna/value-exchange";
 import { defaultPresenceManifest, createChannel, registerChannel, heartbeatChannel } from "./dna/distribution-presence";
@@ -439,6 +439,15 @@ export default function App() {
   const [heartbeatTick, setHeartbeatTick] = useState(0);
   // ── Stack substrates ─────────────────────────────────────────────────────────
   // Stacks 10-20 now use canonical RuntimeFabric persistence only. No saveStackState parallel localStorage.
+  const [_civBase]          = useState(defaultCivilization);
+  const knowledgeGraph = useMemo(() => runtimeFabric.livingKnowledge.graph, [runtimeFabric.livingKnowledge.graph]);
+  const [_collectiveBase, setCollectiveBase] = useState(defaultCollectiveState);
+  const [_presenceBase]     = useState(() => defaultPresenceManifest("operator-1"));
+  const [_ledgerBase]       = useState(defaultExchangeLedger);
+  const [_ecoBase]          = useState(defaultEcosystemState);
+  const [_platformStateBase] = useState(defaultPlatformState);
+  const [_orgStateBase]     = useState(defaultOrgState);
+  const [_personalOSBase]   = useState(() => defaultPersonalOS("operator-1"));
   const [civBase] = useState(() => loadStackState("civBase", defaultCivilization()));
   const [trustGovState, setTrustGovState] = useState(loadTrustGov);
   const [flowState, setFlowState] = useState(defaultAutonomousFlowState);
@@ -482,6 +491,10 @@ export default function App() {
   useEffect(() => {
     saveRuntimeFabric(runtimeFabric);
   }, [runtimeFabric]);
+
+  useEffect(() => {
+    setRuntimeFabric((prev) => syncRuntimeKnowledge(prev));
+  }, [runtimeFabric.objects]);
 
   useEffect(() => {
     saveMissions(missions);
@@ -2753,6 +2766,8 @@ export default function App() {
 
   // 1. Civilization: pioneer registry + mission bindings from continuity
   const civilization = useMemo(() => {
+    let civ = _civBase;
+    for (const p of PIONEER_REGISTRY) {
     let civ = civBase;
     for (const p of PIONEER_REGISTRY.slice(0, 10)) {
       const manifest = registerAgent({

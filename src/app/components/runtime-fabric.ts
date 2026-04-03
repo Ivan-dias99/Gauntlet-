@@ -349,6 +349,8 @@ export interface RuntimeFabric {
   knowledgeGraph?: LivingKnowledgeState;
   /** Stack 12 — analytics patterns, persisted results */
   analyticsPatterns: AnalyticsPattern[];
+  /** Stack 11 — living knowledge graph, persisted recall substrate */
+  livingKnowledge: LivingKnowledgeState;
   /** Stack 13 — attribution records for collective work consequence */
   attributions: ConsequenceAttribution[];
   /** Stack 13 — collective execution state, canonical persistence */
@@ -441,6 +443,7 @@ function initialFabric(): RuntimeFabric {
     systemHealth: defaultSystemHealthModel(),
     knowledgeGraph: defaultLivingKnowledgeState(),
     analyticsPatterns: [],
+    livingKnowledge: defaultLivingKnowledgeState(),
     attributions: [],
     collectiveState: defaultCollectiveState(),
     presenceManifests: {},
@@ -479,6 +482,7 @@ export function loadRuntimeFabric(): RuntimeFabric {
       intelligence: parsed.intelligence ?? defaultIntelligenceFoundationState(),
       knowledgeGraph: parsed.knowledgeGraph ?? defaultLivingKnowledgeState(),
       analyticsPatterns: parsed.analyticsPatterns ?? [],
+      livingKnowledge: parsed.livingKnowledge ?? defaultLivingKnowledgeState(),
       attributions: parsed.attributions ?? [],
       collectiveState: parsed.collectiveState ?? defaultCollectiveState(),
       presenceManifests: parsed.presenceManifests ?? {},
@@ -1343,6 +1347,29 @@ export function recordRuntimeAttribution(fabric: RuntimeFabric, attribution: Con
 
 export function updateRuntimePatterns(fabric: RuntimeFabric, patterns: AnalyticsPattern[]): RuntimeFabric {
   return { ...fabric, analyticsPatterns: patterns };
+}
+
+export function syncRuntimeKnowledge(fabric: RuntimeFabric): RuntimeFabric {
+  let graph = fabric.livingKnowledge?.graph ?? defaultLivingKnowledgeState().graph;
+  for (const obj of fabric.objects.slice(0, 120)) {
+    const exists = graph.nodes.some((n) => n.content === obj.title && !n.deprecated);
+    if (exists) continue;
+    const absorbed = absorbKnowledge(
+      graph,
+      obj.title,
+      undefined,
+      obj.type === "investigation" || obj.type === "lesson" ? "concept" : "artifact",
+      obj.tags ?? []
+    );
+    graph = absorbed.graph;
+  }
+  return {
+    ...fabric,
+    livingKnowledge: {
+      graph,
+      lastUpdated: Date.now(),
+    },
+  };
 }
 
 export function updateRuntimePresence(fabric: RuntimeFabric, manifest: PresenceManifest): RuntimeFabric {
