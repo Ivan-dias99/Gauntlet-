@@ -244,6 +244,12 @@ export function LabMode({
   missionName?: string;
   missionStatus?: string;
 }) {
+  const composerLocked = missionStatus === "completed" || missionStatus === "archived";
+  const composerLockLabel = composerLocked
+    ? `Mission ${missionStatus} — release or activate a mission to continue`
+    : missionStatus === "blocked"
+      ? "Mission blocked — resolve blockers in Profile → Operations"
+      : undefined;
   const showHome = labView === "home" || (!messages.length && labView === "chat");
 
   if (showHome) return (
@@ -280,7 +286,9 @@ export function LabMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
-      placeholder="Write a code directive, analysis command, or research query…"
+      inputLocked={composerLocked}
+      lockLabel={composerLockLabel}
+      placeholder={composerLocked ? "Mission locked" : "Write a code directive, analysis command, or research query…"}
     />
   );
 

@@ -258,6 +258,7 @@ export interface SystemModel {
   snapshot:      ResourceSnapshot;
   health:        SystemHealthSignal;
   anomalies:     SystemAnomaly[];
+  missionStates: Record<MissionId, "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived">;
   missionStates: Record<MissionId, "running" | "idle" | "blocked">;
   /** Stack 04: Mission-bound autonomous execution substrate. Persisted in fabric. */
   missionOperations: Record<MissionId, MissionOperationsState>;
@@ -315,7 +316,7 @@ export function resolveAnomaly(model: SystemModel, anomalyId: string): SystemMod
 export function setMissionState(
   model: SystemModel,
   missionId: MissionId,
-  state: "running" | "idle" | "blocked",
+  state: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived",
 ): SystemModel {
   const anomalyId = `anomaly_mission_${missionId}`;
   let anomalies = model.anomalies;
