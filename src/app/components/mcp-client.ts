@@ -5,7 +5,7 @@
  * Failure is honest: errors are logged, never swallowed silently, never fake.
  */
 
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { projectId, publicAnonKey } from "@/utils/supabase/info";
 import type { Mission, MissionStatus, MissionChamberLead } from "../dna/mission-substrate";
 
 const MCP_URL = `https://${projectId}.supabase.co/functions/v1/make-server-b9f46b68/mcp`;

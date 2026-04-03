@@ -6,7 +6,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { projectId, publicAnonKey } from "@/utils/supabase/info";
 import { SovereignBar } from "./components/SovereignBar";
 import { ShellSideRail } from "./components/ShellSideRail";
 import { FloatingNoteSystem } from "./components/FloatingNoteSystem";

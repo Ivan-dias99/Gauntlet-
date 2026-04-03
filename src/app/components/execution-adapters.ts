@@ -1,4 +1,4 @@
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { projectId, publicAnonKey } from "@/utils/supabase/info";
 import { type ChamberTab, type TaskType } from "./model-orchestration";
 
 export type ProviderTruth = "hosted" | "wrapped" | "proxy";
