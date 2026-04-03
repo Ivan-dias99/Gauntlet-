@@ -348,6 +348,8 @@ export interface RuntimeFabric {
   compoundNetwork?: CompoundNetwork;
   /** Stack 12 — analytics patterns, persisted results */
   analyticsPatterns: AnalyticsPattern[];
+  /** Stack 11 — living knowledge graph, persisted recall substrate */
+  livingKnowledge: LivingKnowledgeState;
   /** Stack 13 — attribution records for collective work consequence */
   attributions: ConsequenceAttribution[];
   /** Stack 14 — distribution manifests, persisted for session presence */
@@ -426,6 +428,7 @@ function initialFabric(): RuntimeFabric {
     systemHealth: defaultSystemHealthModel(),
     compoundNetwork: defaultCompoundNetwork(),
     analyticsPatterns: [],
+    livingKnowledge: defaultLivingKnowledgeState(),
     attributions: [],
     presenceManifests: {},
     missionOperations: {},
@@ -455,6 +458,7 @@ export function loadRuntimeFabric(): RuntimeFabric {
       runTimeline: parsed.runTimeline ?? [],
       chamberPolicies: parsed.chamberPolicies?.length ? parsed.chamberPolicies : DEFAULT_CHAMBER_POLICIES,
       intelligence: parsed.intelligence ?? defaultIntelligenceFoundationState(),
+      livingKnowledge: parsed.livingKnowledge ?? defaultLivingKnowledgeState(),
       attributions: parsed.attributions ?? [],
       presenceManifests: parsed.presenceManifests ?? {},
     };
@@ -1313,6 +1317,29 @@ export function updateRuntimePatterns(fabric: RuntimeFabric, patterns: Analytics
   return { ...fabric, analyticsPatterns: patterns };
 }
 
+export function syncRuntimeKnowledge(fabric: RuntimeFabric): RuntimeFabric {
+  let graph = fabric.livingKnowledge?.graph ?? defaultLivingKnowledgeState().graph;
+  for (const obj of fabric.objects.slice(0, 120)) {
+    const exists = graph.nodes.some((n) => n.content === obj.title && !n.deprecated);
+    if (exists) continue;
+    const absorbed = absorbKnowledge(
+      graph,
+      obj.title,
+      undefined,
+      obj.type === "investigation" || obj.type === "lesson" ? "concept" : "artifact",
+      obj.tags ?? []
+    );
+    graph = absorbed.graph;
+  }
+  return {
+    ...fabric,
+    livingKnowledge: {
+      graph,
+      lastUpdated: Date.now(),
+    },
+  };
+}
+
 export function updateRuntimePresence(fabric: RuntimeFabric, manifest: PresenceManifest): RuntimeFabric {
   return {
     ...fabric,
@@ -1338,5 +1365,4 @@ export function heartbeatRuntimePresence(fabric: RuntimeFabric, operatorId: stri
     },
   };
 }
-
 

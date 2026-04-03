@@ -85,6 +85,7 @@ import {
   updatePreferences,
   updateWorkspaceKnowledge,
   updateRuntimePatterns,
+  syncRuntimeKnowledge,
   recordRuntimeAttribution,
   updateRuntimePresence,
   heartbeatRuntimePresence,
@@ -110,7 +111,6 @@ import { buildWorkflowRunPayload } from "./components/workflow-engine";
 import { executeAIRequest, type ExecutionRequest } from "./components/execution-adapters";
 import { defaultCivilization, registerAgent, admitAgent, activateAgent, type AgentDomain } from "./dna/multi-agent";
 import { detectPatterns } from "./dna/intelligence-analytics";
-import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
 import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph, claimCollectiveResource, checkCollectiveCollision, attributeConsequence, recordAttribution } from "./dna/collective-execution";
 import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit, verifyValueUnit } from "./dna/value-exchange";
 import { defaultPresenceManifest, createChannel, registerChannel, heartbeatChannel } from "./dna/distribution-presence";
@@ -405,19 +405,7 @@ export default function App() {
   const [heartbeatTick, setHeartbeatTick] = useState(0);
   // ── Stack substrates ─────────────────────────────────────────────────────────
   const [_civBase]          = useState(defaultCivilization);
-  const knowledgeGraph = useMemo(() => {
-    let g = defaultKnowledgeGraph();
-    for (const obj of runtimeFabric.objects.slice(0, 20)) {
-      const node = createNode({
-        type:       obj.type === "investigation" ? "concept" : obj.type === "lesson" ? "concept" : "artifact",
-        content:    obj.title,
-        tags:       obj.tags ?? [],
-        confidence: "medium",
-      });
-      g = addNode(g, node);
-    }
-    return g;
-  }, [runtimeFabric.objects]);
+  const knowledgeGraph = useMemo(() => runtimeFabric.livingKnowledge.graph, [runtimeFabric.livingKnowledge.graph]);
   const [_collectiveBase, setCollectiveBase] = useState(defaultCollectiveState);
   const [_presenceBase]     = useState(() => defaultPresenceManifest("operator-1"));
   const [_ledgerBase]       = useState(defaultExchangeLedger);
@@ -468,6 +456,10 @@ export default function App() {
   useEffect(() => {
     saveRuntimeFabric(runtimeFabric);
   }, [runtimeFabric]);
+
+  useEffect(() => {
+    setRuntimeFabric((prev) => syncRuntimeKnowledge(prev));
+  }, [runtimeFabric.objects]);
 
   useEffect(() => {
     saveMissions(missions);
@@ -2683,7 +2675,7 @@ export default function App() {
   // 1. Civilization: pioneer registry + mission bindings from continuity
   const civilization = useMemo(() => {
     let civ = _civBase;
-    for (const p of PIONEER_REGISTRY.slice(0, 10)) {
+    for (const p of PIONEER_REGISTRY) {
       const manifest = registerAgent({
         id:           p.id,
         name:         p.name,
