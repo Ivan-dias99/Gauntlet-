@@ -592,7 +592,7 @@ function BlockStatus({ text, elapsed, tokens, variant }: {
   const label  = stateInfo.label;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "10px 0 8px", padding: "6px 12px", background: variant === "working" ? `color-mix(in srgb, ${T.amber} 5%, transparent)` : T.bg, borderRadius: "6px", border: `1px solid ${T.line}` }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "10px 0 8px", padding: "6px 12px", background: variant === "working" ? `color-mix(in srgb, ${T.amber} 5%, transparent)` : T.bg, borderRadius: "2px", border: `1px solid ${T.line}` }}>
       <span style={{ color, fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.11em", textTransform: "uppercase", userSelect: "none" }}>
         {label}
       </span>

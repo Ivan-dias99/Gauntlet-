@@ -70,7 +70,7 @@ export function SchoolRoleDetail({ roleId, navigate, onStartChat }: Props) {
               <button
                 key={tid}
                 onClick={() => navigate("school", "track", tid)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", border: "1px solid var(--r-border)", borderRadius: "6px", background: "var(--r-surface)", cursor: "pointer", outline: "none", textAlign: "left", transition: "background 0.1s ease" }}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", cursor: "pointer", outline: "none", textAlign: "left", transition: "background 0.1s ease" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--r-elevated)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--r-surface)"; }}
               >

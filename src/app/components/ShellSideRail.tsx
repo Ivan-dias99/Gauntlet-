@@ -311,7 +311,7 @@ export function ShellSideRail({
                 style={{
                   width: "28px",
                   height: "28px",
-                  borderRadius: "6px",
+                  borderRadius: "2px",
                   border: "1px solid var(--r-border-soft)",
                   background: isActive ? "var(--r-elevated)" : "transparent",
                   color: isActive ? accentColor : "var(--r-dim)",

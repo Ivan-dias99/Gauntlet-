@@ -95,7 +95,7 @@ export function LabDomainDetail({ domainId, navigate, onStartChat }: Props) {
                 gap: "12px",
                 padding: "11px 14px",
                 border: "1px solid var(--r-border)",
-                borderRadius: "6px",
+                borderRadius: "2px",
                 background: "var(--r-surface)",
                 cursor: "pointer",
                 outline: "none",

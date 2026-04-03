@@ -205,7 +205,7 @@ function ConnectorItem({ name, status, detail }: { name: string; status: "connec
         alignItems: "center",
         justifyContent: "space-between",
         padding: "8px",
-        borderRadius: "6px",
+        borderRadius: "2px",
         background: "transparent",
         transition: "background 0.1s ease",
         cursor: "default"
@@ -254,7 +254,7 @@ const actionButtonStyle = {
   padding: "8px",
   background: "var(--r-surface)",
   border: "1px solid var(--r-border-soft)",
-  borderRadius: "6px",
+  borderRadius: "2px",
   fontSize: "11px",
   fontWeight: 500,
   color: "var(--r-text)",

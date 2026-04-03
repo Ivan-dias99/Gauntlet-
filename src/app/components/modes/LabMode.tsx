@@ -137,7 +137,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
               key={m.id}
               style={{
                 border: "1px solid var(--r-border)",
-                borderRadius: "6px",
+                borderRadius: "2px",
                 background: "var(--r-surface)",
                 overflow: "hidden",
               }}
@@ -199,7 +199,7 @@ function LabArchive({ messages, navigate }: { messages: Message[]; navigate: Nav
             actions={emptyActionBtn(() => navigate("lab", "chat"), "Start in Chat", "var(--chamber-lab)")}
           />
         ) : objects.map((obj, i) => (
-          <div key={`${obj.id}-${i}`} style={{ border: "1px solid var(--r-border)", borderRadius: "6px", background: "var(--r-surface)", padding: "10px 12px", marginBottom: "6px" }}>
+          <div key={`${obj.id}-${i}`} style={{ border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", padding: "10px 12px", marginBottom: "6px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
               <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)" }}>{obj.type}</span>
               <span style={{ fontSize: "12px", color: "var(--r-text)", fontWeight: 500 }}>{obj.title}</span>

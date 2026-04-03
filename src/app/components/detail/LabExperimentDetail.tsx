@@ -119,12 +119,12 @@ export function LabExperimentDetail({ experimentId, navigate, onStartChat }: Pro
       {domain && domain.experiments.filter(e => e.id !== experimentId).length > 0 && (
         <div>
           <SectionHead label="Other experiments in this domain" />
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
             {domain.experiments.filter(e => e.id !== experimentId).map(e => (
               <button
                 key={e.id}
                 onClick={() => navigate("lab", "experiment", e.id)}
-                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "10px 14px", border: "1px solid var(--r-border)", borderRadius: "6px", background: "var(--r-surface)", cursor: "pointer", outline: "none", textAlign: "left", transition: "background 0.1s ease" }}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "10px 14px", border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", cursor: "pointer", outline: "none", textAlign: "left", transition: "background 0.1s ease" }}
                 onMouseEnter={e2 => { (e2.currentTarget as HTMLElement).style.background = "var(--r-elevated)"; }}
                 onMouseLeave={e2 => { (e2.currentTarget as HTMLElement).style.background = "var(--r-surface)"; }}
               >

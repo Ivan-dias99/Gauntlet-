@@ -57,7 +57,7 @@ function CreationArchive({ messages, navigate }: { messages: Message[]; navigate
             key={`${obj.id}-${i}`}
             style={{
               border: "1px solid var(--r-border)",
-              borderRadius: "6px",
+              borderRadius: "2px",
               background: "var(--r-surface)",
               padding: "13px 16px",
               marginBottom: "8px",

@@ -97,7 +97,7 @@ export function SchoolTrackDetail({ trackId, navigate, onStartChat }: Props) {
                     gap: "12px",
                     padding: "10px 14px 10px 36px",
                     border: "1px solid var(--r-border)",
-                    borderRadius: "6px",
+                    borderRadius: "2px",
                     background: lesson.status === "in-progress" ? "color-mix(in srgb, var(--r-ok) 4%, var(--r-surface))" : "var(--r-surface)",
                     cursor: isLocked ? "default" : "pointer",
                     outline: "none",

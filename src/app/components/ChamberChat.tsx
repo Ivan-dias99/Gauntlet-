@@ -175,7 +175,7 @@ function EmptyState({
               width: "100%",
               padding: "9px 14px",
               border: "1px solid var(--r-border)",
-              borderRadius: "7px",
+              borderRadius: "2px",
               background: "var(--r-surface)",
               cursor: "pointer",
               outline: "none",
@@ -652,7 +652,7 @@ function Composer({
           style={{
             background: "var(--r-surface)",
             border: `1px solid ${focused ? `color-mix(in srgb, ${accent} 32%, var(--r-border))` : "var(--r-border-soft)"}`,
-            borderRadius: "6px",
+            borderRadius: "2px",
             padding: "14px 14px 10px 18px",
             boxShadow: focused
               ? `0 0 0 1px color-mix(in srgb, ${accent} 22%, transparent), 0 4px 20px color-mix(in srgb, var(--r-text) 6%, transparent)`

@@ -59,7 +59,7 @@ export function SchoolLessonDetail({ lessonId, navigate, onStartChat }: Props) {
           <SectionHead label="Next in track" />
           <button
             onClick={() => nextLesson.status !== "locked" && navigate("school", "lesson", nextLesson.id)}
-            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", border: "1px solid var(--r-border)", borderRadius: "6px", background: "var(--r-surface)", cursor: nextLesson.status === "locked" ? "default" : "pointer", outline: "none", textAlign: "left", opacity: nextLesson.status === "locked" ? 0.5 : 1 }}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", cursor: nextLesson.status === "locked" ? "default" : "pointer", outline: "none", textAlign: "left", opacity: nextLesson.status === "locked" ? 0.5 : 1 }}
           >
             <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif" }}>{nextLesson.title}</span>
             <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{nextLesson.duration}</span>

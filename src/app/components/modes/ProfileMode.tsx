@@ -300,7 +300,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDefinition }) {
   const accentStr   = connector.accent;
   return (
     <div style={{ border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", padding: "11px 14px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
-      <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: accentStr + "14", border: "1px solid " + accentStr + "20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <div style={{ width: "28px", height: "28px", borderRadius: "2px", background: accentStr + "14", border: "1px solid " + accentStr + "20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
         <span style={{ fontSize: "13px", color: accentStr }}>{connector.icon_char}</span>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>

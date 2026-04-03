@@ -112,7 +112,7 @@ function SchoolLibrary({ navigate }: { navigate: NavFn }) {
               key={r.id}
               style={{
                 border: "1px solid var(--r-border)",
-                borderRadius: "6px",
+                borderRadius: "2px",
                 background: "var(--r-surface)",
                 marginBottom: "6px",
                 overflow: "hidden",
@@ -227,7 +227,7 @@ function SchoolArchive({ messages, navigate }: { messages: Message[]; navigate: 
             }
           />
         ) : objects.map((obj, i) => (
-          <div key={`${obj.id}-${i}`} style={{ border: "1px solid var(--r-border)", borderRadius: "6px", padding: "10px 12px", marginBottom: "8px", background: "var(--r-surface)" }}>
+          <div key={`${obj.id}-${i}`} style={{ border: "1px solid var(--r-border)", borderRadius: "2px", padding: "10px 12px", marginBottom: "8px", background: "var(--r-surface)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>
               <span style={{ fontSize: "12px", fontWeight: 500 }}>{obj.title}</span>
               <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{obj.type}</span>

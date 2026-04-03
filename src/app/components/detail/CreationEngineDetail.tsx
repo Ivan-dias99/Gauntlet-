@@ -61,7 +61,7 @@ export function CreationEngineDetail({ engineId, navigate, onStartChat }: Props)
                 <button
                   key={bid}
                   onClick={() => navigate("creation", "blueprint", bid)}
-                  style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: "12px", padding: "12px 14px", border: "1px solid var(--r-border)", borderRadius: "6px", background: "var(--r-surface)", cursor: "pointer", outline: "none", textAlign: "left", transition: "background 0.1s ease" }}
+                  style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: "12px", padding: "12px 14px", border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", cursor: "pointer", outline: "none", textAlign: "left", transition: "background 0.1s ease" }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--r-elevated)"; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--r-surface)"; }}
                 >

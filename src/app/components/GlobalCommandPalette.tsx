@@ -431,7 +431,7 @@ function CmdItem({ entry }: { entry: CmdEntry }) {
         alignItems: "center",
         gap: "10px",
         padding: "7px 10px",
-        borderRadius: "6px",
+        borderRadius: "2px",
         cursor: "pointer",
         outline: "none",
         userSelect: "none",

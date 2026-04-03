@@ -99,7 +99,7 @@ export function emptyActionBtn(onClick: () => void, label: string, accentVar: st
         fontFamily: "'JetBrains Mono', monospace",
         letterSpacing: "0.06em",
         padding: "6px 12px",
-        borderRadius: "6px",
+        borderRadius: "2px",
         border: `1px solid color-mix(in srgb, ${accentVar} 35%, var(--r-border))`,
         background: "color-mix(in srgb, var(--r-elevated) 100%, transparent)",
         color: "var(--r-text)",

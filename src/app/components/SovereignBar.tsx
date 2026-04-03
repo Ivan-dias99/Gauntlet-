@@ -175,7 +175,7 @@ export function SovereignBar({
           </span>
         </button>
 
-        {/* Status separator + live indicator */}
+        {/* Status separator + live indicator + chamber context */}
         <div
           style={{
             display: "flex",
@@ -193,7 +193,7 @@ export function SovereignBar({
               width: "4px",
               height: "4px",
               borderRadius: "50%",
-              background: isLive ? "var(--r-accent)" : "var(--r-pulse)",
+              background: isLive ? CHAMBER_DOTS[activeTab] : "var(--r-pulse)",
               flexShrink: 0,
             }}
           />
@@ -207,8 +207,25 @@ export function SovereignBar({
               userSelect: "none",
             }}
           >
-            {isLive ? "Live" : "Connected"}
+            {isLive ? activeTab : "Connected"}
           </span>
+          {isLive && (
+            <>
+              <span style={{ width: "1px", height: "8px", background: "var(--r-border-soft)", flexShrink: 0, margin: "0 2px" }} />
+              <span
+                style={{
+                  fontSize: "9px",
+                  letterSpacing: "0.06em",
+                  color: CHAMBER_DOTS[activeTab],
+                  fontFamily: "'JetBrains Mono', monospace",
+                  userSelect: "none",
+                  opacity: 0.8,
+                }}
+              >
+                {activeTab === "lab" ? "investigate" : activeTab === "school" ? "master" : activeTab === "creation" ? "build" : "govern"}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -219,7 +236,7 @@ export function SovereignBar({
           left: "50%",
           transform: "translateX(-50%)",
           background: "color-mix(in srgb, var(--r-rail) 92%, var(--r-surface))",
-          borderRadius: "10px",
+          borderRadius: "2px",
           padding: "4px",
           display: "flex",
           gap: "2px",
@@ -262,7 +279,7 @@ export function SovereignBar({
                     position: "absolute",
                     inset: 0,
                     background: "var(--r-surface)",
-                    borderRadius: "7px",
+                    borderRadius: "2px",
                     boxShadow: "0 1px 3px color-mix(in srgb, var(--r-text) 6%, transparent), 0 0 0 1px color-mix(in srgb, var(--r-text) 5%, var(--r-border-soft))",
                   }}
                   transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.85 }}
@@ -355,7 +372,7 @@ export function SovereignBar({
               alignItems: "center",
               gap: "5px",
               padding: "3px 5px 3px 3px",
-              borderRadius: "6px",
+              borderRadius: "2px",
               border: "none",
               background: isLedgerOpen ? "var(--r-rail)" : "transparent",
               cursor: "pointer",

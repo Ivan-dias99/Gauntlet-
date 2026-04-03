@@ -156,8 +156,8 @@ function OrganismVisual() {
             fill="none"
             stroke={node.color}
             strokeWidth="0.4"
-            animate={{ opacity: [0.06, 0.22, 0.06], r: [node.r + 1, node.r + 4, node.r + 1] }}
-            transition={{ duration: 3 + i * 0.7, delay: i * 0.5, repeat: Infinity, ease: "easeInOut" }}
+            animate={{ opacity: [0.08, 0.30, 0.08], r: [node.r + 1, node.r + 5.5, node.r + 1] }}
+            transition={{ duration: 3.5 + i * 0.8, delay: i * 0.4, repeat: Infinity, ease: "easeInOut" }}
           />
         ))}
         {/* Nodes */}
@@ -399,11 +399,11 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
               fontFamily:    "'Inter', system-ui, sans-serif",
               lineHeight:    1.65,
               letterSpacing: "-0.01em",
-              margin:        "0 0 40px",
+              margin:        "0 0 36px",
               maxWidth:      "480px",
             }}
           >
-            Ruberra is a <span style={{ color: "var(--r-text)", fontWeight: 500 }}>sovereign workstation</span> — one shell, continuous memory, consequence-bearing execution. Every session compounds into the next.
+            Ruberra is a <span style={{ color: "var(--r-text)", fontWeight: 500 }}>sovereign workstation</span> — one shell, continuous memory, consequence-bearing execution. Every session compounds. Nothing resets. Nothing fragments.
           </motion.p>
 
           {/* CTA group */}
@@ -458,7 +458,7 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.9, duration: 0.6 }}
-            style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "32px" }}
+            style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "28px" }}
           >
             {["Mission-bound", "Memory-bearing", "Consequence-driven", "Chamber-native"].map((tag) => (
               <span
@@ -466,17 +466,55 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
                 style={{
                   padding:       "4px 10px",
                   borderRadius:  "2px",
-                  border:        "1px solid var(--r-border-soft)",
-                  background:    "transparent",
+                  border:        "1px solid var(--r-border)",
+                  background:    "color-mix(in srgb, var(--r-surface) 70%, var(--r-bg))",
                   fontSize:      "9px",
                   fontFamily:    "'JetBrains Mono', monospace",
-                  color:         "var(--r-dim)",
+                  color:         "var(--r-subtext)",
                   letterSpacing: "0.05em",
                 }}
               >
                 {tag}
               </span>
             ))}
+          </motion.div>
+
+          {/* Living telemetry strip — system heartbeat */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.3, duration: 0.8 }}
+            style={{
+              display:      "flex",
+              alignItems:   "center",
+              gap:          "16px",
+              marginTop:    "24px",
+              padding:      "10px 14px",
+              borderRadius: "2px",
+              border:       "1px solid var(--r-border-soft)",
+              background:   "color-mix(in srgb, var(--r-surface) 50%, var(--r-bg))",
+            }}
+          >
+            <motion.div
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--r-ok)", flexShrink: 0 }}
+            />
+            <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
+              Runtime ready
+            </span>
+            <span style={{ width: "1px", height: "10px", background: "var(--r-border-soft)", flexShrink: 0 }} />
+            <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
+              4 chambers
+            </span>
+            <span style={{ width: "1px", height: "10px", background: "var(--r-border-soft)", flexShrink: 0 }} />
+            <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
+              7 pioneers
+            </span>
+            <span style={{ width: "1px", height: "10px", background: "var(--r-border-soft)", flexShrink: 0 }} />
+            <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
+              local memory
+            </span>
           </motion.div>
         </div>
 
