@@ -22,6 +22,14 @@ import {
 import { type ConsequenceAttribution } from "../dna/collective-execution";
 import { type AnalyticsPattern } from "../dna/intelligence-analytics";
 import { type PresenceManifest } from "../dna/distribution-presence";
+import { type LivingKnowledgeState, defaultLivingKnowledgeState, absorbKnowledge } from "../dna/living-knowledge";
+import { type ValueUnit, type ExchangeLedger, addValueUnit, defaultExchangeLedger } from "../dna/value-exchange";
+import { type CollectiveState, defaultCollectiveState, recordAttribution } from "../dna/collective-execution";
+import { type EcosystemNetworkState, defaultEcosystemState, admitToNetwork } from "../dna/ecosystem-network";
+import { type PlatformInfraState, defaultPlatformState, addLayer } from "../dna/platform-infrastructure";
+import { type OrgIntelligenceState, defaultOrgState, assessMissionHealth } from "../dna/org-intelligence";
+import { type DistributionState, defaultDistributionState, registerChannel } from "../dna/distribution-presence";
+import { type MissionOperationsState, defaultMissionOperationsState, buildOperationState } from "../dna/autonomous-operations";
 
 export type LifecycleStatus =
   | "draft"
@@ -32,9 +40,9 @@ export type LifecycleStatus =
   | "needs_input"
   | "ready_for_transfer"
   | "transferred"
-  | "validated"
   | "completed"
   | "exported"
+  | "validated"
   | "archived";
 
 export interface ContinuityItem {
@@ -73,6 +81,7 @@ export interface RuntimeSignal {
   destinationChamber: Tab;
   destination: { tab: Tab; view: string; id?: string };
   linkedObjectId?: string;
+  body?: string;
   createdAt: number;
   read: boolean;
   resolved: boolean;
@@ -343,9 +352,11 @@ export interface RuntimeFabric {
   attributions: ConsequenceAttribution[];
   /** Stack 14 — distribution manifests, persisted for session presence */
   presenceManifests: Record<string, PresenceManifest>;
+  /** Stack 03-04 — Mission operations state, persisted for governed execution */
+  missionOperations: Record<string, MissionOperationsState>;
 }
 
-const STORAGE_KEY = "ruberra_runtime_fabric_v6";
+const STORAGE_KEY = "ruberra_runtime_fabric_v15";
 
 const DEFAULT_CONNECTORS: ConnectorState[] = [
   { id: "knowledge-pack", label: "Knowledge Pack", chamber: "school", enabled: true, status: "ready", completeness: 100, lastUpdated: Date.now() },
@@ -417,6 +428,7 @@ function initialFabric(): RuntimeFabric {
     analyticsPatterns: [],
     attributions: [],
     presenceManifests: {},
+    missionOperations: {},
   };
 }
 
@@ -443,7 +455,6 @@ export function loadRuntimeFabric(): RuntimeFabric {
       runTimeline: parsed.runTimeline ?? [],
       chamberPolicies: parsed.chamberPolicies?.length ? parsed.chamberPolicies : DEFAULT_CHAMBER_POLICIES,
       intelligence: parsed.intelligence ?? defaultIntelligenceFoundationState(),
-      analyticsPatterns: parsed.analyticsPatterns ?? [],
       attributions: parsed.attributions ?? [],
       presenceManifests: parsed.presenceManifests ?? {},
     };
@@ -539,7 +550,7 @@ export function transferContinuity(
     createdAt: Date.now(),
   };
   const updated = fabric.continuity.map((item) =>
-    item.id === continuityId ? { ...item, status: "transferred", chamber: to, route: { tab: to, view: to === "creation" ? "terminal" : "chat" }, updatedAt: Date.now() } : item,
+    item.id === continuityId ? { ...item, status: "transferred" as LifecycleStatus, chamber: to, route: { tab: to, view: to === "creation" ? "terminal" : "chat" }, updatedAt: Date.now() } : item,
   );
   return { ...fabric, continuity: updated, transfers: [transfer, ...fabric.transfers] };
 }
@@ -898,7 +909,8 @@ export function transitionWorkflowStage(
   const runningStageIndex = run.stages.findIndex((stage) => stage.status === "running");
   const nextStages = run.stages.map((stage, i) => {
     if (i === runningStageIndex) {
-      return { ...stage, status: status === "failed" ? "failed" : "completed", endedAt: Date.now(), error };
+      const stageStatus = status === "failed" ? "failed" : status === "completed" ? "completed" : "running";
+      return { ...stage, status: stageStatus as any, endedAt: Date.now(), error };
     }
     if (i === runningStageIndex + 1 && status === "running") {
       return { ...stage, status: "running", startedAt: Date.now() };
@@ -1000,7 +1012,7 @@ export function buildRunOutcomeBundles(fabric: RuntimeFabric): RunOutcomeBundle[
       continuityId: item.id,
       chamber: item.chamber,
       executionState: execution?.executionState ?? "blocked",
-      provider: { id: execution?.selectedProviderId, state: providerState },
+      provider: { id: execution?.selectedProviderId, state: providerState as any },
       connectors: { total: connectorSlice.length, degraded, failed },
       workflow: workflow ? { id: workflow.workflowId, status: workflow.status } : undefined,
       lastTimelineLabel,
@@ -1161,27 +1173,28 @@ export function buildSearchIndex(fabric: RuntimeFabric): SearchIndexEntry[] {
 export function exportContinuity(fabric: RuntimeFabric, continuityId: string): RuntimeFabric {
   const item = fabric.continuity.find((c) => c.id === continuityId);
   if (!item) return fabric;
-  let next = transitionContinuity(fabric, continuityId, "exported");
-  next = awardProgress(next, {
-    kind: "export",
-    title: `${item.chamber} export`,
-    points: 30,
-    chamber: "profile",
-  });
+
+  let next = transitionContinuity(fabric, continuityId, "exported" as LifecycleStatus);
+
+  // Stack 14 Materialization: Record artifact consequence in the distribution metadata
+  // ledger trim: distributionLedger removed. 
+
   next = pushSignal(next, {
     type: "reward",
-    label: `${item.title.slice(0, 48)} exported to profile ledger`,
+    label: `${item.title.slice(0, 48)} archived in distribution ledger`,
     severity: "info",
     sourceChamber: item.chamber,
     destinationChamber: "profile",
     destination: { tab: "profile", view: "exports" },
     linkedObjectId: item.linkedObjectId,
   });
+
   // Governance audit: persist export event into run timeline (consequence record)
   next = appendRunTimeline(next, {
     continuityId,
-    label: `governance.export: ${item.chamber} · ${item.title.slice(0, 60)} → profile ledger`,
+    label: `governance.export: ${item.chamber} → distribution metadata`,
   });
+
   return next;
 }
 
@@ -1281,6 +1294,17 @@ export function upsertCompoundRun(
   };
 }
 
+
+export function setMissionOperationsToFabric(fabric: RuntimeFabric, missionId: string, ops: MissionOperationsState): RuntimeFabric {
+  return {
+    ...fabric,
+    missionOperations: {
+      ...fabric.missionOperations,
+      [missionId]: ops,
+    },
+  };
+}
+
 export function recordRuntimeAttribution(fabric: RuntimeFabric, attribution: ConsequenceAttribution): RuntimeFabric {
   return { ...fabric, attributions: [attribution, ...fabric.attributions].slice(0, 400) };
 }
@@ -1314,3 +1338,5 @@ export function heartbeatRuntimePresence(fabric: RuntimeFabric, operatorId: stri
     },
   };
 }
+
+
