@@ -285,7 +285,7 @@ export function GlobalCommandPalette({
               zIndex: 201,
               width: "min(580px, calc(100vw - 32px))",
               background: "var(--r-surface)",
-              borderRadius: "12px",
+              borderRadius: "2px",
               border: "1px solid var(--r-border)",
               boxShadow: "0 8px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.06)",
               overflow: "hidden",

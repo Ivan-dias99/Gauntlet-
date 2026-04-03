@@ -187,7 +187,7 @@ export function FeaturedHero({
     <div
       style={{
         margin: "0 28px 32px",
-        borderRadius: "12px",
+        borderRadius: "2px",
         border: "1px solid var(--r-border-soft)",
         background: "var(--r-surface)",
         overflow: "hidden",

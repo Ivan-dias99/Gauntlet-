@@ -570,7 +570,7 @@ export function OperationsPanel({
 
   const ledgerStyle: CSSProperties = {
     border: "1px solid var(--r-border-soft)",
-    borderRadius: "4px",
+    borderRadius: "2px",
     overflow: "hidden",
   };
 

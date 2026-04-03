@@ -15,6 +15,7 @@ import { getPioneer, getPioneerFromRuntimeId } from "./pioneer-registry";
 import { getExecutionTruth, TIER_LABEL, TIER_COLOR } from "./sovereign-runtime";
 import { SovereignEmptyFrame } from "./SovereignEmptyFrame";
 import { ExecutionConsequenceStrip } from "./ExecutionConsequenceStrip";
+import { MiniConstellation, StructuralGridBg } from "./OrganismMotifs";
 
 // ─── Chamber config ───────────────────────────────────────────────────────────
 
@@ -142,7 +143,7 @@ function EmptyState({
         transition={{ duration: 0.4, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
         style={{ marginBottom: "20px", opacity: 0.9, position: "relative" }}
       >
-        {glyph}
+        <MiniConstellation chamber={id as "lab" | "school" | "creation"} />
       </motion.div>
       <SovereignEmptyFrame
         accentVar={accent}
@@ -777,7 +778,7 @@ function Composer({
               style={{
                 width: "28px",
                 height: "28px",
-                borderRadius: "4px",
+                borderRadius: "2px",
                 border: canSend ? "none" : "1px solid var(--r-border)",
                 background: canSend ? accent : "transparent",
                 cursor: canSend ? "pointer" : "default",
@@ -1141,6 +1142,7 @@ export function ChamberChat({
         flexDirection: "column",
         overflow: "hidden",
         background: "var(--r-bg)",
+        position: "relative",
       }}
     >
       {/* Live Header Rail — chamber · EI · model · state (mission owned by MissionContextBand) */}
@@ -1152,6 +1154,8 @@ export function ChamberChat({
         execStatus={execStatus}
         eiName={eiName}
       />
+      {/* Structural grid — same mother surface as landing */}
+      <StructuralGridBg opacity={0.12} />
 
       {/* Thread */}
       <div

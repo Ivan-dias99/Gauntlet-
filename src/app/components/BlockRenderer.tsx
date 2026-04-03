@@ -948,7 +948,7 @@ function RenderInline({ text }: { text: string }) {
                 background: "var(--r-elevated)",
                 border: "1px solid var(--r-border-soft)",
                 padding: "0 5px",
-                borderRadius: "4px",
+                borderRadius: "2px",
                 color: "var(--r-accent-soft)",
                 lineHeight: 1.5,
               }}

@@ -56,7 +56,7 @@ export function ProfileLedger({
             width: "320px",
             background: "var(--r-surface)",
             border: "1px solid var(--r-border)",
-            borderRadius: "12px",
+            borderRadius: "2px",
             boxShadow: "0 16px 48px color-mix(in srgb, var(--r-text) 12%, transparent), 0 0 0 1px color-mix(in srgb, var(--r-text) 6%, transparent)",
             zIndex: 100,
             overflow: "hidden",
@@ -72,7 +72,7 @@ export function ProfileLedger({
                 style={{
                   width: "48px",
                   height: "48px",
-                  borderRadius: "10px",
+                  borderRadius: "2px",
                   background: "linear-gradient(145deg, var(--r-border) 0%, var(--r-muted) 100%)",
                   boxShadow: "inset 0 1px 1px rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.08)",
                   flexShrink: 0,
@@ -235,7 +235,7 @@ function GovernanceTrailItem({ action, verdict, ts }: { action: string; verdict:
         alignItems: "center",
         justifyContent: "space-between",
         padding: "6px 8px",
-        borderRadius: "5px",
+        borderRadius: "2px",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>

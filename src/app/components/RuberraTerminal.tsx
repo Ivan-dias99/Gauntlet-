@@ -12,6 +12,7 @@ import { ModelSelector } from "./ModelSelector";
 import { type ChamberTab, type TaskType } from "./model-orchestration";
 import { getExecutionTruth, TIER_LABEL, TIER_COLOR } from "./sovereign-runtime";
 import { getPioneerFromRuntimeId } from "./pioneer-registry";
+import { StructuralGridBg } from "./OrganismMotifs";
 
 // ─── Terminal Color System ────────────────────────────────────────────────────
 
@@ -513,7 +514,7 @@ function BlockDiff({ removed, added }: { removed: string; added: string }) {
           {removedLines.length} removed · {addedLines.length} added
         </span>
       </div>
-      <div style={{ border: `1px solid ${T.line2}`, borderRadius: "5px", overflow: "hidden", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>
+      <div style={{ border: `1px solid ${T.line2}`, borderRadius: "2px", overflow: "hidden", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>
         {Array.from({ length: maxLen }, (_, i) => (
           <div key={i}>
             {removedLines[i] !== undefined && (
@@ -855,8 +856,12 @@ export function RuberraTerminal({
         overflow: "hidden",
         background: T.bg,
         fontFamily: "'JetBrains Mono', monospace",
+        position: "relative",
       }}
     >
+      {/* Structural grid — same mother surface as landing */}
+      <StructuralGridBg opacity={0.08} />
+
       {/* Terminal command strip — chamber · mission · EI · provider/model · runtime state */}
       <div
         style={{
