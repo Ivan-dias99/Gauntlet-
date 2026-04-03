@@ -418,6 +418,11 @@ export default function App() {
   const [heartbeatTick, setHeartbeatTick] = useState(0);
   // ── Stack substrates ─────────────────────────────────────────────────────────
   // Stacks 10-20 now use canonical RuntimeFabric persistence only.
+  const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
+  const trustSignal = deriveTrustSignal(securityState.events);
+  const activeMission = activeMissionId ? missions.find((m) => m.id === activeMissionId) ?? null : null;
+  const missionTaskByContinuityRef = useRef<Record<string, string>>({});
+  const generatedMissionTaskRef = useRef<Set<string>>(new Set());
 
   const knowledgeGraph = useMemo(() => {
     let g = defaultKnowledgeGraph();
@@ -2379,12 +2384,7 @@ export default function App() {
   }, []);
 
   const isLive = Object.values(signals).some((s) => s === "streaming");
-  // ── Stack 06: Derive live trust signal from sovereign security state ──────────
-  const trustSignal = deriveTrustSignal(securityState.events);
-  const searchIndex = useMemo(() => buildSearchIndex(runtimeFabric), [runtimeFabric]);
-  const activeMission = activeMissionId ? missions.find((m) => m.id === activeMissionId) ?? null : null;
-  const missionTaskByContinuityRef = useRef<Record<string, string>>({});
-  const generatedMissionTaskRef = useRef<Set<string>>(new Set());
+
 
   useEffect(() => {
     if (!activeMissionId) {
