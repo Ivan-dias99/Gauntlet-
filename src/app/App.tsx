@@ -133,6 +133,8 @@ import {
   deriveTrustSignal,
   evaluateAccess,
   defaultAccessPolicy,
+  defaultIsolationBoundary,
+  verifyIsolation,
   scanConnectorOutput,
   checkStorageSafety,
   DEFAULT_RUNTIME_SAFETY_POLICY,
@@ -153,6 +155,7 @@ import { mcpMissionCreate, mcpMissionUpdateState, mcpMissionAttachContinuity, mc
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
 const STORAGE_KEY      = "ruberra_messages_v2";
 const GOV_STORAGE_KEY  = "ruberra_trust_gov_v1";
+const STACK_STATE_STORAGE_KEY = "ruberra_stack_state_v1";
 
 function loadTrustGov() {
   if (typeof window === "undefined") return defaultTrustGovernanceState();
@@ -161,6 +164,30 @@ function loadTrustGov() {
     if (raw) return JSON.parse(raw) as ReturnType<typeof defaultTrustGovernanceState>;
   } catch { /* corrupt */ }
   return defaultTrustGovernanceState();
+}
+
+function loadStackState<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(STACK_STATE_STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return (parsed[key] as T | undefined) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveStackState<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(STACK_STATE_STORAGE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    parsed[key] = value;
+    localStorage.setItem(STACK_STATE_STORAGE_KEY, JSON.stringify(parsed));
+  } catch {
+    // ignore persistence failure
+  }
 }
 const MAX_CONTEXT = 20;
 
@@ -413,6 +440,15 @@ export default function App() {
   const [_platformStateBase] = useState(defaultPlatformState);
   const [_orgStateBase]     = useState(defaultOrgState);
   const [_personalOSBase]   = useState(() => defaultPersonalOS("operator-1"));
+  const [civBase] = useState(() => loadStackState("civBase", defaultCivilization()));
+  const [knowledgeGraph, setKnowledgeGraph] = useState(() => loadStackState("knowledgeGraph", defaultKnowledgeGraph()));
+  const [collectiveBase, setCollectiveBase] = useState(() => loadStackState("collectiveBase", defaultCollectiveState()));
+  const [presenceBase] = useState(() => loadStackState("presenceBase", defaultPresenceManifest("operator-1")));
+  const [ledgerBase] = useState(() => loadStackState("ledgerBase", defaultExchangeLedger()));
+  const [ecoBase] = useState(() => loadStackState("ecoBase", defaultEcosystemState()));
+  const [platformStateBase] = useState(() => loadStackState("platformStateBase", defaultPlatformState()));
+  const [orgStateBase] = useState(() => loadStackState("orgStateBase", defaultOrgState()));
+  const [personalOSBase] = useState(() => loadStackState("personalOSBase", defaultPersonalOS("operator-1")));
   // compoundNetwork is live in runtimeFabric — removed dead useState duplicate
   const [trustGovState, setTrustGovState] = useState(loadTrustGov);
   const [flowState, setFlowState] = useState(defaultAutonomousFlowState);
@@ -775,6 +811,7 @@ export default function App() {
     // ─────────────────────────────────────────────────────────────────────────
 
     const task = tasks[tab as ChamberTab];
+    const connectorCandidates = recommendedConnectorsForChamber(runtimeFabric, tab);
     setRuntimeFabric((prev) => updatePreferences(prev, {
       preferredChamber: tab,
       preferredObjectType: tab === "school" ? "lesson" : tab === "lab" ? "experiment" : "artifact_pack",
@@ -834,6 +871,20 @@ export default function App() {
         }));
         setSystemModel((prev) => setMissionState(prev, activeMissionId, "blocked"));
         return;
+      }
+      if (connectorCandidates.length > 0) {
+        const connectorVerdict = evaluateAccess("connector_use", missionRoutePinned?.pioneerId ?? baseRouteDecision.pioneerId, accessPolicy);
+        if (connectorVerdict !== "permit") {
+          recordSecurityEvent(createSecurityEvent({
+            type: "scope_violation",
+            severity: connectorVerdict === "deny" ? "critical" : "warn",
+            missionId: activeMissionId,
+            summary: `connector_use ${connectorVerdict} for pioneer`,
+            detail: `${missionRoutePinned?.pioneerId ?? baseRouteDecision.pioneerId} on ${tab}`,
+          }));
+          setSystemModel((prev) => setMissionState(prev, activeMissionId, "blocked"));
+          return;
+        }
       }
       const autonomy = evaluateAutonomy(
         `${tab}.${task}.${text.slice(0, 140)}`,
@@ -1041,7 +1092,7 @@ export default function App() {
     abortRefs.current[tab] = controller;
 
     const requestedModelMeta = MODEL_REGISTRY.find((m) => m.id === requestedModelId);
-    const connectorActionRows = recommendedConnectorsForChamber(runtimeFabric, tab).map((cid) => {
+    const connectorActionRows = connectorCandidates.map((cid) => {
       const row = runtimeFabric.connectors.find((c) => c.id === cid);
       const reg = runtimeFabric.intelligence.connectorRegistry.find((r) => r.id === cid);
       const name = reg?.label ?? cid;
@@ -1073,6 +1124,38 @@ export default function App() {
 
     const assistantId = crypto.randomUUID();
     const continuityId = `${tab}-${assistantId}`;
+    if (activeMissionId) {
+      const isolationCheck = verifyIsolation(continuityId, activeMissionId, securityState.isolationBoundaries);
+      if (!isolationCheck.permitted) {
+        recordSecurityEvent(createSecurityEvent({
+          type: "isolation_violation",
+          severity: "critical",
+          missionId: activeMissionId,
+          summary: "continuity overlap blocked",
+          detail: `continuity ${continuityId} already bound to ${isolationCheck.conflictingMissionId}`,
+        }));
+        setSystemModel((prev) => setMissionState(prev, activeMissionId, "blocked"));
+        return;
+      }
+      setSecurityState((prev) => {
+        const boundary = prev.isolationBoundaries.find((b) => b.missionId === activeMissionId)
+          ?? defaultIsolationBoundary(activeMissionId);
+        const nextBoundary = {
+          ...boundary,
+          continuityRefs: boundary.continuityRefs.includes(continuityId)
+            ? boundary.continuityRefs
+            : [...boundary.continuityRefs, continuityId],
+        };
+        return updateTrustSignal({
+          ...prev,
+          isolationBoundaries: [
+            nextBoundary,
+            ...prev.isolationBoundaries.filter((b) => b.missionId !== activeMissionId),
+          ],
+          lastAuditAt: Date.now(),
+        });
+      });
+    }
 
     // ── Stack 06: Session identity re-verification at dispatch ────────────────
     // Re-verify the operator session fingerprint at every dispatch.
@@ -1092,7 +1175,6 @@ export default function App() {
       }
     }
     // ── End Stack 06 session identity check ───────────────────────────────────
-
     // Governance gate — enforce execution policy before dispatch
     const govResult = enforceExecutionGate(`chamber.${tab}.dispatch`, {
       kind:      "operator",
@@ -2632,8 +2714,8 @@ export default function App() {
     });
     const capMap   = defaultCapabilityMap();
     const insights = surfaceOrgInsights(capMap, missionHealth);
-    return { ..._orgStateBase, missionHealth, insights, lastUpdated: Date.now() };
-  }, [missions, runtimeFabric.continuity, runtimeFabric.signals, _orgStateBase]);
+    return { ...orgStateBase, missionHealth, insights, lastUpdated: Date.now() };
+  }, [missions, runtimeFabric.continuity, runtimeFabric.signals, orgStateBase]);
 
   const platformState = useMemo(() => {
     // Derive inference status from live-probed providerHealth, fall back to static resolution.
@@ -2645,12 +2727,12 @@ export default function App() {
     const providerLabel = liveHealthy
       ? (runtimeFabric.providerHealth.find((ph) => ph.state === "healthy")?.providerId ?? "local")
       : (execTruth.adapter_kind ?? "sovereign");
-    let state = _platformStateBase;
+    let state = platformStateBase;
     state = addLayer(state, { ...createInfraLayer("intelligence", providerLabel, liveHealthy), status: inferenceStatus });
     state = addLayer(state, { ...createInfraLayer("network", "supabase", false), status: "nominal" });
     state = addLayer(state, { ...createInfraLayer("storage", "supabase", false), status: "nominal" });
     return state;
-  }, [_platformStateBase, runtimeFabric.providerHealth, activeTab]);
+  }, [platformStateBase, runtimeFabric.providerHealth, activeTab]);
 
   const personalOS = useMemo(() => {
     const memories = [
@@ -2666,9 +2748,9 @@ export default function App() {
         createMemoryEntry("mission_history", `${c.chamber} · ${c.title.slice(0, 60)}`)
       ),
     ];
-    const context = buildOperatorContext(_personalOSBase.profile, memories, _personalOSBase.agent);
-    return { ..._personalOSBase, memory: memories, context, lastUpdated: Date.now() };
-  }, [runtimeFabric.preferences, runtimeFabric.aiSettings, runtimeFabric.continuity, missions, _personalOSBase]);
+    const context = buildOperatorContext(personalOSBase.profile, memories, personalOSBase.agent);
+    return { ...personalOSBase, memory: memories, context, lastUpdated: Date.now() };
+  }, [runtimeFabric.preferences, runtimeFabric.aiSettings, runtimeFabric.continuity, missions, personalOSBase]);
 
   // ── Event-pathway substrates ──────────────────────────────────────────────────
 
@@ -2676,6 +2758,8 @@ export default function App() {
   const civilization = useMemo(() => {
     let civ = _civBase;
     for (const p of PIONEER_REGISTRY) {
+    let civ = civBase;
+    for (const p of PIONEER_REGISTRY.slice(0, 10)) {
       const manifest = registerAgent({
         id:           p.id,
         name:         p.name,
@@ -2685,20 +2769,21 @@ export default function App() {
       const activeContinuity = runtimeFabric.continuity.filter((c) => c.pioneerId === p.id);
       const isActive = activeContinuity.some((c) => c.status === "in_progress");
       const boundMissions = activeContinuity.map((c) => c.id);
+      const lastActiveAt = activeContinuity.reduce((max, c) => Math.max(max, c.updatedAt ?? 0), 0);
       let agent = boundMissions.reduce(
-        (m, mid) => ({ ...m, boundMissions: [...m.boundMissions, mid], lastActiveAt: Date.now() }),
+        (m, mid) => ({ ...m, boundMissions: [...m.boundMissions, mid], lastActiveAt }),
         manifest
       );
       if (isActive) agent = activateAgent(agent);
       civ = admitAgent(civ, agent);
     }
     return civ;
-  }, [_civBase, runtimeFabric.continuity]);
+  }, [civBase, runtimeFabric.continuity]);
 
   // 2. Collective: operator as sovereign + mission graph + real collision map
   const collectiveState = useMemo(() => {
     const owner = runtimeFabric.workspace.owner;
-    let state = _collectiveBase;
+    let state = collectiveBase;
     state = admitMember(state, createMember(owner, "sovereign", missions.map((m) => m.id)));
     for (const m of missions) {
       state = addToMissionGraph(state, buildMissionGraphNode(m.id));
@@ -2711,14 +2796,14 @@ export default function App() {
       collisionMap = claimCollectiveResource(collisionMap, `chamber.${c.chamber}`, claimant);
     }
     return { ...state, attributions: runtimeFabric.attributions, collisionMap, lastUpdated: Date.now() };
-  }, [_collectiveBase, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity, runtimeFabric.attributions]);
+  }, [collectiveBase, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity, runtimeFabric.attributions]);
 
   // 3. Presence manifest: always register the web channel; add active chambers
   const presenceManifest = useMemo(() => {
     const owner = runtimeFabric.workspace.owner;
     let manifest = runtimeFabric.presenceManifests[owner];
     if (!manifest) {
-      manifest = defaultPresenceManifest(owner);
+      manifest = { ...presenceBase, operatorId: owner };
     }
     // Context-sensitive updates for the active channel
     if (messages.lab.length > 0)      manifest = registerChannel(manifest, createChannel("api",  { chamber: "lab" }));
@@ -2736,7 +2821,7 @@ export default function App() {
     };
 
     return manifest;
-  }, [runtimeFabric.presenceManifests, runtimeFabric.workspace.owner, messages.lab.length, messages.creation.length, activeTab, activeMissionId]);
+  }, [runtimeFabric.presenceManifests, runtimeFabric.workspace.owner, messages.lab.length, messages.creation.length, activeTab, activeMissionId, presenceBase]);
 
   // Sync presence heartbeat into substrate
   useEffect(() => {
@@ -2749,7 +2834,7 @@ export default function App() {
 
   // 4. Exchange ledger: exported continuity items become governance-verified value units
   const exchangeLedger = useMemo(() => {
-    let ledger = _ledgerBase;
+    let ledger = ledgerBase;
     for (const c of runtimeFabric.continuity.filter((x) => x.status === "exported")) {
       // verifyValueUnit: sets verifiedAt — governance gate already enforced on export path
       const unit = verifyValueUnit(makeAvailable(mintValue(c.id, runtimeFabric.workspace.owner, {
@@ -2760,11 +2845,11 @@ export default function App() {
       ledger = addValueUnit(ledger, unit);
     }
     return ledger;
-  }, [_ledgerBase, runtimeFabric.continuity, runtimeFabric.workspace.owner]);
+  }, [ledgerBase, runtimeFabric.continuity, runtimeFabric.workspace.owner]);
 
   // 5. Ecosystem: enabled connectors become admitted extensions
   const ecosystemState = useMemo(() => {
-    let state = _ecoBase;
+    let state = ecoBase;
     for (const c of runtimeFabric.connectors.filter((x) => x.enabled)) {
       const ext = proposeExtension({
         id:           c.id,
@@ -2779,7 +2864,55 @@ export default function App() {
       state = admitToNetwork(state, { ...ext, status: "admitted" });
     }
     return state;
-  }, [_ecoBase, runtimeFabric.connectors]);
+  }, [ecoBase, runtimeFabric.connectors]);
+
+  // Stack state persistence (10→20): persist non-empty consequence surfaces across sessions
+  useEffect(() => {
+    let next = defaultKnowledgeGraph();
+    for (const obj of runtimeFabric.objects.slice(0, 20)) {
+      const node = createNode({
+        type: obj.type === "investigation" || obj.type === "lesson" ? "concept" : "artifact",
+        content: obj.title,
+        tags: obj.tags ?? [],
+        confidence: "medium",
+      });
+      next = addNode(next, node);
+    }
+    setKnowledgeGraph(next);
+    saveStackState("knowledgeGraph", next);
+  }, [runtimeFabric.objects]);
+
+  useEffect(() => {
+    saveStackState("civBase", civilization);
+  }, [civilization]);
+
+  useEffect(() => {
+    saveStackState("collectiveBase", collectiveState);
+  }, [collectiveState]);
+
+  useEffect(() => {
+    saveStackState("presenceBase", presenceManifest);
+  }, [presenceManifest]);
+
+  useEffect(() => {
+    saveStackState("ledgerBase", exchangeLedger);
+  }, [exchangeLedger]);
+
+  useEffect(() => {
+    saveStackState("ecoBase", ecosystemState);
+  }, [ecosystemState]);
+
+  useEffect(() => {
+    saveStackState("platformStateBase", platformState);
+  }, [platformState]);
+
+  useEffect(() => {
+    saveStackState("orgStateBase", orgState);
+  }, [orgState]);
+
+  useEffect(() => {
+    saveStackState("personalOSBase", personalOS);
+  }, [personalOS]);
 
   const activeMissionRuntimeState = activeMissionId ? systemModel.missionStates[activeMissionId] : undefined;
   const adaptiveMissionState = activeMission

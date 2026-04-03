@@ -310,6 +310,8 @@ export function SchoolMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
+      composerLocked={composerLocked}
+      composerLockLabel={composerLockLabel}
       missionStatus={missionStatus}
     />
   );

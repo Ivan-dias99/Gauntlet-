@@ -259,7 +259,6 @@ export interface SystemModel {
   health:        SystemHealthSignal;
   anomalies:     SystemAnomaly[];
   missionStates: Record<MissionId, "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived">;
-  missionStates: Record<MissionId, "running" | "idle" | "blocked">;
   /** Stack 04: Mission-bound autonomous execution substrate. Persisted in fabric. */
   missionOperations: Record<MissionId, MissionOperationsState>;
   lastUpdated:   number;
