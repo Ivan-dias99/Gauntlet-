@@ -71,7 +71,8 @@ function SchoolLibrary({ navigate }: { navigate: NavFn }) {
         style={{
           padding: "14px 32px 12px",
           borderBottom: "1px solid var(--r-border)",
-          background: "var(--r-surface)",
+          background: `color-mix(in srgb, var(--chamber-school) 5%, var(--r-surface))`,
+          borderTop: `2px solid color-mix(in srgb, var(--chamber-school) 50%, transparent)`,
           flexShrink: 0,
         }}
       >
