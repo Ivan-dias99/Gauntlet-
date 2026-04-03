@@ -1074,6 +1074,8 @@ export function ChamberChat({
   onTaskChange,
   onModelChange,
   missionName,
+  composerLocked = false,
+  composerLockLabel,
   missionStatus,
 }: {
   messages:      Message[];
@@ -1089,6 +1091,8 @@ export function ChamberChat({
   onModelChange: (modelId: string) => void;
   /** Mission binding — propagated into each assistant message execution strip */
   missionName?: string;
+  composerLocked?: boolean;
+  composerLockLabel?: string;
   /** Mission ledger state — drives terminal-state consequence lock */
   missionStatus?: string;
 }) {
@@ -1235,6 +1239,8 @@ export function ChamberChat({
         modelId={modelId}
         onTaskChange={onTaskChange}
         onModelChange={onModelChange}
+        composerLocked={composerLocked}
+        composerLockLabel={composerLockLabel}
       />
     </div>
   );

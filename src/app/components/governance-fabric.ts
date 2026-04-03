@@ -344,10 +344,10 @@ export function enforceExecutionGate(
   return {
     allowed:  result.allowed,
     verdict:  result.verdict,
-    gateName: result.gate?.id ?? result.gate?.label,
+    gateName: result.gate?.label ?? result.gate?.id,
     auditId,
     reason:   result.allowed
-      ? `${result.gate?.id ?? "default"} · ${result.verdict}`
-      : `blocked by ${result.gate?.id ?? "default"} gate`,
+      ? `${result.gate?.label ?? result.gate?.id ?? "default"} · ${result.verdict}`
+      : `blocked by ${result.gate?.label ?? result.gate?.id ?? "default"} gate`,
   };
 }

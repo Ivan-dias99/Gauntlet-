@@ -133,6 +133,8 @@ import {
   deriveTrustSignal,
   evaluateAccess,
   defaultAccessPolicy,
+  defaultIsolationBoundary,
+  verifyIsolation,
   scanConnectorOutput,
   checkStorageSafety,
   DEFAULT_RUNTIME_SAFETY_POLICY,
@@ -783,6 +785,7 @@ export default function App() {
     // ─────────────────────────────────────────────────────────────────────────
 
     const task = tasks[tab as ChamberTab];
+    const connectorCandidates = recommendedConnectorsForChamber(runtimeFabric, tab);
     setRuntimeFabric((prev) => updatePreferences(prev, {
       preferredChamber: tab,
       preferredObjectType: tab === "school" ? "lesson" : tab === "lab" ? "experiment" : "artifact_pack",
@@ -842,6 +845,20 @@ export default function App() {
         }));
         setSystemModel((prev) => setMissionState(prev, activeMissionId, "blocked"));
         return;
+      }
+      if (connectorCandidates.length > 0) {
+        const connectorVerdict = evaluateAccess("connector_use", missionRoutePinned?.pioneerId ?? baseRouteDecision.pioneerId, accessPolicy);
+        if (connectorVerdict !== "permit") {
+          recordSecurityEvent(createSecurityEvent({
+            type: "scope_violation",
+            severity: connectorVerdict === "deny" ? "critical" : "warn",
+            missionId: activeMissionId,
+            summary: `connector_use ${connectorVerdict} for pioneer`,
+            detail: `${missionRoutePinned?.pioneerId ?? baseRouteDecision.pioneerId} on ${tab}`,
+          }));
+          setSystemModel((prev) => setMissionState(prev, activeMissionId, "blocked"));
+          return;
+        }
       }
       const autonomy = evaluateAutonomy(
         `${tab}.${task}.${text.slice(0, 140)}`,
@@ -1049,7 +1066,7 @@ export default function App() {
     abortRefs.current[tab] = controller;
 
     const requestedModelMeta = MODEL_REGISTRY.find((m) => m.id === requestedModelId);
-    const connectorActionRows = recommendedConnectorsForChamber(runtimeFabric, tab).map((cid) => {
+    const connectorActionRows = connectorCandidates.map((cid) => {
       const row = runtimeFabric.connectors.find((c) => c.id === cid);
       const reg = runtimeFabric.intelligence.connectorRegistry.find((r) => r.id === cid);
       const name = reg?.label ?? cid;
@@ -1081,6 +1098,38 @@ export default function App() {
 
     const assistantId = crypto.randomUUID();
     const continuityId = `${tab}-${assistantId}`;
+    if (activeMissionId) {
+      const isolationCheck = verifyIsolation(continuityId, activeMissionId, securityState.isolationBoundaries);
+      if (!isolationCheck.permitted) {
+        recordSecurityEvent(createSecurityEvent({
+          type: "isolation_violation",
+          severity: "critical",
+          missionId: activeMissionId,
+          summary: "continuity overlap blocked",
+          detail: `continuity ${continuityId} already bound to ${isolationCheck.conflictingMissionId}`,
+        }));
+        setSystemModel((prev) => setMissionState(prev, activeMissionId, "blocked"));
+        return;
+      }
+      setSecurityState((prev) => {
+        const boundary = prev.isolationBoundaries.find((b) => b.missionId === activeMissionId)
+          ?? defaultIsolationBoundary(activeMissionId);
+        const nextBoundary = {
+          ...boundary,
+          continuityRefs: boundary.continuityRefs.includes(continuityId)
+            ? boundary.continuityRefs
+            : [...boundary.continuityRefs, continuityId],
+        };
+        return updateTrustSignal({
+          ...prev,
+          isolationBoundaries: [
+            nextBoundary,
+            ...prev.isolationBoundaries.filter((b) => b.missionId !== activeMissionId),
+          ],
+          lastAuditAt: Date.now(),
+        });
+      });
+    }
 
     // ── Stack 06: Session identity re-verification at dispatch ────────────────
     // Re-verify the operator session fingerprint at every dispatch.
@@ -1100,7 +1149,6 @@ export default function App() {
       }
     }
     // ── End Stack 06 session identity check ───────────────────────────────────
-
     // Governance gate — enforce execution policy before dispatch
     const govResult = enforceExecutionGate(`chamber.${tab}.dispatch`, {
       kind:      "operator",
