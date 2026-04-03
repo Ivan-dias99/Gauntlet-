@@ -19,16 +19,14 @@ import {
   createCompoundNode,
   estimateReplicationBarrier,
 } from "../dna/compound-intelligence";
-import { type ConsequenceAttribution } from "../dna/collective-execution";
+import { type ConsequenceAttribution, type CollectiveState, defaultCollectiveState } from "../dna/collective-execution";
 import { type AnalyticsPattern } from "../dna/intelligence-analytics";
 import { type PresenceManifest } from "../dna/distribution-presence";
 import { type LivingKnowledgeState, defaultLivingKnowledgeState, absorbKnowledge } from "../dna/living-knowledge";
 import { type ValueUnit, type ExchangeLedger, addValueUnit, defaultExchangeLedger } from "../dna/value-exchange";
-import { type CollectiveState, defaultCollectiveState, recordAttribution } from "../dna/collective-execution";
 import { type EcosystemNetworkState, defaultEcosystemState, admitToNetwork } from "../dna/ecosystem-network";
 import { type PlatformInfraState, defaultPlatformState, addLayer } from "../dna/platform-infrastructure";
 import { type OrgIntelligenceState, defaultOrgState, assessMissionHealth } from "../dna/org-intelligence";
-import { type DistributionState, defaultDistributionState, registerChannel } from "../dna/distribution-presence";
 import { type MissionOperationsState, defaultMissionOperationsState, buildOperationState } from "../dna/autonomous-operations";
 import { type PersonalSovereignOSState, defaultPersonalOS } from "../dna/personal-sovereign-os";
 
