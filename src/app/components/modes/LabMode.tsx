@@ -242,7 +242,14 @@ export function LabMode({
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
   missionName?: string;
+  missionState?: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived";
 }) {
+  const composerLocked = missionState === "completed" || missionState === "archived";
+  const composerLockLabel = composerLocked
+    ? `Mission ${missionState} — release or activate a mission to continue`
+    : missionState === "blocked"
+      ? "Mission blocked — resolve blockers in Profile → Operations"
+      : undefined;
   const showHome = labView === "home" || (!messages.length && labView === "chat");
 
   if (showHome) return (
@@ -279,7 +286,9 @@ export function LabMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
-      placeholder="Write a code directive, analysis command, or research query…"
+      inputLocked={composerLocked}
+      lockLabel={composerLockLabel}
+      placeholder={composerLocked ? "Mission locked" : "Write a code directive, analysis command, or research query…"}
     />
   );
 
@@ -293,6 +302,8 @@ export function LabMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
+      composerLocked={composerLocked}
+      composerLockLabel={composerLockLabel}
     />
   );
 }

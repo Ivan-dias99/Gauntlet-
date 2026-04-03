@@ -723,7 +723,14 @@ export function CreationMode({
   onTaskChange: (task: TaskType) => void;
   onModelChange: (modelId: string) => void;
   missionName?: string;
+  missionState?: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived";
 }) {
+  const composerLocked = missionState === "completed" || missionState === "archived";
+  const composerLockLabel = composerLocked
+    ? `Mission ${missionState} — release or activate a mission to continue`
+    : missionState === "blocked"
+      ? "Mission blocked — resolve blockers in Profile → Operations"
+      : undefined;
   const showHome = creationView === "home" || (!messages.length && creationView === "chat");
 
   if (showHome) {
@@ -759,7 +766,9 @@ export function CreationMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
-      placeholder="Directive — describe what to build, generate, or forge…"
+      inputLocked={composerLocked}
+      lockLabel={composerLockLabel}
+      placeholder={composerLocked ? "Mission locked" : "Directive — describe what to build, generate, or forge…"}
     />
   );
 
@@ -773,6 +782,8 @@ export function CreationMode({
       onTaskChange={onTaskChange}
       onModelChange={onModelChange}
       missionName={missionName}
+      composerLocked={composerLocked}
+      composerLockLabel={composerLockLabel}
     />
   );
 }

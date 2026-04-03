@@ -803,12 +803,14 @@ export interface RuberraTerminalProps {
   chamberAccentVar?: string;
   /** Mission binding — shown in execution trace when a mission is active */
   missionName?: string;
+  inputLocked?: boolean;
+  lockLabel?: string;
 }
 
 export function RuberraTerminal({
   messages, isLoading, draft, onDraftChange, onSend, onCancel,
   chamberLabel, chamber, task, modelId, onTaskChange, onModelChange, placeholder = "Enter directive…", elapsedLabel,
-  chamberAccentVar = "var(--chamber-creation)", missionName,
+  chamberAccentVar = "var(--chamber-creation)", missionName, inputLocked = false, lockLabel,
 }: RuberraTerminalProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -819,7 +821,7 @@ export function RuberraTerminal({
 
   function submit() {
     const text = draft.trim();
-    if (!text || isLoading) return;
+    if (!text || isLoading || inputLocked) return;
     onDraftChange("");
     onSend(text);
   }
@@ -990,8 +992,8 @@ export function RuberraTerminal({
         onChange={onDraftChange}
         onSubmit={submit}
         onCancel={onCancel}
-        disabled={isLoading}
-        placeholder={placeholder}
+        disabled={isLoading || inputLocked}
+        placeholder={inputLocked ? (lockLabel ?? placeholder) : placeholder}
       />
     </div>
   );

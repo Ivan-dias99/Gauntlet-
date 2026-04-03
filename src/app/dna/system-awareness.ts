@@ -257,7 +257,7 @@ export interface SystemModel {
   snapshot:      ResourceSnapshot;
   health:        SystemHealthSignal;
   anomalies:     SystemAnomaly[];
-  missionStates: Record<MissionId, "running" | "idle" | "blocked">;
+  missionStates: Record<MissionId, "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived">;
   lastUpdated:   number;
 }
 
@@ -311,7 +311,7 @@ export function resolveAnomaly(model: SystemModel, anomalyId: string): SystemMod
 export function setMissionState(
   model: SystemModel,
   missionId: MissionId,
-  state: "running" | "idle" | "blocked",
+  state: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived",
 ): SystemModel {
   return {
     ...model,
