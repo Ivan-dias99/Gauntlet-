@@ -125,11 +125,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function EmptySlate({ label }: { label: string }) {
   return (
     <div style={{
-      padding: "20px 0",
+      padding: "10px 0",
       color: "var(--r-dim)",
-      fontSize: "12px",
-      textAlign: "center",
-      letterSpacing: "0.02em",
+      fontSize: "10px",
+      fontFamily: "'JetBrains Mono', monospace",
+      letterSpacing: "0.06em",
+      textTransform: "uppercase",
     }}>
       {label}
     </div>
@@ -140,14 +141,16 @@ function Pill({ color, label }: { color: string; label: string }) {
   return (
     <span style={{
       display: "inline-block",
-      padding: "2px 7px",
-      borderRadius: "4px",
-      background: `color-mix(in srgb, ${color} 14%, transparent)`,
-      border: `1px solid color-mix(in srgb, ${color} 16%, transparent)`,
+      padding: "1px 5px",
+      borderRadius: "2px",
+      background: `color-mix(in srgb, ${color} 10%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${color} 14%, transparent)`,
       color,
-      fontSize: "10px",
-      fontWeight: 400,
-      letterSpacing: "0.04em",
+      fontSize: "8px",
+      fontFamily: "'JetBrains Mono', monospace",
+      fontWeight: 500,
+      letterSpacing: "0.06em",
+      textTransform: "uppercase",
     }}>
       {label}
     </span>
@@ -160,8 +163,8 @@ function Row({ children, style }: { children: React.ReactNode; style?: CSSProper
       display: "flex",
       alignItems: "center",
       gap: "8px",
-      padding: "10px 14px",
-      borderBottom: "1px solid var(--r-border)",
+      padding: "6px 0",
+      borderBottom: "1px solid var(--r-border-soft)",
       ...style,
     }}>
       {children}
@@ -172,7 +175,7 @@ function Row({ children, style }: { children: React.ReactNode; style?: CSSProper
 // ─── Task list ────────────────────────────────────────────────────────────────
 
 function TaskList({ tasks, navigate }: { tasks: MissionTask[]; navigate: NavFn }) {
-  if (tasks.length === 0) return <EmptySlate label="No active mission tasks" />;
+  if (tasks.length === 0) return <EmptySlate label="no tasks" />;
 
   return (
     <div>
@@ -187,7 +190,7 @@ function TaskList({ tasks, navigate }: { tasks: MissionTask[]; navigate: NavFn }
           }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontSize: "13px",
+              fontSize: "12px",
               fontWeight: 500,
               color: "var(--r-text)",
               whiteSpace: "nowrap",
@@ -198,9 +201,9 @@ function TaskList({ tasks, navigate }: { tasks: MissionTask[]; navigate: NavFn }
               {task.intent}
             </div>
             <div style={{
-              fontSize: "11px",
+              fontSize: "10px",
               color: "var(--r-dim)",
-              marginTop: "2px",
+              marginTop: "1px",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -227,12 +230,14 @@ function TaskList({ tasks, navigate }: { tasks: MissionTask[]; navigate: NavFn }
             <button
               onClick={() => navigate(task.handoffTarget!.chamber, "chat")}
               style={{
-                padding: "3px 8px",
-                borderRadius: "5px",
+                padding: "2px 6px",
+                borderRadius: "2px",
                 border: "1px solid var(--r-border)",
                 background: "transparent",
                 color: "var(--r-subtext)",
-                fontSize: "11px",
+                fontSize: "10px",
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: "0.04em",
                 cursor: "pointer",
               }}
             >
@@ -257,7 +262,7 @@ function HandoffQueue({
   onReject:  (id: string, reason: string) => void;
 }) {
   const pending = handoffs.filter((h) => h.state === "pending");
-  if (pending.length === 0) return <EmptySlate label="No pending mission handoffs" />;
+  if (pending.length === 0) return <EmptySlate label="no handoffs" />;
 
   return (
     <div>
@@ -265,7 +270,7 @@ function HandoffQueue({
         <Row key={h.id}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontSize: "12px",
+              fontSize: "11px",
               fontWeight: 500,
               color: "var(--r-text)",
             }}>
@@ -290,30 +295,36 @@ function HandoffQueue({
           <button
             onClick={() => onAccept(h.id)}
             style={{
-              padding: "3px 8px",
-              borderRadius: "5px",
+              padding: "2px 6px",
+              borderRadius: "2px",
               border: "1px solid var(--r-border)",
               background: "transparent",
               color: "var(--r-subtext)",
-              fontSize: "11px",
+              fontSize: "10px",
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
               cursor: "pointer",
             }}
           >
-            Receive
+            receive
           </button>
           <button
             onClick={() => onReject(h.id, "declined by operator")}
             style={{
-              padding: "3px 8px",
-              borderRadius: "5px",
+              padding: "2px 6px",
+              borderRadius: "2px",
               border: "1px solid var(--r-border)",
               background: "transparent",
               color: "var(--r-subtext)",
-              fontSize: "11px",
+              fontSize: "10px",
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
               cursor: "pointer",
             }}
           >
-            Decline
+            decline
           </button>
         </Row>
       ))}
@@ -325,7 +336,7 @@ function HandoffQueue({
 
 function FlowList({ flows }: { flows: OperationFlow[] }) {
   const live = flows.filter((f) => f.status !== "completed" && f.status !== "aborted");
-  if (live.length === 0) return <EmptySlate label="No execution flows in motion" />;
+  if (live.length === 0) return <EmptySlate label="no flows" />;
 
   return (
     <div>
@@ -339,7 +350,7 @@ function FlowList({ flows }: { flows: OperationFlow[] }) {
             <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "8px" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span style={{
-                  fontSize: "13px",
+                  fontSize: "12px",
                   fontWeight: 500,
                   color: "var(--r-text)",
                 }}>
@@ -439,7 +450,7 @@ function SignalFeed({
   navigate:  NavFn;
 }) {
   const live = signals.filter((s) => !s.resolved).slice(0, 12);
-  if (live.length === 0) return <EmptySlate label="No mission signals active" />;
+  if (live.length === 0) return <EmptySlate label="no signals" />;
 
   return (
     <div>
@@ -461,7 +472,7 @@ function SignalFeed({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
               <div style={{
-                fontSize: "12px",
+                fontSize: "11px",
                 fontWeight: 600,
                 color: sig.severity === "critical" ? "var(--r-err)"
                      : sig.severity === "warn"     ? "var(--r-warn)"
@@ -483,12 +494,12 @@ function SignalFeed({
               )}
             </div>
             <div style={{
-              fontSize: "11px",
+              fontSize: "10px",
               color: "var(--r-subtext)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
-              marginTop: "2px",
+              marginTop: "1px",
             }}>
               {sig.body}
             </div>
@@ -497,29 +508,32 @@ function SignalFeed({
             <button
               onClick={() => onRead(sig.id)}
               style={{
-                padding: "2px 6px",
-                borderRadius: "4px",
+                padding: "1px 5px",
+                borderRadius: "2px",
                 border: "1px solid var(--r-border)",
                 background: "transparent",
                 color: "var(--r-dim)",
-                fontSize: "10px",
+                fontSize: "9px",
+                fontFamily: "'JetBrains Mono', monospace",
                 cursor: "pointer",
                 letterSpacing: "0.03em",
+                textTransform: "uppercase",
               }}
             >
-              Read
+              read
             </button>
           )}
           {sig.actionRoute && (
             <button
               onClick={() => navigate(sig.actionRoute!.tab, sig.actionRoute!.view, sig.actionRoute?.id)}
               style={{
-                padding: "2px 6px",
-                borderRadius: "4px",
-                border: "1px solid var(--r-accent)",
-                background: "color-mix(in srgb, var(--r-accent) 10%, transparent)",
+                padding: "1px 5px",
+                borderRadius: "2px",
+                border: "1px solid color-mix(in srgb, var(--r-accent) 40%, var(--r-border))",
+                background: "transparent",
                 color: "var(--r-accent)",
-                fontSize: "10px",
+                fontSize: "9px",
+                fontFamily: "'JetBrains Mono', monospace",
                 cursor: "pointer",
               }}
             >
@@ -530,16 +544,19 @@ function SignalFeed({
             <button
               onClick={() => onResolve(sig.id)}
               style={{
-                padding: "2px 6px",
-                borderRadius: "4px",
+                padding: "1px 5px",
+                borderRadius: "2px",
                 border: "1px solid var(--r-border)",
                 background: "transparent",
                 color: "var(--r-dim)",
-                fontSize: "10px",
+                fontSize: "9px",
+                fontFamily: "'JetBrains Mono', monospace",
                 cursor: "pointer",
+                letterSpacing: "0.03em",
+                textTransform: "uppercase",
               }}
             >
-              Clear
+              clear
             </button>
           )}
         </Row>
@@ -552,7 +569,7 @@ function SignalFeed({
 
 function GovernanceTrail({ records }: { records: ExecutionGovernanceRecord[] }) {
   const recent = records.slice(0, 8);
-  if (recent.length === 0) return <EmptySlate label="Governance ledger is clear" />;
+  if (recent.length === 0) return <EmptySlate label="clear" />;
 
   return (
     <div>
@@ -572,22 +589,23 @@ function GovernanceTrail({ records }: { records: ExecutionGovernanceRecord[] }) 
                 alignItems: "baseline",
               }}>
                 <span style={{
-                  fontSize: "13px",
+                  fontSize: "11px",
                   fontWeight: 500,
                   color: resultColor,
-                  letterSpacing: "0.02em",
+                  letterSpacing: "0.06em",
                   textTransform: "uppercase",
+                  fontFamily: "'JetBrains Mono', monospace",
                 }}>
                   {GOV_ACTION_LABEL[rec.action]}
                 </span>
-                <span style={{ color: "var(--r-dim)", fontWeight: 400, fontSize: "11px", letterSpacing: "0.01em" }}>
+                <span style={{ color: "var(--r-dim)", fontWeight: 400, fontSize: "10px", letterSpacing: "0.01em" }}>
                   — {rec.triggeredBy}
                 </span>
               </div>
               <div style={{
-                fontSize: "12px",
+                fontSize: "10px",
                 color: "var(--r-subtext)",
-                marginTop: "3px",
+                marginTop: "2px",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -643,56 +661,55 @@ export function OperationsPanel({
   };
 
   const sectionStyle: CSSProperties = {
-    marginBottom: "28px",
+    marginBottom: "18px",
   };
 
-  const cardStyle: CSSProperties = {
-    background: "var(--r-surface-raised, color-mix(in srgb, var(--r-surface) 85%, var(--r-bg)))",
-    border: "1px solid var(--r-border)",
-    borderRadius: "10px",
-    overflow: "hidden",
+  const sectionBorder: CSSProperties = {
+    borderTop: "1px solid var(--r-border)",
   };
 
   return (
     <div style={containerStyle}>
-      {/* Status bar */}
+      {/* Status line */}
       <div style={{
-        padding: "12px 16px",
-        marginBottom: "24px",
-        background: requiresAttention
-          ? "color-mix(in srgb, var(--r-warn) 8%, var(--r-surface))"
-          : "color-mix(in srgb, var(--r-ok) 6%, var(--r-surface))",
-        border: "1px solid",
-        borderColor: requiresAttention ? "color-mix(in srgb, var(--r-warn) 20%, var(--r-border))" : "var(--r-border)",
-        borderRadius: "6px",
+        padding: "0 0 10px 0",
+        marginBottom: "14px",
+        borderBottom: "1px solid var(--r-border)",
         display: "flex",
-        alignItems: "center",
+        alignItems: "baseline",
         gap: "12px",
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: "8px",
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
       }}>
         <span style={{
-          width: "8px",
-          height: "8px",
-          borderRadius: "50%",
-          background: requiresAttention ? "var(--r-warn)" : "var(--r-ok)",
-          flexShrink: 0,
-        }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", letterSpacing: "0.01em" }}>
-            {requiresAttention ? "Mission Requires Operator Disposition" : "Mission Execution Nominal"}
-          </div>
-          <div style={{ fontSize: "11px", color: "var(--r-subtext)", marginTop: "2px", letterSpacing: "0.01em" }}>
-            {activeTasks.length} {activeTasks.length === 1 ? "task" : "tasks"} in execution
-            {blockedTasks.length > 0 ? ` · ${blockedTasks.length} blocked` : ""}
-            {" · "}{flows.filter((f) => f.status === "active").length} {flows.filter((f) => f.status === "active").length === 1 ? "flow" : "flows"} live
-            {pendingHandoffs.length > 0 ? ` · ${pendingHandoffs.length} ${pendingHandoffs.length === 1 ? "handoff" : "handoffs"} awaiting disposition` : ""}
-          </div>
-        </div>
+          color: requiresAttention ? "var(--r-warn)" : "var(--r-dim)",
+        }}>
+          {requiresAttention ? "attention required" : "nominal"}
+        </span>
+        <span style={{ color: "var(--r-dim)" }}>
+          {activeTasks.length} active
+        </span>
+        {blockedTasks.length > 0 && (
+          <span style={{ color: "var(--r-err)" }}>
+            {blockedTasks.length} blocked
+          </span>
+        )}
+        <span style={{ color: "var(--r-dim)" }}>
+          {flows.filter((f) => f.status === "active").length} flows
+        </span>
+        {pendingHandoffs.length > 0 && (
+          <span style={{ color: "var(--r-warn)" }}>
+            {pendingHandoffs.length} handoffs
+          </span>
+        )}
       </div>
 
       {/* Mission tasks */}
       <div style={sectionStyle}>
-        <SectionLabel>Mission Tasks</SectionLabel>
-        <div style={cardStyle}>
+        <SectionLabel>Tasks</SectionLabel>
+        <div style={sectionBorder}>
           <TaskList tasks={activeTasks} navigate={navigate} />
         </div>
       </div>
@@ -700,8 +717,8 @@ export function OperationsPanel({
       {/* Mission blockers */}
       {blockedTasks.length > 0 && (
         <div style={sectionStyle}>
-          <SectionLabel>Mission Blockers</SectionLabel>
-          <div style={cardStyle}>
+          <SectionLabel>Blocked</SectionLabel>
+          <div style={sectionBorder}>
             <TaskList tasks={blockedTasks} navigate={navigate} />
           </div>
         </div>
@@ -709,8 +726,8 @@ export function OperationsPanel({
 
       {/* Execution flows */}
       <div style={sectionStyle}>
-        <SectionLabel>Active Execution Flows</SectionLabel>
-        <div style={cardStyle}>
+        <SectionLabel>Flows</SectionLabel>
+        <div style={sectionBorder}>
           <FlowList flows={flows} />
         </div>
       </div>
@@ -718,8 +735,8 @@ export function OperationsPanel({
       {/* Mission handoffs */}
       {pendingHandoffs.length > 0 && (
         <div style={sectionStyle}>
-          <SectionLabel>Mission Handoffs</SectionLabel>
-          <div style={cardStyle}>
+          <SectionLabel>Handoffs</SectionLabel>
+          <div style={sectionBorder}>
             <HandoffQueue
               handoffs={handoffs}
               onAccept={onHandoffAccept}
@@ -731,8 +748,8 @@ export function OperationsPanel({
 
       {/* Signal feed */}
       <div style={sectionStyle}>
-        <SectionLabel>Execution Signals</SectionLabel>
-        <div style={cardStyle}>
+        <SectionLabel>Signals</SectionLabel>
+        <div style={sectionBorder}>
           <SignalFeed
             signals={signals}
             onRead={onSignalRead}
@@ -744,8 +761,8 @@ export function OperationsPanel({
 
       {/* Governance trail */}
       <div style={sectionStyle}>
-        <SectionLabel>Governance Ledger</SectionLabel>
-        <div style={cardStyle}>
+        <SectionLabel>Governance</SectionLabel>
+        <div style={sectionBorder}>
           <GovernanceTrail records={governance} />
         </div>
       </div>

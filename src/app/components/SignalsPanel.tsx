@@ -47,42 +47,42 @@ export function SignalsPanel({ open, onClose, signals, onOpen, onDismiss, onMark
               right: "14px",
               top: "62px",
               zIndex: 211,
-              width: "360px",
+              width: "340px",
               maxHeight: "calc(100vh - 88px)",
               overflow: "hidden",
               border: "1px solid var(--r-border)",
-              borderRadius: "10px",
+              borderRadius: "4px",
               background: "var(--r-surface)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.14)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
               display: "flex",
               flexDirection: "column",
             }}
           >
-            <div style={{ height: "40px", padding: "0 12px", borderBottom: "1px solid var(--r-border-soft)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "var(--r-text)", textTransform: "uppercase" }}>
-                Signals · {unread.length} unread
+            <div style={{ height: "34px", padding: "0 10px", borderBottom: "1px solid var(--r-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", letterSpacing: "0.08em", color: "var(--r-text)", textTransform: "uppercase" }}>
+                signals · {unread.length} unread
               </span>
-              <button onClick={onMarkAllRead} style={{ border: "none", background: "transparent", color: "var(--r-dim)", fontSize: "10px", cursor: "pointer" }}>
-                mark all read
+              <button onClick={onMarkAllRead} style={{ border: "none", background: "transparent", color: "var(--r-dim)", fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer" }}>
+                mark read
               </button>
             </div>
-            <div style={{ overflowY: "auto", padding: "6px" }}>
+            <div style={{ overflowY: "auto", padding: "4px 6px" }}>
               {signals.length === 0 && (
-                <p style={{ fontSize: "11px", color: "var(--r-dim)", textAlign: "center", margin: "14px 0" }}>No signals</p>
+                <p style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em", textTransform: "uppercase", margin: "10px 0" }}>no signals</p>
               )}
               {signals.map((s) => (
-                <div key={s.id} style={{ border: "1px solid var(--r-border-soft)", borderRadius: "7px", padding: "8px", marginBottom: "6px", background: s.read ? "var(--r-surface)" : "color-mix(in srgb, var(--r-elevated) 85%, transparent)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "6px" }}>
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: severityColor[s.severity] }} />
-                    <span style={{ fontSize: "11px", color: "var(--r-text)", flex: 1 }}>{s.label}</span>
+                <div key={s.id} style={{ borderBottom: "1px solid var(--r-border-soft)", padding: "6px 0" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: severityColor[s.severity], flexShrink: 0 }} />
+                    <span style={{ fontSize: "11px", color: s.read ? "var(--r-dim)" : "var(--r-text)", flex: 1 }}>{s.label}</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingLeft: "11px" }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", color: "var(--r-dim)", letterSpacing: "0.06em" }}>
                       {s.destination.tab} · {s.destination.view}
                     </span>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button onClick={() => onDismiss(s.id)} style={{ border: "1px solid var(--r-border)", borderRadius: "4px", background: "transparent", color: "var(--r-dim)", fontSize: "10px", padding: "2px 6px", cursor: "pointer" }}>dismiss</button>
-                      <button onClick={() => onOpen(s)} style={{ border: "1px solid var(--r-border)", borderRadius: "4px", background: "var(--r-elevated)", color: "var(--r-subtext)", fontSize: "10px", padding: "2px 6px", cursor: "pointer" }}>open</button>
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      <button onClick={() => onDismiss(s.id)} style={{ border: "1px solid var(--r-border)", borderRadius: "2px", background: "transparent", color: "var(--r-dim)", fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", padding: "1px 5px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.03em" }}>dismiss</button>
+                      <button onClick={() => onOpen(s)} style={{ border: "1px solid var(--r-border)", borderRadius: "2px", background: "transparent", color: "var(--r-subtext)", fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", padding: "1px 5px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.03em" }}>open</button>
                     </div>
                   </div>
                 </div>
