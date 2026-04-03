@@ -30,6 +30,7 @@ import { type PlatformInfraState, defaultPlatformState, addLayer } from "../dna/
 import { type OrgIntelligenceState, defaultOrgState, assessMissionHealth } from "../dna/org-intelligence";
 import { type DistributionState, defaultDistributionState, registerChannel } from "../dna/distribution-presence";
 import { type MissionOperationsState, defaultMissionOperationsState, buildOperationState } from "../dna/autonomous-operations";
+import { type PersonalSovereignOSState, defaultPersonalOS } from "../dna/personal-sovereign-os";
 
 export type LifecycleStatus =
   | "draft"
@@ -344,14 +345,28 @@ export interface RuntimeFabric {
   intelligence: IntelligenceFoundationState;
   /** Stack 08 — live system health model */
   systemHealth?: SystemHealthModel;
-  /** Stack 20 — compound intelligence network, grows with each completed run */
-  compoundNetwork?: CompoundNetwork;
+  /** Stack 11 — living knowledge graph, canonical persistence */
+  knowledgeGraph?: LivingKnowledgeState;
   /** Stack 12 — analytics patterns, persisted results */
   analyticsPatterns: AnalyticsPattern[];
   /** Stack 13 — attribution records for collective work consequence */
   attributions: ConsequenceAttribution[];
+  /** Stack 13 — collective execution state, canonical persistence */
+  collectiveState?: CollectiveState;
   /** Stack 14 — distribution manifests, persisted for session presence */
   presenceManifests: Record<string, PresenceManifest>;
+  /** Stack 15 — value exchange ledger, canonical persistence */
+  exchangeLedger?: ExchangeLedger;
+  /** Stack 16 — ecosystem network state, canonical persistence */
+  ecosystemState?: EcosystemNetworkState;
+  /** Stack 17 — platform infrastructure state, canonical persistence */
+  platformState?: PlatformInfraState;
+  /** Stack 18 — organizational intelligence state, canonical persistence */
+  orgState?: OrgIntelligenceState;
+  /** Stack 19 — personal sovereign OS state, canonical persistence */
+  personalOS?: PersonalSovereignOSState;
+  /** Stack 20 — compound intelligence network, grows with each completed run */
+  compoundNetwork?: CompoundNetwork;
   /** Stack 03-04 — Mission operations state, persisted for governed execution */
   missionOperations: Record<string, MissionOperationsState>;
 }
@@ -424,10 +439,17 @@ function initialFabric(): RuntimeFabric {
     chamberPolicies: DEFAULT_CHAMBER_POLICIES,
     intelligence: defaultIntelligenceFoundationState(),
     systemHealth: defaultSystemHealthModel(),
-    compoundNetwork: defaultCompoundNetwork(),
+    knowledgeGraph: defaultLivingKnowledgeState(),
     analyticsPatterns: [],
     attributions: [],
+    collectiveState: defaultCollectiveState(),
     presenceManifests: {},
+    exchangeLedger: defaultExchangeLedger(),
+    ecosystemState: defaultEcosystemState(),
+    platformState: defaultPlatformState(),
+    orgState: defaultOrgState(),
+    personalOS: defaultPersonalOS("operator-1"),
+    compoundNetwork: defaultCompoundNetwork(),
     missionOperations: {},
   };
 }
@@ -455,8 +477,18 @@ export function loadRuntimeFabric(): RuntimeFabric {
       runTimeline: parsed.runTimeline ?? [],
       chamberPolicies: parsed.chamberPolicies?.length ? parsed.chamberPolicies : DEFAULT_CHAMBER_POLICIES,
       intelligence: parsed.intelligence ?? defaultIntelligenceFoundationState(),
+      knowledgeGraph: parsed.knowledgeGraph ?? defaultLivingKnowledgeState(),
+      analyticsPatterns: parsed.analyticsPatterns ?? [],
       attributions: parsed.attributions ?? [],
+      collectiveState: parsed.collectiveState ?? defaultCollectiveState(),
       presenceManifests: parsed.presenceManifests ?? {},
+      exchangeLedger: parsed.exchangeLedger ?? defaultExchangeLedger(),
+      ecosystemState: parsed.ecosystemState ?? defaultEcosystemState(),
+      platformState: parsed.platformState ?? defaultPlatformState(),
+      orgState: parsed.orgState ?? defaultOrgState(),
+      personalOS: parsed.personalOS ?? defaultPersonalOS("operator-1"),
+      compoundNetwork: parsed.compoundNetwork ?? defaultCompoundNetwork(),
+      missionOperations: parsed.missionOperations ?? {},
     };
   } catch {
     return initialFabric();
@@ -1339,4 +1371,45 @@ export function heartbeatRuntimePresence(fabric: RuntimeFabric, operatorId: stri
   };
 }
 
+// ─── Stack 11: Living Knowledge canonical persistence ───────────────────────
+
+export function updateKnowledgeGraph(fabric: RuntimeFabric, graph: LivingKnowledgeState): RuntimeFabric {
+  return { ...fabric, knowledgeGraph: { ...graph, lastUpdated: Date.now() } };
+}
+
+// ─── Stack 15: Value Exchange canonical persistence ─────────────────────────
+
+export function updateExchangeLedger(fabric: RuntimeFabric, ledger: ExchangeLedger): RuntimeFabric {
+  return { ...fabric, exchangeLedger: ledger };
+}
+
+// ─── Stack 16: Ecosystem Network canonical persistence ──────────────────────
+
+export function updateEcosystemState(fabric: RuntimeFabric, ecosystem: EcosystemNetworkState): RuntimeFabric {
+  return { ...fabric, ecosystemState: ecosystem };
+}
+
+// ─── Stack 17: Platform Infrastructure canonical persistence ────────────────
+
+export function updatePlatformState(fabric: RuntimeFabric, platform: PlatformInfraState): RuntimeFabric {
+  return { ...fabric, platformState: platform };
+}
+
+// ─── Stack 18: Organizational Intelligence canonical persistence ────────────
+
+export function updateOrgState(fabric: RuntimeFabric, org: OrgIntelligenceState): RuntimeFabric {
+  return { ...fabric, orgState: org };
+}
+
+// ─── Stack 19: Personal Sovereign OS canonical persistence ──────────────────
+
+export function updatePersonalOS(fabric: RuntimeFabric, personal: PersonalSovereignOSState): RuntimeFabric {
+  return { ...fabric, personalOS: personal };
+}
+
+// ─── Stack 13: Collective State canonical persistence ───────────────────────
+
+export function updateCollectiveState(fabric: RuntimeFabric, collective: CollectiveState): RuntimeFabric {
+  return { ...fabric, collectiveState: collective };
+}
 

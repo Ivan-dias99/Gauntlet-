@@ -97,6 +97,13 @@ import {
   transitionWorkflowStage,
   upsertProviderHealth,
   upsertCompoundRun,
+  updateKnowledgeGraph,
+  updateExchangeLedger,
+  updateEcosystemState,
+  updatePlatformState,
+  updateOrgState,
+  updatePersonalOS,
+  updateCollectiveState,
   type ExecutionResultRecord,
   type RuntimeFabric,
   type ContinuityItem,
@@ -431,16 +438,8 @@ export default function App() {
   // ── Presence heartbeat tick ───────────────────────────────────────────────────
   const [heartbeatTick, setHeartbeatTick] = useState(0);
   // ── Stack substrates ─────────────────────────────────────────────────────────
+  // Stacks 10-20 now use canonical RuntimeFabric persistence only. No saveStackState parallel localStorage.
   const [civBase] = useState(() => loadStackState("civBase", defaultCivilization()));
-  const [knowledgeGraph, setKnowledgeGraph] = useState(() => loadStackState("knowledgeGraph", defaultKnowledgeGraph()));
-  const [collectiveBase, setCollectiveBase] = useState(() => loadStackState("collectiveBase", defaultCollectiveState()));
-  const [presenceBase] = useState(() => loadStackState("presenceBase", defaultPresenceManifest("operator-1")));
-  const [ledgerBase] = useState(() => loadStackState("ledgerBase", defaultExchangeLedger()));
-  const [ecoBase] = useState(() => loadStackState("ecoBase", defaultEcosystemState()));
-  const [platformStateBase] = useState(() => loadStackState("platformStateBase", defaultPlatformState()));
-  const [orgStateBase] = useState(() => loadStackState("orgStateBase", defaultOrgState()));
-  const [personalOSBase] = useState(() => loadStackState("personalOSBase", defaultPersonalOS("operator-1")));
-  // compoundNetwork is live in runtimeFabric — removed dead useState duplicate
   const [trustGovState, setTrustGovState] = useState(loadTrustGov);
   const [flowState, setFlowState] = useState(defaultAutonomousFlowState);
 
@@ -2689,7 +2688,14 @@ export default function App() {
     return runtimeFabric.analyticsPatterns ?? [];
   }, [runtimeFabric.analyticsPatterns]);
 
+  // Stack 11: Knowledge graph from canonical RuntimeFabric
+  const knowledgeGraph = useMemo(() => {
+    return runtimeFabric.knowledgeGraph?.graph ?? defaultKnowledgeGraph();
+  }, [runtimeFabric.knowledgeGraph]);
+
   const orgState = useMemo(() => {
+    // Start from persisted state or default
+    const base = runtimeFabric.orgState ?? defaultOrgState();
     const missionHealth = missions.map((m) => {
       const missionContinuity = runtimeFabric.continuity.filter((c) => c.workflowId === m.id || c.title.includes(m.identity.name));
       const runs      = missionContinuity.length;
@@ -2701,10 +2707,12 @@ export default function App() {
     });
     const capMap   = defaultCapabilityMap();
     const insights = surfaceOrgInsights(capMap, missionHealth);
-    return { ...orgStateBase, missionHealth, insights, lastUpdated: Date.now() };
-  }, [missions, runtimeFabric.continuity, runtimeFabric.signals, orgStateBase]);
+    return { ...base, missionHealth, insights, lastUpdated: Date.now() };
+  }, [missions, runtimeFabric.continuity, runtimeFabric.signals, runtimeFabric.orgState]);
 
   const platformState = useMemo(() => {
+    // Start from persisted state or default
+    const base = runtimeFabric.platformState ?? defaultPlatformState();
     // Derive inference status from live-probed providerHealth, fall back to static resolution.
     // Any healthy provider (Tier A local or Tier B wrapped) makes inference "nominal".
     const liveHealthy = runtimeFabric.providerHealth.some((ph) => ph.state === "healthy");
@@ -2714,14 +2722,16 @@ export default function App() {
     const providerLabel = liveHealthy
       ? (runtimeFabric.providerHealth.find((ph) => ph.state === "healthy")?.providerId ?? "local")
       : (execTruth.adapter_kind ?? "sovereign");
-    let state = platformStateBase;
+    let state = base;
     state = addLayer(state, { ...createInfraLayer("intelligence", providerLabel, liveHealthy), status: inferenceStatus });
     state = addLayer(state, { ...createInfraLayer("network", "supabase", false), status: "nominal" });
     state = addLayer(state, { ...createInfraLayer("storage", "supabase", false), status: "nominal" });
     return state;
-  }, [platformStateBase, runtimeFabric.providerHealth, activeTab]);
+  }, [runtimeFabric.platformState, runtimeFabric.providerHealth, activeTab]);
 
   const personalOS = useMemo(() => {
+    // Start from persisted state or default
+    const base = runtimeFabric.personalOS ?? defaultPersonalOS("operator-1");
     const memories = [
       createMemoryEntry("preference", `Preferred chamber: ${runtimeFabric.preferences.preferredChamber}`),
       createMemoryEntry("preference", `Output style: ${runtimeFabric.preferences.outputStyle}`),
@@ -2735,9 +2745,9 @@ export default function App() {
         createMemoryEntry("mission_history", `${c.chamber} · ${c.title.slice(0, 60)}`)
       ),
     ];
-    const context = buildOperatorContext(personalOSBase.profile, memories, personalOSBase.agent);
-    return { ...personalOSBase, memory: memories, context, lastUpdated: Date.now() };
-  }, [runtimeFabric.preferences, runtimeFabric.aiSettings, runtimeFabric.continuity, missions, personalOSBase]);
+    const context = buildOperatorContext(base.profile, memories, base.agent);
+    return { ...base, memory: memories, context, lastUpdated: Date.now() };
+  }, [runtimeFabric.preferences, runtimeFabric.aiSettings, runtimeFabric.continuity, missions, runtimeFabric.personalOS]);
 
   // ── Event-pathway substrates ──────────────────────────────────────────────────
 
@@ -2768,7 +2778,8 @@ export default function App() {
   // 2. Collective: operator as sovereign + mission graph + real collision map
   const collectiveState = useMemo(() => {
     const owner = runtimeFabric.workspace.owner;
-    let state = collectiveBase;
+    // Start from persisted state or default
+    let state = runtimeFabric.collectiveState ?? defaultCollectiveState();
     state = admitMember(state, createMember(owner, "sovereign", missions.map((m) => m.id)));
     for (const m of missions) {
       state = addToMissionGraph(state, buildMissionGraphNode(m.id));
@@ -2781,19 +2792,19 @@ export default function App() {
       collisionMap = claimCollectiveResource(collisionMap, `chamber.${c.chamber}`, claimant);
     }
     return { ...state, attributions: runtimeFabric.attributions, collisionMap, lastUpdated: Date.now() };
-  }, [collectiveBase, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity, runtimeFabric.attributions]);
+  }, [runtimeFabric.collectiveState, missions, runtimeFabric.workspace.owner, runtimeFabric.continuity, runtimeFabric.attributions]);
 
   // 3. Presence manifest: always register the web channel; add active chambers
   const presenceManifest = useMemo(() => {
     const owner = runtimeFabric.workspace.owner;
     let manifest = runtimeFabric.presenceManifests[owner];
     if (!manifest) {
-      manifest = { ...presenceBase, operatorId: owner };
+      manifest = defaultPresenceManifest(owner);
     }
     // Context-sensitive updates for the active channel
     if (messages.lab.length > 0)      manifest = registerChannel(manifest, createChannel("api",  { chamber: "lab" }));
     if (messages.creation.length > 0) manifest = registerChannel(manifest, createChannel("cli",  { chamber: "creation" }));
-    
+
     // Auto-update context to reflect current Shell state
     manifest = {
       ...manifest,
@@ -2806,7 +2817,7 @@ export default function App() {
     };
 
     return manifest;
-  }, [runtimeFabric.presenceManifests, runtimeFabric.workspace.owner, messages.lab.length, messages.creation.length, activeTab, activeMissionId, presenceBase]);
+  }, [runtimeFabric.presenceManifests, runtimeFabric.workspace.owner, messages.lab.length, messages.creation.length, activeTab, activeMissionId]);
 
   // Sync presence heartbeat into substrate
   useEffect(() => {
@@ -2815,11 +2826,12 @@ export default function App() {
       next = heartbeatRuntimePresence(next, prev.workspace.owner);
       return next;
     });
-  }, [heartbeatTick]);
+  }, [heartbeatTick, presenceManifest]);
 
   // 4. Exchange ledger: exported continuity items become governance-verified value units
   const exchangeLedger = useMemo(() => {
-    let ledger = ledgerBase;
+    // Start from persisted state or default
+    let ledger = runtimeFabric.exchangeLedger ?? defaultExchangeLedger();
     for (const c of runtimeFabric.continuity.filter((x) => x.status === "exported")) {
       // verifyValueUnit: sets verifiedAt — governance gate already enforced on export path
       const unit = verifyValueUnit(makeAvailable(mintValue(c.id, runtimeFabric.workspace.owner, {
@@ -2830,11 +2842,12 @@ export default function App() {
       ledger = addValueUnit(ledger, unit);
     }
     return ledger;
-  }, [ledgerBase, runtimeFabric.continuity, runtimeFabric.workspace.owner]);
+  }, [runtimeFabric.exchangeLedger, runtimeFabric.continuity, runtimeFabric.workspace.owner]);
 
   // 5. Ecosystem: enabled connectors become admitted extensions
   const ecosystemState = useMemo(() => {
-    let state = ecoBase;
+    // Start from persisted state or default
+    let state = runtimeFabric.ecosystemState ?? defaultEcosystemState();
     for (const c of runtimeFabric.connectors.filter((x) => x.enabled)) {
       const ext = proposeExtension({
         id:           c.id,
@@ -2849,54 +2862,59 @@ export default function App() {
       state = admitToNetwork(state, { ...ext, status: "admitted" });
     }
     return state;
-  }, [ecoBase, runtimeFabric.connectors]);
+  }, [runtimeFabric.ecosystemState, runtimeFabric.connectors]);
 
-  // Stack state persistence (10→20): persist non-empty consequence surfaces across sessions
+  // Stack state persistence (11→20): persist consequence surfaces to canonical RuntimeFabric only
+  // Stack 11: Living Knowledge — absorb real objects into knowledge graph
   useEffect(() => {
-    let next = defaultKnowledgeGraph();
-    for (const obj of runtimeFabric.objects.slice(0, 20)) {
-      const node = createNode({
-        type: obj.type === "investigation" || obj.type === "lesson" ? "concept" : "artifact",
-        content: obj.title,
-        tags: obj.tags ?? [],
-        confidence: "medium",
-      });
-      next = addNode(next, node);
-    }
-    setKnowledgeGraph(next);
-    saveStackState("knowledgeGraph", next);
+    setRuntimeFabric((prev) => {
+      let graph = prev.knowledgeGraph?.graph ?? defaultKnowledgeGraph();
+      for (const obj of prev.objects.slice(0, 20)) {
+        const node = createNode({
+          type: obj.type === "investigation" || obj.type === "lesson" ? "concept" : "artifact",
+          content: obj.title,
+          tags: obj.tags ?? [],
+          confidence: "medium",
+        });
+        graph = addNode(graph, node);
+      }
+      return updateKnowledgeGraph(prev, { graph, lastUpdated: Date.now() });
+    });
   }, [runtimeFabric.objects]);
 
+  // Stack 10: Civilization persistence
   useEffect(() => {
     saveStackState("civBase", civilization);
   }, [civilization]);
 
+  // Stack 13: Collective State — persist to RuntimeFabric
   useEffect(() => {
-    saveStackState("collectiveBase", collectiveState);
+    setRuntimeFabric((prev) => updateCollectiveState(prev, collectiveState));
   }, [collectiveState]);
 
+  // Stack 15: Exchange Ledger — persist to RuntimeFabric
   useEffect(() => {
-    saveStackState("presenceBase", presenceManifest);
-  }, [presenceManifest]);
-
-  useEffect(() => {
-    saveStackState("ledgerBase", exchangeLedger);
+    setRuntimeFabric((prev) => updateExchangeLedger(prev, exchangeLedger));
   }, [exchangeLedger]);
 
+  // Stack 16: Ecosystem State — persist to RuntimeFabric
   useEffect(() => {
-    saveStackState("ecoBase", ecosystemState);
+    setRuntimeFabric((prev) => updateEcosystemState(prev, ecosystemState));
   }, [ecosystemState]);
 
+  // Stack 17: Platform State — persist to RuntimeFabric
   useEffect(() => {
-    saveStackState("platformStateBase", platformState);
+    setRuntimeFabric((prev) => updatePlatformState(prev, platformState));
   }, [platformState]);
 
+  // Stack 18: Org Intelligence State — persist to RuntimeFabric
   useEffect(() => {
-    saveStackState("orgStateBase", orgState);
+    setRuntimeFabric((prev) => updateOrgState(prev, orgState));
   }, [orgState]);
 
+  // Stack 19: Personal OS — persist to RuntimeFabric
   useEffect(() => {
-    saveStackState("personalOSBase", personalOS);
+    setRuntimeFabric((prev) => updatePersonalOS(prev, personalOS));
   }, [personalOS]);
 
   const activeMissionRuntimeState = activeMissionId ? systemModel.missionStates[activeMissionId] : undefined;
