@@ -118,6 +118,7 @@ import { buildWorkflowRunPayload } from "./components/workflow-engine";
 import { executeAIRequest, type ExecutionRequest } from "./components/execution-adapters";
 import { defaultCivilization, registerAgent, admitAgent, activateAgent, type AgentDomain } from "./dna/multi-agent";
 import { detectPatterns } from "./dna/intelligence-analytics";
+import { defaultKnowledgeGraph, createNode, addNode } from "./dna/living-knowledge";
 import { defaultCollectiveState, createMember, admitMember, buildMissionGraphNode, addToMissionGraph, claimCollectiveResource, checkCollectiveCollision, attributeConsequence, recordAttribution } from "./dna/collective-execution";
 import { defaultExchangeLedger, mintValue, makeAvailable, addValueUnit, verifyValueUnit } from "./dna/value-exchange";
 import { defaultPresenceManifest, createChannel, registerChannel, heartbeatChannel } from "./dna/distribution-presence";
