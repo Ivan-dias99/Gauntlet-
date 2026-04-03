@@ -121,14 +121,14 @@ Stack 6 closure (2026-04-02) — QA freeze gate passed 2026-04-02:
 | 10 | Multi-Agent Civilization | CLOSED | `civilization` useMemo from PIONEER_REGISTRY + continuity; `activateAgent()` for in-progress runs; `AgentCivilizationStrip` live |
 | 11 | Living Knowledge | CLOSED | `knowledgeGraph` useMemo from runtimeFabric.objects; `buildMissionMemoryContext()` recall at dispatch; `KnowledgeGraphStrip` live |
 | 12 | Intelligence Analytics | CLOSED | `analyticsPatterns` useMemo via `detectPatterns()` from real signals + continuity + mission ops; `AnalyticsPatternStrip` live |
-| 13 | Collective Execution | CLOSED | `collectiveState` useMemo: sovereign operator + missions + real collision map; `checkCollectiveCollision()` at dispatch; `CollectiveExecutionStrip` live |
+| 13 | Collective Execution | CLOSED | `collectiveState` useMemo: sovereign operator + missions + real collision map; `checkCollectiveCollision()` at dispatch; `_collectiveBase` persisted to localStorage (`ruberra_collective_v1`) — attributions survive reload; `CollectiveExecutionStrip` live |
 | 14 | Distribution + Presence | CLOSED | `presenceManifest` useMemo: web+api+cli channels from real messages; 30s heartbeat; `DistributionPresenceStrip` live |
 | 15 | Value Exchange | CLOSED | `exchangeLedger` useMemo: exported continuity → governance-verified value units; `ValueExchangeStrip` live |
 | 16 | Ecosystem Network | CLOSED | `ecosystemState` useMemo: enabled connectors → admitted extensions; `EcosystemNetworkStrip` live; connector-registry real |
 | 17 | Platform Infrastructure | CLOSED | `platformState` useMemo: inference status from live `providerHealth`; `addLayer()` for intelligence/network/storage; `PlatformInfraStrip` live |
 | 18 | Organizational Intelligence | CLOSED | `orgState` useMemo: `assessMissionHealth()` from real continuity velocity + signal blockers; `OrgIntelligenceStrip` live |
 | 19 | Personal Sovereign OS | CLOSED | `personalOS` useMemo: memories from real preferences + AI settings + missions + continuity; `buildOperatorContext()`; `PersonalSovereignOSStrip` live |
-| 20 | Compound Intelligence Network | CLOSED | `upsertCompoundRun()` at every dispatch; `estimateReplicationBarrier()` from real runtime; `compoundNetwork` in runtimeFabric (persisted); `CompoundNetworkStrip` live |
+| 20 | Compound Intelligence Network | CLOSED | `upsertCompoundRun()` at every dispatch; bug fixed: node type corrected from "chamber" → "output" (canonical CompoundNodeType); `estimateReplicationBarrier()` from real runtime; `compoundNetwork` in runtimeFabric (persisted); `CompoundNetworkStrip` live |
 
 **CLOSED** = Constitutionally complete with runtime materialization and live data hydration.
 
@@ -172,15 +172,16 @@ Stack 6 closure (2026-04-02) — QA freeze gate passed 2026-04-02:
 
 ## WHAT IS ASPIRATIONAL (NOT YET REAL)
 
-All 20 canonical stacks are now runtime-real. Post-frontier aspirations:
+All 20 canonical stacks are runtime-real. Post-frontier aspirations:
 
 | Feature | Status | Notes |
 |---|---|---|
-| Live agent spawning | ASPIRATIONAL | Pioneers are tracked from continuity but don't independently spawn. Multi-agent routing is real; autonomous spawning is not. |
-| Compound cross-mission synthesis | ASPIRATIONAL | Compound nodes accumulate from runs; deep cross-mission reasoning synthesis is not yet automatic. |
-| Distribution publish channels | ASPIRATIONAL | Presence channels reflect active browser sessions; external deployment/publish channels are not wired. |
-| Value capture real billing | ASPIRATIONAL | Value units are minted from exports; Stripe/payment integration is not wired. |
-| Ecosystem live sync | ASPIRATIONAL | Connector extensions are tracked; real-time external data sync is connector-dependent. |
+| Live agent spawning | ASPIRATIONAL | Pioneers tracked from continuity; they do not autonomously spawn or operate. |
+| Compound cross-mission synthesis | ASPIRATIONAL | Compound nodes accumulate per run; deep cross-mission reasoning is not automated. |
+| Distribution publish channels | ASPIRATIONAL | Presence is session-level (browser). External server-side distribution channels not wired. |
+| Value capture billing | ASPIRATIONAL | Value units minted from exports; no payment integration. |
+| Ecosystem live sync | ASPIRATIONAL | Connector extensions tracked; real-time external data sync is connector-dependent. |
+| Pattern analytics history | ASPIRATIONAL | Patterns computed per session from persisted events; no dedicated pattern history store. |
 
 ---
 

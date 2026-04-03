@@ -1238,7 +1238,7 @@ export function upsertCompoundRun(
           ? { ...n, advantageScore: Math.min(1, n.advantageScore + advantage * 0.3), lastUpdated: Date.now() }
           : n
       )
-    : [...network.nodes, createCompoundNode("chamber", opts.continuityId, `${opts.chamber} run`, advantage)];
+    : [...network.nodes, createCompoundNode("output", opts.continuityId, `${opts.chamber} run`, advantage)];
 
   const barrier = estimateReplicationBarrier(
     fabric.continuity.filter((c) => c.status === "completed").length,

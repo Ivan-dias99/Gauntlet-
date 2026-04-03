@@ -143,8 +143,9 @@ import { mcpMissionCreate, mcpMissionUpdateState, mcpMissionAttachContinuity, mc
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
-const STORAGE_KEY      = "ruberra_messages_v2";
-const GOV_STORAGE_KEY  = "ruberra_trust_gov_v1";
+const STORAGE_KEY       = "ruberra_messages_v2";
+const GOV_STORAGE_KEY   = "ruberra_trust_gov_v1";
+const COLLECTIVE_KEY    = "ruberra_collective_v1";
 
 function loadTrustGov() {
   if (typeof window === "undefined") return defaultTrustGovernanceState();
@@ -153,6 +154,16 @@ function loadTrustGov() {
     if (raw) return JSON.parse(raw) as ReturnType<typeof defaultTrustGovernanceState>;
   } catch { /* corrupt */ }
   return defaultTrustGovernanceState();
+}
+
+// Stack 13 — Collective state loaded from localStorage so attributions + base survive reload
+function loadCollectiveBase() {
+  if (typeof window === "undefined") return defaultCollectiveState();
+  try {
+    const raw = localStorage.getItem(COLLECTIVE_KEY);
+    if (raw) return JSON.parse(raw) as ReturnType<typeof defaultCollectiveState>;
+  } catch { /* corrupt */ }
+  return defaultCollectiveState();
 }
 const MAX_CONTEXT = 20;
 
@@ -409,7 +420,7 @@ export default function App() {
     }
     return g;
   }, [runtimeFabric.objects]);
-  const [_collectiveBase, setCollectiveBase] = useState(defaultCollectiveState);
+  const [_collectiveBase, setCollectiveBase] = useState(loadCollectiveBase);
   const [_presenceBase]     = useState(() => defaultPresenceManifest("operator-1"));
   const [_ledgerBase]       = useState(defaultExchangeLedger);
   const [_ecoBase]          = useState(defaultEcosystemState);
@@ -468,6 +479,11 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem(GOV_STORAGE_KEY, JSON.stringify(trustGovState)); } catch { /* storage full */ }
   }, [trustGovState]);
+
+  // Stack 13 — Persist collective attribution base so attributions survive reload
+  useEffect(() => {
+    try { localStorage.setItem(COLLECTIVE_KEY, JSON.stringify(_collectiveBase)); } catch { /* storage full */ }
+  }, [_collectiveBase]);
 
   const handleMissionUpsert = useCallback((m: Mission) => {
     setMissions((prev) => {

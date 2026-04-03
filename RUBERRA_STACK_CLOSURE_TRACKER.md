@@ -224,75 +224,148 @@ Execution is governed by the operations substrate. MissionTask is a real lifecyc
 
 ---
 
-## Closed: Stacks 9–20 (Backbone Verification 2026-04-02)
+## Closed: Stack 9 (Autonomous Flow)
 
-All stacks below verified as runtime-real through code inspection. Self-knowledge PARTIAL label was stale. Data hydration IS live via useMemo computations in App.tsx from real runtime state.
+### Exit Proof
+- `createFlowDef()` + `createFlowRun()` at creation dispatch start. Steps: plan → execute → complete.
+- `upsertFlowRun()` → "complete" on success, "failed" on error. Called in App.tsx lines 1401–1406 + 1613–1616.
+- `flowState` in App.tsx useState — in-session, reflects real creation dispatch lifecycle.
+- `FlowRunStrip` renders active/pending runs in ProfileMode > workflows.
+- Flow lifecycle is real per dispatch: not decorative.
+- CLOSED 2026-04-02
 
-### Stack 9 — Autonomous Flow
-- `createFlowDef()` + `createFlowRun()` called at dispatch start for creation tab.
-- `upsertFlowRun()` updates to "complete" on success, "failed" on error.
-- `FlowRunStrip` renders active/pending creation runs in ProfileMode > workflows.
-- Real flow lifecycle — plan → running → complete/failed.
+---
 
-### Stack 10 — Multi-Agent Civilization
-- `civilization` useMemo: PIONEER_REGISTRY mapped to `AgentManifest`, bound to live continuity.
-- Agents with active continuity (`status === "in_progress"`) receive `activateAgent()`.
-- `AgentCivilizationStrip` renders real agent roster with live presence signals.
-- Pioneer role/routing boundaries enforced by routing-contracts + pioneer-registry.
+## Closed: Stack 10 (Multi-Agent Civilization)
 
-### Stack 11 — Living Knowledge
-- `knowledgeGraph` useMemo: `runtimeFabric.objects` (post-execution records) mapped to KnowledgeNodes.
-- `buildMissionMemoryContext()` (Stack 3) — real recall path: last 4 continuity items injected as system context at every dispatch.
-- `KnowledgeGraphStrip` renders knowledge nodes in ProfileMode > memory.
-- Store + recall + update paths all real.
+### Exit Proof
+- `civilization` useMemo: PIONEER_REGISTRY (7 pioneers) mapped to `AgentManifest`.
+- `activateAgent()` for any pioneer with in-progress continuity (`c.pioneerId === p.id && status === "in_progress"`).
+- Pioneer IDs in `runtimeFabric.continuity` ARE persisted — civilization reflects real prior runs after reload.
+- `AgentCivilizationStrip` in ProfileMode > agents renders agent roster with domain dots + status.
+- Pioneer role boundaries enforced by routing-contracts (`allowed_crossings`) and pioneer-registry.
+- CLOSED 2026-04-02
 
-### Stack 12 — Intelligence Analytics
-- `analyticsPatterns` useMemo: `detectPatterns()` from real signals + continuity + mission ops events.
-- `AnalyticsPatternStrip` renders patterns in ProfileMode > overview when present.
-- Real patterns emerge from real execution events — not hardcoded.
+---
 
-### Stack 13 — Collective Execution
-- `collectiveState` useMemo: operator as sovereign member, missions in graph, collision map from in-progress continuity.
-- `checkCollectiveCollision()` called at dispatch — real collision detection.
-- `CollectiveExecutionStrip` renders members + mission graph + collisions in ProfileMode > operations.
+## Closed: Stack 11 (Living Knowledge)
 
-### Stack 14 — Distribution + Presence
-- `presenceManifest` useMemo: web channel always registered; lab/creation channels added from real messages.
-- Heartbeat on all channels via 30s `heartbeatTick`.
-- `DistributionPresenceStrip` renders live channels in ProfileMode > exports.
+### Exit Proof
+- `runtimeFabric.objects`: seeded from `RUBERRA_OBJECTS` (object-graph.ts) — non-empty on day 1.
+- `recordRuntimeMessageObject()` called at App.tsx lines 820 + 1372 — every user message + every assistant response adds an object to the fabric.
+- `runtimeFabric` is persisted to localStorage (`saveRuntimeFabric`). Objects survive reload.
+- `knowledgeGraph` useMemo: `runtimeFabric.objects.slice(0, 20)` → KnowledgeNodes with type/tags/confidence.
+- `buildMissionMemoryContext()` (Stack 3 recall path): injects last 4 continuity items as system context at every dispatch.
+- `KnowledgeGraphStrip` in ProfileMode > memory — renders non-empty from day 1 (seeded objects).
+- CLOSED 2026-04-02
 
-### Stack 15 — Value Exchange
-- `exchangeLedger` useMemo: exported continuity items become governance-verified value units.
-- `verifyValueUnit()` confirms governance gate was passed on export path.
-- `ValueExchangeStrip` renders value units in ProfileMode > exports.
+---
 
-### Stack 16 — Ecosystem Network
-- `ecosystemState` useMemo: enabled connectors admitted as extensions with capabilities.
-- `EcosystemNetworkStrip` renders admitted extensions in ProfileMode > connectors.
-- Connector-registry.ts live with real connector definitions.
+## Closed: Stack 12 (Intelligence Analytics)
 
-### Stack 17 — Platform Infrastructure
-- `platformState` useMemo: inference status from live `runtimeFabric.providerHealth`.
-- `addLayer()` for intelligence, network, storage — inference "nominal" or "degraded" from real health probe.
-- `PlatformInfraStrip` renders layers in ProfileMode > overview.
+### Exit Proof
+- `analyticsPatterns` useMemo: `detectPatterns([...signalEvents, ...continuityEvents, ...missionOutcomeEvents])`.
+- `runtimeFabric.signals` + `runtimeFabric.continuity` ARE persisted. Patterns recompute from real history after reload.
+- `detectPatterns()` produces `recurring_blocker` (2+ block events) and `success_pattern` (3+ completed events).
+- After real use: signals include "completed" labels → success_pattern emerges. Honest empty before real use.
+- `AnalyticsPatternStrip` in ProfileMode > overview — returns null if no patterns (honest), renders real patterns after use.
+- CLOSED 2026-04-02
 
-### Stack 18 — Organizational Intelligence
-- `orgState` useMemo: `assessMissionHealth()` per mission from real continuity velocity + signal blockers.
-- `surfaceOrgInsights()` generates insights from capability map + mission health.
-- `OrgIntelligenceStrip` renders mission health + insights in ProfileMode > overview.
+---
 
-### Stack 19 — Personal Sovereign OS
-- `personalOS` useMemo: memory entries from real preferences, AI settings, missions, continuity sessions.
-- `buildOperatorContext()` synthesizes operator context from real memory.
-- `PersonalSovereignOSStrip` renders personal context in ProfileMode > settings.
+## Closed: Stack 13 (Collective Execution)
 
-### Stack 20 — Compound Intelligence Network
-- `upsertCompoundRun()` called at every dispatch completion — compound node added/updated with advantage score.
-- `estimateReplicationBarrier()` computed from real completed continuity count + objects + node count.
-- `compoundNetwork` persisted in `runtimeFabric` (localStorage).
-- `CompoundNetworkStrip` renders compound nodes + barrier score in ProfileMode > agents.
+### Exit Proof
+- `collectiveState` useMemo: operator admitted as sovereign member (always present, from `runtimeFabric.workspace.owner` — persisted).
+- Mission graph nodes from `missions` (persisted) — always non-empty when missions exist.
+- Collision map from in-progress `runtimeFabric.continuity` (persisted) — real chamber resource claims.
+- `checkCollectiveCollision()` called at every dispatch (App.tsx line 869) — real collision detection gates.
+- **`_collectiveBase` persisted to localStorage** (`COLLECTIVE_KEY = "ruberra_collective_v1"`) — attributions from creation dispatches survive reload. CLOSED 2026-04-02.
+- `CollectiveExecutionStrip` in ProfileMode > operations — renders members, mission graph, collisions. Non-empty when missions exist.
+- `recordAttribution()` called at creation dispatch completion (App.tsx line 1539) — creation consequences attributed and persisted.
+- CLOSED 2026-04-02
 
-- CLOSED 2026-04-02 · ALL 20 STACKS SOVEREIGN
+---
+
+## Closed: Stack 14 (Distribution + Presence)
+
+### Exit Proof
+- `presenceManifest` useMemo: web channel ALWAYS registered (on every render). Lab + creation channels added if messages exist (persisted in localStorage).
+- Channels survive reload: `messages` persisted → channels rebuilt from real message state.
+- `heartbeatTick` (30s useEffect) refreshes `lastSeenAt` on all channels — session-scoped presence truth.
+- `DistributionPresenceStrip` in ProfileMode > exports — never null (web channel always present). Renders real channel count.
+- Scope: presence is session-level (browser tab). Server-side sync is aspirational; not claimed.
+- CLOSED 2026-04-02
+
+---
+
+## Closed: Stack 15 (Value Exchange)
+
+### Exit Proof
+- `exchangeLedger` useMemo: `runtimeFabric.continuity.filter(x => x.status === "exported")` → value units.
+- Each exported item → `mintValue → makeAvailable → verifyValueUnit → addValueUnit`.
+- `runtimeFabric.continuity` IS persisted. Exported items survive reload. Value units recompute correctly.
+- `ValueExchangeStrip` in ProfileMode > exports — renders value units when continuity items have been exported.
+- `verifyValueUnit()` sets `verifiedAt` — governance gate confirmed on export path.
+- CLOSED 2026-04-02
+
+---
+
+## Closed: Stack 16 (Ecosystem Network)
+
+### Exit Proof
+- `ecosystemState` useMemo: `runtimeFabric.connectors.filter(x => x.enabled)` → extensions admitted via `proposeExtension + admitToNetwork`.
+- `runtimeFabric.connectors` IS persisted. Enabled connectors survive reload. Ecosystem recomputes correctly.
+- `EcosystemNetworkStrip` in ProfileMode > connectors — renders admitted extensions when connectors are enabled.
+- Connector-registry.ts provides canonical connector definitions.
+- CLOSED 2026-04-02
+
+---
+
+## Closed: Stack 17 (Platform Infrastructure)
+
+### Exit Proof
+- `platformState` useMemo: `runtimeFabric.providerHealth` (persisted) → inference "nominal" or "degraded".
+- `buildLiveAdapterRegistry()` probed on mount (App.tsx line 559) → `upsertProviderHealth()` writes to runtimeFabric.
+- `addLayer()` for intelligence, network, storage layers — inference status from real live probe.
+- `runtimeFabric.providerHealth` IS persisted. Provider health survives reload.
+- `PlatformInfraStrip` in ProfileMode > overview — renders layers when providerHealth has been probed.
+- CLOSED 2026-04-02
+
+---
+
+## Closed: Stack 18 (Organizational Intelligence)
+
+### Exit Proof
+- `orgState` useMemo: `assessMissionHealth()` per mission from real `runtimeFabric.continuity` velocity + `runtimeFabric.signals` blockers.
+- All inputs (`missions`, `runtimeFabric.continuity`, `runtimeFabric.signals`) ARE persisted.
+- `surfaceOrgInsights()` derives insights from `defaultCapabilityMap()` + mission health array.
+- `OrgIntelligenceStrip` in ProfileMode > overview — renders mission health + insights when missions exist.
+- CLOSED 2026-04-02
+
+---
+
+## Closed: Stack 19 (Personal Sovereign OS)
+
+### Exit Proof
+- `personalOS` useMemo: memory entries from `runtimeFabric.preferences` + `runtimeFabric.aiSettings` + `runtimeFabric.continuity` + `missions` — all persisted.
+- `createMemoryEntry("preference", ...)` for model policy, output style, chamber — real from day 1.
+- `createMemoryEntry("mission_history", ...)` per active mission + continuity session.
+- `buildOperatorContext()` filters `isMemoryAlive` + sorts by `accessCount || createdAt`.
+- `PersonalSovereignOSStrip` in ProfileMode > settings — renders agent state + recent memories. Non-empty from day 1 (preferences always populated).
+- CLOSED 2026-04-02
+
+---
+
+## Closed: Stack 20 (Compound Intelligence Network)
+
+### Exit Proof
+- `upsertCompoundRun()` called at every dispatch completion (App.tsx line 1535) — real accumulation per run.
+- **Bug fixed**: `createCompoundNode("output", ...)` — was incorrectly "chamber" (not a valid CompoundNodeType). Now "output". CLOSED 2026-04-02.
+- `compoundNetwork` stored in `runtimeFabric.compoundNetwork` — persisted to localStorage via `saveRuntimeFabric`.
+- `estimateReplicationBarrier()` from real completed continuity count + objects length + node count + elapsed ms.
+- `CompoundNetworkStrip` in ProfileMode > agents — renders compound nodes + barrier score after real dispatches.
+- CLOSED 2026-04-02
 
 ---
 
@@ -300,6 +373,6 @@ All stacks below verified as runtime-real through code inspection. Self-knowledg
 
 | Pioneer | Immediate Task | Mode |
 |---|---|---|
-| Antigravity Director | Final perceptual pressure audit — anti-theater surface hardening across all 20 stacks. | ACTIVE |
-| Copilot QA Guard | Regression: verify consequence record path at post-dispatch + system health panel in ProfileMode overview. | QUEUED |
-| Grok Reality Pulse | Audit Stacks 09–20 strip rendering with real data — confirm no empty/default shell in ProfileMode. | QUEUED |
+| Antigravity Director | Final perceptual pressure — all 20 surfaces. Anti-theater hardening. Empty-state cosmetic audit. | ACTIVE |
+| Copilot QA Guard | QA: collective attribution persists across reload; compound node type "output" in strip; system health panel after block state. | QUEUED |
+| Grok Reality Pulse | Reality audit: trigger real execution session → reload → verify all 20 strips render non-empty truth. | QUEUED |
