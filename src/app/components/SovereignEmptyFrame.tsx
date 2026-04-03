@@ -36,7 +36,7 @@ export function SovereignEmptyFrame({
           display: "flex",
           alignItems: "stretch",
           width: "100%",
-          borderRadius: "12px",
+          borderRadius: "2px",
           border: "1px solid var(--r-border-soft)",
           background: "var(--r-surface)",
           boxShadow: "0 2px 14px color-mix(in srgb, var(--r-text) 4%, transparent)",

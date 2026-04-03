@@ -58,7 +58,7 @@ export function SignalsPanel({ open, onClose, signals, onOpen, onDismiss, onMark
               maxHeight: "calc(100vh - 88px)",
               overflow: "hidden",
               border: "1px solid var(--r-border)",
-              borderRadius: "4px",
+              borderRadius: "2px",
               background: "var(--r-surface)",
               boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
               display: "flex",

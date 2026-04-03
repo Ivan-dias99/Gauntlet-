@@ -15,6 +15,7 @@ import { getPioneer, getPioneerFromRuntimeId } from "./pioneer-registry";
 import { getExecutionTruth, TIER_LABEL, TIER_COLOR } from "./sovereign-runtime";
 import { SovereignEmptyFrame } from "./SovereignEmptyFrame";
 import { ExecutionConsequenceStrip } from "./ExecutionConsequenceStrip";
+import { MiniConstellation, StructuralGridBg } from "./OrganismMotifs";
 
 // ─── Chamber config ───────────────────────────────────────────────────────────
 
@@ -129,9 +130,9 @@ function EmptyState({
         initial={{ opacity: 0, scale: 0.92 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.35, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
-        style={{ marginBottom: "16px", opacity: 0.88 }}
+        style={{ marginBottom: "16px" }}
       >
-        {glyph}
+        <MiniConstellation chamber={id as "lab" | "school" | "creation"} />
       </motion.div>
       <SovereignEmptyFrame
         accentVar={accent}
@@ -271,7 +272,7 @@ function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: st
 
   return (
     <div style={{ marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "3px 8px 3px 7px", border: `1px solid color-mix(in srgb, ${accent} 22%, var(--r-border))`, borderRadius: "5px", background: `color-mix(in srgb, ${accent} 8%, var(--r-surface))` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "3px 8px 3px 7px", border: `1px solid color-mix(in srgb, ${accent} 22%, var(--r-border))`, borderRadius: "2px", background: `color-mix(in srgb, ${accent} 8%, var(--r-surface))` }}>
         <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: accent, flexShrink: 0, display: "inline-block" }} />
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", letterSpacing: "0.1em", color: accent, textTransform: "uppercase", userSelect: "none", fontWeight: 600 }}>
           {roleLabel}
@@ -746,7 +747,7 @@ function Composer({
               style={{
                 width: "28px",
                 height: "28px",
-                borderRadius: "4px",
+                borderRadius: "2px",
                 border: canSend ? "none" : "1px solid var(--r-border)",
                 background: canSend ? accent : "transparent",
                 cursor: canSend ? "pointer" : "default",
@@ -1100,6 +1101,7 @@ export function ChamberChat({
         flexDirection: "column",
         overflow: "hidden",
         background: "var(--r-bg)",
+        position: "relative",
       }}
     >
       {/* Live Header Rail — chamber · EI · model · state (mission owned by MissionContextBand) */}
@@ -1111,6 +1113,8 @@ export function ChamberChat({
         execStatus={execStatus}
         eiName={eiName}
       />
+      {/* Structural grid — same mother surface as landing */}
+      <StructuralGridBg opacity={0.12} />
 
       {/* Thread */}
       <div

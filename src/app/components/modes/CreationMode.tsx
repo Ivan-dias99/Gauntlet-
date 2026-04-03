@@ -240,7 +240,7 @@ function PrevBuilds({ messages, current }: { messages: Message[]; current: numbe
               style={{
                 border: "1px solid var(--r-border)",
                 background: "var(--r-surface)",
-                borderRadius: "5px",
+                borderRadius: "2px",
                 padding: "9px 13px",
               }}
             >
@@ -606,13 +606,13 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
           <div style={{ display: "flex", gap: "8px" }}>
             <button
               onClick={() => navigate("creation", "archive")}
-              style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-subtext)", background: "transparent", border: "1px solid var(--r-border)", borderRadius: "5px", padding: "5px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
+              style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-subtext)", background: "transparent", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "5px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
             >
               Archive →
             </button>
             <button
               onClick={onBuild}
-              style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-bg)", background: "var(--chamber-creation)", border: "none", borderRadius: "5px", padding: "5px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
+              style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-bg)", background: "var(--chamber-creation)", border: "none", borderRadius: "2px", padding: "5px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
             >
               + Build
             </button>

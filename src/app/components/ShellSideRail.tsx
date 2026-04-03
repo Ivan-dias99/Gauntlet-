@@ -81,7 +81,7 @@ function NavBtn({
         gap: collapsed ? "0" : "7px",
         justifyContent: collapsed ? "center" : "flex-start",
         padding: collapsed ? "6px 0" : "5px 7px",
-        borderRadius: "5px",
+        borderRadius: "2px",
         border: "none",
         background: active ? "var(--r-surface)" : "transparent",
         color: active ? "var(--r-text)" : "var(--r-subtext)",

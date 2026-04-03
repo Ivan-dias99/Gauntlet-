@@ -66,7 +66,7 @@ function BirthForm({
     width:        "100%",
     background:   "var(--r-bg)",
     border:       "1px solid var(--r-border)",
-    borderRadius: "5px",
+    borderRadius: "2px",
     padding:      "7px 10px",
     fontSize:     "12px",
     fontFamily:   "'Inter', system-ui, sans-serif",
@@ -127,7 +127,7 @@ function BirthForm({
                     alignItems:   "center",
                     gap:          "5px",
                     padding:      "5px 11px",
-                    borderRadius: "5px",
+                    borderRadius: "2px",
                     border:       active
                       ? `1px solid color-mix(in srgb, ${CHAMBER_ACCENT[c]} 45%, var(--r-border))`
                       : "1px solid var(--r-border)",
@@ -181,7 +181,7 @@ function BirthForm({
           disabled={!canSubmit}
           style={{
             padding:      "7px 16px",
-            borderRadius: "5px",
+            borderRadius: "2px",
             border:       "1px solid color-mix(in srgb, var(--r-text) 20%, var(--r-border))",
             background:   canSubmit ? "var(--r-text)" : "var(--r-surface)",
             color:        canSubmit ? "var(--r-bg)" : "var(--r-dim)",
@@ -199,7 +199,7 @@ function BirthForm({
           onClick={onCancel}
           style={{
             padding:      "7px 14px",
-            borderRadius: "5px",
+            borderRadius: "2px",
             border:       "1px solid var(--r-border)",
             background:   "transparent",
             color:        "var(--r-subtext)",
@@ -322,7 +322,7 @@ function MissionRow({
         onClick={handleEnter}
         style={{
           padding:      "4px 11px",
-          borderRadius: "5px",
+          borderRadius: "2px",
           border:       "1px solid var(--r-border)",
           background:   "transparent",
           color:        "var(--r-subtext)",
@@ -415,7 +415,7 @@ export function MissionRepository({ missions, onUpsert, onActivate, navigate }: 
             onClick={() => setBirthing(true)}
             style={{
               padding:      "4px 11px",
-              borderRadius: "5px",
+              borderRadius: "2px",
               border:       "1px solid var(--r-border)",
               background:   "transparent",
               color:        "var(--r-subtext)",
@@ -487,7 +487,7 @@ export function MissionRepository({ missions, onUpsert, onActivate, navigate }: 
             onClick={() => setBirthing(true)}
             style={{
               padding:      "7px 16px",
-              borderRadius: "5px",
+              borderRadius: "2px",
               border:       "1px solid color-mix(in srgb, var(--r-text) 18%, var(--r-border))",
               background:   "var(--r-text)",
               color:        "var(--r-bg)",

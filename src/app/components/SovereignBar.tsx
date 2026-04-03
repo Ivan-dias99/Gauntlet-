@@ -53,7 +53,7 @@ function RubMark() {
         width: "20px",
         height: "20px",
         background: "var(--r-text)",
-        borderRadius: "5px",
+        borderRadius: "2px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -87,7 +87,7 @@ function IconBtn({
       style={{
         width: "28px",
         height: "28px",
-        borderRadius: "5px",
+        borderRadius: "2px",
         border: "none",
         background: "transparent",
         cursor: "pointer",
@@ -154,7 +154,7 @@ export function SovereignBar({
             cursor: "pointer",
             outline: "none",
             padding: "2px",
-            borderRadius: "5px",
+            borderRadius: "2px",
             transition: "opacity 0.12s ease",
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.75"; }}
@@ -387,7 +387,7 @@ export function SovereignBar({
               style={{
                 width: "22px",
                 height: "22px",
-                borderRadius: "5px",
+                borderRadius: "2px",
                 background: "linear-gradient(145deg, var(--r-border) 0%, var(--r-muted) 100%)",
                 flexShrink: 0,
                 border: "1px solid color-mix(in srgb, var(--r-text) 8%, transparent)",

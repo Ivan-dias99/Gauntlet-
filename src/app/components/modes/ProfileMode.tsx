@@ -718,7 +718,7 @@ export function ProfileMode({
               <SectionBlock title="Milestones">
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", padding: "10px 14px" }}>
                   {rewards.slice(0, 6).map((r) => (
-                    <div key={r.id} style={{ border: "1px solid var(--r-border)", borderRadius: "5px", padding: "6px 10px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <div key={r.id} style={{ border: "1px solid var(--r-border)", borderRadius: "2px", padding: "6px 10px", display: "flex", flexDirection: "column", gap: "2px" }}>
                       <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.07em", textTransform: "uppercase" }}>{r.kind}</span>
                       <span style={{ fontSize: "11px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif" }}>{r.title}</span>
                       <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-ok)" }}>+{r.points}</span>

@@ -87,7 +87,7 @@ function MatrixPanel({
         width:        "320px",
         background:   "var(--r-surface)",
         border:       "1px solid var(--r-border)",
-        borderRadius: "10px",
+        borderRadius: "2px",
         boxShadow:    "0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)",
         overflow:     "hidden",
       }}
