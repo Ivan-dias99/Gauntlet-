@@ -160,9 +160,9 @@ import { mcpMissionCreate, mcpMissionUpdateState, mcpMissionAttachContinuity, mc
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS: Tab[] = ["lab", "school", "creation", "profile"];
-const STORAGE_KEY      = "ruberra_messages_v2";
-const GOV_STORAGE_KEY  = "ruberra_trust_gov_v1";
-const STACK_STATE_STORAGE_KEY = "ruberra_stack_state_v1";
+const STORAGE_KEY       = "ruberra_messages_v2";
+const GOV_STORAGE_KEY   = "ruberra_trust_gov_v1";
+const COLLECTIVE_KEY    = "ruberra_collective_v1";
 
 function loadTrustGov() {
   if (typeof window === "undefined") return defaultTrustGovernanceState();
@@ -173,28 +173,14 @@ function loadTrustGov() {
   return defaultTrustGovernanceState();
 }
 
-function loadStackState<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
+// Stack 13 — Collective state loaded from localStorage so attributions + base survive reload
+function loadCollectiveBase() {
+  if (typeof window === "undefined") return defaultCollectiveState();
   try {
-    const raw = localStorage.getItem(STACK_STATE_STORAGE_KEY);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return (parsed[key] as T | undefined) ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveStackState<T>(key: string, value: T) {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = localStorage.getItem(STACK_STATE_STORAGE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
-    parsed[key] = value;
-    localStorage.setItem(STACK_STATE_STORAGE_KEY, JSON.stringify(parsed));
-  } catch {
-    // ignore persistence failure
-  }
+    const raw = localStorage.getItem(COLLECTIVE_KEY);
+    if (raw) return JSON.parse(raw) as ReturnType<typeof defaultCollectiveState>;
+  } catch { /* corrupt */ }
+  return defaultCollectiveState();
 }
 const MAX_CONTEXT = 20;
 
@@ -440,8 +426,20 @@ export default function App() {
   // ── Stack substrates ─────────────────────────────────────────────────────────
   // Stacks 10-20 now use canonical RuntimeFabric persistence only. No saveStackState parallel localStorage.
   const [_civBase]          = useState(defaultCivilization);
-  const knowledgeGraph = useMemo(() => runtimeFabric.livingKnowledge.graph, [runtimeFabric.livingKnowledge.graph]);
-  const [_collectiveBase, setCollectiveBase] = useState(defaultCollectiveState);
+  const knowledgeGraph = useMemo(() => {
+    let g = defaultKnowledgeGraph();
+    for (const obj of runtimeFabric.objects.slice(0, 20)) {
+      const node = createNode({
+        type:       obj.type === "investigation" ? "concept" : obj.type === "lesson" ? "concept" : "artifact",
+        content:    obj.title,
+        tags:       obj.tags ?? [],
+        confidence: "medium",
+      });
+      g = addNode(g, node);
+    }
+    return g;
+  }, [runtimeFabric.objects]);
+  const [_collectiveBase, setCollectiveBase] = useState(loadCollectiveBase);
   const [_presenceBase]     = useState(() => defaultPresenceManifest("operator-1"));
   const [_ledgerBase]       = useState(defaultExchangeLedger);
   const [_ecoBase]          = useState(defaultEcosystemState);
@@ -503,6 +501,11 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem(GOV_STORAGE_KEY, JSON.stringify(trustGovState)); } catch { /* storage full */ }
   }, [trustGovState]);
+
+  // Stack 13 — Persist collective attribution base so attributions survive reload
+  useEffect(() => {
+    try { localStorage.setItem(COLLECTIVE_KEY, JSON.stringify(_collectiveBase)); } catch { /* storage full */ }
+  }, [_collectiveBase]);
 
   const handleMissionUpsert = useCallback((m: Mission) => {
     setMissions((prev) => {
