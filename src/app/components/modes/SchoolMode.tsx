@@ -276,6 +276,9 @@ export function SchoolMode({
   const composerLockLabel = composerLocked
     ? `Mission ${missionStatus} — release or activate a mission to continue`
     : missionStatus === "blocked"
+      ? "Mission blocked — resolve blockers in Profile → Operations"
+      : undefined;
+  const showHome = schoolView === "home" || (!messages.length && schoolView === "chat");
 
   if (showHome) {
     return (

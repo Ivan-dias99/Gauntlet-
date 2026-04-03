@@ -729,6 +729,9 @@ export function CreationMode({
   const composerLockLabel = composerLocked
     ? `Mission ${missionStatus} — release or activate a mission to continue`
     : missionStatus === "blocked"
+      ? "Mission blocked — resolve blockers in Profile → Operations"
+      : undefined;
+  const showHome = creationView === "home" || (!messages.length && creationView === "chat");
 
   if (showHome) {
     return (

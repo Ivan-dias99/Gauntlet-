@@ -248,6 +248,9 @@ export function LabMode({
   const composerLockLabel = composerLocked
     ? `Mission ${missionStatus} — release or activate a mission to continue`
     : missionStatus === "blocked"
+      ? "Mission blocked — resolve blockers in Profile → Operations"
+      : undefined;
+  const showHome = labView === "home" || (!messages.length && labView === "chat");
 
   if (showHome) return (
     <AnimatePresence mode="wait">
