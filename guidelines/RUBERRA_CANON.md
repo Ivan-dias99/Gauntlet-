@@ -18,9 +18,75 @@ O trabalho sério não deveria acontecer em pedaços. Ruberra não é SaaS, dash
 - Branco estéril corporativo ou dark mode fintech.
 
 ## Visual DNA Lock
-Ruberra é **White Premium** e **Dark Premium**.
-- **Inspiração visual**: Linear (shell discipline), Cursor (quiet confidence), Raycast (command precision), Apple/Vision Pro (spatial restraint).
-- **Tipografia**: Sérias, sem decorações vazias. JetBrains Mono para system/code, Inter para UI. Board radius de 2px ("Mineral Shell").
+
+Ruberra must look and feel like a flagship operational organism.
+Not a startup SaaS. Not a dashboard suite. Not a chat product. Not a futuristic control room. Not a developer IDE clone. Not an enterprise admin slab.
+
+**Core visual character:** calm, dense, precise, premium, serious, restrained, architected, inevitable, alive without noise.
+
+**Inspiration direction:**
+- Apple-grade product restraint and flagship finish
+- Linear for compositional seriousness
+- Cursor for quiet AI-native polish
+- Terminal systems for authority surfaces
+
+**Visual laws:**
+1. Calm over spectacle
+2. Depth over decoration
+3. Hierarchy over chrome
+4. Density over clutter
+5. Seriousness over friendliness theater
+6. Flagship restraint over trend-chasing
+7. Structural identity over styling tricks
+8. Organism coherence over tool collage
+
+---
+
+## Typography System
+Typography role: establish hierarchy, reduce ambiguity, support dense reading, support operational scanning, preserve premium calm, give authority to headers, commands, and state.
+
+- **Headers**: Structural, anchor context and authority.
+- **Section titles**: Smaller, clear, serious.
+- **Body text**: Dense operational reading. No gimmick phrasing or cute tone.
+- **Labels**: Compact, exact, stable.
+- **State text**: Precise, not gamified.
+
+*Anti-patterns*: Oversized startup hero text, gimmick monospaced overuse, playful marketing typography, soft enterprise blandness.
+
+## Spacing / Density System
+High information density without feeling cramped. Density means many meaningful things coexist because hierarchy is strong. 
+
+- **Major zones** need breathing authority.
+- **Local sections** sit closer when semantically related.
+- **Command surfaces** need controlled pressure (exact, not floating).
+- **Lists & rows** support serious scanning.
+
+## Surfaces / Borders / Radius
+Surfaces must feel architectural, not decorative.
+
+- Surfaces define structure.
+- Borders define relation. Precise and exact.
+- Radius defines restraint (strictly 2px "Mineral Shell"). Never soft or bubbly.
+- Layering remains shallow and disciplined. No heavy Shadows.
+
+*Anti-patterns*: Fluffy cards everywhere, glassmorphism, flashy gradients, control-room chrome.
+
+## Color / Tone Logic
+Survive in restrained grayscale. Truth must not depend on loud color.
+
+- Neutral-first system.
+- State color only when meaningful (urgency, consequence, activation).
+- Avoid noisy saturation.
+- Premium calm over visual excitement.
+
+## Motion / Feedback Logic
+Motion serves continuity, clarity, and confirmation. Never theater or delight gimmicks.
+
+- Calm transitions, assured and controlled.
+- Command execution and memory attachment feel authoritative.
+- AI interaction feels native. No typing-theater fetish.
+
+---
 
 ## Superfícies Essenciais (Trindade Operacional)
 1. **Home / Dashboard**: Superfície de re-entry operacional. Pressão, memória, blocos de continuação.
@@ -34,4 +100,4 @@ Ruberra é **White Premium** e **Dark Premium**.
 - **Creation**: Superfície de saída e manifestação de assets.
 - **Profile / Operator**: Cockpit estrutural.
 
-*Documento estabilizado como Constituição-Mãe a partir do despejo ontológico.*
+*Documento estabilizado como Constituição-Mãe Absoluta do Visual DNA da Ruberra.*
