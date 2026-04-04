@@ -402,7 +402,7 @@ export function MissionRepository({ missions, onUpsert, onActivate, navigate }: 
               color:        "var(--r-dim)",
               background:   "var(--r-elevated)",
               border:       "1px solid var(--r-border-soft)",
-              borderRadius: "3px",
+              borderRadius: "2px",
               padding:      "1px 5px",
               letterSpacing:"0.04em",
             }}>

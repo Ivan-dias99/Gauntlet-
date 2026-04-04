@@ -60,7 +60,7 @@ function RubMark() {
         flexShrink: 0,
         position: "relative",
         overflow: "hidden",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.14)",
+        boxShadow: "none",
       }}
     >
       {/* R letterform — vertical stroke */}
@@ -273,7 +273,7 @@ export function SovereignBar({
               style={{
                 position: "relative",
                 padding: "5px 15px",
-                borderRadius: "7px",
+                borderRadius: "2px",
                 border: "none",
                 background: "transparent",
                 cursor: "pointer",

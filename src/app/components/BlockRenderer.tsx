@@ -162,7 +162,7 @@ function StatusChip({ status }: { status: StatusFlag }) {
         alignItems: "center",
         gap: "3px",
         padding: "1px 7px",
-        borderRadius: "3px",
+        borderRadius: "2px",
         border: `1px solid ${color}28`,
         background: `${color}0e`,
         fontFamily: "'JetBrains Mono', monospace",
@@ -510,7 +510,7 @@ function SectionAudit({ section }: {
               gap: "10px",
               padding: "5px 8px",
               marginBottom: "3px",
-              borderRadius: "3px",
+              borderRadius: "2px",
               background: item.status === "fail" || item.status === "error" ? `${color}09` :
                           item.status === "warn" ? `${color}08` :
                           item.status === "pass" || item.status === "done" ? `${color}07` : "transparent",
@@ -739,7 +739,7 @@ function BlockFooter({ block }: { block: MessageBlock }) {
               key={tag}
               style={{
                 padding: "1px 7px",
-                borderRadius: "3px",
+                borderRadius: "2px",
                 border: "1px solid var(--r-border)",
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: "8px",

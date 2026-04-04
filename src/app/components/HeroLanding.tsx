@@ -39,7 +39,7 @@ function RMark({ size = 22 }: { size?: number }) {
         flexShrink:    0,
         position:      "relative",
         overflow:      "hidden",
-        boxShadow:     "0 1px 3px rgba(0,0,0,0.18)",
+        boxShadow: "none",
       }}
     >
       <div style={{ position: "absolute", width: "1.5px", height: `${size * 0.46}px`, background: "rgba(255,255,255,0.92)", top: `${size * 0.24}px`, left: `${size * 0.34}px`, borderRadius: "1px" }} />
@@ -396,7 +396,7 @@ function TopNav({ onEnter, isNarrow }: { onEnter: (chamber?: string) => void; is
           cursor:       "pointer",
           outline:      "none",
           transition:   "all 0.12s ease",
-          boxShadow:    "0 1px 3px rgba(0,0,0,0.04)",
+          boxShadow: "none",
         }}
         onMouseEnter={e => {
           const el = e.currentTarget as HTMLElement;
@@ -531,7 +531,7 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
             style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}
           >
             <motion.button
-              whileHover={{ y: -2, boxShadow: "0 12px 36px rgba(0,0,0,0.18)" }}
+              whileHover={{ y: -2, boxShadow: "none" }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onEnter()}
               style={{
@@ -549,7 +549,7 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
                 display:        "flex",
                 alignItems:     "center",
                 gap:            "8px",
-                boxShadow:      "0 4px 18px rgba(0,0,0,0.14)",
+                boxShadow: "none",
                 transition:     "box-shadow 0.15s ease",
               }}
             >
@@ -927,7 +927,7 @@ function ChambersSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
                   background:   c.accent,
                   opacity:      0.9,
                   flexShrink:   0,
-                  boxShadow:    `0 0 8px ${c.accent}`,
+                  boxShadow: "none",
                 }} />
                 <span style={{
                   fontSize:      "13px",
@@ -1045,7 +1045,7 @@ function ConvictionSection({ onEnter }: { onEnter: (chamber?: string) => void })
             Not a wrapper around GPT. Not another IDE chat panel. A sovereign workstation where your AI remembers, your work compounds, and your sessions never die.
           </p>
           <motion.button
-            whileHover={{ y: -1, boxShadow: "0 8px 28px rgba(0,0,0,0.12)" }}
+            whileHover={{ y: -1, boxShadow: "none" }}
             whileTap={{ scale: 0.99 }}
             onClick={() => onEnter()}
             style={{
@@ -1063,7 +1063,7 @@ function ConvictionSection({ onEnter }: { onEnter: (chamber?: string) => void })
               display:        "inline-flex",
               alignItems:     "center",
               gap:            "8px",
-              boxShadow:      "0 2px 12px rgba(0,0,0,0.1)",
+              boxShadow: "none",
               transition:     "box-shadow 0.15s ease",
             }}
           >

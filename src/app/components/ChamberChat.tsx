@@ -251,14 +251,15 @@ function UserBubble({ content }: { content: string }) {
       <div
         style={{
           background: "var(--r-text)",
-          borderRadius: "6px 6px 2px 6px",
+          borderRadius: "2px",
           padding: "11px 16px",
           maxWidth: "74%",
           fontSize: "13.5px",
           color: "var(--r-bg)",
           fontFamily: "'Inter', system-ui, sans-serif",
           lineHeight: "1.65",
-          boxShadow: "0 2px 8px color-mix(in srgb, var(--r-text) 14%, transparent)",
+          boxShadow: "none",
+          border: "1px solid var(--r-text)",
           letterSpacing: "-0.003em",
         }}
       >
@@ -288,9 +289,9 @@ function AgentLabel({ accent, chamberLabel }: { accent: string; chamberLabel: st
         gap: "5px",
         padding: "3px 9px 3px 7px",
         border: `1px solid color-mix(in srgb, ${accent} 32%, var(--r-border))`,
-        borderRadius: "5px",
+        borderRadius: "2px",
         background: `color-mix(in srgb, ${accent} 10%, var(--r-surface))`,
-        boxShadow: `0 0 8px color-mix(in srgb, ${accent} 10%, transparent)`,
+        boxShadow: "none",
       }}>
         <motion.span
           animate={{ opacity: [0.5, 1, 0.5] }}
@@ -350,7 +351,7 @@ function ProvenanceTrace({
             color:         accentStr,
             background:    accentStr + "0d",
             border:        "1px solid " + accentStr + "20",
-            borderRadius:  "3px",
+            borderRadius: "2px",
             padding:       "1px 5px",
             userSelect:    "none",
           }}
@@ -366,7 +367,7 @@ function ProvenanceTrace({
           letterSpacing: "0.07em",
           color:         tierColor,
           border:        "1px solid " + tierColor + "28",
-          borderRadius:  "3px",
+          borderRadius: "2px",
           padding:       "1px 5px",
           userSelect:    "none",
           textTransform: "uppercase" as const,
@@ -687,8 +688,8 @@ function Composer({
             borderRadius: "2px",
             padding: "14px 14px 10px 18px",
             boxShadow: focused
-              ? `0 0 0 1px color-mix(in srgb, ${accent} 22%, transparent), 0 4px 20px color-mix(in srgb, var(--r-text) 6%, transparent)`
-              : "0 2px 12px color-mix(in srgb, var(--r-text) 4%, transparent)",
+              ? `0 0 0 1px color-mix(in srgb, ${accent} 22%, transparent)`
+              : "none",
             transition: "box-shadow 0.2s ease, border-color 0.2s ease",
           }}
         >
@@ -788,7 +789,7 @@ function Composer({
                 outline: "none",
                 flexShrink: 0,
                 transition: "background 0.15s ease, border-color 0.15s ease, transform 0.1s ease",
-                boxShadow: canSend ? "0 1px 4px color-mix(in srgb, var(--r-text) 12%, transparent)" : "none",
+                boxShadow: "none",
               }}
               onMouseEnter={e => {
                 if (canSend) (e.currentTarget as HTMLElement).style.transform = "scale(1.05)";
@@ -999,7 +1000,7 @@ function ConsequenceTypeTag({ type, accent }: { type: ConsequenceType; accent: s
           textTransform: "uppercase",
           color,
           border: `1px solid color-mix(in srgb, ${color} 28%, var(--r-border))`,
-          borderRadius: "3px",
+          borderRadius: "2px",
           padding: "1px 6px",
           userSelect: "none",
         }}

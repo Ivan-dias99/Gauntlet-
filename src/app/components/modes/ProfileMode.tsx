@@ -211,7 +211,7 @@ const btn: CSSProperties = {
   fontSize:     "10px",
   fontFamily:   "'JetBrains Mono', monospace",
   padding:      "3px 10px",
-  borderRadius: "4px",
+  borderRadius: "2px",
   cursor:       "pointer",
   outline:      "none",
   color:        "var(--r-subtext)",
@@ -307,7 +307,7 @@ function ConnectorCard({ connector }: { connector: ConnectorDefinition }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "3px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
             <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.005em" }}>{connector.name}</span>
-            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: statusColor, border: "1px solid " + statusColor + "28", borderRadius: "3px", padding: "1px 5px", letterSpacing: "0.07em", textTransform: "uppercase" as const }}>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: statusColor, border: "1px solid " + statusColor + "28", borderRadius: "2px", padding: "1px 5px", letterSpacing: "0.07em", textTransform: "uppercase" as const }}>
               {connector.status.replace("_", " ")}
             </span>
           </div>
@@ -345,7 +345,7 @@ function WorkflowCard({ template, navigate }: { template: WorkflowTemplate; navi
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "4px", flexWrap: "wrap" }}>
             <p style={{ fontSize: "12.5px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.01em" }}>{template.name}</p>
-            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", color: template.badge_color, background: `${template.badge_color}12`, border: `1px solid ${template.badge_color}28`, borderRadius: "3px", padding: "1px 6px", textTransform: "uppercase" }}>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", color: template.badge_color, background: `${template.badge_color}12`, border: `1px solid ${template.badge_color}28`, borderRadius: "2px", padding: "1px 6px", textTransform: "uppercase" }}>
               {template.badge}
             </span>
             <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: template.estimated_quality === "elite" ? "var(--r-ok)" : "var(--r-subtext)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
@@ -356,7 +356,7 @@ function WorkflowCard({ template, navigate }: { template: WorkflowTemplate; navi
         </div>
         <div style={{ display: "flex", gap: "4px", flexShrink: 0, alignItems: "flex-start", flexWrap: "wrap" }}>
           {template.participating_chambers.map((c) => (
-            <span key={c} style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: CHAMBER_COLOR[c] ?? "var(--r-dim)", background: `${CHAMBER_COLOR[c] ?? "#888"}12`, border: `1px solid ${CHAMBER_COLOR[c] ?? "#888"}20`, borderRadius: "3px", padding: "2px 5px", letterSpacing: "0.05em" }}>
+            <span key={c} style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: CHAMBER_COLOR[c] ?? "var(--r-dim)", background: `${CHAMBER_COLOR[c] ?? "#888"}12`, border: `1px solid ${CHAMBER_COLOR[c] ?? "#888"}20`, borderRadius: "2px", padding: "2px 5px", letterSpacing: "0.05em" }}>
               {c}
             </span>
           ))}
@@ -401,7 +401,7 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
     : pioneer.hosting_level === "wrapped" ? "var(--r-subtext)"
     : "var(--r-warn)";
   return (
-    <div style={{ border: "1px solid var(--r-border)", borderRadius: "7px", background: "var(--r-surface)", marginBottom: "8px", overflow: "hidden" }}>
+    <div style={{ border: "1px solid var(--r-border)", borderRadius: "2px", background: "var(--r-surface)", marginBottom: "8px", overflow: "hidden" }}>
       <div
         role="button"
         tabIndex={0}
@@ -412,10 +412,10 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px", flexWrap: "wrap" }}>
             <span style={{ fontSize: "12.5px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.01em" }}>{pioneer.name}</span>
-            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: pioneer.accent, background: `${pioneer.accent}10`, border: `1px solid ${pioneer.accent}20`, borderRadius: "3px", padding: "1px 6px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: pioneer.accent, background: `${pioneer.accent}10`, border: `1px solid ${pioneer.accent}20`, borderRadius: "2px", padding: "1px 6px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
               {pioneer.short_role}
             </span>
-            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: hostingColor, border: `1px solid ${hostingColor}28`, borderRadius: "3px", padding: "1px 5px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: hostingColor, border: `1px solid ${hostingColor}28`, borderRadius: "2px", padding: "1px 5px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
               {pioneer.hosting_level}
             </span>
           </div>
@@ -433,7 +433,7 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
             <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Strengths</p>
             <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
               {pioneer.strengths.map((s) => (
-                <span key={s} style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", border: "1px solid var(--r-border)", borderRadius: "3px", padding: "1px 7px" }}>{s}</span>
+                <span key={s} style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "1px 7px" }}>{s}</span>
               ))}
             </div>
           </div>
@@ -441,7 +441,7 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
             <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Triggers</p>
             <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
               {pioneer.default_triggers.map((t) => (
-                <span key={t} style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", border: "1px solid var(--r-border)", borderRadius: "3px", padding: "1px 7px" }}>{t}</span>
+                <span key={t} style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "1px 7px" }}>{t}</span>
               ))}
             </div>
           </div>
@@ -1136,7 +1136,7 @@ export function ProfileMode({
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                   {(["A", "B", "C"] as RuntimeTier[]).map((tier) => (
                     <div key={tier} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                      <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[tier], border: `1px solid ${TIER_COLOR[tier]}28`, borderRadius: "3px", padding: "1px 5px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                      <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[tier], border: `1px solid ${TIER_COLOR[tier]}28`, borderRadius: "2px", padding: "1px 5px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
                         {TIER_LABEL[tier]}
                       </span>
                       <span style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif" }}>{TIER_DESCRIPTION[tier]}</span>
@@ -1155,7 +1155,7 @@ export function ProfileMode({
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "3px" }}>
                           <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: chamberColor, letterSpacing: "0.08em", textTransform: "uppercase" }}>{chamber}</span>
-                          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[resolution.tier], border: `1px solid ${TIER_COLOR[resolution.tier]}28`, borderRadius: "3px", padding: "0 4px", letterSpacing: "0.06em" }}>
+                          <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[resolution.tier], border: `1px solid ${TIER_COLOR[resolution.tier]}28`, borderRadius: "2px", padding: "0 4px", letterSpacing: "0.06em" }}>
                             Tier {resolution.tier}
                           </span>
                         </div>
@@ -1184,7 +1184,7 @@ export function ProfileMode({
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
                           <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif" }}>{adapter.label}</span>
-                          <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[adapter.tier], border: `1px solid ${TIER_COLOR[adapter.tier]}28`, borderRadius: "3px", padding: "0 4px", letterSpacing: "0.06em" }}>
+                          <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[adapter.tier], border: `1px solid ${TIER_COLOR[adapter.tier]}28`, borderRadius: "2px", padding: "0 4px", letterSpacing: "0.06em" }}>
                             Tier {adapter.tier}
                           </span>
                           {adapter.requires_key && (
@@ -1208,7 +1208,7 @@ export function ProfileMode({
                   {SOVEREIGN_MODEL_REGISTRY.map((model) => (
                     <div key={model.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[model.tier], border: `1px solid ${TIER_COLOR[model.tier]}20`, borderRadius: "3px", padding: "0 4px", letterSpacing: "0.05em", flexShrink: 0 }}>
+                        <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: TIER_COLOR[model.tier], border: `1px solid ${TIER_COLOR[model.tier]}20`, borderRadius: "2px", padding: "0 4px", letterSpacing: "0.05em", flexShrink: 0 }}>
                           {model.tier === "A" ? "local" : "wrap"}
                         </span>
                         <span style={{ fontSize: "11px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{model.label}</span>

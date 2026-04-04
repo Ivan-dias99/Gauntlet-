@@ -120,7 +120,7 @@ export function LabDomainDetail({ domainId, navigate, onStartChat }: Props) {
               </div>
               <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
                 {exp.tools.slice(0, 2).map(t => (
-                  <span key={t} style={{ fontSize: "8px", fontFamily: "monospace", color: "var(--r-dim)", background: "var(--r-rail)", border: "1px solid var(--r-border)", padding: "2px 5px", borderRadius: "3px" }}>
+                  <span key={t} style={{ fontSize: "8px", fontFamily: "monospace", color: "var(--r-dim)", background: "var(--r-rail)", border: "1px solid var(--r-border)", padding: "2px 5px", borderRadius: "2px" }}>
                     {t}
                   </span>
                 ))}

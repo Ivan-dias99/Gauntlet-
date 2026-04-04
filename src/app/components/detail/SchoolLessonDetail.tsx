@@ -27,7 +27,7 @@ export function SchoolLessonDetail({ lessonId, navigate, onStartChat }: Props) {
 
       <div style={{ marginBottom: "24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--r-ok)", background: "color-mix(in srgb, var(--r-ok) 10%, var(--r-surface))", padding: "2px 6px", borderRadius: "3px" }}>
+          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--r-ok)", background: "color-mix(in srgb, var(--r-ok) 10%, var(--r-surface))", padding: "2px 6px", borderRadius: "2px" }}>
             Lesson · {track.title}
           </span>
           <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{lesson.duration}</span>

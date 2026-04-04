@@ -152,7 +152,7 @@ function SignalRow({
             color:         "var(--r-dim)",
             background:    "transparent",
             border:        "1px solid var(--r-border)",
-            borderRadius:  "3px",
+            borderRadius: "2px",
             padding:       "2px 6px",
             cursor:        "pointer",
             flexShrink:    0,
@@ -241,7 +241,7 @@ function ApprovalRow({
             color:         "var(--r-ok)",
             background:    "transparent",
             border:        "1px solid color-mix(in srgb, var(--r-ok) 40%, var(--r-border))",
-            borderRadius:  "3px",
+            borderRadius: "2px",
             padding:       "3px 8px",
             cursor:        "pointer",
           }}
@@ -258,7 +258,7 @@ function ApprovalRow({
             color:         "var(--r-err)",
             background:    "transparent",
             border:        "1px solid color-mix(in srgb, var(--r-err) 30%, var(--r-border))",
-            borderRadius:  "3px",
+            borderRadius: "2px",
             padding:       "3px 8px",
             cursor:        "pointer",
           }}

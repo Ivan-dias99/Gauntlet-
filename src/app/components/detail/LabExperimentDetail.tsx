@@ -32,7 +32,7 @@ export function LabExperimentDetail({ experimentId, navigate, onStartChat }: Pro
       {/* Header */}
       <div style={{ marginBottom: "24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--r-accent)", background: "var(--r-accent-dim)", padding: "2px 6px", borderRadius: "3px" }}>
+          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--r-accent)", background: "var(--r-accent-dim)", padding: "2px 6px", borderRadius: "2px" }}>
             {exp.type}
           </span>
           <span style={{ fontSize: "9px", fontFamily: "monospace", color: COMPLEXITY_COLOR[exp.complexity] }}>

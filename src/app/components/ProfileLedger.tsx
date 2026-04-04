@@ -57,7 +57,7 @@ export function ProfileLedger({
             background: "var(--r-surface)",
             border: "1px solid var(--r-border)",
             borderRadius: "2px",
-            boxShadow: "0 16px 48px color-mix(in srgb, var(--r-text) 12%, transparent), 0 0 0 1px color-mix(in srgb, var(--r-text) 6%, transparent)",
+            boxShadow: "none",
             zIndex: 100,
             overflow: "hidden",
             fontFamily: "'Inter', system-ui, sans-serif",
@@ -74,7 +74,7 @@ export function ProfileLedger({
                   height: "48px",
                   borderRadius: "2px",
                   background: "linear-gradient(145deg, var(--r-border) 0%, var(--r-muted) 100%)",
-                  boxShadow: "inset 0 1px 1px rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.08)",
+                  boxShadow: "none",
                   flexShrink: 0,
                 }}
               />

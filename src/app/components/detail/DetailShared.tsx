@@ -96,7 +96,7 @@ export function XChamberLink({
             color: accent.color,
             background: accent.bg,
             padding: "2px 6px",
-            borderRadius: "3px",
+            borderRadius: "2px",
             flexShrink: 0,
           }}
         >
@@ -145,7 +145,7 @@ export function Tag({ label, color }: { label: string; color?: string }) {
         background: "var(--r-rail)",
         border: "1px solid var(--r-border)",
         padding: "2px 7px",
-        borderRadius: "3px",
+        borderRadius: "2px",
       }}
     >
       {label}
@@ -236,7 +236,7 @@ export function EmptyDetail({ onBack, label }: { onBack: () => void; label?: str
       </span>
       <button
         onClick={onBack}
-        style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--r-subtext)", background: "transparent", border: "1px solid var(--r-border)", borderRadius: "4px", padding: "4px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.05em" }}
+        style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--r-subtext)", background: "transparent", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "4px 12px", cursor: "pointer", outline: "none", letterSpacing: "0.05em" }}
       >
         ← Back
       </button>

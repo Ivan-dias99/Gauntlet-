@@ -206,12 +206,12 @@ function LabArchive({ messages, navigate }: { messages: Message[]; navigate: Nav
             </div>
             <p style={{ fontSize: "11px", color: "var(--r-subtext)", margin: "0 0 8px" }}>{obj.summary}</p>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <button onClick={() => openObject(navigate, obj)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Open</button>
-              <button onClick={() => navigate("lab", "code")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Run in Code</button>
+              <button onClick={() => openObject(navigate, obj)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "2px", cursor: "pointer" }}>Open</button>
+              <button onClick={() => navigate("lab", "code")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "2px", cursor: "pointer" }}>Run in Code</button>
               {obj.related_items.slice(0, 1).map((rid) => {
                 const related = findObject(rid);
                 if (!related) return null;
-                return <button key={rid} onClick={() => openObject(navigate, related)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Related → {related.title.slice(0, 18)}</button>;
+                return <button key={rid} onClick={() => openObject(navigate, related)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "2px", cursor: "pointer" }}>Related → {related.title.slice(0, 18)}</button>;
               })}
             </div>
           </div>

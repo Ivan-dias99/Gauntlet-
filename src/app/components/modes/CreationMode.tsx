@@ -71,12 +71,12 @@ function CreationArchive({ messages, navigate }: { messages: Message[]; navigate
               {obj.summary}
             </p>
             <div style={{ display: "flex", gap: "7px", flexWrap: "wrap" }}>
-              <button onClick={() => openObject(navigate, obj)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Open</button>
-              <button onClick={() => navigate("creation", "terminal")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Open Forge</button>
+              <button onClick={() => openObject(navigate, obj)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "2px", cursor: "pointer" }}>Open</button>
+              <button onClick={() => navigate("creation", "terminal")} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "2px", cursor: "pointer" }}>Open Forge</button>
               {obj.related_items.slice(0, 1).map((rid) => {
                 const related = findObject(rid);
                 if (!related) return null;
-                return <button key={rid} onClick={() => openObject(navigate, related)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "4px", cursor: "pointer" }}>Related → {related.title.slice(0, 18)}</button>;
+                return <button key={rid} onClick={() => openObject(navigate, related)} style={{ border: "1px solid var(--r-border)", background: "transparent", fontSize: "10px", fontFamily: "monospace", padding: "3px 8px", borderRadius: "2px", cursor: "pointer" }}>Related → {related.title.slice(0, 18)}</button>;
               })}
             </div>
           </div>
@@ -141,7 +141,7 @@ function CheckItem({ text, checked, placeholder = false }: { text: string; check
         style={{
           width: "13px",
           height: "13px",
-          borderRadius: "3px",
+          borderRadius: "2px",
           border: `1.5px solid ${checked ? "var(--r-ok)" : "var(--r-border)"}`,
           background: checked ? "var(--r-ok)" : "transparent",
           display: "flex",
@@ -551,7 +551,7 @@ function BuildSurface({
                 color: draft.trim() && !isLoading ? "var(--r-bg)" : "var(--r-dim)",
                 cursor: draft.trim() && !isLoading ? "pointer" : "default",
                 outline: "none",
-                borderRadius: "4px",
+                borderRadius: "2px",
                 flexShrink: 0,
                 transition: "background 0.15s ease, color 0.15s ease",
               }}
@@ -657,7 +657,7 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
                 <div style={{ height: "64px", background: "color-mix(in srgb, var(--chamber-creation) 10%, var(--r-surface))", borderBottom: "1px solid var(--r-border-soft)", position: "relative", overflow: "hidden" }}>
                   <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(-45deg, transparent, transparent 5px, color-mix(in srgb, var(--chamber-creation) 12%, transparent) 5px, color-mix(in srgb, var(--chamber-creation) 12%, transparent) 6px)" }} />
                   <div style={{ position: "absolute", top: "10px", left: "12px" }}>
-                    <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: "var(--chamber-creation)", background: "color-mix(in srgb, var(--chamber-creation) 12%, var(--r-surface))", border: "1px solid color-mix(in srgb, var(--chamber-creation) 22%, var(--r-border))", borderRadius: "3px", padding: "2px 6px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                    <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", color: "var(--chamber-creation)", background: "color-mix(in srgb, var(--chamber-creation) 12%, var(--r-surface))", border: "1px solid color-mix(in srgb, var(--chamber-creation) 22%, var(--r-border))", borderRadius: "2px", padding: "2px 6px", letterSpacing: "0.07em", textTransform: "uppercase" }}>
                       {obj.type || "artifact"}
                     </span>
                   </div>
@@ -673,13 +673,13 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
                   <div style={{ display: "flex", gap: "6px" }}>
                     <button
                       onClick={e => { e.stopPropagation(); openObject(navigate, obj); }}
-                      style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-subtext)", background: "transparent", border: "1px solid var(--r-border)", borderRadius: "4px", padding: "3px 8px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
+                      style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-subtext)", background: "transparent", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "3px 8px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
                     >
                       Open
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); onBuild(); }}
-                      style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--chamber-creation)", background: "transparent", border: "1px solid color-mix(in srgb, var(--chamber-creation) 28%, var(--r-border))", borderRadius: "4px", padding: "3px 8px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
+                      style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--chamber-creation)", background: "transparent", border: "1px solid color-mix(in srgb, var(--chamber-creation) 28%, var(--r-border))", borderRadius: "2px", padding: "3px 8px", cursor: "pointer", outline: "none", letterSpacing: "0.04em" }}
                     >
                       Iterate
                     </button>
@@ -694,7 +694,7 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
         <div style={{ marginTop: "24px", paddingTop: "16px", borderTop: "1px solid var(--r-border-soft)", display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.08em", textTransform: "uppercase", marginRight: "4px" }}>Types:</span>
           {outputTypes.map(t => (
-            <span key={t} style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "3px", padding: "1px 6px", letterSpacing: "0.04em" }}>{t}</span>
+            <span key={t} style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", border: "1px solid var(--r-border)", borderRadius: "2px", padding: "1px 6px", letterSpacing: "0.04em" }}>{t}</span>
           ))}
         </div>
       </div>

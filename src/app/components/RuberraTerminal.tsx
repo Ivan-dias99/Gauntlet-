@@ -484,7 +484,7 @@ function BlockText({ lines, layer }: { lines: string[]; layer?: "RESULT" | "WARN
             <div key={i} style={{ marginBottom: "2px", lineHeight: "1.65" }}>
               {inlineParts.map((p, j) =>
                 p.startsWith("`") && p.endsWith("`")
-                  ? <span key={j} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.amber, background: T.surface, padding: "0 4px", borderRadius: "3px", border: `1px solid ${T.line2}` }}>{p.slice(1, -1)}</span>
+                  ? <span key={j} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.amber, background: T.surface, padding: "0 4px", borderRadius: "2px", border: `1px solid ${T.line2}` }}>{p.slice(1, -1)}</span>
                   : <span key={j} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: T.text }}>{p}</span>
               )}
             </div>
@@ -559,7 +559,7 @@ function TerminalLayerBadge({ layer, color }: { layer: string; color: string }) 
         textTransform: "uppercase",
         color,
         border: `1px solid color-mix(in srgb, ${color} 28%, ${T.line})`,
-        borderRadius: "3px",
+        borderRadius: "2px",
         padding: "1px 5px",
         userSelect: "none",
         flexShrink: 0,
@@ -765,7 +765,7 @@ function TerminalInput({
               cursor: "pointer",
               outline: "none",
               padding: "2px 10px",
-              borderRadius: "3px",
+              borderRadius: "2px",
               letterSpacing: "0.07em",
               transition: "border-color 0.1s ease, color 0.1s ease",
             }}

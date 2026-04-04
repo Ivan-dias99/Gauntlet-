@@ -60,7 +60,7 @@ export function SignalsPanel({ open, onClose, signals, onOpen, onDismiss, onMark
               border: "1px solid var(--r-border)",
               borderRadius: "2px",
               background: "var(--r-surface)",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+              boxShadow: "none",
               display: "flex",
               flexDirection: "column",
             }}
@@ -140,7 +140,7 @@ export function SignalsPanel({ open, onClose, signals, onOpen, onDismiss, onMark
                     style={{
                       ...mono8,
                       border: "1px solid var(--r-border)",
-                      borderRadius: "3px",
+                      borderRadius: "2px",
                       background: "transparent",
                       color: "var(--r-accent)",
                       padding: "2px 5px",
@@ -154,7 +154,7 @@ export function SignalsPanel({ open, onClose, signals, onOpen, onDismiss, onMark
                     style={{
                       ...mono8,
                       border: "1px solid var(--r-border)",
-                      borderRadius: "3px",
+                      borderRadius: "2px",
                       background: "transparent",
                       color: "var(--r-dim)",
                       padding: "2px 5px",

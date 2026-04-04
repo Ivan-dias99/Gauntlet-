@@ -30,7 +30,7 @@ export function SchoolRoleDetail({ roleId, navigate, onStartChat }: Props) {
 
       <div style={{ marginBottom: "24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: DEMAND_COLOR[role.demand], background: `color-mix(in srgb, ${DEMAND_COLOR[role.demand]} 10%, var(--r-surface))`, padding: "2px 6px", borderRadius: "3px" }}>
+          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: DEMAND_COLOR[role.demand], background: `color-mix(in srgb, ${DEMAND_COLOR[role.demand]} 10%, var(--r-surface))`, padding: "2px 6px", borderRadius: "2px" }}>
             {role.demand} demand
           </span>
           <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{role.domain}</span>

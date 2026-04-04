@@ -287,7 +287,7 @@ export function GlobalCommandPalette({
               background: "var(--r-surface)",
               borderRadius: "2px",
               border: "1px solid var(--r-border)",
-              boxShadow: "0 8px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.06)",
+              boxShadow: "none",
               overflow: "hidden",
             }}
           >
@@ -333,7 +333,7 @@ export function GlobalCommandPalette({
                     color: "var(--r-dim)",
                     background: "var(--r-rail)",
                     border: "1px solid var(--r-border-soft)",
-                    borderRadius: "3px",
+                    borderRadius: "2px",
                     padding: "2px 5px",
                     letterSpacing: "0.04em",
                     flexShrink: 0,

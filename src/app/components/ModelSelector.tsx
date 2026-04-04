@@ -88,7 +88,7 @@ function MatrixPanel({
         background:   "var(--r-surface)",
         border:       "1px solid var(--r-border)",
         borderRadius: "2px",
-        boxShadow:    "0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)",
+        boxShadow: "none",
         overflow:     "hidden",
       }}
     >
@@ -116,7 +116,7 @@ function MatrixPanel({
                 fontFamily:    "'JetBrains Mono', monospace",
                 letterSpacing: "0.05em",
                 padding:       "3px 8px",
-                borderRadius:  "4px",
+                borderRadius: "2px",
                 border:        task === t ? `1px solid ${accent}` : "1px solid var(--r-border)",
                 background:    task === t ? `${accent}14` : "transparent",
                 color:         task === t ? accent : "var(--r-dim)",
@@ -195,7 +195,7 @@ function MatrixPanel({
                   color:         "var(--r-dim)",
                   background:    "var(--r-rail)",
                   border:        "1px solid var(--r-border)",
-                  borderRadius:  "3px",
+                  borderRadius: "2px",
                   padding:       "1px 4px",
                 }}>
                   {LATENCY_LABEL[m.latency]}
@@ -268,7 +268,7 @@ export function ModelSelector({
           gap:           "5px",
           height:        "22px",
           padding:       "0 9px",
-          borderRadius:  "5px",
+          borderRadius: "2px",
           cursor:        "pointer",
           outline:       "none",
           fontFamily:    "'JetBrains Mono', monospace",
@@ -302,7 +302,7 @@ export function ModelSelector({
           gap:           "5px",
           height:        "22px",
           padding:       "0 9px",
-          borderRadius:  "5px",
+          borderRadius: "2px",
           cursor:        "pointer",
           outline:       "none",
           fontFamily:    "'JetBrains Mono', monospace",

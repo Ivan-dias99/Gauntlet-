@@ -124,7 +124,7 @@ export function ExecutionConsequenceStrip({
             textTransform: "uppercase",
             color: stateColor(trace.executionState),
             border: `1px solid color-mix(in srgb, ${stateColor(trace.executionState)} 32%, var(--r-border))`,
-            borderRadius: "3px",
+            borderRadius: "2px",
             padding: "2px 6px",
           }}
         >
@@ -153,7 +153,7 @@ export function ExecutionConsequenceStrip({
               textTransform: "uppercase",
               color: tierColor ?? "var(--r-dim)",
               border: `1px solid color-mix(in srgb, ${tierColor ?? "var(--r-dim)"} 28%, var(--r-border))`,
-              borderRadius: "3px",
+              borderRadius: "2px",
               padding: "2px 5px",
             }}
           >
