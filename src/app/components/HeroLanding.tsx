@@ -427,7 +427,7 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
         display:       "flex",
         flexDirection: "column",
         alignItems:    "center",
-        justifyContent:"center",
+        justifyContent:"flex-start",
         padding:       "max(60px, 8vh) max(16px, 4vw) max(40px, 6vh)",
         position:      "relative",
         zIndex:        10,
@@ -436,6 +436,7 @@ function HeroSection({ onEnter }: { onEnter: (chamber?: string) => void }) {
     >
       {/* Two-column layout: text left, organism right */}
       <div style={{
+        margin:              "auto 0",
         display:             "grid",
         gridTemplateColumns: "1fr 1fr",
         gap:                 "clamp(32px, 5vw, 80px)",
