@@ -94,7 +94,7 @@ export const PROVIDER_ADAPTERS: ProviderAdapter[] = [
     label:        "LM Studio (Local)",
     base_url:     "http://localhost:1234/v1",
     config_key:   "RUBERRA_LMSTUDIO_URL",
-    health_path:  "/v1/models",
+    health_path:  "/models",   // base_url already includes /v1, so path is /models not /v1/models
     requires_key: false,
     available:    false,
     notes:        "Start LM Studio server. Set RUBERRA_LMSTUDIO_URL to enable.",
@@ -535,17 +535,32 @@ export async function probeAdapterAvailability(
   }
 }
 
+export interface AdapterEndpointOverrides {
+  /** Custom base_url per adapter id. If present, overrides the PROVIDER_ADAPTERS default. */
+  [adapterId: string]: string;
+}
+
 /**
  * Probe all configured adapters in parallel.
  * Returns updated registry with live `available` values.
  * Use at startup or when settings change.
+ * Pass `endpointOverrides` to test user-configured endpoints instead of defaults.
  */
-export async function buildLiveAdapterRegistry(signal?: AbortSignal): Promise<ProviderAdapter[]> {
+export async function buildLiveAdapterRegistry(
+  signal?: AbortSignal,
+  endpointOverrides?: AdapterEndpointOverrides,
+): Promise<ProviderAdapter[]> {
   const settled = await Promise.allSettled(
-    PROVIDER_ADAPTERS.map(async (adapter) => ({
-      ...adapter,
-      available: await probeAdapterAvailability(adapter, signal),
-    }))
+    PROVIDER_ADAPTERS.map(async (adapter) => {
+      const override = endpointOverrides?.[adapter.id];
+      const effective = override
+        ? { ...adapter, base_url: override.replace(/\/$/, "") }
+        : adapter;
+      return {
+        ...effective,
+        available: await probeAdapterAvailability(effective, signal),
+      };
+    })
   );
   return settled.map((r, i) =>
     r.status === "fulfilled" ? r.value : { ...PROVIDER_ADAPTERS[i], available: false }

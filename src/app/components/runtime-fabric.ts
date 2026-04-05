@@ -125,12 +125,27 @@ export interface PreferenceState {
   lastUpdated: number;
 }
 
+export interface OpenSourceProviderConfig {
+  endpoint: string;
+  enabled: boolean;
+}
+
+export interface OpenSourceProvidersSettings {
+  ollama?:   OpenSourceProviderConfig;
+  vllm?:     OpenSourceProviderConfig;
+  lmstudio?: OpenSourceProviderConfig;
+  groq?:     { apiKey: string; enabled: boolean };
+}
+
 export interface AISettingsState {
   modelPolicy: "balanced" | "quality_first" | "speed_first";
   safetyMode: "standard" | "strict";
   autoSummaries: boolean;
   allowFallbackRouting: boolean;
+  /** @deprecated Use openSourceProviders.ollama.endpoint instead. Kept for backwards compat. */
   localRuntimeEndpoint?: string;
+  /** Per-provider configuration for open-source endpoints */
+  openSourceProviders?: OpenSourceProvidersSettings;
   lastUpdated: number;
 }
 
@@ -395,6 +410,12 @@ const DEFAULT_AI_SETTINGS: AISettingsState = {
   autoSummaries: true,
   allowFallbackRouting: true,
   localRuntimeEndpoint: "http://127.0.0.1:11434",
+  openSourceProviders: {
+    ollama:   { endpoint: "http://localhost:11434",    enabled: true },
+    vllm:     { endpoint: "http://localhost:8000",     enabled: false },
+    lmstudio: { endpoint: "http://localhost:1234/v1",  enabled: false },
+    groq:     { apiKey: "",                            enabled: false },
+  },
   lastUpdated: Date.now(),
 };
 

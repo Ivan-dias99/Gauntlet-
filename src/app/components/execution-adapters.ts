@@ -10,7 +10,7 @@ export interface ExecutionRequest {
   prompt: string;
   modelId: string;
   providerId: string;
-  providerLane?: "open_source_local" | "free_provider" | "wrapped_external" | "premium_hosted_future";
+  providerLane?: "open_source_local" | "openai_compat_local" | "free_provider" | "wrapped_external" | "premium_hosted_future";
   fallbackChain: string[];
   context: Array<{ role: string; content: string }>;
   signal: AbortSignal;
@@ -89,8 +89,19 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
 
 function inferProviderTruth(lane?: ExecutionRequest["providerLane"]): ProviderTruth {
   if (lane === "wrapped_external" || lane === "free_provider") return "wrapped";
-  if (lane === "open_source_local") return "proxy";
+  if (lane === "open_source_local" || lane === "openai_compat_local") return "proxy";
   return "hosted";
+}
+
+/**
+ * Build the correct OpenAI-compat chat URL from an endpoint.
+ * Handles both base URLs (e.g. http://localhost:8000) and
+ * URLs that already include /v1 (e.g. http://localhost:1234/v1).
+ */
+function buildOpenAICompatChatUrl(endpoint: string): string {
+  const base = endpoint.replace(/\/$/, "");
+  if (base.endsWith("/v1")) return `${base}/chat/completions`;
+  return `${base}/v1/chat/completions`;
 }
 
 async function runWrapped(
@@ -399,6 +410,156 @@ async function runLocalProxy(req: ExecutionRequest, onChunk?: (chunk: string) =>
   };
 }
 
+/**
+ * OpenAI-compatible local inference: vLLM, LM Studio, llama.cpp server.
+ * All expose POST /v1/chat/completions with SSE streaming.
+ */
+async function runOpenAICompat(req: ExecutionRequest, onChunk?: (chunk: string) => void): Promise<ExecutionResponse> {
+  const started    = performance.now();
+  const timeoutMs  = req.timeoutMs ?? 60_000;
+  const chatUrl    = buildOpenAICompatChatUrl(req.localEndpoint ?? "http://localhost:8000");
+
+  const messages = [
+    ...req.context,
+    { role: "user", content: req.prompt },
+  ];
+
+  const chatResult = await fetchWithTimeout(
+    chatUrl,
+    {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        model:       req.modelId,
+        messages,
+        stream:      true,
+        temperature: 0.3,
+        max_tokens:  2048,
+      }),
+    },
+    timeoutMs,
+    req.signal,
+  );
+
+  if (!chatResult.response?.ok || !chatResult.response.body) {
+    providerHealthCache.set(req.providerId, { state: "unavailable", updatedAt: Date.now() });
+    return {
+      content:             chatResult.timedOut
+        ? `[openai-compat: request timed out — is ${req.localEndpoint} running?]`
+        : `[openai-compat: ${req.providerId} unreachable at ${chatUrl}]`,
+      mode:                "local",
+      degraded:            true,
+      blocked:             true,
+      providerTruth:       inferProviderTruth(req.providerLane),
+      selectedProviderId:  req.providerId,
+      selectedModelId:     req.modelId,
+      state:               "provider_unavailable",
+      providerUnavailable: true,
+      scaffoldOnly:        false,
+      blockedReason:       chatResult.timedOut ? "timeout" : "endpoint_unreachable",
+      localHandshake:      { endpoint: req.localEndpoint, reachable: false, checkedAt: Date.now() },
+      latencyMs:           Math.round(performance.now() - started),
+      normalizedRequest: {
+        chamber:         req.chamber,
+        task:            req.task,
+        promptPreview:   req.prompt.slice(0, 120),
+        fallbackCount:   req.fallbackChain.length,
+        connectorLinked: (req.connectorIds?.length ?? 0) > 0,
+        connectorCount:  req.connectorIds?.length ?? 0,
+        workflowId:      req.workflowId,
+        continuityId:    req.continuityId,
+      },
+      attempts:      1,
+      timedOut:      chatResult.timedOut,
+      providerHealth:"unavailable",
+      localRuntime: {
+        endpoint:      req.localEndpoint,
+        state:         "unavailable",
+        models:        [],
+        capabilities:  ["chat"],
+        lastCheckedAt: Date.now(),
+      },
+    };
+  }
+
+  // Stream OpenAI-compat SSE: data: {"choices":[{"delta":{"content":"..."}}]}
+  const reader  = chatResult.response.body.getReader();
+  const decoder = new TextDecoder();
+  let content   = "";
+  let buf       = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const data = trimmed.slice(5).trim();
+        if (data === "[DONE]") continue;
+        try {
+          const parsed = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
+          const token  = parsed.choices?.[0]?.delta?.content ?? "";
+          if (token) { content += token; onChunk?.(token); }
+        } catch { /* malformed SSE line — skip */ }
+      }
+    }
+    // flush remaining buffer
+    if (buf.trim() && buf.trim() !== "data: [DONE]") {
+      try {
+        const data = buf.trim().startsWith("data:") ? buf.trim().slice(5).trim() : buf.trim();
+        if (data !== "[DONE]") {
+          const parsed = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
+          const token  = parsed.choices?.[0]?.delta?.content ?? "";
+          if (token) { content += token; onChunk?.(token); }
+        }
+      } catch { /* ignore */ }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  providerHealthCache.set(req.providerId, { state: "healthy", updatedAt: Date.now() });
+
+  return {
+    content,
+    mode:                "local",
+    degraded:            false,
+    blocked:             false,
+    providerTruth:       inferProviderTruth(req.providerLane),
+    selectedProviderId:  req.providerId,
+    selectedModelId:     req.modelId,
+    state:               "completed",
+    providerUnavailable: false,
+    scaffoldOnly:        false,
+    localHandshake:      { endpoint: req.localEndpoint, reachable: true, checkedAt: Date.now() },
+    latencyMs:           Math.round(performance.now() - started),
+    normalizedRequest: {
+      chamber:         req.chamber,
+      task:            req.task,
+      promptPreview:   req.prompt.slice(0, 120),
+      fallbackCount:   req.fallbackChain.length,
+      connectorLinked: (req.connectorIds?.length ?? 0) > 0,
+      connectorCount:  req.connectorIds?.length ?? 0,
+      workflowId:      req.workflowId,
+      continuityId:    req.continuityId,
+    },
+    attempts:      1,
+    timedOut:      false,
+    providerHealth:"healthy",
+    localRuntime: {
+      endpoint:      req.localEndpoint,
+      state:         "ready",
+      models:        [req.modelId],
+      capabilities:  ["chat"],
+      lastCheckedAt: Date.now(),
+    },
+  };
+}
+
 async function runHostedScaffold(req: ExecutionRequest): Promise<ExecutionResponse> {
   const started = performance.now();
   providerHealthCache.set(req.providerId, { state: "degraded", updatedAt: Date.now() });
@@ -443,6 +604,9 @@ export async function executeAIRequest(req: ExecutionRequest, onChunk?: (chunk: 
   }
   if (req.providerLane === "open_source_local") {
     return runLocalProxy(req, onChunk);
+  }
+  if (req.providerLane === "openai_compat_local") {
+    return runOpenAICompat(req, onChunk);
   }
   return runHostedScaffold(req);
 }

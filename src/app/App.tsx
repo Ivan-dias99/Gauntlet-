@@ -110,7 +110,14 @@ import {
   type ContinuityItem,
 } from "./components/runtime-fabric";
 import { resolveRouteDecision } from "./components/intelligence-foundation";
-import { getExecutionTruth, buildLiveAdapterRegistry, resolveSovereignStack } from "./components/sovereign-runtime";
+import {
+  getExecutionTruth,
+  buildLiveAdapterRegistry,
+  resolveSovereignStack,
+  PROVIDER_ADAPTERS,
+  SOVEREIGN_MODEL_REGISTRY,
+  CHAMBER_SOVEREIGN_DEFAULTS,
+} from "./components/sovereign-runtime";
 import { getContractByIntent, resolveIntent } from "./components/routing-contracts";
 import { MODEL_REGISTRY } from "./components/model-orchestration";
 import { enforceExecutionGate } from "./components/governance-fabric";
@@ -614,9 +621,16 @@ export default function App() {
   }, [activeMissionId]);
 
   // ── Sovereign runtime probe — live adapter availability on mount ─────────────
+  // Re-runs when aiSettings change so updated endpoints are probed immediately.
   useEffect(() => {
     const controller = new AbortController();
-    buildLiveAdapterRegistry(controller.signal)
+    const osCfg = runtimeFabric.aiSettings.openSourceProviders;
+    const endpointOverrides: Record<string, string> = {};
+    if (osCfg?.ollama?.endpoint)   endpointOverrides["ollama-local"] = osCfg.ollama.endpoint;
+    if (osCfg?.vllm?.endpoint)     endpointOverrides["vllm-local"]   = osCfg.vllm.endpoint;
+    if (osCfg?.lmstudio?.endpoint) endpointOverrides["lm-studio"]    = osCfg.lmstudio.endpoint;
+
+    buildLiveAdapterRegistry(controller.signal, endpointOverrides)
       .then((liveAdapters) => {
         setRuntimeFabric((prev) => {
           let next = prev;
@@ -634,7 +648,8 @@ export default function App() {
       })
       .catch(() => { /* probe failures are non-fatal */ });
     return () => controller.abort();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runtimeFabric.aiSettings.openSourceProviders]);
 
   useEffect(() => {
     if (securityState.session) return;
@@ -1584,24 +1599,59 @@ export default function App() {
         : history;
 
       // ── Sovereign routing: try live local runtime first ──────────────────────
+      // Checks providerHealth (populated by buildLiveAdapterRegistry on mount).
+      // Supports Ollama (NDJSON), vLLM (OpenAI-compat), LM Studio (OpenAI-compat).
       let usedLocalPath = false;
+      const LOCAL_PROVIDER_IDS = new Set(["ollama-local", "vllm-local", "lm-studio"]);
       const localHealth = runtimeFabric.providerHealth.find(
-        (ph) => ph.state === "healthy" && (ph.providerId === "ollama-local" || ph.providerId.startsWith("vllm"))
+        (ph) => ph.state === "healthy" && LOCAL_PROVIDER_IDS.has(ph.providerId)
       );
       if (localHealth) {
-        const sovereign = resolveSovereignStack(tab);
-        if (sovereign.is_available) {
+        // Resolve adapter spec and sovereign model for this chamber+provider
+        const adapter = PROVIDER_ADAPTERS.find((a) => a.id === localHealth.providerId);
+        const chamberDefaults = CHAMBER_SOVEREIGN_DEFAULTS.find((d) => d.chamber === tab);
+        const candidateModelIds = [
+          chamberDefaults?.primary_model_id,
+          chamberDefaults?.fallback_model_id,
+          chamberDefaults?.fast_model_id,
+        ].filter(Boolean) as string[];
+        const sovereignModel =
+          SOVEREIGN_MODEL_REGISTRY.find((m) => candidateModelIds.includes(m.id) && m.adapter_id === localHealth.providerId)
+          ?? SOVEREIGN_MODEL_REGISTRY.find((m) => m.adapter_id === localHealth.providerId);
+
+        if (adapter && sovereignModel) {
+          // Resolve endpoint: prefer user-configured value, fall back to adapter default
+          const osCfg = runtimeFabric.aiSettings.openSourceProviders;
+          const localEndpoint =
+            localHealth.providerId === "ollama-local"
+              ? (osCfg?.ollama?.endpoint   || adapter.base_url)
+              : localHealth.providerId === "vllm-local"
+              ? (osCfg?.vllm?.endpoint     || adapter.base_url)
+              : localHealth.providerId === "lm-studio"
+              ? (osCfg?.lmstudio?.endpoint || adapter.base_url)
+              : adapter.base_url;
+
+          // Ollama uses NDJSON /api/chat; vLLM + LM Studio use OpenAI /v1/chat/completions
+          const lane: ExecutionRequest["providerLane"] =
+            adapter.kind === "ollama" ? "open_source_local" : "openai_compat_local";
+
+          // Model name: Ollama uses ollama_name (e.g. "llama3.3:70b"); others use registry id
+          const resolvedModelId =
+            adapter.kind === "ollama"
+              ? (sovereignModel.ollama_name || sovereignModel.id)
+              : sovereignModel.id;
+
           const localReq: ExecutionRequest = {
             chamber:       tab,
             task,
             prompt:        text,
-            modelId:       sovereign.model.ollama_name || sovereign.model.id,
+            modelId:       resolvedModelId,
             providerId:    localHealth.providerId,
-            providerLane:  "open_source_local",
+            providerLane:  lane,
             fallbackChain: plan.fallbackChain,
             context:       contextualHistory,
             signal:        controller.signal,
-            localEndpoint: runtimeFabric.aiSettings.localRuntimeEndpoint ?? "http://localhost:11434",
+            localEndpoint,
             continuityId,
           };
           const localRes = await executeAIRequest(localReq, (chunk) => {
@@ -1615,7 +1665,7 @@ export default function App() {
                   const er = m.execution_trace.executionResults;
                   return er.some((e) => e.phase === "stream")
                     ? { ...m, content: m.content + chunk }
-                    : { ...m, content: m.content + chunk, execution_trace: { ...m.execution_trace, executionState: "live", executionResults: [...er, { phase: "stream", summary: "Local sovereign runtime", at: Date.now() }] } };
+                    : { ...m, content: m.content + chunk, execution_trace: { ...m.execution_trace, executionState: "live", executionResults: [...er, { phase: "stream", summary: `Local sovereign runtime · ${adapter.label}`, at: Date.now() }] } };
                 }),
               }));
             } else {
@@ -3181,6 +3231,7 @@ export default function App() {
                   flowState={flowState}
                   systemModel={systemModel}
                   distributionLedger={[]}
+                  providerHealth={runtimeFabric.providerHealth}
                 />
               )}
             </motion.div>
