@@ -131,6 +131,7 @@ interface ProfileModeProps {
   flowState?:               AutonomousFlowState;
   systemModel?:             SystemModel;
   distributionLedger?:      Array<{ id: string; continuityId: string; title: string; publishedAt: number; uri: string; checksum: string }>;
+  providerHealth?: Array<{ providerId: string; state: "healthy" | "degraded" | "unavailable"; updatedAt: number }>;
 }
 
 type WorkStatus = "in_progress" | "paused" | "completed";
@@ -522,6 +523,7 @@ export function ProfileMode({
   flowState,
   systemModel,
   distributionLedger,
+  providerHealth,
 }: ProfileModeProps) {
   const operations = operationsProp ?? defaultAutonomousOperationsState();
   const derivedWork = deriveWorkItems(messages);
@@ -933,6 +935,137 @@ export function ProfileMode({
                     <button onClick={item.action} style={{ ...btn, minWidth: "90px", textAlign: "center" as const }}>{item.value}</button>
                   </div>
                 ))}
+              </div>
+            </SectionBlock>
+            <SectionBlock title="Open-Source Providers">
+              <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                {/* helper styles */}
+                {(
+                  [
+                    {
+                      key:       "ollama" as const,
+                      label:     "Ollama",
+                      adapterId: "ollama-local",
+                      note:      "Local · ollama serve",
+                      defaultEndpoint: "http://localhost:11434",
+                      hasKey: false,
+                    },
+                    {
+                      key:       "vllm" as const,
+                      label:     "vLLM",
+                      adapterId: "vllm-local",
+                      note:      "Self-hosted OpenAI-compat",
+                      defaultEndpoint: "http://localhost:8000",
+                      hasKey: false,
+                    },
+                    {
+                      key:       "lmstudio" as const,
+                      label:     "LM Studio",
+                      adapterId: "lm-studio",
+                      note:      "Local · LM Studio server",
+                      defaultEndpoint: "http://localhost:1234/v1",
+                      hasKey: false,
+                    },
+                  ] as const
+                ).map(({ key, label, adapterId, note, defaultEndpoint }) => {
+                  const cfg = aiSettings.openSourceProviders?.[key];
+                  const health = providerHealth?.find((ph) => ph.providerId === adapterId);
+                  const healthColor =
+                    health?.state === "healthy"     ? "var(--r-ok)"   :
+                    health?.state === "degraded"    ? "var(--r-warn)" :
+                    health?.state === "unavailable" ? "var(--r-err)"  : "var(--r-dim)";
+                  const healthLabel =
+                    health?.state === "healthy"     ? "live"   :
+                    health?.state === "degraded"    ? "degraded" :
+                    health?.state === "unavailable" ? "offline" : "unprobed";
+                  return (
+                    <div key={key} style={{ borderBottom: "1px solid var(--r-border-soft)", paddingBottom: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                        <div>
+                          <span style={{ fontSize: "12px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 500 }}>{label}</span>
+                          <span style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", marginLeft: "6px" }}>{note}</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ fontSize: "9px", color: healthColor, fontFamily: "'JetBrains Mono', monospace" }}>{healthLabel}</span>
+                          <button
+                            onClick={() => onAISettingsPatch({
+                              openSourceProviders: {
+                                ...aiSettings.openSourceProviders,
+                                [key]: { endpoint: cfg?.endpoint ?? defaultEndpoint, enabled: !(cfg?.enabled ?? false) },
+                              },
+                            })}
+                            style={{ ...btn, color: cfg?.enabled ? "var(--r-ok)" : "var(--r-subtext)", minWidth: "52px", textAlign: "center" as const }}
+                          >
+                            {cfg?.enabled ? "enabled" : "off"}
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="text"
+                        value={cfg?.endpoint ?? defaultEndpoint}
+                        onChange={(e) => onAISettingsPatch({
+                          openSourceProviders: {
+                            ...aiSettings.openSourceProviders,
+                            [key]: { enabled: cfg?.enabled ?? false, endpoint: e.target.value },
+                          },
+                        })}
+                        placeholder={defaultEndpoint}
+                        style={{
+                          width: "100%",
+                          background: "var(--r-surface)",
+                          border: "1px solid var(--r-border)",
+                          borderRadius: "4px",
+                          padding: "4px 8px",
+                          fontSize: "11px",
+                          color: "var(--r-text)",
+                          fontFamily: "'JetBrains Mono', monospace",
+                          boxSizing: "border-box" as const,
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+                {/* Groq — cloud API key */}
+                {(() => {
+                  const cfg   = aiSettings.openSourceProviders?.groq;
+                  const health = providerHealth?.find((ph) => ph.providerId === "groq-free");
+                  const healthColor =
+                    health?.state === "healthy"     ? "var(--r-ok)"   :
+                    health?.state === "degraded"    ? "var(--r-warn)" :
+                    health?.state === "unavailable" ? "var(--r-err)"  : "var(--r-dim)";
+                  const healthLabel =
+                    health?.state === "healthy"     ? "live"     :
+                    health?.state === "degraded"    ? "degraded" :
+                    health?.state === "unavailable" ? "offline"  : "unprobed";
+                  return (
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                        <div>
+                          <span style={{ fontSize: "12px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 500 }}>Groq</span>
+                          <span style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", marginLeft: "6px" }}>Cloud · free tier · via server</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ fontSize: "9px", color: healthColor, fontFamily: "'JetBrains Mono', monospace" }}>{healthLabel}</span>
+                          <button
+                            onClick={() => onAISettingsPatch({
+                              openSourceProviders: {
+                                ...aiSettings.openSourceProviders,
+                                groq: { apiKey: cfg?.apiKey ?? "", enabled: !(cfg?.enabled ?? false) },
+                              },
+                            })}
+                            style={{ ...btn, color: cfg?.enabled ? "var(--r-ok)" : "var(--r-subtext)", minWidth: "52px", textAlign: "center" as const }}
+                          >
+                            {cfg?.enabled ? "enabled" : "off"}
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", marginBottom: "4px" }}>
+                        API key is stored locally and sent to the Ruberra server layer. Set GROQ_API_KEY in Supabase env for server-side routing.
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </SectionBlock>
             <SectionBlock title="Workspace">
