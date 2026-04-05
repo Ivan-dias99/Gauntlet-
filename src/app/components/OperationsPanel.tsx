@@ -23,7 +23,7 @@ import {
   type GovernanceAction,
   SIGNAL_KIND_LABEL,
 } from "./autonomous-operations";
-import { type Tab } from "./shell-types";
+import { type Tab, CHAMBER_COLOR } from "./shell-types";
 import { type NavFn } from "./shell-types";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -44,12 +44,6 @@ interface OperationsPanelProps {
 }
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
-
-const CHAMBER_COLOR: Record<Exclude<Tab, "profile">, string> = {
-  lab:      "var(--chamber-lab)",
-  school:   "var(--chamber-school)",
-  creation: "var(--chamber-creation)",
-};
 
 const PHASE_LABEL: Record<MissionTaskPhase, string> = {
   draft:        "draft",

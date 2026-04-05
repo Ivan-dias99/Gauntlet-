@@ -3,7 +3,7 @@
  */
 import { type NavFn } from "../shell-types";
 import { getEngine, getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
+import { Breadcrumb, SectionHead, PrimaryAction, SecondaryAction, EmptyDetail, ObjectDetailSurface } from "./DetailShared";
 
 interface Props { engineId: string; navigate: NavFn; onStartChat: (p: string) => void; }
 
@@ -12,7 +12,19 @@ export function CreationEngineDetail({ engineId, navigate, onStartChat }: Props)
   if (!engine) return <EmptyDetail onBack={() => navigate("creation", "home")} label="Engine not found" />;
 
   return (
-    <DetailPage>
+    <ObjectDetailSurface
+      identity={{ title: engine.title, type: "Creation Engine", id: engineId }}
+      state={{ status: `${engine.templateCount} Templates`, canon: "active", statusColor: "var(--r-warn)" }}
+      missionBinding={{ chamber: "Creation", text: engine.desc }}
+      directiveRelevance={[
+        { id: "d1", text: "Enforce strict interface stability when compiling with this engine", priority: "high" },
+      ]}
+      aiReasoning={`Engine Profile: Contains ${engine.templateCount} structural execution templates.`}
+      consequenceTrace={[]}
+      meshRelations={
+        engine.linkedBlueprints.map(bid => ({ id: bid, label: "Compatible Blueprint" }))
+      }
+    >
       <Breadcrumb
         items={[
           { label: "Creation", tab: "creation", view: "home" },
@@ -20,21 +32,6 @@ export function CreationEngineDetail({ engineId, navigate, onStartChat }: Props)
         ]}
         onNavigate={navigate}
       />
-
-      <div style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--r-warn)", background: "color-mix(in srgb, var(--r-warn) 10%, var(--r-surface))", padding: "2px 6px", borderRadius: "2px" }}>
-            Engine
-          </span>
-          <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{engine.templateCount} templates</span>
-        </div>
-        <h1 style={{ fontSize: "17px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 10px", letterSpacing: "-0.02em", lineHeight: 1.3 }}>
-          {engine.title}
-        </h1>
-        <p style={{ fontSize: "13px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, lineHeight: 1.65 }}>
-          {engine.desc}
-        </p>
-      </div>
 
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "28px" }}>
         <PrimaryAction
@@ -76,6 +73,6 @@ export function CreationEngineDetail({ engineId, navigate, onStartChat }: Props)
           </div>
         </div>
       )}
-    </DetailPage>
+    </ObjectDetailSurface>
   );
 }

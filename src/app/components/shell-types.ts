@@ -4,6 +4,13 @@
 
 export type Tab = "lab" | "school" | "creation" | "profile";
 
+export const CHAMBER_COLOR: Record<string, string> = {
+  lab: "var(--r-ok)",
+  school: "var(--r-accent)",
+  creation: "var(--r-warn)",
+  profile: "var(--r-dim)"
+};
+
 export type BlockType =
   | "verdict" | "execution" | "lesson" | "creation" | "report" | "signal"
   | "audit" | "matrix" | "tree" | "timeline" | "evidence" | "dossier" | "blueprint";

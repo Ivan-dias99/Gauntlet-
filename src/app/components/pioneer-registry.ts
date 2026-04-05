@@ -33,10 +33,18 @@ export interface Pioneer {
   can_spawn_subagents: boolean;
   model_family:        string;
   accent:              string;
-  strengths:           string[];
-  must_never_do:       string[];
-  default_triggers:    string[];
-  description:         string;
+  strengths:             string[];
+  must_never_do:         string[];
+  default_triggers:      string[];
+  description:           string;
+  task_fit:              string;
+  chamber_fit:           string;
+  benchmark_advantage:   string;
+  speed_depth_profile:   "speed-heavy" | "balanced" | "depth-heavy";
+  memory_behavior:       string;
+  avoid_when:            string;
+  best_pairing:          string;
+  recommended_workflows: string[];
 }
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -75,6 +83,14 @@ export const PIONEER_REGISTRY: Pioneer[] = [
     ],
     description:
       "Leads high-depth research, synthesis, and strategic analysis. Primary intelligence for Lab. Trusted for evidence-heavy reasoning and multi-step structured thought.",
+    task_fit:            "Research, Synthesis, Canonical Documentation, Deep Logic",
+    chamber_fit:         "Lab Primary, School Secondary",
+    benchmark_advantage: "Highest safety against hallucination in long-form synthesis",
+    speed_depth_profile: "depth-heavy",
+    memory_behavior:     "Reads deep context gracefully. Best for L3 Canon memory digestion.",
+    avoid_when:          "Need fast, cheap, or simple coding snippets.",
+    best_pairing:        "Pairs with Cursor Builder. Architect decides, Builder executes.",
+    recommended_workflows: ["Maximum Quality Pipeline", "Research Heavy Workflow"],
   },
   {
     id:                  "cursor-builder",
@@ -109,6 +125,14 @@ export const PIONEER_REGISTRY: Pioneer[] = [
     ],
     description:
       "Primary builder for Creation chamber. Executes code directives, system blueprints, and production artifacts. Pairs with Claude Architect for validated output chains.",
+    task_fit:            "Code Generation, Artifact Output, Build Directives",
+    chamber_fit:         "Creation Primary",
+    benchmark_advantage: "High structural obedience for direct output rendering",
+    speed_depth_profile: "speed-heavy",
+    memory_behavior:     "Relies on L1 short session memory for task focus.",
+    avoid_when:          "Defining ontology, deep system strategy from scratch.",
+    best_pairing:        "Pairs with Claude Architect.",
+    recommended_workflows: ["Build Heavy Workflow", "Rapid Prototype to Canon"],
   },
   {
     id:                  "codex-systems",
@@ -143,6 +167,14 @@ export const PIONEER_REGISTRY: Pioneer[] = [
     ],
     description:
       "Designs and implements the runtime truth layer. Responsible for system schemas, orchestration contracts, and object graph integrity across all chambers.",
+    task_fit:            "Orchestration, Type Schema, Runtime Architecture",
+    chamber_fit:         "Lab & Creation",
+    benchmark_advantage: "Complex relational graph logic execution",
+    speed_depth_profile: "depth-heavy",
+    memory_behavior:     "Highly attentive to dependency and type constraints.",
+    avoid_when:          "Creative writing, UI visual styling, or fast marketing copy.",
+    best_pairing:        "Pairs with Copilot QA for edge-case coverage.",
+    recommended_workflows: ["Ivan Canonical Sovereign Loop", "Audit → Repair → Canonize"],
   },
   {
     id:                  "grok-reality",
@@ -177,6 +209,14 @@ export const PIONEER_REGISTRY: Pioneer[] = [
     ],
     description:
       "Rapid-response intelligence broker. Best deployed for reality checks, live signal processing, and fast-pass validation. Proxy-hosted — output must be verified by Claude Architect before use in structured deliverables.",
+    task_fit:            "Signal evaluation, Alert triage, Counter-checks",
+    chamber_fit:         "Lab (Signal detection)",
+    benchmark_advantage: "Fast multi-node check against edge-cases",
+    speed_depth_profile: "speed-heavy",
+    memory_behavior:     "Ephemeral. Discards depth for fast response.",
+    avoid_when:          "Structuring a multi-document canonical truth.",
+    best_pairing:        "Pairs with Claude Architect for verification.",
+    recommended_workflows: ["Signal → Memory → Directive → Action"],
   },
   {
     id:                  "gemini-expansion",
@@ -211,6 +251,14 @@ export const PIONEER_REGISTRY: Pioneer[] = [
     ],
     description:
       "Specializes in ultra-long context operations, knowledge expansion, and fast orchestration support. Natural support pioneer for Claude Architect in research-heavy workflows.",
+    task_fit:            "Context synthesis, Document mining, Broad search",
+    chamber_fit:         "Lab & School",
+    benchmark_advantage: "Massive context ingestion without needle-in-haystack loss",
+    speed_depth_profile: "depth-heavy",
+    memory_behavior:     "Holds entire project codebase or PDF library easily.",
+    avoid_when:          "Execution of surgical code alterations in strict formats.",
+    best_pairing:        "Pairs with Cursor Builder to supply knowledge.",
+    recommended_workflows: ["Learning Heavy Workflow", "Lab → School → Creation Trinity"],
   },
   {
     id:                  "copilot-qa",
@@ -245,6 +293,14 @@ export const PIONEER_REGISTRY: Pioneer[] = [
     ],
     description:
       "Deployed at the tail of build chains for quality, consistency, and cleanup. Not a lead pioneer — supports Cursor Builder and Codex Systems as a finishing pass. Proxy-hosted.",
+    task_fit:            "Linting, Consistency checks, Typo fixes",
+    chamber_fit:         "Creation (Finishing layer)",
+    benchmark_advantage: "Granular defect detection in established patterns",
+    speed_depth_profile: "speed-heavy",
+    memory_behavior:     "Relies entirely on immediate diff context.",
+    avoid_when:          "Architecting new features.",
+    best_pairing:        "Pairs with Cursor Builder.",
+    recommended_workflows: ["Repo → Build → Deploy Sovereign Flow"],
   },
   {
     id:                  "antigravity-director",
@@ -279,6 +335,14 @@ export const PIONEER_REGISTRY: Pioneer[] = [
     ],
     description:
       "Strategic audit lead. Defines the gap map before any implementation pass. Verifies product integrity and taxonomy correctness. Hosted — highest trust for strategic directives.",
+    task_fit:            "Audits, Quality Control, Gap Analysis, Taxonomy verification",
+    chamber_fit:         "Lab Primary, Creation Validation",
+    benchmark_advantage: "High adversarial resilience, strong logical gap detection",
+    speed_depth_profile: "balanced",
+    memory_behavior:     "Analyzes L3 canon memory against L1 session drafts.",
+    avoid_when:          "Writing the actual first draft or code.",
+    best_pairing:        "Pairs with Claude Architect.",
+    recommended_workflows: ["Audit → Repair → Canonize"],
   },
 ];
 

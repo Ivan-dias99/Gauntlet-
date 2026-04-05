@@ -1,5 +1,6 @@
-import { type Message, type MessageExecutionTrace, type NavFn, type Tab, type ProfileView } from "../shell-types";
+import { type Message, type MessageExecutionTrace, type NavFn, type Tab, type ProfileView, CHAMBER_COLOR } from "../shell-types";
 import { type Mission } from "../../dna/mission-substrate";
+import { XChamberLink, EntityTitleBlock, ConsequenceLog, Breadcrumb, EntityRow, StateBadge, CommandInputSurface, TargetContextBlock, DirectiveStack, RelationshipList } from "../SystemComponents";
 import { MissionRepository } from "../MissionRepository";
 import { MissionOperationsPanel } from "../MissionOperationsPanel";
 import { findObject, listObjectsForChamber, mergeObjectsByRecency, openObject, type RuberraObject } from "../object-graph";
@@ -140,12 +141,6 @@ interface WorkItem {
   status: WorkStatus;
   route: { tab: Exclude<Tab, "profile">; view: string; id?: string };
 }
-
-const CHAMBER_COLOR: Record<string, string> = {
-  lab:      "var(--chamber-lab)",
-  school:   "var(--chamber-school)",
-  creation: "var(--chamber-creation)",
-};
 
 const STATUS_COLOR: Record<WorkStatus, string> = {
   in_progress: "var(--r-ok)",
@@ -365,6 +360,23 @@ function WorkflowCard({ template, navigate }: { template: WorkflowTemplate; navi
       {/* Expanded stage view */}
       {expanded && (
         <div style={{ borderTop: "1px solid var(--r-border-soft)", background: "var(--r-elevated)" }}>
+          <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--r-border-soft)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", background: "var(--r-bg)", width: "100%" }}>
+            <div>
+              <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Operational Strategy</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Use Case:</strong> {template.best_use_case}</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Sequence:</strong> <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{template.chamber_sequence}</span></p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Output:</strong> {template.output_type}</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Pioneers:</strong> {template.pioneer_stack}</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0" }}><strong>Optimize:</strong> {template.quality_speed_profile}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Consequence & Risk</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-warn)", margin: "0 0 4px" }}><strong>Avoid:</strong> {template.when_not_to_use}</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Tradeoff:</strong> {template.tradeoffs}</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Memory Effect:</strong> {template.memory_consequence_effect}</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0" }}><strong>Adapt:</strong> {template.user_customization_path}</p>
+            </div>
+          </div>
           {template.stages.map((stage, i) => (
             <div key={stage.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "8px 14px", borderBottom: i < template.stages.length - 1 ? "1px solid var(--r-border-soft)" : "none" }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: "3px" }}>
@@ -449,6 +461,27 @@ function PioneerCard({ pioneer, navigate }: { pioneer: Pioneer; navigate: NavFn 
             <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Model Family</p>
             <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-subtext)" }}>{pioneer.model_family}</span>
           </div>
+          
+          <div style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div>
+              <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Task Fit & Advantage</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Fit:</strong> {pioneer.task_fit}</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Benchmark:</strong> {pioneer.benchmark_advantage}</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0" }}><strong>Chamber:</strong> {pioneer.chamber_fit}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Behavior & Cost</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Profile:</strong> {pioneer.speed_depth_profile}</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Memory:</strong> {pioneer.memory_behavior}</p>
+              <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-warn)", margin: "0" }}><strong>Avoid:</strong> {pioneer.avoid_when}</p>
+            </div>
+          </div>
+
+          <div style={{ marginTop: "12px", borderTop: "1px solid var(--r-border-soft)", paddingTop: "8px" }}>
+            <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 5px" }}>Orchestration Logic</p>
+            <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0 0 4px" }}><strong>Best Pairing:</strong> {pioneer.best_pairing}</p>
+            <p style={{ fontSize: "10px", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--r-subtext)", margin: "0" }}><strong>Workflows:</strong> {pioneer.recommended_workflows.join(" · ")}</p>
+          </div>
           {pioneer.selectable && (
             <div style={{ marginTop: "10px", paddingTop: "8px", borderTop: "1px solid var(--r-border-soft)" }}>
               <button onClick={() => navigate(pioneer.home_chamber, "chat")} style={btn}>Open {pioneer.home_chamber} Chat</button>
@@ -531,46 +564,39 @@ export function ProfileMode({
       <div style={{ borderBottom: "1px solid var(--r-border)", background: "var(--r-surface)", padding: "12px 24px 0", flexShrink: 0 }}>
         <div style={{ maxWidth: "880px", margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: "10px", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-              <div
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "2px",
-                  background: "linear-gradient(145deg, color-mix(in srgb, var(--r-subtext) 35%, var(--r-surface)) 0%, color-mix(in srgb, var(--r-dim) 40%, var(--r-surface)) 100%)",
-                  border: "1px solid var(--r-border-soft)",
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.01em" }}>
-                  {workspace.owner}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "12px", borderBottom: "1px solid var(--r-border-soft)", paddingBottom: "8px", marginBottom: "8px" }}>
+                <p style={{ fontSize: "16px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.02em" }}>
+                  Sovereign Identity Header
                 </p>
-                <p style={{ fontSize: "9px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", margin: "2px 0 0", letterSpacing: "0.05em" }}>
-                  {workspace.activeProject} · {preferences.preferredChamber} first
-                </p>
+                <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  Operator: {workspace.owner}
+                </span>
               </div>
+              <p style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'JetBrains Mono', monospace", margin: 0, letterSpacing: "0.02em" }}>
+                Repo Truth: {workspace.activeProject} · Dominant Mode: {preferences.preferredChamber}
+              </p>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", alignItems: "center", justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", alignItems: "flex-start" }}>
               {([
-                { label: "Active",   value: active.length,                            color: "var(--r-ok)"   },
-                { label: "Paused",   value: paused.length,                            color: "var(--r-warn)" },
-                { label: "Signals",  value: signals.filter(s => !s.read).length,      color: "var(--r-accent)" },
-                { label: "Memory",   value: memoryItems.length,                       color: "var(--r-dim)"  },
+                { label: "Mission Pressure",              value: active.length,                            color: "var(--r-warn)"   },
+                { label: "Unresolved Signals",            value: signals.filter(s => !s.read).length,      color: "var(--r-err)" },
+                { label: "Memory Density",                value: memoryItems.length,                       color: "var(--r-dim)"  },
+                { label: "Continuity State",              value: paused.length > 0 ? "Paused" : "Flow",    color: "var(--r-accent)" },
               ]).map((stat) => (
                 <div
                   key={stat.label}
                   style={{
-                    textAlign: "center",
-                    padding: "4px 8px",
-                    minWidth: "52px",
+                    textAlign: "left",
+                    padding: "6px 10px",
+                    minWidth: "110px",
                     border: "1px solid var(--r-border-soft)",
                     borderRadius: "2px",
                     background: "var(--r-elevated)",
                   }}
                 >
-                  <p style={{ fontSize: "13px", fontWeight: 600, color: stat.color, margin: 0, lineHeight: 1, fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.02em" }}>{stat.value}</p>
-                  <p style={{ fontSize: "7px", color: "var(--r-dim)", margin: "2px 0 0", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.07em", textTransform: "uppercase" }}>{stat.label}</p>
+                  <p style={{ fontSize: "14px", fontWeight: 600, color: stat.color, margin: 0, lineHeight: 1, fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: "-0.02em" }}>{stat.value}</p>
+                  <p style={{ fontSize: "8px", color: "var(--r-subtext)", margin: "4px 0 0", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.04em", textTransform: "uppercase" }}>{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -578,8 +604,8 @@ export function ProfileMode({
 
           {meshTrace && meshChamber && (
             <div style={{ maxWidth: "880px", margin: "0 auto 10px", padding: "0 2px" }}>
-              <p style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.11em", textTransform: "uppercase", color: "var(--r-dim)", margin: "0 0 6px" }}>
-                Neural mesh · last execution · <span style={{ color: meshAccent }}>{meshChamber}</span>
+              <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--r-text)", margin: "0 0 6px" }}>
+                Active Orchestration State · <span style={{ color: meshAccent, fontWeight: "bold" }}>{meshChamber}</span>
               </p>
               <ExecutionConsequenceStrip
                 trace={meshTrace}
@@ -602,22 +628,22 @@ export function ProfileMode({
                 key={v}
                 onClick={() => onProfileView(v)}
                 style={{
-                  padding: "7px 14px",
+                  padding: "8px 14px",
                   border: "none",
-                  borderBottom: profileView === v ? "2px solid color-mix(in srgb, var(--r-subtext) 45%, var(--r-border))" : "2px solid transparent",
+                  borderBottom: profileView === v ? "2px solid var(--r-text)" : "2px solid transparent",
                   background: "transparent",
                   fontSize: "11px",
                   fontFamily: "'Inter', system-ui, sans-serif",
-                  fontWeight: profileView === v ? 500 : 400,
+                  fontWeight: profileView === v ? 600 : 400,
                   color: profileView === v ? "var(--r-text)" : "var(--r-subtext)",
                   cursor: "pointer",
                   outline: "none",
-                  letterSpacing: "-0.005em",
-                  transition: "color 0.12s ease",
+                  letterSpacing: "-0.01em",
+                  transition: "color 0.1s ease, border-bottom 0.1s ease",
                   textTransform: "capitalize",
                 }}
               >
-                {v}
+                {v === "overview" ? "Sovereign Cockpit" : v === "projects" ? "Mission Repo" : v === "memory" ? "Living Graph" : v}
               </button>
             ))}
           </div>
@@ -628,163 +654,102 @@ export function ProfileMode({
 
         {/* ── OVERVIEW ── */}
         {profileView === "overview" && (
-          <>
-            {active.length > 0 && (
-              <SectionBlock title="Active Work">
-                {active.map((item) => <WorkRow key={item.id} item={item} navigate={navigate} continuity={continuity} onTransfer={onTransfer} />)}
-                <div style={{ height: "1px" }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            
+            {/* Top row: Mission State & Command */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+              <SectionBlock title="Mission State">
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingBottom: "8px" }}>
+                  <EntityRow title="Under Pressure" type="3 Active" meta={<StateBadge state="High" color="var(--r-err)" />} />
+                  <EntityRow title="Canon Stability" type="System" meta={<StateBadge state="Stable" color="var(--r-ok)" />} />
+                </div>
               </SectionBlock>
-            )}
-            {paused.length > 0 && (
-              <SectionBlock title="Paused Work">
-                {paused.map((item) => <WorkRow key={item.id} item={item} navigate={navigate} />)}
-                <div style={{ height: "1px" }} />
-              </SectionBlock>
-            )}
-            {active.length === 0 && paused.length === 0 && (
-              <SectionBlock title="Work Queue" empty>
-                <div style={{ padding: "4px 0 8px" }}>
-                  <SovereignEmptyFrame
-                    align="left"
-                    accentVar="var(--r-accent-soft)"
-                    kicker="Profile · orchestration ledger"
-                    title="No active work threads"
-                    body="The ledger stays empty until Lab, School, or Creation carries a live user message chain. Continuity and signals will populate here as you operate the shell."
-                    actions={emptyActionBtn(() => navigate("lab", "chat"), "Open Lab", "var(--r-accent-soft)")}
+              
+              <SectionBlock title="Command Entry">
+                <div style={{ padding: "4px 0" }}>
+                  <CommandInputSurface
+                    value=""
+                    onChange={() => {}}
+                    onSubmit={() => {}}
+                    placeholder="Issue command to organism..."
                   />
+                  <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                     <TargetContextBlock target="Global" />
+                     <span style={{ fontSize: "10px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace" }}>⌘↵ Execute</span>
+                  </div>
                 </div>
               </SectionBlock>
-            )}
-            {ledgerRows.length > 0 && (
-              <SectionBlock title="Run ledger — continuity consequence">
-                {ledgerRows.slice(0, 8).map((row) => (
-                  <div key={row.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid var(--r-border-soft)", gap: "10px" }}>
+            </div>
+
+            {/* Core Row: Active Chambers, Campaigns, Directives */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "24px" }}>
+              <SectionBlock title="Active Chambers">
+                {active.slice(0, 3).map((item) => <WorkRow key={item.id} item={item} navigate={navigate} />)}
+                {active.length === 0 && <span style={{ fontSize: "11px", color: "var(--r-dim)", padding: "8px 0", display: "block" }}>No active chambers</span>}
+              </SectionBlock>
+              
+              <SectionBlock title="Active Campaigns">
+                {paused.slice(0, 3).map((item) => <WorkRow key={item.id} item={item} navigate={navigate} />)}
+                {paused.length === 0 && <span style={{ fontSize: "11px", color: "var(--r-dim)", padding: "8px 0", display: "block" }}>No active campaigns</span>}
+              </SectionBlock>
+
+              <SectionBlock title="Directive Pulse">
+                <DirectiveStack 
+                  directives={[
+                    { id: "d1", text: "Prioritize execution over documentation", priority: "high" },
+                    { id: "d2", text: "Establish Zero Trust context across execution", priority: "normal" }
+                  ]}
+                />
+              </SectionBlock>
+            </div>
+
+            {/* Tension Row: Canon Pressure & Pending Decisions */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+               <SectionBlock title="Pending Decisions & Consequence">
+                 <ConsequenceLog 
+                   events={[
+                     { id: "e1", desc: "Security architecture requires closure", time: "2h ago", type: "mutate" },
+                     { id: "e2", desc: "Orchestration pattern updated by memory", time: "5h ago", type: "view" },
+                   ]}
+                 />
+               </SectionBlock>
+
+               <SectionBlock title="Recent Memory & Neural Signals">
+                 <RelationshipList 
+                   title="Mesh Activation"
+                   items={[
+                     { id: "r1", label: "Q2 Objectives.md" },
+                     { id: "r2", label: "Campaign 0247" },
+                     { id: "r3", label: "Latency Test Sim" }
+                   ]}
+                 />
+               </SectionBlock>
+            </div>
+
+            {/* Re-Entry row: Continue & Next Actions */}
+            <div style={{ borderTop: "1px solid var(--r-border-soft)", paddingTop: "24px", marginTop: "12px" }}>
+              <SectionBlock title="Continuity Recovery">
+                {recommendations.slice(0, 3).map((item) => (
+                  <div key={`${item.continuityId}-${item.action}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid var(--r-border-soft)", gap: "10px", background: "var(--r-surface)", borderRadius: "2px", marginBottom: "8px" }}>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: "11px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "-0.005em" }}>{row.title}</p>
-                      <p style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", margin: "3px 0 0", letterSpacing: "0.04em" }}>
-                        <span style={{ color: CHAMBER_COLOR[row.chamber] }}>{row.chamber}</span>
-                        {row.lastExecutionState && (
-                          <>
-                            {" "}
-                            · <span style={{ color: "var(--r-subtext)" }}>{row.lastExecutionState}</span>
-                          </>
-                        )}
-                        {row.lastModelId && ` · ${row.lastModelId}`}
-                      </p>
-                      {row.lastRunDigest && (
-                        <p style={{ fontSize: "9px", color: "var(--r-subtext)", fontFamily: "'JetBrains Mono', monospace", margin: "4px 0 0", lineHeight: 1.4 }}>{row.lastRunDigest}</p>
-                      )}
+                      <p style={{ fontSize: "12px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, fontWeight: 500 }}>{item.title}</p>
+                      <p style={{ fontSize: "10px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace", margin: "4px 0 0" }}>{item.reason} · Continue where you left off</p>
                     </div>
-                    <button type="button" onClick={() => navigate(row.route.tab, row.route.view, row.route.id)} style={btn}>Open</button>
+                    <button onClick={() => navigate(item.destination.tab, item.destination.view, item.destination.id)} style={{ ...btn, background: "var(--r-text)", color: "var(--r-bg)", border: "none" }}>Resume</button>
                   </div>
                 ))}
-                <div style={{ height: "1px" }} />
               </SectionBlock>
-            )}
-            {recommendations.length > 0 && (
-              <SectionBlock title="Continuity Recommendations">
-                {recommendations.slice(0, 6).map((item) => (
-                  <div key={`${item.continuityId}-${item.action}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid var(--r-border-soft)", gap: "10px" }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: "12px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.005em" }}>{item.title}</p>
-                      <p style={{ fontSize: "10px", color: "var(--r-dim)", fontFamily: "'Inter', system-ui, sans-serif", margin: "2px 0 0" }}>{item.reason}</p>
-                    </div>
-                    <div style={{ display: "flex", gap: "5px", flexShrink: 0 }}>
-                      {item.action === "resume"   && <button onClick={() => onResume(item.continuityId)}                                                                                                   style={btn}>Resume</button>}
-                      {item.action === "export"   && <button onClick={() => onExport(item.continuityId)}                                                                                                   style={btn}>Export</button>}
-                      {item.action === "transfer" && item.destination.tab !== "profile" && <button onClick={() => onTransfer(item.continuityId, item.destination.tab as Exclude<Tab, "profile">, "profile_recommendation")} style={btn}>Transfer</button>}
-                      <button onClick={() => navigate(item.destination.tab, item.destination.view, item.destination.id)} style={btn}>Open</button>
-                    </div>
-                  </div>
-                ))}
-                <div style={{ height: "1px" }} />
-              </SectionBlock>
-            )}
-            {signals.filter(s => !s.read).length > 0 && (
-              <SectionBlock title="Signals">
-                {signals.filter(s => !s.read).slice(0, 5).map((signal) => (
-                  <div key={signal.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid var(--r-border-soft)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: signal.severity === "critical" ? "var(--r-err)" : signal.severity === "warn" ? "var(--r-warn)" : "var(--r-ok)", display: "inline-block", flexShrink: 0 }} />
-                      <span style={{ fontSize: "11px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif" }}>{signal.label}</span>
-                    </div>
-                    <button onClick={() => navigate(signal.destination.tab, signal.destination.view, signal.destination.id)} style={btn}>Open</button>
-                  </div>
-                ))}
-                <div style={{ height: "1px" }} />
-              </SectionBlock>
-            )}
-            {rewards.length > 0 && (
-              <SectionBlock title="Milestones">
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", padding: "10px 14px" }}>
-                  {rewards.slice(0, 6).map((r) => (
-                    <div key={r.id} style={{ border: "1px solid var(--r-border)", borderRadius: "2px", padding: "6px 10px", display: "flex", flexDirection: "column", gap: "2px" }}>
-                      <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", letterSpacing: "0.07em", textTransform: "uppercase" }}>{r.kind}</span>
-                      <span style={{ fontSize: "11px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif" }}>{r.title}</span>
-                      <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-ok)" }}>+{r.points}</span>
-                    </div>
-                  ))}
-                </div>
-              </SectionBlock>
-            )}
-            {analyticsPatterns && analyticsPatterns.length > 0 && (
-              <SectionBlock title="Intelligence Analytics">
-                <div style={{ padding: "10px 14px" }}>
-                  <AnalyticsPatternStrip patterns={analyticsPatterns} />
-                </div>
-              </SectionBlock>
-            )}
-            {orgState && (
-              <SectionBlock title="Org Intelligence">
-                <div style={{ padding: "10px 14px" }}>
-                  <OrgIntelligenceStrip org={orgState} />
-                </div>
-              </SectionBlock>
-            )}
-            {platformState && (
-              <SectionBlock title="Platform Infrastructure">
-                <div style={{ padding: "10px 14px" }}>
-                  <PlatformInfraStrip platform={platformState} />
-                </div>
-              </SectionBlock>
-            )}
-            {/* Stack 08 — System Awareness: health inspection surface */}
-            {systemModel && (
-              <SectionBlock title={`System Health · ${systemModel.health}`}>
-                <div style={{ padding: "10px 14px" }}>
-                  {systemModel.anomalies.filter(a => !a.resolved).length === 0 ? (
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "var(--r-dim)", letterSpacing: "0.04em" }}>
-                      no active anomalies
-                    </span>
-                  ) : (
-                    systemModel.anomalies.filter(a => !a.resolved).map(a => (
-                      <div key={a.id} style={{ padding: "4px 0", borderBottom: "1px solid var(--r-border-soft)", display: "flex", gap: "8px", alignItems: "flex-start" }}>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", color: a.severity === "high" ? "var(--r-err)" : "var(--r-warn)", letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0, paddingTop: "1px" }}>
-                          {a.severity}
-                        </span>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "var(--r-subtext)", letterSpacing: "0.03em", lineHeight: 1.4 }}>
-                          {a.description}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                  <div style={{ paddingTop: "6px", fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", color: "var(--r-dim)", letterSpacing: "0.04em" }}>
-                    snapshot · {new Date(systemModel.snapshot.at).toLocaleTimeString()}
-                  </div>
-                </div>
-              </SectionBlock>
-            )}
-          </>
+            </div>
+            
+          </div>
         )}
 
         {/* ── PROJECTS ── */}
         {profileView === "projects" && (
-          <>
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             <MissionRepository missions={missions} onUpsert={onMissionUpsert} onActivate={onMissionActivate} navigate={navigate} />
-            <SectionBlock title="Workflow Templates — Orchestration">
-              {WORKFLOW_TEMPLATES.map((t) => <WorkflowCard key={t.id} template={t} navigate={navigate} />)}
-            </SectionBlock>
-            <SectionBlock title="All Work">
+            
+            <SectionBlock title="Active Projects & Work Lineage">
               {workItems.length === 0 ? (
                 <div style={{ padding: "6px 14px 12px" }}>
                   <SovereignEmptyFrame
@@ -797,9 +762,47 @@ export function ProfileMode({
                   />
                 </div>
               ) : workItems.map((item) => <WorkRow key={item.id} item={item} navigate={navigate} continuity={continuity} onTransfer={onTransfer} />)}
-              <div style={{ height: "1px" }} />
             </SectionBlock>
-            <SectionBlock title="Connectors">
+
+            <SectionBlock title="Repository Truth & Deployment Relations">
+              <div style={{ padding: "12px 14px" }}>
+                <RelationshipList 
+                  title="Canon Deployment Links"
+                  items={[
+                    { id: "rd1", label: "Vercel · Core Shell" },
+                    { id: "rd2", label: "Supabase · Mesh Memory" },
+                  ]}
+                />
+              </div>
+            </SectionBlock>
+          </div>
+        )}
+
+        {/* ── WORKFLOWS ── */}
+        {profileView === "workflows" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            <SectionBlock title="Workflow Templates — Canonical Logic">
+              {WORKFLOW_TEMPLATES.map((t) => <WorkflowCard key={t.id} template={t} navigate={navigate} />)}
+            </SectionBlock>
+            <SectionBlock title="Customization & Logic Overrides">
+              <div style={{ padding: "16px 14px" }}>
+                <SovereignEmptyFrame
+                    align="left"
+                    accentVar="var(--r-warn)"
+                    kicker="Workflows"
+                    title="No logic overrides detected"
+                    body="Custom steps, modified phases, or altered quality profiles will appear here when you fork a canonical template."
+                    actions={emptyActionBtn(() => navigate("creation", "home"), "Enter Creation", "var(--r-warn)")}
+                  />
+              </div>
+            </SectionBlock>
+          </div>
+        )}
+
+        {/* ── CONNECTORS ── */}
+        {profileView === "connectors" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            <SectionBlock title="Bridge Logic & External Connectors">
               {connectors.length === 0 ? (
                 <div style={{ padding: "6px 14px 12px" }}>
                   <SovereignEmptyFrame
@@ -812,9 +815,8 @@ export function ProfileMode({
                   />
                 </div>
               ) : connectors.map((c) => <ConnectorRow key={c.id} connector={c} onToggle={onToggleConnector} />)}
-              <div style={{ height: "1px" }} />
             </SectionBlock>
-          </>
+          </div>
         )}
 
         {/* ── MEMORY ── */}
@@ -862,6 +864,56 @@ export function ProfileMode({
             </SectionBlock>
           )}
           </>
+        )}
+
+        {/* ── PIONEERS ── */}
+        {profileView === "pioneers" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            <SectionBlock title="Pioneer Registry & Intelligence Roster">
+               {Object.values(PIONEER_REGISTRY).map(pioneer => (
+                 <PioneerCard key={pioneer.id} pioneer={pioneer} navigate={navigate} />
+               ))}
+            </SectionBlock>
+          </div>
+        )}
+
+        {/* ── OPERATIONS ── */}
+        {profileView === "operations" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            {activeMissionId && activeMissionOps ? (
+              <SectionBlock title="Mission Operations Panel">
+                <div style={{ padding: "10px 14px" }}>
+                  <MissionOperationsPanel 
+                    missionId={activeMissionId}
+                    ops={activeMissionOps}
+                    onSignalDismiss={onMissionOpsSignalDismiss ?? (() => {})}
+                    onApprovalApprove={onMissionOpsApprovalApprove ?? (() => {})}
+                    onApprovalReject={onMissionOpsApprovalReject ?? (() => {})}
+                  />
+                </div>
+              </SectionBlock>
+            ) : (
+              <SectionBlock title="Mission Operations">
+                <div style={{ padding: "12px 14px" }}>
+                  <span style={{ fontSize: "11px", color: "var(--r-dim)", fontFamily: "'JetBrains Mono', monospace" }}>No active mission locked in runtime.</span>
+                </div>
+              </SectionBlock>
+            )}
+            
+            {civilization && (
+              <SectionBlock title="Agent Civilization & Autonomous Operations">
+                <div style={{ padding: "10px 14px" }}>
+                  <AgentCivilizationStrip civilization={civilization} />
+                </div>
+              </SectionBlock>
+            )}
+            <SectionBlock title="Orchestration State">
+               <div style={{ padding: "0" }}>
+                 <EntityRow title="Routing Strategy" type="Dynamic Fallback" meta={<StateBadge state="Active" color="var(--r-ok)" />} />
+                 <EntityRow title="Live Directives" type="Contextual Pressure" meta={<StateBadge state="Monitoring" color="var(--r-dim)" />} />
+               </div>
+            </SectionBlock>
+          </div>
         )}
 
         {/* ── SETTINGS ── */}

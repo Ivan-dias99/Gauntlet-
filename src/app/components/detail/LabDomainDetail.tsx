@@ -3,10 +3,8 @@
  * Every element leads somewhere real.
  */
 import { type NavFn } from "../shell-types";
-import { getDomain } from "../product-data";
-import { getTrack } from "../product-data";
-import { getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
+import { getDomain, getTrack, getBlueprint } from "../product-data";
+import { Breadcrumb, XChamberLink, SectionHead, PrimaryAction, SecondaryAction, EmptyDetail, ObjectDetailSurface } from "./DetailShared";
 
 interface Props {
   domainId: string;
@@ -21,7 +19,19 @@ export function LabDomainDetail({ domainId, navigate, onStartChat }: Props) {
   if (!domain) return <EmptyDetail onBack={() => navigate("lab", "home")} label="Domain not found" />;
 
   return (
-    <DetailPage>
+    <ObjectDetailSurface
+      identity={{ title: domain.label, type: "Lab Domain", id: domainId }}
+      state={{ status: `${domain.researchCount} Items`, canon: "active", statusColor: "var(--r-accent)" }}
+      missionBinding={{ chamber: "Lab", text: domain.tagline }}
+      directiveRelevance={[
+        { id: "d1", text: "Maintain strict neutrality during domain investigation", priority: "high" },
+      ]}
+      aiReasoning={`Domain profile: Research scale is ${domain.researchCount} items spanning ${domain.experiments.length} primary experiments.`}
+      consequenceTrace={[]}
+      meshRelations={
+        domain.experiments.map(e => ({ id: e.id, label: e.type }))
+      }
+    >
       <Breadcrumb
         items={[
           { label: "Lab", tab: "lab", view: "home" },
@@ -29,37 +39,6 @@ export function LabDomainDetail({ domainId, navigate, onStartChat }: Props) {
         ]}
         onNavigate={navigate}
       />
-
-      {/* Header */}
-      <div style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "10px" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--r-accent)", display: "inline-block", flexShrink: 0 }} />
-              <span style={{ fontSize: "9px", fontFamily: "monospace", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--r-accent)" }}>
-                Research Domain
-              </span>
-            </div>
-            <h1 style={{ fontSize: "18px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, letterSpacing: "-0.02em", lineHeight: 1.3, marginBottom: "8px" }}>
-              {domain.label}
-            </h1>
-            <p style={{ fontSize: "13px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, lineHeight: 1.6 }}>
-              {domain.tagline}
-            </p>
-          </div>
-          <div style={{ flexShrink: 0, textAlign: "right" }}>
-            <span style={{ fontFamily: "monospace", fontSize: "22px", fontWeight: 500, color: "var(--r-text)", display: "block", lineHeight: 1.1 }}>
-              {domain.researchCount}
-            </span>
-            <span style={{ fontFamily: "monospace", fontSize: "9px", color: "var(--r-dim)", letterSpacing: "0.08em" }}>research items</span>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
-          {domain.experiments.map(e => (
-            <Tag key={e.id} label={e.type} />
-          ))}
-        </div>
-      </div>
 
       {/* Actions */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "28px" }}>
@@ -184,6 +163,6 @@ export function LabDomainDetail({ domainId, navigate, onStartChat }: Props) {
           </div>
         </div>
       )}
-    </DetailPage>
+    </ObjectDetailSurface>
   );
 }

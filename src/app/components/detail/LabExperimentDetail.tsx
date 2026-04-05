@@ -3,7 +3,7 @@
  */
 import { type NavFn } from "../shell-types";
 import { getExperiment, getDomain, getLesson, getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, Tag, PrimaryAction, SecondaryAction, EmptyDetail, ObjectDetailSurface } from "./DetailShared";
 
 interface Props {
   experimentId: string;
@@ -19,7 +19,20 @@ export function LabExperimentDetail({ experimentId, navigate, onStartChat }: Pro
   const domain = getDomain(exp.domainId);
 
   return (
-    <DetailPage>
+    <ObjectDetailSurface
+      identity={{ title: exp.title, type: exp.type, id: experimentId }}
+      state={{ status: "Active", canon: "active", statusColor: COMPLEXITY_COLOR[exp.complexity] }}
+      missionBinding={{ chamber: "Lab", text: exp.desc }}
+      directiveRelevance={[
+        { id: "d1", text: "Validate hypothesis before creation phase", priority: "high" }
+      ]}
+      consequenceTrace={[
+        { id: "c1", desc: "Experiment initialized", time: "2h ago", type: "mutate" }
+      ]}
+      meshRelations={[
+        { id: "m1", label: "Lab Domain: " + (domain?.label || exp.domainId) }
+      ]}
+    >
       <Breadcrumb
         items={[
           { label: "Lab",            tab: "lab", view: "home" },
@@ -29,25 +42,8 @@ export function LabExperimentDetail({ experimentId, navigate, onStartChat }: Pro
         onNavigate={navigate}
       />
 
-      {/* Header */}
-      <div style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--r-accent)", background: "var(--r-accent-dim)", padding: "2px 6px", borderRadius: "2px" }}>
-            {exp.type}
-          </span>
-          <span style={{ fontSize: "9px", fontFamily: "monospace", color: COMPLEXITY_COLOR[exp.complexity] }}>
-            {exp.complexity} complexity
-          </span>
-        </div>
-        <h1 style={{ fontSize: "17px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 10px", letterSpacing: "-0.02em", lineHeight: 1.3 }}>
-          {exp.title}
-        </h1>
-        <p style={{ fontSize: "13px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: 0, lineHeight: 1.65 }}>
-          {exp.desc}
-        </p>
-        <div style={{ display: "flex", gap: "6px", marginTop: "12px", flexWrap: "wrap" }}>
-          {exp.tools.map(t => <Tag key={t} label={t} />)}
-        </div>
+      <div style={{ display: "flex", gap: "6px", marginBottom: "20px", flexWrap: "wrap" }}>
+        {exp.tools.map(t => <Tag key={t} label={t} />)}
       </div>
 
       {/* Actions */}
@@ -137,6 +133,6 @@ export function LabExperimentDetail({ experimentId, navigate, onStartChat }: Pro
           </div>
         </div>
       )}
-    </DetailPage>
+    </ObjectDetailSurface>
   );
 }

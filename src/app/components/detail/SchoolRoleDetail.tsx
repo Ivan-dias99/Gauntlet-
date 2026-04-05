@@ -3,7 +3,7 @@
  */
 import { type NavFn } from "../shell-types";
 import { getRole, getTrack, getDomain, getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, PrimaryAction, SecondaryAction, EmptyDetail, ObjectDetailSurface } from "./DetailShared";
 
 interface Props { roleId: string; navigate: NavFn; onStartChat: (p: string) => void; }
 
@@ -18,7 +18,19 @@ export function SchoolRoleDetail({ roleId, navigate, onStartChat }: Props) {
   if (!role) return <EmptyDetail onBack={() => navigate("school", "home")} label="Role not found" />;
 
   return (
-    <DetailPage>
+    <ObjectDetailSurface
+      identity={{ title: role.title, type: "School Career Role", id: roleId }}
+      state={{ status: `${role.demand} demand`, canon: "active", statusColor: DEMAND_COLOR[role.demand] }}
+      missionBinding={{ chamber: "School", text: role.desc }}
+      directiveRelevance={[
+        { id: "d1", text: "Master this role to unlock corresponding creation permissions.", priority: "normal" },
+      ]}
+      aiReasoning={`Career Path Profile: Requires mastering ${role.requiredTracks.length} tracks to qualify for high-level operations in ${role.domain}.`}
+      consequenceTrace={[]}
+      meshRelations={
+        role.skills.map(s => ({ id: s, label: "Required Skill" }))
+      }
+    >
       <Breadcrumb
         items={[
           { label: "School", tab: "school", view: "home" },
@@ -27,24 +39,6 @@ export function SchoolRoleDetail({ roleId, navigate, onStartChat }: Props) {
         ]}
         onNavigate={navigate}
       />
-
-      <div style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: DEMAND_COLOR[role.demand], background: `color-mix(in srgb, ${DEMAND_COLOR[role.demand]} 10%, var(--r-surface))`, padding: "2px 6px", borderRadius: "2px" }}>
-            {role.demand} demand
-          </span>
-          <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{role.domain}</span>
-        </div>
-        <h1 style={{ fontSize: "17px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 10px", letterSpacing: "-0.02em", lineHeight: 1.3 }}>
-          {role.title}
-        </h1>
-        <p style={{ fontSize: "13px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 14px", lineHeight: 1.65 }}>
-          {role.desc}
-        </p>
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          {role.skills.map(s => <Tag key={s} label={s} />)}
-        </div>
-      </div>
 
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "28px" }}>
         <PrimaryAction
@@ -123,6 +117,6 @@ export function SchoolRoleDetail({ roleId, navigate, onStartChat }: Props) {
           </div>
         </div>
       )}
-    </DetailPage>
+    </ObjectDetailSurface>
   );
 }

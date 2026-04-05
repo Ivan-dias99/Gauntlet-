@@ -3,7 +3,7 @@
  */
 import { type NavFn } from "../shell-types";
 import { getLesson, getExperiment, getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, PrimaryAction, SecondaryAction, EmptyDetail, ObjectDetailSurface } from "./DetailShared";
 
 interface Props { lessonId: string; navigate: NavFn; onStartChat: (p: string) => void; }
 
@@ -15,7 +15,25 @@ export function SchoolLessonDetail({ lessonId, navigate, onStartChat }: Props) {
   const nextLesson = track.lessons[track.lessons.findIndex(l => l.id === lessonId) + 1];
 
   return (
-    <DetailPage>
+    <ObjectDetailSurface
+      identity={{ title: lesson.title, type: "School Lesson", id: lessonId }}
+      state={{ 
+        status: lesson.status.replace("-", " "), 
+        canon: lesson.status === "done" ? "canonical" : "draft", 
+        statusColor: lesson.status === "done" ? "var(--r-ok)" : lesson.status === "in-progress" ? "var(--r-accent)" : "var(--r-dim)" 
+      }}
+      missionBinding={{ chamber: "School", text: `Duration: ${lesson.duration} · Track: ${track.title}` }}
+      directiveRelevance={[
+        { id: "d1", text: "Ensure full conceptual mastery before practical transfer.", priority: "normal" },
+      ]}
+      aiReasoning={`Lesson Profile: Part of the ${track.title} track. Recommended study duration: ${lesson.duration}.`}
+      consequenceTrace={[]}
+      meshRelations={[
+        { id: track.id, label: "Parent Track" },
+        ...lesson.linkedExperiments.map(eid => ({ id: eid, label: "Practical Lab" })),
+        ...lesson.linkedBlueprints.map(bid => ({ id: bid, label: "Practical Build" }))
+      ]}
+    >
       <Breadcrumb
         items={[
           { label: "School", tab: "school", view: "home" },
@@ -24,23 +42,6 @@ export function SchoolLessonDetail({ lessonId, navigate, onStartChat }: Props) {
         ]}
         onNavigate={navigate}
       />
-
-      <div style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--r-ok)", background: "color-mix(in srgb, var(--r-ok) 10%, var(--r-surface))", padding: "2px 6px", borderRadius: "2px" }}>
-            Lesson · {track.title}
-          </span>
-          <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{lesson.duration}</span>
-        </div>
-        <h1 style={{ fontSize: "17px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 8px", letterSpacing: "-0.02em", lineHeight: 1.3 }}>
-          {lesson.title}
-        </h1>
-        <p style={{ fontSize: "12px", color: "var(--r-dim)", fontFamily: "monospace", margin: 0 }}>
-          Status: <span style={{ color: lesson.status === "done" ? "var(--r-ok)" : lesson.status === "in-progress" ? "var(--r-accent)" : "var(--r-subtext)" }}>
-            {lesson.status.replace("-", " ")}
-          </span>
-        </p>
-      </div>
 
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "28px" }}>
         <PrimaryAction
@@ -98,6 +99,6 @@ export function SchoolLessonDetail({ lessonId, navigate, onStartChat }: Props) {
           </div>
         </div>
       )}
-    </DetailPage>
+    </ObjectDetailSurface>
   );
 }

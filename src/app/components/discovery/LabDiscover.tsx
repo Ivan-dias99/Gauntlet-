@@ -3,6 +3,7 @@
  * Premium intelligence laboratory. Every element navigates somewhere real.
  */
 
+import { useState } from "react";
 import { motion } from "motion/react";
 import {
   Search,
@@ -139,54 +140,21 @@ const signals = [
 ];
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
+import {
+  EntityTitleBlock,
+  EntitySummaryBlock,
+  RelationshipList,
+  EntityRow,
+  TabSet,
+  ChamberNavGroup,
+  ContextBand,
+  DirectiveStack,
+  ConsequenceLog,
+  StateBadge
+} from "../SystemComponents";
+
 export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
-  const toolEcosystem = [
-    {
-      id: "t1",
-      title: "Research Engine",
-      subtitle: "Search, synthesize, cross-reference",
-      itemCount: 8,
-      invite: "Chamber chat with routing trace — start a live investigation thread.",
-      icon: <Search size={14} color={R.lab} strokeWidth={1.5} />,
-      onClick: () => { navigate("lab", "chat"); onStartSession(); },
-    },
-    {
-      id: "t2",
-      title: "Code Lab",
-      subtitle: "Write, run, debug in isolation",
-      itemCount: 12,
-      invite: "Terminal-native surface with execution consequence strip.",
-      icon: <Code2 size={14} color={R.lab} strokeWidth={1.5} />,
-      onClick: () => navigate("lab", "code"),
-    },
-    {
-      id: "t3",
-      title: "Analysis Suite",
-      subtitle: "Evidence, patterns, insights",
-      itemCount: 6,
-      invite: "Structured board for verdict blocks and metamorphic output.",
-      icon: <BarChart2 size={14} color={R.lab} strokeWidth={1.5} />,
-      onClick: () => navigate("lab", "analysis"),
-    },
-    {
-      id: "t4",
-      title: "Audit Framework",
-      subtitle: "Verify, review, source-check",
-      itemCount: 5,
-      invite: "Archive of runs, objects, and continuity-linked memory.",
-      icon: <FileSearch size={14} color={R.lab} strokeWidth={1.5} />,
-      onClick: () => navigate("lab", "archive"),
-    },
-    {
-      id: "t5",
-      title: "Data Connectors",
-      subtitle: "DB, APIs, live feeds",
-      itemCount: 9,
-      invite: "Domain detail with experiments wired to School and Creation.",
-      icon: <Database size={14} color={R.lab} strokeWidth={1.5} />,
-      onClick: () => navigate("lab", "domain", "data-arch"),
-    },
-  ];
+  const [activeTab, setActiveTab] = useState("threads");
 
   return (
     <motion.div
@@ -196,145 +164,127 @@ export function LabDiscover({ onStartSession, navigate }: LabDiscoverProps) {
       transition={{ duration: 0.22 }}
       style={{
         flex: 1,
-        overflowY: "auto",
-        paddingTop: "24px",
-        paddingBottom: "40px",
+        display: "flex",
         background: "var(--r-bg)",
-        backgroundImage: `
-          linear-gradient(var(--r-border-soft) 1px, transparent 1px),
-          linear-gradient(90deg, var(--r-border-soft) 1px, transparent 1px)
-        `,
-        backgroundSize: "52px 52px",
-        scrollbarWidth: "none",
+        overflow: "hidden",
       }}
     >
-      {/* Hero — Active Investigation */}
-      <FeaturedHero
-        label="ACTIVE INVESTIGATION"
-        badge="Open"
-        title="Distributed Consensus Failure Modes"
-        description="Analyzing failure taxonomy in Raft and Paxos under asymmetric partitions. Current context: 3 sources loaded, 2 hypotheses pending verification."
-        meta="Research · Distributed Systems · Started 2h ago · 14 context items"
-        accent="var(--chamber-lab)"
-        accentLight="var(--chamber-lab-light)"
-        ctaLabel="Continue investigation"
-        onCta={() => navigate("lab", "experiment", "exp-raft")}
-        secondaryLabel="New session"
-        onSecondary={onStartSession}
-        stats={[
-          { label: "Open sessions", value: "3" },
-          { label: "Artifacts", value: "12" },
-          { label: "Findings", value: "7" },
-        ]}
-      />
+      {/* Sidebar - Local Navigation & Directives */}
+      <div style={{ width: "260px", borderRight: "1px solid var(--r-border)", padding: "24px 16px", overflowY: "auto" }}>
+        <ChamberNavGroup title="Views">
+          <EntityRow title="Active Threads" type="⌘ 1" onClick={() => setActiveTab("threads")} />
+          <EntityRow title="Campaigns" type="⌘ 2" onClick={() => setActiveTab("campaigns")} />
+          <EntityRow title="Memory Timeline" type="⌘ 3" onClick={() => setActiveTab("memory")} />
+        </ChamberNavGroup>
 
-      {/* Active experiments */}
-      <DiscoveryRail
-        label="Active Investigations"
-        sublabel="Your open sessions"
-        action={{ label: "View archive", onClick: () => navigate("lab", "archive") }}
-      >
-        {activeExperiments.map((e) => (
-          <ExperimentCard
-            key={e.id}
-            title={e.title}
-            type={e.type}
-            domain={e.domain}
-            tools={e.tools}
-            complexity={e.complexity}
-            pattern={e.pattern}
-            preview={e.preview}
-            onClick={() => navigate("lab", "experiment", e.navId)}
-          />
-        ))}
-      </DiscoveryRail>
+        <ChamberNavGroup title="Tool Ecosystem">
+          <EntityRow title="Research Engine" type="Open" onClick={() => navigate("lab", "chat")} />
+          <EntityRow title="Code Lab" type="Open" onClick={() => navigate("lab", "code")} />
+          <EntityRow title="Analysis Suite" type="Open" onClick={() => navigate("lab", "analysis")} />
+        </ChamberNavGroup>
 
-      {/* Signals rail */}
-      <DiscoveryRail
-        label="Signals"
-        sublabel="High-relevance findings from active research areas"
-        action={{ label: "Start Analysis", onClick: () => navigate("lab", "analysis") }}
-        gap={10}
-      >
-        {signals.map((s) => (
-          <SignalCard
-            key={s.id}
-            signal={s.signal}
-            source={s.source}
-            category={s.category}
-            recency={s.recency}
-            relevance={s.relevance}
-            onClick={() => navigate("lab", "domain", s.domainId)}
+        <div style={{ marginTop: "32px" }}>
+          <DirectiveStack
+            directives={[
+              { id: "1", text: "Enforce empirical citation on all consensus proofs", priority: "high" },
+              { id: "2", text: "Reject generic architecture unbacked by runtime load traces", priority: "normal" }
+            ]}
           />
-        ))}
-      </DiscoveryRail>
+        </div>
+      </div>
 
-      {/* Experiment templates */}
-      <DiscoveryRail
-        label="Experiment Templates"
-        sublabel="Structured investigation frameworks"
-        action={{ label: "Browse all", onClick: () => navigate("lab", "archive") }}
-      >
-        {experimentTemplates.map((e) => (
-          <ExperimentCard
-            key={e.id}
-            title={e.title}
-            type={e.type}
-            domain={e.domain}
-            tools={e.tools}
-            complexity={e.complexity}
-            pattern={e.pattern}
-            preview={e.preview}
-            onClick={() => navigate("lab", "experiment", e.navId)}
-          />
-        ))}
-      </DiscoveryRail>
+      {/* Main Content Area */}
+      <div style={{ flex: 1, padding: "32px", overflowY: "auto" }}>
+        <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+          
+          <ContextBand chamber="lab" pressure={3} state="Nominal" />
 
-      {/* Tool ecosystem */}
-      <DiscoveryRail
-        label="Tool Ecosystem"
-        sublabel="Lab-native investigation surfaces"
-        action={{ label: "Code surface", onClick: () => navigate("lab", "code") }}
-        gap={10}
-      >
-        {toolEcosystem.map((t) => (
-          <CollectionCard
-            key={t.id}
-            title={t.title}
-            subtitle={t.subtitle}
-            itemCount={t.itemCount}
-            accent="var(--chamber-lab)"
-            accentLight="var(--chamber-lab-light)"
-            tag="Tool"
-            icon={t.icon}
-            invite={t.invite}
-            onClick={t.onClick}
-          />
-        ))}
-      </DiscoveryRail>
+          <div style={{ margin: "24px 0" }}>
+            <EntityTitleBlock 
+              title="Lab Domain: Systems Engineering" 
+              type="Root Domain" 
+              status={<StateBadge state="Active" color="var(--chamber-lab)" />} 
+              accent="var(--chamber-lab)"
+            />
+            <EntitySummaryBlock>
+              This chamber currently holds 3 active threads investigating consensus failures under partition scenarios. Evidence compilation is underway.
+            </EntitySummaryBlock>
+          </div>
 
-      {/* Research areas — each navigates to domain detail */}
-      <DiscoveryRail
-        label="Research Domains"
-        sublabel="Domain knowledge clusters — click to explore"
-        action={{ label: "All domains", onClick: () => navigate("lab", "archive") }}
-        gap={10}
-      >
-        {LAB_DOMAINS.map((d) => (
-          <CollectionCard
-            key={d.id}
-            title={d.label}
-            subtitle={d.tagline.length > 60 ? `${d.tagline.slice(0, 57)}…` : d.tagline}
-            itemCount={d.researchCount}
-            accent="var(--chamber-lab)"
-            accentLight="var(--chamber-lab-light)"
-            tag="Domain"
-            icon={<Layers size={14} color={R.lab} strokeWidth={1.5} />}
-            invite={`${d.experiments.length} seeded experiments · open domain board`}
-            onClick={() => navigate("lab", "domain", d.id)}
+          <TabSet 
+            tabs={[
+              { id: "threads", label: "Active Threads" },
+              { id: "campaigns", label: "Campaigns" },
+              { id: "memory", label: "Memory" },
+              { id: "artifacts", label: "Artifacts" }
+            ]}
+            active={activeTab}
+            onSelect={setActiveTab}
           />
-        ))}
-      </DiscoveryRail>
+
+          {activeTab === "threads" && (
+            <div>
+              <p style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", textTransform: "uppercase", marginBottom: "12px" }}>Active Investigation Threads</p>
+              {activeExperiments.map(e => (
+                <div key={e.id} style={{ marginBottom: "8px" }}>
+                  <EntityRow 
+                    title={e.title} 
+                    type={e.type} 
+                    meta={<StateBadge state="In Progress" color="var(--r-warn)" />}
+                    onClick={() => navigate("lab", "experiment", e.navId)} 
+                  />
+                </div>
+              ))}
+
+              <div style={{ marginTop: "32px" }}>
+                <p style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", textTransform: "uppercase", marginBottom: "12px" }}>Key Objects</p>
+                {signals.slice(0,2).map(s => (
+                  <EntityRow 
+                    key={s.id} 
+                    title={s.category} 
+                    type="Signal" 
+                    meta={s.relevance}
+                    onClick={() => navigate("lab", "domain", s.domainId)} 
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "memory" && (
+            <div>
+              <p style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", textTransform: "uppercase", marginBottom: "12px" }}>Consequence Log & Recent Changes</p>
+              <ConsequenceLog 
+                events={[
+                  { id: "e1", desc: "Canonized consensus failure hypothesis into active thread", time: "2m ago", type: "canon" },
+                  { id: "e2", desc: "Mutated context of Raft experiment with new OSDI citation", time: "14m ago", type: "mutate" },
+                  { id: "e3", desc: "Executed Code Lab simulation of partition latency", time: "1h ago", type: "view" },
+                ]}
+              />
+            </div>
+          )}
+
+          {activeTab === "campaigns" && (
+            <div>
+              <EntityRow title="Research: Asymmetric Partition Recovery" type="Campaign" meta={<StateBadge state="Active" color="var(--r-ok)" />} />
+              <EntityRow title="Audit: Event Store Latency Budgets" type="Campaign" meta={<StateBadge state="Pending" />} />
+            </div>
+          )}
+
+          {activeTab === "artifacts" && (
+            <div>
+              <RelationshipList
+                title="Recent Artifacts"
+                items={[
+                  { id: "a1", label: "Raft/Paxos Decision Matrix.md" },
+                  { id: "a2", label: "CAP Theorem Explainer.pdf" },
+                  { id: "a3", label: "Latency Test Simulation.js" },
+                ]}
+              />
+            </div>
+          )}
+        </div>
+      </div>
     </motion.div>
   );
 }

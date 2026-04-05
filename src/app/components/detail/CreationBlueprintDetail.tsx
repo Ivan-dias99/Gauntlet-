@@ -3,7 +3,7 @@
  */
 import { type NavFn } from "../shell-types";
 import { getBlueprint, getTrack, getDomain, getEngine } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, Tag, PrimaryAction, SecondaryAction, EmptyDetail, ObjectDetailSurface } from "./DetailShared";
 
 interface Props { blueprintId: string; navigate: NavFn; onStartChat: (p: string) => void; }
 
@@ -12,7 +12,21 @@ export function CreationBlueprintDetail({ blueprintId, navigate, onStartChat }: 
   if (!bp) return <EmptyDetail onBack={() => navigate("creation", "home")} label="Blueprint not found" />;
 
   return (
-    <DetailPage>
+    <ObjectDetailSurface
+      identity={{ title: bp.title, type: bp.category, id: blueprintId }}
+      state={{ status: bp.outputType, canon: "canonical", statusColor: "var(--r-warn)" }}
+      missionBinding={{ chamber: "Creation", text: bp.desc }}
+      directiveRelevance={[
+        { id: "d1", text: "Maintain architectural standard for blueprint generation", priority: "normal" }
+      ]}
+      aiReasoning={`Blueprint relates to ${bp.category} and specifies ${bp.steps.length} structural generative steps.`}
+      consequenceTrace={[
+        { id: "c1", desc: "Blueprint imported", time: "1d ago", type: "canon" }
+      ]}
+      meshRelations={
+        bp.linkedEngines.map(eid => ({ id: `e-${eid}`, label: "Engine Reference" }))
+      }
+    >
       <Breadcrumb
         items={[
           { label: "Creation", tab: "creation", view: "home" },
@@ -21,22 +35,8 @@ export function CreationBlueprintDetail({ blueprintId, navigate, onStartChat }: 
         onNavigate={navigate}
       />
 
-      <div style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--r-warn)", background: "color-mix(in srgb, var(--r-warn) 10%, var(--r-surface))", padding: "2px 6px", borderRadius: "2px" }}>
-            Blueprint
-          </span>
-          <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{bp.category} · {bp.outputType}</span>
-        </div>
-        <h1 style={{ fontSize: "17px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 10px", letterSpacing: "-0.02em", lineHeight: 1.3 }}>
-          {bp.title}
-        </h1>
-        <p style={{ fontSize: "13px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 12px", lineHeight: 1.65 }}>
-          {bp.desc}
-        </p>
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          {bp.tags.map(t => <Tag key={t} label={t} />)}
-        </div>
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "20px" }}>
+        {bp.tags.map(t => <Tag key={t} label={t} />)}
       </div>
 
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "28px" }}>
@@ -157,6 +157,6 @@ export function CreationBlueprintDetail({ blueprintId, navigate, onStartChat }: 
           </div>
         </div>
       )}
-    </DetailPage>
+    </ObjectDetailSurface>
   );
 }

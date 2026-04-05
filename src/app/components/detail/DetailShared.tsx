@@ -4,6 +4,7 @@
  */
 import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { type Tab, type NavFn } from "../shell-types";
+import { EntityTitleBlock, CanonStatusBlock, RelationshipList, ConsequenceLog, DirectiveStack, AIExecutionModeSelector } from "../SystemComponents";
 
 // ─── Breadcrumb ───────────────────────────────────────────────────────────────
 
@@ -241,5 +242,101 @@ export function EmptyDetail({ onBack, label }: { onBack: () => void; label?: str
         ← Back
       </button>
     </div>
+  );
+}
+
+// ─── Object Detail Surface (Ruberra Canonical Structure) ──────────────────────
+
+export interface ObjectDetailProps {
+  identity: { title: string; type: string; id: string };
+  state: { status: string; statusColor?: string; canon: "draft" | "active" | "canonical" | "unresolved" | "deprecated" | "conflicting" };
+  missionBinding: { chamber: string; text: string };
+  aiReasoning?: string;
+  directiveRelevance?: { id: string; text: string; priority: "high" | "normal" }[];
+  meshRelations?: { id: string; label: string; onClick?: () => void }[];
+  consequenceTrace?: { id: string; desc: string; time: string; type: "mutate" | "view" | "canon" }[];
+  activeMemory?: { id: string; label: string; onClick?: () => void }[];
+  children: React.ReactNode;
+}
+
+export function ObjectDetailSurface({
+  identity, state, missionBinding, aiReasoning, directiveRelevance, meshRelations, consequenceTrace, activeMemory, children
+}: ObjectDetailProps) {
+  return (
+    <DetailPage>
+      {/* 1. Object Identity & State */}
+      <div style={{ marginBottom: "24px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+          <span style={{ fontSize: "8px", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.10em", color: "var(--r-dim)" }}>
+            #{identity.id}
+          </span>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: state.statusColor || "var(--r-text)", border: "1px solid var(--r-border)", padding: "2px 6px", borderRadius: "2px" }}>
+              {state.status}
+            </span>
+            <CanonStatusBlock status={state.canon} />
+          </div>
+        </div>
+        <EntityTitleBlock title={identity.title} type={identity.type} />
+      </div>
+
+      {/* 2. Mission Binding */}
+      <div style={{ padding: "10px 14px", background: "var(--r-surface)", border: "1px solid var(--r-border)", borderRadius: "2px", marginBottom: "24px", display: "flex", gap: "10px" }}>
+        <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>Mission</span>
+        <span style={{ fontSize: "11px", color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif" }}>
+          <strong style={{ fontWeight: 600 }}>{missionBinding.chamber}</strong> · {missionBinding.text}
+        </span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "24px", alignItems: "start" }}>
+        {/* Left Column: Children (Specific content like threads, campaigns, artifacts) */}
+        <div>
+          {children}
+        </div>
+
+        {/* Right Column: Neural Mesh, Memory, Consequence, Directives, AI Reasoning */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          {aiReasoning && (
+            <div style={{ padding: "12px", border: "1px solid var(--r-border-soft)", background: "var(--r-surface)", borderRadius: "2px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ fontSize: "9px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-accent)", textTransform: "uppercase", letterSpacing: "0.08em" }}>AI Object Reasoning</span>
+                <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "var(--r-accent)" }} />
+              </div>
+              <p style={{ fontSize: "11px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", lineHeight: 1.5, margin: 0 }}>
+                {aiReasoning}
+              </p>
+            </div>
+          )}
+
+          {directiveRelevance && directiveRelevance.length > 0 && (
+            <div>
+              <SectionHead label="Directive Relevance" />
+              <DirectiveStack directives={directiveRelevance} />
+            </div>
+          )}
+
+          {meshRelations && meshRelations.length > 0 && (
+            <div>
+              <RelationshipList title="Mesh Relations" items={meshRelations} />
+            </div>
+          )}
+
+          {activeMemory && activeMemory.length > 0 && (
+            <div>
+              <RelationshipList title="Active Memory Recall" items={activeMemory} />
+            </div>
+          )}
+
+          {consequenceTrace && consequenceTrace.length > 0 && (
+            <div>
+               <SectionHead label="Consequence Trace" />
+               <div style={{ padding: "12px", background: "var(--r-bg)", border: "1px solid var(--r-border)", borderRadius: "2px" }}>
+                 <ConsequenceLog events={consequenceTrace} />
+               </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </DetailPage>
   );
 }

@@ -3,7 +3,7 @@
  */
 import { type NavFn } from "../shell-types";
 import { getTrack, getDomain, getBlueprint } from "../product-data";
-import { Breadcrumb, XChamberLink, SectionHead, Tag, DetailPage, PrimaryAction, SecondaryAction, EmptyDetail } from "./DetailShared";
+import { Breadcrumb, XChamberLink, SectionHead, Tag, PrimaryAction, SecondaryAction, EmptyDetail, ObjectDetailSurface } from "./DetailShared";
 
 interface Props {
   trackId:     string;
@@ -26,7 +26,23 @@ export function SchoolTrackDetail({ trackId, navigate, onStartChat }: Props) {
   const progressPct = Math.round((doneCount / track.lessons.length) * 100);
 
   return (
-    <DetailPage>
+    <ObjectDetailSurface
+      identity={{ title: track.title, type: "Curriculum Track", id: trackId }}
+      state={{ status: `${progressPct}% Complete`, canon: progressPct === 100 ? "canonical" : "active", statusColor: "var(--r-ok)" }}
+      missionBinding={{ chamber: "School", text: track.tagline }}
+      directiveRelevance={[
+        { id: "d1", text: "Complete required learning tracks before execution", priority: "normal" }
+      ]}
+      aiReasoning={`Track level: ${track.level}. Contains ${track.lessonCount} lessons with estimated duration of ${track.duration}.`}
+      consequenceTrace={
+        track.lessons.filter(l => l.status === "done").map(l => ({
+          id: l.id, desc: `Lesson completed: ${l.title}`, time: "recent", type: "mutate"
+        }))
+      }
+      meshRelations={
+        track.linkedDomains.map(did => ({ id: `d-${did}`, label: "Lab Domain" }))
+      }
+    >
       <Breadcrumb
         items={[
           { label: "School", tab: "school", view: "home" },
@@ -34,23 +50,8 @@ export function SchoolTrackDetail({ trackId, navigate, onStartChat }: Props) {
         ]}
         onNavigate={navigate}
       />
-
-      {/* Header */}
-      <div style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-          <span style={{ fontSize: "8px", fontFamily: "monospace", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--r-ok)", background: "color-mix(in srgb, var(--r-ok) 10%, var(--r-surface))", padding: "2px 6px", borderRadius: "2px" }}>
-            Track
-          </span>
-          <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{track.level}</span>
-        </div>
-        <h1 style={{ fontSize: "17px", fontWeight: 600, color: "var(--r-text)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 8px", letterSpacing: "-0.02em", lineHeight: 1.3 }}>
-          {track.title}
-        </h1>
-        <p style={{ fontSize: "13px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif", margin: "0 0 14px", lineHeight: 1.65 }}>
-          {track.tagline}
-        </p>
         {/* Progress bar */}
-        <div style={{ marginBottom: "8px" }}>
+        <div style={{ marginBottom: "24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
             <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-dim)" }}>{doneCount} / {track.lessons.length} lessons</span>
             <span style={{ fontSize: "9px", fontFamily: "monospace", color: "var(--r-ok)" }}>{progressPct}%</span>
@@ -58,12 +59,11 @@ export function SchoolTrackDetail({ trackId, navigate, onStartChat }: Props) {
           <div style={{ height: "2px", background: "var(--r-border)", borderRadius: "1px", overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${progressPct}%`, background: "var(--r-ok)", borderRadius: "1px", transition: "width 0.6s ease" }} />
           </div>
+          <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+            <span style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif" }}>{track.lessonCount} lessons</span>
+            <span style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif" }}>{track.duration}</span>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: "12px" }}>
-          <span style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif" }}>{track.lessonCount} lessons</span>
-          <span style={{ fontSize: "10px", color: "var(--r-subtext)", fontFamily: "'Inter', system-ui, sans-serif" }}>{track.duration}</span>
-        </div>
-      </div>
 
       {/* Actions */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "28px" }}>
@@ -199,6 +199,6 @@ export function SchoolTrackDetail({ trackId, navigate, onStartChat }: Props) {
           </div>
         </div>
       )}
-    </DetailPage>
+    </ObjectDetailSurface>
   );
 }

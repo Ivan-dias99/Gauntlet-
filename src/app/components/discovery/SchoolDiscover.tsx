@@ -140,7 +140,23 @@ const deepStudyAreas = [
 ];
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
+import { useState } from "react";
+import {
+  EntityTitleBlock,
+  EntitySummaryBlock,
+  RelationshipList,
+  EntityRow,
+  TabSet,
+  ChamberNavGroup,
+  ContextBand,
+  DirectiveStack,
+  ConsequenceLog,
+  StateBadge
+} from "../SystemComponents";
+
 export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps) {
+  const [activeTab, setActiveTab] = useState("threads");
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -149,143 +165,126 @@ export function SchoolDiscover({ onEnterLesson, navigate }: SchoolDiscoverProps)
       transition={{ duration: 0.22 }}
       style={{
         flex: 1,
-        overflowY: "auto",
-        paddingTop: "24px",
-        paddingBottom: "40px",
+        display: "flex",
         background: "var(--r-bg)",
-        backgroundImage: `
-          linear-gradient(var(--r-border-soft) 1px, transparent 1px),
-          linear-gradient(90deg, var(--r-border-soft) 1px, transparent 1px)
-        `,
-        backgroundSize: "52px 52px",
-        scrollbarWidth: "none",
+        overflow: "hidden",
       }}
     >
-      {/* Hero — Continue Learning */}
-      <FeaturedHero
-        label="CONTINUE LEARNING"
-        badge="In Progress"
-        title="AI Systems Engineering"
-        description="Lesson 3 of 9 — Evaluation Frameworks for LLMs. Learn how to build principled evaluation infrastructure for language model quality and safety."
-        meta="AI Systems Engineering · Lesson 3 · 44% complete"
-        accent="var(--chamber-school)"
-        accentLight="var(--chamber-school-light)"
-        ctaLabel="Resume lesson"
-        onCta={() => navigate("school", "lesson", "lesson-evals")}
-        secondaryLabel="View curriculum"
-        onSecondary={() => navigate("school", "track", "ai-engineering")}
-        stats={[
-          { label: "Lessons done", value: "2" },
-          { label: "Tracks active", value: "2" },
-          { label: "Progress", value: "44%" },
-        ]}
-      />
+      {/* Sidebar - Local Navigation & Directives */}
+      <div style={{ width: "260px", borderRight: "1px solid var(--r-border)", padding: "24px 16px", overflowY: "auto" }}>
+        <ChamberNavGroup title="Views">
+          <EntityRow title="Active Threads" type="⌘ 1" onClick={() => setActiveTab("threads")} />
+          <EntityRow title="Campaigns" type="⌘ 2" onClick={() => setActiveTab("campaigns")} />
+          <EntityRow title="Memory Timeline" type="⌘ 3" onClick={() => setActiveTab("memory")} />
+        </ChamberNavGroup>
 
-      {/* Continue Learning — real tracks */}
-      <DiscoveryRail
-        label="Continue Learning"
-        sublabel="Pick up where you left off"
-        action={{ label: "All tracks", onClick: () => navigate("school", "browse") }}
-      >
-        {continueCourses.map((c) => (
-          <CourseCard
-            key={c.id}
-            title={c.title}
-            type={c.type}
-            lessons={c.lessons}
-            duration={c.duration}
-            level={c.level}
-            progress={c.progress}
-            pattern={c.pattern}
-            preview={c.preview ?? getTrack(c.trackId)?.tagline}
-            onClick={() => navigate("school", "track", c.trackId)}
-          />
-        ))}
-      </DiscoveryRail>
+        <ChamberNavGroup title="Library">
+          <EntityRow title="Tracks" type="Open" onClick={() => navigate("school", "browse")} />
+          <EntityRow title="Roles" type="Open" onClick={() => navigate("school", "role", "ai-engineer")} />
+          <EntityRow title="Deep Study" type="Open" onClick={() => navigate("school", "library")} />
+        </ChamberNavGroup>
 
-      {/* Recommended */}
-      <DiscoveryRail
-        label="Recommended for You"
-        sublabel="Based on your learning path"
-        action={{ label: "See all", onClick: () => navigate("school", "browse") }}
-      >
-        {recommendedCourses.map((c) => (
-          <CourseCard
-            key={c.id}
-            title={c.title}
-            type={c.type}
-            lessons={c.lessons}
-            duration={c.duration}
-            level={c.level}
-            pattern={c.pattern}
-            preview={c.preview ?? getTrack(c.trackId)?.tagline}
-            onClick={() => navigate("school", "track", c.trackId)}
+        <div style={{ marginTop: "32px" }}>
+          <DirectiveStack
+            directives={[
+              { id: "1", text: "Mastery check required before advancing tracks", priority: "high" },
+              { id: "2", text: "Link all new lessons to active Lab traces", priority: "normal" }
+            ]}
           />
-        ))}
-      </DiscoveryRail>
+        </div>
+      </div>
 
-      {/* Collections/Tracks — all SCHOOL_TRACKS */}
-      <DiscoveryRail
-        label="Learning Tracks"
-        sublabel="Curated progression paths"
-        action={{ label: "Browse all tracks", onClick: () => navigate("school", "browse") }}
-        gap={10}
-      >
-        {SCHOOL_TRACKS.map((t) => (
-          <CollectionCard
-            key={t.id}
-            title={t.title}
-            subtitle={t.tagline.length > 55 ? `${t.tagline.slice(0, 52)}…` : t.tagline}
-            itemCount={t.lessonCount}
-            accent="var(--chamber-school)"
-            accentLight="var(--chamber-school-light)"
-            tag="Track"
-            icon={<Layers size={14} color={R.school} strokeWidth={1.5} />}
-            invite={t.lessons[0] ? `Starts · ${t.lessons[0].title}` : undefined}
-            onClick={() => navigate("school", "track", t.id)}
-          />
-        ))}
-      </DiscoveryRail>
+      {/* Main Content Area */}
+      <div style={{ flex: 1, padding: "32px", overflowY: "auto" }}>
+        <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+          
+          <ContextBand chamber="school" pressure={0} state="Learning" />
 
-      {/* Future Roles — all SCHOOL_ROLES */}
-      <DiscoveryRail
-        label="Future Role Tracks"
-        sublabel="AI-era careers and pathways"
-        action={{ label: "Explore all roles", onClick: () => navigate("school", "browse") }}
-      >
-        {SCHOOL_ROLES.map((r) => (
-          <RoleCard
-            key={r.id}
-            role={r.title}
-            domain={r.domain}
-            skills={r.skills}
-            demand={r.demand}
-            preview={r.desc.length > 120 ? `${r.desc.slice(0, 117)}…` : r.desc}
-            onClick={() => navigate("school", "role", r.id)}
-          />
-        ))}
-      </DiscoveryRail>
+          <div style={{ margin: "24px 0" }}>
+            <EntityTitleBlock 
+              title="School Domain: AI Systems Engineering" 
+              type="Root Track" 
+              status={<StateBadge state="Active" color="var(--chamber-school)" />} 
+              accent="var(--chamber-school)"
+            />
+            <EntitySummaryBlock>
+              This chamber currently holds 2 active learning threads in continuous progression. Evaluation infrastructure and distributed logic are the primary focal points.
+            </EntitySummaryBlock>
+          </div>
 
-      {/* Deep Study */}
-      <DiscoveryRail
-        label="Deep Study"
-        sublabel="Expert-grade deep dives"
-        action={{ label: "View library", onClick: () => navigate("school", "library") }}
-      >
-        {deepStudyAreas.map((c) => (
-          <CourseCard
-            key={c.id}
-            title={c.title}
-            type={c.type}
-            lessons={c.lessons}
-            duration={c.duration}
-            level={c.level}
-            pattern={c.pattern}
-            preview={c.preview}
-            onClick={() => navigate("school", "track", c.trackId)}
+          <TabSet 
+            tabs={[
+              { id: "threads", label: "Active Threads" },
+              { id: "campaigns", label: "Campaigns" },
+              { id: "memory", label: "Memory" },
+              { id: "artifacts", label: "Artifacts" }
+            ]}
+            active={activeTab}
+            onSelect={setActiveTab}
           />
-        ))}
-      </DiscoveryRail>
+
+          {activeTab === "threads" && (
+            <div>
+              <p style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", textTransform: "uppercase", marginBottom: "12px" }}>Active Learning Threads</p>
+              {continueCourses.map(c => (
+                <div key={c.id} style={{ marginBottom: "8px" }}>
+                  <EntityRow 
+                    title={c.title} 
+                    type={c.type} 
+                    meta={<StateBadge state={`${c.progress}%`} color="var(--chamber-school)" />}
+                    onClick={() => navigate("school", "track", c.trackId)} 
+                  />
+                </div>
+              ))}
+
+              <div style={{ marginTop: "32px" }}>
+                <p style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", textTransform: "uppercase", marginBottom: "12px" }}>Key Study Objects</p>
+                {deepStudyAreas.map(d => (
+                  <EntityRow 
+                    key={d.id} 
+                    title={d.title} 
+                    type="Study Object" 
+                    meta={d.level}
+                    onClick={() => navigate("school", "track", d.trackId)} 
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "memory" && (
+            <div>
+              <p style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "var(--r-dim)", textTransform: "uppercase", marginBottom: "12px" }}>Consequence Log & Recent Changes</p>
+              <ConsequenceLog 
+                events={[
+                  { id: "e1", desc: "Completed Lesson: RAG Pipelines", time: "1h ago", type: "canon" },
+                  { id: "e2", desc: "Opened new thread in AI Systems Engineering", time: "3h ago", type: "mutate" },
+                  { id: "e3", desc: "Viewed Distributed Architecture outline", time: "Yesterday", type: "view" },
+                ]}
+              />
+            </div>
+          )}
+
+          {activeTab === "campaigns" && (
+            <div>
+              <EntityRow title="Mastery: System Design Interviews" type="Campaign" meta={<StateBadge state="Active" color="var(--r-ok)" />} />
+              <EntityRow title="Track: Applied Cryptography" type="Campaign" meta={<StateBadge state="Pending" />} />
+            </div>
+          )}
+
+          {activeTab === "artifacts" && (
+            <div>
+              <RelationshipList
+                title="Recent Artifacts"
+                items={[
+                  { id: "a1", label: "CAP Theorem Notes.md" },
+                  { id: "a2", label: "System Design Mock.pdf" },
+                ]}
+              />
+            </div>
+          )}
+        </div>
+      </div>
     </motion.div>
   );
 }
