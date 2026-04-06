@@ -61,19 +61,19 @@ export const CreationGlyph = () => (
 
 const EMPTY_SOVEREIGN: Record<string, { kicker: string; title: string; body: string }> = {
   lab: {
-    kicker: "Lab · investigation field",
-    title:  "No trace on the record yet",
-    body:   "This chamber keeps an honest empty: evidence, verdicts, and matrices appear only after you run inquiry. Start below — output lands as structured blocks, not chat fog.",
+    kicker: "Lab · ready",
+    title:  "Awaiting first directive",
+    body:   "The investigation field is live. Your first query becomes a structured object — evidence, verdicts, and matrices with consequence. Everything after compounds.",
   },
   school: {
-    kicker: "School · curriculum surface",
-    title:  "No lesson arc in motion",
-    body:   "Pick a thread and School sequences mastery checks, paths, and continuity. The surface stays calm until you commit a learning intent.",
+    kicker: "School · ready",
+    title:  "Awaiting first directive",
+    body:   "Mastery tracks activate on your command. Lessons sequence, progress accumulates, and the curriculum remembers where you are. Begin.",
   },
   creation: {
-    kicker: "Creation · execution field",
-    title:  "No build chain yet",
-    body:   "Directives compile to artifacts, blueprints, and terminal output. Send a concrete build ask — the forge stays quiet until you command it.",
+    kicker: "Creation · ready",
+    title:  "Awaiting first directive",
+    body:   "The forge is hot. Directives compile to artifacts, blueprints, and executable output. Every build command leaves a structural trace. Command it.",
   },
 };
 
@@ -139,9 +139,9 @@ function EmptyState({
       }} />
       <motion.div
         initial={{ opacity: 0, scale: 0.88 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
-        style={{ marginBottom: "20px", opacity: 0.9, position: "relative" }}
+        animate={{ opacity: [0.7, 1, 0.7], scale: 1 }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        style={{ marginBottom: "20px", position: "relative" }}
       >
         <MiniConstellation chamber={id as "lab" | "school" | "creation"} />
       </motion.div>
@@ -174,7 +174,7 @@ function EmptyState({
             textAlign: "center",
           }}
         >
-          Open queries
+          Issue a directive
         </p>
         {prompts.map((p, i) => (
           <motion.button
@@ -187,6 +187,7 @@ function EmptyState({
               width: "100%",
               padding: "9px 14px",
               border: "1px solid var(--r-border)",
+              borderLeft: `3px solid ${accent}`,
               borderRadius: "2px",
               background: "var(--r-surface)",
               cursor: "pointer",

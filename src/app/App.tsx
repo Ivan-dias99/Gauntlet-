@@ -56,6 +56,8 @@ import {
 } from "./components/shell-types";
 import { parseBlocks } from "./components/parseBlocks";
 import { HeroLanding } from "./components/HeroLanding";
+import { ShellEntryCeremony } from "./components/ShellEntryCeremony";
+import { SessionAwarenessBand } from "./components/SessionAwarenessBand";
 import {
   DEFAULT_TASK_BY_CHAMBER,
   DEFAULT_MODEL_BY_TASK,
@@ -410,9 +412,12 @@ export default function App() {
 
   // ── Shell / Hero Mode ────────────────────────────────────────────────────────
   const [isShellMode, setIsShellMode] = useState<boolean>(true);
+  const [isCeremonyActive, setIsCeremonyActive] = useState(false);
+  const [ceremonyTargetChamber, setCeremonyTargetChamber] = useState<string>("lab");
+  const [sessionStartedAt] = useState(() => Date.now());
 
   // ── Theme ────────────────────────────────────────────────────────────────────
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
 
   // ── System model (awareness) ─────────────────────────────────────────────────
   const [systemModel, setSystemModel] = useState<SystemModel>(defaultSystemModel);
@@ -3006,15 +3011,27 @@ export default function App() {
             key="hero"
             theme={theme}
             onEnter={(chamber) => {
-              if (chamber && (chamber === "lab" || chamber === "school" || chamber === "creation" || chamber === "profile")) {
-                setActiveTab(chamber as Tab);
-                if (chamber === "lab")      setLabView("home");
-                if (chamber === "school")   setSchoolView("home");
-                if (chamber === "creation") setCreationView("home");
-                if (chamber === "profile")  setProfileView("overview");
-              }
+              const target = chamber && (chamber === "lab" || chamber === "school" || chamber === "creation" || chamber === "profile") ? chamber : "lab";
+              if (target === "lab")      setLabView("home");
+              if (target === "school")   setSchoolView("home");
+              if (target === "creation") setCreationView("home");
+              if (target === "profile")  setProfileView("overview");
+              setActiveTab(target as Tab);
+              setCeremonyTargetChamber(target);
               setIsShellMode(false);
+              setIsCeremonyActive(true);
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Shell Entry Ceremony — sovereign threshold */}
+      <AnimatePresence>
+        {isCeremonyActive && (
+          <ShellEntryCeremony
+            key="ceremony"
+            chamber={ceremonyTargetChamber}
+            onComplete={() => setIsCeremonyActive(false)}
           />
         )}
       </AnimatePresence>
@@ -3037,6 +3054,19 @@ export default function App() {
         trustSignal={trustSignal}
         onSecurityAcknowledge={handleSecurityAcknowledge}
       />
+
+      {/* Session Awareness Band — the organism's heartbeat */}
+      {!isShellMode && !isCeremonyActive && (
+        <SessionAwarenessBand
+          sessionStartedAt={sessionStartedAt}
+          activeTab={activeTab}
+          directiveCount={
+            messages.lab.filter(m => m.role === "user").length +
+            messages.school.filter(m => m.role === "user").length +
+            messages.creation.filter(m => m.role === "user").length
+          }
+        />
+      )}
 
       {/* System Health Band — silent unless degraded or critical */}
       <SystemHealthBand
