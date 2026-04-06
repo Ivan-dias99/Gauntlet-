@@ -112,11 +112,14 @@ html, body, #root {
 .rb-thread {
   padding: 10px 12px;
   border: 1px solid var(--rb-line);
+  border-top: 2px solid var(--rb-thread-state-color, var(--rb-line));
   margin-bottom: 6px;
-  cursor: pointer;
+  cursor: default;
   background: var(--rb-bg-elev-2);
 }
-.rb-thread.active { border-color: var(--rb-accent-soft); }
+/* Active thread: background elevated; border-left set by chamber accent inline style */
+.rb-thread.active { background: rgba(255, 255, 255, 0.013); }
+/* Legacy intent/meta selectors — superseded by WS3 classes below */
 .rb-thread .intent {
   font-family: var(--rb-serif);
   font-size: 14px;
@@ -704,3 +707,113 @@ html, body, #root {
 .rb-badge.reversible   { color: var(--rb-ok);   border-color: rgba(106, 143, 90,  0.45); }
 .rb-badge.consequential { color: var(--rb-warn); border-color: rgba(181, 138, 58, 0.45); }
 .rb-badge.destructive  { color: var(--rb-bad);  border-color: rgba(168, 66,  58,  0.45); }
+
+/* ── WS3: Thread Strip as Operational Scope ──────────────────────────────── */
+
+/* State-color variables — drives top border + state dot */
+.rb-thread[data-state="open"]              { --rb-thread-state-color: rgba(82,  121, 106, 0.45); }
+.rb-thread[data-state="draft"]             { --rb-thread-state-color: rgba(90,   87,  80, 0.35); }
+.rb-thread[data-state="directive-pending"] { --rb-thread-state-color: rgba(181, 138,  58, 0.55); }
+.rb-thread[data-state="executing"]         { --rb-thread-state-color: rgba(181, 138,  58, 0.7);  }
+.rb-thread[data-state="awaiting-review"]   { --rb-thread-state-color: rgba(181, 138,  58, 0.7);  }
+.rb-thread[data-state="closed"]            { --rb-thread-state-color: rgba(168,  66,  58, 0.28); opacity: 0.62; }
+
+/* Thread intent — primary, serif */
+.rb-thread-intent {
+  font-family: var(--rb-serif);
+  font-size: 13px;
+  color: var(--rb-ink);
+  line-height: 1.38;
+  margin-bottom: 7px;
+}
+.rb-thread[data-state="closed"] .rb-thread-intent { color: var(--rb-ink-soft); }
+
+/* Thread meta line — compact operational stats */
+.rb-thread-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-mute);
+}
+
+/* State indicator dot — colored, animates on live states */
+.rb-thread-state-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--rb-thread-state-color, var(--rb-line));
+  flex-shrink: 0;
+}
+.rb-thread[data-state="executing"]       .rb-thread-state-dot { animation: rb-pulse 1.4s ease-in-out infinite; }
+.rb-thread[data-state="awaiting-review"] .rb-thread-state-dot { animation: rb-pulse 2.2s ease-in-out infinite; }
+
+/* Meta stat text */
+.rb-thread-meta-text {
+  flex: 1;
+  letter-spacing: 0.02em;
+}
+
+/* Close button — inline, minimal */
+.rb-thread-close-btn {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--rb-line-strong);
+  background: transparent;
+  color: var(--rb-ink-mute);
+  cursor: pointer;
+  padding: 2px 7px;
+  flex-shrink: 0;
+}
+.rb-thread-close-btn:hover { border-color: var(--rb-bad); color: var(--rb-bad); }
+
+/* Close reason — dimmed, dashed rule above */
+.rb-thread-close-reason {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--rb-line);
+  letter-spacing: 0.02em;
+}
+.rb-thread-close-reason::before { content: "↳ "; }
+
+/* Intent input — scope-opening field, gold focus (cross-chamber) */
+.rb-intent-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--rb-ink);
+  border: 1px solid var(--rb-line-strong);
+  padding: 10px 12px;
+  font-family: var(--rb-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  outline: none;
+  box-sizing: border-box;
+  min-height: 64px;
+  resize: vertical;
+}
+.rb-intent-input:focus {
+  border-color: rgba(201, 166, 107, 0.55);
+  background: rgba(201, 166, 107, 0.025);
+}
+
+/* Thread count label in rail header */
+.rb-threads-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.rb-threads-header .rb-section-title { margin: 0; }
+.rb-threads-count {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--rb-ink-mute);
+}
