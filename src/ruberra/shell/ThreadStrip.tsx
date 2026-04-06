@@ -46,10 +46,44 @@ export function ThreadStrip() {
               >
                 <div className="intent">{t.intent}</div>
                 <div className="meta">
-                  <span className={`rb-badge ${t.status === "open" ? "ok" : ""}`}>
-                    {t.status}
+                  <span
+                    className={`rb-badge ${
+                      t.state === "closed"
+                        ? "bad"
+                        : t.state === "awaiting-review"
+                          ? "warn"
+                          : t.state === "executing"
+                            ? "warn"
+                            : "ok"
+                    }`}
+                  >
+                    {t.state}
                   </span>
                   {new Date(t.openedAt).toLocaleTimeString()}
+                  {t.status === "open" && p.activeThread === t.id && (
+                    <button
+                      className="rb-btn"
+                      style={{ marginLeft: 8, padding: "2px 8px", fontSize: 9 }}
+                      onClick={() => {
+                        const reason = prompt("Close reason (required):");
+                        if (reason && reason.trim())
+                          emit.closeThread(t.id, reason.trim());
+                      }}
+                    >
+                      Close
+                    </button>
+                  )}
+                  {t.closeReason && (
+                    <div
+                      style={{
+                        fontSize: 9,
+                        color: "var(--rb-ink-mute)",
+                        marginTop: 4,
+                      }}
+                    >
+                      reason: {t.closeReason}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

@@ -9,13 +9,50 @@ export interface Repo {
   boundAt: number;
 }
 
+// Thread state machine derived from the thread's event history.
+export type ThreadState =
+  | "draft"
+  | "open"
+  | "directive-pending"
+  | "executing"
+  | "awaiting-review"
+  | "closed";
+
 export interface Thread {
   id: string;
   repo?: string;
   intent: string;
   openedAt: number;
   closedAt?: number;
+  closeReason?: string;
   status: "open" | "closed";
+  state: ThreadState;
+}
+
+// Directive composition: scope + risk + acceptance criteria.
+export type DirectiveRisk = "reversible" | "consequential" | "destructive";
+export type DirectiveStatus = "draft" | "accepted" | "rejected";
+
+export interface Directive {
+  id: string;
+  thread: string;
+  repo?: string;
+  text: string;
+  scope: string;
+  risk: DirectiveRisk;
+  acceptance: string;
+  status: DirectiveStatus;
+  reason?: string; // rejection reason
+  ts: number;
+}
+
+export interface CanonProposal {
+  id: string;
+  repo?: string;
+  memoryId?: string;
+  text: string;
+  ts: number;
+  hardened: boolean;
 }
 
 // Truth-State Taxonomy — every truth occupies exactly one state.
@@ -46,12 +83,17 @@ export interface Execution {
   reason?: string;
 }
 
+export type ArtifactReview = "pending" | "accepted" | "rejected";
+
 export interface Artifact {
   id: string;
   thread?: string;
   execution?: string;
+  directive?: string;
   title: string;
   committed: boolean;
+  review: ArtifactReview;
+  reviewReason?: string;
   ts: number;
 }
 
@@ -78,24 +120,30 @@ export interface Projection {
   activeRepo?: string;
   threads: Thread[];
   activeThread?: string;
+  directives: Directive[];
   memory: MemoryEntry[];
   executions: Execution[];
   artifacts: Artifact[];
   canon: CanonEntry[];
+  canonProposals: CanonProposal[];
   contradictions: Contradiction[];
   chamber: "lab" | "school" | "creation";
+  missionFramed: boolean;
   lastEventId?: string;
 }
 
 const empty = (): Projection => ({
   repos: [],
   threads: [],
+  directives: [],
   memory: [],
   executions: [],
   artifacts: [],
   canon: [],
+  canonProposals: [],
   contradictions: [],
   chamber: "creation",
+  missionFramed: false,
 });
 
 export function project(events: RuberraEvent[]): Projection {
@@ -120,6 +168,7 @@ export function project(events: RuberraEvent[]): Projection {
           intent,
           openedAt: ev.ts,
           status: "open",
+          state: "open",
         });
         p.activeThread = ev.id;
         break;
@@ -128,9 +177,42 @@ export function project(events: RuberraEvent[]): Projection {
         const t = p.threads.find((t) => t.id === ev.thread);
         if (t) {
           t.status = "closed";
+          t.state = "closed";
           t.closedAt = ev.ts;
+          t.closeReason = ev.payload.reason as string | undefined;
         }
         if (p.activeThread === ev.thread) p.activeThread = undefined;
+        break;
+      }
+      case "directive.accepted": {
+        const t = p.threads.find((t) => t.id === ev.thread);
+        if (t && t.state !== "closed") t.state = "executing";
+        p.directives.push({
+          id: ev.id,
+          thread: String(ev.thread),
+          repo: ev.repo,
+          text: String(ev.payload.text ?? ""),
+          scope: String(ev.payload.scope ?? "unscoped"),
+          risk: (ev.payload.risk as Directive["risk"]) ?? "reversible",
+          acceptance: String(ev.payload.acceptance ?? ""),
+          status: "accepted",
+          ts: ev.ts,
+        });
+        break;
+      }
+      case "directive.rejected": {
+        p.directives.push({
+          id: ev.id,
+          thread: String(ev.thread),
+          repo: ev.repo,
+          text: String(ev.payload.text ?? ""),
+          scope: String(ev.payload.scope ?? "unscoped"),
+          risk: (ev.payload.risk as Directive["risk"]) ?? "reversible",
+          acceptance: String(ev.payload.acceptance ?? ""),
+          status: "rejected",
+          reason: String(ev.payload.reason ?? ""),
+          ts: ev.ts,
+        });
         break;
       }
       case "chamber.entered": {
@@ -159,6 +241,8 @@ export function project(events: RuberraEvent[]): Projection {
         break;
       }
       case "execution.started": {
+        const t = p.threads.find((t) => t.id === ev.thread);
+        if (t && t.state !== "closed") t.state = "executing";
         p.executions.push({
           id: ev.id,
           thread: ev.thread,
@@ -176,6 +260,13 @@ export function project(events: RuberraEvent[]): Projection {
           x.endedAt = ev.ts;
           x.reason = ev.payload.reason as string | undefined;
         }
+        const t = p.threads.find((t) => t.id === ev.thread);
+        if (t && t.state !== "closed") {
+          const pendingArtifacts = p.artifacts.some(
+            (a) => a.thread === t.id && a.review === "pending",
+          );
+          t.state = pendingArtifacts ? "awaiting-review" : "open";
+        }
         break;
       }
       case "artifact.generated": {
@@ -183,10 +274,35 @@ export function project(events: RuberraEvent[]): Projection {
           id: ev.id,
           thread: ev.thread,
           execution: ev.payload.executionId as string | undefined,
+          directive: ev.payload.directiveId as string | undefined,
           title: String(ev.payload.title ?? "artifact"),
           committed: false,
+          review: "pending",
           ts: ev.ts,
         });
+        const t = p.threads.find((t) => t.id === ev.thread);
+        if (t && t.state !== "closed") t.state = "awaiting-review";
+        break;
+      }
+      case "artifact.reviewed":
+      case "artifact.rejected": {
+        const a = p.artifacts.find((x) => x.id === ev.payload.artifactId);
+        if (a) {
+          const outcome =
+            ev.type === "artifact.rejected"
+              ? "rejected"
+              : (ev.payload.outcome as ArtifactReview) ?? "accepted";
+          a.review = outcome;
+          a.reviewReason = ev.payload.reason as string | undefined;
+        }
+        // Thread transition: if no pending artifacts remain, return to open.
+        const t = p.threads.find((t) => t.id === ev.thread);
+        if (t && t.state !== "closed") {
+          const stillPending = p.artifacts.some(
+            (x) => x.thread === t.id && x.review === "pending",
+          );
+          if (!stillPending) t.state = "open";
+        }
         break;
       }
       case "artifact.committed": {
@@ -194,9 +310,17 @@ export function project(events: RuberraEvent[]): Projection {
         if (a) a.committed = true;
         break;
       }
-      case "canon.proposed":
-        // Proposal is an observed state; it does not yet become law.
+      case "canon.proposed": {
+        p.canonProposals.push({
+          id: ev.id,
+          repo: ev.repo,
+          memoryId: ev.payload.memoryId as string | undefined,
+          text: String(ev.payload.text ?? ""),
+          ts: ev.ts,
+          hardened: false,
+        });
         break;
+      }
       case "canon.hardened": {
         p.canon.push({
           id: ev.id,
@@ -206,6 +330,11 @@ export function project(events: RuberraEvent[]): Projection {
           hardenedAt: ev.ts,
           state: "hardened",
         });
+        const prop = p.canonProposals.find(
+          (q) => q.id === ev.payload.proposalId,
+        );
+        if (prop) prop.hardened = true;
+        if (ev.payload.scope === "mission") p.missionFramed = true;
         break;
       }
       case "canon.revoked": {
@@ -240,4 +369,28 @@ export function project(events: RuberraEvent[]): Projection {
     }
   }
   return p;
+}
+
+// Next-move derivation. Reads the projection; emits nothing.
+// Returns a terse operational instruction for the active thread.
+export function nextMove(p: Projection): string {
+  if (!p.activeRepo) return "bind a repo";
+  if (!p.missionFramed) return "frame the mission (School)";
+  if (!p.activeThread) return "open a thread";
+  const t = p.threads.find((x) => x.id === p.activeThread);
+  if (!t) return "open a thread";
+  switch (t.state) {
+    case "draft":
+      return "state an intent";
+    case "open":
+      return "author a directive";
+    case "directive-pending":
+      return "accept or reject the directive";
+    case "executing":
+      return "execution in flight — wait for consequence";
+    case "awaiting-review":
+      return "review pending artifacts";
+    case "closed":
+      return "open a new thread";
+  }
 }

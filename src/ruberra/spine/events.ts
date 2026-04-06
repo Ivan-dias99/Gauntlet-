@@ -19,7 +19,8 @@ export type EventType =
   | "execution.succeeded"
   | "execution.failed"
   | "artifact.generated"
-  | "artifact.reviewed"
+  | "artifact.reviewed" // payload: { artifactId, outcome: "accepted"|"rejected", reason }
+  | "artifact.rejected"
   | "artifact.committed"
   | "canon.proposed"
   | "canon.hardened"
