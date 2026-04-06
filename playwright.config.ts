@@ -21,6 +21,9 @@ export default defineConfig({
     url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
+    env: {
+      VITE_RUBERRA_EXEC_URL: "http://localhost:3001/exec",
+    },
   },
   snapshotDir: "./tests/e2e/__screenshots__",
 });
