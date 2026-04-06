@@ -413,23 +413,29 @@ html, body, #root {
 /* Active thread: chamber-aware border via inline style (ThreadStrip) */
 /* .rb-thread.active border-color is overridden per-chamber via inline style */
 
-/* Canon ribbon: elevated hardened entries */
+/* Canon ribbon: elevated hardened entries — WS1 base, upgraded in WS4 */
 .rb-canon-entry {
   padding: 10px 12px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   background: rgba(201, 166, 107, 0.04);
   border: 1px solid var(--rb-line);
-  border-left: 2px solid rgba(201, 166, 107, 0.55);
-  font-size: 12px;
-  color: var(--rb-ink);
-  line-height: 1.55;
-}
-.rb-canon-entry .rb-badge {
-  display: block;
-  margin-bottom: 5px;
+  border-left: 3px solid rgba(201, 166, 107, 0.58);
 }
 .rb-canon-entry-text {
-  color: var(--rb-ink-soft);
+  font-family: var(--rb-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--rb-ink);
+  line-height: 1.52;
+  display: block;
+  margin-bottom: 6px;
+}
+.rb-canon-entry-provenance {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(201, 166, 107, 0.48);
+  text-transform: uppercase;
 }
 
 /* ── Narrow-width overlay rails ────────────────────────────────────────────── */
@@ -816,4 +822,110 @@ html, body, #root {
   font-size: 9px;
   letter-spacing: 0.14em;
   color: var(--rb-ink-mute);
+}
+
+/* ── WS4: Canon Ribbon Gravity ───────────────────────────────────────────── */
+
+/* Canon section header — gold authority, not generic serif uppercase */
+.rb-canon-header {
+  margin-bottom: 14px;
+}
+.rb-canon-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.rb-canon-header-title {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--rb-gold);
+}
+.rb-canon-header-count {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--rb-ink-mute);
+}
+/* Thin gold rule below canon header */
+.rb-canon-header-rule {
+  height: 1px;
+  background: rgba(201, 166, 107, 0.2);
+}
+
+/* Revoked canon — scarred, not deleted */
+.rb-canon-revoked-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(168, 66, 58, 0.2);
+}
+.rb-canon-revoked {
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  border: 1px solid var(--rb-line);
+  border-left: 2px solid rgba(168, 66, 58, 0.3);
+  opacity: 0.55;
+}
+.rb-canon-revoked-text {
+  font-family: var(--rb-serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--rb-ink-soft);
+  text-decoration: line-through;
+  text-decoration-color: rgba(168, 66, 58, 0.5);
+  line-height: 1.42;
+  display: block;
+  margin-bottom: 4px;
+}
+.rb-canon-revoked-reason {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: rgba(168, 66, 58, 0.6);
+}
+.rb-canon-revoked-reason::before { content: "↳ "; }
+
+/* Memory substrate — subordinate, raw, ephemeral */
+.rb-memory-header {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  margin: 24px 0 8px 0;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rb-memory-header-count {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+}
+.rb-memory-entry {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-mute);
+  line-height: 1.55;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--rb-line);
+  letter-spacing: 0.01em;
+}
+.rb-memory-entry:last-child { border-bottom: none; }
+.rb-memory-entry::before {
+  content: "·";
+  margin-right: 6px;
+  color: var(--rb-ink-mute);
+  opacity: 0.5;
+}
+.rb-memory-overflow {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--rb-ink-mute);
+  margin-top: 6px;
+  opacity: 0.6;
 }
