@@ -31,9 +31,9 @@ export function ShellEntryCeremony({
   const [phase, setPhase] = useState<"mark" | "identity" | "dissolve">("mark");
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase("identity"), 400);
-    const t2 = setTimeout(() => setPhase("dissolve"), 1200);
-    const t3 = setTimeout(() => onComplete(), 1600);
+    const t1 = setTimeout(() => setPhase("identity"), 300);
+    const t2 = setTimeout(() => setPhase("dissolve"), 900);
+    const t3 = setTimeout(() => onComplete(), 1200);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [onComplete]);
 
@@ -90,17 +90,6 @@ export function ShellEntryCeremony({
           gap: "8px",
         }}
       >
-        <span
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: "9px",
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            color: "var(--r-dim)",
-          }}
-        >
-          Session Opened
-        </span>
         <span
           style={{
             fontFamily: "'JetBrains Mono', monospace",

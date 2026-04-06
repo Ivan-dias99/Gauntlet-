@@ -63,17 +63,17 @@ const EMPTY_SOVEREIGN: Record<string, { kicker: string; title: string; body: str
   lab: {
     kicker: "Lab · ready",
     title:  "Awaiting first directive",
-    body:   "The investigation field is live. Your first query becomes a structured object — evidence, verdicts, and matrices with consequence. Everything after compounds.",
+    body:   "Queries produce structured evidence, verdicts, and matrices. Output compounds across the session.",
   },
   school: {
     kicker: "School · ready",
     title:  "Awaiting first directive",
-    body:   "Mastery tracks activate on your command. Lessons sequence, progress accumulates, and the curriculum remembers where you are. Begin.",
+    body:   "Lessons sequence into mastery tracks. Progress persists across sessions.",
   },
   creation: {
     kicker: "Creation · ready",
     title:  "Awaiting first directive",
-    body:   "The forge is hot. Directives compile to artifacts, blueprints, and executable output. Every build command leaves a structural trace. Command it.",
+    body:   "Directives compile to artifacts, blueprints, and terminal output.",
   },
 };
 
@@ -138,9 +138,9 @@ function EmptyState({
         pointerEvents: "none",
       }} />
       <motion.div
-        initial={{ opacity: 0, scale: 0.88 }}
-        animate={{ opacity: [0.7, 1, 0.7], scale: 1 }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: [0.8, 1, 0.8], scale: 1 }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
         style={{ marginBottom: "20px", position: "relative" }}
       >
         <MiniConstellation chamber={id as "lab" | "school" | "creation"} />

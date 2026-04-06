@@ -43,8 +43,8 @@ function CreationArchive({ messages, navigate }: { messages: Message[]; navigate
             align="left"
             accentVar="var(--chamber-creation)"
             kicker="Creation · archive"
-            title="No forged objects in archive"
-            body="Blueprints, engines, and build outputs land here after you work in Chat or Terminal. The archive stays honest until you ship something."
+            title="No objects in archive"
+            body="Blueprints, engines, and build outputs accumulate here from Chat and Terminal."
             actions={
               <Fragment>
                 {emptyActionBtn(() => navigate("creation", "terminal"), "Open Terminal", "var(--chamber-creation)")}
@@ -624,8 +624,8 @@ function ArtifactGallery({ messages, navigate, onBuild }: {
             <SovereignEmptyFrame
               accentVar="var(--chamber-creation)"
               kicker="Creation · artifact gallery"
-              title="Gallery is empty by design"
-              body="Artifacts appear when build sessions produce concrete outputs. Use Terminal for directive execution or Chat for structured creation blocks."
+              title="No artifacts yet"
+              body="Build outputs from Terminal and Chat appear here."
               actions={emptyActionBtn(onBuild, "Enter Build Terminal", "var(--chamber-creation)")}
             />
           </div>
