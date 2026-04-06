@@ -7,6 +7,7 @@ import { useSyncExternalStore } from "react";
 import { all, subscribe, hydrate, append } from "./eventLog";
 import { project, Projection } from "./projections";
 import { EventType } from "./events";
+import { verifyRepo } from "./gitAuthority";
 
 let cached: Projection | null = null;
 let version = 0;
@@ -65,8 +66,18 @@ function requireThread(threadId: string) {
 }
 
 export const emit = {
-  bindRepo: (name: string) =>
-    append("repo.bound", { name, id: name }, { repo: name }),
+  bindRepo: async (name: string) => {
+    const ev = await append("repo.bound", { name, id: name }, { repo: name });
+    // Non-blocking: verify git authority in background. Result emitted as repo.verified.
+    verifyRepo(name).then((result) =>
+      append(
+        "repo.verified",
+        { ok: result.ok, message: result.message, branch: result.branch, repoId: name },
+        { repo: name },
+      ),
+    );
+    return ev;
+  },
 
   enterChamber: (chamber: "lab" | "school" | "creation") =>
     append("chamber.entered", { chamber }, { repo: requireRepo() }),

@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useProjection, emit } from "../spine/store";
 import { Unavailable } from "../trust/Unavailable";
+import { RuledPrompt } from "../trust/RuledPrompt";
 
 const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
   | string
@@ -45,8 +46,9 @@ export function CreationChamber() {
     setErr(null);
     try {
       if (risk === "destructive") {
-        const ok = confirm(
-          `DESTRUCTIVE directive against ${activeThread.repo}.\nConfirm acceptance?`,
+        const ok = await RuledPrompt.confirm(
+          `Destructive directive against ${activeThread.repo}. Confirm acceptance?`,
+          { severity: "destructive" },
         );
         if (!ok) {
           await emit.nullConsequence(
@@ -118,7 +120,7 @@ export function CreationChamber() {
 
   async function rejectDraft() {
     if (!activeThread) return;
-    const reason = prompt("Rejection reason (required):");
+    const reason = await RuledPrompt.ask("Rejection reason (required):", { label: "reason" });
     if (!reason || !reason.trim()) return;
     try {
       await emit.rejectDirective(
@@ -140,12 +142,12 @@ export function CreationChamber() {
   }
 
   async function review(id: string, outcome: "accepted" | "rejected") {
-    const reason = prompt(`Review ${outcome} — reason (required):`);
+    const reason = await RuledPrompt.ask(`Review ${outcome} — reason (required):`, { label: "reason" });
     if (!reason || !reason.trim()) return;
     try {
       await emit.reviewArtifact(id, outcome, reason.trim());
     } catch (e) {
-      alert((e as Error).message);
+      setErr((e as Error).message);
     }
   }
 

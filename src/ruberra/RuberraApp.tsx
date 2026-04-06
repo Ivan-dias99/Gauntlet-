@@ -7,6 +7,7 @@ import { useProjection } from "./spine/store";
 import { Shell } from "./shell/Shell";
 import { RitualEntry } from "./shell/RitualEntry";
 import { ErrorBoundary } from "./trust/ErrorBoundary";
+import { RuledPromptHost } from "./trust/RuledPrompt";
 import "./styles.css";
 
 type BootState =
@@ -66,6 +67,7 @@ export default function RuberraApp() {
 
   return (
     <ErrorBoundary label="Ruberra shell">
+      <RuledPromptHost />
       <Inner />
     </ErrorBoundary>
   );

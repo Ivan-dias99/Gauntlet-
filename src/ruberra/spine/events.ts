@@ -7,6 +7,7 @@ export type EventType =
   | "null.consequence" // Law of Consequence: explicit null outcome with reason
   | "repo.bound"
   | "repo.created"
+  | "repo.verified" // git authority: backend confirmed .git present
   | "thread.opened"
   | "thread.closed"
   | "intent.stated"
@@ -32,6 +33,7 @@ export type EventType =
 export interface RuberraEvent {
   id: string;
   ts: number;
+  seq?: number; // insertion order within the same millisecond; used for stable replay ordering
   type: EventType;
   actor: string;
   repo?: string;
