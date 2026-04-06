@@ -2,6 +2,7 @@
 // On narrow screens: rendered as an overlay rail; open/onClose driven by Shell.
 
 import { useProjection } from "../spine/store";
+import { useIsMobile } from "../../app/components/ui/use-mobile";
 
 interface Props {
   open?: boolean;
@@ -10,15 +11,21 @@ interface Props {
 
 export function CanonRibbon({ open, onClose }: Props) {
   const p = useProjection();
+  const isMobile = useIsMobile();
   const canon = p.canon.filter((c) => c.state === "hardened");
   const memory = p.memory.filter((m) => !m.promoted);
 
   const narrowClass = open
     ? "rb-rail rb-rail-right rb-rail--open"
     : "rb-rail rb-rail-right";
+  const closedOnNarrow = isMobile && !open;
 
   return (
-    <aside className={narrowClass}>
+    <aside
+      className={narrowClass}
+      aria-hidden={closedOnNarrow ? true : undefined}
+      style={closedOnNarrow ? { pointerEvents: "none" } : undefined}
+    >
       {/* Close button visible when overlay is open on narrow screens */}
       {onClose && (
         <button

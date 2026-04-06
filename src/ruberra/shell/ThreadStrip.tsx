@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useProjection, emit } from "../spine/store";
 import { RuledPrompt } from "../trust/RuledPrompt";
+import { useIsMobile } from "../../app/components/ui/use-mobile";
 
 interface Props {
   open?: boolean;
@@ -13,12 +14,19 @@ interface Props {
 export function ThreadStrip({ open, onClose }: Props) {
   const p = useProjection();
   const [intent, setIntent] = useState("");
+  const isMobile = useIsMobile();
   const repoThreads = p.threads.filter((t) => t.repo === p.activeRepo);
 
   const narrowClass = open ? "rb-rail rb-rail--open" : "rb-rail";
+  // On narrow screens, hide and block interaction when rail is closed (off-screen)
+  const closedOnNarrow = isMobile && !open;
 
   return (
-    <aside className={narrowClass}>
+    <aside
+      className={narrowClass}
+      aria-hidden={closedOnNarrow ? true : undefined}
+      style={closedOnNarrow ? { pointerEvents: "none" } : undefined}
+    >
       {/* Close button visible when overlay is open on narrow screens */}
       {onClose && (
         <button
