@@ -22,7 +22,7 @@ export function ThreadStrip() {
           className="rb-btn primary"
           disabled={!intent.trim()}
           onClick={async () => {
-            await emit.openThread(intent.trim(), p.activeRepo);
+            await emit.openThread(intent.trim());
             setIntent("");
           }}
         >

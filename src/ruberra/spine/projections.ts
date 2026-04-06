@@ -18,12 +18,22 @@ export interface Thread {
   status: "open" | "closed";
 }
 
+// Truth-State Taxonomy — every truth occupies exactly one state.
+export type TruthState =
+  | "draft"
+  | "observed"
+  | "retained"
+  | "hardened"
+  | "revoked";
+
 export interface MemoryEntry {
   id: string;
   thread?: string;
+  repo?: string; // memory is repo-anchored
   text: string;
   ts: number;
   promoted: boolean;
+  state: TruthState; // observed | retained | hardened | revoked
 }
 
 export interface Execution {
@@ -47,10 +57,13 @@ export interface Artifact {
 
 export interface CanonEntry {
   id: string;
+  repo?: string; // canon is repo-scoped; law has territory
   memoryId?: string;
   text: string;
   hardenedAt: number;
-  revoked?: boolean;
+  state: TruthState; // hardened | revoked
+  revokedAt?: number;
+  revokeReason?: string;
 }
 
 export interface Contradiction {
@@ -129,15 +142,20 @@ export function project(events: RuberraEvent[]): Projection {
         p.memory.push({
           id: ev.id,
           thread: ev.thread,
+          repo: ev.repo,
           text: String(ev.payload.text ?? ""),
           ts: ev.ts,
           promoted: false,
+          state: "retained", // captured memory is retained by default
         });
         break;
       }
       case "memory.promoted": {
         const m = p.memory.find((m) => m.id === ev.payload.memoryId);
-        if (m) m.promoted = true;
+        if (m) {
+          m.promoted = true;
+          m.state = "hardened";
+        }
         break;
       }
       case "execution.started": {
@@ -177,22 +195,32 @@ export function project(events: RuberraEvent[]): Projection {
         break;
       }
       case "canon.proposed":
+        // Proposal is an observed state; it does not yet become law.
+        break;
       case "canon.hardened": {
-        if (ev.type === "canon.hardened") {
-          p.canon.push({
-            id: ev.id,
-            memoryId: ev.payload.memoryId as string | undefined,
-            text: String(ev.payload.text ?? ""),
-            hardenedAt: ev.ts,
-          });
-        }
+        p.canon.push({
+          id: ev.id,
+          repo: ev.repo,
+          memoryId: ev.payload.memoryId as string | undefined,
+          text: String(ev.payload.text ?? ""),
+          hardenedAt: ev.ts,
+          state: "hardened",
+        });
         break;
       }
       case "canon.revoked": {
+        // Canon is immutable except for revocation. Marked, never erased.
         const c = p.canon.find((c) => c.id === ev.payload.canonId);
-        if (c) c.revoked = true;
+        if (c) {
+          c.state = "revoked";
+          c.revokedAt = ev.ts;
+          c.revokeReason = String(ev.payload.reason ?? "unstated");
+        }
         break;
       }
+      case "null.consequence":
+        // Law of Consequence: explicit null outcome. Logged, displayed, never silent.
+        break;
       case "contradiction.detected": {
         p.contradictions.push({
           id: ev.id,

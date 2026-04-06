@@ -25,11 +25,17 @@ export function CreationChamber() {
   async function runDirective() {
     if (!directive.trim() || !activeThread) return;
     const text = directive.trim();
-    await emit.acceptDirective(activeThread.id, text);
-    const ex = await emit.startExecution(text, activeThread.id);
+    // DIRECTIVE HINGE: directive is the single crossing from desire to consequence.
+    const d = await emit.acceptDirective(activeThread.id, text);
+    const ex = await emit.startExecution(text, d.id, activeThread.id);
     // Honest behavior: without a bound backend, we do not pretend to execute.
+    // Law of Consequence: we still emit a terminal outcome.
     if (!EXEC_BACKEND) {
       await emit.failExecution(ex.id, "execution backend unbound");
+      await emit.nullConsequence(
+        "execution",
+        "no backend bound — directive produced no artifact",
+      );
       return;
     }
     try {
@@ -47,8 +53,15 @@ export function CreationChamber() {
         artifacts?: { title: string }[];
         ok?: boolean;
       };
-      for (const a of data.artifacts ?? []) {
+      const artifactList = data.artifacts ?? [];
+      for (const a of artifactList) {
         await emit.generateArtifact(a.title, ex.id, activeThread.id);
+      }
+      if (artifactList.length === 0) {
+        await emit.nullConsequence(
+          "execution",
+          "backend returned no artifacts",
+        );
       }
       if (data.ok === false) await emit.failExecution(ex.id, "backend reported failure");
       else await emit.succeedExecution(ex.id);

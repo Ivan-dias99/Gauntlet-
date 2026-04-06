@@ -1,4 +1,7 @@
-// Ruberra — School chamber. Harden knowledge into canon.
+// Ruberra — School: Canon Formation + Mastery Chamber.
+// Not a learning area. School forges memory into law, tests mastery against
+// canon, detects canon decay, and governs revocation. It has no content of
+// its own — every entry is derived from repo canon.
 
 import { useState } from "react";
 import { useProjection, emit } from "../spine/store";
@@ -6,13 +9,16 @@ import { useProjection, emit } from "../spine/store";
 export function SchoolChamber() {
   const p = useProjection();
   const [text, setText] = useState("");
-  const canon = p.canon.filter((c) => !c.revoked);
+  const canon = p.canon.filter((c) => c.state === "hardened");
+  const revoked = p.canon.filter((c) => c.state === "revoked");
   const promotable = p.memory.filter((m) => m.promoted);
 
   return (
     <section className="rb-chamber">
       <h1>School</h1>
-      <div className="gravity">Gravity: Discipline · Harden canon</div>
+      <div className="gravity">
+        Canon Formation + Mastery Chamber · Gravity: Discipline
+      </div>
 
       <div className="rb-panel">
         <h2>Canon Promotion</h2>
@@ -74,9 +80,51 @@ export function SchoolChamber() {
               .slice()
               .reverse()
               .map((c) => (
+                <li
+                  key={c.id}
+                  className="rb-row"
+                  style={{ justifyContent: "space-between", alignItems: "flex-start" }}
+                >
+                  <span>
+                    <span className="rb-badge gold">hardened</span>
+                    {c.text}
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "var(--rb-ink-mute)",
+                        marginTop: 4,
+                      }}
+                    >
+                      {new Date(c.hardenedAt).toLocaleString()}
+                    </div>
+                  </span>
+                  <button
+                    className="rb-btn"
+                    onClick={() => {
+                      const reason = prompt("Revocation reason (required):");
+                      if (reason && reason.trim())
+                        emit.revokeCanon(c.id, reason.trim());
+                    }}
+                  >
+                    Revoke
+                  </button>
+                </li>
+              ))}
+          </ul>
+        )}
+      </div>
+
+      {revoked.length > 0 && (
+        <div className="rb-panel">
+          <h2>Revoked Canon</h2>
+          <ul className="rb-list">
+            {revoked
+              .slice()
+              .reverse()
+              .map((c) => (
                 <li key={c.id}>
-                  <span className="rb-badge gold">hardened</span>
-                  {c.text}
+                  <span className="rb-badge bad">revoked</span>
+                  <s>{c.text}</s>
                   <div
                     style={{
                       fontSize: 10,
@@ -84,13 +132,13 @@ export function SchoolChamber() {
                       marginTop: 4,
                     }}
                   >
-                    {new Date(c.hardenedAt).toLocaleString()}
+                    reason: {c.revokeReason}
                   </div>
                 </li>
               ))}
           </ul>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="rb-panel">
         <h2>Progression</h2>

@@ -4,7 +4,7 @@ import { useProjection } from "../spine/store";
 
 export function CanonRibbon() {
   const p = useProjection();
-  const canon = p.canon.filter((c) => !c.revoked);
+  const canon = p.canon.filter((c) => c.state === "hardened");
   const memory = p.memory.filter((m) => !m.promoted);
   return (
     <aside className="rb-rail rb-rail-right">

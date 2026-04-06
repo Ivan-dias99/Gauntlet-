@@ -1,7 +1,10 @@
-// Ruberra — Event Model (spinal cord)
-// Append-only. Every spine mutation emits an event. Projections derive from events.
+// Ruberra — Event Model
+// The Event Log is a sovereign organ, not infrastructure. Single source of
+// truth. Every spine mutation must emit an event; silent no-ops are forbidden.
+// Projections are read-only derivatives of this log.
 
 export type EventType =
+  | "null.consequence" // Law of Consequence: explicit null outcome with reason
   | "repo.bound"
   | "repo.created"
   | "thread.opened"
