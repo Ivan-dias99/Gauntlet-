@@ -227,7 +227,7 @@ describe("CanonRibbon — right rail", () => {
   it("shows empty canon message when no canon", () => {
     currentProjection = boundProjection;
     render(<CanonRibbon />);
-    expect(screen.getByText("no canon yet")).toBeInTheDocument();
+    expect(screen.getByText("no canon")).toBeInTheDocument();
   });
 
   it("shows hardened canon entries with gold badge", () => {

@@ -386,23 +386,23 @@ export function project(events: RuberraEvent[]): Projection {
 // Next-move derivation. Reads the projection; emits nothing.
 // Returns a terse operational instruction for the active thread.
 export function nextMove(p: Projection): string {
-  if (!p.activeRepo) return "bind a repo";
-  if (!p.missionFramed) return "frame the mission (School)";
-  if (!p.activeThread) return "open a thread";
+  if (!p.activeRepo) return "no repo";
+  if (!p.missionFramed) return "no mission";
+  if (!p.activeThread) return "no thread";
   const t = p.threads.find((x) => x.id === p.activeThread);
-  if (!t) return "open a thread";
+  if (!t) return "no thread";
   switch (t.state) {
     case "draft":
-      return "state an intent";
+      return "draft";
     case "open":
-      return "author a directive";
+      return "ready";
     case "directive-pending":
-      return "accept or reject the directive";
+      return "pending";
     case "executing":
-      return "execution in flight — wait for consequence";
+      return "executing";
     case "awaiting-review":
-      return "review pending artifacts";
+      return "review";
     case "closed":
-      return "open a new thread";
+      return "closed";
   }
 }

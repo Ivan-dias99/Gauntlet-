@@ -280,7 +280,6 @@ export function CreationChamber() {
             {directives.length === 0 ? (
               <div className="rb-unavail">
                 <strong>no directives</strong>
-                Compose one above.
               </div>
             ) : (
               <ul className="rb-list">
@@ -321,7 +320,6 @@ export function CreationChamber() {
             {executions.length === 0 ? (
               <div className="rb-unavail">
                 <strong>no executions</strong>
-                Accept a directive to produce consequence.
               </div>
             ) : (
               <ul className="rb-list">
@@ -354,7 +352,6 @@ export function CreationChamber() {
             {artifacts.length === 0 ? (
               <div className="rb-unavail">
                 <strong>no artifacts</strong>
-                Executions will yield artifacts or an explicit null-artifact.
               </div>
             ) : (
               <ul className="rb-list">
