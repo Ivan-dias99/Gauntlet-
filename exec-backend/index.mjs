@@ -109,7 +109,8 @@ async function handleExec(req, res) {
   try { body = await readBody(req); }
   catch { return json(res, 400, { ok: false, error: "invalid JSON body" }); }
 
-  const { repoPath, directive } = body;
+  const { repoPath: rp, repo, directive } = body;
+  const repoPath = rp ?? repo;
   if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required" });
   if (!directive?.scope) return json(res, 400, { ok: false, error: "directive.scope required" });
 

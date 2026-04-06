@@ -47,7 +47,7 @@ export function Shell() {
     const base = EXEC_BACKEND.replace(/\/exec$/, "");
     fetch(`${base}/git/status?path=${encodeURIComponent(p.activeRepo)}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setGitStatus(d?.output ?? null))
+      .then((d) => setGitStatus(d?.ok ? (d.output ?? null) : null))
       .catch(() => setGitStatus(null));
   }, [p.activeRepo, p.lastEventId]);
 
