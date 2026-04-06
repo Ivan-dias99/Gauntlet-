@@ -107,7 +107,7 @@ export function Shell() {
             marginLeft: 6,
           }}
         >
-          next · {nextMove(p)}
+          state · {nextMove(p)}
         </div>
         <div className="rb-chambers">
           {CHAMBERS.map((c) => (

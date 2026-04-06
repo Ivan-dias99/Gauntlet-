@@ -63,7 +63,6 @@ export function LabChamber() {
         {p.contradictions.length === 0 ? (
           <div className="rb-unavail">
             <strong>no contradictions</strong>
-            None detected against canon.
           </div>
         ) : (
           <ul className="rb-list">
@@ -99,8 +98,7 @@ export function LabChamber() {
         <h2>Evidence Ledger</h2>
         {p.memory.length === 0 ? (
           <div className="rb-unavail">
-            <strong>empty ledger</strong>
-            No evidence captured yet.
+            <strong>no evidence</strong>
           </div>
         ) : (
           <ul className="rb-list">
