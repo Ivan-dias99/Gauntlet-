@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "backend": "node exec-backend/index.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -67,12 +71,15 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "4.1.12",
     "@types/react": "^19.2.14",
     "@vitejs/plugin-react": "4.7.0",
+    "@vitest/ui": "^4.1.2",
     "tailwindcss": "4.1.12",
     "typescript": "^6.0.2",
-    "vite": "6.3.5"
+    "vite": "6.3.5",
+    "vitest": "^4.1.2"
   },
   "peerDependencies": {
     "react": "18.3.1",

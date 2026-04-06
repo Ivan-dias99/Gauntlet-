@@ -1,13 +1,36 @@
 // Ruberra — Canon ribbon. Ambient reminder of hardened truth.
+// On narrow screens: rendered as an overlay rail; open/onClose driven by Shell.
 
 import { useProjection } from "../spine/store";
 
-export function CanonRibbon() {
+interface Props {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function CanonRibbon({ open, onClose }: Props) {
   const p = useProjection();
   const canon = p.canon.filter((c) => c.state === "hardened");
   const memory = p.memory.filter((m) => !m.promoted);
+
+  const narrowClass = open
+    ? "rb-rail rb-rail-right rb-rail--open"
+    : "rb-rail rb-rail-right";
+
   return (
-    <aside className="rb-rail rb-rail-right">
+    <aside className={narrowClass}>
+      {/* Close button visible when overlay is open on narrow screens */}
+      {onClose && (
+        <button
+          className="rb-rail-toggle"
+          style={{ marginBottom: 14, display: open ? "flex" : undefined }}
+          onClick={onClose}
+          aria-label="Close canon panel"
+        >
+          ✕ Close
+        </button>
+      )}
+
       <h3 className="rb-section-title">Canon</h3>
       {canon.length === 0 ? (
         <div className="rb-unavail">

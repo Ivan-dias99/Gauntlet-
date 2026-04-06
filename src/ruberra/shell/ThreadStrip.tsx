@@ -1,15 +1,36 @@
 // Ruberra — Thread ledger, repo-scoped. Always resident in the shell.
+// On narrow screens: rendered as an overlay rail; open/onClose driven by Shell.
 
 import { useState } from "react";
 import { useProjection, emit } from "../spine/store";
+import { RuledPrompt } from "../trust/RuledPrompt";
 
-export function ThreadStrip() {
+interface Props {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function ThreadStrip({ open, onClose }: Props) {
   const p = useProjection();
   const [intent, setIntent] = useState("");
   const repoThreads = p.threads.filter((t) => t.repo === p.activeRepo);
 
+  const narrowClass = open ? "rb-rail rb-rail--open" : "rb-rail";
+
   return (
-    <aside className="rb-rail">
+    <aside className={narrowClass}>
+      {/* Close button visible when overlay is open on narrow screens */}
+      {onClose && (
+        <button
+          className="rb-rail-toggle"
+          style={{ marginBottom: 14, display: open ? "flex" : undefined }}
+          onClick={onClose}
+          aria-label="Close threads panel"
+        >
+          ✕ Close
+        </button>
+      )}
+
       <h3 className="rb-section-title">Threads</h3>
       <div className="rb-col" style={{ marginBottom: 14 }}>
         <textarea
@@ -64,8 +85,8 @@ export function ThreadStrip() {
                     <button
                       className="rb-btn"
                       style={{ marginLeft: 8, padding: "2px 8px", fontSize: 9 }}
-                      onClick={() => {
-                        const reason = prompt("Close reason (required):");
+                      onClick={async () => {
+                        const reason = await RuledPrompt.ask("Close reason (required):", { label: "reason" });
                         if (reason && reason.trim())
                           emit.closeThread(t.id, reason.trim());
                       }}

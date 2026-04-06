@@ -7,6 +7,7 @@ export type EventType =
   | "null.consequence" // Law of Consequence: explicit null outcome with reason
   | "repo.bound"
   | "repo.created"
+  | "repo.verified" // git authority: backend confirmed .git present
   | "thread.opened"
   | "thread.closed"
   | "intent.stated"

@@ -7,6 +7,8 @@ export interface Repo {
   id: string;
   name: string;
   boundAt: number;
+  verified?: boolean;
+  branch?: string;
 }
 
 // Thread state machine derived from the thread's event history.
@@ -344,6 +346,16 @@ export function project(events: RuberraEvent[]): Projection {
           c.state = "revoked";
           c.revokedAt = ev.ts;
           c.revokeReason = String(ev.payload.reason ?? "unstated");
+        }
+        break;
+      }
+      case "repo.verified": {
+        const r = p.repos.find(
+          (x) => x.id === ev.repo || x.id === ev.payload.repoId,
+        );
+        if (r) {
+          r.verified = Boolean(ev.payload.ok);
+          r.branch = ev.payload.branch as string | undefined;
         }
         break;
       }

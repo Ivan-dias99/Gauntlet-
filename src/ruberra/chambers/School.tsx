@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { useProjection, emit } from "../spine/store";
+import { RuledPrompt } from "../trust/RuledPrompt";
 
 export function SchoolChamber() {
   const p = useProjection();
@@ -182,8 +183,8 @@ export function SchoolChamber() {
                   </span>
                   <button
                     className="rb-btn"
-                    onClick={() => {
-                      const reason = prompt("Revocation reason (required):");
+                    onClick={async () => {
+                      const reason = await RuledPrompt.ask("Revocation reason (required):", { label: "reason" });
                       if (reason && reason.trim())
                         emit.revokeCanon(c.id, reason.trim());
                     }}
