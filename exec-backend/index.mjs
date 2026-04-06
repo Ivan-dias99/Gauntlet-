@@ -85,6 +85,7 @@ function globToRegex(pattern) {
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
     .replace(/\*\*/g, "__GLOBSTAR__")
     .replace(/\*/g, "[^/]*")
+    .replace(/__GLOBSTAR__\//g, "(?:.*/)?") // **/ → optional path prefix (matches root too)
     .replace(/__GLOBSTAR__/g, ".*");
   return new RegExp(`^${escaped}$`, "i");
 }

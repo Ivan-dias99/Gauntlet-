@@ -45,10 +45,12 @@ export function Shell() {
   useEffect(() => {
     if (!EXEC_BACKEND || !p.activeRepo) { setGitStatus(null); return; }
     const base = EXEC_BACKEND.replace(/\/exec$/, "");
+    let cancelled = false;
     fetch(`${base}/git/status?path=${encodeURIComponent(p.activeRepo)}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setGitStatus(d?.ok ? (d.output ?? null) : null))
-      .catch(() => setGitStatus(null));
+      .then((d) => { if (!cancelled) setGitStatus(d?.ok ? (d.output ?? null) : null); })
+      .catch(() => { if (!cancelled) setGitStatus(null); });
+    return () => { cancelled = true; };
   }, [p.activeRepo, p.lastEventId]);
 
   const backdropActive = leftOpen || rightOpen;
