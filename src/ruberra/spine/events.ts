@@ -33,6 +33,7 @@ export type EventType =
 export interface RuberraEvent {
   id: string;
   ts: number;
+  seq?: number; // insertion order within the same millisecond; used for stable replay ordering
   type: EventType;
   actor: string;
   repo?: string;
