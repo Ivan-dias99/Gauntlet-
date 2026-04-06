@@ -2,6 +2,7 @@
 // thread strip, canon ribbon, event pulse. Chambers are gravity regimes.
 
 import { useProjection, emit } from "../spine/store";
+import { nextMove } from "../spine/projections";
 import { ThreadStrip } from "./ThreadStrip";
 import { CanonRibbon } from "./CanonRibbon";
 import { EventPulse } from "./EventPulse";
@@ -27,6 +28,18 @@ export function Shell() {
         </div>
         <div className="rb-repo">
           repo · {p.activeRepo ?? "unbound"}
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--rb-mono)",
+            fontSize: 11,
+            color: "var(--rb-gold)",
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            marginLeft: 6,
+          }}
+        >
+          next · {nextMove(p)}
         </div>
         <div className="rb-chambers">
           {CHAMBERS.map((c) => (

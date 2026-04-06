@@ -81,9 +81,11 @@ export const emit = {
     return append("thread.opened", { intent }, { repo });
   },
 
-  closeThread: (threadId: string) => {
+  closeThread: (threadId: string, reason: string) => {
     const t = requireThread(threadId);
-    return append("thread.closed", {}, { thread: t.id, repo: t.repo });
+    if (!reason.trim())
+      throw new Error("Thread close refused: reason required");
+    return append("thread.closed", { reason }, { thread: t.id, repo: t.repo });
   },
 
   stateIntent: (threadId: string, text: string) => {
@@ -92,39 +94,123 @@ export const emit = {
   },
 
   // DIRECTIVE HINGE — the single crossing from desire to consequence.
-  // Accepting a directive authorizes exactly one execution and nothing else.
-  acceptDirective: async (threadId: string, text: string) => {
+  // Composition: text + scope + risk + acceptance. All required.
+  // Ambiguity check: any unresolved {{placeholder}} blocks acceptance.
+  acceptDirective: async (
+    threadId: string,
+    compose: {
+      text: string;
+      scope: string;
+      risk: "reversible" | "consequential" | "destructive";
+      acceptance: string;
+    },
+  ) => {
     const t = requireThread(threadId);
-    const directive = await append(
+    const { text, scope, risk, acceptance } = compose;
+    if (!text.trim() || !scope.trim() || !acceptance.trim()) {
+      throw new Error(
+        "Directive refused: text, scope, and acceptance are required",
+      );
+    }
+    if (/\{\{[^}]+\}\}/.test(text)) {
+      throw new Error("Directive refused: unresolved ambiguity in text");
+    }
+    return append(
       "directive.accepted",
-      { text },
+      { text, scope, risk, acceptance },
       { thread: t.id, repo: t.repo },
     );
-    return directive;
   },
 
-  rejectDirective: (threadId: string, text: string, reason: string) => {
+  rejectDirective: (
+    threadId: string,
+    compose: {
+      text: string;
+      scope: string;
+      risk: "reversible" | "consequential" | "destructive";
+      acceptance: string;
+    },
+    reason: string,
+  ) => {
     const t = requireThread(threadId);
+    if (!reason.trim())
+      throw new Error("Rejection refused: reason required");
     return append(
       "directive.rejected",
-      { text, reason },
+      { ...compose, reason },
       { thread: t.id, repo: t.repo },
     );
   },
 
-  captureMemory: (text: string, threadId?: string) => {
+  captureMemory: async (text: string, threadId?: string) => {
     const repo = requireRepo();
-    return append("memory.captured", { text }, { thread: threadId, repo });
+    if (!text.trim()) throw new Error("Memory refused: empty text");
+    const ev = await append(
+      "memory.captured",
+      { text },
+      { thread: threadId, repo },
+    );
+    // Automatic contradiction detection: any hardened canon whose text
+    // contains a negating token against this memory emits a contradiction.
+    // Minimal heuristic: substring overlap + negation keyword.
+    const p = cached ?? project(all());
+    const lower = text.toLowerCase();
+    const negated = /\b(not|never|no longer|without|cannot)\b/.test(lower);
+    if (negated) {
+      for (const c of p.canon) {
+        if (c.state !== "hardened" || c.repo !== repo) continue;
+        const clower = c.text.toLowerCase();
+        const shared = lower
+          .split(/\s+/)
+          .filter((w) => w.length > 4 && clower.includes(w));
+        if (shared.length >= 2) {
+          await append(
+            "contradiction.detected",
+            {
+              text: `observation contradicts canon: "${c.text}"`,
+              canonId: c.id,
+              memoryId: ev.id,
+            },
+            { repo, parent: c.id },
+          );
+        }
+      }
+    }
+    return ev;
   },
 
   promoteMemory: (memoryId: string) =>
     append("memory.promoted", { memoryId }, { repo: requireRepo() }),
 
-  proposeCanon: (text: string, memoryId?: string) =>
-    append("canon.proposed", { text, memoryId }, { repo: requireRepo() }),
+  proposeCanon: (text: string, memoryId?: string) => {
+    if (!text.trim()) throw new Error("Proposal refused: empty text");
+    return append("canon.proposed", { text, memoryId }, { repo: requireRepo() });
+  },
 
-  hardenCanon: (text: string, memoryId?: string) =>
-    append("canon.hardened", { text, memoryId }, { repo: requireRepo() }),
+  // Two-step promotion: propose then harden. Direct hardening is permitted
+  // only for the mission canon (first-run) and explicit School overrides.
+  hardenCanon: (
+    text: string,
+    opts: { memoryId?: string; proposalId?: string; scope?: string } = {},
+  ) => {
+    if (!text.trim()) throw new Error("Canon refused: empty text");
+    return append(
+      "canon.hardened",
+      { text, ...opts },
+      { repo: requireRepo(), parent: opts.proposalId ?? opts.memoryId },
+    );
+  },
+
+  // Mission canon — the first-run framing. Idempotent at the organism level:
+  // the projection's missionFramed flag gates the UI from asking again.
+  frameMission: (text: string) => {
+    if (!text.trim()) throw new Error("Mission refused: empty text");
+    return append(
+      "canon.hardened",
+      { text, scope: "mission" },
+      { repo: requireRepo() },
+    );
+  },
 
   revokeCanon: (canonId: string, reason: string) => {
     if (!reason.trim())
@@ -152,17 +238,59 @@ export const emit = {
   failExecution: (executionId: string, reason: string) =>
     append("execution.failed", { executionId, reason }, { parent: executionId }),
 
-  generateArtifact: (title: string, executionId: string, threadId: string) => {
+  generateArtifact: (
+    title: string,
+    executionId: string,
+    threadId: string,
+    directiveId?: string,
+  ) => {
     const t = requireThread(threadId);
     return append(
       "artifact.generated",
-      { title, executionId },
+      { title, executionId, directiveId },
       { thread: t.id, repo: t.repo, parent: executionId },
     );
   },
 
-  commitArtifact: (artifactId: string) =>
-    append("artifact.committed", { artifactId }, { parent: artifactId }),
+  // Review layer: accept or reject an artifact against its directive.
+  // On accept, auto-capture memory linking artifact → retained truth.
+  reviewArtifact: async (
+    artifactId: string,
+    outcome: "accepted" | "rejected",
+    reason: string,
+  ) => {
+    const p = cached ?? project(all());
+    const a = p.artifacts.find((x) => x.id === artifactId);
+    if (!a) throw new Error("Review refused: artifact not found");
+    if (a.review !== "pending")
+      throw new Error("Review refused: artifact already reviewed");
+    if (!reason.trim())
+      throw new Error("Review refused: reason required");
+    const type = outcome === "accepted" ? "artifact.reviewed" : "artifact.rejected";
+    const ev = await append(
+      type,
+      { artifactId, outcome, reason },
+      { thread: a.thread, repo: requireRepo(), parent: artifactId },
+    );
+    if (outcome === "accepted") {
+      // Artifact → memory bridge: retained truth produced by consequence.
+      await append(
+        "memory.captured",
+        { text: `artifact accepted: ${a.title} — ${reason}`, artifactId },
+        { thread: a.thread, repo: requireRepo(), parent: artifactId },
+      );
+    }
+    return ev;
+  },
+
+  commitArtifact: (artifactId: string) => {
+    const p = cached ?? project(all());
+    const a = p.artifacts.find((x) => x.id === artifactId);
+    if (!a) throw new Error("Commit refused: artifact not found");
+    if (a.review !== "accepted")
+      throw new Error("Commit refused: artifact not reviewed/accepted");
+    return append("artifact.committed", { artifactId }, { parent: artifactId });
+  },
 
   detectContradiction: (text: string) =>
     append("contradiction.detected", { text }, { repo: requireRepo() }),

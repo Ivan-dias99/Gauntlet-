@@ -1,7 +1,5 @@
 // Ruberra — School: Canon Formation + Mastery Chamber.
-// Not a learning area. School forges memory into law, tests mastery against
-// canon, detects canon decay, and governs revocation. It has no content of
-// its own — every entry is derived from repo canon.
+// Two-step promotion: propose -> harden. First-run: mission framing.
 
 import { useState } from "react";
 import { useProjection, emit } from "../spine/store";
@@ -9,9 +7,11 @@ import { useProjection, emit } from "../spine/store";
 export function SchoolChamber() {
   const p = useProjection();
   const [text, setText] = useState("");
+  const [mission, setMission] = useState("");
   const canon = p.canon.filter((c) => c.state === "hardened");
   const revoked = p.canon.filter((c) => c.state === "revoked");
-  const promotable = p.memory.filter((m) => m.promoted);
+  const openProposals = p.canonProposals.filter((q) => !q.hardened);
+  const promotableMemory = p.memory.filter((m) => !m.promoted);
 
   return (
     <section className="rb-chamber">
@@ -20,34 +20,54 @@ export function SchoolChamber() {
         Canon Formation + Mastery Chamber · Gravity: Discipline
       </div>
 
-      <div className="rb-panel">
-        <h2>Canon Promotion</h2>
-        <div className="rb-col" style={{ marginBottom: 12 }}>
-          <textarea
-            className="rb-textarea"
-            placeholder="state the canonical truth..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <button
-            className="rb-btn primary"
-            disabled={!text.trim()}
-            onClick={async () => {
-              await emit.hardenCanon(text.trim());
-              setText("");
-            }}
-          >
-            Harden to canon
-          </button>
+      {!p.missionFramed && (
+        <div className="rb-panel">
+          <h2>Frame the Mission</h2>
+          <div className="rb-col">
+            <div
+              style={{
+                fontFamily: "var(--rb-mono)",
+                fontSize: 11,
+                color: "var(--rb-ink-mute)",
+                marginBottom: 6,
+              }}
+            >
+              The mission is the first canon. It governs every directive that
+              follows in this repo. It cannot be skipped.
+            </div>
+            <textarea
+              className="rb-textarea"
+              placeholder="state the mission of this repo..."
+              value={mission}
+              onChange={(e) => setMission(e.target.value)}
+            />
+            <button
+              className="rb-btn primary"
+              disabled={!mission.trim()}
+              onClick={async () => {
+                await emit.frameMission(mission.trim());
+                setMission("");
+              }}
+            >
+              Harden Mission Canon
+            </button>
+          </div>
         </div>
+      )}
 
-        {promotable.length > 0 && (
-          <>
-            <h3 className="rb-section-title" style={{ marginTop: 14 }}>
-              Promoted memory
-            </h3>
-            <ul className="rb-list">
-              {promotable.map((m) => (
+      <div className="rb-panel">
+        <h2>Promote Memory → Propose Canon</h2>
+        {promotableMemory.length === 0 ? (
+          <div className="rb-unavail">
+            <strong>no promotable memory</strong>
+            Memory is captured in Lab or through artifact review.
+          </div>
+        ) : (
+          <ul className="rb-list">
+            {promotableMemory
+              .slice()
+              .reverse()
+              .map((m) => (
                 <li
                   key={m.id}
                   className="rb-row"
@@ -56,14 +76,73 @@ export function SchoolChamber() {
                   <span>{m.text}</span>
                   <button
                     className="rb-btn"
-                    onClick={() => emit.hardenCanon(m.text, m.id)}
+                    onClick={async () => {
+                      await emit.promoteMemory(m.id);
+                      await emit.proposeCanon(m.text, m.id);
+                    }}
+                  >
+                    Propose as canon
+                  </button>
+                </li>
+              ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rb-panel">
+        <h2>Canon Proposals</h2>
+        <div className="rb-col" style={{ marginBottom: 12 }}>
+          <textarea
+            className="rb-textarea"
+            placeholder="propose a new canonical truth..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <button
+            className="rb-btn"
+            disabled={!text.trim()}
+            onClick={async () => {
+              await emit.proposeCanon(text.trim());
+              setText("");
+            }}
+          >
+            Propose
+          </button>
+        </div>
+        {openProposals.length === 0 ? (
+          <div className="rb-unavail">
+            <strong>no open proposals</strong>
+            Propose truth before hardening it into law.
+          </div>
+        ) : (
+          <ul className="rb-list">
+            {openProposals
+              .slice()
+              .reverse()
+              .map((q) => (
+                <li
+                  key={q.id}
+                  className="rb-row"
+                  style={{ justifyContent: "space-between" }}
+                >
+                  <span>
+                    <span className="rb-badge warn">proposed</span>
+                    {q.text}
+                  </span>
+                  <button
+                    className="rb-btn primary"
+                    onClick={() =>
+                      emit.hardenCanon(q.text, {
+                        memoryId: q.memoryId,
+                        proposalId: q.id,
+                      })
+                    }
                   >
                     Harden
                   </button>
                 </li>
               ))}
-            </ul>
-          </>
+          </ul>
         )}
       </div>
 
@@ -72,7 +151,7 @@ export function SchoolChamber() {
         {canon.length === 0 ? (
           <div className="rb-unavail">
             <strong>no canon</strong>
-            Canon forms from hardened memory. None exists yet.
+            Canon forms from proposals. None hardened yet.
           </div>
         ) : (
           <ul className="rb-list">
@@ -83,7 +162,10 @@ export function SchoolChamber() {
                 <li
                   key={c.id}
                   className="rb-row"
-                  style={{ justifyContent: "space-between", alignItems: "flex-start" }}
+                  style={{
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
                 >
                   <span>
                     <span className="rb-badge gold">hardened</span>
@@ -139,15 +221,6 @@ export function SchoolChamber() {
           </ul>
         </div>
       )}
-
-      <div className="rb-panel">
-        <h2>Progression</h2>
-        <div className="rb-unavail">
-          <strong>progression engine — not in first cut</strong>
-          Mastery checks and curriculum derivation are post-ship. School ships
-          honest: canon browser + promotion queue only.
-        </div>
-      </div>
     </section>
   );
 }
