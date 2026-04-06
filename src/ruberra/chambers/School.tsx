@@ -19,7 +19,7 @@ export function SchoolChamber() {
       <header className="rb-chamber-header">
         <h1 className="rb-chamber-title">School</h1>
         <div className="rb-chamber-gravity-bar">
-          <span className="rb-chamber-gravity-text">Discipline · Canon formation</span>
+          <span className="rb-chamber-gravity-text">Discipline · Harden truth into law</span>
         </div>
         <div className="rb-chamber-accent-line" />
       </header>
@@ -36,8 +36,7 @@ export function SchoolChamber() {
                 marginBottom: 6,
               }}
             >
-              The mission is the first canon. It governs every directive that
-              follows in this repo. It cannot be skipped.
+              First canon. Governs every directive in this repo.
             </div>
             <textarea
               className="rb-textarea"
@@ -64,7 +63,6 @@ export function SchoolChamber() {
         {promotableMemory.length === 0 ? (
           <div className="rb-unavail">
             <strong>no promotable memory</strong>
-            Memory is captured in Lab or through artifact review.
           </div>
         ) : (
           <ul className="rb-list">
@@ -116,7 +114,6 @@ export function SchoolChamber() {
         {openProposals.length === 0 ? (
           <div className="rb-unavail">
             <strong>no open proposals</strong>
-            Propose truth before hardening it into law.
           </div>
         ) : (
           <ul className="rb-list">
@@ -155,7 +152,6 @@ export function SchoolChamber() {
         {canon.length === 0 ? (
           <div className="rb-unavail">
             <strong>no canon</strong>
-            Canon forms from proposals. None hardened yet.
           </div>
         ) : (
           <ul className="rb-list">

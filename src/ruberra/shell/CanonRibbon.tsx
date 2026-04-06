@@ -68,8 +68,7 @@ export function CanonRibbon({ open, onClose }: Props) {
 
       {canon.length === 0 ? (
         <div className="rb-unavail">
-          <strong>no canon yet</strong>
-          Promote memory to harden canon.
+          <strong>no canon</strong>
         </div>
       ) : (
         <div>
@@ -108,8 +107,7 @@ export function CanonRibbon({ open, onClose }: Props) {
 
       {p.memory.length === 0 ? (
         <div className="rb-unavail">
-          <strong>empty substrate</strong>
-          Capture memory from Lab or Creation.
+          <strong>no memory</strong>
         </div>
       ) : (
         <div>
