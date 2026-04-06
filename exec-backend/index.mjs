@@ -79,12 +79,14 @@ async function resolveFiles(repoPath, scope) {
 
 function globToRegex(pattern) {
   // Escape regex special chars except * and /
+  // Anchored with ^ and $ so `*.md` matches only root-level .md files,
+  // not nested paths like `docs/readme.md`.
   const escaped = pattern
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
     .replace(/\*\*/g, "__GLOBSTAR__")
     .replace(/\*/g, "[^/]*")
     .replace(/__GLOBSTAR__/g, ".*");
-  return new RegExp(escaped, "i");
+  return new RegExp(`^${escaped}$`, "i");
 }
 
 async function walkDir(base, dir) {

@@ -161,7 +161,7 @@ export function RuledPromptHost() {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleConfirm();
-                  if (e.key === "Escape") handleCancel();
+                  // Escape is handled by Dialog.Content onEscapeKeyDown — no duplicate here
                 }}
                 style={{ marginBottom: 16 }}
               />
