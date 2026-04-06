@@ -329,6 +329,107 @@ html, body, #root {
 }
 .rb-rail-backdrop.active { display: block; }
 
+/* ── Chamber Identity Layer ──────────────────────────────────────────────── */
+
+/* Ambient radial wash per chamber — subtle, not decorative */
+.rb-chamber--lab {
+  background:
+    radial-gradient(900px 700px at -5% 40%, rgba(82, 121, 106, 0.07), transparent 60%),
+    radial-gradient(500px 400px at 8% 0%, rgba(82, 121, 106, 0.04), transparent 50%);
+}
+.rb-chamber--school {
+  background:
+    radial-gradient(900px 700px at 108% 30%, rgba(74, 107, 132, 0.07), transparent 60%),
+    radial-gradient(500px 400px at 92% 0%, rgba(74, 107, 132, 0.04), transparent 50%);
+}
+.rb-chamber--creation {
+  background:
+    radial-gradient(800px 600px at 50% -8%, rgba(138, 98, 56, 0.09), transparent 55%),
+    radial-gradient(500px 400px at 0% 85%, rgba(138, 98, 56, 0.04), transparent 50%);
+}
+
+/* Chamber header block — replaces bare h1 + .gravity */
+.rb-chamber-header {
+  position: relative;
+  margin-bottom: 32px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--rb-line);
+}
+.rb-chamber-title {
+  font-family: var(--rb-serif);
+  font-weight: 400;
+  font-size: 34px;
+  letter-spacing: 0.06em;
+  color: var(--rb-ink);
+  margin: 0 0 6px 0;
+  line-height: 1.1;
+}
+.rb-chamber-gravity-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.rb-chamber-gravity-text {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+}
+/* Thin accent line at the header bottom — chamber color */
+.rb-chamber-accent-line {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: 72px;
+}
+.rb-chamber--lab    .rb-chamber-accent-line { background: #52796A; }
+.rb-chamber--school .rb-chamber-accent-line { background: #4A6B84; }
+.rb-chamber--creation .rb-chamber-accent-line { background: #8A6238; }
+
+/* Panel left accent rail — per chamber */
+.rb-chamber--lab    .rb-panel { border-left: 2px solid rgba(82, 121, 106, 0.28); }
+.rb-chamber--school .rb-panel { border-left: 2px solid rgba(74, 107, 132, 0.28); }
+.rb-chamber--creation .rb-panel { border-left: 2px solid rgba(138, 98, 56, 0.28); }
+
+/* Chamber glyph: per-chamber accent color on active (overrides generic red) */
+.rb-chamber-glyph[data-id="lab"].active {
+  color: #72A890;
+  box-shadow: inset 0 -2px 0 0 #52796A;
+}
+.rb-chamber-glyph[data-id="school"].active {
+  color: #6890A8;
+  box-shadow: inset 0 -2px 0 0 #4A6B84;
+}
+.rb-chamber-glyph[data-id="creation"].active {
+  color: #C89860;
+  box-shadow: inset 0 -2px 0 0 #8A6238;
+}
+
+/* Active thread: chamber-aware border via inline style (ThreadStrip) */
+/* .rb-thread.active border-color is overridden per-chamber via inline style */
+
+/* Canon ribbon: elevated hardened entries */
+.rb-canon-entry {
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: rgba(201, 166, 107, 0.04);
+  border: 1px solid var(--rb-line);
+  border-left: 2px solid rgba(201, 166, 107, 0.55);
+  font-size: 12px;
+  color: var(--rb-ink);
+  line-height: 1.55;
+}
+.rb-canon-entry .rb-badge {
+  display: block;
+  margin-bottom: 5px;
+}
+.rb-canon-entry-text {
+  color: var(--rb-ink-soft);
+}
+
+/* ── Narrow-width overlay rails ────────────────────────────────────────────── */
 @media (max-width: 768px) {
   /* Single-column: chamber fills full width */
   .rb-main {

@@ -11,11 +11,18 @@ interface Props {
   onClose?: () => void;
 }
 
+const CHAMBER_ACCENT: Record<string, string> = {
+  lab: "rgba(82, 121, 106, 0.75)",
+  school: "rgba(74, 107, 132, 0.75)",
+  creation: "rgba(138, 98, 56, 0.75)",
+};
+
 export function ThreadStrip({ open, onClose }: Props) {
   const p = useProjection();
   const [intent, setIntent] = useState("");
   const isMobile = useIsMobile();
   const repoThreads = p.threads.filter((t) => t.repo === p.activeRepo);
+  const activeAccent = CHAMBER_ACCENT[p.chamber] ?? "var(--rb-accent-soft)";
 
   const narrowClass = open ? "rb-rail rb-rail--open" : "rb-rail";
   // On narrow screens, hide and block interaction when rail is closed (off-screen)
@@ -72,6 +79,7 @@ export function ThreadStrip({ open, onClose }: Props) {
               <div
                 key={t.id}
                 className={`rb-thread ${p.activeThread === t.id ? "active" : ""}`}
+                style={p.activeThread === t.id ? { borderColor: activeAccent } : undefined}
               >
                 <div className="intent">{t.intent}</div>
                 <div className="meta">

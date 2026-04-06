@@ -45,14 +45,14 @@ export function CanonRibbon({ open, onClose }: Props) {
           Promote memory to harden canon.
         </div>
       ) : (
-        <ul className="rb-list">
+        <div>
           {canon.map((c) => (
-            <li key={c.id}>
+            <div key={c.id} className="rb-canon-entry">
               <span className="rb-badge gold">hardened</span>
-              {c.text}
-            </li>
+              <span className="rb-canon-entry-text">{c.text}</span>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       <h3 className="rb-section-title" style={{ marginTop: 22 }}>

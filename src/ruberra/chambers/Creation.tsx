@@ -152,9 +152,14 @@ export function CreationChamber() {
   }
 
   return (
-    <section className="rb-chamber">
-      <h1>Creation</h1>
-      <div className="gravity">Gravity: Consequence · Forge artifacts</div>
+    <section className="rb-chamber rb-chamber--creation">
+      <header className="rb-chamber-header">
+        <h1 className="rb-chamber-title">Creation</h1>
+        <div className="rb-chamber-gravity-bar">
+          <span className="rb-chamber-gravity-text">Consequence · Forge artifacts</span>
+        </div>
+        <div className="rb-chamber-accent-line" />
+      </header>
 
       {!activeThread ? (
         <Unavailable

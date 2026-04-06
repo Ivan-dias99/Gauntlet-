@@ -113,6 +113,7 @@ export function Shell() {
           {CHAMBERS.map((c) => (
             <button
               key={c.id}
+              data-id={c.id}
               className={`rb-chamber-glyph ${p.chamber === c.id ? "active" : ""}`}
               onClick={() => emit.enterChamber(c.id)}
             >
