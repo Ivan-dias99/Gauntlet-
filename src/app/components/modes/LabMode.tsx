@@ -59,8 +59,8 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
         <SovereignEmptyFrame
           accentVar="var(--chamber-lab)"
           kicker="Lab · analysis board"
-          title="Investigation surface is clear"
-          body="Findings, execution matrices, and evidence blocks populate here from Chat and Code. Nothing is fabricated — the board stays empty until research produces structured output."
+          title="No structured output yet"
+          body="Verdicts, matrices, and evidence blocks appear here from Chat and Code."
           actions={emptyActionBtn(() => navigate("lab", "chat"), "Open Lab Chat", "var(--chamber-lab)")}
         />
       </div>
@@ -104,7 +104,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
                   accentVar="var(--chamber-lab)"
                   kicker="Findings lane"
                   title="No verdict-class blocks yet"
-                  body="Ask for verdicts, audits, dossiers, or evidence maps in Chat. This lane only shows structured analytical blocks once they exist."
+                  body="Verdicts, audits, and evidence maps from Chat appear here."
                   actions={emptyActionBtn(() => navigate("lab", "chat"), "Query Lab", "var(--chamber-lab)")}
                 />
               </div>
@@ -125,7 +125,7 @@ function InvestigationBoard({ messages, navigate }: { messages: Message[]; navig
                   accentVar="var(--chamber-lab)"
                   kicker="Plans lane"
                   title="No execution or matrix blocks"
-                  body="Request timelines, execution trees, or comparison matrices. Operational structure appears here when the model returns those block types."
+                  body="Timelines, execution trees, and comparison matrices appear here."
                   actions={emptyActionBtn(() => navigate("lab", "chat"), "Request plan output", "var(--chamber-lab)")}
                 />
               </div>
@@ -194,8 +194,8 @@ function LabArchive({ messages, navigate }: { messages: Message[]; navigate: Nav
             align="left"
             accentVar="var(--chamber-lab)"
             kicker="Lab · archive"
-            title="Archive is waiting for objects"
-            body="Domains, experiments, and message-derived objects accrue here as you work. Open Chat or Code to generate the first entries."
+            title="No objects in archive"
+            body="Domains, experiments, and structured outputs accumulate here from Chat and Code."
             actions={emptyActionBtn(() => navigate("lab", "chat"), "Start in Chat", "var(--chamber-lab)")}
           />
         ) : objects.map((obj, i) => (
