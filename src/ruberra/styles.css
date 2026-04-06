@@ -112,11 +112,14 @@ html, body, #root {
 .rb-thread {
   padding: 10px 12px;
   border: 1px solid var(--rb-line);
+  border-top: 2px solid var(--rb-thread-state-color, var(--rb-line));
   margin-bottom: 6px;
-  cursor: pointer;
+  cursor: default;
   background: var(--rb-bg-elev-2);
 }
-.rb-thread.active { border-color: var(--rb-accent-soft); }
+/* Active thread: background elevated; border-left set by chamber accent inline style */
+.rb-thread.active { background: rgba(255, 255, 255, 0.013); }
+/* Legacy intent/meta selectors — superseded by WS3 classes below */
 .rb-thread .intent {
   font-family: var(--rb-serif);
   font-size: 14px;
@@ -329,6 +332,113 @@ html, body, #root {
 }
 .rb-rail-backdrop.active { display: block; }
 
+/* ── Chamber Identity Layer ──────────────────────────────────────────────── */
+
+/* Ambient radial wash per chamber — subtle, not decorative */
+.rb-chamber--lab {
+  background:
+    radial-gradient(900px 700px at -5% 40%, rgba(82, 121, 106, 0.07), transparent 60%),
+    radial-gradient(500px 400px at 8% 0%, rgba(82, 121, 106, 0.04), transparent 50%);
+}
+.rb-chamber--school {
+  background:
+    radial-gradient(900px 700px at 108% 30%, rgba(74, 107, 132, 0.07), transparent 60%),
+    radial-gradient(500px 400px at 92% 0%, rgba(74, 107, 132, 0.04), transparent 50%);
+}
+.rb-chamber--creation {
+  background:
+    radial-gradient(800px 600px at 50% -8%, rgba(138, 98, 56, 0.09), transparent 55%),
+    radial-gradient(500px 400px at 0% 85%, rgba(138, 98, 56, 0.04), transparent 50%);
+}
+
+/* Chamber header block — replaces bare h1 + .gravity */
+.rb-chamber-header {
+  position: relative;
+  margin-bottom: 32px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--rb-line);
+}
+.rb-chamber-title {
+  font-family: var(--rb-serif);
+  font-weight: 400;
+  font-size: 34px;
+  letter-spacing: 0.06em;
+  color: var(--rb-ink);
+  margin: 0 0 6px 0;
+  line-height: 1.1;
+}
+.rb-chamber-gravity-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.rb-chamber-gravity-text {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+}
+/* Thin accent line at the header bottom — chamber color */
+.rb-chamber-accent-line {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: 72px;
+}
+.rb-chamber--lab    .rb-chamber-accent-line { background: #52796A; }
+.rb-chamber--school .rb-chamber-accent-line { background: #4A6B84; }
+.rb-chamber--creation .rb-chamber-accent-line { background: #8A6238; }
+
+/* Panel left accent rail — per chamber */
+.rb-chamber--lab    .rb-panel { border-left: 2px solid rgba(82, 121, 106, 0.28); }
+.rb-chamber--school .rb-panel { border-left: 2px solid rgba(74, 107, 132, 0.28); }
+.rb-chamber--creation .rb-panel { border-left: 2px solid rgba(138, 98, 56, 0.28); }
+
+/* Chamber glyph: per-chamber accent color on active (overrides generic red) */
+.rb-chamber-glyph[data-id="lab"].active {
+  color: #72A890;
+  box-shadow: inset 0 -2px 0 0 #52796A;
+}
+.rb-chamber-glyph[data-id="school"].active {
+  color: #6890A8;
+  box-shadow: inset 0 -2px 0 0 #4A6B84;
+}
+.rb-chamber-glyph[data-id="creation"].active {
+  color: #C89860;
+  box-shadow: inset 0 -2px 0 0 #8A6238;
+}
+
+/* Active thread: chamber-aware border via inline style (ThreadStrip) */
+/* .rb-thread.active border-color is overridden per-chamber via inline style */
+
+/* Canon ribbon: elevated hardened entries — WS1 base, upgraded in WS4 */
+.rb-canon-entry {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: rgba(201, 166, 107, 0.04);
+  border: 1px solid var(--rb-line);
+  border-left: 3px solid rgba(201, 166, 107, 0.58);
+}
+.rb-canon-entry-text {
+  font-family: var(--rb-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--rb-ink);
+  line-height: 1.52;
+  display: block;
+  margin-bottom: 6px;
+}
+.rb-canon-entry-provenance {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(201, 166, 107, 0.48);
+  text-transform: uppercase;
+}
+
+/* ── Narrow-width overlay rails ────────────────────────────────────────────── */
 @media (max-width: 768px) {
   /* Single-column: chamber fills full width */
   .rb-main {
@@ -376,4 +486,446 @@ html, body, #root {
   /* Topbar wraps on narrow */
   .rb-topbar { flex-wrap: wrap; gap: 10px; padding: 10px 14px; }
   .rb-chambers { margin-left: 0; }
+}
+
+/* ── WS2: Directive Forge Ritual ─────────────────────────────────────────── */
+
+/* Forge panel — visually primary over ledger panels, amber-identity */
+.rb-directive-forge {
+  border: 1px solid rgba(138, 98, 56, 0.22);
+  border-left: 3px solid rgba(138, 98, 56, 0.42);
+  background: linear-gradient(180deg, rgba(138, 98, 56, 0.04) 0%, transparent 140px),
+              var(--rb-bg-elev);
+  padding: 24px 24px 22px;
+  margin-bottom: 18px;
+}
+/* Ready state — all four fields composed */
+.rb-directive-forge--ready {
+  border-left-color: rgba(200, 152, 80, 0.8);
+}
+
+/* Forge title — amber mono, ruled extension */
+.rb-forge-title {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(180, 130, 60, 0.85);
+  margin: 0 0 22px 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.rb-forge-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(138, 98, 56, 0.18);
+}
+
+/* Field groups — labeled, structured */
+.rb-field-group {
+  margin-bottom: 16px;
+}
+
+/* Field labels — always visible, structural */
+.rb-field-label {
+  display: block;
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  margin-bottom: 6px;
+}
+
+/* Directive intent textarea — primary statement field */
+.rb-directive-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--rb-ink);
+  border: 1px solid var(--rb-line-strong);
+  border-left: 2px solid var(--rb-line-strong);
+  padding: 12px 14px;
+  font-family: var(--rb-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  outline: none;
+  box-sizing: border-box;
+  min-height: 96px;
+  resize: vertical;
+}
+.rb-directive-input:focus {
+  border-color: rgba(138, 98, 56, 0.4);
+  border-left-color: rgba(200, 152, 80, 0.85);
+  background: rgba(138, 98, 56, 0.03);
+}
+.rb-directive-input.ambiguous {
+  border-color: var(--rb-warn);
+  border-left-color: var(--rb-warn);
+}
+
+/* Scope input */
+.rb-scope-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--rb-ink);
+  border: 1px solid var(--rb-line-strong);
+  padding: 10px 12px;
+  font-family: var(--rb-mono);
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+.rb-scope-input:focus {
+  border-color: rgba(138, 98, 56, 0.4);
+  background: rgba(138, 98, 56, 0.02);
+}
+
+/* Risk selector — semantic 3-cell grid */
+.rb-risk-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.rb-risk-btn {
+  padding: 9px 8px;
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border: 1px solid var(--rb-line-strong);
+  border-right: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: center;
+  color: var(--rb-ink-mute);
+}
+.rb-risk-btn:last-child { border-right: 1px solid var(--rb-line-strong); }
+.rb-risk-btn[data-risk="reversible"].selected {
+  background: rgba(106, 143, 90, 0.1);
+  border-color: rgba(106, 143, 90, 0.45);
+  color: var(--rb-ok);
+}
+.rb-risk-btn[data-risk="consequential"].selected {
+  background: rgba(181, 138, 58, 0.1);
+  border-color: rgba(181, 138, 58, 0.45);
+  color: var(--rb-warn);
+}
+.rb-risk-btn[data-risk="destructive"].selected {
+  background: rgba(168, 66, 58, 0.1);
+  border-color: rgba(168, 66, 58, 0.5);
+  color: var(--rb-bad);
+}
+
+/* Risk descriptor — semantic note on selected level */
+.rb-risk-descriptor {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--rb-ink-mute);
+  padding: 5px 0 0 1px;
+  line-height: 1.4;
+}
+.rb-risk-descriptor.ok   { color: rgba(106, 143, 90, 0.75); }
+.rb-risk-descriptor.warn { color: rgba(181, 138, 58, 0.75); }
+.rb-risk-descriptor.bad  { color: rgba(168, 66, 58, 0.85); }
+
+/* Acceptance criterion — signed statement field */
+.rb-acceptance-field {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--rb-ink);
+  border: 1px solid var(--rb-line-strong);
+  padding: 10px 12px;
+  font-family: var(--rb-mono);
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+.rb-acceptance-field:focus {
+  border-color: rgba(138, 98, 56, 0.4);
+  background: rgba(138, 98, 56, 0.02);
+}
+/* Signed state: field has been filled */
+.rb-acceptance-field.signed {
+  border-color: rgba(138, 98, 56, 0.36);
+}
+
+/* Forge ambiguity warning */
+.rb-forge-warn {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--rb-warn);
+  padding: 6px 0 0 0;
+}
+
+/* Threshold — the crossing zone, ruled off from the fields */
+.rb-threshold {
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--rb-line-strong);
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+/* Execute button: locked by default, arms when forge is ready */
+.rb-threshold-btn {
+  flex: 1;
+  font-family: var(--rb-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 13px 24px;
+  border: 1px solid var(--rb-line-strong);
+  background: transparent;
+  color: var(--rb-ink-mute);
+  cursor: pointer;
+}
+.rb-threshold-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.rb-threshold-btn.ready {
+  border-color: rgba(200, 152, 80, 0.72);
+  color: #C89860;
+  background: rgba(138, 98, 56, 0.06);
+}
+.rb-threshold-btn.ready:hover:not(:disabled) {
+  background: rgba(138, 98, 56, 0.13);
+  border-color: rgba(210, 162, 88, 0.95);
+  color: #D4A870;
+}
+/* Reject: secondary, destructive-on-hover */
+.rb-threshold-reject {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  border: 1px solid var(--rb-line);
+  background: transparent;
+  color: var(--rb-ink-mute);
+  cursor: pointer;
+  align-self: center;
+}
+.rb-threshold-reject:hover { border-color: var(--rb-bad); color: var(--rb-bad); }
+.rb-threshold-reject:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Directive ledger: risk badge semantic colors */
+.rb-badge.reversible   { color: var(--rb-ok);   border-color: rgba(106, 143, 90,  0.45); }
+.rb-badge.consequential { color: var(--rb-warn); border-color: rgba(181, 138, 58, 0.45); }
+.rb-badge.destructive  { color: var(--rb-bad);  border-color: rgba(168, 66,  58,  0.45); }
+
+/* ── WS3: Thread Strip as Operational Scope ──────────────────────────────── */
+
+/* State-color variables — drives top border + state dot */
+.rb-thread[data-state="open"]              { --rb-thread-state-color: rgba(82,  121, 106, 0.45); }
+.rb-thread[data-state="draft"]             { --rb-thread-state-color: rgba(90,   87,  80, 0.35); }
+.rb-thread[data-state="directive-pending"] { --rb-thread-state-color: rgba(181, 138,  58, 0.55); }
+.rb-thread[data-state="executing"]         { --rb-thread-state-color: rgba(181, 138,  58, 0.7);  }
+.rb-thread[data-state="awaiting-review"]   { --rb-thread-state-color: rgba(181, 138,  58, 0.7);  }
+.rb-thread[data-state="closed"]            { --rb-thread-state-color: rgba(168,  66,  58, 0.28); opacity: 0.62; }
+
+/* Thread intent — primary, serif */
+.rb-thread-intent {
+  font-family: var(--rb-serif);
+  font-size: 13px;
+  color: var(--rb-ink);
+  line-height: 1.38;
+  margin-bottom: 7px;
+}
+.rb-thread[data-state="closed"] .rb-thread-intent { color: var(--rb-ink-soft); }
+
+/* Thread meta line — compact operational stats */
+.rb-thread-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-mute);
+}
+
+/* State indicator dot — colored, animates on live states */
+.rb-thread-state-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--rb-thread-state-color, var(--rb-line));
+  flex-shrink: 0;
+}
+.rb-thread[data-state="executing"]       .rb-thread-state-dot { animation: rb-pulse 1.4s ease-in-out infinite; }
+.rb-thread[data-state="awaiting-review"] .rb-thread-state-dot { animation: rb-pulse 2.2s ease-in-out infinite; }
+
+/* Meta stat text */
+.rb-thread-meta-text {
+  flex: 1;
+  letter-spacing: 0.02em;
+}
+
+/* Close button — inline, minimal */
+.rb-thread-close-btn {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--rb-line-strong);
+  background: transparent;
+  color: var(--rb-ink-mute);
+  cursor: pointer;
+  padding: 2px 7px;
+  flex-shrink: 0;
+}
+.rb-thread-close-btn:hover { border-color: var(--rb-bad); color: var(--rb-bad); }
+
+/* Close reason — dimmed, dashed rule above */
+.rb-thread-close-reason {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--rb-line);
+  letter-spacing: 0.02em;
+}
+.rb-thread-close-reason::before { content: "↳ "; }
+
+/* Intent input — scope-opening field, gold focus (cross-chamber) */
+.rb-intent-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--rb-ink);
+  border: 1px solid var(--rb-line-strong);
+  padding: 10px 12px;
+  font-family: var(--rb-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  outline: none;
+  box-sizing: border-box;
+  min-height: 64px;
+  resize: vertical;
+}
+.rb-intent-input:focus {
+  border-color: rgba(201, 166, 107, 0.55);
+  background: rgba(201, 166, 107, 0.025);
+}
+
+/* Thread count label in rail header */
+.rb-threads-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.rb-threads-header .rb-section-title { margin: 0; }
+.rb-threads-count {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--rb-ink-mute);
+}
+
+/* ── WS4: Canon Ribbon Gravity ───────────────────────────────────────────── */
+
+/* Canon section header — gold authority, not generic serif uppercase */
+.rb-canon-header {
+  margin-bottom: 14px;
+}
+.rb-canon-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.rb-canon-header-title {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--rb-gold);
+}
+.rb-canon-header-count {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--rb-ink-mute);
+}
+/* Thin gold rule below canon header */
+.rb-canon-header-rule {
+  height: 1px;
+  background: rgba(201, 166, 107, 0.2);
+}
+
+/* Revoked canon — scarred, not deleted */
+.rb-canon-revoked-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(168, 66, 58, 0.2);
+}
+.rb-canon-revoked {
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  border: 1px solid var(--rb-line);
+  border-left: 2px solid rgba(168, 66, 58, 0.3);
+  opacity: 0.55;
+}
+.rb-canon-revoked-text {
+  font-family: var(--rb-serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--rb-ink-soft);
+  text-decoration: line-through;
+  text-decoration-color: rgba(168, 66, 58, 0.5);
+  line-height: 1.42;
+  display: block;
+  margin-bottom: 4px;
+}
+.rb-canon-revoked-reason {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: rgba(168, 66, 58, 0.6);
+}
+.rb-canon-revoked-reason::before { content: "↳ "; }
+
+/* Memory substrate — subordinate, raw, ephemeral */
+.rb-memory-header {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  margin: 24px 0 8px 0;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rb-memory-header-count {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+}
+.rb-memory-entry {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-mute);
+  line-height: 1.55;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--rb-line);
+  letter-spacing: 0.01em;
+}
+.rb-memory-entry:last-child { border-bottom: none; }
+.rb-memory-entry::before {
+  content: "·";
+  margin-right: 6px;
+  color: var(--rb-ink-mute);
+  opacity: 0.5;
+}
+.rb-memory-overflow {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--rb-ink-mute);
+  margin-top: 6px;
+  opacity: 0.6;
 }

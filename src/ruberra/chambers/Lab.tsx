@@ -9,9 +9,14 @@ export function LabChamber() {
   const [contradiction, setContradiction] = useState("");
 
   return (
-    <section className="rb-chamber">
-      <h1>Lab</h1>
-      <div className="gravity">Gravity: Skepticism · Validate truth</div>
+    <section className="rb-chamber rb-chamber--lab">
+      <header className="rb-chamber-header">
+        <h1 className="rb-chamber-title">Lab</h1>
+        <div className="rb-chamber-gravity-bar">
+          <span className="rb-chamber-gravity-text">Skepticism · Validate truth</span>
+        </div>
+        <div className="rb-chamber-accent-line" />
+      </header>
 
       <div className="rb-panel">
         <h2>Capture Evidence</h2>

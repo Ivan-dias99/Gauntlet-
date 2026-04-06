@@ -15,11 +15,14 @@ export function SchoolChamber() {
   const promotableMemory = p.memory.filter((m) => !m.promoted);
 
   return (
-    <section className="rb-chamber">
-      <h1>School</h1>
-      <div className="gravity">
-        Canon Formation + Mastery Chamber · Gravity: Discipline
-      </div>
+    <section className="rb-chamber rb-chamber--school">
+      <header className="rb-chamber-header">
+        <h1 className="rb-chamber-title">School</h1>
+        <div className="rb-chamber-gravity-bar">
+          <span className="rb-chamber-gravity-text">Discipline · Canon formation</span>
+        </div>
+        <div className="rb-chamber-accent-line" />
+      </header>
 
       {!p.missionFramed && (
         <div className="rb-panel">

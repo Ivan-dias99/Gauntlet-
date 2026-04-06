@@ -1,4 +1,5 @@
-// Ruberra — Canon ribbon. Ambient reminder of hardened truth.
+// Ruberra — Canon ribbon. Weight-bearing truth rail.
+// Hardened canon = law. Revoked canon = scar. Memory = raw substrate.
 // On narrow screens: rendered as an overlay rail; open/onClose driven by Shell.
 
 import { useProjection } from "../spine/store";
@@ -9,11 +10,28 @@ interface Props {
   onClose?: () => void;
 }
 
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+const MEMORY_LIMIT = 8;
+
 export function CanonRibbon({ open, onClose }: Props) {
   const p = useProjection();
   const isMobile = useIsMobile();
   const canon = p.canon.filter((c) => c.state === "hardened");
-  const memory = p.memory.filter((m) => !m.promoted);
+  const revoked = p.canon.filter((c) => c.state === "revoked");
+  const rawMemory = p.memory.filter((m) => !m.promoted);
+  const memorySlice = rawMemory.slice(-MEMORY_LIMIT).reverse();
+  const memoryOverflow = rawMemory.length > MEMORY_LIMIT
+    ? rawMemory.length - MEMORY_LIMIT
+    : 0;
 
   const narrowClass = open
     ? "rb-rail rb-rail-right rb-rail--open"
@@ -26,7 +44,6 @@ export function CanonRibbon({ open, onClose }: Props) {
       aria-hidden={closedOnNarrow ? true : undefined}
       style={closedOnNarrow ? { pointerEvents: "none" } : undefined}
     >
-      {/* Close button visible when overlay is open on narrow screens */}
       {onClose && (
         <button
           className="rb-rail-toggle"
@@ -38,37 +55,71 @@ export function CanonRibbon({ open, onClose }: Props) {
         </button>
       )}
 
-      <h3 className="rb-section-title">Canon</h3>
+      {/* Canon section — authority zone */}
+      <div className="rb-canon-header">
+        <div className="rb-canon-header-row">
+          <span className="rb-canon-header-title">Canon</span>
+          {canon.length > 0 && (
+            <span className="rb-canon-header-count">{canon.length}</span>
+          )}
+        </div>
+        <div className="rb-canon-header-rule" />
+      </div>
+
       {canon.length === 0 ? (
         <div className="rb-unavail">
           <strong>no canon yet</strong>
           Promote memory to harden canon.
         </div>
       ) : (
-        <ul className="rb-list">
+        <div>
           {canon.map((c) => (
-            <li key={c.id}>
-              <span className="rb-badge gold">hardened</span>
-              {c.text}
-            </li>
+            <div key={c.id} className="rb-canon-entry">
+              <span className="rb-canon-entry-text">{c.text}</span>
+              <span className="rb-canon-entry-provenance">
+                hardened · {timeAgo(c.hardenedAt)}
+              </span>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
-      <h3 className="rb-section-title" style={{ marginTop: 22 }}>
-        Memory
-      </h3>
+      {/* Revoked canon — scars, not deleted */}
+      {revoked.length > 0 && (
+        <div className="rb-canon-revoked-section">
+          {revoked.map((c) => (
+            <div key={c.id} className="rb-canon-revoked">
+              <span className="rb-canon-revoked-text">{c.text}</span>
+              {c.revokeReason && (
+                <span className="rb-canon-revoked-reason">{c.revokeReason}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Memory substrate — raw, subordinate */}
+      <div className="rb-memory-header">
+        <span>Memory</span>
+        {rawMemory.length > 0 && (
+          <span className="rb-memory-header-count">{rawMemory.length}</span>
+        )}
+      </div>
+
       {p.memory.length === 0 ? (
         <div className="rb-unavail">
           <strong>empty substrate</strong>
           Capture memory from Lab or Creation.
         </div>
       ) : (
-        <ul className="rb-list">
-          {memory.slice(-8).reverse().map((m) => (
-            <li key={m.id}>{m.text}</li>
+        <div>
+          {memorySlice.map((m) => (
+            <div key={m.id} className="rb-memory-entry">{m.text}</div>
           ))}
-        </ul>
+          {memoryOverflow > 0 && (
+            <div className="rb-memory-overflow">+{memoryOverflow} more</div>
+          )}
+        </div>
       )}
     </aside>
   );

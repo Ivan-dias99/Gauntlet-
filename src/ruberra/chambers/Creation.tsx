@@ -13,6 +13,12 @@ const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
 
 type Risk = "reversible" | "consequential" | "destructive";
 
+const RISK_INFO: Record<Risk, { descriptor: string; colorClass: string }> = {
+  reversible:   { descriptor: "can be undone — consequence is bounded",           colorClass: "ok"   },
+  consequential: { descriptor: "has lasting effect — not silently reversible",    colorClass: "warn" },
+  destructive:  { descriptor: "irreversible — requires explicit confirmation",    colorClass: "bad"  },
+};
+
 export function CreationChamber() {
   const p = useProjection();
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
@@ -152,9 +158,14 @@ export function CreationChamber() {
   }
 
   return (
-    <section className="rb-chamber">
-      <h1>Creation</h1>
-      <div className="gravity">Gravity: Consequence · Forge artifacts</div>
+    <section className="rb-chamber rb-chamber--creation">
+      <header className="rb-chamber-header">
+        <h1 className="rb-chamber-title">Creation</h1>
+        <div className="rb-chamber-gravity-bar">
+          <span className="rb-chamber-gravity-text">Consequence · Forge artifacts</span>
+        </div>
+        <div className="rb-chamber-accent-line" />
+      </header>
 
       {!activeThread ? (
         <Unavailable
@@ -164,88 +175,104 @@ export function CreationChamber() {
         />
       ) : (
         <>
-          <div className="rb-panel">
-            <h2>Directive Composition</h2>
-            <div className="rb-col">
+          {/* Directive Forge — the hinge */}
+          <div className={`rb-directive-forge${canCompose ? " rb-directive-forge--ready" : ""}`}>
+            <div className="rb-forge-title">Directive Forge</div>
+
+            {/* Intent — primary statement */}
+            <div className="rb-field-group">
+              <label className="rb-field-label">Directive</label>
               <textarea
-                className="rb-textarea"
-                placeholder="what changes in the repo? (use no {{placeholders}})"
+                className={`rb-directive-input${ambiguous ? " ambiguous" : ""}`}
+                placeholder="what changes in the repo?"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
+              {ambiguous && (
+                <div className="rb-forge-warn">
+                  ◐ unresolved {"{{placeholders}}"} — resolve before acceptance
+                </div>
+              )}
+            </div>
+
+            {/* Scope — boundary declaration */}
+            <div className="rb-field-group">
+              <label className="rb-field-label">Scope</label>
               <input
-                className="rb-input"
-                placeholder="scope — file set, canon scope, or repo-wide"
+                className="rb-scope-input"
+                placeholder="file set, canon scope, or repo-wide"
                 value={scope}
                 onChange={(e) => setScope(e.target.value)}
               />
+            </div>
+
+            {/* Risk — severity gauge */}
+            <div className="rb-field-group">
+              <label className="rb-field-label">Risk</label>
+              <div className="rb-risk-selector" role="group" aria-label="Risk level">
+                {(["reversible", "consequential", "destructive"] as Risk[]).map((r) => (
+                  <button
+                    key={r}
+                    data-risk={r}
+                    className={`rb-risk-btn${risk === r ? " selected" : ""}`}
+                    onClick={() => setRisk(r)}
+                    type="button"
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <div className={`rb-risk-descriptor ${RISK_INFO[risk].colorClass}`}>
+                {RISK_INFO[risk].descriptor}
+              </div>
+            </div>
+
+            {/* Acceptance Criterion — signed commitment */}
+            <div className="rb-field-group">
+              <label className="rb-field-label">Acceptance Criterion</label>
               <input
-                className="rb-input"
-                placeholder="acceptance criterion — how we know it is done"
+                className={`rb-acceptance-field${acceptance.trim() ? " signed" : ""}`}
+                placeholder="how we know it is done"
                 value={acceptance}
                 onChange={(e) => setAcceptance(e.target.value)}
               />
-              <div className="rb-row">
-                <label
-                  style={{
-                    fontFamily: "var(--rb-mono)",
-                    fontSize: 11,
-                    color: "var(--rb-ink-mute)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.15em",
-                  }}
-                >
-                  risk:
-                </label>
-                {(["reversible", "consequential", "destructive"] as Risk[]).map(
-                  (r) => (
-                    <button
-                      key={r}
-                      className={`rb-btn ${risk === r ? "primary" : ""}`}
-                      onClick={() => setRisk(r)}
-                    >
-                      {r}
-                    </button>
-                  ),
-                )}
+            </div>
+
+            {/* Threshold — the crossing */}
+            <div className="rb-threshold">
+              <button
+                className={`rb-threshold-btn${canCompose ? " ready" : ""}`}
+                disabled={!canCompose}
+                onClick={runDirective}
+                type="button"
+              >
+                Accept · Execute
+              </button>
+              <button
+                className="rb-threshold-reject"
+                disabled={!text.trim()}
+                onClick={rejectDraft}
+                type="button"
+              >
+                Reject
+              </button>
+            </div>
+
+            {err && (
+              <div className="rb-unavail" style={{ marginTop: 12 }}>
+                <strong>refused</strong>
+                {err}
               </div>
-              {ambiguous && (
-                <Unavailable
-                  title="ambiguity detected"
-                  reason="Directive text contains unresolved {{placeholders}}."
-                  remediation="Resolve all placeholders before acceptance."
-                />
-              )}
-              <div className="rb-row">
-                <button
-                  className="rb-btn primary"
-                  disabled={!canCompose}
-                  onClick={runDirective}
-                >
-                  Accept · Execute
-                </button>
-                <button
-                  className="rb-btn"
-                  disabled={!text.trim()}
-                  onClick={rejectDraft}
-                >
-                  Reject
-                </button>
-              </div>
-              {err && (
-                <div className="rb-unavail">
-                  <strong>refused</strong>
-                  {err}
-                </div>
-              )}
-              {!EXEC_BACKEND && (
+            )}
+            {!EXEC_BACKEND && (
+              <div style={{ marginTop: 12 }}>
                 <Unavailable
                   title="execution unbound"
                   reason="No execution backend is bound to this shell."
                   remediation="Set VITE_RUBERRA_EXEC_URL and reload to enable forging."
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="rb-panel">
@@ -269,7 +296,7 @@ export function CreationChamber() {
                       >
                         {d.status}
                       </span>
-                      <span className="rb-badge">{d.risk}</span>
+                      <span className={`rb-badge ${d.risk}`}>{d.risk}</span>
                       <span className="rb-badge">scope: {d.scope}</span>
                       {d.text}
                       {d.reason ? (
