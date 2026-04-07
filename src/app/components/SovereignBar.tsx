@@ -226,25 +226,8 @@ export function SovereignBar({
               userSelect: "none",
             }}
           >
-            {isLive ? activeTab : "Connected"}
+            {activeTab}
           </span>
-          {isLive && (
-            <>
-              <span style={{ width: "1px", height: "8px", background: "var(--r-border-soft)", flexShrink: 0, margin: "0 2px" }} />
-              <span
-                style={{
-                  fontSize: "9px",
-                  letterSpacing: "0.06em",
-                  color: CHAMBER_DOTS[activeTab],
-                  fontFamily: "'JetBrains Mono', monospace",
-                  userSelect: "none",
-                  opacity: 0.8,
-                }}
-              >
-                {activeTab === "lab" ? "investigate" : activeTab === "school" ? "master" : activeTab === "creation" ? "build" : "govern"}
-              </span>
-            </>
-          )}
         </div>
       </div>
 

@@ -1,7 +1,10 @@
 import { type Tab } from "./shell-types";
 
 export type ChamberTab = "lab" | "school" | "creation";
-export type ProviderId = "openai" | "anthropic" | "google" | "runway" | "elevenlabs";
+export type ProviderId =
+  | "openai" | "anthropic" | "google" | "runway" | "elevenlabs"
+  // Open-source / self-hosted
+  | "ollama" | "vllm" | "lmstudio" | "groq";
 
 export type TaskType =
   | "creation_image"
@@ -53,6 +56,31 @@ export const MODEL_REGISTRY: ModelDescriptor[] = [
   { id: "runway-gen4",         label: "Runway Gen-4",         family: "Runway",     provider: "runway",      chamber: "creation", latency: "high",   quality: "elite",  benchmark: "Video Generation",         role: "Media Specialist",           tags: ["video"] },
   { id: "imagen-4",            label: "Imagen 4",             family: "Imagen",     provider: "google",      chamber: "creation", latency: "medium", quality: "strong", benchmark: "Image Generation",         role: "Visual Specialist",          tags: ["image", "design"] },
   { id: "elevenlabs-studio",   label: "11Labs Studio",        family: "ElevenLabs", provider: "elevenlabs",  chamber: "creation", latency: "low",    quality: "strong", benchmark: "Voice Generation",         role: "Audio Specialist",           tags: ["voice", "audio", "music"], unavailable: true },
+
+  // ── Open-source: Ollama (Tier A local) ───────────────────────────────────────
+  { id: "llama3.3:70b",          label: "Llama 3.3 70B",          family: "Llama",     provider: "ollama",   chamber: "lab",      latency: "high",   quality: "elite",  benchmark: "Reasoning & Analysis",     role: "Sovereign Lab Analyst",      tags: ["research", "reasoning", "analysis"] },
+  { id: "llama3.3:70b-school",   label: "Llama 3.3 70B",          family: "Llama",     provider: "ollama",   chamber: "school",   latency: "high",   quality: "elite",  benchmark: "Deep Instruction",         role: "Sovereign Tutor",            tags: ["teaching", "curriculum"] },
+  { id: "llama3.3:70b-creation", label: "Llama 3.3 70B",          family: "Llama",     provider: "ollama",   chamber: "creation", latency: "high",   quality: "elite",  benchmark: "Code & Artifact",          role: "Sovereign Builder",          tags: ["artifact", "code"] },
+  { id: "qwen2.5:72b",           label: "Qwen 2.5 72B",           family: "Qwen",      provider: "ollama",   chamber: "lab",      latency: "high",   quality: "elite",  benchmark: "Multilingual Reasoning",   role: "Sovereign Analyst",          tags: ["research", "analysis"] },
+  { id: "qwen2.5-coder:32b",     label: "Qwen 2.5 Coder 32B",    family: "Qwen",      provider: "ollama",   chamber: "creation", latency: "medium", quality: "elite",  benchmark: "Elite Code Generation",    role: "Sovereign Code Forge",       tags: ["code", "artifact", "build"] },
+  { id: "deepseek-coder-v2:16b", label: "DeepSeek Coder V2 16B", family: "DeepSeek",  provider: "ollama",   chamber: "creation", latency: "medium", quality: "strong", benchmark: "Code Generation (MoE)",    role: "Code Specialist",            tags: ["code", "build"] },
+  { id: "llama3.2:3b",           label: "Llama 3.2 3B",           family: "Llama",     provider: "ollama",   chamber: "school",   latency: "low",    quality: "good",   benchmark: "Fast Assessment",          role: "Quick Drill Engine",         tags: ["quick tutoring", "assessment"] },
+
+  // ── Open-source: vLLM (Tier A self-hosted OpenAI-compat) ─────────────────────
+  { id: "vllm-default",          label: "vLLM Model",             family: "vLLM",      provider: "vllm",     chamber: "lab",      latency: "medium", quality: "strong", benchmark: "Self-Hosted Inference",    role: "Self-Hosted Analyst",        tags: ["research", "analysis"] },
+  { id: "vllm-code",             label: "vLLM Model",             family: "vLLM",      provider: "vllm",     chamber: "creation", latency: "medium", quality: "strong", benchmark: "Self-Hosted Code",         role: "Self-Hosted Builder",        tags: ["code", "build"] },
+  { id: "vllm-school",           label: "vLLM Model",             family: "vLLM",      provider: "vllm",     chamber: "school",   latency: "medium", quality: "strong", benchmark: "Self-Hosted Instruction",  role: "Self-Hosted Tutor",          tags: ["teaching"] },
+
+  // ── Open-source: LM Studio (Tier A local OpenAI-compat) ──────────────────────
+  { id: "lmstudio-default",      label: "LM Studio Model",        family: "LM Studio", provider: "lmstudio", chamber: "lab",      latency: "medium", quality: "strong", benchmark: "Local Studio Inference",   role: "Studio Analyst",             tags: ["research", "analysis"] },
+  { id: "lmstudio-code",         label: "LM Studio Model",        family: "LM Studio", provider: "lmstudio", chamber: "creation", latency: "medium", quality: "strong", benchmark: "Local Studio Code",        role: "Studio Builder",             tags: ["code", "build"] },
+  { id: "lmstudio-school",       label: "LM Studio Model",        family: "LM Studio", provider: "lmstudio", chamber: "school",   latency: "medium", quality: "strong", benchmark: "Local Studio Instruction", role: "Studio Tutor",               tags: ["teaching"] },
+
+  // ── Open-source: Groq (Tier B cloud fast inference) ──────────────────────────
+  { id: "groq-llama3.3-70b",     label: "Llama 3.3 70B (Groq)",  family: "Llama",     provider: "groq",     chamber: "lab",      latency: "low",    quality: "elite",  benchmark: "Ultra-Fast Reasoning",     role: "Groq Analyst",               tags: ["research", "reasoning", "fast"] },
+  { id: "groq-llama3.3-70b-sch", label: "Llama 3.3 70B (Groq)",  family: "Llama",     provider: "groq",     chamber: "school",   latency: "low",    quality: "elite",  benchmark: "Ultra-Fast Instruction",   role: "Groq Tutor",                 tags: ["teaching", "fast"] },
+  { id: "groq-llama3.3-70b-cre", label: "Llama 3.3 70B (Groq)",  family: "Llama",     provider: "groq",     chamber: "creation", latency: "low",    quality: "elite",  benchmark: "Ultra-Fast Build",         role: "Groq Builder",               tags: ["code", "build", "fast"] },
+  { id: "groq-llama3.2-3b",      label: "Llama 3.2 3B (Groq)",   family: "Llama",     provider: "groq",     chamber: "school",   latency: "low",    quality: "good",   benchmark: "Fastest Drill",            role: "Groq Assessment Engine",     tags: ["assessment", "fast"] },
 ];
 
 export const CHAMBER_TASKS: Record<ChamberTab, TaskType[]> = {

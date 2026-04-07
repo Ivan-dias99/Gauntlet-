@@ -339,6 +339,24 @@ function isGeminiModel(modelId: string): boolean {
   return modelId.startsWith("gemini-") || modelId.startsWith("imagen-");
 }
 
+function isGroqModel(modelId: string): boolean {
+  return modelId.startsWith("groq-");
+}
+
+/**
+ * Map Ruberra registry Groq model IDs → real Groq API model names.
+ * Groq docs: https://console.groq.com/docs/models
+ */
+function toGroqModelId(modelId: string): string {
+  const GROQ_MAP: Record<string, string> = {
+    "groq-llama3.3-70b":     "llama-3.3-70b-versatile",
+    "groq-llama3.3-70b-sch": "llama-3.3-70b-versatile",
+    "groq-llama3.3-70b-cre": "llama-3.3-70b-versatile",
+    "groq-llama3.2-3b":      "llama-3.2-3b-preview",
+  };
+  return GROQ_MAP[modelId] ?? "llama-3.3-70b-versatile";
+}
+
 // Normalize registry model IDs to real Anthropic API identifiers.
 // Registry uses suffixed IDs (e.g. "claude-opus-4.6-sch") for chamber
 // disambiguation; strip the suffix before calling the API.
@@ -572,6 +590,70 @@ app.post("/make-server-b9f46b68/chat", async (c) => {
         }
       } catch (err) {
         console.log("[Ruberra] Gemini fetch failed, using fallback:", err);
+      }
+    }
+  }
+
+  // ── Groq / OpenAI-compat cloud path ─────────────────────────────────────────
+  if (model && isGroqModel(model)) {
+    const groqKey = Deno.env.get("GROQ_API_KEY");
+    if (groqKey) {
+      const groqModelId = toGroqModelId(model);
+      try {
+        const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${groqKey}`,
+          },
+          body: JSON.stringify({
+            model:       groqModelId,
+            stream:      true,
+            temperature: 0.3,
+            max_tokens:  2048,
+            messages:    [{ role: "system", content: systemPrompt }, ...messages],
+          }),
+        });
+
+        if (upstream.ok && upstream.body) {
+          const stream = new ReadableStream<Uint8Array>({
+            async start(controller) {
+              const reader = upstream.body!.getReader();
+              try {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  const chunk = decoder.decode(value, { stream: true });
+                  for (const line of chunk.split("\n")) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+                    const data = trimmed.slice(5).trim();
+                    if (data === "[DONE]") continue;
+                    try {
+                      const parsed = JSON.parse(data);
+                      const content = parsed.choices?.[0]?.delta?.content;
+                      if (content) controller.enqueue(encoder.encode(content));
+                    } catch {
+                      // malformed SSE line — skip
+                    }
+                  }
+                }
+              } finally {
+                controller.close();
+                reader.releaseLock();
+              }
+            },
+          });
+
+          return new Response(stream, {
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "Access-Control-Allow-Origin": "*",
+            },
+          });
+        }
+      } catch (err) {
+        console.log("[Ruberra] Groq fetch failed, using fallback:", err);
       }
     }
   }

@@ -219,7 +219,7 @@ function SchoolArchive({ messages, navigate }: { messages: Message[]; navigate: 
             accentVar="var(--chamber-school)"
             kicker="School · archive"
             title="No saved learning objects"
-            body="Tracks, lessons, and roles you touch will surface here with continuity. Start from Library, Browse, or Chat to seed the archive."
+            body="Tracks, lessons, and roles accumulate here as you work."
             actions={
               <Fragment>
                 {emptyActionBtn(() => navigate("school", "library"), "Open Library", "var(--chamber-school)")}
