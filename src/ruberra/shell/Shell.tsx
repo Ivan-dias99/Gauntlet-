@@ -60,6 +60,26 @@ export function Shell() {
     setRightOpen(false);
   }
 
+  const move = nextMove(p);
+
+  // Consequence context for topbar state indicator.
+  // Read from existing projection — no new state.
+  const activeExecution =
+    move === "executing"
+      ? p.executions.find((x) => x.status === "running")
+      : undefined;
+  const pendingCount =
+    move === "review"
+      ? p.artifacts.filter(
+          (a) => a.review === "pending" && (!p.activeThread || a.thread === p.activeThread),
+        ).length
+      : 0;
+
+  const stateColor =
+    move === "executing" || move === "review"
+      ? "var(--rb-warn)"
+      : "var(--rb-gold)";
+
   return (
     <div className="rb-root">
       {/* Backdrop for overlay rails on narrow screens */}
@@ -101,13 +121,26 @@ export function Shell() {
           style={{
             fontFamily: "var(--rb-mono)",
             fontSize: 11,
-            color: "var(--rb-gold)",
+            color: stateColor,
             letterSpacing: "0.14em",
             textTransform: "uppercase",
             marginLeft: 6,
+            transition: "color 0.3s",
           }}
         >
-          state · {nextMove(p)}
+          state · {move}
+          {activeExecution && (
+            <span style={{ opacity: 0.8, marginLeft: 6 }}>
+              · {activeExecution.label.length > 30
+                  ? activeExecution.label.slice(0, 30) + "…"
+                  : activeExecution.label}
+            </span>
+          )}
+          {pendingCount > 0 && (
+            <span style={{ opacity: 0.8, marginLeft: 6 }}>
+              · {pendingCount} pending
+            </span>
+          )}
         </div>
         <div className="rb-chambers">
           {CHAMBERS.map((c) => (
