@@ -252,10 +252,10 @@ describe("CreationChamber", () => {
     expect(screen.getByText("Creation")).toBeInTheDocument();
   });
 
-  it("shows directive composition panel when thread active", () => {
+  it("shows directive forge panel when thread active", () => {
     currentProjection = withThreadProjection;
     render(<CreationChamber />);
-    expect(screen.getByText("Directive Composition")).toBeInTheDocument();
+    expect(screen.getByText("Directive · Forge")).toBeInTheDocument();
   });
 
   it("shows forge-unthreaded state when no active thread", () => {

@@ -164,6 +164,70 @@ html, body, #root {
   letter-spacing: 0.04em;
 }
 
+/* ── Creation forge — dominant compose surface ─────────────────────────────── */
+.rb-forge {
+  border: 1px solid var(--rb-line-strong);
+  border-left: 3px solid var(--rb-accent);
+  background: var(--rb-bg-elev-2);
+  padding: 24px 24px 20px;
+  margin-bottom: 24px;
+}
+.rb-forge-label {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--rb-accent);
+  margin: 0 0 18px 0;
+}
+.rb-forge .rb-textarea {
+  min-height: 100px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.rb-forge-sep {
+  border: none;
+  border-top: 1px solid var(--rb-line);
+  margin: 4px 0;
+}
+.rb-forge-risk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.rb-forge-risk-label {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--rb-ink-mute);
+  text-transform: uppercase;
+  min-width: 30px;
+}
+.rb-forge-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding-top: 4px;
+}
+
+/* ── Trace panels — consequence record, downstream of the forge ─────────────── */
+.rb-trace {
+  border: 1px solid var(--rb-line);
+  background: var(--rb-bg-elev);
+  padding: 14px 18px;
+  margin-bottom: 12px;
+}
+.rb-trace h2 {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  margin: 0 0 10px 0;
+  font-weight: 400;
+}
+
 .rb-input, .rb-textarea {
   width: 100%;
   background: var(--rb-bg);

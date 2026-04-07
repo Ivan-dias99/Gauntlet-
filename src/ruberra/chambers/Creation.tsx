@@ -163,8 +163,8 @@ export function CreationChamber() {
         />
       ) : (
         <>
-          <div className="rb-panel">
-            <h2>Directive Composition</h2>
+          <div className="rb-forge">
+            <div className="rb-forge-label">Directive · Forge</div>
             <div className="rb-col">
               <textarea
                 className="rb-textarea"
@@ -184,18 +184,9 @@ export function CreationChamber() {
                 value={acceptance}
                 onChange={(e) => setAcceptance(e.target.value)}
               />
-              <div className="rb-row">
-                <label
-                  style={{
-                    fontFamily: "var(--rb-mono)",
-                    fontSize: 11,
-                    color: "var(--rb-ink-mute)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.15em",
-                  }}
-                >
-                  risk:
-                </label>
+              <hr className="rb-forge-sep" />
+              <div className="rb-forge-risk">
+                <span className="rb-forge-risk-label">risk</span>
                 {(["reversible", "consequential", "destructive"] as Risk[]).map(
                   (r) => (
                     <button
@@ -215,7 +206,7 @@ export function CreationChamber() {
                   remediation="Resolve all placeholders before acceptance."
                 />
               )}
-              <div className="rb-row">
+              <div className="rb-forge-actions">
                 <button
                   className="rb-btn primary"
                   disabled={!canCompose}
@@ -247,7 +238,7 @@ export function CreationChamber() {
             </div>
           </div>
 
-          <div className="rb-panel">
+          <div className="rb-trace">
             <h2>Directive Ledger</h2>
             {directives.length === 0 ? (
               <div className="rb-empty">
@@ -287,7 +278,7 @@ export function CreationChamber() {
             )}
           </div>
 
-          <div className="rb-panel">
+          <div className="rb-trace">
             <h2>Executions</h2>
             {executions.length === 0 ? (
               <div className="rb-empty">
@@ -319,7 +310,7 @@ export function CreationChamber() {
             )}
           </div>
 
-          <div className="rb-panel">
+          <div className="rb-trace">
             <h2>Artifacts — Review &amp; Commit</h2>
             {artifacts.length === 0 ? (
               <div className="rb-empty">
