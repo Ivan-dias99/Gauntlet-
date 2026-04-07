@@ -217,6 +217,25 @@ export function CreationChamber() {
         <h1 className="rb-chamber-title">Creation</h1>
         <div className="rb-chamber-gravity-bar">
           <span className="rb-chamber-gravity-text">Consequence · Forge artifacts</span>
+          {activeThread && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-thread-context-intent">
+                {activeThread.intent.length > 44
+                  ? activeThread.intent.slice(0, 44) + "…"
+                  : activeThread.intent}
+              </span>
+              <span className={`rb-badge ${
+                activeThread.state === "open"              ? "ok"
+                : activeThread.state === "executing"       ? "warn"
+                : activeThread.state === "awaiting-review" ? "warn"
+                : activeThread.state === "closed"          ? "bad"
+                : ""
+              }`}>
+                {activeThread.state}
+              </span>
+            </>
+          )}
         </div>
         <div className="rb-chamber-accent-line" />
       </header>
@@ -418,7 +437,7 @@ export function CreationChamber() {
             )}
           </div>
 
-          <div className="rb-panel">
+          <div className="rb-trace">
             <h2>Directive Ledger</h2>
             {directives.length === 0 ? (
               <div className="rb-unavail">
@@ -458,7 +477,7 @@ export function CreationChamber() {
             )}
           </div>
 
-          <div className="rb-panel">
+          <div className={`rb-trace${activeThread.state === "executing" ? " rb-trace--executing" : ""}`}>
             <h2>Executions</h2>
             {executions.length === 0 ? (
               <div className="rb-unavail">
@@ -490,7 +509,7 @@ export function CreationChamber() {
             )}
           </div>
 
-          <div className="rb-panel">
+          <div className={`rb-trace${activeThread.state === "awaiting-review" ? " rb-trace--review" : ""}`}>
             <h2>Artifacts — Review &amp; Commit</h2>
             {artifacts.length === 0 ? (
               <div className="rb-unavail">

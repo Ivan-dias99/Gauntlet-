@@ -167,6 +167,33 @@ html, body, #root {
   letter-spacing: 0.04em;
 }
 
+/* ── Trace panels — consequence record, downstream of the forge ─────────────── */
+.rb-trace {
+  border: 1px solid var(--rb-line);
+  background: var(--rb-bg-elev);
+  padding: 14px 18px;
+  margin-bottom: 12px;
+}
+.rb-trace h2 {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  margin: 0 0 10px 0;
+  font-weight: 400;
+}
+/* Active-state modifiers — assert the relevant trace panel when thread is in motion */
+.rb-trace--executing {
+  border-left: 3px solid var(--rb-warn);
+}
+.rb-trace--executing h2 { color: var(--rb-warn); }
+
+.rb-trace--review {
+  border-left: 3px solid var(--rb-accent);
+}
+.rb-trace--review h2 { color: var(--rb-accent); }
+
 .rb-input, .rb-textarea {
   width: 100%;
   background: var(--rb-bg);
@@ -378,6 +405,17 @@ html, body, #root {
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--rb-ink-mute);
+}
+.rb-gravity-sep {
+  color: var(--rb-line-strong);
+  font-family: var(--rb-mono);
+  font-size: 10px;
+}
+.rb-thread-context-intent {
+  font-family: var(--rb-mono);
+  font-size: 11px;
+  color: var(--rb-ink-soft);
+  letter-spacing: 0.03em;
 }
 /* Thin accent line at the header bottom — chamber color */
 .rb-chamber-accent-line {
