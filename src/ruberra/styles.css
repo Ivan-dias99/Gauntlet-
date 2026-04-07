@@ -984,6 +984,34 @@ html, body, #root {
   opacity: 0.7;
 }
 
+/* ── Contradiction warning — forge context, unresolved tension layer ───── */
+.rb-forge-contradiction {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: var(--rb-bg-elev-2);
+  border: 1px solid var(--rb-line);
+  border-left: 2px solid var(--rb-bad);
+  border-radius: 2px;
+}
+.rb-forge-contradiction-label {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rb-bad);
+  opacity: 0.8;
+  margin-bottom: 6px;
+}
+.rb-forge-contradiction-entry {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-soft);
+  line-height: 1.6;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--rb-line);
+}
+.rb-forge-contradiction-entry:last-child { border-bottom: none; }
+
 /* ── Retained consequence — forge context, artifact memory layer ────────── */
 .rb-forge-memory {
   margin-bottom: 14px;

@@ -70,6 +70,11 @@ export function CreationChamber() {
       )
     : [];
 
+  // Open contradiction warning — unresolved contradictions in the projection.
+  // Note: Contradiction type carries no repo field in the current projection;
+  // all unresolved contradictions are shown. In single-repo sessions this is exact.
+  const openContradictions = p.contradictions.filter((c) => !c.resolved);
+
   const ambiguous = /\{\{[^}]+\}\}/.test(text);
   const canCompose =
     !!activeThread &&
@@ -298,6 +303,20 @@ export function CreationChamber() {
                 {threadMemory.map((m) => (
                   <div key={m.id} className="rb-forge-memory-entry">
                     {m.text.length > 80 ? m.text.slice(0, 80) + "…" : m.text}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Contradiction Warning — unresolved tension before hinge crossing */}
+            {openContradictions.length > 0 && (
+              <div className="rb-forge-contradiction">
+                <div className="rb-forge-contradiction-label">
+                  unresolved · {openContradictions.length}
+                </div>
+                {openContradictions.map((c) => (
+                  <div key={c.id} className="rb-forge-contradiction-entry">
+                    {c.text.length > 80 ? c.text.slice(0, 80) + "…" : c.text}
                   </div>
                 ))}
               </div>
