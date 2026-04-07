@@ -197,6 +197,57 @@ export function CreationChamber() {
           <div className={`rb-directive-forge${canCompose ? " rb-directive-forge--ready" : ""}`}>
             <div className="rb-forge-title">Directive Forge</div>
 
+            {/* Thread Record — prior consequence context before next composition */}
+            {directives.length > 0 && (
+              <div className="rb-thread-record">
+                <div className="rb-thread-record-label">thread record</div>
+                {directives.map((d) => {
+                  const linked = artifacts.filter((a) => a.directive === d.id);
+                  return (
+                    <div key={d.id} className="rb-thread-record-row">
+                      <div className="rb-row" style={{ gap: 6, flexWrap: "wrap" }}>
+                        <span className={`rb-badge ${d.status === "accepted" ? "ok" : "bad"}`}>
+                          {d.status}
+                        </span>
+                        <span className={`rb-badge ${d.risk}`}>{d.risk}</span>
+                        <span className="rb-thread-record-text">
+                          {d.text.length > 60 ? d.text.slice(0, 60) + "…" : d.text}
+                        </span>
+                      </div>
+                      {d.status === "rejected" && d.reason && (
+                        <div className="rb-thread-record-sub">↳ {d.reason}</div>
+                      )}
+                      {linked.map((a) => (
+                        <div key={a.id} className="rb-thread-record-chain">
+                          <span
+                            className={`rb-badge ${
+                              a.committed
+                                ? "ok"
+                                : a.review === "accepted"
+                                  ? "ok"
+                                  : a.review === "rejected"
+                                    ? "bad"
+                                    : "warn"
+                            }`}
+                          >
+                            {a.committed ? "committed" : a.review}
+                          </span>
+                          <span className="rb-thread-record-artifact">
+                            {a.title.length > 40 ? a.title.slice(0, 40) + "…" : a.title}
+                          </span>
+                          {a.commitRef && (
+                            <span className="rb-thread-record-ref">
+                              #{a.commitRef.slice(0, 7)}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Intent — primary statement */}
             <div className="rb-field-group">
               <label className="rb-field-label">Directive</label>

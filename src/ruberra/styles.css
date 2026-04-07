@@ -930,6 +930,60 @@ html, body, #root {
   opacity: 0.6;
 }
 
+/* ── Thread record — forge context, secondary to composition ───────────── */
+.rb-thread-record {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: var(--rb-bg-elev-2);
+  border: 1px solid var(--rb-line);
+  border-left: 2px solid var(--rb-line-strong);
+  border-radius: 2px;
+}
+.rb-thread-record-label {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  margin-bottom: 8px;
+}
+.rb-thread-record-row {
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--rb-line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rb-thread-record-row:last-child { border-bottom: none; }
+.rb-thread-record-text {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-soft);
+}
+.rb-thread-record-sub {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-mute);
+  padding-left: 4px;
+}
+.rb-thread-record-chain {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 16px;
+}
+.rb-thread-record-artifact {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-soft);
+}
+.rb-thread-record-ref {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-gold);
+  opacity: 0.7;
+}
+
 /* ── Artifact consequence evidence ─────────────────────────────────────── */
 .rb-artifact-evidence {
   margin: 8px 0 10px;
