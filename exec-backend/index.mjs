@@ -47,10 +47,20 @@ function json(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
+const BODY_LIMIT = 64 * 1024; // 64 KB — sufficient for any directive payload
+
 async function readBody(req) {
   return new Promise((resolve, reject) => {
     let buf = "";
-    req.on("data", (c) => (buf += c));
+    let size = 0;
+    req.on("data", (chunk) => {
+      size += Buffer.byteLength(chunk);
+      if (size > BODY_LIMIT) {
+        req.destroy();
+        return reject(new Error("request body too large"));
+      }
+      buf += chunk;
+    });
     req.on("end", () => {
       try { resolve(JSON.parse(buf || "{}")); }
       catch (e) { reject(e); }
@@ -129,9 +139,11 @@ async function handleExec(req, res) {
   if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required and must be a valid absolute path" });
   if (!directive?.scope) return json(res, 400, { ok: false, error: "directive.scope required" });
 
-  // Verify path exists
+  // Verify path exists and is a git repo — exec only operates on real repos
   try { await fs.access(repoPath); }
   catch { return json(res, 404, { ok: false, error: "repoPath not found" }); }
+  try { await fs.access(path.join(repoPath, ".git")); }
+  catch { return json(res, 400, { ok: false, error: "repoPath is not a git repository" }); }
 
   let files;
   try {
@@ -213,8 +225,9 @@ const server = http.createServer(async (req, res) => {
   json(res, 404, { ok: false, error: `unknown endpoint: ${req.method} ${pathname}` });
 });
 
-server.listen(PORT, () => {
-  console.log(`[ruberra-exec] listening on http://localhost:${PORT}`);
+// Bind to loopback only — this backend must never be reachable from other hosts.
+server.listen(PORT, "127.0.0.1", () => {
+  console.log(`[ruberra-exec] listening on http://127.0.0.1:${PORT} (loopback only)`);
   console.log(`[ruberra-exec] CORS origin: ${ALLOWED_ORIGIN}`);
   console.log(`[ruberra-exec] endpoints: POST /exec  GET /git/status  POST /git/verify`);
 });
