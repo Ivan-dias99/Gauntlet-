@@ -207,10 +207,10 @@ describe("ThreadStrip — left rail", () => {
     expect(screen.getByText("verify visual surfaces")).toBeInTheDocument();
   });
 
-  it("shows unavailable notice when no threads", () => {
+  it("shows editorial empty state when no threads", () => {
     currentProjection = boundProjection;
     render(<ThreadStrip />);
-    expect(screen.getByText("no threads")).toBeInTheDocument();
+    expect(screen.getByText("The loop opens with a stated intent.")).toBeInTheDocument();
   });
 });
 
@@ -224,10 +224,10 @@ describe("CanonRibbon — right rail", () => {
     expect(aside).toBeInTheDocument();
   });
 
-  it("shows empty canon message when no canon", () => {
+  it("shows editorial empty state when no canon", () => {
     currentProjection = boundProjection;
     render(<CanonRibbon />);
-    expect(screen.getByText("no canon yet")).toBeInTheDocument();
+    expect(screen.getByText(/Canon forms in School/)).toBeInTheDocument();
   });
 
   it("shows hardened canon entries with gold badge", () => {
@@ -258,10 +258,10 @@ describe("CreationChamber", () => {
     expect(screen.getByText("Directive Composition")).toBeInTheDocument();
   });
 
-  it("shows unavailable when no active thread", () => {
+  it("shows forge-unthreaded state when no active thread", () => {
     currentProjection = boundProjection;
     render(<CreationChamber />);
-    expect(screen.getByText("no active thread")).toBeInTheDocument();
+    expect(screen.getByText("forge unthreaded")).toBeInTheDocument();
   });
 
   it("execution unbound notice shown when backend not configured", () => {

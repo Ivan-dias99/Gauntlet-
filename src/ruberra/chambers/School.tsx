@@ -59,9 +59,8 @@ export function SchoolChamber() {
       <div className="rb-panel">
         <h2>Promote Memory → Propose Canon</h2>
         {promotableMemory.length === 0 ? (
-          <div className="rb-unavail">
-            <strong>no promotable memory</strong>
-            Memory is captured in Lab or through artifact review.
+          <div className="rb-empty">
+            Memory ready for promotion surfaces from Lab.
           </div>
         ) : (
           <ul className="rb-list">
@@ -111,9 +110,8 @@ export function SchoolChamber() {
           </button>
         </div>
         {openProposals.length === 0 ? (
-          <div className="rb-unavail">
-            <strong>no open proposals</strong>
-            Propose truth before hardening it into law.
+          <div className="rb-empty">
+            The proposal queue is clear.
           </div>
         ) : (
           <ul className="rb-list">
@@ -150,9 +148,8 @@ export function SchoolChamber() {
       <div className="rb-panel">
         <h2>Canon Ledger</h2>
         {canon.length === 0 ? (
-          <div className="rb-unavail">
-            <strong>no canon</strong>
-            Canon forms from proposals. None hardened yet.
+          <div className="rb-empty">
+            The law record is clear. Truth hardens here from proposals.
           </div>
         ) : (
           <ul className="rb-list">

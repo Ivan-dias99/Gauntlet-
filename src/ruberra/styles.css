@@ -207,6 +207,17 @@ html, body, #root {
 }
 .rb-unavail strong { color: var(--rb-warn); display: block; margin-bottom: 6px; letter-spacing: 0.1em; text-transform: uppercase; font-size: 11px; }
 
+/* Editorial empty state — calm readiness, not absence or error */
+.rb-empty {
+  padding: 20px 0;
+  color: var(--rb-ink-mute);
+  font-family: var(--rb-serif);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+}
+
 .rb-pulse {
   border-top: 1px solid var(--rb-line);
   background: var(--rb-bg-elev);

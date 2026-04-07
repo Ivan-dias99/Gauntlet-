@@ -40,9 +40,8 @@ export function CanonRibbon({ open, onClose }: Props) {
 
       <h3 className="rb-section-title">Canon</h3>
       {canon.length === 0 ? (
-        <div className="rb-unavail">
-          <strong>no canon yet</strong>
-          Promote memory to harden canon.
+        <div className="rb-empty">
+          Canon forms in School. This rail holds what the repo has made permanent.
         </div>
       ) : (
         <ul className="rb-list">
@@ -59,9 +58,8 @@ export function CanonRibbon({ open, onClose }: Props) {
         Memory
       </h3>
       {p.memory.length === 0 ? (
-        <div className="rb-unavail">
-          <strong>empty substrate</strong>
-          Capture memory from Lab or Creation.
+        <div className="rb-empty">
+          Memory captured in Lab surfaces here.
         </div>
       ) : (
         <ul className="rb-list">

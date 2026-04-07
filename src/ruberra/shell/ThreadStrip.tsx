@@ -59,9 +59,8 @@ export function ThreadStrip({ open, onClose }: Props) {
         </button>
       </div>
       {repoThreads.length === 0 ? (
-        <div className="rb-unavail">
-          <strong>no threads</strong>
-          Open one to begin the loop.
+        <div className="rb-empty">
+          The loop opens with a stated intent.
         </div>
       ) : (
         <div>

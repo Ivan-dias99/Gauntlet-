@@ -158,9 +158,8 @@ export function CreationChamber() {
 
       {!activeThread ? (
         <Unavailable
-          title="no active thread"
-          reason="Creation forges through a thread. Open one from the left rail."
-          remediation="State an intent to begin the loop."
+          title="forge unthreaded"
+          reason="Creation composes through an active thread. Open one from the thread rail."
         />
       ) : (
         <>
@@ -251,9 +250,8 @@ export function CreationChamber() {
           <div className="rb-panel">
             <h2>Directive Ledger</h2>
             {directives.length === 0 ? (
-              <div className="rb-unavail">
-                <strong>no directives</strong>
-                Compose one above.
+              <div className="rb-empty">
+                The consequence record opens on first acceptance.
               </div>
             ) : (
               <ul className="rb-list">
@@ -292,9 +290,8 @@ export function CreationChamber() {
           <div className="rb-panel">
             <h2>Executions</h2>
             {executions.length === 0 ? (
-              <div className="rb-unavail">
-                <strong>no executions</strong>
-                Accept a directive to produce consequence.
+              <div className="rb-empty">
+                Execution trace begins when the first directive is accepted.
               </div>
             ) : (
               <ul className="rb-list">
@@ -325,9 +322,8 @@ export function CreationChamber() {
           <div className="rb-panel">
             <h2>Artifacts — Review &amp; Commit</h2>
             {artifacts.length === 0 ? (
-              <div className="rb-unavail">
-                <strong>no artifacts</strong>
-                Executions will yield artifacts or an explicit null-artifact.
+              <div className="rb-empty">
+                The review station holds until execution yields consequence.
               </div>
             ) : (
               <ul className="rb-list">
