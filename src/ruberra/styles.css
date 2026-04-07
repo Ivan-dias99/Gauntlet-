@@ -929,3 +929,58 @@ html, body, #root {
   margin-top: 6px;
   opacity: 0.6;
 }
+
+/* ── Artifact consequence evidence ─────────────────────────────────────── */
+.rb-artifact-evidence {
+  margin: 8px 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-left: 2px solid var(--rb-line-strong);
+  padding-left: 10px;
+}
+.rb-artifact-evidence-label {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  margin-bottom: 2px;
+}
+.rb-artifact-files {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-soft);
+  line-height: 1.7;
+}
+.rb-artifact-files span {
+  display: block;
+}
+.rb-artifact-files span::before {
+  content: "·";
+  margin-right: 6px;
+  color: var(--rb-ok);
+  opacity: 0.7;
+}
+.rb-artifact-diff {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  line-height: 1.55;
+  color: var(--rb-ink-soft);
+  background: var(--rb-bg-elev-2);
+  border: 1px solid var(--rb-line);
+  border-radius: 2px;
+  padding: 8px 10px;
+  max-height: 160px;
+  overflow-y: auto;
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+.rb-artifact-commit-ref {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-gold);
+  letter-spacing: 0.06em;
+  opacity: 0.8;
+}

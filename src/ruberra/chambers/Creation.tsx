@@ -376,67 +376,92 @@ export function CreationChamber() {
                 {artifacts
                   .slice()
                   .reverse()
-                  .map((a) => (
-                    <li
-                      key={a.id}
-                      className="rb-row"
-                      style={{ justifyContent: "space-between", gap: 12 }}
-                    >
-                      <span>
-                        <span
-                          className={`rb-badge ${
-                            a.committed
-                              ? "ok"
-                              : a.review === "accepted"
-                                ? "ok"
-                                : a.review === "rejected"
-                                  ? "bad"
-                                  : "warn"
-                          }`}
-                        >
-                          {a.committed ? "committed" : a.review}
-                        </span>
-                        {a.title}
-                        {a.reviewReason ? (
-                          <div
-                            style={{
-                              fontSize: 10,
-                              color: "var(--rb-ink-mute)",
-                              marginTop: 4,
-                            }}
-                          >
+                  .map((a) => {
+                    const hasEvidence = !!(a.files?.length || a.diff || a.commitRef);
+                    return (
+                      <li key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {/* Header: status badge + title */}
+                        <div className="rb-row" style={{ justifyContent: "space-between", gap: 12 }}>
+                          <span>
+                            <span
+                              className={`rb-badge ${
+                                a.committed
+                                  ? "ok"
+                                  : a.review === "accepted"
+                                    ? "ok"
+                                    : a.review === "rejected"
+                                      ? "bad"
+                                      : "warn"
+                              }`}
+                            >
+                              {a.committed ? "committed" : a.review}
+                            </span>
+                            {a.title}
+                          </span>
+                        </div>
+
+                        {/* Consequence evidence — only when payload exists */}
+                        {hasEvidence && (
+                          <div className="rb-artifact-evidence">
+                            {a.files && a.files.length > 0 && (
+                              <div>
+                                <div className="rb-artifact-evidence-label">affected files</div>
+                                <div className="rb-artifact-files">
+                                  {a.files.map((f) => (
+                                    <span key={f}>{f}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {a.diff && (
+                              <div>
+                                <div className="rb-artifact-evidence-label">changes</div>
+                                <pre className="rb-artifact-diff">{a.diff}</pre>
+                              </div>
+                            )}
+                            {a.commitRef && (
+                              <div className="rb-artifact-commit-ref">ref: {a.commitRef}</div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Review reason — shown after judgment */}
+                        {a.reviewReason && (
+                          <div style={{ fontSize: 10, color: "var(--rb-ink-mute)" }}>
                             {a.reviewReason}
                           </div>
-                        ) : null}
-                      </span>
-                      <span className="rb-row">
-                        {a.review === "pending" && (
-                          <>
-                            <button
-                              className="rb-btn"
-                              onClick={() => review(a.id, "accepted")}
-                            >
-                              Accept
-                            </button>
-                            <button
-                              className="rb-btn"
-                              onClick={() => review(a.id, "rejected")}
-                            >
-                              Reject
-                            </button>
-                          </>
                         )}
-                        {a.review === "accepted" && !a.committed && (
-                          <button
-                            className="rb-btn primary"
-                            onClick={() => emit.commitArtifact(a.id)}
-                          >
-                            Commit
-                          </button>
-                        )}
-                      </span>
-                    </li>
-                  ))}
+
+                        {/* Actions — Accept / Reject / Commit */}
+                        <div className="rb-row">
+                          {a.review === "pending" && (
+                            <>
+                              <button
+                                className="rb-btn"
+                                onClick={() => review(a.id, "accepted")}
+                              >
+                                Accept
+                              </button>
+                              <button
+                                className="rb-btn"
+                                onClick={() => review(a.id, "rejected")}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {a.review === "accepted" && !a.committed && (
+                            <button
+                              className="rb-btn primary"
+                              onClick={() => emit.commitArtifact(a.id)}
+                            >
+                              Commit
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
               </ul>
             )}
           </div>
