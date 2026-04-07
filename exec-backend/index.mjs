@@ -21,6 +21,18 @@ const execAsync = promisify(exec);
 const PORT = process.env.RUBERRA_EXEC_PORT ? Number(process.env.RUBERRA_EXEC_PORT) : 3001;
 const ALLOWED_ORIGIN = process.env.RUBERRA_ORIGIN ?? "http://localhost:5173";
 
+// ── path guard ─────────────────────────────────────────────────────────────
+// Normalize and validate a repoPath supplied by the client.
+// Rejects empty, non-absolute, or paths that contain null bytes.
+// Returns the resolved absolute path or null if invalid.
+function sanitizePath(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  if (raw.includes("\0")) return null;                 // null-byte injection
+  const resolved = path.resolve(raw);                  // normalize traversal sequences
+  if (!path.isAbsolute(resolved)) return null;
+  return resolved;
+}
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function cors(res) {
@@ -113,13 +125,13 @@ async function handleExec(req, res) {
   catch { return json(res, 400, { ok: false, error: "invalid JSON body" }); }
 
   const { repoPath: rp, repo, directive } = body;
-  const repoPath = rp ?? repo;
-  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required" });
+  const repoPath = sanitizePath(rp ?? repo);
+  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required and must be a valid absolute path" });
   if (!directive?.scope) return json(res, 400, { ok: false, error: "directive.scope required" });
 
   // Verify path exists
   try { await fs.access(repoPath); }
-  catch { return json(res, 404, { ok: false, error: `repoPath not found: ${repoPath}` }); }
+  catch { return json(res, 404, { ok: false, error: "repoPath not found" }); }
 
   let files;
   try {
@@ -129,16 +141,16 @@ async function handleExec(req, res) {
   }
 
   const artifacts = files.map((f) => ({ title: f }));
-  console.log(`[exec] ${directive.scope} → ${artifacts.length} artifacts in ${repoPath}`);
+  console.log(`[exec] scope=${directive.scope} → ${artifacts.length} artifacts`);
   return json(res, 200, { ok: true, artifacts });
 }
 
 async function handleGitStatus(req, res, searchParams) {
-  const repoPath = searchParams.get("path");
-  if (!repoPath) return json(res, 400, { ok: false, error: "path query param required" });
+  const repoPath = sanitizePath(searchParams.get("path"));
+  if (!repoPath) return json(res, 400, { ok: false, error: "path query param required and must be a valid absolute path" });
 
   try { await fs.access(repoPath); }
-  catch { return json(res, 404, { ok: false, error: `path not found: ${repoPath}` }); }
+  catch { return json(res, 404, { ok: false, error: "path not found" }); }
 
   try {
     const { stdout } = await execAsync("git status --short", { cwd: repoPath });
@@ -153,11 +165,11 @@ async function handleGitVerify(req, res) {
   try { body = await readBody(req); }
   catch { return json(res, 400, { ok: false, message: "invalid JSON body" }); }
 
-  const { repoPath } = body;
-  if (!repoPath) return json(res, 400, { ok: false, message: "repoPath required" });
+  const repoPath = sanitizePath(body.repoPath);
+  if (!repoPath) return json(res, 400, { ok: false, message: "repoPath required and must be a valid absolute path" });
 
   try { await fs.access(repoPath); }
-  catch { return json(res, 200, { ok: false, message: `path not found: ${repoPath}` }); }
+  catch { return json(res, 200, { ok: false, message: "path not found" }); }
 
   try {
     await fs.access(path.join(repoPath, ".git"));
