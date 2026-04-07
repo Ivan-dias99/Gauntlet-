@@ -98,12 +98,30 @@ export function CreationChamber() {
         });
         if (!res.ok) throw new Error(`backend ${res.status}`);
         const data = (await res.json()) as {
-          artifacts?: { title: string }[];
+          artifacts?: {
+            title: string;
+            // Consequence payload — all optional, all backward-compatible.
+            files?: string[];
+            diff?: string;
+            commitRef?: string;
+          }[];
           ok?: boolean;
         };
         const list = data.artifacts ?? [];
         for (const a of list) {
-          await emit.generateArtifact(a.title, ex.id, activeThread.id, d.id);
+          // Forward only fields the backend actually provided. Missing fields
+          // remain undefined and are handled safely by the spine reducer.
+          const consequence =
+            a.files !== undefined || a.diff !== undefined || a.commitRef !== undefined
+              ? { files: a.files, diff: a.diff, commitRef: a.commitRef }
+              : undefined;
+          await emit.generateArtifact(
+            a.title,
+            ex.id,
+            activeThread.id,
+            d.id,
+            consequence,
+          );
         }
         if (list.length === 0) {
           await emit.nullConsequence("execution", "backend returned no artifacts");
