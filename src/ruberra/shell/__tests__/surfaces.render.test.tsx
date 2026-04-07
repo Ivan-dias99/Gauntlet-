@@ -230,14 +230,14 @@ describe("CanonRibbon — right rail", () => {
     expect(screen.getByText("no canon")).toBeInTheDocument();
   });
 
-  it("shows hardened canon entries with gold badge", () => {
+  it("shows hardened canon entries", () => {
     currentProjection = {
       ...boundProjection,
       canon: [{ id: "c1", text: "sovereign law", state: "hardened", hardenedAt: Date.now() }],
     };
     render(<CanonRibbon />);
-    const badge = document.querySelector(".rb-badge.gold");
-    expect(badge).toBeInTheDocument();
+    const entry = document.querySelector(".rb-canon-entry");
+    expect(entry).toBeInTheDocument();
     expect(screen.getByText("sovereign law")).toBeInTheDocument();
   });
 });
@@ -255,7 +255,7 @@ describe("CreationChamber", () => {
   it("shows directive composition panel when thread active", () => {
     currentProjection = withThreadProjection;
     render(<CreationChamber />);
-    expect(screen.getByText("Directive Composition")).toBeInTheDocument();
+    expect(screen.getByText("Directive Forge")).toBeInTheDocument();
   });
 
   it("shows unavailable when no active thread", () => {
