@@ -2,7 +2,7 @@
 // On narrow screens: rendered as an overlay rail; open/onClose driven by Shell.
 
 import { useProjection } from "../spine/store";
-import { useIsMobile } from "../../app/components/ui/use-mobile";
+import { useIsMobile } from "./use-mobile";
 
 interface Props {
   open?: boolean;
