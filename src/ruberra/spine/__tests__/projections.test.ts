@@ -211,6 +211,96 @@ describe("contradiction lifecycle", () => {
   });
 });
 
+// ── artifact consequence payload ───────────────────────────────────────────
+
+describe("artifact consequence payload", () => {
+  function baseWithArtifact(extraPayload: Record<string, unknown> = {}) {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "task" }, { repo: "r" });
+    const d = ev(
+      "directive.accepted",
+      { text: "do it", scope: "src/**", risk: "reversible", acceptance: "tests pass" },
+      { thread: t.id, repo: "r" },
+    );
+    const x = ev(
+      "execution.started",
+      { label: "run", directiveId: d.id },
+      { thread: t.id, repo: "r", parent: d.id },
+    );
+    const a = ev(
+      "artifact.generated",
+      { title: "result.ts", executionId: x.id, ...extraPayload },
+      { thread: t.id, repo: "r", parent: x.id },
+    );
+    return { events: [repo, t, d, x, a], artifactId: a.id };
+  }
+
+  it("old artifact event (no consequence fields) replays safely — fields undefined", () => {
+    const { events } = baseWithArtifact();
+    const p = project(events);
+    const a = p.artifacts[0];
+    expect(a).toBeDefined();
+    expect(a.review).toBe("pending");
+    expect(a.files).toBeUndefined();
+    expect(a.diff).toBeUndefined();
+    expect(a.commitRef).toBeUndefined();
+  });
+
+  it("artifact with files preserved through replay", () => {
+    const { events } = baseWithArtifact({ files: ["src/foo.ts", "src/bar.ts"] });
+    const p = project(events);
+    expect(p.artifacts[0].files).toEqual(["src/foo.ts", "src/bar.ts"]);
+  });
+
+  it("artifact with diff preserved through replay", () => {
+    const { events } = baseWithArtifact({ diff: "@@ -1,3 +1,4 @@\n+line added" });
+    const p = project(events);
+    expect(p.artifacts[0].diff).toBe("@@ -1,3 +1,4 @@\n+line added");
+  });
+
+  it("artifact with commitRef preserved through replay", () => {
+    const { events } = baseWithArtifact({ commitRef: "abc1234" });
+    const p = project(events);
+    expect(p.artifacts[0].commitRef).toBe("abc1234");
+  });
+
+  it("artifact with all consequence fields preserved through replay", () => {
+    const { events } = baseWithArtifact({
+      files: ["src/index.ts"],
+      diff: "--- a\n+++ b\n+new line",
+      commitRef: "deadbeef",
+    });
+    const p = project(events);
+    const a = p.artifacts[0];
+    expect(a.files).toEqual(["src/index.ts"]);
+    expect(a.diff).toBe("--- a\n+++ b\n+new line");
+    expect(a.commitRef).toBe("deadbeef");
+  });
+
+  it("consequence fields do not affect review lifecycle", () => {
+    const { events, artifactId } = baseWithArtifact({
+      files: ["src/main.ts"],
+      commitRef: "cafebabe",
+    });
+    const repo = events[0];
+    const t = events[1];
+    const reviewEv = ev(
+      "artifact.reviewed",
+      { artifactId, outcome: "accepted", reason: "clean" },
+      { thread: t.id, repo: "r", parent: artifactId },
+    );
+    const p = project([...events, reviewEv]);
+    const a = p.artifacts[0];
+    expect(a.review).toBe("accepted");
+    expect(a.reviewReason).toBe("clean");
+    // Consequence payload survives review event unchanged
+    expect(a.files).toEqual(["src/main.ts"]);
+    expect(a.commitRef).toBe("cafebabe");
+    // repo used above to suppress unused warning
+    void repo;
+  });
+});
+
 // ── null consequence ───────────────────────────────────────────────────────
 
 describe("null.consequence", () => {

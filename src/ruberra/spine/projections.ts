@@ -97,6 +97,11 @@ export interface Artifact {
   review: ArtifactReview;
   reviewReason?: string;
   ts: number;
+  // Consequence payload — populated when execution backend returns real output.
+  // Optional and backward-compatible: absent on all pre-existing stored events.
+  files?: string[];    // affected file paths
+  diff?: string;       // unified diff or change summary
+  commitRef?: string;  // commit SHA or equivalent token
 }
 
 export interface CanonEntry {
@@ -281,6 +286,10 @@ export function project(events: RuberraEvent[]): Projection {
           committed: false,
           review: "pending",
           ts: ev.ts,
+          // Consequence payload — absent on old events; remains undefined safely.
+          files: ev.payload.files as string[] | undefined,
+          diff: ev.payload.diff as string | undefined,
+          commitRef: ev.payload.commitRef as string | undefined,
         });
         const t = p.threads.find((t) => t.id === ev.thread);
         if (t && t.state !== "closed") t.state = "awaiting-review";

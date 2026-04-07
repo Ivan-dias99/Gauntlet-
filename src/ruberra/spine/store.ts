@@ -254,11 +254,12 @@ export const emit = {
     executionId: string,
     threadId: string,
     directiveId?: string,
+    consequence?: { files?: string[]; diff?: string; commitRef?: string },
   ) => {
     const t = requireThread(threadId);
     return append(
       "artifact.generated",
-      { title, executionId, directiveId },
+      { title, executionId, directiveId, ...consequence },
       { thread: t.id, repo: t.repo, parent: executionId },
     );
   },
