@@ -59,6 +59,17 @@ export function CreationChamber() {
       ? repoCanon.filter((c) => matchesCanon(text, scope, c.text))
       : [];
 
+  // Retained consequence — memory auto-captured from accepted artifact reviews in this thread.
+  // Filter is deterministic: thread-scoped, non-revoked, system-generated "artifact accepted:" prefix.
+  const threadMemory = activeThread
+    ? p.memory.filter(
+        (m) =>
+          m.thread === activeThread.id &&
+          m.text.startsWith("artifact accepted:") &&
+          m.state !== "revoked",
+      )
+    : [];
+
   const ambiguous = /\{\{[^}]+\}\}/.test(text);
   const canCompose =
     !!activeThread &&
@@ -275,6 +286,18 @@ export function CreationChamber() {
                 {canonConstraints.map((c) => (
                   <div key={c.id} className="rb-canon-constraint-entry">
                     {c.text.length > 80 ? c.text.slice(0, 80) + "…" : c.text}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Retained Consequence — prior artifact-review memory for this thread */}
+            {threadMemory.length > 0 && (
+              <div className="rb-forge-memory">
+                <div className="rb-forge-memory-label">retained consequence</div>
+                {threadMemory.map((m) => (
+                  <div key={m.id} className="rb-forge-memory-entry">
+                    {m.text.length > 80 ? m.text.slice(0, 80) + "…" : m.text}
                   </div>
                 ))}
               </div>
