@@ -19,6 +19,16 @@ const RISK_INFO: Record<Risk, { descriptor: string; colorClass: string }> = {
   destructive:  { descriptor: "irreversible — requires explicit confirmation",    colorClass: "bad"  },
 };
 
+// Deterministic token-overlap heuristic — same pattern as store.ts captureMemory.
+// Returns true if 2+ tokens (length > 4) from the directive appear in the canon text.
+function matchesCanon(directiveText: string, scopeText: string, canonText: string): boolean {
+  const needle = `${directiveText} ${scopeText}`.toLowerCase();
+  const tokens = needle.split(/\s+/).filter((w) => w.length > 4);
+  if (tokens.length === 0) return false;
+  const hay = canonText.toLowerCase();
+  return tokens.filter((w) => hay.includes(w)).length >= 2;
+}
+
 export function CreationChamber() {
   const p = useProjection();
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
@@ -38,6 +48,16 @@ export function CreationChamber() {
   const directives = p.directives.filter(
     (d) => activeThread && d.thread === activeThread.id,
   );
+
+  // Canon constraint signal — hardened canon in this repo that overlaps current composition.
+  // Empty when forge is blank, when no canon exists, or when no overlap is found.
+  const repoCanon = p.canon.filter(
+    (c) => c.state === "hardened" && c.repo === activeThread?.repo,
+  );
+  const canonConstraints =
+    text.trim() || scope.trim()
+      ? repoCanon.filter((c) => matchesCanon(text, scope, c.text))
+      : [];
 
   const ambiguous = /\{\{[^}]+\}\}/.test(text);
   const canCompose =
@@ -245,6 +265,18 @@ export function CreationChamber() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Canon Constraint Signal — matching hardened canon for this repo */}
+            {canonConstraints.length > 0 && (
+              <div className="rb-canon-constraint">
+                <div className="rb-canon-constraint-label">canon constraint</div>
+                {canonConstraints.map((c) => (
+                  <div key={c.id} className="rb-canon-constraint-entry">
+                    {c.text.length > 80 ? c.text.slice(0, 80) + "…" : c.text}
+                  </div>
+                ))}
               </div>
             )}
 
