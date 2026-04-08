@@ -1,9 +1,11 @@
 // Ruberra — Root. Hydrates the event log, then mounts the shell.
 // Safe mode boot: if hydration fails catastrophically, minimal surface.
+// Returning users see system state acknowledgment before re-entry.
 
 import { useEffect, useState } from "react";
-import { bootSpine } from "./spine/store";
-import { useProjection } from "./spine/store";
+import { bootSpine, useProjection } from "./spine/store";
+import { project } from "./spine/projections";
+import { all } from "./spine/eventLog";
 import { Shell } from "./shell/Shell";
 import { RitualEntry } from "./shell/RitualEntry";
 import { ErrorBoundary } from "./trust/ErrorBoundary";
@@ -12,22 +14,25 @@ import "./styles.css";
 
 type BootState =
   | { phase: "booting" }
-  | { phase: "ready" }
+  | { phase: "ready"; returning: boolean }
   | { phase: "fatal"; error: Error };
 
-function Inner() {
+function Inner({ returning }: { returning: boolean }) {
   const p = useProjection();
-  const [entered, setEntered] = useState<boolean>(!!p.activeRepo);
+  const [entered, setEntered] = useState<boolean>(false);
 
-  // If hydration reveals an existing repo, skip ritual.
-  useEffect(() => {
-    if (p.activeRepo) setEntered(true);
-  }, [p.activeRepo]);
-
-  if (!entered || !p.activeRepo) {
-    return <RitualEntry onEnter={() => setEntered(true)} />;
+  // If the user has already entered this session, stay entered.
+  // The returning flag gates whether we show recognition or initiation.
+  if (entered) {
+    return <Shell />;
   }
-  return <Shell />;
+
+  return (
+    <RitualEntry
+      onEnter={() => setEntered(true)}
+      returning={returning && !!p.activeRepo}
+    />
+  );
 }
 
 export default function RuberraApp() {
@@ -35,7 +40,11 @@ export default function RuberraApp() {
 
   useEffect(() => {
     bootSpine()
-      .then(() => setBoot({ phase: "ready" }))
+      .then(() => {
+        // After hydration, snapshot the projection to detect returning user.
+        const p = project(all());
+        setBoot({ phase: "ready", returning: !!p.activeRepo });
+      })
       .catch((err) => setBoot({ phase: "fatal", error: err as Error }));
   }, []);
 
@@ -46,7 +55,7 @@ export default function RuberraApp() {
           <h1>
             RUB<span>E</span>RRA
           </h1>
-          <p>hydrating event log…</p>
+          <p>hydrating spine…</p>
         </div>
       </div>
     );
@@ -68,7 +77,7 @@ export default function RuberraApp() {
   return (
     <ErrorBoundary label="Ruberra shell">
       <RuledPromptHost />
-      <Inner />
+      <Inner returning={boot.returning} />
     </ErrorBoundary>
   );
 }
