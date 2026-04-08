@@ -45,6 +45,11 @@ export function CreationChamber() {
   const executions = p.executions.filter(
     (x) => !activeThread || x.thread === activeThread.id,
   );
+  // Running executions for the active thread — drives the forge-local
+  // live signal. Idle ⇒ empty ⇒ signal hidden. No new state, no new events.
+  const runningExecutions = activeThread
+    ? executions.filter((x) => x.status === "running")
+    : [];
   const directives = p.directives.filter(
     (d) => activeThread && d.thread === activeThread.id,
   );
@@ -419,6 +424,30 @@ export function CreationChamber() {
                 Reject
               </button>
             </div>
+
+            {/* Live execution signal — loop-local, silent when idle.
+                Shown only while at least one execution is running for the
+                active thread. Disappears automatically on succeed/fail. */}
+            {runningExecutions.length > 0 && (
+              <div
+                className="rb-forge-exec-signal"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="rb-forge-exec-dot" aria-hidden="true" />
+                <span className="rb-forge-exec-label">executing</span>
+                <span className="rb-forge-exec-target">
+                  {runningExecutions[0].label.length > 48
+                    ? runningExecutions[0].label.slice(0, 48) + "…"
+                    : runningExecutions[0].label}
+                </span>
+                {runningExecutions.length > 1 && (
+                  <span className="rb-forge-exec-count">
+                    +{runningExecutions.length - 1}
+                  </span>
+                )}
+              </div>
+            )}
 
             {err && (
               <div className="rb-unavail" style={{ marginTop: 12 }}>
