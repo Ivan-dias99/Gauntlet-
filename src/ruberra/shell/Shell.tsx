@@ -11,16 +11,18 @@ import { EventPulse } from "./EventPulse";
 import { CreationChamber } from "../chambers/Creation";
 import { LabChamber } from "../chambers/Lab";
 import { SchoolChamber } from "../chambers/School";
+import { MemoryChamber } from "../chambers/Memory";
 import { ErrorBoundary } from "../trust/ErrorBoundary";
 
 const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
   | string
   | undefined;
 
-const CHAMBERS: Array<{ id: "lab" | "school" | "creation"; label: string }> = [
+const CHAMBERS: Array<{ id: "lab" | "school" | "creation" | "memory"; label: string }> = [
   { id: "lab", label: "Lab" },
   { id: "school", label: "School" },
   { id: "creation", label: "Creation" },
+  { id: "memory", label: "Memory" },
 ];
 
 export function Shell() {
@@ -191,6 +193,7 @@ export function Shell() {
           {p.chamber === "creation" && <CreationChamber />}
           {p.chamber === "lab" && <LabChamber />}
           {p.chamber === "school" && <SchoolChamber />}
+          {p.chamber === "memory" && <MemoryChamber />}
         </ErrorBoundary>
 
         <ErrorBoundary label="Canon ribbon">

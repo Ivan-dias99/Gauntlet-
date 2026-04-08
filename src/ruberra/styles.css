@@ -530,6 +530,11 @@ html, body, #root {
     radial-gradient(800px 600px at 50% -8%, rgba(138, 98, 56, 0.09), transparent 55%),
     radial-gradient(500px 400px at 0% 85%, rgba(138, 98, 56, 0.04), transparent 50%);
 }
+.rb-chamber--memory {
+  background:
+    radial-gradient(900px 700px at 20% -10%, rgba(90, 122, 138, 0.07), transparent 60%),
+    radial-gradient(500px 400px at 90% 90%, rgba(90, 122, 138, 0.04), transparent 50%);
+}
 
 /* Chamber header block — replaces bare h1 + .gravity */
 .rb-chamber-header {
@@ -581,11 +586,13 @@ html, body, #root {
 .rb-chamber--lab    .rb-chamber-accent-line { background: #52796A; }
 .rb-chamber--school .rb-chamber-accent-line { background: #4A6B84; }
 .rb-chamber--creation .rb-chamber-accent-line { background: #8A6238; }
+.rb-chamber--memory .rb-chamber-accent-line { background: #5A7A8A; }
 
 /* Panel left accent rail — per chamber */
 .rb-chamber--lab    .rb-panel { border-left: 2px solid rgba(82, 121, 106, 0.28); }
 .rb-chamber--school .rb-panel { border-left: 2px solid rgba(74, 107, 132, 0.28); }
 .rb-chamber--creation .rb-panel { border-left: 2px solid rgba(138, 98, 56, 0.28); }
+.rb-chamber--memory .rb-panel { border-left: 2px solid rgba(90, 122, 138, 0.28); }
 
 /* Chamber glyph: per-chamber accent color on active (overrides generic red) */
 .rb-chamber-glyph[data-id="lab"].active {
@@ -599,6 +606,10 @@ html, body, #root {
 .rb-chamber-glyph[data-id="creation"].active {
   color: #C89860;
   box-shadow: inset 0 -2px 0 0 #8A6238;
+}
+.rb-chamber-glyph[data-id="memory"].active {
+  color: #7AA0B0;
+  box-shadow: inset 0 -2px 0 0 #5A7A8A;
 }
 
 /* Active thread: chamber-aware border via inline style (ThreadStrip) */
@@ -1366,4 +1377,158 @@ html, body, #root {
 }
 @media (prefers-reduced-motion: reduce) {
   .rb-forge-exec-dot { animation: none; opacity: 0.9; }
+}
+
+/* ── Memory Chamber ─────────────────────────────────────────────────────── */
+
+/* Truth-state distribution — compact 4-cell summary at top */
+.rb-memory-distribution {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--rb-line);
+  border: 1px solid var(--rb-line);
+  margin-bottom: 18px;
+}
+
+.rb-memory-dist-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  background: var(--rb-bg-elev);
+  cursor: pointer;
+  border: none;
+  font-family: var(--rb-mono);
+}
+.rb-memory-dist-cell:hover { background: var(--rb-bg-elev-2); }
+.rb-memory-dist-cell.active { background: var(--rb-bg-elev-2); }
+
+.rb-memory-dist-cell[data-state="retained"].active { border-bottom: 2px solid var(--rb-ok); }
+.rb-memory-dist-cell[data-state="hardened"].active  { border-bottom: 2px solid var(--rb-gold); }
+.rb-memory-dist-cell[data-state="observed"].active  { border-bottom: 2px solid var(--rb-ink-mute); }
+.rb-memory-dist-cell[data-state="revoked"].active   { border-bottom: 2px solid var(--rb-bad); }
+
+.rb-memory-dist-count {
+  font-size: 16px;
+  color: var(--rb-ink);
+  line-height: 1.2;
+}
+.rb-memory-dist-cell[data-state="retained"] .rb-memory-dist-count { color: var(--rb-ok); }
+.rb-memory-dist-cell[data-state="hardened"] .rb-memory-dist-count  { color: var(--rb-gold); }
+.rb-memory-dist-cell[data-state="revoked"] .rb-memory-dist-count   { color: var(--rb-bad); }
+
+.rb-memory-dist-label {
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  margin-top: 2px;
+}
+
+/* Controls — search + thread filter */
+.rb-memory-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.rb-memory-search {
+  flex: 1;
+  background: var(--rb-bg);
+  color: var(--rb-ink);
+  border: 1px solid var(--rb-line-strong);
+  padding: 8px 12px;
+  font-family: var(--rb-mono);
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+.rb-memory-search:focus { border-color: rgba(90, 122, 138, 0.55); }
+.rb-memory-search::placeholder { color: var(--rb-ink-mute); }
+
+.rb-memory-thread-filter {
+  background: var(--rb-bg);
+  color: var(--rb-ink-soft);
+  border: 1px solid var(--rb-line-strong);
+  padding: 8px 10px;
+  font-family: var(--rb-mono);
+  font-size: 11px;
+  outline: none;
+  max-width: 200px;
+}
+
+/* Capture — observation input */
+.rb-memory-capture {
+  border: 1px solid var(--rb-line);
+  border-left: 2px solid rgba(90, 122, 138, 0.42);
+  background: var(--rb-bg-elev);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.rb-memory-capture-label {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(90, 122, 138, 0.7);
+  margin-bottom: 10px;
+}
+
+/* Ledger — the recall surface */
+.rb-memory-ledger {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rb-memory-item {
+  border: 1px solid var(--rb-line);
+  background: var(--rb-bg-elev);
+  padding: 12px 14px;
+}
+.rb-memory-item.revoked {
+  opacity: 0.5;
+  border-left: 2px solid rgba(168, 66, 58, 0.3);
+}
+
+.rb-memory-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.rb-memory-item-thread {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+.rb-memory-item-thread::before { content: "↳ "; }
+
+.rb-memory-item-time {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+  margin-left: auto;
+  letter-spacing: 0.08em;
+}
+
+.rb-memory-item-text {
+  font-family: var(--rb-mono);
+  font-size: 12px;
+  color: var(--rb-ink-soft);
+  line-height: 1.6;
+}
+
+.rb-memory-item-actions {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rb-line);
 }

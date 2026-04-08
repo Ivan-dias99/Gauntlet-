@@ -118,6 +118,7 @@ import { Unavailable } from "../../trust/Unavailable";
 import { CreationChamber } from "../../chambers/Creation";
 import { LabChamber } from "../../chambers/Lab";
 import { SchoolChamber } from "../../chambers/School";
+import { MemoryChamber } from "../../chambers/Memory";
 
 // ── RitualEntry ─────────────────────────────────────────────────────────────
 
@@ -163,14 +164,15 @@ describe("Shell — sovereign frame", () => {
     expect(repo?.textContent).toMatch(/test-repo/);
   });
 
-  it("renders exactly three chamber glyph buttons", () => {
+  it("renders exactly four chamber glyph buttons", () => {
     render(<Shell />);
     const glyphs = document.querySelectorAll(".rb-chamber-glyph");
-    expect(glyphs).toHaveLength(3);
+    expect(glyphs).toHaveLength(4);
     const labels = Array.from(glyphs).map((g) => g.textContent?.trim().toLowerCase());
     expect(labels).toContain("lab");
     expect(labels).toContain("school");
     expect(labels).toContain("creation");
+    expect(labels).toContain("memory");
   });
 
   it("active chamber glyph has active class", () => {
@@ -286,6 +288,45 @@ describe("SchoolChamber", () => {
     render(<SchoolChamber />);
     expect(document.querySelector(".rb-chamber")).toBeInTheDocument();
     expect(screen.getByText("School")).toBeInTheDocument();
+  });
+});
+
+describe("MemoryChamber", () => {
+  it("renders rb-chamber with Memory heading", () => {
+    currentProjection = boundProjection;
+    render(<MemoryChamber />);
+    expect(document.querySelector(".rb-chamber")).toBeInTheDocument();
+    expect(screen.getByText("Memory")).toBeInTheDocument();
+  });
+
+  it("shows no memory notice when empty", () => {
+    currentProjection = boundProjection;
+    render(<MemoryChamber />);
+    expect(screen.getByText("no memory")).toBeInTheDocument();
+  });
+
+  it("renders truth-state distribution cells", () => {
+    currentProjection = boundProjection;
+    render(<MemoryChamber />);
+    const cells = document.querySelectorAll(".rb-memory-dist-cell");
+    expect(cells).toHaveLength(4);
+  });
+
+  it("renders capture observation input", () => {
+    currentProjection = boundProjection;
+    render(<MemoryChamber />);
+    expect(screen.getByPlaceholderText("what was observed…")).toBeInTheDocument();
+  });
+
+  it("shows memory entries when present", () => {
+    currentProjection = {
+      ...boundProjection,
+      memory: [
+        { id: "m1", repo: "test-repo", text: "observed pattern in execution", ts: Date.now(), promoted: false, state: "retained" },
+      ],
+    };
+    render(<MemoryChamber />);
+    expect(screen.getByText("observed pattern in execution")).toBeInTheDocument();
   });
 });
 

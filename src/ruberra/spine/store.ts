@@ -79,7 +79,7 @@ export const emit = {
     return ev;
   },
 
-  enterChamber: (chamber: "lab" | "school" | "creation") =>
+  enterChamber: (chamber: "lab" | "school" | "creation" | "memory") =>
     append("chamber.entered", { chamber }, { repo: requireRepo() }),
 
   openThread: (intent: string) => {

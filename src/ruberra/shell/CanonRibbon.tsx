@@ -20,18 +20,11 @@ function timeAgo(ts: number): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
-const MEMORY_LIMIT = 8;
-
 export function CanonRibbon({ open, onClose }: Props) {
   const p = useProjection();
   const isMobile = useIsMobile();
   const canon = p.canon.filter((c) => c.state === "hardened");
   const revoked = p.canon.filter((c) => c.state === "revoked");
-  const rawMemory = p.memory.filter((m) => !m.promoted);
-  const memorySlice = rawMemory.slice(-MEMORY_LIMIT).reverse();
-  const memoryOverflow = rawMemory.length > MEMORY_LIMIT
-    ? rawMemory.length - MEMORY_LIMIT
-    : 0;
 
   const narrowClass = open
     ? "rb-rail rb-rail-right rb-rail--open"
@@ -97,28 +90,6 @@ export function CanonRibbon({ open, onClose }: Props) {
         </div>
       )}
 
-      {/* Memory substrate — raw, subordinate */}
-      <div className="rb-memory-header">
-        <span>Memory</span>
-        {rawMemory.length > 0 && (
-          <span className="rb-memory-header-count">{rawMemory.length}</span>
-        )}
-      </div>
-
-      {p.memory.length === 0 ? (
-        <div className="rb-unavail">
-          <strong>no memory</strong>
-        </div>
-      ) : (
-        <div>
-          {memorySlice.map((m) => (
-            <div key={m.id} className="rb-memory-entry">{m.text}</div>
-          ))}
-          {memoryOverflow > 0 && (
-            <div className="rb-memory-overflow">+{memoryOverflow} more</div>
-          )}
-        </div>
-      )}
     </aside>
   );
 }
