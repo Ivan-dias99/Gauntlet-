@@ -64,6 +64,60 @@ html, body, #root {
   padding: 4px 10px;
   border-radius: 2px;
 }
+/* ── Repo git authority indicator ────────────────────────────────────────── */
+.rb-repo-git {
+  margin-left: 8;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.rb-repo-git::before { content: "· "; }
+.rb-repo-git.clean { color: var(--rb-ok); }
+.rb-repo-git.dirty { color: var(--rb-warn); }
+
+/* ── System Spine — ambient structural indicators ───────────────────────── */
+.rb-spine-indicators {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+}
+
+.rb-spine-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--rb-line);
+  border-right: none;
+  min-width: 52px;
+}
+.rb-spine-cell:last-child { border-right: 1px solid var(--rb-line); }
+
+.rb-spine-cell--warn {
+  border-color: rgba(168, 66, 58, 0.28);
+  background: rgba(168, 66, 58, 0.04);
+}
+.rb-spine-cell--warn .rb-spine-value { color: var(--rb-bad); }
+
+.rb-spine-label {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  line-height: 1;
+}
+
+.rb-spine-value {
+  font-family: var(--rb-mono);
+  font-size: 12px;
+  color: var(--rb-ink-soft);
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+}
+
+.rb-spine-value--gold { color: var(--rb-gold); }
+
 .rb-chambers { display: flex; gap: 2px; margin-left: auto; }
 .rb-chamber-glyph {
   font-family: var(--rb-serif);
@@ -311,6 +365,28 @@ html, body, #root {
   margin: 0 0 6px 0;
 }
 .rb-ritual h1 span { color: var(--rb-accent); }
+/* Ritual subtitle — replaces bare <p> for first-encounter */
+.rb-ritual-subtitle {
+  font-family: var(--rb-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  margin: 0 0 40px 0;
+}
+
+/* Ritual bind section — labeled, structural */
+.rb-ritual-bind {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.rb-ritual-bind .rb-field-label {
+  text-align: left;
+}
+
+/* Legacy p — kept for hydration fallback */
 .rb-ritual p {
   font-family: var(--rb-mono);
   font-size: 11px;
@@ -318,6 +394,83 @@ html, body, #root {
   text-transform: uppercase;
   color: var(--rb-ink-mute);
   margin: 0 0 36px 0;
+}
+
+/* ── Returning-user entry ceremony ──────────────────────────────────────── */
+
+.rb-ritual--return {
+  background:
+    radial-gradient(800px 600px at 50% 30%, rgba(201, 166, 107, 0.04), transparent 60%),
+    var(--rb-bg);
+}
+
+.rb-return-inner {
+  text-align: center;
+  max-width: 440px;
+  padding: 48px 56px;
+  border: 1px solid var(--rb-line);
+  background:
+    linear-gradient(180deg, rgba(201, 166, 107, 0.02) 0%, transparent 60%),
+    var(--rb-bg-elev);
+}
+
+.rb-return-repo {
+  font-family: var(--rb-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--rb-ink-soft);
+  padding: 6px 14px;
+  border: 1px solid var(--rb-line);
+  display: inline-block;
+  margin: 12px 0 32px 0;
+}
+
+.rb-return-state {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--rb-line);
+  border: 1px solid var(--rb-line);
+  margin-bottom: 32px;
+}
+
+.rb-return-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--rb-bg-elev);
+}
+
+.rb-return-row--warn {
+  background:
+    linear-gradient(90deg, rgba(168, 66, 58, 0.06) 0%, var(--rb-bg-elev) 100%);
+}
+
+.rb-return-label {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+}
+
+.rb-return-value {
+  font-family: var(--rb-mono);
+  font-size: 13px;
+  color: var(--rb-ink);
+  letter-spacing: 0.06em;
+}
+
+.rb-return-row--warn .rb-return-value {
+  color: var(--rb-bad);
+}
+
+.rb-return-enter {
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 12px;
+  letter-spacing: 0.2em;
 }
 
 .rb-fatal {

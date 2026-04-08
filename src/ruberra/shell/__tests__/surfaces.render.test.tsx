@@ -134,13 +134,13 @@ describe("RitualEntry — boot ritual", () => {
 
   it("renders repo bind input and Enter button", () => {
     render(<RitualEntry onEnter={vi.fn()} />);
-    expect(screen.getByPlaceholderText("bind repo identifier")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /enter chamber/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("bind to begin")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /bind · enter/i })).toBeInTheDocument();
   });
 
   it("Enter button is disabled when input is empty", () => {
     render(<RitualEntry onEnter={vi.fn()} />);
-    const btn = screen.getByRole("button", { name: /enter chamber/i });
+    const btn = screen.getByRole("button", { name: /bind · enter/i });
     expect(btn).toBeDisabled();
   });
 });

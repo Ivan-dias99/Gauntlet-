@@ -80,6 +80,20 @@ export function Shell() {
       ? "var(--rb-warn)"
       : "var(--rb-gold)";
 
+  // Spine-level ambient indicators — system depth at a glance.
+  const canonCount = p.canon.filter(
+    (c) => c.state === "hardened" && c.repo === p.activeRepo,
+  ).length;
+  const memoryCount = p.memory.filter(
+    (m) => m.repo === p.activeRepo,
+  ).length;
+  const openThreadCount = p.threads.filter(
+    (t) => t.repo === p.activeRepo && t.status === "open",
+  ).length;
+  const contradictionCount = p.contradictions.filter(
+    (c) => !c.resolved,
+  ).length;
+
   return (
     <div className="rb-root">
       {/* Backdrop for overlay rails on narrow screens */}
@@ -102,46 +116,49 @@ export function Shell() {
         <div className="rb-brand">
           RUB<span>E</span>RRA
         </div>
+
+        {/* Repo binding — git authority indicator */}
         <div className="rb-repo">
-          repo · {p.activeRepo ?? "unbound"}
+          {p.activeRepo ?? "unbound"}
           {p.activeRepo && gitStatus !== null && (
             <span
-              style={{
-                marginLeft: 8,
-                color: gitStatus.trim() ? "var(--rb-warn)" : "var(--rb-ok)",
-                fontSize: 10,
-              }}
+              className={`rb-repo-git ${gitStatus.trim() ? "dirty" : "clean"}`}
               title={gitStatus || "clean"}
             >
-              {gitStatus.trim() ? "· dirty" : "· clean"}
+              {gitStatus.trim() ? "dirty" : "clean"}
             </span>
           )}
         </div>
-        <div
-          style={{
-            fontFamily: "var(--rb-mono)",
-            fontSize: 11,
-            color: stateColor,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            marginLeft: 6,
-            transition: "color 0.3s",
-          }}
-        >
-          state · {move}
-          {activeExecution && (
-            <span style={{ opacity: 0.8, marginLeft: 6 }}>
-              · {activeExecution.label.length > 30
-                  ? activeExecution.label.slice(0, 30) + "…"
-                  : activeExecution.label}
+
+        {/* System spine — ambient structural indicators */}
+        <div className="rb-spine-indicators">
+          <div className="rb-spine-cell" title="Operational state">
+            <span className="rb-spine-label">state</span>
+            <span className="rb-spine-value" style={{ color: stateColor }}>
+              {move}
             </span>
-          )}
-          {pendingCount > 0 && (
-            <span style={{ opacity: 0.8, marginLeft: 6 }}>
-              · {pendingCount} pending
-            </span>
+          </div>
+          <div className="rb-spine-cell" title={`${canonCount} hardened canon entries`}>
+            <span className="rb-spine-label">canon</span>
+            <span className="rb-spine-value rb-spine-value--gold">{canonCount}</span>
+          </div>
+          <div className="rb-spine-cell" title={`${memoryCount} memory entries`}>
+            <span className="rb-spine-label">memory</span>
+            <span className="rb-spine-value">{memoryCount}</span>
+          </div>
+          <div className="rb-spine-cell" title={`${openThreadCount} open threads`}>
+            <span className="rb-spine-label">threads</span>
+            <span className="rb-spine-value">{openThreadCount}</span>
+          </div>
+          {contradictionCount > 0 && (
+            <div className="rb-spine-cell rb-spine-cell--warn" title={`${contradictionCount} unresolved contradictions`}>
+              <span className="rb-spine-label">tension</span>
+              <span className="rb-spine-value">{contradictionCount}</span>
+            </div>
           )}
         </div>
+
+        {/* Chamber glyphs — gravity regimes */}
         <div className="rb-chambers">
           {CHAMBERS.map((c) => (
             <button
