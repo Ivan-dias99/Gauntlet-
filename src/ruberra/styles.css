@@ -1160,3 +1160,57 @@ html, body, #root {
   letter-spacing: 0.06em;
   opacity: 0.8;
 }
+
+/* ── WS4: Forge-local live execution signal ──────────────────────────────
+   Compact, continuous, silent when idle. Lives inside the directive forge,
+   not in the shell. Shown only while the active thread has a running
+   execution; removed automatically on succeed/fail. */
+.rb-forge-exec-signal {
+  margin-top: 12px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(181, 138, 58, 0.35);
+  background: rgba(181, 138, 58, 0.06);
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rb-warn);
+}
+.rb-forge-exec-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rb-warn);
+  box-shadow: 0 0 0 0 rgba(181, 138, 58, 0.55);
+  animation: rb-forge-exec-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.rb-forge-exec-label {
+  font-weight: 600;
+}
+.rb-forge-exec-target {
+  color: var(--rb-ink-mute);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.rb-forge-exec-count {
+  color: var(--rb-ink-mute);
+  letter-spacing: 0.06em;
+  font-size: 9px;
+}
+@keyframes rb-forge-exec-pulse {
+  0%, 100% { opacity: 0.55; box-shadow: 0 0 0 0 rgba(181, 138, 58, 0.45); }
+  50%      { opacity: 1;    box-shadow: 0 0 0 4px rgba(181, 138, 58, 0);    }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-forge-exec-dot { animation: none; opacity: 0.9; }
+}
