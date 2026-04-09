@@ -1,42 +1,75 @@
 # Ruberra
 
-A sovereign intelligence workstation. Memory-bearing. Chamber-native. Mission-bound.
+Ruberra is a sovereign creation system for architect-first work.
 
-## What It Is
+It is chamber-native, memory-bearing, consequence-driven, and anti-generic.
 
-Ruberra is a single-page AI-native workstation with four chambers:
+## Current Runtime Truth
 
-- **Lab** — Evidence-grade investigation. Every query becomes a retrievable object.
-- **School** — Structured mastery. Lessons compound into knowledge graphs.
-- **Creation** — Build output with execution traces. Not chat — consequence.
-- **Profile** — Sovereign governance. Continuity, missions, operations, security.
+The mounted runtime lives in:
 
-## What It Solves
+- `src/main.tsx`
+- `src/ruberra/RuberraApp.tsx`
+- `src/ruberra/`
 
-| Pain | Resolution |
-|------|-----------|
-| Context dies between sessions | Continuity fabric persists everything |
-| Chat is shallow — no depth, no structure | Three chambers: investigate · master · build |
-| Output is dead text — no execution, no consequence | Execution traces, mission binding, runtime telemetry |
-| No mission continuity | Every action binds to a mission with memory and ledger |
-| Fragmented AI tools | One shell. One runtime. One memory. |
+`src/app/` is legacy quarantine and not the active product surface.
 
-## Stack
+## What Ruberra Is
 
-- **Frontend:** React + Vite + Tailwind CSS v4
-- **Backend:** Supabase Edge Function
-- **State:** `localStorage` via RuntimeFabric
-- **Design:** Mineral Shell — premium, calm, consequence over decoration
+Ruberra is being built as:
+
+- a sovereign creation system
+- a system for principal-architect style work
+- a product where truth, creation, memory, and consequence stay connected
+- a product shaped under Genesis Core doctrine
+
+## What Ruberra Is Not
+
+- not a marketing site
+- not a SaaS dashboard
+- not an AI wrapper
+- not a feature-grid shell
+- not prompt theater
+
+## Current Chambers
+
+- **Lab** — explore, investigate, experiment
+- **School** — form truth, pressure doctrine, refine principles
+- **Creation** — turn concept into architecture and executable direction
+- **Memory** — retain observations and preserve continuity
+
+## Genesis Core
+
+Genesis Core is the operating doctrine for building Ruberra.
+
+It is not a second product.
+It is not a second repo.
+It is the method used to keep Ruberra aligned across:
+
+- truth
+- command
+- creation
+- build
+- memory
+
+See:
+
+- `ops/GENESIS_CORE.md`
+- `ops/CANONICAL_TRUTH.md`
+- `ops/WAVE_01.md`
 
 ## Development
 
+Use the living organism:
+
 ```bash
-npm run dev    # Start dev server (port 5173)
-npm run build  # Production build + type check
+npm run build
 ```
 
-No `.env` needed. Demo responses work without API keys.
+Build truth matters more than cosmetic momentum.
 
-## License
+## Status
 
-See [ATTRIBUTIONS.md](./ATTRIBUTIONS.md).
+- active organism: `src/ruberra/`
+- legacy quarantine: `src/app/`
+- operating doctrine: Genesis Core

@@ -1,45 +1,29 @@
-# Current Milestone Tracker
+# MILESTONE TRACKER
 
-**Updated:** 2026-04-08  
-**Active milestone:** M1 — Governance Foundation
+## Current Product State
 
----
+- Product: Ruberra
+- Active organism: `src/ruberra/`
+- Legacy quarantine: `src/app/`
+- Operating doctrine: Genesis Core
 
-## M0 — Repository Bootstrap ✅
+## Active Wave
 
-- [x] Repo created
-- [x] Stack defined (Vite + React + Supabase)
-- [x] Security hardening pass (CORS, RLS, loopback bind)
-- [x] Dependency lockdown
+- Wave: WAVE 01 — Genesis Core Reset
+- Status: ACTIVE
+- Current owner: Builder
+- Final authority: Ivan
 
-## M1 — Governance Foundation ⬤ IN PROGRESS
+## Immediate Milestones
 
-- [x] Execution canon established (`RUBERRA_EXECUTION_CANON.md`)
-- [x] Founder law written (`RUBERRA_FOUNDER_SIGNATURE_LAW.md`)
-- [x] Workspace constitution defined (`RUBERRA_WORKSPACE_CONSTITUTION.md`)
-- [x] Product truth locked (`RUBERRA_PRODUCT_TRUTH.md`)
-- [x] Stack closure tracker initialized (`RUBERRA_STACK_CLOSURE_TRACKER.md`)
-- [x] Canonical truth document (`ops/CANONICAL_TRUTH.md`)
-- [x] Workstream contract format (`ops/WORKSTREAM_CONTRACT.md`)
-- [x] Handoff protocol (`ops/HANDOFF.md`)
-- [x] Merge gate (`ops/MERGE_GATE.md`)
-- [ ] Milestone tracker confirmed as authoritative
+1. Repository tells one truth only
+2. Legacy quarantine is explicit
+3. Next product wave begins from a clean canonical base
 
-## M2 — Creation Layer ◯ PENDING
+## After This Wave
 
-- [ ] WS1–WS4 signals stable and tested
-- [ ] Forge loop closed end-to-end
-- [ ] Creation state persisted across sessions
-
-## M3 — Public Surface ◯ PENDING
-
-- [ ] Deploy pipeline confirmed
-- [ ] Auth layer hardened
-- [ ] First external user session
-
----
-
-## Notes
-
-Milestones are sequential. M2 does not begin until M1 is closed.  
-Any item marked `[ ]` is a blocking dependency for milestone close.
+The next wave must return to product advancement:
+- chamber gravity refinement
+- canon elevation
+- architect-first creation flow
+- product body, not just doctrine

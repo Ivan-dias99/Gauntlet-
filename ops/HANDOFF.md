@@ -1,82 +1,32 @@
-# Handoff File
+# HANDOFF PROTOCOL
 
-Use this file to transfer state between sessions, operators, or agents.  
-Complete every section. Incomplete handoffs block the receiving session from starting.
+Every meaningful transfer of work inside Ruberra must use this structure.
 
----
+## Required Fields
 
-## Current handoff
+- Agent
+- Task
+- Objective
+- Scope
+- What was decided
+- What was produced
+- Files / artifacts affected
+- What remains unresolved
+- Risks
+- Canon dependencies
+- Recommended next move
+- Suggested receiving agent
+- Acceptance condition
 
-**From:** ops-governance-init session  
-**To:** next session  
-**Date:** 2026-04-08  
-**Branch at close:** `claude/ops-governance-init`
+## Hard Rules
 
----
+1. No handoff without concrete artifact or concrete decision.
+2. No acceptance condition = incomplete handoff.
+3. Naming drift must be stated explicitly.
+4. If the handoff changes canon, it must say so.
+5. If the handoff only speculates and produces no executable pressure, it is weak.
 
-## State at handoff
+## Severity Reminder
 
-### What was completed
-
-- Ops governance layer initialized (`ops/` directory)
-- Canonical truth document written
-- Milestone tracker initialized (M1 in progress)
-- Workstream contract format defined
-- Merge gate defined
-- This handoff file created
-- PR opened: `chore(ops): initialize repo governance layer`
-
-### What is NOT complete
-
-- M1 milestone close (pending PR merge)
-- M2 has not started
-
-### Open decisions
-
-- None at this time
-
-### Known risks
-
-- None at this time
-
----
-
-## Instructions for next session
-
-1. Confirm PR #TBD is merged before beginning M2 work
-2. Update `ops/MILESTONE_TRACKER.md` to mark M1 closed after merge
-3. Do not start WS5+ until M1 is confirmed closed
-
----
-
-## Handoff format (for future use)
-
-```
-## Current handoff
-
-**From:** [session name or operator]
-**To:** [session name or operator]
-**Date:** [YYYY-MM-DD]
-**Branch at close:** [branch name]
-
----
-
-## State at handoff
-
-### What was completed
-- ...
-
-### What is NOT complete
-- ...
-
-### Open decisions
-- ...
-
-### Known risks
-- ...
-
----
-
-## Instructions for next session
-1. ...
-```
+A handoff can advance work, but it can also spread ambiguity.
+Write only what the next role actually needs to move.

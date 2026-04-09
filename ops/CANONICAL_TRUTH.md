@@ -1,36 +1,58 @@
-# Canonical Truth Document
+# CANONICAL TRUTH
 
-**Repo:** ivan-star-dev/aiinterfaceshelldesign  
-**Status:** Active  
-**Last confirmed:** 2026-04-08
+## Active Organism
 
----
+The only living Ruberra organism is mounted through:
+- `src/main.tsx`
+- `src/ruberra/RuberraApp.tsx`
+- the `src/ruberra/` subtree
 
-## What this repo is
+## Quarantined Legacy
 
-Ruberra — an AI-native interface shell. A real-time, modular UI layer designed to surface AI signals, creation state, and agent output in a coherent interaction surface.
+`src/app/` is not the mounted runtime surface.
+It is legacy quarantine.
+It may contain salvageable matter, but it is not current Ruberra truth.
+It must not be treated as primary architecture, primary UX, or primary runtime authority.
 
-## What it is not
+## Product Identity
 
-- Not a general-purpose chat UI
-- Not a wrapper around another product
-- Not a prototype or sandbox
+Ruberra is:
+- a sovereign creation system
+- chamber-native
+- memory-bearing
+- consequence-driven
+- anti-fragmentation
+- architect-first
 
-## Governing documents (in order of authority)
+Ruberra is not:
+- a marketing site
+- a SaaS dashboard
+- an AI wrapper
+- a feature-grid shell
+- prompt theater
 
-1. `ops/CANONICAL_TRUTH.md` — this file
-2. `RUBERRA_EXECUTION_CANON.md` — execution rules
-3. `RUBERRA_FOUNDER_SIGNATURE_LAW.md` — founder-level constraints
-4. `RUBERRA_WORKSPACE_CONSTITUTION.md` — workstream rules
-5. `RUBERRA_PRODUCT_TRUTH.md` — product definition
-6. `ops/MERGE_GATE.md` — merge requirements
+## Current Chamber Truth
 
-## Conflict resolution
+The live organism currently operates through four chambers:
+- Lab
+- School
+- Creation
+- Memory
 
-If any document contradicts this file, this file wins.  
-If any PR contradicts this file, the PR is blocked until alignment is confirmed.
+These are valid as live operational surfaces.
+Their internal gravity may evolve, but their current existence is real.
 
-## Immutability
+## Genesis Core Truth
 
-This document may only be updated by the founding operator.  
-Version changes require a commit signed with the reason.
+Ruberra Genesis Core is doctrine, not product surface.
+It governs how Ruberra is built.
+It does not require separate frontend embodiment.
+
+## Non-Negotiables
+
+1. One repo truth
+2. One mounted organism
+3. No narrative authority for dead surfaces
+4. No completion claims that outrun structural truth
+5. No new meta-layer unless it directly improves the product
+6. Every wave must leave the product stronger and the repo clearer
