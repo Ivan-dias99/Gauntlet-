@@ -3,7 +3,7 @@ name: Ruberra Bridge Agent
 on:
   push:
     branches:
-      - 'agent/**'
+      - 'agent-*'
   schedule:
     - cron: '0 */4 * * *'
   workflow_dispatch:
@@ -26,7 +26,7 @@ jobs:
 
       - name: Fetch all agent branches
         run: |
-          git fetch origin 'refs/heads/agent/*:refs/remotes/origin/agent/*'
+          git fetch origin 'refs/heads/agent-*:refs/remotes/origin/agent-*'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
