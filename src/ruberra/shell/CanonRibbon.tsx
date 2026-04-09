@@ -25,6 +25,7 @@ export function CanonRibbon({ open, onClose }: Props) {
   const isMobile = useIsMobile();
   const canon = p.canon.filter((c) => c.state === "hardened");
   const revoked = p.canon.filter((c) => c.state === "revoked");
+  const recentMemory = p.memory.slice(-3).reverse();
 
   const narrowClass = open
     ? "rb-rail rb-rail-right rb-rail--open"
@@ -51,9 +52,9 @@ export function CanonRibbon({ open, onClose }: Props) {
       {/* Canon section — authority zone */}
       <div className="rb-canon-header">
         <div className="rb-canon-header-row">
-          <span className="rb-canon-header-title">Canon</span>
+          <span className="rb-canon-header-title">Authority</span>
           {canon.length > 0 && (
-            <span className="rb-canon-header-count">{canon.length}</span>
+            <span className="rb-canon-header-count">{canon.length} canon</span>
           )}
         </div>
         <div className="rb-canon-header-rule" />
@@ -64,7 +65,7 @@ export function CanonRibbon({ open, onClose }: Props) {
           <strong>no canon</strong>
         </div>
       ) : (
-        <div>
+        <div className="rb-canon-list">
           {canon.map((c) => (
             <div key={c.id} className="rb-canon-entry">
               <span className="rb-canon-entry-text">{c.text}</span>
@@ -76,9 +77,26 @@ export function CanonRibbon({ open, onClose }: Props) {
         </div>
       )}
 
+      {/* Consequence Highlights — recent memory substrate */}
+      {recentMemory.length > 0 && (
+        <div className="rb-canon-memory-section">
+          <div className="rb-section-title">Recent Consequences</div>
+          {recentMemory.map((m) => (
+            <div key={m.id} className="rb-canon-memory-entry">
+              <span className="rb-canon-memory-text">{m.text}</span>
+              <div className="rb-canon-memory-meta">
+                {m.promoted && <span className="rb-badge gold">promoted</span>}
+                <span className="time">{timeAgo(m.ts)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Revoked canon — scars, not deleted */}
       {revoked.length > 0 && (
         <div className="rb-canon-revoked-section">
+          <div className="rb-section-title">Scars</div>
           {revoked.map((c) => (
             <div key={c.id} className="rb-canon-revoked">
               <span className="rb-canon-revoked-text">{c.text}</span>
@@ -89,7 +107,6 @@ export function CanonRibbon({ open, onClose }: Props) {
           ))}
         </div>
       )}
-
     </aside>
   );
 }

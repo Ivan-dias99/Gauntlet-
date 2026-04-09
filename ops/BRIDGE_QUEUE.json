@@ -114,14 +114,76 @@
     },
     {
       "id": "W04-B02",
-      "title": "Standby until queue extension",
+      "title": "Visual Seal 03",
       "owner": "antigravity",
       "support": [],
       "surface": "visual",
       "scope": ["src/ruberra/"],
       "depends_on": ["W04-B01"],
       "gate_on_complete": null,
-      "success": "Placeholder for next visual block once Ivan extends the queue."
+      "success": "Visual seal for architect-first entry and final topbar density."
+    },
+    {
+      "id": "W04-B03",
+      "title": "Wave 04 Verification Gate",
+      "owner": "codex",
+      "support": ["copilot"],
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W04-B02"],
+      "gate_on_complete": "GATE_W05_OPEN",
+      "success": "Wave 04 verified, next gate emitted."
+    },
+    {
+      "id": "W05-B01",
+      "title": "Validation Lab Elevation",
+      "owner": "antigravity",
+      "support": ["claude"],
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/Lab.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W04-B03"],
+      "gate_on_complete": null,
+      "success": "Lab gains Skepticism Substrate / Validation Forge identity."
+    },
+    {
+      "id": "W05-B02",
+      "title": "Wave 05 Verification Gate",
+      "owner": "codex",
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W05-B01"],
+      "gate_on_complete": "GATE_W06_OPEN",
+      "success": "Wave 05 verified, next gate emitted."
+    },
+    {
+      "id": "W06-B01",
+      "title": "Structural Authority Pulse",
+      "owner": "antigravity",
+      "surface": "visual",
+      "scope": ["src/ruberra/shell/EventPulse.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W05-B02"],
+      "gate_on_complete": null,
+      "success": "Event Pulse transformed into a sovereign Ambient Truth Strip."
+    },
+    {
+      "id": "W06-B02",
+      "title": "Consequence Strip Seal",
+      "owner": "antigravity",
+      "surface": "visual",
+      "scope": ["src/ruberra/shell/CanonRibbon.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W06-B01"],
+      "gate_on_complete": null,
+      "success": "Canon Ribbon elevated with consequence scars and memory highlights."
+    },
+    {
+      "id": "W06-B03",
+      "title": "Wave 06 Verification Gate",
+      "owner": "codex",
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W06-B02"],
+      "gate_on_complete": "GATE_COMPLETE",
+      "success": "Wave 06 verified. Full product body activation complete."
     }
   ]
 }

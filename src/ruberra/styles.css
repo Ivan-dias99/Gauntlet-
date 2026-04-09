@@ -1976,3 +1976,162 @@ html, body, #root {
   margin: 0 0 32px 0;
   line-height: 1.4;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WAVE 05 — Validation Lab Elevation
+   B01: Validation Lab Elevation
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── B01: Lab validation-forge header ────────────────────────────────── */
+.rb-chamber-header--lab {
+  position: relative;
+}
+.rb-chamber-header--lab .rb-chamber-accent-line {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, #52796A 0%, rgba(82, 121, 106, 0.25) 50%, transparent 100%);
+}
+
+.rb-gravity--bad {
+  color: var(--rb-bad);
+}
+
+/* Lab panel specifics: tighter lists */
+.rb-chamber--lab .rb-list li {
+  padding: 8px 0;
+  border-bottom-style: dashed;
+}
+
+.rb-chamber--lab .rb-badge {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WAVE 06 — Structural Authority & Pulse
+   B01: Structural Authority Pulse
+   B02: Consequence Strip Seal
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── B01: Ambient Truth Strip (Pulse) ────────────────────────────────── */
+.rb-pulse {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 24px;
+}
+.rb-pulse-signal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--rb-ink-mute);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+}
+.rb-pulse-log {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  overflow: hidden;
+}
+.rb-pulse-meta {
+  color: var(--rb-line-strong);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+}
+.rb-pulse-authority {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rb-pulse-repo {
+  color: var(--rb-ink-mute);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding-right: 12px;
+  border-right: 1px solid var(--rb-line);
+}
+
+/* ── B02: Consequence Strip Seal (Ribbon) ────────────────────────────── */
+
+.rb-canon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+/* Memory highlight section in Ribbon */
+.rb-canon-memory-section {
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--rb-line);
+}
+.rb-canon-memory-entry {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--rb-line);
+  margin-bottom: 8px;
+}
+.rb-canon-memory-text {
+  font-family: var(--rb-mono);
+  font-size: 11px;
+  color: var(--rb-ink-soft);
+  line-height: 1.4;
+  display: block;
+}
+.rb-canon-memory-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.rb-canon-memory-meta .time {
+  font-size: 8px;
+  color: var(--rb-ink-mute);
+  text-transform: uppercase;
+}
+
+/* Scars section */
+.rb-canon-revoked-section {
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--rb-line);
+}
+.rb-canon-revoked {
+  padding: 8px 10px;
+  border: 1px solid var(--rb-line);
+  border-left: 2px solid var(--rb-line-strong);
+  background: transparent;
+  margin-bottom: 8px;
+  opacity: 0.5;
+}
+.rb-canon-revoked-text {
+  font-family: var(--rb-serif);
+  font-style: italic;
+  font-size: 12px;
+  text-decoration: line-through;
+  color: var(--rb-ink-mute);
+}
+.rb-canon-revoked-reason {
+  display: block;
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-bad);
+  margin-top: 4px;
+}
+
+/* Mobile Rail Refinement */
+@media (max-width: 768px) {
+  .rb-rail {
+    box-shadow: 20px 0 60px rgba(0, 0, 0, 0.8);
+  }
+  .rb-rail-right {
+    box-shadow: -20px 0 60px rgba(0, 0, 0, 0.8);
+  }
+  .rb-rail-backdrop {
+    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.75);
+    transition: opacity 0.3s ease;
+  }
+}

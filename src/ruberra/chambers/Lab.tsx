@@ -10,10 +10,24 @@ export function LabChamber() {
 
   return (
     <section className="rb-chamber rb-chamber--lab">
-      <header className="rb-chamber-header">
+      <header className="rb-chamber-header rb-chamber-header--lab">
         <h1 className="rb-chamber-title">Lab</h1>
         <div className="rb-chamber-gravity-bar">
+          <span className="rb-chamber-gravity-text rb-gravity--primary">Validation Forge</span>
+          <span className="rb-gravity-sep">·</span>
           <span className="rb-chamber-gravity-text">Skepticism · Validate truth</span>
+          {p.memory.length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text">{p.memory.length} evidence</span>
+            </>
+          )}
+          {p.contradictions.filter((c) => !c.resolved).length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--bad">{p.contradictions.filter((c) => !c.resolved).length} tensions</span>
+            </>
+          )}
         </div>
         <div className="rb-chamber-accent-line" />
       </header>
