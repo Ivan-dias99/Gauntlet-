@@ -218,10 +218,30 @@ export function CreationChamber() {
 
   return (
     <section className="rb-chamber rb-chamber--creation">
-      <header className="rb-chamber-header">
+      <header className="rb-chamber-header rb-chamber-header--forge">
         <h1 className="rb-chamber-title">Creation</h1>
         <div className="rb-chamber-gravity-bar">
-          <span className="rb-chamber-gravity-text">Consequence · Forge artifacts</span>
+          <span className="rb-chamber-gravity-text rb-gravity--primary">Architect Forge</span>
+          <span className="rb-gravity-sep">·</span>
+          <span className="rb-chamber-gravity-text">Concept → Directive → Artifact → Review</span>
+          {directives.length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text">{directives.length} directives</span>
+            </>
+          )}
+          {executions.filter(x => x.status === "running").length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--warn">executing</span>
+            </>
+          )}
+          {artifacts.filter(a => a.review === "pending").length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--warn">{artifacts.filter(a => a.review === "pending").length} pending review</span>
+            </>
+          )}
           {activeThread && (
             <>
               <span className="rb-gravity-sep">·</span>
@@ -253,6 +273,24 @@ export function CreationChamber() {
         />
       ) : (
         <>
+          {/* Relay — explicit concept-to-build stage indicator */}
+          <div className="rb-relay">
+            <div className="rb-relay-label">relay</div>
+            <div className="rb-relay-stages">
+              {([
+                { id: "concept", label: "Concept", done: !!activeThread },
+                { id: "directive", label: "Directive", done: directives.length > 0 },
+                { id: "execute", label: "Execute", done: executions.filter(x => x.status === "succeeded").length > 0 },
+                { id: "review", label: "Review", done: artifacts.filter(a => a.review !== "pending").length > 0 },
+              ] as const).map((stage, i, arr) => (
+                <div key={stage.id} className={`rb-relay-stage${stage.done ? " rb-relay-stage--done" : ""}`}>
+                  <span className="rb-relay-stage-label">{stage.label}</span>
+                  {i < arr.length - 1 && <span className="rb-relay-arrow">→</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Directive Forge — the hinge */}
           <div className={`rb-directive-forge${canCompose ? " rb-directive-forge--ready" : ""}`}>
             <div className="rb-forge-title">Directive Forge</div>

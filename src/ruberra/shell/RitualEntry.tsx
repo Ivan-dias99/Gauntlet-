@@ -39,15 +39,16 @@ export function RitualEntry({ onEnter, returning }: Props) {
           <h1>
             RUB<span>E</span>RRA
           </h1>
+          <div className="rb-ritual-subtitle">Architect Station</div>
           <div className="rb-return-repo">
             {p.activeRepo}
           </div>
 
-          {/* System state — what persisted */}
+          {/* System state — what the architect left behind */}
           <div className="rb-return-state">
             <div className="rb-return-row">
               <span className="rb-return-label">canon</span>
-              <span className="rb-return-value">{canonCount}</span>
+              <span className="rb-return-value" style={canonCount > 0 ? { color: 'var(--rb-gold)' } : undefined}>{canonCount}</span>
             </div>
             <div className="rb-return-row">
               <span className="rb-return-label">memory</span>
@@ -76,7 +77,7 @@ export function RitualEntry({ onEnter, returning }: Props) {
               onEnter();
             }}
           >
-            Resume
+            Resume · Continue Building
           </button>
         </div>
       </div>
@@ -90,7 +91,8 @@ export function RitualEntry({ onEnter, returning }: Props) {
         <h1>
           RUB<span>E</span>RRA
         </h1>
-        <div className="rb-ritual-subtitle">Sovereign Operational Shell</div>
+        <div className="rb-ritual-subtitle">Architect Creation System</div>
+        <div className="rb-ritual-role">You are the architect. This is your forge.</div>
         <div className="rb-ritual-bind">
           <label className="rb-field-label">repo identifier</label>
           <input
@@ -116,7 +118,7 @@ export function RitualEntry({ onEnter, returning }: Props) {
               onEnter();
             }}
           >
-            Bind · Enter
+            Bind · Begin Forging
           </button>
         </div>
       </div>
