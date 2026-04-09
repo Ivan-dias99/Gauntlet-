@@ -7,12 +7,15 @@
 
 ```text
 RUBERRA GENESIS CORE ════════════════════════════════════════════════
-  PRODUCT:        Ruberra
-  REPO:           Ivan-star-dev/Aiinterfaceshelldesign
+  PRODUCT:         Ruberra
+  REPO:            Ivan-star-dev/Aiinterfaceshelldesign
   ACTIVE ORGANISM: src/ruberra/
-  LEGACY:         src/app/ quarantine only
-  DOCTRINE:       Genesis Core
-  ACTIVE WAVE:    WAVE 01 — Genesis Core Reset
+  LEGACY:          src/app/ quarantine only
+  DOCTRINE:        Genesis Core
+  ACTIVE WAVE:     WAVE 02 — Product Body Activation
+  ACTIVE OWNER:    Claude
+  SUPPORT LANES:   Copilot + Codex
+  STANDBY LANE:    Antigravity
   FINAL AUTHORITY: Ivan
 ══════════════════════════════════════════════════════════════════════
 ```
@@ -25,8 +28,10 @@ RUBERRA GENESIS CORE ═══════════════════�
 | **Repo** | `Aiinterfaceshelldesign` |
 | **Organismo vivo** | `src/ruberra/` |
 | **Legado** | `src/app/` em quarentena |
-| **Wave activa** | WAVE 01 — Genesis Core Reset |
-| **Owner actual** | Builder |
+| **Wave activa** | WAVE 02 — Product Body Activation |
+| **Owner actual** | Claude |
+| **Support lanes** | Copilot + Codex |
+| **Standby lane** | Antigravity |
 | **Autoridade final** | Ivan |
 | **Meta-layer** | Genesis Core (doutrina, não segundo produto) |
 
@@ -36,26 +41,26 @@ RUBERRA GENESIS CORE ═══════════════════�
 - compressão soberana
 - direção final
 - fechamento de conflitos de alto nível
+- next-owner selection
 
-### Architect
-- topologia
-- verdade estrutural
-- estado e memória
+### Claude
+- builder owner
+- product body advancement
+- shell / chamber / implementation movement
 
-### Visual
-- hierarquia
-- calm density
-- anti-generic correction
+### Copilot
+- builder support lane
+- editor acceleration
+- low-friction patch support
 
-### Builder
-- branchable execution
-- implementation blocks
-- convergence on `src/ruberra/`
+### Codex
+- verification pressure
+- repo execution support
+- codebase navigation
 
-### Audit
-- merge truth
-- false completion detection
-- acceptance gate
+### Antigravity
+- visual standby lane
+- opens only by gate
 
 ## 3. REGRAS DE ACTUALIZAÇÃO
 
