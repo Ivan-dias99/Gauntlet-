@@ -3,12 +3,12 @@
 Add the newest block at the top.
 
 BRIDGE_HANDOFF
-  TASK_ID: W05-B01
+  TASK_ID: W06-B02
   PIONEER: antigravity
   STATUS: done
-  SUMMARY: Executed WAVE 05 — Validation Lab Elevation. Elevated Lab header to "Validation Forge" identity with green-tinted gradient accent line, live metadata counts for evidence and contradictions, and flagship high-pressure validation identity. Refined Lab layout with tighter lists and badges. Updated MILESTONE_TRACKER and BRIDGE_QUEUE to reflect exhausted queue state.
-  FILES: src/ruberra/chambers/Lab.tsx, src/ruberra/styles.css, ops/MILESTONE_TRACKER.md, ops/BRIDGE_QUEUE.json
-  NEXT_MOVE: All current waves (W01-W05) are complete. Awaiting new queue extension from Ivan or next logical system-wide seal.
+  SUMMARY: Executed WAVE 06 — Structural Authority & Pulse. Final elevation of structural ambient surfaces. Event Pulse transformed into an 'Ambient Truth Strip' with repo context, sovereign labeling, and telemetry styling. Canon Ribbon transformed into a 'Consequence Strip' with integrated memory highlights and 'Scars' section for revoked canon. All primary chambers and shell elements now carry flagship architect-first gravity. Full body activation chain (W01-W06) complete.
+  FILES: src/ruberra/shell/EventPulse.tsx, src/ruberra/shell/CanonRibbon.tsx, src/ruberra/styles.css, ops/WAVE_06.md
+  NEXT_MOVE: Full queue exhausted. System is structurally and visually complete.
   ACCEPTANCE: met
 
 BRIDGE_HANDOFF
@@ -37,12 +37,3 @@ BRIDGE_HANDOFF
   FILES: src/ruberra/shell/Shell.tsx, src/ruberra/chambers/School.tsx, src/ruberra/chambers/Memory.tsx, src/ruberra/styles.css
   NEXT_MOVE: W02-B05 verification gate → Codex should confirm Wave 02 artifacts, verify build, and emit GATE_W03_OPEN
   ACCEPTANCE: met
-
-BRIDGE_HANDOFF
-  TASK_ID: none-yet
-  PIONEER: replace-me
-  STATUS: partial
-  SUMMARY: replace-me
-  FILES: replace-me
-  NEXT_MOVE: replace-me
-  ACCEPTANCE: unmet
