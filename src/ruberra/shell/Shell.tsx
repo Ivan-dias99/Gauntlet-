@@ -18,11 +18,13 @@ const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
   | string
   | undefined;
 
-const CHAMBERS: Array<{ id: "lab" | "school" | "creation" | "memory"; label: string }> = [
-  { id: "lab", label: "Lab" },
-  { id: "school", label: "School" },
-  { id: "creation", label: "Creation" },
-  { id: "memory", label: "Memory" },
+// Gravity hierarchy: School (truth formation) leads. Creation (architect forge).
+// Lab (validation). Memory (consequence substrate).
+const CHAMBERS: Array<{ id: "lab" | "school" | "creation" | "memory"; label: string; gravity: string }> = [
+  { id: "school", label: "School", gravity: "truth" },
+  { id: "creation", label: "Creation", gravity: "forge" },
+  { id: "lab", label: "Lab", gravity: "validation" },
+  { id: "memory", label: "Memory", gravity: "substrate" },
 ];
 
 export function Shell() {
@@ -141,7 +143,7 @@ export function Shell() {
             )}
           </div>
 
-          {/* System spine — ambient structural indicators */}
+          {/* System spine — compressed ambient indicators */}
           <div className="rb-spine-indicators">
             <div className="rb-spine-cell" title="Operational state">
               <span className="rb-spine-label">state</span>
@@ -149,18 +151,24 @@ export function Shell() {
                 {move}
               </span>
             </div>
-            <div className="rb-spine-cell" title={`${canonCount} hardened canon entries`}>
-              <span className="rb-spine-label">canon</span>
-              <span className="rb-spine-value rb-spine-value--gold">{canonCount}</span>
-            </div>
-            <div className="rb-spine-cell" title={`${memoryCount} memory entries`}>
-              <span className="rb-spine-label">memory</span>
-              <span className="rb-spine-value">{memoryCount}</span>
-            </div>
-            <div className="rb-spine-cell" title={`${openThreadCount} open threads`}>
-              <span className="rb-spine-label">threads</span>
-              <span className="rb-spine-value">{openThreadCount}</span>
-            </div>
+            {canonCount > 0 && (
+              <div className="rb-spine-cell rb-spine-cell--canon" title={`${canonCount} hardened canon — truth law`}>
+                <span className="rb-spine-label">canon</span>
+                <span className="rb-spine-value rb-spine-value--gold">{canonCount}</span>
+              </div>
+            )}
+            {memoryCount > 0 && (
+              <div className="rb-spine-cell" title={`${memoryCount} retained consequences`}>
+                <span className="rb-spine-label">memory</span>
+                <span className="rb-spine-value">{memoryCount}</span>
+              </div>
+            )}
+            {openThreadCount > 0 && (
+              <div className="rb-spine-cell" title={`${openThreadCount} open threads`}>
+                <span className="rb-spine-label">threads</span>
+                <span className="rb-spine-value">{openThreadCount}</span>
+              </div>
+            )}
             {contradictionCount > 0 && (
               <div
                 className="rb-spine-cell rb-spine-cell--warn"
@@ -173,16 +181,20 @@ export function Shell() {
           </div>
         </div>
 
-        {/* Chamber glyphs — gravity regimes */}
+        {/* Chamber glyphs — gravity regimes, not equal tabs */}
         <div className="rb-chambers" aria-label="Chamber regimes">
           {CHAMBERS.map((c) => (
             <button
               key={c.id}
               data-id={c.id}
+              data-gravity={c.gravity}
               className={`rb-chamber-glyph ${p.chamber === c.id ? "active" : ""}`}
               onClick={() => emit.enterChamber(c.id)}
             >
               {c.label}
+              {c.id === "school" && canonCount > 0 && (
+                <span className="rb-glyph-indicator rb-glyph-indicator--truth">{canonCount}</span>
+              )}
             </button>
           ))}
         </div>

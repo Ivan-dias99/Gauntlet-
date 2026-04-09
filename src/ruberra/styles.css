@@ -1532,3 +1532,234 @@ html, body, #root {
   padding-top: 8px;
   border-top: 1px dashed var(--rb-line);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WAVE 02 — Product Body Activation
+   B01: Canon Gravity Elevation
+   B02: School Chamber Truth Register
+   B03: Memory Ledger Dominance
+   B04: Shell Visual Seal 01
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── B01: Chamber gravity hierarchy ────────────────────────────────────── */
+/* School glyph: visually heavier than peers — truth chamber leads */
+.rb-chamber-glyph[data-gravity="truth"] {
+  letter-spacing: 0.28em;
+  font-weight: 500;
+  position: relative;
+}
+.rb-chamber-glyph[data-gravity="truth"]::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 1px;
+  background: rgba(201, 166, 107, 0.28);
+  transition: background 0.2s ease, width 0.2s ease;
+}
+.rb-chamber-glyph[data-gravity="truth"].active::after {
+  background: var(--rb-gold);
+  width: 100%;
+  height: 2px;
+}
+
+/* Truth indicator badge inside School glyph */
+.rb-glyph-indicator {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  padding: 1px 4px;
+  margin-left: 6px;
+  border: 1px solid var(--rb-line-strong);
+  color: var(--rb-ink-mute);
+  vertical-align: middle;
+}
+.rb-glyph-indicator--truth {
+  border-color: rgba(201, 166, 107, 0.35);
+  color: var(--rb-gold);
+  background: rgba(201, 166, 107, 0.06);
+}
+
+/* Canon spine cell: gold ambient identity */
+.rb-spine-cell--canon {
+  border-color: rgba(201, 166, 107, 0.14);
+  background: rgba(201, 166, 107, 0.025);
+}
+
+/* ── B01: Spine calm density — zero counts don't show ──────────────────── */
+/* Already handled in JSX conditional rendering */
+
+/* ── B02: School truth-formation header ────────────────────────────────── */
+
+/* Truth sigil — small mark before the School title */
+.rb-truth-sigil {
+  width: 8px;
+  height: 8px;
+  background: var(--rb-gold);
+  opacity: 0.7;
+  position: absolute;
+  top: 4px;
+  left: -1px;
+}
+
+.rb-chamber-header--truth {
+  position: relative;
+  padding-left: 18px;
+  border-bottom-color: rgba(74, 107, 132, 0.22);
+}
+.rb-chamber-header--truth .rb-chamber-accent-line {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, #4A6B84 0%, rgba(201, 166, 107, 0.3) 60%, transparent 100%);
+}
+
+/* Gravity text modifiers */
+.rb-gravity--primary {
+  color: var(--rb-ink-soft);
+  font-weight: 500;
+  letter-spacing: 0.3em;
+}
+.rb-gravity--gold {
+  color: var(--rb-gold);
+}
+.rb-gravity--warn {
+  color: var(--rb-warn);
+}
+
+/* ── B03: Memory consequence-substrate header ──────────────────────────── */
+.rb-chamber-header--consequence {
+  position: relative;
+}
+.rb-chamber-header--consequence .rb-chamber-accent-line {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, #5A7A8A 0%, rgba(90, 122, 138, 0.15) 70%, transparent 100%);
+}
+
+/* Memory distribution cells: consequence-weighted colors */
+.rb-memory-dist-cell[data-state="hardened"] .rb-memory-dist-count {
+  color: var(--rb-gold);
+}
+.rb-memory-dist-cell[data-state="hardened"].active {
+  border-color: rgba(201, 166, 107, 0.3);
+  background: rgba(201, 166, 107, 0.04);
+}
+
+/* ── B04: Shell Visual Seal ────────────────────────────────────────────── */
+
+/* Topbar: calm density, tighter, more editorial */
+.rb-topbar {
+  gap: 14px;
+  padding: 10px 20px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.015), transparent 80%),
+    var(--rb-bg);
+  border-bottom: 1px solid var(--rb-line);
+}
+
+/* Brand: slightly smaller, more restraint */
+.rb-brand {
+  font-size: 20px;
+  letter-spacing: 0.14em;
+}
+
+/* Chambers: tighter glyph sizing for calm density */
+.rb-chamber-glyph {
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  padding: 7px 14px;
+  transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.rb-chamber-glyph:hover:not(.active) {
+  color: var(--rb-ink);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Spine: compressed, quiet ambient reading */
+.rb-spine-indicators {
+  gap: 1px;
+  margin-left: 4px;
+}
+.rb-spine-cell {
+  padding: 3px 8px;
+  min-width: 44px;
+}
+.rb-spine-label {
+  font-size: 7px;
+  letter-spacing: 0.2em;
+}
+.rb-spine-value {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+/* Repo indicator: quieter */
+.rb-repo {
+  font-size: 10px;
+  padding: 3px 8px;
+}
+
+/* Event pulse: calmer, less prominent */
+.rb-pulse {
+  padding: 6px 20px;
+  font-size: 10px;
+  gap: 14px;
+  border-top-color: rgba(28, 28, 36, 0.6);
+}
+.rb-pulse .dot {
+  width: 5px;
+  height: 5px;
+}
+
+/* Canon ribbon: elevated — gold left border strengthened */
+.rb-canon-entry {
+  border-left-width: 3px;
+  border-left-color: rgba(201, 166, 107, 0.65);
+  transition: border-left-color 0.2s ease;
+}
+.rb-canon-entry:hover {
+  border-left-color: var(--rb-gold);
+}
+
+/* Canon header: calmer, weight-bearing */
+.rb-canon-header {
+  margin-bottom: 14px;
+}
+.rb-canon-header-title {
+  font-family: var(--rb-serif);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  color: var(--rb-gold);
+  text-transform: uppercase;
+}
+.rb-canon-header-count {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: rgba(201, 166, 107, 0.6);
+  margin-left: 6px;
+}
+
+/* Panels: calmer padding */
+.rb-panel {
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.rb-panel h2 {
+  font-size: 17px;
+  margin: 0 0 10px 0;
+}
+
+/* Chamber content area: refined spacing */
+.rb-chamber {
+  padding: 24px 32px;
+}
+.rb-chamber-title {
+  font-size: 32px;
+  letter-spacing: 0.05em;
+}
+.rb-chamber-header {
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+}

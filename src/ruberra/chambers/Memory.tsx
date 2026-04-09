@@ -101,12 +101,24 @@ export function MemoryChamber() {
 
   return (
     <section className="rb-chamber rb-chamber--memory">
-      <header className="rb-chamber-header">
+      <header className="rb-chamber-header rb-chamber-header--consequence">
         <h1 className="rb-chamber-title">Memory</h1>
         <div className="rb-chamber-gravity-bar">
-          <span className="rb-chamber-gravity-text">Persistence · Recall substrate</span>
+          <span className="rb-chamber-gravity-text rb-gravity--primary">Consequence Substrate</span>
           <span className="rb-gravity-sep">·</span>
-          <span className="rb-chamber-gravity-text">{repoMemory.length} entries</span>
+          <span className="rb-chamber-gravity-text">What the organism retains</span>
+          {repoMemory.length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text">{repoMemory.length} entries</span>
+            </>
+          )}
+          {(stateCounts["hardened"] ?? 0) > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--gold">{stateCounts["hardened"]} law</span>
+            </>
+          )}
         </div>
         <div className="rb-chamber-accent-line" />
       </header>

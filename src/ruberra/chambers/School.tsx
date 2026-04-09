@@ -16,10 +16,25 @@ export function SchoolChamber() {
 
   return (
     <section className="rb-chamber rb-chamber--school">
-      <header className="rb-chamber-header">
+      <header className="rb-chamber-header rb-chamber-header--truth">
+        <div className="rb-truth-sigil" aria-hidden="true" />
         <h1 className="rb-chamber-title">School</h1>
         <div className="rb-chamber-gravity-bar">
-          <span className="rb-chamber-gravity-text">Discipline · Harden truth into law</span>
+          <span className="rb-chamber-gravity-text rb-gravity--primary">Canon Formation</span>
+          <span className="rb-gravity-sep">·</span>
+          <span className="rb-chamber-gravity-text">Harden truth into law</span>
+          {canon.length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--gold">{canon.length} hardened</span>
+            </>
+          )}
+          {openProposals.length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--warn">{openProposals.length} pending</span>
+            </>
+          )}
         </div>
         <div className="rb-chamber-accent-line" />
       </header>
