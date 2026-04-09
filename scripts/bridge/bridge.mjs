@@ -10,10 +10,10 @@ const STATE_FILE = join(OPS, 'BRIDGE_STATE.md')
 const NEXT_FILE = join(OPS, 'NEXT_ACTION.md')
 
 const AGENTS = [
-  { key: 'claude', branch: 'agent/claude' },
-  { key: 'copilot', branch: 'agent/copilot' },
-  { key: 'codex', branch: 'agent/codex' },
-  { key: 'antigravity', branch: 'agent/antigravity' },
+  { key: 'claude', branch: 'agent-claude' },
+  { key: 'copilot', branch: 'agent-copilot' },
+  { key: 'codex', branch: 'agent-codex' },
+  { key: 'antigravity', branch: 'agent-antigravity' },
 ]
 
 function git(cmd) {

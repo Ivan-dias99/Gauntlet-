@@ -14,10 +14,10 @@ If you are a sovereign pioneer opening this repository, do this in order:
    - `ops/BRIDGE_QUEUE.json`
 
 2. Work only on your branch:
-   - `agent/claude`
-   - `agent/copilot`
-   - `agent/codex`
-   - `agent/antigravity`
+   - `agent-claude`
+   - `agent-copilot`
+   - `agent-codex`
+   - `agent-antigravity`
 
 3. Take only the first eligible task assigned to your lane.
 
