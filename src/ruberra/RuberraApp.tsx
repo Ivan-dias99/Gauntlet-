@@ -11,6 +11,7 @@ import { RitualEntry } from "./shell/RitualEntry";
 import { ErrorBoundary } from "./trust/ErrorBoundary";
 import { RuledPromptHost } from "./trust/RuledPrompt";
 import "./styles.css";
+import "./reforge-imports.css";
 
 type BootState =
   | { phase: "booting" }

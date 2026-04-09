@@ -45,14 +45,23 @@ export function Shell() {
 
   // Fetch git status when backend + repo are available
   useEffect(() => {
-    if (!EXEC_BACKEND || !p.activeRepo) { setGitStatus(null); return; }
+    if (!EXEC_BACKEND || !p.activeRepo) {
+      setGitStatus(null);
+      return;
+    }
     const base = EXEC_BACKEND.replace(/\/exec$/, "");
     let cancelled = false;
     fetch(`${base}/git/status?path=${encodeURIComponent(p.activeRepo)}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled) setGitStatus(d?.ok ? (d.output ?? null) : null); })
-      .catch(() => { if (!cancelled) setGitStatus(null); });
-    return () => { cancelled = true; };
+      .then((d) => {
+        if (!cancelled) setGitStatus(d?.ok ? (d.output ?? null) : null);
+      })
+      .catch(() => {
+        if (!cancelled) setGitStatus(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [p.activeRepo, p.lastEventId]);
 
   const backdropActive = leftOpen || rightOpen;
@@ -86,15 +95,11 @@ export function Shell() {
   const canonCount = p.canon.filter(
     (c) => c.state === "hardened" && c.repo === p.activeRepo,
   ).length;
-  const memoryCount = p.memory.filter(
-    (m) => m.repo === p.activeRepo,
-  ).length;
+  const memoryCount = p.memory.filter((m) => m.repo === p.activeRepo).length;
   const openThreadCount = p.threads.filter(
     (t) => t.repo === p.activeRepo && t.status === "open",
   ).length;
-  const contradictionCount = p.contradictions.filter(
-    (c) => !c.resolved,
-  ).length;
+  const contradictionCount = p.contradictions.filter((c) => !c.resolved).length;
 
   return (
     <div className="rb-root">
@@ -110,7 +115,10 @@ export function Shell() {
         <button
           className="rb-rail-toggle"
           aria-label="Toggle threads panel"
-          onClick={() => { setLeftOpen((v) => !v); setRightOpen(false); }}
+          onClick={() => {
+            setLeftOpen((v) => !v);
+            setRightOpen(false);
+          }}
         >
           ≡ Threads
         </button>
@@ -119,49 +127,54 @@ export function Shell() {
           RUB<span>E</span>RRA
         </div>
 
-        {/* Repo binding — git authority indicator */}
-        <div className="rb-repo">
-          {p.activeRepo ?? "unbound"}
-          {p.activeRepo && gitStatus !== null && (
-            <span
-              className={`rb-repo-git ${gitStatus.trim() ? "dirty" : "clean"}`}
-              title={gitStatus || "clean"}
-            >
-              {gitStatus.trim() ? "dirty" : "clean"}
-            </span>
-          )}
-        </div>
+        <div className="rb-authority">
+          {/* Repo binding — git authority indicator */}
+          <div className="rb-repo">
+            {p.activeRepo ?? "unbound"}
+            {p.activeRepo && gitStatus !== null && (
+              <span
+                className={`rb-repo-git ${gitStatus.trim() ? "dirty" : "clean"}`}
+                title={gitStatus || "clean"}
+              >
+                {gitStatus.trim() ? "dirty" : "clean"}
+              </span>
+            )}
+          </div>
 
-        {/* System spine — ambient structural indicators */}
-        <div className="rb-spine-indicators">
-          <div className="rb-spine-cell" title="Operational state">
-            <span className="rb-spine-label">state</span>
-            <span className="rb-spine-value" style={{ color: stateColor }}>
-              {move}
-            </span>
-          </div>
-          <div className="rb-spine-cell" title={`${canonCount} hardened canon entries`}>
-            <span className="rb-spine-label">canon</span>
-            <span className="rb-spine-value rb-spine-value--gold">{canonCount}</span>
-          </div>
-          <div className="rb-spine-cell" title={`${memoryCount} memory entries`}>
-            <span className="rb-spine-label">memory</span>
-            <span className="rb-spine-value">{memoryCount}</span>
-          </div>
-          <div className="rb-spine-cell" title={`${openThreadCount} open threads`}>
-            <span className="rb-spine-label">threads</span>
-            <span className="rb-spine-value">{openThreadCount}</span>
-          </div>
-          {contradictionCount > 0 && (
-            <div className="rb-spine-cell rb-spine-cell--warn" title={`${contradictionCount} unresolved contradictions`}>
-              <span className="rb-spine-label">tension</span>
-              <span className="rb-spine-value">{contradictionCount}</span>
+          {/* System spine — ambient structural indicators */}
+          <div className="rb-spine-indicators">
+            <div className="rb-spine-cell" title="Operational state">
+              <span className="rb-spine-label">state</span>
+              <span className="rb-spine-value" style={{ color: stateColor }}>
+                {move}
+              </span>
             </div>
-          )}
+            <div className="rb-spine-cell" title={`${canonCount} hardened canon entries`}>
+              <span className="rb-spine-label">canon</span>
+              <span className="rb-spine-value rb-spine-value--gold">{canonCount}</span>
+            </div>
+            <div className="rb-spine-cell" title={`${memoryCount} memory entries`}>
+              <span className="rb-spine-label">memory</span>
+              <span className="rb-spine-value">{memoryCount}</span>
+            </div>
+            <div className="rb-spine-cell" title={`${openThreadCount} open threads`}>
+              <span className="rb-spine-label">threads</span>
+              <span className="rb-spine-value">{openThreadCount}</span>
+            </div>
+            {contradictionCount > 0 && (
+              <div
+                className="rb-spine-cell rb-spine-cell--warn"
+                title={`${contradictionCount} unresolved contradictions`}
+              >
+                <span className="rb-spine-label">tension</span>
+                <span className="rb-spine-value">{contradictionCount}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Chamber glyphs — gravity regimes */}
-        <div className="rb-chambers">
+        <div className="rb-chambers" aria-label="Chamber regimes">
           {CHAMBERS.map((c) => (
             <button
               key={c.id}
@@ -178,7 +191,10 @@ export function Shell() {
         <button
           className="rb-rail-toggle"
           aria-label="Toggle canon panel"
-          onClick={() => { setRightOpen((v) => !v); setLeftOpen(false); }}
+          onClick={() => {
+            setRightOpen((v) => !v);
+            setLeftOpen(false);
+          }}
         >
           Canon ≡
         </button>
