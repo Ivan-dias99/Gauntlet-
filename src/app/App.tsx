@@ -6,7 +6,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { projectId, publicAnonKey } from "@/utils/supabase/info";
+import { projectId, publicAnonKey } from "../utils/supabase/info";
 import { SovereignBar } from "./components/SovereignBar";
 import { ShellSideRail } from "./components/ShellSideRail";
 import { FloatingNoteSystem } from "./components/FloatingNoteSystem";
@@ -43,6 +43,8 @@ import {
   buildReleaseGate,
   transitionTask,
   type ApprovalRequest,
+  type GovernanceAction,
+  type ReleaseGateStatus,
 } from "./dna/autonomous-operations";
 import {
   defaultAutonomousOperationsState,
@@ -140,6 +142,7 @@ import { defaultTrustGovernanceState, upsertLedger, getMissionLedger, appendAudi
 import {
   defaultSovereignSecurityState,
   type SovereignSecurityState,
+  type AccessResource,
   createSession,
   buildFingerprint,
   verifyFingerprint,
@@ -588,7 +591,7 @@ export default function App() {
     setSystemModel((prev) => {
       let next = prev;
       if (activeMissionId) next = setMissionState(next, activeMissionId, "idle");
-      return setMissionState(next, missionId, mission?.ledger.currentState ?? "active");
+      return setMissionState(next, missionId, (mission?.ledger.currentState as any) ?? "active");
     });
     // Stack 05: ghost-safe activation — abort all in-flight chamber requests before binding new mission
     Object.values(abortRefs.current).forEach((c) => c?.abort());
@@ -874,8 +877,8 @@ export default function App() {
         ...defaultAccessPolicy(activeMissionId),
         allowedPioneers: activeMission.workflow.pioneerStack.length ? activeMission.workflow.pioneerStack : [],
         requireApprovalFor: activeMission.policy.requiresApproval.includes("connector_use")
-          ? ["mission_execute", "connector_use", "handoff_initiate"]
-          : ["connector_use", "handoff_initiate"],
+          ? ["mission_execute", "connector_use", "handoff_initiate"] as AccessResource[]
+          : ["connector_use", "handoff_initiate"] as AccessResource[],
       };
       const accessVerdict = evaluateAccess("mission_execute", missionRoutePinned?.pioneerId ?? baseRouteDecision.pioneerId, accessPolicy);
       if (accessVerdict !== "permit") {
@@ -965,7 +968,7 @@ export default function App() {
               {
                 id: `gov_${now}_${tab}`,
                 missionId: activeMissionId,
-                action: autonomy.decision === "stop" ? "abort" : "preview",
+                action: (autonomy.decision === "stop" ? "abort" : "preview") as GovernanceAction,
                 triggeredBy: missionRoutePinned?.pioneerId ?? baseRouteDecision.pioneerId ?? "operator",
                 approved: false,
                 consequence: autonomy.reason.slice(0, 180),
@@ -1542,7 +1545,7 @@ export default function App() {
               id: `gov_${Date.now()}_${task.id.slice(0, 6)}`,
               missionId: activeMissionId,
               taskId: task.id,
-              action: "execute",
+              action: "execute" as GovernanceAction,
               triggeredBy: routeDecision.pioneerId ?? "operator",
               approved: true,
               gateId: gate?.id,
@@ -1935,7 +1938,7 @@ export default function App() {
             : prev.activeFlow;
           const releaseGates = prev.releaseGates.map((gate) =>
             gate.label.includes(taskId.slice(0, 8))
-              ? { ...gate, status: terminalStatus === "completed" ? "passing" : "failing", resolvedAt: Date.now(), blockedBy: terminalStatus === "completed" ? undefined : completedTrace.executionState }
+              ? { ...gate, status: (terminalStatus === "completed" ? "passing" : "failing") as ReleaseGateStatus, resolvedAt: Date.now(), blockedBy: terminalStatus === "completed" ? undefined : completedTrace.executionState }
               : gate
           );
           const observation = {
@@ -1969,7 +1972,7 @@ export default function App() {
                 id: `gov_${Date.now()}_${taskId.slice(0, 6)}`,
                 missionId: activeMissionId,
                 taskId,
-                action: "execute",
+                action: "execute" as GovernanceAction,
                 triggeredBy: "runtime",
                 approved: terminalStatus === "completed",
                 consequence: digest.slice(0, 180),
@@ -2207,7 +2210,7 @@ export default function App() {
                   id: `gov_${Date.now()}_${taskId.slice(0, 6)}`,
                   missionId: activeMissionId,
                   taskId,
-                  action: "abort",
+                  action: "abort" as GovernanceAction,
                   triggeredBy: "operator",
                   approved: true,
                   consequence: "dispatch aborted by operator",
@@ -2303,7 +2306,7 @@ export default function App() {
               ],
               releaseGates: prev.releaseGates.map((gate) =>
                 gate.label.includes(taskId.slice(0, 8))
-                  ? { ...gate, status: "failing", blockedBy: failure, resolvedAt: Date.now() }
+                  ? { ...gate, status: "failing" as ReleaseGateStatus, blockedBy: failure, resolvedAt: Date.now() }
                   : gate
               ),
               governanceLog: [
@@ -2312,7 +2315,7 @@ export default function App() {
                   id: `gov_${Date.now()}_${taskId.slice(0, 6)}`,
                   missionId: activeMissionId,
                   taskId,
-                  action: "retry",
+                  action: "retry" as GovernanceAction,
                   triggeredBy: "runtime",
                   approved: false,
                   consequence: `execution failed · ${failure}`,
@@ -2473,7 +2476,7 @@ export default function App() {
     setSystemModel((prev) => {
       const live = prev.missionStates[activeMissionId];
       if (live === "running" || live === "blocked") return prev;
-      return setMissionState(prev, activeMissionId, activeMission.ledger.currentState);
+      return setMissionState(prev, activeMissionId, activeMission.ledger.currentState as any);
     });
   }, [activeMissionId, activeMission?.ledger.currentState]);
 
@@ -2975,11 +2978,11 @@ export default function App() {
   }, [personalOS]);
 
   const activeMissionRuntimeState = activeMissionId ? systemModel.missionStates[activeMissionId] : undefined;
-  const adaptiveMissionState = activeMission
+  const adaptiveMissionState = (activeMission
     ? (activeMissionRuntimeState === "running" || activeMissionRuntimeState === "blocked"
         ? activeMissionRuntimeState
         : activeMission.ledger.currentState)
-    : undefined;
+    : undefined) as any;
   const handleSecurityAcknowledge = useCallback(() => {
     setSecurityState((prev) => {
       const [head] = getUnacknowledgedEvents(prev.events);
@@ -3009,7 +3012,6 @@ export default function App() {
         {isShellMode && (
           <HeroLanding
             key="hero"
-            theme={theme}
             onEnter={(chamber) => {
               const target = chamber && (chamber === "lab" || chamber === "school" || chamber === "creation" || chamber === "profile") ? chamber : "lab";
               if (target === "lab")      setLabView("home");

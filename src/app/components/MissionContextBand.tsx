@@ -8,7 +8,7 @@
  */
 
 import { motion } from "motion/react";
-import { type Mission, CHAMBER_ACCENT, MISSION_STATUS_LABEL } from "../dna/mission-substrate";
+import { type Mission, type MissionStatus, CHAMBER_ACCENT, MISSION_STATUS_LABEL } from "../dna/mission-substrate";
 
 const STATUS_COLOR: Record<string, string> = {
   active:    "var(--r-ok)",
@@ -34,11 +34,11 @@ export function MissionContextBand({
   /** Number of completed continuity runs attributed to this mission */
   runCount?:    number;
   /** Runtime awareness state derived from live system events */
-  runtimeState?: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived";
+  runtimeState?: MissionStatus | "running" | "idle" | "planning";
 }) {
   const accent     = CHAMBER_ACCENT[mission.identity.chamberLead];
   const statusKey  = isExecuting ? "running" : (runtimeState ?? mission.ledger.currentState);
-  const status     = MISSION_STATUS_LABEL[statusKey] ?? statusKey;
+  const status     = MISSION_STATUS_LABEL[statusKey as MissionStatus] ?? statusKey;
   const statusColor = STATUS_COLOR[statusKey] ?? "var(--r-dim)";
 
   return (

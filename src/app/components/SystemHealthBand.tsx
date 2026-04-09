@@ -1,8 +1,9 @@
 import { type SystemModel } from "../dna/system-awareness";
+import { type MissionStatus } from "../dna/mission-substrate";
 
 interface SystemHealthBandProps {
   model: SystemModel;
-  missionState?: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived";
+  missionState?: MissionStatus | "running" | "idle" | "planning";
   missionName?: string;
 }
 

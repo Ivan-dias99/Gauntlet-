@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useProjection, emit } from "../spine/store";
 import { RuledPrompt } from "../trust/RuledPrompt";
-import { useIsMobile } from "../../app/components/ui/use-mobile";
+import { useIsMobile } from "./use-mobile";
 
 interface Props {
   open?: boolean;

@@ -968,7 +968,7 @@ export function transitionWorkflowStage(
       return { ...stage, status: stageStatus as any, endedAt: Date.now(), error };
     }
     if (i === runningStageIndex + 1 && status === "running") {
-      return { ...stage, status: "running", startedAt: Date.now() };
+      return { ...stage, status: "running" as const, startedAt: Date.now() };
     }
     return stage;
   });

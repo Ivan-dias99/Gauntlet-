@@ -1,6 +1,6 @@
 import { type Message, type MessageExecutionTrace, type NavFn, type Tab, type ProfileView, CHAMBER_COLOR } from "../shell-types";
 import { type Mission } from "../../dna/mission-substrate";
-import { XChamberLink, EntityTitleBlock, ConsequenceLog, Breadcrumb, EntityRow, StateBadge, CommandInputSurface, TargetContextBlock, DirectiveStack, RelationshipList } from "../SystemComponents";
+import { EntityTitleBlock, ConsequenceLog, EntityRow, StateBadge, CommandInputSurface, TargetContextBlock, DirectiveStack, RelationshipList } from "../SystemComponents";
 import { MissionRepository } from "../MissionRepository";
 import { MissionOperationsPanel } from "../MissionOperationsPanel";
 import { findObject, listObjectsForChamber, mergeObjectsByRecency, openObject, type RuberraObject } from "../object-graph";

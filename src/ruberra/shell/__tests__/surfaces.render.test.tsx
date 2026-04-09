@@ -103,7 +103,7 @@ vi.mock("../../spine/store", () => {
   };
 });
 
-vi.mock("../../../app/components/ui/use-mobile", () => ({
+vi.mock("../use-mobile", () => ({
   useIsMobile: () => false,
 }));
 

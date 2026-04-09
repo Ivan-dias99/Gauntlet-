@@ -14,7 +14,8 @@
 
 import { assertStackOrder } from "./canon-sovereignty";
 import { type MissionId } from "./mission-substrate";
-import { type MissionOperationsState } from "../autonomous-operations";
+import { type MissionOperationsState } from "./autonomous-operations";
+import { type MissionStatus } from "./mission-substrate";
 
 // ─── Stack order guard ────────────────────────────────────────────────────────
 
@@ -258,7 +259,7 @@ export interface SystemModel {
   snapshot:      ResourceSnapshot;
   health:        SystemHealthSignal;
   anomalies:     SystemAnomaly[];
-  missionStates: Record<MissionId, "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived">;
+  missionStates: Record<MissionId, MissionStatus | "running" | "idle" | "planning">;
   /** Stack 04: Mission-bound autonomous execution substrate. Persisted in fabric. */
   missionOperations: Record<MissionId, MissionOperationsState>;
   lastUpdated:   number;
@@ -315,7 +316,7 @@ export function resolveAnomaly(model: SystemModel, anomalyId: string): SystemMod
 export function setMissionState(
   model: SystemModel,
   missionId: MissionId,
-  state: "running" | "idle" | "blocked" | "planning" | "active" | "paused" | "completed" | "archived",
+  state: MissionStatus | "running" | "idle" | "planning",
 ): SystemModel {
   const anomalyId = `anomaly_mission_${missionId}`;
   let anomalies = model.anomalies;

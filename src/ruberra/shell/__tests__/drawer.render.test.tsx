@@ -61,7 +61,7 @@ vi.mock("../../spine/store", () => ({
   bootSpine: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../../app/components/ui/use-mobile", () => ({
+vi.mock("../use-mobile", () => ({
   useIsMobile: () => false,
 }));
 
