@@ -134,7 +134,7 @@ export interface Projection {
   canon: CanonEntry[];
   canonProposals: CanonProposal[];
   contradictions: Contradiction[];
-  chamber: "lab" | "school" | "creation";
+  chamber: "lab" | "school" | "creation" | "memory";
   missionFramed: boolean;
   lastEventId?: string;
 }
@@ -224,7 +224,7 @@ export function project(events: RuberraEvent[]): Projection {
       }
       case "chamber.entered": {
         const c = ev.payload.chamber as Projection["chamber"];
-        if (c === "lab" || c === "school" || c === "creation") p.chamber = c;
+        if (c === "lab" || c === "school" || c === "creation" || c === "memory") p.chamber = c;
         break;
       }
       case "memory.captured": {

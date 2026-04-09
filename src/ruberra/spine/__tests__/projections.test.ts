@@ -323,6 +323,13 @@ describe("chamber.entered", () => {
     expect(p.chamber).toBe("lab");
   });
 
+  it("sets memory chamber", () => {
+    const bind = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const c = ev("chamber.entered", { chamber: "memory" }, { repo: "r" });
+    const p = project([bind, c]);
+    expect(p.chamber).toBe("memory");
+  });
+
   it("ignores unknown chamber names", () => {
     const c = ev("chamber.entered", { chamber: "invalid" });
     const p = project([c]);

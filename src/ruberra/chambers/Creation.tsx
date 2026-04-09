@@ -45,6 +45,11 @@ export function CreationChamber() {
   const executions = p.executions.filter(
     (x) => !activeThread || x.thread === activeThread.id,
   );
+  // Running executions for the active thread — drives the forge-local
+  // live signal. Idle ⇒ empty ⇒ signal hidden. No new state, no new events.
+  const runningExecutions = activeThread
+    ? executions.filter((x) => x.status === "running")
+    : [];
   const directives = p.directives.filter(
     (d) => activeThread && d.thread === activeThread.id,
   );
@@ -217,6 +222,25 @@ export function CreationChamber() {
         <h1 className="rb-chamber-title">Creation</h1>
         <div className="rb-chamber-gravity-bar">
           <span className="rb-chamber-gravity-text">Consequence · Forge artifacts</span>
+          {activeThread && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-thread-context-intent">
+                {activeThread.intent.length > 44
+                  ? activeThread.intent.slice(0, 44) + "…"
+                  : activeThread.intent}
+              </span>
+              <span className={`rb-badge ${
+                activeThread.state === "open"              ? "ok"
+                : activeThread.state === "executing"       ? "warn"
+                : activeThread.state === "awaiting-review" ? "warn"
+                : activeThread.state === "closed"          ? "bad"
+                : ""
+              }`}>
+                {activeThread.state}
+              </span>
+            </>
+          )}
         </div>
         <div className="rb-chamber-accent-line" />
       </header>
@@ -401,6 +425,30 @@ export function CreationChamber() {
               </button>
             </div>
 
+            {/* Live execution signal — loop-local, silent when idle.
+                Shown only while at least one execution is running for the
+                active thread. Disappears automatically on succeed/fail. */}
+            {runningExecutions.length > 0 && (
+              <div
+                className="rb-forge-exec-signal"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="rb-forge-exec-dot" aria-hidden="true" />
+                <span className="rb-forge-exec-label">executing</span>
+                <span className="rb-forge-exec-target">
+                  {runningExecutions[0].label.length > 48
+                    ? runningExecutions[0].label.slice(0, 48) + "…"
+                    : runningExecutions[0].label}
+                </span>
+                {runningExecutions.length > 1 && (
+                  <span className="rb-forge-exec-count">
+                    +{runningExecutions.length - 1}
+                  </span>
+                )}
+              </div>
+            )}
+
             {err && (
               <div className="rb-unavail" style={{ marginTop: 12 }}>
                 <strong>refused</strong>
@@ -418,7 +466,7 @@ export function CreationChamber() {
             )}
           </div>
 
-          <div className="rb-panel">
+          <div className="rb-trace">
             <h2>Directive Ledger</h2>
             {directives.length === 0 ? (
               <div className="rb-unavail">
@@ -458,7 +506,7 @@ export function CreationChamber() {
             )}
           </div>
 
-          <div className="rb-panel">
+          <div className={`rb-trace${activeThread.state === "executing" ? " rb-trace--executing" : ""}`}>
             <h2>Executions</h2>
             {executions.length === 0 ? (
               <div className="rb-unavail">
@@ -490,7 +538,7 @@ export function CreationChamber() {
             )}
           </div>
 
-          <div className="rb-panel">
+          <div className={`rb-trace${activeThread.state === "awaiting-review" ? " rb-trace--review" : ""}`}>
             <h2>Artifacts — Review &amp; Commit</h2>
             {artifacts.length === 0 ? (
               <div className="rb-unavail">

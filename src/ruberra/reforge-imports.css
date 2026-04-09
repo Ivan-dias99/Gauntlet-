@@ -1,0 +1,147 @@
+.rb-topbar {
+  position: relative;
+  gap: 14px;
+}
+
+.rb-authority {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: auto;
+  min-width: 0;
+}
+
+.rb-repo {
+  background: rgba(255, 255, 255, 0.015);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.rb-spine-indicators {
+  margin-left: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--rb-line);
+  gap: 10px;
+}
+
+.rb-spine-cell {
+  position: relative;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 10px 0 0;
+  min-width: 0;
+  border: none;
+  background: transparent;
+}
+
+.rb-spine-cell::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 12px;
+  background: var(--rb-line);
+}
+
+.rb-spine-cell:last-child::after {
+  display: none;
+}
+
+.rb-spine-cell--warn {
+  background: transparent;
+  border: none;
+}
+
+.rb-spine-label {
+  line-height: 1;
+}
+
+.rb-spine-value {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.rb-topbar > .rb-rail-toggle:last-child {
+  margin-left: auto;
+}
+
+.rb-chambers {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-left: 0;
+  gap: 0;
+  padding: 3px;
+  border: 1px solid var(--rb-line);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.rb-chamber-glyph {
+  position: relative;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 5px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+
+.rb-chamber-glyph:last-child {
+  border-right: none;
+}
+
+.rb-chamber-glyph.active {
+  background: var(--rb-bg-elev-2);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.24),
+    inset 0 -2px 0 0 var(--rb-accent);
+}
+
+.rb-chamber-glyph.active::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.8;
+}
+
+@media (max-width: 980px) {
+  .rb-chambers {
+    position: static;
+    left: auto;
+    transform: none;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .rb-authority {
+    order: 3;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid var(--rb-line);
+    justify-content: space-between;
+  }
+
+  .rb-spine-indicators {
+    padding-left: 10px;
+  }
+
+  .rb-chambers {
+    order: 4;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .rb-topbar > .rb-rail-toggle:last-child {
+    margin-left: 0;
+  }
+}
