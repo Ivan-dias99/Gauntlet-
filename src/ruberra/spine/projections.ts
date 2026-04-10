@@ -137,6 +137,32 @@ export interface Contradiction {
   resolved: boolean;
 }
 
+// ── Intelligence Compounding (W09) ────────────────────────────────────────
+
+// Manual cross-thread knowledge link. The architect binds a canon entry or
+// memory from one context to another thread, creating an explicit synthesis.
+export interface KnowledgeSynthesis {
+  id: string;
+  sourceId: string;      // canon or memory id being linked
+  sourceType: "canon" | "memory";
+  targetThread: string;  // thread receiving the knowledge
+  note: string;          // architect's reason for the link
+  ts: number;
+}
+
+// Automatic resonance match — a hardened canon entry from another thread
+// that shares significant token overlap with the current thread's work.
+export type ResonanceVia = "intent" | "concept" | "directive" | "memory";
+
+export interface ResonanceMatch {
+  canonId: string;
+  canonText: string;
+  sourceThread?: string;  // thread where the canon was hardened (if known)
+  targetThread: string;   // thread where resonance is detected
+  overlap: number;        // match strength (shared token count)
+  via: ResonanceVia;      // what surface matched
+}
+
 export interface Projection {
   repos: Repo[];
   activeRepo?: string;
@@ -150,6 +176,7 @@ export interface Projection {
   canon: CanonEntry[];
   canonProposals: CanonProposal[];
   contradictions: Contradiction[];
+  syntheses: KnowledgeSynthesis[];
   chamber: "lab" | "school" | "creation" | "memory";
   missionFramed: boolean;
   lastEventId?: string;
@@ -166,6 +193,7 @@ const empty = (): Projection => ({
   canon: [],
   canonProposals: [],
   contradictions: [],
+  syntheses: [],
   chamber: "creation",
   missionFramed: false,
 });
@@ -437,6 +465,17 @@ export function project(events: RuberraEvent[]): Projection {
         if (c) c.resolved = true;
         break;
       }
+      case "knowledge.synthesized": {
+        p.syntheses.push({
+          id: ev.id,
+          sourceId: String(ev.payload.sourceId ?? ""),
+          sourceType: (ev.payload.sourceType as "canon" | "memory") ?? "canon",
+          targetThread: String(ev.payload.targetThread ?? ev.thread ?? ""),
+          note: String(ev.payload.note ?? ""),
+          ts: ev.ts,
+        });
+        break;
+      }
     }
   }
   return p;
@@ -582,4 +621,218 @@ export function revokedCanonWithDependents(p: Projection): CanonDependency[] {
     all.push(...canonDependents(p, c.id));
   }
   return all;
+}
+
+// ── Cross-Thread Resonance Detection (W09) ────────────────────────────────
+//
+// For a given thread, find hardened canon entries from *other* threads
+// that share significant token overlap with the thread's work surfaces
+// (intent, concepts, directives, memory). Returns matches sorted by strength.
+
+function matchTokenOverlap(
+  canonTokens: Set<string>,
+  text: string,
+): number {
+  const tokens = significantTokens(text);
+  return tokens.filter((t) => canonTokens.has(t)).length;
+}
+
+export function threadResonance(
+  p: Projection,
+  threadId: string,
+): ResonanceMatch[] {
+  const thread = p.threads.find((t) => t.id === threadId);
+  if (!thread) return [];
+
+  // Collect all text surfaces for this thread.
+  const threadConcepts = p.concepts.filter((c) => c.thread === threadId);
+  const threadDirectives = p.directives.filter((d) => d.thread === threadId);
+  const threadMemory = p.memory.filter((m) => m.thread === threadId);
+
+  // Hardened canon from other threads (or repo-wide canon without a thread).
+  // A canon entry's thread origin is traced via its memoryId → memory.thread.
+  const memoryThreadMap = new Map<string, string>();
+  for (const m of p.memory) {
+    if (m.thread) memoryThreadMap.set(m.id, m.thread);
+  }
+
+  const otherCanon = p.canon.filter((c) => {
+    if (c.state !== "hardened") return false;
+    if (c.repo && thread.repo && c.repo !== thread.repo) return false;
+    // If canon has a traceable thread origin and it's the same thread, exclude.
+    if (c.memoryId) {
+      const originThread = memoryThreadMap.get(c.memoryId);
+      if (originThread === threadId) return false;
+    }
+    return true;
+  });
+
+  const results: ResonanceMatch[] = [];
+  const seen = new Set<string>(); // deduplicate: canonId per best via
+
+  for (const c of otherCanon) {
+    const canonTokens = new Set(significantTokens(c.text));
+    if (canonTokens.size === 0) continue;
+
+    const sourceThread = c.memoryId
+      ? memoryThreadMap.get(c.memoryId)
+      : undefined;
+
+    // Check intent.
+    const intentOverlap = matchTokenOverlap(canonTokens, thread.intent);
+    if (intentOverlap >= 2) {
+      results.push({
+        canonId: c.id,
+        canonText: c.text,
+        sourceThread,
+        targetThread: threadId,
+        overlap: intentOverlap,
+        via: "intent",
+      });
+      seen.add(c.id);
+    }
+
+    // Check concepts.
+    for (const concept of threadConcepts) {
+      const overlap = matchTokenOverlap(
+        canonTokens,
+        `${concept.title} ${concept.hypothesis}`,
+      );
+      if (overlap >= 2 && !seen.has(c.id)) {
+        results.push({
+          canonId: c.id,
+          canonText: c.text,
+          sourceThread,
+          targetThread: threadId,
+          overlap,
+          via: "concept",
+        });
+        seen.add(c.id);
+      }
+    }
+
+    // Check directives.
+    for (const d of threadDirectives) {
+      const overlap = matchTokenOverlap(
+        canonTokens,
+        `${d.text} ${d.scope}`,
+      );
+      if (overlap >= 2 && !seen.has(c.id)) {
+        results.push({
+          canonId: c.id,
+          canonText: c.text,
+          sourceThread,
+          targetThread: threadId,
+          overlap,
+          via: "directive",
+        });
+        seen.add(c.id);
+      }
+    }
+
+    // Check memory.
+    for (const m of threadMemory) {
+      const overlap = matchTokenOverlap(canonTokens, m.text);
+      if (overlap >= 2 && !seen.has(c.id)) {
+        results.push({
+          canonId: c.id,
+          canonText: c.text,
+          sourceThread,
+          targetThread: threadId,
+          overlap,
+          via: "memory",
+        });
+        seen.add(c.id);
+      }
+    }
+  }
+
+  return results.sort((a, b) => b.overlap - a.overlap);
+}
+
+// ── Concept Ancestry (W09) ────────────────────────────────────────────────
+//
+// For a given concept, find hardened canon entries that are semantically
+// related — the "ancestors" that informed this concept. Includes both
+// automatic token-overlap detection and explicit synthesis links.
+
+export function conceptAncestry(
+  p: Projection,
+  conceptId: string,
+): CanonEntry[] {
+  const concept = p.concepts.find((c) => c.id === conceptId);
+  if (!concept) return [];
+
+  const conceptText = `${concept.title} ${concept.hypothesis}`;
+  const hardened = p.canon.filter(
+    (c) => c.state === "hardened" && (!c.repo || c.repo === concept.repo),
+  );
+
+  // Automatic: token-overlap detection.
+  const matches: { entry: CanonEntry; overlap: number }[] = [];
+  for (const c of hardened) {
+    const canonTokens = new Set(significantTokens(c.text));
+    if (canonTokens.size === 0) continue;
+    const overlap = matchTokenOverlap(canonTokens, conceptText);
+    if (overlap >= 2) {
+      matches.push({ entry: c, overlap });
+    }
+  }
+
+  // Explicit: synthesis links targeting this concept's thread.
+  const explicitIds = new Set(
+    p.syntheses
+      .filter((s) => s.targetThread === concept.thread && s.sourceType === "canon")
+      .map((s) => s.sourceId),
+  );
+  for (const c of hardened) {
+    if (explicitIds.has(c.id) && !matches.some((m) => m.entry.id === c.id)) {
+      matches.push({ entry: c, overlap: 999 }); // explicit link = max priority
+    }
+  }
+
+  return matches
+    .sort((a, b) => b.overlap - a.overlap)
+    .map((m) => m.entry);
+}
+
+// ── Thread Synthesis Surface (W09) ────────────────────────────────────────
+//
+// Returns all explicit synthesis links targeting a given thread,
+// resolved to their source canon/memory text for display.
+
+export interface ResolvedSynthesis {
+  id: string;
+  sourceId: string;
+  sourceType: "canon" | "memory";
+  sourceText: string;
+  note: string;
+  ts: number;
+}
+
+export function threadSyntheses(
+  p: Projection,
+  threadId: string,
+): ResolvedSynthesis[] {
+  return p.syntheses
+    .filter((s) => s.targetThread === threadId)
+    .map((s) => {
+      let sourceText = "";
+      if (s.sourceType === "canon") {
+        const c = p.canon.find((x) => x.id === s.sourceId);
+        sourceText = c?.text ?? "";
+      } else {
+        const m = p.memory.find((x) => x.id === s.sourceId);
+        sourceText = m?.text ?? "";
+      }
+      return {
+        id: s.id,
+        sourceId: s.sourceId,
+        sourceType: s.sourceType,
+        sourceText,
+        note: s.note,
+        ts: s.ts,
+      };
+    })
+    .filter((s) => s.sourceText.length > 0);
 }

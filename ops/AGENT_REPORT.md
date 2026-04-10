@@ -3,6 +3,18 @@
 Add the newest block at the top.
 
 BRIDGE_HANDOFF
+  TASK_ID: W09-SPINE-RESONANCE
+  PIONEER: claude
+  STATUS: done
+  SUMMARY: Implemented W09 Intelligence Compounding spine logic. Three new projection functions: threadResonance() detects hardened canon from other threads that share significant token overlap with a thread's intent, concepts, directives, or memory — excludes self-originated canon to prevent noise. conceptAncestry() finds canon entries that informed a given concept (automatic token overlap + explicit synthesis links). threadSyntheses() resolves manual knowledge links to source text for display. New event type knowledge.synthesized enables manual cross-thread linking when automatic resonance detection is insufficient. New emitter emit.synthesizeKnowledge() with full validation (source existence, thread existence, note required). 14 new tests added, all passing (105/105 total). Build clean: 103 modules, 0 errors.
+  FILES: src/ruberra/spine/events.ts, src/ruberra/spine/projections.ts, src/ruberra/spine/store.ts, src/ruberra/spine/__tests__/projections.test.ts
+  NEXT_MOVE: Antigravity opens W09-B01 — Synthesis Surface in Memory chamber, consuming threadResonance() and threadSyntheses().
+  ACCEPTANCE: met
+  TARGET_PIONEER: antigravity
+  TARGET_TASK: W09-B01
+  TARGET_NOTE: Spine logic ready — threadResonance(), conceptAncestry(), threadSyntheses() exported and tested. Wire into Memory and Creation chambers.
+
+BRIDGE_HANDOFF
   TASK_ID: W08-OMNI-CONSOLIDATION
   PIONEER: antigravity
   STATUS: done
