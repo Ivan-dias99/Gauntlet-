@@ -8,6 +8,7 @@ import { all, subscribe, hydrate, append } from "./eventLog";
 import { project, Projection } from "./projections";
 import { EventType } from "./events";
 import { verifyRepo } from "./gitAuthority";
+import { ALL_SEEDS } from "./seeds";
 
 let cached: Projection | null = null;
 let version = 0;
@@ -320,4 +321,22 @@ export const emit = {
 
   raw: (type: EventType, payload: Record<string, unknown> = {}) =>
     append(type, payload),
+
+  seedCanon: async () => {
+    const p = cached ?? project(all());
+    if (p.missionFramed || p.canon.length > 0) return;
+    
+    // Mission framing is the trigger for seeding the motherboard of canon.
+    await append("canon.hardened", { 
+      text: "Ruberra initialization complete. Sovereignty active.",
+      scope: "mission" 
+    });
+
+    for (const seed of ALL_SEEDS) {
+      await append("canon.hardened", {
+        text: seed.text,
+        scope: seed.scope
+      });
+    }
+  }
 };

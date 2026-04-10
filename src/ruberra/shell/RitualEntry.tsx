@@ -114,6 +114,7 @@ export function RitualEntry({ onEnter, returning }: Props) {
             disabled={!name.trim()}
             onClick={async () => {
               await emit.bindRepo(name.trim());
+              await emit.seedCanon();
               await emit.enterChamber("creation");
               onEnter();
             }}

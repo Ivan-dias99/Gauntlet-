@@ -182,8 +182,48 @@
       "surface": "audit",
       "scope": ["src/ruberra/", "ops/"],
       "depends_on": ["W06-B02"],
-      "gate_on_complete": "GATE_COMPLETE",
+      "gate_on_complete": "GATE_W07_OPEN",
       "success": "Wave 06 verified. Full product body activation complete."
+    },
+    {
+      "id": "W07-B01",
+      "title": "Execution Fabric Harvest",
+      "owner": "claude",
+      "surface": "spine",
+      "scope": ["src/ruberra/spine/runtime-fabric.ts"],
+      "depends_on": ["W06-B03"],
+      "gate_on_complete": null,
+      "success": "Legacy execution logic ported to the active spine."
+    },
+    {
+      "id": "W07-B02",
+      "title": "Fabric Integration",
+      "owner": "claude",
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/Creation.tsx"],
+      "depends_on": ["W07-B01"],
+      "gate_on_complete": null,
+      "success": "Creation chamber is wired to the new execution fabric."
+    },
+    {
+      "id": "W07-B03",
+      "title": "School Canon Seeding",
+      "owner": "antigravity",
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/School.tsx"],
+      "depends_on": ["W07-B02"],
+      "gate_on_complete": null,
+      "success": "School seeded with initial doctrine harvested from legacy DNA."
+    },
+    {
+      "id": "W07-B04",
+      "title": "Final Convergence",
+      "owner": "codex",
+      "surface": "audit",
+      "scope": ["src/"],
+      "depends_on": ["W07-B03"],
+      "gate_on_complete": "GATE_BETA_READY",
+      "success": "Legacy quarantine removed. One repo, one truth."
     }
   ]
 }

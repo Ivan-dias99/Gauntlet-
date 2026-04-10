@@ -3,7 +3,8 @@
 // and artifact review. No fake terminal. Law of Consequence enforced.
 
 import { useState } from "react";
-import { useProjection, emit } from "../spine/store";
+import { emit, useProjection } from "../spine/store";
+import { runRuntime } from "../spine/runtime-fabric";
 import { Unavailable } from "../trust/Unavailable";
 import { RuledPrompt } from "../trust/RuledPrompt";
 
@@ -105,79 +106,32 @@ export function CreationChamber() {
           return;
         }
       }
+
       const d = await emit.acceptDirective(activeThread.id, {
         text: text.trim(),
         scope: scope.trim(),
         risk,
         acceptance: acceptance.trim(),
       });
-      const ex = await emit.startExecution(
-        text.trim(),
-        d.id,
-        activeThread.id,
-      );
-      if (!EXEC_BACKEND) {
-        await emit.failExecution(ex.id, "execution backend unbound");
-        await emit.nullConsequence(
-          "execution",
-          "no backend bound — directive produced no artifact",
-        );
-        setText("");
-        setScope("");
-        setAcceptance("");
-        return;
-      }
-      try {
-        const res = await fetch(EXEC_BACKEND, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            repo: activeThread.repo,
-            thread: activeThread.id,
-            directive: { text: text.trim(), scope: scope.trim(), risk, acceptance: acceptance.trim() },
-          }),
-        });
-        if (!res.ok) throw new Error(`backend ${res.status}`);
-        const data = (await res.json()) as {
-          artifacts?: {
-            title: string;
-            // Consequence payload — all optional, all backward-compatible.
-            files?: string[];
-            diff?: string;
-            commitRef?: string;
-          }[];
-          ok?: boolean;
-        };
-        const list = data.artifacts ?? [];
-        for (const a of list) {
-          // Forward only fields the backend actually provided. Missing fields
-          // remain undefined and are handled safely by the spine reducer.
-          const consequence =
-            a.files !== undefined || a.diff !== undefined || a.commitRef !== undefined
-              ? { files: a.files, diff: a.diff, commitRef: a.commitRef }
-              : undefined;
-          await emit.generateArtifact(
-            a.title,
-            ex.id,
-            activeThread.id,
-            d.id,
-            consequence,
-          );
-        }
-        if (list.length === 0) {
-          await emit.nullConsequence("execution", "backend returned no artifacts");
-        }
-        if (data.ok === false) {
-          await emit.failExecution(ex.id, "backend reported failure");
-        } else {
-          await emit.succeedExecution(ex.id);
-        }
-      } catch (fetchErr) {
-        await emit.failExecution(ex.id, (fetchErr as Error).message);
-      }
+
+      // Clear the local composition buffers immediately
       setText("");
       setScope("");
       setAcceptance("");
+
+      // Trigger the execution through the runtime fabric
+      // This is the new centralized hinge that handles simulation/reality.
+      await runRuntime(
+        {
+          prompt: String(d.payload.text ?? ""),
+          threadId: activeThread.id,
+          directiveId: d.id,
+        },
+        {
+          provider: "openai", // Default provider for now
+          model: "gpt-5.4-creator"
+        }
+      );
     } catch (e) {
       setErr((e as Error).message);
     }
