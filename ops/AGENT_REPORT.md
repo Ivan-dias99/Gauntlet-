@@ -3,6 +3,15 @@
 Add the newest block at the top.
 
 BRIDGE_HANDOFF
+  TASK_ID: W08-HARDENING
+  PIONEER: antigravity
+  STATUS: done
+  SUMMARY: Executed WAVE 08 — Convergence Hardening. Eliminated dead code directories (src/styles/, src/imports/, src/utils/) that were orphaned from the legacy architecture. None were referenced by the active organism. Reconciled RUBERRA_STACK_CLOSURE_TRACKER.md against the converged src/ruberra/ architecture — honest re-evaluation: 4 stacks CLOSED (Canon, Mission, Adaptive Experience, Trust+Governance), 4 PARTIAL, 12 OPEN. Build verified clean at 102 modules after cleanup.
+  FILES: RUBERRA_STACK_CLOSURE_TRACKER.md, ops/BRIDGE_STATE.md, ops/AGENT_REPORT.md
+  NEXT_MOVE: Organism is structurally locked and clean. Next productive work is advancing PARTIAL stacks toward closure or implementing new capability.
+  ACCEPTANCE: met
+
+BRIDGE_HANDOFF
   TASK_ID: W07-B04
   PIONEER: antigravity
   STATUS: done
