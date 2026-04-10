@@ -13,6 +13,9 @@ If you are a sovereign pioneer opening this repository, do this in order:
    - `ops/NEXT_ACTION.md`
    - `ops/BRIDGE_QUEUE.json`
    - `ops/RELAY_STATE.md`
+   - `brain/00_index/BRAIN_MAP.md`
+   - `brain/00_index/QUERY_INDEX.md`
+   - `brain/07_agent_interfaces/PIONEER_BRAIN_ENTRY.md`
 
 2. Work only on your branch:
    - `agent-claude`
@@ -22,12 +25,16 @@ If you are a sovereign pioneer opening this repository, do this in order:
 
 3. Take only the first eligible task assigned to your lane.
 
-4. When a task is completed, do all of this in sequence:
+4. Before any high-consequence or ambiguous move:
+   - read the relevant Ivan Brain nodes
+   - do not improvise founder intent if the brain already defines it
+
+5. When a task is completed, do all of this in sequence:
    - write `ops/AGENT_REPORT.md`
    - name the next pioneer if your completion unlocks one
    - enter rescan mode
 
-5. Rescan mode is mandatory while your session is alive:
+6. Rescan mode is mandatory while your session is alive:
    - re-read `ops/NEXT_ACTION.md`
    - re-read `ops/BRIDGE_QUEUE.json`
    - re-read `ops/RELAY_STATE.md`
@@ -57,3 +64,4 @@ BRIDGE_HANDOFF
 - do not touch `src/app/`
 - do not take a blocked task before its dependencies are done
 - if no task is eligible for you, remain in rescan mode instead of inventing theater
+- do not bypass the Ivan Brain on founder-intent, security, authority, or structural questions
