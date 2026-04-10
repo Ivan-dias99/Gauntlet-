@@ -43,6 +43,7 @@ export function MemoryChamber() {
   const [threadFilter, setThreadFilter] = useState<ThreadFilter>("all");
   const [search, setSearch] = useState("");
   const [captureText, setCaptureText] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Repo-scoped memory only.
   const repoMemory = useMemo(
@@ -137,6 +138,43 @@ export function MemoryChamber() {
         </div>
       )}
 
+      {repoMemory.length > 0 && (
+        <div className="rb-memory-consolidation">
+          {(["observed", "retained", "hardened", "revoked"] as const).map((state) => {
+            const count = stateCounts[state] ?? 0;
+            if (count === 0) return null;
+            return (
+              <div key={state} className={`rb-memory-consolidation-cell ${STATE_CLASS[state]}`}>
+                <span className="rb-memory-consolidation-count">{count}</span>
+                <span className="rb-memory-consolidation-label">{state}</span>
+              </div>
+            );
+          })}
+          <div className="rb-memory-consolidation-cell">
+            <span className="rb-memory-consolidation-count">{repoMemory.length}</span>
+            <span className="rb-memory-consolidation-label">total</span>
+          </div>
+        </div>
+      )}
+
+      {selected.size > 0 && (
+        <div className="rb-memory-batch-bar">
+          <span className="rb-memory-batch-count">{selected.size} selected</span>
+          <button
+            className="rb-btn"
+            onClick={() => {
+              for (const id of selected) emit.revokeMemory(id, "batch revoke");
+              setSelected(new Set());
+            }}
+          >
+            Revoke Selected
+          </button>
+          <button className="rb-btn" onClick={() => setSelected(new Set())}>
+            Clear Selection
+          </button>
+        </div>
+      )}
+
       {/* Truth-state distribution — system depth at a glance */}
       <div className="rb-memory-distribution">
         {(["retained", "hardened", "observed", "revoked"] as TruthState[]).map((s) => (
@@ -213,9 +251,27 @@ export function MemoryChamber() {
         ) : (
           filtered.map((m) => {
             const threadLabel = m.thread ? threadMap.get(m.thread) : undefined;
+            const itemClass = [
+              "rb-memory-item",
+              m.state === "revoked" && "revoked",
+              m.state === "hardened" && "rb-memory-item--hardened",
+              m.state === "retained" && "rb-memory-item--retained",
+            ].filter(Boolean).join(" ");
             return (
-              <div key={m.id} className={`rb-memory-item${m.state === "revoked" ? " revoked" : ""}`}>
+              <div key={m.id} className={itemClass}>
                 <div className="rb-memory-item-header">
+                  <label className="rb-memory-item-select">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(m.id)}
+                      onChange={() => {
+                        const next = new Set(selected);
+                        if (next.has(m.id)) next.delete(m.id);
+                        else next.add(m.id);
+                        setSelected(next);
+                      }}
+                    />
+                  </label>
                   <span className={`rb-badge ${STATE_CLASS[m.state]}`}>{m.state}</span>
                   {threadLabel && (
                     <span className="rb-memory-item-thread">{threadLabel}</span>
@@ -223,17 +279,26 @@ export function MemoryChamber() {
                   <span className="rb-memory-item-time">{timeAgo(m.ts)}</span>
                 </div>
                 <div className="rb-memory-item-text">{m.text}</div>
-                {/* Actions — promote or propose as canon */}
-                {m.state === "retained" && !m.promoted && (
+                {m.state !== "revoked" && m.state !== "hardened" && (
                   <div className="rb-memory-item-actions">
-                    <button
-                      className="rb-btn"
-                      onClick={async () => {
-                        await emit.promoteMemory(m.id);
-                        await emit.proposeCanon(m.text, m.id);
-                      }}
-                    >
-                      Promote → Canon Proposal
+                    {m.state === "retained" && !m.promoted && (
+                      <button
+                        className="rb-btn"
+                        onClick={async () => {
+                          await emit.promoteMemory(m.id);
+                          await emit.proposeCanon(m.text, m.id);
+                        }}
+                      >
+                        Promote → Canon Proposal
+                      </button>
+                    )}
+                    {m.state === "observed" && (
+                      <button className="rb-btn" onClick={() => emit.elevateMemory(m.id, "retained")}>
+                        Retain
+                      </button>
+                    )}
+                    <button className="rb-btn" onClick={() => emit.revokeMemory(m.id, "no longer relevant")}>
+                      Revoke
                     </button>
                   </div>
                 )}

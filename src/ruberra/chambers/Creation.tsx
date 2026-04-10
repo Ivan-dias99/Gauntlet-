@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import { emit, useProjection } from "../spine/store";
+import { revokedCanonWithDependents } from "../spine/projections";
 import { runRuntime } from "../spine/runtime-fabric";
 import { Unavailable } from "../trust/Unavailable";
 import { RuledPrompt } from "../trust/RuledPrompt";
@@ -30,6 +31,24 @@ function matchesCanon(directiveText: string, scopeText: string, canonText: strin
   return tokens.filter((w) => hay.includes(w)).length >= 2;
 }
 
+function renderDiff(diff?: string) {
+  if (!diff) return null;
+  return (
+    <pre className="rb-artifact-diff">
+      {diff.split("\n").map((line, i) => {
+        const cls = line.startsWith("+")
+          ? "rb-diff-add"
+          : line.startsWith("-")
+            ? "rb-diff-del"
+            : line.startsWith("@@")
+              ? "rb-diff-hunk"
+              : "";
+        return <span key={i} className={cls}>{line}{"\n"}</span>;
+      })}
+    </pre>
+  );
+}
+
 export function CreationChamber() {
   const p = useProjection();
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
@@ -54,8 +73,6 @@ export function CreationChamber() {
   const executions = p.executions.filter(
     (x) => !activeThread || x.thread === activeThread.id,
   );
-  // Running executions for the active thread — drives the forge-local
-  // live signal. Idle ⇒ empty ⇒ signal hidden. No new state, no new events.
   const runningExecutions = activeThread
     ? executions.filter((x) => x.status === "running")
     : [];
@@ -63,8 +80,6 @@ export function CreationChamber() {
     (d) => activeThread && d.thread === activeThread.id,
   );
 
-  // Canon constraint signal — hardened canon in this repo that overlaps current composition.
-  // Empty when forge is blank, when no canon exists, or when no overlap is found.
   const repoCanon = p.canon.filter(
     (c) => c.state === "hardened" && c.repo === activeThread?.repo,
   );
@@ -73,8 +88,10 @@ export function CreationChamber() {
       ? repoCanon.filter((c) => matchesCanon(text, scope, c.text))
       : [];
 
-  // Retained consequence — memory auto-captured from artifact reviews in this thread.
-  // Covers both accepted and rejected outcomes: the consequence loop always closes.
+  const revokedDeps = activeThread
+    ? revokedCanonWithDependents(p).filter((d) => d.threadId === activeThread.id)
+    : [];
+
   const threadMemory = activeThread
     ? p.memory.filter(
         (m) =>
@@ -84,9 +101,6 @@ export function CreationChamber() {
       )
     : [];
 
-  // Open contradiction warning — unresolved contradictions in the projection.
-  // Note: Contradiction type carries no repo field in the current projection;
-  // all unresolved contradictions are shown. In single-repo sessions this is exact.
   const openContradictions = p.contradictions.filter((c) => !c.resolved);
 
   const ambiguous = /\{\{[^}]+\}\}/.test(text);
@@ -127,7 +141,6 @@ export function CreationChamber() {
       setScope("");
       setAcceptance("");
 
-      // Execution via the centralized runtime fabric hinge.
       await runRuntime(
         {
           prompt: String(d.payload.text ?? ""),
@@ -135,7 +148,7 @@ export function CreationChamber() {
           directiveId: d.id,
         },
         {
-          provider: "openai", // Default provider for now
+          provider: "openai",
           model: "gpt-5.4-creator"
         }
       );
@@ -178,11 +191,6 @@ export function CreationChamber() {
     }
   }
 
-  // Forge state counts — ambient architect context in the header.
-  // Derived from already-computed directives and artifacts: no new state.
-  // pendingReviewCount: scoped to activeThread's artifacts only — matches the review
-  // surface which renders only the active thread's artifacts, preventing a stuck signal
-  // when pending work exists on a different open thread.
   const acceptedDirectiveCount = directives.filter((d) => d.status === "accepted").length;
   const pendingReviewCount = artifacts.filter((a) => a.review === "pending").length;
 
@@ -238,7 +246,6 @@ export function CreationChamber() {
         />
       ) : (
         <>
-          {/* Relay Chain — concept → directive → artifact → review */}
           <div className="rb-relay-chain" aria-label="Concept-to-build relay">
             <div className={`rb-relay-node${concepts.length > 0 ? " reached" : ""}${concepts.length > 0 && !concepts.some(c => !c.promoted) && directives.length === 0 ? " active" : ""}`}>
               <span className="rb-relay-node-label">Concept</span>
@@ -269,11 +276,9 @@ export function CreationChamber() {
             </div>
           </div>
 
-          {/* Concept Station — architect-first idea composition before the hinge */}
           <div className="rb-concept-station">
             <div className="rb-concept-station-title">Concept Station</div>
 
-            {/* Unstated concepts — ready to promote */}
             {concepts.filter(c => !c.promoted).length > 0 && (
               <div className="rb-concept-list">
                 {concepts.filter(c => !c.promoted).map(c => (
@@ -295,7 +300,6 @@ export function CreationChamber() {
               </div>
             )}
 
-            {/* Concept composition form */}
             <div className="rb-concept-compose">
               <div className="rb-field-group">
                 <label className="rb-field-label">Concept Title</label>
@@ -334,7 +338,6 @@ export function CreationChamber() {
             </div>
           </div>
 
-          {/* Directive Forge — the hinge */}
           <div className={`rb-directive-forge${canCompose ? " rb-directive-forge--ready" : ""}${promotingConceptId ? " rb-directive-forge--from-concept" : ""}`}>
             <div className="rb-forge-title">
               Directive Forge
@@ -343,7 +346,6 @@ export function CreationChamber() {
               )}
             </div>
 
-            {/* Thread Record — prior consequence context before next composition */}
             {directives.length > 0 && (
               <div className="rb-thread-record">
                 <div className="rb-thread-record-label">thread record</div>
@@ -394,7 +396,6 @@ export function CreationChamber() {
               </div>
             )}
 
-            {/* Canon Constraint Signal — matching hardened canon for this repo */}
             {canonConstraints.length > 0 && (
               <div className="rb-canon-constraint">
                 <div className="rb-canon-constraint-label">canon constraint</div>
@@ -406,7 +407,20 @@ export function CreationChamber() {
               </div>
             )}
 
-            {/* Retained Consequence — prior artifact-review memory for this thread */}
+            {revokedDeps.length > 0 && (
+              <div className="rb-forge-revoked-deps">
+                <div className="rb-forge-revoked-deps-label">revoked canon dependency · {revokedDeps.length}</div>
+                {revokedDeps.slice(0, 3).map((d) => (
+                  <div key={`${d.canonId}-${d.directiveId}`} className="rb-forge-revoked-deps-entry">
+                    <span className="rb-badge bad">revoked</span>
+                    <span>{d.canonText.length > 50 ? d.canonText.slice(0, 50) + "…" : d.canonText}</span>
+                    <span className="rb-forge-revoked-deps-arrow">→</span>
+                    <span>{d.directiveText.length > 40 ? d.directiveText.slice(0, 40) + "…" : d.directiveText}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {threadMemory.length > 0 && (
               <div className="rb-forge-memory">
                 <div className="rb-forge-memory-label">retained consequence</div>
@@ -418,7 +432,6 @@ export function CreationChamber() {
               </div>
             )}
 
-            {/* Contradiction Warning — unresolved tension before hinge crossing */}
             {openContradictions.length > 0 && (
               <div className="rb-forge-contradiction">
                 <div className="rb-forge-contradiction-label">
@@ -432,7 +445,6 @@ export function CreationChamber() {
               </div>
             )}
 
-            {/* Intent — primary statement */}
             <div className="rb-field-group">
               <label className="rb-field-label">Directive</label>
               <textarea
@@ -448,7 +460,6 @@ export function CreationChamber() {
               )}
             </div>
 
-            {/* Scope — boundary declaration */}
             <div className="rb-field-group">
               <label className="rb-field-label">Scope</label>
               <input
@@ -459,7 +470,6 @@ export function CreationChamber() {
               />
             </div>
 
-            {/* Risk — severity gauge */}
             <div className="rb-field-group">
               <label className="rb-field-label">Risk</label>
               <div className="rb-risk-selector" role="group" aria-label="Risk level">
@@ -480,7 +490,6 @@ export function CreationChamber() {
               </div>
             </div>
 
-            {/* Acceptance Criterion — signed commitment */}
             <div className="rb-field-group">
               <label className="rb-field-label">Acceptance Criterion</label>
               <input
@@ -491,7 +500,6 @@ export function CreationChamber() {
               />
             </div>
 
-            {/* Threshold — the crossing */}
             <div className="rb-threshold">
               <button
                 className={`rb-threshold-btn${canCompose ? " ready" : ""}`}
@@ -511,9 +519,6 @@ export function CreationChamber() {
               </button>
             </div>
 
-            {/* Live execution signal — loop-local, silent when idle.
-                Shown only while at least one execution is running for the
-                active thread. Disappears automatically on succeed/fail. */}
             {runningExecutions.length > 0 && (
               <div
                 className="rb-forge-exec-signal"
@@ -593,7 +598,7 @@ export function CreationChamber() {
           </div>
 
           <div className={`rb-trace${activeThread.state === "executing" ? " rb-trace--executing" : ""}`}>
-            <h2>Executions</h2>
+            <h2>Execution Trace</h2>
             {executions.length === 0 ? (
               <div className="rb-unavail">
                 <strong>no executions</strong>
@@ -604,31 +609,61 @@ export function CreationChamber() {
                   .slice()
                   .reverse()
                   .map((x) => (
-                    <li key={x.id}>
-                      <span
-                        className={`rb-badge ${
-                          x.status === "succeeded"
-                            ? "ok"
-                            : x.status === "failed"
-                              ? "bad"
-                              : "warn"
-                        }`}
-                      >
-                        {x.status}
-                      </span>
-                      {x.label}
-                      {x.reason ? ` — ${x.reason}` : ""}
+                    <li key={x.id} className="rb-exec-timeline-entry">
+                      <div className="rb-exec-timeline-row">
+                        <span
+                          className={`rb-exec-timeline-dot ${
+                            x.status === "succeeded"
+                              ? "ok"
+                              : x.status === "failed"
+                                ? "bad"
+                                : "running"
+                          }`}
+                        />
+                        <span
+                          className={`rb-badge ${
+                            x.status === "succeeded"
+                              ? "ok"
+                              : x.status === "failed"
+                                ? "bad"
+                                : "warn"
+                          }`}
+                        >
+                          {x.status}
+                        </span>
+                        <span className="rb-exec-timeline-label">{x.label}</span>
+                      </div>
+                      <div className="rb-exec-timeline-meta">
+                        <span className="rb-exec-timeline-ts">
+                          {new Date(x.startedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </span>
+                        {x.endedAt && (
+                          <span className="rb-exec-timeline-duration">
+                            {Math.round((x.endedAt - x.startedAt) / 1000)}s
+                          </span>
+                        )}
+                      </div>
+                      {x.reason && (
+                        <div className="rb-exec-timeline-reason">↳ {x.reason}</div>
+                      )}
+                      {x.status === "failed" && (
+                        <button className="rb-exec-retry-btn" onClick={() => emit.retryExecution(x.id)}>
+                          Retry
+                        </button>
+                      )}
                     </li>
                   ))}
               </ul>
             )}
           </div>
 
-          {/* ── Review Surface — pending artifacts require explicit judgment ── */}
           {(() => {
             const pending = artifacts.filter((a) => a.review === "pending");
             const reviewed = artifacts.filter((a) => a.review !== "pending");
-            // Build directive lookup for acceptance criterion display.
             const directiveMap = new Map(directives.map((d) => [d.id, d]));
 
             return (
@@ -646,7 +681,6 @@ export function CreationChamber() {
                         <div key={a.id} className="rb-review-card">
                           <div className="rb-review-card-title">{a.title}</div>
 
-                          {/* Acceptance criterion — from the originating directive */}
                           {originDirective?.acceptance && (
                             <div className="rb-review-criterion">
                               <span className="rb-review-criterion-label">criterion</span>
@@ -654,7 +688,6 @@ export function CreationChamber() {
                             </div>
                           )}
 
-                          {/* Consequence evidence — files, diff, commit ref */}
                           {hasEvidence && (
                             <div className="rb-artifact-evidence">
                               {a.files && a.files.length > 0 && (
@@ -668,7 +701,7 @@ export function CreationChamber() {
                               {a.diff && (
                                 <div>
                                   <div className="rb-artifact-evidence-label">changes</div>
-                                  <pre className="rb-artifact-diff">{a.diff}</pre>
+                                  {renderDiff(a.diff)}
                                 </div>
                               )}
                               {a.commitRef && (
@@ -677,7 +710,6 @@ export function CreationChamber() {
                             </div>
                           )}
 
-                          {/* Review actions */}
                           <div className="rb-review-actions">
                             <button
                               className="rb-review-btn rb-review-btn--accept"
@@ -698,7 +730,6 @@ export function CreationChamber() {
                   </div>
                 )}
 
-                {/* Artifact history — reviewed + committed */}
                 {reviewed.length > 0 && (
                   <div className="rb-trace">
                     <h2>Artifact History</h2>
@@ -726,6 +757,7 @@ export function CreationChamber() {
                                   {a.commitRef && (
                                     <div className="rb-artifact-commit-ref">ref: {a.commitRef}</div>
                                   )}
+                                  {a.diff && renderDiff(a.diff)}
                                 </div>
                               )}
                               {a.reviewReason && (
