@@ -9,21 +9,21 @@
 
 ## Active Wave
 
-- Wave: WAVE 06 — Structural Authority & Pulse
+- Wave: WAVE 01 — Genesis Core Reset
 - Status: ACTIVE
-- Current owner: Antigravity
+- Current owner: Builder
 - Final authority: Ivan
 
 ## Immediate Milestones
 
-1. Ambient Truth Strip (Pulse) carries sovereign telemetry.
-2. Canon Ribbon carries visible consequence history (scars/memory).
-3. Full product body activation (W01-W06) complete.
+1. Repository tells one truth only
+2. Legacy quarantine is explicit
+3. Next product wave begins from a clean canonical base
 
-## Completed Waves
+## After This Wave
 
-- WAVE 01 — Genesis Core Reset
-- WAVE 02 — Product Body Activation
-- WAVE 03 — Creation Forge + Visual Seal 02
-- WAVE 04 — Architect-First Product Entry
-- WAVE 05 — Validation Lab Elevation
+The next wave must return to product advancement:
+- chamber gravity refinement
+- canon elevation
+- architect-first creation flow
+- product body, not just doctrine
