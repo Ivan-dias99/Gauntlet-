@@ -101,7 +101,9 @@ export function CreationChamber() {
       )
     : [];
 
-  const openContradictions = p.contradictions.filter((c) => !c.resolved);
+  const openContradictions = p.contradictions.filter(
+    (c) => !c.resolved && (!c.repo || c.repo === p.activeRepo),
+  );
 
   const ambiguous = /\{\{[^}]+\}\}/.test(text);
   const canCompose =

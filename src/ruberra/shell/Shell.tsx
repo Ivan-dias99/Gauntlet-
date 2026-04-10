@@ -102,7 +102,9 @@ export function Shell() {
   const openThreadCount = p.threads.filter(
     (t) => t.repo === p.activeRepo && t.status === "open",
   ).length;
-  const contradictionCount = p.contradictions.filter((c) => !c.resolved).length;
+  const contradictionCount = p.contradictions.filter(
+    (c) => !c.resolved && (!c.repo || c.repo === p.activeRepo),
+  ).length;
   // Pending artifact reviews — forge pressure signal for the Creation glyph.
   // Scoped to activeThread only: Creation renders artifacts for that thread,
   // so cross-thread pending artifacts produce an unreachable stuck indicator.

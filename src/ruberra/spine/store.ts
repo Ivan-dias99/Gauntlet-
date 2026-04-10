@@ -132,22 +132,52 @@ export const emit = {
     if (/\{\{[^}]+\}\}/.test(text)) {
       throw new Error("Directive refused: unresolved ambiguity in text");
     }
+
+    // Resolve conceptId validity before appending
+    let resolvedConceptId: string | undefined = undefined;
     if (conceptId) {
       const p = cached ?? project(all());
       const concept = p.concepts.find((c) => c.id === conceptId);
-      if (!concept || concept.thread !== t.id) {
-        return append(
-          "directive.accepted",
-          { text, scope, risk, acceptance },
-          { thread: t.id, repo: t.repo },
-        );
+      if (concept && concept.thread === t.id) {
+        resolvedConceptId = conceptId;
       }
     }
-    return append(
+
+    const ev = await append(
       "directive.accepted",
-      { text, scope, risk, acceptance, ...(conceptId ? { conceptId } : {}) },
+      { text, scope, risk, acceptance, ...(resolvedConceptId ? { conceptId: resolvedConceptId } : {}) },
       { thread: t.id, repo: t.repo },
     );
+
+    // Autonomous canon contradiction check — mirrors captureMemory pattern.
+    // If the directive text/scope negates a hardened canon entry with ≥2 token
+    // overlap (length > 4), fire contradiction.detected without human action.
+    // This is a real autonomous consequence of directive acceptance.
+    const snapshot = cached ?? project(all());
+    const fullText = `${text} ${scope}`.toLowerCase();
+    const negated = /\b(not|never|no longer|without|cannot|remove|delete|disable)\b/.test(fullText);
+    if (negated) {
+      for (const c of snapshot.canon) {
+        if (c.state !== "hardened" || c.repo !== t.repo) continue;
+        const clower = c.text.toLowerCase();
+        const shared = fullText
+          .split(/\s+/)
+          .filter((w) => w.length > 4 && clower.includes(w));
+        if (shared.length >= 2) {
+          await append(
+            "contradiction.detected",
+            {
+              text: `directive may contradict canon: "${c.text}"`,
+              canonId: c.id,
+              directiveId: ev.id,
+            },
+            { repo: t.repo, parent: c.id, thread: t.id },
+          );
+        }
+      }
+    }
+
+    return ev;
   },
 
   rejectDirective: (

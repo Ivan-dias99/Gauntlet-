@@ -8,7 +8,9 @@ export function LabChamber() {
   const [evidence, setEvidence] = useState("");
   const [contradiction, setContradiction] = useState("");
 
-  const openContradictions = p.contradictions.filter((c) => !c.resolved);
+  const openContradictions = p.contradictions.filter(
+    (c) => !c.resolved && (!c.repo || c.repo === p.activeRepo),
+  );
   const repoMemory = p.memory.filter((m) => m.repo === p.activeRepo);
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
 

@@ -135,6 +135,7 @@ export interface Contradiction {
   text: string;
   ts: number;
   resolved: boolean;
+  repo?: string; // contradiction is repo-scoped; surfaces only within its origin repo
 }
 
 export interface Projection {
@@ -427,6 +428,7 @@ export function project(events: RuberraEvent[]): Projection {
           text: String(ev.payload.text ?? ""),
           ts: ev.ts,
           resolved: false,
+          ...(ev.repo ? { repo: ev.repo } : {}),
         });
         break;
       }

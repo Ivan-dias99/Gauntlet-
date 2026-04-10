@@ -31,7 +31,7 @@ export function RitualEntry({ onEnter, returning }: Props) {
       (m) => m.repo === p.activeRepo,
     ).length;
     const unresolvedCount = p.contradictions.filter(
-      (c) => !c.resolved,
+      (c) => !c.resolved && (!c.repo || c.repo === p.activeRepo),
     ).length;
     // Forge-specific return signals — scoped to the active thread so that
     // "Enter Forge · Review" routes the architect to work that is actually visible
