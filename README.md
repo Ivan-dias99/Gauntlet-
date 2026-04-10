@@ -4,6 +4,17 @@ Ruberra is a sovereign creation system for architect-first work.
 
 It is chamber-native, memory-bearing, consequence-driven, and anti-generic.
 
+## Sovereign Source Rule
+
+The only sovereign website source is merged `main`.
+
+That means:
+
+- production from `main` is authoritative
+- preview deployments are staging only
+- open PRs are not alternate versions of the website
+- branches are workshops or harvest lines until merged
+
 ## Current Runtime Truth
 
 The mounted runtime lives in:
@@ -57,6 +68,7 @@ See:
 - `ops/GENESIS_CORE.md`
 - `ops/CANONICAL_TRUTH.md`
 - `ops/WAVE_01.md`
+- `ops/TERMINAL_REPO_STATE.md`
 
 ## Development
 
@@ -73,3 +85,4 @@ Build truth matters more than cosmetic momentum.
 - active organism: `src/ruberra/`
 - legacy quarantine: `src/app/`
 - operating doctrine: Genesis Core
+- sovereign source: merged `main`

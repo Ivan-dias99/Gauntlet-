@@ -10,6 +10,8 @@
 | **Organism** | One living Ruberra organism in `src/ruberra/` |
 | **Doctrine** | Genesis Core governs how the product is built |
 | **Repo law** | One repo truth — no dead surface may retain primary authority |
+| **Website law** | One sovereign website source — merged `main` only |
+| **Preview law** | Previews are staging, never alternate product truth |
 | **Unit** | Creation pressure, truth pressure, and memory pressure — not feature piles |
 | **Chambers** | Lab · School · Creation · Memory |
 | **Surface law** | Everything visible must carry consequence or be removed |
@@ -38,6 +40,7 @@ Browser
 
 The live system is no longer the historical `src/app/` shell.
 The active organism is the `src/ruberra/` subtree.
+The only sovereign website line is already merged into `main`.
 
 Core layers:
 
@@ -78,6 +81,7 @@ Ruberra is not:
 - a generic chat shell
 - a feature-grid product
 - a dead-center workspace clone
+- a collection of equally valid preview branches
 
 ---
 
@@ -182,33 +186,24 @@ It is not:
 - primary architecture
 - current design authority
 - current operating truth
+- sovereign website source
 
 No new work should route there.
 
 ---
 
-## WHAT IS PRESERVED
+## TERMINAL RULE
 
-1. sovereign shell direction
-2. chamber-native architecture
-3. memory-bearing system logic
-4. anti-generic design law
-5. command-over-browsing
-6. consequence-driven surfaces
-7. premium calm density
-8. continuity over reset
+No open PR, preview deployment, or side branch may be treated as parallel website authority.
 
----
+Use them only as:
 
-## WHAT IS REJECTED
+- staging
+- workshop lines
+- harvest sources
+- historical record
 
-1. startup landing logic
-2. hero-first product identity
-3. equal-weight dashboard cardness
-4. prompt theater
-5. decorative intelligence
-6. stale narrative authority for dead surfaces
-7. completion claims without repo truth convergence
+The website is the merged `main` line.
 
 ---
 
@@ -216,9 +211,10 @@ No new work should route there.
 
 When older documents disagree with the mounted runtime, trust:
 
-1. `src/main.tsx`
-2. `src/ruberra/RuberraApp.tsx`
-3. `ops/CANONICAL_TRUTH.md`
-4. this blueprint
+1. merged `main`
+2. `src/main.tsx`
+3. `src/ruberra/RuberraApp.tsx`
+4. `ops/CANONICAL_TRUTH.md`
+5. this blueprint
 
-Everything else must be realigned or archived.
+Everything else must be realigned, archived, or ignored.
