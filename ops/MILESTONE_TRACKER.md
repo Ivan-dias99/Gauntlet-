@@ -4,26 +4,26 @@
 
 - Product: Ruberra
 - Active organism: `src/ruberra/`
-- Legacy quarantine: `src/app/`
+- Legacy quarantine: REMOVED (Converged)
 - Operating doctrine: Genesis Core
 
 ## Active Wave
 
-- Wave: WAVE 01 — Genesis Core Reset
+- Wave: WAVE 09 — Intelligence Compounding
 - Status: ACTIVE
-- Current owner: Builder
+- Current owner: Antigravity (Visual) / Claude (Builder)
 - Final authority: Ivan
 
 ## Immediate Milestones
 
-1. Repository tells one truth only
-2. Legacy quarantine is explicit
-3. Next product wave begins from a clean canonical base
+1. Foundation is locked and build-clean.
+2. Cross-thread resonance logic in spine.
+3. Synthesis visualization in Memory chamber.
+4. Inheritance signals in Creation Forge.
 
 ## After This Wave
 
-The next wave must return to product advancement:
-- chamber gravity refinement
-- canon elevation
-- architect-first creation flow
-- product body, not just doctrine
+The next wave must focus on **Autonomous Flow** and **Multi-Agent Civilization**:
+- Autonomous drafting of directives.
+- Multi-agent collaboration on artifacts.
+- Proactive truth synthesis.

@@ -1,5 +1,5 @@
 {
-  "active_wave": "WAVE 02 — Product Body Activation",
+  "active_wave": "WAVE 09 — Intelligence Compounding",
   "lanes": ["claude", "copilot", "codex", "antigravity"],
   "tasks": [
     {
@@ -224,6 +224,68 @@
       "depends_on": ["W07-B03"],
       "gate_on_complete": "GATE_BETA_READY",
       "success": "Legacy quarantine removed. One repo, one truth."
+    },
+    {
+      "id": "W08-B01",
+      "title": "Foundation Hardening",
+      "owner": "antigravity",
+      "surface": "audit",
+      "scope": ["src/ruberra/"],
+      "depends_on": ["W07-B04"],
+      "gate_on_complete": null,
+      "success": "Unified organism verified build-clean and identity-consistent."
+    },
+    {
+      "id": "W08-B02",
+      "title": "Safe Mode Proofing",
+      "owner": "antigravity",
+      "surface": "product",
+      "scope": ["src/ruberra/RuberraApp.tsx"],
+      "depends_on": ["W08-B01"],
+      "gate_on_complete": null,
+      "success": "Fatal boot failure handled with minimal sovereignty surface."
+    },
+    {
+      "id": "W08-B03",
+      "title": "Wave 08 Verification Gate",
+      "owner": "codex",
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W08-B02"],
+      "gate_on_complete": "GATE_FOUNDATION_LOCKED",
+      "success": "Foundation locked. One repo, one truth, one organism."
+    },
+    {
+      "id": "W09-B01",
+      "title": "Synthesis Surface",
+      "owner": "antigravity",
+      "support": ["claude"],
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/Memory.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W08-B03"],
+      "gate_on_complete": null,
+      "success": "Memory chamber visualizes cross-thread knowledge resonance."
+    },
+    {
+      "id": "W09-B02",
+      "title": "Inheritance Signal",
+      "owner": "antigravity",
+      "support": ["claude"],
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/Creation.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W09-B01"],
+      "gate_on_complete": null,
+      "success": "Current concepts visualize inherited gravity from prior canon."
+    },
+    {
+      "id": "W09-B03",
+      "title": "Wave 09 Verification Gate",
+      "owner": "codex",
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W09-B02"],
+      "gate_on_complete": "GATE_W10_OPEN",
+      "success": "Intelligence compounding verified and operational."
     }
   ]
 }

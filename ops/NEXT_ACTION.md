@@ -2,7 +2,7 @@
 
 ## Current Wave
 
-WAVE 02 — Product Body Activation
+WAVE 09 — Intelligence Compounding
 
 ## Relay Rule
 
