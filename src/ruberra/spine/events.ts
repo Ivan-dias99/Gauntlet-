@@ -10,12 +10,15 @@ export type EventType =
   | "repo.verified" // git authority: backend confirmed .git present
   | "thread.opened"
   | "thread.closed"
+  | "thread.archived"  // soft-hide from default view; still in spine
   | "intent.stated"
   | "concept.stated"   // architect-first: structured idea before directive commitment
   | "directive.accepted"
   | "directive.rejected"
   | "memory.captured"
   | "memory.promoted"
+  | "memory.elevated"   // truth-state transition: observed→retained, retained→hardened
+  | "memory.revoked"    // truth-state transition: any→revoked
   | "execution.started"
   | "execution.progressed"
   | "execution.succeeded"

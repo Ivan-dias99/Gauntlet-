@@ -29,6 +29,8 @@ export interface Thread {
   closeReason?: string;
   status: "open" | "closed";
   state: ThreadState;
+  archived?: boolean;
+  parentThread?: string; // causal lineage — the thread this was spawned from
 }
 
 // Directive composition: scope + risk + acceptance criteria.
@@ -191,6 +193,7 @@ export function project(events: RuberraEvent[]): Projection {
           openedAt: ev.ts,
           status: "open",
           state: "open",
+          parentThread: ev.payload.parentThread as string | undefined,
         });
         p.activeThread = ev.id;
         break;
@@ -204,6 +207,11 @@ export function project(events: RuberraEvent[]): Projection {
           t.closeReason = ev.payload.reason as string | undefined;
         }
         if (p.activeThread === ev.thread) p.activeThread = undefined;
+        break;
+      }
+      case "thread.archived": {
+        const t = p.threads.find((t) => t.id === ev.payload.threadId);
+        if (t) t.archived = true;
         break;
       }
       case "concept.stated": {
@@ -221,9 +229,6 @@ export function project(events: RuberraEvent[]): Projection {
       case "directive.accepted": {
         const t = p.threads.find((t) => t.id === ev.thread);
         if (t && t.state !== "closed") t.state = "executing";
-        // Mark concept as promoted if this directive originated from one.
-        // Thread check is required: a concept from thread A must not be marked
-        // promoted by a directive in thread B, even if the event carries the id.
         if (ev.payload.conceptId) {
           const c = p.concepts.find(
             (c) => c.id === ev.payload.conceptId && c.thread === ev.thread,
@@ -271,7 +276,7 @@ export function project(events: RuberraEvent[]): Projection {
           text: String(ev.payload.text ?? ""),
           ts: ev.ts,
           promoted: false,
-          state: "retained", // captured memory is retained by default
+          state: "retained",
         });
         break;
       }
@@ -281,6 +286,19 @@ export function project(events: RuberraEvent[]): Projection {
           m.promoted = true;
           m.state = "hardened";
         }
+        break;
+      }
+      case "memory.elevated": {
+        const m = p.memory.find((m) => m.id === ev.payload.memoryId);
+        if (m) {
+          const to = ev.payload.to as TruthState | undefined;
+          if (to && to !== "revoked") m.state = to;
+        }
+        break;
+      }
+      case "memory.revoked": {
+        const m = p.memory.find((m) => m.id === ev.payload.memoryId);
+        if (m) m.state = "revoked";
         break;
       }
       case "execution.started": {
@@ -322,7 +340,6 @@ export function project(events: RuberraEvent[]): Projection {
           committed: false,
           review: "pending",
           ts: ev.ts,
-          // Consequence payload — absent on old events; remains undefined safely.
           files: ev.payload.files as string[] | undefined,
           diff: ev.payload.diff as string | undefined,
           commitRef: ev.payload.commitRef as string | undefined,
@@ -342,7 +359,6 @@ export function project(events: RuberraEvent[]): Projection {
           a.review = outcome;
           a.reviewReason = ev.payload.reason as string | undefined;
         }
-        // Thread transition: if no pending artifacts remain, return to open.
         const t = p.threads.find((t) => t.id === ev.thread);
         if (t && t.state !== "closed") {
           const stillPending = p.artifacts.some(
@@ -385,7 +401,6 @@ export function project(events: RuberraEvent[]): Projection {
         break;
       }
       case "canon.revoked": {
-        // Canon is immutable except for revocation. Marked, never erased.
         const c = p.canon.find((c) => c.id === ev.payload.canonId);
         if (c) {
           c.state = "revoked";
@@ -405,7 +420,6 @@ export function project(events: RuberraEvent[]): Projection {
         break;
       }
       case "null.consequence":
-        // Law of Consequence: explicit null outcome. Logged, displayed, never silent.
         break;
       case "contradiction.detected": {
         p.contradictions.push({
@@ -428,8 +442,6 @@ export function project(events: RuberraEvent[]): Projection {
   return p;
 }
 
-// Next-move derivation. Reads the projection; emits nothing.
-// Returns a terse operational instruction for the active thread.
 export function nextMove(p: Projection): string {
   if (!p.activeRepo) return "no repo";
   if (!p.missionFramed) return "no mission";
@@ -450,4 +462,124 @@ export function nextMove(p: Projection): string {
     case "closed":
       return "closed";
   }
+}
+
+// ── Concept-to-Build Relay ─────────────────────────────────────────────────
+
+export type RelayPhase =
+  | "concept"
+  | "directive"
+  | "execution"
+  | "artifact"
+  | "review"
+  | "committed"
+  | "closed";
+
+export interface RelayState {
+  phase: RelayPhase;
+  directiveCount: number;
+  executionCount: number;
+  artifactCount: number;
+  committedCount: number;
+  pendingReviewCount: number;
+  cycleComplete: boolean;
+}
+
+const RELAY_PHASES: RelayPhase[] = [
+  "concept", "directive", "execution", "artifact", "review", "committed",
+];
+
+export function threadRelay(p: Projection, threadId?: string): RelayState | null {
+  if (!threadId) return null;
+  const t = p.threads.find((x) => x.id === threadId);
+  if (!t) return null;
+
+  const directives = p.directives.filter((d) => d.thread === threadId);
+  const executions = p.executions.filter((x) => x.thread === threadId);
+  const artifacts = p.artifacts.filter((a) => a.thread === threadId);
+  const committed = artifacts.filter((a) => a.committed);
+  const pendingReview = artifacts.filter((a) => a.review === "pending");
+  const running = executions.filter((x) => x.status === "running");
+
+  let phase: RelayPhase;
+  if (t.state === "closed") {
+    phase = "closed";
+  } else if (committed.length > 0 && pendingReview.length === 0 && running.length === 0) {
+    phase = "committed";
+  } else if (pendingReview.length > 0) {
+    phase = "review";
+  } else if (artifacts.length > 0 && running.length === 0) {
+    phase = "artifact";
+  } else if (running.length > 0) {
+    phase = "execution";
+  } else if (directives.length > 0) {
+    phase = "directive";
+  } else {
+    phase = "concept";
+  }
+
+  return {
+    phase,
+    directiveCount: directives.length,
+    executionCount: executions.length,
+    artifactCount: artifacts.length,
+    committedCount: committed.length,
+    pendingReviewCount: pendingReview.length,
+    cycleComplete: committed.length > 0 && pendingReview.length === 0 && running.length === 0,
+  };
+}
+
+export const RELAY_PHASE_ORDER = RELAY_PHASES;
+
+// ── Canon Dependency Surface ───────────────────────────────────────────────
+
+function significantTokens(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[\s,.;:!?()\[\]{}"'`]+/)
+    .filter((w) => w.length > 3);
+}
+
+export interface CanonDependency {
+  canonId: string;
+  canonText: string;
+  directiveId: string;
+  directiveText: string;
+  threadId: string;
+  overlap: number;
+}
+
+export function canonDependents(
+  p: Projection,
+  canonId: string,
+): CanonDependency[] {
+  const c = p.canon.find((x) => x.id === canonId);
+  if (!c) return [];
+  const canonTokens = new Set(significantTokens(c.text));
+  if (canonTokens.size === 0) return [];
+  const results: CanonDependency[] = [];
+  for (const d of p.directives) {
+    const dTokens = significantTokens(`${d.text} ${d.scope}`);
+    const overlap = dTokens.filter((t) => canonTokens.has(t)).length;
+    if (overlap >= 2) {
+      results.push({
+        canonId: c.id,
+        canonText: c.text,
+        directiveId: d.id,
+        directiveText: d.text,
+        threadId: d.thread,
+        overlap,
+      });
+    }
+  }
+  return results.sort((a, b) => b.overlap - a.overlap);
+}
+
+export function revokedCanonWithDependents(p: Projection): CanonDependency[] {
+  const revoked = p.canon.filter((c) => c.state === "revoked");
+  const all: CanonDependency[] = [];
+  for (const c of revoked) {
+    all.push(...canonDependents(p, c.id));
+  }
+  return all;
 }

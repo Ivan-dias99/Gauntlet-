@@ -36,12 +36,30 @@ function timeAgo(ts: number): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
+type StatusFilter = "all" | "open" | "closed" | "archived";
+
 export function ThreadStrip({ open, onClose }: Props) {
   const p = useProjection();
   const [intent, setIntent] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const isMobile = useIsMobile();
   const repoThreads = p.threads.filter((t) => t.repo === p.activeRepo);
   const activeAccent = CHAMBER_ACCENT[p.chamber] ?? "var(--rb-accent-soft)";
+
+  // Filtered threads — search + status filter
+  // Default "all" hides archived; explicit "archived" shows only archived
+  const filteredThreads = repoThreads.filter((t) => {
+    if (statusFilter === "all" && t.archived) return false;
+    if (statusFilter === "open" && (t.status !== "open" || t.archived)) return false;
+    if (statusFilter === "closed" && (t.status !== "closed" || t.archived)) return false;
+    if (statusFilter === "archived" && !t.archived) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!t.intent.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
   const narrowClass = open ? "rb-rail rb-rail--open" : "rb-rail";
   const closedOnNarrow = isMobile && !open;
@@ -93,19 +111,48 @@ export function ThreadStrip({ open, onClose }: Props) {
         </button>
       </div>
 
+      {/* Thread search + filter */}
+      {repoThreads.length > 2 && (
+        <div className="rb-threads-filter">
+          <input
+            className="rb-threads-search"
+            placeholder="search threads…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="rb-threads-status-filter">
+            {(["all", "open", "closed", "archived"] as StatusFilter[]).map((s) => (
+              <button
+                key={s}
+                className={`rb-threads-filter-btn${statusFilter === s ? " active" : ""}`}
+                onClick={() => setStatusFilter(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Thread list */}
       {repoThreads.length === 0 ? (
         <div className="rb-unavail">
           <strong>no threads</strong>
         </div>
+      ) : filteredThreads.length === 0 ? (
+        <div className="rb-unavail">
+          <strong>no matches</strong>
+        </div>
       ) : (
         <div>
-          {repoThreads
+          {filteredThreads
             .slice()
             .reverse()
             .map((t) => {
               const dirCount = p.directives.filter((d) => d.thread === t.id).length;
               const artCount = p.artifacts.filter((a) => a.thread === t.id).length;
+              const execCount = p.executions.filter((x) => x.thread === t.id).length;
+              const committedCount = p.artifacts.filter((a) => a.thread === t.id && a.committed).length;
               const statParts: string[] = [
                 timeAgo(t.openedAt),
                 STATE_LABEL[t.state] ?? t.state,
@@ -118,7 +165,7 @@ export function ThreadStrip({ open, onClose }: Props) {
               return (
                 <div
                   key={t.id}
-                  className={`rb-thread${isActive ? " active" : ""}`}
+                  className={`rb-thread${isActive ? " active" : ""}${t.status === "closed" ? " rb-thread--closed" : ""}`}
                   data-state={t.state}
                   style={
                     isActive
@@ -126,6 +173,15 @@ export function ThreadStrip({ open, onClose }: Props) {
                       : undefined
                   }
                 >
+                  {/* Lineage indicator — shows parent thread if this was forked */}
+                  {t.parentThread && (() => {
+                    const parent = p.threads.find((pt) => pt.id === t.parentThread);
+                    return parent ? (
+                      <div className="rb-thread-lineage">
+                        ↳ from: {parent.intent.length > 28 ? parent.intent.slice(0, 28) + "…" : parent.intent}
+                      </div>
+                    ) : null;
+                  })()}
                   <div className="rb-thread-intent">{t.intent}</div>
                   <div className="rb-thread-meta">
                     <span className="rb-thread-state-dot" />
@@ -147,7 +203,55 @@ export function ThreadStrip({ open, onClose }: Props) {
                         close
                       </button>
                     )}
+                    {t.status === "open" && isActive && (
+                      <button
+                        className="rb-thread-close-btn"
+                        onClick={async () => {
+                          const childIntent = await RuledPrompt.ask(
+                            "Child thread intent:",
+                            { label: "intent" },
+                          );
+                          if (childIntent && childIntent.trim())
+                            emit.openThread(childIntent.trim(), t.id);
+                        }}
+                      >
+                        fork
+                      </button>
+                    )}
+                    {t.status === "closed" && !t.archived && (
+                      <button
+                        className="rb-thread-close-btn"
+                        onClick={() => emit.archiveThread(t.id)}
+                      >
+                        archive
+                      </button>
+                    )}
                   </div>
+                  {/* Consequence density — show what this thread has produced */}
+                  {(dirCount > 0 || artCount > 0 || execCount > 0) && (
+                    <div className="rb-thread-consequence">
+                      {dirCount > 0 && (
+                        <span className="rb-thread-consequence-cell" data-kind="directive" title={`${dirCount} directives`}>
+                          {dirCount} dir
+                        </span>
+                      )}
+                      {execCount > 0 && (
+                        <span className="rb-thread-consequence-cell" data-kind="execution" title={`${execCount} executions`}>
+                          {execCount} exec
+                        </span>
+                      )}
+                      {artCount > 0 && (
+                        <span className="rb-thread-consequence-cell" data-kind="artifact" title={`${artCount} artifacts`}>
+                          {artCount} art
+                        </span>
+                      )}
+                      {committedCount > 0 && (
+                        <span className="rb-thread-consequence-cell" data-kind="committed" title={`${committedCount} committed`}>
+                          {committedCount} ✓
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {t.closeReason && (
                     <div className="rb-thread-close-reason">{t.closeReason}</div>
                   )}
