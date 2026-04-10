@@ -11,6 +11,7 @@ export type EventType =
   | "thread.opened"
   | "thread.closed"
   | "intent.stated"
+  | "concept.stated"   // architect-first: structured idea before directive commitment
   | "directive.accepted"
   | "directive.rejected"
   | "memory.captured"

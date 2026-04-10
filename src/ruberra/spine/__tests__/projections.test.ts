@@ -32,6 +32,7 @@ describe("project([])", () => {
     const p = project([]);
     expect(p.repos).toHaveLength(0);
     expect(p.threads).toHaveLength(0);
+    expect(p.concepts).toHaveLength(0);
     expect(p.directives).toHaveLength(0);
     expect(p.memory).toHaveLength(0);
     expect(p.executions).toHaveLength(0);
@@ -355,5 +356,76 @@ describe("memory", () => {
     const p = project([bind, m, prom]);
     expect(p.memory[0].promoted).toBe(true);
     expect(p.memory[0].state).toBe("hardened");
+  });
+});
+
+// ── concept relay (W03-B02) ───────────────────────────────────────────────
+
+describe("concept.stated", () => {
+  function baseWithThread() {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "build auth" }, { repo: "r" });
+    return { repo, t };
+  }
+
+  it("creates concept entry with title, hypothesis, promoted=false", () => {
+    const { repo, t } = baseWithThread();
+    const c = ev(
+      "concept.stated",
+      { title: "Auth system", hypothesis: "Replace session with JWT" },
+      { thread: t.id, repo: "r" },
+    );
+    const p = project([repo, t, c]);
+    expect(p.concepts).toHaveLength(1);
+    expect(p.concepts[0].title).toBe("Auth system");
+    expect(p.concepts[0].hypothesis).toBe("Replace session with JWT");
+    expect(p.concepts[0].thread).toBe(t.id);
+    expect(p.concepts[0].promoted).toBe(false);
+  });
+
+  it("directive.accepted with matching conceptId marks concept as promoted", () => {
+    const { repo, t } = baseWithThread();
+    const c = ev(
+      "concept.stated",
+      { title: "Auth system", hypothesis: "Replace session with JWT" },
+      { thread: t.id, repo: "r" },
+    );
+    const d = ev(
+      "directive.accepted",
+      { text: "Replace session with JWT", scope: "src/auth", risk: "consequential", acceptance: "tests pass", conceptId: c.id },
+      { thread: t.id, repo: "r" },
+    );
+    const p = project([repo, t, c, d]);
+    expect(p.concepts[0].promoted).toBe(true);
+    expect(p.directives[0].status).toBe("accepted");
+  });
+
+  it("directive.accepted with mismatched conceptId leaves concept unpromoted", () => {
+    const { repo, t } = baseWithThread();
+    const t2 = ev("thread.opened", { intent: "other" }, { repo: "r" });
+    const c = ev(
+      "concept.stated",
+      { title: "Concept A", hypothesis: "hypothesis A" },
+      { thread: t.id, repo: "r" },
+    );
+    // directive is on t2, concept is on t — conceptId refers to concept on t
+    const d = ev(
+      "directive.accepted",
+      { text: "do something", scope: "src", risk: "reversible", acceptance: "ok", conceptId: c.id },
+      { thread: t2.id, repo: "r" },
+    );
+    const p = project([repo, t, t2, c, d]);
+    // concept should remain unpromoted because thread mismatch
+    expect(p.concepts[0].promoted).toBe(false);
+  });
+
+  it("multiple concepts in the same thread are all tracked", () => {
+    const { repo, t } = baseWithThread();
+    const c1 = ev("concept.stated", { title: "A", hypothesis: "hyp A" }, { thread: t.id, repo: "r" });
+    const c2 = ev("concept.stated", { title: "B", hypothesis: "hyp B" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, c1, c2]);
+    expect(p.concepts).toHaveLength(2);
+    expect(p.concepts[0].promoted).toBe(false);
+    expect(p.concepts[1].promoted).toBe(false);
   });
 });

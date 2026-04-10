@@ -29,6 +29,7 @@ import type { Projection } from "../../spine/projections";
 const emptyProjection: Projection = {
   repos: [],
   threads: [],
+  concepts: [],
   directives: [],
   memory: [],
   executions: [],
@@ -73,6 +74,7 @@ let currentProjection: Projection = emptyProjection;
 
 vi.mock("../../spine/store", () => {
   const mockEmit = {
+    stateConcept: vi.fn(),
     bindRepo: vi.fn(),
     enterChamber: vi.fn(),
     openThread: vi.fn(),
@@ -135,13 +137,13 @@ describe("RitualEntry — boot ritual", () => {
 
   it("renders repo bind input and Enter button", () => {
     render(<RitualEntry onEnter={vi.fn()} />);
-    expect(screen.getByPlaceholderText("bind to begin")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /bind · enter/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("bind repo to begin")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /bind · enter forge/i })).toBeInTheDocument();
   });
 
   it("Enter button is disabled when input is empty", () => {
     render(<RitualEntry onEnter={vi.fn()} />);
-    const btn = screen.getByRole("button", { name: /bind · enter/i });
+    const btn = screen.getByRole("button", { name: /bind · enter forge/i });
     expect(btn).toBeDisabled();
   });
 });
@@ -263,7 +265,7 @@ describe("CreationChamber", () => {
   it("shows unavailable when no active thread", () => {
     currentProjection = boundProjection;
     render(<CreationChamber />);
-    expect(screen.getByText("no active thread")).toBeInTheDocument();
+    expect(screen.getByText("forge idle — no active thread")).toBeInTheDocument();
   });
 
   it("execution unbound notice shown when backend not configured", () => {

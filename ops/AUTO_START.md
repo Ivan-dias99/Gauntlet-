@@ -12,6 +12,7 @@ If you are a sovereign pioneer opening this repository, do this in order:
    - `ops/DISPATCH_001.md`
    - `ops/NEXT_ACTION.md`
    - `ops/BRIDGE_QUEUE.json`
+   - `ops/RELAY_STATE.md`
 
 2. Work only on your branch:
    - `agent-claude`
@@ -21,9 +22,17 @@ If you are a sovereign pioneer opening this repository, do this in order:
 
 3. Take only the first eligible task assigned to your lane.
 
-4. Do not invent a second direction.
+4. When a task is completed, do all of this in sequence:
+   - write `ops/AGENT_REPORT.md`
+   - name the next pioneer if your completion unlocks one
+   - enter rescan mode
 
-5. At close, update `ops/AGENT_REPORT.md` on your agent branch using the required block below.
+5. Rescan mode is mandatory while your session is alive:
+   - re-read `ops/NEXT_ACTION.md`
+   - re-read `ops/BRIDGE_QUEUE.json`
+   - re-read `ops/RELAY_STATE.md`
+   - if no eligible task exists for your lane, wait 30 seconds and scan again
+   - continue until a real blocker is hit or no further eligible task appears during the live session
 
 ## Required Report Block
 
@@ -36,6 +45,9 @@ BRIDGE_HANDOFF
   FILES: <comma-separated files>
   NEXT_MOVE: <one line>
   ACCEPTANCE: <met | unmet>
+  TARGET_PIONEER: <claude | copilot | codex | antigravity | none>
+  TARGET_TASK: <task id | none>
+  TARGET_NOTE: <one line | none>
 ```
 
 ## Hard Rules
@@ -44,4 +56,4 @@ BRIDGE_HANDOFF
 - do not change canon unless the task explicitly requires it
 - do not touch `src/app/`
 - do not take a blocked task before its dependencies are done
-- if no task is eligible for you, remain standby and do not create theater
+- if no task is eligible for you, remain in rescan mode instead of inventing theater

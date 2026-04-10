@@ -34,12 +34,20 @@ export function CreationChamber() {
   const p = useProjection();
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
 
+  // Concept station state
+  const [conceptTitle, setConceptTitle] = useState("");
+  const [conceptHypothesis, setConceptHypothesis] = useState("");
+  const [promotingConceptId, setPromotingConceptId] = useState<string | null>(null);
+
   const [text, setText] = useState("");
   const [scope, setScope] = useState("");
   const [acceptance, setAcceptance] = useState("");
   const [risk, setRisk] = useState<Risk>("reversible");
   const [err, setErr] = useState<string | null>(null);
 
+  const concepts = p.concepts.filter(
+    (c) => activeThread && c.thread === activeThread.id,
+  );
   const artifacts = p.artifacts.filter(
     (a) => !activeThread || a.thread === activeThread.id,
   );
@@ -65,13 +73,13 @@ export function CreationChamber() {
       ? repoCanon.filter((c) => matchesCanon(text, scope, c.text))
       : [];
 
-  // Retained consequence — memory auto-captured from accepted artifact reviews in this thread.
-  // Filter is deterministic: thread-scoped, non-revoked, system-generated "artifact accepted:" prefix.
+  // Retained consequence — memory auto-captured from artifact reviews in this thread.
+  // Covers both accepted and rejected outcomes: the consequence loop always closes.
   const threadMemory = activeThread
     ? p.memory.filter(
         (m) =>
           m.thread === activeThread.id &&
-          m.text.startsWith("artifact accepted:") &&
+          (m.text.startsWith("artifact accepted:") || m.text.startsWith("artifact rejected:")) &&
           m.state !== "revoked",
       )
     : [];
@@ -112,15 +120,14 @@ export function CreationChamber() {
         scope: scope.trim(),
         risk,
         acceptance: acceptance.trim(),
+        ...(promotingConceptId ? { conceptId: promotingConceptId } : {}),
       });
-
-      // Clear the local composition buffers immediately
+      setPromotingConceptId(null);
       setText("");
       setScope("");
       setAcceptance("");
 
-      // Trigger the execution through the runtime fabric
-      // This is the new centralized hinge that handles simulation/reality.
+      // Execution via the centralized runtime fabric hinge.
       await runRuntime(
         {
           prompt: String(d.payload.text ?? ""),
@@ -155,6 +162,7 @@ export function CreationChamber() {
       setText("");
       setScope("");
       setAcceptance("");
+      setPromotingConceptId(null);
     } catch (e) {
       setErr((e as Error).message);
     }
@@ -170,30 +178,33 @@ export function CreationChamber() {
     }
   }
 
+  // Forge state counts — ambient architect context in the header.
+  // Derived from already-computed directives and artifacts: no new state.
+  // pendingReviewCount: scoped to activeThread's artifacts only — matches the review
+  // surface which renders only the active thread's artifacts, preventing a stuck signal
+  // when pending work exists on a different open thread.
+  const acceptedDirectiveCount = directives.filter((d) => d.status === "accepted").length;
+  const pendingReviewCount = artifacts.filter((a) => a.review === "pending").length;
+
   return (
     <section className="rb-chamber rb-chamber--creation">
       <header className="rb-chamber-header rb-chamber-header--forge">
+        <div className="rb-forge-sigil" aria-hidden="true" />
         <h1 className="rb-chamber-title">Creation</h1>
         <div className="rb-chamber-gravity-bar">
           <span className="rb-chamber-gravity-text rb-gravity--primary">Architect Forge</span>
           <span className="rb-gravity-sep">·</span>
-          <span className="rb-chamber-gravity-text">Concept → Directive → Artifact → Review</span>
-          {directives.length > 0 && (
+          <span className="rb-chamber-gravity-text">Directive pressure · Consequence loop</span>
+          {acceptedDirectiveCount > 0 && (
             <>
               <span className="rb-gravity-sep">·</span>
-              <span className="rb-chamber-gravity-text">{directives.length} directives</span>
+              <span className="rb-chamber-gravity-text rb-gravity--forge">{acceptedDirectiveCount} accepted</span>
             </>
           )}
-          {executions.filter(x => x.status === "running").length > 0 && (
+          {pendingReviewCount > 0 && (
             <>
               <span className="rb-gravity-sep">·</span>
-              <span className="rb-chamber-gravity-text rb-gravity--warn">executing</span>
-            </>
-          )}
-          {artifacts.filter(a => a.review === "pending").length > 0 && (
-            <>
-              <span className="rb-gravity-sep">·</span>
-              <span className="rb-chamber-gravity-text rb-gravity--warn">{artifacts.filter(a => a.review === "pending").length} pending review</span>
+              <span className="rb-chamber-gravity-text rb-gravity--warn">{pendingReviewCount} awaiting review</span>
             </>
           )}
           {activeThread && (
@@ -221,33 +232,116 @@ export function CreationChamber() {
 
       {!activeThread ? (
         <Unavailable
-          title="no active thread"
-          reason="Creation forges through a thread. Open one from the left rail."
-          remediation="State an intent to begin the loop."
+          title="forge idle — no active thread"
+          reason="The architect forge requires a thread. Bind a repo and open a thread from the left rail to begin the consequence loop."
+          remediation="State an intent. Every directive must carry a thread."
         />
       ) : (
         <>
-          {/* Relay — explicit concept-to-build stage indicator */}
-          <div className="rb-relay">
-            <div className="rb-relay-label">relay</div>
-            <div className="rb-relay-stages">
-              {([
-                { id: "concept", label: "Concept", done: !!activeThread },
-                { id: "directive", label: "Directive", done: directives.length > 0 },
-                { id: "execute", label: "Execute", done: executions.filter(x => x.status === "succeeded").length > 0 },
-                { id: "review", label: "Review", done: artifacts.filter(a => a.review !== "pending").length > 0 },
-              ] as const).map((stage, i, arr) => (
-                <div key={stage.id} className={`rb-relay-stage${stage.done ? " rb-relay-stage--done" : ""}`}>
-                  <span className="rb-relay-stage-label">{stage.label}</span>
-                  {i < arr.length - 1 && <span className="rb-relay-arrow">→</span>}
-                </div>
-              ))}
+          {/* Relay Chain — concept → directive → artifact → review */}
+          <div className="rb-relay-chain" aria-label="Concept-to-build relay">
+            <div className={`rb-relay-node${concepts.length > 0 ? " reached" : ""}${concepts.length > 0 && !concepts.some(c => !c.promoted) && directives.length === 0 ? " active" : ""}`}>
+              <span className="rb-relay-node-label">Concept</span>
+              {concepts.filter(c => !c.promoted).length > 0 && (
+                <span className="rb-relay-count">{concepts.filter(c => !c.promoted).length}</span>
+              )}
+            </div>
+            <div className="rb-relay-arrow">→</div>
+            <div className={`rb-relay-node${directives.filter(d => d.status === "accepted").length > 0 ? " reached" : ""}${activeThread?.state === "executing" ? " active" : ""}`}>
+              <span className="rb-relay-node-label">Directive</span>
+              {acceptedDirectiveCount > 0 && (
+                <span className="rb-relay-count">{acceptedDirectiveCount}</span>
+              )}
+            </div>
+            <div className="rb-relay-arrow">→</div>
+            <div className={`rb-relay-node${artifacts.length > 0 ? " reached" : ""}${activeThread?.state === "executing" ? " active" : ""}`}>
+              <span className="rb-relay-node-label">Artifact</span>
+              {artifacts.filter(a => !a.committed).length > 0 && (
+                <span className="rb-relay-count">{artifacts.filter(a => !a.committed).length}</span>
+              )}
+            </div>
+            <div className="rb-relay-arrow">→</div>
+            <div className={`rb-relay-node${artifacts.some(a => a.review !== "pending") ? " reached" : ""}${activeThread?.state === "awaiting-review" ? " active" : ""}`}>
+              <span className="rb-relay-node-label">Review</span>
+              {pendingReviewCount > 0 && (
+                <span className="rb-relay-count rb-relay-count--warn">{pendingReviewCount}</span>
+              )}
+            </div>
+          </div>
+
+          {/* Concept Station — architect-first idea composition before the hinge */}
+          <div className="rb-concept-station">
+            <div className="rb-concept-station-title">Concept Station</div>
+
+            {/* Unstated concepts — ready to promote */}
+            {concepts.filter(c => !c.promoted).length > 0 && (
+              <div className="rb-concept-list">
+                {concepts.filter(c => !c.promoted).map(c => (
+                  <div key={c.id} className="rb-concept-item">
+                    <div className="rb-concept-item-title">{c.title}</div>
+                    <div className="rb-concept-item-hypothesis">{c.hypothesis}</div>
+                    <button
+                      className="rb-btn primary"
+                      onClick={() => {
+                        setText(c.hypothesis);
+                        setScope(c.title);
+                        setPromotingConceptId(c.id);
+                      }}
+                    >
+                      Promote → Directive
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Concept composition form */}
+            <div className="rb-concept-compose">
+              <div className="rb-field-group">
+                <label className="rb-field-label">Concept Title</label>
+                <input
+                  className="rb-scope-input"
+                  placeholder="what is the architect proposing?"
+                  value={conceptTitle}
+                  onChange={(e) => setConceptTitle(e.target.value)}
+                />
+              </div>
+              <div className="rb-field-group">
+                <label className="rb-field-label">Hypothesis</label>
+                <textarea
+                  className="rb-directive-input"
+                  placeholder="what change is this concept testing or asserting?"
+                  value={conceptHypothesis}
+                  onChange={(e) => setConceptHypothesis(e.target.value)}
+                />
+              </div>
+              <button
+                className="rb-btn"
+                disabled={!conceptTitle.trim() || !conceptHypothesis.trim()}
+                onClick={async () => {
+                  if (!activeThread) return;
+                  try {
+                    await emit.stateConcept(activeThread.id, conceptTitle.trim(), conceptHypothesis.trim());
+                    setConceptTitle("");
+                    setConceptHypothesis("");
+                  } catch (e) {
+                    setErr((e as Error).message);
+                  }
+                }}
+              >
+                State Concept
+              </button>
             </div>
           </div>
 
           {/* Directive Forge — the hinge */}
-          <div className={`rb-directive-forge${canCompose ? " rb-directive-forge--ready" : ""}`}>
-            <div className="rb-forge-title">Directive Forge</div>
+          <div className={`rb-directive-forge${canCompose ? " rb-directive-forge--ready" : ""}${promotingConceptId ? " rb-directive-forge--from-concept" : ""}`}>
+            <div className="rb-forge-title">
+              Directive Forge
+              {promotingConceptId && (
+                <span className="rb-forge-concept-origin">← concept</span>
+              )}
+            </div>
 
             {/* Thread Record — prior consequence context before next composition */}
             {directives.length > 0 && (
@@ -530,106 +624,143 @@ export function CreationChamber() {
             )}
           </div>
 
-          <div className={`rb-trace${activeThread.state === "awaiting-review" ? " rb-trace--review" : ""}`}>
-            <h2>Artifacts — Review &amp; Commit</h2>
-            {artifacts.length === 0 ? (
-              <div className="rb-unavail">
-                <strong>no artifacts</strong>
-              </div>
-            ) : (
-              <ul className="rb-list">
-                {artifacts
-                  .slice()
-                  .reverse()
-                  .map((a) => {
-                    const hasEvidence = !!(a.files?.length || a.diff || a.commitRef);
-                    return (
-                      <li key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {/* Header: status badge + title */}
-                        <div className="rb-row" style={{ justifyContent: "space-between", gap: 12 }}>
-                          <span>
-                            <span
-                              className={`rb-badge ${
-                                a.committed
-                                  ? "ok"
-                                  : a.review === "accepted"
-                                    ? "ok"
-                                    : a.review === "rejected"
-                                      ? "bad"
-                                      : "warn"
-                              }`}
-                            >
-                              {a.committed ? "committed" : a.review}
-                            </span>
-                            {a.title}
-                          </span>
-                        </div>
+          {/* ── Review Surface — pending artifacts require explicit judgment ── */}
+          {(() => {
+            const pending = artifacts.filter((a) => a.review === "pending");
+            const reviewed = artifacts.filter((a) => a.review !== "pending");
+            // Build directive lookup for acceptance criterion display.
+            const directiveMap = new Map(directives.map((d) => [d.id, d]));
 
-                        {/* Consequence evidence — only when payload exists */}
-                        {hasEvidence && (
-                          <div className="rb-artifact-evidence">
-                            {a.files && a.files.length > 0 && (
-                              <div>
-                                <div className="rb-artifact-evidence-label">affected files</div>
-                                <div className="rb-artifact-files">
-                                  {a.files.map((f) => (
-                                    <span key={f}>{f}</span>
-                                  ))}
+            return (
+              <>
+                {pending.length > 0 && (
+                  <div className="rb-review-surface">
+                    <div className="rb-review-surface-header">
+                      <span className="rb-review-surface-label">Review Required</span>
+                      <span className="rb-review-surface-count">{pending.length} pending</span>
+                    </div>
+                    {pending.map((a) => {
+                      const originDirective = a.directive ? directiveMap.get(a.directive) : undefined;
+                      const hasEvidence = !!(a.files?.length || a.diff || a.commitRef);
+                      return (
+                        <div key={a.id} className="rb-review-card">
+                          <div className="rb-review-card-title">{a.title}</div>
+
+                          {/* Acceptance criterion — from the originating directive */}
+                          {originDirective?.acceptance && (
+                            <div className="rb-review-criterion">
+                              <span className="rb-review-criterion-label">criterion</span>
+                              <span className="rb-review-criterion-text">{originDirective.acceptance}</span>
+                            </div>
+                          )}
+
+                          {/* Consequence evidence — files, diff, commit ref */}
+                          {hasEvidence && (
+                            <div className="rb-artifact-evidence">
+                              {a.files && a.files.length > 0 && (
+                                <div>
+                                  <div className="rb-artifact-evidence-label">affected files</div>
+                                  <div className="rb-artifact-files">
+                                    {a.files.map((f) => <span key={f}>{f}</span>)}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                            {a.diff && (
-                              <div>
-                                <div className="rb-artifact-evidence-label">changes</div>
-                                <pre className="rb-artifact-diff">{a.diff}</pre>
-                              </div>
-                            )}
-                            {a.commitRef && (
-                              <div className="rb-artifact-commit-ref">ref: {a.commitRef}</div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Review reason — shown after judgment */}
-                        {a.reviewReason && (
-                          <div style={{ fontSize: 10, color: "var(--rb-ink-mute)" }}>
-                            {a.reviewReason}
-                          </div>
-                        )}
-
-                        {/* Actions — Accept / Reject / Commit */}
-                        <div className="rb-row">
-                          {a.review === "pending" && (
-                            <>
-                              <button
-                                className="rb-btn"
-                                onClick={() => review(a.id, "accepted")}
-                              >
-                                Accept
-                              </button>
-                              <button
-                                className="rb-btn"
-                                onClick={() => review(a.id, "rejected")}
-                              >
-                                Reject
-                              </button>
-                            </>
+                              )}
+                              {a.diff && (
+                                <div>
+                                  <div className="rb-artifact-evidence-label">changes</div>
+                                  <pre className="rb-artifact-diff">{a.diff}</pre>
+                                </div>
+                              )}
+                              {a.commitRef && (
+                                <div className="rb-artifact-commit-ref">ref: {a.commitRef}</div>
+                              )}
+                            </div>
                           )}
-                          {a.review === "accepted" && !a.committed && (
+
+                          {/* Review actions */}
+                          <div className="rb-review-actions">
                             <button
-                              className="rb-btn primary"
-                              onClick={() => emit.commitArtifact(a.id)}
+                              className="rb-review-btn rb-review-btn--accept"
+                              onClick={() => review(a.id, "accepted")}
                             >
-                              Commit
+                              Accept
                             </button>
-                          )}
+                            <button
+                              className="rb-review-btn rb-review-btn--reject"
+                              onClick={() => review(a.id, "rejected")}
+                            >
+                              Reject
+                            </button>
+                          </div>
                         </div>
-                      </li>
-                    );
-                  })}
-              </ul>
-            )}
-          </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Artifact history — reviewed + committed */}
+                {reviewed.length > 0 && (
+                  <div className="rb-trace">
+                    <h2>Artifact History</h2>
+                    <ul className="rb-list">
+                      {reviewed
+                        .slice()
+                        .reverse()
+                        .map((a) => {
+                          const hasEvidence = !!(a.files?.length || a.diff || a.commitRef);
+                          return (
+                            <li key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                              <div className="rb-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                                <span className={`rb-badge ${
+                                  a.committed ? "ok"
+                                  : a.review === "accepted" ? "ok"
+                                  : a.review === "rejected" ? "bad"
+                                  : "warn"
+                                }`}>
+                                  {a.committed ? "committed" : a.review}
+                                </span>
+                                <span style={{ fontSize: 12, color: "var(--rb-ink-soft)" }}>{a.title}</span>
+                              </div>
+                              {hasEvidence && (
+                                <div className="rb-artifact-evidence">
+                                  {a.commitRef && (
+                                    <div className="rb-artifact-commit-ref">ref: {a.commitRef}</div>
+                                  )}
+                                </div>
+                              )}
+                              {a.reviewReason && (
+                                <div style={{ fontSize: 10, color: "var(--rb-ink-mute)" }}>
+                                  ↳ {a.reviewReason}
+                                </div>
+                              )}
+                              {a.review === "accepted" && !a.committed && (
+                                <div>
+                                  <button
+                                    className="rb-btn primary"
+                                    onClick={() => emit.commitArtifact(a.id)}
+                                  >
+                                    Commit
+                                  </button>
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
+                    </ul>
+                  </div>
+                )}
+
+                {artifacts.length === 0 && (
+                  <div className="rb-trace">
+                    <h2>Artifacts</h2>
+                    <div className="rb-unavail">
+                      <strong>no artifacts</strong>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </>
       )}
     </section>

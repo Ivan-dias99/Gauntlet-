@@ -102,6 +102,15 @@ export function Shell() {
     (t) => t.repo === p.activeRepo && t.status === "open",
   ).length;
   const contradictionCount = p.contradictions.filter((c) => !c.resolved).length;
+  // Pending artifact reviews — forge pressure signal for the Creation glyph.
+  // Scoped to activeThread only: Creation renders artifacts for that thread,
+  // so cross-thread pending artifacts produce an unreachable stuck indicator.
+  const pendingArtifactCount = p.artifacts.filter(
+    (a) =>
+      a.review === "pending" &&
+      (!p.activeThread || a.thread === p.activeThread) &&
+      p.threads.some((t) => t.id === a.thread && t.status === "open"),
+  ).length;
 
   return (
     <div className="rb-root">
@@ -125,8 +134,11 @@ export function Shell() {
           ≡ Threads
         </button>
 
-        <div className="rb-brand">
-          RUB<span>E</span>RRA
+        <div className="rb-brand-block">
+          <div className="rb-brand">
+            RUB<span>E</span>RRA
+          </div>
+          <div className="rb-brand-tagline">Architect Creation System</div>
         </div>
 
         <div className="rb-authority">
@@ -194,6 +206,9 @@ export function Shell() {
               {c.label}
               {c.id === "school" && canonCount > 0 && (
                 <span className="rb-glyph-indicator rb-glyph-indicator--truth">{canonCount}</span>
+              )}
+              {c.id === "creation" && pendingArtifactCount > 0 && (
+                <span className="rb-glyph-indicator rb-glyph-indicator--forge">{pendingArtifactCount}</span>
               )}
             </button>
           ))}

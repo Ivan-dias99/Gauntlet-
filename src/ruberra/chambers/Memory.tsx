@@ -98,10 +98,12 @@ export function MemoryChamber() {
   }, [repoMemory]);
 
   const hasActiveThread = !!p.activeThread;
+  const activeThread = p.threads.find((t) => t.id === p.activeThread);
 
   return (
     <section className="rb-chamber rb-chamber--memory">
       <header className="rb-chamber-header rb-chamber-header--consequence">
+        <div className="rb-memory-sigil" aria-hidden="true" />
         <h1 className="rb-chamber-title">Memory</h1>
         <div className="rb-chamber-gravity-bar">
           <span className="rb-chamber-gravity-text rb-gravity--primary">Consequence Substrate</span>
@@ -122,6 +124,18 @@ export function MemoryChamber() {
         </div>
         <div className="rb-chamber-accent-line" />
       </header>
+
+      {activeThread && (
+        <div className="rb-thread-context-bar">
+          <span className="rb-thread-context-bar-label">thread</span>
+          <span className="rb-thread-context-bar-intent">
+            {activeThread.intent.length > 72
+              ? activeThread.intent.slice(0, 72) + "…"
+              : activeThread.intent}
+          </span>
+          <span className="rb-thread-context-bar-state">{activeThread.state}</span>
+        </div>
+      )}
 
       {/* Truth-state distribution — system depth at a glance */}
       <div className="rb-memory-distribution">

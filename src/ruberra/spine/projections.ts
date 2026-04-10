@@ -48,6 +48,19 @@ export interface Directive {
   ts: number;
 }
 
+// Concept — architect-first structured idea. Precedes directive commitment.
+// Titles purpose, states hypothesis, carries acceptance signal.
+// Promoted to directive when the architect is ready to cross the hinge.
+export interface Concept {
+  id: string;
+  thread: string;
+  repo?: string;
+  title: string;
+  hypothesis: string;
+  ts: number;
+  promoted: boolean; // true when promoted → directive
+}
+
 export interface CanonProposal {
   id: string;
   repo?: string;
@@ -127,6 +140,7 @@ export interface Projection {
   activeRepo?: string;
   threads: Thread[];
   activeThread?: string;
+  concepts: Concept[];
   directives: Directive[];
   memory: MemoryEntry[];
   executions: Execution[];
@@ -142,6 +156,7 @@ export interface Projection {
 const empty = (): Projection => ({
   repos: [],
   threads: [],
+  concepts: [],
   directives: [],
   memory: [],
   executions: [],
@@ -191,9 +206,30 @@ export function project(events: RuberraEvent[]): Projection {
         if (p.activeThread === ev.thread) p.activeThread = undefined;
         break;
       }
+      case "concept.stated": {
+        p.concepts.push({
+          id: ev.id,
+          thread: String(ev.thread),
+          repo: ev.repo,
+          title: String(ev.payload.title ?? ""),
+          hypothesis: String(ev.payload.hypothesis ?? ""),
+          ts: ev.ts,
+          promoted: false,
+        });
+        break;
+      }
       case "directive.accepted": {
         const t = p.threads.find((t) => t.id === ev.thread);
         if (t && t.state !== "closed") t.state = "executing";
+        // Mark concept as promoted if this directive originated from one.
+        // Thread check is required: a concept from thread A must not be marked
+        // promoted by a directive in thread B, even if the event carries the id.
+        if (ev.payload.conceptId) {
+          const c = p.concepts.find(
+            (c) => c.id === ev.payload.conceptId && c.thread === ev.thread,
+          );
+          if (c) c.promoted = true;
+        }
         p.directives.push({
           id: ev.id,
           thread: String(ev.thread),

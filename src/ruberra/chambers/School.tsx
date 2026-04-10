@@ -13,6 +13,7 @@ export function SchoolChamber() {
   const revoked = p.canon.filter((c) => c.state === "revoked");
   const openProposals = p.canonProposals.filter((q) => !q.hardened);
   const promotableMemory = p.memory.filter((m) => !m.promoted);
+  const activeThread = p.threads.find((t) => t.id === p.activeThread);
 
   return (
     <section className="rb-chamber rb-chamber--school">
@@ -38,6 +39,18 @@ export function SchoolChamber() {
         </div>
         <div className="rb-chamber-accent-line" />
       </header>
+
+      {activeThread && (
+        <div className="rb-thread-context-bar">
+          <span className="rb-thread-context-bar-label">thread</span>
+          <span className="rb-thread-context-bar-intent">
+            {activeThread.intent.length > 72
+              ? activeThread.intent.slice(0, 72) + "…"
+              : activeThread.intent}
+          </span>
+          <span className="rb-thread-context-bar-state">{activeThread.state}</span>
+        </div>
+      )}
 
       {!p.missionFramed && (
         <div className="rb-panel">

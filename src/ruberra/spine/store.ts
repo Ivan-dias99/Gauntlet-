@@ -105,6 +105,19 @@ export const emit = {
     return append("intent.stated", { text }, { thread: t.id, repo: t.repo });
   },
 
+  // CONCEPT STATION — architect-first idea composition before the directive hinge.
+  // Title + hypothesis. Promoted to directive by the architect's own decision.
+  stateConcept: (threadId: string, title: string, hypothesis: string) => {
+    const t = requireThread(threadId);
+    if (!title.trim() || !hypothesis.trim())
+      throw new Error("Concept refused: title and hypothesis are required");
+    return append(
+      "concept.stated",
+      { title, hypothesis },
+      { thread: t.id, repo: t.repo },
+    );
+  },
+
   // DIRECTIVE HINGE — the single crossing from desire to consequence.
   // Composition: text + scope + risk + acceptance. All required.
   // Ambiguity check: any unresolved {{placeholder}} blocks acceptance.
@@ -115,10 +128,11 @@ export const emit = {
       scope: string;
       risk: "reversible" | "consequential" | "destructive";
       acceptance: string;
+      conceptId?: string; // when promoted from a concept
     },
   ) => {
     const t = requireThread(threadId);
-    const { text, scope, risk, acceptance } = compose;
+    const { text, scope, risk, acceptance, conceptId } = compose;
     if (!text.trim() || !scope.trim() || !acceptance.trim()) {
       throw new Error(
         "Directive refused: text, scope, and acceptance are required",
@@ -127,9 +141,23 @@ export const emit = {
     if (/\{\{[^}]+\}\}/.test(text)) {
       throw new Error("Directive refused: unresolved ambiguity in text");
     }
+    // Guard: conceptId must belong to this thread to prevent stale React state
+    // from marking a concept in thread A as promoted by a directive in thread B.
+    if (conceptId) {
+      const p = cached ?? project(all());
+      const concept = p.concepts.find((c) => c.id === conceptId);
+      if (!concept || concept.thread !== t.id) {
+        // Silently drop the stale conceptId — directive is still valid.
+        return append(
+          "directive.accepted",
+          { text, scope, risk, acceptance },
+          { thread: t.id, repo: t.repo },
+        );
+      }
+    }
     return append(
       "directive.accepted",
-      { text, scope, risk, acceptance },
+      { text, scope, risk, acceptance, ...(conceptId ? { conceptId } : {}) },
       { thread: t.id, repo: t.repo },
     );
   },
@@ -285,14 +313,17 @@ export const emit = {
       { artifactId, outcome, reason },
       { thread: a.thread, repo: requireRepo(), parent: artifactId },
     );
-    if (outcome === "accepted") {
-      // Artifact → memory bridge: retained truth produced by consequence.
-      await append(
-        "memory.captured",
-        { text: `artifact accepted: ${a.title} — ${reason}`, artifactId },
-        { thread: a.thread, repo: requireRepo(), parent: artifactId },
-      );
-    }
+    // Artifact → memory bridge: consequence loop always closes.
+    // Accepted artifact produces retained truth. Rejected artifact records
+    // the refusal — so the organism never loses why something was turned away.
+    await append(
+      "memory.captured",
+      {
+        text: `artifact ${outcome}: ${a.title} — ${reason}`,
+        artifactId,
+      },
+      { thread: a.thread, repo: requireRepo(), parent: artifactId },
+    );
     return ev;
   },
 
