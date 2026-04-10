@@ -2,6 +2,7 @@
 // thread strip, canon ribbon, event pulse. Chambers are gravity regimes.
 // Narrow-width: rails become overlay drawers with toggle buttons in topbar.
 
+import "../harvest.css";
 import { useState, useEffect } from "react";
 import { useProjection, emit } from "../spine/store";
 import { nextMove } from "../spine/projections";
