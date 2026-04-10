@@ -21,6 +21,18 @@ const execAsync = promisify(exec);
 const PORT = process.env.RUBERRA_EXEC_PORT ? Number(process.env.RUBERRA_EXEC_PORT) : 3001;
 const ALLOWED_ORIGIN = process.env.RUBERRA_ORIGIN ?? "http://localhost:5173";
 
+// ── path guard ─────────────────────────────────────────────────────────────
+// Normalize and validate a repoPath supplied by the client.
+// Rejects empty, non-absolute, or paths that contain null bytes.
+// Returns the resolved absolute path or null if invalid.
+function sanitizePath(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  if (raw.includes("\0")) return null;                 // null-byte injection
+  const resolved = path.resolve(raw);                  // normalize traversal sequences
+  if (!path.isAbsolute(resolved)) return null;
+  return resolved;
+}
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function cors(res) {
@@ -35,10 +47,20 @@ function json(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
+const BODY_LIMIT = 64 * 1024; // 64 KB — sufficient for any directive payload
+
 async function readBody(req) {
   return new Promise((resolve, reject) => {
     let buf = "";
-    req.on("data", (c) => (buf += c));
+    let size = 0;
+    req.on("data", (chunk) => {
+      size += Buffer.byteLength(chunk);
+      if (size > BODY_LIMIT) {
+        req.destroy();
+        return reject(new Error("request body too large"));
+      }
+      buf += chunk;
+    });
     req.on("end", () => {
       try { resolve(JSON.parse(buf || "{}")); }
       catch (e) { reject(e); }
@@ -79,12 +101,15 @@ async function resolveFiles(repoPath, scope) {
 
 function globToRegex(pattern) {
   // Escape regex special chars except * and /
+  // Anchored with ^ and $ so `*.md` matches only root-level .md files,
+  // not nested paths like `docs/readme.md`.
   const escaped = pattern
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
     .replace(/\*\*/g, "__GLOBSTAR__")
     .replace(/\*/g, "[^/]*")
+    .replace(/__GLOBSTAR__\//g, "(?:.*/)?") // **/ → optional path prefix (matches root too)
     .replace(/__GLOBSTAR__/g, ".*");
-  return new RegExp(escaped, "i");
+  return new RegExp(`^${escaped}$`, "i");
 }
 
 async function walkDir(base, dir) {
@@ -109,13 +134,16 @@ async function handleExec(req, res) {
   try { body = await readBody(req); }
   catch { return json(res, 400, { ok: false, error: "invalid JSON body" }); }
 
-  const { repoPath, directive } = body;
-  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required" });
+  const { repoPath: rp, repo, directive } = body;
+  const repoPath = sanitizePath(rp ?? repo);
+  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required and must be a valid absolute path" });
   if (!directive?.scope) return json(res, 400, { ok: false, error: "directive.scope required" });
 
-  // Verify path exists
+  // Verify path exists and is a git repo — exec only operates on real repos
   try { await fs.access(repoPath); }
-  catch { return json(res, 404, { ok: false, error: `repoPath not found: ${repoPath}` }); }
+  catch { return json(res, 404, { ok: false, error: "repoPath not found" }); }
+  try { await fs.access(path.join(repoPath, ".git")); }
+  catch { return json(res, 400, { ok: false, error: "repoPath is not a git repository" }); }
 
   let files;
   try {
@@ -125,16 +153,16 @@ async function handleExec(req, res) {
   }
 
   const artifacts = files.map((f) => ({ title: f }));
-  console.log(`[exec] ${directive.scope} → ${artifacts.length} artifacts in ${repoPath}`);
+  console.log(`[exec] scope=${directive.scope} → ${artifacts.length} artifacts`);
   return json(res, 200, { ok: true, artifacts });
 }
 
 async function handleGitStatus(req, res, searchParams) {
-  const repoPath = searchParams.get("path");
-  if (!repoPath) return json(res, 400, { ok: false, error: "path query param required" });
+  const repoPath = sanitizePath(searchParams.get("path"));
+  if (!repoPath) return json(res, 400, { ok: false, error: "path query param required and must be a valid absolute path" });
 
   try { await fs.access(repoPath); }
-  catch { return json(res, 404, { ok: false, error: `path not found: ${repoPath}` }); }
+  catch { return json(res, 404, { ok: false, error: "path not found" }); }
 
   try {
     const { stdout } = await execAsync("git status --short", { cwd: repoPath });
@@ -149,11 +177,11 @@ async function handleGitVerify(req, res) {
   try { body = await readBody(req); }
   catch { return json(res, 400, { ok: false, message: "invalid JSON body" }); }
 
-  const { repoPath } = body;
-  if (!repoPath) return json(res, 400, { ok: false, message: "repoPath required" });
+  const repoPath = sanitizePath(body.repoPath);
+  if (!repoPath) return json(res, 400, { ok: false, message: "repoPath required and must be a valid absolute path" });
 
   try { await fs.access(repoPath); }
-  catch { return json(res, 200, { ok: false, message: `path not found: ${repoPath}` }); }
+  catch { return json(res, 200, { ok: false, message: "path not found" }); }
 
   try {
     await fs.access(path.join(repoPath, ".git"));
@@ -197,8 +225,9 @@ const server = http.createServer(async (req, res) => {
   json(res, 404, { ok: false, error: `unknown endpoint: ${req.method} ${pathname}` });
 });
 
-server.listen(PORT, () => {
-  console.log(`[ruberra-exec] listening on http://localhost:${PORT}`);
+// Bind to loopback only — this backend must never be reachable from other hosts.
+server.listen(PORT, "127.0.0.1", () => {
+  console.log(`[ruberra-exec] listening on http://127.0.0.1:${PORT} (loopback only)`);
   console.log(`[ruberra-exec] CORS origin: ${ALLOWED_ORIGIN}`);
   console.log(`[ruberra-exec] endpoints: POST /exec  GET /git/status  POST /git/verify`);
 });

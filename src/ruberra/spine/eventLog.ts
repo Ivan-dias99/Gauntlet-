@@ -51,6 +51,7 @@ export async function hydrate(): Promise<void> {
       hydrated = true;
       return;
     }
+    const loaded: RuberraEvent[] = [];
     await new Promise<void>((resolve) => {
       const tx = db.transaction(STORE, "readonly");
       const os = tx.objectStore(STORE);
@@ -58,7 +59,7 @@ export async function hydrate(): Promise<void> {
       req.onsuccess = () => {
         const cursor = req.result;
         if (cursor) {
-          memory.push(cursor.value as RuberraEvent);
+          loaded.push(cursor.value as RuberraEvent);
           cursor.continue();
         } else {
           resolve();
@@ -66,6 +67,10 @@ export async function hydrate(): Promise<void> {
       };
       req.onerror = () => resolve();
     });
+    // Sort by ts then seq to guarantee stable insertion-order replay even
+    // when multiple events share the same millisecond timestamp.
+    loaded.sort((a, b) => a.ts - b.ts || (a.seq ?? 0) - (b.seq ?? 0));
+    memory = loaded;
     hydrated = true;
   })();
   return hydratePromise;
@@ -83,6 +88,7 @@ export async function append(
   const ev: RuberraEvent = {
     id: newId(),
     ts: Date.now(),
+    seq: memory.length,
     type,
     actor: opts.actor ?? "local",
     repo: opts.repo,
@@ -111,4 +117,17 @@ export async function append(
 
 export function isHydrated() {
   return hydrated;
+}
+
+// Test-only: resets all in-memory state.
+// When dbPromise is set to null, openDb() will create a fresh connection on
+// the next call — against whatever globalThis.indexedDB is at that time.
+// Used in tests to simulate a browser reload (fresh JS module, same storage)
+// or to swap to a new IDBFactory instance for test isolation.
+// Never call in production code paths.
+export function _resetForTest() {
+  memory = [];
+  hydrated = false;
+  hydratePromise = null;
+  dbPromise = null;
 }

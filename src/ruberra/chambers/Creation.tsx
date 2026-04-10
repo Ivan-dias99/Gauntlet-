@@ -3,7 +3,9 @@
 // and artifact review. No fake terminal. Law of Consequence enforced.
 
 import { useState } from "react";
-import { useProjection, emit } from "../spine/store";
+import { emit, useProjection } from "../spine/store";
+import { revokedCanonWithDependents } from "../spine/projections";
+import { runRuntime } from "../spine/runtime-fabric";
 import { Unavailable } from "../trust/Unavailable";
 import { RuledPrompt } from "../trust/RuledPrompt";
 
@@ -13,9 +15,48 @@ const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
 
 type Risk = "reversible" | "consequential" | "destructive";
 
+const RISK_INFO: Record<Risk, { descriptor: string; colorClass: string }> = {
+  reversible:   { descriptor: "can be undone — consequence is bounded",           colorClass: "ok"   },
+  consequential: { descriptor: "has lasting effect — not silently reversible",    colorClass: "warn" },
+  destructive:  { descriptor: "irreversible — requires explicit confirmation",    colorClass: "bad"  },
+};
+
+// Deterministic token-overlap heuristic — same pattern as store.ts captureMemory.
+// Returns true if 2+ tokens (length > 4) from the directive appear in the canon text.
+function matchesCanon(directiveText: string, scopeText: string, canonText: string): boolean {
+  const needle = `${directiveText} ${scopeText}`.toLowerCase();
+  const tokens = needle.split(/\s+/).filter((w) => w.length > 4);
+  if (tokens.length === 0) return false;
+  const hay = canonText.toLowerCase();
+  return tokens.filter((w) => hay.includes(w)).length >= 2;
+}
+
+function renderDiff(diff?: string) {
+  if (!diff) return null;
+  return (
+    <pre className="rb-artifact-diff">
+      {diff.split("\n").map((line, i) => {
+        const cls = line.startsWith("+")
+          ? "rb-diff-add"
+          : line.startsWith("-")
+            ? "rb-diff-del"
+            : line.startsWith("@@")
+              ? "rb-diff-hunk"
+              : "";
+        return <span key={i} className={cls}>{line}{"\n"}</span>;
+      })}
+    </pre>
+  );
+}
+
 export function CreationChamber() {
   const p = useProjection();
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
+
+  // Concept station state
+  const [conceptTitle, setConceptTitle] = useState("");
+  const [conceptHypothesis, setConceptHypothesis] = useState("");
+  const [promotingConceptId, setPromotingConceptId] = useState<string | null>(null);
 
   const [text, setText] = useState("");
   const [scope, setScope] = useState("");
@@ -23,15 +64,44 @@ export function CreationChamber() {
   const [risk, setRisk] = useState<Risk>("reversible");
   const [err, setErr] = useState<string | null>(null);
 
+  const concepts = p.concepts.filter(
+    (c) => activeThread && c.thread === activeThread.id,
+  );
   const artifacts = p.artifacts.filter(
     (a) => !activeThread || a.thread === activeThread.id,
   );
   const executions = p.executions.filter(
     (x) => !activeThread || x.thread === activeThread.id,
   );
+  const runningExecutions = activeThread
+    ? executions.filter((x) => x.status === "running")
+    : [];
   const directives = p.directives.filter(
     (d) => activeThread && d.thread === activeThread.id,
   );
+
+  const repoCanon = p.canon.filter(
+    (c) => c.state === "hardened" && c.repo === activeThread?.repo,
+  );
+  const canonConstraints =
+    text.trim() || scope.trim()
+      ? repoCanon.filter((c) => matchesCanon(text, scope, c.text))
+      : [];
+
+  const revokedDeps = activeThread
+    ? revokedCanonWithDependents(p).filter((d) => d.threadId === activeThread.id)
+    : [];
+
+  const threadMemory = activeThread
+    ? p.memory.filter(
+        (m) =>
+          m.thread === activeThread.id &&
+          (m.text.startsWith("artifact accepted:") || m.text.startsWith("artifact rejected:")) &&
+          m.state !== "revoked",
+      )
+    : [];
+
+  const openContradictions = p.contradictions.filter((c) => !c.resolved);
 
   const ambiguous = /\{\{[^}]+\}\}/.test(text);
   const canCompose =
@@ -58,61 +128,30 @@ export function CreationChamber() {
           return;
         }
       }
+
       const d = await emit.acceptDirective(activeThread.id, {
         text: text.trim(),
         scope: scope.trim(),
         risk,
         acceptance: acceptance.trim(),
+        ...(promotingConceptId ? { conceptId: promotingConceptId } : {}),
       });
-      const ex = await emit.startExecution(
-        text.trim(),
-        d.id,
-        activeThread.id,
-      );
-      if (!EXEC_BACKEND) {
-        await emit.failExecution(ex.id, "execution backend unbound");
-        await emit.nullConsequence(
-          "execution",
-          "no backend bound — directive produced no artifact",
-        );
-        setText("");
-        setScope("");
-        setAcceptance("");
-        return;
-      }
-      try {
-        const res = await fetch(EXEC_BACKEND, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            repo: activeThread.repo,
-            thread: activeThread.id,
-            directive: { text: text.trim(), scope: scope.trim(), risk, acceptance: acceptance.trim() },
-          }),
-        });
-        if (!res.ok) throw new Error(`backend ${res.status}`);
-        const data = (await res.json()) as {
-          artifacts?: { title: string }[];
-          ok?: boolean;
-        };
-        const list = data.artifacts ?? [];
-        for (const a of list) {
-          await emit.generateArtifact(a.title, ex.id, activeThread.id, d.id);
-        }
-        if (list.length === 0) {
-          await emit.nullConsequence("execution", "backend returned no artifacts");
-        }
-        if (data.ok === false) {
-          await emit.failExecution(ex.id, "backend reported failure");
-        } else {
-          await emit.succeedExecution(ex.id);
-        }
-      } catch (fetchErr) {
-        await emit.failExecution(ex.id, (fetchErr as Error).message);
-      }
+      setPromotingConceptId(null);
       setText("");
       setScope("");
       setAcceptance("");
+
+      await runRuntime(
+        {
+          prompt: String(d.payload.text ?? ""),
+          threadId: activeThread.id,
+          directiveId: d.id,
+        },
+        {
+          provider: "openai",
+          model: "gpt-5.4-creator"
+        }
+      );
     } catch (e) {
       setErr((e as Error).message);
     }
@@ -136,6 +175,7 @@ export function CreationChamber() {
       setText("");
       setScope("");
       setAcceptance("");
+      setPromotingConceptId(null);
     } catch (e) {
       setErr((e as Error).message);
     }
@@ -151,109 +191,377 @@ export function CreationChamber() {
     }
   }
 
+  const acceptedDirectiveCount = directives.filter((d) => d.status === "accepted").length;
+  const pendingReviewCount = artifacts.filter((a) => a.review === "pending").length;
+
   return (
-    <section className="rb-chamber">
-      <h1>Creation</h1>
-      <div className="gravity">Gravity: Consequence · Forge artifacts</div>
+    <section className="rb-chamber rb-chamber--creation">
+      <header className="rb-chamber-header rb-chamber-header--forge">
+        <div className="rb-forge-sigil" aria-hidden="true" />
+        <h1 className="rb-chamber-title">Creation</h1>
+        <div className="rb-chamber-gravity-bar">
+          <span className="rb-chamber-gravity-text rb-gravity--primary">Architect Forge</span>
+          <span className="rb-gravity-sep">·</span>
+          <span className="rb-chamber-gravity-text">Directive pressure · Consequence loop</span>
+          {acceptedDirectiveCount > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--forge">{acceptedDirectiveCount} accepted</span>
+            </>
+          )}
+          {pendingReviewCount > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--warn">{pendingReviewCount} awaiting review</span>
+            </>
+          )}
+          {activeThread && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-thread-context-intent">
+                {activeThread.intent.length > 44
+                  ? activeThread.intent.slice(0, 44) + "…"
+                  : activeThread.intent}
+              </span>
+              <span className={`rb-badge ${
+                activeThread.state === "open"              ? "ok"
+                : activeThread.state === "executing"       ? "warn"
+                : activeThread.state === "awaiting-review" ? "warn"
+                : activeThread.state === "closed"          ? "bad"
+                : ""
+              }`}>
+                {activeThread.state}
+              </span>
+            </>
+          )}
+        </div>
+        <div className="rb-chamber-accent-line" />
+      </header>
 
       {!activeThread ? (
         <Unavailable
-          title="no active thread"
-          reason="Creation forges through a thread. Open one from the left rail."
-          remediation="State an intent to begin the loop."
+          title="forge idle — no active thread"
+          reason="The architect forge requires a thread. Bind a repo and open a thread from the left rail to begin the consequence loop."
+          remediation="State an intent. Every directive must carry a thread."
         />
       ) : (
         <>
-          <div className="rb-panel">
-            <h2>Directive Composition</h2>
-            <div className="rb-col">
+          <div className="rb-relay-chain" aria-label="Concept-to-build relay">
+            <div className={`rb-relay-node${concepts.length > 0 ? " reached" : ""}${concepts.length > 0 && !concepts.some(c => !c.promoted) && directives.length === 0 ? " active" : ""}`}>
+              <span className="rb-relay-node-label">Concept</span>
+              {concepts.filter(c => !c.promoted).length > 0 && (
+                <span className="rb-relay-count">{concepts.filter(c => !c.promoted).length}</span>
+              )}
+            </div>
+            <div className="rb-relay-arrow">→</div>
+            <div className={`rb-relay-node${directives.filter(d => d.status === "accepted").length > 0 ? " reached" : ""}${activeThread?.state === "executing" ? " active" : ""}`}>
+              <span className="rb-relay-node-label">Directive</span>
+              {acceptedDirectiveCount > 0 && (
+                <span className="rb-relay-count">{acceptedDirectiveCount}</span>
+              )}
+            </div>
+            <div className="rb-relay-arrow">→</div>
+            <div className={`rb-relay-node${artifacts.length > 0 ? " reached" : ""}${activeThread?.state === "executing" ? " active" : ""}`}>
+              <span className="rb-relay-node-label">Artifact</span>
+              {artifacts.filter(a => !a.committed).length > 0 && (
+                <span className="rb-relay-count">{artifacts.filter(a => !a.committed).length}</span>
+              )}
+            </div>
+            <div className="rb-relay-arrow">→</div>
+            <div className={`rb-relay-node${artifacts.some(a => a.review !== "pending") ? " reached" : ""}${activeThread?.state === "awaiting-review" ? " active" : ""}`}>
+              <span className="rb-relay-node-label">Review</span>
+              {pendingReviewCount > 0 && (
+                <span className="rb-relay-count rb-relay-count--warn">{pendingReviewCount}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="rb-concept-station">
+            <div className="rb-concept-station-title">Concept Station</div>
+
+            {concepts.filter(c => !c.promoted).length > 0 && (
+              <div className="rb-concept-list">
+                {concepts.filter(c => !c.promoted).map(c => (
+                  <div key={c.id} className="rb-concept-item">
+                    <div className="rb-concept-item-title">{c.title}</div>
+                    <div className="rb-concept-item-hypothesis">{c.hypothesis}</div>
+                    <button
+                      className="rb-btn primary"
+                      onClick={() => {
+                        setText(c.hypothesis);
+                        setScope(c.title);
+                        setPromotingConceptId(c.id);
+                      }}
+                    >
+                      Promote → Directive
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="rb-concept-compose">
+              <div className="rb-field-group">
+                <label className="rb-field-label">Concept Title</label>
+                <input
+                  className="rb-scope-input"
+                  placeholder="what is the architect proposing?"
+                  value={conceptTitle}
+                  onChange={(e) => setConceptTitle(e.target.value)}
+                />
+              </div>
+              <div className="rb-field-group">
+                <label className="rb-field-label">Hypothesis</label>
+                <textarea
+                  className="rb-directive-input"
+                  placeholder="what change is this concept testing or asserting?"
+                  value={conceptHypothesis}
+                  onChange={(e) => setConceptHypothesis(e.target.value)}
+                />
+              </div>
+              <button
+                className="rb-btn"
+                disabled={!conceptTitle.trim() || !conceptHypothesis.trim()}
+                onClick={async () => {
+                  if (!activeThread) return;
+                  try {
+                    await emit.stateConcept(activeThread.id, conceptTitle.trim(), conceptHypothesis.trim());
+                    setConceptTitle("");
+                    setConceptHypothesis("");
+                  } catch (e) {
+                    setErr((e as Error).message);
+                  }
+                }}
+              >
+                State Concept
+              </button>
+            </div>
+          </div>
+
+          <div className={`rb-directive-forge${canCompose ? " rb-directive-forge--ready" : ""}${promotingConceptId ? " rb-directive-forge--from-concept" : ""}`}>
+            <div className="rb-forge-title">
+              Directive Forge
+              {promotingConceptId && (
+                <span className="rb-forge-concept-origin">← concept</span>
+              )}
+            </div>
+
+            {directives.length > 0 && (
+              <div className="rb-thread-record">
+                <div className="rb-thread-record-label">thread record</div>
+                {directives.map((d) => {
+                  const linked = artifacts.filter((a) => a.directive === d.id);
+                  return (
+                    <div key={d.id} className="rb-thread-record-row">
+                      <div className="rb-row" style={{ gap: 6, flexWrap: "wrap" }}>
+                        <span className={`rb-badge ${d.status === "accepted" ? "ok" : "bad"}`}>
+                          {d.status}
+                        </span>
+                        <span className={`rb-badge ${d.risk}`}>{d.risk}</span>
+                        <span className="rb-thread-record-text">
+                          {d.text.length > 60 ? d.text.slice(0, 60) + "…" : d.text}
+                        </span>
+                      </div>
+                      {d.status === "rejected" && d.reason && (
+                        <div className="rb-thread-record-sub">↳ {d.reason}</div>
+                      )}
+                      {linked.map((a) => (
+                        <div key={a.id} className="rb-thread-record-chain">
+                          <span
+                            className={`rb-badge ${
+                              a.committed
+                                ? "ok"
+                                : a.review === "accepted"
+                                  ? "ok"
+                                  : a.review === "rejected"
+                                    ? "bad"
+                                    : "warn"
+                            }`}
+                          >
+                            {a.committed ? "committed" : a.review}
+                          </span>
+                          <span className="rb-thread-record-artifact">
+                            {a.title.length > 40 ? a.title.slice(0, 40) + "…" : a.title}
+                          </span>
+                          {a.commitRef && (
+                            <span className="rb-thread-record-ref">
+                              #{a.commitRef.slice(0, 7)}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {canonConstraints.length > 0 && (
+              <div className="rb-canon-constraint">
+                <div className="rb-canon-constraint-label">canon constraint</div>
+                {canonConstraints.map((c) => (
+                  <div key={c.id} className="rb-canon-constraint-entry">
+                    {c.text.length > 80 ? c.text.slice(0, 80) + "…" : c.text}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {revokedDeps.length > 0 && (
+              <div className="rb-forge-revoked-deps">
+                <div className="rb-forge-revoked-deps-label">revoked canon dependency · {revokedDeps.length}</div>
+                {revokedDeps.slice(0, 3).map((d) => (
+                  <div key={`${d.canonId}-${d.directiveId}`} className="rb-forge-revoked-deps-entry">
+                    <span className="rb-badge bad">revoked</span>
+                    <span>{d.canonText.length > 50 ? d.canonText.slice(0, 50) + "…" : d.canonText}</span>
+                    <span className="rb-forge-revoked-deps-arrow">→</span>
+                    <span>{d.directiveText.length > 40 ? d.directiveText.slice(0, 40) + "…" : d.directiveText}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {threadMemory.length > 0 && (
+              <div className="rb-forge-memory">
+                <div className="rb-forge-memory-label">retained consequence</div>
+                {threadMemory.map((m) => (
+                  <div key={m.id} className="rb-forge-memory-entry">
+                    {m.text.length > 80 ? m.text.slice(0, 80) + "…" : m.text}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {openContradictions.length > 0 && (
+              <div className="rb-forge-contradiction">
+                <div className="rb-forge-contradiction-label">
+                  unresolved · {openContradictions.length}
+                </div>
+                {openContradictions.map((c) => (
+                  <div key={c.id} className="rb-forge-contradiction-entry">
+                    {c.text.length > 80 ? c.text.slice(0, 80) + "…" : c.text}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="rb-field-group">
+              <label className="rb-field-label">Directive</label>
               <textarea
-                className="rb-textarea"
-                placeholder="what changes in the repo? (use no {{placeholders}})"
+                className={`rb-directive-input${ambiguous ? " ambiguous" : ""}`}
+                placeholder="what changes in the repo?"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
+              {ambiguous && (
+                <div className="rb-forge-warn">
+                  ◐ unresolved {"{{placeholders}}"} — resolve before acceptance
+                </div>
+              )}
+            </div>
+
+            <div className="rb-field-group">
+              <label className="rb-field-label">Scope</label>
               <input
-                className="rb-input"
-                placeholder="scope — file set, canon scope, or repo-wide"
+                className="rb-scope-input"
+                placeholder="file set, canon scope, or repo-wide"
                 value={scope}
                 onChange={(e) => setScope(e.target.value)}
               />
+            </div>
+
+            <div className="rb-field-group">
+              <label className="rb-field-label">Risk</label>
+              <div className="rb-risk-selector" role="group" aria-label="Risk level">
+                {(["reversible", "consequential", "destructive"] as Risk[]).map((r) => (
+                  <button
+                    key={r}
+                    data-risk={r}
+                    className={`rb-risk-btn${risk === r ? " selected" : ""}`}
+                    onClick={() => setRisk(r)}
+                    type="button"
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <div className={`rb-risk-descriptor ${RISK_INFO[risk].colorClass}`}>
+                {RISK_INFO[risk].descriptor}
+              </div>
+            </div>
+
+            <div className="rb-field-group">
+              <label className="rb-field-label">Acceptance Criterion</label>
               <input
-                className="rb-input"
-                placeholder="acceptance criterion — how we know it is done"
+                className={`rb-acceptance-field${acceptance.trim() ? " signed" : ""}`}
+                placeholder="how we know it is done"
                 value={acceptance}
                 onChange={(e) => setAcceptance(e.target.value)}
               />
-              <div className="rb-row">
-                <label
-                  style={{
-                    fontFamily: "var(--rb-mono)",
-                    fontSize: 11,
-                    color: "var(--rb-ink-mute)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.15em",
-                  }}
-                >
-                  risk:
-                </label>
-                {(["reversible", "consequential", "destructive"] as Risk[]).map(
-                  (r) => (
-                    <button
-                      key={r}
-                      className={`rb-btn ${risk === r ? "primary" : ""}`}
-                      onClick={() => setRisk(r)}
-                    >
-                      {r}
-                    </button>
-                  ),
+            </div>
+
+            <div className="rb-threshold">
+              <button
+                className={`rb-threshold-btn${canCompose ? " ready" : ""}`}
+                disabled={!canCompose}
+                onClick={runDirective}
+                type="button"
+              >
+                Accept · Execute
+              </button>
+              <button
+                className="rb-threshold-reject"
+                disabled={!text.trim()}
+                onClick={rejectDraft}
+                type="button"
+              >
+                Reject
+              </button>
+            </div>
+
+            {runningExecutions.length > 0 && (
+              <div
+                className="rb-forge-exec-signal"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="rb-forge-exec-dot" aria-hidden="true" />
+                <span className="rb-forge-exec-label">executing</span>
+                <span className="rb-forge-exec-target">
+                  {runningExecutions[0].label.length > 48
+                    ? runningExecutions[0].label.slice(0, 48) + "…"
+                    : runningExecutions[0].label}
+                </span>
+                {runningExecutions.length > 1 && (
+                  <span className="rb-forge-exec-count">
+                    +{runningExecutions.length - 1}
+                  </span>
                 )}
               </div>
-              {ambiguous && (
-                <Unavailable
-                  title="ambiguity detected"
-                  reason="Directive text contains unresolved {{placeholders}}."
-                  remediation="Resolve all placeholders before acceptance."
-                />
-              )}
-              <div className="rb-row">
-                <button
-                  className="rb-btn primary"
-                  disabled={!canCompose}
-                  onClick={runDirective}
-                >
-                  Accept · Execute
-                </button>
-                <button
-                  className="rb-btn"
-                  disabled={!text.trim()}
-                  onClick={rejectDraft}
-                >
-                  Reject
-                </button>
+            )}
+
+            {err && (
+              <div className="rb-unavail" style={{ marginTop: 12 }}>
+                <strong>refused</strong>
+                {err}
               </div>
-              {err && (
-                <div className="rb-unavail">
-                  <strong>refused</strong>
-                  {err}
-                </div>
-              )}
-              {!EXEC_BACKEND && (
+            )}
+            {!EXEC_BACKEND && (
+              <div style={{ marginTop: 12 }}>
                 <Unavailable
                   title="execution unbound"
                   reason="No execution backend is bound to this shell."
                   remediation="Set VITE_RUBERRA_EXEC_URL and reload to enable forging."
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
-          <div className="rb-panel">
+          <div className="rb-trace">
             <h2>Directive Ledger</h2>
             {directives.length === 0 ? (
               <div className="rb-unavail">
                 <strong>no directives</strong>
-                Compose one above.
               </div>
             ) : (
               <ul className="rb-list">
@@ -269,7 +577,7 @@ export function CreationChamber() {
                       >
                         {d.status}
                       </span>
-                      <span className="rb-badge">{d.risk}</span>
+                      <span className={`rb-badge ${d.risk}`}>{d.risk}</span>
                       <span className="rb-badge">scope: {d.scope}</span>
                       {d.text}
                       {d.reason ? (
@@ -289,12 +597,11 @@ export function CreationChamber() {
             )}
           </div>
 
-          <div className="rb-panel">
-            <h2>Executions</h2>
+          <div className={`rb-trace${activeThread.state === "executing" ? " rb-trace--executing" : ""}`}>
+            <h2>Execution Trace</h2>
             {executions.length === 0 ? (
               <div className="rb-unavail">
                 <strong>no executions</strong>
-                Accept a directive to produce consequence.
               </div>
             ) : (
               <ul className="rb-list">
@@ -302,102 +609,190 @@ export function CreationChamber() {
                   .slice()
                   .reverse()
                   .map((x) => (
-                    <li key={x.id}>
-                      <span
-                        className={`rb-badge ${
-                          x.status === "succeeded"
-                            ? "ok"
-                            : x.status === "failed"
-                              ? "bad"
-                              : "warn"
-                        }`}
-                      >
-                        {x.status}
-                      </span>
-                      {x.label}
-                      {x.reason ? ` — ${x.reason}` : ""}
+                    <li key={x.id} className="rb-exec-timeline-entry">
+                      <div className="rb-exec-timeline-row">
+                        <span
+                          className={`rb-exec-timeline-dot ${
+                            x.status === "succeeded"
+                              ? "ok"
+                              : x.status === "failed"
+                                ? "bad"
+                                : "running"
+                          }`}
+                        />
+                        <span
+                          className={`rb-badge ${
+                            x.status === "succeeded"
+                              ? "ok"
+                              : x.status === "failed"
+                                ? "bad"
+                                : "warn"
+                          }`}
+                        >
+                          {x.status}
+                        </span>
+                        <span className="rb-exec-timeline-label">{x.label}</span>
+                      </div>
+                      <div className="rb-exec-timeline-meta">
+                        <span className="rb-exec-timeline-ts">
+                          {new Date(x.startedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </span>
+                        {x.endedAt && (
+                          <span className="rb-exec-timeline-duration">
+                            {Math.round((x.endedAt - x.startedAt) / 1000)}s
+                          </span>
+                        )}
+                      </div>
+                      {x.reason && (
+                        <div className="rb-exec-timeline-reason">↳ {x.reason}</div>
+                      )}
+                      {x.status === "failed" && (
+                        <button className="rb-exec-retry-btn" onClick={() => emit.retryExecution(x.id)}>
+                          Retry
+                        </button>
+                      )}
                     </li>
                   ))}
               </ul>
             )}
           </div>
 
-          <div className="rb-panel">
-            <h2>Artifacts — Review &amp; Commit</h2>
-            {artifacts.length === 0 ? (
-              <div className="rb-unavail">
-                <strong>no artifacts</strong>
-                Executions will yield artifacts or an explicit null-artifact.
-              </div>
-            ) : (
-              <ul className="rb-list">
-                {artifacts
-                  .slice()
-                  .reverse()
-                  .map((a) => (
-                    <li
-                      key={a.id}
-                      className="rb-row"
-                      style={{ justifyContent: "space-between", gap: 12 }}
-                    >
-                      <span>
-                        <span
-                          className={`rb-badge ${
-                            a.committed
-                              ? "ok"
-                              : a.review === "accepted"
-                                ? "ok"
-                                : a.review === "rejected"
-                                  ? "bad"
-                                  : "warn"
-                          }`}
-                        >
-                          {a.committed ? "committed" : a.review}
-                        </span>
-                        {a.title}
-                        {a.reviewReason ? (
-                          <div
-                            style={{
-                              fontSize: 10,
-                              color: "var(--rb-ink-mute)",
-                              marginTop: 4,
-                            }}
-                          >
-                            {a.reviewReason}
-                          </div>
-                        ) : null}
-                      </span>
-                      <span className="rb-row">
-                        {a.review === "pending" && (
-                          <>
+          {(() => {
+            const pending = artifacts.filter((a) => a.review === "pending");
+            const reviewed = artifacts.filter((a) => a.review !== "pending");
+            const directiveMap = new Map(directives.map((d) => [d.id, d]));
+
+            return (
+              <>
+                {pending.length > 0 && (
+                  <div className="rb-review-surface">
+                    <div className="rb-review-surface-header">
+                      <span className="rb-review-surface-label">Review Required</span>
+                      <span className="rb-review-surface-count">{pending.length} pending</span>
+                    </div>
+                    {pending.map((a) => {
+                      const originDirective = a.directive ? directiveMap.get(a.directive) : undefined;
+                      const hasEvidence = !!(a.files?.length || a.diff || a.commitRef);
+                      return (
+                        <div key={a.id} className="rb-review-card">
+                          <div className="rb-review-card-title">{a.title}</div>
+
+                          {originDirective?.acceptance && (
+                            <div className="rb-review-criterion">
+                              <span className="rb-review-criterion-label">criterion</span>
+                              <span className="rb-review-criterion-text">{originDirective.acceptance}</span>
+                            </div>
+                          )}
+
+                          {hasEvidence && (
+                            <div className="rb-artifact-evidence">
+                              {a.files && a.files.length > 0 && (
+                                <div>
+                                  <div className="rb-artifact-evidence-label">affected files</div>
+                                  <div className="rb-artifact-files">
+                                    {a.files.map((f) => <span key={f}>{f}</span>)}
+                                  </div>
+                                </div>
+                              )}
+                              {a.diff && (
+                                <div>
+                                  <div className="rb-artifact-evidence-label">changes</div>
+                                  {renderDiff(a.diff)}
+                                </div>
+                              )}
+                              {a.commitRef && (
+                                <div className="rb-artifact-commit-ref">ref: {a.commitRef}</div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="rb-review-actions">
                             <button
-                              className="rb-btn"
+                              className="rb-review-btn rb-review-btn--accept"
                               onClick={() => review(a.id, "accepted")}
                             >
                               Accept
                             </button>
                             <button
-                              className="rb-btn"
+                              className="rb-review-btn rb-review-btn--reject"
                               onClick={() => review(a.id, "rejected")}
                             >
                               Reject
                             </button>
-                          </>
-                        )}
-                        {a.review === "accepted" && !a.committed && (
-                          <button
-                            className="rb-btn primary"
-                            onClick={() => emit.commitArtifact(a.id)}
-                          >
-                            Commit
-                          </button>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {reviewed.length > 0 && (
+                  <div className="rb-trace">
+                    <h2>Artifact History</h2>
+                    <ul className="rb-list">
+                      {reviewed
+                        .slice()
+                        .reverse()
+                        .map((a) => {
+                          const hasEvidence = !!(a.files?.length || a.diff || a.commitRef);
+                          return (
+                            <li key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                              <div className="rb-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                                <span className={`rb-badge ${
+                                  a.committed ? "ok"
+                                  : a.review === "accepted" ? "ok"
+                                  : a.review === "rejected" ? "bad"
+                                  : "warn"
+                                }`}>
+                                  {a.committed ? "committed" : a.review}
+                                </span>
+                                <span style={{ fontSize: 12, color: "var(--rb-ink-soft)" }}>{a.title}</span>
+                              </div>
+                              {hasEvidence && (
+                                <div className="rb-artifact-evidence">
+                                  {a.commitRef && (
+                                    <div className="rb-artifact-commit-ref">ref: {a.commitRef}</div>
+                                  )}
+                                  {a.diff && renderDiff(a.diff)}
+                                </div>
+                              )}
+                              {a.reviewReason && (
+                                <div style={{ fontSize: 10, color: "var(--rb-ink-mute)" }}>
+                                  ↳ {a.reviewReason}
+                                </div>
+                              )}
+                              {a.review === "accepted" && !a.committed && (
+                                <div>
+                                  <button
+                                    className="rb-btn primary"
+                                    onClick={() => emit.commitArtifact(a.id)}
+                                  >
+                                    Commit
+                                  </button>
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
+                    </ul>
+                  </div>
+                )}
+
+                {artifacts.length === 0 && (
+                  <div className="rb-trace">
+                    <h2>Artifacts</h2>
+                    <div className="rb-unavail">
+                      <strong>no artifacts</strong>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </>
       )}
     </section>

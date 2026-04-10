@@ -2,6 +2,7 @@
 // thread strip, canon ribbon, event pulse. Chambers are gravity regimes.
 // Narrow-width: rails become overlay drawers with toggle buttons in topbar.
 
+import "../harvest.css";
 import { useState, useEffect } from "react";
 import { useProjection, emit } from "../spine/store";
 import { nextMove } from "../spine/projections";
@@ -11,16 +12,20 @@ import { EventPulse } from "./EventPulse";
 import { CreationChamber } from "../chambers/Creation";
 import { LabChamber } from "../chambers/Lab";
 import { SchoolChamber } from "../chambers/School";
+import { MemoryChamber } from "../chambers/Memory";
 import { ErrorBoundary } from "../trust/ErrorBoundary";
 
 const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
   | string
   | undefined;
 
-const CHAMBERS: Array<{ id: "lab" | "school" | "creation"; label: string }> = [
-  { id: "lab", label: "Lab" },
-  { id: "school", label: "School" },
-  { id: "creation", label: "Creation" },
+// Gravity hierarchy: School (truth formation) leads. Creation (architect forge).
+// Lab (validation). Memory (consequence substrate).
+const CHAMBERS: Array<{ id: "lab" | "school" | "creation" | "memory"; label: string; gravity: string }> = [
+  { id: "school", label: "School", gravity: "truth" },
+  { id: "creation", label: "Creation", gravity: "forge" },
+  { id: "lab", label: "Lab", gravity: "validation" },
+  { id: "memory", label: "Memory", gravity: "substrate" },
 ];
 
 export function Shell() {
@@ -43,12 +48,23 @@ export function Shell() {
 
   // Fetch git status when backend + repo are available
   useEffect(() => {
-    if (!EXEC_BACKEND || !p.activeRepo) { setGitStatus(null); return; }
+    if (!EXEC_BACKEND || !p.activeRepo) {
+      setGitStatus(null);
+      return;
+    }
     const base = EXEC_BACKEND.replace(/\/exec$/, "");
+    let cancelled = false;
     fetch(`${base}/git/status?path=${encodeURIComponent(p.activeRepo)}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setGitStatus(d?.output ?? null))
-      .catch(() => setGitStatus(null));
+      .then((d) => {
+        if (!cancelled) setGitStatus(d?.ok ? (d.output ?? null) : null);
+      })
+      .catch(() => {
+        if (!cancelled) setGitStatus(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [p.activeRepo, p.lastEventId]);
 
   const backdropActive = leftOpen || rightOpen;
@@ -57,6 +73,45 @@ export function Shell() {
     setLeftOpen(false);
     setRightOpen(false);
   }
+
+  const move = nextMove(p);
+
+  // Consequence context for topbar state indicator.
+  // Read from existing projection — no new state.
+  const activeExecution =
+    move === "executing"
+      ? p.executions.find((x) => x.status === "running")
+      : undefined;
+  const pendingCount =
+    move === "review"
+      ? p.artifacts.filter(
+          (a) => a.review === "pending" && (!p.activeThread || a.thread === p.activeThread),
+        ).length
+      : 0;
+
+  const stateColor =
+    move === "executing" || move === "review"
+      ? "var(--rb-warn)"
+      : "var(--rb-gold)";
+
+  // Spine-level ambient indicators — system depth at a glance.
+  const canonCount = p.canon.filter(
+    (c) => c.state === "hardened" && c.repo === p.activeRepo,
+  ).length;
+  const memoryCount = p.memory.filter((m) => m.repo === p.activeRepo).length;
+  const openThreadCount = p.threads.filter(
+    (t) => t.repo === p.activeRepo && t.status === "open",
+  ).length;
+  const contradictionCount = p.contradictions.filter((c) => !c.resolved).length;
+  // Pending artifact reviews — forge pressure signal for the Creation glyph.
+  // Scoped to activeThread only: Creation renders artifacts for that thread,
+  // so cross-thread pending artifacts produce an unreachable stuck indicator.
+  const pendingArtifactCount = p.artifacts.filter(
+    (a) =>
+      a.review === "pending" &&
+      (!p.activeThread || a.thread === p.activeThread) &&
+      p.threads.some((t) => t.id === a.thread && t.status === "open"),
+  ).length;
 
   return (
     <div className="rb-root">
@@ -72,49 +127,90 @@ export function Shell() {
         <button
           className="rb-rail-toggle"
           aria-label="Toggle threads panel"
-          onClick={() => { setLeftOpen((v) => !v); setRightOpen(false); }}
+          onClick={() => {
+            setLeftOpen((v) => !v);
+            setRightOpen(false);
+          }}
         >
           ≡ Threads
         </button>
 
-        <div className="rb-brand">
-          RUB<span>E</span>RRA
+        <div className="rb-brand-block">
+          <div className="rb-brand">
+            RUB<span>E</span>RRA
+          </div>
+          <div className="rb-brand-tagline">Architect Creation System</div>
         </div>
-        <div className="rb-repo">
-          repo · {p.activeRepo ?? "unbound"}
-          {p.activeRepo && gitStatus !== null && (
-            <span
-              style={{
-                marginLeft: 8,
-                color: gitStatus.trim() ? "var(--rb-warn)" : "var(--rb-ok)",
-                fontSize: 10,
-              }}
-              title={gitStatus || "clean"}
-            >
-              {gitStatus.trim() ? "· dirty" : "· clean"}
-            </span>
-          )}
+
+        <div className="rb-authority">
+          {/* Repo binding — git authority indicator */}
+          <div className="rb-repo">
+            {p.activeRepo ?? "unbound"}
+            {p.activeRepo && gitStatus !== null && (
+              <span
+                className={`rb-repo-git ${gitStatus.trim() ? "dirty" : "clean"}`}
+                title={gitStatus || "clean"}
+              >
+                {gitStatus.trim() ? "dirty" : "clean"}
+              </span>
+            )}
+          </div>
+
+          {/* System spine — compressed ambient indicators */}
+          <div className="rb-spine-indicators">
+            <div className="rb-spine-cell" title="Operational state">
+              <span className="rb-spine-label">state</span>
+              <span className="rb-spine-value" style={{ color: stateColor }}>
+                {move}
+              </span>
+            </div>
+            {canonCount > 0 && (
+              <div className="rb-spine-cell rb-spine-cell--canon" title={`${canonCount} hardened canon — truth law`}>
+                <span className="rb-spine-label">canon</span>
+                <span className="rb-spine-value rb-spine-value--gold">{canonCount}</span>
+              </div>
+            )}
+            {memoryCount > 0 && (
+              <div className="rb-spine-cell" title={`${memoryCount} retained consequences`}>
+                <span className="rb-spine-label">memory</span>
+                <span className="rb-spine-value">{memoryCount}</span>
+              </div>
+            )}
+            {openThreadCount > 0 && (
+              <div className="rb-spine-cell" title={`${openThreadCount} open threads`}>
+                <span className="rb-spine-label">threads</span>
+                <span className="rb-spine-value">{openThreadCount}</span>
+              </div>
+            )}
+            {contradictionCount > 0 && (
+              <div
+                className="rb-spine-cell rb-spine-cell--warn"
+                title={`${contradictionCount} unresolved contradictions`}
+              >
+                <span className="rb-spine-label">tension</span>
+                <span className="rb-spine-value">{contradictionCount}</span>
+              </div>
+            )}
+          </div>
         </div>
-        <div
-          style={{
-            fontFamily: "var(--rb-mono)",
-            fontSize: 11,
-            color: "var(--rb-gold)",
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            marginLeft: 6,
-          }}
-        >
-          next · {nextMove(p)}
-        </div>
-        <div className="rb-chambers">
+
+        {/* Chamber glyphs — gravity regimes, not equal tabs */}
+        <div className="rb-chambers" aria-label="Chamber regimes">
           {CHAMBERS.map((c) => (
             <button
               key={c.id}
+              data-id={c.id}
+              data-gravity={c.gravity}
               className={`rb-chamber-glyph ${p.chamber === c.id ? "active" : ""}`}
               onClick={() => emit.enterChamber(c.id)}
             >
               {c.label}
+              {c.id === "school" && canonCount > 0 && (
+                <span className="rb-glyph-indicator rb-glyph-indicator--truth">{canonCount}</span>
+              )}
+              {c.id === "creation" && pendingArtifactCount > 0 && (
+                <span className="rb-glyph-indicator rb-glyph-indicator--forge">{pendingArtifactCount}</span>
+              )}
             </button>
           ))}
         </div>
@@ -123,7 +219,10 @@ export function Shell() {
         <button
           className="rb-rail-toggle"
           aria-label="Toggle canon panel"
-          onClick={() => { setRightOpen((v) => !v); setLeftOpen(false); }}
+          onClick={() => {
+            setRightOpen((v) => !v);
+            setLeftOpen(false);
+          }}
         >
           Canon ≡
         </button>
@@ -138,6 +237,7 @@ export function Shell() {
           {p.chamber === "creation" && <CreationChamber />}
           {p.chamber === "lab" && <LabChamber />}
           {p.chamber === "school" && <SchoolChamber />}
+          {p.chamber === "memory" && <MemoryChamber />}
         </ErrorBoundary>
 
         <ErrorBoundary label="Canon ribbon">

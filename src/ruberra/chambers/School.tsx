@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { useProjection, emit } from "../spine/store";
+import { canonDependents } from "../spine/projections";
 import { RuledPrompt } from "../trust/RuledPrompt";
 
 export function SchoolChamber() {
@@ -13,28 +14,51 @@ export function SchoolChamber() {
   const revoked = p.canon.filter((c) => c.state === "revoked");
   const openProposals = p.canonProposals.filter((q) => !q.hardened);
   const promotableMemory = p.memory.filter((m) => !m.promoted);
+  const activeThread = p.threads.find((t) => t.id === p.activeThread);
 
   return (
-    <section className="rb-chamber">
-      <h1>School</h1>
-      <div className="gravity">
-        Canon Formation + Mastery Chamber · Gravity: Discipline
-      </div>
+    <section className="rb-chamber rb-chamber--school">
+      <header className="rb-chamber-header rb-chamber-header--truth">
+        <div className="rb-truth-sigil" aria-hidden="true" />
+        <h1 className="rb-chamber-title">School</h1>
+        <div className="rb-chamber-gravity-bar">
+          <span className="rb-chamber-gravity-text rb-gravity--primary">Canon Formation</span>
+          <span className="rb-gravity-sep">·</span>
+          <span className="rb-chamber-gravity-text">Harden truth into law</span>
+          {canon.length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--gold">{canon.length} hardened</span>
+            </>
+          )}
+          {openProposals.length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--warn">{openProposals.length} pending</span>
+            </>
+          )}
+        </div>
+        <div className="rb-chamber-accent-line" />
+      </header>
+
+      {activeThread && (
+        <div className="rb-thread-context-bar">
+          <span className="rb-thread-context-bar-label">thread</span>
+          <span className="rb-thread-context-bar-intent">
+            {activeThread.intent.length > 72
+              ? activeThread.intent.slice(0, 72) + "…"
+              : activeThread.intent}
+          </span>
+          <span className="rb-thread-context-bar-state">{activeThread.state}</span>
+        </div>
+      )}
 
       {!p.missionFramed && (
-        <div className="rb-panel">
-          <h2>Frame the Mission</h2>
+        <div className="rb-panel rb-school-mission">
+          <h2>Mission Canon</h2>
           <div className="rb-col">
-            <div
-              style={{
-                fontFamily: "var(--rb-mono)",
-                fontSize: 11,
-                color: "var(--rb-ink-mute)",
-                marginBottom: 6,
-              }}
-            >
-              The mission is the first canon. It governs every directive that
-              follows in this repo. It cannot be skipped.
+            <div className="rb-school-preamble">
+              First doctrine. Governs every directive and every truth in this repo.
             </div>
             <textarea
               className="rb-textarea"
@@ -56,33 +80,37 @@ export function SchoolChamber() {
         </div>
       )}
 
-      <div className="rb-panel">
-        <h2>Promote Memory → Propose Canon</h2>
-        {promotableMemory.length === 0 ? (
+      <div className="rb-panel rb-school-ledger">
+        <h2>Hardened Doctrine</h2>
+        {canon.length === 0 ? (
           <div className="rb-unavail">
-            <strong>no promotable memory</strong>
-            Memory is captured in Lab or through artifact review.
+            <strong>no doctrine</strong>
+            <span className="rb-school-empty-hint">
+              The organism has no hardened truth. Propose and harden to establish law.
+            </span>
           </div>
         ) : (
-          <ul className="rb-list">
-            {promotableMemory
+          <ul className="rb-list rb-school-doctrine-list">
+            {canon
               .slice()
               .reverse()
-              .map((m) => (
-                <li
-                  key={m.id}
-                  className="rb-row"
-                  style={{ justifyContent: "space-between" }}
-                >
-                  <span>{m.text}</span>
+              .map((c) => (
+                <li key={c.id} className="rb-school-doctrine-entry">
+                  <div className="rb-school-doctrine-body">
+                    <span className="rb-badge gold">law</span>
+                    <span className="rb-school-doctrine-text">{c.text}</span>
+                    <div className="rb-school-doctrine-ts">
+                      {new Date(c.hardenedAt).toLocaleString()}
+                    </div>
+                  </div>
                   <button
                     className="rb-btn"
                     onClick={async () => {
-                      await emit.promoteMemory(m.id);
-                      await emit.proposeCanon(m.text, m.id);
+                      const reason = await RuledPrompt.ask("Revocation reason (required):", { label: "reason" });
+                      if (reason && reason.trim()) emit.revokeCanon(c.id, reason.trim());
                     }}
                   >
-                    Propose as canon
+                    Revoke
                   </button>
                 </li>
               ))}
@@ -90,12 +118,46 @@ export function SchoolChamber() {
         )}
       </div>
 
-      <div className="rb-panel">
-        <h2>Canon Proposals</h2>
+      {revoked.length > 0 && (
+        <div className="rb-panel rb-school-revoked">
+          <h2>Revoked Doctrine</h2>
+          <ul className="rb-list">
+            {revoked
+              .slice()
+              .reverse()
+              .map((c) => {
+                const deps = canonDependents(p, c.id);
+                return (
+                  <li key={c.id} className="rb-school-revoked-entry">
+                    <span className="rb-badge bad">revoked</span>
+                    <s>{c.text}</s>
+                    <div className="rb-school-doctrine-ts">
+                      ↳ {c.revokeReason}
+                      {c.revokedAt && (
+                        <span className="rb-school-revoked-time">
+                          {" · "}
+                          {new Date(c.revokedAt).toLocaleDateString()} {new Date(c.revokedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      )}
+                    </div>
+                    {deps.length > 0 && (
+                      <div className="rb-school-revoked-deps">
+                        {deps.length} directive{deps.length > 1 ? "s" : ""} may have depended on this
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+          </ul>
+        </div>
+      )}
+
+      <div className="rb-panel rb-school-proposals">
+        <h2>Doctrine Under Pressure</h2>
         <div className="rb-col" style={{ marginBottom: 12 }}>
           <textarea
             className="rb-textarea"
-            placeholder="propose a new canonical truth..."
+            placeholder="propose a canonical truth..."
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -112,8 +174,7 @@ export function SchoolChamber() {
         </div>
         {openProposals.length === 0 ? (
           <div className="rb-unavail">
-            <strong>no open proposals</strong>
-            Propose truth before hardening it into law.
+            <strong>no proposals under pressure</strong>
           </div>
         ) : (
           <ul className="rb-list">
@@ -121,11 +182,7 @@ export function SchoolChamber() {
               .slice()
               .reverse()
               .map((q) => (
-                <li
-                  key={q.id}
-                  className="rb-row"
-                  style={{ justifyContent: "space-between" }}
-                >
+                <li key={q.id} className="rb-row" style={{ justifyContent: "space-between" }}>
                   <span>
                     <span className="rb-badge warn">proposed</span>
                     {q.text}
@@ -147,81 +204,34 @@ export function SchoolChamber() {
         )}
       </div>
 
-      <div className="rb-panel">
-        <h2>Canon Ledger</h2>
-        {canon.length === 0 ? (
+      <div className="rb-panel rb-school-promotion">
+        <h2>Truth Promotion</h2>
+        {promotableMemory.length === 0 ? (
           <div className="rb-unavail">
-            <strong>no canon</strong>
-            Canon forms from proposals. None hardened yet.
+            <strong>no retained observations to promote</strong>
           </div>
         ) : (
           <ul className="rb-list">
-            {canon
+            {promotableMemory
               .slice()
               .reverse()
-              .map((c) => (
-                <li
-                  key={c.id}
-                  className="rb-row"
-                  style={{
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <span>
-                    <span className="rb-badge gold">hardened</span>
-                    {c.text}
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: "var(--rb-ink-mute)",
-                        marginTop: 4,
-                      }}
-                    >
-                      {new Date(c.hardenedAt).toLocaleString()}
-                    </div>
-                  </span>
+              .map((m) => (
+                <li key={m.id} className="rb-row" style={{ justifyContent: "space-between" }}>
+                  <span>{m.text}</span>
                   <button
                     className="rb-btn"
                     onClick={async () => {
-                      const reason = await RuledPrompt.ask("Revocation reason (required):", { label: "reason" });
-                      if (reason && reason.trim())
-                        emit.revokeCanon(c.id, reason.trim());
+                      await emit.promoteMemory(m.id);
+                      await emit.proposeCanon(m.text, m.id);
                     }}
                   >
-                    Revoke
+                    Promote → Propose
                   </button>
                 </li>
               ))}
           </ul>
         )}
       </div>
-
-      {revoked.length > 0 && (
-        <div className="rb-panel">
-          <h2>Revoked Canon</h2>
-          <ul className="rb-list">
-            {revoked
-              .slice()
-              .reverse()
-              .map((c) => (
-                <li key={c.id}>
-                  <span className="rb-badge bad">revoked</span>
-                  <s>{c.text}</s>
-                  <div
-                    style={{
-                      fontSize: 10,
-                      color: "var(--rb-ink-mute)",
-                      marginTop: 4,
-                    }}
-                  >
-                    reason: {c.revokeReason}
-                  </div>
-                </li>
-              ))}
-          </ul>
-        </div>
-      )}
     </section>
   );
 }

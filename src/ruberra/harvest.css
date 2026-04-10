@@ -1,0 +1,387 @@
+/* Final graft overlay — closes remaining UI gaps without destabilizing base styles. */
+
+/* ── Thread strip harvest support ───────────────────────────────────────── */
+.rb-thread-lineage {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--rb-ink-mute);
+  opacity: 0.72;
+  margin-bottom: 3px;
+  padding-left: 2px;
+}
+
+.rb-thread-consequence {
+  display: flex;
+  gap: 6px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
+.rb-thread-consequence-cell {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  padding: 1px 5px;
+  border: 1px solid var(--rb-line);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.rb-thread-consequence-cell[data-kind="directive"] { border-color: rgba(138, 98, 56, 0.25); }
+.rb-thread-consequence-cell[data-kind="execution"] { border-color: rgba(181, 138, 58, 0.25); }
+.rb-thread-consequence-cell[data-kind="artifact"] { border-color: rgba(82, 121, 106, 0.25); }
+.rb-thread-consequence-cell[data-kind="committed"] {
+  border-color: rgba(201, 166, 107, 0.35);
+  color: var(--rb-gold);
+}
+
+.rb-thread--closed {
+  opacity: 0.55;
+}
+
+.rb-threads-filter {
+  margin-bottom: 14px;
+}
+
+.rb-threads-search {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(28, 28, 36, 0.5);
+  border: 1px solid rgba(42, 42, 54, 0.5);
+  color: var(--rb-ink);
+  font-family: var(--rb-mono);
+  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  margin-bottom: 6px;
+}
+.rb-threads-search::placeholder {
+  color: var(--rb-ink-mute);
+  opacity: 0.6;
+}
+
+.rb-threads-status-filter {
+  display: flex;
+  gap: 4px;
+}
+
+.rb-threads-filter-btn {
+  background: transparent;
+  border: 1px solid rgba(42, 42, 54, 0.4);
+  color: var(--rb-ink-mute);
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  flex: 1;
+}
+.rb-threads-filter-btn.active {
+  border-color: var(--rb-accent-soft);
+  color: var(--rb-ink);
+  background: rgba(42, 42, 54, 0.3);
+}
+.rb-threads-filter-btn:hover {
+  border-color: var(--rb-accent-soft);
+}
+
+/* ── Creation final graft ───────────────────────────────────────────────── */
+.rb-forge-revoked-deps {
+  border: 1px solid rgba(180, 60, 40, 0.3);
+  border-left: 3px solid var(--rb-bad);
+  background: rgba(180, 60, 40, 0.04);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.rb-forge-revoked-deps-label {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rb-bad);
+  margin-bottom: 6px;
+}
+
+.rb-forge-revoked-deps-entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-mute);
+  padding: 3px 0;
+  flex-wrap: wrap;
+}
+
+.rb-forge-revoked-deps-arrow {
+  color: var(--rb-bad);
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.rb-exec-timeline-entry {
+  padding: 6px 0;
+  border-left: 2px solid rgba(42, 42, 54, 0.3);
+  padding-left: 10px;
+  margin-left: 4px;
+}
+
+.rb-exec-timeline-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rb-exec-timeline-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.rb-exec-timeline-dot.ok { background: var(--rb-ok); }
+.rb-exec-timeline-dot.bad { background: var(--rb-bad); }
+.rb-exec-timeline-dot.running {
+  background: var(--rb-warn);
+  animation: rb-pulse 1.2s ease-in-out infinite;
+}
+
+.rb-exec-timeline-label {
+  font-family: var(--rb-mono);
+  font-size: 11px;
+  color: var(--rb-ink-soft);
+}
+
+.rb-exec-timeline-meta {
+  display: flex;
+  gap: 10px;
+  margin-top: 3px;
+  padding-left: 12px;
+}
+
+.rb-exec-timeline-ts {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+}
+
+.rb-exec-timeline-duration {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-gold);
+  letter-spacing: 0.06em;
+}
+
+.rb-exec-timeline-reason {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-mute);
+  padding-left: 12px;
+  margin-top: 2px;
+}
+
+.rb-exec-retry-btn {
+  background: none;
+  border: 1px solid rgba(180, 60, 40, 0.3);
+  color: var(--rb-bad);
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  cursor: pointer;
+  margin-top: 4px;
+  margin-left: 12px;
+  border-radius: 2px;
+}
+.rb-exec-retry-btn:hover {
+  background: rgba(180, 60, 40, 0.08);
+  border-color: var(--rb-bad);
+}
+
+.rb-diff-add { color: var(--rb-ok); }
+.rb-diff-del { color: var(--rb-bad); }
+.rb-diff-hunk { color: rgba(74, 107, 132, 0.8); font-style: italic; }
+
+/* ── School truth register graft ────────────────────────────────────────── */
+.rb-school-preamble {
+  font-family: var(--rb-mono);
+  font-size: 11px;
+  color: var(--rb-ink-mute);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+.rb-school-ledger {
+  border-left-color: rgba(201, 166, 107, 0.48);
+  border-left-width: 3px;
+}
+.rb-school-ledger h2 {
+  font-family: var(--rb-serif);
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  color: var(--rb-gold);
+}
+
+.rb-school-doctrine-list {
+  margin: 0;
+  padding: 0;
+}
+
+.rb-school-doctrine-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rb-line);
+}
+.rb-school-doctrine-entry:last-child { border-bottom: none; }
+
+.rb-school-doctrine-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rb-school-doctrine-text {
+  font-family: var(--rb-serif);
+  font-size: 15px;
+  color: var(--rb-ink);
+  line-height: 1.4;
+}
+
+.rb-school-doctrine-ts {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-mute);
+  margin-top: 4px;
+}
+
+.rb-school-empty-hint {
+  display: block;
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-mute);
+  margin-top: 4px;
+}
+
+.rb-school-revoked-entry {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rb-line);
+}
+.rb-school-revoked-entry:last-child { border-bottom: none; }
+.rb-school-revoked-entry s {
+  color: var(--rb-ink-mute);
+  font-size: 13px;
+}
+
+.rb-school-revoked-time {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+  opacity: 0.6;
+}
+
+.rb-school-revoked-deps {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--rb-bad);
+  opacity: 0.75;
+  margin-top: 3px;
+}
+
+.rb-school-proposals h2 {
+  color: var(--rb-ink-soft);
+}
+
+.rb-school-promotion h2 {
+  color: var(--rb-ink-mute);
+  font-size: 13px;
+}
+
+/* ── Memory ledger graft ────────────────────────────────────────────────── */
+.rb-memory-consolidation {
+  display: flex;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(42, 42, 54, 0.3);
+  border-radius: 3px;
+  margin-bottom: 14px;
+  background: rgba(28, 28, 36, 0.3);
+}
+
+.rb-memory-consolidation-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.rb-memory-consolidation-count {
+  font-family: var(--rb-mono);
+  font-size: 16px;
+  color: var(--rb-ink-soft);
+}
+.rb-memory-consolidation-cell.ok .rb-memory-consolidation-count { color: var(--rb-ok); }
+.rb-memory-consolidation-cell.gold .rb-memory-consolidation-count { color: var(--rb-gold); }
+.rb-memory-consolidation-cell.bad .rb-memory-consolidation-count { color: var(--rb-bad); }
+
+.rb-memory-consolidation-label {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+}
+
+.rb-memory-batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border: 1px solid rgba(180, 60, 40, 0.2);
+  background: rgba(180, 60, 40, 0.04);
+  margin-bottom: 8px;
+}
+
+.rb-memory-batch-count {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--rb-ink-soft);
+}
+
+.rb-memory-item-select {
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+  cursor: pointer;
+}
+
+.rb-memory-item-select input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--rb-accent-soft);
+}
+
+.rb-memory-item--retained {
+  border-left: 3px solid rgba(106, 143, 90, 0.45);
+}
+.rb-memory-item--retained .rb-memory-item-text {
+  color: var(--rb-ink);
+  font-size: 13px;
+}
+
+.rb-memory-item--hardened {
+  border-left: 3px solid rgba(201, 166, 107, 0.55);
+  background: rgba(201, 166, 107, 0.04);
+}
+.rb-memory-item--hardened .rb-memory-item-text {
+  color: var(--rb-ink);
+  font-family: var(--rb-serif);
+  font-size: 14px;
+}

@@ -4,22 +4,72 @@
 import { useState } from "react";
 import { useProjection, emit } from "../spine/store";
 import { RuledPrompt } from "../trust/RuledPrompt";
+import { useIsMobile } from "./use-mobile";
 
 interface Props {
   open?: boolean;
   onClose?: () => void;
 }
 
+const CHAMBER_ACCENT: Record<string, string> = {
+  lab: "rgba(82, 121, 106, 0.75)",
+  school: "rgba(74, 107, 132, 0.75)",
+  creation: "rgba(138, 98, 56, 0.75)",
+};
+
+const STATE_LABEL: Record<string, string> = {
+  open: "open",
+  draft: "draft",
+  "directive-pending": "pending",
+  executing: "executing",
+  "awaiting-review": "review",
+  closed: "closed",
+};
+
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+type StatusFilter = "all" | "open" | "closed" | "archived";
+
 export function ThreadStrip({ open, onClose }: Props) {
   const p = useProjection();
   const [intent, setIntent] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const isMobile = useIsMobile();
   const repoThreads = p.threads.filter((t) => t.repo === p.activeRepo);
+  const activeAccent = CHAMBER_ACCENT[p.chamber] ?? "var(--rb-accent-soft)";
+
+  // Filtered threads — search + status filter
+  // Default "all" hides archived; explicit "archived" shows only archived
+  const filteredThreads = repoThreads.filter((t) => {
+    if (statusFilter === "all" && t.archived) return false;
+    if (statusFilter === "open" && (t.status !== "open" || t.archived)) return false;
+    if (statusFilter === "closed" && (t.status !== "closed" || t.archived)) return false;
+    if (statusFilter === "archived" && !t.archived) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!t.intent.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
   const narrowClass = open ? "rb-rail rb-rail--open" : "rb-rail";
+  const closedOnNarrow = isMobile && !open;
 
   return (
-    <aside className={narrowClass}>
-      {/* Close button visible when overlay is open on narrow screens */}
+    <aside
+      className={narrowClass}
+      aria-hidden={closedOnNarrow ? true : undefined}
+      style={closedOnNarrow ? { pointerEvents: "none" } : undefined}
+    >
       {onClose && (
         <button
           className="rb-rail-toggle"
@@ -31,83 +81,183 @@ export function ThreadStrip({ open, onClose }: Props) {
         </button>
       )}
 
-      <h3 className="rb-section-title">Threads</h3>
-      <div className="rb-col" style={{ marginBottom: 14 }}>
+      {/* Rail header with live thread count */}
+      <div className="rb-threads-header">
+        <h3 className="rb-section-title">Threads</h3>
+        {repoThreads.length > 0 && (
+          <span className="rb-threads-count">{repoThreads.length}</span>
+        )}
+      </div>
+
+      {/* Intent form — scope-opening entrance */}
+      <div style={{ marginBottom: 16 }}>
+        <label className="rb-field-label" style={{ marginBottom: 6 }}>Intent</label>
         <textarea
-          className="rb-textarea"
-          placeholder="state intent..."
+          className="rb-intent-input"
+          placeholder="state the scope of this thread..."
           value={intent}
           onChange={(e) => setIntent(e.target.value)}
         />
         <button
           className="rb-btn primary"
           disabled={!intent.trim()}
+          style={{ marginTop: 8, width: "100%", boxSizing: "border-box" }}
           onClick={async () => {
             await emit.openThread(intent.trim());
             setIntent("");
           }}
         >
-          Open thread
+          Open Thread
         </button>
       </div>
+
+      {/* Thread search + filter */}
+      {repoThreads.length > 2 && (
+        <div className="rb-threads-filter">
+          <input
+            className="rb-threads-search"
+            placeholder="search threads…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="rb-threads-status-filter">
+            {(["all", "open", "closed", "archived"] as StatusFilter[]).map((s) => (
+              <button
+                key={s}
+                className={`rb-threads-filter-btn${statusFilter === s ? " active" : ""}`}
+                onClick={() => setStatusFilter(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Thread list */}
       {repoThreads.length === 0 ? (
         <div className="rb-unavail">
           <strong>no threads</strong>
-          Open one to begin the loop.
+        </div>
+      ) : filteredThreads.length === 0 ? (
+        <div className="rb-unavail">
+          <strong>no matches</strong>
         </div>
       ) : (
         <div>
-          {repoThreads
+          {filteredThreads
             .slice()
             .reverse()
-            .map((t) => (
-              <div
-                key={t.id}
-                className={`rb-thread ${p.activeThread === t.id ? "active" : ""}`}
-              >
-                <div className="intent">{t.intent}</div>
-                <div className="meta">
-                  <span
-                    className={`rb-badge ${
-                      t.state === "closed"
-                        ? "bad"
-                        : t.state === "awaiting-review"
-                          ? "warn"
-                          : t.state === "executing"
-                            ? "warn"
-                            : "ok"
-                    }`}
-                  >
-                    {t.state}
-                  </span>
-                  {new Date(t.openedAt).toLocaleTimeString()}
-                  {t.status === "open" && p.activeThread === t.id && (
-                    <button
-                      className="rb-btn"
-                      style={{ marginLeft: 8, padding: "2px 8px", fontSize: 9 }}
-                      onClick={async () => {
-                        const reason = await RuledPrompt.ask("Close reason (required):", { label: "reason" });
-                        if (reason && reason.trim())
-                          emit.closeThread(t.id, reason.trim());
-                      }}
-                    >
-                      Close
-                    </button>
-                  )}
-                  {t.closeReason && (
-                    <div
-                      style={{
-                        fontSize: 9,
-                        color: "var(--rb-ink-mute)",
-                        marginTop: 4,
-                      }}
-                    >
-                      reason: {t.closeReason}
+            .map((t) => {
+              const dirCount = p.directives.filter((d) => d.thread === t.id).length;
+              const artCount = p.artifacts.filter((a) => a.thread === t.id).length;
+              const execCount = p.executions.filter((x) => x.thread === t.id).length;
+              const committedCount = p.artifacts.filter((a) => a.thread === t.id && a.committed).length;
+              const statParts: string[] = [
+                timeAgo(t.openedAt),
+                STATE_LABEL[t.state] ?? t.state,
+              ];
+              if (dirCount > 0) statParts.push(`${dirCount} dir`);
+              if (artCount > 0) statParts.push(`${artCount} art`);
+
+              const isActive = p.activeThread === t.id;
+
+              return (
+                <div
+                  key={t.id}
+                  className={`rb-thread${isActive ? " active" : ""}${t.status === "closed" ? " rb-thread--closed" : ""}`}
+                  data-state={t.state}
+                  style={
+                    isActive
+                      ? { borderLeftColor: activeAccent, borderLeftWidth: "3px" }
+                      : undefined
+                  }
+                >
+                  {/* Lineage indicator — shows parent thread if this was forked */}
+                  {t.parentThread && (() => {
+                    const parent = p.threads.find((pt) => pt.id === t.parentThread);
+                    return parent ? (
+                      <div className="rb-thread-lineage">
+                        ↳ from: {parent.intent.length > 28 ? parent.intent.slice(0, 28) + "…" : parent.intent}
+                      </div>
+                    ) : null;
+                  })()}
+                  <div className="rb-thread-intent">{t.intent}</div>
+                  <div className="rb-thread-meta">
+                    <span className="rb-thread-state-dot" />
+                    <span className="rb-thread-meta-text">
+                      {statParts.join(" · ")}
+                    </span>
+                    {t.status === "open" && isActive && (
+                      <button
+                        className="rb-thread-close-btn"
+                        onClick={async () => {
+                          const reason = await RuledPrompt.ask(
+                            "Close reason (required):",
+                            { label: "reason" },
+                          );
+                          if (reason && reason.trim())
+                            emit.closeThread(t.id, reason.trim());
+                        }}
+                      >
+                        close
+                      </button>
+                    )}
+                    {t.status === "open" && isActive && (
+                      <button
+                        className="rb-thread-close-btn"
+                        onClick={async () => {
+                          const childIntent = await RuledPrompt.ask(
+                            "Child thread intent:",
+                            { label: "intent" },
+                          );
+                          if (childIntent && childIntent.trim())
+                            emit.openThread(childIntent.trim(), t.id);
+                        }}
+                      >
+                        fork
+                      </button>
+                    )}
+                    {t.status === "closed" && !t.archived && (
+                      <button
+                        className="rb-thread-close-btn"
+                        onClick={() => emit.archiveThread(t.id)}
+                      >
+                        archive
+                      </button>
+                    )}
+                  </div>
+                  {/* Consequence density — show what this thread has produced */}
+                  {(dirCount > 0 || artCount > 0 || execCount > 0) && (
+                    <div className="rb-thread-consequence">
+                      {dirCount > 0 && (
+                        <span className="rb-thread-consequence-cell" data-kind="directive" title={`${dirCount} directives`}>
+                          {dirCount} dir
+                        </span>
+                      )}
+                      {execCount > 0 && (
+                        <span className="rb-thread-consequence-cell" data-kind="execution" title={`${execCount} executions`}>
+                          {execCount} exec
+                        </span>
+                      )}
+                      {artCount > 0 && (
+                        <span className="rb-thread-consequence-cell" data-kind="artifact" title={`${artCount} artifacts`}>
+                          {artCount} art
+                        </span>
+                      )}
+                      {committedCount > 0 && (
+                        <span className="rb-thread-consequence-cell" data-kind="committed" title={`${committedCount} committed`}>
+                          {committedCount} ✓
+                        </span>
+                      )}
                     </div>
                   )}
+                  {t.closeReason && (
+                    <div className="rb-thread-close-reason">{t.closeReason}</div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
         </div>
       )}
     </aside>

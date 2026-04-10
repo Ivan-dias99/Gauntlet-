@@ -1,78 +1,144 @@
-# AGENTS.md — Ruberra Canonical Operating Reference
+# AGENTS.md — Ruberra Living Operating Reference
 
-## Overview
+## Current Runtime Truth
 
-Ruberra is a sovereign intelligence workstation — a single-page React application (Vite + Tailwind CSS v4) with four chambers: **Lab** (investigate), **School** (master), **Creation** (build), **Profile** (govern). The backend is a Supabase Edge Function deployed remotely.
+Ruberra’s mounted runtime lives in:
 
-## Running the App
+- `src/main.tsx`
+- `src/ruberra/RuberraApp.tsx`
+- the `src/ruberra/` subtree
 
-- **Dev server**: `npm run dev` (Vite, port 5173; `--host 0.0.0.0` to expose externally)
-- **Build**: `npm run build` — primary correctness check (TypeScript/JSX errors surface here)
-- **Package manager**: `npm` (not pnpm, despite `pnpm.overrides` in `package.json`)
+`src/app/` is not the current runtime. It is legacy quarantine.
 
-## Key Caveats
+## Product Identity
 
-- No linter or test runner. Only scripts: `dev` and `build`.
-- No `.env` needed locally. Supabase URL + anon key in `utils/supabase/info.tsx`.
-- When `OPENAI_API_KEY` is not set server-side, the edge function returns hardcoded demo responses.
-- State persistence: `localStorage` via `RuntimeFabric` — no database locally.
+Ruberra is:
+
+- a sovereign creation system
+- architect-first
+- chamber-native
+- memory-bearing
+- consequence-driven
+- anti-fragmentation
+
+Ruberra is not:
+
+- a marketing site
+- a SaaS dashboard
+- an AI wrapper
+- prompt theater
+- a feature-grid shell
+
+## Genesis Core
+
+Ruberra now advances under **Genesis Core**.
+
+Genesis Core is not a second product and not a second repo.
+It is the operating doctrine for how Ruberra is conceived, commanded, remembered, and built.
+
+Primary law:
+
+- no meta-layer without direct product progress
+- one repo
+- one product
+- one mounted organism
+- one active wave at a time
+- every wave must improve both product reality and operating clarity
+
+## Current Product Surfaces
+
+The live organism currently exposes four chambers:
+
+1. **Lab** — exploration, investigation, experimentation
+2. **School** — truth formation, doctrine pressure, canonical learning
+3. **Creation** — architecture, creation, concept-to-build pressure
+4. **Memory** — retained consequence, recall substrate, canon promotion source
+
+The system also includes:
+
+- ritual entry / return recognition
+- system spine / structural indicators
+- canon ribbon
+- trust surfaces
+- event-sourced memory and projection logic
 
 ## Architecture
 
-### Core Files
+### Live Stack
 
-| File | Purpose |
-|------|---------|
-| `src/app/App.tsx` | Shell-level owner: routing, execution, missions, governance |
-| `src/app/components/runtime-fabric.ts` | Single persisted authority for all state |
-| `src/app/components/routing-contracts.ts` | Route resolution → pioneer selection |
-| `src/app/components/pioneer-registry.ts` | 7 pioneers: home_chamber, model_family, strengths |
-| `src/app/components/model-orchestration.ts` | MODEL_REGISTRY: provider/tier/task mapping |
-| `src/app/components/HeroLanding.tsx` | Landing/entry surface |
-| `src/app/components/SovereignBar.tsx` | Top navigation bar |
-| `src/styles/theme.css` | Canonical design tokens |
+```text
+src/main.tsx
+  -> src/ruberra/RuberraApp.tsx
+      -> shell/
+      -> chambers/
+      -> spine/
+      -> trust/
+```
 
-### 20-Stack Architecture
+### Core Truth
 
-All stacks are runtime-real and persist through `RuntimeFabric`:
+- `src/ruberra/spine/` is the living event spine
+- state is append-only and projection-driven
+- memory is structural, not decorative
+- chambers are operational zones, not page metaphors
+- command and continuity matter more than generic productivity patterns
 
-1. Canon + Sovereignty · 2. Mission Substrate · 3. Sovereign Intelligence · 4. Autonomous Operations · 5. Adaptive Experience · 6. Sovereign Security · 7. Trust + Governance · 8. System Awareness · 9. Autonomous Flow · 10. Multi-Agent Civilization · 11. Living Knowledge · 12. Intelligence Analytics · 13. Collective Execution · 14. Distribution + Presence · 15. Value Exchange · 16. Ecosystem Network · 17. Platform Infrastructure · 18. Organizational Intelligence · 19. Personal Sovereign OS · 20. Compound Intelligence Network
+### Legacy Truth
 
-### Identity
+Historical matter may still exist in:
 
-**Ruberra IS:** A sovereign mission operating system. Memory-bearing. Chamber-native. Consequence-driven.
+- `src/app/`
+- older blueprint documents
+- older operating notes
 
-**Ruberra IS NOT:** A SaaS dashboard. A generic AI wrapper. A clone of any external tool.
+These are not authoritative unless explicitly revalidated against the mounted runtime.
 
-**Core unit:** The mission. Not the chat, not the task, not the repo.
+## Operating Files
 
-**Four chambers:** Lab (investigate) · School (learn) · Creation (build) · Profile (govern).
+The current governing files live in `ops/`:
 
-### Design System
+- `ops/GENESIS_CORE.md`
+- `ops/CANONICAL_TRUTH.md`
+- `ops/WAVE_01.md`
+- `ops/HANDOFF.md`
+- `ops/MERGE_GATE.md`
+- `ops/MILESTONE_TRACKER.md`
+- `ops/AI_ORCHESTRATION.md`
 
-- **Tokens:** `theme.css` — `--r-bg`, `--r-text`, `--r-surface`, `--r-border`, etc.
-- **Chamber accents:** Lab `#52796A`, School `#4A6B84`, Creation `#8A6238`
-- **Typography:** Inter (UI), JetBrains Mono (system/code)
-- **Border radius:** 2px for operational surfaces (mineral shell)
-- **Visual law:** Premium, calm, consequence over decoration. Never neon, never clutter.
+These define current repo truth and work discipline.
+
+## Build / Validation
+
+Minimum gate before claiming progress:
+
+- `npm run build`
+
+The repository also contains hardening work around tests and execution verification.
+Do not claim completion if runtime truth, chamber truth, or repo truth are still split.
 
 ## Branch Law
 
-- `main` is the only canonical trunk.
-- Feature branches are temporary (< 24 hours), merged via squash/fast-forward, then deleted.
-- No branch cemetery. No unmerged drift work.
+- `main` is canonical
+- temporary work branches are acceptable only when they reduce risk and converge quickly
+- no branch cemetery
+- no alternate product centers
+- no work routed into legacy quarantine
 
 ## Output Law
 
-- Podium answer first. One direction. No option menus. No preamble.
-- `npm run build` must pass before any commit to main.
+- podium answer first
+- one direction at a time
+- no option spread unless ambiguity is real
+- no completion claims that outrun structural truth
+- no decorative complexity without operational gain
 
-## Aspirational Features (Not Yet Real)
+## Acceptance Law
 
-| Feature | Status |
-|---------|--------|
-| Live agent spawning | Pioneers tracked from continuity; no autonomous operation |
-| Compound cross-mission synthesis | Nodes accumulate per run; no deep cross-mission reasoning |
-| Distribution publish channels | Session-level presence only |
-| Value capture billing | Value units minted; no payment integration |
-| Ecosystem live sync | Connector extensions tracked; no real-time external sync |
+A change is valid only if it makes Ruberra:
+
+- clearer
+- less generic
+- more sovereign
+- more buildable
+- more memory-bearing
+- easier to continue tomorrow without reframing from zero

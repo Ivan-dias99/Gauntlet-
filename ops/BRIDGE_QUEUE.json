@@ -1,0 +1,229 @@
+{
+  "active_wave": "WAVE 02 — Product Body Activation",
+  "lanes": ["claude", "copilot", "codex", "antigravity"],
+  "tasks": [
+    {
+      "id": "W02-B01",
+      "title": "Canon Gravity Elevation",
+      "owner": "claude",
+      "support": ["copilot", "codex"],
+      "surface": "product",
+      "scope": ["src/ruberra/"],
+      "depends_on": [],
+      "gate_on_complete": null,
+      "success": "School and shell hierarchy clearly read as truth pressure above ordinary parity."
+    },
+    {
+      "id": "W02-B02",
+      "title": "School Chamber Truth Register",
+      "owner": "claude",
+      "support": ["codex"],
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/School.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W02-B01"],
+      "gate_on_complete": null,
+      "success": "School chamber reads as doctrine/truth formation, not educational content."
+    },
+    {
+      "id": "W02-B03",
+      "title": "Memory Ledger Dominance",
+      "owner": "claude",
+      "support": ["copilot"],
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/Memory.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W02-B02"],
+      "gate_on_complete": null,
+      "success": "Memory chamber reads as retained consequence first, utilities second."
+    },
+    {
+      "id": "W02-B04",
+      "title": "Shell Visual Seal 01",
+      "owner": "antigravity",
+      "support": ["claude"],
+      "surface": "visual",
+      "scope": ["src/ruberra/shell/", "src/ruberra/styles.css", "src/ruberra/reforge-imports.css"],
+      "depends_on": ["W02-B03"],
+      "gate_on_complete": null,
+      "success": "Shell, spine and chamber rail lose dashboard feel and gain flagship calm density."
+    },
+    {
+      "id": "W02-B05",
+      "title": "Wave 02 Verification Gate",
+      "owner": "codex",
+      "support": ["copilot"],
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W02-B04"],
+      "gate_on_complete": "GATE_W03_OPEN",
+      "success": "Wave 02 artifacts verified, handoffs closed, next gate emitted."
+    },
+    {
+      "id": "W03-B01",
+      "title": "Creation Forge Elevation",
+      "owner": "claude",
+      "support": ["copilot", "codex"],
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/Creation.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W02-B05"],
+      "gate_on_complete": null,
+      "success": "Creation becomes architect-first forge, not generic work panel."
+    },
+    {
+      "id": "W03-B02",
+      "title": "Concept-to-Build Relay",
+      "owner": "claude",
+      "support": ["codex"],
+      "surface": "architecture",
+      "scope": ["src/ruberra/spine/", "src/ruberra/chambers/Creation.tsx"],
+      "depends_on": ["W03-B01"],
+      "gate_on_complete": null,
+      "success": "Concept, directive, artifact and review relay become explicit in the living organism."
+    },
+    {
+      "id": "W03-B03",
+      "title": "Visual Seal 02",
+      "owner": "antigravity",
+      "support": ["claude"],
+      "surface": "visual",
+      "scope": ["src/ruberra/"],
+      "depends_on": ["W03-B02"],
+      "gate_on_complete": null,
+      "success": "Product body gains flagship visual coherence without premium theater."
+    },
+    {
+      "id": "W03-B04",
+      "title": "Wave 03 Verification Gate",
+      "owner": "codex",
+      "support": ["copilot"],
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W03-B03"],
+      "gate_on_complete": "GATE_W04_OPEN",
+      "success": "Wave 03 verified, next gate emitted."
+    },
+    {
+      "id": "W04-B01",
+      "title": "Architect-First Product Entry",
+      "owner": "claude",
+      "support": ["copilot"],
+      "surface": "product",
+      "scope": ["src/ruberra/shell/RitualEntry.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W03-B04"],
+      "gate_on_complete": null,
+      "success": "Entry surface explicitly serves principal-architect creation identity."
+    },
+    {
+      "id": "W04-B02",
+      "title": "Visual Seal 03",
+      "owner": "antigravity",
+      "support": [],
+      "surface": "visual",
+      "scope": ["src/ruberra/"],
+      "depends_on": ["W04-B01"],
+      "gate_on_complete": null,
+      "success": "Visual seal for architect-first entry and final topbar density."
+    },
+    {
+      "id": "W04-B03",
+      "title": "Wave 04 Verification Gate",
+      "owner": "codex",
+      "support": ["copilot"],
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W04-B02"],
+      "gate_on_complete": "GATE_W05_OPEN",
+      "success": "Wave 04 verified, next gate emitted."
+    },
+    {
+      "id": "W05-B01",
+      "title": "Validation Lab Elevation",
+      "owner": "antigravity",
+      "support": ["claude"],
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/Lab.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W04-B03"],
+      "gate_on_complete": null,
+      "success": "Lab gains Skepticism Substrate / Validation Forge identity."
+    },
+    {
+      "id": "W05-B02",
+      "title": "Wave 05 Verification Gate",
+      "owner": "codex",
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W05-B01"],
+      "gate_on_complete": "GATE_W06_OPEN",
+      "success": "Wave 05 verified, next gate emitted."
+    },
+    {
+      "id": "W06-B01",
+      "title": "Structural Authority Pulse",
+      "owner": "antigravity",
+      "surface": "visual",
+      "scope": ["src/ruberra/shell/EventPulse.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W05-B02"],
+      "gate_on_complete": null,
+      "success": "Event Pulse transformed into a sovereign Ambient Truth Strip."
+    },
+    {
+      "id": "W06-B02",
+      "title": "Consequence Strip Seal",
+      "owner": "antigravity",
+      "surface": "visual",
+      "scope": ["src/ruberra/shell/CanonRibbon.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W06-B01"],
+      "gate_on_complete": null,
+      "success": "Canon Ribbon elevated with consequence scars and memory highlights."
+    },
+    {
+      "id": "W06-B03",
+      "title": "Wave 06 Verification Gate",
+      "owner": "codex",
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W06-B02"],
+      "gate_on_complete": "GATE_W07_OPEN",
+      "success": "Wave 06 verified. Full product body activation complete."
+    },
+    {
+      "id": "W07-B01",
+      "title": "Execution Fabric Harvest",
+      "owner": "claude",
+      "surface": "spine",
+      "scope": ["src/ruberra/spine/runtime-fabric.ts"],
+      "depends_on": ["W06-B03"],
+      "gate_on_complete": null,
+      "success": "Legacy execution logic ported to the active spine."
+    },
+    {
+      "id": "W07-B02",
+      "title": "Fabric Integration",
+      "owner": "claude",
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/Creation.tsx"],
+      "depends_on": ["W07-B01"],
+      "gate_on_complete": null,
+      "success": "Creation chamber is wired to the new execution fabric."
+    },
+    {
+      "id": "W07-B03",
+      "title": "School Canon Seeding",
+      "owner": "antigravity",
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/School.tsx"],
+      "depends_on": ["W07-B02"],
+      "gate_on_complete": null,
+      "success": "School seeded with initial doctrine harvested from legacy DNA."
+    },
+    {
+      "id": "W07-B04",
+      "title": "Final Convergence",
+      "owner": "codex",
+      "surface": "audit",
+      "scope": ["src/"],
+      "depends_on": ["W07-B03"],
+      "gate_on_complete": "GATE_BETA_READY",
+      "success": "Legacy quarantine removed. One repo, one truth."
+    }
+  ]
+}

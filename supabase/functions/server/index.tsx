@@ -6,10 +6,18 @@ import * as kv from "./kv_store.tsx";
 const app = new Hono();
 
 app.use("*", logger(console.log));
+
+// ── CORS — origin allowlist ────────────────────────────────────────────────
+// Set RUBERRA_ALLOWED_ORIGINS in Supabase project secrets (comma-separated).
+// Example: https://yourdomain.com,https://app.yourdomain.com
+// Falls back to localhost:5173 only if the env var is absent (development).
+const rawOrigins = Deno.env.get("RUBERRA_ALLOWED_ORIGINS") ?? "http://localhost:5173";
+const allowedOrigins = new Set(rawOrigins.split(",").map((o) => o.trim()).filter(Boolean));
+
 app.use(
   "/*",
   cors({
-    origin: "*",
+    origin: (origin) => (allowedOrigins.has(origin) ? origin : null),
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
