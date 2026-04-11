@@ -86,6 +86,11 @@ export const emit = {
     );
   },
 
+  activateThread: (threadId: string) => {
+    const t = requireThread(threadId);
+    return append("thread.activated", {}, { thread: t.id, repo: t.repo });
+  },
+
   closeThread: (threadId: string, reason: string) => {
     const t = requireThread(threadId);
     if (!reason.trim())
@@ -133,7 +138,6 @@ export const emit = {
       throw new Error("Directive refused: unresolved ambiguity in text");
     }
 
-    // Resolve conceptId validity before appending
     let resolvedConceptId: string | undefined = undefined;
     if (conceptId) {
       const p = cached ?? project(all());
@@ -149,10 +153,6 @@ export const emit = {
       { thread: t.id, repo: t.repo },
     );
 
-    // Autonomous canon contradiction check — mirrors captureMemory pattern.
-    // If the directive text/scope negates a hardened canon entry with ≥2 token
-    // overlap (length > 4), fire contradiction.detected without human action.
-    // This is a real autonomous consequence of directive acceptance.
     const snapshot = cached ?? project(all());
     const fullText = `${text} ${scope}`.toLowerCase();
     const negated = /\b(not|never|no longer|without|cannot|remove|delete|disable)\b/.test(fullText);

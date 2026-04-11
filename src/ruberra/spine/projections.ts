@@ -112,20 +112,18 @@ export interface Artifact {
   review: ArtifactReview;
   reviewReason?: string;
   ts: number;
-  // Consequence payload — populated when execution backend returns real output.
-  // Optional and backward-compatible: absent on all pre-existing stored events.
-  files?: string[];    // affected file paths
-  diff?: string;       // unified diff or change summary
-  commitRef?: string;  // commit SHA or equivalent token
+  files?: string[];
+  diff?: string;
+  commitRef?: string;
 }
 
 export interface CanonEntry {
   id: string;
-  repo?: string; // canon is repo-scoped; law has territory
+  repo?: string;
   memoryId?: string;
   text: string;
   hardenedAt: number;
-  state: TruthState; // hardened | revoked
+  state: TruthState;
   revokedAt?: number;
   revokeReason?: string;
 }
@@ -197,6 +195,13 @@ export function project(events: RuberraEvent[]): Projection {
           parentThread: ev.payload.parentThread as string | undefined,
         });
         p.activeThread = ev.id;
+        break;
+      }
+      case "thread.activated": {
+        const target = p.threads.find((t) => t.id === ev.thread);
+        if (target && target.status === "open") {
+          p.activeThread = target.id;
+        }
         break;
       }
       case "thread.closed": {
@@ -466,8 +471,6 @@ export function nextMove(p: Projection): string {
   }
 }
 
-// ── Concept-to-Build Relay ─────────────────────────────────────────────────
-
 export type RelayPhase =
   | "concept"
   | "directive"
@@ -532,8 +535,6 @@ export function threadRelay(p: Projection, threadId?: string): RelayState | null
 }
 
 export const RELAY_PHASE_ORDER = RELAY_PHASES;
-
-// ── Canon Dependency Surface ───────────────────────────────────────────────
 
 function significantTokens(text: string): string[] {
   return text

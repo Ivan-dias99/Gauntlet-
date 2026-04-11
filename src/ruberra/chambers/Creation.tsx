@@ -21,8 +21,6 @@ const RISK_INFO: Record<Risk, { descriptor: string; colorClass: string }> = {
   destructive:  { descriptor: "irreversible — requires explicit confirmation",    colorClass: "bad"  },
 };
 
-// Deterministic token-overlap heuristic — same pattern as store.ts captureMemory.
-// Returns true if 2+ tokens (length > 4) from the directive appear in the canon text.
 function matchesCanon(directiveText: string, scopeText: string, canonText: string): boolean {
   const needle = `${directiveText} ${scopeText}`.toLowerCase();
   const tokens = needle.split(/\s+/).filter((w) => w.length > 4);
@@ -53,7 +51,6 @@ export function CreationChamber() {
   const p = useProjection();
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
 
-  // Concept station state
   const [conceptTitle, setConceptTitle] = useState("");
   const [conceptHypothesis, setConceptHypothesis] = useState("");
   const [promotingConceptId, setPromotingConceptId] = useState<string | null>(null);
@@ -451,7 +448,7 @@ export function CreationChamber() {
               <label className="rb-field-label">Directive</label>
               <textarea
                 className={`rb-directive-input${ambiguous ? " ambiguous" : ""}`}
-                placeholder="what changes in the repo?"
+                placeholder="the directive to be executed"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
@@ -496,7 +493,7 @@ export function CreationChamber() {
               <label className="rb-field-label">Acceptance Criterion</label>
               <input
                 className={`rb-acceptance-field${acceptance.trim() ? " signed" : ""}`}
-                placeholder="how we know it is done"
+                placeholder="criterion for acceptance"
                 value={acceptance}
                 onChange={(e) => setAcceptance(e.target.value)}
               />
