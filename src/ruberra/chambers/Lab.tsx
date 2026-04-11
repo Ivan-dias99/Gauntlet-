@@ -20,7 +20,9 @@ export function LabChamber() {
   const [contradiction, setContradiction] = useState("");
 
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
-  const openContradictions = p.contradictions.filter((c) => !c.resolved);
+  const openContradictions = p.contradictions.filter(
+    (c) => !c.resolved && (!c.repo || c.repo === p.activeRepo),
+  );
 
   // Thread-scoped evidence — shows active thread's observations when a thread is
   // active; falls back to all repo memory when no thread is active.

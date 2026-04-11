@@ -468,7 +468,7 @@ export function CreationChamber() {
               <label className="rb-field-label">Directive</label>
               <textarea
                 className={`rb-directive-input${ambiguous ? " ambiguous" : ""}`}
-                placeholder="what changes in the repo?"
+                placeholder="the directive to be executed"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
@@ -513,7 +513,7 @@ export function CreationChamber() {
               <label className="rb-field-label">Acceptance Criterion</label>
               <input
                 className={`rb-acceptance-field${acceptance.trim() ? " signed" : ""}`}
-                placeholder="how we know it is done"
+                placeholder="criterion for acceptance"
                 value={acceptance}
                 onChange={(e) => setAcceptance(e.target.value)}
               />

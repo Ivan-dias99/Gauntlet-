@@ -26,7 +26,9 @@ export function EventPulse() {
 
   const runningExec = p.executions.filter((x) => x.status === "running").length;
   const failedExec = p.executions.filter((x) => x.status === "failed").length;
-  const openTensions = p.contradictions.filter((c) => !c.resolved).length;
+  const openTensions = p.contradictions.filter(
+    (c) => !c.resolved && (!c.repo || c.repo === p.activeRepo),
+  ).length;
   const pendingRevs = p.artifacts.filter((a) => a.review === "pending").length;
   const hasAnomalies = failedExec > 0 || openTensions > 0;
   const isIdle = runningExec === 0 && !hasAnomalies && pendingRevs === 0;
