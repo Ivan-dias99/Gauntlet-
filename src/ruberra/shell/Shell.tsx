@@ -9,6 +9,7 @@ import { nextMove } from "../spine/projections";
 import { ThreadStrip } from "./ThreadStrip";
 import { CanonRibbon } from "./CanonRibbon";
 import { EventPulse } from "./EventPulse";
+import { SovereignDock } from "./SovereignDock";
 import { CreationChamber } from "../chambers/Creation";
 import { LabChamber } from "../chambers/Lab";
 import { SchoolChamber } from "../chambers/School";
@@ -21,8 +22,6 @@ const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
   | string
   | undefined;
 
-// Gravity hierarchy: School (truth formation) leads. Creation (architect forge).
-// Lab (validation). Memory (consequence substrate).
 const CHAMBERS: Array<{ id: "lab" | "school" | "creation" | "memory"; label: string; gravity: string }> = [
   { id: "school", label: "School", gravity: "truth" },
   { id: "creation", label: "Creation", gravity: "forge" },
@@ -42,7 +41,6 @@ export function Shell({
   const [rightOpen, setRightOpen] = useState(false);
   const [gitStatus, setGitStatus] = useState<string | null>(null);
 
-  // Close rails on Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -54,7 +52,6 @@ export function Shell({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Fetch git status when backend + repo are available
   useEffect(() => {
     if (!EXEC_BACKEND || !p.activeRepo) {
       setGitStatus(null);
@@ -243,10 +240,13 @@ export function Shell({
         </ErrorBoundary>
 
         <ErrorBoundary label={`Chamber · ${p.chamber}`}>
-          {p.chamber === "creation" && <CreationChamber />}
-          {p.chamber === "lab" && <LabChamber />}
-          {p.chamber === "school" && <SchoolChamber />}
-          {p.chamber === "memory" && <MemoryChamber />}
+          <div className="rb-shell-center">
+            <SovereignDock />
+            {p.chamber === "creation" && <CreationChamber />}
+            {p.chamber === "lab" && <LabChamber />}
+            {p.chamber === "school" && <SchoolChamber />}
+            {p.chamber === "memory" && <MemoryChamber />}
+          </div>
         </ErrorBoundary>
 
         <ErrorBoundary label="Canon ribbon">
