@@ -2528,6 +2528,159 @@ html, body, #root {
   box-shadow: 0 0 4px var(--rb-gold);
 }
 
+/* ── W10-B04: Proposal Surface ─────────────────────────────────────── */
+
+.rb-proposal-surface {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: rgba(106, 143, 160, 0.04);
+  border: 1px solid rgba(106, 143, 160, 0.15);
+}
+
+.rb-proposal-surface-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6A8FA0;
+  margin-bottom: 12px;
+}
+
+.rb-proposal-card {
+  padding: 12px;
+  border-left: 2px solid #6A8FA0;
+  margin-bottom: 10px;
+  background: rgba(106, 143, 160, 0.03);
+}
+
+.rb-proposal-card-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.rb-proposal-card-text {
+  font-size: 13px;
+  color: var(--rb-ink);
+  margin-bottom: 4px;
+}
+
+.rb-proposal-card-scope {
+  font-size: 11px;
+  color: var(--rb-ink-soft);
+  font-family: var(--rb-mono);
+}
+
+.rb-proposal-card-rationale {
+  font-size: 11px;
+  color: var(--rb-ink-mute);
+  margin-top: 4px;
+}
+
+.rb-proposal-agent-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: rgba(106, 143, 160, 0.15);
+  color: #6A8FA0;
+  font-family: var(--rb-mono);
+  text-transform: lowercase;
+}
+
+.rb-proposal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ── W10-B04: Flow Surface ─────────────────────────────────────────── */
+
+.rb-flow-surface {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: rgba(201, 166, 107, 0.03);
+  border: 1px solid rgba(201, 166, 107, 0.12);
+}
+
+.rb-flow-surface-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--rb-gold);
+  margin-bottom: 12px;
+}
+
+.rb-flow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rb-flow-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-left: 2px solid rgba(201, 166, 107, 0.2);
+  color: var(--rb-ink-soft);
+}
+
+.rb-flow-step--current {
+  border-left-color: var(--rb-gold);
+  color: var(--rb-ink);
+  background: rgba(201, 166, 107, 0.04);
+}
+
+.rb-flow-step--done {
+  border-left-color: var(--rb-ok);
+  opacity: 0.7;
+}
+
+.rb-flow-step--failed {
+  border-left-color: var(--rb-bad);
+  opacity: 0.8;
+}
+
+.rb-flow-step-index {
+  font-size: 10px;
+  font-family: var(--rb-mono);
+  color: var(--rb-ink-mute);
+  width: 16px;
+  text-align: center;
+}
+
+.rb-flow-step-text {
+  flex: 1;
+}
+
+.rb-flow-next {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(201, 166, 107, 0.15);
+  font-size: 11px;
+  color: var(--rb-ink-mute);
+}
+
+.rb-flow-next-label {
+  color: var(--rb-gold);
+  margin-right: 6px;
+  font-family: var(--rb-mono);
+}
+
+/* ── W10-B04: Agent Badge ──────────────────────────────────────────── */
+
+.rb-agent-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: rgba(106, 143, 160, 0.12);
+  color: #6A8FA0;
+  font-family: var(--rb-mono);
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+}
+
 /* ── W09-B01: Resonance & Synthesis Surface ───────────────────────────── */
 
 .rb-resonance-surface, .rb-synthesis-surface {
