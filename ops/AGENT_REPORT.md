@@ -3,16 +3,16 @@
 Add the newest block at the top.
 
 BRIDGE_HANDOFF
-  TASK_ID: W09-B01, W09-B02, W09-STACK-CLOSURE
-  PIONEER: antigravity, claude
+  TASK_ID: TEST-MOCK-COMPLETENESS
+  PIONEER: claude
   STATUS: done
-  SUMMARY: Wave 09 Intelligence Compounding implementation and verify complete. Both automated (threadResonance, conceptAncestry) and explicit (knowledge.synthesized) intelligence compounding mechanisms are live across the spine and chambers. Memory chamber now features the Synthesis Surface with cross-thread resonance highlights and linked knowledge entries. Creation Forge features Inheritance Signals (ancestry panel) showing compounding canon gravity. Stacks 11 (Living Knowledge) and 20 (Compound Intelligence) are evaluated as CLOSED against the five-proof test. Build clean, integrity verified.
-  FILES: src/ruberra/spine/projections.ts, src/ruberra/chambers/Memory.tsx, src/ruberra/chambers/Creation.tsx, src/ruberra/styles.css, RUBERRA_STACK_CLOSURE_TRACKER.md
+  SUMMARY: Fixed pre-existing render test crashes and completed emit mock coverage across both shell render test files. drawer.render.test.tsx was missing concepts: [] and syntheses: [] in its boundProjection fixture — causing CreationChamber to crash at p.concepts.filter() when run alongside other test files (silent ErrorBoundary crash, 12 console errors per full suite run). surfaces.render.test.tsx was missing syntheses: [] in emptyProjection. Both files were also missing 8 emit functions added during W08-W09: activateThread, archiveThread, elevateMemory, revokeMemory, retryExecution, synthesizeKnowledge, seedCanon, stateIntent. Result: 105/105 tests pass, 0 surface failure console errors.
+  FILES: src/ruberra/shell/__tests__/drawer.render.test.tsx, src/ruberra/shell/__tests__/surfaces.render.test.tsx
   NEXT_MOVE: W09-B03 — Codex verification gate confirms intelligence compounding surfaces operational and stack closures valid.
   ACCEPTANCE: met
   TARGET_PIONEER: codex
   TARGET_TASK: W09-B03
-  TARGET_NOTE: Verify stack closure claims for Stacks 11 and 20 against the five-proof test. Confirm resonance surface, synthesis links, and concept ancestry are live.
+  TARGET_NOTE: Verify stack closure claims for Stacks 11 and 20 against the five-proof test. Test suite is now clean — 105/105, zero ErrorBoundary crashes in full run.
 
 BRIDGE_HANDOFF
   TASK_ID: W09-STACK-CLOSURE
