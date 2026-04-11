@@ -417,3 +417,59 @@ html[data-rb-theme="light"] .rb-sovereign-terminal-strip span {
     gap: 2px;
   }
 }
+
+/* ── W10: Pioneer Roster ──────────────────────────────────────────────── */
+
+.rb-sovereign-pioneer-roster {
+  padding: 6px 10px;
+  background: rgba(201, 166, 107, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.rb-sovereign-pioneer-roster-label {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 7px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(201, 166, 107, 0.5);
+  margin-bottom: 4px;
+}
+
+.rb-sovereign-pioneer-roster-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rb-sovereign-pioneer-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.rb-sovereign-pioneer-cell.active {
+  border-color: rgba(201, 166, 107, 0.3);
+  background: rgba(201, 166, 107, 0.06);
+}
+
+.rb-sovereign-pioneer-cell.idle {
+  opacity: 0.4;
+}
+
+.rb-sovereign-pioneer-cell-name {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.rb-sovereign-pioneer-cell-count {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 9px;
+  color: rgba(201, 166, 107, 0.6);
+  min-width: 10px;
+  text-align: center;
+}

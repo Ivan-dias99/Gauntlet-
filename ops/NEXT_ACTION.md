@@ -2,18 +2,21 @@
 
 ## Current Wave
 
-WAVE 09 — Intelligence Compounding
+WAVE 10 — Autonomous Flow
 
 ## Status
 
 - W09-SPINE-RESONANCE: claude — DONE
 - W09-B01 (Synthesis Surface): claude — DONE
 - W09-B02 (Inheritance Signal): claude — DONE
-- W09-B03 (Verification Gate): codex — ELIGIBLE (dependencies met)
+- W09-B03 (Verification Gate): codex — DONE (PR #104)
+- W10-B01 (Autonomous Flow Spine): copilot — DONE
+- W10-B02 (Flow Surfaces): copilot — DONE
+- W10-B03 (Verification Gate): ELIGIBLE
 
 ## Next Eligible
 
-W09-B03 — Codex verifies intelligence compounding surfaces are operational.
+W10-B03 — Verify autonomous flow surfaces are operational.
 
 ## Relay Rule
 

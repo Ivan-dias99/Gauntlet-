@@ -4,7 +4,8 @@
 
 import { useState } from "react";
 import { emit, useProjection } from "../spine/store";
-import { revokedCanonWithDependents, conceptAncestry } from "../spine/projections";
+import { revokedCanonWithDependents, conceptAncestry, directiveDrafts, activePioneers } from "../spine/projections";
+import type { DraftSuggestion } from "../spine/projections";
 import { runRuntime } from "../spine/runtime-fabric";
 import { Unavailable } from "../trust/Unavailable";
 import { RuledPrompt } from "../trust/RuledPrompt";
@@ -242,6 +243,70 @@ export function CreationChamber() {
               }}>State Concept</button>
             </div>
           </div>
+
+          {/* ── W10: Draft Suggestions ─────────────────────────────────────── */}
+          {activeThread && (() => {
+            const drafts: DraftSuggestion[] = directiveDrafts(p, activeThread.id);
+            const threadPioneers = activePioneers(p, { threadId: activeThread.id });
+            if (drafts.length === 0 && threadPioneers.length === 0) return null;
+            return (
+              <div className="rb-draft-surface">
+                {drafts.length > 0 && (
+                  <>
+                    <div className="rb-draft-surface-title">Draft Suggestions · {drafts.length}</div>
+                    <div className="rb-draft-surface-body">
+                      {drafts.map((d) => (
+                        <div key={d.conceptId} className="rb-draft-card">
+                          <div className="rb-draft-card-concept">{d.conceptTitle}</div>
+                          <div className="rb-draft-card-text">{d.suggestedText}</div>
+                          <div className="rb-draft-card-meta">
+                            <span className={`rb-badge ${d.suggestedRisk}`}>{d.suggestedRisk}</span>
+                            <span className="rb-draft-card-scope">{d.suggestedScope.length > 40 ? d.suggestedScope.slice(0, 40) + "…" : d.suggestedScope}</span>
+                            <span className="rb-draft-card-resonance">{d.resonanceStrength} resonance</span>
+                          </div>
+                          <div className="rb-draft-card-sources">
+                            {d.canonSources.slice(0, 2).map((c) => (
+                              <div key={c.id} className="rb-draft-card-source">↳ {c.text.length > 60 ? c.text.slice(0, 60) + "…" : c.text}</div>
+                            ))}
+                          </div>
+                          <div className="rb-draft-card-actions">
+                            <button className="rb-btn primary" onClick={() => {
+                              setText(d.suggestedText);
+                              setScope(d.suggestedScope);
+                              setAcceptance(d.suggestedAcceptance);
+                              setRisk(d.suggestedRisk);
+                              setPromotingConceptId(d.conceptId);
+                            }}>Adopt → Forge</button>
+                            <button className="rb-btn" onClick={async () => {
+                              try {
+                                await emit.draftDirective(d.conceptId, {
+                                  text: d.suggestedText,
+                                  scope: d.suggestedScope,
+                                  risk: d.suggestedRisk,
+                                  acceptance: d.suggestedAcceptance,
+                                  canonSources: d.canonSources.map((c) => c.id),
+                                });
+                              } catch (e) {
+                                setErr((e as Error).message);
+                              }
+                            }}>Save Draft</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {threadPioneers.length > 0 && (
+                  <div className="rb-pioneer-strip">
+                    <div className="rb-pioneer-strip-label">pioneers · {threadPioneers.length}</div>
+                    {threadPioneers.map((a) => (
+                      <span key={a.id} className="rb-pioneer-chip">{a.pioneer}{a.directiveId ? " · directive" : " · thread"}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <ThreadTerminal
             title="Creation Terminal"

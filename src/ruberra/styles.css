@@ -2599,3 +2599,118 @@ html, body, #root {
   font-style: italic;
   margin-top: 4px;
 }
+
+/* ── W10: Autonomous Flow — Draft Suggestions ─────────────────────────── */
+
+.rb-draft-surface {
+  margin: 16px 0;
+  padding: 14px;
+  background: rgba(107, 142, 201, 0.03);
+  border: 1px solid rgba(107, 142, 201, 0.12);
+  border-left: 3px solid rgba(107, 142, 201, 0.35);
+}
+
+.rb-draft-surface-title {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #6b8ec9;
+  margin-bottom: 12px;
+}
+
+.rb-draft-surface-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rb-draft-card {
+  padding: 12px;
+  background: rgba(107, 142, 201, 0.04);
+  border: 1px solid rgba(107, 142, 201, 0.1);
+}
+
+.rb-draft-card-concept {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--rb-ink);
+  margin-bottom: 4px;
+}
+
+.rb-draft-card-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--rb-ink-soft);
+  margin-bottom: 8px;
+}
+
+.rb-draft-card-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.rb-draft-card-scope {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+}
+
+.rb-draft-card-resonance {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: #6b8ec9;
+  opacity: 0.7;
+}
+
+.rb-draft-card-sources {
+  margin-bottom: 8px;
+}
+
+.rb-draft-card-source {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+  padding: 2px 0;
+  border-bottom: 1px dashed rgba(107, 142, 201, 0.1);
+}
+
+.rb-draft-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── W10: Pioneer Strip ───────────────────────────────────────────────── */
+
+.rb-pioneer-strip {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(201, 166, 107, 0.03);
+  border: 1px solid rgba(201, 166, 107, 0.1);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rb-pioneer-strip-label {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--rb-gold);
+}
+
+.rb-pioneer-chip {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  background: rgba(201, 166, 107, 0.08);
+  border: 1px solid rgba(201, 166, 107, 0.15);
+  color: var(--rb-ink-soft);
+}

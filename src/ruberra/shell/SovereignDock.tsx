@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { all, subscribe } from "../spine/eventLog";
 import type { RuberraEvent } from "../spine/events";
 import { emit, useProjection } from "../spine/store";
+import { activePioneers, pioneerLoad } from "../spine/projections";
 
 type PioneerId = "claude" | "cursor" | "codex" | "grok" | "framer";
 
@@ -251,6 +252,31 @@ export function SovereignDock() {
             <span>review {pendingReview}</span>
             <span>pulse {events.length}</span>
           </div>
+
+          {(() => {
+            const load = pioneerLoad(p);
+            const threadAssignments = activeThread
+              ? activePioneers(p, { threadId: activeThread.id })
+              : [];
+            if (load.size === 0 && threadAssignments.length === 0) return null;
+            return (
+              <div className="rb-sovereign-pioneer-roster">
+                <div className="rb-sovereign-pioneer-roster-label">pioneer roster</div>
+                <div className="rb-sovereign-pioneer-roster-grid">
+                  {PIONEERS.map((item) => {
+                    const count = load.get(item.id as any) ?? 0;
+                    const isActive = threadAssignments.some((a) => a.pioneer === item.id);
+                    return (
+                      <div key={item.id} className={`rb-sovereign-pioneer-cell${isActive ? " active" : ""}${count === 0 ? " idle" : ""}`}>
+                        <span className="rb-sovereign-pioneer-cell-name">{item.label}</span>
+                        <span className="rb-sovereign-pioneer-cell-count">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="rb-sovereign-terminal-log">
             {events.length === 0 ? (
