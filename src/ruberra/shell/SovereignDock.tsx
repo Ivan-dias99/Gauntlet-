@@ -4,8 +4,7 @@ import { all, subscribe } from "../spine/eventLog";
 import type { RuberraEvent } from "../spine/events";
 import { emit, useProjection } from "../spine/store";
 import { activePioneers, pioneerLoad } from "../spine/projections";
-
-type PioneerId = "claude" | "cursor" | "codex" | "grok" | "framer";
+import type { PioneerId } from "../spine/projections";
 
 const PIONEERS: Array<{
   id: PioneerId;
@@ -18,6 +17,7 @@ const PIONEERS: Array<{
   { id: "codex", label: "Codex", descriptor: "clean executor", accent: "graphite" },
   { id: "grok", label: "Grok", descriptor: "live pulse", accent: "green" },
   { id: "framer", label: "Framer", descriptor: "motion grammar", accent: "violet" },
+  { id: "architect", label: "Architect", descriptor: "principal authority", accent: "gold" },
 ];
 
 function summarizeEvent(event: RuberraEvent): string {

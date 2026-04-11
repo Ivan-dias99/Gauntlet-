@@ -974,6 +974,11 @@ export function threadSyntheses(
 
 // ── Autonomous Flow — Directive Drafts (W10) ──────────────────────────────
 
+// Tuning constants for auto-draft suggestions.
+const MAX_SCOPE_ANCESTORS = 3;
+const MAX_SCOPE_WORDS = 3;
+const MAX_CANON_SOURCES = 5;
+
 // For a given thread, analyze unpromoted concepts with significant canon
 // resonance and produce structured directive draft suggestions. The architect
 // sees these as actionable proposals they can accept into the directive hinge.
@@ -1033,10 +1038,6 @@ export function directiveDrafts(
     const totalResonance = ancestors.reduce((sum, a) => sum + a.overlap, 0);
 
     // Auto-compose a directive suggestion from concept + canon context.
-    const MAX_SCOPE_ANCESTORS = 3;
-    const MAX_SCOPE_WORDS = 3;
-    const MAX_CANON_SOURCES = 5;
-
     const scopeTokens = ancestors
       .slice(0, MAX_SCOPE_ANCESTORS)
       .map((a) => a.entry.text.split(/\s+/).slice(0, MAX_SCOPE_WORDS).join(" "))
