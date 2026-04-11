@@ -9,11 +9,11 @@ WAVE 09 — Intelligence Compounding
 - W09-SPINE-RESONANCE: claude — DONE
 - W09-B01 (Synthesis Surface): claude — DONE
 - W09-B02 (Inheritance Signal): claude — DONE
-- W09-B03 (Verification Gate): codex — ELIGIBLE (dependencies met)
+- W09-B03 (Verification Gate): codex — DONE
 
 ## Next Eligible
 
-W09-B03 — Codex verifies intelligence compounding surfaces are operational.
+No active blocker in W09. Next move is wave planning and dispatch for W10.
 
 ## Relay Rule
 

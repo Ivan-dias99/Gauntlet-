@@ -837,3 +837,74 @@ export function threadSyntheses(
     })
     .filter((s) => s.sourceText.length > 0);
 }
+
+// ── Compounding Integrity Gate (W09-B03 hardening) ───────────────────────
+
+export type CompoundingViolationCode =
+  | "resonance-missing-canon"
+  | "resonance-canon-not-hardened"
+  | "resonance-self-origin"
+  | "synthesis-missing-source";
+
+export interface CompoundingViolation {
+  code: CompoundingViolationCode;
+  threadId: string;
+  detail: string;
+}
+
+export function compoundingViolations(
+  p: Projection,
+  threadId: string,
+): CompoundingViolation[] {
+  const violations: CompoundingViolation[] = [];
+
+  for (const match of threadResonance(p, threadId)) {
+    const canon = p.canon.find((c) => c.id === match.canonId);
+    if (!canon) {
+      violations.push({
+        code: "resonance-missing-canon",
+        threadId,
+        detail: `missing canon for resonance match ${match.canonId}`,
+      });
+      continue;
+    }
+    if (canon.state !== "hardened") {
+      violations.push({
+        code: "resonance-canon-not-hardened",
+        threadId,
+        detail: `canon ${canon.id} is not hardened`,
+      });
+    }
+    if (match.sourceThread && match.sourceThread === threadId) {
+      violations.push({
+        code: "resonance-self-origin",
+        threadId,
+        detail: `self-origin canon ${canon.id} leaked into resonance`,
+      });
+    }
+  }
+
+  for (const s of p.syntheses.filter((x) => x.targetThread === threadId)) {
+    if (s.sourceType === "canon") {
+      const c = p.canon.find((x) => x.id === s.sourceId);
+      if (!c) {
+        violations.push({
+          code: "synthesis-missing-source",
+          threadId,
+          detail: `missing canon source ${s.sourceId} for synthesis ${s.id}`,
+        });
+      }
+    } else {
+      const m = p.memory.find((x) => x.id === s.sourceId);
+      if (!m) {
+        violations.push({
+          code: "synthesis-missing-source",
+          threadId,
+          detail: `missing memory source ${s.sourceId} for synthesis ${s.id}`,
+        });
+      }
+    }
+  }
+
+  return violations;
+}

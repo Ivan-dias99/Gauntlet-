@@ -3,7 +3,13 @@
 // Each test builds a minimal event log and asserts projection shape.
 
 import { describe, it, expect } from "vitest";
-import { project, threadResonance, conceptAncestry, threadSyntheses } from "../projections";
+import {
+  project,
+  threadResonance,
+  conceptAncestry,
+  threadSyntheses,
+  compoundingViolations,
+} from "../projections";
 import { RuberraEvent } from "../events";
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -628,5 +634,69 @@ describe("threadSyntheses", () => {
     const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
     const p = project([repo, t]);
     expect(threadSyntheses(p, t.id)).toHaveLength(0);
+  });
+});
+
+// ── W09-B03 verification gate (Codex audit) ──────────────────────────────
+
+describe("W09-B03 verification gate", () => {
+  it("resonance matches map to real hardened canon events and never self-origin canon", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const sourceThread = ev("thread.opened", { intent: "harden auth law" }, { repo: "r" });
+    const targetThread = ev("thread.opened", { intent: "ship authentication tokens with validation" }, { repo: "r" });
+    const sourceMemory = ev(
+      "memory.captured",
+      { text: "authentication token rotation is mandatory for secure access" },
+      { thread: sourceThread.id, repo: "r" },
+    );
+    const sourceCanon = ev(
+      "canon.hardened",
+      { text: "authentication tokens require rotation and validation before access", memoryId: sourceMemory.id },
+      { repo: "r" },
+    );
+
+    const p = project([repo, sourceThread, targetThread, sourceMemory, sourceCanon]);
+    const matches = threadResonance(p, targetThread.id);
+    expect(matches.length).toBeGreaterThan(0);
+    expect(compoundingViolations(p, targetThread.id)).toEqual([]);
+  });
+
+  it("resolved syntheses only surface when a real knowledge.synthesized event and source exist", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const sourceThread = ev("thread.opened", { intent: "observe latency" }, { repo: "r" });
+    const targetThread = ev("thread.opened", { intent: "fix latency incidents" }, { repo: "r" });
+    const sourceMemory = ev(
+      "memory.captured",
+      { text: "p95 latency spikes after schema migration" },
+      { thread: sourceThread.id, repo: "r" },
+    );
+    const synthesis = ev(
+      "knowledge.synthesized",
+      { sourceId: sourceMemory.id, sourceType: "memory", targetThread: targetThread.id, note: "carry forward evidence" },
+      { thread: targetThread.id, repo: "r", parent: sourceMemory.id },
+    );
+
+    const withSynthesis = project([repo, sourceThread, targetThread, sourceMemory, synthesis]);
+    const resolved = threadSyntheses(withSynthesis, targetThread.id);
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0].sourceText).toContain("latency spikes");
+
+    const withoutSynthesisEvent = project([repo, sourceThread, targetThread, sourceMemory]);
+    expect(threadSyntheses(withoutSynthesisEvent, targetThread.id)).toHaveLength(0);
+  });
+
+  it("flags orphan synthesis sources as integrity violations", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "repair continuity" }, { repo: "r" });
+    const orphan = ev(
+      "knowledge.synthesized",
+      { sourceId: "missing-memory", sourceType: "memory", targetThread: t.id, note: "broken link" },
+      { thread: t.id, repo: "r" },
+    );
+
+    const p = project([repo, t, orphan]);
+    const violations = compoundingViolations(p, t.id);
+    expect(violations).toHaveLength(1);
+    expect(violations[0].code).toBe("synthesis-missing-source");
   });
 });
