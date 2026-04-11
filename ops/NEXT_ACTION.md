@@ -2,7 +2,7 @@
 
 ## Current Wave
 
-WAVE 09 — Intelligence Compounding
+WAVE 10 — Autonomous Flow & Agent Civilization
 
 ## Status
 

@@ -98,6 +98,8 @@ export interface Execution {
   endedAt?: number;
   label: string;
   reason?: string;
+  progressMessage?: string;  // W10: latest progress update
+  progressValue?: number;    // W10: 0-100 progress percentage
 }
 
 export type ArtifactReview = "pending" | "accepted" | "rejected";
@@ -134,6 +136,74 @@ export interface Contradiction {
   ts: number;
   resolved: boolean;
   repo?: string; // contradiction is repo-scoped; surfaces only within its origin repo
+}
+
+// ── Autonomous Flow (W10) ─────────────────────────────────────────────────
+
+// Proposed directive — execution or agent suggests a follow-up step.
+export type ProposalStatus = "pending" | "accepted" | "dismissed";
+
+export interface DirectiveProposal {
+  id: string;
+  thread: string;
+  repo?: string;
+  text: string;
+  scope: string;
+  risk: DirectiveRisk;
+  rationale: string;       // why the proposer suggests this
+  proposedBy: string;      // agent name or "system"
+  sourceExecutionId?: string;  // execution that generated this proposal
+  status: ProposalStatus;
+  dismissReason?: string;
+  ts: number;
+}
+
+// Flow — a multi-step sequence of directives with branching logic.
+export type FlowStatus = "active" | "completed" | "aborted";
+
+export interface FlowStep {
+  directiveText: string;
+  scope: string;
+  risk: DirectiveRisk;
+  status: "pending" | "executing" | "succeeded" | "failed" | "skipped";
+  directiveId?: string;  // populated when step is promoted to a real directive
+  order: number;
+}
+
+export interface Flow {
+  id: string;
+  thread: string;
+  repo?: string;
+  name: string;
+  steps: FlowStep[];
+  currentStep: number;     // index into steps array
+  status: FlowStatus;
+  ts: number;
+}
+
+// Agent — a named participant with declared capabilities.
+export type AgentCapability =
+  | "execute"     // can run code / inference
+  | "review"      // can review artifacts
+  | "propose"     // can propose directives
+  | "canon"       // can propose/harden canon
+  | "observe";    // read-only telemetry
+
+export interface Agent {
+  id: string;
+  name: string;
+  capabilities: AgentCapability[];
+  registeredAt: number;
+  repo?: string;
+}
+
+// Agent assignment — links a directive to an agent.
+export interface AgentAssignment {
+  id: string;
+  directiveId: string;
+  agentId: string;
+  thread: string;
+  ts: number;
 }
 
 // ── Intelligence Compounding (W09) ────────────────────────────────────────
@@ -176,6 +246,10 @@ export interface Projection {
   canonProposals: CanonProposal[];
   contradictions: Contradiction[];
   syntheses: KnowledgeSynthesis[];
+  proposals: DirectiveProposal[];
+  flows: Flow[];
+  agents: Agent[];
+  assignments: AgentAssignment[];
   chamber: "lab" | "school" | "creation" | "memory";
   missionFramed: boolean;
   lastEventId?: string;
@@ -193,6 +267,10 @@ const empty = (): Projection => ({
   canonProposals: [],
   contradictions: [],
   syntheses: [],
+  proposals: [],
+  flows: [],
+  agents: [],
+  assignments: [],
   chamber: "creation",
   missionFramed: false,
 });
@@ -347,6 +425,14 @@ export function project(events: RuberraEvent[]): Projection {
         });
         break;
       }
+      case "execution.progressed": {
+        const x = p.executions.find((x) => x.id === ev.payload.executionId);
+        if (x) {
+          x.progressMessage = String(ev.payload.message ?? "");
+          x.progressValue = ev.payload.progress as number | undefined;
+        }
+        break;
+      }
       case "execution.succeeded":
       case "execution.failed": {
         const x = p.executions.find((x) => x.id === ev.payload.executionId);
@@ -479,6 +565,97 @@ export function project(events: RuberraEvent[]): Projection {
           sourceType: (ev.payload.sourceType as "canon" | "memory") ?? "canon",
           targetThread: String(ev.payload.targetThread ?? ev.thread ?? ""),
           note: String(ev.payload.note ?? ""),
+          ts: ev.ts,
+        });
+        break;
+      }
+      // ── W10: Autonomous Flow ────────────────────────────────────────────
+      case "directive.proposed": {
+        p.proposals.push({
+          id: ev.id,
+          thread: String(ev.thread ?? ""),
+          repo: ev.repo,
+          text: String(ev.payload.text ?? ""),
+          scope: String(ev.payload.scope ?? ""),
+          risk: (ev.payload.risk as DirectiveRisk) ?? "reversible",
+          rationale: String(ev.payload.rationale ?? ""),
+          proposedBy: String(ev.payload.proposedBy ?? "system"),
+          sourceExecutionId: ev.payload.sourceExecutionId as string | undefined,
+          status: "pending",
+          ts: ev.ts,
+        });
+        break;
+      }
+      case "proposal.accepted": {
+        const prop = p.proposals.find((x) => x.id === ev.payload.proposalId);
+        if (prop) prop.status = "accepted";
+        break;
+      }
+      case "proposal.dismissed": {
+        const prop = p.proposals.find((x) => x.id === ev.payload.proposalId);
+        if (prop) {
+          prop.status = "dismissed";
+          prop.dismissReason = String(ev.payload.reason ?? "");
+        }
+        break;
+      }
+      case "flow.defined": {
+        const steps = (ev.payload.steps as Array<Record<string, unknown>> | undefined) ?? [];
+        p.flows.push({
+          id: ev.id,
+          thread: String(ev.thread ?? ""),
+          repo: ev.repo,
+          name: String(ev.payload.name ?? "unnamed flow"),
+          steps: steps.map((s, i) => ({
+            directiveText: String(s.directiveText ?? ""),
+            scope: String(s.scope ?? ""),
+            risk: (s.risk as DirectiveRisk) ?? "reversible",
+            status: "pending" as const,
+            order: i,
+          })),
+          currentStep: 0,
+          status: "active",
+          ts: ev.ts,
+        });
+        break;
+      }
+      case "flow.step.completed": {
+        const flow = p.flows.find((f) => f.id === ev.payload.flowId);
+        if (flow) {
+          const stepIndex = ev.payload.stepIndex as number | undefined;
+          const idx = stepIndex ?? flow.currentStep;
+          if (flow.steps[idx]) {
+            const outcome = String(ev.payload.outcome ?? "succeeded");
+            flow.steps[idx].status = outcome === "failed" ? "failed" : "succeeded";
+            flow.steps[idx].directiveId = ev.payload.directiveId as string | undefined;
+          }
+          flow.currentStep = idx + 1;
+        }
+        break;
+      }
+      case "flow.completed": {
+        const flow = p.flows.find((f) => f.id === ev.payload.flowId);
+        if (flow) {
+          flow.status = (ev.payload.outcome as "completed" | "aborted") ?? "completed";
+        }
+        break;
+      }
+      case "agent.registered": {
+        p.agents.push({
+          id: ev.id,
+          name: String(ev.payload.name ?? ""),
+          capabilities: (ev.payload.capabilities as AgentCapability[]) ?? [],
+          registeredAt: ev.ts,
+          repo: ev.repo,
+        });
+        break;
+      }
+      case "agent.assigned": {
+        p.assignments.push({
+          id: ev.id,
+          directiveId: String(ev.payload.directiveId ?? ""),
+          agentId: String(ev.payload.agentId ?? ""),
+          thread: String(ev.thread ?? ""),
           ts: ev.ts,
         });
         break;
