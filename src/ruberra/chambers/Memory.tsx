@@ -6,7 +6,7 @@
 
 import { useState, useMemo } from "react";
 import { useProjection, emit } from "../spine/store";
-import { threadResonance, threadSyntheses } from "../spine/projections";
+import { threadResonance, threadSyntheses, systemHealth, intelligenceMetrics, activeAnomalies } from "../spine/projections";
 import type { TruthState } from "../spine/projections";
 
 type FilterState = "all" | TruthState;
@@ -107,6 +107,10 @@ export function MemoryChamber() {
     [p, p.activeThread],
   );
 
+  const health = useMemo(() => systemHealth(p), [p]);
+  const intel = useMemo(() => intelligenceMetrics(p), [p]);
+  const anomalies = useMemo(() => activeAnomalies(p), [p]);
+
   return (
     <section className="rb-chamber rb-chamber--memory">
       <header className="rb-chamber-header rb-chamber-header--consequence">
@@ -204,6 +208,65 @@ export function MemoryChamber() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {(intel.threadCount > 0 || anomalies.length > 0) && (
+        <div className="rb-intelligence-surface">
+          <div className="rb-intelligence-surface-label">
+            intelligence analytics
+            <span className="rb-intelligence-health-badge" style={{ color: health.healthScore >= 80 ? "var(--rb-ok)" : health.healthScore >= 50 ? "var(--rb-warn)" : "var(--rb-bad)" }}>
+              health {health.healthScore}
+            </span>
+          </div>
+          <div className="rb-intelligence-grid">
+            <div className="rb-intelligence-cell">
+              <span className="rb-intelligence-value">{intel.resonanceCount}</span>
+              <span className="rb-intelligence-label">resonances</span>
+            </div>
+            <div className="rb-intelligence-cell">
+              <span className="rb-intelligence-value">{intel.synthesisCount}</span>
+              <span className="rb-intelligence-label">syntheses</span>
+            </div>
+            <div className="rb-intelligence-cell">
+              <span className="rb-intelligence-value">{Math.round(intel.conceptToCanonRate * 100)}%</span>
+              <span className="rb-intelligence-label">concept ancestry</span>
+            </div>
+            <div className="rb-intelligence-cell">
+              <span className="rb-intelligence-value">{Math.round(intel.memoryToCanonRate * 100)}%</span>
+              <span className="rb-intelligence-label">memory → canon</span>
+            </div>
+            <div className="rb-intelligence-cell">
+              <span className="rb-intelligence-value">{intel.knowledgeDensity.toFixed(1)}</span>
+              <span className="rb-intelligence-label">knowledge / thread</span>
+            </div>
+            <div className="rb-intelligence-cell">
+              <span className="rb-intelligence-value">{Math.round(intel.executionThroughput * 100)}%</span>
+              <span className="rb-intelligence-label">exec throughput</span>
+            </div>
+            {intel.agentCount > 0 && (
+              <div className="rb-intelligence-cell">
+                <span className="rb-intelligence-value">{intel.agentCount}</span>
+                <span className="rb-intelligence-label">agents ({Math.round(intel.agentUtilization * 100)}% utilized)</span>
+              </div>
+            )}
+          </div>
+          {anomalies.length > 0 && (
+            <div className="rb-intelligence-anomalies">
+              <div className="rb-intelligence-anomaly-header">
+                <span className="rb-badge bad">{anomalies.length} active anomal{anomalies.length > 1 ? "ies" : "y"}</span>
+              </div>
+              {anomalies.map((a) => (
+                <div key={a.id} className="rb-intelligence-anomaly-entry">
+                  <span className="rb-badge bad" style={{ fontSize: "0.65rem" }}>{a.kind}</span>
+                  <span className="rb-intelligence-anomaly-msg">{a.message}</span>
+                  <button className="rb-btn" style={{ fontSize: "0.65rem" }} onClick={() => emit.resolveAnomaly(a.id)}>
+                    Resolve
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

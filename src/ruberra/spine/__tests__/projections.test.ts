@@ -13,6 +13,10 @@ import {
   nextFlowStep,
   directiveAgent,
   repoAgents,
+  systemHealth,
+  activeAnomalies,
+  intelligenceMetrics,
+  executionAnalytics,
 } from "../projections";
 import { RuberraEvent } from "../events";
 
@@ -898,5 +902,168 @@ describe("agent registry (W10)", () => {
     const p = project([]);
     expect(p.agents).toHaveLength(0);
     expect(p.assignments).toHaveLength(0);
+  });
+});
+
+// ── W11: System Awareness ──────────────────────────────────────────────
+
+describe("system.health.snapshot (W11)", () => {
+  it("creates health snapshot in projection", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const snap = ev(
+      "system.health.snapshot",
+      { executionSuccessRate: 0.95, contradictionResolutionRate: 1, memoryPromotionVelocity: 0.3, canonCoverage: 0.8, activeAnomalies: 0 },
+      { repo: "r" },
+    );
+    const p = project([repo, snap]);
+    expect(p.healthSnapshots).toHaveLength(1);
+    expect(p.healthSnapshots[0].executionSuccessRate).toBe(0.95);
+    expect(p.healthSnapshots[0].canonCoverage).toBe(0.8);
+  });
+
+  it("empty projection has empty healthSnapshots", () => {
+    const p = project([]);
+    expect(p.healthSnapshots).toHaveLength(0);
+  });
+});
+
+describe("anomaly.detected / anomaly.resolved (W11)", () => {
+  it("creates anomaly entry and resolves it", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const anomaly = ev(
+      "anomaly.detected",
+      { kind: "execution-failure-spike", message: "3 failures in last 5 executions" },
+      { repo: "r" },
+    );
+    const p1 = project([repo, anomaly]);
+    expect(p1.anomalies).toHaveLength(1);
+    expect(p1.anomalies[0].kind).toBe("execution-failure-spike");
+    expect(p1.anomalies[0].resolved).toBe(false);
+
+    const resolve = ev("anomaly.resolved", { anomalyId: anomaly.id }, { repo: "r", parent: anomaly.id });
+    const p2 = project([repo, anomaly, resolve]);
+    expect(p2.anomalies[0].resolved).toBe(true);
+  });
+
+  it("activeAnomalies filters resolved ones", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const a1 = ev("anomaly.detected", { kind: "contradiction-unresolved", message: "tension open" }, { repo: "r" });
+    const a2 = ev("anomaly.detected", { kind: "memory-stagnation", message: "no promotions" }, { repo: "r" });
+    const resolve = ev("anomaly.resolved", { anomalyId: a1.id }, { repo: "r" });
+    const p = project([repo, a1, a2, resolve]);
+    const active = activeAnomalies(p);
+    expect(active).toHaveLength(1);
+    expect(active[0].kind).toBe("memory-stagnation");
+  });
+
+  it("empty projection has empty anomalies", () => {
+    const p = project([]);
+    expect(p.anomalies).toHaveLength(0);
+  });
+});
+
+describe("systemHealth (W11)", () => {
+  it("computes health metrics from projection state", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "task" }, { repo: "r" });
+    const d = ev("directive.accepted", { text: "do it", scope: "src", risk: "reversible", acceptance: "ok" }, { thread: t.id, repo: "r" });
+    const x1 = ev("execution.started", { label: "run 1", directiveId: d.id }, { thread: t.id, repo: "r" });
+    const s1 = ev("execution.succeeded", { executionId: x1.id }, { parent: x1.id });
+    const x2 = ev("execution.started", { label: "run 2", directiveId: d.id }, { thread: t.id, repo: "r" });
+    const f2 = ev("execution.failed", { executionId: x2.id, reason: "timeout" }, { parent: x2.id });
+    const p = project([repo, t, d, x1, s1, x2, f2]);
+
+    const h = systemHealth(p);
+    expect(h.executionSuccessRate).toBe(0.5); // 1/2
+    expect(h.healthScore).toBeGreaterThan(0);
+    expect(h.healthScore).toBeLessThanOrEqual(100);
+  });
+
+  it("returns perfect health for empty projection", () => {
+    const p = project([]);
+    const h = systemHealth(p);
+    expect(h.executionSuccessRate).toBe(1);
+    expect(h.contradictionResolutionRate).toBe(1);
+    expect(h.activeAnomalyCount).toBe(0);
+  });
+
+  it("tracks anomaly count in health score", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const a1 = ev("anomaly.detected", { kind: "execution-failure-spike", message: "bad" }, { repo: "r" });
+    const a2 = ev("anomaly.detected", { kind: "canon-coverage-low", message: "low" }, { repo: "r" });
+    const p = project([repo, a1, a2]);
+    const h = systemHealth(p);
+    expect(h.activeAnomalyCount).toBe(2);
+    expect(h.healthScore).toBeLessThan(100);
+  });
+});
+
+// ── W11: Intelligence Analytics ────────────────────────────────────────
+
+describe("intelligenceMetrics (W11)", () => {
+  it("computes intelligence metrics from projection", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "implement authentication system" }, { repo: "r" });
+    const concept = ev("concept.stated", { title: "token validation", hypothesis: "authentication tokens require validation" }, { thread: t.id, repo: "r" });
+    const canon = ev("canon.hardened", { text: "authentication requires secure token validation always" }, { repo: "r" });
+    const p = project([repo, t, concept, canon]);
+
+    const m = intelligenceMetrics(p);
+    expect(m.threadCount).toBe(1);
+    expect(m.activeThreadCount).toBe(1);
+    expect(m.conceptToCanonRate).toBeGreaterThanOrEqual(0);
+    expect(m.knowledgeDensity).toBeGreaterThan(0);
+  });
+
+  it("returns zero metrics for empty projection", () => {
+    const p = project([]);
+    const m = intelligenceMetrics(p);
+    expect(m.threadCount).toBe(0);
+    expect(m.resonanceCount).toBe(0);
+    expect(m.synthesisCount).toBe(0);
+    expect(m.agentCount).toBe(0);
+  });
+
+  it("tracks agent utilization", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const agent = ev("agent.registered", { name: "claude", capabilities: ["execute"] }, { repo: "r" });
+    const d = ev("directive.accepted", { text: "build it", scope: "src", risk: "reversible", acceptance: "ok" }, { thread: t.id, repo: "r" });
+    const assign = ev("agent.assigned", { directiveId: d.id, agentId: agent.id }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, agent, d, assign]);
+
+    const m = intelligenceMetrics(p);
+    expect(m.agentCount).toBe(1);
+    expect(m.agentUtilization).toBe(1); // 1 assigned / 1 accepted
+  });
+});
+
+describe("executionAnalytics (W11)", () => {
+  it("computes execution breakdown", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "task" }, { repo: "r" });
+    const d = ev("directive.accepted", { text: "x", scope: "s", risk: "reversible", acceptance: "ok" }, { thread: t.id, repo: "r" });
+    const x1 = ev("execution.started", { label: "a", directiveId: d.id }, { thread: t.id, repo: "r" });
+    const s1 = ev("execution.succeeded", { executionId: x1.id }, { parent: x1.id });
+    const x2 = ev("execution.started", { label: "b", directiveId: d.id }, { thread: t.id, repo: "r" });
+    const f2 = ev("execution.failed", { executionId: x2.id, reason: "err" }, { parent: x2.id });
+    const x3 = ev("execution.started", { label: "c", directiveId: d.id }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, d, x1, s1, x2, f2, x3]);
+
+    const a = executionAnalytics(p);
+    expect(a.total).toBe(3);
+    expect(a.running).toBe(1);
+    expect(a.succeeded).toBe(1);
+    expect(a.failed).toBe(1);
+    expect(a.successRate).toBe(0.5);
+  });
+
+  it("returns defaults for empty projection", () => {
+    const p = project([]);
+    const a = executionAnalytics(p);
+    expect(a.total).toBe(0);
+    expect(a.running).toBe(0);
+    expect(a.successRate).toBe(1);
+    expect(a.avgDurationMs).toBeNull();
   });
 });

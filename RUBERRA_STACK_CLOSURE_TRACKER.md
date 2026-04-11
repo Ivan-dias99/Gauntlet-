@@ -48,11 +48,11 @@ src/main.tsx
 | 05 | Adaptive Experience | ✅ CLOSED | Shell adapts per chamber. RitualEntry differentiates first-encounter vs return. Chamber headers carry distinct identity. |
 | 06 | Sovereign Security | ⬜ OPEN | No security layer in converged architecture. Trust surfaces exist (ErrorBoundary, RuledPrompt) but are not security-grade. |
 | 07 | Trust + Governance | ✅ CLOSED | Event log IS the audit trail. Every mutation appends. Contradictions detected. Canon revocation requires reason. Artifact review requires reason. |
-| 08 | System Awareness | 🔶 PARTIAL | EventPulse shows live telemetry. No health model, no anomaly detection. |
+| 08 | System Awareness | ✅ CLOSED | System health model in spine. Anomaly detection/resolution. Health score in EventPulse. Intelligence analytics in Memory. See detail below. |
 | 09 | Autonomous Flow | 🔶 PARTIAL | Flow engine in spine: flow.defined/step.completed/completed events, Flow type with multi-step sequencing. Directive proposals enable autonomous next-step suggestions. No visual surface yet. |
 | 10 | Multi-Agent Civilization | 🔶 PARTIAL | Agent registry in spine: agent.registered/assigned events, AgentCapability type, directive-to-agent assignment. No multi-agent coordination or consensus yet. |
 | 11 | Living Knowledge | ✅ CLOSED | Cross-thread resonance detection. Knowledge synthesis emitter. Resonance surface in Memory. Concept ancestry in Creation. See detail below. |
-| 12 | Intelligence Analytics | ⬜ OPEN | No analytics surfaces. |
+| 12 | Intelligence Analytics | ✅ CLOSED | Intelligence metrics in spine. Analytics surface in Memory. Execution analytics, resonance metrics, agent utilization. See detail below. |
 | 13 | Collective Execution | ⬜ OPEN | No multi-operator support. |
 | 14 | Distribution + Presence | ⬜ OPEN | Browser-only. No offline or cross-platform presence. |
 | 15 | Value Exchange | ⬜ OPEN | No value exchange layer. |
@@ -125,6 +125,34 @@ src/main.tsx
 - `knowledge.synthesized` event creates explicit compound links between threads (manual synthesis)
 - The append-only event log + projection system means every compounding decision is traceable and auditable
 
+### Stack 08 — System Awareness ✅ CLOSED
+
+**Evidence:**
+- `spine/events.ts` → `system.health.snapshot`, `anomaly.detected`, `anomaly.resolved` event types
+- `spine/projections.ts` → `SystemAnomaly` and `HealthSnapshot` types tracked in projection state
+- `spine/projections.ts` → `systemHealth(p)` computes live health metrics: execution success rate, contradiction resolution rate, memory promotion velocity, canon coverage, active anomaly count, composite health score (0-100)
+- `spine/projections.ts` → `activeAnomalies(p)` returns unresolved anomalies for a repo
+- `spine/projections.ts` → `executionAnalytics(p)` computes execution performance breakdown
+- `spine/store.ts` → `emit.assessHealth()` captures health snapshot event with computed metrics
+- `spine/store.ts` → `emit.detectAnomaly()` flags anomalous conditions with kind and message
+- `spine/store.ts` → `emit.resolveAnomaly()` clears anomaly (requires existence and unresolved state)
+- `shell/EventPulse.tsx` → Health score badge with color-coded severity (green/warn/red)
+- `shell/EventPulse.tsx` → Anomaly badge count + detail lines for active anomalies
+- `chambers/Memory.tsx` → Intelligence analytics surface with anomaly list and resolve action
+- Tests: anomaly detection, anomaly resolution, health metrics computation, activeAnomalies filter
+
+### Stack 12 — Intelligence Analytics ✅ CLOSED
+
+**Evidence:**
+- `spine/projections.ts` → `IntelligenceMetrics` interface: resonanceCount, synthesisCount, conceptToCanonRate, memoryToCanonRate, knowledgeDensity, executionThroughput, agentCount, agentUtilization, threadCount, activeThreadCount
+- `spine/projections.ts` → `intelligenceMetrics(p)` computes all metrics from projection state
+- `spine/projections.ts` → `ExecutionAnalytics` interface: total, running, succeeded, failed, successRate, avgDurationMs
+- `spine/projections.ts` → `executionAnalytics(p)` computes execution performance breakdown
+- `chambers/Memory.tsx` → Intelligence analytics grid surface: resonances, syntheses, concept ancestry rate, memory→canon rate, knowledge/thread density, exec throughput, agent utilization
+- `chambers/Memory.tsx` → Active anomaly management with resolve action
+- `shell/EventPulse.tsx` → Health score as ambient intelligence indicator
+- Tests: intelligenceMetrics computation, executionAnalytics breakdown, agent utilization tracking
+
 ---
 
 ## WHAT MAY NOT BE CLAIMED AS CLOSED
@@ -148,4 +176,4 @@ Having the DNA seeded does not mean the stack is closed.
 
 *This document is the single source of truth for stack operational status.*
 *No agent may claim a stack is closed unless it appears as ✅ CLOSED in this file.*
-*Last updated: 2026-04-10*
+*Last updated: 2026-04-11*

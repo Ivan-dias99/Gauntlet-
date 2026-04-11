@@ -1,5 +1,5 @@
 {
-  "active_wave": "WAVE 09 — Intelligence Compounding",
+  "active_wave": "WAVE 11 — System Awareness & Intelligence Analytics",
   "lanes": ["claude", "copilot", "codex", "antigravity"],
   "tasks": [
     {
@@ -372,6 +372,65 @@
       "gate_on_complete": "GATE_W11_OPEN",
       "status": "done",
       "success": "Autonomous flow spine verified, agent registry operational, flow engine passes five-proof test."
+    },
+    {
+      "id": "W11-B01",
+      "title": "System Health Model",
+      "owner": "claude",
+      "support": [],
+      "surface": "spine",
+      "scope": ["src/ruberra/spine/"],
+      "depends_on": ["W10-B05"],
+      "gate_on_complete": null,
+      "status": "done",
+      "success": "system.health.snapshot, anomaly.detected, anomaly.resolved events + SystemAnomaly/HealthSnapshot types + assessHealth/detectAnomaly/resolveAnomaly emitters."
+    },
+    {
+      "id": "W11-B02",
+      "title": "Intelligence Analytics Projections",
+      "owner": "claude",
+      "support": [],
+      "surface": "spine",
+      "scope": ["src/ruberra/spine/"],
+      "depends_on": ["W11-B01"],
+      "gate_on_complete": null,
+      "status": "done",
+      "success": "systemHealth(), intelligenceMetrics(), executionAnalytics(), activeAnomalies() projection functions with full type coverage."
+    },
+    {
+      "id": "W11-B03",
+      "title": "System Awareness Surface",
+      "owner": "claude",
+      "support": [],
+      "surface": "product",
+      "scope": ["src/ruberra/shell/EventPulse.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W11-B02"],
+      "gate_on_complete": null,
+      "status": "done",
+      "success": "EventPulse gains health score badge, anomaly count badge, anomaly detail lines."
+    },
+    {
+      "id": "W11-B04",
+      "title": "Intelligence Analytics Surface",
+      "owner": "claude",
+      "support": [],
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/Memory.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W11-B03"],
+      "gate_on_complete": null,
+      "status": "done",
+      "success": "Memory chamber gains intelligence analytics grid with metrics, anomaly list with resolve action."
+    },
+    {
+      "id": "W11-B05",
+      "title": "Wave 11 Verification Gate",
+      "owner": "claude",
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W11-B04"],
+      "gate_on_complete": "GATE_W12_OPEN",
+      "status": "done",
+      "success": "System awareness and intelligence analytics verified. Build clean (109 modules). 149/149 tests pass. Stack 08 and Stack 12 closed."
     }
   ]
 }

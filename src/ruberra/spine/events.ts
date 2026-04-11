@@ -42,6 +42,9 @@ export type EventType =
   | "flow.completed"         // W10: entire flow resolved (all steps done or aborted)
   | "agent.registered"       // W10: named agent with capabilities joins the organism
   | "agent.assigned"         // W10: directive assigned to a specific agent
+  | "system.health.snapshot" // W11: periodic system health assessment
+  | "anomaly.detected"       // W11: system detects anomalous condition
+  | "anomaly.resolved"       // W11: anomaly condition cleared
   | "chamber.entered";
 
 export interface RuberraEvent {

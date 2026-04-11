@@ -2752,3 +2752,111 @@ html, body, #root {
   font-style: italic;
   margin-top: 4px;
 }
+
+/* ── W11: Intelligence Analytics Surface ──────────────────────────────── */
+
+.rb-intelligence-surface {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  background: var(--rb-bg-elev);
+  border: 1px solid rgba(110, 168, 254, 0.18);
+  border-left: 2px solid rgba(110, 168, 254, 0.45);
+}
+
+.rb-intelligence-surface-label {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(110, 168, 254, 0.75);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rb-intelligence-surface-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(110, 168, 254, 0.14);
+}
+
+.rb-intelligence-health-badge {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.rb-intelligence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rb-intelligence-cell {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  background: rgba(110, 168, 254, 0.03);
+  border: 1px solid rgba(110, 168, 254, 0.10);
+}
+
+.rb-intelligence-value {
+  font-family: var(--rb-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--rb-ink);
+  line-height: 1.2;
+}
+
+.rb-intelligence-label {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+  margin-top: 2px;
+}
+
+.rb-intelligence-anomalies {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(168, 66, 58, 0.2);
+}
+
+.rb-intelligence-anomaly-header {
+  margin-bottom: 6px;
+}
+
+.rb-intelligence-anomaly-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-soft);
+}
+
+.rb-intelligence-anomaly-msg {
+  flex: 1;
+}
+
+/* ── W11: Health Score in EventPulse ─────────────────────────────────── */
+
+.rb-health-score {
+  font-family: var(--rb-mono);
+}
+
+.rb-pulse-anomalies {
+  padding: 0 12px;
+}
+
+.rb-anomaly-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
