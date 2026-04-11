@@ -3,6 +3,18 @@
 Add the newest block at the top.
 
 BRIDGE_HANDOFF
+  TASK_ID: W10-B04
+  PIONEER: claude
+  STATUS: done
+  SUMMARY: W10-B04 Autonomous Flow Surface. Wired all W10 spine logic into Creation chamber. (1) Proposal Surface: pending directive proposals from agents/executions displayed with agent badge, risk indicator, rationale, accept/dismiss actions. Uses blue-gray palette (#6A8FA0) with left-border accent. (2) Flow Visualization: active flow with step progress bar — current step highlighted gold, done steps green, failed steps red. Next-step indicator with dashed separator. (3) Agent Badges: directive thread record now shows assigned agent name in mono-font badge. CSS follows existing mineral shell conventions (restrained gradients, mono-typography, high-density micro-telemetry). Build clean: 109 modules. Tests: 135/135.
+  FILES: src/ruberra/chambers/Creation.tsx, src/ruberra/styles.css
+  NEXT_MOVE: W10-B05 — Codex verification gate.
+  ACCEPTANCE: met
+  TARGET_PIONEER: codex
+  TARGET_TASK: W10-B05
+  TARGET_NOTE: All W10 spine logic + surfaces delivered. Verify proposal/flow/agent systems pass five-proof test against converged architecture.
+
+BRIDGE_HANDOFF
   TASK_ID: W10-B01+B02+B03
   PIONEER: claude
   STATUS: done

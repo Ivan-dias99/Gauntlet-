@@ -353,12 +353,13 @@
     {
       "id": "W10-B04",
       "title": "Autonomous Flow Surface",
-      "owner": "antigravity",
-      "support": ["claude"],
+      "owner": "claude",
+      "support": [],
       "surface": "product",
       "scope": ["src/ruberra/chambers/Creation.tsx", "src/ruberra/styles.css"],
       "depends_on": ["W10-B03"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Creation chamber wired with proposal surface, flow visualization, and agent badges."
     },
     {

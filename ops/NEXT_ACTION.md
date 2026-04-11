@@ -9,12 +9,12 @@ WAVE 10 — Autonomous Flow & Agent Civilization
 - W10-B01 (Autonomous Directive Proposal): claude — DONE
 - W10-B02 (Flow Engine Spine): claude — DONE
 - W10-B03 (Agent Registry): claude — DONE
-- W10-B04 (Autonomous Flow Surface): antigravity — ELIGIBLE (dependencies met)
-- W10-B05 (Verification Gate): codex — BLOCKED on W10-B04
+- W10-B04 (Autonomous Flow Surface): claude — DONE
+- W10-B05 (Verification Gate): codex — ELIGIBLE (dependencies met)
 
 ## Next Eligible
 
-W10-B04 — Antigravity wires proposal surface, flow visualization, and agent badges into Creation chamber.
+W10-B05 — Codex verifies autonomous flow spine and surfaces are operational.
 
 ## Relay Rule
 

@@ -19,8 +19,8 @@
 1. Autonomous directive proposal spine. — DONE (directive.proposed, proposal.accepted/dismissed, pendingProposals)
 2. Flow engine spine. — DONE (Flow type, flow.defined/step.completed/completed, activeFlow/nextFlowStep)
 3. Agent registry spine. — DONE (Agent type, agent.registered/assigned, directiveAgent/repoAgents, execution.progressed)
-4. Autonomous flow surface in Creation. — ELIGIBLE (W10-B04, antigravity)
-5. Verification gate. — BLOCKED on W10-B04
+4. Autonomous flow surface in Creation. — DONE (W10-B04, proposal surface + flow viz + agent badges)
+5. Verification gate. — ELIGIBLE (W10-B05, codex)
 
 ## After This Wave
 
