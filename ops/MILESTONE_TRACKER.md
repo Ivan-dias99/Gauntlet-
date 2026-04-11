@@ -10,7 +10,7 @@
 ## Active Wave
 
 - Wave: WAVE 10 — Autonomous Flow & Agent Civilization
-- Status: ACTIVE (spine logic delivered, visual surface pending)
+- Status: CLOSED (GATE_W11_OPEN emitted)
 - Current owner: Claude (Builder — spine done) / Antigravity (Visual — next)
 - Final authority: Ivan
 
@@ -20,7 +20,7 @@
 2. Flow engine spine. — DONE (Flow type, flow.defined/step.completed/completed, activeFlow/nextFlowStep)
 3. Agent registry spine. — DONE (Agent type, agent.registered/assigned, directiveAgent/repoAgents, execution.progressed)
 4. Autonomous flow surface in Creation. — DONE (W10-B04, proposal surface + flow viz + agent badges)
-5. Verification gate. — ELIGIBLE (W10-B05, codex)
+5. Verification gate. — DONE (build clean, 136/136 tests pass, all five-proof checks met, execution.progressed gap closed)
 
 ## After This Wave
 

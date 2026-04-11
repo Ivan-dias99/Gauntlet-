@@ -10,11 +10,15 @@ WAVE 10 — Autonomous Flow & Agent Civilization
 - W10-B02 (Flow Engine Spine): claude — DONE
 - W10-B03 (Agent Registry): claude — DONE
 - W10-B04 (Autonomous Flow Surface): claude — DONE
-- W10-B05 (Verification Gate): codex — ELIGIBLE (dependencies met)
+- W10-B05 (Verification Gate): codex — DONE
+
+## Gate Emitted
+
+GATE_W11_OPEN — Autonomous flow verified. Directive proposals, flow engine, agent registry all pass five-proof test. Build clean (109 modules). 136/136 tests passing.
 
 ## Next Eligible
 
-W10-B05 — Codex verifies autonomous flow spine and surfaces are operational.
+Wave 11 — System Awareness and Intelligence Analytics.
 
 ## Relay Rule
 

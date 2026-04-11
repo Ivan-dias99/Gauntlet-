@@ -3,6 +3,18 @@
 Add the newest block at the top.
 
 BRIDGE_HANDOFF
+  TASK_ID: W10-B05
+  PIONEER: claude
+  STATUS: done
+  SUMMARY: Wave 10 Verification Gate — full five-proof audit of autonomous flow stack. (1) Directive Proposals: all five proofs passed. directive.proposed/proposal.accepted/proposal.dismissed events, emitters with validation, pending proposals surface in Creation with accept/dismiss actions. (2) Flow Engine: all five proofs passed. Flow/FlowStep types, flow.defined/step.completed/completed events, emitters with active-flow/step validation, flow visualization with step progress and next-step indicator. (3) Agent Registry: all five proofs passed. Agent/AgentCapability types, agent.registered/assigned events, emitters with capability validation, agent badges in thread record. Gap found and closed: execution.progressed was defined and emittable but had no projection handler — added handler to populate Execution.progressMessage/progressValue. Build clean: 109 modules. Tests: 136/136 (1 new for execution.progressed). GATE_W11_OPEN emitted.
+  FILES: src/ruberra/spine/projections.ts, src/ruberra/spine/__tests__/projections.test.ts, ops/BRIDGE_QUEUE.json, ops/NEXT_ACTION.md, ops/MILESTONE_TRACKER.md, ops/AGENT_REPORT.md
+  NEXT_MOVE: Wave 11 — System Awareness and Intelligence Analytics.
+  ACCEPTANCE: met
+  TARGET_PIONEER: TBD
+  TARGET_TASK: W11-B01
+  TARGET_NOTE: All W10 stacks verified. Stack 09 PARTIAL, Stack 10 PARTIAL. Next: System health model (Stack 08), intelligence analytics (Stack 12).
+
+BRIDGE_HANDOFF
   TASK_ID: W10-B04
   PIONEER: claude
   STATUS: done

@@ -117,6 +117,22 @@ describe("thread lifecycle", () => {
     expect(p.directives[0].status).toBe("accepted");
   });
 
+  it("execution.progressed updates progress on running execution", () => {
+    const events = [...baseEvents()];
+    const t = ev("thread.opened", { intent: "task" }, { repo: "r" });
+    events.push(t);
+    const d = ev("directive.accepted", { text: "do it", scope: "src", risk: "reversible", acceptance: "ok" }, { thread: t.id, repo: "r" });
+    events.push(d);
+    const x = ev("execution.started", { label: "building", directiveId: d.id }, { thread: t.id, repo: "r", parent: d.id });
+    events.push(x);
+    const prog = ev("execution.progressed", { executionId: x.id, message: "compiling modules", progress: 45 }, { thread: t.id, parent: x.id });
+    events.push(prog);
+    const p = project(events);
+    expect(p.executions[0].progressMessage).toBe("compiling modules");
+    expect(p.executions[0].progressValue).toBe(45);
+    expect(p.executions[0].status).toBe("running"); // still running
+  });
+
   it("artifact.generated → state=awaiting-review", () => {
     const events = [...baseEvents()];
     const t = ev("thread.opened", { intent: "task" }, { repo: "r" });

@@ -370,6 +370,7 @@
       "scope": ["src/ruberra/", "ops/"],
       "depends_on": ["W10-B04"],
       "gate_on_complete": "GATE_W11_OPEN",
+      "status": "done",
       "success": "Autonomous flow spine verified, agent registry operational, flow engine passes five-proof test."
     }
   ]

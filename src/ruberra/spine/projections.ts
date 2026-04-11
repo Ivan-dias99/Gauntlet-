@@ -98,6 +98,8 @@ export interface Execution {
   endedAt?: number;
   label: string;
   reason?: string;
+  progressMessage?: string;  // W10: latest progress update
+  progressValue?: number;    // W10: 0-100 progress percentage
 }
 
 export type ArtifactReview = "pending" | "accepted" | "rejected";
@@ -421,6 +423,14 @@ export function project(events: RuberraEvent[]): Projection {
           startedAt: ev.ts,
           label: String(ev.payload.label ?? "execution"),
         });
+        break;
+      }
+      case "execution.progressed": {
+        const x = p.executions.find((x) => x.id === ev.payload.executionId);
+        if (x) {
+          x.progressMessage = String(ev.payload.message ?? "");
+          x.progressValue = ev.payload.progress as number | undefined;
+        }
         break;
       }
       case "execution.succeeded":
