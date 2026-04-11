@@ -8,10 +8,10 @@
 import { useState } from "react";
 import { emit, useProjection } from "../spine/store";
 import { nextMove } from "../spine/projections";
+import { AccessSeal } from "../surfaces/AccessSeal";
 
 interface Props {
   onEnter: () => void;
-  /** When true, hydration found an existing repo — system has memory. */
   returning?: boolean;
 }
 
@@ -19,7 +19,6 @@ export function RitualEntry({ onEnter, returning }: Props) {
   const p = useProjection();
   const [name, setName] = useState("");
 
-  // Returning user — the system recognizes you.
   if (returning && p.activeRepo) {
     const openThreads = p.threads.filter(
       (t) => t.repo === p.activeRepo && t.status === "open",
@@ -33,9 +32,6 @@ export function RitualEntry({ onEnter, returning }: Props) {
     const unresolvedCount = p.contradictions.filter(
       (c) => !c.resolved && (!c.repo || c.repo === p.activeRepo),
     ).length;
-    // Forge-specific return signals — scoped to the active thread so that
-    // "Enter Forge · Review" routes the architect to work that is actually visible
-    // in Creation (which renders the active thread's artifacts, not all repo artifacts).
     const activeThreadObj = p.threads.find((t) => t.id === p.activeThread);
     const pendingReviews =
       activeThreadObj && activeThreadObj.status === "open"
@@ -43,8 +39,6 @@ export function RitualEntry({ onEnter, returning }: Props) {
             (a) => a.review === "pending" && a.thread === activeThreadObj.id,
           ).length
         : 0;
-    // Scoped to activeThread only — Creation renders concepts for that thread,
-    // so reporting concepts from other threads produces a stuck signal.
     const openConcepts =
       activeThreadObj && activeThreadObj.status === "open"
         ? p.concepts.filter((c) => !c.promoted && c.thread === activeThreadObj.id).length
@@ -59,11 +53,19 @@ export function RitualEntry({ onEnter, returning }: Props) {
             RUB<span>E</span>RRA
           </h1>
           <div className="rb-ritual-subtitle">Architect Station</div>
-          <div className="rb-return-repo">
-            {p.activeRepo}
-          </div>
+          <div className="rb-return-repo">{p.activeRepo}</div>
 
-          {/* System state — what the architect left behind */}
+          <AccessSeal
+            mode="return"
+            repo={p.activeRepo}
+            state={move}
+            openThreads={openThreads}
+            canonCount={canonCount}
+            memoryCount={memoryCount}
+            unresolvedCount={unresolvedCount}
+            pendingReviews={pendingReviews}
+          />
+
           <div className="rb-return-state">
             <div className="rb-return-row">
               <span className="rb-return-label">canon</span>
@@ -115,7 +117,6 @@ export function RitualEntry({ onEnter, returning }: Props) {
     );
   }
 
-  // First encounter — initiation. Sparse, sovereign. Architect-first.
   return (
     <div className="rb-ritual">
       <div className="inner">
@@ -126,6 +127,9 @@ export function RitualEntry({ onEnter, returning }: Props) {
         <div className="rb-ritual-identity">
           concept · directive · consequence · canon
         </div>
+
+        <AccessSeal mode="bind" />
+
         <div className="rb-ritual-bind">
           <label className="rb-field-label">repo</label>
           <input

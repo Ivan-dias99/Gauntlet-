@@ -5,6 +5,7 @@
 import { useState, useMemo } from "react";
 import { useProjection, emit } from "../spine/store";
 import type { TruthState } from "../spine/projections";
+import { ThreadTerminal } from "../surfaces/ThreadTerminal";
 
 const STATE_CLASS: Record<TruthState, string> = {
   draft: "",
@@ -24,32 +25,16 @@ export function LabChamber() {
     (c) => !c.resolved && (!c.repo || c.repo === p.activeRepo),
   );
 
-  // Thread-scoped evidence — shows active thread's observations when a thread is
-  // active; falls back to all repo memory when no thread is active.
-  const repoMemory = useMemo(
-    () => p.memory.filter((m) => m.repo === p.activeRepo),
-    [p.memory, p.activeRepo],
-  );
-  const threadEvidence = useMemo(
-    () =>
-      activeThread
-        ? repoMemory.filter((m) => m.thread === activeThread.id)
-        : repoMemory,
-    [repoMemory, activeThread],
-  );
+  const repoMemory = useMemo(() => p.memory.filter((m) => m.repo === p.activeRepo), [p.memory, p.activeRepo]);
+  const threadEvidence = useMemo(() => activeThread ? repoMemory.filter((m) => m.thread === activeThread.id) : repoMemory, [repoMemory, activeThread]);
 
-  // Execution trace — thread-scoped execution record.
-  // Shows what has run, what succeeded, what failed.
-  const threadExecutions = useMemo(
-    () =>
-      activeThread
-        ? p.executions.filter((x) => x.thread === activeThread.id)
-        : [],
-    [p.executions, activeThread],
-  );
-  const runningCount   = threadExecutions.filter((x) => x.status === "running").length;
+  const threadExecutions = useMemo(() => activeThread ? p.executions.filter((x) => x.thread === activeThread.id) : [], [p.executions, activeThread]);
+  const threadDirectives = useMemo(() => activeThread ? p.directives.filter((d) => d.thread === activeThread.id) : [], [p.directives, activeThread]);
+  const threadArtifacts = useMemo(() => activeThread ? p.artifacts.filter((a) => a.thread === activeThread.id) : [], [p.artifacts, activeThread]);
+
+  const runningCount = threadExecutions.filter((x) => x.status === "running").length;
   const succeededCount = threadExecutions.filter((x) => x.status === "succeeded").length;
-  const failedCount    = threadExecutions.filter((x) => x.status === "failed").length;
+  const failedCount = threadExecutions.filter((x) => x.status === "failed").length;
 
   return (
     <section className="rb-chamber rb-chamber--lab">
@@ -60,18 +45,8 @@ export function LabChamber() {
           <span className="rb-chamber-gravity-text rb-gravity--primary">Validation</span>
           <span className="rb-gravity-sep">·</span>
           <span className="rb-chamber-gravity-text">Skepticism · Evidence pressure</span>
-          {openContradictions.length > 0 && (
-            <>
-              <span className="rb-gravity-sep">·</span>
-              <span className="rb-chamber-gravity-text rb-gravity--bad">{openContradictions.length} open tension</span>
-            </>
-          )}
-          {threadExecutions.length > 0 && (
-            <>
-              <span className="rb-gravity-sep">·</span>
-              <span className="rb-chamber-gravity-text rb-gravity--validation">{threadExecutions.length} executions</span>
-            </>
-          )}
+          {openContradictions.length > 0 && <><span className="rb-gravity-sep">·</span><span className="rb-chamber-gravity-text rb-gravity--bad">{openContradictions.length} open tension</span></>}
+          {threadExecutions.length > 0 && <><span className="rb-gravity-sep">·</span><span className="rb-chamber-gravity-text rb-gravity--validation">{threadExecutions.length} executions</span></>}
         </div>
         <div className="rb-chamber-accent-line" />
       </header>
@@ -79,32 +54,31 @@ export function LabChamber() {
       {activeThread && (
         <div className="rb-thread-context-bar">
           <span className="rb-thread-context-bar-label">thread</span>
-          <span className="rb-thread-context-bar-intent">
-            {activeThread.intent.length > 72
-              ? activeThread.intent.slice(0, 72) + "…"
-              : activeThread.intent}
-          </span>
+          <span className="rb-thread-context-bar-intent">{activeThread.intent.length > 72 ? activeThread.intent.slice(0, 72) + "…" : activeThread.intent}</span>
           <span className="rb-thread-context-bar-state">{activeThread.state}</span>
         </div>
       )}
 
-      {/* Execution Trace — thread-scoped validation record.
-          Shows what ran, what succeeded, what failed. Empty when no thread. */}
+      {activeThread && (
+        <ThreadTerminal
+          title="Validation Terminal"
+          thread={activeThread}
+          directives={threadDirectives}
+          executions={threadExecutions}
+          artifacts={threadArtifacts}
+          contradictions={openContradictions}
+        />
+      )}
+
       {activeThread && (
         <div className={`rb-trace rb-trace--exec${failedCount > 0 ? " rb-trace--warn" : ""}`}>
           <div className="rb-lab-section-header">
             <span className="rb-lab-section-title">Execution Trace</span>
             {threadExecutions.length > 0 && (
               <div className="rb-lab-exec-summary">
-                {runningCount > 0 && (
-                  <span className="rb-lab-exec-cell running">{runningCount} running</span>
-                )}
-                {succeededCount > 0 && (
-                  <span className="rb-lab-exec-cell ok">{succeededCount} succeeded</span>
-                )}
-                {failedCount > 0 && (
-                  <span className="rb-lab-exec-cell bad">{failedCount} failed</span>
-                )}
+                {runningCount > 0 && <span className="rb-lab-exec-cell running">{runningCount} running</span>}
+                {succeededCount > 0 && <span className="rb-lab-exec-cell ok">{succeededCount} succeeded</span>}
+                {failedCount > 0 && <span className="rb-lab-exec-cell bad">{failedCount} failed</span>}
               </div>
             )}
           </div>
@@ -115,32 +89,15 @@ export function LabChamber() {
             </div>
           ) : (
             <ul className="rb-list">
-              {threadExecutions
-                .slice()
-                .reverse()
-                .map((x) => (
-                  <li key={x.id} className="rb-row" style={{ justifyContent: "space-between" }}>
-                    <span>
-                      <span className={`rb-badge ${
-                        x.status === "succeeded" ? "ok"
-                        : x.status === "failed" ? "bad"
-                        : x.status === "running" ? "warn"
-                        : ""
-                      }`}>
-                        {x.status}
-                      </span>
-                      {x.label.length > 60 ? x.label.slice(0, 60) + "…" : x.label}
-                    </span>
-                    {x.status === "failed" && (
-                      <button
-                        className="rb-btn"
-                        onClick={() => emit.retryExecution(x.id)}
-                      >
-                        Retry
-                      </button>
-                    )}
-                  </li>
-                ))}
+              {threadExecutions.slice().reverse().map((x) => (
+                <li key={x.id} className="rb-row" style={{ justifyContent: "space-between" }}>
+                  <span>
+                    <span className={`rb-badge ${x.status === "succeeded" ? "ok" : x.status === "failed" ? "bad" : x.status === "running" ? "warn" : ""}`}>{x.status}</span>
+                    {x.label.length > 60 ? x.label.slice(0, 60) + "…" : x.label}
+                  </span>
+                  {x.status === "failed" && <button className="rb-btn" onClick={() => emit.retryExecution(x.id)}>Retry</button>}
+                </li>
+              ))}
             </ul>
           )}
         </div>
@@ -151,49 +108,17 @@ export function LabChamber() {
           <span className="rb-lab-section-title">Contradiction Log</span>
         </div>
         <div className="rb-col" style={{ marginBottom: openContradictions.length > 0 || p.contradictions.length > 0 ? 12 : 0 }}>
-          <input
-            className="rb-input"
-            placeholder="a contradiction between two claims..."
-            value={contradiction}
-            onChange={(e) => setContradiction(e.target.value)}
-          />
-          <button
-            className="rb-btn"
-            disabled={!contradiction.trim()}
-            onClick={async () => {
-              await emit.detectContradiction(contradiction.trim());
-              setContradiction("");
-            }}
-          >
-            Detect
-          </button>
+          <input className="rb-input" placeholder="a contradiction between two claims..." value={contradiction} onChange={(e) => setContradiction(e.target.value)} />
+          <button className="rb-btn" disabled={!contradiction.trim()} onClick={async () => { await emit.detectContradiction(contradiction.trim()); setContradiction(""); }}>Detect</button>
         </div>
         {p.contradictions.length === 0 ? (
-          <div className="rb-unavail">
-            <strong>no contradictions</strong>
-          </div>
+          <div className="rb-unavail"><strong>no contradictions</strong></div>
         ) : (
           <ul className="rb-list">
             {p.contradictions.map((c) => (
-              <li
-                key={c.id}
-                className="rb-row"
-                style={{ justifyContent: "space-between" }}
-              >
-                <span>
-                  <span className={`rb-badge ${c.resolved ? "ok" : "bad"}`}>
-                    {c.resolved ? "resolved" : "open"}
-                  </span>
-                  {c.text}
-                </span>
-                {!c.resolved && (
-                  <button
-                    className="rb-btn"
-                    onClick={() => emit.resolveContradiction(c.id)}
-                  >
-                    Resolve
-                  </button>
-                )}
+              <li key={c.id} className="rb-row" style={{ justifyContent: "space-between" }}>
+                <span><span className={`rb-badge ${c.resolved ? "ok" : "bad"}`}>{c.resolved ? "resolved" : "open"}</span>{c.text}</span>
+                {!c.resolved && <button className="rb-btn" onClick={() => emit.resolveContradiction(c.id)}>Resolve</button>}
               </li>
             ))}
           </ul>
@@ -205,35 +130,15 @@ export function LabChamber() {
           <span className="rb-lab-section-title">Capture Evidence</span>
         </div>
         <div className="rb-col">
-          <textarea
-            className="rb-textarea"
-            placeholder="evidence observed from execution..."
-            value={evidence}
-            onChange={(e) => setEvidence(e.target.value)}
-          />
-          <button
-            className="rb-btn primary"
-            disabled={!evidence.trim()}
-            onClick={async () => {
-              await emit.captureMemory(evidence.trim(), p.activeThread);
-              setEvidence("");
-            }}
-          >
-            Capture → Memory
-          </button>
+          <textarea className="rb-textarea" placeholder="evidence observed from execution..." value={evidence} onChange={(e) => setEvidence(e.target.value)} />
+          <button className="rb-btn primary" disabled={!evidence.trim()} onClick={async () => { await emit.captureMemory(evidence.trim(), p.activeThread); setEvidence(""); }}>Capture → Memory</button>
         </div>
       </div>
 
       <div className="rb-trace">
         <div className="rb-lab-section-header">
           <span className="rb-lab-section-title">Evidence Ledger</span>
-          {activeThread && (
-            <span className="rb-lab-section-scope">
-              {activeThread.intent.length > 28
-                ? activeThread.intent.slice(0, 28) + "…"
-                : activeThread.intent}
-            </span>
-          )}
+          {activeThread && <span className="rb-lab-section-scope">{activeThread.intent.length > 28 ? activeThread.intent.slice(0, 28) + "…" : activeThread.intent}</span>}
         </div>
         {threadEvidence.length === 0 ? (
           <div className="rb-unavail">
@@ -242,31 +147,12 @@ export function LabChamber() {
           </div>
         ) : (
           <ul className="rb-list">
-            {threadEvidence
-              .slice()
-              .reverse()
-              .map((m) => (
-                <li
-                  key={m.id}
-                  className="rb-row"
-                  style={{ justifyContent: "space-between" }}
-                >
-                  <span>
-                    <span className={`rb-badge ${STATE_CLASS[m.state]}`}>
-                      {m.state}
-                    </span>
-                    {m.text}
-                  </span>
-                  {!m.promoted && m.state !== "revoked" && (
-                    <button
-                      className="rb-btn"
-                      onClick={() => emit.promoteMemory(m.id)}
-                    >
-                      Promote
-                    </button>
-                  )}
-                </li>
-              ))}
+            {threadEvidence.slice().reverse().map((m) => (
+              <li key={m.id} className="rb-row" style={{ justifyContent: "space-between" }}>
+                <span><span className={`rb-badge ${STATE_CLASS[m.state]}`}>{m.state}</span>{m.text}</span>
+                {!m.promoted && m.state !== "revoked" && <button className="rb-btn" onClick={() => emit.promoteMemory(m.id)}>Promote</button>}
+              </li>
+            ))}
           </ul>
         )}
       </div>

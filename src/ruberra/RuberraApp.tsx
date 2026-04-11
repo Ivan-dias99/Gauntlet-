@@ -11,6 +11,7 @@ import { RitualEntry } from "./shell/RitualEntry";
 import { ErrorBoundary } from "./trust/ErrorBoundary";
 import { RuledPromptHost } from "./trust/RuledPrompt";
 import "./styles.css";
+import "./harvest.css";
 import "./reforge-imports.css";
 
 type BootState =
@@ -22,8 +23,6 @@ function Inner({ returning }: { returning: boolean }) {
   const p = useProjection();
   const [entered, setEntered] = useState<boolean>(false);
 
-  // If the user has already entered this session, stay entered.
-  // The returning flag gates whether we show recognition or initiation.
   if (entered) {
     return <Shell />;
   }
@@ -42,7 +41,6 @@ export default function RuberraApp() {
   useEffect(() => {
     bootSpine()
       .then(() => {
-        // After hydration, snapshot the projection to detect returning user.
         const p = project(all());
         setBoot({ phase: "ready", returning: !!p.activeRepo });
       })
