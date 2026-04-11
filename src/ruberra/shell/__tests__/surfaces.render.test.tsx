@@ -38,6 +38,10 @@ const emptyProjection: Projection = {
   canonProposals: [],
   contradictions: [],
   syntheses: [],
+  proposals: [],
+  flows: [],
+  agents: [],
+  assignments: [],
   chamber: "creation",
   missionFramed: false,
   activeRepo: undefined,
@@ -102,6 +106,15 @@ vi.mock("../../spine/store", () => {
     detectContradiction: vi.fn(),
     resolveContradiction: vi.fn(),
     synthesizeKnowledge: vi.fn(),
+    proposeDirective: vi.fn(),
+    acceptProposal: vi.fn(),
+    dismissProposal: vi.fn(),
+    defineFlow: vi.fn(),
+    completeFlowStep: vi.fn(),
+    completeFlow: vi.fn(),
+    registerAgent: vi.fn(),
+    assignDirective: vi.fn(),
+    progressExecution: vi.fn(),
     nullConsequence: vi.fn(),
     raw: vi.fn(),
     seedCanon: vi.fn().mockResolvedValue(undefined),
@@ -146,12 +159,12 @@ describe("RitualEntry — boot ritual", () => {
   it("renders repo bind input and Enter button", () => {
     render(<RitualEntry onEnter={vi.fn()} />);
     expect(screen.getByPlaceholderText("bind repo to begin")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /bind · enter forge/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /bind · enter creation/i })).toBeInTheDocument();
   });
 
   it("Enter button is disabled when input is empty", () => {
     render(<RitualEntry onEnter={vi.fn()} />);
-    const btn = screen.getByRole("button", { name: /bind · enter forge/i });
+    const btn = screen.getByRole("button", { name: /bind · enter creation/i });
     expect(btn).toBeDisabled();
   });
 });
