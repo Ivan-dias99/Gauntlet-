@@ -16,10 +16,10 @@
 
 ## Immediate Milestones
 
-1. Foundation is locked and build-clean.
-2. Cross-thread resonance logic in spine.
-3. Synthesis visualization in Memory chamber.
-4. Inheritance signals in Creation Forge.
+1. Foundation is locked and build-clean. — DONE
+2. Cross-thread resonance logic in spine. — DONE (threadResonance, conceptAncestry, threadSyntheses, emit.synthesizeKnowledge)
+3. Synthesis visualization in Memory chamber. — DONE (resonance surface + synthesis links)
+4. Inheritance signals in Creation Forge. — DONE (concept ancestry panel)
 
 ## After This Wave
 

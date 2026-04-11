@@ -379,6 +379,31 @@ export const emit = {
       { parent: contradictionId, repo: requireRepo() },
     ),
 
+  synthesizeKnowledge: (
+    sourceId: string,
+    sourceType: "canon" | "memory",
+    targetThreadId: string,
+    note: string,
+  ) => {
+    const repo = requireRepo();
+    const p = cached ?? project(all());
+    const t = p.threads.find((x) => x.id === targetThreadId);
+    if (!t) throw new Error("Synthesis refused: target thread not found");
+    if (sourceType === "canon") {
+      const c = p.canon.find((x) => x.id === sourceId);
+      if (!c) throw new Error("Synthesis refused: canon entry not found");
+    } else {
+      const m = p.memory.find((x) => x.id === sourceId);
+      if (!m) throw new Error("Synthesis refused: memory entry not found");
+    }
+    if (!note.trim()) throw new Error("Synthesis refused: note required");
+    return append(
+      "knowledge.synthesized",
+      { sourceId, sourceType, targetThread: targetThreadId, note },
+      { thread: targetThreadId, repo, parent: sourceId },
+    );
+  },
+
   nullConsequence: (action: string, reason: string) =>
     append("null.consequence", { action, reason }),
 

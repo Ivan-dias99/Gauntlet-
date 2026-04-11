@@ -1,5 +1,5 @@
 # RUBERRA — STACK CLOSURE TRACKER
-**Runtime Truth · No False Closure · Updated: 2026-04-10**
+**Runtime Truth · No False Closure · Updated: 2026-04-11**
 
 ---
 
@@ -51,7 +51,7 @@ src/main.tsx
 | 08 | System Awareness | 🔶 PARTIAL | EventPulse shows live telemetry. No health model, no anomaly detection. |
 | 09 | Autonomous Flow | ⬜ OPEN | No flow engine in converged architecture. Directive → Execution is single-step. |
 | 10 | Multi-Agent Civilization | ⬜ OPEN | No agent system. Single-architect model. |
-| 11 | Living Knowledge | 🔶 PARTIAL | Memory chamber shows retained consequence. Memory → Canon promotion path exists. No cross-thread knowledge synthesis. |
+| 11 | Living Knowledge | ✅ CLOSED | Cross-thread resonance detection. Knowledge synthesis emitter. Resonance surface in Memory. Concept ancestry in Creation. See detail below. |
 | 12 | Intelligence Analytics | ⬜ OPEN | No analytics surfaces. |
 | 13 | Collective Execution | ⬜ OPEN | No multi-operator support. |
 | 14 | Distribution + Presence | ⬜ OPEN | Browser-only. No offline or cross-platform presence. |
@@ -60,7 +60,7 @@ src/main.tsx
 | 17 | Platform Infrastructure | ⬜ OPEN | No infrastructure abstraction. Supabase dependency removed. |
 | 18 | Organizational Intelligence | ⬜ OPEN | No org layer. |
 | 19 | Personal Sovereign OS | ⬜ OPEN | No personal OS layer. |
-| 20 | Compound Intelligence | ⬜ OPEN | No compounding mechanism beyond append-only log. |
+| 20 | Compound Intelligence | ✅ CLOSED | Concept ancestry traces inherited canon. Cross-thread resonance compounds knowledge. Manual synthesis links. See detail below. |
 
 ---
 
@@ -101,6 +101,29 @@ src/main.tsx
 - Directive Hinge: no execution without an accepted directive. No ambiguity tolerated ({{placeholder}} check).
 - Artifact review requires reason. Canon revocation requires reason.
 - Contradiction detection is automatic (memory vs canon overlap with negation keywords)
+
+### Stack 11 — Living Knowledge ✅ CLOSED
+
+**Evidence:**
+- `spine/projections.ts` → `threadResonance()` detects hardened canon from other threads via token overlap against intent, concepts, directives, and memory — excludes self-originated canon
+- `spine/projections.ts` → `threadSyntheses()` resolves manual knowledge links to source text
+- `spine/projections.ts` → `conceptAncestry()` finds canon entries that informed a given concept (automatic + explicit)
+- `spine/store.ts` → `emit.synthesizeKnowledge()` emitter — architect manually links canon/memory to another thread
+- `spine/events.ts` → `knowledge.synthesized` event type fires real mutation
+- `chambers/Memory.tsx` → Resonance Surface: cross-thread canon matches displayed with via-indicator, strength dots, and source thread origin
+- `chambers/Memory.tsx` → Synthesis Links: explicit architect-linked knowledge entries with source text and note
+- `chambers/Creation.tsx` → Concept Ancestry: each concept shows inherited canon entries ("inherited from N canon")
+- Gravity bar in Memory shows resonance count as ambient context
+
+### Stack 20 — Compound Intelligence ✅ CLOSED
+
+**Evidence:**
+- `spine/projections.ts` → `conceptAncestry()` traces the compounding chain: concept ← canon ← prior thread's work
+- `spine/projections.ts` → `threadResonance()` detects compound knowledge across thread boundaries automatically
+- `chambers/Creation.tsx` → Ancestry panel on each concept shows which prior canon informed it (compounding visualization)
+- `chambers/Memory.tsx` → Resonance surface shows cross-thread knowledge compounding in real time
+- `knowledge.synthesized` event creates explicit compound links between threads (manual synthesis)
+- The append-only event log + projection system means every compounding decision is traceable and auditable
 
 ---
 

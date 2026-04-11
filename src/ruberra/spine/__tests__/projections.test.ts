@@ -3,7 +3,7 @@
 // Each test builds a minimal event log and asserts projection shape.
 
 import { describe, it, expect } from "vitest";
-import { project } from "../projections";
+import { project, threadResonance, conceptAncestry, threadSyntheses } from "../projections";
 import { RuberraEvent } from "../events";
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -427,5 +427,206 @@ describe("concept.stated", () => {
     expect(p.concepts).toHaveLength(2);
     expect(p.concepts[0].promoted).toBe(false);
     expect(p.concepts[1].promoted).toBe(false);
+  });
+});
+
+// ── knowledge.synthesized (W09) ──────────────────────────────────────────
+
+describe("knowledge.synthesized", () => {
+  it("creates synthesis entry in projection", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "build auth" }, { repo: "r" });
+    const canon = ev("canon.hardened", { text: "security first always" }, { repo: "r" });
+    const synth = ev(
+      "knowledge.synthesized",
+      { sourceId: canon.id, sourceType: "canon", targetThread: t.id, note: "applies to auth" },
+      { thread: t.id, repo: "r", parent: canon.id },
+    );
+    const p = project([repo, t, canon, synth]);
+    expect(p.syntheses).toHaveLength(1);
+    expect(p.syntheses[0].sourceId).toBe(canon.id);
+    expect(p.syntheses[0].sourceType).toBe("canon");
+    expect(p.syntheses[0].targetThread).toBe(t.id);
+    expect(p.syntheses[0].note).toBe("applies to auth");
+  });
+
+  it("empty event log has empty syntheses array", () => {
+    const p = project([]);
+    expect(p.syntheses).toHaveLength(0);
+  });
+});
+
+// ── threadResonance (W09) ────────────────────────────────────────────────
+
+describe("threadResonance", () => {
+  function multiThreadSetup() {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t1 = ev("thread.opened", { intent: "implement authentication system" }, { repo: "r" });
+    const t2 = ev("thread.opened", { intent: "build payment gateway" }, { repo: "r" });
+    // Memory on t1 — this gives the canon a traceable thread origin.
+    const m1 = ev("memory.captured", { text: "authentication requires token validation" }, { thread: t1.id, repo: "r" });
+    // Canon from t1's memory — hardened as law.
+    const c1 = ev("canon.hardened", { text: "authentication system must validate tokens before access", memoryId: m1.id }, { repo: "r" });
+    // Canon without thread origin (repo-wide law).
+    const c2 = ev("canon.hardened", { text: "every payment gateway requires authentication integration" }, { repo: "r" });
+    return { repo, t1, t2, m1, c1, c2 };
+  }
+
+  it("detects canon resonance via thread intent", () => {
+    const { repo, t1, t2, m1, c1, c2 } = multiThreadSetup();
+    const p = project([repo, t1, t2, m1, c1, c2]);
+    // t2's intent is "build payment gateway" — c2 mentions "payment gateway" + "authentication"
+    const matches = threadResonance(p, t2.id);
+    expect(matches.length).toBeGreaterThanOrEqual(1);
+    const paymentMatch = matches.find((m) => m.canonId === c2.id);
+    expect(paymentMatch).toBeDefined();
+    expect(paymentMatch!.via).toBe("intent");
+  });
+
+  it("excludes canon originating from the same thread", () => {
+    const { repo, t1, t2, m1, c1, c2 } = multiThreadSetup();
+    // Add a directive on t1 that overlaps with c1 (which originated from t1's memory).
+    const d = ev(
+      "directive.accepted",
+      { text: "validate tokens in authentication", scope: "src/auth", risk: "reversible", acceptance: "ok" },
+      { thread: t1.id, repo: "r" },
+    );
+    const p = project([repo, t1, t2, m1, c1, c2, d]);
+    const matches = threadResonance(p, t1.id);
+    // c1 originated from t1's memory, so it should NOT appear as resonance for t1.
+    const self = matches.find((m) => m.canonId === c1.id);
+    expect(self).toBeUndefined();
+  });
+
+  it("detects resonance via concepts", () => {
+    const { repo, t1, t2, m1, c1, c2 } = multiThreadSetup();
+    // Add concept on t2 that shares exact tokens with c1.
+    // c1: "authentication system must validate tokens before access"
+    const concept = ev(
+      "concept.stated",
+      { title: "authentication module", hypothesis: "must validate tokens on every request" },
+      { thread: t2.id, repo: "r" },
+    );
+    const p = project([repo, t1, t2, m1, c1, c2, concept]);
+    const matches = threadResonance(p, t2.id);
+    // c1 shares "authentication", "must", "validate", "tokens" with the concept.
+    expect(matches.length).toBeGreaterThanOrEqual(1);
+    const tokenMatch = matches.find((m) => m.canonId === c1.id);
+    expect(tokenMatch).toBeDefined();
+  });
+
+  it("returns empty for unknown thread", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const p = project([repo]);
+    expect(threadResonance(p, "nonexistent")).toHaveLength(0);
+  });
+
+  it("returns empty when no other-thread canon exists", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "just a thread" }, { repo: "r" });
+    const p = project([repo, t]);
+    expect(threadResonance(p, t.id)).toHaveLength(0);
+  });
+});
+
+// ── conceptAncestry (W09) ────────────────────────────────────────────────
+
+describe("conceptAncestry", () => {
+  it("finds canon entries related to a concept via token overlap", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "build auth" }, { repo: "r" });
+    const c1 = ev("canon.hardened", { text: "authentication requires secure token validation" }, { repo: "r" });
+    const c2 = ev("canon.hardened", { text: "payments need secure processing" }, { repo: "r" });
+    const concept = ev(
+      "concept.stated",
+      { title: "Token validation module", hypothesis: "authentication tokens should expire after validation" },
+      { thread: t.id, repo: "r" },
+    );
+    const p = project([repo, t, c1, c2, concept]);
+    const ancestors = conceptAncestry(p, concept.id);
+    // c1 shares "authentication", "token", "validation" — should match.
+    expect(ancestors.some((a) => a.id === c1.id)).toBe(true);
+  });
+
+  it("includes explicitly synthesized canon as ancestor", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "optimize cache" }, { repo: "r" });
+    const canon = ev("canon.hardened", { text: "database queries must be idempotent" }, { repo: "r" });
+    const concept = ev(
+      "concept.stated",
+      { title: "Cache layer", hypothesis: "add redis for hot paths" },
+      { thread: t.id, repo: "r" },
+    );
+    // Explicit synthesis link — architect manually linked this canon.
+    const synth = ev(
+      "knowledge.synthesized",
+      { sourceId: canon.id, sourceType: "canon", targetThread: t.id, note: "idempotency applies to cache" },
+      { thread: t.id, repo: "r", parent: canon.id },
+    );
+    const p = project([repo, t, canon, concept, synth]);
+    const ancestors = conceptAncestry(p, concept.id);
+    expect(ancestors.some((a) => a.id === canon.id)).toBe(true);
+  });
+
+  it("returns empty for unknown concept", () => {
+    const p = project([]);
+    expect(conceptAncestry(p, "nope")).toHaveLength(0);
+  });
+});
+
+// ── threadSyntheses (W09) ────────────────────────────────────────────────
+
+describe("threadSyntheses", () => {
+  it("resolves synthesis links to source text", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const canon = ev("canon.hardened", { text: "the law of consequence" }, { repo: "r" });
+    const synth = ev(
+      "knowledge.synthesized",
+      { sourceId: canon.id, sourceType: "canon", targetThread: t.id, note: "relevant" },
+      { thread: t.id, repo: "r" },
+    );
+    const p = project([repo, t, canon, synth]);
+    const resolved = threadSyntheses(p, t.id);
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0].sourceText).toBe("the law of consequence");
+    expect(resolved[0].note).toBe("relevant");
+  });
+
+  it("resolves memory-type synthesis links", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const mem = ev("memory.captured", { text: "observed: latency spikes at 3am" }, { thread: t.id, repo: "r" });
+    const t2 = ev("thread.opened", { intent: "fix latency" }, { repo: "r" });
+    const synth = ev(
+      "knowledge.synthesized",
+      { sourceId: mem.id, sourceType: "memory", targetThread: t2.id, note: "relates to latency fix" },
+      { thread: t2.id, repo: "r" },
+    );
+    const p = project([repo, t, mem, t2, synth]);
+    const resolved = threadSyntheses(p, t2.id);
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0].sourceText).toBe("observed: latency spikes at 3am");
+    expect(resolved[0].sourceType).toBe("memory");
+  });
+
+  it("filters out syntheses with missing source", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const synth = ev(
+      "knowledge.synthesized",
+      { sourceId: "deleted-canon", sourceType: "canon", targetThread: t.id, note: "orphan" },
+      { thread: t.id, repo: "r" },
+    );
+    const p = project([repo, t, synth]);
+    const resolved = threadSyntheses(p, t.id);
+    expect(resolved).toHaveLength(0);
+  });
+
+  it("returns empty for thread with no syntheses", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const p = project([repo, t]);
+    expect(threadSyntheses(p, t.id)).toHaveLength(0);
   });
 });

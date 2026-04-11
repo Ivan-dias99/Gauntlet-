@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { emit, useProjection } from "../spine/store";
-import { revokedCanonWithDependents } from "../spine/projections";
+import { revokedCanonWithDependents, conceptAncestry } from "../spine/projections";
 import { runRuntime } from "../spine/runtime-fabric";
 import { Unavailable } from "../trust/Unavailable";
 import { RuledPrompt } from "../trust/RuledPrompt";
@@ -280,22 +280,39 @@ export function CreationChamber() {
 
             {concepts.filter(c => !c.promoted).length > 0 && (
               <div className="rb-concept-list">
-                {concepts.filter(c => !c.promoted).map(c => (
-                  <div key={c.id} className="rb-concept-item">
-                    <div className="rb-concept-item-title">{c.title}</div>
-                    <div className="rb-concept-item-hypothesis">{c.hypothesis}</div>
-                    <button
-                      className="rb-btn primary"
-                      onClick={() => {
-                        setText(c.hypothesis);
-                        setScope(c.title);
-                        setPromotingConceptId(c.id);
-                      }}
-                    >
-                      Promote → Directive
-                    </button>
-                  </div>
-                ))}
+                {concepts.filter(c => !c.promoted).map(c => {
+                  const ancestors = conceptAncestry(p, c.id);
+                  return (
+                    <div key={c.id} className="rb-concept-item">
+                      <div className="rb-concept-item-title">{c.title}</div>
+                      <div className="rb-concept-item-hypothesis">{c.hypothesis}</div>
+                      {ancestors.length > 0 && (
+                        <div className="rb-concept-ancestry">
+                          <div className="rb-concept-ancestry-label">
+                            inherited from {ancestors.length} canon
+                          </div>
+                          {ancestors.slice(0, 3).map((a) => (
+                            <div key={a.id} className="rb-concept-ancestry-entry">
+                              {a.text.length > 70
+                                ? a.text.slice(0, 70) + "…"
+                                : a.text}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <button
+                        className="rb-btn primary"
+                        onClick={() => {
+                          setText(c.hypothesis);
+                          setScope(c.title);
+                          setPromotingConceptId(c.id);
+                        }}
+                      >
+                        Promote → Directive
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
