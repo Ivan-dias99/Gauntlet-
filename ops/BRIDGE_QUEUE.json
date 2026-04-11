@@ -311,6 +311,7 @@
       "scope": ["src/ruberra/", "ops/"],
       "depends_on": ["W09-B02"],
       "gate_on_complete": "GATE_W10_OPEN",
+      "status": "done",
       "success": "Intelligence compounding verified and operational."
     }
   ]
