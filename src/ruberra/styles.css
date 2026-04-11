@@ -1943,6 +1943,180 @@ html, body, #root {
   text-transform: uppercase;
 }
 
+/* ── W09: Intelligence Compounding — Resonance + Ancestry + Synthesis ──── */
+
+/* Resonance gravity bar indicator */
+.rb-gravity--resonance { color: #6A8FA0; }
+
+/* Resonance surface — cross-thread canon matches in Memory chamber */
+.rb-resonance-surface {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  background: var(--rb-bg-elev);
+  border: 1px solid rgba(106, 143, 160, 0.22);
+  border-left: 2px solid rgba(106, 143, 160, 0.55);
+}
+
+.rb-resonance-surface-label {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(106, 143, 160, 0.8);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rb-resonance-surface-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(106, 143, 160, 0.14);
+}
+
+.rb-resonance-surface-count {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #6A8FA0;
+  text-transform: none;
+}
+
+.rb-resonance-entry {
+  padding: 8px 10px;
+  border: 1px solid rgba(106, 143, 160, 0.14);
+  background: rgba(106, 143, 160, 0.03);
+  margin-bottom: 6px;
+}
+.rb-resonance-entry:last-child { margin-bottom: 0; }
+
+.rb-resonance-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rb-resonance-via {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(106, 143, 160, 0.65);
+}
+
+.rb-resonance-strength {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: rgba(106, 143, 160, 0.5);
+  margin-left: auto;
+}
+
+.rb-resonance-entry-text {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-soft);
+  line-height: 1.6;
+}
+
+.rb-resonance-entry-origin {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+  margin-top: 3px;
+  letter-spacing: 0.02em;
+}
+
+/* Synthesis surface — explicit cross-thread knowledge links */
+.rb-synthesis-surface {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  background: var(--rb-bg-elev);
+  border: 1px solid rgba(201, 166, 107, 0.18);
+  border-left: 2px solid rgba(201, 166, 107, 0.45);
+}
+
+.rb-synthesis-surface-label {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(201, 166, 107, 0.75);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rb-synthesis-surface-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(201, 166, 107, 0.14);
+}
+
+.rb-synthesis-entry {
+  padding: 8px 10px;
+  border: 1px solid rgba(201, 166, 107, 0.14);
+  background: rgba(201, 166, 107, 0.03);
+  margin-bottom: 6px;
+}
+.rb-synthesis-entry:last-child { margin-bottom: 0; }
+
+.rb-synthesis-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rb-synthesis-entry-text {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-soft);
+  line-height: 1.6;
+}
+
+.rb-synthesis-entry-note {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+  margin-top: 3px;
+  letter-spacing: 0.02em;
+  font-style: italic;
+}
+
+/* Concept ancestry — inherited canon signal in Creation */
+.rb-concept-ancestry {
+  padding: 8px 10px;
+  border: 1px solid rgba(106, 143, 160, 0.18);
+  border-left: 2px solid rgba(106, 143, 160, 0.4);
+  background: rgba(106, 143, 160, 0.03);
+  margin-top: 4px;
+}
+
+.rb-concept-ancestry-label {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(106, 143, 160, 0.7);
+  margin-bottom: 6px;
+}
+
+.rb-concept-ancestry-entry {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  color: var(--rb-ink-soft);
+  line-height: 1.55;
+  padding: 2px 0;
+  border-bottom: 1px dashed rgba(106, 143, 160, 0.12);
+}
+.rb-concept-ancestry-entry:last-child { border-bottom: none; }
+.rb-concept-ancestry-entry::before {
+  content: "↳ ";
+  color: rgba(106, 143, 160, 0.5);
+}
+
 /* ── W03-B03: Visual Seal 02 — Lab validation identity + coherence ──────── */
 
 /* Lab sigil — small validation mark before title */
@@ -2352,4 +2526,76 @@ html, body, #root {
   margin-top: 6px;
   flex-shrink: 0;
   box-shadow: 0 0 4px var(--rb-gold);
+}
+
+/* ── W09-B01: Resonance & Synthesis Surface ───────────────────────────── */
+
+.rb-resonance-surface, .rb-synthesis-surface {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: rgba(201, 166, 107, 0.02);
+  border: 1px solid rgba(201, 166, 107, 0.1);
+}
+
+.rb-resonance-surface-label, .rb-synthesis-surface-label {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--rb-gold);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rb-resonance-surface-count {
+  background: rgba(201, 166, 107, 0.12);
+  padding: 1px 5px;
+  border-radius: 1px;
+}
+
+.rb-resonance-grid, .rb-synthesis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.rb-resonance-entry, .rb-synthesis-entry {
+  background: var(--rb-bg-elev);
+  border: 1px solid var(--rb-line);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 2px solid rgba(201, 166, 107, 0.3);
+}
+
+.rb-resonance-entry-header, .rb-synthesis-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rb-resonance-via, .rb-resonance-strength {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+}
+
+.rb-resonance-entry-text, .rb-synthesis-entry-text {
+  font-family: var(--rb-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--rb-ink-soft);
+}
+
+.rb-resonance-entry-origin, .rb-synthesis-entry-note {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: var(--rb-ink-mute);
+  font-style: italic;
+  margin-top: 4px;
 }

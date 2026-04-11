@@ -104,6 +104,11 @@ export function ThreadStrip({ open, onClose }: Props) {
           style={{ marginTop: 8, width: "100%", boxSizing: "border-box" }}
           onClick={async () => {
             await emit.openThread(intent.trim());
+            // Auto-route: opening a thread enters Creation so the architect
+            // lands directly where the first directive is composed.
+            if (p.chamber !== "creation") {
+              await emit.enterChamber("creation");
+            }
             setIntent("");
           }}
         >
@@ -161,6 +166,10 @@ export function ThreadStrip({ open, onClose }: Props) {
               if (artCount > 0) statParts.push(`${artCount} art`);
 
               const isActive = p.activeThread === t.id;
+              const canActivate = t.status === "open" && !isActive;
+              const activate = () => {
+                if (canActivate) emit.activateThread(t.id);
+              };
 
               return (
                 <div
@@ -170,6 +179,20 @@ export function ThreadStrip({ open, onClose }: Props) {
                   style={
                     isActive
                       ? { borderLeftColor: activeAccent, borderLeftWidth: "3px" }
+                      : undefined
+                  }
+                  role={canActivate ? "button" : undefined}
+                  tabIndex={canActivate ? 0 : undefined}
+                  aria-pressed={isActive || undefined}
+                  onClick={canActivate ? activate : undefined}
+                  onKeyDown={
+                    canActivate
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            activate();
+                          }
+                        }
                       : undefined
                   }
                 >
@@ -191,7 +214,8 @@ export function ThreadStrip({ open, onClose }: Props) {
                     {t.status === "open" && isActive && (
                       <button
                         className="rb-thread-close-btn"
-                        onClick={async () => {
+                        onClick={async (e) => {
+                          e.stopPropagation();
                           const reason = await RuledPrompt.ask(
                             "Close reason (required):",
                             { label: "reason" },
@@ -206,7 +230,8 @@ export function ThreadStrip({ open, onClose }: Props) {
                     {t.status === "open" && isActive && (
                       <button
                         className="rb-thread-close-btn"
-                        onClick={async () => {
+                        onClick={async (e) => {
+                          e.stopPropagation();
                           const childIntent = await RuledPrompt.ask(
                             "Child thread intent:",
                             { label: "intent" },

@@ -16,6 +16,7 @@
 
 ## Agent Lanes
 
+- claude: W09-B01 + W09-B02 delivered — resonance surface in Memory, inheritance signal in Creation, spine logic complete.
 - antigravity: W01-W08 terminal polish complete. Foundation locked.
 
 ## Active Wave
@@ -25,7 +26,9 @@ WAVE 09 — Intelligence Compounding
 ## Current Status
 
 - **Foundation Locked**: All product body activation waves (01-08) are complete and polished.
-- **Structural Integrity**: Build verified clean (103 modules). 
-- **Chamber Identity**: Creation (Forge), Lab (Validation), School (Canon), Memory (Substrate) all carries flagship gravity.
-- **Spine Evolution**: Concept Station and Relay Logic are operational in the spine.
+- **Structural Integrity**: Build verified clean (103 modules, 0 errors). Tests: 105/105.
+- **Chamber Identity**: Creation (Forge), Lab (Validation), School (Canon), Memory (Substrate) all carry flagship gravity.
+- **Spine Evolution**: Concept Station, Relay Logic, and Intelligence Compounding logic operational.
+- **W09-B01 Delivered**: Memory chamber gains cross-thread resonance surface + synthesis links display.
+- **W09-B02 Delivered**: Creation concept items gain ancestry signal showing inherited canon.
 - **Entry Ritual**: Recognizes returning architects and directs flow based on pending forge work.

@@ -9,6 +9,7 @@ export type EventType =
   | "repo.created"
   | "repo.verified" // git authority: backend confirmed .git present
   | "thread.opened"
+  | "thread.activated"
   | "thread.closed"
   | "thread.archived"  // soft-hide from default view; still in spine
   | "intent.stated"
@@ -32,6 +33,7 @@ export type EventType =
   | "canon.revoked"
   | "contradiction.detected"
   | "contradiction.resolved"
+  | "knowledge.synthesized"  // cross-thread manual link: architect binds knowledge to another thread
   | "chamber.entered";
 
 export interface RuberraEvent {

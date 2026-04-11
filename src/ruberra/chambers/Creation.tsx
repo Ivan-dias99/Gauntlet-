@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { emit, useProjection } from "../spine/store";
-import { revokedCanonWithDependents } from "../spine/projections";
+import { revokedCanonWithDependents, conceptAncestry } from "../spine/projections";
 import { runRuntime } from "../spine/runtime-fabric";
 import { Unavailable } from "../trust/Unavailable";
 import { RuledPrompt } from "../trust/RuledPrompt";
@@ -22,7 +22,6 @@ const RISK_INFO: Record<Risk, { descriptor: string; colorClass: string }> = {
 };
 
 // Deterministic token-overlap heuristic — same pattern as store.ts captureMemory.
-// Returns true if 2+ tokens (length > 4) from the directive appear in the canon text.
 function matchesCanon(directiveText: string, scopeText: string, canonText: string): boolean {
   const needle = `${directiveText} ${scopeText}`.toLowerCase();
   const tokens = needle.split(/\s+/).filter((w) => w.length > 4);
@@ -101,7 +100,9 @@ export function CreationChamber() {
       )
     : [];
 
-  const openContradictions = p.contradictions.filter((c) => !c.resolved);
+  const openContradictions = p.contradictions.filter(
+    (c) => !c.resolved && (!c.repo || c.repo === p.activeRepo),
+  );
 
   const ambiguous = /\{\{[^}]+\}\}/.test(text);
   const canCompose =
@@ -282,7 +283,7 @@ export function CreationChamber() {
             {concepts.filter(c => !c.promoted).length > 0 && (
               <div className="rb-concept-list">
                 {concepts.filter(c => !c.promoted).map(concept => {
-                  const inheritance = repoCanon.filter(c => matchesCanon(concept.title, concept.hypothesis, c.text));
+                  const inheritance = conceptAncestry(p, concept.id);
                   return (
                     <div key={concept.id} className="rb-concept-item">
                       <div className="rb-concept-item-title">{concept.title}</div>
@@ -290,11 +291,13 @@ export function CreationChamber() {
                       
                       {inheritance.length > 0 && (
                         <div className="rb-concept-inheritance">
-                          <div className="rb-concept-inheritance-label">inherited intelligence</div>
-                          {inheritance.map(c => (
+                          <div className="rb-concept-inheritance-label">
+                            inherited intelligence · {inheritance.length}
+                          </div>
+                          {inheritance.slice(0, 3).map(c => (
                             <div key={c.id} className="rb-concept-inheritance-entry">
                               <span className="dot" />
-                              {c.text}
+                              {c.text.length > 70 ? c.text.slice(0, 70) + "…" : c.text}
                             </div>
                           ))}
                         </div>

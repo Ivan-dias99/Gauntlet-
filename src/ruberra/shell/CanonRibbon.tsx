@@ -25,7 +25,12 @@ export function CanonRibbon({ open, onClose }: Props) {
   const isMobile = useIsMobile();
   const canon = p.canon.filter((c) => c.state === "hardened");
   const revoked = p.canon.filter((c) => c.state === "revoked");
-  const recentMemory = p.memory.slice(-3).reverse();
+  // Repo-scoped, non-revoked — only surface memory from the active repo,
+  // and exclude revoked entries (they belong in Scars, not Recent Consequences).
+  const recentMemory = p.memory
+    .filter((m) => m.repo === p.activeRepo && m.state !== "revoked")
+    .slice(-3)
+    .reverse();
 
   const narrowClass = open
     ? "rb-rail rb-rail-right rb-rail--open"

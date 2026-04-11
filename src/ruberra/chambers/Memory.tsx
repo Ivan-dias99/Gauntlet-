@@ -6,8 +6,8 @@
 
 import { useState, useMemo } from "react";
 import { useProjection, emit } from "../spine/store";
+import { threadResonance, threadSyntheses } from "../spine/projections";
 import type { TruthState } from "../spine/projections";
-import { threadResonance } from "../spine/projections";
 
 type FilterState = "all" | TruthState;
 type ThreadFilter = "all" | string;
@@ -50,12 +50,6 @@ export function MemoryChamber() {
   const repoMemory = useMemo(
     () => p.memory.filter((m) => m.repo === p.activeRepo),
     [p.memory, p.activeRepo],
-  );
-
-  // Resonance — intelligence synthesis.
-  const resonance = useMemo(
-    () => (p.activeThread ? threadResonance(p) : []),
-    [p.activeThread, p.canon, p.memory],
   );
 
   // Available threads for filter (only those that have memory).
@@ -108,6 +102,20 @@ export function MemoryChamber() {
   const hasActiveThread = !!p.activeThread;
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
 
+  // ── Intelligence Compounding (W09) ──────────────────────────────────────
+  // Cross-thread resonance: hardened canon from other threads that overlaps
+  // with the current thread's work surfaces.
+  const resonance = useMemo(
+    () => (p.activeThread ? threadResonance(p, p.activeThread) : []),
+    [p, p.activeThread],
+  );
+
+  // Explicit synthesis links targeting this thread.
+  const syntheses = useMemo(
+    () => (p.activeThread ? threadSyntheses(p, p.activeThread) : []),
+    [p, p.activeThread],
+  );
+
   return (
     <section className="rb-chamber rb-chamber--memory">
       <header className="rb-chamber-header rb-chamber-header--consequence">
@@ -127,6 +135,12 @@ export function MemoryChamber() {
             <>
               <span className="rb-gravity-sep">·</span>
               <span className="rb-chamber-gravity-text rb-gravity--gold">{stateCounts["hardened"]} law</span>
+            </>
+          )}
+          {resonance.length > 0 && (
+            <>
+              <span className="rb-gravity-sep">·</span>
+              <span className="rb-chamber-gravity-text rb-gravity--resonance">{resonance.length} resonance</span>
             </>
           )}
         </div>
@@ -150,23 +164,68 @@ export function MemoryChamber() {
         </div>
       )}
 
-      {/* Resonance Surface — intelligence compounding */}
+      {/* ── Resonance Surface (W09) ───────────────────────────────── */}
       {resonance.length > 0 && (
-        <div className="rb-memory-resonance">
-          <div className="rb-section-title">Resonant Knowledge</div>
-          <div className="rb-memory-resonance-grid">
-            {resonance.slice(0, 3).map((r) => (
-              <div key={r.id} className="rb-memory-resonance-item">
-                <div className="rb-resonance-meta">
-                  <span className={`rb-badge ${r.type === "canon" ? "gold" : "ok"}`}>{r.type}</span>
-                  <span className="rb-resonance-overlap">{r.overlap} tokens shared</span>
+        <div className="rb-resonance-surface">
+          <div className="rb-resonance-surface-label">
+            cross-thread resonance
+            <span className="rb-resonance-surface-count">{resonance.length}</span>
+          </div>
+          <div className="rb-resonance-grid">
+            {resonance.slice(0, 8).map((r) => {
+              const sourceThread = r.sourceThread
+                ? p.threads.find((t) => t.id === r.sourceThread)
+                : undefined;
+              return (
+                <div key={r.canonId} className="rb-resonance-entry">
+                  <div className="rb-resonance-entry-header">
+                    <span className="rb-badge gold">canon</span>
+                    <span className="rb-resonance-via">via {r.via}</span>
+                    <span className="rb-resonance-strength">
+                      {"●".repeat(Math.min(r.overlap, 5))}{"○".repeat(Math.max(0, 5 - r.overlap))}
+                    </span>
+                  </div>
+                  <div className="rb-resonance-entry-text">
+                    {r.canonText.length > 100
+                      ? r.canonText.slice(0, 100) + "…"
+                      : r.canonText}
+                  </div>
+                  {sourceThread && (
+                    <div className="rb-resonance-entry-origin">
+                      ↳ from thread: {sourceThread.intent.length > 40
+                        ? sourceThread.intent.slice(0, 40) + "…"
+                        : sourceThread.intent}
+                    </div>
+                  )}
                 </div>
-                <div className="rb-resonance-text">{r.text}</div>
-                <div className="rb-resonance-tokens">
-                  {r.tokens.map((t) => (
-                    <span key={t} className="rb-resonance-token">{t}</span>
-                  ))}
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Synthesis Links (W09) ─────────────────────────────────── */}
+      {syntheses.length > 0 && (
+        <div className="rb-synthesis-surface">
+          <div className="rb-synthesis-surface-label">linked knowledge</div>
+          <div className="rb-synthesis-grid">
+            {syntheses.map((s) => (
+              <div key={s.id} className="rb-synthesis-entry">
+                <div className="rb-synthesis-entry-header">
+                  <span className={`rb-badge ${s.sourceType === "canon" ? "gold" : ""}`}>
+                    {s.sourceType}
+                  </span>
                 </div>
+                <div className="rb-synthesis-entry-text">
+                  {s.sourceText.length > 100
+                    ? s.sourceText.slice(0, 100) + "…"
+                    : s.sourceText}
+                </div>
+                {s.note && (
+                  <div className="rb-synthesis-entry-note">
+                    {s.note}
+                  </div>
+                )}
               </div>
             ))}
           </div>

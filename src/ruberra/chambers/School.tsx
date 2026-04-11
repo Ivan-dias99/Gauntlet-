@@ -10,10 +10,10 @@ export function SchoolChamber() {
   const p = useProjection();
   const [text, setText] = useState("");
   const [mission, setMission] = useState("");
-  const canon = p.canon.filter((c) => c.state === "hardened");
-  const revoked = p.canon.filter((c) => c.state === "revoked");
-  const openProposals = p.canonProposals.filter((q) => !q.hardened);
-  const promotableMemory = p.memory.filter((m) => !m.promoted);
+  const canon = p.canon.filter((c) => c.state === "hardened" && c.repo === p.activeRepo);
+  const revoked = p.canon.filter((c) => c.state === "revoked" && c.repo === p.activeRepo);
+  const openProposals = p.canonProposals.filter((q) => !q.hardened && q.repo === p.activeRepo);
+  const promotableMemory = p.memory.filter((m) => !m.promoted && m.repo === p.activeRepo);
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
 
   return (
