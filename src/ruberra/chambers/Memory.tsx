@@ -46,13 +46,11 @@ export function MemoryChamber() {
   const [captureText, setCaptureText] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  // Repo-scoped memory only.
   const repoMemory = useMemo(
     () => p.memory.filter((m) => m.repo === p.activeRepo),
     [p.memory, p.activeRepo],
   );
 
-  // Available threads for filter (only those that have memory).
   const threadIds = useMemo(() => {
     const ids = new Set<string>();
     for (const m of repoMemory) {
@@ -69,7 +67,6 @@ export function MemoryChamber() {
     return map;
   }, [p.threads]);
 
-  // Filtered + searched memory.
   const filtered = useMemo(() => {
     let list = repoMemory;
     if (stateFilter !== "all") {
@@ -82,7 +79,6 @@ export function MemoryChamber() {
       const q = search.toLowerCase();
       list = list.filter((m) => m.text.toLowerCase().includes(q));
     }
-    // Sort: most recent first, then by truth-state weight.
     return list.slice().sort((a, b) => {
       const tsDiff = b.ts - a.ts;
       if (tsDiff !== 0) return tsDiff;
@@ -90,7 +86,6 @@ export function MemoryChamber() {
     });
   }, [repoMemory, stateFilter, threadFilter, search]);
 
-  // Truth-state distribution — ambient context.
   const stateCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const m of repoMemory) {
@@ -102,15 +97,11 @@ export function MemoryChamber() {
   const hasActiveThread = !!p.activeThread;
   const activeThread = p.threads.find((t) => t.id === p.activeThread);
 
-  // ── Intelligence Compounding (W09) ──────────────────────────────────────
-  // Cross-thread resonance: hardened canon from other threads that overlaps
-  // with the current thread's work surfaces.
   const resonance = useMemo(
     () => (p.activeThread ? threadResonance(p, p.activeThread) : []),
     [p, p.activeThread],
   );
 
-  // Explicit synthesis links targeting this thread.
   const syntheses = useMemo(
     () => (p.activeThread ? threadSyntheses(p, p.activeThread) : []),
     [p, p.activeThread],
@@ -125,24 +116,9 @@ export function MemoryChamber() {
           <span className="rb-chamber-gravity-text rb-gravity--primary">Consequence Substrate</span>
           <span className="rb-gravity-sep">·</span>
           <span className="rb-chamber-gravity-text">What the organism retains</span>
-          {repoMemory.length > 0 && (
-            <>
-              <span className="rb-gravity-sep">·</span>
-              <span className="rb-chamber-gravity-text">{repoMemory.length} entries</span>
-            </>
-          )}
-          {(stateCounts["hardened"] ?? 0) > 0 && (
-            <>
-              <span className="rb-gravity-sep">·</span>
-              <span className="rb-chamber-gravity-text rb-gravity--gold">{stateCounts["hardened"]} law</span>
-            </>
-          )}
-          {resonance.length > 0 && (
-            <>
-              <span className="rb-gravity-sep">·</span>
-              <span className="rb-chamber-gravity-text rb-gravity--resonance">{resonance.length} resonance</span>
-            </>
-          )}
+          {repoMemory.length > 0 && <><span className="rb-gravity-sep">·</span><span className="rb-chamber-gravity-text">{repoMemory.length} entries</span></>}
+          {(stateCounts["hardened"] ?? 0) > 0 && <><span className="rb-gravity-sep">·</span><span className="rb-chamber-gravity-text rb-gravity--gold">{stateCounts["hardened"]} law</span></>}
+          {resonance.length > 0 && <><span className="rb-gravity-sep">·</span><span className="rb-chamber-gravity-text rb-gravity--resonance">{resonance.length} resonance</span></>}
         </div>
         <div className="rb-chamber-accent-line" />
       </header>
@@ -151,9 +127,7 @@ export function MemoryChamber() {
         <div className="rb-thread-context-bar">
           <span className="rb-thread-context-bar-label">thread</span>
           <span className="rb-thread-context-bar-intent">
-            {activeThread.intent.length > 72
-              ? activeThread.intent.slice(0, 72) + "…"
-              : activeThread.intent}
+            {activeThread.intent.length > 72 ? activeThread.intent.slice(0, 72) + "…" : activeThread.intent}
           </span>
           <span className="rb-thread-context-bar-state">{activeThread.state}</span>
           {resonance.length > 0 && (
@@ -164,7 +138,13 @@ export function MemoryChamber() {
         </div>
       )}
 
-      {/* ── Resonance Surface (W09) ───────────────────────────────── */}
+      <div className="rb-memory-intel-strip">
+        <div className="rb-memory-intel-cell"><span className="label">retained</span><span className="value">{stateCounts.retained ?? 0}</span></div>
+        <div className="rb-memory-intel-cell"><span className="label">hardened</span><span className="value">{stateCounts.hardened ?? 0}</span></div>
+        <div className="rb-memory-intel-cell"><span className="label">resonance</span><span className="value">{resonance.length}</span></div>
+        <div className="rb-memory-intel-cell"><span className="label">synthesis</span><span className="value">{syntheses.length}</span></div>
+      </div>
+
       {resonance.length > 0 && (
         <div className="rb-resonance-surface">
           <div className="rb-resonance-surface-label">
@@ -186,9 +166,7 @@ export function MemoryChamber() {
                     </span>
                   </div>
                   <div className="rb-resonance-entry-text">
-                    {r.canonText.length > 100
-                      ? r.canonText.slice(0, 100) + "…"
-                      : r.canonText}
+                    {r.canonText.length > 100 ? r.canonText.slice(0, 100) + "…" : r.canonText}
                   </div>
                   {sourceThread && (
                     <div className="rb-resonance-entry-origin">
@@ -204,7 +182,6 @@ export function MemoryChamber() {
         </div>
       )}
 
-      {/* ── Synthesis Links (W09) ─────────────────────────────────── */}
       {syntheses.length > 0 && (
         <div className="rb-synthesis-surface">
           <div className="rb-synthesis-surface-label">linked knowledge</div>
@@ -217,9 +194,7 @@ export function MemoryChamber() {
                   </span>
                 </div>
                 <div className="rb-synthesis-entry-text">
-                  {s.sourceText.length > 100
-                    ? s.sourceText.slice(0, 100) + "…"
-                    : s.sourceText}
+                  {s.sourceText.length > 100 ? s.sourceText.slice(0, 100) + "…" : s.sourceText}
                 </div>
                 {s.note && (
                   <div className="rb-synthesis-entry-note">
@@ -269,7 +244,6 @@ export function MemoryChamber() {
         </div>
       )}
 
-      {/* Truth-state distribution — system depth at a glance */}
       <div className="rb-memory-distribution">
         {(["retained", "hardened", "observed", "revoked"] as TruthState[]).map((s) => (
           <button
@@ -284,7 +258,6 @@ export function MemoryChamber() {
         ))}
       </div>
 
-      {/* Filters + search — operational, not decorative */}
       <div className="rb-memory-controls">
         <input
           className="rb-memory-search"
@@ -308,8 +281,7 @@ export function MemoryChamber() {
         )}
       </div>
 
-      {/* Capture — direct memory creation */}
-      <div className="rb-memory-capture">
+      <div className="rb-memory-capture rb-memory-capture--flagship">
         <div className="rb-memory-capture-label">capture observation</div>
         <div className="rb-row" style={{ gap: 8 }}>
           <textarea
@@ -333,7 +305,6 @@ export function MemoryChamber() {
         </div>
       </div>
 
-      {/* Memory ledger — the recall surface */}
       <div className="rb-memory-ledger">
         {filtered.length === 0 ? (
           <div className="rb-unavail">

@@ -13,6 +13,7 @@ import { RuledPromptHost } from "./trust/RuledPrompt";
 import "./styles.css";
 import "./harvest.css";
 import "./flagship.css";
+import "./flagship-wave2.css";
 import "./reforge-imports.css";
 
 type BootState =

@@ -25,18 +25,8 @@ export function SchoolChamber() {
           <span className="rb-chamber-gravity-text rb-gravity--primary">Canon Formation</span>
           <span className="rb-gravity-sep">·</span>
           <span className="rb-chamber-gravity-text">Harden truth into law</span>
-          {canon.length > 0 && (
-            <>
-              <span className="rb-gravity-sep">·</span>
-              <span className="rb-chamber-gravity-text rb-gravity--gold">{canon.length} hardened</span>
-            </>
-          )}
-          {openProposals.length > 0 && (
-            <>
-              <span className="rb-gravity-sep">·</span>
-              <span className="rb-chamber-gravity-text rb-gravity--warn">{openProposals.length} pending</span>
-            </>
-          )}
+          {canon.length > 0 && <><span className="rb-gravity-sep">·</span><span className="rb-chamber-gravity-text rb-gravity--gold">{canon.length} hardened</span></>}
+          {openProposals.length > 0 && <><span className="rb-gravity-sep">·</span><span className="rb-chamber-gravity-text rb-gravity--warn">{openProposals.length} pending</span></>}
         </div>
         <div className="rb-chamber-accent-line" />
       </header>
@@ -45,13 +35,18 @@ export function SchoolChamber() {
         <div className="rb-thread-context-bar">
           <span className="rb-thread-context-bar-label">thread</span>
           <span className="rb-thread-context-bar-intent">
-            {activeThread.intent.length > 72
-              ? activeThread.intent.slice(0, 72) + "…"
-              : activeThread.intent}
+            {activeThread.intent.length > 72 ? activeThread.intent.slice(0, 72) + "…" : activeThread.intent}
           </span>
           <span className="rb-thread-context-bar-state">{activeThread.state}</span>
         </div>
       )}
+
+      <div className="rb-school-metrics">
+        <div className="rb-school-metric"><span className="label">law</span><span className="value">{canon.length}</span></div>
+        <div className="rb-school-metric"><span className="label">pressure</span><span className="value">{openProposals.length}</span></div>
+        <div className="rb-school-metric"><span className="label">promotion</span><span className="value">{promotableMemory.length}</span></div>
+        <div className="rb-school-metric"><span className="label">revoked</span><span className="value">{revoked.length}</span></div>
+      </div>
 
       {!p.missionFramed && (
         <div className="rb-panel rb-school-mission">
@@ -177,12 +172,12 @@ export function SchoolChamber() {
             <strong>no proposals under pressure</strong>
           </div>
         ) : (
-          <ul className="rb-list">
+          <ul className="rb-list rb-school-pressure-list">
             {openProposals
               .slice()
               .reverse()
               .map((q) => (
-                <li key={q.id} className="rb-row" style={{ justifyContent: "space-between" }}>
+                <li key={q.id} className="rb-row rb-school-pressure-row" style={{ justifyContent: "space-between" }}>
                   <span>
                     <span className="rb-badge warn">proposed</span>
                     {q.text}
@@ -211,12 +206,12 @@ export function SchoolChamber() {
             <strong>no retained observations to promote</strong>
           </div>
         ) : (
-          <ul className="rb-list">
+          <ul className="rb-list rb-school-promotion-list">
             {promotableMemory
               .slice()
               .reverse()
               .map((m) => (
-                <li key={m.id} className="rb-row" style={{ justifyContent: "space-between" }}>
+                <li key={m.id} className="rb-row rb-school-promotion-row" style={{ justifyContent: "space-between" }}>
                   <span>{m.text}</span>
                   <button
                     className="rb-btn"
