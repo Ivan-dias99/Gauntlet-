@@ -276,7 +276,7 @@ export function CreationChamber() {
                               setAcceptance(d.suggestedAcceptance);
                               setRisk(d.suggestedRisk);
                               setPromotingConceptId(d.conceptId);
-                            }}>Adopt → Forge</button>
+                            }}>Load Draft</button>
                             <button className="rb-btn" onClick={async () => {
                               try {
                                 await emit.draftDirective(d.conceptId, {

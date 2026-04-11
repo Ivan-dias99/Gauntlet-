@@ -980,23 +980,31 @@ export function directiveDrafts(
     const totalResonance = ancestors.reduce((sum, a) => sum + a.overlap, 0);
 
     // Auto-compose a directive suggestion from concept + canon context.
+    const MAX_SCOPE_ANCESTORS = 3;
+    const MAX_SCOPE_WORDS = 3;
+    const MAX_CANON_SOURCES = 5;
+
     const scopeTokens = ancestors
-      .slice(0, 3)
-      .map((a) => a.entry.text.split(/\s+/).slice(0, 3).join(" "))
+      .slice(0, MAX_SCOPE_ANCESTORS)
+      .map((a) => a.entry.text.split(/\s+/).slice(0, MAX_SCOPE_WORDS).join(" "))
       .join(", ");
 
     const suggestedRisk: DirectiveRisk =
       totalResonance >= 8 ? "consequential" : "reversible";
 
+    const hypothesisFragment = concept.hypothesis.includes(".")
+      ? concept.hypothesis.split(".")[0].toLowerCase()
+      : concept.hypothesis.toLowerCase();
+
     suggestions.push({
       conceptId: concept.id,
       conceptTitle: concept.title,
       conceptHypothesis: concept.hypothesis,
-      suggestedText: `implement ${concept.title.toLowerCase()}: ${concept.hypothesis.split(".")[0].toLowerCase()}`,
+      suggestedText: `implement ${concept.title.toLowerCase()}: ${hypothesisFragment}`,
       suggestedScope: scopeTokens || concept.title.toLowerCase(),
       suggestedRisk,
       suggestedAcceptance: `${concept.title} produces observable consequence in the organism`,
-      canonSources: ancestors.slice(0, 5).map((a) => a.entry),
+      canonSources: ancestors.slice(0, MAX_CANON_SOURCES).map((a) => a.entry),
       resonanceStrength: totalResonance,
     });
   }
