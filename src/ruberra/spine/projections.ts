@@ -533,7 +533,7 @@ export const RELAY_PHASE_ORDER = RELAY_PHASES;
 
 // ── Canon Dependency Surface ───────────────────────────────────────────────
 
-function significantTokens(text: string): string[] {
+export function significantTokens(text: string): string[] {
   return text
     .toLowerCase()
     .split(/[\s,.;:!?()\[\]{}"'`]+/)
@@ -582,4 +582,61 @@ export function revokedCanonWithDependents(p: Projection): CanonDependency[] {
     all.push(...canonDependents(p, c.id));
   }
   return all;
+}
+
+// ── Intelligence Compounding Surface ───────────────────────────────────────
+
+export interface KnowledgeResonance {
+  type: "canon" | "memory";
+  id: string;
+  text: string;
+  overlap: number;
+  tokens: string[];
+}
+
+/**
+ * Detects resonance between the active thread and the repository knowledge base.
+ */
+export function threadResonance(p: Projection, threadId?: string): KnowledgeResonance[] {
+  const t = p.threads.find((x) => x.id === (threadId || p.activeThread));
+  if (!t) return [];
+
+  const threadTokens = new Set(significantTokens(t.intent));
+  if (threadTokens.size === 0) return [];
+
+  const results: KnowledgeResonance[] = [];
+
+  // Check hardened canon
+  for (const c of p.canon) {
+    if (c.state !== "hardened") continue;
+    const cTokens = significantTokens(c.text);
+    const shared = cTokens.filter((tok) => threadTokens.has(tok));
+    if (shared.length >= 2) {
+      results.push({
+        type: "canon",
+        id: c.id,
+        text: c.text,
+        overlap: shared.length,
+        tokens: shared,
+      });
+    }
+  }
+
+  // Check retained memory (excluding current thread)
+  for (const m of p.memory) {
+    if (m.state !== "retained" || m.thread === t.id) continue;
+    const mTokens = significantTokens(m.text);
+    const shared = mTokens.filter((tok) => threadTokens.has(tok));
+    if (shared.length >= 2) {
+      results.push({
+        type: "memory",
+        id: m.id,
+        text: m.text,
+        overlap: shared.length,
+        tokens: shared,
+      });
+    }
+  }
+
+  return results.sort((a, b) => b.overlap - a.overlap);
 }

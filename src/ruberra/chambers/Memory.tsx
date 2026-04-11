@@ -7,6 +7,7 @@
 import { useState, useMemo } from "react";
 import { useProjection, emit } from "../spine/store";
 import type { TruthState } from "../spine/projections";
+import { threadResonance } from "../spine/projections";
 
 type FilterState = "all" | TruthState;
 type ThreadFilter = "all" | string;
@@ -49,6 +50,12 @@ export function MemoryChamber() {
   const repoMemory = useMemo(
     () => p.memory.filter((m) => m.repo === p.activeRepo),
     [p.memory, p.activeRepo],
+  );
+
+  // Resonance — intelligence synthesis.
+  const resonance = useMemo(
+    () => (p.activeThread ? threadResonance(p) : []),
+    [p.activeThread, p.canon, p.memory],
   );
 
   // Available threads for filter (only those that have memory).
@@ -135,6 +142,34 @@ export function MemoryChamber() {
               : activeThread.intent}
           </span>
           <span className="rb-thread-context-bar-state">{activeThread.state}</span>
+          {resonance.length > 0 && (
+            <span className="rb-thread-context-bar-resonance">
+              {resonance.length} resonances detected
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Resonance Surface — intelligence compounding */}
+      {resonance.length > 0 && (
+        <div className="rb-memory-resonance">
+          <div className="rb-section-title">Resonant Knowledge</div>
+          <div className="rb-memory-resonance-grid">
+            {resonance.slice(0, 3).map((r) => (
+              <div key={r.id} className="rb-memory-resonance-item">
+                <div className="rb-resonance-meta">
+                  <span className={`rb-badge ${r.type === "canon" ? "gold" : "ok"}`}>{r.type}</span>
+                  <span className="rb-resonance-overlap">{r.overlap} tokens shared</span>
+                </div>
+                <div className="rb-resonance-text">{r.text}</div>
+                <div className="rb-resonance-tokens">
+                  {r.tokens.map((t) => (
+                    <span key={t} className="rb-resonance-token">{t}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -11,6 +11,7 @@
       "scope": ["src/ruberra/"],
       "depends_on": [],
       "gate_on_complete": null,
+      "status": "done",
       "success": "School and shell hierarchy clearly read as truth pressure above ordinary parity."
     },
     {
@@ -22,6 +23,7 @@
       "scope": ["src/ruberra/chambers/School.tsx", "src/ruberra/styles.css"],
       "depends_on": ["W02-B01"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "School chamber reads as doctrine/truth formation, not educational content."
     },
     {
@@ -33,6 +35,7 @@
       "scope": ["src/ruberra/chambers/Memory.tsx", "src/ruberra/styles.css"],
       "depends_on": ["W02-B02"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Memory chamber reads as retained consequence first, utilities second."
     },
     {
@@ -44,6 +47,7 @@
       "scope": ["src/ruberra/shell/", "src/ruberra/styles.css", "src/ruberra/reforge-imports.css"],
       "depends_on": ["W02-B03"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Shell, spine and chamber rail lose dashboard feel and gain flagship calm density."
     },
     {
@@ -55,6 +59,7 @@
       "scope": ["src/ruberra/", "ops/"],
       "depends_on": ["W02-B04"],
       "gate_on_complete": "GATE_W03_OPEN",
+      "status": "done",
       "success": "Wave 02 artifacts verified, handoffs closed, next gate emitted."
     },
     {
@@ -66,6 +71,7 @@
       "scope": ["src/ruberra/chambers/Creation.tsx", "src/ruberra/styles.css"],
       "depends_on": ["W02-B05"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Creation becomes architect-first forge, not generic work panel."
     },
     {
@@ -77,6 +83,7 @@
       "scope": ["src/ruberra/spine/", "src/ruberra/chambers/Creation.tsx"],
       "depends_on": ["W03-B01"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Concept, directive, artifact and review relay become explicit in the living organism."
     },
     {
@@ -88,6 +95,7 @@
       "scope": ["src/ruberra/"],
       "depends_on": ["W03-B02"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Product body gains flagship visual coherence without premium theater."
     },
     {
@@ -99,6 +107,7 @@
       "scope": ["src/ruberra/", "ops/"],
       "depends_on": ["W03-B03"],
       "gate_on_complete": "GATE_W04_OPEN",
+      "status": "done",
       "success": "Wave 03 verified, next gate emitted."
     },
     {
@@ -110,6 +119,7 @@
       "scope": ["src/ruberra/shell/RitualEntry.tsx", "src/ruberra/styles.css"],
       "depends_on": ["W03-B04"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Entry surface explicitly serves principal-architect creation identity."
     },
     {
@@ -121,6 +131,7 @@
       "scope": ["src/ruberra/"],
       "depends_on": ["W04-B01"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Visual seal for architect-first entry and final topbar density."
     },
     {
@@ -132,6 +143,7 @@
       "scope": ["src/ruberra/", "ops/"],
       "depends_on": ["W04-B02"],
       "gate_on_complete": "GATE_W05_OPEN",
+      "status": "done",
       "success": "Wave 04 verified, next gate emitted."
     },
     {
@@ -143,6 +155,7 @@
       "scope": ["src/ruberra/chambers/Lab.tsx", "src/ruberra/styles.css"],
       "depends_on": ["W04-B03"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Lab gains Skepticism Substrate / Validation Forge identity."
     },
     {
@@ -153,6 +166,7 @@
       "scope": ["src/ruberra/", "ops/"],
       "depends_on": ["W05-B01"],
       "gate_on_complete": "GATE_W06_OPEN",
+      "status": "done",
       "success": "Wave 05 verified, next gate emitted."
     },
     {
@@ -163,6 +177,7 @@
       "scope": ["src/ruberra/shell/EventPulse.tsx", "src/ruberra/styles.css"],
       "depends_on": ["W05-B02"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Event Pulse transformed into a sovereign Ambient Truth Strip."
     },
     {
@@ -173,6 +188,7 @@
       "scope": ["src/ruberra/shell/CanonRibbon.tsx", "src/ruberra/styles.css"],
       "depends_on": ["W06-B01"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Canon Ribbon elevated with consequence scars and memory highlights."
     },
     {
@@ -183,6 +199,7 @@
       "scope": ["src/ruberra/", "ops/"],
       "depends_on": ["W06-B02"],
       "gate_on_complete": "GATE_W07_OPEN",
+      "status": "done",
       "success": "Wave 06 verified. Full product body activation complete."
     },
     {
@@ -193,6 +210,7 @@
       "scope": ["src/ruberra/spine/runtime-fabric.ts"],
       "depends_on": ["W06-B03"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Legacy execution logic ported to the active spine."
     },
     {
@@ -203,6 +221,7 @@
       "scope": ["src/ruberra/chambers/Creation.tsx"],
       "depends_on": ["W07-B01"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Creation chamber is wired to the new execution fabric."
     },
     {
@@ -213,6 +232,7 @@
       "scope": ["src/ruberra/chambers/School.tsx"],
       "depends_on": ["W07-B02"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "School seeded with initial doctrine harvested from legacy DNA."
     },
     {
@@ -223,6 +243,7 @@
       "scope": ["src/"],
       "depends_on": ["W07-B03"],
       "gate_on_complete": "GATE_BETA_READY",
+      "status": "done",
       "success": "Legacy quarantine removed. One repo, one truth."
     },
     {
@@ -233,6 +254,7 @@
       "scope": ["src/ruberra/"],
       "depends_on": ["W07-B04"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Unified organism verified build-clean and identity-consistent."
     },
     {
@@ -243,6 +265,7 @@
       "scope": ["src/ruberra/RuberraApp.tsx"],
       "depends_on": ["W08-B01"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Fatal boot failure handled with minimal sovereignty surface."
     },
     {
@@ -253,6 +276,7 @@
       "scope": ["src/ruberra/", "ops/"],
       "depends_on": ["W08-B02"],
       "gate_on_complete": "GATE_FOUNDATION_LOCKED",
+      "status": "done",
       "success": "Foundation locked. One repo, one truth, one organism."
     },
     {
@@ -264,6 +288,7 @@
       "scope": ["src/ruberra/chambers/Memory.tsx", "src/ruberra/styles.css"],
       "depends_on": ["W08-B03"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Memory chamber visualizes cross-thread knowledge resonance."
     },
     {
@@ -275,6 +300,7 @@
       "scope": ["src/ruberra/chambers/Creation.tsx", "src/ruberra/styles.css"],
       "depends_on": ["W09-B01"],
       "gate_on_complete": null,
+      "status": "done",
       "success": "Current concepts visualize inherited gravity from prior canon."
     },
     {

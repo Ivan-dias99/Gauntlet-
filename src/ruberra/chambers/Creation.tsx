@@ -281,22 +281,38 @@ export function CreationChamber() {
 
             {concepts.filter(c => !c.promoted).length > 0 && (
               <div className="rb-concept-list">
-                {concepts.filter(c => !c.promoted).map(c => (
-                  <div key={c.id} className="rb-concept-item">
-                    <div className="rb-concept-item-title">{c.title}</div>
-                    <div className="rb-concept-item-hypothesis">{c.hypothesis}</div>
-                    <button
-                      className="rb-btn primary"
-                      onClick={() => {
-                        setText(c.hypothesis);
-                        setScope(c.title);
-                        setPromotingConceptId(c.id);
-                      }}
-                    >
-                      Promote → Directive
-                    </button>
-                  </div>
-                ))}
+                {concepts.filter(c => !c.promoted).map(concept => {
+                  const inheritance = repoCanon.filter(c => matchesCanon(concept.title, concept.hypothesis, c.text));
+                  return (
+                    <div key={concept.id} className="rb-concept-item">
+                      <div className="rb-concept-item-title">{concept.title}</div>
+                      <div className="rb-concept-item-hypothesis">{concept.hypothesis}</div>
+                      
+                      {inheritance.length > 0 && (
+                        <div className="rb-concept-inheritance">
+                          <div className="rb-concept-inheritance-label">inherited intelligence</div>
+                          {inheritance.map(c => (
+                            <div key={c.id} className="rb-concept-inheritance-entry">
+                              <span className="dot" />
+                              {c.text}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <button
+                        className="rb-btn primary"
+                        onClick={() => {
+                          setText(concept.hypothesis);
+                          setScope(concept.title);
+                          setPromotingConceptId(concept.id);
+                        }}
+                      >
+                        Promote → Directive
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
