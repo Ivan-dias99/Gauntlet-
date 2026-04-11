@@ -1,0 +1,242 @@
+html[data-rb-theme="light"] {
+  --rb-bg: #f2eee7;
+  --rb-bg-elev: #f8f4ed;
+  --rb-bg-elev-2: #efe8de;
+  --rb-line: #d7ccbd;
+  --rb-line-strong: #baab97;
+  --rb-ink: #231c16;
+  --rb-ink-soft: #5f5347;
+  --rb-ink-mute: #8d7f70;
+  --rb-accent: #9f3b2d;
+  --rb-accent-soft: #6c291f;
+  --rb-gold: #9d7741;
+  --rb-ok: #59734e;
+  --rb-warn: #9b7027;
+  --rb-bad: #8f4139;
+}
+
+html[data-rb-theme="light"] body,
+html[data-rb-theme="light"] #root {
+  background: var(--rb-bg);
+}
+
+html[data-rb-theme="light"] .rb-root {
+  background:
+    radial-gradient(1200px 800px at 85% -10%, rgba(159, 59, 45, 0.07), transparent 60%),
+    radial-gradient(900px 600px at 0% 100%, rgba(157, 119, 65, 0.06), transparent 60%),
+    var(--rb-bg);
+}
+
+html[data-rb-theme="light"] .rb-thread-terminal {
+  border-color: #d3c7b9;
+  background: #f7f2ea;
+}
+html[data-rb-theme="light"] .rb-thread-terminal-head {
+  background: #efe7db;
+  border-bottom-color: #d3c7b9;
+}
+html[data-rb-theme="light"] .rb-thread-terminal-lights span,
+html[data-rb-theme="light"] .rb-thread-terminal-title,
+html[data-rb-theme="light"] .rb-thread-terminal-meta,
+html[data-rb-theme="light"] .rb-thread-terminal-prefix,
+html[data-rb-theme="light"] .rb-thread-terminal-dim,
+html[data-rb-theme="light"] .rb-thread-terminal-summary span {
+  color: #8b7f72;
+}
+html[data-rb-theme="light"] .rb-thread-terminal-verb,
+html[data-rb-theme="light"] .rb-thread-terminal-text {
+  color: #2f241c;
+}
+html[data-rb-theme="light"] .rb-thread-terminal-divider { background: #d3c7b9; }
+html[data-rb-theme="light"] .rb-thread-terminal-status { border-color: #d7ccbd; background: rgba(0,0,0,0.02); }
+
+.rb-shell-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 10px;
+}
+
+.rb-shell-state-chip,
+.rb-theme-toggle {
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border: 1px solid var(--rb-line);
+  background: rgba(255,255,255,0.02);
+  color: var(--rb-ink-soft);
+}
+
+.rb-shell-state-chip-sub {
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: var(--rb-ink-mute);
+}
+
+.rb-theme-toggle { cursor: pointer; }
+.rb-theme-toggle:hover {
+  border-color: rgba(201, 166, 107, 0.4);
+  color: var(--rb-gold);
+}
+
+.rb-entry-shell {
+  max-width: 980px !important;
+  width: min(980px, calc(100vw - 40px));
+  padding: 34px 36px 36px !important;
+  background:
+    radial-gradient(900px 500px at 0% 0%, rgba(201, 166, 107, 0.06), transparent 58%),
+    radial-gradient(700px 460px at 100% 100%, rgba(192, 57, 43, 0.06), transparent 60%),
+    var(--rb-bg-elev);
+}
+
+.rb-ritual--flagship {
+  background:
+    radial-gradient(1200px 720px at 50% -10%, rgba(201, 166, 107, 0.05), transparent 60%),
+    radial-gradient(900px 540px at 100% 100%, rgba(192, 57, 43, 0.08), transparent 60%),
+    var(--rb-bg);
+}
+
+.rb-entry-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.rb-entry-kicker {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--rb-gold);
+}
+
+.rb-entry-intro {
+  max-width: 720px;
+  margin: -8px auto 22px;
+  font-family: var(--rb-serif);
+  font-size: 19px;
+  line-height: 1.42;
+  color: var(--rb-ink-soft);
+}
+
+.rb-entry-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--rb-line);
+  border: 1px solid var(--rb-line);
+  margin: 0 0 22px;
+}
+
+.rb-entry-stats--return { margin-top: 10px; }
+
+.rb-entry-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--rb-bg-elev-2);
+}
+
+.rb-entry-stat .label {
+  font-family: var(--rb-mono);
+  font-size: 7px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute);
+}
+
+.rb-entry-stat .value {
+  font-family: var(--rb-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--rb-ink-soft);
+}
+
+.rb-entry-chambers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 22px;
+}
+
+.rb-entry-chamber {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid var(--rb-line);
+  background: rgba(255,255,255,0.015);
+  cursor: pointer;
+  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.rb-entry-chamber:hover {
+  border-color: rgba(201, 166, 107, 0.28);
+  transform: translateY(-1px);
+}
+
+.rb-entry-chamber.active {
+  border-color: rgba(201, 166, 107, 0.42);
+  background: rgba(201, 166, 107, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(201, 166, 107, 0.14);
+}
+
+.rb-entry-chamber-kicker {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--rb-gold);
+}
+
+.rb-entry-chamber-title {
+  font-family: var(--rb-serif);
+  font-size: 17px;
+  color: var(--rb-ink);
+  letter-spacing: 0.03em;
+}
+
+.rb-entry-chamber-body {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  line-height: 1.55;
+  color: var(--rb-ink-soft);
+}
+
+html[data-rb-theme="light"] .rb-entry-shell {
+  background:
+    radial-gradient(900px 500px at 0% 0%, rgba(157, 119, 65, 0.07), transparent 58%),
+    radial-gradient(700px 460px at 100% 100%, rgba(159, 59, 45, 0.05), transparent 60%),
+    var(--rb-bg-elev);
+}
+
+html[data-rb-theme="light"] .rb-theme-toggle,
+html[data-rb-theme="light"] .rb-shell-state-chip {
+  background: rgba(0,0,0,0.025);
+}
+
+@media (max-width: 768px) {
+  .rb-entry-shell {
+    width: min(100vw - 20px, 980px);
+    padding: 24px 20px 24px !important;
+  }
+
+  .rb-entry-stats,
+  .rb-entry-chambers {
+    grid-template-columns: 1fr;
+  }
+
+  .rb-shell-actions {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+}

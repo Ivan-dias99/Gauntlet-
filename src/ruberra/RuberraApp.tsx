@@ -12,6 +12,7 @@ import { ErrorBoundary } from "./trust/ErrorBoundary";
 import { RuledPromptHost } from "./trust/RuledPrompt";
 import "./styles.css";
 import "./harvest.css";
+import "./flagship.css";
 import "./reforge-imports.css";
 
 type BootState =
@@ -19,24 +20,43 @@ type BootState =
   | { phase: "ready"; returning: boolean }
   | { phase: "fatal"; error: Error };
 
-function Inner({ returning }: { returning: boolean }) {
+type ThemeMode = "dark" | "light";
+
+function readInitialTheme(): ThemeMode {
+  if (typeof window === "undefined") return "dark";
+  const stored = window.localStorage.getItem("rb-theme");
+  return stored === "light" ? "light" : "dark";
+}
+
+function Inner({
+  returning,
+  theme,
+  onToggleTheme,
+}: {
+  returning: boolean;
+  theme: ThemeMode;
+  onToggleTheme: () => void;
+}) {
   const p = useProjection();
   const [entered, setEntered] = useState<boolean>(false);
 
   if (entered) {
-    return <Shell />;
+    return <Shell theme={theme} onToggleTheme={onToggleTheme} />;
   }
 
   return (
     <RitualEntry
       onEnter={() => setEntered(true)}
       returning={returning && !!p.activeRepo}
+      theme={theme}
+      onToggleTheme={onToggleTheme}
     />
   );
 }
 
 export default function RuberraApp() {
   const [boot, setBoot] = useState<BootState>({ phase: "booting" });
+  const [theme, setTheme] = useState<ThemeMode>(readInitialTheme);
 
   useEffect(() => {
     bootSpine()
@@ -46,6 +66,11 @@ export default function RuberraApp() {
       })
       .catch((err) => setBoot({ phase: "fatal", error: err as Error }));
   }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.rbTheme = theme;
+    window.localStorage.setItem("rb-theme", theme);
+  }, [theme]);
 
   if (boot.phase === "booting") {
     return (
@@ -76,7 +101,11 @@ export default function RuberraApp() {
   return (
     <ErrorBoundary label="Ruberra shell">
       <RuledPromptHost />
-      <Inner returning={boot.returning} />
+      <Inner
+        returning={boot.returning}
+        theme={theme}
+        onToggleTheme={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+      />
     </ErrorBoundary>
   );
 }

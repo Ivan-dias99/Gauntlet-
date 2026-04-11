@@ -15,6 +15,8 @@ import { SchoolChamber } from "../chambers/School";
 import { MemoryChamber } from "../chambers/Memory";
 import { ErrorBoundary } from "../trust/ErrorBoundary";
 
+type ThemeMode = "dark" | "light";
+
 const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
   | string
   | undefined;
@@ -28,7 +30,13 @@ const CHAMBERS: Array<{ id: "lab" | "school" | "creation" | "memory"; label: str
   { id: "memory", label: "Memory", gravity: "substrate" },
 ];
 
-export function Shell() {
+export function Shell({
+  theme,
+  onToggleTheme,
+}: {
+  theme: ThemeMode;
+  onToggleTheme: () => void;
+}) {
   const p = useProjection();
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
@@ -76,8 +84,6 @@ export function Shell() {
 
   const move = nextMove(p);
 
-  // Consequence context for topbar state indicator.
-  // Read from existing projection — no new state.
   const activeExecution =
     move === "executing"
       ? p.executions.find((x) => x.status === "running")
@@ -94,7 +100,6 @@ export function Shell() {
       ? "var(--rb-warn)"
       : "var(--rb-gold)";
 
-  // Spine-level ambient indicators — system depth at a glance.
   const canonCount = p.canon.filter(
     (c) => c.state === "hardened" && c.repo === p.activeRepo,
   ).length;
@@ -105,9 +110,6 @@ export function Shell() {
   const contradictionCount = p.contradictions.filter(
     (c) => !c.resolved && (!c.repo || c.repo === p.activeRepo),
   ).length;
-  // Pending artifact reviews — forge pressure signal for the Creation glyph.
-  // Scoped to activeThread only: Creation renders artifacts for that thread,
-  // so cross-thread pending artifacts produce an unreachable stuck indicator.
   const pendingArtifactCount = p.artifacts.filter(
     (a) =>
       a.review === "pending" &&
@@ -117,7 +119,6 @@ export function Shell() {
 
   return (
     <div className="rb-root">
-      {/* Backdrop for overlay rails on narrow screens */}
       <div
         className={`rb-rail-backdrop${backdropActive ? " active" : ""}`}
         onClick={closeRails}
@@ -125,7 +126,6 @@ export function Shell() {
       />
 
       <header className="rb-topbar">
-        {/* Narrow-screen toggle: threads (left rail) */}
         <button
           className="rb-rail-toggle"
           aria-label="Toggle threads panel"
@@ -145,7 +145,6 @@ export function Shell() {
         </div>
 
         <div className="rb-authority">
-          {/* Repo binding — git authority indicator */}
           <div className="rb-repo">
             {p.activeRepo ?? "unbound"}
             {p.activeRepo && gitStatus !== null && (
@@ -158,7 +157,6 @@ export function Shell() {
             )}
           </div>
 
-          {/* System spine — compressed ambient indicators */}
           <div className="rb-spine-indicators">
             <div className="rb-spine-cell" title="Operational state">
               <span className="rb-spine-label">state</span>
@@ -196,7 +194,17 @@ export function Shell() {
           </div>
         </div>
 
-        {/* Chamber glyphs — gravity regimes, not equal tabs */}
+        <div className="rb-shell-actions">
+          <div className="rb-shell-state-chip">
+            {move}
+            {activeExecution && <span className="rb-shell-state-chip-sub"> · {activeExecution.label.slice(0, 18)}</span>}
+            {!activeExecution && pendingCount > 0 && <span className="rb-shell-state-chip-sub"> · {pendingCount} review</span>}
+          </div>
+          <button className="rb-theme-toggle" onClick={onToggleTheme} type="button">
+            {theme === "dark" ? "Light" : "Dark"}
+          </button>
+        </div>
+
         <div className="rb-chambers" aria-label="Chamber regimes">
           {CHAMBERS.map((c) => (
             <button
@@ -217,7 +225,6 @@ export function Shell() {
           ))}
         </div>
 
-        {/* Narrow-screen toggle: canon (right rail) */}
         <button
           className="rb-rail-toggle"
           aria-label="Toggle canon panel"
