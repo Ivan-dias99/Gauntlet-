@@ -178,6 +178,8 @@ export interface Projection {
   syntheses: KnowledgeSynthesis[];
   drafts: DirectiveDraft[];          // W10: auto-drafted directive suggestions
   pioneers: PioneerAssignment[];     // W10: pioneer assignment ledger
+  handoffs: ExecutionHandoff[];      // W11: execution handoff chain
+  endorsements: CanonEndorsement[];  // W11: canon consensus endorsements
   chamber: "lab" | "school" | "creation" | "memory";
   missionFramed: boolean;
   lastEventId?: string;
@@ -197,6 +199,8 @@ const empty = (): Projection => ({
   syntheses: [],
   drafts: [],
   pioneers: [],
+  handoffs: [],
+  endorsements: [],
   chamber: "creation",
   missionFramed: false,
 });
@@ -526,6 +530,30 @@ export function project(events: RuberraEvent[]): Projection {
           assignment.active = false;
           assignment.releasedAt = ev.ts;
         }
+        break;
+      }
+      // ── W11: Multi-Agent Execution ────────────────────────────────────
+      case "execution.handoff": {
+        p.handoffs.push({
+          id: ev.id,
+          executionId: String(ev.payload.executionId ?? ""),
+          fromPioneer: ev.payload.fromPioneer as PioneerId,
+          toPioneer: ev.payload.toPioneer as PioneerId,
+          thread: ev.thread,
+          repo: ev.repo,
+          note: String(ev.payload.note ?? ""),
+          ts: ev.ts,
+        });
+        break;
+      }
+      case "canon.endorsed": {
+        p.endorsements.push({
+          id: ev.id,
+          canonId: String(ev.payload.canonId ?? ""),
+          pioneer: ev.payload.pioneer as PioneerId,
+          repo: ev.repo,
+          ts: ev.ts,
+        });
         break;
       }
     }
@@ -892,6 +920,31 @@ export interface PioneerAssignment {
   active: boolean;
 }
 
+// ── Multi-Agent Execution (W11) ───────────────────────────────────────────
+
+// An execution handoff records a pioneer transferring work to another pioneer.
+// This creates a chain of accountability: who did what, in what order.
+export interface ExecutionHandoff {
+  id: string;
+  executionId: string;
+  fromPioneer: PioneerId;
+  toPioneer: PioneerId;
+  thread?: string;
+  repo?: string;
+  note: string;         // why the handoff occurred
+  ts: number;
+}
+
+// A canon endorsement tracks multi-agent agreement on a proposed canon entry.
+// When enough pioneers endorse, the canon can be promoted via consensus.
+export interface CanonEndorsement {
+  id: string;
+  canonId: string;       // the canon.proposed or canon.hardened entry being endorsed
+  pioneer: PioneerId;    // who is endorsing
+  repo?: string;
+  ts: number;
+}
+
 export function threadSyntheses(
   p: Projection,
   threadId: string,
@@ -1081,4 +1134,143 @@ export function pioneerLoad(
     load.set(a.pioneer, (load.get(a.pioneer) ?? 0) + 1);
   }
   return load;
+}
+
+// ── Multi-Agent Execution — Execution Chains (W11) ────────────────────────
+
+// An execution chain is a sequence of handoffs on a given execution.
+// It shows the full handoff history: who ran it, who handed off to whom, and why.
+
+export interface ExecutionChainLink {
+  handoffId: string;
+  fromPioneer: PioneerId;
+  toPioneer: PioneerId;
+  note: string;
+  ts: number;
+}
+
+export interface ExecutionChain {
+  executionId: string;
+  executionLabel: string;
+  thread?: string;
+  links: ExecutionChainLink[];
+  currentPioneer?: PioneerId;  // the last toPioneer in the chain
+  handoffCount: number;
+}
+
+export function executionChain(
+  p: Projection,
+  executionId: string,
+): ExecutionChain | null {
+  const exec = p.executions.find((x) => x.id === executionId);
+  if (!exec) return null;
+
+  const links = p.handoffs
+    .filter((h) => h.executionId === executionId)
+    .sort((a, b) => a.ts - b.ts)
+    .map((h) => ({
+      handoffId: h.id,
+      fromPioneer: h.fromPioneer,
+      toPioneer: h.toPioneer,
+      note: h.note,
+      ts: h.ts,
+    }));
+
+  return {
+    executionId,
+    executionLabel: exec.label,
+    thread: exec.thread,
+    links,
+    currentPioneer: links.length > 0 ? links[links.length - 1].toPioneer : undefined,
+    handoffCount: links.length,
+  };
+}
+
+// Get all execution chains for a thread (only executions that have handoffs).
+export function threadExecutionChains(
+  p: Projection,
+  threadId: string,
+): ExecutionChain[] {
+  const threadExecs = p.executions.filter((x) => x.thread === threadId);
+  const chains: ExecutionChain[] = [];
+  for (const exec of threadExecs) {
+    const chain = executionChain(p, exec.id);
+    if (chain && chain.handoffCount > 0) {
+      chains.push(chain);
+    }
+  }
+  return chains;
+}
+
+// ── Multi-Agent Execution — Canon Consensus (W11) ─────────────────────────
+
+// Canon consensus tracks endorsements from multiple pioneers on a canon entry.
+// When a minimum number of distinct pioneers endorse the same canon, it reaches
+// consensus — a stronger form of truth.
+
+export const CONSENSUS_THRESHOLD = 2; // minimum endorsers to achieve consensus
+
+export interface CanonConsensus {
+  canonId: string;
+  canonText: string;
+  endorsers: PioneerId[];
+  endorsementCount: number;
+  hasConsensus: boolean;
+  repo?: string;
+}
+
+export function canonConsensus(
+  p: Projection,
+  canonId: string,
+): CanonConsensus | null {
+  const canon = p.canon.find((c) => c.id === canonId);
+  if (!canon) return null;
+
+  // Deduplicate endorsements by pioneer (same pioneer can only count once).
+  const endorserSet = new Set<PioneerId>();
+  for (const e of p.endorsements) {
+    if (e.canonId === canonId) {
+      endorserSet.add(e.pioneer);
+    }
+  }
+  const endorsers = Array.from(endorserSet);
+
+  return {
+    canonId,
+    canonText: canon.text,
+    endorsers,
+    endorsementCount: endorsers.length,
+    hasConsensus: endorsers.length >= CONSENSUS_THRESHOLD,
+    repo: canon.repo,
+  };
+}
+
+// Get all canon entries that have reached consensus.
+export function consensusCanon(p: Projection): CanonConsensus[] {
+  const results: CanonConsensus[] = [];
+  const seen = new Set<string>();
+  for (const e of p.endorsements) {
+    if (seen.has(e.canonId)) continue;
+    seen.add(e.canonId);
+    const consensus = canonConsensus(p, e.canonId);
+    if (consensus && consensus.hasConsensus) {
+      results.push(consensus);
+    }
+  }
+  return results;
+}
+
+// Get all endorsed canon entries (including those below threshold).
+export function endorsedCanon(p: Projection): CanonConsensus[] {
+  const results: CanonConsensus[] = [];
+  const seen = new Set<string>();
+  for (const e of p.endorsements) {
+    if (seen.has(e.canonId)) continue;
+    seen.add(e.canonId);
+    const consensus = canonConsensus(p, e.canonId);
+    if (consensus) {
+      results.push(consensus);
+    }
+  }
+  return results.sort((a, b) => b.endorsementCount - a.endorsementCount);
 }

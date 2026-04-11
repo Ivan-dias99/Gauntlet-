@@ -468,6 +468,45 @@ export const emit = {
     );
   },
 
+  // ── W11: Multi-Agent Execution ──────────────────────────────────────────
+
+  handoffExecution: (
+    executionId: string,
+    fromPioneer: string,
+    toPioneer: string,
+    note: string,
+  ) => {
+    const p = cached ?? project(all());
+    const exec = p.executions.find((x) => x.id === executionId);
+    if (!exec) throw new Error("Handoff refused: execution not found");
+    if (exec.status !== "running") throw new Error("Handoff refused: execution not running");
+    if (!note.trim()) throw new Error("Handoff refused: note required");
+    if (fromPioneer === toPioneer) throw new Error("Handoff refused: cannot hand off to the same pioneer");
+    return append(
+      "execution.handoff",
+      { executionId, fromPioneer, toPioneer, note: note.trim() },
+      { thread: exec.thread, repo: requireRepo() },
+    );
+  },
+
+  endorseCanon: (canonId: string, pioneer: string) => {
+    const repo = requireRepo();
+    const p = cached ?? project(all());
+    const canon = p.canon.find((c) => c.id === canonId);
+    if (!canon) throw new Error("Endorsement refused: canon entry not found");
+    if (canon.state !== "hardened") throw new Error("Endorsement refused: canon must be hardened");
+    // Prevent duplicate endorsements from the same pioneer.
+    const existing = p.endorsements.find(
+      (e) => e.canonId === canonId && e.pioneer === pioneer,
+    );
+    if (existing) throw new Error("Endorsement refused: already endorsed by this pioneer");
+    return append(
+      "canon.endorsed",
+      { canonId, pioneer },
+      { repo },
+    );
+  },
+
   raw: (type: EventType, payload: Record<string, unknown> = {}) =>
     append(type, payload),
 

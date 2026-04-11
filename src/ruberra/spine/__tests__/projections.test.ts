@@ -866,3 +866,167 @@ describe("pioneerLoad()", () => {
     expect(load.get("claude")).toBeUndefined();
   });
 });
+
+// ── W11: Multi-Agent Execution ────────────────────────────────────────────
+
+import {
+  executionChain,
+  threadExecutionChains,
+  canonConsensus,
+  consensusCanon,
+  endorsedCanon,
+  CONSENSUS_THRESHOLD,
+} from "../projections";
+
+describe("execution.handoff event", () => {
+  it("projects a handoff between pioneers", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const dir = ev("directive.accepted", { text: "do it", scope: "all", risk: "reversible", acceptance: "done" }, { thread: t.id, repo: "r" });
+    const exec = ev("execution.started", { label: "run", directiveId: dir.id }, { thread: t.id, repo: "r" });
+    const handoff = ev(
+      "execution.handoff",
+      { executionId: exec.id, fromPioneer: "claude", toPioneer: "codex", note: "handing off for review" },
+      { thread: t.id, repo: "r" },
+    );
+    const p = project([repo, t, dir, exec, handoff]);
+    expect(p.handoffs).toHaveLength(1);
+    expect(p.handoffs[0].fromPioneer).toBe("claude");
+    expect(p.handoffs[0].toPioneer).toBe("codex");
+    expect(p.handoffs[0].note).toBe("handing off for review");
+  });
+});
+
+describe("canon.endorsed event", () => {
+  it("projects a canon endorsement", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const canon = ev("canon.hardened", { text: "truth statement" }, { repo: "r" });
+    const endorse = ev("canon.endorsed", { canonId: canon.id, pioneer: "claude" }, { repo: "r" });
+    const p = project([repo, canon, endorse]);
+    expect(p.endorsements).toHaveLength(1);
+    expect(p.endorsements[0].canonId).toBe(canon.id);
+    expect(p.endorsements[0].pioneer).toBe("claude");
+  });
+});
+
+describe("executionChain()", () => {
+  it("returns null for non-existent execution", () => {
+    const p = project([]);
+    expect(executionChain(p, "bogus")).toBeNull();
+  });
+
+  it("returns empty chain for execution with no handoffs", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const dir = ev("directive.accepted", { text: "build", scope: "all", risk: "reversible", acceptance: "ok" }, { thread: t.id, repo: "r" });
+    const exec = ev("execution.started", { label: "build", directiveId: dir.id }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, dir, exec]);
+    const chain = executionChain(p, exec.id);
+    expect(chain).not.toBeNull();
+    expect(chain!.handoffCount).toBe(0);
+    expect(chain!.currentPioneer).toBeUndefined();
+  });
+
+  it("tracks multi-step handoff chain", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const dir = ev("directive.accepted", { text: "build", scope: "all", risk: "reversible", acceptance: "ok" }, { thread: t.id, repo: "r" });
+    const exec = ev("execution.started", { label: "build", directiveId: dir.id }, { thread: t.id, repo: "r" });
+    const h1 = ev("execution.handoff", { executionId: exec.id, fromPioneer: "claude", toPioneer: "codex", note: "step 1" }, { thread: t.id, repo: "r" });
+    const h2 = ev("execution.handoff", { executionId: exec.id, fromPioneer: "codex", toPioneer: "cursor", note: "step 2" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, dir, exec, h1, h2]);
+    const chain = executionChain(p, exec.id);
+    expect(chain!.handoffCount).toBe(2);
+    expect(chain!.currentPioneer).toBe("cursor");
+    expect(chain!.links[0].fromPioneer).toBe("claude");
+    expect(chain!.links[1].fromPioneer).toBe("codex");
+  });
+});
+
+describe("threadExecutionChains()", () => {
+  it("returns only executions with handoffs", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const d1 = ev("directive.accepted", { text: "a", scope: "all", risk: "reversible", acceptance: "ok" }, { thread: t.id, repo: "r" });
+    const e1 = ev("execution.started", { label: "e1", directiveId: d1.id }, { thread: t.id, repo: "r" });
+    const d2 = ev("directive.accepted", { text: "b", scope: "all", risk: "reversible", acceptance: "ok" }, { thread: t.id, repo: "r" });
+    const e2 = ev("execution.started", { label: "e2", directiveId: d2.id }, { thread: t.id, repo: "r" });
+    const h = ev("execution.handoff", { executionId: e1.id, fromPioneer: "claude", toPioneer: "codex", note: "review" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, d1, e1, d2, e2, h]);
+    const chains = threadExecutionChains(p, t.id);
+    expect(chains).toHaveLength(1);
+    expect(chains[0].executionId).toBe(e1.id);
+  });
+});
+
+describe("canonConsensus()", () => {
+  it("returns null for non-existent canon", () => {
+    const p = project([]);
+    expect(canonConsensus(p, "bogus")).toBeNull();
+  });
+
+  it("tracks endorsements from distinct pioneers", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const canon = ev("canon.hardened", { text: "truth" }, { repo: "r" });
+    const e1 = ev("canon.endorsed", { canonId: canon.id, pioneer: "claude" }, { repo: "r" });
+    const e2 = ev("canon.endorsed", { canonId: canon.id, pioneer: "codex" }, { repo: "r" });
+    const p = project([repo, canon, e1, e2]);
+    const c = canonConsensus(p, canon.id);
+    expect(c).not.toBeNull();
+    expect(c!.endorsementCount).toBe(2);
+    expect(c!.hasConsensus).toBe(true);
+    expect(c!.endorsers).toContain("claude");
+    expect(c!.endorsers).toContain("codex");
+  });
+
+  it("deduplicates same pioneer endorsing twice", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const canon = ev("canon.hardened", { text: "truth" }, { repo: "r" });
+    const e1 = ev("canon.endorsed", { canonId: canon.id, pioneer: "claude" }, { repo: "r" });
+    const e2 = ev("canon.endorsed", { canonId: canon.id, pioneer: "claude" }, { repo: "r" });
+    const p = project([repo, canon, e1, e2]);
+    const c = canonConsensus(p, canon.id);
+    expect(c!.endorsementCount).toBe(1);
+    expect(c!.hasConsensus).toBe(false);
+  });
+
+  it("respects CONSENSUS_THRESHOLD", () => {
+    expect(CONSENSUS_THRESHOLD).toBe(2);
+  });
+});
+
+describe("consensusCanon()", () => {
+  it("returns only canon entries that reached consensus", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const c1 = ev("canon.hardened", { text: "truth one" }, { repo: "r" });
+    const c2 = ev("canon.hardened", { text: "truth two" }, { repo: "r" });
+    // c1 gets 2 endorsers → consensus
+    const e1a = ev("canon.endorsed", { canonId: c1.id, pioneer: "claude" }, { repo: "r" });
+    const e1b = ev("canon.endorsed", { canonId: c1.id, pioneer: "codex" }, { repo: "r" });
+    // c2 gets only 1 → no consensus
+    const e2a = ev("canon.endorsed", { canonId: c2.id, pioneer: "claude" }, { repo: "r" });
+    const p = project([repo, c1, c2, e1a, e1b, e2a]);
+    const consensus = consensusCanon(p);
+    expect(consensus).toHaveLength(1);
+    expect(consensus[0].canonId).toBe(c1.id);
+  });
+});
+
+describe("endorsedCanon()", () => {
+  it("returns all endorsed canon sorted by endorsement count", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const c1 = ev("canon.hardened", { text: "high endorsement" }, { repo: "r" });
+    const c2 = ev("canon.hardened", { text: "low endorsement" }, { repo: "r" });
+    const e1a = ev("canon.endorsed", { canonId: c1.id, pioneer: "claude" }, { repo: "r" });
+    const e1b = ev("canon.endorsed", { canonId: c1.id, pioneer: "codex" }, { repo: "r" });
+    const e1c = ev("canon.endorsed", { canonId: c1.id, pioneer: "cursor" }, { repo: "r" });
+    const e2a = ev("canon.endorsed", { canonId: c2.id, pioneer: "claude" }, { repo: "r" });
+    const p = project([repo, c1, c2, e1a, e1b, e1c, e2a]);
+    const endorsed = endorsedCanon(p);
+    expect(endorsed).toHaveLength(2);
+    expect(endorsed[0].canonId).toBe(c1.id);
+    expect(endorsed[0].endorsementCount).toBe(3);
+    expect(endorsed[1].canonId).toBe(c2.id);
+    expect(endorsed[1].endorsementCount).toBe(1);
+  });
+});

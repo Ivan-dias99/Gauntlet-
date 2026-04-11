@@ -37,6 +37,8 @@ export type EventType =
   | "directive.drafted"      // W10: autonomous draft — system suggests a directive from concept + canon
   | "pioneer.assigned"       // W10: pioneer bound to a thread or directive for execution
   | "pioneer.released"       // W10: pioneer released from assignment
+  | "execution.handoff"      // W11: pioneer hands execution to another pioneer
+  | "canon.endorsed"         // W11: pioneer endorses a canon proposal, building consensus
   | "chamber.entered";
 
 export interface RuberraEvent {
