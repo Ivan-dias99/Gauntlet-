@@ -2714,3 +2714,100 @@ html, body, #root {
   border: 1px solid rgba(201, 166, 107, 0.15);
   color: var(--rb-ink-soft);
 }
+
+/* ── W11: Execution Handoff Chains ────────────────────────────────────── */
+
+.rb-chain-surface {
+  margin: 16px 0;
+  padding: 14px;
+  background: rgba(142, 201, 107, 0.03);
+  border: 1px solid rgba(142, 201, 107, 0.12);
+  border-left: 3px solid rgba(142, 201, 107, 0.35);
+}
+
+.rb-chain-surface-title {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #8ec96b;
+  margin-bottom: 12px;
+}
+
+.rb-chain-card {
+  padding: 10px;
+  margin-bottom: 8px;
+  background: rgba(142, 201, 107, 0.04);
+  border: 1px solid rgba(142, 201, 107, 0.1);
+}
+
+.rb-chain-card-label {
+  font-family: var(--rb-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--rb-ink);
+  margin-bottom: 8px;
+}
+
+.rb-chain-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rb-chain-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--rb-mono);
+  font-size: 10px;
+}
+
+.rb-chain-link-arrow {
+  color: rgba(142, 201, 107, 0.6);
+  font-size: 8px;
+}
+
+.rb-chain-link-from, .rb-chain-link-to {
+  color: var(--rb-ink-soft);
+  font-weight: 600;
+}
+
+.rb-chain-link-note {
+  color: var(--rb-ink-mute);
+  font-style: italic;
+}
+
+.rb-chain-current {
+  margin-top: 6px;
+  font-family: var(--rb-mono);
+  font-size: 9px;
+  color: rgba(142, 201, 107, 0.7);
+}
+
+/* ── W11: Consensus Badge ─────────────────────────────────────────────── */
+
+.rb-canon-entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rb-consensus-badge {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  padding: 1px 6px;
+  background: rgba(201, 166, 107, 0.08);
+  border: 1px solid rgba(201, 166, 107, 0.15);
+  color: var(--rb-ink-mute);
+}
+
+.rb-consensus-badge.consensus {
+  background: rgba(107, 201, 142, 0.1);
+  border-color: rgba(107, 201, 142, 0.25);
+  color: #6bc98e;
+  font-weight: 600;
+}

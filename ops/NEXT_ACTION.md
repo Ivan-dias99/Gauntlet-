@@ -2,21 +2,20 @@
 
 ## Current Wave
 
-WAVE 10 — Autonomous Flow
+WAVE 11 — Multi-Agent Execution
 
 ## Status
 
-- W09-SPINE-RESONANCE: claude — DONE
-- W09-B01 (Synthesis Surface): claude — DONE
-- W09-B02 (Inheritance Signal): claude — DONE
-- W09-B03 (Verification Gate): codex — DONE (PR #104)
 - W10-B01 (Autonomous Flow Spine): copilot — DONE
 - W10-B02 (Flow Surfaces): copilot — DONE
-- W10-B03 (Verification Gate): ELIGIBLE
+- W10-B03 (Verification Gate): copilot — DONE
+- W11-B01 (Multi-Agent Execution Spine): copilot — DONE
+- W11-B02 (Execution + Consensus Surfaces): copilot — DONE
+- W11-B03 (Verification Gate): ELIGIBLE
 
 ## Next Eligible
 
-W10-B03 — Verify autonomous flow surfaces are operational.
+W11-B03 — Verify execution chains and consensus canon surfaces are operational.
 
 ## Relay Rule
 

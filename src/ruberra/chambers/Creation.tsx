@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { emit, useProjection } from "../spine/store";
-import { revokedCanonWithDependents, conceptAncestry, directiveDrafts, activePioneers } from "../spine/projections";
+import { revokedCanonWithDependents, conceptAncestry, directiveDrafts, activePioneers, threadExecutionChains } from "../spine/projections";
 import type { DraftSuggestion } from "../spine/projections";
 import { runRuntime } from "../spine/runtime-fabric";
 import { Unavailable } from "../trust/Unavailable";
@@ -400,6 +400,36 @@ export function CreationChamber() {
             <h2>Execution Trace</h2>
             {executions.length === 0 ? <div className="rb-unavail"><strong>no executions</strong></div> : <ul className="rb-list">{executions.slice().reverse().map((x) => <li key={x.id} className="rb-exec-timeline-entry"><div className="rb-exec-timeline-row"><span className={`rb-exec-timeline-dot ${x.status === "succeeded" ? "ok" : x.status === "failed" ? "bad" : "running"}`} /><span className={`rb-badge ${x.status === "succeeded" ? "ok" : x.status === "failed" ? "bad" : "warn"}`}>{x.status}</span><span className="rb-exec-timeline-label">{x.label}</span></div><div className="rb-exec-timeline-meta"><span className="rb-exec-timeline-ts">{new Date(x.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>{x.endedAt && <span className="rb-exec-timeline-duration">{Math.round((x.endedAt - x.startedAt) / 1000)}s</span>}</div>{x.reason && <div className="rb-exec-timeline-reason">↳ {x.reason}</div>}{x.status === "failed" && <button className="rb-exec-retry-btn" onClick={() => emit.retryExecution(x.id)}>Retry</button>}</li>)}</ul>}
           </div>
+
+          {/* W11: Execution Handoff Chains */}
+          {(() => {
+            const chains = threadExecutionChains(p, activeThread.id);
+            if (chains.length === 0) return null;
+            return (
+              <div className="rb-chain-surface">
+                <div className="rb-chain-surface-title">Handoff Chains · {chains.length}</div>
+                {chains.map((chain) => (
+                  <div key={chain.executionId} className="rb-chain-card">
+                    <div className="rb-chain-card-label">{chain.executionLabel}</div>
+                    <div className="rb-chain-links">
+                      {chain.links.map((link, i) => (
+                        <div key={link.handoffId} className="rb-chain-link">
+                          <span className="rb-chain-link-arrow">{i === 0 ? "⬤" : "→"}</span>
+                          <span className="rb-chain-link-from">{link.fromPioneer}</span>
+                          <span className="rb-chain-link-arrow">→</span>
+                          <span className="rb-chain-link-to">{link.toPioneer}</span>
+                          <span className="rb-chain-link-note">{link.note.length > 40 ? link.note.slice(0, 40) + "…" : link.note}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {chain.currentPioneer && (
+                      <div className="rb-chain-current">current: <strong>{chain.currentPioneer}</strong></div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {(() => {
             const pending = artifacts.filter((a) => a.review === "pending");

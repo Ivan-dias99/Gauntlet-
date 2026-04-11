@@ -3,6 +3,7 @@
 // On narrow screens: rendered as an overlay rail; open/onClose driven by Shell.
 
 import { useProjection } from "../spine/store";
+import { canonConsensus } from "../spine/projections";
 import { useIsMobile } from "./use-mobile";
 
 interface Props {
@@ -71,14 +72,24 @@ export function CanonRibbon({ open, onClose }: Props) {
         </div>
       ) : (
         <div className="rb-canon-list">
-          {canon.map((c) => (
-            <div key={c.id} className="rb-canon-entry">
-              <span className="rb-canon-entry-text">{c.text}</span>
-              <span className="rb-canon-entry-provenance">
-                hardened · {timeAgo(c.hardenedAt)}
-              </span>
-            </div>
-          ))}
+          {canon.map((c) => {
+            const consensus = canonConsensus(p, c.id);
+            return (
+              <div key={c.id} className="rb-canon-entry">
+                <span className="rb-canon-entry-text">{c.text}</span>
+                <div className="rb-canon-entry-meta">
+                  <span className="rb-canon-entry-provenance">
+                    hardened · {timeAgo(c.hardenedAt)}
+                  </span>
+                  {consensus && consensus.endorsementCount > 0 && (
+                    <span className={`rb-consensus-badge${consensus.hasConsensus ? " consensus" : ""}`}>
+                      {consensus.hasConsensus ? "✦ consensus" : `${consensus.endorsementCount} endorsed`}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
