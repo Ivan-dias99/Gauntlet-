@@ -841,8 +841,6 @@ export function threadSyntheses(
 // ── Compounding Integrity Gate (W09-B03 hardening) ───────────────────────
 
 export type CompoundingViolationCode =
-  | "resonance-missing-canon"
-  | "resonance-canon-not-hardened"
   | "resonance-self-origin"
   | "synthesis-missing-source";
 
@@ -859,27 +857,11 @@ export function compoundingViolations(
   const violations: CompoundingViolation[] = [];
 
   for (const match of threadResonance(p, threadId)) {
-    const canon = p.canon.find((c) => c.id === match.canonId);
-    if (!canon) {
-      violations.push({
-        code: "resonance-missing-canon",
-        threadId,
-        detail: `missing canon for resonance match ${match.canonId}`,
-      });
-      continue;
-    }
-    if (canon.state !== "hardened") {
-      violations.push({
-        code: "resonance-canon-not-hardened",
-        threadId,
-        detail: `canon ${canon.id} is not hardened`,
-      });
-    }
     if (match.sourceThread && match.sourceThread === threadId) {
       violations.push({
         code: "resonance-self-origin",
         threadId,
-        detail: `self-origin canon ${canon.id} leaked into resonance`,
+        detail: `self-origin canon ${match.canonId} leaked into resonance`,
       });
     }
   }

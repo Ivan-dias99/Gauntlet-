@@ -658,6 +658,11 @@ describe("W09-B03 verification gate", () => {
     const p = project([repo, sourceThread, targetThread, sourceMemory, sourceCanon]);
     const matches = threadResonance(p, targetThread.id);
     expect(matches.length).toBeGreaterThan(0);
+    for (const match of matches) {
+      expect([repo, sourceThread, targetThread, sourceMemory, sourceCanon].some((e) =>
+        e.id === match.canonId && e.type === "canon.hardened",
+      )).toBe(true);
+    }
     expect(compoundingViolations(p, targetThread.id)).toEqual([]);
   });
 
