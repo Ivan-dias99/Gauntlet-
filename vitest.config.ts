@@ -7,7 +7,11 @@ export default defineConfig({
   test: {
     // Default environment for pure TS tests (spine logic)
     environment: "node",
-    include: ["src/**/__tests__/**/*.test.ts", "src/**/__tests__/**/*.test.tsx"],
+    include: [
+      "src/**/__tests__/**/*.test.ts",
+      "src/**/__tests__/**/*.test.tsx",
+      "tests/**/*.test.ts",
+    ],
     globals: true,
     environmentMatchGlobs: [
       // Component render tests need DOM

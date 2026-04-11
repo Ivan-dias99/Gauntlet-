@@ -10,3 +10,5 @@ dist-ssr/
 .vercel
 test-results/
 playwright-report/
+ops/CODEX_LOOP_STATE.json
+ops/CODEX_LOOP_STATE.log

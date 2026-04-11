@@ -9,7 +9,12 @@
     "backend": "node exec-backend/index.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "lane:codex:probe": "node ops/restart_codex_lane.mjs",
+    "lane:codex:watch": "node ops/restart_codex_lane.mjs --watch --interval=30",
+    "lane:codex:auto": "node ops/restart_codex_lane.mjs --watch --interval=30 --auto-exec",
+    "lane:codex:loop": "node ops/restart_codex_lane.mjs --watch --interval=30 --auto-exec --output=ops/CODEX_LOOP_STATE.json",
+    "wave:w02:verify": "node ops/wave02_verify_gate.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
