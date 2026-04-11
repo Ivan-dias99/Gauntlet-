@@ -3,7 +3,17 @@
 // Each test builds a minimal event log and asserts projection shape.
 
 import { describe, it, expect } from "vitest";
-import { project, threadResonance, conceptAncestry, threadSyntheses } from "../projections";
+import {
+  project,
+  threadResonance,
+  conceptAncestry,
+  threadSyntheses,
+  pendingProposals,
+  activeFlow,
+  nextFlowStep,
+  directiveAgent,
+  repoAgents,
+} from "../projections";
 import { RuberraEvent } from "../events";
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -628,5 +638,249 @@ describe("threadSyntheses", () => {
     const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
     const p = project([repo, t]);
     expect(threadSyntheses(p, t.id)).toHaveLength(0);
+  });
+});
+
+// ── W10: directive.proposed ─────────────────────────────────────────────
+
+describe("directive.proposed (W10)", () => {
+  function baseWithThread() {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "build auth" }, { repo: "r" });
+    return { repo, t };
+  }
+
+  it("creates a pending proposal in projection", () => {
+    const { repo, t } = baseWithThread();
+    const prop = ev(
+      "directive.proposed",
+      { text: "add token refresh", scope: "src/auth", risk: "reversible", rationale: "tokens expire", proposedBy: "claude" },
+      { thread: t.id, repo: "r" },
+    );
+    const p = project([repo, t, prop]);
+    expect(p.proposals).toHaveLength(1);
+    expect(p.proposals[0].text).toBe("add token refresh");
+    expect(p.proposals[0].status).toBe("pending");
+    expect(p.proposals[0].proposedBy).toBe("claude");
+    expect(p.proposals[0].rationale).toBe("tokens expire");
+  });
+
+  it("proposal.accepted marks status", () => {
+    const { repo, t } = baseWithThread();
+    const prop = ev(
+      "directive.proposed",
+      { text: "refactor login", scope: "src/auth", risk: "reversible", rationale: "code smell", proposedBy: "system" },
+      { thread: t.id, repo: "r" },
+    );
+    const accept = ev("proposal.accepted", { proposalId: prop.id }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, prop, accept]);
+    expect(p.proposals[0].status).toBe("accepted");
+  });
+
+  it("proposal.dismissed marks status with reason", () => {
+    const { repo, t } = baseWithThread();
+    const prop = ev(
+      "directive.proposed",
+      { text: "add logging", scope: "src", risk: "reversible", rationale: "observability", proposedBy: "agent-1" },
+      { thread: t.id, repo: "r" },
+    );
+    const dismiss = ev("proposal.dismissed", { proposalId: prop.id, reason: "not needed now" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, prop, dismiss]);
+    expect(p.proposals[0].status).toBe("dismissed");
+    expect(p.proposals[0].dismissReason).toBe("not needed now");
+  });
+
+  it("pendingProposals filters correctly", () => {
+    const { repo, t } = baseWithThread();
+    const p1 = ev("directive.proposed", { text: "a", scope: "s", risk: "reversible", rationale: "r", proposedBy: "x" }, { thread: t.id, repo: "r" });
+    const p2 = ev("directive.proposed", { text: "b", scope: "s", risk: "reversible", rationale: "r", proposedBy: "y" }, { thread: t.id, repo: "r" });
+    const dismiss = ev("proposal.dismissed", { proposalId: p1.id, reason: "no" }, { thread: t.id, repo: "r" });
+    const proj = project([repo, t, p1, p2, dismiss]);
+    expect(pendingProposals(proj, t.id)).toHaveLength(1);
+    expect(pendingProposals(proj, t.id)[0].text).toBe("b");
+  });
+
+  it("empty projection has empty proposals", () => {
+    const p = project([]);
+    expect(p.proposals).toHaveLength(0);
+  });
+});
+
+// ── W10: flow engine ────────────────────────────────────────────────────
+
+describe("flow engine (W10)", () => {
+  function baseWithThread() {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "deploy pipeline" }, { repo: "r" });
+    return { repo, t };
+  }
+
+  it("flow.defined creates an active flow with steps", () => {
+    const { repo, t } = baseWithThread();
+    const steps = [
+      { directiveText: "run tests", scope: "src", risk: "reversible" },
+      { directiveText: "build", scope: "dist", risk: "reversible" },
+      { directiveText: "deploy", scope: "infra", risk: "destructive" },
+    ];
+    const f = ev("flow.defined", { name: "deploy flow", steps }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, f]);
+    expect(p.flows).toHaveLength(1);
+    expect(p.flows[0].name).toBe("deploy flow");
+    expect(p.flows[0].status).toBe("active");
+    expect(p.flows[0].steps).toHaveLength(3);
+    expect(p.flows[0].currentStep).toBe(0);
+    expect(p.flows[0].steps[0].status).toBe("pending");
+    expect(p.flows[0].steps[2].risk).toBe("destructive");
+  });
+
+  it("flow.step.completed advances currentStep", () => {
+    const { repo, t } = baseWithThread();
+    const steps = [
+      { directiveText: "step 1", scope: "src", risk: "reversible" },
+      { directiveText: "step 2", scope: "src", risk: "reversible" },
+    ];
+    const f = ev("flow.defined", { name: "test flow", steps }, { thread: t.id, repo: "r" });
+    const stepDone = ev("flow.step.completed", { flowId: f.id, stepIndex: 0, outcome: "succeeded" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, f, stepDone]);
+    expect(p.flows[0].steps[0].status).toBe("succeeded");
+    expect(p.flows[0].currentStep).toBe(1);
+    expect(p.flows[0].steps[1].status).toBe("pending");
+  });
+
+  it("flow.step.completed with failure marks step as failed", () => {
+    const { repo, t } = baseWithThread();
+    const steps = [{ directiveText: "risky step", scope: "src", risk: "destructive" }];
+    const f = ev("flow.defined", { name: "risky", steps }, { thread: t.id, repo: "r" });
+    const stepFail = ev("flow.step.completed", { flowId: f.id, stepIndex: 0, outcome: "failed" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, f, stepFail]);
+    expect(p.flows[0].steps[0].status).toBe("failed");
+  });
+
+  it("flow.completed marks flow as completed", () => {
+    const { repo, t } = baseWithThread();
+    const steps = [{ directiveText: "only step", scope: "src", risk: "reversible" }];
+    const f = ev("flow.defined", { name: "simple", steps }, { thread: t.id, repo: "r" });
+    const stepDone = ev("flow.step.completed", { flowId: f.id, stepIndex: 0, outcome: "succeeded" }, { thread: t.id, repo: "r" });
+    const done = ev("flow.completed", { flowId: f.id, outcome: "completed" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, f, stepDone, done]);
+    expect(p.flows[0].status).toBe("completed");
+  });
+
+  it("flow.completed with abort marks flow as aborted", () => {
+    const { repo, t } = baseWithThread();
+    const steps = [{ directiveText: "abandoned", scope: "src", risk: "reversible" }];
+    const f = ev("flow.defined", { name: "abort test", steps }, { thread: t.id, repo: "r" });
+    const abort = ev("flow.completed", { flowId: f.id, outcome: "aborted" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, f, abort]);
+    expect(p.flows[0].status).toBe("aborted");
+  });
+
+  it("activeFlow returns the active flow for a thread", () => {
+    const { repo, t } = baseWithThread();
+    const steps = [{ directiveText: "step", scope: "src", risk: "reversible" }];
+    const f = ev("flow.defined", { name: "my flow", steps }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, f]);
+    const flow = activeFlow(p, t.id);
+    expect(flow).toBeDefined();
+    expect(flow!.name).toBe("my flow");
+  });
+
+  it("activeFlow returns undefined for completed flows", () => {
+    const { repo, t } = baseWithThread();
+    const steps = [{ directiveText: "step", scope: "src", risk: "reversible" }];
+    const f = ev("flow.defined", { name: "done", steps }, { thread: t.id, repo: "r" });
+    const done = ev("flow.completed", { flowId: f.id, outcome: "completed" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, f, done]);
+    expect(activeFlow(p, t.id)).toBeUndefined();
+  });
+
+  it("nextFlowStep returns the first pending step", () => {
+    const { repo, t } = baseWithThread();
+    const steps = [
+      { directiveText: "a", scope: "src", risk: "reversible" },
+      { directiveText: "b", scope: "src", risk: "reversible" },
+    ];
+    const f = ev("flow.defined", { name: "multi", steps }, { thread: t.id, repo: "r" });
+    const stepDone = ev("flow.step.completed", { flowId: f.id, stepIndex: 0, outcome: "succeeded" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, f, stepDone]);
+    const next = nextFlowStep(p.flows[0]);
+    expect(next).toBeDefined();
+    expect(next!.directiveText).toBe("b");
+  });
+
+  it("empty projection has empty flows", () => {
+    const p = project([]);
+    expect(p.flows).toHaveLength(0);
+  });
+});
+
+// ── W10: agent registry ─────────────────────────────────────────────────
+
+describe("agent registry (W10)", () => {
+  function baseWithThread() {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "multi-agent work" }, { repo: "r" });
+    return { repo, t };
+  }
+
+  it("agent.registered creates agent entry", () => {
+    const { repo } = baseWithThread();
+    const a = ev("agent.registered", { name: "claude", capabilities: ["execute", "propose"] }, { repo: "r" });
+    const p = project([repo, a]);
+    expect(p.agents).toHaveLength(1);
+    expect(p.agents[0].name).toBe("claude");
+    expect(p.agents[0].capabilities).toEqual(["execute", "propose"]);
+  });
+
+  it("agent.assigned creates assignment entry", () => {
+    const { repo, t } = baseWithThread();
+    const agent = ev("agent.registered", { name: "builder", capabilities: ["execute"] }, { repo: "r" });
+    const d = ev("directive.accepted", { text: "do work", scope: "src", risk: "reversible", acceptance: "ok" }, { thread: t.id, repo: "r" });
+    const assign = ev("agent.assigned", { directiveId: d.id, agentId: agent.id }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, agent, d, assign]);
+    expect(p.assignments).toHaveLength(1);
+    expect(p.assignments[0].directiveId).toBe(d.id);
+    expect(p.assignments[0].agentId).toBe(agent.id);
+  });
+
+  it("directiveAgent resolves assignment to agent", () => {
+    const { repo, t } = baseWithThread();
+    const agent = ev("agent.registered", { name: "codex", capabilities: ["execute", "review"] }, { repo: "r" });
+    const d = ev("directive.accepted", { text: "audit code", scope: "src", risk: "reversible", acceptance: "clean" }, { thread: t.id, repo: "r" });
+    const assign = ev("agent.assigned", { directiveId: d.id, agentId: agent.id }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, agent, d, assign]);
+    const resolved = directiveAgent(p, d.id);
+    expect(resolved).toBeDefined();
+    expect(resolved!.name).toBe("codex");
+  });
+
+  it("directiveAgent returns undefined with no assignment", () => {
+    const { repo, t } = baseWithThread();
+    const d = ev("directive.accepted", { text: "unassigned", scope: "src", risk: "reversible", acceptance: "ok" }, { thread: t.id, repo: "r" });
+    const p = project([repo, t, d]);
+    expect(directiveAgent(p, d.id)).toBeUndefined();
+  });
+
+  it("repoAgents returns agents for a repo", () => {
+    const { repo } = baseWithThread();
+    const a1 = ev("agent.registered", { name: "claude", capabilities: ["execute"] }, { repo: "r" });
+    const a2 = ev("agent.registered", { name: "codex", capabilities: ["review"] }, { repo: "r" });
+    const p = project([repo, a1, a2]);
+    expect(repoAgents(p, "r")).toHaveLength(2);
+  });
+
+  it("multiple agents with different capabilities", () => {
+    const { repo } = baseWithThread();
+    const a1 = ev("agent.registered", { name: "executor", capabilities: ["execute"] }, { repo: "r" });
+    const a2 = ev("agent.registered", { name: "reviewer", capabilities: ["review", "observe"] }, { repo: "r" });
+    const p = project([repo, a1, a2]);
+    expect(p.agents[0].capabilities).toEqual(["execute"]);
+    expect(p.agents[1].capabilities).toEqual(["review", "observe"]);
+  });
+
+  it("empty projection has empty agents and assignments", () => {
+    const p = project([]);
+    expect(p.agents).toHaveLength(0);
+    expect(p.assignments).toHaveLength(0);
   });
 });

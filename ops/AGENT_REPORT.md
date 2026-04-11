@@ -3,6 +3,18 @@
 Add the newest block at the top.
 
 BRIDGE_HANDOFF
+  TASK_ID: W10-B01+B02+B03
+  PIONEER: claude
+  STATUS: done
+  SUMMARY: Wave 10 spine delivery — three blocks completed in one session. (1) W10-B01 Autonomous Directive Proposal: added directive.proposed/proposal.accepted/proposal.dismissed event types, DirectiveProposal interface, emit.proposeDirective()/acceptProposal()/dismissProposal() emitters with full validation, pendingProposals() projection helper. (2) W10-B02 Flow Engine Spine: added Flow/FlowStep types with multi-step sequencing, flow.defined/flow.step.completed/flow.completed events, emit.defineFlow()/completeFlowStep()/completeFlow() emitters, activeFlow()/nextFlowStep() helpers. (3) W10-B03 Agent Registry: added Agent/AgentCapability/AgentAssignment types, agent.registered/agent.assigned events, emit.registerAgent()/assignDirective()/progressExecution() emitters, directiveAgent()/repoAgents() helpers. Wired execution.progressed (previously defined, never emitted). 21 new tests added. Build clean: 109 modules, 0 errors. Tests: 135/135 passing. Updated RUBERRA_STACK_CLOSURE_TRACKER: Stack 09 → PARTIAL, Stack 10 → PARTIAL.
+  FILES: src/ruberra/spine/events.ts, src/ruberra/spine/projections.ts, src/ruberra/spine/store.ts, src/ruberra/spine/__tests__/projections.test.ts, ops/WAVE_10.md, ops/BRIDGE_QUEUE.json, ops/NEXT_ACTION.md, ops/MILESTONE_TRACKER.md, RUBERRA_STACK_CLOSURE_TRACKER.md
+  NEXT_MOVE: W10-B04 — Antigravity wires proposal surface, flow visualization, and agent badges into Creation chamber.
+  ACCEPTANCE: met
+  TARGET_PIONEER: antigravity
+  TARGET_TASK: W10-B04
+  TARGET_NOTE: Spine logic complete — proposals, flows, agents all exported and tested. Wire pendingProposals(), activeFlow(), directiveAgent() into Creation chamber surfaces.
+
+BRIDGE_HANDOFF
   TASK_ID: W09-B03
   PIONEER: claude
   STATUS: done

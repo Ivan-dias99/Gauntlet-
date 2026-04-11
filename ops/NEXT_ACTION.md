@@ -2,22 +2,19 @@
 
 ## Current Wave
 
-WAVE 09 — Intelligence Compounding
+WAVE 10 — Autonomous Flow & Agent Civilization
 
 ## Status
 
-- W09-SPINE-RESONANCE: claude — DONE
-- W09-B01 (Synthesis Surface): claude — DONE
-- W09-B02 (Inheritance Signal): claude — DONE
-- W09-B03 (Verification Gate): codex — DONE
-
-## Gate Emitted
-
-GATE_W10_OPEN — Intelligence compounding verified. All surfaces operational. Build clean (109 modules). 114/114 tests passing.
+- W10-B01 (Autonomous Directive Proposal): claude — DONE
+- W10-B02 (Flow Engine Spine): claude — DONE
+- W10-B03 (Agent Registry): claude — DONE
+- W10-B04 (Autonomous Flow Surface): antigravity — ELIGIBLE (dependencies met)
+- W10-B05 (Verification Gate): codex — BLOCKED on W10-B04
 
 ## Next Eligible
 
-Wave 10 — Autonomous Flow and Multi-Agent Civilization (per MILESTONE_TRACKER).
+W10-B04 — Antigravity wires proposal surface, flow visualization, and agent badges into Creation chamber.
 
 ## Relay Rule
 

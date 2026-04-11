@@ -404,6 +404,172 @@ export const emit = {
     );
   },
 
+  // ── W10: Autonomous Directive Proposal ─────────────────────────────────
+  proposeDirective: (
+    threadId: string,
+    compose: {
+      text: string;
+      scope: string;
+      risk: "reversible" | "consequential" | "destructive";
+      rationale: string;
+      proposedBy: string;
+      sourceExecutionId?: string;
+    },
+  ) => {
+    const repo = requireRepo();
+    const t = (cached ?? project(all())).threads.find((x) => x.id === threadId);
+    if (!t) throw new Error("Proposal refused: thread not found");
+    const { text, scope, risk, rationale, proposedBy, sourceExecutionId } = compose;
+    if (!text.trim() || !scope.trim())
+      throw new Error("Proposal refused: text and scope are required");
+    if (!rationale.trim())
+      throw new Error("Proposal refused: rationale required");
+    return append(
+      "directive.proposed",
+      { text, scope, risk, rationale, proposedBy, sourceExecutionId },
+      { thread: t.id, repo },
+    );
+  },
+
+  acceptProposal: async (proposalId: string) => {
+    const repo = requireRepo();
+    const p = cached ?? project(all());
+    const prop = p.proposals.find((x) => x.id === proposalId);
+    if (!prop) throw new Error("Acceptance refused: proposal not found");
+    if (prop.status !== "pending")
+      throw new Error("Acceptance refused: proposal already resolved");
+    const t = p.threads.find((x) => x.id === prop.thread);
+    if (!t || t.status !== "open")
+      throw new Error("Acceptance refused: thread not open");
+    // Mark proposal as accepted
+    await append(
+      "proposal.accepted",
+      { proposalId },
+      { thread: t.id, repo, parent: proposalId },
+    );
+    // Promote to a real directive
+    return append(
+      "directive.accepted",
+      { text: prop.text, scope: prop.scope, risk: prop.risk, acceptance: `auto-promoted from proposal: ${prop.rationale}` },
+      { thread: t.id, repo, parent: proposalId },
+    );
+  },
+
+  dismissProposal: (proposalId: string, reason: string) => {
+    const repo = requireRepo();
+    const p = cached ?? project(all());
+    const prop = p.proposals.find((x) => x.id === proposalId);
+    if (!prop) throw new Error("Dismissal refused: proposal not found");
+    if (prop.status !== "pending")
+      throw new Error("Dismissal refused: proposal already resolved");
+    if (!reason.trim())
+      throw new Error("Dismissal refused: reason required");
+    return append(
+      "proposal.dismissed",
+      { proposalId, reason },
+      { thread: prop.thread, repo, parent: proposalId },
+    );
+  },
+
+  // ── W10: Flow Engine ──────────────────────────────────────────────────
+  defineFlow: (
+    threadId: string,
+    name: string,
+    steps: Array<{ directiveText: string; scope: string; risk: "reversible" | "consequential" | "destructive" }>,
+  ) => {
+    const repo = requireRepo();
+    const t = requireThread(threadId);
+    if (!name.trim())
+      throw new Error("Flow refused: name required");
+    if (steps.length === 0)
+      throw new Error("Flow refused: at least one step required");
+    return append(
+      "flow.defined",
+      { name, steps },
+      { thread: t.id, repo },
+    );
+  },
+
+  completeFlowStep: (
+    flowId: string,
+    outcome: "succeeded" | "failed",
+    directiveId?: string,
+  ) => {
+    const repo = requireRepo();
+    const p = cached ?? project(all());
+    const flow = p.flows.find((f) => f.id === flowId);
+    if (!flow) throw new Error("Flow step refused: flow not found");
+    if (flow.status !== "active")
+      throw new Error("Flow step refused: flow not active");
+    const step = flow.steps[flow.currentStep];
+    if (!step) throw new Error("Flow step refused: no pending step");
+    return append(
+      "flow.step.completed",
+      { flowId, stepIndex: flow.currentStep, outcome, directiveId },
+      { thread: flow.thread, repo, parent: flowId },
+    );
+  },
+
+  completeFlow: (flowId: string, outcome: "completed" | "aborted") => {
+    const repo = requireRepo();
+    const p = cached ?? project(all());
+    const flow = p.flows.find((f) => f.id === flowId);
+    if (!flow) throw new Error("Flow completion refused: flow not found");
+    if (flow.status !== "active")
+      throw new Error("Flow completion refused: flow not active");
+    return append(
+      "flow.completed",
+      { flowId, outcome },
+      { thread: flow.thread, repo, parent: flowId },
+    );
+  },
+
+  // ── W10: Agent Registry ───────────────────────────────────────────────
+  registerAgent: (
+    name: string,
+    capabilities: Array<"execute" | "review" | "propose" | "canon" | "observe">,
+  ) => {
+    const repo = requireRepo();
+    if (!name.trim())
+      throw new Error("Agent registration refused: name required");
+    if (capabilities.length === 0)
+      throw new Error("Agent registration refused: at least one capability required");
+    return append(
+      "agent.registered",
+      { name, capabilities },
+      { repo },
+    );
+  },
+
+  assignDirective: (directiveId: string, agentId: string) => {
+    const repo = requireRepo();
+    const p = cached ?? project(all());
+    const d = p.directives.find((x) => x.id === directiveId);
+    if (!d) throw new Error("Assignment refused: directive not found");
+    const agent = p.agents.find((x) => x.id === agentId);
+    if (!agent) throw new Error("Assignment refused: agent not found");
+    if (!agent.capabilities.includes("execute"))
+      throw new Error("Assignment refused: agent lacks 'execute' capability");
+    return append(
+      "agent.assigned",
+      { directiveId, agentId },
+      { thread: d.thread, repo, parent: directiveId },
+    );
+  },
+
+  progressExecution: (executionId: string, message: string, progress?: number) => {
+    const p = cached ?? project(all());
+    const x = p.executions.find((e) => e.id === executionId);
+    if (!x) throw new Error("Progress refused: execution not found");
+    if (x.status !== "running")
+      throw new Error("Progress refused: execution not running");
+    return append(
+      "execution.progressed",
+      { executionId, message, progress },
+      { thread: x.thread, parent: executionId },
+    );
+  },
+
   nullConsequence: (action: string, reason: string) =>
     append("null.consequence", { action, reason }),
 

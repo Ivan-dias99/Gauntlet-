@@ -34,6 +34,14 @@ export type EventType =
   | "contradiction.detected"
   | "contradiction.resolved"
   | "knowledge.synthesized"  // cross-thread manual link: architect binds knowledge to another thread
+  | "directive.proposed"     // W10: execution or agent proposes a follow-up directive
+  | "proposal.accepted"      // W10: proposed directive promoted to real directive
+  | "proposal.dismissed"     // W10: proposed directive rejected with reason
+  | "flow.defined"           // W10: multi-step directive flow created
+  | "flow.step.completed"    // W10: one step of a flow finished
+  | "flow.completed"         // W10: entire flow resolved (all steps done or aborted)
+  | "agent.registered"       // W10: named agent with capabilities joins the organism
+  | "agent.assigned"         // W10: directive assigned to a specific agent
   | "chamber.entered";
 
 export interface RuberraEvent {
