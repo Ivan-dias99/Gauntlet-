@@ -630,3 +630,239 @@ describe("threadSyntheses", () => {
     expect(threadSyntheses(p, t.id)).toHaveLength(0);
   });
 });
+
+// ── W10: Autonomous Flow ──────────────────────────────────────────────────
+
+import {
+  directiveDrafts,
+  suggestSyntheses,
+  activePioneers,
+  pioneerLoad,
+} from "../projections";
+
+describe("directive.drafted event", () => {
+  it("projects a draft directive from concept", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "build sovereign shell" }, { repo: "r" });
+    const concept = ev(
+      "concept.stated",
+      { title: "Sovereign Surface", hypothesis: "the shell carries command gravity" },
+      { thread: t.id, repo: "r" },
+    );
+    const draft = ev(
+      "directive.drafted",
+      {
+        conceptId: concept.id,
+        text: "implement sovereign surface",
+        scope: "shell",
+        risk: "reversible",
+        acceptance: "surface renders in shell",
+        canonSources: ["c1"],
+      },
+      { thread: t.id, repo: "r" },
+    );
+    const p = project([repo, t, concept, draft]);
+    expect(p.drafts).toHaveLength(1);
+    expect(p.drafts[0].conceptId).toBe(concept.id);
+    expect(p.drafts[0].text).toBe("implement sovereign surface");
+    expect(p.drafts[0].status).toBe("pending");
+    expect(p.drafts[0].canonSources).toEqual(["c1"]);
+  });
+});
+
+describe("pioneer.assigned / pioneer.released events", () => {
+  it("projects a pioneer assignment and release", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const assign = ev(
+      "pioneer.assigned",
+      { pioneer: "claude", directiveId: "d1" },
+      { thread: t.id, repo: "r" },
+    );
+    const p1 = project([repo, t, assign]);
+    expect(p1.pioneers).toHaveLength(1);
+    expect(p1.pioneers[0].pioneer).toBe("claude");
+    expect(p1.pioneers[0].active).toBe(true);
+    expect(p1.pioneers[0].thread).toBe(t.id);
+
+    const release = ev("pioneer.released", { assignmentId: assign.id });
+    const p2 = project([repo, t, assign, release]);
+    expect(p2.pioneers[0].active).toBe(false);
+    expect(p2.pioneers[0].releasedAt).toBeDefined();
+  });
+
+  it("release of non-existent assignment is a no-op", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const release = ev("pioneer.released", { assignmentId: "bogus" });
+    const p = project([repo, release]);
+    expect(p.pioneers).toHaveLength(0);
+  });
+});
+
+describe("directiveDrafts()", () => {
+  it("suggests drafts for concepts with canon resonance", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "build shell" }, { repo: "r" });
+    const concept = ev(
+      "concept.stated",
+      { title: "Sovereign Architecture", hypothesis: "the sovereign shell system should carry authority and command" },
+      { thread: t.id, repo: "r" },
+    );
+    const canon = ev(
+      "canon.hardened",
+      { text: "the sovereign shell carries structural authority and command gravity", scope: "architecture" },
+      { repo: "r" },
+    );
+    const p = project([repo, t, concept, canon]);
+    const drafts = directiveDrafts(p, t.id);
+    expect(drafts.length).toBeGreaterThanOrEqual(1);
+    expect(drafts[0].conceptId).toBe(concept.id);
+    expect(drafts[0].canonSources.length).toBeGreaterThanOrEqual(1);
+    expect(drafts[0].suggestedText).toContain("sovereign architecture");
+  });
+
+  it("does not suggest drafts for promoted concepts", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const concept = ev(
+      "concept.stated",
+      { title: "Authority Surface", hypothesis: "surface carries structural authority" },
+      { thread: t.id, repo: "r" },
+    );
+    const directive = ev(
+      "directive.accepted",
+      { text: "build surface", scope: "shell", risk: "reversible", acceptance: "done", conceptId: concept.id },
+      { thread: t.id, repo: "r" },
+    );
+    const canon = ev(
+      "canon.hardened",
+      { text: "surface carries structural authority in the system" },
+      { repo: "r" },
+    );
+    const p = project([repo, t, concept, directive, canon]);
+    const drafts = directiveDrafts(p, t.id);
+    expect(drafts).toHaveLength(0);
+  });
+
+  it("returns empty for closed thread", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const close = ev("thread.closed", { reason: "done" }, { thread: t.id });
+    const p = project([repo, t, close]);
+    expect(directiveDrafts(p, t.id)).toHaveLength(0);
+  });
+
+  it("excludes concepts that already have pending drafts", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "build system" }, { repo: "r" });
+    const concept = ev(
+      "concept.stated",
+      { title: "Command System", hypothesis: "system provides sovereign command authority" },
+      { thread: t.id, repo: "r" },
+    );
+    const canon = ev(
+      "canon.hardened",
+      { text: "sovereign command authority governs the system" },
+      { repo: "r" },
+    );
+    const draft = ev(
+      "directive.drafted",
+      { conceptId: concept.id, text: "draft", scope: "s", risk: "reversible", acceptance: "a", canonSources: [] },
+      { thread: t.id, repo: "r" },
+    );
+    const p = project([repo, t, concept, canon, draft]);
+    const suggestions = directiveDrafts(p, t.id);
+    expect(suggestions).toHaveLength(0);
+  });
+});
+
+describe("suggestSyntheses()", () => {
+  it("suggests unlinked resonance matches", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t1 = ev("thread.opened", { intent: "sovereign architecture system" }, { repo: "r" });
+    const mem1 = ev("memory.captured", { text: "sovereign system architecture" }, { thread: t1.id, repo: "r" });
+    const hardenedWithMem = ev(
+      "canon.hardened",
+      { text: "sovereign system architecture requires structural authority", memoryId: mem1.id },
+      { repo: "r" },
+    );
+
+    const t2 = ev("thread.opened", { intent: "build sovereign authority architecture system" }, { repo: "r" });
+    const p = project([repo, t1, mem1, hardenedWithMem, t2]);
+    const suggestions = suggestSyntheses(p, t2.id);
+    // Should find the canon from t1 as a suggestion for t2.
+    expect(suggestions.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("excludes already-linked canon", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t1 = ev("thread.opened", { intent: "sovereign architecture system" }, { repo: "r" });
+    const mem1 = ev("memory.captured", { text: "sovereign system architecture" }, { thread: t1.id, repo: "r" });
+    const canon = ev(
+      "canon.hardened",
+      { text: "sovereign system architecture requires structural authority", memoryId: mem1.id },
+      { repo: "r" },
+    );
+    const t2 = ev("thread.opened", { intent: "build sovereign authority architecture system" }, { repo: "r" });
+    // Explicit synthesis link already created.
+    const synth = ev(
+      "knowledge.synthesized",
+      { sourceId: canon.id, sourceType: "canon", targetThread: t2.id, note: "linked" },
+      { thread: t2.id, repo: "r" },
+    );
+    const p = project([repo, t1, mem1, canon, t2, synth]);
+    const suggestions = suggestSyntheses(p, t2.id);
+    const hasLinked = suggestions.some((s) => s.canonId === canon.id);
+    expect(hasLinked).toBe(false);
+  });
+});
+
+describe("activePioneers()", () => {
+  it("returns only active assignments", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const a1 = ev("pioneer.assigned", { pioneer: "claude" }, { thread: t.id, repo: "r" });
+    const a2 = ev("pioneer.assigned", { pioneer: "codex" }, { thread: t.id, repo: "r" });
+    const release = ev("pioneer.released", { assignmentId: a1.id });
+    const p = project([repo, t, a1, a2, release]);
+    const active = activePioneers(p);
+    expect(active).toHaveLength(1);
+    expect(active[0].pioneer).toBe("codex");
+  });
+
+  it("filters by threadId", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t1 = ev("thread.opened", { intent: "work1" }, { repo: "r" });
+    const t2 = ev("thread.opened", { intent: "work2" }, { repo: "r" });
+    const a1 = ev("pioneer.assigned", { pioneer: "claude" }, { thread: t1.id, repo: "r" });
+    const a2 = ev("pioneer.assigned", { pioneer: "codex" }, { thread: t2.id, repo: "r" });
+    const p = project([repo, t1, t2, a1, a2]);
+    expect(activePioneers(p, { threadId: t1.id })).toHaveLength(1);
+    expect(activePioneers(p, { threadId: t2.id })).toHaveLength(1);
+  });
+});
+
+describe("pioneerLoad()", () => {
+  it("counts active assignments per pioneer", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t1 = ev("thread.opened", { intent: "work1" }, { repo: "r" });
+    const t2 = ev("thread.opened", { intent: "work2" }, { repo: "r" });
+    const a1 = ev("pioneer.assigned", { pioneer: "claude" }, { thread: t1.id, repo: "r" });
+    const a2 = ev("pioneer.assigned", { pioneer: "claude" }, { thread: t2.id, repo: "r" });
+    const a3 = ev("pioneer.assigned", { pioneer: "codex" }, { thread: t1.id, repo: "r" });
+    const p = project([repo, t1, t2, a1, a2, a3]);
+    const load = pioneerLoad(p);
+    expect(load.get("claude")).toBe(2);
+    expect(load.get("codex")).toBe(1);
+  });
+
+  it("excludes released assignments", () => {
+    const repo = ev("repo.bound", { name: "r", id: "r" }, { repo: "r" });
+    const t = ev("thread.opened", { intent: "work" }, { repo: "r" });
+    const a1 = ev("pioneer.assigned", { pioneer: "claude" }, { thread: t.id, repo: "r" });
+    const release = ev("pioneer.released", { assignmentId: a1.id });
+    const p = project([repo, t, a1, release]);
+    const load = pioneerLoad(p);
+    expect(load.get("claude")).toBeUndefined();
+  });
+});

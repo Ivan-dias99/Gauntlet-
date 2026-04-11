@@ -34,6 +34,9 @@ export type EventType =
   | "contradiction.detected"
   | "contradiction.resolved"
   | "knowledge.synthesized"  // cross-thread manual link: architect binds knowledge to another thread
+  | "directive.drafted"      // W10: autonomous draft — system suggests a directive from concept + canon
+  | "pioneer.assigned"       // W10: pioneer bound to a thread or directive for execution
+  | "pioneer.released"       // W10: pioneer released from assignment
   | "chamber.entered";
 
 export interface RuberraEvent {

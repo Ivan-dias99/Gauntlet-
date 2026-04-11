@@ -407,6 +407,67 @@ export const emit = {
   nullConsequence: (action: string, reason: string) =>
     append("null.consequence", { action, reason }),
 
+  // ── W10: Autonomous Flow ──────────────────────────────────────────────
+
+  draftDirective: (
+    conceptId: string,
+    compose: {
+      text: string;
+      scope: string;
+      risk: "reversible" | "consequential" | "destructive";
+      acceptance: string;
+      canonSources?: string[];
+    },
+  ) => {
+    const p = cached ?? project(all());
+    const concept = p.concepts.find((c) => c.id === conceptId);
+    if (!concept) throw new Error("Draft refused: concept not found");
+    if (concept.promoted) throw new Error("Draft refused: concept already promoted");
+    const { text, scope, risk, acceptance, canonSources } = compose;
+    if (!text.trim() || !scope.trim() || !acceptance.trim()) {
+      throw new Error("Draft refused: text, scope, and acceptance are required");
+    }
+    return append(
+      "directive.drafted",
+      { conceptId, text, scope, risk, acceptance, canonSources: canonSources ?? [] },
+      { thread: concept.thread, repo: concept.repo },
+    );
+  },
+
+  assignPioneer: (
+    pioneer: "claude" | "cursor" | "codex" | "grok" | "framer" | "architect",
+    threadId: string,
+    directiveId?: string,
+  ) => {
+    const repo = requireRepo();
+    const p = cached ?? project(all());
+    const t = p.threads.find((x) => x.id === threadId);
+    if (!t) throw new Error("Assignment refused: thread not found");
+    if (t.status !== "open") throw new Error("Assignment refused: thread not open");
+    // Prevent duplicate active assignment of same pioneer to same thread.
+    const existing = p.pioneers.find(
+      (a) => a.active && a.pioneer === pioneer && a.thread === threadId,
+    );
+    if (existing) throw new Error("Assignment refused: pioneer already assigned to this thread");
+    return append(
+      "pioneer.assigned",
+      { pioneer, ...(directiveId ? { directiveId } : {}) },
+      { thread: threadId, repo },
+    );
+  },
+
+  releasePioneer: (assignmentId: string) => {
+    const p = cached ?? project(all());
+    const a = p.pioneers.find((x) => x.id === assignmentId);
+    if (!a) throw new Error("Release refused: assignment not found");
+    if (!a.active) throw new Error("Release refused: assignment already released");
+    return append(
+      "pioneer.released",
+      { assignmentId },
+      { repo: requireRepo() },
+    );
+  },
+
   raw: (type: EventType, payload: Record<string, unknown> = {}) =>
     append(type, payload),
 

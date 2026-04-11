@@ -176,6 +176,8 @@ export interface Projection {
   canonProposals: CanonProposal[];
   contradictions: Contradiction[];
   syntheses: KnowledgeSynthesis[];
+  drafts: DirectiveDraft[];          // W10: auto-drafted directive suggestions
+  pioneers: PioneerAssignment[];     // W10: pioneer assignment ledger
   chamber: "lab" | "school" | "creation" | "memory";
   missionFramed: boolean;
   lastEventId?: string;
@@ -193,6 +195,8 @@ const empty = (): Projection => ({
   canonProposals: [],
   contradictions: [],
   syntheses: [],
+  drafts: [],
+  pioneers: [],
   chamber: "creation",
   missionFramed: false,
 });
@@ -481,6 +485,47 @@ export function project(events: RuberraEvent[]): Projection {
           note: String(ev.payload.note ?? ""),
           ts: ev.ts,
         });
+        break;
+      }
+      // ── W10: Autonomous Flow ──────────────────────────────────────────
+      case "directive.drafted": {
+        p.drafts.push({
+          id: ev.id,
+          conceptId: String(ev.payload.conceptId ?? ""),
+          thread: String(ev.thread ?? ""),
+          repo: ev.repo,
+          text: String(ev.payload.text ?? ""),
+          scope: String(ev.payload.scope ?? ""),
+          risk: (ev.payload.risk as DirectiveRisk) ?? "reversible",
+          acceptance: String(ev.payload.acceptance ?? ""),
+          canonSources: Array.isArray(ev.payload.canonSources)
+            ? (ev.payload.canonSources as string[])
+            : [],
+          status: "pending",
+          ts: ev.ts,
+        });
+        break;
+      }
+      case "pioneer.assigned": {
+        p.pioneers.push({
+          id: ev.id,
+          pioneer: ev.payload.pioneer as PioneerId,
+          thread: ev.thread,
+          directiveId: ev.payload.directiveId as string | undefined,
+          repo: ev.repo,
+          assignedAt: ev.ts,
+          active: true,
+        });
+        break;
+      }
+      case "pioneer.released": {
+        const assignment = p.pioneers.find(
+          (a) => a.id === ev.payload.assignmentId,
+        );
+        if (assignment) {
+          assignment.active = false;
+          assignment.releasedAt = ev.ts;
+        }
         break;
       }
     }
@@ -811,6 +856,42 @@ export interface ResolvedSynthesis {
   ts: number;
 }
 
+// ── Autonomous Flow (W10) ─────────────────────────────────────────────────
+
+// A directive draft is an auto-generated suggestion produced when a concept
+// has enough canon resonance to propose an actionable directive. The architect
+// reviews and either promotes or discards it.
+export type DraftStatus = "pending" | "accepted" | "discarded";
+
+export interface DirectiveDraft {
+  id: string;
+  conceptId: string;
+  thread: string;
+  repo?: string;
+  text: string;           // suggested directive text
+  scope: string;          // suggested scope
+  risk: DirectiveRisk;    // suggested risk level
+  acceptance: string;     // suggested acceptance criteria
+  canonSources: string[]; // canon ids that informed this draft
+  status: DraftStatus;
+  ts: number;
+}
+
+// A pioneer is a named agent role bound to a thread or directive.
+// The assignment model tracks who is working on what.
+export type PioneerId = "claude" | "cursor" | "codex" | "grok" | "framer" | "architect";
+
+export interface PioneerAssignment {
+  id: string;
+  pioneer: PioneerId;
+  thread?: string;
+  directiveId?: string;
+  repo?: string;
+  assignedAt: number;
+  releasedAt?: number;
+  active: boolean;
+}
+
 export function threadSyntheses(
   p: Projection,
   threadId: string,
@@ -836,4 +917,160 @@ export function threadSyntheses(
       };
     })
     .filter((s) => s.sourceText.length > 0);
+}
+
+// ── Autonomous Flow — Directive Drafts (W10) ──────────────────────────────
+
+// For a given thread, analyze unpromoted concepts with significant canon
+// resonance and produce structured directive draft suggestions. The architect
+// sees these as actionable proposals they can accept into the directive hinge.
+
+export interface DraftSuggestion {
+  conceptId: string;
+  conceptTitle: string;
+  conceptHypothesis: string;
+  suggestedText: string;
+  suggestedScope: string;
+  suggestedRisk: DirectiveRisk;
+  suggestedAcceptance: string;
+  canonSources: CanonEntry[];
+  resonanceStrength: number;
+}
+
+export function directiveDrafts(
+  p: Projection,
+  threadId: string,
+): DraftSuggestion[] {
+  const thread = p.threads.find((t) => t.id === threadId);
+  if (!thread || thread.status !== "open") return [];
+
+  // Only consider unpromoted concepts that don't already have a pending draft.
+  const draftedConceptIds = new Set(
+    p.drafts.filter((d) => d.status === "pending").map((d) => d.conceptId),
+  );
+  const unpromoted = p.concepts.filter(
+    (c) => c.thread === threadId && !c.promoted && !draftedConceptIds.has(c.id),
+  );
+
+  const hardened = p.canon.filter(
+    (c) => c.state === "hardened" && (!c.repo || c.repo === thread.repo),
+  );
+
+  const suggestions: DraftSuggestion[] = [];
+
+  for (const concept of unpromoted) {
+    const conceptText = `${concept.title} ${concept.hypothesis}`;
+    const ancestors: { entry: CanonEntry; overlap: number }[] = [];
+
+    for (const canon of hardened) {
+      const canonTokens = new Set(significantTokens(canon.text));
+      if (canonTokens.size === 0) continue;
+      const overlap = significantTokens(conceptText).filter((t) =>
+        canonTokens.has(t),
+      ).length;
+      if (overlap >= 2) {
+        ancestors.push({ entry: canon, overlap });
+      }
+    }
+
+    // Only suggest drafts when there's meaningful canon resonance.
+    if (ancestors.length === 0) continue;
+
+    ancestors.sort((a, b) => b.overlap - a.overlap);
+    const totalResonance = ancestors.reduce((sum, a) => sum + a.overlap, 0);
+
+    // Auto-compose a directive suggestion from concept + canon context.
+    const scopeTokens = ancestors
+      .slice(0, 3)
+      .map((a) => a.entry.text.split(/\s+/).slice(0, 3).join(" "))
+      .join(", ");
+
+    const suggestedRisk: DirectiveRisk =
+      totalResonance >= 8 ? "consequential" : "reversible";
+
+    suggestions.push({
+      conceptId: concept.id,
+      conceptTitle: concept.title,
+      conceptHypothesis: concept.hypothesis,
+      suggestedText: `implement ${concept.title.toLowerCase()}: ${concept.hypothesis.split(".")[0].toLowerCase()}`,
+      suggestedScope: scopeTokens || concept.title.toLowerCase(),
+      suggestedRisk,
+      suggestedAcceptance: `${concept.title} produces observable consequence in the organism`,
+      canonSources: ancestors.slice(0, 5).map((a) => a.entry),
+      resonanceStrength: totalResonance,
+    });
+  }
+
+  return suggestions.sort((a, b) => b.resonanceStrength - a.resonanceStrength);
+}
+
+// ── Autonomous Flow — Proactive Synthesis Suggestions (W10) ───────────────
+
+// Identify cross-thread canon entries that match current thread work but have
+// NOT yet been explicitly linked via knowledge.synthesized events. These are
+// suggestions the system surfaces so the architect can decide whether to create
+// an explicit synthesis link.
+
+export interface SynthesisSuggestion {
+  canonId: string;
+  canonText: string;
+  sourceThread?: string;
+  targetThread: string;
+  overlap: number;
+  via: ResonanceVia;
+}
+
+export function suggestSyntheses(
+  p: Projection,
+  threadId: string,
+): SynthesisSuggestion[] {
+  // Get existing resonance matches.
+  const resonances = threadResonance(p, threadId);
+
+  // Exclude canon entries already explicitly linked.
+  const linked = new Set(
+    p.syntheses
+      .filter((s) => s.targetThread === threadId)
+      .map((s) => s.sourceId),
+  );
+
+  return resonances
+    .filter((r) => !linked.has(r.canonId))
+    .map((r) => ({
+      canonId: r.canonId,
+      canonText: r.canonText,
+      sourceThread: r.sourceThread,
+      targetThread: r.targetThread,
+      overlap: r.overlap,
+      via: r.via,
+    }));
+}
+
+// ── Autonomous Flow — Pioneer Roster (W10) ────────────────────────────────
+
+// Return the currently active pioneer assignments, optionally filtered by
+// thread or repo.
+
+export function activePioneers(
+  p: Projection,
+  opts?: { threadId?: string; repo?: string },
+): PioneerAssignment[] {
+  return p.pioneers.filter((a) => {
+    if (!a.active) return false;
+    if (opts?.threadId && a.thread !== opts.threadId) return false;
+    if (opts?.repo && a.repo !== opts.repo) return false;
+    return true;
+  });
+}
+
+// Summary of pioneer load: how many active assignments per pioneer.
+export function pioneerLoad(
+  p: Projection,
+): Map<PioneerId, number> {
+  const load = new Map<PioneerId, number>();
+  for (const a of p.pioneers) {
+    if (!a.active) continue;
+    load.set(a.pioneer, (load.get(a.pioneer) ?? 0) + 1);
+  }
+  return load;
 }
