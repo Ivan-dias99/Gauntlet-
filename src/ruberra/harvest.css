@@ -112,6 +112,28 @@
   display: inline-block;
 }
 
+.rb-thread-terminal-lights span.live {
+  background: #6a9a5a;
+  box-shadow: 0 0 0 3px rgba(106, 154, 90, 0.22);
+  animation: rb-terminal-live 1.6s ease-in-out infinite;
+}
+
+@keyframes rb-terminal-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-thread-terminal-lights span.live {
+    animation: none;
+  }
+}
+
 .rb-thread-terminal-title {
   font-family: var(--rb-mono);
   font-size: 9px;
@@ -139,6 +161,44 @@
   font-family: var(--rb-mono);
   font-size: 12px;
   line-height: 1.55;
+}
+
+.rb-thread-terminal-line--block {
+  align-items: flex-start;
+}
+
+.rb-thread-terminal-kv {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rb-thread-terminal-kv .rb-thread-terminal-status {
+  flex-shrink: 0;
+}
+
+.rb-thread-terminal-progress-msg {
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--rb-ink-soft);
+  letter-spacing: 0.02em;
+}
+
+.rb-thread-terminal-progress {
+  height: 3px;
+  margin: 4px 0 10px 22px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.rb-thread-terminal-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(106, 143, 90, 0.5), rgba(201, 166, 107, 0.75));
+  transition: width 0.35s var(--rb-ease-expo);
 }
 
 .rb-thread-terminal-prefix {
@@ -186,7 +246,34 @@
 .rb-thread-terminal-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+}
+
+.rb-thread-terminal-chip {
+  font-family: var(--rb-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border: 1px solid #252220;
+  border-radius: 2px;
+  color: #7a746c;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.rb-thread-terminal-chip.warn {
+  border-color: rgba(176, 120, 48, 0.35);
+  color: #c49850;
+}
+
+.rb-thread-terminal-chip.bad {
+  border-color: rgba(140, 69, 69, 0.4);
+  color: #c07068;
+}
+
+.rb-thread-terminal-chip.gold {
+  border-color: rgba(160, 144, 96, 0.4);
+  color: #c4b078;
 }
 
 .rb-thread-terminal-summary span {

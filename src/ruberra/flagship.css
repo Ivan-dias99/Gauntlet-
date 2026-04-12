@@ -56,6 +56,36 @@ html[data-rb-theme="light"] .rb-thread-terminal-text {
 html[data-rb-theme="light"] .rb-thread-terminal-divider { background: #d3c7b9; }
 html[data-rb-theme="light"] .rb-thread-terminal-status { border-color: #d7ccbd; background: rgba(0,0,0,0.02); }
 
+html[data-rb-theme="light"] .rb-thread-terminal-lights span.live {
+  background: #4a6b42;
+  box-shadow: 0 0 0 3px rgba(74, 107, 66, 0.2);
+}
+
+html[data-rb-theme="light"] .rb-thread-terminal-progress {
+  background: rgba(35, 28, 22, 0.08);
+}
+
+html[data-rb-theme="light"] .rb-thread-terminal-chip {
+  border-color: #c9bba8;
+  color: #6a5e52;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+html[data-rb-theme="light"] .rb-thread-terminal-chip.warn {
+  border-color: rgba(138, 98, 32, 0.35);
+  color: #7a6220;
+}
+
+html[data-rb-theme="light"] .rb-thread-terminal-chip.bad {
+  border-color: rgba(122, 51, 44, 0.35);
+  color: #7a332c;
+}
+
+html[data-rb-theme="light"] .rb-thread-terminal-chip.gold {
+  border-color: rgba(138, 98, 40, 0.4);
+  color: #6a5018;
+}
+
 .rb-shell-actions {
   display: flex;
   align-items: center;

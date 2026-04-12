@@ -59,6 +59,8 @@ export function LabChamber() {
         </div>
       )}
 
+      <div className="rb-lab-console">
+        <div className="rb-lab-console-pri">
       {activeThread && (
         <ThreadTerminal
           title="Validation Terminal"
@@ -102,7 +104,9 @@ export function LabChamber() {
           )}
         </div>
       )}
+        </div>
 
+        <div className="rb-lab-console-side">
       <div className={`rb-trace${openContradictions.length > 0 ? " rb-trace--warn" : ""}`}>
         <div className="rb-lab-section-header">
           <span className="rb-lab-section-title">Contradiction Log</span>
@@ -155,6 +159,8 @@ export function LabChamber() {
             ))}
           </ul>
         )}
+      </div>
+        </div>
       </div>
     </section>
   );

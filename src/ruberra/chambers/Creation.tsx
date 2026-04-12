@@ -170,12 +170,14 @@ export function CreationChamber() {
       {!activeThread ? (
         <Unavailable
           title="forge idle — no active thread"
-          reason="The architect forge requires a thread. Bind a repo and open a thread from the left rail to begin the consequence loop."
+          reason="The architect forge requires a thread. Bind a repo and open a thread from the thread rail to begin the consequence loop."
           remediation="State an intent. Every directive must carry a thread."
         />
       ) : (
         <>
-          <div className="rb-relay-chain" aria-label="Concept-to-build relay">
+          <div className="rb-forge-workplace">
+            <div className="rb-forge-side rb-forge-side--upstream" aria-label="Upstream work">
+              <div className="rb-relay-chain" aria-label="Concept-to-build relay">
             <div className={`rb-relay-node${concepts.length > 0 ? " reached" : ""}${concepts.length > 0 && !concepts.some(c => !c.promoted) && directives.length === 0 ? " active" : ""}`}>
               <span className="rb-relay-node-label">Concept</span>
               {concepts.filter(c => !c.promoted).length > 0 && <span className="rb-relay-count">{concepts.filter(c => !c.promoted).length}</span>}
@@ -292,6 +294,9 @@ export function CreationChamber() {
             </div>
           </div>
 
+            </div>
+
+            <div className="rb-forge-pri" aria-label="Terminal and directive forge">
           <ThreadTerminal
             title="Creation Terminal"
             thread={activeThread}
@@ -375,6 +380,9 @@ export function CreationChamber() {
 
             {err && <div className="rb-unavail" style={{ marginTop: 12 }}><strong>refused</strong>{err}</div>}
             {!EXEC_BACKEND && <div style={{ marginTop: 12 }}><Unavailable title="execution unbound" reason="No execution backend is bound to this shell." remediation="Set VITE_RUBERRA_EXEC_URL and reload to enable forging." /></div>}
+          </div>
+
+            </div>
           </div>
 
           <div className="rb-trace">
