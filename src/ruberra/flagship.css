@@ -20,6 +20,10 @@ html[data-rb-theme="light"] #root {
   background: var(--rb-bg);
 }
 
+html[data-rb-theme="light"] ::selection {
+  background: rgba(159, 59, 45, 0.13);
+}
+
 html[data-rb-theme="light"] .rb-root {
   background:
     radial-gradient(1200px 800px at 85% -10%, rgba(159, 59, 45, 0.07), transparent 60%),

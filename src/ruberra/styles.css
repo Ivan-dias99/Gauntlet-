@@ -18,6 +18,16 @@
   --rb-serif: "Cormorant Garamond", "EB Garamond", Georgia, serif;
   --rb-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
   --rb-sans: "Inter", system-ui, -apple-system, sans-serif;
+
+  /* ── Chamber accent tokens ── */
+  --rb-chamber-lab:      #52796A;
+  --rb-chamber-school:   #4A6B84;
+  --rb-chamber-creation: #8A6238;
+  --rb-chamber-memory:   #5A7A8A;
+
+  /* ── Motion easing curves ── */
+  --rb-ease-expo:   cubic-bezier(0.16, 1, 0.3, 1);
+  --rb-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 html, body, #root {
@@ -29,6 +39,30 @@ html, body, #root {
   font-family: var(--rb-sans);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbar discipline ── */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rb-line-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--rb-ink-mute); }
+
+/* ── Selection accent discipline ── */
+::selection {
+  background: rgba(192, 57, 43, 0.2);
+  color: inherit;
+}
+
+/* ── Focus visible — keyboard navigation only ── */
+:focus-visible {
+  outline: 2px solid var(--rb-accent-soft);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+button:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .rb-root {
@@ -583,10 +617,10 @@ html, body, #root {
   height: 2px;
   width: 72px;
 }
-.rb-chamber--lab    .rb-chamber-accent-line { background: #52796A; }
-.rb-chamber--school .rb-chamber-accent-line { background: #4A6B84; }
-.rb-chamber--creation .rb-chamber-accent-line { background: #8A6238; }
-.rb-chamber--memory .rb-chamber-accent-line { background: #5A7A8A; }
+.rb-chamber--lab      .rb-chamber-accent-line { background: var(--rb-chamber-lab); }
+.rb-chamber--school   .rb-chamber-accent-line { background: var(--rb-chamber-school); }
+.rb-chamber--creation .rb-chamber-accent-line { background: var(--rb-chamber-creation); }
+.rb-chamber--memory   .rb-chamber-accent-line { background: var(--rb-chamber-memory); }
 
 /* Panel left accent rail — per chamber */
 .rb-chamber--lab    .rb-panel { border-left: 2px solid rgba(82, 121, 106, 0.28); }
@@ -597,19 +631,19 @@ html, body, #root {
 /* Chamber glyph: per-chamber accent color on active (overrides generic red) */
 .rb-chamber-glyph[data-id="lab"].active {
   color: #72A890;
-  box-shadow: inset 0 -2px 0 0 #52796A;
+  box-shadow: inset 0 -2px 0 0 var(--rb-chamber-lab);
 }
 .rb-chamber-glyph[data-id="school"].active {
   color: #6890A8;
-  box-shadow: inset 0 -2px 0 0 #4A6B84;
+  box-shadow: inset 0 -2px 0 0 var(--rb-chamber-school);
 }
 .rb-chamber-glyph[data-id="creation"].active {
   color: #C89860;
-  box-shadow: inset 0 -2px 0 0 #8A6238;
+  box-shadow: inset 0 -2px 0 0 var(--rb-chamber-creation);
 }
 .rb-chamber-glyph[data-id="memory"].active {
   color: #7AA0B0;
-  box-shadow: inset 0 -2px 0 0 #5A7A8A;
+  box-shadow: inset 0 -2px 0 0 var(--rb-chamber-memory);
 }
 
 /* Active thread: chamber-aware border via inline style (ThreadStrip) */
@@ -2428,7 +2462,7 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s var(--rb-ease-expo);
   position: relative;
   overflow: hidden;
 }

@@ -1290,3 +1290,27 @@ export function executionAnalytics(p: Projection): ExecutionAnalytics {
 
   return { total, running, succeeded, failed, successRate, avgDurationMs };
 }
+
+// ── Derived helpers used by Creation surface ──────────────────────────────
+
+/** All pending (unresolved) directive proposals for a given thread */
+export function pendingProposals(p: Projection, threadId: string): DirectiveProposal[] {
+  return p.proposals.filter((pr) => pr.thread === threadId && pr.status === "pending");
+}
+
+/** The first active flow bound to a thread, if any */
+export function activeFlow(p: Projection, threadId: string): Flow | undefined {
+  return p.flows.find((f) => f.thread === threadId && f.status === "active");
+}
+
+/** The next pending step in a flow */
+export function nextFlowStep(flow: Flow): FlowStep | undefined {
+  return flow.steps.find((s) => s.status === "pending");
+}
+
+/** The agent assigned to a directive, if any */
+export function directiveAgent(p: Projection, directiveId: string): Agent | undefined {
+  const assignment = p.assignments.find((a) => a.directiveId === directiveId);
+  if (!assignment) return undefined;
+  return p.agents.find((ag) => ag.id === assignment.agentId);
+}
