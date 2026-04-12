@@ -570,6 +570,58 @@ export const emit = {
     );
   },
 
+  // ── W11: System Awareness ───────────────────────────────────────────────
+  assessHealth: () => {
+    const repo = requireRepo();
+    const p = cached ?? project(all());
+    const repoExec = p.executions;
+    const succeeded = repoExec.filter((x) => x.status === "succeeded").length;
+    const total = repoExec.filter((x) => x.status !== "running").length;
+    const executionSuccessRate = total > 0 ? succeeded / total : 1;
+
+    const totalContradictions = p.contradictions.filter((c) => !c.repo || c.repo === repo).length;
+    const resolvedContradictions = p.contradictions.filter((c) => c.resolved && (!c.repo || c.repo === repo)).length;
+    const contradictionResolutionRate = totalContradictions > 0 ? resolvedContradictions / totalContradictions : 1;
+
+    const totalMemory = p.memory.filter((m) => !m.repo || m.repo === repo).length;
+    const promotedMemory = p.memory.filter((m) => m.promoted && (!m.repo || m.repo === repo)).length;
+    const memoryPromotionVelocity = totalMemory > 0 ? promotedMemory / totalMemory : 0;
+
+    const hardened = p.canon.filter((c) => c.state === "hardened" && (!c.repo || c.repo === repo)).length;
+    const proposed = p.canonProposals.filter((c) => !c.hardened && (!c.repo || c.repo === repo)).length;
+    const canonCoverage = (hardened + proposed) > 0 ? hardened / (hardened + proposed) : 0;
+
+    const activeAnomalies = p.anomalies.filter((a) => !a.resolved && (!a.repo || a.repo === repo)).length;
+
+    return append(
+      "system.health.snapshot",
+      { executionSuccessRate, contradictionResolutionRate, memoryPromotionVelocity, canonCoverage, activeAnomalies },
+      { repo },
+    );
+  },
+
+  detectAnomaly: (kind: string, message: string) => {
+    const repo = requireRepo();
+    if (!message.trim()) throw new Error("Anomaly refused: message required");
+    return append(
+      "anomaly.detected",
+      { kind, message },
+      { repo },
+    );
+  },
+
+  resolveAnomaly: (anomalyId: string) => {
+    const p = cached ?? project(all());
+    const a = p.anomalies.find((x) => x.id === anomalyId);
+    if (!a) throw new Error("Resolution refused: anomaly not found");
+    if (a.resolved) throw new Error("Resolution refused: anomaly already resolved");
+    return append(
+      "anomaly.resolved",
+      { anomalyId },
+      { repo: requireRepo(), parent: anomalyId },
+    );
+  },
+
   nullConsequence: (action: string, reason: string) =>
     append("null.consequence", { action, reason }),
 

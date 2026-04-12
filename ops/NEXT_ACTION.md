@@ -2,18 +2,23 @@
 
 ## Current Wave
 
-WAVE 10 — Autonomous Flow & Agent Civilization
+WAVE 11 — System Awareness & Intelligence Analytics
 
 ## Status
 
-- W09-SPINE-RESONANCE: claude — DONE
-- W09-B01 (Synthesis Surface): claude — DONE
-- W09-B02 (Inheritance Signal): claude — DONE
-- W09-B03 (Verification Gate): codex — DONE
+- W11-B01 (System Health Model): claude — DONE
+- W11-B02 (Intelligence Analytics Projections): claude — DONE
+- W11-B03 (System Awareness Surface): claude — DONE
+- W11-B04 (Intelligence Analytics Surface): claude — DONE
+- W11-B05 (Verification Gate): claude — DONE
+
+## Gate Emitted
+
+GATE_W12_OPEN — System awareness and intelligence analytics verified. Health model, anomaly detection, intelligence metrics, execution analytics all pass five-proof test. Build clean (109 modules). 149/149 tests passing.
 
 ## Next Eligible
 
-No active blocker in W09. Next move is wave planning and dispatch for W10.
+Wave 12 — Autonomous Scheduling and Sovereign Security.
 
 ## Relay Rule
 
