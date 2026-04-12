@@ -1315,7 +1315,7 @@ export function directiveAgent(p: Projection, directiveId: string): Agent | unde
   return p.agents.find((ag) => ag.id === assignment.agentId);
 }
 
-/** Agents registered for a repo (repo-scoped entries only) */
-export function repoAgents(p: Projection, repo: string): Agent[] {
-  return p.agents.filter((a) => a.repo === repo);
+/** Agents registered against a specific repo */
+export function repoAgents(p: Projection, repoId: string): Agent[] {
+  return p.agents.filter((a) => a.repo === repoId);
 }
