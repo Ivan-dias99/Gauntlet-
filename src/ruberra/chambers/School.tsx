@@ -48,6 +48,8 @@ export function SchoolChamber() {
         <div className="rb-school-metric"><span className="label">revoked</span><span className="value">{revoked.length}</span></div>
       </div>
 
+      <div className="rb-school-atelier">
+        <div className="rb-school-atelier-dogma">
       {!p.missionFramed && (
         <div className="rb-panel rb-school-mission">
           <h2>Mission Canon</h2>
@@ -146,7 +148,9 @@ export function SchoolChamber() {
           </ul>
         </div>
       )}
+        </div>
 
+        <div className="rb-school-atelier-pressure">
       <div className="rb-panel rb-school-proposals">
         <h2>Doctrine Under Pressure</h2>
         <div className="rb-col" style={{ marginBottom: 12 }}>
@@ -226,6 +230,8 @@ export function SchoolChamber() {
               ))}
           </ul>
         )}
+      </div>
+        </div>
       </div>
     </section>
   );

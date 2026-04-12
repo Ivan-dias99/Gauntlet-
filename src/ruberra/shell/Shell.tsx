@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { useProjection, emit } from "../spine/store";
 import { nextMove } from "../spine/projections";
 import { ThreadStrip } from "./ThreadStrip";
+import { WorkNavRail } from "./WorkNavRail";
 import { CanonRibbon } from "./CanonRibbon";
 import { EventPulse } from "./EventPulse";
 import { CreationChamber } from "../chambers/Creation";
@@ -29,12 +30,12 @@ const CHAMBERS: Array<{ id: "lab" | "school" | "creation" | "memory"; label: str
 ];
 
 export function Shell({
-  theme,
-  onToggleTheme,
+  theme = "dark",
+  onToggleTheme = () => {},
 }: {
-  theme: ThemeMode;
-  onToggleTheme: () => void;
-}) {
+  theme?: ThemeMode;
+  onToggleTheme?: () => void;
+} = {}) {
   const p = useProjection();
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
@@ -234,20 +235,39 @@ export function Shell({
       </header>
 
       <main className="rb-main">
-        <ErrorBoundary label="Thread strip">
-          <ThreadStrip open={leftOpen} onClose={closeRails} />
-        </ErrorBoundary>
+        <div className="rb-main-col rb-main-col--work-nav">
+          <ErrorBoundary label="Work navigation">
+            <WorkNavRail
+              onOpenThreads={() => {
+                setLeftOpen(true);
+                setRightOpen(false);
+              }}
+            />
+          </ErrorBoundary>
+        </div>
 
-        <ErrorBoundary label={`Chamber · ${p.chamber}`}>
-          {p.chamber === "creation" && <CreationChamber />}
-          {p.chamber === "lab" && <LabChamber />}
-          {p.chamber === "school" && <SchoolChamber />}
-          {p.chamber === "memory" && <MemoryChamber />}
-        </ErrorBoundary>
+        <div className="rb-main-col rb-main-col--threads">
+          <ErrorBoundary label="Thread strip">
+            <ThreadStrip open={leftOpen} onClose={closeRails} />
+          </ErrorBoundary>
+        </div>
 
-        <ErrorBoundary label="Canon ribbon">
-          <CanonRibbon open={rightOpen} onClose={closeRails} />
-        </ErrorBoundary>
+        <div className="rb-main-col rb-main-col--stage">
+          <div className="rb-workstage">
+            <ErrorBoundary label={`Chamber · ${p.chamber}`}>
+              {p.chamber === "creation" && <CreationChamber />}
+              {p.chamber === "lab" && <LabChamber />}
+              {p.chamber === "school" && <SchoolChamber />}
+              {p.chamber === "memory" && <MemoryChamber />}
+            </ErrorBoundary>
+          </div>
+        </div>
+
+        <div className="rb-main-col rb-main-col--canon">
+          <ErrorBoundary label="Canon ribbon">
+            <CanonRibbon open={rightOpen} onClose={closeRails} />
+          </ErrorBoundary>
+        </div>
       </main>
 
       <ErrorBoundary label="Event pulse">

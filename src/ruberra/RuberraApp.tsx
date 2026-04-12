@@ -16,6 +16,7 @@ import "./flagship.css";
 import "./flagship-wave2.css";
 import "./reforge-imports.css";
 import "./embodiment.css";
+import "./workstation.css";
 
 type BootState =
   | { phase: "booting" }

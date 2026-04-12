@@ -149,6 +149,8 @@ export function MemoryChamber() {
         <div className="rb-memory-intel-cell"><span className="label">synthesis</span><span className="value">{syntheses.length}</span></div>
       </div>
 
+      <div className="rb-memory-workbench">
+        <div className="rb-memory-workbench-recall">
       {resonance.length > 0 && (
         <div className="rb-resonance-surface">
           <div className="rb-resonance-surface-label">
@@ -269,7 +271,9 @@ export function MemoryChamber() {
           )}
         </div>
       )}
+        </div>
 
+        <div className="rb-memory-workbench-substrate">
       {repoMemory.length > 0 && (
         <div className="rb-memory-consolidation">
           {(["observed", "retained", "hardened", "revoked"] as const).map((state) => {
@@ -434,6 +438,8 @@ export function MemoryChamber() {
             );
           })
         )}
+      </div>
+        </div>
       </div>
     </section>
   );
