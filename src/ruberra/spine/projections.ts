@@ -1078,49 +1078,57 @@ export function threadSyntheses(
     .filter((s) => s.sourceText.length > 0);
 }
 
-// ── Autonomous Flow Projections (W10) ────────────────────────────────────
+// ── Compounding Integrity Gate (W09-B03 hardening) ───────────────────────
 
-/** Pending directive proposals for a thread. */
-export function pendingProposals(
+export type CompoundingViolationCode =
+  | "resonance-self-origin"
+  | "synthesis-missing-source";
+
+export interface CompoundingViolation {
+  code: CompoundingViolationCode;
+  threadId: string;
+  detail: string;
+}
+
+export function compoundingViolations(
   p: Projection,
   threadId: string,
-): DirectiveProposal[] {
-  return p.proposals.filter(
-    (x) => x.thread === threadId && x.status === "pending",
-  );
-}
+): CompoundingViolation[] {
+  const violations: CompoundingViolation[] = [];
 
-/** Active flow for a thread (at most one active at a time). */
-export function activeFlow(
-  p: Projection,
-  threadId: string,
-): Flow | undefined {
-  return p.flows.find(
-    (f) => f.thread === threadId && f.status === "active",
-  );
-}
+  for (const match of threadResonance(p, threadId)) {
+    if (match.sourceThread && match.sourceThread === threadId) {
+      violations.push({
+        code: "resonance-self-origin",
+        threadId,
+        detail: `self-origin canon ${match.canonId} leaked into resonance`,
+      });
+    }
+  }
 
-/** Next step in a flow that hasn't been completed yet. */
-export function nextFlowStep(flow: Flow): FlowStep | undefined {
-  return flow.steps.find((s) => s.status === "pending");
-}
+  for (const s of p.syntheses.filter((x) => x.targetThread === threadId)) {
+    if (s.sourceType === "canon") {
+      const c = p.canon.find((x) => x.id === s.sourceId);
+      if (!c) {
+        violations.push({
+          code: "synthesis-missing-source",
+          threadId,
+          detail: `missing canon source ${s.sourceId} for synthesis ${s.id}`,
+        });
+      }
+    } else {
+      const m = p.memory.find((x) => x.id === s.sourceId);
+      if (!m) {
+        violations.push({
+          code: "synthesis-missing-source",
+          threadId,
+          detail: `missing memory source ${s.sourceId} for synthesis ${s.id}`,
+        });
+      }
+    }
+  }
 
-/** Agent assigned to a specific directive. */
-export function directiveAgent(
-  p: Projection,
-  directiveId: string,
-): Agent | undefined {
-  const assignment = p.assignments.find((a) => a.directiveId === directiveId);
-  if (!assignment) return undefined;
-  return p.agents.find((a) => a.id === assignment.agentId);
-}
-
-/** All agents registered for a repo. */
-export function repoAgents(
-  p: Projection,
-  repo: string,
-): Agent[] {
-  return p.agents.filter((a) => !a.repo || a.repo === repo);
+  return violations;
 }
 
 // ── System Awareness Projections (W11) ──────────────────────────────────

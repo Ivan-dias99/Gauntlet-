@@ -9,7 +9,6 @@ import { nextMove } from "../spine/projections";
 import { ThreadStrip } from "./ThreadStrip";
 import { CanonRibbon } from "./CanonRibbon";
 import { EventPulse } from "./EventPulse";
-import { SovereignDock } from "./SovereignDock";
 import { CreationChamber } from "../chambers/Creation";
 import { LabChamber } from "../chambers/Lab";
 import { SchoolChamber } from "../chambers/School";
@@ -240,13 +239,10 @@ export function Shell({
         </ErrorBoundary>
 
         <ErrorBoundary label={`Chamber · ${p.chamber}`}>
-          <div className="rb-shell-center">
-            <SovereignDock />
-            {p.chamber === "creation" && <CreationChamber />}
-            {p.chamber === "lab" && <LabChamber />}
-            {p.chamber === "school" && <SchoolChamber />}
-            {p.chamber === "memory" && <MemoryChamber />}
-          </div>
+          {p.chamber === "creation" && <CreationChamber />}
+          {p.chamber === "lab" && <LabChamber />}
+          {p.chamber === "school" && <SchoolChamber />}
+          {p.chamber === "memory" && <MemoryChamber />}
         </ErrorBoundary>
 
         <ErrorBoundary label="Canon ribbon">
