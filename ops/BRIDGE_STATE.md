@@ -13,22 +13,27 @@
 - GATE_BETA_READY — emitted by antigravity — 2026-04-10T04:48Z
 - GATE_W08_OPEN — emitted by antigravity — 2026-04-10T04:59Z
 - GATE_FOUNDATION_LOCKED — emitted by antigravity — 2026-04-10T19:43Z
+- GATE_W10_OPEN — emitted by codex — 2026-04-10
+- GATE_W11_OPEN — emitted by codex — 2026-04-11
+- GATE_W12_OPEN — emitted by claude — 2026-04-11
 
 ## Agent Lanes
 
-- claude: W09-B01 + W09-B02 delivered — resonance surface in Memory, inheritance signal in Creation, spine logic complete.
+- claude: W11-B01 through W11-B05 delivered — system health model, intelligence analytics, surfaces wired, 149 tests passing.
 - antigravity: W01-W08 terminal polish complete. Foundation locked.
 
 ## Active Wave
 
-WAVE 09 — Intelligence Compounding
+WAVE 11 — System Awareness & Intelligence Analytics (CLOSED)
 
 ## Current Status
 
 - **Foundation Locked**: All product body activation waves (01-08) are complete and polished.
-- **Structural Integrity**: Build verified clean (103 modules, 0 errors). Tests: 105/105.
+- **Structural Integrity**: Build verified clean (109 modules, 0 errors). Tests: 149/149.
 - **Chamber Identity**: Creation (Forge), Lab (Validation), School (Canon), Memory (Substrate) all carry flagship gravity.
-- **Spine Evolution**: Concept Station, Relay Logic, and Intelligence Compounding logic operational.
-- **W09-B01 Delivered**: Memory chamber gains cross-thread resonance surface + synthesis links display.
-- **W09-B02 Delivered**: Creation concept items gain ancestry signal showing inherited canon.
+- **Spine Evolution**: Full event-sourced spine with health model, anomaly detection, intelligence analytics, flow engine, agent registry.
+- **W11-B01 Delivered**: System health model — health snapshot events, anomaly detection/resolution events, emitters.
+- **W11-B02 Delivered**: Intelligence analytics projections — systemHealth, intelligenceMetrics, executionAnalytics, activeAnomalies.
+- **W11-B03 Delivered**: EventPulse gains health score badge and anomaly surface.
+- **W11-B04 Delivered**: Memory chamber gains intelligence analytics grid with metrics and anomaly management.
 - **Entry Ritual**: Recognizes returning architects and directs flow based on pending forge work.

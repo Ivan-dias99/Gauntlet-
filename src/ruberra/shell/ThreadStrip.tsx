@@ -15,6 +15,7 @@ const CHAMBER_ACCENT: Record<string, string> = {
   lab: "rgba(82, 121, 106, 0.75)",
   school: "rgba(74, 107, 132, 0.75)",
   creation: "rgba(138, 98, 56, 0.75)",
+  memory: "rgba(90, 122, 138, 0.75)",
 };
 
 const STATE_LABEL: Record<string, string> = {

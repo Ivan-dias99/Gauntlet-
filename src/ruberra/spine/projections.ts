@@ -206,6 +206,35 @@ export interface AgentAssignment {
   ts: number;
 }
 
+// ── System Awareness (W11) ────────────────────────────────────────────────
+
+export type AnomalyKind =
+  | "execution-failure-spike"
+  | "contradiction-unresolved"
+  | "memory-stagnation"
+  | "canon-coverage-low"
+  | "agent-idle";
+
+export interface SystemAnomaly {
+  id: string;
+  kind: AnomalyKind;
+  message: string;
+  ts: number;
+  resolved: boolean;
+  repo?: string;
+}
+
+export interface HealthSnapshot {
+  id: string;
+  ts: number;
+  repo?: string;
+  executionSuccessRate: number;   // 0-1
+  contradictionResolutionRate: number; // 0-1
+  memoryPromotionVelocity: number;    // promoted / total
+  canonCoverage: number;              // hardened / (hardened + proposed)
+  activeAnomalies: number;
+}
+
 // ── Intelligence Compounding (W09) ────────────────────────────────────────
 
 // Manual cross-thread knowledge link. The architect binds a canon entry or
@@ -1536,4 +1565,193 @@ export function compoundingViolations(
   }
 
   return violations;
+}
+
+// ── System Awareness Projections (W11) ──────────────────────────────────
+
+/** Compute live system health metrics from the projection. */
+export interface SystemHealthMetrics {
+  executionSuccessRate: number;
+  contradictionResolutionRate: number;
+  memoryPromotionVelocity: number;
+  canonCoverage: number;
+  activeAnomalyCount: number;
+  healthScore: number; // 0-100 composite
+}
+
+export function systemHealth(p: Projection, repo?: string): SystemHealthMetrics {
+  const r = repo ?? p.activeRepo;
+
+  const finished = p.executions.filter((x) => x.status !== "running");
+  const succeeded = finished.filter((x) => x.status === "succeeded").length;
+  const executionSuccessRate = finished.length > 0 ? succeeded / finished.length : 1;
+
+  const repoContradictions = p.contradictions.filter((c) => !c.repo || c.repo === r);
+  const resolved = repoContradictions.filter((c) => c.resolved).length;
+  const contradictionResolutionRate = repoContradictions.length > 0
+    ? resolved / repoContradictions.length : 1;
+
+  const repoMemory = p.memory.filter((m) => !m.repo || m.repo === r);
+  const promoted = repoMemory.filter((m) => m.promoted).length;
+  const memoryPromotionVelocity = repoMemory.length > 0
+    ? promoted / repoMemory.length : 0;
+
+  const hardened = p.canon.filter((c) => c.state === "hardened" && (!c.repo || c.repo === r)).length;
+  const proposed = p.canonProposals.filter((c) => !c.hardened && (!c.repo || c.repo === r)).length;
+  const canonCoverage = (hardened + proposed) > 0 ? hardened / (hardened + proposed) : 0;
+
+  const activeAnomalyCount = p.anomalies.filter((a) => !a.resolved && (!a.repo || a.repo === r)).length;
+
+  // Composite health score: weighted average of key metrics
+  const healthScore = Math.round(
+    (executionSuccessRate * 30 +
+     contradictionResolutionRate * 25 +
+     (1 - Math.min(activeAnomalyCount, 5) / 5) * 25 +
+     canonCoverage * 20) * 100 / 100,
+  );
+
+  return {
+    executionSuccessRate,
+    contradictionResolutionRate,
+    memoryPromotionVelocity,
+    canonCoverage,
+    activeAnomalyCount,
+    healthScore,
+  };
+}
+
+/** Active (unresolved) anomalies for a repo. */
+export function activeAnomalies(p: Projection, repo?: string): SystemAnomaly[] {
+  const r = repo ?? p.activeRepo;
+  return p.anomalies.filter((a) => !a.resolved && (!a.repo || a.repo === r));
+}
+
+// ── Intelligence Analytics Projections (W11) ─────────────────────────────
+
+export interface IntelligenceMetrics {
+  resonanceCount: number;           // total cross-thread resonance matches
+  synthesisCount: number;           // explicit knowledge links created
+  conceptToCanonRate: number;       // concepts that have canon ancestry / total concepts
+  memoryToCanonRate: number;        // memories promoted to canon / total memories
+  threadCount: number;              // total threads
+  activeThreadCount: number;        // open threads
+  knowledgeDensity: number;         // (canon + syntheses) / threads — knowledge per thread
+  executionThroughput: number;      // completed executions / total executions
+  agentCount: number;               // registered agents
+  agentUtilization: number;         // assigned directives / total accepted directives
+}
+
+export function intelligenceMetrics(p: Projection, repo?: string): IntelligenceMetrics {
+  const r = repo ?? p.activeRepo;
+
+  const repoThreads = p.threads.filter((t) => !t.repo || t.repo === r);
+  const threadCount = repoThreads.length;
+  const activeThreadCount = repoThreads.filter((t) => t.status === "open").length;
+
+  // Resonance: count how many matches exist across all active threads
+  let resonanceCount = 0;
+  for (const t of repoThreads.filter((t) => t.status === "open")) {
+    resonanceCount += threadResonance(p, t.id).length;
+  }
+
+  const synthesisCount = p.syntheses.length;
+
+  // Concept → Canon ancestry rate
+  const repoConcepts = p.concepts.filter((c) => !c.repo || c.repo === r);
+  let conceptsWithAncestry = 0;
+  for (const c of repoConcepts) {
+    if (conceptAncestry(p, c.id).length > 0) conceptsWithAncestry++;
+  }
+  const conceptToCanonRate = repoConcepts.length > 0
+    ? conceptsWithAncestry / repoConcepts.length : 0;
+
+  // Memory → Canon promotion
+  const repoMemory = p.memory.filter((m) => !m.repo || m.repo === r);
+  const memoryToCanon = repoMemory.filter((m) => m.state === "hardened").length;
+  const memoryToCanonRate = repoMemory.length > 0 ? memoryToCanon / repoMemory.length : 0;
+
+  // Knowledge density
+  const canonCount = p.canon.filter((c) => c.state === "hardened" && (!c.repo || c.repo === r)).length;
+  const knowledgeDensity = threadCount > 0 ? (canonCount + synthesisCount) / threadCount : 0;
+
+  // Execution throughput
+  const finished = p.executions.filter((x) => x.status !== "running");
+  const executionThroughput = p.executions.length > 0 ? finished.length / p.executions.length : 0;
+
+  // Agent utilization
+  const agentCount = p.agents.filter((a) => !a.repo || a.repo === r).length;
+  const acceptedDirectives = p.directives.filter((d) => d.status === "accepted" && (!d.repo || d.repo === r)).length;
+  const assignedDirectives = p.assignments.length;
+  const agentUtilization = acceptedDirectives > 0 ? Math.min(assignedDirectives / acceptedDirectives, 1) : 0;
+
+  return {
+    resonanceCount,
+    synthesisCount,
+    conceptToCanonRate,
+    memoryToCanonRate,
+    threadCount,
+    activeThreadCount,
+    knowledgeDensity,
+    executionThroughput,
+    agentCount,
+    agentUtilization,
+  };
+}
+
+/** Execution performance breakdown. */
+export interface ExecutionAnalytics {
+  total: number;
+  running: number;
+  succeeded: number;
+  failed: number;
+  successRate: number;
+  avgDurationMs: number | null;  // null if no completed executions
+}
+
+export function executionAnalytics(p: Projection): ExecutionAnalytics {
+  const total = p.executions.length;
+  const running = p.executions.filter((x) => x.status === "running").length;
+  const succeeded = p.executions.filter((x) => x.status === "succeeded").length;
+  const failed = p.executions.filter((x) => x.status === "failed").length;
+  const finished = p.executions.filter((x) => x.endedAt);
+  const successRate = (succeeded + failed) > 0 ? succeeded / (succeeded + failed) : 1;
+
+  let avgDurationMs: number | null = null;
+  if (finished.length > 0) {
+    const totalDuration = finished.reduce(
+      (sum, x) => sum + ((x.endedAt ?? x.startedAt) - x.startedAt), 0,
+    );
+    avgDurationMs = totalDuration / finished.length;
+  }
+
+  return { total, running, succeeded, failed, successRate, avgDurationMs };
+}
+
+// ── Derived helpers used by Creation surface ──────────────────────────────
+
+/** All pending (unresolved) directive proposals for a given thread */
+export function pendingProposals(p: Projection, threadId: string): DirectiveProposal[] {
+  return p.proposals.filter((pr) => pr.thread === threadId && pr.status === "pending");
+}
+
+/** The first active flow bound to a thread, if any */
+export function activeFlow(p: Projection, threadId: string): Flow | undefined {
+  return p.flows.find((f) => f.thread === threadId && f.status === "active");
+}
+
+/** The next pending step in a flow */
+export function nextFlowStep(flow: Flow): FlowStep | undefined {
+  return flow.steps.find((s) => s.status === "pending");
+}
+
+/** The agent assigned to a directive, if any */
+export function directiveAgent(p: Projection, directiveId: string): Agent | undefined {
+  const assignment = p.assignments.find((a) => a.directiveId === directiveId);
+  if (!assignment) return undefined;
+  return p.agents.find((ag) => ag.id === assignment.agentId);
+}
+
+/** Agents registered against a specific repo */
+export function repoAgents(p: Projection, repoId: string): Agent[] {
+  return p.agents.filter((a) => a.repo === repoId);
 }

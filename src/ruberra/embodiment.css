@@ -1,0 +1,374 @@
+/* Ruberra — Final embodiment pass: depth, tactility, parity, handheld.
+   Loaded after styles/flagship; no architecture change. */
+
+/* ── Viewport / safe-area (handheld consoles, notches) ─────────────────── */
+.rb-root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+/* ── Top shell: instrument weight + centered chamber rail (wide) ───────── */
+@media (min-width: 1100px) {
+  .rb-topbar {
+    position: relative;
+    min-height: 52px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    border-bottom-color: var(--rb-line-strong);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, transparent 72%),
+      var(--rb-bg-elev);
+    box-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .rb-brand-block {
+    gap: 4px;
+  }
+
+  .rb-brand {
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  }
+
+  html[data-rb-theme="light"] .rb-brand {
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+
+  .rb-chambers {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    margin-left: 0;
+    padding: 2px;
+    gap: 0;
+    border: 1px solid var(--rb-line-strong);
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.22);
+  }
+
+  html[data-rb-theme="light"] .rb-chambers {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(248, 244, 237, 0.95) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+}
+
+/* ── Chamber rail: regime tactility + per-chamber authority ────────────── */
+.rb-chamber-glyph {
+  position: relative;
+  border-radius: 1px;
+  transition:
+    color 0.2s var(--rb-ease-expo),
+    background 0.2s var(--rb-ease-expo),
+    box-shadow 0.2s var(--rb-ease-expo),
+    border-color 0.2s var(--rb-ease-expo);
+}
+
+@media (min-width: 1100px) {
+  .rb-chambers .rb-chamber-glyph {
+    border: 1px solid transparent;
+    border-right: 1px solid var(--rb-line);
+    margin: 0;
+  }
+  .rb-chambers .rb-chamber-glyph:last-child {
+    border-right: none;
+  }
+}
+
+.rb-chamber-glyph:hover:not(.active) {
+  z-index: 1;
+}
+
+.rb-chamber-glyph.active {
+  z-index: 2;
+  font-weight: 500;
+}
+
+.rb-chamber-glyph[data-id="lab"].active {
+  color: var(--rb-ink);
+  background: rgba(82, 121, 106, 0.12);
+  box-shadow:
+    inset 0 -2px 0 0 var(--rb-chamber-lab),
+    inset 0 0 0 1px rgba(82, 121, 106, 0.2);
+}
+
+.rb-chamber-glyph[data-id="school"].active {
+  color: var(--rb-ink);
+  background: rgba(74, 107, 132, 0.12);
+  box-shadow:
+    inset 0 -2px 0 0 var(--rb-chamber-school),
+    inset 0 0 0 1px rgba(74, 107, 132, 0.22);
+}
+
+.rb-chamber-glyph[data-id="creation"].active {
+  color: var(--rb-ink);
+  background: rgba(138, 98, 56, 0.14);
+  box-shadow:
+    inset 0 -2px 0 0 var(--rb-chamber-creation),
+    inset 0 0 0 1px rgba(200, 152, 80, 0.25);
+}
+
+.rb-chamber-glyph[data-id="memory"].active {
+  color: var(--rb-ink);
+  background: rgba(90, 122, 138, 0.12);
+  box-shadow:
+    inset 0 -2px 0 0 var(--rb-chamber-memory),
+    inset 0 0 0 1px rgba(90, 122, 138, 0.22);
+}
+
+.rb-chamber-glyph[data-id="lab"]:hover:not(.active) {
+  color: var(--rb-ink-soft);
+  background: rgba(82, 121, 106, 0.06);
+}
+
+.rb-chamber-glyph[data-id="school"]:hover:not(.active) {
+  background: rgba(74, 107, 132, 0.06);
+}
+
+.rb-chamber-glyph[data-id="creation"]:hover:not(.active) {
+  background: rgba(138, 98, 56, 0.07);
+}
+
+.rb-chamber-glyph[data-id="memory"]:hover:not(.active) {
+  background: rgba(90, 122, 138, 0.06);
+}
+
+/* ── Surface depth: panels, traces, thread cards ────────────────────────── */
+.rb-panel {
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.02) 0%, transparent 42%),
+    var(--rb-bg-elev);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.22),
+    0 12px 28px rgba(0, 0, 0, 0.12);
+  border-color: var(--rb-line-strong);
+}
+
+.rb-trace {
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.018) 0%, transparent 40%),
+    var(--rb-bg-elev);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+  border-color: var(--rb-line-strong);
+}
+
+.rb-thread {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+html[data-rb-theme="light"] .rb-panel,
+html[data-rb-theme="light"] .rb-trace {
+  box-shadow:
+    0 1px 0 rgba(35, 28, 22, 0.06),
+    0 10px 26px rgba(35, 28, 22, 0.05);
+}
+
+/* ── Controls: exact affordance ─────────────────────────────────────────── */
+.rb-input,
+.rb-textarea {
+  border-radius: 2px;
+  transition:
+    border-color 0.18s var(--rb-ease-expo),
+    box-shadow 0.18s var(--rb-ease-expo),
+    background 0.18s var(--rb-ease-expo);
+}
+
+.rb-input:hover:not(:focus):not(:disabled),
+.rb-textarea:hover:not(:focus):not(:disabled) {
+  border-color: var(--rb-ink-mute);
+}
+
+.rb-input:focus,
+.rb-textarea:focus {
+  box-shadow: 0 0 0 1px rgba(192, 57, 43, 0.15);
+}
+
+html[data-rb-theme="light"] .rb-input:focus,
+html[data-rb-theme="light"] .rb-textarea:focus {
+  box-shadow: 0 0 0 1px rgba(159, 59, 45, 0.12);
+}
+
+.rb-input::placeholder,
+.rb-textarea::placeholder {
+  color: var(--rb-ink-mute);
+  opacity: 0.65;
+}
+
+.rb-btn {
+  border-radius: 2px;
+  transition:
+    border-color 0.18s var(--rb-ease-expo),
+    color 0.18s var(--rb-ease-expo),
+    background 0.18s var(--rb-ease-expo),
+    box-shadow 0.18s var(--rb-ease-expo);
+}
+
+.rb-btn:hover:not(:disabled) {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.rb-btn:focus-visible {
+  box-shadow: 0 0 0 1px var(--rb-accent-soft);
+}
+
+.rb-btn:disabled {
+  opacity: 0.38;
+}
+
+.rb-shell-state-chip,
+.rb-theme-toggle {
+  border-radius: 2px;
+  transition: border-color 0.18s var(--rb-ease-expo), color 0.18s var(--rb-ease-expo);
+}
+
+.rb-rail-toggle {
+  border-radius: 2px;
+  transition: border-color 0.18s var(--rb-ease-expo), color 0.18s var(--rb-ease-expo);
+}
+
+/* ── Empty / dormant surfaces (charged, not absent) ───────────────────── */
+.rb-unavail {
+  position: relative;
+  border-style: solid;
+  border-color: var(--rb-line-strong);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, transparent 55%),
+    var(--rb-bg);
+  padding: 22px 22px 22px 24px;
+}
+
+.rb-unavail::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--rb-gold), rgba(201, 166, 107, 0.15));
+  opacity: 0.55;
+}
+
+.rb-unavail strong {
+  color: var(--rb-gold);
+  letter-spacing: 0.14em;
+}
+
+/* ── Typography rhythm ─────────────────────────────────────────────────── */
+.rb-chamber h1,
+.rb-chamber-title {
+  line-height: 1.12;
+}
+
+.rb-chamber .gravity {
+  line-height: 1.5;
+  margin-bottom: 26px;
+}
+
+.rb-field-label {
+  letter-spacing: 0.22em;
+  margin-bottom: 8px;
+}
+
+/* ── Chamber mount: quiet structural reveal ────────────────────────────── */
+main.rb-main section.rb-chamber {
+  animation: rb-embodiment-chamber-in 0.32s var(--rb-ease-expo) both;
+}
+
+@keyframes rb-embodiment-chamber-in {
+  from {
+    opacity: 0.88;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Mobile: thumb scale + overlay rails respect safe-area ──────────────── */
+@media (max-width: 768px) {
+  .rb-topbar {
+    padding-top: max(10px, calc(env(safe-area-inset-top, 0px) * 0.35 + 8px));
+    row-gap: 8px;
+  }
+
+  .rb-chambers {
+    flex: 1 1 100%;
+    justify-content: stretch;
+    margin-left: 0;
+    gap: 4px;
+  }
+
+  .rb-chamber-glyph {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 48px;
+    padding: 10px 8px;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+  }
+
+  .rb-rail-toggle {
+    min-height: 44px;
+    padding: 10px 14px;
+    align-items: center;
+  }
+
+  .rb-shell-actions {
+    flex-wrap: wrap;
+  }
+
+  .rb-theme-toggle,
+  .rb-shell-state-chip {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .rb-chamber {
+    padding: 20px max(16px, env(safe-area-inset-left, 0px)) 24px
+      max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  .rb-rail,
+  .rb-rail-right {
+    padding-top: max(18px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .rb-input,
+  .rb-textarea {
+    min-height: 48px;
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .rb-textarea {
+    min-height: 88px;
+  }
+
+  .rb-btn {
+    min-height: 44px;
+    padding: 10px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-chamber-glyph,
+  .rb-input,
+  .rb-textarea,
+  .rb-btn,
+  .rb-shell-state-chip,
+  .rb-theme-toggle,
+  .rb-rail-toggle {
+    transition: none;
+  }
+
+  main.rb-main section.rb-chamber {
+    animation: none;
+  }
+}

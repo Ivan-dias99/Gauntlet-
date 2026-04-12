@@ -1,18 +1,19 @@
 html[data-rb-theme="light"] {
-  --rb-bg: #f2eee7;
-  --rb-bg-elev: #f8f4ed;
-  --rb-bg-elev-2: #efe8de;
-  --rb-line: #d7ccbd;
-  --rb-line-strong: #baab97;
-  --rb-ink: #231c16;
-  --rb-ink-soft: #5f5347;
-  --rb-ink-mute: #8d7f70;
-  --rb-accent: #9f3b2d;
-  --rb-accent-soft: #6c291f;
-  --rb-gold: #9d7741;
-  --rb-ok: #59734e;
-  --rb-warn: #9b7027;
-  --rb-bad: #8f4139;
+  /* Paper authority: slightly cooler base, stronger ink contrast */
+  --rb-bg: #ebe6dc;
+  --rb-bg-elev: #f4efe6;
+  --rb-bg-elev-2: #e8e1d5;
+  --rb-line: #c9bba8;
+  --rb-line-strong: #a8947e;
+  --rb-ink: #1a1510;
+  --rb-ink-soft: #4a4036;
+  --rb-ink-mute: #7a6e62;
+  --rb-accent: #8f3428;
+  --rb-accent-soft: #5c221a;
+  --rb-gold: #8a6228;
+  --rb-ok: #4a6b42;
+  --rb-warn: #8a6220;
+  --rb-bad: #7a332c;
 }
 
 html[data-rb-theme="light"] body,
@@ -20,10 +21,15 @@ html[data-rb-theme="light"] #root {
   background: var(--rb-bg);
 }
 
+html[data-rb-theme="light"] ::selection {
+  background: rgba(159, 59, 45, 0.13);
+}
+
 html[data-rb-theme="light"] .rb-root {
   background:
-    radial-gradient(1200px 800px at 85% -10%, rgba(159, 59, 45, 0.07), transparent 60%),
-    radial-gradient(900px 600px at 0% 100%, rgba(157, 119, 65, 0.06), transparent 60%),
+    radial-gradient(1200px 800px at 85% -10%, rgba(143, 52, 40, 0.055), transparent 60%),
+    radial-gradient(900px 600px at 0% 100%, rgba(138, 98, 40, 0.05), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, transparent 42%),
     var(--rb-bg);
 }
 
