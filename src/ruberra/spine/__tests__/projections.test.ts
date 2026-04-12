@@ -17,6 +17,7 @@ import {
   activeAnomalies,
   intelligenceMetrics,
   executionAnalytics,
+  compoundingViolations,
 } from "../projections";
 import { RuberraEvent } from "../events";
 
@@ -727,6 +728,9 @@ describe("W09-B03 verification gate", () => {
     const violations = compoundingViolations(p, t.id);
     expect(violations).toHaveLength(1);
     expect(violations[0].code).toBe("synthesis-missing-source");
+  });
+});
+
 // ── W10: directive.proposed ─────────────────────────────────────────────
 
 describe("directive.proposed (W10)", () => {
