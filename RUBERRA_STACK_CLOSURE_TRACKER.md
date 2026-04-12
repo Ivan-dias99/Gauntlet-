@@ -1,5 +1,5 @@
 # RUBERRA — STACK CLOSURE TRACKER
-**Runtime Truth · No False Closure · Updated: 2026-04-11**
+**Runtime Truth · No False Closure · Updated: 2026-04-12**
 
 ---
 
@@ -176,4 +176,15 @@ Having the DNA seeded does not mean the stack is closed.
 
 *This document is the single source of truth for stack operational status.*
 *No agent may claim a stack is closed unless it appears as ✅ CLOSED in this file.*
-*Last updated: 2026-04-11*
+*Last updated: 2026-04-12*
+
+---
+
+## ACTIVE WAVE
+
+**WAVE 12 — Autonomous Scheduling & Sovereign Security** (DEFINED)
+- Definition: `ops/WAVE_12.md`
+- Targets: Stack 04 → CLOSED, Stack 06 → PARTIAL, Stack 09 → CLOSED
+- Brain-routed against `brain/05_security/` (no fast path around the event log)
+- Status: builders eligible, no blocks delivered yet — table above is unchanged
+  until W12-B05 verifies five-proof closure for each target stack.

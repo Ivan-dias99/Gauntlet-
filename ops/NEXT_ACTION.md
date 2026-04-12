@@ -2,23 +2,31 @@
 
 ## Current Wave
 
-WAVE 11 — System Awareness & Intelligence Analytics
+WAVE 12 — Autonomous Scheduling & Sovereign Security (DEFINED, builders eligible)
 
 ## Status
 
-- W11-B01 (System Health Model): claude — DONE
-- W11-B02 (Intelligence Analytics Projections): claude — DONE
-- W11-B03 (System Awareness Surface): claude — DONE
-- W11-B04 (Intelligence Analytics Surface): claude — DONE
-- W11-B05 (Verification Gate): claude — DONE
+- W11 closed: GATE_W12_OPEN held since W11-B05 verification.
+- W12 definition: `ops/WAVE_12.md` — brain-routed against `brain/05_security/`.
+- W12-B01 (Scheduling Spine): claude — ELIGIBLE
+- W12-B02 (Sovereign Security Spine): claude — ELIGIBLE (depends on B01)
+- W12-B03 (Autonomous Promotion Loop): claude — BLOCKED on B01+B02
+- W12-B04 (Autonomous Flow Surface in Creation): antigravity — BLOCKED on B01-B03
+- W12-B05 (Verification Gate): codex — BLOCKED on B01-B04
+
+## Last Verified Baseline
+
+Tests: 152/152 passing. Build: clean (vite). Tracker: W11 closed, W12 defined.
+Active branch: `claude/ruberra-fusion-architecture-7I740`.
 
 ## Gate Emitted
 
-GATE_W12_OPEN — System awareness and intelligence analytics verified. Health model, anomaly detection, intelligence metrics, execution analytics all pass five-proof test. Build clean (109 modules). 149/149 tests passing.
+GATE_W12_OPEN — System awareness and intelligence analytics verified. Health model, anomaly detection, intelligence metrics, execution analytics all pass five-proof test. Build clean. 152/152 tests passing.
 
 ## Next Eligible
 
-Wave 12 — Autonomous Scheduling and Sovereign Security.
+W12-B01 (Scheduling Spine) — claude. See `ops/WAVE_12.md` for full block definition,
+five-proof acceptance, and brain-routed security constraints.
 
 ## Relay Rule
 

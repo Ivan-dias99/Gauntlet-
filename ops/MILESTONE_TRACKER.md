@@ -9,9 +9,10 @@
 
 ## Active Wave
 
-- Wave: WAVE 11 — System Awareness & Intelligence Analytics
-- Status: CLOSED (GATE_W12_OPEN emitted)
-- Current owner: Claude (Builder — spine + surfaces delivered)
+- Wave: WAVE 12 — Autonomous Scheduling & Sovereign Security
+- Status: DEFINED (see `ops/WAVE_12.md`) — builders eligible, no blocks delivered yet
+- Previous wave: WAVE 11 — CLOSED (GATE_W12_OPEN emitted, 152/152 tests passing)
+- Current owner: Claude (Builder — W12-B01 Scheduling Spine first)
 - Final authority: Ivan
 
 ## Immediate Milestones
@@ -22,9 +23,21 @@
 4. Intelligence analytics surface in Memory. — DONE (intelligence grid with metrics, anomaly list with resolve action)
 5. Verification gate. — DONE (build clean 109 modules, 149/149 tests pass, all five-proof checks met)
 
-## After This Wave
+## Wave 12 Block Plan (per `ops/WAVE_12.md`)
 
-The next wave should focus on **Autonomous Scheduling** and **Sovereign Security**:
-- Autonomous scheduling to advance Stack 04 (Autonomous Operations) to CLOSED.
-- Security layer for Stack 06 (Sovereign Security).
-- Visual surface polish for Stack 09 (Autonomous Flow) and Stack 10 (Multi-Agent Civilization).
+1. W12-B01 — Scheduling Spine (claude) — ELIGIBLE
+2. W12-B02 — Sovereign Security Spine (claude) — depends on B01
+3. W12-B03 — Autonomous Promotion Loop (claude) — depends on B01+B02
+4. W12-B04 — Autonomous Flow Surface in Creation (antigravity) — depends on B01-B03
+5. W12-B05 — Verification Gate (codex) — depends on B01-B04
+
+## Stack Targets at W12 Closure
+
+- Stack 04 (Autonomous Operations): PARTIAL → CLOSED
+- Stack 06 (Sovereign Security): OPEN → PARTIAL (first observable surface)
+- Stack 09 (Autonomous Flow): PARTIAL → CLOSED (Creation surface gap closed)
+
+## After Wave 12
+
+Once `GATE_W13_OPEN` is emitted, the next frontier is multi-agent coordination
+(Stack 10) and the validator/runtime fabric maturing (Stack 03).
