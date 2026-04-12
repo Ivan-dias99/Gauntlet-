@@ -98,6 +98,8 @@ export interface Execution {
   endedAt?: number;
   label: string;
   reason?: string;
+  progressMessage?: string;  // W10: latest progress update
+  progressValue?: number;    // W10: 0-100 progress percentage
 }
 
 export type ArtifactReview = "pending" | "accepted" | "rejected";
@@ -134,6 +136,74 @@ export interface Contradiction {
   ts: number;
   resolved: boolean;
   repo?: string; // contradiction is repo-scoped; surfaces only within its origin repo
+}
+
+// ── Autonomous Flow (W10) ─────────────────────────────────────────────────
+
+// Proposed directive — execution or agent suggests a follow-up step.
+export type ProposalStatus = "pending" | "accepted" | "dismissed";
+
+export interface DirectiveProposal {
+  id: string;
+  thread: string;
+  repo?: string;
+  text: string;
+  scope: string;
+  risk: DirectiveRisk;
+  rationale: string;       // why the proposer suggests this
+  proposedBy: string;      // agent name or "system"
+  sourceExecutionId?: string;  // execution that generated this proposal
+  status: ProposalStatus;
+  dismissReason?: string;
+  ts: number;
+}
+
+// Flow — a multi-step sequence of directives with branching logic.
+export type FlowStatus = "active" | "completed" | "aborted";
+
+export interface FlowStep {
+  directiveText: string;
+  scope: string;
+  risk: DirectiveRisk;
+  status: "pending" | "executing" | "succeeded" | "failed" | "skipped";
+  directiveId?: string;  // populated when step is promoted to a real directive
+  order: number;
+}
+
+export interface Flow {
+  id: string;
+  thread: string;
+  repo?: string;
+  name: string;
+  steps: FlowStep[];
+  currentStep: number;     // index into steps array
+  status: FlowStatus;
+  ts: number;
+}
+
+// Agent — a named participant with declared capabilities.
+export type AgentCapability =
+  | "execute"     // can run code / inference
+  | "review"      // can review artifacts
+  | "propose"     // can propose directives
+  | "canon"       // can propose/harden canon
+  | "observe";    // read-only telemetry
+
+export interface Agent {
+  id: string;
+  name: string;
+  capabilities: AgentCapability[];
+  registeredAt: number;
+  repo?: string;
+}
+
+// Agent assignment — links a directive to an agent.
+export interface AgentAssignment {
+  id: string;
+  directiveId: string;
+  agentId: string;
+  thread: string;
+  ts: number;
 }
 
 // ── Intelligence Compounding (W09) ────────────────────────────────────────
@@ -178,6 +248,10 @@ export interface Projection {
   syntheses: KnowledgeSynthesis[];
   drafts: DirectiveDraft[];          // W10: auto-drafted directive suggestions
   pioneers: PioneerAssignment[];     // W10: pioneer assignment ledger
+  proposals: DirectiveProposal[];
+  flows: Flow[];
+  agents: Agent[];
+  assignments: AgentAssignment[];
   handoffs: ExecutionHandoff[];      // W11: execution handoff chain
   endorsements: CanonEndorsement[];  // W11: canon consensus endorsements
   chamber: "lab" | "school" | "creation" | "memory";
@@ -199,6 +273,10 @@ const empty = (): Projection => ({
   syntheses: [],
   drafts: [],
   pioneers: [],
+  proposals: [],
+  flows: [],
+  agents: [],
+  assignments: [],
   handoffs: [],
   endorsements: [],
   chamber: "creation",
@@ -353,6 +431,14 @@ export function project(events: RuberraEvent[]): Projection {
           startedAt: ev.ts,
           label: String(ev.payload.label ?? "execution"),
         });
+        break;
+      }
+      case "execution.progressed": {
+        const x = p.executions.find((x) => x.id === ev.payload.executionId);
+        if (x) {
+          x.progressMessage = String(ev.payload.message ?? "");
+          x.progressValue = ev.payload.progress as number | undefined;
+        }
         break;
       }
       case "execution.succeeded":
@@ -510,6 +596,22 @@ export function project(events: RuberraEvent[]): Projection {
         });
         break;
       }
+      case "directive.proposed": {
+        p.proposals.push({
+          id: ev.id,
+          thread: String(ev.thread ?? ""),
+          repo: ev.repo,
+          text: String(ev.payload.text ?? ""),
+          scope: String(ev.payload.scope ?? ""),
+          risk: (ev.payload.risk as DirectiveRisk) ?? "reversible",
+          rationale: String(ev.payload.rationale ?? ""),
+          proposedBy: String(ev.payload.proposedBy ?? "system"),
+          sourceExecutionId: ev.payload.sourceExecutionId as string | undefined,
+          status: "pending",
+          ts: ev.ts,
+        });
+        break;
+      }
       case "pioneer.assigned": {
         p.pioneers.push({
           id: ev.id,
@@ -530,6 +632,80 @@ export function project(events: RuberraEvent[]): Projection {
           assignment.active = false;
           assignment.releasedAt = ev.ts;
         }
+        break;
+      }
+      case "proposal.accepted": {
+        const prop = p.proposals.find((x) => x.id === ev.payload.proposalId);
+        if (prop) prop.status = "accepted";
+        break;
+      }
+      case "proposal.dismissed": {
+        const prop = p.proposals.find((x) => x.id === ev.payload.proposalId);
+        if (prop) {
+          prop.status = "dismissed";
+          prop.dismissReason = String(ev.payload.reason ?? "");
+        }
+        break;
+      }
+      case "flow.defined": {
+        const steps = (ev.payload.steps as Array<Record<string, unknown>> | undefined) ?? [];
+        p.flows.push({
+          id: ev.id,
+          thread: String(ev.thread ?? ""),
+          repo: ev.repo,
+          name: String(ev.payload.name ?? "unnamed flow"),
+          steps: steps.map((s, i) => ({
+            directiveText: String(s.directiveText ?? ""),
+            scope: String(s.scope ?? ""),
+            risk: (s.risk as DirectiveRisk) ?? "reversible",
+            status: "pending" as const,
+            order: i,
+          })),
+          currentStep: 0,
+          status: "active",
+          ts: ev.ts,
+        });
+        break;
+      }
+      case "flow.step.completed": {
+        const flow = p.flows.find((f) => f.id === ev.payload.flowId);
+        if (flow) {
+          const stepIndex = ev.payload.stepIndex as number | undefined;
+          const idx = stepIndex ?? flow.currentStep;
+          if (flow.steps[idx]) {
+            const outcome = String(ev.payload.outcome ?? "succeeded");
+            flow.steps[idx].status = outcome === "failed" ? "failed" : "succeeded";
+            flow.steps[idx].directiveId = ev.payload.directiveId as string | undefined;
+          }
+          flow.currentStep = idx + 1;
+        }
+        break;
+      }
+      case "flow.completed": {
+        const flow = p.flows.find((f) => f.id === ev.payload.flowId);
+        if (flow) {
+          flow.status = (ev.payload.outcome as "completed" | "aborted") ?? "completed";
+        }
+        break;
+      }
+      case "agent.registered": {
+        p.agents.push({
+          id: ev.id,
+          name: String(ev.payload.name ?? ""),
+          capabilities: (ev.payload.capabilities as AgentCapability[]) ?? [],
+          registeredAt: ev.ts,
+          repo: ev.repo,
+        });
+        break;
+      }
+      case "agent.assigned": {
+        p.assignments.push({
+          id: ev.id,
+          directiveId: String(ev.payload.directiveId ?? ""),
+          agentId: String(ev.payload.agentId ?? ""),
+          thread: String(ev.thread ?? ""),
+          ts: ev.ts,
+        });
         break;
       }
       // ── W11: Multi-Agent Execution ────────────────────────────────────
@@ -1137,6 +1313,39 @@ export function pioneerLoad(
   return load;
 }
 
+// ── Autonomous Flow — Pending Proposals (W10, main) ───────────────────────
+
+export function pendingProposals(
+  p: Projection,
+  threadId: string,
+): DirectiveProposal[] {
+  return p.proposals.filter((x) => x.thread === threadId && x.status === "pending");
+}
+
+export function activeFlow(
+  p: Projection,
+  threadId: string,
+): Flow | undefined {
+  return p.flows.find((f) => f.thread === threadId && f.status === "active");
+}
+
+export function nextFlowStep(flow: Flow): FlowStep | undefined {
+  return flow.steps[flow.currentStep];
+}
+
+export function directiveAgent(
+  p: Projection,
+  directiveId: string,
+): Agent | undefined {
+  const assignment = p.assignments.find((a) => a.directiveId === directiveId);
+  if (!assignment) return undefined;
+  return p.agents.find((a) => a.id === assignment.agentId);
+}
+
+export function repoAgents(p: Projection, repo: string): Agent[] {
+  return p.agents.filter((a) => a.repo === repo);
+}
+
 // ── Multi-Agent Execution — Execution Chains (W11) ────────────────────────
 
 // An execution chain is a sequence of handoffs on a given execution.
@@ -1274,4 +1483,57 @@ export function endorsedCanon(p: Projection): CanonConsensus[] {
     }
   }
   return results.sort((a, b) => b.endorsementCount - a.endorsementCount);
+}
+
+// ── Compounding Integrity Gate (W09-B03 hardening) ───────────────────────
+
+export type CompoundingViolationCode =
+  | "resonance-self-origin"
+  | "synthesis-missing-source";
+
+export interface CompoundingViolation {
+  code: CompoundingViolationCode;
+  threadId: string;
+  detail: string;
+}
+
+export function compoundingViolations(
+  p: Projection,
+  threadId: string,
+): CompoundingViolation[] {
+  const violations: CompoundingViolation[] = [];
+
+  for (const match of threadResonance(p, threadId)) {
+    if (match.sourceThread && match.sourceThread === threadId) {
+      violations.push({
+        code: "resonance-self-origin",
+        threadId,
+        detail: `self-origin canon ${match.canonId} leaked into resonance`,
+      });
+    }
+  }
+
+  for (const s of p.syntheses.filter((x) => x.targetThread === threadId)) {
+    if (s.sourceType === "canon") {
+      const c = p.canon.find((x) => x.id === s.sourceId);
+      if (!c) {
+        violations.push({
+          code: "synthesis-missing-source",
+          threadId,
+          detail: `missing canon source ${s.sourceId} for synthesis ${s.id}`,
+        });
+      }
+    } else {
+      const m = p.memory.find((x) => x.id === s.sourceId);
+      if (!m) {
+        violations.push({
+          code: "synthesis-missing-source",
+          threadId,
+          detail: `missing memory source ${s.sourceId} for synthesis ${s.id}`,
+        });
+      }
+    }
+  }
+
+  return violations;
 }

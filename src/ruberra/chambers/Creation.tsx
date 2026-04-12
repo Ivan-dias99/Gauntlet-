@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { emit, useProjection } from "../spine/store";
-import { revokedCanonWithDependents, conceptAncestry, directiveDrafts, activePioneers, threadExecutionChains } from "../spine/projections";
+import { revokedCanonWithDependents, conceptAncestry, directiveDrafts, activePioneers, threadExecutionChains, pendingProposals, activeFlow, nextFlowStep, directiveAgent } from "../spine/projections";
 import type { DraftSuggestion } from "../spine/projections";
 import { runRuntime } from "../spine/runtime-fabric";
 import { Unavailable } from "../trust/Unavailable";
@@ -79,6 +79,10 @@ export function CreationChamber() {
     : [];
 
   const openContradictions = p.contradictions.filter((c) => !c.resolved && (!c.repo || c.repo === p.activeRepo));
+
+  const proposals = activeThread ? pendingProposals(p, activeThread.id) : [];
+  const flow = activeThread ? activeFlow(p, activeThread.id) : undefined;
+  const flowNext = flow ? nextFlowStep(flow) : undefined;
 
   const ambiguous = /\{\{[^}]+\}\}/.test(text);
   const canCompose = !!activeThread && text.trim().length > 0 && scope.trim().length > 0 && acceptance.trim().length > 0 && !ambiguous;
@@ -193,6 +197,51 @@ export function CreationChamber() {
               {pendingReviewCount > 0 && <span className="rb-relay-count rb-relay-count--warn">{pendingReviewCount}</span>}
             </div>
           </div>
+
+          {proposals.length > 0 && (
+            <div className="rb-proposal-surface">
+              <div className="rb-proposal-surface-label">proposed directives · {proposals.length}</div>
+              {proposals.map((prop) => (
+                <div key={prop.id} className="rb-proposal-card">
+                  <div className="rb-proposal-card-header">
+                    <span className="rb-proposal-agent-badge">{prop.proposedBy}</span>
+                    <span className={`rb-badge ${prop.risk}`}>{prop.risk}</span>
+                  </div>
+                  <div className="rb-proposal-card-text">{prop.text}</div>
+                  <div className="rb-proposal-card-scope">{prop.scope}</div>
+                  <div className="rb-proposal-card-rationale">↳ {prop.rationale}</div>
+                  <div className="rb-proposal-actions">
+                    <button className="rb-btn primary" onClick={() => emit.acceptProposal(prop.id)}>Accept → Directive</button>
+                    <button className="rb-btn" onClick={async () => {
+                      const reason = await RuledPrompt.ask("Dismiss reason (required):", { label: "reason" });
+                      if (reason?.trim()) emit.dismissProposal(prop.id, reason.trim());
+                    }}>Dismiss</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {flow && (
+            <div className="rb-flow-surface">
+              <div className="rb-flow-surface-label">active flow · {flow.name}</div>
+              <div className="rb-flow-steps">
+                {flow.steps.map((step, i) => (
+                  <div key={i} className={`rb-flow-step${step.status === "succeeded" ? " rb-flow-step--done" : step.status === "failed" ? " rb-flow-step--failed" : i === flow.currentStep ? " rb-flow-step--current" : ""}`}>
+                    <span className="rb-flow-step-index">{i + 1}</span>
+                    <span className="rb-flow-step-text">{step.directiveText}</span>
+                    <span className={`rb-badge ${step.status === "succeeded" ? "ok" : step.status === "failed" ? "bad" : step.status === "executing" ? "warn" : ""}`}>{step.status}</span>
+                  </div>
+                ))}
+              </div>
+              {flowNext && (
+                <div className="rb-flow-next">
+                  <span className="rb-flow-next-label">next →</span>
+                  <span className="rb-flow-next-text">{flowNext.directiveText}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="rb-concept-station">
             <div className="rb-concept-station-title">Concept Station</div>
@@ -325,11 +374,13 @@ export function CreationChamber() {
                 <div className="rb-thread-record-label">thread record</div>
                 {directives.map((d) => {
                   const linked = artifacts.filter((a) => a.directive === d.id);
+                  const agent = directiveAgent(p, d.id);
                   return (
                     <div key={d.id} className="rb-thread-record-row">
                       <div className="rb-row" style={{ gap: 6, flexWrap: "wrap" }}>
                         <span className={`rb-badge ${d.status === "accepted" ? "ok" : "bad"}`}>{d.status}</span>
                         <span className={`rb-badge ${d.risk}`}>{d.risk}</span>
+                        {agent && <span className="rb-agent-badge">{agent.name}</span>}
                         <span className="rb-thread-record-text">{d.text.length > 60 ? d.text.slice(0, 60) + "…" : d.text}</span>
                       </div>
                       {d.status === "rejected" && d.reason && <div className="rb-thread-record-sub">↳ {d.reason}</div>}

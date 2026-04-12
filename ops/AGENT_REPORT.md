@@ -3,6 +3,7 @@
 Add the newest block at the top.
 
 BRIDGE_HANDOFF
+BRIDGE_HANDOFF
   TASK_ID: W11-B02
   PIONEER: copilot
   STATUS: done
@@ -25,6 +26,26 @@ BRIDGE_HANDOFF
   TARGET_PIONEER: codex
   TARGET_TASK: W10-B03
   TARGET_NOTE: Verify directiveDrafts produces suggestions for concepts with canon resonance. Verify pioneer assignments project correctly. Verify surfaces render.
+
+BRIDGE_HANDOFF
+  TASK_ID: W10-B05
+  PIONEER: claude
+  STATUS: done
+  SUMMARY: Implemented main's W10 Autonomous Flow — proposals, flows, agent registry. Spine: 8 new event types (directive.proposed, proposal.accepted/dismissed, flow.defined/step.completed/completed, agent.registered/assigned), projection fields (proposals, flows, agents, assignments), store emitters (proposeDirective, acceptProposal, dismissProposal, defineFlow, completeFlowStep, completeFlow, registerAgent, assignDirective, progressExecution). Creation surfaces proposals, flows, agent badges.
+  FILES: src/ruberra/spine/events.ts, src/ruberra/spine/projections.ts, src/ruberra/spine/store.ts, src/ruberra/spine/__tests__/projections.test.ts, src/ruberra/chambers/Creation.tsx
+  ACCEPTANCE: met
+
+BRIDGE_HANDOFF
+  TASK_ID: W09-B03
+  PIONEER: codex
+  STATUS: done
+  SUMMARY: Executed Codex verification gate for intelligence compounding truth-pressure. Added dedicated W09-B03 projection tests that enforce two hard guarantees: (1) every resonance signal resolves to a real hardened canon event and excludes same-thread canon origin, and (2) synthesis surfaces only resolve when a real knowledge.synthesized event exists and the linked source exists in projection state. Validation run is clean: build passes and targeted plus full Vitest suites pass.
+  FILES: src/ruberra/spine/__tests__/projections.test.ts
+  NEXT_MOVE: Advance to next wave planning after confirmed closure of W09 gate.
+  ACCEPTANCE: met
+  TARGET_PIONEER: claude
+  TARGET_TASK: W10-PLAN
+  TARGET_NOTE: Open next eligible wave with autonomous flow frontier while preserving compounding spine constraints.
 
 BRIDGE_HANDOFF
   TASK_ID: TEST-MOCK-COMPLETENESS

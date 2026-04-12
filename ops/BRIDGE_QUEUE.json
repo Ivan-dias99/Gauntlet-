@@ -311,7 +311,67 @@
       "scope": ["src/ruberra/", "ops/"],
       "depends_on": ["W09-B02"],
       "gate_on_complete": "GATE_W10_OPEN",
+      "status": "done",
       "success": "Intelligence compounding verified and operational."
+    },
+    {
+      "id": "W10-B01",
+      "title": "Autonomous Directive Proposal",
+      "owner": "claude",
+      "support": ["codex"],
+      "surface": "spine",
+      "scope": ["src/ruberra/spine/"],
+      "depends_on": ["W09-B03"],
+      "gate_on_complete": null,
+      "status": "done",
+      "success": "directive.proposed, proposal.accepted, proposal.dismissed events + emitters + projections + pendingProposals helper. 5 tests."
+    },
+    {
+      "id": "W10-B02",
+      "title": "Flow Engine Spine",
+      "owner": "claude",
+      "support": ["codex"],
+      "surface": "spine",
+      "scope": ["src/ruberra/spine/"],
+      "depends_on": ["W10-B01"],
+      "gate_on_complete": null,
+      "status": "done",
+      "success": "Flow type with FlowStep, flow.defined/flow.step.completed/flow.completed events + emitters + projections + activeFlow/nextFlowStep helpers. 9 tests."
+    },
+    {
+      "id": "W10-B03",
+      "title": "Agent Registry",
+      "owner": "claude",
+      "support": ["codex"],
+      "surface": "spine",
+      "scope": ["src/ruberra/spine/"],
+      "depends_on": ["W10-B02"],
+      "gate_on_complete": null,
+      "status": "done",
+      "success": "Agent type with AgentCapability, agent.registered/agent.assigned events + emitters + projections + directiveAgent/repoAgents helpers + execution.progressed emitter wired. 7 tests."
+    },
+    {
+      "id": "W10-B04",
+      "title": "Autonomous Flow Surface",
+      "owner": "claude",
+      "support": [],
+      "surface": "product",
+      "scope": ["src/ruberra/chambers/Creation.tsx", "src/ruberra/styles.css"],
+      "depends_on": ["W10-B03"],
+      "gate_on_complete": null,
+      "status": "done",
+      "success": "Creation chamber wired with proposal surface, flow visualization, and agent badges."
+    },
+    {
+      "id": "W10-B05",
+      "title": "Wave 10 Verification Gate",
+      "owner": "codex",
+      "surface": "audit",
+      "scope": ["src/ruberra/", "ops/"],
+      "depends_on": ["W10-B04"],
+      "gate_on_complete": "GATE_W11_OPEN",
+      "status": "done",
+      "success": "Autonomous flow spine verified, agent registry operational, flow engine passes five-proof test."
     }
   ]
 }

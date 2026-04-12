@@ -37,6 +37,14 @@ export type EventType =
   | "directive.drafted"      // W10: autonomous draft — system suggests a directive from concept + canon
   | "pioneer.assigned"       // W10: pioneer bound to a thread or directive for execution
   | "pioneer.released"       // W10: pioneer released from assignment
+  | "directive.proposed"     // W10: execution or agent proposes a follow-up directive
+  | "proposal.accepted"      // W10: proposed directive promoted to real directive
+  | "proposal.dismissed"     // W10: proposed directive rejected with reason
+  | "flow.defined"           // W10: multi-step directive flow created
+  | "flow.step.completed"    // W10: one step of a flow finished
+  | "flow.completed"         // W10: entire flow resolved (all steps done or aborted)
+  | "agent.registered"       // W10: named agent with capabilities joins the organism
+  | "agent.assigned"         // W10: directive assigned to a specific agent
   | "execution.handoff"      // W11: pioneer hands execution to another pioneer
   | "canon.endorsed"         // W11: pioneer endorses a canon proposal, building consensus
   | "chamber.entered";

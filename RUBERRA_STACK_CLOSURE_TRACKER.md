@@ -44,13 +44,13 @@ src/main.tsx
 | 01 | Canon + Sovereignty | ✅ CLOSED | Canon hardened/revoked in event log. School surfaces canon ledger. CanonRibbon shows Authority + Scars. Seeds auto-inject constitution on first bind. |
 | 02 | Mission Substrate | ✅ CLOSED | Repo binding is the mission-level anchor. Threads carry intent. Directives carry consequence. All surfaces are repo-scoped. |
 | 03 | Sovereign Intelligence | 🔶 PARTIAL | runtime-fabric.ts exists with provider routing. Simulation mode active. No live multi-model routing yet. |
-| 04 | Autonomous Operations | 🔶 PARTIAL | Execution events fire (started/succeeded/failed). No autonomous scheduling — all human-triggered. |
+| 04 | Autonomous Operations | 🔶 PARTIAL | Execution events fire (started/succeeded/failed/progressed). Directive proposals enable auto-suggested next steps. No autonomous scheduling yet — proposals require architect acceptance. |
 | 05 | Adaptive Experience | ✅ CLOSED | Shell adapts per chamber. RitualEntry differentiates first-encounter vs return. Chamber headers carry distinct identity. |
 | 06 | Sovereign Security | ⬜ OPEN | No security layer in converged architecture. Trust surfaces exist (ErrorBoundary, RuledPrompt) but are not security-grade. |
 | 07 | Trust + Governance | ✅ CLOSED | Event log IS the audit trail. Every mutation appends. Contradictions detected. Canon revocation requires reason. Artifact review requires reason. |
 | 08 | System Awareness | 🔶 PARTIAL | EventPulse shows live telemetry. No health model, no anomaly detection. |
-| 09 | Autonomous Flow | ⬜ OPEN | No flow engine in converged architecture. Directive → Execution is single-step. |
-| 10 | Multi-Agent Civilization | ⬜ OPEN | No agent system. Single-architect model. |
+| 09 | Autonomous Flow | 🔶 PARTIAL | Flow engine in spine: flow.defined/step.completed/completed events, Flow type with multi-step sequencing. Directive proposals enable autonomous next-step suggestions. No visual surface yet. |
+| 10 | Multi-Agent Civilization | 🔶 PARTIAL | Agent registry in spine: agent.registered/assigned events, AgentCapability type, directive-to-agent assignment. No multi-agent coordination or consensus yet. |
 | 11 | Living Knowledge | ✅ CLOSED | Cross-thread resonance detection. Knowledge synthesis emitter. Resonance surface in Memory. Concept ancestry in Creation. See detail below. |
 | 12 | Intelligence Analytics | ⬜ OPEN | No analytics surfaces. |
 | 13 | Collective Execution | ⬜ OPEN | No multi-operator support. |
