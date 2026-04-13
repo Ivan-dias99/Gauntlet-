@@ -15,6 +15,7 @@ import { LabChamber } from "../chambers/Lab";
 import { SchoolChamber } from "../chambers/School";
 import { MemoryChamber } from "../chambers/Memory";
 import { ErrorBoundary } from "../trust/ErrorBoundary";
+import { chambersForShell } from "./chamber-order";
 
 type ThemeMode = "dark" | "light";
 
@@ -22,12 +23,7 @@ const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
   | string
   | undefined;
 
-const CHAMBERS: Array<{ id: "lab" | "school" | "creation" | "memory"; label: string; gravity: string }> = [
-  { id: "school", label: "School", gravity: "truth" },
-  { id: "creation", label: "Creation", gravity: "forge" },
-  { id: "lab", label: "Lab", gravity: "validation" },
-  { id: "memory", label: "Memory", gravity: "substrate" },
-];
+const CHAMBERS = chambersForShell();
 
 export function Shell({
   theme = "dark",

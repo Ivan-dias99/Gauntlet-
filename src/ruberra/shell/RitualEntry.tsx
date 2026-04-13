@@ -9,8 +9,8 @@ import { useMemo, useState } from "react";
 import { emit, useProjection } from "../spine/store";
 import { nextMove } from "../spine/projections";
 import { AccessSeal } from "../surfaces/AccessSeal";
+import { type ChamberId, chambersForRitualEntry } from "./chamber-order";
 
-type ChamberId = "school" | "creation" | "lab" | "memory";
 type ThemeMode = "dark" | "light";
 
 interface Props {
@@ -20,37 +20,7 @@ interface Props {
   onToggleTheme: () => void;
 }
 
-const ENTRY_CHAMBERS: Array<{
-  id: ChamberId;
-  title: string;
-  signal: string;
-  body: string;
-}> = [
-  {
-    id: "creation",
-    title: "Creation",
-    signal: "forge",
-    body: "directive composition, blueprint pressure, artifact review",
-  },
-  {
-    id: "school",
-    title: "School",
-    signal: "truth",
-    body: "mission canon, doctrine pressure, hardened law",
-  },
-  {
-    id: "lab",
-    title: "Lab",
-    signal: "validation",
-    body: "execution trace, contradiction field, evidence capture",
-  },
-  {
-    id: "memory",
-    title: "Memory",
-    signal: "substrate",
-    body: "resonance, retained consequence, organism recall",
-  },
-];
+const ENTRY_CHAMBERS = chambersForRitualEntry();
 
 export function RitualEntry({ onEnter, returning, theme, onToggleTheme }: Props) {
   const p = useProjection();

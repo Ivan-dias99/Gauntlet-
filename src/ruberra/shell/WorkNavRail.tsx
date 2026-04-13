@@ -2,18 +2,9 @@
 // chamber regime switches. Complements ThreadStrip (ledger) as operator rail.
 
 import { useProjection, emit } from "../spine/store";
+import { chambersForWorkNav } from "./chamber-order";
 
-const CHAMBERS: Array<{
-  id: "lab" | "school" | "creation" | "memory";
-  label: string;
-  short: string;
-  gravity: string;
-}> = [
-  { id: "creation", label: "Creation", short: "Forge", gravity: "forge" },
-  { id: "lab", label: "Lab", short: "Lab", gravity: "validation" },
-  { id: "school", label: "School", short: "School", gravity: "truth" },
-  { id: "memory", label: "Memory", short: "Memory", gravity: "substrate" },
-];
+const CHAMBERS = chambersForWorkNav();
 
 export function WorkNavRail({ onOpenThreads }: { onOpenThreads: () => void }) {
   const p = useProjection();

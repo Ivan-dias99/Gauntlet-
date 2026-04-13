@@ -192,15 +192,12 @@ describe("Shell — sovereign frame", () => {
     expect(repo?.textContent).toMatch(/test-repo/);
   });
 
-  it("renders exactly four chamber glyph buttons", () => {
+  it("renders exactly four chamber glyph buttons in canonical IA order", () => {
     render(<Shell />);
     const glyphs = document.querySelectorAll(".rb-chamber-glyph");
     expect(glyphs).toHaveLength(4);
-    const labels = Array.from(glyphs).map((g) => g.textContent?.trim().toLowerCase());
-    expect(labels).toContain("lab");
-    expect(labels).toContain("school");
-    expect(labels).toContain("creation");
-    expect(labels).toContain("memory");
+    const ids = Array.from(glyphs).map((g) => g.getAttribute("data-id"));
+    expect(ids).toEqual(["school", "creation", "lab", "memory"]);
   });
 
   it("active chamber glyph has active class", () => {
