@@ -12,3 +12,7 @@ test-results/
 playwright-report/
 ops/CODEX_LOOP_STATE.json
 ops/CODEX_LOOP_STATE.log
+
+# Transient build artifacts at root — outputs, not sources
+build_*.log
+build_*.txt
