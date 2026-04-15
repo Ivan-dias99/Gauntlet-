@@ -16,7 +16,7 @@ interface SpineCtx {
   principles: Principle[];
   createMission: (title: string, chamber: Chamber) => void;
   switchMission: (id: string) => void;
-  addNote: (text: string) => void;
+  addNote: (text: string, role?: "user" | "ai") => void;
   addTask: (title: string) => void;
   completeTask: (taskId: string) => void;
   addPrinciple: (text: string) => void;
@@ -41,7 +41,7 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       principles: state.principles,
       createMission: (t, c) => dispatch(s => mkMission(s, t, c)),
       switchMission: (id) => dispatch(s => switchFn(s, id)),
-      addNote: (text) => dispatch(s => addNoteFn(s, text)),
+      addNote: (text, role) => dispatch(s => addNoteFn(s, text, role)),
       addTask: (title) => dispatch(s => addTaskFn(s, title)),
       completeTask: (id) => dispatch(s => completeTaskFn(s, id)),
       addPrinciple: (text) => dispatch(s => addPrincipleFn(s, text)),

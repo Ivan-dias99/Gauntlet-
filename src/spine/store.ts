@@ -110,12 +110,14 @@ export function createMission(state: SpineState, title: string, chamber: Chamber
   return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id };
 }
 
-export function addNote(state: SpineState, text: string): SpineState {
-  const note: Note = { id: uid(), text: text.trim(), createdAt: now() };
+export function addNote(state: SpineState, text: string, role: Note["role"] = "user"): SpineState {
+  const note: Note = { id: uid(), text: text.trim(), createdAt: now(), role };
   return onActive(state, m => ({
     ...m,
     notes: [note, ...m.notes],
-    events: [log("note_added", `Nota: ${text.trim().slice(0, 48)}`), ...m.events],
+    events: role === "ai"
+      ? [log("ai_response", `IA: ${text.trim().slice(0, 48)}`), ...m.events]
+      : [log("note_added", `Nota: ${text.trim().slice(0, 48)}`), ...m.events],
   }));
 }
 

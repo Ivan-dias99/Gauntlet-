@@ -6,6 +6,7 @@ const TYPE_LABEL: Record<LogEvent["type"], string> = {
   note_added:      "NOTE",
   task_added:      "TASK",
   task_done:       "DONE",
+  ai_response:     "AI",
 };
 
 const TYPE_COLOR: Record<LogEvent["type"], string> = {
@@ -13,6 +14,7 @@ const TYPE_COLOR: Record<LogEvent["type"], string> = {
   note_added:      "#6a8aaa",
   task_added:      "var(--text-muted)",
   task_done:       "var(--terminal-ok)",
+  ai_response:     "var(--terminal-warn)",
 };
 
 export default function Memory() {
