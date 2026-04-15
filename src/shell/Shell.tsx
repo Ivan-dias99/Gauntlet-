@@ -1,5 +1,8 @@
 import { useState } from "react";
-import CanonRibbon, { Chamber } from "./CanonRibbon";
+import CanonRibbon from "./CanonRibbon";
+import RitualEntry from "./RitualEntry";
+import { useSpine } from "../spine/SpineContext";
+import { Chamber } from "../spine/types";
 import Lab from "../chambers/Lab";
 import Creation from "../chambers/Creation";
 import Memory from "../chambers/Memory";
@@ -15,7 +18,14 @@ function renderChamber(c: Chamber) {
 }
 
 export default function Shell() {
-  const [active, setActive] = useState<Chamber>("Lab");
+  const { state, activeMission } = useSpine();
+  const [activeTab, setActiveTab] = useState<Chamber>(
+    activeMission?.chamber ?? "Lab"
+  );
+
+  if (state.missions.length === 0) {
+    return <RitualEntry />;
+  }
 
   return (
     <div style={{
@@ -25,9 +35,13 @@ export default function Shell() {
       background: "#0c0c0c",
       fontFamily: "system-ui, sans-serif",
     }}>
-      <CanonRibbon active={active} onSelect={setActive} />
+      <CanonRibbon
+        active={activeTab}
+        onSelect={setActiveTab}
+        missionTitle={activeMission?.title}
+      />
       <main style={{ flex: 1, overflow: "auto" }}>
-        {renderChamber(active)}
+        {renderChamber(activeTab)}
       </main>
     </div>
   );

@@ -1,5 +1,10 @@
+import { SpineProvider } from "./spine/SpineContext";
 import Shell from "./shell/Shell";
 
 export default function App() {
-  return <Shell />;
+  return (
+    <SpineProvider>
+      <Shell />
+    </SpineProvider>
+  );
 }

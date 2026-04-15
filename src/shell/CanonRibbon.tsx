@@ -1,19 +1,21 @@
-export const CHAMBERS = ["Lab", "Creation", "Memory", "School"] as const;
-export type Chamber = typeof CHAMBERS[number];
+import { Chamber } from "../spine/types";
+
+export const CHAMBERS: Chamber[] = ["Lab", "Creation", "Memory", "School"];
 
 const LABELS: Record<Chamber, string> = {
-  Lab: "Investigação",
+  Lab:      "Investigação",
   Creation: "Construção",
-  Memory: "Memória",
-  School: "Doutrina",
+  Memory:   "Memória",
+  School:   "Doutrina",
 };
 
 interface Props {
   active: Chamber;
   onSelect: (c: Chamber) => void;
+  missionTitle?: string;
 }
 
-export default function CanonRibbon({ active, onSelect }: Props) {
+export default function CanonRibbon({ active, onSelect, missionTitle }: Props) {
   return (
     <header style={{
       height: 48,
@@ -22,7 +24,7 @@ export default function CanonRibbon({ active, onSelect }: Props) {
       display: "flex",
       alignItems: "center",
       paddingLeft: 24,
-      gap: 0,
+      paddingRight: 24,
       flexShrink: 0,
     }}>
       <span style={{
@@ -37,7 +39,7 @@ export default function CanonRibbon({ active, onSelect }: Props) {
         RUBERRA
       </span>
 
-      {CHAMBERS.map(c => (
+      {CHAMBERS.map((c) => (
         <button
           key={c}
           onClick={() => onSelect(c)}
@@ -58,6 +60,22 @@ export default function CanonRibbon({ active, onSelect }: Props) {
           {LABELS[c]}
         </button>
       ))}
+
+      {missionTitle && (
+        <span style={{
+          marginLeft: "auto",
+          fontSize: 11,
+          color: "#3a3530",
+          fontFamily: "system-ui, sans-serif",
+          letterSpacing: 0.3,
+          maxWidth: 260,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}>
+          {missionTitle}
+        </span>
+      )}
     </header>
   );
 }
