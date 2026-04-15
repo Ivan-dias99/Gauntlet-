@@ -2,7 +2,16 @@ import { SpineState, Mission, Chamber, Note, Task, LogEvent, Principle } from ".
 
 const KEY = "ruberra:spine:v1";
 
-function uid(): string { return crypto.randomUUID(); }
+function uid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback for non-secure contexts (http LAN, older browsers)
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
 function now(): number { return Date.now(); }
 
 function log(type: LogEvent["type"], label: string): LogEvent {
@@ -19,14 +28,26 @@ function onActive(state: SpineState, fn: (m: Mission) => Mission): SpineState {
   };
 }
 
+const EMPTY: SpineState = { missions: [], activeMissionId: null, principles: [] };
+
+function isValidState(s: unknown): s is SpineState {
+  return (
+    s !== null &&
+    typeof s === "object" &&
+    Array.isArray((s as SpineState).missions) &&
+    Array.isArray((s as SpineState).principles)
+  );
+}
+
 export function loadState(): SpineState {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { missions: [], activeMissionId: null, principles: [] };
-    const parsed = JSON.parse(raw) as SpineState;
-    return { principles: [], ...parsed };
+    if (!raw) return EMPTY;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isValidState(parsed)) return EMPTY;
+    return parsed;
   } catch {
-    return { missions: [], activeMissionId: null, principles: [] };
+    return EMPTY;
   }
 }
 
