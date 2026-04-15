@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CanonRibbon from "./CanonRibbon";
 import RitualEntry from "./RitualEntry";
 import { useSpine } from "../spine/SpineContext";
@@ -22,6 +22,11 @@ export default function Shell() {
   const [activeTab, setActiveTab] = useState<Chamber>(
     activeMission?.chamber ?? "Lab"
   );
+
+  // Sync tab when active mission changes (e.g. after ritual entry)
+  useEffect(() => {
+    if (activeMission) setActiveTab(activeMission.chamber);
+  }, [activeMission?.id]);
 
   if (state.missions.length === 0) {
     return <RitualEntry />;

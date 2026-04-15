@@ -13,7 +13,11 @@ export function loadState(): SpineState {
 }
 
 export function saveState(state: SpineState): void {
-  localStorage.setItem(KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    // storage unavailable (private mode, quota exceeded) — state lives in memory only
+  }
 }
 
 export function createMission(
