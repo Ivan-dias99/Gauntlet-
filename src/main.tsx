@@ -1,4 +1,4 @@
 import { createRoot } from "react-dom/client";
-import RuberraApp from "./ruberra/RuberraApp";
+import App from "./App";
 
-createRoot(document.getElementById("root")!).render(<RuberraApp />);
+createRoot(document.getElementById("root")!).render(<App />);
