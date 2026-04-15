@@ -1,14 +1,32 @@
-import { SpineState, Mission, Chamber } from "./types";
+import { SpineState, Mission, Chamber, Note, Task, LogEvent, Principle } from "./types";
 
 const KEY = "ruberra:spine:v1";
+
+function uid(): string { return crypto.randomUUID(); }
+function now(): number { return Date.now(); }
+
+function log(type: LogEvent["type"], label: string): LogEvent {
+  return { id: uid(), type, label, at: now() };
+}
+
+function onActive(state: SpineState, fn: (m: Mission) => Mission): SpineState {
+  if (!state.activeMissionId) return state;
+  return {
+    ...state,
+    missions: state.missions.map(m =>
+      m.id === state.activeMissionId ? fn(m) : m
+    ),
+  };
+}
 
 export function loadState(): SpineState {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { missions: [], activeMissionId: null };
-    return JSON.parse(raw) as SpineState;
+    if (!raw) return { missions: [], activeMissionId: null, principles: [] };
+    const parsed = JSON.parse(raw) as SpineState;
+    return { principles: [], ...parsed };
   } catch {
-    return { missions: [], activeMissionId: null };
+    return { missions: [], activeMissionId: null, principles: [] };
   }
 }
 
@@ -16,24 +34,66 @@ export function saveState(state: SpineState): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
-    // storage unavailable (private mode, quota exceeded) — state lives in memory only
+    // storage unavailable — state lives in memory only
   }
 }
 
-export function createMission(
-  state: SpineState,
-  title: string,
-  chamber: Chamber
-): SpineState {
+export function createMission(state: SpineState, title: string, chamber: Chamber): SpineState {
   const mission: Mission = {
-    id: crypto.randomUUID(),
+    id: uid(),
     title: title.trim(),
     chamber,
     status: "active",
-    createdAt: Date.now(),
+    createdAt: now(),
+    notes: [],
+    tasks: [],
+    events: [log("mission_created", `Missão criada: ${title.trim()}`)],
   };
-  return {
-    missions: [mission, ...state.missions],
-    activeMissionId: mission.id,
-  };
+  return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id };
+}
+
+export function addNote(state: SpineState, text: string): SpineState {
+  const note: Note = { id: uid(), text: text.trim(), createdAt: now() };
+  return onActive(state, m => ({
+    ...m,
+    notes: [note, ...m.notes],
+    events: [log("note_added", `Nota: ${text.trim().slice(0, 48)}`), ...m.events],
+  }));
+}
+
+export function addTask(state: SpineState, title: string): SpineState {
+  const task: Task = { id: uid(), title: title.trim(), done: false, createdAt: now() };
+  return onActive(state, m => ({
+    ...m,
+    tasks: [...m.tasks, task],
+    events: [log("task_added", `Tarefa: ${title.trim().slice(0, 48)}`), ...m.events],
+  }));
+}
+
+export function completeTask(state: SpineState, taskId: string): SpineState {
+  return onActive(state, m => {
+    const task = m.tasks.find(t => t.id === taskId);
+    if (!task) return m;
+    const toggled = !task.done;
+    return {
+      ...m,
+      tasks: m.tasks.map(t =>
+        t.id === taskId
+          ? { ...t, done: toggled, doneAt: toggled ? now() : undefined }
+          : t
+      ),
+      events: toggled
+        ? [log("task_done", `Concluída: ${task.title.slice(0, 48)}`), ...m.events]
+        : m.events,
+    };
+  });
+}
+
+export function addPrinciple(state: SpineState, text: string): SpineState {
+  const p: Principle = { id: uid(), text: text.trim(), createdAt: now() };
+  return { ...state, principles: [p, ...state.principles] };
+}
+
+export function switchMission(state: SpineState, id: string): SpineState {
+  return { ...state, activeMissionId: id };
 }

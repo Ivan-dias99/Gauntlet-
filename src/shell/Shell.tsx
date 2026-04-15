@@ -19,17 +19,16 @@ function renderChamber(c: Chamber) {
 
 export default function Shell() {
   const { state, activeMission } = useSpine();
-  const [activeTab, setActiveTab] = useState<Chamber>(
-    activeMission?.chamber ?? "Lab"
-  );
+  const [activeTab, setActiveTab] = useState<Chamber>(activeMission?.chamber ?? "Lab");
+  const [showRitual, setShowRitual] = useState(false);
 
   // Sync tab when active mission changes (e.g. after ritual entry)
   useEffect(() => {
     if (activeMission) setActiveTab(activeMission.chamber);
   }, [activeMission?.id]);
 
-  if (state.missions.length === 0) {
-    return <RitualEntry />;
+  if (state.missions.length === 0 || showRitual) {
+    return <RitualEntry onDone={() => setShowRitual(false)} />;
   }
 
   return (
@@ -44,6 +43,7 @@ export default function Shell() {
         active={activeTab}
         onSelect={setActiveTab}
         missionTitle={activeMission?.title}
+        onNew={() => setShowRitual(true)}
       />
       <main style={{ flex: 1, overflow: "auto" }}>
         {renderChamber(activeTab)}
