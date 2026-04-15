@@ -36,13 +36,11 @@ export default function Shell() {
       height: "100vh",
       display: "flex",
       flexDirection: "column",
-      background: "#0c0c0c",
-      fontFamily: "system-ui, sans-serif",
+      background: "var(--bg)",
     }}>
       <CanonRibbon
         active={activeTab}
         onSelect={setActiveTab}
-        missionTitle={activeMission?.title}
         onNew={() => setShowRitual(true)}
       />
       <main style={{ flex: 1, overflow: "auto" }}>
