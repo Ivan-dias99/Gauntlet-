@@ -30,13 +30,27 @@ function onActive(state: SpineState, fn: (m: Mission) => Mission): SpineState {
 
 const EMPTY: SpineState = { missions: [], activeMissionId: null, principles: [] };
 
-function isValidState(s: unknown): s is SpineState {
-  return (
-    s !== null &&
-    typeof s === "object" &&
-    Array.isArray((s as SpineState).missions) &&
-    Array.isArray((s as SpineState).principles)
-  );
+function normalizeMission(m: unknown): Mission | null {
+  if (!m || typeof m !== "object") return null;
+  const r = m as Record<string, unknown>;
+  if (typeof r.id !== "string" || typeof r.title !== "string") return null;
+  return {
+    id: r.id,
+    title: r.title,
+    chamber: (["Lab", "Creation", "Memory", "School"].includes(r.chamber as string)
+      ? r.chamber : "Lab") as Mission["chamber"],
+    status: r.status === "closed" ? "closed" : "active",
+    createdAt: typeof r.createdAt === "number" ? r.createdAt : Date.now(),
+    notes: Array.isArray(r.notes) ? r.notes.filter(
+      (n: unknown) => n && typeof n === "object" && typeof (n as Record<string, unknown>).id === "string"
+    ) : [],
+    tasks: Array.isArray(r.tasks) ? r.tasks.filter(
+      (t: unknown) => t && typeof t === "object" && typeof (t as Record<string, unknown>).id === "string"
+    ) : [],
+    events: Array.isArray(r.events) ? r.events.filter(
+      (e: unknown) => e && typeof e === "object" && typeof (e as Record<string, unknown>).id === "string"
+    ) : [],
+  };
 }
 
 export function loadState(): SpineState {
@@ -44,8 +58,22 @@ export function loadState(): SpineState {
     const raw = localStorage.getItem(KEY);
     if (!raw) return EMPTY;
     const parsed: unknown = JSON.parse(raw);
-    if (!isValidState(parsed)) return EMPTY;
-    return parsed;
+    if (!parsed || typeof parsed !== "object") return EMPTY;
+    const r = parsed as Record<string, unknown>;
+    const missions = Array.isArray(r.missions)
+      ? (r.missions.map(normalizeMission).filter(Boolean) as Mission[])
+      : [];
+    const principles = Array.isArray(r.principles)
+      ? r.principles.filter(
+          (p: unknown) => p && typeof p === "object" && typeof (p as Record<string, unknown>).id === "string"
+        )
+      : [];
+    const activeMissionId =
+      typeof r.activeMissionId === "string" &&
+      missions.some(m => m.id === r.activeMissionId)
+        ? r.activeMissionId
+        : (missions[0]?.id ?? null);
+    return { missions, activeMissionId, principles };
   } catch {
     return EMPTY;
   }
