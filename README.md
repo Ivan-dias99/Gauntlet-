@@ -1,88 +1,39 @@
 # Ruberra
 
-Ruberra is a sovereign creation system for architect-first work.
+A local-first React workstation with a four-tab shell (Lab, School,
+Creation, Memory) backed by an append-only event log persisted to
+IndexedDB.
 
-It is chamber-native, memory-bearing, consequence-driven, and anti-generic.
+## Stack
 
-## Sovereign Source Rule
+- React 18 + Vite 6 + TypeScript
+- `@radix-ui/react-dialog` for modals
+- IndexedDB for event-log persistence
+- Vitest + Playwright for tests
+- Optional Node backend at `exec-backend/index.mjs` for local
+  filesystem and git operations (loopback only)
 
-The only sovereign website source is merged `main`.
-
-That means:
-
-- production from `main` is authoritative
-- preview deployments are staging only
-- open PRs are not alternate versions of the website
-- branches are workshops or harvest lines until merged
-
-## Current Runtime Truth
-
-The mounted runtime lives in:
-
-- `src/main.tsx`
-- `src/ruberra/RuberraApp.tsx`
-- `src/ruberra/`
-
-`src/app/` is legacy quarantine and not the active product surface.
-
-## What Ruberra Is
-
-Ruberra is being built as:
-
-- a sovereign creation system
-- a system for principal-architect style work
-- a product where truth, creation, memory, and consequence stay connected
-- a product shaped under Genesis Core doctrine
-
-## What Ruberra Is Not
-
-- not a marketing site
-- not a SaaS dashboard
-- not an AI wrapper
-- not a feature-grid shell
-- not prompt theater
-
-## Current Chambers
-
-- **Lab** — explore, investigate, experiment
-- **School** — form truth, pressure doctrine, refine principles
-- **Creation** — turn concept into architecture and executable direction
-- **Memory** — retain observations and preserve continuity
-
-## Genesis Core
-
-Genesis Core is the operating doctrine for building Ruberra.
-
-It is not a second product.
-It is not a second repo.
-It is the method used to keep Ruberra aligned across:
-
-- truth
-- command
-- creation
-- build
-- memory
-
-See:
-
-- `ops/GENESIS_CORE.md`
-- `ops/CANONICAL_TRUTH.md`
-- `ops/WAVE_01.md`
-- `ops/TERMINAL_REPO_STATE.md`
-
-## Development
-
-Use the living organism:
+## Run
 
 ```bash
-npm run build
+npm install
+npm run dev          # frontend on :5173
+npm run backend      # exec backend on 127.0.0.1:3001 (optional)
+npm test             # unit + integration
+npm run test:e2e     # playwright
+npm run build        # production bundle
 ```
 
-Build truth matters more than cosmetic momentum.
+## Layout
+
+```
+src/main.tsx            entry
+src/ruberra/            UI + event log + projections
+exec-backend/index.mjs  optional local backend
+tests/e2e/              playwright specs
+```
 
 ## Status
 
-- active organism: `src/ruberra/`
-- legacy quarantine: `src/app/`
-- operating doctrine: Genesis Core
-- sovereign source: merged `main`
+Local-only. No remote inference, no auth, no multi-user. The exec
+backend binds to 127.0.0.1 only.

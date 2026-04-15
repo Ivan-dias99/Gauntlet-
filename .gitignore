@@ -16,3 +16,7 @@ ops/CODEX_LOOP_STATE.log
 # Transient build artifacts at root — outputs, not sources
 build_*.log
 build_*.txt
+
+# Python bytecode
+__pycache__/
+*.pyc
