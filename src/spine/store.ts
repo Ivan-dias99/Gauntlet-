@@ -111,14 +111,29 @@ export function createMission(state: SpineState, title: string, chamber: Chamber
 }
 
 export function addNote(state: SpineState, text: string, role: Note["role"] = "user"): SpineState {
+  return addNoteToMission(state, state.activeMissionId ?? "", text, role);
+}
+
+export function addNoteToMission(
+  state: SpineState,
+  missionId: string,
+  text: string,
+  role: Note["role"] = "user",
+): SpineState {
+  if (!missionId) return state;
   const note: Note = { id: uid(), text: text.trim(), createdAt: now(), role };
-  return onActive(state, m => ({
-    ...m,
-    notes: [note, ...m.notes],
-    events: role === "ai"
-      ? [log("ai_response", `IA: ${text.trim().slice(0, 48)}`), ...m.events]
-      : [log("note_added", `Nota: ${text.trim().slice(0, 48)}`), ...m.events],
-  }));
+  return {
+    ...state,
+    missions: state.missions.map(m =>
+      m.id === missionId ? {
+        ...m,
+        notes: [note, ...m.notes],
+        events: role === "ai"
+          ? [log("ai_response", `IA: ${text.trim().slice(0, 48)}`), ...m.events]
+          : [log("note_added", `Nota: ${text.trim().slice(0, 48)}`), ...m.events],
+      } : m
+    ),
+  };
 }
 
 export function addTask(state: SpineState, title: string): SpineState {

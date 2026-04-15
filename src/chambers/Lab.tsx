@@ -12,7 +12,7 @@ Your function: analyze evidence submitted by the operator. Be forensic. Be surgi
 - You are not an assistant. You are an analytical extension of the operator's mind.`;
 
 export default function Lab() {
-  const { activeMission, addNote } = useSpine();
+  const { activeMission, addNote, addNoteToMission } = useSpine();
   const { send, streaming } = useAI();
   const [input, setInput] = useState("");
   const [liveText, setLiveText] = useState("");
@@ -27,6 +27,10 @@ export default function Lab() {
   function submit() {
     const v = input.trim();
     if (!v || streaming) return;
+
+    // Pin the mission ID now — user may switch missions while streaming
+    const targetMissionId = activeMission?.id;
+    if (!targetMissionId) return;
 
     addNote(v, "user");
     setInput("");
@@ -49,7 +53,7 @@ export default function Lab() {
         setLiveText(accumulated + "▊");
       },
       () => {
-        if (accumulated.trim()) addNote(accumulated.trim(), "ai");
+        if (accumulated.trim()) addNoteToMission(targetMissionId, accumulated.trim(), "ai");
         setLiveText("");
       },
     );
