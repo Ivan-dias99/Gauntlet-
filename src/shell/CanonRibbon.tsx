@@ -1,4 +1,5 @@
 import { Chamber } from "../spine/types";
+import { useTheme } from "../theme/ThemeContext";
 
 export const CHAMBERS: Chamber[] = ["Lab", "Creation", "Memory", "School"];
 
@@ -17,24 +18,26 @@ interface Props {
 }
 
 export default function CanonRibbon({ active, onSelect, missionTitle, onNew }: Props) {
+  const { theme, toggle } = useTheme();
+
   return (
     <header style={{
       height: 48,
-      background: "#0c0c0c",
-      borderBottom: "1px solid #1c1c1c",
+      background: "var(--bg-surface)",
+      borderBottom: "1px solid var(--border-subtle)",
       display: "flex",
       alignItems: "center",
       paddingLeft: 24,
-      paddingRight: 24,
+      paddingRight: 20,
       flexShrink: 0,
-      gap: 0,
+      boxShadow: "var(--shadow-sm)",
     }}>
       <span style={{
-        color: "#3a3530",
         fontSize: 10,
         letterSpacing: 3,
         textTransform: "uppercase",
-        fontFamily: "system-ui, sans-serif",
+        color: "var(--text-ghost)",
+        fontFamily: "var(--mono)",
         marginRight: 32,
         userSelect: "none",
       }}>
@@ -45,47 +48,68 @@ export default function CanonRibbon({ active, onSelect, missionTitle, onNew }: P
         <button key={c} onClick={() => onSelect(c)} style={{
           background: "none",
           border: "none",
-          borderBottom: active === c ? "1px solid #c4b89a" : "1px solid transparent",
+          borderBottom: active === c ? "1px solid var(--accent)" : "1px solid transparent",
           cursor: "pointer",
-          padding: "0 20px",
+          padding: "0 18px",
           height: 48,
-          color: active === c ? "#d4c8b0" : "#4a4540",
-          fontSize: 13,
-          fontFamily: "system-ui, sans-serif",
-          letterSpacing: 0.2,
-          transition: "color 0.12s",
+          color: active === c ? "var(--accent)" : "var(--text-muted)",
+          fontSize: 12,
+          fontFamily: "var(--sans)",
+          letterSpacing: 0.3,
+          transition: "color 0.15s",
+          fontWeight: active === c ? 500 : 400,
         }}>
           {LABELS[c]}
         </button>
       ))}
 
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
         {missionTitle && (
           <span style={{
             fontSize: 11,
-            color: "#3a3530",
-            fontFamily: "system-ui, sans-serif",
-            maxWidth: 200,
+            color: "var(--text-ghost)",
+            maxWidth: 180,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
+            fontFamily: "var(--mono)",
           }}>
             {missionTitle}
           </span>
         )}
+
+        {/* Theme toggle */}
+        <button onClick={toggle} title={theme === "dark" ? "Mudar para Light" : "Mudar para Dark"} style={{
+          background: "none",
+          border: "1px solid var(--border)",
+          color: "var(--text-muted)",
+          fontSize: 13,
+          width: 28,
+          height: 28,
+          cursor: "pointer",
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "color 0.15s, border-color 0.15s",
+          flexShrink: 0,
+        }}>
+          {theme === "dark" ? "○" : "●"}
+        </button>
+
         {onNew && (
           <button onClick={onNew} style={{
             background: "none",
-            border: "1px solid #2a2520",
-            color: "#4a4540",
+            border: "1px solid var(--border)",
+            color: "var(--text-muted)",
             fontSize: 10,
             letterSpacing: 1.5,
             textTransform: "uppercase",
             padding: "5px 14px",
             cursor: "pointer",
-            fontFamily: "system-ui, sans-serif",
-            borderRadius: 2,
-            transition: "color 0.12s, border-color 0.12s",
+            fontFamily: "var(--sans)",
+            borderRadius: "var(--radius)",
+            transition: "color 0.15s, border-color 0.15s",
           }}>
             + Missão
           </button>

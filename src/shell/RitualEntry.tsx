@@ -29,18 +29,18 @@ export default function RitualEntry({ onDone }: Props) {
   return (
     <div style={{
       height: "100vh",
-      background: "#0c0c0c",
+      background: "var(--bg)",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      fontFamily: "system-ui, sans-serif",
     }}>
-      <div style={{ width: "100%", maxWidth: 520, padding: "0 32px" }}>
+      <div style={{ width: "100%", maxWidth: 540, padding: "0 40px" }}>
 
         <div style={{
           fontSize: 10, letterSpacing: 3,
-          color: "#3a3530", textTransform: "uppercase",
-          marginBottom: 48,
+          color: "var(--text-ghost)", textTransform: "uppercase",
+          fontFamily: "var(--mono)",
+          marginBottom: 52,
         }}>
           RUBERRA · NOVA MISSÃO
         </div>
@@ -53,10 +53,10 @@ export default function RitualEntry({ onDone }: Props) {
           placeholder="Nome da missão"
           style={{
             width: "100%", background: "none",
-            border: "none", borderBottom: "1px solid #222",
-            outline: "none", fontSize: 24, color: "#e8e4df",
-            padding: "6px 0 18px", marginBottom: 48,
-            fontFamily: "system-ui, sans-serif", letterSpacing: "-0.4px",
+            border: "none", borderBottom: "1px solid var(--border)",
+            outline: "none", fontSize: 26, color: "var(--text-primary)",
+            padding: "6px 0 20px", marginBottom: 48,
+            fontFamily: "var(--sans)", letterSpacing: "-0.5px",
           }}
         />
 
@@ -65,16 +65,22 @@ export default function RitualEntry({ onDone }: Props) {
             const active = chamber === c.id;
             return (
               <button key={c.id} onClick={() => setChamber(c.id)} style={{
-                background: active ? "#141210" : "none",
-                border: `1px solid ${active ? "#3a3028" : "#1e1e1e"}`,
-                borderRadius: 3, padding: "14px 16px",
+                background: active ? "var(--bg-elevated)" : "var(--bg-surface)",
+                border: `1px solid ${active ? "var(--accent-dim)" : "var(--border-subtle)"}`,
+                borderRadius: "var(--radius)",
+                padding: "14px 18px",
                 cursor: "pointer", textAlign: "left",
-                transition: "all 0.1s",
+                boxShadow: active ? "var(--shadow-sm)" : "none",
+                transition: "all 0.12s",
               }}>
-                <div style={{ fontSize: 13, color: active ? "#c4b89a" : "#4a4540", marginBottom: 5 }}>
+                <div style={{
+                  fontSize: 13, fontWeight: 500,
+                  color: active ? "var(--accent)" : "var(--text-muted)",
+                  marginBottom: 5,
+                }}>
                   {c.label}
                 </div>
-                <div style={{ fontSize: 10, color: "#2e2b28", letterSpacing: 0.3 }}>
+                <div style={{ fontSize: 10, color: "var(--text-ghost)", letterSpacing: 0.3 }}>
                   {c.sub}
                 </div>
               </button>
@@ -82,19 +88,19 @@ export default function RitualEntry({ onDone }: Props) {
           })}
         </div>
 
-        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <button
             onClick={commit}
             disabled={!ready}
             style={{
-              background: "none",
-              border: `1px solid ${ready ? "#c4b89a" : "#222"}`,
-              color: ready ? "#c4b89a" : "#2e2b28",
+              background: ready ? "var(--accent-glow)" : "none",
+              border: `1px solid ${ready ? "var(--accent)" : "var(--border)"}`,
+              color: ready ? "var(--accent)" : "var(--text-ghost)",
               fontSize: 11, letterSpacing: 2.5,
               textTransform: "uppercase", padding: "12px 36px",
               cursor: ready ? "pointer" : "default",
-              fontFamily: "system-ui, sans-serif",
-              borderRadius: 2, transition: "all 0.12s",
+              fontFamily: "var(--sans)",
+              borderRadius: "var(--radius)", transition: "all 0.15s",
             }}
           >
             Entrar
@@ -103,8 +109,8 @@ export default function RitualEntry({ onDone }: Props) {
           {onDone && (
             <button onClick={onDone} style={{
               background: "none", border: "none",
-              color: "#3a3530", fontSize: 11,
-              cursor: "pointer", fontFamily: "system-ui, sans-serif",
+              color: "var(--text-ghost)", fontSize: 12,
+              cursor: "pointer",
             }}>
               cancelar
             </button>

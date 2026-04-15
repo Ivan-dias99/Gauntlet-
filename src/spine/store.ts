@@ -44,9 +44,18 @@ function normalizeMission(m: unknown): Mission | null {
     notes: Array.isArray(r.notes) ? r.notes.filter(
       (n: unknown) => n && typeof n === "object" && typeof (n as Record<string, unknown>).id === "string"
     ) : [],
-    tasks: Array.isArray(r.tasks) ? r.tasks.filter(
-      (t: unknown) => t && typeof t === "object" && typeof (t as Record<string, unknown>).id === "string"
-    ) : [],
+    tasks: Array.isArray(r.tasks) ? r.tasks.flatMap((t: unknown) => {
+      if (!t || typeof t !== "object") return [];
+      const tr = t as Record<string, unknown>;
+      if (typeof tr.id !== "string" || typeof tr.title !== "string") return [];
+      return [{
+        id: tr.id,
+        title: tr.title,
+        done: tr.done === true,
+        createdAt: typeof tr.createdAt === "number" ? tr.createdAt : Date.now(),
+        ...(typeof tr.doneAt === "number" ? { doneAt: tr.doneAt } : {}),
+      }] as Task[];
+    }) : [],
     events: Array.isArray(r.events) ? r.events.filter(
       (e: unknown) => e && typeof e === "object" && typeof (e as Record<string, unknown>).id === "string"
     ) : [],
