@@ -1,6 +1,5 @@
-// Ruberra — Root. Hydrates the event log, then mounts the shell.
-// Safe mode boot: if hydration fails catastrophically, minimal surface.
-// Returning users see system state acknowledgment before re-entry.
+// Root. Hydrates the event log, then mounts the shell.
+// If hydration fails, renders a minimal safe-mode surface.
 
 import { useEffect, useState } from "react";
 import { bootSpine, useProjection } from "./spine/store";
@@ -82,7 +81,7 @@ export default function RuberraApp() {
           <h1>
             RUB<span>E</span>RRA
           </h1>
-          <p>hydrating spine…</p>
+          <p>loading…</p>
         </div>
       </div>
     );

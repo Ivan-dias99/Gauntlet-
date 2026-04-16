@@ -1,14 +1,8 @@
-// Ruberra — Ritual Entry. The first surface. Must carry weight.
-// Two modes:
-//   1. First encounter — initiation. Bind repo. Sparse, sovereign.
-//   2. Return — recognition. System acknowledges continuity before re-entry.
-// No explanation-first. No setup-wizard energy. The system is already running.
-// Principal-architect identity: entry leads to Creation, not discovery.
+// Startup screen. Two modes: first visit (bind a repo) and return (resume).
 
 import { useMemo, useState } from "react";
 import { emit, useProjection } from "../spine/store";
 import { nextMove } from "../spine/projections";
-import { AccessSeal } from "../surfaces/AccessSeal";
 
 type ChamberId = "school" | "creation" | "lab" | "memory";
 type ThemeMode = "dark" | "light";
@@ -29,26 +23,26 @@ const ENTRY_CHAMBERS: Array<{
   {
     id: "creation",
     title: "Creation",
-    signal: "forge",
-    body: "directive composition, blueprint pressure, artifact review",
+    signal: "build",
+    body: "compose directives and review artifacts",
   },
   {
     id: "school",
     title: "School",
-    signal: "truth",
-    body: "mission canon, doctrine pressure, hardened law",
+    signal: "rules",
+    body: "repo canon and policies",
   },
   {
     id: "lab",
     title: "Lab",
-    signal: "validation",
-    body: "execution trace, contradiction field, evidence capture",
+    signal: "run",
+    body: "execute directives and capture evidence",
   },
   {
     id: "memory",
     title: "Memory",
-    signal: "substrate",
-    body: "resonance, retained consequence, organism recall",
+    signal: "notes",
+    body: "retained observations and outcomes",
   },
 ];
 
@@ -99,7 +93,7 @@ export function RitualEntry({ onEnter, returning, theme, onToggleTheme }: Props)
       <div className="rb-ritual rb-ritual--return">
         <div className="inner rb-return-inner rb-entry-shell">
           <div className="rb-entry-toolbar">
-            <div className="rb-entry-kicker">return gate</div>
+            <div className="rb-entry-kicker">return</div>
             <button className="rb-theme-toggle" onClick={onToggleTheme} type="button">
               {theme === "dark" ? "Light" : "Dark"}
             </button>
@@ -108,10 +102,6 @@ export function RitualEntry({ onEnter, returning, theme, onToggleTheme }: Props)
           <h1>
             RUB<span>E</span>RRA
           </h1>
-          <div className="rb-ritual-subtitle">Architect Station</div>
-          <div className="rb-entry-intro">
-            continuity recognized. the organism can reopen at the exact chamber where pressure matters most.
-          </div>
           <div className="rb-return-repo">{p.activeRepo}</div>
 
           <div className="rb-entry-stats rb-entry-stats--return">
@@ -120,17 +110,6 @@ export function RitualEntry({ onEnter, returning, theme, onToggleTheme }: Props)
             <div className="rb-entry-stat"><span className="label">threads</span><span className="value">{openThreads}</span></div>
             <div className="rb-entry-stat"><span className="label">review</span><span className="value">{pendingReviews}</span></div>
           </div>
-
-          <AccessSeal
-            mode="return"
-            repo={p.activeRepo}
-            state={move}
-            openThreads={openThreads}
-            canonCount={canonCount}
-            memoryCount={memoryCount}
-            unresolvedCount={unresolvedCount}
-            pendingReviews={pendingReviews}
-          />
 
           <div className="rb-return-state">
             <div className="rb-return-row">
@@ -173,7 +152,9 @@ export function RitualEntry({ onEnter, returning, theme, onToggleTheme }: Props)
               onEnter();
             }}
           >
-            {hasForgeWork ? "Enter Forge · Review" : `Resume · ${ENTRY_CHAMBERS.find((c) => c.id === selectedChamber)?.title ?? "Chamber"}`}
+            {hasForgeWork
+              ? `Review pending (${pendingReviews})`
+              : `Open ${ENTRY_CHAMBERS.find((c) => c.id === selectedChamber)?.title ?? "Chamber"}`}
           </button>
         </div>
       </div>
@@ -184,7 +165,7 @@ export function RitualEntry({ onEnter, returning, theme, onToggleTheme }: Props)
     <div className="rb-ritual rb-ritual--flagship">
       <div className="inner rb-entry-shell">
         <div className="rb-entry-toolbar">
-          <div className="rb-entry-kicker">foundry gate</div>
+          <div className="rb-entry-kicker">start</div>
           <button className="rb-theme-toggle" onClick={onToggleTheme} type="button">
             {theme === "dark" ? "Light" : "Dark"}
           </button>
@@ -193,22 +174,13 @@ export function RitualEntry({ onEnter, returning, theme, onToggleTheme }: Props)
         <h1>
           RUB<span>E</span>RRA
         </h1>
-        <div className="rb-ritual-subtitle">Architect Creation System</div>
-        <div className="rb-ritual-identity">
-          concept · directive · consequence · canon
-        </div>
-        <div className="rb-entry-intro">
-          one sovereign mission organism for building, validating, retaining, and hardening what matters.
-        </div>
 
         <div className="rb-entry-stats">
           <div className="rb-entry-stat"><span className="label">shell</span><span className="value">active</span></div>
           <div className="rb-entry-stat"><span className="label">chambers</span><span className="value">4</span></div>
           <div className="rb-entry-stat"><span className="label">mode</span><span className="value">{theme}</span></div>
-          <div className="rb-entry-stat"><span className="label">bind</span><span className="value">repo</span></div>
+          <div className="rb-entry-stat"><span className="label">repo</span><span className="value">unbound</span></div>
         </div>
-
-        <AccessSeal mode="bind" />
 
         <div className="rb-entry-chambers">
           {ENTRY_CHAMBERS.map((chamber) => (
@@ -229,7 +201,7 @@ export function RitualEntry({ onEnter, returning, theme, onToggleTheme }: Props)
           <label className="rb-field-label">repo</label>
           <input
             className="rb-input"
-            placeholder="bind repo to begin"
+            placeholder="repository name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
@@ -243,7 +215,7 @@ export function RitualEntry({ onEnter, returning, theme, onToggleTheme }: Props)
             disabled={!name.trim()}
             onClick={() => void launch(name, selectedChamber)}
           >
-            Bind · Enter {ENTRY_CHAMBERS.find((c) => c.id === selectedChamber)?.title ?? "Forge"}
+            Open {ENTRY_CHAMBERS.find((c) => c.id === selectedChamber)?.title ?? "Chamber"}
           </button>
         </div>
       </div>
