@@ -3,9 +3,12 @@
 // Narrow-width: rails become overlay drawers with toggle buttons in topbar.
 
 import "../harvest.css";
-import { useState, useEffect } from "react";
+import "../surfaces.css";
+import { useState, useEffect, useCallback } from "react";
 import { useProjection, emit } from "../spine/store";
 import { nextMove } from "../spine/projections";
+import { getRuntimeConfig } from "../spine/runtime-fabric";
+import { exportLog, importLog } from "../spine/eventLog";
 import { ThreadStrip } from "./ThreadStrip";
 import { WorkNavRail } from "./WorkNavRail";
 import { CanonRibbon } from "./CanonRibbon";
@@ -14,6 +17,7 @@ import { CreationChamber } from "../chambers/Creation";
 import { LabChamber } from "../chambers/Lab";
 import { SchoolChamber } from "../chambers/School";
 import { MemoryChamber } from "../chambers/Memory";
+import { SettingsPanel } from "../surfaces/SettingsPanel";
 import { ErrorBoundary } from "../trust/ErrorBoundary";
 
 type ThemeMode = "dark" | "light";
@@ -40,6 +44,8 @@ export function Shell({
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
   const [gitStatus, setGitStatus] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const runtimeConfig = getRuntimeConfig();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -197,6 +203,12 @@ export function Shell({
             {activeExecution && <span className="rb-shell-state-chip-sub"> · {activeExecution.label.slice(0, 18)}</span>}
             {!activeExecution && pendingCount > 0 && <span className="rb-shell-state-chip-sub"> · {pendingCount} review</span>}
           </div>
+          <div className="rb-shell-runtime-chip" title={runtimeConfig ? `${runtimeConfig.provider} · ${runtimeConfig.model}` : "simulation mode"}>
+            {runtimeConfig ? runtimeConfig.provider : "sim"}
+          </div>
+          <button className="rb-settings-btn" onClick={() => setSettingsOpen(true)} type="button" title="Runtime settings">
+            ⚙
+          </button>
           <button className="rb-theme-toggle" onClick={onToggleTheme} type="button">
             {theme === "dark" ? "Light" : "Dark"}
           </button>
@@ -273,6 +285,8 @@ export function Shell({
       <ErrorBoundary label="Event pulse">
         <EventPulse />
       </ErrorBoundary>
+
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

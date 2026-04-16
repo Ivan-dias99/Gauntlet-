@@ -5,10 +5,13 @@
 import { useState } from "react";
 import { emit, useProjection } from "../spine/store";
 import { revokedCanonWithDependents, conceptAncestry, pendingProposals, activeFlow, nextFlowStep, directiveAgent } from "../spine/projections";
-import { runRuntime } from "../spine/runtime-fabric";
+import { runRuntime, getRuntimeConfig } from "../spine/runtime-fabric";
 import { Unavailable } from "../trust/Unavailable";
 import { RuledPrompt } from "../trust/RuledPrompt";
 import { ThreadTerminal } from "../surfaces/ThreadTerminal";
+import { AgentPanel } from "../surfaces/AgentPanel";
+import { FlowPanel } from "../surfaces/FlowPanel";
+import { ErrorBoundary } from "../trust/ErrorBoundary";
 
 const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
   | string
@@ -110,9 +113,10 @@ export function CreationChamber() {
       setScope("");
       setAcceptance("");
 
+      const config = getRuntimeConfig();
       await runRuntime(
         { prompt: String(d.payload.text ?? ""), threadId: activeThread.id, directiveId: d.id },
-        { provider: "openai", model: "gpt-5.4-creator" },
+        config ?? undefined,
       );
     } catch (e) {
       setErr((e as Error).message);
@@ -379,7 +383,7 @@ export function CreationChamber() {
             {runningExecutions.length > 0 && <div className="rb-forge-exec-signal" role="status" aria-live="polite"><span className="rb-forge-exec-dot" aria-hidden="true" /><span className="rb-forge-exec-label">executing</span><span className="rb-forge-exec-target">{runningExecutions[0].label.length > 48 ? runningExecutions[0].label.slice(0, 48) + "…" : runningExecutions[0].label}</span>{runningExecutions.length > 1 && <span className="rb-forge-exec-count">+{runningExecutions.length - 1}</span>}</div>}
 
             {err && <div className="rb-unavail" style={{ marginTop: 12 }}><strong>refused</strong>{err}</div>}
-            {!EXEC_BACKEND && <div style={{ marginTop: 12 }}><Unavailable title="execution unbound" reason="No execution backend is bound to this shell." remediation="Set VITE_RUBERRA_EXEC_URL and reload to enable forging." /></div>}
+            {!getRuntimeConfig() && <div style={{ marginTop: 12 }}><Unavailable title="simulation mode" reason="No AI provider configured. Directives execute in simulation." remediation="Open Settings (⚙) to configure OpenAI, Anthropic, Ollama, or another provider." /></div>}
           </div>
 
             </div>
@@ -407,6 +411,15 @@ export function CreationChamber() {
               </>
             );
           })()}
+
+          <div className="rb-creation-extensions">
+            <ErrorBoundary label="Agent panel">
+              <AgentPanel />
+            </ErrorBoundary>
+            <ErrorBoundary label="Flow panel">
+              <FlowPanel />
+            </ErrorBoundary>
+          </div>
         </>
       )}
     </section>

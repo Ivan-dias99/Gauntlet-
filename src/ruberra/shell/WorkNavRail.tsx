@@ -2,6 +2,7 @@
 // chamber regime switches. Complements ThreadStrip (ledger) as operator rail.
 
 import { useProjection, emit } from "../spine/store";
+import { systemHealth } from "../spine/projections";
 
 const CHAMBERS: Array<{
   id: "lab" | "school" | "creation" | "memory";
@@ -79,6 +80,30 @@ export function WorkNavRail({ onOpenThreads }: { onOpenThreads: () => void }) {
           </button>
         ))}
       </nav>
+
+      {p.activeRepo && (() => {
+        const health = systemHealth(p);
+        const color = health.healthScore >= 80 ? "var(--rb-ok)" : health.healthScore >= 50 ? "var(--rb-warn)" : "var(--rb-bad)";
+        return (
+          <div className="rb-work-nav-health">
+            <div className="rb-work-nav-health-header">
+              <span className="rb-work-nav-health-label">Health</span>
+              <span className="rb-work-nav-health-score" style={{ color }}>{health.healthScore}</span>
+            </div>
+            <div className="rb-work-nav-health-bar">
+              <div className="rb-work-nav-health-fill" style={{ width: `${health.healthScore}%`, background: color }} />
+            </div>
+            <button
+              className="rb-btn"
+              style={{ fontSize: "0.65rem", marginTop: 6, width: "100%" }}
+              onClick={() => emit.assessHealth()}
+              type="button"
+            >
+              Assess
+            </button>
+          </div>
+        );
+      })()}
     </aside>
   );
 }

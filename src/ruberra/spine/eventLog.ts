@@ -119,6 +119,74 @@ export function isHydrated() {
   return hydrated;
 }
 
+// ── Export / Import ───────────────────────────────────────────────────────
+// Full event log backup and restore for data portability.
+
+export function exportLog(): string {
+  return JSON.stringify(memory, null, 2);
+}
+
+export async function importLog(jsonStr: string): Promise<number> {
+  let events: RuberraEvent[];
+  try {
+    events = JSON.parse(jsonStr);
+  } catch {
+    throw new Error("Invalid JSON — could not parse event log");
+  }
+  if (!Array.isArray(events)) throw new Error("Expected an array of events");
+
+  // Validate structure
+  for (const ev of events) {
+    if (!ev.id || !ev.type || typeof ev.ts !== "number") {
+      throw new Error(`Invalid event: missing id, type, or ts`);
+    }
+  }
+
+  // Merge: skip events that already exist by id
+  const existing = new Set(memory.map((e) => e.id));
+  const newEvents = events.filter((e) => !existing.has(e.id));
+
+  if (newEvents.length === 0) return 0;
+
+  // Sort new events by ts + seq
+  newEvents.sort((a, b) => a.ts - b.ts || (a.seq ?? 0) - (b.seq ?? 0));
+
+  // Write to IndexedDB
+  const db = await openDb();
+  if (db) {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      const os = tx.objectStore(STORE);
+      for (const ev of newEvents) os.put(ev);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  // Add to memory
+  memory.push(...newEvents);
+  memory.sort((a, b) => a.ts - b.ts || (a.seq ?? 0) - (b.seq ?? 0));
+
+  // Notify listeners of last imported event
+  listeners.forEach((l) => l(newEvents[newEvents.length - 1]));
+
+  return newEvents.length;
+}
+
+export async function clearLog(): Promise<void> {
+  memory = [];
+  const db = await openDb();
+  if (db) {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  listeners.forEach((l) => l({ id: "clear", ts: Date.now(), type: "null.consequence", actor: "system", payload: { action: "log.cleared", reason: "manual clear" } } as RuberraEvent));
+}
+
 // Test-only: resets all in-memory state.
 // When dbPromise is set to null, openDb() will create a fresh connection on
 // the next call — against whatever globalThis.indexedDB is at that time.
