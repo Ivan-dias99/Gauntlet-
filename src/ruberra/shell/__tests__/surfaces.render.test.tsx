@@ -150,26 +150,26 @@ import { MemoryChamber } from "../../chambers/Memory";
 
 // ── RitualEntry ─────────────────────────────────────────────────────────────
 
-describe("RitualEntry — boot ritual", () => {
+describe("RitualEntry — startup screen", () => {
   beforeEach(() => { currentProjection = emptyProjection; });
 
   it("renders rb-ritual container with RUBERRA brand", () => {
-    render(<RitualEntry onEnter={vi.fn()} />);
+    render(<RitualEntry onEnter={vi.fn()} theme="dark" onToggleTheme={vi.fn()} />);
     const root = document.querySelector(".rb-ritual");
     expect(root).toBeInTheDocument();
     const h1 = document.querySelector(".rb-ritual h1");
     expect(h1?.textContent).toMatch(/RUBERRA/i);
   });
 
-  it("renders repo bind input and Enter button", () => {
-    render(<RitualEntry onEnter={vi.fn()} />);
-    expect(screen.getByPlaceholderText("bind repo to begin")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^bind · enter creation$/i })).toBeInTheDocument();
+  it("renders repo input and Open button", () => {
+    render(<RitualEntry onEnter={vi.fn()} theme="dark" onToggleTheme={vi.fn()} />);
+    expect(screen.getByPlaceholderText("repository name")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^open creation$/i })).toBeInTheDocument();
   });
 
-  it("Enter button is disabled when input is empty", () => {
-    render(<RitualEntry onEnter={vi.fn()} />);
-    const btn = screen.getByRole("button", { name: /^bind · enter creation$/i });
+  it("Open button is disabled when input is empty", () => {
+    render(<RitualEntry onEnter={vi.fn()} theme="dark" onToggleTheme={vi.fn()} />);
+    const btn = screen.getByRole("button", { name: /^open creation$/i });
     expect(btn).toBeDisabled();
   });
 });
