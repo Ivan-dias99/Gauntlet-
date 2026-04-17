@@ -10,12 +10,7 @@ import { RitualEntry } from "./shell/RitualEntry";
 import { ErrorBoundary } from "./trust/ErrorBoundary";
 import { RuledPromptHost } from "./trust/RuledPrompt";
 import "./styles.css";
-import "./harvest.css";
-import "./flagship.css";
-import "./flagship-wave2.css";
-import "./reforge-imports.css";
-import "./embodiment.css";
-import "./workstation.css";
+import "./surfaces.css";
 
 type BootState =
   | { phase: "booting" }

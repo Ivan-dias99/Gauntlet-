@@ -9,9 +9,6 @@ import { runRuntime, getRuntimeConfig } from "../spine/runtime-fabric";
 import { Unavailable } from "../trust/Unavailable";
 import { RuledPrompt } from "../trust/RuledPrompt";
 import { ThreadTerminal } from "../surfaces/ThreadTerminal";
-import { AgentPanel } from "../surfaces/AgentPanel";
-import { FlowPanel } from "../surfaces/FlowPanel";
-import { ErrorBoundary } from "../trust/ErrorBoundary";
 
 const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
   | string
@@ -412,14 +409,6 @@ export function CreationChamber() {
             );
           })()}
 
-          <div className="rb-creation-extensions">
-            <ErrorBoundary label="Agent panel">
-              <AgentPanel />
-            </ErrorBoundary>
-            <ErrorBoundary label="Flow panel">
-              <FlowPanel />
-            </ErrorBoundary>
-          </div>
         </>
       )}
     </section>
