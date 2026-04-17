@@ -21,6 +21,8 @@ from config import (
     JUDGE_TEMPERATURE,
     MAX_TOKENS,
     TRIAD_COUNT,
+    PROHIBITED_TOPICS,
+    ULTRA_PARANOIA_MODE,
 )
 from doctrine import (
     SYSTEM_PROMPT,
@@ -273,7 +275,15 @@ class RubeiraEngine:
         This is the single entry point for all queries.
         """
         start_time = time.monotonic()
-        
+
+        # ── Gate 0: Paranoia short-circuits ─────────────────────────────────
+        paranoia_refusal = await self._check_paranoia_gates(query)
+        if paranoia_refusal is not None:
+            paranoia_refusal.processing_time_ms = int(
+                (time.monotonic() - start_time) * 1000
+            )
+            return paranoia_refusal
+
         # ── Step 1: Check failure memory ────────────────────────────────────
         matching_failures = await failure_memory.find_matching_failures(query.question)
         has_prior_failure = len(matching_failures) > 0
@@ -401,7 +411,14 @@ class RubeiraEngine:
             )
         
         # ── LOW CONFIDENCE: refuse ──────────────────────────────────────────
-        refusal_reason = verdict.refusal_reason or RefusalReason.INCONSISTENCY
+        # Default to INSUFFICIENT_CONFIDENCE when the judge flagged low confidence
+        # without a specific reason; fall back to INCONSISTENCY otherwise.
+        if verdict.refusal_reason is not None:
+            refusal_reason = verdict.refusal_reason
+        elif verdict.should_refuse or verdict.confidence == ConfidenceLevel.LOW:
+            refusal_reason = RefusalReason.INSUFFICIENT_CONFIDENCE
+        else:
+            refusal_reason = RefusalReason.INCONSISTENCY
         
         refusal_msg = build_refusal_message(
             confidence_level=verdict.confidence.value,
@@ -439,6 +456,63 @@ class RubeiraEngine:
             ),
         )
     
+    async def _check_paranoia_gates(
+        self,
+        query: RubeiraQuery,
+    ) -> Optional[RubeiraResponse]:
+        """
+        Short-circuit the pipeline when the question falls inside a forbidden
+        zone. Returns a refusal response if a gate trips, or None to proceed.
+
+        Order of checks:
+        1. ULTRA_PARANOIA_MODE — refuse every query unconditionally.
+        2. PROHIBITED_TOPICS — refuse when any banned phrase appears in the
+           question (case-insensitive substring match).
+        """
+        lowered = query.question.lower()
+
+        if ULTRA_PARANOIA_MODE:
+            await failure_memory.record_failure(
+                question=query.question,
+                failure_type=RefusalReason.ULTRA_PARANOIA,
+                judge_reasoning="Ultra-paranoia mode blocked the query pre-triad.",
+            )
+            logger.warning("ULTRA_PARANOIA_MODE engaged — refusing query.")
+            return RubeiraResponse(
+                refused=True,
+                refusal_message=(
+                    "Não sei responder isso com confiança suficiente."
+                ),
+                refusal_reason=RefusalReason.ULTRA_PARANOIA,
+                confidence=ConfidenceLevel.LOW,
+                confidence_explanation="Ultra-paranoia mode active.",
+            )
+
+        matched_topic = next(
+            (topic for topic in PROHIBITED_TOPICS if topic in lowered),
+            None,
+        )
+        if matched_topic is not None:
+            await failure_memory.record_failure(
+                question=query.question,
+                failure_type=RefusalReason.PROHIBITED_TOPIC,
+                judge_reasoning=f"Prohibited topic matched: '{matched_topic}'",
+            )
+            logger.warning(f"Prohibited topic '{matched_topic}' — refusing query.")
+            return RubeiraResponse(
+                refused=True,
+                refusal_message=(
+                    "Não sei responder isso com confiança suficiente."
+                ),
+                refusal_reason=RefusalReason.PROHIBITED_TOPIC,
+                confidence=ConfidenceLevel.LOW,
+                confidence_explanation=(
+                    f"Tópico proibido detetado: '{matched_topic}'."
+                ),
+            )
+
+        return None
+
     def _build_triad_summary(
         self,
         responses: list[TriadResponse],

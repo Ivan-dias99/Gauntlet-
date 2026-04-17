@@ -38,6 +38,13 @@ class RefusalReason(str, Enum):
     JUDGE_REJECTION = "judge_rejection"      # Judge explicitly rejected
     SAFETY = "safety"                        # Content safety
     INSUFFICIENT_KNOWLEDGE = "insufficient_knowledge"  # Model admitted ignorance
+    INSUFFICIENT_CONFIDENCE = "insufficient_confidence"  # Judge flagged low confidence
+    PROHIBITED_TOPIC = "prohibited_topic"    # Question touches a forbidden subject
+    ULTRA_PARANOIA = "ultra_paranoia"        # Ultra-paranoia mode blocks all answers
+
+
+# Alias preserved for callers that reference the newer "RefusalType" name.
+RefusalType = RefusalReason
 
 
 # ── Request Models ──────────────────────────────────────────────────────────

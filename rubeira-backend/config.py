@@ -47,3 +47,17 @@ FAILURE_CONTEXT_WINDOW: int = 10
 # The judge itself assigns confidence — these are fallback heuristics.
 CONFIDENCE_HIGH_THRESHOLD: float = 0.95
 CONFIDENCE_MEDIUM_THRESHOLD: float = 0.70
+
+# ── Paranoia Gates ──────────────────────────────────────────────────────────
+# Topics Rubeira refuses to touch regardless of judge verdict.
+PROHIBITED_TOPICS: list[str] = [
+    "previsão de futuro", "futuro", "vai acontecer", "previsão",
+    "conselho médico", "saúde", "doença", "tratamento",
+    "opinião sobre pessoa", "fulano", "beltrano", "sicrano",
+]
+
+# When enabled, Rubeira refuses every query regardless of triad consensus.
+# Override via env: RUBEIRA_ULTRA_PARANOIA=false
+ULTRA_PARANOIA_MODE: bool = os.environ.get(
+    "RUBEIRA_ULTRA_PARANOIA", "true"
+).strip().lower() in ("1", "true", "yes", "on")
