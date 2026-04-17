@@ -42,6 +42,19 @@ from memory import failure_memory
 
 logger = logging.getLogger("rubeira.engine")
 
+# Agent layer is imported lazily to avoid an import cycle and to keep the
+# triad path usable even if the agent module is later swapped out.
+_agent_singleton: Optional["AgentOrchestrator"] = None  # type: ignore[name-defined]
+
+
+def _get_agent() -> "AgentOrchestrator":  # type: ignore[name-defined]
+    global _agent_singleton
+    if _agent_singleton is None:
+        from agent import AgentOrchestrator
+        _agent_singleton = AgentOrchestrator()
+    return _agent_singleton
+
+
 
 class RubeiraEngine:
     """
@@ -256,6 +269,29 @@ class RubeiraEngine:
             refusal_reason=refusal_reason,
         )
     
+    # ── Dev / Agent Path ────────────────────────────────────────────────────
+
+    async def process_dev_query(self, query: RubeiraQuery):
+        """
+        Route a query through the agent loop (tool use) instead of the triad.
+        Returns the raw ``AgentResponse`` — callers serialize it.
+        """
+        logger.info("Routing to agent loop: %s", query.question[:120])
+        agent = _get_agent()
+        return await agent.run(query)
+
+    async def process_auto(self, query: RubeiraQuery):
+        """
+        Auto-router: dev-intent queries go through the agent loop; everything
+        else goes through the conservative triad + judge pipeline.
+        """
+        from agent import AgentOrchestrator
+        if AgentOrchestrator.is_dev_intent(query.question):
+            result = await self.process_dev_query(query)
+            return {"route": "agent", "result": result.to_dict()}
+        result = await self.process_query(query)
+        return {"route": "triad", "result": result.model_dump()}
+
     # ── Main Pipeline ───────────────────────────────────────────────────────
     
     async def process_query(self, query: RubeiraQuery) -> RubeiraResponse:

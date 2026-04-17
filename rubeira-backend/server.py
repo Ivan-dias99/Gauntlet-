@@ -134,6 +134,41 @@ async def ask_rubeira(query: RubeiraQuery):
         )
 
 
+@app.post("/dev")
+async def ask_rubeira_dev(query: RubeiraQuery):
+    """
+    Force the agent (tool-use) pipeline.
+
+    Skips the triad/judge and runs an agentic loop where Claude may call
+    ``read_file``, ``git``, ``run_command``, ``web_search`` and friends. The
+    response includes the final answer plus the full tool-call trace.
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+    try:
+        agent_response = await engine.process_dev_query(query)
+        return agent_response.to_dict()
+    except Exception as e:
+        logger.error(f"Agent error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Agent error: {e}")
+
+
+@app.post("/route")
+async def ask_rubeira_auto(query: RubeiraQuery):
+    """
+    Auto-router: dev-intent questions go through the agent loop; the rest
+    go through the triad + judge. Response shape is ``{route, result}``.
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+    try:
+        return await engine.process_auto(query)
+    except Exception as e:
+        logger.error(f"Router error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Router error: {e}")
+
+
+
 class BatchQuery(BaseModel):
     """Multiple questions in one request."""
     questions: list[RubeiraQuery] = Field(..., max_length=5)
