@@ -119,9 +119,6 @@ async def ask_rubeira(query: RubeiraQuery):
     2. Fire 3 parallel calls to Claude Sonnet (self-consistency)
     3. Send responses to the implacable Judge
     4. Return answer (high/medium confidence) or refusal (low confidence)
-    
-    Every response includes full transparency metadata:
-    confidence level, judge reasoning, triad agreement, and failure memory flags.
     """
     if not engine:
         raise HTTPException(status_code=503, detail="Engine not initialized")
@@ -137,6 +134,41 @@ async def ask_rubeira(query: RubeiraQuery):
         )
 
 
+@app.post("/dev")
+async def ask_rubeira_dev(query: RubeiraQuery):
+    """
+    Force the agent (tool-use) pipeline.
+
+    Skips the triad/judge and runs an agentic loop where Claude may call
+    ``read_file``, ``git``, ``run_command``, ``web_search`` and friends. The
+    response includes the final answer plus the full tool-call trace.
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+    try:
+        agent_response = await engine.process_dev_query(query)
+        return agent_response.to_dict()
+    except Exception as e:
+        logger.error(f"Agent error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Agent error: {e}")
+
+
+@app.post("/route")
+async def ask_rubeira_auto(query: RubeiraQuery):
+    """
+    Auto-router: dev-intent questions go through the agent loop; the rest
+    go through the triad + judge. Response shape is ``{route, result}``.
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+    try:
+        return await engine.process_auto(query)
+    except Exception as e:
+        logger.error(f"Router error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Router error: {e}")
+
+
+
 class BatchQuery(BaseModel):
     """Multiple questions in one request."""
     questions: list[RubeiraQuery] = Field(..., max_length=5)
@@ -144,10 +176,7 @@ class BatchQuery(BaseModel):
 
 @app.post("/ask/batch")
 async def ask_rubeira_batch(batch: BatchQuery):
-    """
-    Submit up to 5 questions in batch.
-    Each question goes through the full pipeline independently.
-    """
+    """Submit up to 5 questions in batch."""
     if not engine:
         raise HTTPException(status_code=503, detail="Engine not initialized")
     
@@ -193,10 +222,7 @@ class ClearConfirmation(BaseModel):
 
 @app.post("/memory/clear")
 async def clear_memory(confirmation: ClearConfirmation):
-    """
-    Clear all failure memory. Requires explicit confirmation.
-    WARNING: This removes all learned failure patterns.
-    """
+    """Clear all failure memory. Requires explicit confirmation."""
     if not confirmation.confirm:
         return {"cleared": False, "message": "Confirmation required (confirm=true)"}
     

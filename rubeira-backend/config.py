@@ -56,8 +56,8 @@ PROHIBITED_TOPICS: list[str] = [
     "opinião sobre pessoa", "fulano", "beltrano", "sicrano",
 ]
 
-# When enabled, Rubeira refuses every query regardless of triad consensus.
-# Override via env: RUBEIRA_ULTRA_PARANOIA=false
+# Default is OFF — turning this on short-circuits the entire pipeline and
+# every request is refused. Enable via env: RUBEIRA_ULTRA_PARANOIA=true
 ULTRA_PARANOIA_MODE: bool = os.environ.get(
-    "RUBEIRA_ULTRA_PARANOIA", "true"
+    "RUBEIRA_ULTRA_PARANOIA", "false"
 ).strip().lower() in ("1", "true", "yes", "on")
