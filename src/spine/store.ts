@@ -41,9 +41,17 @@ function normalizeMission(m: unknown): Mission | null {
       ? r.chamber : "Lab") as Mission["chamber"],
     status: r.status === "closed" ? "closed" : "active",
     createdAt: typeof r.createdAt === "number" ? r.createdAt : Date.now(),
-    notes: Array.isArray(r.notes) ? r.notes.filter(
-      (n: unknown) => n && typeof n === "object" && typeof (n as Record<string, unknown>).id === "string"
-    ) : [],
+    notes: Array.isArray(r.notes) ? r.notes.flatMap((n: unknown) => {
+      if (!n || typeof n !== "object") return [];
+      const nr = n as Record<string, unknown>;
+      if (typeof nr.id !== "string" || typeof nr.text !== "string") return [];
+      return [{
+        id: nr.id,
+        text: nr.text,
+        createdAt: typeof nr.createdAt === "number" ? nr.createdAt : Date.now(),
+        role: (nr.role === "user" || nr.role === "ai") ? nr.role : "user",
+      }] as Note[];
+    }) : [],
     tasks: Array.isArray(r.tasks) ? r.tasks.flatMap((t: unknown) => {
       if (!t || typeof t !== "object") return [];
       const tr = t as Record<string, unknown>;
@@ -56,9 +64,19 @@ function normalizeMission(m: unknown): Mission | null {
         ...(typeof tr.doneAt === "number" ? { doneAt: tr.doneAt } : {}),
       }] as Task[];
     }) : [],
-    events: Array.isArray(r.events) ? r.events.filter(
-      (e: unknown) => e && typeof e === "object" && typeof (e as Record<string, unknown>).id === "string"
-    ) : [],
+    events: Array.isArray(r.events) ? r.events.flatMap((e: unknown) => {
+      if (!e || typeof e !== "object") return [];
+      const er = e as Record<string, unknown>;
+      if (typeof er.id !== "string" || typeof er.label !== "string") return [];
+      const validTypes = ["mission_created", "note_added", "task_added", "task_done", "ai_response"];
+      if (!validTypes.includes(er.type as string)) return [];
+      return [{
+        id: er.id,
+        type: er.type as LogEvent["type"],
+        label: er.label,
+        at: typeof er.at === "number" ? er.at : Date.now(),
+      }] as LogEvent[];
+    }) : [],
   };
 }
 
@@ -73,9 +91,12 @@ export function loadState(): SpineState {
       ? (r.missions.map(normalizeMission).filter(Boolean) as Mission[])
       : [];
     const principles = Array.isArray(r.principles)
-      ? r.principles.filter(
-          (p: unknown) => p && typeof p === "object" && typeof (p as Record<string, unknown>).id === "string"
-        )
+      ? r.principles.flatMap((p: unknown) => {
+          if (!p || typeof p !== "object") return [];
+          const pr = p as Record<string, unknown>;
+          if (typeof pr.id !== "string" || typeof pr.text !== "string") return [];
+          return [{ id: pr.id, text: pr.text, createdAt: typeof pr.createdAt === "number" ? pr.createdAt : Date.now() }];
+        })
       : [];
     const activeMissionId =
       typeof r.activeMissionId === "string" &&

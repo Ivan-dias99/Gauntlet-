@@ -13,7 +13,7 @@ export function useAI() {
     systemPrompt: string,
     messages: AIMessage[],
     onChunk: (text: string) => void,
-    onDone: () => void,
+    onDone: (ok: boolean) => void,
   ) => {
     setStreaming(true);
     setError(null);
@@ -45,7 +45,7 @@ export function useAI() {
           if (!line.startsWith("data: ")) continue;
           const data = line.slice(6).trim();
           if (data === "[DONE]") {
-            onDone();
+            onDone(true);
             setStreaming(false);
             return;
           }
@@ -61,11 +61,12 @@ export function useAI() {
         }
       }
 
-      onDone();
+      // Stream ended without [DONE] — treat as error
+      throw new Error("Stream ended without completion signal");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro desconhecido";
       setError(msg);
-      onDone();
+      onDone(false);
     } finally {
       setStreaming(false);
     }

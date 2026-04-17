@@ -36,8 +36,8 @@ export default function Creation() {
         accumulated += chunk;
         setAiOutput(accumulated + "▊");
       },
-      () => {
-        setAiOutput(accumulated || "");
+      (ok) => {
+        setAiOutput(ok ? accumulated : "");
       },
     );
   }

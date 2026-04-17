@@ -52,8 +52,8 @@ export default function Lab() {
         accumulated += chunk;
         setLiveText(accumulated + "▊");
       },
-      () => {
-        if (accumulated.trim()) addNoteToMission(targetMissionId, accumulated.trim(), "ai");
+      (ok) => {
+        if (ok && accumulated.trim()) addNoteToMission(targetMissionId, accumulated.trim(), "ai");
         setLiveText("");
       },
     );

@@ -1,8 +1,8 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 
-function devApiPlugin(): Plugin {
+function devApiPlugin(apiKey: string): Plugin {
   return {
     name: "dev-api-chat",
     apply: "serve",
@@ -14,7 +14,6 @@ function devApiPlugin(): Plugin {
           return;
         }
 
-        const apiKey = process.env.ANTHROPIC_API_KEY;
         if (!apiKey) {
           res.writeHead(500, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not set in .env" }));
@@ -27,7 +26,6 @@ function devApiPlugin(): Plugin {
           try {
             const { systemPrompt = "", messages = [] } = JSON.parse(body || "{}");
 
-            // Stream from Anthropic using native fetch (Node 18+)
             const upstream = await fetch("https://api.anthropic.com/v1/messages", {
               method: "POST",
               headers: {
@@ -95,6 +93,10 @@ function devApiPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), devApiPlugin()],
+export default defineConfig(({ mode }) => {
+  // loadEnv reads .env, .env.local, .env.[mode] etc. — populates apiKey in dev
+  const env = loadEnv(mode, process.cwd(), "");
+  return {
+    plugins: [react(), devApiPlugin(env.ANTHROPIC_API_KEY ?? "")],
+  };
 });
