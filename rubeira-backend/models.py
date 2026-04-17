@@ -17,34 +17,24 @@ from pydantic import BaseModel, Field
 
 class ConfidenceLevel(str, Enum):
     """
-    Three-tier confidence system.
+    Two-tier confidence system (V2).
     
     HIGH   — All 3 triad responses are semantically identical.
              Rubeira delivers the answer with full conviction.
-    MEDIUM — Small acceptable variations exist between responses.
-             Rubeira delivers but flags uncertainty explicitly.
-    LOW    — Relevant differences detected between responses.
-             Rubeira refuses to answer and explains why.
+    LOW    — Any differences detected between responses.
+             Rubeira refuses to answer.
     """
     HIGH = "high"
-    MEDIUM = "medium"
     LOW = "low"
 
 
 class RefusalReason(str, Enum):
     """Why Rubeira refused to answer."""
-    INCONSISTENCY = "inconsistency"          # Triad responses diverged
-    PRIOR_FAILURE = "prior_failure"          # Question matches a known failure pattern
-    JUDGE_REJECTION = "judge_rejection"      # Judge explicitly rejected
-    SAFETY = "safety"                        # Content safety
-    INSUFFICIENT_KNOWLEDGE = "insufficient_knowledge"  # Model admitted ignorance
-    INSUFFICIENT_CONFIDENCE = "insufficient_confidence"  # Judge flagged low confidence
-    PROHIBITED_TOPIC = "prohibited_topic"    # Question touches a forbidden subject
-    ULTRA_PARANOIA = "ultra_paranoia"        # Ultra-paranoia mode blocks all answers
-
-
-# Alias preserved for callers that reference the newer "RefusalType" name.
-RefusalType = RefusalReason
+    INCONSISTENCY = "inconsistency"
+    PRIOR_FAILURE = "prior_failure"
+    JUDGE_REJECTION = "judge_rejection"
+    SAFETY = "safety"
+    INSUFFICIENT_KNOWLEDGE = "insufficient_knowledge"
 
 
 # ── Request Models ──────────────────────────────────────────────────────────
@@ -72,7 +62,7 @@ class JudgeVerdict(BaseModel):
     """The judge's assessment of the triad responses."""
     confidence: ConfidenceLevel
     reasoning: str = Field(..., description="Judge's reasoning for the verdict")
-    consensus_answer: Optional[str] = Field(None, description="The merged/best answer if confidence >= MEDIUM")
+    consensus_answer: Optional[str] = Field(None, description="The merged/best answer if confidence == HIGH")
     divergence_points: list[str] = Field(default_factory=list, description="Where responses diverged")
     should_refuse: bool = Field(False, description="Whether Rubeira should refuse to answer")
     refusal_reason: Optional[RefusalReason] = None
