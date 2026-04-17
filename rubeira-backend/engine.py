@@ -231,7 +231,6 @@ class RubeiraEngine:
         conf_str = data.get("confidence", "low").lower()
         confidence_map = {
             "high": ConfidenceLevel.HIGH,
-            "medium": ConfidenceLevel.MEDIUM,
             "low": ConfidenceLevel.LOW,
         }
         confidence = confidence_map.get(conf_str, ConfidenceLevel.LOW)
@@ -360,37 +359,7 @@ class RubeiraEngine:
                 ),
             )
         
-        # ── MEDIUM CONFIDENCE ───────────────────────────────────────────────
-        if verdict.confidence == ConfidenceLevel.MEDIUM and not verdict.should_refuse:
-            answer = verdict.consensus_answer or triad_responses[0].content
-            
-            answer = build_cautious_answer_wrapper(
-                answer=answer,
-                confidence_level="medium",
-                caveats=verdict.divergence_points if verdict.divergence_points else None,
-                prior_failure=has_prior_failure,
-            )
-            
-            return RubeiraResponse(
-                answer=answer,
-                refused=False,
-                confidence=ConfidenceLevel.MEDIUM,
-                confidence_explanation=(
-                    "As 3 análises internas concordam no essencial mas apresentam "
-                    "variações menores. Resposta fornecida com ressalvas."
-                ),
-                triad_agreement=triad_summary,
-                judge_reasoning=verdict.reasoning,
-                total_input_tokens=total_in,
-                total_output_tokens=total_out,
-                processing_time_ms=elapsed,
-                matched_prior_failure=has_prior_failure,
-                prior_failure_note=(
-                    "Pergunta corresponde a falhas anteriores. Cautela reforçada ativada."
-                    if has_prior_failure else None
-                ),
-            )
-        
+
         # ── LOW CONFIDENCE: refuse ──────────────────────────────────────────
         refusal_reason = verdict.refusal_reason or RefusalReason.INCONSISTENCY
         
