@@ -294,10 +294,10 @@ describe("CreationChamber", () => {
     expect(screen.getByText("forge idle — no active thread")).toBeInTheDocument();
   });
 
-  it("execution unbound notice shown when backend not configured", () => {
+  it("simulation mode notice shown when no provider configured", () => {
     currentProjection = withThreadProjection;
     render(<CreationChamber />);
-    expect(screen.getByText("execution unbound")).toBeInTheDocument();
+    expect(screen.getByText("simulation mode")).toBeInTheDocument();
   });
 });
 

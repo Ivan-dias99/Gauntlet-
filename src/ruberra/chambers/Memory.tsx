@@ -4,9 +4,10 @@
 // search text, promote to canon proposal, capture new observation.
 // No fake pagination. No decorative cards. Dense, scannable, operational.
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useProjection, emit } from "../spine/store";
 import { threadResonance, threadSyntheses, systemHealth, intelligenceMetrics, activeAnomalies } from "../spine/projections";
+import { exportLog, importLog } from "../spine/eventLog";
 import type { TruthState } from "../spine/projections";
 
 type FilterState = "all" | TruthState;
@@ -45,6 +46,12 @@ export function MemoryChamber() {
   const [search, setSearch] = useState("");
   const [captureText, setCaptureText] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [synthSourceId, setSynthSourceId] = useState("");
+  const [synthSourceType, setSynthSourceType] = useState<"canon" | "memory">("canon");
+  const [synthNote, setSynthNote] = useState("");
+  const [synthErr, setSynthErr] = useState<string | null>(null);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const repoMemory = useMemo(
     () => p.memory.filter((m) => m.repo === p.activeRepo),
@@ -271,6 +278,130 @@ export function MemoryChamber() {
           )}
         </div>
       )}
+      {/* Knowledge Synthesis Form */}
+      {p.activeThread && (
+        <div className="rb-synthesis-form">
+          <div className="rb-synthesis-form-label">Link Knowledge → Thread</div>
+          <div className="rb-row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <select
+              className="rb-input"
+              value={synthSourceType}
+              onChange={(e) => setSynthSourceType(e.target.value as "canon" | "memory")}
+              style={{ width: 100 }}
+            >
+              <option value="canon">canon</option>
+              <option value="memory">memory</option>
+            </select>
+            <select
+              className="rb-input"
+              value={synthSourceId}
+              onChange={(e) => setSynthSourceId(e.target.value)}
+              style={{ flex: 1, minWidth: 120 }}
+            >
+              <option value="">select source…</option>
+              {synthSourceType === "canon"
+                ? p.canon
+                    .filter((c) => c.state === "hardened")
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.text.length > 60 ? c.text.slice(0, 60) + "…" : c.text}
+                      </option>
+                    ))
+                : repoMemory
+                    .filter((m) => m.state !== "revoked")
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.text.length > 60 ? m.text.slice(0, 60) + "…" : m.text}
+                      </option>
+                    ))}
+            </select>
+          </div>
+          <input
+            className="rb-input"
+            placeholder="note: why is this relevant to this thread?"
+            value={synthNote}
+            onChange={(e) => setSynthNote(e.target.value)}
+            style={{ marginTop: 6 }}
+          />
+          <button
+            className="rb-btn primary"
+            disabled={!synthSourceId || !synthNote.trim() || !p.activeThread}
+            onClick={async () => {
+              setSynthErr(null);
+              try {
+                await emit.synthesizeKnowledge(
+                  synthSourceId,
+                  synthSourceType,
+                  p.activeThread!,
+                  synthNote.trim()
+                );
+                setSynthSourceId("");
+                setSynthNote("");
+              } catch (e) {
+                setSynthErr((e as Error).message);
+              }
+            }}
+            style={{ marginTop: 6 }}
+          >
+            Link Knowledge
+          </button>
+          {synthErr && (
+            <div className="rb-unavail" style={{ marginTop: 4 }}>
+              <strong>refused</strong> {synthErr}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Event Log Export / Import */}
+      <div className="rb-memory-export-import">
+        <div className="rb-memory-export-import-label">Event Log Backup</div>
+        <div className="rb-row" style={{ gap: 8 }}>
+          <button
+            className="rb-btn"
+            onClick={() => {
+              const data = exportLog();
+              const blob = new Blob([data], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `ruberra-eventlog-${new Date().toISOString().slice(0, 10)}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              setImportMsg("Exported successfully");
+              setTimeout(() => setImportMsg(null), 2000);
+            }}
+          >
+            Export Log
+          </button>
+          <button
+            className="rb-btn"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Import Log
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            style={{ display: "none" }}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                const text = await file.text();
+                const count = await importLog(text);
+                setImportMsg(`Imported ${count} new events`);
+              } catch (err) {
+                setImportMsg(`Import failed: ${(err as Error).message}`);
+              }
+              setTimeout(() => setImportMsg(null), 3000);
+              e.target.value = "";
+            }}
+          />
+        </div>
+        {importMsg && <div className="rb-memory-export-msg">{importMsg}</div>}
+      </div>
         </div>
 
         <div className="rb-memory-workbench-substrate">

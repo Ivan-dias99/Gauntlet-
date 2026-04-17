@@ -1,0 +1,543 @@
+/* Ruberra — Surface styles for Settings, Agent, Flow, Synthesis, Export/Import panels */
+
+/* ── Settings Panel ──────────────────────────────────────────────────────── */
+
+.rb-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+}
+
+.rb-settings-panel {
+  width: min(520px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--rb-bg-elev, #1a1a1a);
+  border: 1px solid rgba(201, 166, 107, 0.2);
+  padding: 0;
+}
+
+.rb-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(201, 166, 107, 0.12);
+}
+
+.rb-settings-title {
+  font-family: var(--rb-serif, "Cormorant Garamond", serif);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--rb-ink, #e8e0d4);
+  margin: 0;
+}
+
+.rb-settings-close {
+  background: none;
+  border: none;
+  color: var(--rb-ink-mute, #999);
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.rb-settings-close:hover { color: var(--rb-ink, #e8e0d4); }
+
+.rb-settings-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rb-settings-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+}
+
+.rb-settings-provider-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--rb-bg, #121212);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--rb-ink-soft, #aaa);
+  cursor: pointer;
+  font-family: var(--rb-sans, system-ui);
+  font-size: 0.75rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+.rb-settings-provider-btn:hover {
+  border-color: rgba(201, 166, 107, 0.3);
+  background: rgba(201, 166, 107, 0.06);
+}
+.rb-settings-provider-btn.active {
+  border-color: rgba(201, 166, 107, 0.5);
+  background: rgba(201, 166, 107, 0.1);
+  color: var(--rb-ink, #e8e0d4);
+}
+
+.rb-settings-provider-name {
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.rb-settings-provider-hint {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.6rem;
+  color: var(--rb-ink-mute, #888);
+}
+
+.rb-settings-key-row {
+  display: flex;
+  gap: 6px;
+}
+
+.rb-settings-key-input {
+  flex: 1;
+  font-family: var(--rb-mono, monospace);
+}
+
+.rb-settings-key-toggle {
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.rb-settings-key-hint {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.6rem;
+  color: var(--rb-ink-mute, #888);
+  margin-top: 4px;
+}
+
+.rb-settings-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rb-settings-status {
+  padding: 8px 0;
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.7rem;
+}
+
+.rb-settings-status-off {
+  color: var(--rb-warn, #c9a66b);
+}
+
+.rb-settings-status-on {
+  color: var(--rb-ok, #6ba87c);
+}
+
+.rb-settings-btn {
+  background: none;
+  border: 1px solid rgba(201, 166, 107, 0.2);
+  color: var(--rb-ink-soft, #aaa);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 8px;
+  line-height: 1;
+  transition: border-color 0.15s, color 0.15s;
+}
+.rb-settings-btn:hover {
+  border-color: rgba(201, 166, 107, 0.5);
+  color: var(--rb-ink, #e8e0d4);
+}
+
+.rb-shell-runtime-chip {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  color: var(--rb-ink-mute, #888);
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-transform: uppercase;
+}
+
+/* ── Agent Panel ─────────────────────────────────────────────────────────── */
+
+.rb-agent-panel {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid rgba(201, 166, 107, 0.1);
+  background: var(--rb-bg-elev, #1a1a1a);
+}
+
+.rb-agent-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.rb-agent-panel-title {
+  font-family: var(--rb-serif, "Cormorant Garamond", serif);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--rb-ink, #e8e0d4);
+}
+
+.rb-agent-panel-count {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.65rem;
+  color: var(--rb-ink-mute, #888);
+}
+
+.rb-agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.rb-agent-card {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rb-agent-card-name {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--rb-ink, #e8e0d4);
+  margin-bottom: 4px;
+}
+
+.rb-agent-card-caps {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.rb-agent-card-ts {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.6rem;
+  color: var(--rb-ink-mute, #888);
+}
+
+.rb-agent-register {
+  padding: 12px;
+  border: 1px solid rgba(201, 166, 107, 0.08);
+  background: rgba(201, 166, 107, 0.02);
+  margin-bottom: 12px;
+}
+
+.rb-agent-register-title {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.7rem;
+  color: rgba(201, 166, 107, 0.78);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+
+.rb-agent-caps-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rb-agent-cap-btn {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.65rem;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: var(--rb-ink-soft, #aaa);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.rb-agent-cap-btn:hover {
+  border-color: rgba(201, 166, 107, 0.3);
+}
+.rb-agent-cap-btn.active {
+  border-color: rgba(201, 166, 107, 0.5);
+  background: rgba(201, 166, 107, 0.1);
+  color: var(--rb-ink, #e8e0d4);
+}
+
+.rb-agent-badge {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.6rem;
+  padding: 1px 5px;
+  background: rgba(107, 168, 124, 0.15);
+  color: var(--rb-ok, #6ba87c);
+  border: 1px solid rgba(107, 168, 124, 0.2);
+}
+
+.rb-agent-assign {
+  margin-top: 10px;
+}
+
+.rb-agent-assign-title {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.7rem;
+  color: var(--rb-warn, #c9a66b);
+  margin-bottom: 8px;
+}
+
+.rb-agent-assign-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.rb-agent-assign-text {
+  font-size: 0.75rem;
+  color: var(--rb-ink-soft, #aaa);
+}
+
+/* ── Flow Panel ──────────────────────────────────────────────────────────── */
+
+.rb-flow-panel {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid rgba(201, 166, 107, 0.1);
+  background: var(--rb-bg-elev, #1a1a1a);
+}
+
+.rb-flow-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.rb-flow-panel-title {
+  font-family: var(--rb-serif, "Cormorant Garamond", serif);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--rb-ink, #e8e0d4);
+}
+
+.rb-flow-panel-count {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.65rem;
+  color: var(--rb-ink-mute, #888);
+}
+
+.rb-flow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.rb-flow-card {
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+.rb-flow-card--active { border-color: rgba(201, 166, 107, 0.2); }
+.rb-flow-card--completed { opacity: 0.7; }
+.rb-flow-card--aborted { opacity: 0.5; }
+
+.rb-flow-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rb-flow-card-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--rb-ink, #e8e0d4);
+}
+
+.rb-flow-card-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.rb-flow-card-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.08);
+}
+.rb-flow-card-step.done { border-left-color: var(--rb-ok, #6ba87c); }
+.rb-flow-card-step.failed { border-left-color: var(--rb-bad, #c26b6b); }
+.rb-flow-card-step.current { border-left-color: var(--rb-warn, #c9a66b); background: rgba(201, 166, 107, 0.04); }
+
+.rb-flow-card-step-num {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.65rem;
+  color: var(--rb-ink-mute, #888);
+  min-width: 16px;
+}
+
+.rb-flow-card-step-text {
+  flex: 1;
+  color: var(--rb-ink-soft, #aaa);
+}
+
+.rb-flow-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rb-flow-define {
+  padding: 12px;
+  border: 1px solid rgba(201, 166, 107, 0.08);
+  background: rgba(201, 166, 107, 0.02);
+}
+
+.rb-flow-define-title {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.7rem;
+  color: rgba(201, 166, 107, 0.78);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+
+.rb-flow-steps-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.rb-flow-step-draft {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.rb-flow-step-draft-num {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.7rem;
+  color: var(--rb-ink-mute, #888);
+  padding-top: 8px;
+  min-width: 16px;
+}
+
+.rb-flow-step-draft-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.rb-flow-define-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ── Knowledge Synthesis Form ────────────────────────────────────────────── */
+
+.rb-synthesis-form {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid rgba(201, 166, 107, 0.1);
+  background: rgba(201, 166, 107, 0.03);
+}
+
+.rb-synthesis-form-label {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.7rem;
+  color: rgba(201, 166, 107, 0.78);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+/* ── Export / Import ─────────────────────────────────────────────────────── */
+
+.rb-memory-export-import {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.rb-memory-export-import-label {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.7rem;
+  color: var(--rb-ink-mute, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.rb-memory-export-msg {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.7rem;
+  color: var(--rb-ok, #6ba87c);
+  margin-top: 6px;
+}
+
+/* ── Health Assessment ───────────────────────────────────────────────────── */
+
+.rb-work-nav-health {
+  margin-top: auto;
+  padding: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.rb-work-nav-health-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.rb-work-nav-health-label {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rb-ink-mute, #888);
+}
+
+.rb-work-nav-health-score {
+  font-family: var(--rb-mono, monospace);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.rb-work-nav-health-bar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.rb-work-nav-health-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* ── Creation Extensions ─────────────────────────────────────────────────── */
+
+.rb-creation-extensions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+@media (max-width: 900px) {
+  .rb-creation-extensions {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,15 +1,18 @@
-// Ruberra — In-repo execution backend (development-grade)
+// Ruberra — In-repo execution backend
 // Zero external dependencies. Node.js built-ins only.
 //
 // Endpoints:
-//   POST /exec           — resolve files matching scope glob in repoPath, return as artifacts
+//   POST /exec           — resolve files matching scope glob in repoPath
 //   GET  /git/status     — run `git status --short` in repoPath
 //   POST /git/verify     — check repoPath exists and contains a .git directory
+//   POST /git/diff       — get git diff for staged/unstaged changes
+//   POST /git/commit     — commit staged changes with a message
+//   POST /git/stage      — stage files by path
+//   POST /file/read      — read file contents from repo
+//   POST /file/write     — write file contents to repo
 //
 // CORS: allows http://localhost:5173 (Vite dev port)
-// Execution failure: returns { ok: false, error } — frontend must handle with failExecution + nullConsequence
-//
-// No fake terminal. No hardcoded artifacts. Real filesystem/git operations only.
+// Execution failure: returns { ok: false, error }
 
 import http from "http";
 import { exec } from "child_process";
@@ -22,15 +25,21 @@ const PORT = process.env.RUBERRA_EXEC_PORT ? Number(process.env.RUBERRA_EXEC_POR
 const ALLOWED_ORIGIN = process.env.RUBERRA_ORIGIN ?? "http://localhost:5173";
 
 // ── path guard ─────────────────────────────────────────────────────────────
-// Normalize and validate a repoPath supplied by the client.
-// Rejects empty, non-absolute, or paths that contain null bytes.
-// Returns the resolved absolute path or null if invalid.
 function sanitizePath(raw) {
   if (!raw || typeof raw !== "string") return null;
-  if (raw.includes("\0")) return null;                 // null-byte injection
-  const resolved = path.resolve(raw);                  // normalize traversal sequences
+  if (raw.includes("\0")) return null;
+  const resolved = path.resolve(raw);
   if (!path.isAbsolute(resolved)) return null;
   return resolved;
+}
+
+// Ensure a file path stays within the repo directory (no traversal escape)
+function safeFilePath(repoPath, filePath) {
+  if (!filePath || typeof filePath !== "string") return null;
+  if (filePath.includes("\0")) return null;
+  const full = path.resolve(repoPath, filePath);
+  if (!full.startsWith(repoPath + path.sep) && full !== repoPath) return null;
+  return full;
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -47,7 +56,7 @@ function json(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const BODY_LIMIT = 64 * 1024; // 64 KB — sufficient for any directive payload
+const BODY_LIMIT = 256 * 1024; // 256 KB — increased for file writes
 
 async function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -69,45 +78,29 @@ async function readBody(req) {
   });
 }
 
-// Resolve files matching a glob-like scope pattern inside a repo directory.
-// Scope patterns supported:
-//   - "**/*.ts"   → all .ts files
-//   - "src/**"    → all files under src/
-//   - "*.md"      → markdown files at repo root
-//   - exact file name fragment → files whose path contains the fragment
-// Returns array of relative paths (max 20).
 async function resolveFiles(repoPath, scope) {
   const trimmed = (scope ?? "").trim();
   if (!trimmed) return [];
 
-  // Use git ls-files so we only return tracked files (real repo authority).
   let allFiles = [];
   try {
     const { stdout } = await execAsync("git ls-files", { cwd: repoPath });
     allFiles = stdout.trim().split("\n").filter(Boolean);
   } catch {
-    // Not a git repo or git unavailable — fall back to fs walk (still real)
     allFiles = await walkDir(repoPath, repoPath);
   }
 
-  const pattern = trimmed;
-
-  // Convert glob-like pattern to a simple regex
-  const regex = globToRegex(pattern);
+  const regex = globToRegex(trimmed);
   const matched = allFiles.filter((f) => regex.test(f));
-
   return matched.slice(0, 20);
 }
 
 function globToRegex(pattern) {
-  // Escape regex special chars except * and /
-  // Anchored with ^ and $ so `*.md` matches only root-level .md files,
-  // not nested paths like `docs/readme.md`.
   const escaped = pattern
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
     .replace(/\*\*/g, "__GLOBSTAR__")
     .replace(/\*/g, "[^/]*")
-    .replace(/__GLOBSTAR__\//g, "(?:.*/)?") // **/ → optional path prefix (matches root too)
+    .replace(/__GLOBSTAR__\//g, "(?:.*/)?")
     .replace(/__GLOBSTAR__/g, ".*");
   return new RegExp(`^${escaped}$`, "i");
 }
@@ -127,7 +120,17 @@ async function walkDir(base, dir) {
   return results;
 }
 
-// ── route handlers ─────────────────────────────────────────────────────────
+// ── Verify repo helper ────────────────────────────────────────────────────
+
+async function verifyGitRepo(repoPath) {
+  try { await fs.access(repoPath); }
+  catch { return { ok: false, error: "repoPath not found" }; }
+  try { await fs.access(path.join(repoPath, ".git")); }
+  catch { return { ok: false, error: "repoPath is not a git repository" }; }
+  return { ok: true };
+}
+
+// ── Route handlers ─────────────────────────────────────────────────────────
 
 async function handleExec(req, res) {
   let body;
@@ -136,14 +139,11 @@ async function handleExec(req, res) {
 
   const { repoPath: rp, repo, directive } = body;
   const repoPath = sanitizePath(rp ?? repo);
-  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required and must be a valid absolute path" });
+  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required" });
   if (!directive?.scope) return json(res, 400, { ok: false, error: "directive.scope required" });
 
-  // Verify path exists and is a git repo — exec only operates on real repos
-  try { await fs.access(repoPath); }
-  catch { return json(res, 404, { ok: false, error: "repoPath not found" }); }
-  try { await fs.access(path.join(repoPath, ".git")); }
-  catch { return json(res, 400, { ok: false, error: "repoPath is not a git repository" }); }
+  const check = await verifyGitRepo(repoPath);
+  if (!check.ok) return json(res, 400, check);
 
   let files;
   try {
@@ -159,7 +159,7 @@ async function handleExec(req, res) {
 
 async function handleGitStatus(req, res, searchParams) {
   const repoPath = sanitizePath(searchParams.get("path"));
-  if (!repoPath) return json(res, 400, { ok: false, error: "path query param required and must be a valid absolute path" });
+  if (!repoPath) return json(res, 400, { ok: false, error: "path query param required" });
 
   try { await fs.access(repoPath); }
   catch { return json(res, 404, { ok: false, error: "path not found" }); }
@@ -178,14 +178,13 @@ async function handleGitVerify(req, res) {
   catch { return json(res, 400, { ok: false, message: "invalid JSON body" }); }
 
   const repoPath = sanitizePath(body.repoPath);
-  if (!repoPath) return json(res, 400, { ok: false, message: "repoPath required and must be a valid absolute path" });
+  if (!repoPath) return json(res, 400, { ok: false, message: "repoPath required" });
 
   try { await fs.access(repoPath); }
   catch { return json(res, 200, { ok: false, message: "path not found" }); }
 
   try {
     await fs.access(path.join(repoPath, ".git"));
-    // Also get the remote/branch for richer surface
     let branch = "";
     try {
       const { stdout } = await execAsync("git rev-parse --abbrev-ref HEAD", { cwd: repoPath });
@@ -197,14 +196,180 @@ async function handleGitVerify(req, res) {
   }
 }
 
-// ── server ─────────────────────────────────────────────────────────────────
+// ── NEW: Git Diff ─────────────────────────────────────────────────────────
+
+async function handleGitDiff(req, res) {
+  let body;
+  try { body = await readBody(req); }
+  catch { return json(res, 400, { ok: false, error: "invalid JSON body" }); }
+
+  const repoPath = sanitizePath(body.repoPath);
+  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required" });
+
+  const check = await verifyGitRepo(repoPath);
+  if (!check.ok) return json(res, 400, check);
+
+  const staged = body.staged !== false; // default to showing staged + unstaged
+  const cmd = staged ? "git diff HEAD" : "git diff";
+
+  try {
+    const { stdout } = await execAsync(cmd, { cwd: repoPath, maxBuffer: 1024 * 1024 });
+    return json(res, 200, { ok: true, diff: stdout });
+  } catch (e) {
+    return json(res, 500, { ok: false, error: e.message });
+  }
+}
+
+// ── NEW: Git Stage Files ──────────────────────────────────────────────────
+
+async function handleGitStage(req, res) {
+  let body;
+  try { body = await readBody(req); }
+  catch { return json(res, 400, { ok: false, error: "invalid JSON body" }); }
+
+  const repoPath = sanitizePath(body.repoPath);
+  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required" });
+
+  const check = await verifyGitRepo(repoPath);
+  if (!check.ok) return json(res, 400, check);
+
+  const files = body.files;
+  if (!Array.isArray(files) || files.length === 0) {
+    return json(res, 400, { ok: false, error: "files array required" });
+  }
+
+  // Validate each file path stays within repo
+  for (const f of files) {
+    if (!safeFilePath(repoPath, f)) {
+      return json(res, 400, { ok: false, error: `invalid file path: ${f}` });
+    }
+  }
+
+  try {
+    const escaped = files.map(f => `"${f.replace(/"/g, '\\"')}"`).join(" ");
+    await execAsync(`git add ${escaped}`, { cwd: repoPath });
+    return json(res, 200, { ok: true, staged: files });
+  } catch (e) {
+    return json(res, 500, { ok: false, error: e.message });
+  }
+}
+
+// ── NEW: Git Commit ───────────────────────────────────────────────────────
+
+async function handleGitCommit(req, res) {
+  let body;
+  try { body = await readBody(req); }
+  catch { return json(res, 400, { ok: false, error: "invalid JSON body" }); }
+
+  const repoPath = sanitizePath(body.repoPath);
+  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required" });
+  if (!body.message || typeof body.message !== "string" || !body.message.trim()) {
+    return json(res, 400, { ok: false, error: "commit message required" });
+  }
+
+  const check = await verifyGitRepo(repoPath);
+  if (!check.ok) return json(res, 400, check);
+
+  try {
+    const msg = body.message.trim().replace(/'/g, "'\\''");
+    const { stdout } = await execAsync(`git commit -m '${msg}'`, { cwd: repoPath });
+    // Extract commit ref
+    const refMatch = stdout.match(/\[[\w\-/]+\s+([a-f0-9]+)\]/);
+    const commitRef = refMatch ? refMatch[1] : undefined;
+    console.log(`[git/commit] ${commitRef ?? "unknown"}: ${body.message.slice(0, 60)}`);
+    return json(res, 200, { ok: true, commitRef, output: stdout });
+  } catch (e) {
+    return json(res, 500, { ok: false, error: e.message });
+  }
+}
+
+// ── NEW: File Read ────────────────────────────────────────────────────────
+
+async function handleFileRead(req, res) {
+  let body;
+  try { body = await readBody(req); }
+  catch { return json(res, 400, { ok: false, error: "invalid JSON body" }); }
+
+  const repoPath = sanitizePath(body.repoPath);
+  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required" });
+  if (!body.filePath) return json(res, 400, { ok: false, error: "filePath required" });
+
+  const full = safeFilePath(repoPath, body.filePath);
+  if (!full) return json(res, 400, { ok: false, error: "invalid file path" });
+
+  try {
+    const content = await fs.readFile(full, "utf-8");
+    const stat = await fs.stat(full);
+    return json(res, 200, {
+      ok: true,
+      filePath: body.filePath,
+      content,
+      size: stat.size,
+      modified: stat.mtimeMs,
+    });
+  } catch (e) {
+    return json(res, 404, { ok: false, error: `file not readable: ${e.message}` });
+  }
+}
+
+// ── NEW: File Write ───────────────────────────────────────────────────────
+
+async function handleFileWrite(req, res) {
+  let body;
+  try { body = await readBody(req); }
+  catch { return json(res, 400, { ok: false, error: "invalid JSON body" }); }
+
+  const repoPath = sanitizePath(body.repoPath);
+  if (!repoPath) return json(res, 400, { ok: false, error: "repoPath required" });
+  if (!body.filePath) return json(res, 400, { ok: false, error: "filePath required" });
+  if (typeof body.content !== "string") return json(res, 400, { ok: false, error: "content required" });
+
+  const full = safeFilePath(repoPath, body.filePath);
+  if (!full) return json(res, 400, { ok: false, error: "invalid file path" });
+
+  try {
+    // Ensure parent directory exists
+    await fs.mkdir(path.dirname(full), { recursive: true });
+    await fs.writeFile(full, body.content, "utf-8");
+    console.log(`[file/write] ${body.filePath} (${body.content.length} bytes)`);
+    return json(res, 200, { ok: true, filePath: body.filePath, size: body.content.length });
+  } catch (e) {
+    return json(res, 500, { ok: false, error: e.message });
+  }
+}
+
+// ── NEW: Git Log ──────────────────────────────────────────────────────────
+
+async function handleGitLog(req, res, searchParams) {
+  const repoPath = sanitizePath(searchParams.get("path"));
+  if (!repoPath) return json(res, 400, { ok: false, error: "path query param required" });
+
+  const count = Math.min(parseInt(searchParams.get("count") ?? "10", 10), 50);
+
+  const check = await verifyGitRepo(repoPath);
+  if (!check.ok) return json(res, 400, check);
+
+  try {
+    const { stdout } = await execAsync(
+      `git log --oneline -${count} --format="%H|%h|%s|%ai|%an"`,
+      { cwd: repoPath }
+    );
+    const commits = stdout.trim().split("\n").filter(Boolean).map(line => {
+      const [hash, short, subject, date, author] = line.split("|");
+      return { hash, short, subject, date, author };
+    });
+    return json(res, 200, { ok: true, commits });
+  } catch (e) {
+    return json(res, 500, { ok: false, error: e.message });
+  }
+}
+
+// ── Server ────────────────────────────────────────────────────────────────
 
 const server = http.createServer(async (req, res) => {
-  // Parse URL
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const pathname = url.pathname;
 
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     cors(res);
     res.writeHead(204);
@@ -212,22 +377,31 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "POST" && pathname === "/exec") {
-    return handleExec(req, res);
-  }
-  if (req.method === "GET" && pathname === "/git/status") {
-    return handleGitStatus(req, res, url.searchParams);
-  }
-  if (req.method === "POST" && pathname === "/git/verify") {
-    return handleGitVerify(req, res);
-  }
+  // Route dispatch
+  if (req.method === "POST" && pathname === "/exec")        return handleExec(req, res);
+  if (req.method === "GET"  && pathname === "/git/status")  return handleGitStatus(req, res, url.searchParams);
+  if (req.method === "GET"  && pathname === "/git/log")     return handleGitLog(req, res, url.searchParams);
+  if (req.method === "POST" && pathname === "/git/verify")  return handleGitVerify(req, res);
+  if (req.method === "POST" && pathname === "/git/diff")    return handleGitDiff(req, res);
+  if (req.method === "POST" && pathname === "/git/stage")   return handleGitStage(req, res);
+  if (req.method === "POST" && pathname === "/git/commit")  return handleGitCommit(req, res);
+  if (req.method === "POST" && pathname === "/file/read")   return handleFileRead(req, res);
+  if (req.method === "POST" && pathname === "/file/write")  return handleFileWrite(req, res);
 
   json(res, 404, { ok: false, error: `unknown endpoint: ${req.method} ${pathname}` });
 });
 
-// Bind to loopback only — this backend must never be reachable from other hosts.
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`[ruberra-exec] listening on http://127.0.0.1:${PORT} (loopback only)`);
   console.log(`[ruberra-exec] CORS origin: ${ALLOWED_ORIGIN}`);
-  console.log(`[ruberra-exec] endpoints: POST /exec  GET /git/status  POST /git/verify`);
+  console.log(`[ruberra-exec] endpoints:`);
+  console.log(`  POST /exec         — resolve files by scope glob`);
+  console.log(`  GET  /git/status   — git status --short`);
+  console.log(`  GET  /git/log      — git log (recent commits)`);
+  console.log(`  POST /git/verify   — verify .git exists`);
+  console.log(`  POST /git/diff     — git diff`);
+  console.log(`  POST /git/stage    — git add files`);
+  console.log(`  POST /git/commit   — git commit -m`);
+  console.log(`  POST /file/read    — read file content`);
+  console.log(`  POST /file/write   — write file content`);
 });
