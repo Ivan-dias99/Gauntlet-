@@ -6,13 +6,10 @@ import { useState } from "react";
 import { emit, useProjection } from "../spine/store";
 import { revokedCanonWithDependents, conceptAncestry, pendingProposals, activeFlow, nextFlowStep, directiveAgent } from "../spine/projections";
 import { runRuntime, getRuntimeConfig } from "../spine/runtime-fabric";
+import { routeToBackend, devTask, BackendError } from "../spine/backendClient";
 import { Unavailable } from "../trust/Unavailable";
 import { RuledPrompt } from "../trust/RuledPrompt";
 import { ThreadTerminal } from "../surfaces/ThreadTerminal";
-
-const EXEC_BACKEND = (import.meta as any).env?.VITE_RUBERRA_EXEC_URL as
-  | string
-  | undefined;
 
 type Risk = "reversible" | "consequential" | "destructive";
 
@@ -61,6 +58,13 @@ export function CreationChamber() {
   const [acceptance, setAcceptance] = useState("");
   const [risk, setRisk] = useState<Risk>("reversible");
   const [err, setErr] = useState<string | null>(null);
+  const [devMode, setDevMode] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<
+    | { kind: "idle" }
+    | { kind: "pending" }
+    | { kind: "ok"; route: string; answer: string; confidence?: string }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
 
   const concepts = p.concepts.filter((c) => activeThread && c.thread === activeThread.id);
   const artifacts = p.artifacts.filter((a) => !activeThread || a.thread === activeThread.id);
@@ -115,6 +119,29 @@ export function CreationChamber() {
         { prompt: String(d.payload.text ?? ""), threadId: activeThread.id, directiveId: d.id },
         config ?? undefined,
       );
+
+      const directiveText = String(d.payload.text ?? "");
+      setBackendStatus({ kind: "pending" });
+      try {
+        if (devMode) {
+          const result = await devTask(directiveText, { context: String(d.payload.scope ?? "") });
+          const answer = typeof (result as any).answer === "string" ? (result as any).answer : JSON.stringify(result);
+          setBackendStatus({ kind: "ok", route: "agent", answer });
+        } else {
+          const response = await routeToBackend(directiveText, { context: String(d.payload.scope ?? "") });
+          if (response.route === "triad") {
+            const triad = response.result;
+            const answer = triad.refused ? (triad.refusal_message ?? "refused") : (triad.answer ?? "");
+            setBackendStatus({ kind: "ok", route: "triad", answer, confidence: triad.confidence });
+          } else {
+            const answer = typeof (response.result as any).answer === "string" ? (response.result as any).answer : JSON.stringify(response.result);
+            setBackendStatus({ kind: "ok", route: "agent", answer });
+          }
+        }
+      } catch (be) {
+        const msg = be instanceof BackendError ? be.message : (be as Error).message;
+        setBackendStatus({ kind: "error", message: msg });
+      }
     } catch (e) {
       setErr((e as Error).message);
     }
@@ -372,6 +399,13 @@ export function CreationChamber() {
               <input className={`rb-acceptance-field${acceptance.trim() ? " signed" : ""}`} placeholder="criterion for acceptance" value={acceptance} onChange={(e) => setAcceptance(e.target.value)} />
             </div>
 
+            <div className="rb-field-group">
+              <label className="rb-field-label" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="checkbox" checked={devMode} onChange={(e) => setDevMode(e.target.checked)} />
+                dev mode (route through /dev — agent loop with tools)
+              </label>
+            </div>
+
             <div className="rb-threshold">
               <button className={`rb-threshold-btn${canCompose ? " ready" : ""}`} disabled={!canCompose} onClick={runDirective} type="button">Accept · Execute</button>
               <button className="rb-threshold-reject" disabled={!text.trim()} onClick={rejectDraft} type="button">Reject</button>
@@ -380,6 +414,14 @@ export function CreationChamber() {
             {runningExecutions.length > 0 && <div className="rb-forge-exec-signal" role="status" aria-live="polite"><span className="rb-forge-exec-dot" aria-hidden="true" /><span className="rb-forge-exec-label">executing</span><span className="rb-forge-exec-target">{runningExecutions[0].label.length > 48 ? runningExecutions[0].label.slice(0, 48) + "…" : runningExecutions[0].label}</span>{runningExecutions.length > 1 && <span className="rb-forge-exec-count">+{runningExecutions.length - 1}</span>}</div>}
 
             {err && <div className="rb-unavail" style={{ marginTop: 12 }}><strong>refused</strong>{err}</div>}
+            {backendStatus.kind === "pending" && <div className="rb-unavail" style={{ marginTop: 12 }}><strong>backend</strong>awaiting response…</div>}
+            {backendStatus.kind === "error" && <div className="rb-unavail" style={{ marginTop: 12 }}><strong>backend error</strong>{backendStatus.message}</div>}
+            {backendStatus.kind === "ok" && (
+              <div className="rb-trace" style={{ marginTop: 12 }}>
+                <h2>Backend · {backendStatus.route}{backendStatus.confidence ? ` · ${backendStatus.confidence}` : ""}</h2>
+                <pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>{backendStatus.answer}</pre>
+              </div>
+            )}
             {!getRuntimeConfig() && <div style={{ marginTop: 12 }}><Unavailable title="simulation mode" reason="No AI provider configured. Directives execute in simulation." remediation="Open Settings (⚙) to configure OpenAI, Anthropic, Ollama, or another provider." /></div>}
           </div>
 
