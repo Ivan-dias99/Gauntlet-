@@ -5,7 +5,7 @@
 ## Architecture
 
 ```
-rubeira-backend/
+apps/backend/rubeira_backend/
 ├── main.py           # Entry point — starts uvicorn
 ├── server.py         # FastAPI app, endpoints, CORS
 ├── engine.py         # Self-consistency engine (triad + judge + decision)
@@ -85,6 +85,9 @@ User Question
 ## Quick Start
 
 ```bash
+# 0. From the repo root, enter the backend package
+cd apps/backend/rubeira_backend
+
 # 1. Install dependencies
 pip install -r requirements.txt
 
