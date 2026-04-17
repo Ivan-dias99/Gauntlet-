@@ -370,6 +370,11 @@ class RunCommandTool(Tool):
     timeout_s = 20.0
 
     async def _run(self, command: str) -> ToolResult:
+        if not AGENT_ALLOW_CODE_EXEC:
+            return ToolResult(
+                ok=False,
+                content="run_command is disabled (set RUBEIRA_ALLOW_CODE_EXEC=true).",
+            )
         try:
             argv = shlex.split(command)
         except ValueError as exc:

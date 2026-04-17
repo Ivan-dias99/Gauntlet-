@@ -21,8 +21,6 @@ from config import (
     JUDGE_TEMPERATURE,
     MAX_TOKENS,
     TRIAD_COUNT,
-    PROHIBITED_TOPICS,
-    ULTRA_PARANOIA_MODE,
 )
 from doctrine import (
     SYSTEM_PROMPT,
@@ -55,7 +53,6 @@ def _get_agent() -> "AgentOrchestrator":  # type: ignore[name-defined]
         from agent import AgentOrchestrator
         _agent_singleton = AgentOrchestrator()
     return _agent_singleton
-
 
 
 
@@ -133,7 +130,6 @@ class RubeiraEngine:
         
         except Exception as e:
             logger.error(f"Triad call {index} failed: {e}")
-            # Return an explicit failure response — the judge will see this
             return TriadResponse(
                 index=index,
                 content=f"[TRIAD CALL FAILED: {str(e)}]",
@@ -160,7 +156,6 @@ class RubeiraEngine:
         
         responses = await asyncio.gather(*tasks, return_exceptions=False)
         
-        # Log response lengths for diagnostics
         for r in responses:
             logger.info(
                 f"  Triad[{r.index}]: {len(r.content)} chars, "
@@ -204,7 +199,6 @@ class RubeiraEngine:
                 if block.type == "text":
                     raw_content += block.text
             
-            # Parse the JSON verdict
             verdict = self._parse_judge_verdict(raw_content)
             logger.info(
                 f"Judge verdict: confidence={verdict.confidence.value}, "
@@ -214,7 +208,6 @@ class RubeiraEngine:
         
         except Exception as e:
             logger.error(f"Judge invocation failed: {e}")
-            # If the judge itself fails, default to LOW confidence (refuse)
             return JudgeVerdict(
                 confidence=ConfidenceLevel.LOW,
                 reasoning=f"Judge invocation failed: {str(e)}. Defaulting to refusal for safety.",
@@ -229,12 +222,15 @@ class RubeiraEngine:
         Parse the Judge's JSON response into a JudgeVerdict.
         Handles markdown code fences and malformed JSON gracefully.
         """
-        # Strip markdown code fences if present
         cleaned = raw.strip()
         if cleaned.startswith("```"):
-            # Remove opening fence (possibly ```json)
-            first_newline = cleaned.index("\n")
-            cleaned = cleaned[first_newline + 1:]
+            newline_pos = cleaned.find("\n")
+            if newline_pos == -1:
+                cleaned = cleaned[3:]
+                if cleaned.lower().startswith("json"):
+                    cleaned = cleaned[4:]
+            else:
+                cleaned = cleaned[newline_pos + 1:]
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
         cleaned = cleaned.strip()
@@ -250,16 +246,13 @@ class RubeiraEngine:
                 refusal_reason=RefusalReason.JUDGE_REJECTION,
             )
         
-        # Map confidence string to enum
         conf_str = data.get("confidence", "low").lower()
         confidence_map = {
             "high": ConfidenceLevel.HIGH,
-            "medium": ConfidenceLevel.MEDIUM,
             "low": ConfidenceLevel.LOW,
         }
         confidence = confidence_map.get(conf_str, ConfidenceLevel.LOW)
         
-        # Map refusal_reason string to enum
         refusal_str = data.get("refusal_reason")
         refusal_reason = None
         if refusal_str:
@@ -280,7 +273,7 @@ class RubeiraEngine:
             should_refuse=data.get("should_refuse", confidence == ConfidenceLevel.LOW),
             refusal_reason=refusal_reason,
         )
-
+    
     # ── Dev / Agent Path ────────────────────────────────────────────────────
 
     async def process_dev_query(self, query: RubeiraQuery):
@@ -303,7 +296,7 @@ class RubeiraEngine:
             return {"route": "agent", "result": result.to_dict()}
         result = await self.process_query(query)
         return {"route": "triad", "result": result.model_dump()}
-    
+
     # ── Main Pipeline ───────────────────────────────────────────────────────
     
     async def process_query(self, query: RubeiraQuery) -> RubeiraResponse:
@@ -312,15 +305,7 @@ class RubeiraEngine:
         This is the single entry point for all queries.
         """
         start_time = time.monotonic()
-
-        # ── Gate 0: Paranoia short-circuits ─────────────────────────────────
-        paranoia_refusal = await self._check_paranoia_gates(query)
-        if paranoia_refusal is not None:
-            paranoia_refusal.processing_time_ms = int(
-                (time.monotonic() - start_time) * 1000
-            )
-            return paranoia_refusal
-
+        
         # ── Step 1: Check failure memory ────────────────────────────────────
         matching_failures = await failure_memory.find_matching_failures(query.question)
         has_prior_failure = len(matching_failures) > 0
@@ -382,10 +367,9 @@ class RubeiraEngine:
         total_in = sum(r.input_tokens for r in triad_responses)
         total_out = sum(r.output_tokens for r in triad_responses)
         
-        # Build triad agreement summary
         triad_summary = self._build_triad_summary(triad_responses, verdict)
         
-        # ── HIGH CONFIDENCE: deliver with full conviction ───────────────────
+        # ── HIGH CONFIDENCE ─────────────────────────────────────────────────
         if verdict.confidence == ConfidenceLevel.HIGH and not verdict.should_refuse:
             answer = verdict.consensus_answer or triad_responses[0].content
             
@@ -416,46 +400,9 @@ class RubeiraEngine:
                 ),
             )
         
-        # ── MEDIUM CONFIDENCE: deliver with explicit caveats ────────────────
-        if verdict.confidence == ConfidenceLevel.MEDIUM and not verdict.should_refuse:
-            answer = verdict.consensus_answer or triad_responses[0].content
-            
-            answer = build_cautious_answer_wrapper(
-                answer=answer,
-                confidence_level="medium",
-                caveats=verdict.divergence_points if verdict.divergence_points else None,
-                prior_failure=has_prior_failure,
-            )
-            
-            return RubeiraResponse(
-                answer=answer,
-                refused=False,
-                confidence=ConfidenceLevel.MEDIUM,
-                confidence_explanation=(
-                    "As 3 análises internas concordam no essencial mas apresentam "
-                    "variações menores. Resposta fornecida com ressalvas."
-                ),
-                triad_agreement=triad_summary,
-                judge_reasoning=verdict.reasoning,
-                total_input_tokens=total_in,
-                total_output_tokens=total_out,
-                processing_time_ms=elapsed,
-                matched_prior_failure=has_prior_failure,
-                prior_failure_note=(
-                    "Pergunta corresponde a falhas anteriores. Cautela reforçada ativada."
-                    if has_prior_failure else None
-                ),
-            )
-        
+
         # ── LOW CONFIDENCE: refuse ──────────────────────────────────────────
-        # Default to INSUFFICIENT_CONFIDENCE when the judge flagged low confidence
-        # without a specific reason; fall back to INCONSISTENCY otherwise.
-        if verdict.refusal_reason is not None:
-            refusal_reason = verdict.refusal_reason
-        elif verdict.should_refuse or verdict.confidence == ConfidenceLevel.LOW:
-            refusal_reason = RefusalReason.INSUFFICIENT_CONFIDENCE
-        else:
-            refusal_reason = RefusalReason.INCONSISTENCY
+        refusal_reason = verdict.refusal_reason or RefusalReason.INCONSISTENCY
         
         refusal_msg = build_refusal_message(
             confidence_level=verdict.confidence.value,
@@ -493,63 +440,6 @@ class RubeiraEngine:
             ),
         )
     
-    async def _check_paranoia_gates(
-        self,
-        query: RubeiraQuery,
-    ) -> Optional[RubeiraResponse]:
-        """
-        Short-circuit the pipeline when the question falls inside a forbidden
-        zone. Returns a refusal response if a gate trips, or None to proceed.
-
-        Order of checks:
-        1. ULTRA_PARANOIA_MODE — refuse every query unconditionally.
-        2. PROHIBITED_TOPICS — refuse when any banned phrase appears in the
-           question (case-insensitive substring match).
-        """
-        lowered = query.question.lower()
-
-        if ULTRA_PARANOIA_MODE:
-            await failure_memory.record_failure(
-                question=query.question,
-                failure_type=RefusalReason.ULTRA_PARANOIA,
-                judge_reasoning="Ultra-paranoia mode blocked the query pre-triad.",
-            )
-            logger.warning("ULTRA_PARANOIA_MODE engaged — refusing query.")
-            return RubeiraResponse(
-                refused=True,
-                refusal_message=(
-                    "Não sei responder isso com confiança suficiente."
-                ),
-                refusal_reason=RefusalReason.ULTRA_PARANOIA,
-                confidence=ConfidenceLevel.LOW,
-                confidence_explanation="Ultra-paranoia mode active.",
-            )
-
-        matched_topic = next(
-            (topic for topic in PROHIBITED_TOPICS if topic in lowered),
-            None,
-        )
-        if matched_topic is not None:
-            await failure_memory.record_failure(
-                question=query.question,
-                failure_type=RefusalReason.PROHIBITED_TOPIC,
-                judge_reasoning=f"Prohibited topic matched: '{matched_topic}'",
-            )
-            logger.warning(f"Prohibited topic '{matched_topic}' — refusing query.")
-            return RubeiraResponse(
-                refused=True,
-                refusal_message=(
-                    "Não sei responder isso com confiança suficiente."
-                ),
-                refusal_reason=RefusalReason.PROHIBITED_TOPIC,
-                confidence=ConfidenceLevel.LOW,
-                confidence_explanation=(
-                    f"Tópico proibido detetado: '{matched_topic}'."
-                ),
-            )
-
-        return None
-
     def _build_triad_summary(
         self,
         responses: list[TriadResponse],
@@ -558,16 +448,13 @@ class RubeiraEngine:
         """Build a human-readable summary of triad agreement."""
         lines = [f"Triad: {len(responses)} respostas geradas"]
         
-        # Response length comparison
         lengths = [len(r.content) for r in responses]
         lines.append(
             f"Comprimentos: {', '.join(str(l) for l in lengths)} caracteres"
         )
         
-        # Confidence
         lines.append(f"Confiança do Juiz: {verdict.confidence.value.upper()}")
         
-        # Divergences
         if verdict.divergence_points:
             lines.append(f"Divergências: {len(verdict.divergence_points)}")
             for dp in verdict.divergence_points[:3]:

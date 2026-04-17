@@ -1,32 +1,22 @@
 {
-  "name": "ruberra",
+  "name": "ai-shell",
   "private": true,
   "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "backend": "node exec-backend/index.mjs",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "backend": "node exec-backend/index.mjs"
   },
   "dependencies": {
-    "@radix-ui/react-dialog": "1.1.6",
+    "@anthropic-ai/sdk": "^0.89.0",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.14",
     "@vitejs/plugin-react": "4.7.0",
-    "@vitest/ui": "^4.1.2",
-    "fake-indexeddb": "^6.2.5",
-    "jsdom": "^29.0.1",
     "typescript": "^6.0.2",
-    "vite": "6.4.2",
-    "vitest": "^4.1.2"
+    "vite": "6.4.2"
   }
 }
