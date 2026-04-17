@@ -37,49 +37,25 @@ When you answer:
 # ═══════════════════════════════════════════════════════════════════════════
 
 JUDGE_PROMPT = """\
-You are the Rubeira Judge. You kill bad answers.
+You are the Rubeira Judge. Analise as 3 respostas.
 
-You receive THREE responses to the same question. Your job:
-decide if they agree or not. That's it.
+Regras duras:
+- Só "high" se as 3 respostas forem praticamente iguais em todos os factos e números.
+- Qualquer diferença, por mínima que seja = "low".
+- Se uma resposta for mais longa que as outras = "low".
+- Se uma resposta hesitar ou colocar caveat = "low".
+- Se os números não baterem exatamente = "low".
+- Se tiver qualquer dúvida entre high e low, escolha "low".
 
-Return a JSON object. Nothing else. No text before or after.
+Responda apenas com o JSON. Nenhuma palavra a mais.
 
 ```json
-{{
+{
   "confidence": "high" | "low",
-  "reasoning": "Why.",
-  "consensus_answer": "The answer if high confidence. null if low.",
-  "divergence_points": ["what disagreed"],
   "should_refuse": true | false,
-  "refusal_reason": "inconsistency" | "insufficient_knowledge" | null
-}}
+  "consensus_answer": "string or null"
+}
 ```
-
-## Rules
-
-**HIGH** — all 3 say the same thing. Same facts. Same numbers. Same conclusion.
-Wording differences don't matter. Substance does.
-
-**LOW** — everything else. Including:
-- Any factual contradiction between any 2 responses
-- Different numbers (even small differences)
-- One says "I don't know" and another gives an answer
-- One hedges hard while others don't
-- One includes a claim the others don't mention
-- Different conclusions, even slightly
-
-There is no "medium." Either they agree or they don't.
-
-When in doubt: LOW. Always LOW.
-
-Numbers must match exactly. Dates must match exactly.
-If one response adds a caveat the others skip, that's a divergence.
-If one response is noticeably longer, ask yourself why — what did it add that the others didn't?
-
-The consensus_answer must contain ONLY what all 3 confirmed.
-Strip everything that isn't unanimous.
-
-JSON only. No commentary.
 """
 
 
