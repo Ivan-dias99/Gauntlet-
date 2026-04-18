@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
 
 interface RunRecord {
@@ -32,11 +32,56 @@ const ROUTE_COLOR: Record<string, string> = {
   ask: "var(--accent)",
 };
 
+interface Stats {
+  total: number;
+  refused: number;
+  refusalRate: number;
+  avgLatencyMs: number;
+  totalInput: number;
+  totalOutput: number;
+  toolCalls: number;
+  byRoute: Record<string, number>;
+}
+
+function computeStats(runs: RunRecord[]): Stats {
+  if (runs.length === 0) {
+    return {
+      total: 0, refused: 0, refusalRate: 0, avgLatencyMs: 0,
+      totalInput: 0, totalOutput: 0, toolCalls: 0, byRoute: {},
+    };
+  }
+  let refused = 0;
+  let latencySum = 0;
+  let totalInput = 0;
+  let totalOutput = 0;
+  let toolCalls = 0;
+  const byRoute: Record<string, number> = {};
+  for (const r of runs) {
+    if (r.refused) refused++;
+    latencySum += r.processing_time_ms ?? 0;
+    totalInput += r.input_tokens ?? 0;
+    totalOutput += r.output_tokens ?? 0;
+    toolCalls += r.tool_calls?.length ?? 0;
+    byRoute[r.route] = (byRoute[r.route] ?? 0) + 1;
+  }
+  return {
+    total: runs.length,
+    refused,
+    refusalRate: refused / runs.length,
+    avgLatencyMs: Math.round(latencySum / runs.length),
+    totalInput,
+    totalOutput,
+    toolCalls,
+    byRoute,
+  };
+}
+
 export default function Memory() {
   const { activeMission } = useSpine();
   const [runs, setRuns] = useState<RunRecord[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const stats = useMemo(() => computeStats(runs ?? []), [runs]);
 
   useEffect(() => {
     if (!activeMission?.id) {
@@ -64,22 +109,49 @@ export default function Memory() {
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
 
       <div style={{
-        padding: "20px 40px 16px",
+        padding: "20px 40px 14px",
         borderBottom: "1px solid var(--border-subtle)",
-        display: "flex",
-        alignItems: "baseline",
-        gap: 12,
       }}>
-        <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)" }}>
-          Memory
-        </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Runs · Verdicts · Tool Trace
-        </span>
-        {runs && (
-          <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
-            {runs.length} run{runs.length === 1 ? "" : "s"}
+        <div style={{
+          display: "flex", alignItems: "baseline", gap: 12,
+        }}>
+          <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)" }}>
+            Memory
           </span>
+          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            Runs · Verdicts · Tool Trace
+          </span>
+          {runs && runs.length > 0 && (
+            <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
+              {renderRouteBreakdown(stats.byRoute)}
+            </span>
+          )}
+        </div>
+
+        {runs && runs.length > 0 && (
+          <div style={{
+            marginTop: 12,
+            display: "grid",
+            gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+            gap: 16,
+            fontFamily: "var(--mono)",
+            maxWidth: 820,
+          }}>
+            <StatCell label="runs" value={`${stats.total}`} />
+            <StatCell
+              label="refused"
+              value={`${(stats.refusalRate * 100).toFixed(0)}%`}
+              sub={`${stats.refused}/${stats.total}`}
+              warn={stats.refusalRate >= 0.5}
+            />
+            <StatCell label="avg latency" value={`${stats.avgLatencyMs} ms`} />
+            <StatCell
+              label="tokens"
+              value={formatTokens(stats.totalInput + stats.totalOutput)}
+              sub={`${formatTokens(stats.totalInput)} in · ${formatTokens(stats.totalOutput)} out`}
+            />
+            <StatCell label="tool calls" value={`${stats.toolCalls}`} />
+          </div>
         )}
       </div>
 
@@ -211,4 +283,41 @@ function MetaRow({ label, value }: { label: string; value: string }) {
       <span style={{ color: "var(--text-muted)" }}>{value}</span>
     </div>
   );
+}
+
+function StatCell({
+  label, value, sub, warn,
+}: { label: string; value: string; sub?: string; warn?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+      <span style={{
+        fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
+        color: "var(--text-ghost)",
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: 15,
+        color: warn ? "var(--terminal-warn)" : "var(--text-primary)",
+        lineHeight: 1.2,
+      }}>
+        {value}
+      </span>
+      {sub && (
+        <span style={{ fontSize: 9, color: "var(--text-ghost)" }}>{sub}</span>
+      )}
+    </div>
+  );
+}
+
+function renderRouteBreakdown(byRoute: Record<string, number>): string {
+  const entries = Object.entries(byRoute);
+  if (entries.length === 0) return "";
+  return entries.map(([r, n]) => `${n} ${r}`).join(" · ");
+}
+
+function formatTokens(n: number): string {
+  if (n < 1000) return `${n}`;
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
+  return `${(n / 1_000_000).toFixed(1)}M`;
 }
