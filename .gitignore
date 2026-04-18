@@ -20,3 +20,6 @@ build_*.txt
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Claude Code session memory log (populated by SessionStart/PostToolUse hooks)
+.claude/memory.log
