@@ -1,9 +1,11 @@
 import { useRef, useState, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { useRubeira, AgentEvent } from "../hooks/useRubeira";
+import { useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep } from "../hooks/useRuberra";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import { Task } from "../spine/types";
+
+type RunMode = "agent" | "crew";
 
 interface LiveTool {
   id: string;
@@ -12,6 +14,7 @@ interface LiveTool {
   iteration: number;
   ok?: boolean;
   preview?: string;
+  role?: CrewRole;
 }
 
 interface DoneSummary {
@@ -23,9 +26,27 @@ interface DoneSummary {
   termination_reason: string | null;
 }
 
+interface CrewState {
+  analysis: string;
+  steps: CrewPlanStep[];
+  currentRole: CrewRole | null;
+  rolesRun: CrewRole[];
+  verdict: { accept: boolean; issues: string[]; summary: string; refinement: number } | null;
+  refinements: number;
+}
+
+const EMPTY_CREW: CrewState = {
+  analysis: "",
+  steps: [],
+  currentRole: null,
+  rolesRun: [],
+  verdict: null,
+  refinements: 0,
+};
+
 export default function Creation() {
   const { activeMission, addTask, completeTask, principles } = useSpine();
-  const { streamDev, pending } = useRubeira();
+  const { streamDev, streamCrew, pending } = useRuberra();
   const { values } = useTweaks();
   const copy = useCopy();
   const layout = values.creationLayout;
@@ -37,6 +58,8 @@ export default function Creation() {
   const [liveText, setLiveText] = useState("");
   const [done, setDone] = useState<DoneSummary | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [mode, setMode] = useState<RunMode>("agent");
+  const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
   const abortRef = useRef<AbortController | null>(null);
   const outRef = useRef<HTMLDivElement>(null);
 
@@ -51,6 +74,94 @@ export default function Creation() {
     outRef.current?.scrollTo({ top: 999999, behavior: "smooth" });
   }, [liveText, liveTools.length, done]);
 
+  function handleAgentEvent(ev: AgentEvent, role?: CrewRole) {
+    switch (ev.type) {
+      case "iteration":
+        setIteration(ev.n);
+        break;
+      case "assistant_text":
+        setLiveText((prev) => (prev ? prev + "\n\n" : "") + ev.text);
+        break;
+      case "tool_use":
+        setLiveTools((prev) => [
+          ...prev,
+          { id: ev.id, name: ev.name, input: ev.input, iteration: ev.iteration, role },
+        ]);
+        break;
+      case "tool_result":
+        setLiveTools((prev) =>
+          prev.map((t) => (t.id === ev.id ? { ...t, ok: ev.ok, preview: ev.preview } : t)),
+        );
+        break;
+      case "done":
+        setDone({
+          answer: ev.answer,
+          iterations: ev.iterations,
+          tool_count: ev.tool_calls.length,
+          processing_time_ms: ev.processing_time_ms,
+          terminated_early: ev.terminated_early,
+          termination_reason: ev.termination_reason,
+        });
+        break;
+      case "error":
+        setErr(ev.message);
+        break;
+    }
+  }
+
+  function handleCrewEvent(ev: CrewEvent) {
+    switch (ev.type) {
+      case "crew_start":
+        setCrew({ ...EMPTY_CREW });
+        break;
+      case "plan":
+        setCrew((prev) => ({ ...prev, analysis: ev.analysis, steps: ev.steps }));
+        break;
+      case "role_start":
+        setCrew((prev) => ({ ...prev, currentRole: ev.role }));
+        break;
+      case "role_event":
+        // Inner agent event from a specialist — reuse the agent renderer
+        handleAgentEvent(ev.event, ev.role);
+        break;
+      case "role_done":
+        setCrew((prev) => ({
+          ...prev,
+          rolesRun: prev.rolesRun.includes(ev.role)
+            ? prev.rolesRun
+            : [...prev.rolesRun, ev.role],
+          currentRole: null,
+        }));
+        break;
+      case "critic_verdict":
+        setCrew((prev) => ({
+          ...prev,
+          verdict: {
+            accept: ev.accept,
+            issues: ev.issues,
+            summary: ev.summary,
+            refinement: ev.refinement,
+          },
+          refinements: ev.refinement,
+        }));
+        break;
+      case "done":
+        setDone({
+          answer: ev.answer,
+          iterations: ev.refinements,
+          tool_count: ev.roles_run.length,
+          processing_time_ms: ev.processing_time_ms,
+          terminated_early: !ev.accepted,
+          termination_reason: ev.accepted ? null : "critic rejected after refinement",
+        });
+        setCrew((prev) => ({ ...prev, rolesRun: ev.roles_run, refinements: ev.refinements }));
+        break;
+      case "error":
+        setErr(ev.message);
+        break;
+    }
+  }
+
   async function submit() {
     const v = input.trim();
     if (!v || pending) return;
@@ -64,54 +175,24 @@ export default function Creation() {
     setLiveText("");
     setDone(null);
     setElapsed(0);
+    setCrew({ ...EMPTY_CREW });
 
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
 
-    await streamDev(
-      {
-        question: `Task declared: ${v}`,
-        context: activeMission?.title,
-        mission_id: activeMission?.id,
-        principles: principles.length ? principles.map((p) => p.text) : undefined,
-      },
-      (ev: AgentEvent) => {
-        switch (ev.type) {
-          case "iteration":
-            setIteration(ev.n);
-            break;
-          case "assistant_text":
-            setLiveText((prev) => (prev ? prev + "\n\n" : "") + ev.text);
-            break;
-          case "tool_use":
-            setLiveTools((prev) => [
-              ...prev,
-              { id: ev.id, name: ev.name, input: ev.input, iteration: ev.iteration },
-            ]);
-            break;
-          case "tool_result":
-            setLiveTools((prev) =>
-              prev.map((t) => (t.id === ev.id ? { ...t, ok: ev.ok, preview: ev.preview } : t)),
-            );
-            break;
-          case "done":
-            setDone({
-              answer: ev.answer,
-              iterations: ev.iterations,
-              tool_count: ev.tool_calls.length,
-              processing_time_ms: ev.processing_time_ms,
-              terminated_early: ev.terminated_early,
-              termination_reason: ev.termination_reason,
-            });
-            break;
-          case "error":
-            setErr(ev.message);
-            break;
-        }
-      },
-      ac.signal,
-    );
+    const body = {
+      question: mode === "crew" ? v : `Task declared: ${v}`,
+      context: activeMission?.title,
+      mission_id: activeMission?.id,
+      principles: principles.length ? principles.map((p) => p.text) : undefined,
+    };
+
+    if (mode === "crew") {
+      await streamCrew(body, handleCrewEvent, ac.signal);
+    } else {
+      await streamDev(body, (ev: AgentEvent) => handleAgentEvent(ev), ac.signal);
+    }
   }
 
   const tasks = activeMission?.tasks ?? [];
@@ -144,6 +225,42 @@ export default function Creation() {
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
           Construção · Execução · Consequência
         </span>
+        <div
+          role="tablist"
+          aria-label="Execution mode"
+          style={{
+            display: "flex",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: 999,
+            overflow: "hidden",
+            marginLeft: 12,
+          }}
+        >
+          {(["agent", "crew"] as const).map((m) => (
+            <button
+              key={m}
+              role="tab"
+              aria-selected={mode === m}
+              disabled={pending}
+              onClick={() => setMode(m)}
+              style={{
+                background: mode === m ? "var(--accent-glow)" : "transparent",
+                border: "none",
+                color: mode === m ? "var(--accent)" : "var(--text-ghost)",
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                padding: "5px 12px",
+                cursor: pending ? "not-allowed" : "pointer",
+                transition: "all .15s var(--ease-swift)",
+                opacity: pending && mode !== m ? 0.4 : 1,
+              }}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
         <div
           style={{
             marginLeft: "auto",
@@ -259,6 +376,10 @@ export default function Creation() {
               <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />
             ))}
           </div>
+        )}
+
+        {mode === "crew" && (crew.steps.length > 0 || crew.verdict || pending) && (
+          <CrewCard crew={crew} pending={pending} />
         )}
 
         {(pending || liveTools.length > 0 || liveText || done) && (
@@ -438,6 +559,129 @@ export default function Creation() {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+const ROLE_COLOR: Record<CrewRole, string> = {
+  planner: "var(--accent)",
+  researcher: "var(--cc-info)",
+  coder: "var(--cc-prompt)",
+  critic: "var(--cc-warn)",
+};
+
+function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
+  return (
+    <div
+      className="toolRise"
+      style={{
+        maxWidth: 820,
+        marginBottom: 14,
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-subtle)",
+        borderLeft: "2px solid var(--accent-dim)",
+        borderRadius: 14,
+        padding: "14px 18px",
+        fontFamily: "var(--mono)",
+      }}
+    >
+      <div style={{
+        fontSize: 10,
+        letterSpacing: 2,
+        textTransform: "uppercase",
+        color: "var(--text-ghost)",
+        marginBottom: 10,
+        display: "flex", alignItems: "center", gap: 10,
+      }}>
+        <span style={{ color: "var(--accent)" }}>crew</span>
+        {crew.refinements > 0 && (
+          <span style={{ color: "var(--cc-warn)" }}>refine ×{crew.refinements}</span>
+        )}
+        {crew.currentRole && pending && (
+          <span style={{ color: ROLE_COLOR[crew.currentRole] }}>
+            ▶ {crew.currentRole}
+          </span>
+        )}
+      </div>
+
+      {crew.analysis && (
+        <div style={{
+          fontSize: 11,
+          color: "var(--text-muted)",
+          marginBottom: 12,
+          lineHeight: 1.5,
+          fontFamily: "var(--sans)",
+          fontStyle: "italic",
+        }}>
+          {crew.analysis}
+        </div>
+      )}
+
+      {crew.steps.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+          {crew.steps.map((s, i) => {
+            const ran = crew.rolesRun.includes(s.role);
+            const active = crew.currentRole === s.role;
+            const color = ROLE_COLOR[s.role];
+            return (
+              <div key={i} style={{
+                display: "grid",
+                gridTemplateColumns: "14px 90px 1fr",
+                gap: 10,
+                alignItems: "baseline",
+                fontSize: 11,
+                opacity: ran || active ? 1 : 0.55,
+              }}>
+                <span style={{ color }}>{active ? "◐" : ran ? "●" : "○"}</span>
+                <span style={{ color, letterSpacing: ".04em" }}>{s.role}</span>
+                <span style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                  {s.goal}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {crew.verdict && (
+        <div style={{
+          marginTop: 10,
+          paddingTop: 10,
+          borderTop: "1px dashed var(--border-subtle)",
+          fontSize: 11,
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            color: crew.verdict.accept ? "var(--cc-ok)" : "var(--cc-err)",
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            fontSize: 10,
+            marginBottom: 6,
+          }}>
+            <span>{crew.verdict.accept ? "✓ critic accepted" : "✗ critic rejected"}</span>
+          </div>
+          <div style={{
+            color: "var(--text-muted)",
+            fontFamily: "var(--sans)",
+            lineHeight: 1.5,
+          }}>
+            {crew.verdict.summary}
+          </div>
+          {crew.verdict.issues.length > 0 && (
+            <ul style={{
+              margin: "8px 0 0 0",
+              padding: "0 0 0 16px",
+              color: "var(--cc-warn)",
+              fontSize: 10,
+              lineHeight: 1.6,
+            }}>
+              {crew.verdict.issues.map((iss, i) => (
+                <li key={i}>{iss}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

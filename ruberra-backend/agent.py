@@ -1,10 +1,10 @@
 """
-Rubeira Dev — Agent Orchestrator
+Ruberra Dev — Agent Orchestrator
 
 Routes a query along one of two paths:
 
   * Dev intent detected  →  agentic loop with tool use
-  * Everything else      →  existing ``RubeiraEngine.process_query`` (triad + judge)
+  * Everything else      →  existing ``RuberraEngine.process_query`` (triad + judge)
 
 The agent loop is a faithful implementation of Claude's native tool-use contract:
 the model emits ``tool_use`` blocks, we execute them locally, append ``tool_result``
@@ -29,13 +29,13 @@ from typing import Any, AsyncIterator, Optional
 
 from anthropic import AsyncAnthropic
 
-from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, RUBEIRA_MOCK
+from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, RUBERRA_MOCK
 from mock_client import MockAsyncAnthropic
 from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
-from models import RubeiraQuery
+from models import RuberraQuery
 from tools import ToolRegistry, ToolResult
 
-logger = logging.getLogger("rubeira.agent")
+logger = logging.getLogger("ruberra.agent")
 
 
 # ── Tunables ────────────────────────────────────────────────────────────────
@@ -106,10 +106,14 @@ class AgentOrchestrator:
         self,
         registry: Optional[ToolRegistry] = None,
         client: Optional[AsyncAnthropic] = None,
+        system_prompt: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_iterations: Optional[int] = None,
+        label: str = "agent",
     ) -> None:
         if client is not None:
             self._client = client
-        elif RUBEIRA_MOCK:
+        elif RUBERRA_MOCK:
             self._client = MockAsyncAnthropic()
             logger.warning("AgentOrchestrator initialized in MOCK mode")
         else:
@@ -117,8 +121,12 @@ class AgentOrchestrator:
                 raise RuntimeError("ANTHROPIC_API_KEY not set")
             self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         self._registry = registry or ToolRegistry()
+        self._system_prompt = system_prompt or AGENT_SYSTEM_PROMPT
+        self._temperature = AGENT_TEMPERATURE if temperature is None else temperature
+        self._max_iterations = max_iterations or MAX_AGENT_ITERATIONS
+        self._label = label
         logger.info(
-            "AgentOrchestrator ready (tools=%s)", self._registry.names()
+            "AgentOrchestrator[%s] ready (tools=%s)", self._label, self._registry.names()
         )
 
     # ── Routing ────────────────────────────────────────────────────────────
@@ -137,7 +145,7 @@ class AgentOrchestrator:
 
     # ── Agent Loop ─────────────────────────────────────────────────────────
 
-    async def run(self, query: RubeiraQuery) -> AgentResponse:
+    async def run(self, query: RuberraQuery) -> AgentResponse:
         """Non-streaming wrapper around ``run_streaming`` — collects the final
         ``done`` event and builds an AgentResponse."""
         final: Optional[dict[str, Any]] = None
@@ -159,7 +167,7 @@ class AgentOrchestrator:
         )
 
     async def run_streaming(
-        self, query: RubeiraQuery
+        self, query: RuberraQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """Execute the agent loop, yielding coarse-grained progress events.
 
@@ -186,7 +194,7 @@ class AgentOrchestrator:
 
         yield {"type": "start"}
 
-        for iteration in range(1, MAX_AGENT_ITERATIONS + 1):
+        for iteration in range(1, self._max_iterations + 1):
             iterations = iteration
 
             if time.monotonic() - started > AGENT_WALL_CLOCK_S:
@@ -203,8 +211,8 @@ class AgentOrchestrator:
             response = await self._client.messages.create(
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
-                temperature=AGENT_TEMPERATURE,
-                system=AGENT_SYSTEM_PROMPT + build_principles_context(query.principles),
+                temperature=self._temperature,
+                system=self._system_prompt + build_principles_context(query.principles),
                 tools=self._registry.anthropic_schema(),
                 messages=messages,
             )
@@ -292,7 +300,7 @@ class AgentOrchestrator:
         else:
             # loop completed without `break` → iteration cap hit
             terminated_early = True
-            termination_reason = f"iteration cap reached ({MAX_AGENT_ITERATIONS})"
+            termination_reason = f"iteration cap reached ({self._max_iterations})"
 
         answer = self._extract_text(messages[-1]) if messages else ""
         if not answer:
@@ -320,7 +328,7 @@ class AgentOrchestrator:
     # ── Helpers ────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _user_prompt(query: RubeiraQuery) -> str:
+    def _user_prompt(query: RuberraQuery) -> str:
         if query.context:
             return f"Context:\n{query.context}\n\nTask:\n{query.question}"
         return query.question

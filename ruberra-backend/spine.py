@@ -1,5 +1,5 @@
 """
-Rubeira — Spine Store
+Ruberra — Spine Store
 JSON-backed persistence for the mission workspace (missions, notes, tasks,
 events, principles, active selection).
 
@@ -18,7 +18,7 @@ from pathlib import Path
 from config import MEMORY_DIR
 from models import SpineSnapshot
 
-logger = logging.getLogger("rubeira.spine")
+logger = logging.getLogger("ruberra.spine")
 
 SPINE_FILE: Path = MEMORY_DIR / "spine.json"
 

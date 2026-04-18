@@ -1,6 +1,6 @@
 import { SpineState } from "./types";
 
-const ENDPOINT = "/api/rubeira/spine";
+const ENDPOINT = "/api/ruberra/spine";
 
 export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | null> {
   try {

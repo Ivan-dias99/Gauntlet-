@@ -1,5 +1,5 @@
 """
-Rubeira Dev — Tool Layer
+Ruberra Dev — Tool Layer
 
 Defines the ``Tool`` contract, a ``ToolRegistry`` for dispatch, and a set of
 eight production-grade tools that the agent orchestrator can invoke.
@@ -30,17 +30,17 @@ from typing import Any, Awaitable, Callable, Optional
 
 import httpx
 
-logger = logging.getLogger("rubeira.tools")
+logger = logging.getLogger("ruberra.tools")
 
 
 # ── Configuration ───────────────────────────────────────────────────────────
 
 TOOL_WORKSPACE_ROOT: Path = Path(
-    os.environ.get("RUBEIRA_WORKSPACE", Path(__file__).resolve().parent.parent)
+    os.environ.get("RUBERRA_WORKSPACE", Path(__file__).resolve().parent.parent)
 ).resolve()
 
 AGENT_ALLOW_CODE_EXEC: bool = os.environ.get(
-    "RUBEIRA_ALLOW_CODE_EXEC", "false"
+    "RUBERRA_ALLOW_CODE_EXEC", "false"
 ).strip().lower() in ("1", "true", "yes", "on")
 
 # Shell binaries the agent may invoke via ``run_command``.
@@ -146,7 +146,7 @@ class WebSearchTool(Tool):
             resp = await client.get(
                 "https://api.duckduckgo.com/",
                 params={"q": query, "format": "json", "no_html": 1, "skip_disambig": 1},
-                headers={"User-Agent": "Rubeira-Dev/1.0"},
+                headers={"User-Agent": "Ruberra-Dev/1.0"},
             )
         resp.raise_for_status()
         data = resp.json()
@@ -174,7 +174,7 @@ class ExecutePythonTool(Tool):
     name = "execute_python"
     description = (
         "Run a short Python 3 snippet in a subprocess with a hard timeout. "
-        "Stdout and stderr are captured. Disabled unless RUBEIRA_ALLOW_CODE_EXEC "
+        "Stdout and stderr are captured. Disabled unless RUBERRA_ALLOW_CODE_EXEC "
         "is true. Never use for destructive ops."
     )
     input_schema = {
@@ -191,7 +191,7 @@ class ExecutePythonTool(Tool):
         if not AGENT_ALLOW_CODE_EXEC:
             return ToolResult(
                 ok=False,
-                content="execute_python is disabled (set RUBEIRA_ALLOW_CODE_EXEC=true).",
+                content="execute_python is disabled (set RUBERRA_ALLOW_CODE_EXEC=true).",
             )
         proc = await asyncio.create_subprocess_exec(
             "python3", "-I", "-c", code,
@@ -426,7 +426,7 @@ class FetchUrlTool(Tool):
         async with httpx.AsyncClient(
             timeout=HTTP_TIMEOUT_S,
             follow_redirects=True,
-            headers={"User-Agent": "Rubeira-Dev/1.0"},
+            headers={"User-Agent": "Ruberra-Dev/1.0"},
         ) as client:
             resp = await client.get(url)
         body = resp.text
@@ -501,7 +501,10 @@ class ToolRegistry:
 
     def __init__(self, tools: Optional[list[Tool]] = None) -> None:
         self._tools: dict[str, Tool] = {}
-        for tool in tools or default_tools():
+        # Use None sentinel — an explicit empty list means "start empty", it
+        # must not fall through to the default bundle.
+        effective = default_tools() if tools is None else tools
+        for tool in effective:
             self.register(tool)
 
     def register(self, tool: Tool) -> None:
@@ -517,6 +520,17 @@ class ToolRegistry:
     def anthropic_schema(self) -> list[dict[str, Any]]:
         """The tools array passed to ``messages.create(..., tools=...)``."""
         return [t.to_anthropic() for t in self._tools.values()]
+
+    def scoped(self, names: list[str]) -> "ToolRegistry":
+        """Return a new registry containing only the named tools.
+        Unknown names are silently dropped — callers must check ``names()``.
+        """
+        scoped = ToolRegistry(tools=[])
+        for n in names:
+            tool = self._tools.get(n)
+            if tool is not None:
+                scoped.register(tool)
+        return scoped
 
     async def dispatch(self, name: str, arguments: dict[str, Any]) -> ToolResult:
         tool = self._tools.get(name)

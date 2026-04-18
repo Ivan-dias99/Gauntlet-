@@ -123,12 +123,12 @@ export default function Memory() {
     const ac = new AbortController();
     const mid = encodeURIComponent(activeMission.id);
     Promise.all([
-      fetch(`/api/rubeira/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
+      fetch(`/api/ruberra/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
         .then(async (r) => {
           if (!r.ok) throw new Error(`runs ${r.status}`);
           return (await r.json()) as RunsResponse;
         }),
-      fetch(`/api/rubeira/runs/stats?mission_id=${mid}`, { signal: ac.signal })
+      fetch(`/api/ruberra/runs/stats?mission_id=${mid}`, { signal: ac.signal })
         .then(async (r) => {
           if (!r.ok) throw new Error(`stats ${r.status}`);
           return (await r.json()) as ServerStats;

@@ -1,5 +1,5 @@
 """
-Rubeira V1 — Self-Consistency Engine
+Ruberra V1 — Self-Consistency Engine
 The core brain. Fires 3 parallel calls to Claude Sonnet,
 then routes the responses through the Judge for verdict.
 """
@@ -21,7 +21,7 @@ from config import (
     JUDGE_TEMPERATURE,
     MAX_TOKENS,
     TRIAD_COUNT,
-    RUBEIRA_MOCK,
+    RUBERRA_MOCK,
 )
 from mock_client import MockAsyncAnthropic
 from doctrine import (
@@ -36,8 +36,8 @@ from doctrine import (
 from models import (
     ConfidenceLevel,
     RefusalReason,
-    RubeiraQuery,
-    RubeiraResponse,
+    RuberraQuery,
+    RuberraResponse,
     TriadResponse,
     JudgeVerdict,
     RunRecord,
@@ -45,7 +45,7 @@ from models import (
 from memory import failure_memory
 from runs import run_store
 
-logger = logging.getLogger("rubeira.engine")
+logger = logging.getLogger("ruberra.engine")
 
 # Agent layer is imported lazily to avoid an import cycle and to keep the
 # triad path usable even if the agent module is later swapped out.
@@ -60,8 +60,19 @@ def _get_agent() -> "AgentOrchestrator":  # type: ignore[name-defined]
     return _agent_singleton
 
 
+_crew_singleton: Optional["CrewOrchestrator"] = None  # type: ignore[name-defined]
 
-class RubeiraEngine:
+
+def _get_crew() -> "CrewOrchestrator":  # type: ignore[name-defined]
+    global _crew_singleton
+    if _crew_singleton is None:
+        from crew import CrewOrchestrator
+        _crew_singleton = CrewOrchestrator()
+    return _crew_singleton
+
+
+
+class RuberraEngine:
     """
     The sovereign intelligence engine.
     
@@ -82,14 +93,14 @@ class RubeiraEngine:
     """
     
     def __init__(self) -> None:
-        if RUBEIRA_MOCK:
+        if RUBERRA_MOCK:
             self._client = MockAsyncAnthropic()
             logger.warning("Engine initialized in MOCK mode — no network calls")
         else:
             if not ANTHROPIC_API_KEY:
                 raise RuntimeError(
                     "ANTHROPIC_API_KEY not set. "
-                    "Export it in your environment before starting Rubeira."
+                    "Export it in your environment before starting Ruberra."
                 )
             self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         logger.info(f"Engine initialized. Model: {MODEL_ID}, Triad count: {TRIAD_COUNT}")
@@ -252,7 +263,7 @@ class RubeiraEngine:
     
     # ── Dev / Agent Path ────────────────────────────────────────────────────
 
-    async def process_dev_query(self, query: RubeiraQuery):
+    async def process_dev_query(self, query: RuberraQuery):
         """
         Route a query through the agent loop (tool use) instead of the triad.
         Returns the raw ``AgentResponse`` — callers serialize it.
@@ -277,7 +288,7 @@ class RubeiraEngine:
         return result
 
     async def process_dev_query_streaming(
-        self, query: RubeiraQuery
+        self, query: RuberraQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """Streaming variant of ``process_dev_query`` — yields agent events
         and records the completed run on ``done``."""
@@ -304,7 +315,41 @@ class RubeiraEngine:
                 termination_reason=final["termination_reason"],
             ))
 
-    async def process_auto(self, query: RubeiraQuery):
+    async def process_crew_query_streaming(
+        self, query: RuberraQuery
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Multi-agent crew: planner → (researcher) → coder → critic.
+
+        Yields crew envelope events. On ``done``, records the run so the
+        Memory chamber shows it alongside agent / triad runs.
+        """
+        logger.info("Routing to crew (streaming): %s", query.question[:120])
+        crew = _get_crew()
+        final: Optional[dict[str, Any]] = None
+        async for event in crew.run_streaming(query):
+            yield event
+            if event["type"] == "done":
+                final = event
+        if final:
+            await run_store.record(RunRecord(
+                route="crew",
+                mission_id=query.mission_id,
+                question=query.question,
+                context=query.context,
+                answer=final["answer"],
+                tool_calls=[{"name": r, "ok": True} for r in final.get("roles_run", [])],
+                iterations=final.get("refinements", 0),
+                processing_time_ms=final["processing_time_ms"],
+                input_tokens=final["input_tokens"],
+                output_tokens=final["output_tokens"],
+                terminated_early=not final.get("accepted", True),
+                termination_reason=(
+                    "critic rejected after refinement"
+                    if not final.get("accepted", True) else None
+                ),
+            ))
+
+    async def process_auto(self, query: RuberraQuery):
         """
         Auto-router: dev-intent queries go through the agent loop; everything
         else goes through the conservative triad + judge pipeline.
@@ -317,7 +362,7 @@ class RubeiraEngine:
         return {"route": "triad", "result": result.model_dump()}
 
     async def process_auto_streaming(
-        self, query: RubeiraQuery
+        self, query: RuberraQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """Auto-router streaming variant. Emits a ``route`` event first, then
         streams agent or triad events under a unified envelope."""
@@ -333,24 +378,24 @@ class RubeiraEngine:
 
     # ── Main Pipeline ───────────────────────────────────────────────────────
 
-    async def process_query(self, query: RubeiraQuery) -> RubeiraResponse:
+    async def process_query(self, query: RuberraQuery) -> RuberraResponse:
         """Non-streaming wrapper — collects the final event and rebuilds
-        the ``RubeiraResponse`` model."""
+        the ``RuberraResponse`` model."""
         final: Optional[dict[str, Any]] = None
         async for event in self.process_query_streaming(query):
             if event["type"] == "done":
                 final = event
         if not final:
             raise RuntimeError("triad stream ended without a done event")
-        return RubeiraResponse.model_validate(final["result"])
+        return RuberraResponse.model_validate(final["result"])
 
     async def process_query_streaming(
-        self, query: RubeiraQuery
+        self, query: RuberraQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """
-        The complete Rubeira pipeline, emitting events at each checkpoint:
+        The complete Ruberra pipeline, emitting events at each checkpoint:
         ``start``, ``triad_start``, ``triad_done`` (per call), ``judge_start``,
-        ``judge_done``, ``done`` (full RubeiraResponse dict).
+        ``judge_done``, ``done`` (full RuberraResponse dict).
         """
         start_time = time.monotonic()
         yield {"type": "start"}
@@ -409,10 +454,10 @@ class RubeiraEngine:
         failed_calls = [r for r in triad_responses if r.stop_reason == "error"]
         if len(failed_calls) >= 2:
             elapsed = int((time.monotonic() - start_time) * 1000)
-            response = RubeiraResponse(
+            response = RuberraResponse(
                 refused=True,
                 refusal_message=(
-                    "⚠️ **Rubeira — Falha de Sistema**\n\n"
+                    "⚠️ **Ruberra — Falha de Sistema**\n\n"
                     f"{len(failed_calls)} de {TRIAD_COUNT} chamadas internas falharam. "
                     "Impossível avaliar consistência. Resposta recusada por segurança."
                 ),
@@ -452,7 +497,7 @@ class RubeiraEngine:
                 answer = build_cautious_answer_wrapper(
                     answer=answer, confidence_level="high", prior_failure=True,
                 )
-            response = RubeiraResponse(
+            response = RuberraResponse(
                 answer=answer,
                 refused=False,
                 confidence=ConfidenceLevel.HIGH,
@@ -486,14 +531,14 @@ class RubeiraEngine:
                 triad_divergence_summary="; ".join(verdict.divergence_points[:3]),
                 judge_reasoning=verdict.reasoning[:500],
             )
-            response = RubeiraResponse(
+            response = RuberraResponse(
                 refused=True,
                 refusal_message=refusal_msg,
                 refusal_reason=refusal_reason,
                 confidence=ConfidenceLevel.LOW,
                 confidence_explanation=(
                     "As 3 análises internas produziram respostas inconsistentes. "
-                    "Rubeira recusa-se a responder para proteger a integridade do sistema."
+                    "Ruberra recusa-se a responder para proteger a integridade do sistema."
                 ),
                 triad_agreement=triad_summary,
                 judge_reasoning=verdict.reasoning,
@@ -510,7 +555,7 @@ class RubeiraEngine:
         await self._log_triad_run(query, response)
         yield {"type": "done", "result": response.model_dump()}
 
-    async def _log_triad_run(self, query: RubeiraQuery, response: RubeiraResponse) -> None:
+    async def _log_triad_run(self, query: RuberraQuery, response: RuberraResponse) -> None:
         await run_store.record(RunRecord(
             route="triad",
             mission_id=query.mission_id,

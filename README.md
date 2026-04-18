@@ -18,10 +18,10 @@ src/                    React frontend (Vite, TypeScript)
   theme/                dark/light CSS vars
   trust/ErrorBoundary   top-level error boundary
 
-api/chat.ts             Vercel edge endpoint → forwards to RUBEIRA_BACKEND_URL
+api/chat.ts             Vercel edge endpoint → forwards to RUBERRA_BACKEND_URL
 vite.config.ts          dev server + /api proxy to the Python backend
 
-rubeira-backend/        FastAPI — the real cerebrum
+ruberra-backend/        FastAPI — the real cerebrum
   server.py             /ask, /dev, /route, /memory/*, /diagnostics
   engine.py             triad (3x parallel) + judge
   agent.py              agent loop with tool-use + anti-loop guard
@@ -36,7 +36,7 @@ rubeira-backend/        FastAPI — the real cerebrum
 
 ```bash
 # Terminal 1 — Python brain
-cd rubeira-backend
+cd ruberra-backend
 pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
 python main.py                       # http://127.0.0.1:3002
@@ -55,7 +55,7 @@ missions, notes, tasks, principles, event log. It is **not** a sovereign
 memory. It is ephemeral UI state. The brain owns the truth.
 
 The Python backend persists failure memory to
-`rubeira-backend/data/failure_memory.json`. Domain persistence beyond
+`ruberra-backend/data/failure_memory.json`. Domain persistence beyond
 that (missions, artifacts, tool calls, agent runs) is not yet wired.
 
 ## What is wired today
@@ -75,11 +75,11 @@ that (missions, artifacts, tool calls, agent runs) is not yet wired.
 ## Deploy
 
 - **Frontend** → Vercel. `api/chat.ts` runs at the edge and forwards to
-  `RUBEIRA_BACKEND_URL`.
+  `RUBERRA_BACKEND_URL`.
 - **Backend** → any host that runs FastAPI (Fly, Railway, Render, a VM).
-  Set `RUBEIRA_BACKEND_URL` in the Vercel project to its public URL.
+  Set `RUBERRA_BACKEND_URL` in the Vercel project to its public URL.
 
 ## Status
 
 Local-first works. Production requires the Python backend to be hosted
-externally and `RUBEIRA_BACKEND_URL` set in the Vercel project.
+externally and `RUBERRA_BACKEND_URL` set in the Vercel project.

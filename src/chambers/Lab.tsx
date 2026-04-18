@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { useRubeira, RouteEvent } from "../hooks/useRubeira";
+import { useRuberra, RouteEvent } from "../hooks/useRuberra";
 import { Note } from "../spine/types";
 
 interface TriadResult {
@@ -57,7 +57,7 @@ const EMPTY_LIVE: LiveState = {
 
 export default function Lab() {
   const { activeMission, addNote, addNoteToMission, principles } = useSpine();
-  const { streamRoute, pending, error } = useRubeira();
+  const { streamRoute, pending, error } = useRuberra();
   const [input, setInput] = useState("");
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
@@ -501,7 +501,7 @@ function MessageBubble({ note }: { note: Note }) {
                   boxShadow: "0 0 0 2px color-mix(in oklab, var(--ember) 20%, transparent)",
                 }}
               />
-              <span>LAB · rubeira</span>
+              <span>LAB · ruberra</span>
               <span style={{ color: "var(--text-muted)" }}>·</span>
             </>
           )}
