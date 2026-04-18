@@ -34,8 +34,8 @@ function devApiPlugin(apiKey: string): Plugin {
                 "content-type": "application/json",
               },
               body: JSON.stringify({
-                model: "claude-haiku-4-5-20251001",
-                max_tokens: 512,
+                model: "claude-sonnet-4-6",
+                max_tokens: 2048,
                 system: systemPrompt,
                 messages,
                 stream: true,
@@ -96,7 +96,20 @@ function devApiPlugin(apiKey: string): Plugin {
 export default defineConfig(({ mode }) => {
   // loadEnv reads .env, .env.local, .env.[mode] etc. — populates apiKey in dev
   const env = loadEnv(mode, process.cwd(), "");
+  const backendUrl = env.RUBEIRA_BACKEND_URL ?? "http://127.0.0.1:3002";
   return {
     plugins: [react(), devApiPlugin(env.ANTHROPIC_API_KEY ?? "")],
+    server: {
+      // Bridge to the Python backend (rubeira-backend/).
+      // UI calls /api/rubeira/route, /api/rubeira/dev, /api/rubeira/ask …
+      // which get rewritten to /route, /dev, /ask on the FastAPI server.
+      proxy: {
+        "/api/rubeira": {
+          target: backendUrl,
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/api\/rubeira/, ""),
+        },
+      },
+    },
   };
 });
