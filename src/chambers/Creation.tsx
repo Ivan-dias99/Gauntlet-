@@ -1,33 +1,39 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { useRubeira } from "../hooks/useRubeira";
+import { useRubeira, AgentEvent } from "../hooks/useRubeira";
 import { Task } from "../spine/types";
 
-interface ToolCall {
+interface LiveTool {
+  id: string;
   name: string;
   input?: unknown;
-  ok: boolean;
-  content_preview?: string;
+  iteration: number;
+  ok?: boolean;
+  preview?: string;
 }
 
-interface AgentResult {
-  mode?: string;
-  answer?: string;
-  tool_calls?: ToolCall[];
-  iterations?: number;
-  stop_reason?: string;
-  terminated_early?: boolean;
-  termination_reason?: string | null;
-  processing_time_ms?: number;
+interface DoneSummary {
+  answer: string;
+  iterations: number;
+  tool_count: number;
+  processing_time_ms: number;
+  terminated_early: boolean;
+  termination_reason: string | null;
 }
 
 export default function Creation() {
   const { activeMission, addTask, completeTask, principles } = useSpine();
-  const { call, pending } = useRubeira();
+  const { streamDev, pending } = useRubeira();
   const [input, setInput] = useState("");
-  const [result, setResult] = useState<AgentResult | null>(null);
   const [lastTask, setLastTask] = useState("");
   const [err, setErr] = useState<string | null>(null);
+
+  // Live state during streaming
+  const [iteration, setIteration] = useState(0);
+  const [liveTools, setLiveTools] = useState<LiveTool[]>([]);
+  const [liveText, setLiveText] = useState("");
+  const [done, setDone] = useState<DoneSummary | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   async function submit() {
     const v = input.trim();
@@ -36,20 +42,59 @@ export default function Creation() {
     addTask(v);
     setInput("");
     setLastTask(v);
-    setResult(null);
     setErr(null);
+    setIteration(0);
+    setLiveTools([]);
+    setLiveText("");
+    setDone(null);
 
-    try {
-      const r = (await call("dev", {
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    await streamDev(
+      {
         question: `Task declared: ${v}`,
         context: activeMission?.title,
         mission_id: activeMission?.id,
         principles: principles.length ? principles.map(p => p.text) : undefined,
-      })) as AgentResult;
-      setResult(r);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    }
+      },
+      (ev: AgentEvent) => {
+        switch (ev.type) {
+          case "iteration":
+            setIteration(ev.n);
+            break;
+          case "assistant_text":
+            setLiveText(prev => (prev ? prev + "\n\n" : "") + ev.text);
+            break;
+          case "tool_use":
+            setLiveTools(prev => [
+              ...prev,
+              { id: ev.id, name: ev.name, input: ev.input, iteration: ev.iteration },
+            ]);
+            break;
+          case "tool_result":
+            setLiveTools(prev =>
+              prev.map(t => (t.id === ev.id ? { ...t, ok: ev.ok, preview: ev.preview } : t)),
+            );
+            break;
+          case "done":
+            setDone({
+              answer: ev.answer,
+              iterations: ev.iterations,
+              tool_count: ev.tool_calls.length,
+              processing_time_ms: ev.processing_time_ms,
+              terminated_early: ev.terminated_early,
+              termination_reason: ev.termination_reason,
+            });
+            break;
+          case "error":
+            setErr(ev.message);
+            break;
+        }
+      },
+      ac.signal,
+    );
   }
 
   const tasks = activeMission?.tasks ?? [];
@@ -79,7 +124,7 @@ export default function Creation() {
 
       <div style={{ flex: 1, overflow: "auto", padding: "20px 40px", display: "flex", flexDirection: "column", gap: 0 }}>
 
-        {tasks.length === 0 && !result && !pending && !err && (
+        {tasks.length === 0 && !done && !pending && !err && (
           <div style={{ fontSize: 12, color: "var(--text-ghost)", fontFamily: "var(--mono)", marginTop: 8 }}>
             $ _
           </div>
@@ -93,22 +138,71 @@ export default function Creation() {
           {doneTasks.map(t => <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />)}
         </div>
 
-        {pending && (
+        {(pending || liveTools.length > 0 || liveText) && (
           <div style={{
             marginTop: 20, maxWidth: 720,
             background: "var(--bg-input)",
             border: "1px solid var(--border-subtle)",
-            borderLeft: "2px solid var(--terminal-warn)",
+            borderLeft: `2px solid ${done ? "var(--terminal-ok)" : "var(--terminal-warn)"}`,
             borderRadius: "var(--radius)",
             padding: "14px 18px",
             fontFamily: "var(--mono)",
           }}>
-            <div style={{ fontSize: 10, color: "var(--terminal-warn)", letterSpacing: 1.5 }}>
-              AGENT › {lastTask.slice(0, 48)}
+            <div style={{
+              fontSize: 10, color: done ? "var(--terminal-ok)" : "var(--terminal-warn)",
+              letterSpacing: 1.5, display: "flex", gap: 12, alignItems: "baseline",
+            }}>
+              <span>{done ? "EXEC" : "AGENT"} › {lastTask.slice(0, 48)}</span>
+              <span style={{ color: "var(--text-ghost)", marginLeft: "auto" }}>
+                {done
+                  ? `${done.iterations} iter · ${done.tool_count} tools · ${done.processing_time_ms}ms`
+                  : `iter ${iteration} · ${liveTools.length} tools`}
+              </span>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-ghost)", marginTop: 8 }}>
-              a pensar, ler repo, correr tools…
-            </div>
+
+            {liveTools.length > 0 && (
+              <div style={{
+                fontSize: 11, color: "var(--text-ghost)",
+                marginTop: 10, paddingTop: 8,
+                borderTop: "1px solid var(--border-subtle)",
+              }}>
+                {liveTools.map(tc => (
+                  <div key={tc.id} style={{ marginBottom: 2 }}>
+                    <span style={{
+                      color: tc.ok === undefined
+                        ? "var(--terminal-warn)"
+                        : tc.ok ? "var(--terminal-ok)" : "#c44",
+                    }}>
+                      {tc.ok === undefined ? "⋯" : tc.ok ? "✓" : "✗"}
+                    </span>
+                    {" "}
+                    <span style={{ color: "var(--text-muted)" }}>{tc.name}</span>
+                    {tc.input ? (
+                      <span style={{ color: "var(--text-ghost)" }}>
+                        {" "}{JSON.stringify(tc.input).slice(0, 80)}
+                      </span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(liveText || done) && (
+              <div style={{
+                marginTop: 10, paddingTop: 8,
+                borderTop: "1px solid var(--border-subtle)",
+                fontSize: 12, color: "var(--text-secondary)",
+                lineHeight: 1.8, whiteSpace: "pre-wrap",
+              }}>
+                {done ? done.answer : liveText}
+              </div>
+            )}
+
+            {done?.terminated_early && (
+              <div style={{ fontSize: 10, color: "var(--terminal-warn)", marginTop: 8 }}>
+                terminado cedo: {done.termination_reason}
+              </div>
+            )}
           </div>
         )}
 
@@ -126,63 +220,6 @@ export default function Creation() {
             <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, whiteSpace: "pre-wrap" }}>
               {err}
             </div>
-          </div>
-        )}
-
-        {result && !pending && (
-          <div style={{
-            marginTop: 20, maxWidth: 720,
-            background: "var(--bg-input)",
-            border: "1px solid var(--border-subtle)",
-            borderLeft: "2px solid var(--terminal-ok)",
-            borderRadius: "var(--radius)",
-            padding: "14px 18px",
-            fontFamily: "var(--mono)",
-          }}>
-            <div style={{
-              fontSize: 10, color: "var(--terminal-ok)", marginBottom: 8,
-              letterSpacing: 1.5, display: "flex", gap: 12,
-            }}>
-              <span>EXEC › {lastTask.slice(0, 48)}</span>
-              {result.iterations != null && (
-                <span style={{ color: "var(--text-ghost)" }}>
-                  {result.iterations} iter · {result.tool_calls?.length ?? 0} tools
-                </span>
-              )}
-            </div>
-
-            {result.tool_calls && result.tool_calls.length > 0 && (
-              <div style={{
-                fontSize: 11, color: "var(--text-ghost)",
-                marginBottom: 10, borderBottom: "1px solid var(--border-subtle)",
-                paddingBottom: 8,
-              }}>
-                {result.tool_calls.map((tc, i) => (
-                  <div key={i} style={{ marginBottom: 2 }}>
-                    <span style={{ color: tc.ok ? "var(--terminal-ok)" : "#c44" }}>
-                      {tc.ok ? "✓" : "✗"}
-                    </span>
-                    {" "}
-                    <span style={{ color: "var(--text-muted)" }}>{tc.name}</span>
-                    {tc.input ? (
-                      <span style={{ color: "var(--text-ghost)" }}>
-                        {" "}{JSON.stringify(tc.input).slice(0, 80)}
-                      </span>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
-              {result.answer || "(sem resposta)"}
-            </div>
-
-            {result.terminated_early && (
-              <div style={{ fontSize: 10, color: "var(--terminal-warn)", marginTop: 8 }}>
-                terminado cedo: {result.termination_reason}
-              </div>
-            )}
           </div>
         )}
       </div>

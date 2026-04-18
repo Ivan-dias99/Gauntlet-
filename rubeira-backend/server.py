@@ -12,6 +12,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import json as _json
 import logging
 import os
 import sys
@@ -19,6 +20,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from config import ALLOWED_ORIGIN, SERVER_HOST, SERVER_PORT
@@ -152,6 +154,34 @@ async def ask_rubeira_dev(query: RubeiraQuery):
     except Exception as e:
         logger.error(f"Agent error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Agent error: {e}")
+
+
+@app.post("/dev/stream")
+async def ask_rubeira_dev_stream(query: RubeiraQuery):
+    """
+    Streaming variant of ``/dev``. Emits one SSE event per agent step:
+    ``start``, ``iteration``, ``assistant_text``, ``tool_use``, ``tool_result``,
+    ``done`` (final). The run is recorded once ``done`` fires.
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+
+    async def event_source():
+        try:
+            async for event in engine.process_dev_query_streaming(query):
+                yield f"data: {_json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Agent stream error: {e}", exc_info=True)
+            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.post("/route")

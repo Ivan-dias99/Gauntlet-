@@ -10,7 +10,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Optional
+from typing import Any, AsyncIterator, Optional
 
 from anthropic import AsyncAnthropic
 
@@ -297,6 +297,34 @@ class RubeiraEngine:
             termination_reason=result.termination_reason,
         ))
         return result
+
+    async def process_dev_query_streaming(
+        self, query: RubeiraQuery
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Streaming variant of ``process_dev_query`` — yields agent events
+        and records the completed run on ``done``."""
+        logger.info("Routing to agent loop (streaming): %s", query.question[:120])
+        agent = _get_agent()
+        final: Optional[dict[str, Any]] = None
+        async for event in agent.run_streaming(query):
+            yield event
+            if event["type"] == "done":
+                final = event
+        if final:
+            await run_store.record(RunRecord(
+                route="agent",
+                mission_id=query.mission_id,
+                question=query.question,
+                context=query.context,
+                answer=final["answer"],
+                tool_calls=final["tool_calls"],
+                iterations=final["iterations"],
+                processing_time_ms=final["processing_time_ms"],
+                input_tokens=final["input_tokens"],
+                output_tokens=final["output_tokens"],
+                terminated_early=final["terminated_early"],
+                termination_reason=final["termination_reason"],
+            ))
 
     async def process_auto(self, query: RubeiraQuery):
         """
