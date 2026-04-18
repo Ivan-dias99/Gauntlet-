@@ -156,6 +156,34 @@ async def ask_rubeira_dev(query: RubeiraQuery):
         raise HTTPException(status_code=500, detail=f"Agent error: {e}")
 
 
+@app.post("/route/stream")
+async def ask_rubeira_auto_stream(query: RubeiraQuery):
+    """
+    Streaming variant of ``/route``. Emits the ``route`` decision first, then
+    either agent events (``tool_use``, ``tool_result``, ...) or triad events
+    (``triad_done``, ``judge_done``, ...) and finally ``done``.
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+
+    async def event_source():
+        try:
+            async for event in engine.process_auto_streaming(query):
+                yield f"data: {_json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Route stream error: {e}", exc_info=True)
+            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @app.post("/dev/stream")
 async def ask_rubeira_dev_stream(query: RubeiraQuery):
     """

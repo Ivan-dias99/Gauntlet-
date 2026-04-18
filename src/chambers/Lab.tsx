@@ -1,16 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { useRubeira } from "../hooks/useRubeira";
+import { useRubeira, RouteEvent } from "../hooks/useRubeira";
 import { Note } from "../spine/types";
 
-// Response shapes from /api/rubeira/route
 interface TriadResult {
   answer?: string | null;
   refused?: boolean;
   refusal_message?: string | null;
   confidence?: string;
-  confidence_explanation?: string;
-  triad_agreement?: string;
   judge_reasoning?: string;
   matched_prior_failure?: boolean;
 }
@@ -22,33 +19,56 @@ interface AgentResult {
   terminated_early?: boolean;
   termination_reason?: string | null;
 }
-interface RouteEnvelope {
-  route: "agent" | "triad";
-  result: TriadResult | AgentResult;
-}
 
-function extractAnswer(env: RouteEnvelope): string {
-  if (env.route === "triad") {
-    const r = env.result as TriadResult;
+function extractAnswer(
+  routePath: "agent" | "triad" | null,
+  result: Record<string, unknown>,
+): string {
+  if (routePath === "triad") {
+    const r = result as TriadResult;
     if (r.refused) return r.refusal_message ?? "(refusal sem mensagem)";
     return r.answer ?? "(sem resposta)";
   }
-  const a = (env.result as AgentResult).answer;
+  const a = (result as AgentResult).answer;
   return a ?? "(sem resposta)";
 }
 
+interface LiveState {
+  routePath: "agent" | "triad" | null;
+  triadCompleted: number;
+  triadTotal: number;
+  judgeState: "pending" | "evaluating" | "done" | null;
+  judgeConfidence: string | null;
+  agentIter: number;
+  agentToolCount: number;
+  lastEventLabel: string;
+}
+
+const EMPTY_LIVE: LiveState = {
+  routePath: null,
+  triadCompleted: 0,
+  triadTotal: 0,
+  judgeState: null,
+  judgeConfidence: null,
+  agentIter: 0,
+  agentToolCount: 0,
+  lastEventLabel: "a rotear...",
+};
+
 export default function Lab() {
   const { activeMission, addNote, addNoteToMission, principles } = useSpine();
-  const { call, pending, error } = useRubeira();
+  const { streamRoute, pending, error } = useRubeira();
   const [input, setInput] = useState("");
-  const [lastMeta, setLastMeta] = useState<RouteEnvelope | null>(null);
+  const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
+  const [lastConfidence, setLastConfidence] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const notes: Note[] = [...(activeMission?.notes ?? [])].reverse();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeMission?.notes.length, pending]);
+  }, [activeMission?.notes.length, pending, live.lastEventLabel]);
 
   async function submit() {
     const v = input.trim();
@@ -59,29 +79,41 @@ export default function Lab() {
 
     addNote(v, "user");
     setInput("");
-    setLastMeta(null);
+    setLive({ ...EMPTY_LIVE });
+    setLastConfidence(null);
 
-    // Flatten recent notes into a context string. /route takes a single
-    // question + optional context; the backend doesn't take a message array.
     const priorNotes = (activeMission?.notes ?? [])
-      .slice(0, 8) // newest-first in state; cap to avoid bloat
+      .slice(0, 8)
       .map(n => `${n.role === "ai" ? "AI" : "User"}: ${n.text}`)
       .reverse()
       .join("\n");
 
-    try {
-      const env = (await call("route", {
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    let capturedPath: "agent" | "triad" | null = null;
+
+    await streamRoute(
+      {
         question: v,
         context: priorNotes || undefined,
         mission_id: targetMissionId,
         principles: principles.length ? principles.map(p => p.text) : undefined,
-      })) as RouteEnvelope;
-      setLastMeta(env);
-      const answer = extractAnswer(env);
-      if (answer) addNoteToMission(targetMissionId, answer.trim(), "ai");
-    } catch {
-      // error is already surfaced via the hook
-    }
+      },
+      (ev: RouteEvent) => {
+        if (ev.type === "route") capturedPath = ev.path;
+        setLive(prev => reduceEvent(prev, ev));
+        if (ev.type === "done") {
+          const path = capturedPath ?? inferPath(ev);
+          const answer = extractAnswer(path, ev.result);
+          if (answer) addNoteToMission(targetMissionId, answer.trim(), "ai");
+          const conf = (ev.result as TriadResult).confidence;
+          if (conf) setLastConfidence(conf);
+        }
+      },
+      ac.signal,
+    );
   }
 
   return (
@@ -100,14 +132,12 @@ export default function Lab() {
         </span>
         {pending && (
           <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--accent)", fontFamily: "var(--mono)", letterSpacing: 1 }}>
-            ANALISANDO
+            {live.routePath ? live.routePath.toUpperCase() : "ANALISANDO"}
           </span>
         )}
-        {lastMeta && !pending && (
+        {!pending && live.routePath && lastConfidence && (
           <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1 }}>
-            {lastMeta.route.toUpperCase()}
-            {lastMeta.route === "triad" &&
-              ` · ${(lastMeta.result as TriadResult).confidence ?? "?"}`}
+            {live.routePath.toUpperCase()} · {lastConfidence}
           </span>
         )}
       </div>
@@ -136,7 +166,7 @@ export default function Lab() {
             fontSize: 11,
             color: "var(--text-ghost)",
           }}>
-            a rotear · triad ou agent · isto demora
+            {live.lastEventLabel}
           </div>
         )}
 
@@ -195,6 +225,65 @@ export default function Lab() {
       </div>
     </div>
   );
+}
+
+function reduceEvent(prev: LiveState, ev: RouteEvent): LiveState {
+  switch (ev.type) {
+    case "route":
+      return {
+        ...prev,
+        routePath: ev.path,
+        lastEventLabel: ev.path === "agent" ? "agent · a pensar" : "triad · 3 análises em paralelo",
+      };
+    case "triad_start":
+      return {
+        ...prev,
+        triadTotal: ev.count,
+        triadCompleted: 0,
+        lastEventLabel: `triad · 0/${ev.count}${ev.has_prior_failure ? " · falha prévia" : ""}`,
+      };
+    case "triad_done":
+      return {
+        ...prev,
+        triadCompleted: ev.completed,
+        triadTotal: ev.total,
+        lastEventLabel: `triad · ${ev.completed}/${ev.total} · análise ${ev.index} pronta`,
+      };
+    case "judge_start":
+      return { ...prev, judgeState: "evaluating", lastEventLabel: "judge · a avaliar consistência" };
+    case "judge_done":
+      return {
+        ...prev,
+        judgeState: "done",
+        judgeConfidence: ev.confidence,
+        lastEventLabel: `judge · ${ev.confidence}${ev.should_refuse ? " · recusar" : ""}`,
+      };
+    case "iteration":
+      return { ...prev, agentIter: ev.n, lastEventLabel: `agent · iter ${ev.n}` };
+    case "tool_use":
+      return {
+        ...prev,
+        agentToolCount: prev.agentToolCount + 1,
+        lastEventLabel: `agent · ${ev.name}`,
+      };
+    case "tool_result":
+      return { ...prev, lastEventLabel: `agent · ${ev.ok ? "✓" : "✗"} tool ${ev.id}` };
+    case "assistant_text":
+      return { ...prev, lastEventLabel: "agent · a escrever" };
+    case "done":
+      return { ...prev, lastEventLabel: "concluído" };
+    case "error":
+      return { ...prev, lastEventLabel: `erro: ${ev.message.slice(0, 80)}` };
+    default:
+      return prev;
+  }
+}
+
+function inferPath(ev: Extract<RouteEvent, { type: "done" }>): "agent" | "triad" {
+  // Done event for triad path has confidence/triad_agreement fields;
+  // agent path has tool_calls/iterations.
+  const r = ev.result as Record<string, unknown>;
+  return "tool_calls" in r || "iterations" in r ? "agent" : "triad";
 }
 
 function MessageBubble({ note }: { note: Note }) {

@@ -37,6 +37,36 @@ export type AgentEvent =
     }
   | { type: "error"; message: string };
 
+export type RouteEvent =
+  | { type: "route"; path: "agent" | "triad" }
+  | { type: "start" }
+  | { type: "triad_start"; count: number; has_prior_failure: boolean }
+  | {
+      type: "triad_done";
+      index: number;
+      length: number;
+      input_tokens: number;
+      output_tokens: number;
+      stop_reason: string;
+      completed: number;
+      total: number;
+    }
+  | { type: "judge_start" }
+  | {
+      type: "judge_done";
+      confidence: string;
+      should_refuse: boolean;
+      reasoning: string;
+      divergence_count: number;
+    }
+  | { type: "done"; result: Record<string, unknown> }
+  // agent sub-events (when route: "agent")
+  | { type: "iteration"; n: number }
+  | { type: "assistant_text"; text: string; iteration: number }
+  | { type: "tool_use"; id: string; name: string; input: unknown; iteration: number }
+  | { type: "tool_result"; id: string; ok: boolean; preview: string; iteration: number }
+  | { type: "error"; message: string };
+
 type Route = "route" | "dev" | "ask";
 
 export function useRubeira() {
@@ -66,15 +96,16 @@ export function useRubeira() {
     }
   }, []);
 
-  const streamDev = useCallback(async (
+  const openStream = useCallback(async <E,>(
+    path: string,
     body: RubeiraQueryBody,
-    onEvent: (ev: AgentEvent) => void,
+    onEvent: (ev: E) => void,
     signal?: AbortSignal,
   ) => {
     setPending(true);
     setError(null);
     try {
-      const res = await fetch("/api/rubeira/dev/stream", {
+      const res = await fetch(`/api/rubeira/${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -82,7 +113,7 @@ export function useRubeira() {
       });
       if (!res.ok || !res.body) {
         const text = res.body ? await res.text() : "";
-        throw new Error(`rubeira dev/stream ${res.status}: ${text.slice(0, 200)}`);
+        throw new Error(`rubeira ${path} ${res.status}: ${text.slice(0, 200)}`);
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -99,7 +130,7 @@ export function useRubeira() {
           const payload = line.slice(5).trim();
           if (!payload) continue;
           try {
-            onEvent(JSON.parse(payload) as AgentEvent);
+            onEvent(JSON.parse(payload) as E);
           } catch {
             // malformed frame — skip
           }
@@ -109,11 +140,23 @@ export function useRubeira() {
       if (e instanceof DOMException && e.name === "AbortError") return;
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
-      onEvent({ type: "error", message: msg });
+      onEvent({ type: "error", message: msg } as E);
     } finally {
       setPending(false);
     }
   }, []);
 
-  return { call, streamDev, pending, error };
+  const streamDev = useCallback(
+    (body: RubeiraQueryBody, onEvent: (ev: AgentEvent) => void, signal?: AbortSignal) =>
+      openStream<AgentEvent>("dev/stream", body, onEvent, signal),
+    [openStream],
+  );
+
+  const streamRoute = useCallback(
+    (body: RubeiraQueryBody, onEvent: (ev: RouteEvent) => void, signal?: AbortSignal) =>
+      openStream<RouteEvent>("route/stream", body, onEvent, signal),
+    [openStream],
+  );
+
+  return { call, streamDev, streamRoute, pending, error };
 }
