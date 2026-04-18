@@ -29,7 +29,8 @@ from typing import Any, AsyncIterator, Optional
 
 from anthropic import AsyncAnthropic
 
-from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS
+from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, RUBEIRA_MOCK
+from mock_client import MockAsyncAnthropic
 from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
 from models import RubeiraQuery
 from tools import ToolRegistry, ToolResult
@@ -106,9 +107,15 @@ class AgentOrchestrator:
         registry: Optional[ToolRegistry] = None,
         client: Optional[AsyncAnthropic] = None,
     ) -> None:
-        if not ANTHROPIC_API_KEY:
-            raise RuntimeError("ANTHROPIC_API_KEY not set")
-        self._client = client or AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        if client is not None:
+            self._client = client
+        elif RUBEIRA_MOCK:
+            self._client = MockAsyncAnthropic()
+            logger.warning("AgentOrchestrator initialized in MOCK mode")
+        else:
+            if not ANTHROPIC_API_KEY:
+                raise RuntimeError("ANTHROPIC_API_KEY not set")
+            self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         self._registry = registry or ToolRegistry()
         logger.info(
             "AgentOrchestrator ready (tools=%s)", self._registry.names()

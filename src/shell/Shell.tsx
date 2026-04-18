@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import CanonRibbon from "./CanonRibbon";
 import RitualEntry from "./RitualEntry";
+import VisionLanding from "./VisionLanding";
+import TweaksPanel from "./TweaksPanel";
 import { useSpine } from "../spine/SpineContext";
 import { Chamber } from "../spine/types";
 import Lab from "../chambers/Lab";
@@ -17,18 +19,57 @@ function renderChamber(c: Chamber) {
   }
 }
 
+function readLanded(): boolean {
+  try { return localStorage.getItem("ruberra:landed") === "1"; } catch { return false; }
+}
+
 export default function Shell() {
   const { state, activeMission } = useSpine();
   const [activeTab, setActiveTab] = useState<Chamber>(activeMission?.chamber ?? "Lab");
   const [showRitual, setShowRitual] = useState(false);
+  const [landed, setLanded] = useState<boolean>(() => readLanded());
+  const [tweaksOpen, setTweaksOpen] = useState(false);
 
-  // Sync tab when active mission changes (e.g. after ritual entry)
   useEffect(() => {
     if (activeMission) setActiveTab(activeMission.chamber);
   }, [activeMission?.id]);
 
-  if (state.missions.length === 0 || showRitual) {
-    return <RitualEntry onDone={() => setShowRitual(false)} />;
+  useEffect(() => {
+    try { localStorage.setItem("ruberra:landed", landed ? "1" : "0"); } catch {}
+  }, [landed]);
+
+  if (showRitual) {
+    return (
+      <RitualEntry
+        onDone={() => {
+          setShowRitual(false);
+          setLanded(true);
+        }}
+      />
+    );
+  }
+
+  if (!landed) {
+    return (
+      <VisionLanding
+        onEnter={() => {
+          if (state.missions.length === 0) {
+            setShowRitual(true);
+          } else {
+            setLanded(true);
+          }
+        }}
+        onNewMission={() => setShowRitual(true)}
+      />
+    );
+  }
+
+  if (state.missions.length === 0) {
+    return (
+      <RitualEntry
+        onDone={() => setLanded(true)}
+      />
+    );
   }
 
   return (
@@ -42,10 +83,17 @@ export default function Shell() {
         active={activeTab}
         onSelect={setActiveTab}
         onNew={() => setShowRitual(true)}
+        onHome={() => setLanded(false)}
+        onTweaks={() => setTweaksOpen((v) => !v)}
       />
       <main style={{ flex: 1, overflow: "auto" }}>
         {renderChamber(activeTab)}
       </main>
+      <TweaksPanel
+        open={tweaksOpen}
+        onClose={() => setTweaksOpen(false)}
+        chamber={activeTab}
+      />
     </div>
   );
 }

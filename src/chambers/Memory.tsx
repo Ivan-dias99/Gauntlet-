@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
+import { useTweaks } from "../tweaks/TweaksContext";
+import { useCopy } from "../i18n/copy";
 
 interface RunRecord {
   id: string;
@@ -23,6 +25,18 @@ interface RunsResponse {
   count: number;
   mission_id: string | null;
   records: RunRecord[];
+}
+
+interface ServerStats {
+  total: number;
+  mission_id: string | null;
+  by_route: Record<string, number>;
+  refused: number;
+  refusal_rate: number;
+  avg_latency_ms: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  tool_calls: number;
 }
 
 const ROUTE_COLOR: Record<string, string> = {
@@ -78,27 +92,52 @@ function computeStats(runs: RunRecord[]): Stats {
 
 export default function Memory() {
   const { activeMission } = useSpine();
+  const { values } = useTweaks();
+  const copy = useCopy();
+  const layout = values.memoryLayout;
   const [runs, setRuns] = useState<RunRecord[] | null>(null);
+  const [serverStats, setServerStats] = useState<ServerStats | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const stats = useMemo(() => computeStats(runs ?? []), [runs]);
+  const fallbackStats = useMemo(() => computeStats(runs ?? []), [runs]);
+  const stats: Stats = serverStats ? {
+    total: serverStats.total,
+    refused: serverStats.refused,
+    refusalRate: serverStats.refusal_rate,
+    avgLatencyMs: serverStats.avg_latency_ms,
+    totalInput: serverStats.total_input_tokens,
+    totalOutput: serverStats.total_output_tokens,
+    toolCalls: serverStats.tool_calls,
+    byRoute: serverStats.by_route,
+  } : fallbackStats;
 
   useEffect(() => {
     if (!activeMission?.id) {
       setRuns([]);
+      setServerStats(null);
       return;
     }
     setRuns(null);
+    setServerStats(null);
     setErr(null);
     const ac = new AbortController();
-    fetch(`/api/rubeira/runs?mission_id=${encodeURIComponent(activeMission.id)}&limit=100`, {
-      signal: ac.signal,
-    })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`runs ${r.status}`);
-        return (await r.json()) as RunsResponse;
+    const mid = encodeURIComponent(activeMission.id);
+    Promise.all([
+      fetch(`/api/rubeira/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`runs ${r.status}`);
+          return (await r.json()) as RunsResponse;
+        }),
+      fetch(`/api/rubeira/runs/stats?mission_id=${mid}`, { signal: ac.signal })
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`stats ${r.status}`);
+          return (await r.json()) as ServerStats;
+        }),
+    ])
+      .then(([runsData, statsData]) => {
+        setRuns(runsData.records);
+        setServerStats(statsData);
       })
-      .then((data) => setRuns(data.records))
       .catch((e) => {
         if (e.name !== "AbortError") setErr(e.message ?? String(e));
       });
@@ -121,14 +160,14 @@ export default function Memory() {
           <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
             Runs · Verdicts · Tool Trace
           </span>
-          {runs && runs.length > 0 && (
+          {stats.total > 0 && (
             <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
               {renderRouteBreakdown(stats.byRoute)}
             </span>
           )}
         </div>
 
-        {runs && runs.length > 0 && (
+        {stats.total > 0 && (
           <div style={{
             marginTop: 12,
             display: "grid",
@@ -155,13 +194,17 @@ export default function Memory() {
         )}
       </div>
 
-      <div style={{ flex: 1, overflow: "auto", padding: "24px 40px", fontFamily: "var(--mono)" }}>
+      <div style={{
+        flex: 1, overflow: "auto",
+        padding: "calc(24px * var(--density, 1)) calc(40px * var(--density, 1))",
+        fontFamily: layout === "timeline" ? "var(--sans)" : "var(--mono)",
+      }}>
 
         {err && (
           <div style={{
-            fontSize: 11, color: "#c44",
+            fontSize: 11, color: "var(--cc-err)",
             border: "1px solid var(--border-subtle)",
-            borderLeft: "2px solid #c44",
+            borderLeft: "2px solid var(--cc-err)",
             padding: "10px 14px", maxWidth: 720,
             whiteSpace: "pre-wrap",
           }}>
@@ -175,10 +218,60 @@ export default function Memory() {
 
         {runs && runs.length === 0 && !err && (
           <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>
-            — sem runs para esta missão —
+            {copy.memoryEmpty}
           </div>
         )}
 
+        {layout === "timeline" && runs && runs.length > 0 && (
+          <div style={{ position: "relative", paddingLeft: 120, maxWidth: 760 }}>
+            <div style={{
+              position: "absolute", left: 80, top: 6, bottom: 6,
+              width: 1, background: "var(--border-subtle)",
+            }} />
+            {runs.map((r, i) => {
+              const color = ROUTE_COLOR[r.route] ?? "var(--text-muted)";
+              return (
+                <div
+                  key={r.id}
+                  className="fadeUp"
+                  style={{
+                    animationDelay: `${i * 16}ms`,
+                    position: "relative",
+                    marginBottom: 18,
+                  }}
+                >
+                  <span style={{
+                    position: "absolute", left: -46, top: 8,
+                    width: 8, height: 8, borderRadius: "50%",
+                    background: color, boxShadow: "0 0 0 3px var(--bg)",
+                  }} />
+                  <span style={{
+                    position: "absolute", left: -120, top: 4, width: 62, textAlign: "right",
+                    fontSize: 9, letterSpacing: 1.5,
+                    color, fontFamily: "var(--mono)", textTransform: "uppercase",
+                  }}>{r.route}</span>
+                  <div style={{
+                    fontSize: 13,
+                    color: r.refused ? "var(--terminal-warn)" : "var(--text-secondary)",
+                    lineHeight: 1.5,
+                  }}>
+                    {r.refused ? "✗ " : ""}{r.question}
+                  </div>
+                  <div style={{
+                    fontSize: 10, color: "var(--text-ghost)",
+                    fontFamily: "var(--mono)", marginTop: 2,
+                  }}>
+                    {new Date(r.timestamp).toLocaleString([], {
+                      hour: "2-digit", minute: "2-digit", second: "2-digit",
+                    })} · {r.processing_time_ms}ms · {r.tool_calls.length} tools
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {layout === "log" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 820 }}>
           {runs?.map((r) => {
             const isOpen = expanded === r.id;
@@ -246,7 +339,7 @@ export default function Memory() {
                       <div style={{ marginTop: 8 }}>
                         {r.tool_calls.map((tc, i) => (
                           <div key={i} style={{ fontSize: 10, color: "var(--text-ghost)" }}>
-                            <span style={{ color: tc.ok ? "var(--terminal-ok)" : "#c44" }}>
+                            <span style={{ color: tc.ok ? "var(--cc-ok)" : "var(--cc-err)" }}>
                               {tc.ok ? "✓" : "✗"}
                             </span>
                             {" "}{tc.name}
@@ -271,6 +364,7 @@ export default function Memory() {
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

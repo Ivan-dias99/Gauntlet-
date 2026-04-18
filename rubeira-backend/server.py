@@ -23,11 +23,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from config import ALLOWED_ORIGIN, SERVER_HOST, SERVER_PORT
-from models import RubeiraQuery, RubeiraResponse
+from config import ALLOWED_ORIGIN, RUBEIRA_MOCK, SERVER_HOST, SERVER_PORT
+from models import RubeiraQuery, RubeiraResponse, SpineSnapshot
 from engine import RubeiraEngine
 from memory import failure_memory
 from runs import run_store
+from spine import spine_store
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -49,16 +50,16 @@ async def lifespan(app: FastAPI):
     global engine
     
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
+    if not api_key and not RUBEIRA_MOCK:
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
             "  ANTHROPIC_API_KEY not set!\n"
-            "  Export it before starting:\n"
-            "    $env:ANTHROPIC_API_KEY = 'sk-ant-...'\n"
+            "  Export it before starting, or set RUBEIRA_MOCK=1 to run\n"
+            "  the full pipeline against canned responses.\n"
             "═══════════════════════════════════════════════════════════"
         )
         sys.exit(1)
-    
+
     engine = RubeiraEngine()
     logger.info(
         "═══════════════════════════════════════════════════════════\n"
@@ -307,9 +308,9 @@ async def list_runs(mission_id: str | None = None, limit: int = 50):
 
 
 @app.get("/runs/stats")
-async def runs_stats():
-    """Aggregate stats across all runs."""
-    return await run_store.stats()
+async def runs_stats(mission_id: str | None = None):
+    """Aggregate stats, optionally filtered by mission_id."""
+    return await run_store.stats(mission_id=mission_id)
 
 
 @app.get("/runs/{run_id}")
@@ -319,6 +320,20 @@ async def get_run(run_id: str):
     if not record:
         raise HTTPException(status_code=404, detail="run not found")
     return record.model_dump()
+
+
+# ── Spine (Workspace) Endpoints ─────────────────────────────────────────────
+
+@app.get("/spine", response_model=SpineSnapshot)
+async def get_spine():
+    """Return the full mission workspace snapshot."""
+    return await spine_store.get()
+
+
+@app.post("/spine", response_model=SpineSnapshot)
+async def put_spine(snapshot: SpineSnapshot):
+    """Replace the full mission workspace snapshot. Full-state sync."""
+    return await spine_store.put(snapshot)
 
 
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
