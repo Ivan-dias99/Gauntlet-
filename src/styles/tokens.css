@@ -315,3 +315,171 @@ textarea {
 .toolRise {
   animation: toolRise 0.42s var(--ease-emph) both;
 }
+
+/* ——— Landing (VisionLanding) ——— */
+@keyframes landingIn {
+  from {
+    opacity: 0;
+    transform: scale(0.995);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+.visionKicker {
+  animation: landingIn 1s 0.1s var(--ease-emph) both;
+}
+.visionTitle {
+  animation: landingIn 1.2s 0.18s var(--ease-emph) both;
+}
+.visionSub {
+  animation: landingIn 1.2s 0.32s var(--ease-emph) both;
+}
+.visionActions {
+  animation: landingIn 1s 0.46s var(--ease-emph) both;
+}
+
+.landingPill {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--text-primary);
+  color: var(--bg);
+  border: 1px solid var(--text-primary);
+  transition: transform 0.25s var(--ease-swift), opacity 0.25s;
+}
+.landingPill:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.landingPill:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.visionPrimary {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  padding: 16px 28px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--text-primary);
+  color: var(--bg);
+  border: 1px solid var(--text-primary);
+  box-shadow: 0 10px 40px -10px color-mix(in oklab, var(--ember) 40%, transparent);
+  transition: transform 0.25s var(--ease-swift), box-shadow 0.25s, opacity 0.25s;
+}
+.visionPrimary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 50px -10px color-mix(in oklab, var(--ember) 55%, transparent);
+}
+.visionPrimary:disabled {
+  opacity: 0.35;
+  cursor: default;
+  box-shadow: none;
+}
+
+.visionGhost {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  padding: 16px 26px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.visionGhost:hover {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--accent-glow);
+}
+
+.visionMission {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 0 24px;
+  align-items: baseline;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: padding-left 0.25s var(--ease-swift);
+}
+.visionMission:hover {
+  padding-left: 12px;
+}
+.visionMission .vmK {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--text-ghost);
+}
+.visionMission .vmT {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 22px;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.visionMission:hover .vmT {
+  color: var(--accent);
+}
+.visionMission .vmM {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.chamberCard {
+  position: relative;
+  padding: 32px 28px 30px;
+  border-radius: 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  overflow: hidden;
+  cursor: default;
+  transition: transform 0.35s var(--ease-emph), border-color 0.35s, box-shadow 0.35s;
+}
+.chamberCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    600px 200px at 30% -10%,
+    color-mix(in oklab, var(--ember) 14%, transparent),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.45s var(--ease-emph);
+}
+.chamberCard:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in oklab, var(--accent) 30%, transparent);
+  box-shadow: 0 22px 60px -24px color-mix(in oklab, var(--ember) 30%, transparent);
+}
+.chamberCard:hover::before {
+  opacity: 1;
+}

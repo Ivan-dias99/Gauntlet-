@@ -16,9 +16,10 @@ interface Props {
   active: Chamber;
   onSelect: (c: Chamber) => void;
   onNew?: () => void;
+  onHome?: () => void;
 }
 
-export default function CanonRibbon({ active, onSelect, onNew }: Props) {
+export default function CanonRibbon({ active, onSelect, onNew, onHome }: Props) {
   const { theme, toggle } = useTheme();
   const { state, activeMission, switchMission } = useSpine();
   const [open, setOpen] = useState(false);
@@ -52,19 +53,46 @@ export default function CanonRibbon({ active, onSelect, onNew }: Props) {
         zIndex: 10,
       }}
     >
-      <span
+      <button
+        onClick={onHome}
+        disabled={!onHome}
+        title={onHome ? "Voltar ao início" : undefined}
         style={{
+          display: "inline-flex",
+          alignItems: "baseline",
+          gap: 8,
+          background: "none",
+          border: "none",
+          padding: 0,
           fontFamily: "'Fraunces', Georgia, serif",
           fontSize: 20,
           fontWeight: 400,
           letterSpacing: "-0.02em",
           color: "var(--text-primary)",
           marginRight: 48,
-          userSelect: "none",
+          cursor: onHome ? "pointer" : "default",
+          transition: "color 0.15s",
+        }}
+        onMouseEnter={(e) => {
+          if (onHome) e.currentTarget.style.color = "var(--accent)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = "var(--text-primary)";
         }}
       >
         Rubeira
-      </span>
+        <span
+          aria-hidden
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: "var(--ember)",
+            display: "inline-block",
+            boxShadow: "0 0 8px color-mix(in oklab, var(--ember) 60%, transparent)",
+          }}
+        />
+      </button>
 
       {CHAMBERS.map((c) => (
         <button
