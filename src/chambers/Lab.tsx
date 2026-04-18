@@ -38,7 +38,7 @@ function extractAnswer(env: RouteEnvelope): string {
 }
 
 export default function Lab() {
-  const { activeMission, addNote, addNoteToMission } = useSpine();
+  const { activeMission, addNote, addNoteToMission, principles } = useSpine();
   const { call, pending, error } = useRubeira();
   const [input, setInput] = useState("");
   const [lastMeta, setLastMeta] = useState<RouteEnvelope | null>(null);
@@ -74,6 +74,7 @@ export default function Lab() {
         question: v,
         context: priorNotes || undefined,
         mission_id: targetMissionId,
+        principles: principles.length ? principles.map(p => p.text) : undefined,
       })) as RouteEnvelope;
       setLastMeta(env);
       const answer = extractAnswer(env);

@@ -13,6 +13,7 @@ export interface RubeiraQueryBody {
   context?: string;
   force_cautious?: boolean;
   mission_id?: string;
+  principles?: string[];
 }
 
 type Route = "route" | "dev" | "ask";

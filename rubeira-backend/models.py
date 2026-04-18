@@ -45,6 +45,11 @@ class RubeiraQuery(BaseModel):
     context: Optional[str] = Field(None, max_length=5000, description="Optional additional context")
     force_cautious: bool = Field(False, description="Force maximum caution mode")
     mission_id: Optional[str] = Field(None, max_length=128, description="Optional mission UUID for run tagging")
+    principles: Optional[list[str]] = Field(
+        None,
+        max_length=64,
+        description="User-defined doctrine principles appended to the system prompt",
+    )
 
 
 # ── Internal Models ─────────────────────────────────────────────────────────
