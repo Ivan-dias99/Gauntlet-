@@ -30,7 +30,7 @@ from typing import Any, Optional
 from anthropic import AsyncAnthropic
 
 from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS
-from doctrine import AGENT_SYSTEM_PROMPT
+from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
 from models import RubeiraQuery
 from tools import ToolRegistry, ToolResult
 
@@ -161,7 +161,7 @@ class AgentOrchestrator:
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
                 temperature=AGENT_TEMPERATURE,
-                system=AGENT_SYSTEM_PROMPT,
+                system=AGENT_SYSTEM_PROMPT + build_principles_context(query.principles),
                 tools=self._registry.anthropic_schema(),
                 messages=messages,
             )

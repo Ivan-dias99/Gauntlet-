@@ -1,62 +1,87 @@
 import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { useAI, AIMessage } from "../hooks/useAI";
+import { useRubeira } from "../hooks/useRubeira";
 import { Note } from "../spine/types";
 
-const SYSTEM = `You are the Lab intelligence of Ruberra — a sovereign operating system for architects who build with consequence.
+// Response shapes from /api/rubeira/route
+interface TriadResult {
+  answer?: string | null;
+  refused?: boolean;
+  refusal_message?: string | null;
+  confidence?: string;
+  confidence_explanation?: string;
+  triad_agreement?: string;
+  judge_reasoning?: string;
+  matched_prior_failure?: boolean;
+}
+interface AgentResult {
+  mode?: string;
+  answer?: string;
+  tool_calls?: Array<{ name: string; ok: boolean; input?: unknown }>;
+  iterations?: number;
+  terminated_early?: boolean;
+  termination_reason?: string | null;
+}
+interface RouteEnvelope {
+  route: "agent" | "triad";
+  result: TriadResult | AgentResult;
+}
 
-Your function: analyze evidence submitted by the operator. Be forensic. Be surgical. Do not praise — dissect.
-- Identify what is known, what is assumed, what is missing
-- Challenge weak logic. Surface hidden implications
-- Speak in the operator's language. Concise. Max 4 sentences unless probed deeper.
-- You are not an assistant. You are an analytical extension of the operator's mind.`;
+function extractAnswer(env: RouteEnvelope): string {
+  if (env.route === "triad") {
+    const r = env.result as TriadResult;
+    if (r.refused) return r.refusal_message ?? "(refusal sem mensagem)";
+    return r.answer ?? "(sem resposta)";
+  }
+  const a = (env.result as AgentResult).answer;
+  return a ?? "(sem resposta)";
+}
 
 export default function Lab() {
-  const { activeMission, addNote, addNoteToMission } = useSpine();
-  const { send, streaming } = useAI();
+  const { activeMission, addNote, addNoteToMission, principles } = useSpine();
+  const { call, pending, error } = useRubeira();
   const [input, setInput] = useState("");
-  const [liveText, setLiveText] = useState("");
+  const [lastMeta, setLastMeta] = useState<RouteEnvelope | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const notes: Note[] = [...(activeMission?.notes ?? [])].reverse();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeMission?.notes.length, liveText]);
+  }, [activeMission?.notes.length, pending]);
 
-  function submit() {
+  async function submit() {
     const v = input.trim();
-    if (!v || streaming) return;
+    if (!v || pending) return;
 
-    // Pin the mission ID now — user may switch missions while streaming
     const targetMissionId = activeMission?.id;
     if (!targetMissionId) return;
 
     addNote(v, "user");
     setInput("");
+    setLastMeta(null);
 
-    // Build history for AI context
-    const history: AIMessage[] = notes.map(n => ({
-      role: n.role === "ai" ? "assistant" : "user",
-      content: n.text,
-    }));
-    history.push({ role: "user", content: v });
+    // Flatten recent notes into a context string. /route takes a single
+    // question + optional context; the backend doesn't take a message array.
+    const priorNotes = (activeMission?.notes ?? [])
+      .slice(0, 8) // newest-first in state; cap to avoid bloat
+      .map(n => `${n.role === "ai" ? "AI" : "User"}: ${n.text}`)
+      .reverse()
+      .join("\n");
 
-    let accumulated = "";
-    setLiveText("▊");
-
-    send(
-      SYSTEM,
-      history,
-      (chunk) => {
-        accumulated += chunk;
-        setLiveText(accumulated + "▊");
-      },
-      (ok) => {
-        if (ok && accumulated.trim()) addNoteToMission(targetMissionId, accumulated.trim(), "ai");
-        setLiveText("");
-      },
-    );
+    try {
+      const env = (await call("route", {
+        question: v,
+        context: priorNotes || undefined,
+        mission_id: targetMissionId,
+        principles: principles.length ? principles.map(p => p.text) : undefined,
+      })) as RouteEnvelope;
+      setLastMeta(env);
+      const answer = extractAnswer(env);
+      if (answer) addNoteToMission(targetMissionId, answer.trim(), "ai");
+    } catch {
+      // error is already surfaced via the hook
+    }
   }
 
   return (
@@ -73,16 +98,22 @@ export default function Lab() {
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
           Investigação · Evidência · Verdade
         </span>
-        {streaming && (
+        {pending && (
           <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--accent)", fontFamily: "var(--mono)", letterSpacing: 1 }}>
             ANALISANDO
           </span>
         )}
+        {lastMeta && !pending && (
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1 }}>
+            {lastMeta.route.toUpperCase()}
+            {lastMeta.route === "triad" &&
+              ` · ${(lastMeta.result as TriadResult).confidence ?? "?"}`}
+          </span>
+        )}
       </div>
 
-      {/* Messages */}
       <div style={{ flex: 1, overflow: "auto", padding: "20px 40px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {notes.length === 0 && !liveText && (
+        {notes.length === 0 && !pending && !error && (
           <div style={{ fontSize: 13, color: "var(--text-ghost)", fontStyle: "italic", marginTop: 8 }}>
             Sem evidências. Comece a investigar.
           </div>
@@ -92,27 +123,44 @@ export default function Lab() {
           <MessageBubble key={n.id} note={n} />
         ))}
 
-        {/* Live streaming bubble */}
-        {liveText && (
+        {pending && (
           <div style={{
             background: "var(--bg-input)",
             border: "1px solid var(--border-subtle)",
-            borderLeft: "2px solid var(--accent-dim)",
+            borderLeft: "2px solid var(--terminal-warn)",
             borderRadius: "var(--radius)",
             padding: "12px 16px",
             maxWidth: 680,
             alignSelf: "flex-start",
+            fontFamily: "var(--mono)",
+            fontSize: 11,
+            color: "var(--text-ghost)",
           }}>
-            <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-              {liveText}
-            </div>
+            a rotear · triad ou agent · isto demora
+          </div>
+        )}
+
+        {error && !pending && (
+          <div style={{
+            background: "var(--bg-input)",
+            border: "1px solid var(--border-subtle)",
+            borderLeft: "2px solid #c44",
+            borderRadius: "var(--radius)",
+            padding: "12px 16px",
+            maxWidth: 680,
+            alignSelf: "flex-start",
+            fontFamily: "var(--mono)",
+            fontSize: 11,
+            color: "var(--text-secondary)",
+            whiteSpace: "pre-wrap",
+          }}>
+            {error}
           </div>
         )}
 
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <div style={{
         borderTop: "1px solid var(--border-subtle)",
         padding: "14px 40px",
@@ -125,16 +173,16 @@ export default function Lab() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === "Enter" && !e.shiftKey && submit()}
-          placeholder={streaming ? "Aguardando resposta..." : "Evidência, análise, hipótese..."}
-          disabled={streaming}
+          placeholder={pending ? "Aguardando verdict..." : "Evidência, análise, hipótese..."}
+          disabled={pending}
           style={{
             flex: 1, background: "none", border: "none", outline: "none",
             fontSize: 14, color: "var(--text-primary)",
             fontFamily: "var(--sans)",
-            opacity: streaming ? 0.5 : 1,
+            opacity: pending ? 0.5 : 1,
           }}
         />
-        {input.trim() && !streaming && (
+        {input.trim() && !pending && (
           <button onClick={submit} style={{
             background: "none", border: "1px solid var(--border)",
             color: "var(--accent)", fontSize: 10, letterSpacing: 2,

@@ -25,6 +25,7 @@ from config import ALLOWED_ORIGIN, SERVER_HOST, SERVER_PORT
 from models import RubeiraQuery, RubeiraResponse
 from engine import RubeiraEngine
 from memory import failure_memory
+from runs import run_store
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -232,6 +233,34 @@ async def clear_memory(confirmation: ClearConfirmation):
         await failure_memory._save_to_disk()
     
     return {"cleared": True, "message": "Failure memory cleared"}
+
+
+# ── Runs Endpoints ──────────────────────────────────────────────────────────
+
+@app.get("/runs")
+async def list_runs(mission_id: str | None = None, limit: int = 50):
+    """List recent runs, optionally filtered by mission_id."""
+    records = await run_store.list(mission_id=mission_id, limit=limit)
+    return {
+        "count": len(records),
+        "mission_id": mission_id,
+        "records": [r.model_dump() for r in records],
+    }
+
+
+@app.get("/runs/stats")
+async def runs_stats():
+    """Aggregate stats across all runs."""
+    return await run_store.stats()
+
+
+@app.get("/runs/{run_id}")
+async def get_run(run_id: str):
+    """Fetch a single run record by id."""
+    record = await run_store.get(run_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="run not found")
+    return record.model_dump()
 
 
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────

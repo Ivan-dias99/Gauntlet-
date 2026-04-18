@@ -29,6 +29,7 @@ from doctrine import (
     build_refusal_message,
     build_cautious_answer_wrapper,
     build_failure_context,
+    build_principles_context,
 )
 from models import (
     ConfidenceLevel,
@@ -37,8 +38,10 @@ from models import (
     RubeiraResponse,
     TriadResponse,
     JudgeVerdict,
+    RunRecord,
 )
 from memory import failure_memory
+from runs import run_store
 
 logger = logging.getLogger("rubeira.engine")
 
@@ -283,7 +286,22 @@ class RubeiraEngine:
         """
         logger.info("Routing to agent loop: %s", query.question[:120])
         agent = _get_agent()
-        return await agent.run(query)
+        result = await agent.run(query)
+        await run_store.record(RunRecord(
+            route="agent",
+            mission_id=query.mission_id,
+            question=query.question,
+            context=query.context,
+            answer=result.answer,
+            tool_calls=result.tool_calls,
+            iterations=result.iterations,
+            processing_time_ms=result.processing_time_ms,
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+            terminated_early=result.terminated_early,
+            termination_reason=result.termination_reason,
+        ))
+        return result
 
     async def process_auto(self, query: RubeiraQuery):
         """
@@ -316,12 +334,12 @@ class RubeiraEngine:
                 f"Engaging reinforced caution."
             )
         
-        # ── Step 2: Build system prompt with failure context ────────────────
+        # ── Step 2: Build system prompt with failure + principles context ──
         system_prompt = SYSTEM_PROMPT
         if matching_failures or query.force_cautious:
             failure_context = build_failure_context(matching_failures)
             system_prompt = SYSTEM_PROMPT + failure_context
-            
+
             if query.force_cautious:
                 system_prompt += (
                     "\n\n## ⚠️ FORCED CAUTION MODE\n"
@@ -329,6 +347,7 @@ class RubeiraEngine:
                     "Increase all uncertainty thresholds. "
                     "Prefer refusal over any risk of error."
                 )
+        system_prompt += build_principles_context(query.principles)
         
         # ── Step 3: Execute self-consistency triad ──────────────────────────
         triad_responses = await self._execute_triad(
@@ -341,7 +360,7 @@ class RubeiraEngine:
         failed_calls = [r for r in triad_responses if r.stop_reason == "error"]
         if len(failed_calls) >= 2:
             elapsed = int((time.monotonic() - start_time) * 1000)
-            return RubeiraResponse(
+            response = RubeiraResponse(
                 refused=True,
                 refusal_message=(
                     "⚠️ **Rubeira — Falha de Sistema**\n\n"
@@ -357,6 +376,8 @@ class RubeiraEngine:
                 processing_time_ms=elapsed,
                 matched_prior_failure=has_prior_failure,
             )
+            await self._log_triad_run(query, response)
+            return response
         
         # ── Step 4: Invoke the Judge ────────────────────────────────────────
         verdict = await self._invoke_judge(query.question, triad_responses)
@@ -380,7 +401,7 @@ class RubeiraEngine:
                     prior_failure=True,
                 )
             
-            return RubeiraResponse(
+            response = RubeiraResponse(
                 answer=answer,
                 refused=False,
                 confidence=ConfidenceLevel.HIGH,
@@ -399,7 +420,8 @@ class RubeiraEngine:
                     if has_prior_failure else None
                 ),
             )
-        
+            await self._log_triad_run(query, response)
+            return response
 
         # ── LOW CONFIDENCE: refuse ──────────────────────────────────────────
         refusal_reason = verdict.refusal_reason or RefusalReason.INCONSISTENCY
@@ -419,7 +441,7 @@ class RubeiraEngine:
             judge_reasoning=verdict.reasoning[:500],
         )
         
-        return RubeiraResponse(
+        response = RubeiraResponse(
             refused=True,
             refusal_message=refusal_msg,
             refusal_reason=refusal_reason,
@@ -439,7 +461,23 @@ class RubeiraEngine:
                 if has_prior_failure else None
             ),
         )
-    
+        await self._log_triad_run(query, response)
+        return response
+
+    async def _log_triad_run(self, query: RubeiraQuery, response: RubeiraResponse) -> None:
+        await run_store.record(RunRecord(
+            route="triad",
+            mission_id=query.mission_id,
+            question=query.question,
+            context=query.context,
+            answer=response.answer,
+            refused=response.refused or (response.refusal_message is not None),
+            confidence=response.confidence.value if response.confidence else None,
+            processing_time_ms=response.processing_time_ms,
+            input_tokens=response.total_input_tokens,
+            output_tokens=response.total_output_tokens,
+        ))
+
     def _build_triad_summary(
         self,
         responses: list[TriadResponse],
