@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { SpineState, Mission, Principle, Chamber } from "./types";
 import {
-  loadState, saveState,
+  loadState, saveState, emptyState,
   createMission as mkMission,
   addNote as addNoteFn,
   addNoteToMission as addNoteToMissionFn,
@@ -23,6 +23,7 @@ interface SpineCtx {
   addTask: (title: string) => void;
   completeTask: (taskId: string) => void;
   addPrinciple: (text: string) => void;
+  resetAll: () => void;
 }
 
 const Ctx = createContext<SpineCtx | null>(null);
@@ -70,6 +71,7 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       addTask: (title) => dispatch(s => addTaskFn(s, title)),
       completeTask: (id) => dispatch(s => completeTaskFn(s, id)),
       addPrinciple: (text) => dispatch(s => addPrincipleFn(s, text)),
+      resetAll: () => setState(emptyState()),
     }}>
       {children}
     </Ctx.Provider>

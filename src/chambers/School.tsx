@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { useSpine } from "../spine/SpineContext";
+import { useTweaks } from "../tweaks/TweaksContext";
+import { useCopy } from "../i18n/copy";
 
 export default function School() {
   const { principles, addPrinciple } = useSpine();
+  const { values } = useTweaks();
+  const copy = useCopy();
   const [input, setInput] = useState("");
+  const layout = values.schoolLayout;
 
   function submit() {
     const v = input.trim();
@@ -35,7 +40,7 @@ export default function School() {
           School
         </span>
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Doutrina · Constituição · Princípio
+          {copy.chambers.School.lead}
         </span>
         {principles.length > 0 && (
           <span
@@ -47,12 +52,15 @@ export default function School() {
               letterSpacing: 1.5,
             }}
           >
-            {principles.length} {principles.length === 1 ? "princípio" : "princípios"}
+            {principles.length} §
           </span>
         )}
       </div>
 
-      <div style={{ flex: 1, overflow: "auto", padding: "32px clamp(20px, 5vw, 64px)" }}>
+      <div style={{
+        flex: 1, overflow: "auto",
+        padding: "calc(32px * var(--density, 1)) clamp(20px, 5vw, 64px)",
+      }}>
         {principles.length === 0 && (
           <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 520, marginTop: "10vh" }}>
             <div
@@ -77,49 +85,91 @@ export default function School() {
                 letterSpacing: "-0.005em",
               }}
             >
-              Sem princípios registados. A doutrina aguarda o primeiro axioma.
+              {copy.schoolEmpty}
             </div>
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 720 }}>
-          {principles.map((p, i) => (
-            <div
-              key={p.id}
-              className="fadeUp"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "40px 1fr",
-                gap: "0 20px",
-                padding: "18px 0",
-                borderBottom: "1px solid var(--border-subtle)",
-                alignItems: "flex-start",
-              }}
-            >
-              <span
+        {layout === "tablets" ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {principles.map((p, i) => (
+              <div
+                key={p.id}
+                className="fadeUp"
                 style={{
-                  fontSize: 10,
-                  color: "var(--accent-dim)",
-                  fontFamily: "var(--mono)",
-                  letterSpacing: 1,
-                  paddingTop: 3,
+                  animationDelay: `${i * 40}ms`,
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--radius)",
+                  padding: "18px 20px",
+                  position: "relative",
                 }}
               >
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <span
+                <div
+                  style={{
+                    fontSize: 9,
+                    color: "var(--accent-dim)",
+                    fontFamily: "var(--mono)",
+                    letterSpacing: 2,
+                    marginBottom: 10,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  § {String(principles.length - i).padStart(2, "0")}
+                </div>
+                <div style={{ fontSize: 15, color: "var(--text-primary)", lineHeight: 1.6 }}>
+                  {p.text}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 720 }}>
+            {principles.map((p, i) => (
+              <div
+                key={p.id}
+                className="fadeUp"
                 style={{
-                  fontSize: 15,
-                  color: "var(--text-primary)",
-                  lineHeight: 1.7,
-                  fontFamily: "'Fraunces', Georgia, serif",
+                  animationDelay: `${i * 35}ms`,
+                  display: "grid",
+                  gridTemplateColumns: "40px 1fr",
+                  gap: "0 20px",
+                  padding: "18px 0",
+                  borderBottom: "1px solid var(--border-subtle)",
+                  alignItems: "flex-start",
                 }}
               >
-                {p.text}
-              </span>
-            </div>
-          ))}
-        </div>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "var(--accent-dim)",
+                    fontFamily: "var(--mono)",
+                    letterSpacing: 1,
+                    paddingTop: 3,
+                  }}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span
+                  style={{
+                    fontSize: 15,
+                    color: "var(--text-primary)",
+                    lineHeight: 1.7,
+                    fontFamily: "'Fraunces', Georgia, serif",
+                  }}
+                >
+                  {p.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div
@@ -139,7 +189,7 @@ export default function School() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder="Novo princípio..."
+          placeholder={copy.schoolPlaceholder}
           style={{
             flex: 1,
             fontSize: 14,
@@ -172,7 +222,7 @@ export default function School() {
               e.currentTarget.style.background = "transparent";
             }}
           >
-            Inscrever
+            {copy.schoolInscribe}
           </button>
         )}
       </div>

@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRubeira, AgentEvent } from "../hooks/useRubeira";
+import { useTweaks } from "../tweaks/TweaksContext";
+import { useCopy } from "../i18n/copy";
 import { Task } from "../spine/types";
 
 interface LiveTool {
@@ -24,6 +26,9 @@ interface DoneSummary {
 export default function Creation() {
   const { activeMission, addTask, completeTask, principles } = useSpine();
   const { streamDev, pending } = useRubeira();
+  const { values } = useTweaks();
+  const copy = useCopy();
+  const layout = values.creationLayout;
   const [input, setInput] = useState("");
   const [lastTask, setLastTask] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -204,12 +209,39 @@ export default function Creation() {
                 color: "var(--text-muted)",
               }}
             >
-              Declare uma tarefa. Ela vira comando. O comando tem consequência.
+              {values.lang === "en"
+                ? "Declare a task. It becomes a command. The command has consequence."
+                : "Declare uma tarefa. Ela vira comando. O comando tem consequência."}
             </div>
           </div>
         )}
 
-        {tasks.length > 0 && (
+        {tasks.length > 0 && layout === "kanban" && (
+          <div style={{
+            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24,
+          }}>
+            <div>
+              <div style={{
+                fontSize: 9, letterSpacing: 2.5, color: "var(--text-ghost)",
+                fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
+              }}>▲ {values.lang === "en" ? "pending" : "pendente"} · {pendingTasks.length}</div>
+              {pendingTasks.map((t) => (
+                <KanbanCard key={t.id} task={t} onToggle={() => completeTask(t.id)} />
+              ))}
+            </div>
+            <div>
+              <div style={{
+                fontSize: 9, letterSpacing: 2.5, color: "var(--cc-ok)",
+                fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
+              }}>✓ {values.lang === "en" ? "done" : "concluída"} · {doneTasks.length}</div>
+              {doneTasks.map((t) => (
+                <KanbanCard key={t.id} task={t} onToggle={() => completeTask(t.id)} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tasks.length > 0 && layout === "terminal" && (
           <div style={{ maxWidth: 740, marginBottom: 24 }}>
             {pendingTasks.map((t) => (
               <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />
@@ -361,7 +393,7 @@ export default function Creation() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
-            placeholder={pending ? "executando agente..." : "nova tarefa..."}
+            placeholder={pending ? copy.creationRunning : copy.creationPlaceholder}
             disabled={pending}
             style={{
               flex: 1,
@@ -452,6 +484,59 @@ function ToolLine({ name, input, phase }: { name: string; input?: unknown; phase
       >
         {phase === "running" ? "…" : phase === "ok" ? "ok" : "err"}
       </span>
+    </div>
+  );
+}
+
+function KanbanCard({ task, onToggle }: { task: Task; onToggle: () => void }) {
+  return (
+    <div
+      onClick={onToggle}
+      className="fadeUp"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-subtle)",
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 10,
+        cursor: "pointer",
+        transition: "transform .25s var(--ease-emph), border-color .2s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.borderColor = "var(--accent-dim)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "";
+        e.currentTarget.style.borderColor = "var(--border-subtle)";
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          fontFamily: "var(--sans)",
+          color: task.done ? "var(--text-muted)" : "var(--text-primary)",
+          textDecoration: task.done ? "line-through" : "none",
+          lineHeight: 1.5,
+        }}
+      >
+        {task.title}
+      </div>
+      <div
+        style={{
+          fontSize: 9,
+          letterSpacing: 1.5,
+          color: task.done ? "var(--cc-ok)" : "var(--text-ghost)",
+          fontFamily: "var(--mono)",
+          marginTop: 8,
+          textTransform: "uppercase",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <span>{new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+        <span>{task.done ? "exit 0" : "pending"}</span>
+      </div>
     </div>
   );
 }

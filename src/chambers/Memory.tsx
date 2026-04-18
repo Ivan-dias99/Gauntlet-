@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
+import { useTweaks } from "../tweaks/TweaksContext";
+import { useCopy } from "../i18n/copy";
 
 interface RunRecord {
   id: string;
@@ -90,6 +92,9 @@ function computeStats(runs: RunRecord[]): Stats {
 
 export default function Memory() {
   const { activeMission } = useSpine();
+  const { values } = useTweaks();
+  const copy = useCopy();
+  const layout = values.memoryLayout;
   const [runs, setRuns] = useState<RunRecord[] | null>(null);
   const [serverStats, setServerStats] = useState<ServerStats | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -189,7 +194,11 @@ export default function Memory() {
         )}
       </div>
 
-      <div style={{ flex: 1, overflow: "auto", padding: "24px 40px", fontFamily: "var(--mono)" }}>
+      <div style={{
+        flex: 1, overflow: "auto",
+        padding: "calc(24px * var(--density, 1)) calc(40px * var(--density, 1))",
+        fontFamily: layout === "timeline" ? "var(--sans)" : "var(--mono)",
+      }}>
 
         {err && (
           <div style={{
@@ -209,10 +218,60 @@ export default function Memory() {
 
         {runs && runs.length === 0 && !err && (
           <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>
-            — sem runs para esta missão —
+            {copy.memoryEmpty}
           </div>
         )}
 
+        {layout === "timeline" && runs && runs.length > 0 && (
+          <div style={{ position: "relative", paddingLeft: 120, maxWidth: 760 }}>
+            <div style={{
+              position: "absolute", left: 80, top: 6, bottom: 6,
+              width: 1, background: "var(--border-subtle)",
+            }} />
+            {runs.map((r, i) => {
+              const color = ROUTE_COLOR[r.route] ?? "var(--text-muted)";
+              return (
+                <div
+                  key={r.id}
+                  className="fadeUp"
+                  style={{
+                    animationDelay: `${i * 16}ms`,
+                    position: "relative",
+                    marginBottom: 18,
+                  }}
+                >
+                  <span style={{
+                    position: "absolute", left: -46, top: 8,
+                    width: 8, height: 8, borderRadius: "50%",
+                    background: color, boxShadow: "0 0 0 3px var(--bg)",
+                  }} />
+                  <span style={{
+                    position: "absolute", left: -120, top: 4, width: 62, textAlign: "right",
+                    fontSize: 9, letterSpacing: 1.5,
+                    color, fontFamily: "var(--mono)", textTransform: "uppercase",
+                  }}>{r.route}</span>
+                  <div style={{
+                    fontSize: 13,
+                    color: r.refused ? "var(--terminal-warn)" : "var(--text-secondary)",
+                    lineHeight: 1.5,
+                  }}>
+                    {r.refused ? "✗ " : ""}{r.question}
+                  </div>
+                  <div style={{
+                    fontSize: 10, color: "var(--text-ghost)",
+                    fontFamily: "var(--mono)", marginTop: 2,
+                  }}>
+                    {new Date(r.timestamp).toLocaleString([], {
+                      hour: "2-digit", minute: "2-digit", second: "2-digit",
+                    })} · {r.processing_time_ms}ms · {r.tool_calls.length} tools
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {layout === "log" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 820 }}>
           {runs?.map((r) => {
             const isOpen = expanded === r.id;
@@ -305,6 +364,7 @@ export default function Memory() {
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

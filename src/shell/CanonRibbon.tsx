@@ -2,26 +2,22 @@ import { useState, useRef, useEffect } from "react";
 import { Chamber } from "../spine/types";
 import { useTheme } from "../theme/ThemeContext";
 import { useSpine } from "../spine/SpineContext";
+import { useCopy } from "../i18n/copy";
 
 export const CHAMBERS: Chamber[] = ["Lab", "Creation", "Memory", "School"];
-
-const LABELS: Record<Chamber, string> = {
-  Lab: "Investigação",
-  Creation: "Construção",
-  Memory: "Memória",
-  School: "Doutrina",
-};
 
 interface Props {
   active: Chamber;
   onSelect: (c: Chamber) => void;
   onNew?: () => void;
   onHome?: () => void;
+  onTweaks?: () => void;
 }
 
-export default function CanonRibbon({ active, onSelect, onNew, onHome }: Props) {
+export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks }: Props) {
   const { theme, toggle } = useTheme();
   const { state, activeMission, switchMission } = useSpine();
+  const copy = useCopy();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -114,7 +110,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome }: Props) 
             fontWeight: active === c ? 500 : 400,
           }}
         >
-          {LABELS[c]}
+          {copy.chambers[c].label}
         </button>
       ))}
 
@@ -138,7 +134,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome }: Props) 
                 whiteSpace: "nowrap",
                 transition: "color 0.15s, border-color 0.15s",
               }}
-              title="Trocar missão"
+              title={copy.switchMission}
             >
               {activeMission?.title ?? "—"} ▾
             </button>
@@ -170,7 +166,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome }: Props) 
                     borderBottom: "1px solid var(--border-subtle)",
                   }}
                 >
-                  Missões
+                  {copy.missions}
                 </div>
                 {missions.map((m) => {
                   const isActive = m.id === state.activeMissionId;
@@ -208,7 +204,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome }: Props) 
                           fontFamily: "var(--mono)",
                         }}
                       >
-                        {LABELS[m.chamber]} · {m.tasks.length}t · {m.notes.length}n
+                        {copy.chambers[m.chamber].label} · {m.tasks.length}t · {m.notes.length}n
                       </div>
                     </button>
                   );
@@ -216,6 +212,36 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome }: Props) 
               </div>
             )}
           </div>
+        )}
+
+        {onTweaks && (
+          <button
+            onClick={onTweaks}
+            title="Tweaks"
+            style={{
+              background: "none",
+              border: "1px solid var(--border)",
+              color: "var(--text-muted)",
+              fontSize: 10,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              padding: "7px 12px",
+              cursor: "pointer",
+              fontFamily: "var(--mono)",
+              borderRadius: "var(--radius)",
+              transition: "border-color 0.15s, color 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent-dim)";
+              e.currentTarget.style.color = "var(--accent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.color = "var(--text-muted)";
+            }}
+          >
+            ⚙ tweaks
+          </button>
         )}
 
         <button
@@ -273,7 +299,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome }: Props) 
               e.currentTarget.style.color = "var(--text-secondary)";
             }}
           >
-            + Missão
+            {copy.newMission}
           </button>
         )}
       </div>

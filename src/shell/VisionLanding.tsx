@@ -1,65 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { Chamber } from "../spine/types";
+import { useCopy } from "../i18n/copy";
+import { useTweaks } from "../tweaks/TweaksContext";
 
 interface Props {
   onEnter: () => void;
   onNewMission: () => void;
 }
 
-interface ChamberCard {
-  key: Chamber;
-  k: string;
-  title: string;
-  tag: string;
-  body: string;
-  glyph: string;
-}
-
-const CHAMBERS: ChamberCard[] = [
-  {
-    key: "Lab",
-    k: "01",
-    title: "Investigação",
-    tag: "Forense, cirúrgica",
-    body: "Interrogatório do real. Separa o que é sabido, presumido e ausente. A IA não concorda — ela pressiona.",
-    glyph: "※",
-  },
-  {
-    key: "Creation",
-    k: "02",
-    title: "Construção",
-    tag: "Terminal soberano",
-    body: "Intenção vira ação. Cada tarefa é um comando. Exit code visível. Sem motivação.",
-    glyph: "›_",
-  },
-  {
-    key: "Memory",
-    k: "03",
-    title: "Memória",
-    tag: "Arquivo estrutural",
-    body: "Tudo é gravado em linha do tempo. Nenhum evento se perde. A missão lembra-se de si.",
-    glyph: "◇",
-  },
-  {
-    key: "School",
-    k: "04",
-    title: "Doutrina",
-    tag: "Princípios codificados",
-    body: "A voz que permanece. Princípios numerados, referenciáveis, imutáveis até reescritos.",
-    glyph: "§",
-  },
-];
-
-const MANIFESTO = [
-  "Lucidez sobre produtividade",
-  "Consequência sobre velocidade",
-  "Soberania sobre consenso",
-  "Arquivo sobre memória",
-];
-
 export default function VisionLanding({ onEnter, onNewMission }: Props) {
   const { state, switchMission } = useSpine();
+  const copy = useCopy();
+  const { values } = useTweaks();
   const [now, setNow] = useState<Date>(() => new Date());
   const [scrollY, setScrollY] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -82,7 +34,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
     minute: "2-digit",
     hour12: false,
   });
-  const dateStr = now.toLocaleDateString("pt-BR", {
+  const dateStr = now.toLocaleDateString(values.lang === "en" ? "en-US" : "pt-BR", {
     weekday: "long",
     day: "2-digit",
     month: "long",
@@ -203,7 +155,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
             disabled={!canContinue}
             className="landingPill"
           >
-            {canContinue ? "Entrar" : "Sem missão"}
+            {canContinue ? copy.enter : copy.noMission}
           </button>
         </div>
       </header>
@@ -245,7 +197,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               gap: 12,
             }}
           >
-            <span>— Instrumento soberano · v∞</span>
+            <span>{copy.sovereignInstrument}</span>
           </div>
 
           <h1
@@ -291,8 +243,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               letterSpacing: "-0.005em",
             }}
           >
-            Um sistema operativo privado para quem constrói com consequência. Quatro
-            câmaras. Uma voz. Sua.
+            {copy.heroSub}
           </p>
 
           <div
@@ -310,11 +261,11 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               disabled={!canContinue}
               className="visionPrimary"
             >
-              {missions.length > 0 ? "Retomar missão" : "Entrar"}
+              {missions.length > 0 ? copy.resumeMission : copy.enter}
               <span style={{ marginLeft: 8, opacity: 0.7 }}>→</span>
             </button>
             <button onClick={onNewMission} className="visionGhost">
-              + Nova missão
+              {copy.newMissionLong}
             </button>
             <span
               style={{
@@ -326,7 +277,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                 textTransform: "uppercase",
               }}
             >
-              ↓ Role para ver as câmaras
+              {copy.scrollCue}
             </span>
           </div>
 
@@ -366,7 +317,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               marginBottom: 18,
             }}
           >
-            — As quatro câmaras
+            {copy.fourChambersKicker}
           </div>
           <h2
             style={{
@@ -380,7 +331,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               textWrap: "balance",
             }}
           >
-            Cada câmara é um órgão. Juntas, fazem um organismo.
+            {copy.chambersHeading}
           </h2>
 
           <div
@@ -390,7 +341,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               gap: 20,
             }}
           >
-            {CHAMBERS.map((c) => (
+            {copy.chamberDeck.map((c) => (
               <article key={c.key} className="chamberCard">
                 <div
                   style={{
@@ -481,7 +432,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               marginBottom: 40,
             }}
           >
-            — Manifesto
+            {copy.manifesto}
           </div>
 
           <div
@@ -491,7 +442,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               gap: 24,
             }}
           >
-            {MANIFESTO.map((m, i) => (
+            {copy.manifestoItems.map((m, i) => (
               <div
                 key={i}
                 style={{
@@ -553,7 +504,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                   marginBottom: 18,
                 }}
               >
-                — Missões ativas
+                {copy.activeMissions}
               </div>
               {missions.length === 0 ? (
                 <div
@@ -564,7 +515,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                     color: "var(--text-muted)",
                   }}
                 >
-                  Nenhuma. A página está em branco.
+                  {copy.emptyMissions}
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column" }}>
@@ -580,7 +531,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                       <span className="vmK">{String(i + 1).padStart(2, "0")}</span>
                       <span className="vmT">{m.title}</span>
                       <span className="vmM">
-                        {m.chamber} · {m.tasks.length}t · {m.notes.length}n
+                        {copy.chambers[m.chamber].label} · {m.tasks.length}t · {m.notes.length}n
                       </span>
                     </button>
                   ))}
@@ -589,14 +540,14 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
             </div>
             <div style={{ display: "flex", gap: 14 }}>
               <button onClick={onNewMission} className="visionGhost">
-                + Nova missão
+                {copy.newMissionLong}
               </button>
               <button
                 onClick={onEnter}
                 disabled={!canContinue}
                 className="visionPrimary"
               >
-                Continuar
+                {copy.resumeMission}
                 <span style={{ marginLeft: 6, opacity: 0.7 }}>→</span>
               </button>
             </div>

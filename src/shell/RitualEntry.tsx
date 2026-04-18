@@ -1,13 +1,9 @@
 import { useState } from "react";
 import { Chamber } from "../spine/types";
 import { useSpine } from "../spine/SpineContext";
+import { useCopy } from "../i18n/copy";
 
-const CHAMBERS: { id: Chamber; label: string; sub: string }[] = [
-  { id: "Lab",      label: "Investigação", sub: "Análise · Evidência · Verdade" },
-  { id: "Creation", label: "Construção",   sub: "Arquitetura · Execução · Consequência" },
-  { id: "Memory",   label: "Memória",      sub: "Retenção · Inteligência · Continuidade" },
-  { id: "School",   label: "Doutrina",     sub: "Formação · Constituição · Princípio" },
-];
+const ORDER: Chamber[] = ["Lab", "Creation", "Memory", "School"];
 
 interface Props {
   onDone?: () => void;
@@ -15,6 +11,7 @@ interface Props {
 
 export default function RitualEntry({ onDone }: Props) {
   const { createMission } = useSpine();
+  const copy = useCopy();
   const [title, setTitle] = useState("");
   const [chamber, setChamber] = useState<Chamber | null>(null);
 
@@ -42,7 +39,7 @@ export default function RitualEntry({ onDone }: Props) {
           fontFamily: "var(--mono)",
           marginBottom: 52,
         }}>
-          RUBERRA · NOVA MISSÃO
+          {copy.ritualTag}
         </div>
 
         <input
@@ -50,7 +47,7 @@ export default function RitualEntry({ onDone }: Props) {
           value={title}
           onChange={e => setTitle(e.target.value)}
           onKeyDown={e => e.key === "Enter" && commit()}
-          placeholder="Nome da missão"
+          placeholder={copy.missionName}
           style={{
             width: "100%", background: "none",
             border: "none", borderBottom: "1px solid var(--border)",
@@ -61,10 +58,11 @@ export default function RitualEntry({ onDone }: Props) {
         />
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 48 }}>
-          {CHAMBERS.map(c => {
-            const active = chamber === c.id;
+          {ORDER.map(id => {
+            const c = copy.chambers[id];
+            const active = chamber === id;
             return (
-              <button key={c.id} onClick={() => setChamber(c.id)} style={{
+              <button key={id} onClick={() => setChamber(id)} style={{
                 background: active ? "var(--bg-elevated)" : "var(--bg-surface)",
                 border: `1px solid ${active ? "var(--accent-dim)" : "var(--border-subtle)"}`,
                 borderRadius: "var(--radius)",
@@ -103,7 +101,7 @@ export default function RitualEntry({ onDone }: Props) {
               borderRadius: "var(--radius)", transition: "all 0.15s",
             }}
           >
-            Entrar
+            {copy.enter}
           </button>
 
           {onDone && (
@@ -112,7 +110,7 @@ export default function RitualEntry({ onDone }: Props) {
               color: "var(--text-ghost)", fontSize: 12,
               cursor: "pointer",
             }}>
-              cancelar
+              {copy.cancel}
             </button>
           )}
         </div>

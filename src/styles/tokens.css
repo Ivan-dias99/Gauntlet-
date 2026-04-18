@@ -192,6 +192,17 @@ textarea {
   transition: background-color 0.28s, color 0.28s, border-color 0.28s;
 }
 
+/* ——— Font overrides (body-level classes) ——— */
+.mono-ibm {
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+.sans-plex {
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+}
+.sans-sys {
+  --sans: system-ui, -apple-system, sans-serif;
+}
+
 /* ——— Animations ——— */
 @keyframes fadeUp {
   from {

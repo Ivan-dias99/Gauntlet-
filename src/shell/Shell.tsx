@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import CanonRibbon from "./CanonRibbon";
 import RitualEntry from "./RitualEntry";
 import VisionLanding from "./VisionLanding";
+import TweaksPanel from "./TweaksPanel";
 import { useSpine } from "../spine/SpineContext";
 import { Chamber } from "../spine/types";
 import Lab from "../chambers/Lab";
@@ -27,6 +28,7 @@ export default function Shell() {
   const [activeTab, setActiveTab] = useState<Chamber>(activeMission?.chamber ?? "Lab");
   const [showRitual, setShowRitual] = useState(false);
   const [landed, setLanded] = useState<boolean>(() => readLanded());
+  const [tweaksOpen, setTweaksOpen] = useState(false);
 
   useEffect(() => {
     if (activeMission) setActiveTab(activeMission.chamber);
@@ -82,10 +84,16 @@ export default function Shell() {
         onSelect={setActiveTab}
         onNew={() => setShowRitual(true)}
         onHome={() => setLanded(false)}
+        onTweaks={() => setTweaksOpen((v) => !v)}
       />
       <main style={{ flex: 1, overflow: "auto" }}>
         {renderChamber(activeTab)}
       </main>
+      <TweaksPanel
+        open={tweaksOpen}
+        onClose={() => setTweaksOpen(false)}
+        chamber={activeTab}
+      />
     </div>
   );
 }
