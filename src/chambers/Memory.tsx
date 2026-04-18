@@ -193,9 +193,9 @@ export default function Memory() {
 
         {err && (
           <div style={{
-            fontSize: 11, color: "#c44",
+            fontSize: 11, color: "var(--cc-err)",
             border: "1px solid var(--border-subtle)",
-            borderLeft: "2px solid #c44",
+            borderLeft: "2px solid var(--cc-err)",
             padding: "10px 14px", maxWidth: 720,
             whiteSpace: "pre-wrap",
           }}>
@@ -280,7 +280,7 @@ export default function Memory() {
                       <div style={{ marginTop: 8 }}>
                         {r.tool_calls.map((tc, i) => (
                           <div key={i} style={{ fontSize: 10, color: "var(--text-ghost)" }}>
-                            <span style={{ color: tc.ok ? "var(--terminal-ok)" : "#c44" }}>
+                            <span style={{ color: tc.ok ? "var(--cc-ok)" : "var(--cc-err)" }}>
                               {tc.ok ? "✓" : "✗"}
                             </span>
                             {" "}{tc.name}

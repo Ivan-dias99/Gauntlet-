@@ -5,44 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ruberra</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-      html {
-        background: var(--bg, #0b0a09);
-        color: var(--text-primary, #f0ece6);
-        font-family: var(--sans, system-ui, sans-serif);
-        height: 100%;
-      }
-
-      html.theme-transitioning,
-      html.theme-transitioning * {
-        transition:
-          background-color 0.22s ease,
-          color 0.18s ease,
-          border-color 0.22s ease,
-          box-shadow 0.22s ease !important;
-      }
-
-      body, #root { height: 100%; }
-
-      ::placeholder { color: var(--text-muted); }
-
-      * {
-        scrollbar-width: thin;
-        scrollbar-color: var(--border) transparent;
-      }
-      *::-webkit-scrollbar { width: 4px; height: 4px; }
-      *::-webkit-scrollbar-track { background: transparent; }
-      *::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-      input, button, textarea { font-family: inherit; }
-
-      ::selection {
-        background: var(--accent-glow);
-        color: var(--accent);
-      }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>
