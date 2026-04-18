@@ -153,3 +153,52 @@ class RunsLog(BaseModel):
     """Append-only run log."""
     records: list[RunRecord] = Field(default_factory=list)
     last_updated: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+# ── Spine (Mission workspace) ───────────────────────────────────────────────
+
+class NoteRecord(BaseModel):
+    id: str
+    text: str
+    createdAt: int
+    role: Optional[str] = None
+
+
+class TaskRecord(BaseModel):
+    id: str
+    title: str
+    done: bool = False
+    createdAt: int
+    doneAt: Optional[int] = None
+
+
+class LogEventRecord(BaseModel):
+    id: str
+    type: str
+    label: str
+    at: int
+
+
+class MissionRecord(BaseModel):
+    id: str
+    title: str
+    chamber: str
+    status: str = "active"
+    createdAt: int
+    notes: list[NoteRecord] = Field(default_factory=list)
+    tasks: list[TaskRecord] = Field(default_factory=list)
+    events: list[LogEventRecord] = Field(default_factory=list)
+
+
+class PrincipleRecord(BaseModel):
+    id: str
+    text: str
+    createdAt: int
+
+
+class SpineSnapshot(BaseModel):
+    """Full workspace state — missions, active selection, principles."""
+    missions: list[MissionRecord] = Field(default_factory=list)
+    activeMissionId: Optional[str] = None
+    principles: list[PrincipleRecord] = Field(default_factory=list)
+    last_updated: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

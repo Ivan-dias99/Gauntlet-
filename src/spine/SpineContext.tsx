@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { SpineState, Mission, Principle, Chamber } from "./types";
 import {
   loadState, saveState,
@@ -10,6 +10,7 @@ import {
   addPrinciple as addPrincipleFn,
   switchMission as switchFn,
 } from "./store";
+import { fetchSpine, pushSpine } from "./client";
 
 interface SpineCtx {
   state: SpineState;
@@ -28,8 +29,29 @@ const Ctx = createContext<SpineCtx | null>(null);
 
 export function SpineProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SpineState>(() => loadState());
+  const hasHydrated = useRef(false);
+  const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { saveState(state); }, [state]);
+  // Hydrate from server on mount; fall back to localStorage state already set.
+  useEffect(() => {
+    const ac = new AbortController();
+    fetchSpine(ac.signal).then((remote) => {
+      if (remote && (remote.missions.length > 0 || remote.principles.length > 0)) {
+        setState(remote);
+      }
+      hasHydrated.current = true;
+    });
+    return () => ac.abort();
+  }, []);
+
+  // Persist locally immediately, push to server debounced once hydrated.
+  useEffect(() => {
+    saveState(state);
+    if (!hasHydrated.current) return;
+    if (pushTimer.current) clearTimeout(pushTimer.current);
+    pushTimer.current = setTimeout(() => { pushSpine(state); }, 500);
+    return () => { if (pushTimer.current) clearTimeout(pushTimer.current); };
+  }, [state]);
 
   const dispatch = (fn: (s: SpineState) => SpineState) => setState(fn);
 

@@ -24,10 +24,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from config import ALLOWED_ORIGIN, SERVER_HOST, SERVER_PORT
-from models import RubeiraQuery, RubeiraResponse
+from models import RubeiraQuery, RubeiraResponse, SpineSnapshot
 from engine import RubeiraEngine
 from memory import failure_memory
 from runs import run_store
+from spine import spine_store
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -319,6 +320,20 @@ async def get_run(run_id: str):
     if not record:
         raise HTTPException(status_code=404, detail="run not found")
     return record.model_dump()
+
+
+# ── Spine (Workspace) Endpoints ─────────────────────────────────────────────
+
+@app.get("/spine", response_model=SpineSnapshot)
+async def get_spine():
+    """Return the full mission workspace snapshot."""
+    return await spine_store.get()
+
+
+@app.post("/spine", response_model=SpineSnapshot)
+async def put_spine(snapshot: SpineSnapshot):
+    """Replace the full mission workspace snapshot. Full-state sync."""
+    return await spine_store.put(snapshot)
 
 
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
