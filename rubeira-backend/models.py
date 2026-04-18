@@ -44,6 +44,7 @@ class RubeiraQuery(BaseModel):
     question: str = Field(..., min_length=1, max_length=10000, description="The question to answer")
     context: Optional[str] = Field(None, max_length=5000, description="Optional additional context")
     force_cautious: bool = Field(False, description="Force maximum caution mode")
+    mission_id: Optional[str] = Field(None, max_length=128, description="Optional mission UUID for run tagging")
 
 
 # ── Internal Models ─────────────────────────────────────────────────────────
@@ -118,4 +119,32 @@ class FailureMemory(BaseModel):
     """Persistent failure memory store."""
     records: list[FailureRecord] = Field(default_factory=list)
     total_failures: int = 0
+    last_updated: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+# ── Run Log (every query that hits the engine) ──────────────────────────────
+
+class RunRecord(BaseModel):
+    """A single completed run — agent or triad — persisted to disk."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    route: str = Field(..., description="agent | triad | dev | ask")
+    mission_id: Optional[str] = None
+    question: str
+    context: Optional[str] = None
+    answer: Optional[str] = None
+    refused: bool = False
+    confidence: Optional[str] = None
+    tool_calls: list[dict] = Field(default_factory=list)
+    iterations: Optional[int] = None
+    processing_time_ms: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    terminated_early: bool = False
+    termination_reason: Optional[str] = None
+
+
+class RunsLog(BaseModel):
+    """Append-only run log."""
+    records: list[RunRecord] = Field(default_factory=list)
     last_updated: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

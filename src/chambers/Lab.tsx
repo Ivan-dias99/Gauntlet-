@@ -73,6 +73,7 @@ export default function Lab() {
       const env = (await call("route", {
         question: v,
         context: priorNotes || undefined,
+        mission_id: targetMissionId,
       })) as RouteEnvelope;
       setLastMeta(env);
       const answer = extractAnswer(env);

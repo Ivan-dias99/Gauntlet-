@@ -43,6 +43,7 @@ export default function Creation() {
       const r = (await call("dev", {
         question: `Task declared: ${v}`,
         context: activeMission?.title,
+        mission_id: activeMission?.id,
       })) as AgentResult;
       setResult(r);
     } catch (e) {
