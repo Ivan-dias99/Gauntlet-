@@ -106,6 +106,10 @@ class AgentOrchestrator:
         self,
         registry: Optional[ToolRegistry] = None,
         client: Optional[AsyncAnthropic] = None,
+        system_prompt: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_iterations: Optional[int] = None,
+        label: str = "agent",
     ) -> None:
         if client is not None:
             self._client = client
@@ -117,8 +121,12 @@ class AgentOrchestrator:
                 raise RuntimeError("ANTHROPIC_API_KEY not set")
             self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         self._registry = registry or ToolRegistry()
+        self._system_prompt = system_prompt or AGENT_SYSTEM_PROMPT
+        self._temperature = AGENT_TEMPERATURE if temperature is None else temperature
+        self._max_iterations = max_iterations or MAX_AGENT_ITERATIONS
+        self._label = label
         logger.info(
-            "AgentOrchestrator ready (tools=%s)", self._registry.names()
+            "AgentOrchestrator[%s] ready (tools=%s)", self._label, self._registry.names()
         )
 
     # ── Routing ────────────────────────────────────────────────────────────
@@ -186,7 +194,7 @@ class AgentOrchestrator:
 
         yield {"type": "start"}
 
-        for iteration in range(1, MAX_AGENT_ITERATIONS + 1):
+        for iteration in range(1, self._max_iterations + 1):
             iterations = iteration
 
             if time.monotonic() - started > AGENT_WALL_CLOCK_S:
@@ -203,8 +211,8 @@ class AgentOrchestrator:
             response = await self._client.messages.create(
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
-                temperature=AGENT_TEMPERATURE,
-                system=AGENT_SYSTEM_PROMPT + build_principles_context(query.principles),
+                temperature=self._temperature,
+                system=self._system_prompt + build_principles_context(query.principles),
                 tools=self._registry.anthropic_schema(),
                 messages=messages,
             )
@@ -292,7 +300,7 @@ class AgentOrchestrator:
         else:
             # loop completed without `break` → iteration cap hit
             terminated_early = True
-            termination_reason = f"iteration cap reached ({MAX_AGENT_ITERATIONS})"
+            termination_reason = f"iteration cap reached ({self._max_iterations})"
 
         answer = self._extract_text(messages[-1]) if messages else ""
         if not answer:

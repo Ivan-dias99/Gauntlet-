@@ -60,6 +60,17 @@ def _get_agent() -> "AgentOrchestrator":  # type: ignore[name-defined]
     return _agent_singleton
 
 
+_crew_singleton: Optional["CrewOrchestrator"] = None  # type: ignore[name-defined]
+
+
+def _get_crew() -> "CrewOrchestrator":  # type: ignore[name-defined]
+    global _crew_singleton
+    if _crew_singleton is None:
+        from crew import CrewOrchestrator
+        _crew_singleton = CrewOrchestrator()
+    return _crew_singleton
+
+
 
 class RuberraEngine:
     """
@@ -302,6 +313,40 @@ class RuberraEngine:
                 output_tokens=final["output_tokens"],
                 terminated_early=final["terminated_early"],
                 termination_reason=final["termination_reason"],
+            ))
+
+    async def process_crew_query_streaming(
+        self, query: RuberraQuery
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Multi-agent crew: planner → (researcher) → coder → critic.
+
+        Yields crew envelope events. On ``done``, records the run so the
+        Memory chamber shows it alongside agent / triad runs.
+        """
+        logger.info("Routing to crew (streaming): %s", query.question[:120])
+        crew = _get_crew()
+        final: Optional[dict[str, Any]] = None
+        async for event in crew.run_streaming(query):
+            yield event
+            if event["type"] == "done":
+                final = event
+        if final:
+            await run_store.record(RunRecord(
+                route="crew",
+                mission_id=query.mission_id,
+                question=query.question,
+                context=query.context,
+                answer=final["answer"],
+                tool_calls=[{"name": r, "ok": True} for r in final.get("roles_run", [])],
+                iterations=final.get("refinements", 0),
+                processing_time_ms=final["processing_time_ms"],
+                input_tokens=final["input_tokens"],
+                output_tokens=final["output_tokens"],
+                terminated_early=not final.get("accepted", True),
+                termination_reason=(
+                    "critic rejected after refinement"
+                    if not final.get("accepted", True) else None
+                ),
             ))
 
     async def process_auto(self, query: RuberraQuery):

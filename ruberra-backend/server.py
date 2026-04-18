@@ -213,6 +213,36 @@ async def ask_ruberra_dev_stream(query: RuberraQuery):
     )
 
 
+@app.post("/crew/stream")
+async def ask_ruberra_crew_stream(query: RuberraQuery):
+    """
+    Streaming multi-agent pipeline: planner → (researcher) → coder → critic,
+    with one automatic refinement round if the critic rejects.
+
+    Emits ``crew_start``, ``plan``, ``role_start`` / ``role_event`` /
+    ``role_done`` per specialist, ``critic_verdict`` and finally ``done``.
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+
+    async def event_source():
+        try:
+            async for event in engine.process_crew_query_streaming(query):
+                yield f"data: {_json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Crew stream error: {e}", exc_info=True)
+            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @app.post("/route")
 async def ask_ruberra_auto(query: RuberraQuery):
     """

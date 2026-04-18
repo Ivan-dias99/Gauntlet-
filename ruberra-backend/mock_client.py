@@ -24,6 +24,21 @@ MOCK_TRIAD_ANSWER = (
 MOCK_AGENT_ANSWER = (
     "Agent mock: sistema em modo offline. Nenhuma ferramenta foi executada."
 )
+MOCK_RESEARCHER_ANSWER = (
+    "Researcher mock.\nFINDINGS\n- mock finding 1\nNOT VERIFIED\n- everything"
+)
+MOCK_CODER_ANSWER = (
+    "Coder mock output.\n\n```\n# stub\n```\n\nTools used: (none — mock)"
+)
+MOCK_PLAN = {
+    "analysis": "mock plan — one coder step only",
+    "steps": [{"role": "coder", "goal": "mock goal"}],
+}
+MOCK_CRITIC_VERDICT = {
+    "accept": True,
+    "issues": [],
+    "summary": "mock critic accepted by default",
+}
 
 
 @dataclass
@@ -58,13 +73,32 @@ class _MockMessages:
         tools: list[dict[str, Any]] | None = None,
         **_: Any,
     ) -> _Response:
-        # Agent path
+        head = system.lstrip()
+        # Crew: structured roles (no tools)
+        if head.startswith("You are the Ruberra Planner"):
+            return _Response(
+                content=[_Block(type="text", text=json.dumps(MOCK_PLAN))],
+            )
+        if head.startswith("You are the Ruberra Critic"):
+            return _Response(
+                content=[_Block(type="text", text=json.dumps(MOCK_CRITIC_VERDICT))],
+            )
+        # Crew: execution roles (with tools) — detect by system prompt
+        if tools and head.startswith("You are the Ruberra Researcher"):
+            return _Response(
+                content=[_Block(type="text", text=MOCK_RESEARCHER_ANSWER)],
+            )
+        if tools and head.startswith("You are the Ruberra Coder"):
+            return _Response(
+                content=[_Block(type="text", text=MOCK_CODER_ANSWER)],
+            )
+        # Generic agent path
         if tools:
             return _Response(
                 content=[_Block(type="text", text=MOCK_AGENT_ANSWER)],
             )
         # Judge path
-        if system.lstrip().startswith("You are the Ruberra Judge"):
+        if head.startswith("You are the Ruberra Judge"):
             verdict = json.dumps({
                 "confidence": "high",
                 "should_refuse": False,

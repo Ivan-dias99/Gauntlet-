@@ -4,10 +4,11 @@ import { useState, useCallback } from "react";
 // proxy.
 //
 // Endpoints:
-//   POST /api/ruberra/route       → { route: "agent" | "triad", result: {...} }
-//   POST /api/ruberra/dev         → agent loop with tool-use (AgentResponse)
-//   POST /api/ruberra/dev/stream  → SSE stream of agent events
-//   POST /api/ruberra/ask         → triad + judge (RuberraResponse)
+//   POST /api/ruberra/route        → { route: "agent" | "triad", result: {...} }
+//   POST /api/ruberra/dev          → agent loop with tool-use (AgentResponse)
+//   POST /api/ruberra/dev/stream   → SSE stream of agent events
+//   POST /api/ruberra/ask          → triad + judge (RuberraResponse)
+//   POST /api/ruberra/crew/stream  → SSE stream of multi-agent crew events
 
 export interface RuberraQueryBody {
   question: string;
@@ -34,6 +35,50 @@ export type AgentEvent =
       processing_time_ms: number;
       terminated_early: boolean;
       termination_reason: string | null;
+    }
+  | { type: "error"; message: string };
+
+export type CrewRole = "planner" | "researcher" | "coder" | "critic";
+
+export interface CrewPlanStep {
+  role: "researcher" | "coder";
+  goal: string;
+}
+
+export type CrewEvent =
+  | { type: "crew_start"; task: string }
+  | {
+      type: "plan";
+      analysis: string;
+      steps: CrewPlanStep[];
+    }
+  | { type: "role_start"; role: CrewRole; goal: string; iteration: number }
+  | { type: "role_event"; role: CrewRole; event: AgentEvent }
+  | {
+      type: "role_done";
+      role: CrewRole;
+      summary: string;
+      tool_calls: number;
+      input_tokens: number;
+      output_tokens: number;
+    }
+  | {
+      type: "critic_verdict";
+      accept: boolean;
+      issues: string[];
+      summary: string;
+      refinement: number;
+    }
+  | {
+      type: "done";
+      answer: string;
+      plan: { analysis: string; steps: CrewPlanStep[] };
+      roles_run: CrewRole[];
+      refinements: number;
+      input_tokens: number;
+      output_tokens: number;
+      processing_time_ms: number;
+      accepted: boolean;
     }
   | { type: "error"; message: string };
 
@@ -158,5 +203,11 @@ export function useRuberra() {
     [openStream],
   );
 
-  return { call, streamDev, streamRoute, pending, error };
+  const streamCrew = useCallback(
+    (body: RuberraQueryBody, onEvent: (ev: CrewEvent) => void, signal?: AbortSignal) =>
+      openStream<CrewEvent>("crew/stream", body, onEvent, signal),
+    [openStream],
+  );
+
+  return { call, streamDev, streamRoute, streamCrew, pending, error };
 }
