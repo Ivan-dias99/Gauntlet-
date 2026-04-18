@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { useRubeira, AgentEvent } from "../hooks/useRubeira";
+import { useRuberra, AgentEvent } from "../hooks/useRuberra";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import { Task } from "../spine/types";
@@ -25,7 +25,7 @@ interface DoneSummary {
 
 export default function Creation() {
   const { activeMission, addTask, completeTask, principles } = useSpine();
-  const { streamDev, pending } = useRubeira();
+  const { streamDev, pending } = useRuberra();
   const { values } = useTweaks();
   const copy = useCopy();
   const layout = values.creationLayout;

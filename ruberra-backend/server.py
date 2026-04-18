@@ -1,9 +1,9 @@
 """
-Rubeira V1 — FastAPI Server
-HTTP interface for the Rubeira intelligence system.
+Ruberra V1 — FastAPI Server
+HTTP interface for the Ruberra intelligence system.
 
 Endpoints:
-  POST /ask              — Submit a question to Rubeira
+  POST /ask              — Submit a question to Ruberra
   GET  /health           — Health check
   GET  /memory/stats     — Failure memory statistics
   GET  /memory/failures  — List recent failures
@@ -23,9 +23,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from config import ALLOWED_ORIGIN, RUBEIRA_MOCK, SERVER_HOST, SERVER_PORT
-from models import RubeiraQuery, RubeiraResponse, SpineSnapshot
-from engine import RubeiraEngine
+from config import ALLOWED_ORIGIN, RUBERRA_MOCK, SERVER_HOST, SERVER_PORT
+from models import RuberraQuery, RuberraResponse, SpineSnapshot
+from engine import RuberraEngine
 from memory import failure_memory
 from runs import run_store
 from spine import spine_store
@@ -37,11 +37,11 @@ logging.basicConfig(
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("rubeira.server")
+logger = logging.getLogger("ruberra.server")
 
 # ── App Lifecycle ───────────────────────────────────────────────────────────
 
-engine: RubeiraEngine | None = None
+engine: RuberraEngine | None = None
 
 
 @asynccontextmanager
@@ -50,20 +50,20 @@ async def lifespan(app: FastAPI):
     global engine
     
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key and not RUBEIRA_MOCK:
+    if not api_key and not RUBERRA_MOCK:
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
             "  ANTHROPIC_API_KEY not set!\n"
-            "  Export it before starting, or set RUBEIRA_MOCK=1 to run\n"
+            "  Export it before starting, or set RUBERRA_MOCK=1 to run\n"
             "  the full pipeline against canned responses.\n"
             "═══════════════════════════════════════════════════════════"
         )
         sys.exit(1)
 
-    engine = RubeiraEngine()
+    engine = RuberraEngine()
     logger.info(
         "═══════════════════════════════════════════════════════════\n"
-        "  Rubeira V1 — Conservative Intelligence System\n"
+        "  Ruberra V1 — Conservative Intelligence System\n"
         f"  Listening: http://{SERVER_HOST}:{SERVER_PORT}\n"
         f"  CORS Origin: {ALLOWED_ORIGIN}\n"
         "  Doctrine: ACTIVE\n"
@@ -75,13 +75,13 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    logger.info("Rubeira shutting down.")
+    logger.info("Ruberra shutting down.")
 
 
 # ── FastAPI App ─────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Rubeira V1",
+    title="Ruberra V1",
     description=(
         "A conservative, honest AI system that prefers to say "
         "'I don't know' rather than risk being wrong."
@@ -107,16 +107,16 @@ async def health_check():
     """Health check endpoint."""
     return {
         "status": "operational",
-        "system": "Rubeira V1",
+        "system": "Ruberra V1",
         "doctrine": "active",
         "engine": "ready" if engine else "not_initialized",
     }
 
 
-@app.post("/ask", response_model=RubeiraResponse)
-async def ask_rubeira(query: RubeiraQuery):
+@app.post("/ask", response_model=RuberraResponse)
+async def ask_ruberra(query: RuberraQuery):
     """
-    Submit a question to Rubeira.
+    Submit a question to Ruberra.
     
     The system will:
     1. Check failure memory for prior failures on similar questions
@@ -139,7 +139,7 @@ async def ask_rubeira(query: RubeiraQuery):
 
 
 @app.post("/dev")
-async def ask_rubeira_dev(query: RubeiraQuery):
+async def ask_ruberra_dev(query: RuberraQuery):
     """
     Force the agent (tool-use) pipeline.
 
@@ -158,7 +158,7 @@ async def ask_rubeira_dev(query: RubeiraQuery):
 
 
 @app.post("/route/stream")
-async def ask_rubeira_auto_stream(query: RubeiraQuery):
+async def ask_ruberra_auto_stream(query: RuberraQuery):
     """
     Streaming variant of ``/route``. Emits the ``route`` decision first, then
     either agent events (``tool_use``, ``tool_result``, ...) or triad events
@@ -186,7 +186,7 @@ async def ask_rubeira_auto_stream(query: RubeiraQuery):
 
 
 @app.post("/dev/stream")
-async def ask_rubeira_dev_stream(query: RubeiraQuery):
+async def ask_ruberra_dev_stream(query: RuberraQuery):
     """
     Streaming variant of ``/dev``. Emits one SSE event per agent step:
     ``start``, ``iteration``, ``assistant_text``, ``tool_use``, ``tool_result``,
@@ -214,7 +214,7 @@ async def ask_rubeira_dev_stream(query: RubeiraQuery):
 
 
 @app.post("/route")
-async def ask_rubeira_auto(query: RubeiraQuery):
+async def ask_ruberra_auto(query: RuberraQuery):
     """
     Auto-router: dev-intent questions go through the agent loop; the rest
     go through the triad + judge. Response shape is ``{route, result}``.
@@ -231,11 +231,11 @@ async def ask_rubeira_auto(query: RubeiraQuery):
 
 class BatchQuery(BaseModel):
     """Multiple questions in one request."""
-    questions: list[RubeiraQuery] = Field(..., max_length=5)
+    questions: list[RuberraQuery] = Field(..., max_length=5)
 
 
 @app.post("/ask/batch")
-async def ask_rubeira_batch(batch: BatchQuery):
+async def ask_ruberra_batch(batch: BatchQuery):
     """Submit up to 5 questions in batch."""
     if not engine:
         raise HTTPException(status_code=503, detail="Engine not initialized")
@@ -346,7 +346,7 @@ async def diagnostics():
     mem_stats = await failure_memory.get_stats()
     
     return {
-        "system": "Rubeira V1",
+        "system": "Ruberra V1",
         "model": MODEL_ID,
         "triad_temperature": TRIAD_TEMPERATURE,
         "judge_temperature": JUDGE_TEMPERATURE,

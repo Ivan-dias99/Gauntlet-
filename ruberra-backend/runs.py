@@ -1,5 +1,5 @@
 """
-Rubeira — Run Log
+Ruberra — Run Log
 Append-only on-disk log of every query that hits the engine.
 
 This is the first step toward real domain persistence. Missions, artifacts,
@@ -18,7 +18,7 @@ from typing import Optional
 from config import MEMORY_DIR
 from models import RunRecord, RunsLog
 
-logger = logging.getLogger("rubeira.runs")
+logger = logging.getLogger("ruberra.runs")
 
 RUNS_FILE: Path = MEMORY_DIR / "runs.json"
 MAX_RUNS: int = 2000

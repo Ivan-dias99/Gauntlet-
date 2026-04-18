@@ -1,15 +1,15 @@
 import { useState, useCallback } from "react";
 
-// Client for the Python backend (rubeira-backend/) via the /api/rubeira
+// Client for the Python backend (ruberra-backend/) via the /api/ruberra
 // proxy.
 //
 // Endpoints:
-//   POST /api/rubeira/route       → { route: "agent" | "triad", result: {...} }
-//   POST /api/rubeira/dev         → agent loop with tool-use (AgentResponse)
-//   POST /api/rubeira/dev/stream  → SSE stream of agent events
-//   POST /api/rubeira/ask         → triad + judge (RubeiraResponse)
+//   POST /api/ruberra/route       → { route: "agent" | "triad", result: {...} }
+//   POST /api/ruberra/dev         → agent loop with tool-use (AgentResponse)
+//   POST /api/ruberra/dev/stream  → SSE stream of agent events
+//   POST /api/ruberra/ask         → triad + judge (RuberraResponse)
 
-export interface RubeiraQueryBody {
+export interface RuberraQueryBody {
   question: string;
   context?: string;
   force_cautious?: boolean;
@@ -69,22 +69,22 @@ export type RouteEvent =
 
 type Route = "route" | "dev" | "ask";
 
-export function useRubeira() {
+export function useRuberra() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const call = useCallback(async (route: Route, body: RubeiraQueryBody) => {
+  const call = useCallback(async (route: Route, body: RuberraQueryBody) => {
     setPending(true);
     setError(null);
     try {
-      const res = await fetch(`/api/rubeira/${route}`, {
+      const res = await fetch(`/api/ruberra/${route}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(`rubeira ${route} ${res.status}: ${text.slice(0, 200)}`);
+        throw new Error(`ruberra ${route} ${res.status}: ${text.slice(0, 200)}`);
       }
       return await res.json();
     } catch (e) {
@@ -98,14 +98,14 @@ export function useRubeira() {
 
   const openStream = useCallback(async <E,>(
     path: string,
-    body: RubeiraQueryBody,
+    body: RuberraQueryBody,
     onEvent: (ev: E) => void,
     signal?: AbortSignal,
   ) => {
     setPending(true);
     setError(null);
     try {
-      const res = await fetch(`/api/rubeira/${path}`, {
+      const res = await fetch(`/api/ruberra/${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -113,7 +113,7 @@ export function useRubeira() {
       });
       if (!res.ok || !res.body) {
         const text = res.body ? await res.text() : "";
-        throw new Error(`rubeira ${path} ${res.status}: ${text.slice(0, 200)}`);
+        throw new Error(`ruberra ${path} ${res.status}: ${text.slice(0, 200)}`);
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -147,13 +147,13 @@ export function useRubeira() {
   }, []);
 
   const streamDev = useCallback(
-    (body: RubeiraQueryBody, onEvent: (ev: AgentEvent) => void, signal?: AbortSignal) =>
+    (body: RuberraQueryBody, onEvent: (ev: AgentEvent) => void, signal?: AbortSignal) =>
       openStream<AgentEvent>("dev/stream", body, onEvent, signal),
     [openStream],
   );
 
   const streamRoute = useCallback(
-    (body: RubeiraQueryBody, onEvent: (ev: RouteEvent) => void, signal?: AbortSignal) =>
+    (body: RuberraQueryBody, onEvent: (ev: RouteEvent) => void, signal?: AbortSignal) =>
       openStream<RouteEvent>("route/stream", body, onEvent, signal),
     [openStream],
   );

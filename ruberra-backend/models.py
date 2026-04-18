@@ -1,5 +1,5 @@
 """
-Rubeira V1 — Data Models
+Ruberra V1 — Data Models
 Pydantic models for request/response contracts and internal state.
 """
 
@@ -20,16 +20,16 @@ class ConfidenceLevel(str, Enum):
     Two-tier confidence system (V2).
     
     HIGH   — All 3 triad responses are semantically identical.
-             Rubeira delivers the answer with full conviction.
+             Ruberra delivers the answer with full conviction.
     LOW    — Any differences detected between responses.
-             Rubeira refuses to answer.
+             Ruberra refuses to answer.
     """
     HIGH = "high"
     LOW = "low"
 
 
 class RefusalReason(str, Enum):
-    """Why Rubeira refused to answer."""
+    """Why Ruberra refused to answer."""
     INCONSISTENCY = "inconsistency"
     PRIOR_FAILURE = "prior_failure"
     JUDGE_REJECTION = "judge_rejection"
@@ -39,7 +39,7 @@ class RefusalReason(str, Enum):
 
 # ── Request Models ──────────────────────────────────────────────────────────
 
-class RubeiraQuery(BaseModel):
+class RuberraQuery(BaseModel):
     """Incoming question from the user."""
     question: str = Field(..., min_length=1, max_length=10000, description="The question to answer")
     context: Optional[str] = Field(None, max_length=5000, description="Optional additional context")
@@ -70,13 +70,13 @@ class JudgeVerdict(BaseModel):
     reasoning: str = Field(..., description="Judge's reasoning for the verdict")
     consensus_answer: Optional[str] = Field(None, description="The merged/best answer if confidence == HIGH")
     divergence_points: list[str] = Field(default_factory=list, description="Where responses diverged")
-    should_refuse: bool = Field(False, description="Whether Rubeira should refuse to answer")
+    should_refuse: bool = Field(False, description="Whether Ruberra should refuse to answer")
     refusal_reason: Optional[RefusalReason] = None
 
 
 # ── Response Models ─────────────────────────────────────────────────────────
 
-class RubeiraResponse(BaseModel):
+class RuberraResponse(BaseModel):
     """The final response delivered to the user."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

@@ -1,10 +1,10 @@
 """
-Rubeira Dev — Agent Orchestrator
+Ruberra Dev — Agent Orchestrator
 
 Routes a query along one of two paths:
 
   * Dev intent detected  →  agentic loop with tool use
-  * Everything else      →  existing ``RubeiraEngine.process_query`` (triad + judge)
+  * Everything else      →  existing ``RuberraEngine.process_query`` (triad + judge)
 
 The agent loop is a faithful implementation of Claude's native tool-use contract:
 the model emits ``tool_use`` blocks, we execute them locally, append ``tool_result``
@@ -29,13 +29,13 @@ from typing import Any, AsyncIterator, Optional
 
 from anthropic import AsyncAnthropic
 
-from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, RUBEIRA_MOCK
+from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, RUBERRA_MOCK
 from mock_client import MockAsyncAnthropic
 from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
-from models import RubeiraQuery
+from models import RuberraQuery
 from tools import ToolRegistry, ToolResult
 
-logger = logging.getLogger("rubeira.agent")
+logger = logging.getLogger("ruberra.agent")
 
 
 # ── Tunables ────────────────────────────────────────────────────────────────
@@ -109,7 +109,7 @@ class AgentOrchestrator:
     ) -> None:
         if client is not None:
             self._client = client
-        elif RUBEIRA_MOCK:
+        elif RUBERRA_MOCK:
             self._client = MockAsyncAnthropic()
             logger.warning("AgentOrchestrator initialized in MOCK mode")
         else:
@@ -137,7 +137,7 @@ class AgentOrchestrator:
 
     # ── Agent Loop ─────────────────────────────────────────────────────────
 
-    async def run(self, query: RubeiraQuery) -> AgentResponse:
+    async def run(self, query: RuberraQuery) -> AgentResponse:
         """Non-streaming wrapper around ``run_streaming`` — collects the final
         ``done`` event and builds an AgentResponse."""
         final: Optional[dict[str, Any]] = None
@@ -159,7 +159,7 @@ class AgentOrchestrator:
         )
 
     async def run_streaming(
-        self, query: RubeiraQuery
+        self, query: RuberraQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """Execute the agent loop, yielding coarse-grained progress events.
 
@@ -320,7 +320,7 @@ class AgentOrchestrator:
     # ── Helpers ────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _user_prompt(query: RubeiraQuery) -> str:
+    def _user_prompt(query: RuberraQuery) -> str:
         if query.context:
             return f"Context:\n{query.context}\n\nTask:\n{query.question}"
         return query.question

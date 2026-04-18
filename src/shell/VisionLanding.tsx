@@ -213,7 +213,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               fontVariationSettings: "'opsz' 144",
             }}
           >
-            Rubeira
+            Ruberra
             <span
               style={{
                 display: "inline-block",

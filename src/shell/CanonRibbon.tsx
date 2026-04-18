@@ -76,7 +76,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
           e.currentTarget.style.color = "var(--text-primary)";
         }}
       >
-        Rubeira
+        Ruberra
         <span
           aria-hidden
           style={{

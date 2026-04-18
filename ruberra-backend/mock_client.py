@@ -1,13 +1,13 @@
 """
-Rubeira — Mock Anthropic Client
+Ruberra — Mock Anthropic Client
 Zero-network stand-in for ``AsyncAnthropic`` used when
-``RUBEIRA_MOCK=1``. Emits deterministic canned responses so the full
+``RUBERRA_MOCK=1``. Emits deterministic canned responses so the full
 pipeline (triad → judge, agent loop) can be exercised end-to-end without
 an API key.
 
 Detection rules:
   * ``tools`` present  →  agent loop → single text block, no tool calls
-  * system starts with ``"You are the Rubeira Judge"``  →  JSON verdict
+  * system starts with ``"You are the Ruberra Judge"``  →  JSON verdict
   * otherwise  →  triad call → identical canned answer (HIGH consensus)
 """
 
@@ -64,7 +64,7 @@ class _MockMessages:
                 content=[_Block(type="text", text=MOCK_AGENT_ANSWER)],
             )
         # Judge path
-        if system.lstrip().startswith("You are the Rubeira Judge"):
+        if system.lstrip().startswith("You are the Ruberra Judge"):
             verdict = json.dumps({
                 "confidence": "high",
                 "should_refuse": False,

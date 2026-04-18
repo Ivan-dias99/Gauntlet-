@@ -1,11 +1,11 @@
-# Rubeira V1 — Conservative Intelligence Backend
+# Ruberra V1 — Conservative Intelligence Backend
 
 > *«Prefiro não responder a arriscar estar errado.»*
 
 ## Architecture
 
 ```
-rubeira-backend/
+ruberra-backend/
 ├── main.py           # Entry point — starts uvicorn
 ├── server.py         # FastAPI app, endpoints, CORS
 ├── engine.py         # Self-consistency engine (triad + judge + decision)
