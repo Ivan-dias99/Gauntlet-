@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from config import ALLOWED_ORIGIN, SERVER_HOST, SERVER_PORT
+from config import ALLOWED_ORIGIN, RUBEIRA_MOCK, SERVER_HOST, SERVER_PORT
 from models import RubeiraQuery, RubeiraResponse, SpineSnapshot
 from engine import RubeiraEngine
 from memory import failure_memory
@@ -50,16 +50,16 @@ async def lifespan(app: FastAPI):
     global engine
     
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
+    if not api_key and not RUBEIRA_MOCK:
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
             "  ANTHROPIC_API_KEY not set!\n"
-            "  Export it before starting:\n"
-            "    $env:ANTHROPIC_API_KEY = 'sk-ant-...'\n"
+            "  Export it before starting, or set RUBEIRA_MOCK=1 to run\n"
+            "  the full pipeline against canned responses.\n"
             "═══════════════════════════════════════════════════════════"
         )
         sys.exit(1)
-    
+
     engine = RubeiraEngine()
     logger.info(
         "═══════════════════════════════════════════════════════════\n"

@@ -21,7 +21,9 @@ from config import (
     JUDGE_TEMPERATURE,
     MAX_TOKENS,
     TRIAD_COUNT,
+    RUBEIRA_MOCK,
 )
+from mock_client import MockAsyncAnthropic
 from doctrine import (
     SYSTEM_PROMPT,
     JUDGE_PROMPT,
@@ -80,12 +82,16 @@ class RubeiraEngine:
     """
     
     def __init__(self) -> None:
-        if not ANTHROPIC_API_KEY:
-            raise RuntimeError(
-                "ANTHROPIC_API_KEY not set. "
-                "Export it in your environment before starting Rubeira."
-            )
-        self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        if RUBEIRA_MOCK:
+            self._client = MockAsyncAnthropic()
+            logger.warning("Engine initialized in MOCK mode — no network calls")
+        else:
+            if not ANTHROPIC_API_KEY:
+                raise RuntimeError(
+                    "ANTHROPIC_API_KEY not set. "
+                    "Export it in your environment before starting Rubeira."
+                )
+            self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         logger.info(f"Engine initialized. Model: {MODEL_ID}, Triad count: {TRIAD_COUNT}")
     
     # ── Triad Call ──────────────────────────────────────────────────────────
