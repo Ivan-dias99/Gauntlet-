@@ -10,8 +10,8 @@ from pathlib import Path
 ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── Model ───────────────────────────────────────────────────────────────────
-# Claude Sonnet for self-consistency triad
-MODEL_ID: str = "claude-sonnet-4-20250514"
+# Claude Sonnet 4.6 for self-consistency triad + judge + agent loop.
+MODEL_ID: str = "claude-sonnet-4-6"
 
 # Low temperature for conservative, deterministic answers
 TRIAD_TEMPERATURE: float = 0.15

@@ -192,6 +192,25 @@ Never fabricate tool output. If a tool failed, acknowledge the failure.
 # FAILURE MEMORY INJECTION
 # ═══════════════════════════════════════════════════════════════════════════
 
+def build_principles_context(principles: list[str] | None) -> str:
+    """
+    Append user-defined doctrine principles (from the School chamber) to the
+    system prompt. These are hard rules the operator wants enforced on top of
+    the base doctrine. Empty / None → empty string.
+    """
+    if not principles:
+        return ""
+    cleaned = [p.strip() for p in principles if p and p.strip()]
+    if not cleaned:
+        return ""
+    lines = ["", "## OPERATOR PRINCIPLES", ""]
+    lines.extend(f"- {p}" for p in cleaned[:64])
+    lines.append("")
+    lines.append("Treat every principle above as binding. If a principle "
+                 "conflicts with a request, follow the principle.")
+    return "\n".join(lines)
+
+
 def build_failure_context(failures: list[dict]) -> str:
     """
     Inject failure warnings into the system prompt.

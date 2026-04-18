@@ -1,84 +1,323 @@
+import { useEffect, useMemo, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { LogEvent } from "../spine/types";
 
-const TYPE_LABEL: Record<LogEvent["type"], string> = {
-  mission_created: "INIT",
-  note_added:      "NOTE",
-  task_added:      "TASK",
-  task_done:       "DONE",
-  ai_response:     "AI",
+interface RunRecord {
+  id: string;
+  timestamp: string;
+  route: string;
+  mission_id: string | null;
+  question: string;
+  answer: string | null;
+  refused: boolean;
+  confidence: string | null;
+  iterations: number | null;
+  tool_calls: Array<{ name: string; ok: boolean }>;
+  processing_time_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  terminated_early: boolean;
+  termination_reason: string | null;
+}
+
+interface RunsResponse {
+  count: number;
+  mission_id: string | null;
+  records: RunRecord[];
+}
+
+const ROUTE_COLOR: Record<string, string> = {
+  agent: "var(--terminal-warn)",
+  triad: "var(--accent)",
+  dev: "var(--terminal-warn)",
+  ask: "var(--accent)",
 };
 
-const TYPE_COLOR: Record<LogEvent["type"], string> = {
-  mission_created: "var(--accent)",
-  note_added:      "#6a8aaa",
-  task_added:      "var(--text-muted)",
-  task_done:       "var(--terminal-ok)",
-  ai_response:     "var(--terminal-warn)",
-};
+interface Stats {
+  total: number;
+  refused: number;
+  refusalRate: number;
+  avgLatencyMs: number;
+  totalInput: number;
+  totalOutput: number;
+  toolCalls: number;
+  byRoute: Record<string, number>;
+}
+
+function computeStats(runs: RunRecord[]): Stats {
+  if (runs.length === 0) {
+    return {
+      total: 0, refused: 0, refusalRate: 0, avgLatencyMs: 0,
+      totalInput: 0, totalOutput: 0, toolCalls: 0, byRoute: {},
+    };
+  }
+  let refused = 0;
+  let latencySum = 0;
+  let totalInput = 0;
+  let totalOutput = 0;
+  let toolCalls = 0;
+  const byRoute: Record<string, number> = {};
+  for (const r of runs) {
+    if (r.refused) refused++;
+    latencySum += r.processing_time_ms ?? 0;
+    totalInput += r.input_tokens ?? 0;
+    totalOutput += r.output_tokens ?? 0;
+    toolCalls += r.tool_calls?.length ?? 0;
+    byRoute[r.route] = (byRoute[r.route] ?? 0) + 1;
+  }
+  return {
+    total: runs.length,
+    refused,
+    refusalRate: refused / runs.length,
+    avgLatencyMs: Math.round(latencySum / runs.length),
+    totalInput,
+    totalOutput,
+    toolCalls,
+    byRoute,
+  };
+}
 
 export default function Memory() {
   const { activeMission } = useSpine();
-  const events = activeMission?.events ?? [];
+  const [runs, setRuns] = useState<RunRecord[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const stats = useMemo(() => computeStats(runs ?? []), [runs]);
+
+  useEffect(() => {
+    if (!activeMission?.id) {
+      setRuns([]);
+      return;
+    }
+    setRuns(null);
+    setErr(null);
+    const ac = new AbortController();
+    fetch(`/api/rubeira/runs?mission_id=${encodeURIComponent(activeMission.id)}&limit=100`, {
+      signal: ac.signal,
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`runs ${r.status}`);
+        return (await r.json()) as RunsResponse;
+      })
+      .then((data) => setRuns(data.records))
+      .catch((e) => {
+        if (e.name !== "AbortError") setErr(e.message ?? String(e));
+      });
+    return () => ac.abort();
+  }, [activeMission?.id]);
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
 
       <div style={{
-        padding: "20px 40px 16px",
+        padding: "20px 40px 14px",
         borderBottom: "1px solid var(--border-subtle)",
-        display: "flex",
-        alignItems: "baseline",
-        gap: 12,
       }}>
-        <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)" }}>
-          Memory
-        </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Memória Viva · Retenção · Inteligência
-        </span>
-        {events.length > 0 && (
-          <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
-            {events.length} eventos
+        <div style={{
+          display: "flex", alignItems: "baseline", gap: 12,
+        }}>
+          <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)" }}>
+            Memory
           </span>
+          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            Runs · Verdicts · Tool Trace
+          </span>
+          {runs && runs.length > 0 && (
+            <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
+              {renderRouteBreakdown(stats.byRoute)}
+            </span>
+          )}
+        </div>
+
+        {runs && runs.length > 0 && (
+          <div style={{
+            marginTop: 12,
+            display: "grid",
+            gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+            gap: 16,
+            fontFamily: "var(--mono)",
+            maxWidth: 820,
+          }}>
+            <StatCell label="runs" value={`${stats.total}`} />
+            <StatCell
+              label="refused"
+              value={`${(stats.refusalRate * 100).toFixed(0)}%`}
+              sub={`${stats.refused}/${stats.total}`}
+              warn={stats.refusalRate >= 0.5}
+            />
+            <StatCell label="avg latency" value={`${stats.avgLatencyMs} ms`} />
+            <StatCell
+              label="tokens"
+              value={formatTokens(stats.totalInput + stats.totalOutput)}
+              sub={`${formatTokens(stats.totalInput)} in · ${formatTokens(stats.totalOutput)} out`}
+            />
+            <StatCell label="tool calls" value={`${stats.toolCalls}`} />
+          </div>
         )}
       </div>
 
       <div style={{ flex: 1, overflow: "auto", padding: "24px 40px", fontFamily: "var(--mono)" }}>
-        {events.length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>
-            — log vazio —
+
+        {err && (
+          <div style={{
+            fontSize: 11, color: "#c44",
+            border: "1px solid var(--border-subtle)",
+            borderLeft: "2px solid #c44",
+            padding: "10px 14px", maxWidth: 720,
+            whiteSpace: "pre-wrap",
+          }}>
+            backend off? {err}
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 720 }}>
-          {events.map(e => (
-            <div key={e.id} style={{
-              display: "grid",
-              gridTemplateColumns: "52px 1fr auto",
-              gap: "0 16px",
-              alignItems: "baseline",
-              padding: "6px 0",
-              borderBottom: "1px solid var(--border-subtle)",
-            }}>
-              <span style={{
-                fontSize: 9,
-                letterSpacing: 1.5,
-                color: TYPE_COLOR[e.type],
-                textTransform: "uppercase",
+        {runs === null && !err && (
+          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>— a carregar —</div>
+        )}
+
+        {runs && runs.length === 0 && !err && (
+          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>
+            — sem runs para esta missão —
+          </div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 820 }}>
+          {runs?.map((r) => {
+            const isOpen = expanded === r.id;
+            return (
+              <div key={r.id} style={{
+                borderBottom: "1px solid var(--border-subtle)",
+                padding: "10px 0",
               }}>
-                {TYPE_LABEL[e.type]}
-              </span>
-              <span style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                {e.label}
-              </span>
-              <span style={{ fontSize: 10, color: "var(--text-ghost)", whiteSpace: "nowrap" }}>
-                {new Date(e.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </span>
-            </div>
-          ))}
+                <div
+                  onClick={() => setExpanded(isOpen ? null : r.id)}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "58px 1fr auto",
+                    gap: "0 16px",
+                    alignItems: "baseline",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{
+                    fontSize: 9,
+                    letterSpacing: 1.5,
+                    color: ROUTE_COLOR[r.route] ?? "var(--text-muted)",
+                    textTransform: "uppercase",
+                  }}>
+                    {r.route}
+                  </span>
+                  <span style={{
+                    fontSize: 12,
+                    color: r.refused ? "var(--terminal-warn)" : "var(--text-secondary)",
+                    lineHeight: 1.5,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {r.refused ? "✗ " : ""}{r.question}
+                  </span>
+                  <span style={{ fontSize: 10, color: "var(--text-ghost)", whiteSpace: "nowrap" }}>
+                    {new Date(r.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit", minute: "2-digit", second: "2-digit",
+                    })}
+                  </span>
+                </div>
+
+                {isOpen && (
+                  <div style={{
+                    marginTop: 10, marginLeft: 74,
+                    fontSize: 11, color: "var(--text-secondary)",
+                    background: "var(--bg-input)",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: "var(--radius)",
+                    padding: "10px 14px",
+                  }}>
+                    <MetaRow label="confidence" value={r.confidence ?? "—"} />
+                    <MetaRow label="iterations" value={r.iterations?.toString() ?? "—"} />
+                    <MetaRow label="tools" value={`${r.tool_calls.length}`} />
+                    <MetaRow
+                      label="tokens"
+                      value={`${r.input_tokens} in · ${r.output_tokens} out`}
+                    />
+                    <MetaRow label="latency" value={`${r.processing_time_ms} ms`} />
+                    {r.terminated_early && (
+                      <MetaRow label="terminated" value={r.termination_reason ?? "early"} />
+                    )}
+                    {r.tool_calls.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        {r.tool_calls.map((tc, i) => (
+                          <div key={i} style={{ fontSize: 10, color: "var(--text-ghost)" }}>
+                            <span style={{ color: tc.ok ? "var(--terminal-ok)" : "#c44" }}>
+                              {tc.ok ? "✓" : "✗"}
+                            </span>
+                            {" "}{tc.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {r.answer && (
+                      <div style={{
+                        marginTop: 10, padding: "8px 0 0",
+                        borderTop: "1px solid var(--border-subtle)",
+                        fontSize: 11, color: "var(--text-secondary)",
+                        whiteSpace: "pre-wrap", lineHeight: 1.6,
+                        fontFamily: "var(--sans)",
+                      }}>
+                        {r.answer}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
+}
+
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", fontSize: 10 }}>
+      <span style={{ color: "var(--text-ghost)", letterSpacing: 1, textTransform: "uppercase" }}>{label}</span>
+      <span style={{ color: "var(--text-muted)" }}>{value}</span>
+    </div>
+  );
+}
+
+function StatCell({
+  label, value, sub, warn,
+}: { label: string; value: string; sub?: string; warn?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+      <span style={{
+        fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
+        color: "var(--text-ghost)",
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: 15,
+        color: warn ? "var(--terminal-warn)" : "var(--text-primary)",
+        lineHeight: 1.2,
+      }}>
+        {value}
+      </span>
+      {sub && (
+        <span style={{ fontSize: 9, color: "var(--text-ghost)" }}>{sub}</span>
+      )}
+    </div>
+  );
+}
+
+function renderRouteBreakdown(byRoute: Record<string, number>): string {
+  const entries = Object.entries(byRoute);
+  if (entries.length === 0) return "";
+  return entries.map(([r, n]) => `${n} ${r}`).join(" · ");
+}
+
+function formatTokens(n: number): string {
+  if (n < 1000) return `${n}`;
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
+  return `${(n / 1_000_000).toFixed(1)}M`;
 }

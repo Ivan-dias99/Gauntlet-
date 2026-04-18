@@ -25,12 +25,12 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, AsyncIterator, Optional
 
 from anthropic import AsyncAnthropic
 
 from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS
-from doctrine import AGENT_SYSTEM_PROMPT
+from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
 from models import RubeiraQuery
 from tools import ToolRegistry, ToolResult
 
@@ -131,7 +131,39 @@ class AgentOrchestrator:
     # ── Agent Loop ─────────────────────────────────────────────────────────
 
     async def run(self, query: RubeiraQuery) -> AgentResponse:
-        """Execute the agent loop until the model stops or budgets are hit."""
+        """Non-streaming wrapper around ``run_streaming`` — collects the final
+        ``done`` event and builds an AgentResponse."""
+        final: Optional[dict[str, Any]] = None
+        async for event in self.run_streaming(query):
+            if event["type"] == "done":
+                final = event
+        if not final:
+            raise RuntimeError("agent stream ended without a done event")
+        return AgentResponse(
+            answer=final["answer"],
+            tool_calls=final["tool_calls"],
+            iterations=final["iterations"],
+            stop_reason=final["stop_reason"],
+            input_tokens=final["input_tokens"],
+            output_tokens=final["output_tokens"],
+            processing_time_ms=final["processing_time_ms"],
+            terminated_early=final["terminated_early"],
+            termination_reason=final["termination_reason"],
+        )
+
+    async def run_streaming(
+        self, query: RubeiraQuery
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Execute the agent loop, yielding coarse-grained progress events.
+
+        Event shapes:
+          {"type": "start"}
+          {"type": "iteration", "n": int}
+          {"type": "assistant_text", "text": str, "iteration": int}
+          {"type": "tool_use", "id": str, "name": str, "input": ..., "iteration": int}
+          {"type": "tool_result", "id": str, "ok": bool, "preview": str, "iteration": int}
+          {"type": "done", ...full AgentResponse dict...}
+        """
         started = time.monotonic()
 
         messages: list[dict[str, Any]] = [
@@ -145,6 +177,8 @@ class AgentOrchestrator:
         stop_reason = "end_turn"
         iterations = 0
 
+        yield {"type": "start"}
+
         for iteration in range(1, MAX_AGENT_ITERATIONS + 1):
             iterations = iteration
 
@@ -157,17 +191,29 @@ class AgentOrchestrator:
                 termination_reason = f"tool-call budget exceeded ({MAX_TOOL_CALLS})"
                 break
 
+            yield {"type": "iteration", "n": iteration}
+
             response = await self._client.messages.create(
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
                 temperature=AGENT_TEMPERATURE,
-                system=AGENT_SYSTEM_PROMPT,
+                system=AGENT_SYSTEM_PROMPT + build_principles_context(query.principles),
                 tools=self._registry.anthropic_schema(),
                 messages=messages,
             )
             total_in += response.usage.input_tokens
             total_out += response.usage.output_tokens
             stop_reason = response.stop_reason or "end_turn"
+
+            # Surface any interim reasoning text the model emitted before
+            # deciding on tool calls (or as its final answer).
+            for block in response.content:
+                if block.type == "text" and block.text:
+                    yield {
+                        "type": "assistant_text",
+                        "text": block.text,
+                        "iteration": iteration,
+                    }
 
             # Append the assistant turn verbatim (required by tool-use contract)
             messages.append({
@@ -184,6 +230,14 @@ class AgentOrchestrator:
 
             tool_results_content: list[dict[str, Any]] = []
             for block in tool_use_blocks:
+                yield {
+                    "type": "tool_use",
+                    "id": block.id,
+                    "name": block.name,
+                    "input": block.input,
+                    "iteration": iteration,
+                }
+
                 fingerprint = self._fingerprint(block.name, block.input)
                 repeat_counts[fingerprint] = repeat_counts.get(fingerprint, 0) + 1
                 repeats = repeat_counts[fingerprint]
@@ -218,6 +272,14 @@ class AgentOrchestrator:
                     "is_error": not result.ok,
                 })
 
+                yield {
+                    "type": "tool_result",
+                    "id": block.id,
+                    "ok": result.ok,
+                    "preview": result.content[:300],
+                    "iteration": iteration,
+                }
+
             messages.append({"role": "user", "content": tool_results_content})
 
         else:
@@ -227,7 +289,6 @@ class AgentOrchestrator:
 
         answer = self._extract_text(messages[-1]) if messages else ""
         if not answer:
-            # Fall back to the last assistant text block anywhere in the trace
             for msg in reversed(messages):
                 if msg["role"] == "assistant":
                     answer = self._extract_text(msg)
@@ -236,17 +297,18 @@ class AgentOrchestrator:
         if not answer:
             answer = "(agent produced no final text)"
 
-        return AgentResponse(
-            answer=answer,
-            tool_calls=tool_calls,
-            iterations=iterations,
-            stop_reason=stop_reason,
-            input_tokens=total_in,
-            output_tokens=total_out,
-            processing_time_ms=int((time.monotonic() - started) * 1000),
-            terminated_early=terminated_early,
-            termination_reason=termination_reason,
-        )
+        yield {
+            "type": "done",
+            "answer": answer,
+            "tool_calls": tool_calls,
+            "iterations": iterations,
+            "stop_reason": stop_reason,
+            "input_tokens": total_in,
+            "output_tokens": total_out,
+            "processing_time_ms": int((time.monotonic() - started) * 1000),
+            "terminated_early": terminated_early,
+            "termination_reason": termination_reason,
+        }
 
     # ── Helpers ────────────────────────────────────────────────────────────
 

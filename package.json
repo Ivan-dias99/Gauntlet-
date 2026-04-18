@@ -6,10 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "backend": "node exec-backend/index.mjs"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.89.0",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },

@@ -10,7 +10,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Optional
+from typing import Any, AsyncIterator, Optional
 
 from anthropic import AsyncAnthropic
 
@@ -29,6 +29,7 @@ from doctrine import (
     build_refusal_message,
     build_cautious_answer_wrapper,
     build_failure_context,
+    build_principles_context,
 )
 from models import (
     ConfidenceLevel,
@@ -37,8 +38,10 @@ from models import (
     RubeiraResponse,
     TriadResponse,
     JudgeVerdict,
+    RunRecord,
 )
 from memory import failure_memory
+from runs import run_store
 
 logger = logging.getLogger("rubeira.engine")
 
@@ -136,34 +139,6 @@ class RubeiraEngine:
                 model=MODEL_ID,
                 stop_reason="error",
             )
-    
-    async def _execute_triad(
-        self,
-        system_prompt: str,
-        question: str,
-        context: Optional[str] = None,
-    ) -> list[TriadResponse]:
-        """
-        Fire all 3 triad calls in parallel using asyncio.gather.
-        This is the self-consistency core — same question, 3 independent answers.
-        """
-        logger.info(f"Firing {TRIAD_COUNT} parallel triad calls...")
-        
-        tasks = [
-            self._single_triad_call(i, system_prompt, question, context)
-            for i in range(TRIAD_COUNT)
-        ]
-        
-        responses = await asyncio.gather(*tasks, return_exceptions=False)
-        
-        for r in responses:
-            logger.info(
-                f"  Triad[{r.index}]: {len(r.content)} chars, "
-                f"{r.input_tokens}+{r.output_tokens} tokens, "
-                f"stop={r.stop_reason}"
-            )
-        
-        return list(responses)
     
     # ── Judge ───────────────────────────────────────────────────────────────
     
@@ -278,7 +253,50 @@ class RubeiraEngine:
         """
         logger.info("Routing to agent loop: %s", query.question[:120])
         agent = _get_agent()
-        return await agent.run(query)
+        result = await agent.run(query)
+        await run_store.record(RunRecord(
+            route="agent",
+            mission_id=query.mission_id,
+            question=query.question,
+            context=query.context,
+            answer=result.answer,
+            tool_calls=result.tool_calls,
+            iterations=result.iterations,
+            processing_time_ms=result.processing_time_ms,
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+            terminated_early=result.terminated_early,
+            termination_reason=result.termination_reason,
+        ))
+        return result
+
+    async def process_dev_query_streaming(
+        self, query: RubeiraQuery
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Streaming variant of ``process_dev_query`` — yields agent events
+        and records the completed run on ``done``."""
+        logger.info("Routing to agent loop (streaming): %s", query.question[:120])
+        agent = _get_agent()
+        final: Optional[dict[str, Any]] = None
+        async for event in agent.run_streaming(query):
+            yield event
+            if event["type"] == "done":
+                final = event
+        if final:
+            await run_store.record(RunRecord(
+                route="agent",
+                mission_id=query.mission_id,
+                question=query.question,
+                context=query.context,
+                answer=final["answer"],
+                tool_calls=final["tool_calls"],
+                iterations=final["iterations"],
+                processing_time_ms=final["processing_time_ms"],
+                input_tokens=final["input_tokens"],
+                output_tokens=final["output_tokens"],
+                terminated_early=final["terminated_early"],
+                termination_reason=final["termination_reason"],
+            ))
 
     async def process_auto(self, query: RubeiraQuery):
         """
@@ -292,31 +310,58 @@ class RubeiraEngine:
         result = await self.process_query(query)
         return {"route": "triad", "result": result.model_dump()}
 
+    async def process_auto_streaming(
+        self, query: RubeiraQuery
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Auto-router streaming variant. Emits a ``route`` event first, then
+        streams agent or triad events under a unified envelope."""
+        from agent import AgentOrchestrator
+        if AgentOrchestrator.is_dev_intent(query.question):
+            yield {"type": "route", "path": "agent"}
+            async for event in self.process_dev_query_streaming(query):
+                yield event
+        else:
+            yield {"type": "route", "path": "triad"}
+            async for event in self.process_query_streaming(query):
+                yield event
+
     # ── Main Pipeline ───────────────────────────────────────────────────────
-    
+
     async def process_query(self, query: RubeiraQuery) -> RubeiraResponse:
+        """Non-streaming wrapper — collects the final event and rebuilds
+        the ``RubeiraResponse`` model."""
+        final: Optional[dict[str, Any]] = None
+        async for event in self.process_query_streaming(query):
+            if event["type"] == "done":
+                final = event
+        if not final:
+            raise RuntimeError("triad stream ended without a done event")
+        return RubeiraResponse.model_validate(final["result"])
+
+    async def process_query_streaming(
+        self, query: RubeiraQuery
+    ) -> AsyncIterator[dict[str, Any]]:
         """
-        The complete Rubeira pipeline.
-        This is the single entry point for all queries.
+        The complete Rubeira pipeline, emitting events at each checkpoint:
+        ``start``, ``triad_start``, ``triad_done`` (per call), ``judge_start``,
+        ``judge_done``, ``done`` (full RubeiraResponse dict).
         """
         start_time = time.monotonic()
-        
-        # ── Step 1: Check failure memory ────────────────────────────────────
+        yield {"type": "start"}
+
+        # ── Step 1: failure memory ──────────────────────────────────────────
         matching_failures = await failure_memory.find_matching_failures(query.question)
         has_prior_failure = len(matching_failures) > 0
-        
         if has_prior_failure:
             logger.warning(
-                f"Found {len(matching_failures)} prior failure(s) matching this question. "
-                f"Engaging reinforced caution."
+                f"Found {len(matching_failures)} prior failure(s). "
+                "Engaging reinforced caution."
             )
-        
-        # ── Step 2: Build system prompt with failure context ────────────────
+
+        # ── Step 2: system prompt ───────────────────────────────────────────
         system_prompt = SYSTEM_PROMPT
         if matching_failures or query.force_cautious:
-            failure_context = build_failure_context(matching_failures)
-            system_prompt = SYSTEM_PROMPT + failure_context
-            
+            system_prompt = SYSTEM_PROMPT + build_failure_context(matching_failures)
             if query.force_cautious:
                 system_prompt += (
                     "\n\n## ⚠️ FORCED CAUTION MODE\n"
@@ -324,19 +369,41 @@ class RubeiraEngine:
                     "Increase all uncertainty thresholds. "
                     "Prefer refusal over any risk of error."
                 )
-        
-        # ── Step 3: Execute self-consistency triad ──────────────────────────
-        triad_responses = await self._execute_triad(
-            system_prompt=system_prompt,
-            question=query.question,
-            context=query.context,
-        )
-        
+        system_prompt += build_principles_context(query.principles)
+
+        # ── Step 3: parallel triad with per-completion events ───────────────
+        yield {
+            "type": "triad_start",
+            "count": TRIAD_COUNT,
+            "has_prior_failure": has_prior_failure,
+        }
+        tasks = [
+            asyncio.create_task(
+                self._single_triad_call(i, system_prompt, query.question, query.context)
+            )
+            for i in range(TRIAD_COUNT)
+        ]
+        triad_responses: list[TriadResponse] = []
+        for coro in asyncio.as_completed(tasks):
+            r = await coro
+            triad_responses.append(r)
+            yield {
+                "type": "triad_done",
+                "index": r.index,
+                "length": len(r.content),
+                "input_tokens": r.input_tokens,
+                "output_tokens": r.output_tokens,
+                "stop_reason": r.stop_reason,
+                "completed": len(triad_responses),
+                "total": TRIAD_COUNT,
+            }
+        triad_responses.sort(key=lambda r: r.index)
+
         # Check for total triad failure
         failed_calls = [r for r in triad_responses if r.stop_reason == "error"]
         if len(failed_calls) >= 2:
             elapsed = int((time.monotonic() - start_time) * 1000)
-            return RubeiraResponse(
+            response = RubeiraResponse(
                 refused=True,
                 refusal_message=(
                     "⚠️ **Rubeira — Falha de Sistema**\n\n"
@@ -352,30 +419,34 @@ class RubeiraEngine:
                 processing_time_ms=elapsed,
                 matched_prior_failure=has_prior_failure,
             )
-        
-        # ── Step 4: Invoke the Judge ────────────────────────────────────────
+            await self._log_triad_run(query, response)
+            yield {"type": "done", "result": response.model_dump()}
+            return
+
+        # ── Step 4: judge ───────────────────────────────────────────────────
+        yield {"type": "judge_start"}
         verdict = await self._invoke_judge(query.question, triad_responses)
-        
-        # ── Step 5: Decision logic ──────────────────────────────────────────
+        yield {
+            "type": "judge_done",
+            "confidence": verdict.confidence.value,
+            "should_refuse": verdict.should_refuse,
+            "reasoning": verdict.reasoning,
+            "divergence_count": len(verdict.divergence_points),
+        }
+
+        # ── Step 5: decision ────────────────────────────────────────────────
         elapsed = int((time.monotonic() - start_time) * 1000)
-        
         total_in = sum(r.input_tokens for r in triad_responses)
         total_out = sum(r.output_tokens for r in triad_responses)
-        
         triad_summary = self._build_triad_summary(triad_responses, verdict)
-        
-        # ── HIGH CONFIDENCE ─────────────────────────────────────────────────
+
         if verdict.confidence == ConfidenceLevel.HIGH and not verdict.should_refuse:
             answer = verdict.consensus_answer or triad_responses[0].content
-            
             if has_prior_failure:
                 answer = build_cautious_answer_wrapper(
-                    answer=answer,
-                    confidence_level="high",
-                    prior_failure=True,
+                    answer=answer, confidence_level="high", prior_failure=True,
                 )
-            
-            return RubeiraResponse(
+            response = RubeiraResponse(
                 answer=answer,
                 refused=False,
                 confidence=ConfidenceLevel.HIGH,
@@ -390,51 +461,63 @@ class RubeiraEngine:
                 processing_time_ms=elapsed,
                 matched_prior_failure=has_prior_failure,
                 prior_failure_note=(
-                    "Apesar de corresponder a falhas anteriores, as 3 respostas foram consistentes."
+                    "Apesar de corresponder a falhas anteriores, "
+                    "as 3 respostas foram consistentes."
                     if has_prior_failure else None
                 ),
             )
-        
+        else:
+            refusal_reason = verdict.refusal_reason or RefusalReason.INCONSISTENCY
+            refusal_msg = build_refusal_message(
+                confidence_level=verdict.confidence.value,
+                judge_reasoning=verdict.reasoning,
+                divergence_points=verdict.divergence_points,
+                prior_failure=has_prior_failure,
+            )
+            await failure_memory.record_failure(
+                question=query.question,
+                failure_type=refusal_reason,
+                triad_divergence_summary="; ".join(verdict.divergence_points[:3]),
+                judge_reasoning=verdict.reasoning[:500],
+            )
+            response = RubeiraResponse(
+                refused=True,
+                refusal_message=refusal_msg,
+                refusal_reason=refusal_reason,
+                confidence=ConfidenceLevel.LOW,
+                confidence_explanation=(
+                    "As 3 análises internas produziram respostas inconsistentes. "
+                    "Rubeira recusa-se a responder para proteger a integridade do sistema."
+                ),
+                triad_agreement=triad_summary,
+                judge_reasoning=verdict.reasoning,
+                total_input_tokens=total_in,
+                total_output_tokens=total_out,
+                processing_time_ms=elapsed,
+                matched_prior_failure=has_prior_failure,
+                prior_failure_note=(
+                    "Pergunta já havia falhado anteriormente. Falha confirmada novamente."
+                    if has_prior_failure else None
+                ),
+            )
 
-        # ── LOW CONFIDENCE: refuse ──────────────────────────────────────────
-        refusal_reason = verdict.refusal_reason or RefusalReason.INCONSISTENCY
-        
-        refusal_msg = build_refusal_message(
-            confidence_level=verdict.confidence.value,
-            judge_reasoning=verdict.reasoning,
-            divergence_points=verdict.divergence_points,
-            prior_failure=has_prior_failure,
-        )
-        
-        # Record this failure in memory
-        await failure_memory.record_failure(
+        await self._log_triad_run(query, response)
+        yield {"type": "done", "result": response.model_dump()}
+
+    async def _log_triad_run(self, query: RubeiraQuery, response: RubeiraResponse) -> None:
+        await run_store.record(RunRecord(
+            route="triad",
+            mission_id=query.mission_id,
             question=query.question,
-            failure_type=refusal_reason,
-            triad_divergence_summary="; ".join(verdict.divergence_points[:3]),
-            judge_reasoning=verdict.reasoning[:500],
-        )
-        
-        return RubeiraResponse(
-            refused=True,
-            refusal_message=refusal_msg,
-            refusal_reason=refusal_reason,
-            confidence=ConfidenceLevel.LOW,
-            confidence_explanation=(
-                "As 3 análises internas produziram respostas inconsistentes. "
-                "Rubeira recusa-se a responder para proteger a integridade do sistema."
-            ),
-            triad_agreement=triad_summary,
-            judge_reasoning=verdict.reasoning,
-            total_input_tokens=total_in,
-            total_output_tokens=total_out,
-            processing_time_ms=elapsed,
-            matched_prior_failure=has_prior_failure,
-            prior_failure_note=(
-                "Pergunta já havia falhado anteriormente. Falha confirmada novamente."
-                if has_prior_failure else None
-            ),
-        )
-    
+            context=query.context,
+            answer=response.answer,
+            refused=response.refused or (response.refusal_message is not None),
+            confidence=response.confidence.value if response.confidence else None,
+            processing_time_ms=response.processing_time_ms,
+            input_tokens=response.total_input_tokens,
+            output_tokens=response.total_output_tokens,
+        ))
+
     def _build_triad_summary(
         self,
         responses: list[TriadResponse],

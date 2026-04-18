@@ -12,6 +12,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import json as _json
 import logging
 import os
 import sys
@@ -19,12 +20,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from config import ALLOWED_ORIGIN, SERVER_HOST, SERVER_PORT
 from models import RubeiraQuery, RubeiraResponse
 from engine import RubeiraEngine
 from memory import failure_memory
+from runs import run_store
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -153,6 +156,62 @@ async def ask_rubeira_dev(query: RubeiraQuery):
         raise HTTPException(status_code=500, detail=f"Agent error: {e}")
 
 
+@app.post("/route/stream")
+async def ask_rubeira_auto_stream(query: RubeiraQuery):
+    """
+    Streaming variant of ``/route``. Emits the ``route`` decision first, then
+    either agent events (``tool_use``, ``tool_result``, ...) or triad events
+    (``triad_done``, ``judge_done``, ...) and finally ``done``.
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+
+    async def event_source():
+        try:
+            async for event in engine.process_auto_streaming(query):
+                yield f"data: {_json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Route stream error: {e}", exc_info=True)
+            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/dev/stream")
+async def ask_rubeira_dev_stream(query: RubeiraQuery):
+    """
+    Streaming variant of ``/dev``. Emits one SSE event per agent step:
+    ``start``, ``iteration``, ``assistant_text``, ``tool_use``, ``tool_result``,
+    ``done`` (final). The run is recorded once ``done`` fires.
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+
+    async def event_source():
+        try:
+            async for event in engine.process_dev_query_streaming(query):
+                yield f"data: {_json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Agent stream error: {e}", exc_info=True)
+            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @app.post("/route")
 async def ask_rubeira_auto(query: RubeiraQuery):
     """
@@ -232,6 +291,34 @@ async def clear_memory(confirmation: ClearConfirmation):
         await failure_memory._save_to_disk()
     
     return {"cleared": True, "message": "Failure memory cleared"}
+
+
+# ── Runs Endpoints ──────────────────────────────────────────────────────────
+
+@app.get("/runs")
+async def list_runs(mission_id: str | None = None, limit: int = 50):
+    """List recent runs, optionally filtered by mission_id."""
+    records = await run_store.list(mission_id=mission_id, limit=limit)
+    return {
+        "count": len(records),
+        "mission_id": mission_id,
+        "records": [r.model_dump() for r in records],
+    }
+
+
+@app.get("/runs/stats")
+async def runs_stats():
+    """Aggregate stats across all runs."""
+    return await run_store.stats()
+
+
+@app.get("/runs/{run_id}")
+async def get_run(run_id: str):
+    """Fetch a single run record by id."""
+    record = await run_store.get(run_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="run not found")
+    return record.model_dump()
 
 
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
