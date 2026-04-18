@@ -22,7 +22,7 @@ interface AgentResult {
 }
 
 export default function Creation() {
-  const { activeMission, addTask, completeTask } = useSpine();
+  const { activeMission, addTask, completeTask, principles } = useSpine();
   const { call, pending } = useRubeira();
   const [input, setInput] = useState("");
   const [result, setResult] = useState<AgentResult | null>(null);
@@ -44,6 +44,7 @@ export default function Creation() {
         question: `Task declared: ${v}`,
         context: activeMission?.title,
         mission_id: activeMission?.id,
+        principles: principles.length ? principles.map(p => p.text) : undefined,
       })) as AgentResult;
       setResult(r);
     } catch (e) {

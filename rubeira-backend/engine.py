@@ -29,6 +29,7 @@ from doctrine import (
     build_refusal_message,
     build_cautious_answer_wrapper,
     build_failure_context,
+    build_principles_context,
 )
 from models import (
     ConfidenceLevel,
@@ -333,12 +334,12 @@ class RubeiraEngine:
                 f"Engaging reinforced caution."
             )
         
-        # ── Step 2: Build system prompt with failure context ────────────────
+        # ── Step 2: Build system prompt with failure + principles context ──
         system_prompt = SYSTEM_PROMPT
         if matching_failures or query.force_cautious:
             failure_context = build_failure_context(matching_failures)
             system_prompt = SYSTEM_PROMPT + failure_context
-            
+
             if query.force_cautious:
                 system_prompt += (
                     "\n\n## ⚠️ FORCED CAUTION MODE\n"
@@ -346,6 +347,7 @@ class RubeiraEngine:
                     "Increase all uncertainty thresholds. "
                     "Prefer refusal over any risk of error."
                 )
+        system_prompt += build_principles_context(query.principles)
         
         # ── Step 3: Execute self-consistency triad ──────────────────────────
         triad_responses = await self._execute_triad(
