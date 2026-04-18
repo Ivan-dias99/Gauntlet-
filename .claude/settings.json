@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -s .claude/memory.log ]; then printf '=== last 10 memory entries ===\\n'; tail -n 10 .claude/memory.log; else echo '(memory log empty)'; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p .claude && jq -r --arg ts \"$(date -Iseconds)\" '\"[\\($ts)] \\(.tool_name): \\(.tool_input | tostring | .[0:200])\"' >> .claude/memory.log 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}
