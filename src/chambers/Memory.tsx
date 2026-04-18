@@ -25,6 +25,18 @@ interface RunsResponse {
   records: RunRecord[];
 }
 
+interface ServerStats {
+  total: number;
+  mission_id: string | null;
+  by_route: Record<string, number>;
+  refused: number;
+  refusal_rate: number;
+  avg_latency_ms: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  tool_calls: number;
+}
+
 const ROUTE_COLOR: Record<string, string> = {
   agent: "var(--terminal-warn)",
   triad: "var(--accent)",
@@ -79,26 +91,48 @@ function computeStats(runs: RunRecord[]): Stats {
 export default function Memory() {
   const { activeMission } = useSpine();
   const [runs, setRuns] = useState<RunRecord[] | null>(null);
+  const [serverStats, setServerStats] = useState<ServerStats | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const stats = useMemo(() => computeStats(runs ?? []), [runs]);
+  const fallbackStats = useMemo(() => computeStats(runs ?? []), [runs]);
+  const stats: Stats = serverStats ? {
+    total: serverStats.total,
+    refused: serverStats.refused,
+    refusalRate: serverStats.refusal_rate,
+    avgLatencyMs: serverStats.avg_latency_ms,
+    totalInput: serverStats.total_input_tokens,
+    totalOutput: serverStats.total_output_tokens,
+    toolCalls: serverStats.tool_calls,
+    byRoute: serverStats.by_route,
+  } : fallbackStats;
 
   useEffect(() => {
     if (!activeMission?.id) {
       setRuns([]);
+      setServerStats(null);
       return;
     }
     setRuns(null);
+    setServerStats(null);
     setErr(null);
     const ac = new AbortController();
-    fetch(`/api/rubeira/runs?mission_id=${encodeURIComponent(activeMission.id)}&limit=100`, {
-      signal: ac.signal,
-    })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`runs ${r.status}`);
-        return (await r.json()) as RunsResponse;
+    const mid = encodeURIComponent(activeMission.id);
+    Promise.all([
+      fetch(`/api/rubeira/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`runs ${r.status}`);
+          return (await r.json()) as RunsResponse;
+        }),
+      fetch(`/api/rubeira/runs/stats?mission_id=${mid}`, { signal: ac.signal })
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`stats ${r.status}`);
+          return (await r.json()) as ServerStats;
+        }),
+    ])
+      .then(([runsData, statsData]) => {
+        setRuns(runsData.records);
+        setServerStats(statsData);
       })
-      .then((data) => setRuns(data.records))
       .catch((e) => {
         if (e.name !== "AbortError") setErr(e.message ?? String(e));
       });
@@ -121,14 +155,14 @@ export default function Memory() {
           <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
             Runs · Verdicts · Tool Trace
           </span>
-          {runs && runs.length > 0 && (
+          {stats.total > 0 && (
             <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
               {renderRouteBreakdown(stats.byRoute)}
             </span>
           )}
         </div>
 
-        {runs && runs.length > 0 && (
+        {stats.total > 0 && (
           <div style={{
             marginTop: 12,
             display: "grid",

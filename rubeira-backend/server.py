@@ -307,9 +307,9 @@ async def list_runs(mission_id: str | None = None, limit: int = 50):
 
 
 @app.get("/runs/stats")
-async def runs_stats():
-    """Aggregate stats across all runs."""
-    return await run_store.stats()
+async def runs_stats(mission_id: str | None = None):
+    """Aggregate stats, optionally filtered by mission_id."""
+    return await run_store.stats(mission_id=mission_id)
 
 
 @app.get("/runs/{run_id}")
