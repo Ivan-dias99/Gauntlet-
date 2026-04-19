@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { useRubeira } from "../hooks/useRubeira";
+import { useRuberra } from "../hooks/useRuberra";
 import { Note } from "../spine/types";
 
-// Response shapes from /api/rubeira/route
+// Response shapes from /api/ruberra/route
 interface TriadResult {
   answer?: string | null;
   refused?: boolean;
@@ -39,7 +39,7 @@ function extractAnswer(env: RouteEnvelope): string {
 
 export default function Lab() {
   const { activeMission, addNote, addNoteToMission, principles } = useSpine();
-  const { call, pending, error } = useRubeira();
+  const { call, pending, error } = useRuberra();
   const [input, setInput] = useState("");
   const [lastMeta, setLastMeta] = useState<RouteEnvelope | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);

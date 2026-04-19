@@ -1,6 +1,6 @@
 """
-Rubeira V1 — Failure Memory System
-Persistent memory of questions where Rubeira failed to achieve consistency.
+Ruberra V1 — Failure Memory System
+Persistent memory of questions where Ruberra failed to achieve consistency.
 The system learns from its own failures and becomes more cautious on repeat topics.
 """
 
@@ -17,7 +17,7 @@ from typing import Optional
 from config import FAILURE_MEMORY_FILE, MAX_FAILURE_ENTRIES, FAILURE_CONTEXT_WINDOW, MEMORY_DIR
 from models import FailureRecord, FailureMemory, RefusalReason
 
-logger = logging.getLogger("rubeira.memory")
+logger = logging.getLogger("ruberra.memory")
 
 
 class FailureMemoryStore:

@@ -1,5 +1,5 @@
 """
-Rubeira V1 — Configuration
+Ruberra V1 — Configuration
 All environment-driven settings. No hardcoded secrets.
 """
 
@@ -27,9 +27,9 @@ MAX_TOKENS: int = 4096
 TRIAD_COUNT: int = 3
 
 # ── Server ──────────────────────────────────────────────────────────────────
-SERVER_HOST: str = os.environ.get("RUBEIRA_HOST", "127.0.0.1")
-SERVER_PORT: int = int(os.environ.get("RUBEIRA_PORT", "3002"))
-ALLOWED_ORIGIN: str = os.environ.get("RUBEIRA_ORIGIN", "http://localhost:5173")
+SERVER_HOST: str = os.environ.get("RUBERRA_HOST", "127.0.0.1")
+SERVER_PORT: int = int(os.environ.get("RUBERRA_PORT", "3002"))
+ALLOWED_ORIGIN: str = os.environ.get("RUBERRA_ORIGIN", "http://localhost:5173")
 
 # ── Memory ──────────────────────────────────────────────────────────────────
 # Failure memory persists to disk
@@ -49,7 +49,7 @@ CONFIDENCE_HIGH_THRESHOLD: float = 0.95
 CONFIDENCE_MEDIUM_THRESHOLD: float = 0.70
 
 # ── Paranoia Gates ──────────────────────────────────────────────────────────
-# Topics Rubeira refuses to touch regardless of judge verdict.
+# Topics Ruberra refuses to touch regardless of judge verdict.
 PROHIBITED_TOPICS: list[str] = [
     "previsão de futuro", "futuro", "vai acontecer", "previsão",
     "conselho médico", "saúde", "doença", "tratamento",
@@ -57,7 +57,7 @@ PROHIBITED_TOPICS: list[str] = [
 ]
 
 # Default is OFF — turning this on short-circuits the entire pipeline and
-# every request is refused. Enable via env: RUBEIRA_ULTRA_PARANOIA=true
+# every request is refused. Enable via env: RUBERRA_ULTRA_PARANOIA=true
 ULTRA_PARANOIA_MODE: bool = os.environ.get(
-    "RUBEIRA_ULTRA_PARANOIA", "false"
+    "RUBERRA_ULTRA_PARANOIA", "false"
 ).strip().lower() in ("1", "true", "yes", "on")

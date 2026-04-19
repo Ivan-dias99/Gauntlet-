@@ -46,7 +46,7 @@ export default function Memory() {
     setRuns(null);
     setErr(null);
     const ac = new AbortController();
-    fetch(`/api/rubeira/runs?mission_id=${encodeURIComponent(activeMission.id)}&limit=100`, {
+    fetch(`/api/ruberra/runs?mission_id=${encodeURIComponent(activeMission.id)}&limit=100`, {
       signal: ac.signal,
     })
       .then(async (r) => {

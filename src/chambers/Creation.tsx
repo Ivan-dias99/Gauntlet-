@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { useRubeira } from "../hooks/useRubeira";
+import { useRuberra } from "../hooks/useRuberra";
 import { Task } from "../spine/types";
 
 interface ToolCall {
@@ -23,7 +23,7 @@ interface AgentResult {
 
 export default function Creation() {
   const { activeMission, addTask, completeTask, principles } = useSpine();
-  const { call, pending } = useRubeira();
+  const { call, pending } = useRuberra();
   const [input, setInput] = useState("");
   const [result, setResult] = useState<AgentResult | null>(null);
   const [lastTask, setLastTask] = useState("");

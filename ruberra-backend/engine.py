@@ -1,5 +1,5 @@
 """
-Rubeira V1 — Self-Consistency Engine
+Ruberra V1 — Self-Consistency Engine
 The core brain. Fires 3 parallel calls to Claude Sonnet,
 then routes the responses through the Judge for verdict.
 """
@@ -34,8 +34,8 @@ from doctrine import (
 from models import (
     ConfidenceLevel,
     RefusalReason,
-    RubeiraQuery,
-    RubeiraResponse,
+    RuberraQuery,
+    RuberraResponse,
     TriadResponse,
     JudgeVerdict,
     RunRecord,
@@ -43,7 +43,7 @@ from models import (
 from memory import failure_memory
 from runs import run_store
 
-logger = logging.getLogger("rubeira.engine")
+logger = logging.getLogger("ruberra.engine")
 
 # Agent layer is imported lazily to avoid an import cycle and to keep the
 # triad path usable even if the agent module is later swapped out.
@@ -59,7 +59,7 @@ def _get_agent() -> "AgentOrchestrator":  # type: ignore[name-defined]
 
 
 
-class RubeiraEngine:
+class RuberraEngine:
     """
     The sovereign intelligence engine.
     
@@ -83,7 +83,7 @@ class RubeiraEngine:
         if not ANTHROPIC_API_KEY:
             raise RuntimeError(
                 "ANTHROPIC_API_KEY not set. "
-                "Export it in your environment before starting Rubeira."
+                "Export it in your environment before starting Ruberra."
             )
         self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         logger.info(f"Engine initialized. Model: {MODEL_ID}, Triad count: {TRIAD_COUNT}")
@@ -279,7 +279,7 @@ class RubeiraEngine:
     
     # ── Dev / Agent Path ────────────────────────────────────────────────────
 
-    async def process_dev_query(self, query: RubeiraQuery):
+    async def process_dev_query(self, query: RuberraQuery):
         """
         Route a query through the agent loop (tool use) instead of the triad.
         Returns the raw ``AgentResponse`` — callers serialize it.
@@ -303,7 +303,7 @@ class RubeiraEngine:
         ))
         return result
 
-    async def process_auto(self, query: RubeiraQuery):
+    async def process_auto(self, query: RuberraQuery):
         """
         Auto-router: dev-intent queries go through the agent loop; everything
         else goes through the conservative triad + judge pipeline.
@@ -317,9 +317,9 @@ class RubeiraEngine:
 
     # ── Main Pipeline ───────────────────────────────────────────────────────
     
-    async def process_query(self, query: RubeiraQuery) -> RubeiraResponse:
+    async def process_query(self, query: RuberraQuery) -> RuberraResponse:
         """
-        The complete Rubeira pipeline.
+        The complete Ruberra pipeline.
         This is the single entry point for all queries.
         """
         start_time = time.monotonic()
@@ -360,10 +360,10 @@ class RubeiraEngine:
         failed_calls = [r for r in triad_responses if r.stop_reason == "error"]
         if len(failed_calls) >= 2:
             elapsed = int((time.monotonic() - start_time) * 1000)
-            response = RubeiraResponse(
+            response = RuberraResponse(
                 refused=True,
                 refusal_message=(
-                    "⚠️ **Rubeira — Falha de Sistema**\n\n"
+                    "⚠️ **Ruberra — Falha de Sistema**\n\n"
                     f"{len(failed_calls)} de {TRIAD_COUNT} chamadas internas falharam. "
                     "Impossível avaliar consistência. Resposta recusada por segurança."
                 ),
@@ -401,7 +401,7 @@ class RubeiraEngine:
                     prior_failure=True,
                 )
             
-            response = RubeiraResponse(
+            response = RuberraResponse(
                 answer=answer,
                 refused=False,
                 confidence=ConfidenceLevel.HIGH,
@@ -441,14 +441,14 @@ class RubeiraEngine:
             judge_reasoning=verdict.reasoning[:500],
         )
         
-        response = RubeiraResponse(
+        response = RuberraResponse(
             refused=True,
             refusal_message=refusal_msg,
             refusal_reason=refusal_reason,
             confidence=ConfidenceLevel.LOW,
             confidence_explanation=(
                 "As 3 análises internas produziram respostas inconsistentes. "
-                "Rubeira recusa-se a responder para proteger a integridade do sistema."
+                "Ruberra recusa-se a responder para proteger a integridade do sistema."
             ),
             triad_agreement=triad_summary,
             judge_reasoning=verdict.reasoning,
@@ -464,7 +464,7 @@ class RubeiraEngine:
         await self._log_triad_run(query, response)
         return response
 
-    async def _log_triad_run(self, query: RubeiraQuery, response: RubeiraResponse) -> None:
+    async def _log_triad_run(self, query: RuberraQuery, response: RuberraResponse) -> None:
         await run_store.record(RunRecord(
             route="triad",
             mission_id=query.mission_id,

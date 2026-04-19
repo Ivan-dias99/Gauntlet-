@@ -1,5 +1,5 @@
 """
-Rubeira V1 — Entry Point
+Ruberra V1 — Entry Point
 Start the conservative intelligence server.
 
 Usage:
@@ -14,7 +14,7 @@ from config import SERVER_HOST, SERVER_PORT
 
 
 def main() -> None:
-    """Launch the Rubeira V1 server."""
+    """Launch the Ruberra V1 server."""
     print(
         "\n"
         "  ╔═══════════════════════════════════════════════════════╗\n"
