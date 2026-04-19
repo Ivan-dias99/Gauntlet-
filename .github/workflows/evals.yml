@@ -18,6 +18,9 @@ on:
         required: false
         default: "0"
 
+permissions:
+  contents: write   # required so the workflow can push eval results back to main
+
 jobs:
   anti-hallucination:
     runs-on: ubuntu-latest
@@ -27,6 +30,9 @@ jobs:
         working-directory: ruberra-backend
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Guard — require ANTHROPIC_API_KEY
         # Without a real key the eval is a no-op. We still want the job to
@@ -70,7 +76,7 @@ jobs:
           tail -n 80 /tmp/ruberra.log >&2
           exit 1
 
-      - name: Run evals
+      - name: Run evals (primary pipeline)
         if: ${{ steps.guard.outputs.skipped != 'true' }}
         env:
           RUBERRA_EVAL_MODEL: claude-sonnet-4-6
@@ -81,6 +87,46 @@ jobs:
           if [ -n "$endpoint" ]; then args="--endpoint $endpoint"; fi
           if [ -n "$limit" ] && [ "$limit" != "0" ]; then args="$args --limit $limit"; fi
           python evals/run.py $args
+
+      - name: Run baseline (raw Claude, no doctrine)
+        if: ${{ steps.guard.outputs.skipped != 'true' }}
+        continue-on-error: true
+        env:
+          RUBERRA_EVAL_MODEL: claude-sonnet-4-6
+        run: |
+          limit="${{ github.event.inputs.limit }}"
+          args="--endpoint baseline"
+          if [ -n "$limit" ] && [ "$limit" != "0" ]; then args="$args --limit $limit"; fi
+          python evals/run.py $args
+
+      - name: Promote results to the tracked dir and commit
+        if: ${{ steps.guard.outputs.skipped != 'true' && github.event_name != 'pull_request' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -e
+          src=ruberra-backend/data/evals
+          dst=ruberra-backend/evals/results
+          mkdir -p "$dst"
+          # Copy whatever the runner produced (primary + baseline + history).
+          if [ -f "$src/latest.json" ]; then cp "$src/latest.json" "$dst/latest.json"; fi
+          if [ -f "$src/latest-baseline.json" ]; then cp "$src/latest-baseline.json" "$dst/latest-baseline.json"; fi
+          if [ -f "$src/history.json" ]; then cp "$src/history.json" "$dst/history.json"; fi
+
+          git config user.name  "ruberra-evals-bot"
+          git config user.email "ruberra-evals-bot@users.noreply.github.com"
+
+          if git diff --quiet --exit-code -- "$dst"; then
+            echo "no eval result changes to commit"
+            exit 0
+          fi
+
+          git add "$dst"
+          git commit -m "evals: promote CI run $(date -u +%Y-%m-%dT%H:%MZ)"
+          # Push against the ref the workflow ran on (main on schedule,
+          # the branch on manual dispatch).
+          git push origin HEAD:"${GITHUB_REF#refs/heads/}"
 
       - name: Dump backend log on failure
         if: failure() && steps.guard.outputs.skipped != 'true'

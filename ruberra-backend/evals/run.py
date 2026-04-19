@@ -48,6 +48,13 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CASES = ROOT / "evals" / "cases.yaml"
+# Additional cases merged in at runtime, if present:
+#   - tracked feedback committed by hand or by a promote script
+#   - live feedback written by POST /evals/feedback on the running server
+EXTRA_CASE_FILES = [
+    ROOT / "evals" / "cases-feedback.yaml",
+    ROOT / "data" / "evals" / "cases-feedback.yaml",
+]
 DEFAULT_OUTPUT = ROOT / "data" / "evals"
 
 # Soft-fail threshold: if FalseRefusal@N exceeds this fraction, exit 2.
@@ -103,23 +110,52 @@ class RunSummary:
 # ── Case loading ────────────────────────────────────────────────────────────
 
 
-def load_cases(path: Path) -> list[dict[str, Any]]:
+def _load_one(path: Path) -> list[dict[str, Any]]:
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict) or "cases" not in raw:
         raise ValueError(f"{path}: must contain a top-level 'cases' list")
     cases = raw["cases"]
-    if not isinstance(cases, list) or not cases:
-        raise ValueError(f"{path}: 'cases' must be a non-empty list")
-    seen: set[str] = set()
+    if cases is None:
+        return []
+    if not isinstance(cases, list):
+        raise ValueError(f"{path}: 'cases' must be a list")
     for c in cases:
         cid = c.get("id")
-        if not cid or cid in seen:
-            raise ValueError(f"{path}: case missing id or duplicate id ({cid!r})")
-        seen.add(cid)
+        if not cid:
+            raise ValueError(f"{path}: case missing id")
         if c.get("category") not in ("factual", "bait"):
             raise ValueError(f"{path}: {cid} has invalid category {c.get('category')!r}")
         if c.get("expect") not in ("answer", "refuse"):
             raise ValueError(f"{path}: {cid} has invalid expect {c.get('expect')!r}")
+    return cases
+
+
+def load_cases(path: Path, extras: list[Path] | None = None) -> list[dict[str, Any]]:
+    """Load seed cases + any extra files (tracked + runtime feedback).
+
+    Duplicate ids across files are skipped with a warning — first file wins.
+    """
+    cases = _load_one(path)
+    if not cases:
+        raise ValueError(f"{path}: 'cases' must be non-empty")
+    seen = {c["id"] for c in cases}
+    for extra in extras or []:
+        if not extra.is_file():
+            continue
+        try:
+            extra_cases = _load_one(extra)
+        except Exception as exc:  # noqa: BLE001
+            print(f"warning: {extra}: {exc}", file=sys.stderr)
+            continue
+        added = 0
+        for c in extra_cases:
+            if c["id"] in seen:
+                continue
+            seen.add(c["id"])
+            cases.append(c)
+            added += 1
+        if added:
+            print(f"merged {added} case(s) from {extra}")
     return cases
 
 
@@ -174,6 +210,16 @@ def extract_answer(endpoint: str, done: dict[str, Any]) -> tuple[str, bool, int,
         answer = str(done.get("answer") or "")
         refused = not bool(done.get("accepted", True))  # critic rejected
         return answer, refused, int(done.get("input_tokens", 0)), int(done.get("output_tokens", 0))
+
+    if endpoint == "baseline":
+        # Raw-Claude: no refusal mechanism, we only look at the text.
+        answer = str(done.get("answer") or "")
+        return (
+            answer,
+            False,
+            int(done.get("input_tokens", 0)),
+            int(done.get("output_tokens", 0)),
+        )
 
     if endpoint == "route":
         result = done.get("result") or {}
@@ -311,7 +357,10 @@ def write_artifacts(
     output_dir: Path, summary: RunSummary, outcomes: list[CaseOutcome],
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
-    latest = output_dir / "latest.json"
+    # Baseline runs write to a separate file so the primary (crew/route)
+    # artifact is never overwritten by a baseline sweep.
+    name = "latest-baseline.json" if summary.endpoint == "baseline" else "latest.json"
+    latest = output_dir / name
     history = output_dir / "history.json"
 
     latest.write_text(
@@ -365,7 +414,7 @@ def print_report(summary: RunSummary) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--backend", default=os.environ.get("RUBERRA_EVAL_BACKEND", "http://127.0.0.1:3002"))
-    ap.add_argument("--endpoint", choices=("route", "crew"), default="crew")
+    ap.add_argument("--endpoint", choices=("route", "crew", "baseline"), default="crew")
     ap.add_argument("--cases", default=str(DEFAULT_CASES))
     ap.add_argument("--output", default=str(DEFAULT_OUTPUT))
     ap.add_argument("--limit", type=int, default=0,
@@ -380,7 +429,7 @@ def main() -> int:
         return 3
 
     try:
-        cases = load_cases(cases_path)
+        cases = load_cases(cases_path, extras=EXTRA_CASE_FILES)
     except Exception as exc:  # noqa: BLE001
         print(f"error loading cases: {exc}", file=sys.stderr)
         return 3

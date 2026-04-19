@@ -394,6 +394,7 @@ export default function Memory() {
                         {r.answer}
                       </div>
                     )}
+                    <FeedbackButtons run={r} />
                   </div>
                 )}
               </div>
@@ -402,6 +403,108 @@ export default function Memory() {
         </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function FeedbackButtons({ run }: { run: RunRecord }) {
+  const [state, setState] = useState<"idle" | "sending" | "done" | "err">("idle");
+  const [detail, setDetail] = useState<string | null>(null);
+
+  async function send(kind: "false_answer" | "false_refusal") {
+    setState("sending");
+    setDetail(null);
+    try {
+      const res = await fetch("/api/ruberra/evals/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ run_id: run.id, kind }),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`${res.status}: ${body.slice(0, 120)}`);
+      }
+      const data = (await res.json()) as { case_id: string; duplicate: boolean };
+      setState("done");
+      setDetail(data.duplicate ? `already tracked · ${data.case_id}` : `added · ${data.case_id}`);
+    } catch (e) {
+      setState("err");
+      setDetail(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  const refused = run.refused;
+
+  return (
+    <div style={{
+      marginTop: 10,
+      paddingTop: 8,
+      borderTop: "1px dashed var(--border-subtle)",
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+      flexWrap: "wrap",
+    }}>
+      <span style={{
+        fontSize: 9,
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+        color: "var(--text-ghost)",
+        fontFamily: "var(--mono)",
+      }}>
+        flag as eval
+      </span>
+      {!refused && (
+        <button
+          disabled={state === "sending" || state === "done"}
+          onClick={() => send("false_answer")}
+          style={{
+            background: "transparent",
+            border: "1px solid var(--cc-err)",
+            color: "var(--cc-err)",
+            fontFamily: "var(--mono)",
+            fontSize: 9,
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+            padding: "4px 10px",
+            borderRadius: 999,
+            cursor: state === "sending" || state === "done" ? "default" : "pointer",
+            opacity: state === "sending" || state === "done" ? 0.5 : 1,
+          }}
+        >
+          this answer was wrong
+        </button>
+      )}
+      {refused && (
+        <button
+          disabled={state === "sending" || state === "done"}
+          onClick={() => send("false_refusal")}
+          style={{
+            background: "transparent",
+            border: "1px solid var(--terminal-warn)",
+            color: "var(--terminal-warn)",
+            fontFamily: "var(--mono)",
+            fontSize: 9,
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+            padding: "4px 10px",
+            borderRadius: 999,
+            cursor: state === "sending" || state === "done" ? "default" : "pointer",
+            opacity: state === "sending" || state === "done" ? 0.5 : 1,
+          }}
+        >
+          should not have refused
+        </button>
+      )}
+      {detail && (
+        <span style={{
+          fontSize: 9,
+          color: state === "err" ? "var(--cc-err)" : "var(--cc-ok)",
+          fontFamily: "var(--mono)",
+        }}>
+          {detail}
+        </span>
+      )}
     </div>
   );
 }
@@ -508,6 +611,7 @@ const VERDICT_COLOR: Record<string, string> = {
 
 function EvalsPanel() {
   const [latest, setLatest] = useState<EvalLatest | null>(null);
+  const [baseline, setBaseline] = useState<EvalLatest | null>(null);
   const [history, setHistory] = useState<EvalSummary[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -516,11 +620,14 @@ function EvalsPanel() {
     Promise.all([
       fetch("/api/ruberra/evals/latest", { signal: ac.signal })
         .then((r) => r.json() as Promise<EvalLatest>),
+      fetch("/api/ruberra/evals/latest?endpoint=baseline", { signal: ac.signal })
+        .then((r) => r.json() as Promise<EvalLatest>),
       fetch("/api/ruberra/evals/history?limit=50", { signal: ac.signal })
         .then((r) => r.json() as Promise<{ rows: EvalSummary[] }>),
     ])
-      .then(([l, h]) => {
+      .then(([l, b, h]) => {
         setLatest(l);
+        setBaseline(b);
         setHistory(h.rows);
       })
       .catch((e) => {
@@ -609,6 +716,11 @@ function EvalsPanel() {
           sub={`${formatTokens(s.total_input_tokens)} in · ${formatTokens(s.total_output_tokens)} out`}
         />
       </div>
+
+      {/* Baseline delta — only shown when a baseline artifact exists */}
+      {baseline?.available && baseline.summary && (
+        <BaselineDelta primary={s} baseline={baseline.summary} />
+      )}
 
       {/* Run meta */}
       <div style={{
@@ -762,6 +874,122 @@ function EvalsPanel() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function BaselineDelta({
+  primary, baseline,
+}: { primary: EvalSummary; baseline: EvalSummary }) {
+  // Baseline (raw Claude) has no refusal surface so false_refusal is
+  // not meaningful for it — we only compare false_answer (hallucination)
+  // and pass rate. This is the whole point of the Ruberra thesis: does
+  // the doctrine buy anything over a naked model?
+  const primaryHall = primary.false_answer;
+  const baselineHall = baseline.false_answer;
+  const hallDelta = primaryHall - baselineHall;  // negative = Ruberra wins
+  const primaryPass = primary.total ? primary.passed / primary.total : 0;
+  const baselinePass = baseline.total ? baseline.passed / baseline.total : 0;
+  const passDelta = primaryPass - baselinePass;  // positive = Ruberra wins
+
+  const verdict =
+    hallDelta < 0 ? "ruberra < claude raw"
+    : hallDelta > 0 ? "ruberra > claude raw (regression)"
+    : "tie";
+  const verdictColor =
+    hallDelta < 0 ? "var(--cc-ok)"
+    : hallDelta > 0 ? "var(--cc-err)"
+    : "var(--text-muted)";
+
+  return (
+    <div style={{
+      border: "1px solid var(--border-subtle)",
+      borderLeft: "2px solid var(--accent-dim)",
+      borderRadius: 10,
+      padding: "12px 16px",
+      fontFamily: "var(--mono)",
+    }}>
+      <div style={{
+        fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
+        color: "var(--text-ghost)", marginBottom: 10,
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <span>vs raw claude baseline</span>
+        <span style={{ color: verdictColor }}>· {verdict}</span>
+      </div>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+        gap: 10,
+      }}>
+        <DeltaRow
+          label="hallucinations"
+          ruberra={`${primaryHall}/${primary.bait_total}`}
+          baselineValue={`${baselineHall}/${baseline.bait_total}`}
+          delta={hallDelta}
+          betterLow
+        />
+        <DeltaRow
+          label="pass rate"
+          ruberra={`${Math.round(primaryPass * 100)}%`}
+          baselineValue={`${Math.round(baselinePass * 100)}%`}
+          delta={passDelta}
+          betterLow={false}
+        />
+        <DeltaRow
+          label="tokens (in+out)"
+          ruberra={formatTokens(primary.total_input_tokens + primary.total_output_tokens)}
+          baselineValue={formatTokens(baseline.total_input_tokens + baseline.total_output_tokens)}
+          delta={
+            (primary.total_input_tokens + primary.total_output_tokens)
+            - (baseline.total_input_tokens + baseline.total_output_tokens)
+          }
+          betterLow
+          absolute
+        />
+      </div>
+    </div>
+  );
+}
+
+function DeltaRow({
+  label, ruberra, baselineValue, delta, betterLow, absolute,
+}: {
+  label: string;
+  ruberra: string;
+  baselineValue: string;
+  delta: number;
+  betterLow: boolean;
+  absolute?: boolean;
+}) {
+  const better = betterLow ? delta < 0 : delta > 0;
+  const equal = delta === 0;
+  const color = equal ? "var(--text-muted)" : better ? "var(--cc-ok)" : "var(--cc-err)";
+  const arrow = equal ? "=" : delta > 0 ? "▲" : "▼";
+  const deltaStr = absolute
+    ? `${arrow} ${Math.abs(delta).toLocaleString()}`
+    : typeof delta === "number" && Math.abs(delta) < 1
+      ? `${arrow} ${Math.abs(Math.round(delta * 100))}pp`
+      : `${arrow} ${Math.abs(delta)}`;
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", gap: 3,
+      padding: "6px 0",
+    }}>
+      <span style={{
+        fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
+        color: "var(--text-ghost)",
+      }}>
+        {label}
+      </span>
+      <div style={{
+        display: "flex", alignItems: "baseline", gap: 8, fontSize: 12,
+      }}>
+        <span style={{ color: "var(--text-primary)" }}>{ruberra}</span>
+        <span style={{ color: "var(--text-ghost)" }}>vs</span>
+        <span style={{ color: "var(--text-muted)" }}>{baselineValue}</span>
+      </div>
+      <span style={{ fontSize: 10, color }}>{deltaStr}</span>
     </div>
   );
 }

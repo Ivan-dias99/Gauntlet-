@@ -16,6 +16,7 @@ import json as _json
 import logging
 import os
 import sys
+from typing import Any, Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -33,7 +34,11 @@ from spine import spine_store
 from tools import ToolRegistry
 
 from pathlib import Path as _Path
-_EVALS_DIR = _Path(__file__).parent / "data" / "evals"
+# Evals surface two directories. ``data/evals/`` is gitignored local-run
+# output. ``evals/results/`` is the tracked copy promoted by CI so a
+# fresh prod deploy shows the latest numbers instead of an empty state.
+_EVALS_LOCAL_DIR = _Path(__file__).parent / "data" / "evals"
+_EVALS_TRACKED_DIR = _Path(__file__).parent / "evals" / "results"
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -233,6 +238,81 @@ async def ask_ruberra_dev_stream(query: RuberraQuery):
     )
 
 
+BASELINE_SYSTEM_PROMPT = (
+    "You are a helpful assistant. Answer the user's question directly and "
+    "concisely. If the question is ambiguous or unanswerable, do your best."
+)
+
+
+@app.post("/baseline/stream")
+async def ask_ruberra_baseline_stream(query: RuberraQuery):
+    """
+    Raw-Claude baseline. No triad, no judge, no crew, no doctrine, no tools.
+    Used by the eval runner to measure the delta that Ruberra actually
+    earns over a naked model call. The SSE envelope is identical to the
+    other pipelines so the runner reuses its classifier.
+
+    Events emitted::
+
+        {"type": "start"}
+        {"type": "text_delta", "text": "..."}            # streaming tokens
+        {"type": "done", "answer": "...", "input_tokens": n, "output_tokens": n,
+         "processing_time_ms": ms}
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+
+    from anthropic import AsyncAnthropic
+    from config import ANTHROPIC_API_KEY, MAX_TOKENS, MODEL_ID, RUBERRA_MOCK
+    from mock_client import MockAsyncAnthropic
+    from streaming import stream_messages
+
+    if RUBERRA_MOCK:
+        client = MockAsyncAnthropic()
+    else:
+        client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+
+    async def event_source():
+        import time as _time
+        started = _time.monotonic()
+        try:
+            yield f"data: {_json.dumps({'type': 'start'})}\n\n"
+            answer = ""
+            response = None
+            async for sev in stream_messages(
+                client,
+                model=MODEL_ID,
+                max_tokens=MAX_TOKENS,
+                temperature=0.3,
+                system=BASELINE_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": query.question}],
+            ):
+                if sev["type"] == "text_delta":
+                    answer += sev["text"]
+                    yield f"data: {_json.dumps({'type': 'text_delta', 'text': sev['text']})}\n\n"
+                elif sev["type"] == "final":
+                    response = sev["message"]
+            in_tok = response.usage.input_tokens if response else 0
+            out_tok = response.usage.output_tokens if response else 0
+            done = {
+                "type": "done",
+                "answer": answer,
+                "input_tokens": in_tok,
+                "output_tokens": out_tok,
+                "processing_time_ms": int((_time.monotonic() - started) * 1000),
+            }
+            yield f"data: {_json.dumps(done)}\n\n"
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Baseline stream error: {e}", exc_info=True)
+            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @app.post("/crew/stream")
 async def ask_ruberra_crew_stream(query: RuberraQuery):
     """
@@ -389,24 +469,32 @@ async def put_spine(snapshot: SpineSnapshot):
 # ── Evals Endpoints ─────────────────────────────────────────────────────────
 
 
-def _read_eval_json(path: _Path) -> Any:
-    if not path.is_file():
-        return None
-    try:
-        return _json.loads(path.read_text(encoding="utf-8"))
-    except Exception as e:  # noqa: BLE001
-        logger.error("failed to read %s: %s", path, e)
-        return None
+def _read_eval_json(filename: str) -> Any:
+    """Try the local dir first, fall back to the tracked (CI-promoted) dir."""
+    for base in (_EVALS_LOCAL_DIR, _EVALS_TRACKED_DIR):
+        path = base / filename
+        if not path.is_file():
+            continue
+        try:
+            return _json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:  # noqa: BLE001
+            logger.error("failed to read %s: %s", path, e)
+    return None
 
 
 @app.get("/evals/latest")
-async def evals_latest():
+async def evals_latest(endpoint: str | None = None):
     """Most recent eval run: full per-case outcomes + summary.
+
+    ``endpoint=baseline`` surfaces the raw-Claude comparison artifact
+    (``latest-baseline.json``); the default reads ``latest.json``, which
+    is whichever pipeline last ran (typically crew).
 
     Returns 200 with ``{"available": false}`` when no eval has run yet,
     so the UI renders an empty state instead of treating it as an error.
     """
-    data = _read_eval_json(_EVALS_DIR / "latest.json")
+    filename = "latest-baseline.json" if endpoint == "baseline" else "latest.json"
+    data = _read_eval_json(filename)
     if data is None:
         return {"available": False}
     return {"available": True, **data}
@@ -415,11 +503,76 @@ async def evals_latest():
 @app.get("/evals/history")
 async def evals_history(limit: int = 100):
     """Append-only time series of summary rows for the Evals dashboard."""
-    data = _read_eval_json(_EVALS_DIR / "history.json")
+    data = _read_eval_json("history.json")
     if data is None:
         return {"rows": []}
     rows = data if isinstance(data, list) else []
     return {"rows": rows[-limit:]}
+
+
+class EvalFeedback(BaseModel):
+    """A user marking a real run as an eval regression.
+
+    kind=false_answer    the run answered something wrong → we want Ruberra
+                         to refuse this (or an equivalent) next time.
+    kind=false_refusal   the run refused a reasonable question → we want
+                         Ruberra to answer next time.
+    """
+    run_id: str = Field(..., min_length=1, max_length=128)
+    kind: str = Field(..., pattern="^(false_answer|false_refusal)$")
+    notes: Optional[str] = Field(None, max_length=1000)
+
+
+@app.post("/evals/feedback")
+async def evals_feedback(payload: EvalFeedback):
+    """Append a user-reported regression to the live cases-feedback.yaml.
+
+    The runner picks this file up alongside the seed cases, so the next
+    scheduled eval run catches regressions that real users flagged.
+    """
+    record = await run_store.get(payload.run_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="run not found")
+
+    feedback_path = _EVALS_LOCAL_DIR / "cases-feedback.yaml"
+    feedback_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Minimal YAML dialect — no external dep at runtime.
+    def _yaml_escape(s: str) -> str:
+        return s.replace("\\", "\\\\").replace('"', '\\"')
+
+    case_id = f"feedback-{payload.run_id[:8]}-{payload.kind}"
+    expect = "refuse" if payload.kind == "false_answer" else "answer"
+    question = record.question.replace("\n", " ")
+    block = [
+        "",
+        f"  - id: {case_id}",
+        "    category: bait" if payload.kind == "false_answer" else "    category: factual",
+        f'    question: "{_yaml_escape(question[:500])}"',
+        f"    expect: {expect}",
+    ]
+    if expect == "answer":
+        # We don't know the gold, so require only that the system doesn't
+        # refuse. must_contain left empty; the classifier's "missing"
+        # verdict absorbs off-target answers.
+        block.append("    must_contain: []")
+    reason = f"user-flagged {payload.kind} at {record.timestamp}"
+    if payload.notes:
+        reason += f" · {payload.notes[:300]}"
+    block.append(f'    notes: "{_yaml_escape(reason)}"')
+
+    if not feedback_path.exists():
+        feedback_path.write_text("cases:\n", encoding="utf-8")
+
+    # Idempotent: don't append duplicate id.
+    existing = feedback_path.read_text(encoding="utf-8")
+    if f"id: {case_id}" in existing:
+        return {"ok": True, "case_id": case_id, "duplicate": True}
+
+    with feedback_path.open("a", encoding="utf-8") as f:
+        f.write("\n".join(block) + "\n")
+
+    return {"ok": True, "case_id": case_id, "duplicate": False}
 
 
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
