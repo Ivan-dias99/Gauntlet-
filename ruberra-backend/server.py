@@ -27,8 +27,10 @@ from config import ALLOWED_ORIGIN, RUBERRA_MOCK, SERVER_HOST, SERVER_PORT
 from models import RuberraQuery, RuberraResponse, SpineSnapshot
 from engine import RuberraEngine
 from memory import failure_memory
+from mcp_adapter import mcp_manager
 from runs import run_store
 from spine import spine_store
+from tools import ToolRegistry
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -61,6 +63,19 @@ async def lifespan(app: FastAPI):
         sys.exit(1)
 
     engine = RuberraEngine()
+
+    # Connect to MCP servers (if any are configured) and plug their tools
+    # into the shared registry used by every AgentOrchestrator.
+    shared_registry = ToolRegistry()
+    await mcp_manager.start(shared_registry)
+    if mcp_manager.tool_count:
+        # Rebuild agent + crew singletons with the enriched registry
+        from agent import AgentOrchestrator
+        import engine as engine_mod
+        engine_mod._agent_singleton = AgentOrchestrator(registry=shared_registry)
+        from crew import CrewOrchestrator
+        engine_mod._crew_singleton = CrewOrchestrator(registry=shared_registry)
+
     logger.info(
         "═══════════════════════════════════════════════════════════\n"
         "  Ruberra V1 — Conservative Intelligence System\n"
@@ -70,12 +85,14 @@ async def lifespan(app: FastAPI):
         "  Self-Consistency: 3x parallel triad\n"
         "  Judge: IMPLACABLE\n"
         "  Failure Memory: PERSISTENT\n"
+        f"  MCP: {mcp_manager.server_count} servers, {mcp_manager.tool_count} tools\n"
         "═══════════════════════════════════════════════════════════"
     )
-    
+
     yield
-    
+
     logger.info("Ruberra shutting down.")
+    await mcp_manager.stop()
 
 
 # ── FastAPI App ─────────────────────────────────────────────────────────────

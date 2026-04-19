@@ -29,10 +29,12 @@ from typing import Any, AsyncIterator, Optional
 
 from anthropic import AsyncAnthropic
 
+from api_caching import build_system_blocks, cacheable_tools
 from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, RUBERRA_MOCK
 from mock_client import MockAsyncAnthropic
-from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
+from doctrine import AGENT_SYSTEM_PROMPT
 from models import RuberraQuery
+from streaming import stream_messages
 from tools import ToolRegistry, ToolResult
 
 logger = logging.getLogger("ruberra.agent")
@@ -208,20 +210,48 @@ class AgentOrchestrator:
 
             yield {"type": "iteration", "n": iteration}
 
-            response = await self._client.messages.create(
+            response = None
+            async for sev in stream_messages(
+                self._client,
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
                 temperature=self._temperature,
-                system=self._system_prompt + build_principles_context(query.principles),
-                tools=self._registry.anthropic_schema(),
+                system=build_system_blocks(self._system_prompt, query.principles),
+                tools=cacheable_tools(self._registry.anthropic_schema()),
                 messages=messages,
-            )
+            ):
+                if sev["type"] == "text_delta":
+                    yield {
+                        "type": "text_delta",
+                        "text": sev["text"],
+                        "iteration": iteration,
+                    }
+                elif sev["type"] == "final":
+                    response = sev["message"]
+
+            if response is None:
+                terminated_early = True
+                termination_reason = "stream ended without a final message"
+                break
+
             total_in += response.usage.input_tokens
             total_out += response.usage.output_tokens
+            # Surface usage whenever available — downstream UIs can show
+            # cache-read/write counts too when present on the response.
+            usage_payload = {
+                "input_tokens": response.usage.input_tokens,
+                "output_tokens": response.usage.output_tokens,
+            }
+            for attr in ("cache_creation_input_tokens", "cache_read_input_tokens"):
+                v = getattr(response.usage, attr, None)
+                if v is not None:
+                    usage_payload[attr] = v
+            yield {"type": "usage", "iteration": iteration, **usage_payload}
+
             stop_reason = response.stop_reason or "end_turn"
 
-            # Surface any interim reasoning text the model emitted before
-            # deciding on tool calls (or as its final answer).
+            # Emit the full assembled text once (back-compat for clients that
+            # consume ``assistant_text``; streaming clients can ignore this).
             for block in response.content:
                 if block.type == "text" and block.text:
                     yield {
@@ -243,7 +273,8 @@ class AgentOrchestrator:
             if not tool_use_blocks:
                 break
 
-            tool_results_content: list[dict[str, Any]] = []
+            # Announce every tool_use before starting any dispatches so the
+            # client sees the parallel fan-out.
             for block in tool_use_blocks:
                 yield {
                     "type": "tool_use",
@@ -253,15 +284,18 @@ class AgentOrchestrator:
                     "iteration": iteration,
                 }
 
+            # Resolve each block concurrently. The loop guard is checked
+            # before dispatch so a repeated tool returns a guard error
+            # without firing I/O.
+            async def _resolve(block: Any) -> tuple[Any, ToolResult]:
                 fingerprint = self._fingerprint(block.name, block.input)
                 repeat_counts[fingerprint] = repeat_counts.get(fingerprint, 0) + 1
                 repeats = repeat_counts[fingerprint]
-
                 if repeats > MAX_REPEATS:
                     logger.warning(
                         "loop guard tripped on %s (repeat %d)", block.name, repeats
                     )
-                    result = ToolResult(
+                    return block, ToolResult(
                         ok=False,
                         content=(
                             f"[agent guard] '{block.name}' called {repeats} "
@@ -269,11 +303,15 @@ class AgentOrchestrator:
                             "produce a final answer."
                         ),
                     )
-                else:
-                    result = await self._registry.dispatch(
-                        block.name, dict(block.input) if block.input else {}
-                    )
+                result = await self._registry.dispatch(
+                    block.name, dict(block.input) if block.input else {}
+                )
+                return block, result
 
+            resolved = await asyncio.gather(*(_resolve(b) for b in tool_use_blocks))
+
+            tool_results_content: list[dict[str, Any]] = []
+            for block, result in resolved:
                 tool_calls.append({
                     "name": block.name,
                     "input": block.input,
@@ -286,7 +324,6 @@ class AgentOrchestrator:
                     "content": [result.to_tool_block()],
                     "is_error": not result.ok,
                 })
-
                 yield {
                     "type": "tool_result",
                     "id": block.id,

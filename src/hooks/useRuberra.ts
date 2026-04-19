@@ -21,7 +21,16 @@ export interface RuberraQueryBody {
 export type AgentEvent =
   | { type: "start" }
   | { type: "iteration"; n: number }
+  | { type: "text_delta"; text: string; iteration: number }
   | { type: "assistant_text"; text: string; iteration: number }
+  | {
+      type: "usage";
+      iteration: number;
+      input_tokens: number;
+      output_tokens: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+    }
   | { type: "tool_use"; id: string; name: string; input: unknown; iteration: number }
   | { type: "tool_result"; id: string; ok: boolean; preview: string; iteration: number }
   | {
@@ -38,15 +47,34 @@ export type AgentEvent =
     }
   | { type: "error"; message: string };
 
-export type CrewRole = "planner" | "researcher" | "coder" | "critic";
+export type CrewSpecialist =
+  | "researcher"
+  | "coder"
+  | "security-reviewer"
+  | "test-writer"
+  | "docs-writer";
+
+export type CrewRole = "planner" | CrewSpecialist | "critic";
 
 export interface CrewPlanStep {
-  role: "researcher" | "coder";
+  role: CrewSpecialist;
   goal: string;
+}
+
+export interface SimilarRun {
+  question: string;
+  route: string;
+  refused: boolean;
+  score: number;
 }
 
 export type CrewEvent =
   | { type: "crew_start"; task: string }
+  | {
+      type: "similar_runs";
+      count: number;
+      matches: SimilarRun[];
+    }
   | {
       type: "plan";
       analysis: string;
@@ -61,6 +89,13 @@ export type CrewEvent =
       tool_calls: number;
       input_tokens: number;
       output_tokens: number;
+    }
+  | {
+      type: "reflection";
+      changed: boolean;
+      reason: string;
+      before: string | null;
+      after: string | null;
     }
   | {
       type: "critic_verdict";

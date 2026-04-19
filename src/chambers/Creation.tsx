@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep } from "../hooks/useRuberra";
+import {
+  useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep, SimilarRun,
+} from "../hooks/useRuberra";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import { Task } from "../spine/types";
@@ -15,6 +17,32 @@ interface LiveTool {
   ok?: boolean;
   preview?: string;
   role?: CrewRole;
+}
+
+interface RoleRun {
+  role: CrewRole;
+  goal: string;
+  toolIds: string[];  // references into liveTools
+  text: string;       // assembled from text_delta / assistant_text
+  tokensIn: number;
+  tokensOut: number;
+  iterations: number;
+  done: boolean;
+  summary: string;
+}
+
+interface ReflectionState {
+  changed: boolean;
+  reason: string;
+  before: string | null;
+  after: string | null;
+}
+
+interface TokenTotals {
+  in: number;
+  out: number;
+  cacheRead: number;
+  cacheWrite: number;
 }
 
 interface DoneSummary {
@@ -33,6 +61,9 @@ interface CrewState {
   rolesRun: CrewRole[];
   verdict: { accept: boolean; issues: string[]; summary: string; refinement: number } | null;
   refinements: number;
+  similar: SimilarRun[];
+  reflection: ReflectionState | null;
+  perRole: Record<string, RoleRun>;
 }
 
 const EMPTY_CREW: CrewState = {
@@ -42,6 +73,9 @@ const EMPTY_CREW: CrewState = {
   rolesRun: [],
   verdict: null,
   refinements: 0,
+  similar: [],
+  reflection: null,
+  perRole: {},
 };
 
 export default function Creation() {
@@ -60,6 +94,8 @@ export default function Creation() {
   const [elapsed, setElapsed] = useState(0);
   const [mode, setMode] = useState<RunMode>("agent");
   const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
+  const [tokens, setTokens] = useState<TokenTotals>({ in: 0, out: 0, cacheRead: 0, cacheWrite: 0 });
+  const [showDiff, setShowDiff] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const outRef = useRef<HTMLDivElement>(null);
 
@@ -78,15 +114,98 @@ export default function Creation() {
     switch (ev.type) {
       case "iteration":
         setIteration(ev.n);
+        if (role) {
+          setCrew((prev) => {
+            const cur = prev.perRole[role];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              perRole: { ...prev.perRole, [role]: { ...cur, iterations: ev.n } },
+            };
+          });
+        }
+        break;
+      case "text_delta":
+        if (role) {
+          setCrew((prev) => {
+            const cur = prev.perRole[role];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              perRole: {
+                ...prev.perRole,
+                [role]: { ...cur, text: cur.text + ev.text },
+              },
+            };
+          });
+        } else {
+          setLiveText((prev) => prev + ev.text);
+        }
         break;
       case "assistant_text":
-        setLiveText((prev) => (prev ? prev + "\n\n" : "") + ev.text);
+        // Fallback when streaming is unavailable — append whole block.
+        if (role) {
+          setCrew((prev) => {
+            const cur = prev.perRole[role];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              perRole: {
+                ...prev.perRole,
+                [role]: {
+                  ...cur,
+                  text: cur.text || ev.text,  // prefer deltas if already streamed
+                },
+              },
+            };
+          });
+        } else if (!liveText) {
+          setLiveText(ev.text);
+        }
+        break;
+      case "usage":
+        setTokens((t) => ({
+          in: t.in + ev.input_tokens,
+          out: t.out + ev.output_tokens,
+          cacheRead: t.cacheRead + (ev.cache_read_input_tokens ?? 0),
+          cacheWrite: t.cacheWrite + (ev.cache_creation_input_tokens ?? 0),
+        }));
+        if (role) {
+          setCrew((prev) => {
+            const cur = prev.perRole[role];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              perRole: {
+                ...prev.perRole,
+                [role]: {
+                  ...cur,
+                  tokensIn: cur.tokensIn + ev.input_tokens,
+                  tokensOut: cur.tokensOut + ev.output_tokens,
+                },
+              },
+            };
+          });
+        }
         break;
       case "tool_use":
         setLiveTools((prev) => [
           ...prev,
           { id: ev.id, name: ev.name, input: ev.input, iteration: ev.iteration, role },
         ]);
+        if (role) {
+          setCrew((prev) => {
+            const cur = prev.perRole[role];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              perRole: {
+                ...prev.perRole,
+                [role]: { ...cur, toolIds: [...cur.toolIds, ev.id] },
+              },
+            };
+          });
+        }
         break;
       case "tool_result":
         setLiveTools((prev) =>
@@ -113,24 +232,73 @@ export default function Creation() {
     switch (ev.type) {
       case "crew_start":
         setCrew({ ...EMPTY_CREW });
+        setTokens({ in: 0, out: 0, cacheRead: 0, cacheWrite: 0 });
+        break;
+      case "similar_runs":
+        setCrew((prev) => ({ ...prev, similar: ev.matches }));
         break;
       case "plan":
         setCrew((prev) => ({ ...prev, analysis: ev.analysis, steps: ev.steps }));
         break;
       case "role_start":
-        setCrew((prev) => ({ ...prev, currentRole: ev.role }));
+        setCrew((prev) => ({
+          ...prev,
+          currentRole: ev.role,
+          perRole: {
+            ...prev.perRole,
+            [ev.role]: prev.perRole[ev.role] ?? {
+              role: ev.role,
+              goal: ev.goal,
+              toolIds: [],
+              text: "",
+              tokensIn: 0,
+              tokensOut: 0,
+              iterations: 0,
+              done: false,
+              summary: "",
+            },
+          },
+        }));
         break;
       case "role_event":
         // Inner agent event from a specialist — reuse the agent renderer
         handleAgentEvent(ev.event, ev.role);
         break;
       case "role_done":
+        setCrew((prev) => {
+          const cur = prev.perRole[ev.role];
+          const updated: RoleRun = cur
+            ? { ...cur, done: true, summary: ev.summary, tokensIn: cur.tokensIn || ev.input_tokens, tokensOut: cur.tokensOut || ev.output_tokens }
+            : {
+                role: ev.role,
+                goal: "",
+                toolIds: [],
+                text: "",
+                tokensIn: ev.input_tokens,
+                tokensOut: ev.output_tokens,
+                iterations: 0,
+                done: true,
+                summary: ev.summary,
+              };
+          return {
+            ...prev,
+            rolesRun: prev.rolesRun.includes(ev.role)
+              ? prev.rolesRun
+              : [...prev.rolesRun, ev.role],
+            currentRole: null,
+            perRole: { ...prev.perRole, [ev.role]: updated },
+          };
+        });
+        break;
+      case "reflection":
         setCrew((prev) => ({
           ...prev,
-          rolesRun: prev.rolesRun.includes(ev.role)
-            ? prev.rolesRun
-            : [...prev.rolesRun, ev.role],
-          currentRole: null,
+          reflection: {
+            changed: ev.changed,
+            reason: ev.reason,
+            before: ev.before,
+            after: ev.after,
+          },
         }));
         break;
       case "critic_verdict":
@@ -176,6 +344,8 @@ export default function Creation() {
     setDone(null);
     setElapsed(0);
     setCrew({ ...EMPTY_CREW });
+    setTokens({ in: 0, out: 0, cacheRead: 0, cacheWrite: 0 });
+    setShowDiff(false);
 
     abortRef.current?.abort();
     const ac = new AbortController();
@@ -287,6 +457,18 @@ export default function Creation() {
               exit {exitCode}
             </span>
           )}
+          {(tokens.in > 0 || tokens.out > 0) && (
+            <span
+              title={`cache: ${tokens.cacheRead} read / ${tokens.cacheWrite} write`}
+              style={{ color: "var(--text-muted)", display: "flex", gap: 6 }}
+            >
+              <span style={{ color: "var(--accent-dim)" }}>↓{formatTokens(tokens.in)}</span>
+              <span style={{ color: "var(--cc-prompt)" }}>↑{formatTokens(tokens.out)}</span>
+              {tokens.cacheRead > 0 && (
+                <span style={{ color: "var(--cc-ok)" }}>⚡{formatTokens(tokens.cacheRead)}</span>
+              )}
+            </span>
+          )}
           {tasks.length > 0 && (
             <span style={{ color: "var(--text-muted)" }}>
               {doneTasks.length}/{tasks.length}
@@ -379,7 +561,12 @@ export default function Creation() {
         )}
 
         {mode === "crew" && (crew.steps.length > 0 || crew.verdict || pending) && (
-          <CrewCard crew={crew} pending={pending} />
+          <CrewCard
+            crew={crew}
+            pending={pending}
+            liveTools={liveTools}
+            onOpenDiff={() => setShowDiff(true)}
+          />
         )}
 
         {(pending || liveTools.length > 0 || liveText || done) && (
@@ -559,6 +746,13 @@ export default function Creation() {
           </button>
         )}
       </div>
+      {showDiff && crew.reflection?.before && crew.reflection.after && (
+        <DiffView
+          before={crew.reflection.before}
+          after={crew.reflection.after}
+          onClose={() => setShowDiff(false)}
+        />
+      )}
     </div>
   );
 }
@@ -567,15 +761,31 @@ const ROLE_COLOR: Record<CrewRole, string> = {
   planner: "var(--accent)",
   researcher: "var(--cc-info)",
   coder: "var(--cc-prompt)",
+  "security-reviewer": "var(--cc-err)",
+  "test-writer": "var(--cc-ok)",
+  "docs-writer": "var(--accent-dim)",
   critic: "var(--cc-warn)",
 };
 
-function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
+function formatTokens(n: number): string {
+  if (n < 1000) return `${n}`;
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
+  return `${(n / 1_000_000).toFixed(1)}M`;
+}
+
+function CrewCard({
+  crew, pending, liveTools, onOpenDiff,
+}: {
+  crew: CrewState;
+  pending: boolean;
+  liveTools: LiveTool[];
+  onOpenDiff: () => void;
+}) {
   return (
     <div
       className="toolRise"
       style={{
-        maxWidth: 820,
+        maxWidth: 860,
         marginBottom: 14,
         background: "var(--bg-elevated)",
         border: "1px solid var(--border-subtle)",
@@ -617,29 +827,160 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
         </div>
       )}
 
+      {crew.similar.length > 0 && (
+        <div style={{
+          marginBottom: 12,
+          padding: "8px 10px",
+          background: "var(--bg-input)",
+          border: "1px dashed var(--border-subtle)",
+          borderRadius: 8,
+          fontSize: 10,
+          color: "var(--text-ghost)",
+        }}>
+          <div style={{ letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>
+            memory · {crew.similar.length} similar run{crew.similar.length === 1 ? "" : "s"}
+          </div>
+          {crew.similar.slice(0, 3).map((s, i) => (
+            <div key={i} style={{
+              display: "grid",
+              gridTemplateColumns: "40px 50px 1fr",
+              gap: 6,
+              padding: "2px 0",
+              color: s.refused ? "var(--terminal-warn)" : "var(--text-muted)",
+            }}>
+              <span style={{ color: "var(--cc-info)" }}>{s.score.toFixed(2)}</span>
+              <span style={{ color: "var(--text-ghost)" }}>{s.route}</span>
+              <span style={{
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {s.refused ? "✗ " : ""}{s.question}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {crew.steps.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
           {crew.steps.map((s, i) => {
             const ran = crew.rolesRun.includes(s.role);
             const active = crew.currentRole === s.role;
             const color = ROLE_COLOR[s.role];
+            const roleRun = crew.perRole[s.role];
+            const roleTools = roleRun
+              ? liveTools.filter((t) => roleRun.toolIds.includes(t.id))
+              : [];
             return (
-              <div key={i} style={{
-                display: "grid",
-                gridTemplateColumns: "14px 90px 1fr",
-                gap: 10,
-                alignItems: "baseline",
-                fontSize: 11,
-                opacity: ran || active ? 1 : 0.55,
-              }}>
-                <span style={{ color }}>{active ? "◐" : ran ? "●" : "○"}</span>
-                <span style={{ color, letterSpacing: ".04em" }}>{s.role}</span>
-                <span style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                  {s.goal}
-                </span>
+              <div key={i}>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "14px 120px 1fr auto",
+                  gap: 10,
+                  alignItems: "baseline",
+                  fontSize: 11,
+                  opacity: ran || active ? 1 : 0.55,
+                }}>
+                  <span style={{ color }}>{active ? "◐" : ran ? "●" : "○"}</span>
+                  <span style={{ color, letterSpacing: ".04em" }}>{s.role}</span>
+                  <span style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                    {s.goal}
+                  </span>
+                  {roleRun && (roleRun.tokensIn > 0 || roleRun.tokensOut > 0) && (
+                    <span style={{ color: "var(--text-ghost)", fontSize: 9 }}>
+                      ↓{formatTokens(roleRun.tokensIn)}·↑{formatTokens(roleRun.tokensOut)}
+                    </span>
+                  )}
+                </div>
+                {roleTools.length > 0 && (
+                  <div style={{
+                    marginLeft: 24,
+                    marginTop: 4,
+                    marginBottom: 4,
+                    paddingLeft: 10,
+                    borderLeft: `1px solid ${color}`,
+                    opacity: 0.85,
+                  }}>
+                    {roleTools.map((t) => {
+                      const phase: ToolPhase =
+                        t.ok === undefined ? "running" : t.ok ? "ok" : "err";
+                      return (
+                        <ToolLine
+                          key={t.id}
+                          name={t.name}
+                          input={t.input}
+                          phase={phase}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+                {roleRun && roleRun.text && active && (
+                  <div style={{
+                    marginLeft: 24,
+                    marginTop: 4,
+                    fontSize: 11,
+                    color: "var(--cc-fg)",
+                    fontFamily: "var(--mono)",
+                    whiteSpace: "pre-wrap",
+                    borderLeft: `1px solid ${color}`,
+                    paddingLeft: 10,
+                    maxHeight: 120,
+                    overflow: "auto",
+                  }}>
+                    {roleRun.text.slice(-400)}
+                  </div>
+                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {crew.reflection && (
+        <div style={{
+          marginTop: 10,
+          paddingTop: 10,
+          borderTop: "1px dashed var(--border-subtle)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          fontSize: 10,
+          letterSpacing: 1.5,
+          textTransform: "uppercase",
+        }}>
+          <span style={{
+            color: crew.reflection.changed ? "var(--cc-warn)" : "var(--cc-ok)",
+          }}>
+            {crew.reflection.changed ? "⟲ reflection revised" : "⟳ reflection · no change"}
+          </span>
+          <span style={{
+            color: "var(--text-muted)",
+            textTransform: "none",
+            letterSpacing: 0,
+            fontSize: 11,
+            fontFamily: "var(--sans)",
+            flex: 1,
+          }}>
+            {crew.reflection.reason}
+          </span>
+          {crew.reflection.changed && crew.reflection.before && crew.reflection.after && (
+            <button
+              onClick={onOpenDiff}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--border-subtle)",
+                color: "var(--accent)",
+                fontFamily: "var(--mono)",
+                fontSize: 9,
+                letterSpacing: 1.5,
+                padding: "3px 8px",
+                borderRadius: 999,
+                cursor: "pointer",
+              }}
+            >
+              diff
+            </button>
+          )}
         </div>
       )}
 
@@ -682,6 +1023,150 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function DiffView({
+  before, after, onClose,
+}: { before: string; after: string; onClose: () => void }) {
+  const beforeLines = before.split("\n");
+  const afterLines = after.split("\n");
+  const beforeSet = new Set(beforeLines);
+  const afterSet = new Set(afterLines);
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 50,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(1080px, 92vw)",
+          height: "min(640px, 80vh)",
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: 14,
+          padding: 16,
+          display: "grid",
+          gridTemplateRows: "auto 1fr",
+          gap: 12,
+          fontFamily: "var(--mono)",
+        }}
+      >
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          fontSize: 11,
+          letterSpacing: 2,
+          textTransform: "uppercase",
+          color: "var(--text-muted)",
+        }}>
+          <span>reflection · coder diff</span>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "1px solid var(--border-subtle)",
+              color: "var(--text-secondary)",
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              padding: "4px 10px",
+              borderRadius: 999,
+              cursor: "pointer",
+            }}
+          >
+            close
+          </button>
+        </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 12,
+          overflow: "hidden",
+        }}>
+          <DiffColumn
+            label="before"
+            lines={beforeLines}
+            otherSet={afterSet}
+            sign="-"
+            color="var(--cc-err)"
+          />
+          <DiffColumn
+            label="after"
+            lines={afterLines}
+            otherSet={beforeSet}
+            sign="+"
+            color="var(--cc-ok)"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiffColumn({
+  label, lines, otherSet, sign, color,
+}: {
+  label: string;
+  lines: string[];
+  otherSet: Set<string>;
+  sign: string;
+  color: string;
+}) {
+  return (
+    <div style={{
+      background: "var(--bg-input)",
+      border: "1px solid var(--border-subtle)",
+      borderRadius: 8,
+      overflow: "auto",
+      fontSize: 11,
+      lineHeight: 1.55,
+    }}>
+      <div style={{
+        padding: "6px 10px",
+        fontSize: 9,
+        letterSpacing: 2,
+        textTransform: "uppercase",
+        color: "var(--text-ghost)",
+        borderBottom: "1px solid var(--border-subtle)",
+        position: "sticky",
+        top: 0,
+        background: "var(--bg-input)",
+      }}>
+        {label}
+      </div>
+      <pre style={{
+        margin: 0,
+        padding: "8px 10px",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+      }}>
+        {lines.map((ln, i) => {
+          const diff = !otherSet.has(ln);
+          return (
+            <div key={i} style={{
+              display: "grid",
+              gridTemplateColumns: "14px 1fr",
+              gap: 6,
+              background: diff ? "color-mix(in oklab, currentColor 8%, transparent)" : "transparent",
+              color: diff ? color : "var(--text-secondary)",
+            }}>
+              <span style={{ color, opacity: diff ? 1 : 0.25 }}>{diff ? sign : " "}</span>
+              <span>{ln || "\u00A0"}</span>
+            </div>
+          );
+        })}
+      </pre>
     </div>
   );
 }
