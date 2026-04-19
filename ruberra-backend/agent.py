@@ -25,13 +25,16 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, AsyncIterator, Optional
 
 from anthropic import AsyncAnthropic
 
-from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS
-from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
+from api_caching import build_system_blocks, cacheable_tools
+from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, RUBERRA_MOCK
+from mock_client import MockAsyncAnthropic
+from doctrine import AGENT_SYSTEM_PROMPT
 from models import RuberraQuery
+from streaming import stream_messages
 from tools import ToolRegistry, ToolResult
 
 logger = logging.getLogger("ruberra.agent")
@@ -105,13 +108,27 @@ class AgentOrchestrator:
         self,
         registry: Optional[ToolRegistry] = None,
         client: Optional[AsyncAnthropic] = None,
+        system_prompt: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_iterations: Optional[int] = None,
+        label: str = "agent",
     ) -> None:
-        if not ANTHROPIC_API_KEY:
-            raise RuntimeError("ANTHROPIC_API_KEY not set")
-        self._client = client or AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        if client is not None:
+            self._client = client
+        elif RUBERRA_MOCK:
+            self._client = MockAsyncAnthropic()
+            logger.warning("AgentOrchestrator initialized in MOCK mode")
+        else:
+            if not ANTHROPIC_API_KEY:
+                raise RuntimeError("ANTHROPIC_API_KEY not set")
+            self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         self._registry = registry or ToolRegistry()
+        self._system_prompt = system_prompt or AGENT_SYSTEM_PROMPT
+        self._temperature = AGENT_TEMPERATURE if temperature is None else temperature
+        self._max_iterations = max_iterations or MAX_AGENT_ITERATIONS
+        self._label = label
         logger.info(
-            "AgentOrchestrator ready (tools=%s)", self._registry.names()
+            "AgentOrchestrator[%s] ready (tools=%s)", self._label, self._registry.names()
         )
 
     # ── Routing ────────────────────────────────────────────────────────────
@@ -131,7 +148,39 @@ class AgentOrchestrator:
     # ── Agent Loop ─────────────────────────────────────────────────────────
 
     async def run(self, query: RuberraQuery) -> AgentResponse:
-        """Execute the agent loop until the model stops or budgets are hit."""
+        """Non-streaming wrapper around ``run_streaming`` — collects the final
+        ``done`` event and builds an AgentResponse."""
+        final: Optional[dict[str, Any]] = None
+        async for event in self.run_streaming(query):
+            if event["type"] == "done":
+                final = event
+        if not final:
+            raise RuntimeError("agent stream ended without a done event")
+        return AgentResponse(
+            answer=final["answer"],
+            tool_calls=final["tool_calls"],
+            iterations=final["iterations"],
+            stop_reason=final["stop_reason"],
+            input_tokens=final["input_tokens"],
+            output_tokens=final["output_tokens"],
+            processing_time_ms=final["processing_time_ms"],
+            terminated_early=final["terminated_early"],
+            termination_reason=final["termination_reason"],
+        )
+
+    async def run_streaming(
+        self, query: RuberraQuery
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Execute the agent loop, yielding coarse-grained progress events.
+
+        Event shapes:
+          {"type": "start"}
+          {"type": "iteration", "n": int}
+          {"type": "assistant_text", "text": str, "iteration": int}
+          {"type": "tool_use", "id": str, "name": str, "input": ..., "iteration": int}
+          {"type": "tool_result", "id": str, "ok": bool, "preview": str, "iteration": int}
+          {"type": "done", ...full AgentResponse dict...}
+        """
         started = time.monotonic()
 
         messages: list[dict[str, Any]] = [
@@ -145,7 +194,9 @@ class AgentOrchestrator:
         stop_reason = "end_turn"
         iterations = 0
 
-        for iteration in range(1, MAX_AGENT_ITERATIONS + 1):
+        yield {"type": "start"}
+
+        for iteration in range(1, self._max_iterations + 1):
             iterations = iteration
 
             if time.monotonic() - started > AGENT_WALL_CLOCK_S:
@@ -157,17 +208,57 @@ class AgentOrchestrator:
                 termination_reason = f"tool-call budget exceeded ({MAX_TOOL_CALLS})"
                 break
 
-            response = await self._client.messages.create(
+            yield {"type": "iteration", "n": iteration}
+
+            response = None
+            async for sev in stream_messages(
+                self._client,
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
-                temperature=AGENT_TEMPERATURE,
-                system=AGENT_SYSTEM_PROMPT + build_principles_context(query.principles),
-                tools=self._registry.anthropic_schema(),
+                temperature=self._temperature,
+                system=build_system_blocks(self._system_prompt, query.principles),
+                tools=cacheable_tools(self._registry.anthropic_schema()),
                 messages=messages,
-            )
+            ):
+                if sev["type"] == "text_delta":
+                    yield {
+                        "type": "text_delta",
+                        "text": sev["text"],
+                        "iteration": iteration,
+                    }
+                elif sev["type"] == "final":
+                    response = sev["message"]
+
+            if response is None:
+                terminated_early = True
+                termination_reason = "stream ended without a final message"
+                break
+
             total_in += response.usage.input_tokens
             total_out += response.usage.output_tokens
+            # Surface usage whenever available — downstream UIs can show
+            # cache-read/write counts too when present on the response.
+            usage_payload = {
+                "input_tokens": response.usage.input_tokens,
+                "output_tokens": response.usage.output_tokens,
+            }
+            for attr in ("cache_creation_input_tokens", "cache_read_input_tokens"):
+                v = getattr(response.usage, attr, None)
+                if v is not None:
+                    usage_payload[attr] = v
+            yield {"type": "usage", "iteration": iteration, **usage_payload}
+
             stop_reason = response.stop_reason or "end_turn"
+
+            # Emit the full assembled text once (back-compat for clients that
+            # consume ``assistant_text``; streaming clients can ignore this).
+            for block in response.content:
+                if block.type == "text" and block.text:
+                    yield {
+                        "type": "assistant_text",
+                        "text": block.text,
+                        "iteration": iteration,
+                    }
 
             # Append the assistant turn verbatim (required by tool-use contract)
             messages.append({
@@ -182,17 +273,29 @@ class AgentOrchestrator:
             if not tool_use_blocks:
                 break
 
-            tool_results_content: list[dict[str, Any]] = []
+            # Announce every tool_use before starting any dispatches so the
+            # client sees the parallel fan-out.
             for block in tool_use_blocks:
+                yield {
+                    "type": "tool_use",
+                    "id": block.id,
+                    "name": block.name,
+                    "input": block.input,
+                    "iteration": iteration,
+                }
+
+            # Resolve each block concurrently. The loop guard is checked
+            # before dispatch so a repeated tool returns a guard error
+            # without firing I/O.
+            async def _resolve(block: Any) -> tuple[Any, ToolResult]:
                 fingerprint = self._fingerprint(block.name, block.input)
                 repeat_counts[fingerprint] = repeat_counts.get(fingerprint, 0) + 1
                 repeats = repeat_counts[fingerprint]
-
                 if repeats > MAX_REPEATS:
                     logger.warning(
                         "loop guard tripped on %s (repeat %d)", block.name, repeats
                     )
-                    result = ToolResult(
+                    return block, ToolResult(
                         ok=False,
                         content=(
                             f"[agent guard] '{block.name}' called {repeats} "
@@ -200,11 +303,15 @@ class AgentOrchestrator:
                             "produce a final answer."
                         ),
                     )
-                else:
-                    result = await self._registry.dispatch(
-                        block.name, dict(block.input) if block.input else {}
-                    )
+                result = await self._registry.dispatch(
+                    block.name, dict(block.input) if block.input else {}
+                )
+                return block, result
 
+            resolved = await asyncio.gather(*(_resolve(b) for b in tool_use_blocks))
+
+            tool_results_content: list[dict[str, Any]] = []
+            for block, result in resolved:
                 tool_calls.append({
                     "name": block.name,
                     "input": block.input,
@@ -217,17 +324,23 @@ class AgentOrchestrator:
                     "content": [result.to_tool_block()],
                     "is_error": not result.ok,
                 })
+                yield {
+                    "type": "tool_result",
+                    "id": block.id,
+                    "ok": result.ok,
+                    "preview": result.content[:300],
+                    "iteration": iteration,
+                }
 
             messages.append({"role": "user", "content": tool_results_content})
 
         else:
             # loop completed without `break` → iteration cap hit
             terminated_early = True
-            termination_reason = f"iteration cap reached ({MAX_AGENT_ITERATIONS})"
+            termination_reason = f"iteration cap reached ({self._max_iterations})"
 
         answer = self._extract_text(messages[-1]) if messages else ""
         if not answer:
-            # Fall back to the last assistant text block anywhere in the trace
             for msg in reversed(messages):
                 if msg["role"] == "assistant":
                     answer = self._extract_text(msg)
@@ -236,17 +349,18 @@ class AgentOrchestrator:
         if not answer:
             answer = "(agent produced no final text)"
 
-        return AgentResponse(
-            answer=answer,
-            tool_calls=tool_calls,
-            iterations=iterations,
-            stop_reason=stop_reason,
-            input_tokens=total_in,
-            output_tokens=total_out,
-            processing_time_ms=int((time.monotonic() - started) * 1000),
-            terminated_early=terminated_early,
-            termination_reason=termination_reason,
-        )
+        yield {
+            "type": "done",
+            "answer": answer,
+            "tool_calls": tool_calls,
+            "iterations": iterations,
+            "stop_reason": stop_reason,
+            "input_tokens": total_in,
+            "output_tokens": total_out,
+            "processing_time_ms": int((time.monotonic() - started) * 1000),
+            "terminated_early": terminated_early,
+            "termination_reason": termination_reason,
+        }
 
     # ── Helpers ────────────────────────────────────────────────────────────
 

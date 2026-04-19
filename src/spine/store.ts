@@ -30,6 +30,10 @@ function onActive(state: SpineState, fn: (m: Mission) => Mission): SpineState {
 
 const EMPTY: SpineState = { missions: [], activeMissionId: null, principles: [] };
 
+export function emptyState(): SpineState {
+  return { missions: [], activeMissionId: null, principles: [] };
+}
+
 function normalizeMission(m: unknown): Mission | null {
   if (!m || typeof m !== "object") return null;
   const r = m as Record<string, unknown>;

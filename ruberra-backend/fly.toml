@@ -1,0 +1,35 @@
+# Fly.io deployment config for the Ruberra FastAPI backend.
+# Usage:
+#   cd ruberra-backend
+#   fly launch --no-deploy          # first time, accept defaults or override
+#   fly secrets set ANTHROPIC_API_KEY=sk-ant-...
+#   fly deploy
+#
+# After deploy, copy the URL (https://<app>.fly.dev) into Vercel →
+# Settings → Environment Variables → RUBERRA_BACKEND_URL, then redeploy
+# the frontend.
+
+app = "ruberra-backend"
+primary_region = "cdg"
+
+[build]
+
+[env]
+  RUBERRA_HOST = "0.0.0.0"
+  RUBERRA_ORIGIN = "https://aiinterfaceshelldesign.vercel.app"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1
+
+[[mounts]]
+  source = "ruberra_data"
+  destination = "/app/data"

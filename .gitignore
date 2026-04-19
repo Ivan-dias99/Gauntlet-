@@ -25,5 +25,5 @@ __pycache__/
 .claude/memory.log
 **/.claude/memory.log
 
-# Rubeira backend runtime data (failure memory, runs log, spine snapshot)
-rubeira-backend/data/
+# Ruberra backend runtime data (failure memory, runs log, spine snapshot)
+ruberra-backend/data/

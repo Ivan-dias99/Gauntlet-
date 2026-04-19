@@ -1,33 +1,334 @@
-import { useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
-import { useRuberra } from "../hooks/useRuberra";
+import {
+  useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep, SimilarRun,
+} from "../hooks/useRuberra";
+import { useTweaks } from "../tweaks/TweaksContext";
+import { useCopy } from "../i18n/copy";
 import { Task } from "../spine/types";
 
-interface ToolCall {
+type RunMode = "agent" | "crew";
+
+interface LiveTool {
+  id: string;
   name: string;
   input?: unknown;
-  ok: boolean;
-  content_preview?: string;
+  iteration: number;
+  ok?: boolean;
+  preview?: string;
+  role?: CrewRole;
 }
 
-interface AgentResult {
-  mode?: string;
-  answer?: string;
-  tool_calls?: ToolCall[];
-  iterations?: number;
-  stop_reason?: string;
-  terminated_early?: boolean;
-  termination_reason?: string | null;
-  processing_time_ms?: number;
+interface RoleRun {
+  role: CrewRole;
+  goal: string;
+  toolIds: string[];  // references into liveTools
+  text: string;       // assembled from text_delta / assistant_text
+  tokensIn: number;
+  tokensOut: number;
+  iterations: number;
+  done: boolean;
+  summary: string;
 }
+
+interface ReflectionState {
+  changed: boolean;
+  reason: string;
+  before: string | null;
+  after: string | null;
+}
+
+interface TokenTotals {
+  in: number;
+  out: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+interface DoneSummary {
+  answer: string;
+  iterations: number;
+  tool_count: number;
+  processing_time_ms: number;
+  terminated_early: boolean;
+  termination_reason: string | null;
+}
+
+interface CrewState {
+  analysis: string;
+  steps: CrewPlanStep[];
+  currentRole: CrewRole | null;
+  rolesRun: CrewRole[];
+  verdict: { accept: boolean; issues: string[]; summary: string; refinement: number } | null;
+  refinements: number;
+  similar: SimilarRun[];
+  reflection: ReflectionState | null;
+  perRole: Record<string, RoleRun>;
+}
+
+const EMPTY_CREW: CrewState = {
+  analysis: "",
+  steps: [],
+  currentRole: null,
+  rolesRun: [],
+  verdict: null,
+  refinements: 0,
+  similar: [],
+  reflection: null,
+  perRole: {},
+};
 
 export default function Creation() {
   const { activeMission, addTask, completeTask, principles } = useSpine();
-  const { call, pending } = useRuberra();
+  const { streamDev, streamCrew, pending } = useRuberra();
+  const { values } = useTweaks();
+  const copy = useCopy();
+  const layout = values.creationLayout;
   const [input, setInput] = useState("");
-  const [result, setResult] = useState<AgentResult | null>(null);
   const [lastTask, setLastTask] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [iteration, setIteration] = useState(0);
+  const [liveTools, setLiveTools] = useState<LiveTool[]>([]);
+  const [liveText, setLiveText] = useState("");
+  const [done, setDone] = useState<DoneSummary | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [mode, setMode] = useState<RunMode>("agent");
+  const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
+  const [tokens, setTokens] = useState<TokenTotals>({ in: 0, out: 0, cacheRead: 0, cacheWrite: 0 });
+  const [showDiff, setShowDiff] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const outRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pending) return;
+    const start = Date.now();
+    const id = setInterval(() => setElapsed((Date.now() - start) / 1000), 100);
+    return () => clearInterval(id);
+  }, [pending]);
+
+  useEffect(() => {
+    outRef.current?.scrollTo({ top: 999999, behavior: "smooth" });
+  }, [liveText, liveTools.length, done]);
+
+  function handleAgentEvent(ev: AgentEvent, role?: CrewRole) {
+    switch (ev.type) {
+      case "iteration":
+        setIteration(ev.n);
+        if (role) {
+          setCrew((prev) => {
+            const cur = prev.perRole[role];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              perRole: { ...prev.perRole, [role]: { ...cur, iterations: ev.n } },
+            };
+          });
+        }
+        break;
+      case "text_delta":
+        if (role) {
+          setCrew((prev) => {
+            const cur = prev.perRole[role];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              perRole: {
+                ...prev.perRole,
+                [role]: { ...cur, text: cur.text + ev.text },
+              },
+            };
+          });
+        } else {
+          setLiveText((prev) => prev + ev.text);
+        }
+        break;
+      case "assistant_text":
+        // Fallback when streaming is unavailable — append whole block.
+        if (role) {
+          setCrew((prev) => {
+            const cur = prev.perRole[role];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              perRole: {
+                ...prev.perRole,
+                [role]: {
+                  ...cur,
+                  text: cur.text || ev.text,  // prefer deltas if already streamed
+                },
+              },
+            };
+          });
+        } else if (!liveText) {
+          setLiveText(ev.text);
+        }
+        break;
+      case "usage":
+        setTokens((t) => ({
+          in: t.in + ev.input_tokens,
+          out: t.out + ev.output_tokens,
+          cacheRead: t.cacheRead + (ev.cache_read_input_tokens ?? 0),
+          cacheWrite: t.cacheWrite + (ev.cache_creation_input_tokens ?? 0),
+        }));
+        if (role) {
+          setCrew((prev) => {
+            const cur = prev.perRole[role];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              perRole: {
+                ...prev.perRole,
+                [role]: {
+                  ...cur,
+                  tokensIn: cur.tokensIn + ev.input_tokens,
+                  tokensOut: cur.tokensOut + ev.output_tokens,
+                },
+              },
+            };
+          });
+        }
+        break;
+      case "tool_use":
+        setLiveTools((prev) => [
+          ...prev,
+          { id: ev.id, name: ev.name, input: ev.input, iteration: ev.iteration, role },
+        ]);
+        if (role) {
+          setCrew((prev) => {
+            const cur = prev.perRole[role];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              perRole: {
+                ...prev.perRole,
+                [role]: { ...cur, toolIds: [...cur.toolIds, ev.id] },
+              },
+            };
+          });
+        }
+        break;
+      case "tool_result":
+        setLiveTools((prev) =>
+          prev.map((t) => (t.id === ev.id ? { ...t, ok: ev.ok, preview: ev.preview } : t)),
+        );
+        break;
+      case "done":
+        setDone({
+          answer: ev.answer,
+          iterations: ev.iterations,
+          tool_count: ev.tool_calls.length,
+          processing_time_ms: ev.processing_time_ms,
+          terminated_early: ev.terminated_early,
+          termination_reason: ev.termination_reason,
+        });
+        break;
+      case "error":
+        setErr(ev.message);
+        break;
+    }
+  }
+
+  function handleCrewEvent(ev: CrewEvent) {
+    switch (ev.type) {
+      case "crew_start":
+        setCrew({ ...EMPTY_CREW });
+        setTokens({ in: 0, out: 0, cacheRead: 0, cacheWrite: 0 });
+        break;
+      case "similar_runs":
+        setCrew((prev) => ({ ...prev, similar: ev.matches }));
+        break;
+      case "plan":
+        setCrew((prev) => ({ ...prev, analysis: ev.analysis, steps: ev.steps }));
+        break;
+      case "role_start":
+        setCrew((prev) => ({
+          ...prev,
+          currentRole: ev.role,
+          perRole: {
+            ...prev.perRole,
+            [ev.role]: prev.perRole[ev.role] ?? {
+              role: ev.role,
+              goal: ev.goal,
+              toolIds: [],
+              text: "",
+              tokensIn: 0,
+              tokensOut: 0,
+              iterations: 0,
+              done: false,
+              summary: "",
+            },
+          },
+        }));
+        break;
+      case "role_event":
+        // Inner agent event from a specialist — reuse the agent renderer
+        handleAgentEvent(ev.event, ev.role);
+        break;
+      case "role_done":
+        setCrew((prev) => {
+          const cur = prev.perRole[ev.role];
+          const updated: RoleRun = cur
+            ? { ...cur, done: true, summary: ev.summary, tokensIn: cur.tokensIn || ev.input_tokens, tokensOut: cur.tokensOut || ev.output_tokens }
+            : {
+                role: ev.role,
+                goal: "",
+                toolIds: [],
+                text: "",
+                tokensIn: ev.input_tokens,
+                tokensOut: ev.output_tokens,
+                iterations: 0,
+                done: true,
+                summary: ev.summary,
+              };
+          return {
+            ...prev,
+            rolesRun: prev.rolesRun.includes(ev.role)
+              ? prev.rolesRun
+              : [...prev.rolesRun, ev.role],
+            currentRole: null,
+            perRole: { ...prev.perRole, [ev.role]: updated },
+          };
+        });
+        break;
+      case "reflection":
+        setCrew((prev) => ({
+          ...prev,
+          reflection: {
+            changed: ev.changed,
+            reason: ev.reason,
+            before: ev.before,
+            after: ev.after,
+          },
+        }));
+        break;
+      case "critic_verdict":
+        setCrew((prev) => ({
+          ...prev,
+          verdict: {
+            accept: ev.accept,
+            issues: ev.issues,
+            summary: ev.summary,
+            refinement: ev.refinement,
+          },
+          refinements: ev.refinement,
+        }));
+        break;
+      case "done":
+        setDone({
+          answer: ev.answer,
+          iterations: ev.refinements,
+          tool_count: ev.roles_run.length,
+          processing_time_ms: ev.processing_time_ms,
+          terminated_early: !ev.accepted,
+          termination_reason: ev.accepted ? null : "critic rejected after refinement",
+        });
+        setCrew((prev) => ({ ...prev, rolesRun: ev.roles_run, refinements: ev.refinements }));
+        break;
+      case "error":
+        setErr(ev.message);
+        break;
+    }
+  }
 
   async function submit() {
     const v = input.trim();
@@ -36,182 +337,934 @@ export default function Creation() {
     addTask(v);
     setInput("");
     setLastTask(v);
-    setResult(null);
     setErr(null);
+    setIteration(0);
+    setLiveTools([]);
+    setLiveText("");
+    setDone(null);
+    setElapsed(0);
+    setCrew({ ...EMPTY_CREW });
+    setTokens({ in: 0, out: 0, cacheRead: 0, cacheWrite: 0 });
+    setShowDiff(false);
 
-    try {
-      const r = (await call("dev", {
-        question: `Task declared: ${v}`,
-        context: activeMission?.title,
-        mission_id: activeMission?.id,
-        principles: principles.length ? principles.map(p => p.text) : undefined,
-      })) as AgentResult;
-      setResult(r);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    const body = {
+      question: mode === "crew" ? v : `Task declared: ${v}`,
+      context: activeMission?.title,
+      mission_id: activeMission?.id,
+      principles: principles.length ? principles.map((p) => p.text) : undefined,
+    };
+
+    if (mode === "crew") {
+      await streamCrew(body, handleCrewEvent, ac.signal);
+    } else {
+      await streamDev(body, (ev: AgentEvent) => handleAgentEvent(ev), ac.signal);
     }
   }
 
   const tasks = activeMission?.tasks ?? [];
-  const doneTasks = tasks.filter(t => t.done);
-  const pendingTasks = tasks.filter(t => !t.done);
+  const doneTasks = tasks.filter((t) => t.done);
+  const pendingTasks = tasks.filter((t) => !t.done);
+  const exitCode = done ? 0 : err ? 1 : null;
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
-
-      <div style={{
-        padding: "18px 40px 14px",
-        borderBottom: "1px solid var(--border-subtle)",
-        display: "flex", alignItems: "baseline", gap: 12,
-      }}>
-        <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)" }}>
+      <div
+        style={{
+          padding: "20px 40px 16px",
+          borderBottom: "1px solid var(--border-subtle)",
+          display: "flex",
+          alignItems: "baseline",
+          gap: 12,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            letterSpacing: 3,
+            textTransform: "uppercase",
+            color: "var(--text-ghost)",
+            fontFamily: "var(--mono)",
+          }}
+        >
           Creation
         </span>
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
           Construção · Execução · Consequência
         </span>
-        {tasks.length > 0 && (
-          <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
-            {doneTasks.length}/{tasks.length}
-          </span>
-        )}
+        <div
+          role="tablist"
+          aria-label="Execution mode"
+          style={{
+            display: "flex",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: 999,
+            overflow: "hidden",
+            marginLeft: 12,
+          }}
+        >
+          {(["agent", "crew"] as const).map((m) => (
+            <button
+              key={m}
+              role="tab"
+              aria-selected={mode === m}
+              disabled={pending}
+              onClick={() => setMode(m)}
+              style={{
+                background: mode === m ? "var(--accent-glow)" : "transparent",
+                border: "none",
+                color: mode === m ? "var(--accent)" : "var(--text-ghost)",
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                padding: "5px 12px",
+                cursor: pending ? "not-allowed" : "pointer",
+                transition: "all .15s var(--ease-swift)",
+                opacity: pending && mode !== m ? 0.4 : 1,
+              }}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+          }}
+        >
+          {pending && (
+            <span style={{ color: "var(--cc-info)", display: "flex", alignItems: "center", gap: 6 }}>
+              <span
+                className="breathe"
+                style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-info)" }}
+              />
+              {elapsed.toFixed(1)}s
+            </span>
+          )}
+          {exitCode !== null && !pending && (
+            <span style={{ color: exitCode === 0 ? "var(--cc-ok)" : "var(--cc-err)" }}>
+              exit {exitCode}
+            </span>
+          )}
+          {(tokens.in > 0 || tokens.out > 0) && (
+            <span
+              title={`cache: ${tokens.cacheRead} read / ${tokens.cacheWrite} write`}
+              style={{ color: "var(--text-muted)", display: "flex", gap: 6 }}
+            >
+              <span style={{ color: "var(--accent-dim)" }}>↓{formatTokens(tokens.in)}</span>
+              <span style={{ color: "var(--cc-prompt)" }}>↑{formatTokens(tokens.out)}</span>
+              {tokens.cacheRead > 0 && (
+                <span style={{ color: "var(--cc-ok)" }}>⚡{formatTokens(tokens.cacheRead)}</span>
+              )}
+            </span>
+          )}
+          {tasks.length > 0 && (
+            <span style={{ color: "var(--text-muted)" }}>
+              {doneTasks.length}/{tasks.length}
+            </span>
+          )}
+        </div>
       </div>
 
-      <div style={{ flex: 1, overflow: "auto", padding: "20px 40px", display: "flex", flexDirection: "column", gap: 0 }}>
-
-        {tasks.length === 0 && !result && !pending && !err && (
-          <div style={{ fontSize: 12, color: "var(--text-ghost)", fontFamily: "var(--mono)", marginTop: 8 }}>
-            $ _
+      <div
+        ref={outRef}
+        style={{
+          flex: 1,
+          overflow: "auto",
+          padding: "24px clamp(20px, 5vw, 64px)",
+        }}
+      >
+        {tasks.length === 0 && liveTools.length === 0 && !liveText && !pending && !err && (
+          <div
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 13,
+              color: "var(--cc-dim)",
+              marginTop: 16,
+            }}
+          >
+            <span style={{ color: "var(--cc-ok)" }}>ruberra@local</span>
+            <span style={{ color: "var(--cc-dim)" }}>:</span>
+            <span style={{ color: "var(--cc-path)" }}>~/mission</span>
+            <span style={{ color: "var(--cc-dim)" }}>$</span>
+            <span className="cc-cursor" />
+            <div
+              style={{
+                marginTop: 18,
+                fontFamily: "'Fraunces', Georgia, serif",
+                fontStyle: "italic",
+                fontSize: 18,
+                color: "var(--text-muted)",
+              }}
+            >
+              {values.lang === "en"
+                ? "Declare a task. It becomes a command. The command has consequence."
+                : "Declare uma tarefa. Ela vira comando. O comando tem consequência."}
+            </div>
           </div>
         )}
 
-        <div style={{ maxWidth: 720 }}>
-          {pendingTasks.map(t => <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />)}
-          {doneTasks.length > 0 && pendingTasks.length > 0 && (
-            <div style={{ borderTop: "1px solid var(--border-subtle)", margin: "10px 0" }} />
-          )}
-          {doneTasks.map(t => <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />)}
-        </div>
-
-        {pending && (
+        {tasks.length > 0 && layout === "kanban" && (
           <div style={{
-            marginTop: 20, maxWidth: 720,
-            background: "var(--bg-input)",
-            border: "1px solid var(--border-subtle)",
-            borderLeft: "2px solid var(--terminal-warn)",
-            borderRadius: "var(--radius)",
-            padding: "14px 18px",
-            fontFamily: "var(--mono)",
+            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24,
           }}>
-            <div style={{ fontSize: 10, color: "var(--terminal-warn)", letterSpacing: 1.5 }}>
-              AGENT › {lastTask.slice(0, 48)}
+            <div>
+              <div style={{
+                fontSize: 9, letterSpacing: 2.5, color: "var(--text-ghost)",
+                fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
+              }}>▲ {values.lang === "en" ? "pending" : "pendente"} · {pendingTasks.length}</div>
+              {pendingTasks.map((t) => (
+                <KanbanCard key={t.id} task={t} onToggle={() => completeTask(t.id)} />
+              ))}
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-ghost)", marginTop: 8 }}>
-              a pensar, ler repo, correr tools…
+            <div>
+              <div style={{
+                fontSize: 9, letterSpacing: 2.5, color: "var(--cc-ok)",
+                fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
+              }}>✓ {values.lang === "en" ? "done" : "concluída"} · {doneTasks.length}</div>
+              {doneTasks.map((t) => (
+                <KanbanCard key={t.id} task={t} onToggle={() => completeTask(t.id)} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tasks.length > 0 && layout === "terminal" && (
+          <div style={{ maxWidth: 740, marginBottom: 24 }}>
+            {pendingTasks.map((t) => (
+              <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />
+            ))}
+            {doneTasks.length > 0 && pendingTasks.length > 0 && (
+              <div
+                style={{
+                  borderTop: "1px solid var(--border)",
+                  margin: "14px 0",
+                  opacity: 0.4,
+                }}
+              />
+            )}
+            {doneTasks.map((t) => (
+              <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />
+            ))}
+          </div>
+        )}
+
+        {mode === "crew" && (crew.steps.length > 0 || crew.verdict || pending) && (
+          <CrewCard
+            crew={crew}
+            pending={pending}
+            liveTools={liveTools}
+            onOpenDiff={() => setShowDiff(true)}
+          />
+        )}
+
+        {(pending || liveTools.length > 0 || liveText || done) && (
+          <div
+            className="toolRise"
+            style={{
+              maxWidth: 820,
+              marginTop: 8,
+              background: "var(--bg-input)",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: 14,
+              overflow: "hidden",
+              boxShadow: "var(--shadow-sm)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                borderBottom: "1px solid var(--border-subtle)",
+                background: "color-mix(in oklab, var(--bg-surface) 60%, transparent)",
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ display: "flex", gap: 6 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--cc-err)", opacity: 0.75 }} />
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--cc-warn)", opacity: 0.75 }} />
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--cc-ok)", opacity: 0.75 }} />
+                </span>
+                <span style={{ color: "var(--text-muted)" }}>
+                  ruberra · exec › {lastTask.slice(0, 48)}{lastTask.length > 48 ? "…" : ""}
+                </span>
+              </div>
+              {pending && (
+                <span style={{ color: "var(--cc-info)" }}>● running · iter {iteration} · {elapsed.toFixed(1)}s</span>
+              )}
+              {!pending && done && (
+                <span style={{ color: "var(--cc-ok)" }}>
+                  ● exit 0 · {done.iterations} iter · {done.tool_count} tools · {done.processing_time_ms}ms
+                </span>
+              )}
+            </div>
+
+            <div style={{ padding: "14px 16px" }}>
+              {liveTools.length > 0 && (
+                <div style={{ marginBottom: liveText || done ? 14 : 0 }}>
+                  {liveTools.map((tc) => (
+                    <ToolLine
+                      key={tc.id}
+                      name={tc.name}
+                      input={tc.input}
+                      phase={tc.ok === undefined ? "running" : tc.ok ? "ok" : "err"}
+                    />
+                  ))}
+                </div>
+              )}
+              {(liveText || done) && (
+                <div
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: 12.5,
+                    color: "var(--cc-fg)",
+                    lineHeight: 1.75,
+                    whiteSpace: "pre-wrap",
+                    borderTop: liveTools.length ? "1px dashed var(--border-subtle)" : "none",
+                    paddingTop: liveTools.length ? 12 : 0,
+                  }}
+                >
+                  <span style={{ color: "var(--cc-prompt)" }}>⏺ </span>
+                  {done ? done.answer : liveText}
+                  {pending && <span className="cc-cursor working" />}
+                </div>
+              )}
+              {done?.terminated_early && (
+                <div style={{ fontSize: 10, color: "var(--cc-warn)", marginTop: 10, fontFamily: "var(--mono)" }}>
+                  terminado cedo: {done.termination_reason}
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {err && (
-          <div style={{
-            marginTop: 20, maxWidth: 720,
-            background: "var(--bg-input)",
-            border: "1px solid var(--border-subtle)",
-            borderLeft: "2px solid #c44",
-            borderRadius: "var(--radius)",
-            padding: "14px 18px",
-            fontFamily: "var(--mono)",
-          }}>
-            <div style={{ fontSize: 10, color: "#c44", letterSpacing: 1.5 }}>ERRO</div>
+          <div
+            className="toolRise"
+            style={{
+              marginTop: 20,
+              maxWidth: 820,
+              background: "var(--bg-input)",
+              border: "1px solid var(--border-subtle)",
+              borderLeft: "2px solid var(--cc-err)",
+              borderRadius: 14,
+              padding: "14px 18px",
+              fontFamily: "var(--mono)",
+            }}
+          >
+            <div style={{ fontSize: 10, color: "var(--cc-err)", letterSpacing: 1.5 }}>ERRO</div>
             <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, whiteSpace: "pre-wrap" }}>
               {err}
             </div>
           </div>
         )}
+      </div>
 
-        {result && !pending && (
-          <div style={{
-            marginTop: 20, maxWidth: 720,
-            background: "var(--bg-input)",
-            border: "1px solid var(--border-subtle)",
-            borderLeft: "2px solid var(--terminal-ok)",
-            borderRadius: "var(--radius)",
-            padding: "14px 18px",
-            fontFamily: "var(--mono)",
-          }}>
-            <div style={{
-              fontSize: 10, color: "var(--terminal-ok)", marginBottom: 8,
-              letterSpacing: 1.5, display: "flex", gap: 12,
-            }}>
-              <span>EXEC › {lastTask.slice(0, 48)}</span>
-              {result.iterations != null && (
-                <span style={{ color: "var(--text-ghost)" }}>
-                  {result.iterations} iter · {result.tool_calls?.length ?? 0} tools
-                </span>
-              )}
-            </div>
+      <div
+        className="glass"
+        style={{
+          margin: "0 clamp(20px, 5vw, 64px) 18px",
+          borderRadius: 14,
+          padding: "12px 16px",
+          fontFamily: "var(--mono)",
+          display: "grid",
+          gridTemplateColumns: "auto auto 1fr auto auto",
+          gap: 10,
+          alignItems: "center",
+        }}
+      >
+        <span style={{ color: "var(--cc-ok)", fontSize: 12 }}>ruberra</span>
+        <span style={{ color: "var(--cc-dim)", fontSize: 12 }}>
+          @{pending ? "exec" : "ready"}
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: "var(--cc-prompt)", fontSize: 13 }}>$</span>
+          <input
+            autoFocus
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            placeholder={pending ? copy.creationRunning : copy.creationPlaceholder}
+            disabled={pending}
+            style={{
+              flex: 1,
+              fontSize: 13,
+              color: "var(--cc-fg)",
+              fontFamily: "var(--mono)",
+              opacity: pending ? 0.55 : 1,
+              padding: "6px 0",
+            }}
+          />
+          {!pending && <span className="cc-cursor" style={{ opacity: input ? 0 : 1 }} />}
+        </span>
+        <span
+          style={{
+            fontSize: 10,
+            color: "var(--text-ghost)",
+            letterSpacing: ".2em",
+            textTransform: "uppercase",
+          }}
+        >
+          {input.length ? `${input.length}c` : ""}
+        </span>
+        {input.trim() && !pending && (
+          <button
+            onClick={submit}
+            className="fadeIn"
+            style={{
+              background: "none",
+              border: "1px solid var(--cc-ok)",
+              color: "var(--cc-ok)",
+              fontSize: 10,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              padding: "7px 14px",
+              borderRadius: 999,
+              fontFamily: "var(--mono)",
+              transition: "all .2s var(--ease-swift)",
+              cursor: "pointer",
+            }}
+          >
+            ↵ run
+          </button>
+        )}
+      </div>
+      {showDiff && crew.reflection?.before && crew.reflection.after && (
+        <DiffView
+          before={crew.reflection.before}
+          after={crew.reflection.after}
+          onClose={() => setShowDiff(false)}
+        />
+      )}
+    </div>
+  );
+}
 
-            {result.tool_calls && result.tool_calls.length > 0 && (
-              <div style={{
-                fontSize: 11, color: "var(--text-ghost)",
-                marginBottom: 10, borderBottom: "1px solid var(--border-subtle)",
-                paddingBottom: 8,
-              }}>
-                {result.tool_calls.map((tc, i) => (
-                  <div key={i} style={{ marginBottom: 2 }}>
-                    <span style={{ color: tc.ok ? "var(--terminal-ok)" : "#c44" }}>
-                      {tc.ok ? "✓" : "✗"}
-                    </span>
-                    {" "}
-                    <span style={{ color: "var(--text-muted)" }}>{tc.name}</span>
-                    {tc.input ? (
-                      <span style={{ color: "var(--text-ghost)" }}>
-                        {" "}{JSON.stringify(tc.input).slice(0, 80)}
-                      </span>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            )}
+const ROLE_COLOR: Record<CrewRole, string> = {
+  planner: "var(--accent)",
+  researcher: "var(--cc-info)",
+  coder: "var(--cc-prompt)",
+  "security-reviewer": "var(--cc-err)",
+  "test-writer": "var(--cc-ok)",
+  "docs-writer": "var(--accent-dim)",
+  critic: "var(--cc-warn)",
+};
 
-            <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
-              {result.answer || "(sem resposta)"}
-            </div>
+function formatTokens(n: number): string {
+  if (n < 1000) return `${n}`;
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
+  return `${(n / 1_000_000).toFixed(1)}M`;
+}
 
-            {result.terminated_early && (
-              <div style={{ fontSize: 10, color: "var(--terminal-warn)", marginTop: 8 }}>
-                terminado cedo: {result.termination_reason}
-              </div>
-            )}
-          </div>
+function CrewCard({
+  crew, pending, liveTools, onOpenDiff,
+}: {
+  crew: CrewState;
+  pending: boolean;
+  liveTools: LiveTool[];
+  onOpenDiff: () => void;
+}) {
+  return (
+    <div
+      className="toolRise"
+      style={{
+        maxWidth: 860,
+        marginBottom: 14,
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-subtle)",
+        borderLeft: "2px solid var(--accent-dim)",
+        borderRadius: 14,
+        padding: "14px 18px",
+        fontFamily: "var(--mono)",
+      }}
+    >
+      <div style={{
+        fontSize: 10,
+        letterSpacing: 2,
+        textTransform: "uppercase",
+        color: "var(--text-ghost)",
+        marginBottom: 10,
+        display: "flex", alignItems: "center", gap: 10,
+      }}>
+        <span style={{ color: "var(--accent)" }}>crew</span>
+        {crew.refinements > 0 && (
+          <span style={{ color: "var(--cc-warn)" }}>refine ×{crew.refinements}</span>
+        )}
+        {crew.currentRole && pending && (
+          <span style={{ color: ROLE_COLOR[crew.currentRole] }}>
+            ▶ {crew.currentRole}
+          </span>
         )}
       </div>
 
+      {crew.analysis && (
+        <div style={{
+          fontSize: 11,
+          color: "var(--text-muted)",
+          marginBottom: 12,
+          lineHeight: 1.5,
+          fontFamily: "var(--sans)",
+          fontStyle: "italic",
+        }}>
+          {crew.analysis}
+        </div>
+      )}
+
+      {crew.similar.length > 0 && (
+        <div style={{
+          marginBottom: 12,
+          padding: "8px 10px",
+          background: "var(--bg-input)",
+          border: "1px dashed var(--border-subtle)",
+          borderRadius: 8,
+          fontSize: 10,
+          color: "var(--text-ghost)",
+        }}>
+          <div style={{ letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>
+            memory · {crew.similar.length} similar run{crew.similar.length === 1 ? "" : "s"}
+          </div>
+          {crew.similar.slice(0, 3).map((s, i) => (
+            <div key={i} style={{
+              display: "grid",
+              gridTemplateColumns: "40px 50px 1fr",
+              gap: 6,
+              padding: "2px 0",
+              color: s.refused ? "var(--terminal-warn)" : "var(--text-muted)",
+            }}>
+              <span style={{ color: "var(--cc-info)" }}>{s.score.toFixed(2)}</span>
+              <span style={{ color: "var(--text-ghost)" }}>{s.route}</span>
+              <span style={{
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {s.refused ? "✗ " : ""}{s.question}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {crew.steps.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+          {crew.steps.map((s, i) => {
+            const ran = crew.rolesRun.includes(s.role);
+            const active = crew.currentRole === s.role;
+            const color = ROLE_COLOR[s.role];
+            const roleRun = crew.perRole[s.role];
+            const roleTools = roleRun
+              ? liveTools.filter((t) => roleRun.toolIds.includes(t.id))
+              : [];
+            return (
+              <div key={i}>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "14px 120px 1fr auto",
+                  gap: 10,
+                  alignItems: "baseline",
+                  fontSize: 11,
+                  opacity: ran || active ? 1 : 0.55,
+                }}>
+                  <span style={{ color }}>{active ? "◐" : ran ? "●" : "○"}</span>
+                  <span style={{ color, letterSpacing: ".04em" }}>{s.role}</span>
+                  <span style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                    {s.goal}
+                  </span>
+                  {roleRun && (roleRun.tokensIn > 0 || roleRun.tokensOut > 0) && (
+                    <span style={{ color: "var(--text-ghost)", fontSize: 9 }}>
+                      ↓{formatTokens(roleRun.tokensIn)}·↑{formatTokens(roleRun.tokensOut)}
+                    </span>
+                  )}
+                </div>
+                {roleTools.length > 0 && (
+                  <div style={{
+                    marginLeft: 24,
+                    marginTop: 4,
+                    marginBottom: 4,
+                    paddingLeft: 10,
+                    borderLeft: `1px solid ${color}`,
+                    opacity: 0.85,
+                  }}>
+                    {roleTools.map((t) => {
+                      const phase: ToolPhase =
+                        t.ok === undefined ? "running" : t.ok ? "ok" : "err";
+                      return (
+                        <ToolLine
+                          key={t.id}
+                          name={t.name}
+                          input={t.input}
+                          phase={phase}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+                {roleRun && roleRun.text && active && (
+                  <div style={{
+                    marginLeft: 24,
+                    marginTop: 4,
+                    fontSize: 11,
+                    color: "var(--cc-fg)",
+                    fontFamily: "var(--mono)",
+                    whiteSpace: "pre-wrap",
+                    borderLeft: `1px solid ${color}`,
+                    paddingLeft: 10,
+                    maxHeight: 120,
+                    overflow: "auto",
+                  }}>
+                    {roleRun.text.slice(-400)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {crew.reflection && (
+        <div style={{
+          marginTop: 10,
+          paddingTop: 10,
+          borderTop: "1px dashed var(--border-subtle)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          fontSize: 10,
+          letterSpacing: 1.5,
+          textTransform: "uppercase",
+        }}>
+          <span style={{
+            color: crew.reflection.changed ? "var(--cc-warn)" : "var(--cc-ok)",
+          }}>
+            {crew.reflection.changed ? "⟲ reflection revised" : "⟳ reflection · no change"}
+          </span>
+          <span style={{
+            color: "var(--text-muted)",
+            textTransform: "none",
+            letterSpacing: 0,
+            fontSize: 11,
+            fontFamily: "var(--sans)",
+            flex: 1,
+          }}>
+            {crew.reflection.reason}
+          </span>
+          {crew.reflection.changed && crew.reflection.before && crew.reflection.after && (
+            <button
+              onClick={onOpenDiff}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--border-subtle)",
+                color: "var(--accent)",
+                fontFamily: "var(--mono)",
+                fontSize: 9,
+                letterSpacing: 1.5,
+                padding: "3px 8px",
+                borderRadius: 999,
+                cursor: "pointer",
+              }}
+            >
+              diff
+            </button>
+          )}
+        </div>
+      )}
+
+      {crew.verdict && (
+        <div style={{
+          marginTop: 10,
+          paddingTop: 10,
+          borderTop: "1px dashed var(--border-subtle)",
+          fontSize: 11,
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            color: crew.verdict.accept ? "var(--cc-ok)" : "var(--cc-err)",
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            fontSize: 10,
+            marginBottom: 6,
+          }}>
+            <span>{crew.verdict.accept ? "✓ critic accepted" : "✗ critic rejected"}</span>
+          </div>
+          <div style={{
+            color: "var(--text-muted)",
+            fontFamily: "var(--sans)",
+            lineHeight: 1.5,
+          }}>
+            {crew.verdict.summary}
+          </div>
+          {crew.verdict.issues.length > 0 && (
+            <ul style={{
+              margin: "8px 0 0 0",
+              padding: "0 0 0 16px",
+              color: "var(--cc-warn)",
+              fontSize: 10,
+              lineHeight: 1.6,
+            }}>
+              {crew.verdict.issues.map((iss, i) => (
+                <li key={i}>{iss}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiffView({
+  before, after, onClose,
+}: { before: string; after: string; onClose: () => void }) {
+  const beforeLines = before.split("\n");
+  const afterLines = after.split("\n");
+  const beforeSet = new Set(beforeLines);
+  const afterSet = new Set(afterLines);
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 50,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(1080px, 92vw)",
+          height: "min(640px, 80vh)",
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: 14,
+          padding: 16,
+          display: "grid",
+          gridTemplateRows: "auto 1fr",
+          gap: 12,
+          fontFamily: "var(--mono)",
+        }}
+      >
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          fontSize: 11,
+          letterSpacing: 2,
+          textTransform: "uppercase",
+          color: "var(--text-muted)",
+        }}>
+          <span>reflection · coder diff</span>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "1px solid var(--border-subtle)",
+              color: "var(--text-secondary)",
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              padding: "4px 10px",
+              borderRadius: 999,
+              cursor: "pointer",
+            }}
+          >
+            close
+          </button>
+        </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 12,
+          overflow: "hidden",
+        }}>
+          <DiffColumn
+            label="before"
+            lines={beforeLines}
+            otherSet={afterSet}
+            sign="-"
+            color="var(--cc-err)"
+          />
+          <DiffColumn
+            label="after"
+            lines={afterLines}
+            otherSet={beforeSet}
+            sign="+"
+            color="var(--cc-ok)"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiffColumn({
+  label, lines, otherSet, sign, color,
+}: {
+  label: string;
+  lines: string[];
+  otherSet: Set<string>;
+  sign: string;
+  color: string;
+}) {
+  return (
+    <div style={{
+      background: "var(--bg-input)",
+      border: "1px solid var(--border-subtle)",
+      borderRadius: 8,
+      overflow: "auto",
+      fontSize: 11,
+      lineHeight: 1.55,
+    }}>
       <div style={{
-        borderTop: "1px solid var(--border-subtle)",
-        padding: "14px 40px",
-        background: "var(--bg-surface)",
-        display: "flex", alignItems: "center", gap: 10,
-        fontFamily: "var(--mono)",
+        padding: "6px 10px",
+        fontSize: 9,
+        letterSpacing: 2,
+        textTransform: "uppercase",
+        color: "var(--text-ghost)",
+        borderBottom: "1px solid var(--border-subtle)",
+        position: "sticky",
+        top: 0,
+        background: "var(--bg-input)",
       }}>
-        <span style={{ color: "var(--terminal-ok)", fontSize: 13, flexShrink: 0 }}>$</span>
-        <input
-          autoFocus
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && submit()}
-          placeholder={pending ? "executando agente..." : "nova tarefa..."}
-          disabled={pending}
-          style={{
-            flex: 1, background: "none", border: "none", outline: "none",
-            fontSize: 13, color: "var(--text-primary)",
-            fontFamily: "var(--mono)",
-            opacity: pending ? 0.5 : 1,
-          }}
-        />
-        {pending && (
-          <span style={{ fontSize: 10, color: "var(--terminal-warn)", letterSpacing: 1 }}>▊</span>
-        )}
+        {label}
+      </div>
+      <pre style={{
+        margin: 0,
+        padding: "8px 10px",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+      }}>
+        {lines.map((ln, i) => {
+          const diff = !otherSet.has(ln);
+          return (
+            <div key={i} style={{
+              display: "grid",
+              gridTemplateColumns: "14px 1fr",
+              gap: 6,
+              background: diff ? "color-mix(in oklab, currentColor 8%, transparent)" : "transparent",
+              color: diff ? color : "var(--text-secondary)",
+            }}>
+              <span style={{ color, opacity: diff ? 1 : 0.25 }}>{diff ? sign : " "}</span>
+              <span>{ln || "\u00A0"}</span>
+            </div>
+          );
+        })}
+      </pre>
+    </div>
+  );
+}
+
+type ToolPhase = "running" | "ok" | "err";
+
+function ToolLine({ name, input, phase }: { name: string; input?: unknown; phase: ToolPhase }) {
+  const color =
+    phase === "running" ? "var(--cc-info)" : phase === "ok" ? "var(--cc-ok)" : "var(--cc-err)";
+  const dot = phase === "running" ? "◐" : phase === "ok" ? "●" : "✕";
+  const inputStr = input ? JSON.stringify(input).slice(0, 80) : "";
+  return (
+    <div
+      className="toolRise"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "16px 90px 1fr auto",
+        gap: 12,
+        alignItems: "center",
+        padding: "6px 0",
+        fontFamily: "var(--mono)",
+        fontSize: 12,
+      }}
+    >
+      <span style={{ color, transition: "color .2s" }}>{dot}</span>
+      <span style={{ color: "var(--cc-tool)", letterSpacing: ".04em" }}>{name}</span>
+      <span
+        style={{
+          color: "var(--cc-path)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {inputStr}
+      </span>
+      <span
+        style={{
+          color,
+          fontSize: 10,
+          letterSpacing: ".2em",
+          textTransform: "uppercase",
+        }}
+      >
+        {phase === "running" ? "…" : phase === "ok" ? "ok" : "err"}
+      </span>
+    </div>
+  );
+}
+
+function KanbanCard({ task, onToggle }: { task: Task; onToggle: () => void }) {
+  return (
+    <div
+      onClick={onToggle}
+      className="fadeUp"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-subtle)",
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 10,
+        cursor: "pointer",
+        transition: "transform .25s var(--ease-emph), border-color .2s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.borderColor = "var(--accent-dim)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "";
+        e.currentTarget.style.borderColor = "var(--border-subtle)";
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          fontFamily: "var(--sans)",
+          color: task.done ? "var(--text-muted)" : "var(--text-primary)",
+          textDecoration: task.done ? "line-through" : "none",
+          lineHeight: 1.5,
+        }}
+      >
+        {task.title}
+      </div>
+      <div
+        style={{
+          fontSize: 9,
+          letterSpacing: 1.5,
+          color: task.done ? "var(--cc-ok)" : "var(--text-ghost)",
+          fontFamily: "var(--mono)",
+          marginTop: 8,
+          textTransform: "uppercase",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <span>{new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+        <span>{task.done ? "exit 0" : "pending"}</span>
       </div>
     </div>
   );
@@ -219,26 +1272,57 @@ export default function Creation() {
 
 function TaskRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
   return (
-    <div onClick={onToggle} style={{
-      display: "flex", alignItems: "flex-start", gap: 12,
-      padding: "9px 0",
-      borderBottom: "1px solid var(--border-subtle)",
-      cursor: "pointer", fontFamily: "var(--mono)",
-    }}>
-      <span style={{
-        fontSize: 13,
-        color: task.done ? "var(--terminal-ok)" : "var(--text-muted)",
-        flexShrink: 0, width: 14, marginTop: 1,
-      }}>
+    <div
+      onClick={onToggle}
+      className="fadeUp"
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 14,
+        padding: "11px 0",
+        borderBottom: "1px solid var(--border-subtle)",
+        cursor: "pointer",
+        fontFamily: "var(--mono)",
+        transition: "padding-left .28s var(--ease-emph)",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.paddingLeft = "8px";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.paddingLeft = "0";
+      }}
+    >
+      <span
+        style={{
+          fontSize: 13,
+          color: task.done ? "var(--cc-ok)" : "var(--cc-prompt)",
+          width: 14,
+          marginTop: 1,
+        }}
+      >
         {task.done ? "✓" : "›"}
       </span>
-      <span style={{
-        fontSize: 13,
-        color: task.done ? "var(--text-muted)" : "var(--text-primary)",
-        textDecoration: task.done ? "line-through" : "none",
-        lineHeight: 1.5,
-      }}>
+      <span
+        style={{
+          flex: 1,
+          fontSize: 13,
+          color: task.done ? "var(--cc-dim)" : "var(--cc-fg)",
+          textDecoration: task.done ? "line-through" : "none",
+          lineHeight: 1.55,
+        }}
+      >
         {task.title}
+      </span>
+      <span
+        style={{
+          fontSize: 9,
+          letterSpacing: 1.5,
+          color: "var(--text-ghost)",
+          textTransform: "uppercase",
+          marginTop: 3,
+        }}
+      >
+        {task.done ? "exit 0" : "queue"}
       </span>
     </div>
   );

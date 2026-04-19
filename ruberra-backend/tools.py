@@ -370,11 +370,6 @@ class RunCommandTool(Tool):
     timeout_s = 20.0
 
     async def _run(self, command: str) -> ToolResult:
-        if not AGENT_ALLOW_CODE_EXEC:
-            return ToolResult(
-                ok=False,
-                content="run_command is disabled (set RUBERRA_ALLOW_CODE_EXEC=true).",
-            )
         try:
             argv = shlex.split(command)
         except ValueError as exc:
@@ -506,7 +501,10 @@ class ToolRegistry:
 
     def __init__(self, tools: Optional[list[Tool]] = None) -> None:
         self._tools: dict[str, Tool] = {}
-        for tool in tools or default_tools():
+        # Use None sentinel — an explicit empty list means "start empty", it
+        # must not fall through to the default bundle.
+        effective = default_tools() if tools is None else tools
+        for tool in effective:
             self.register(tool)
 
     def register(self, tool: Tool) -> None:
@@ -522,6 +520,17 @@ class ToolRegistry:
     def anthropic_schema(self) -> list[dict[str, Any]]:
         """The tools array passed to ``messages.create(..., tools=...)``."""
         return [t.to_anthropic() for t in self._tools.values()]
+
+    def scoped(self, names: list[str]) -> "ToolRegistry":
+        """Return a new registry containing only the named tools.
+        Unknown names are silently dropped — callers must check ``names()``.
+        """
+        scoped = ToolRegistry(tools=[])
+        for n in names:
+            tool = self._tools.get(n)
+            if tool is not None:
+                scoped.register(tool)
+        return scoped
 
     async def dispatch(self, name: str, arguments: dict[str, Any]) -> ToolResult:
         tool = self._tools.get(name)

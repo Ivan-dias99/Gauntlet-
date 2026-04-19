@@ -9,6 +9,12 @@ from pathlib import Path
 # ── API ─────────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 
+# Offline mock mode — bypasses every Anthropic API call with canned responses.
+# Enable for end-to-end validation without an API key.
+RUBERRA_MOCK: bool = os.environ.get("RUBERRA_MOCK", "").strip().lower() in (
+    "1", "true", "yes", "on",
+)
+
 # ── Model ───────────────────────────────────────────────────────────────────
 # Claude Sonnet 4.6 for self-consistency triad + judge + agent loop.
 MODEL_ID: str = "claude-sonnet-4-6"

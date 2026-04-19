@@ -88,18 +88,36 @@ class RunStore:
                 return r
         return None
 
-    async def stats(self) -> dict:
+    async def stats(self, mission_id: Optional[str] = None) -> dict:
         await self._ensure_loaded()
+        records = self._log.records
+        if mission_id:
+            records = [r for r in records if r.mission_id == mission_id]
         by_route: dict[str, int] = {}
         refused = 0
-        for r in self._log.records:
+        latency_sum = 0
+        total_in = 0
+        total_out = 0
+        tool_calls = 0
+        for r in records:
             by_route[r.route] = by_route.get(r.route, 0) + 1
             if r.refused:
                 refused += 1
+            latency_sum += r.processing_time_ms
+            total_in += r.input_tokens
+            total_out += r.output_tokens
+            tool_calls += len(r.tool_calls)
+        n = len(records)
         return {
-            "total": len(self._log.records),
+            "total": n,
+            "mission_id": mission_id,
             "by_route": by_route,
             "refused": refused,
+            "refusal_rate": (refused / n) if n else 0.0,
+            "avg_latency_ms": int(latency_sum / n) if n else 0,
+            "total_input_tokens": total_in,
+            "total_output_tokens": total_out,
+            "tool_calls": tool_calls,
             "last_updated": self._log.last_updated,
         }
 
