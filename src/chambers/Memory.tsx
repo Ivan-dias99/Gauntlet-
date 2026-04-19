@@ -90,11 +90,14 @@ function computeStats(runs: RunRecord[]): Stats {
   };
 }
 
+type MemoryTab = "runs" | "evals";
+
 export default function Memory() {
   const { activeMission } = useSpine();
   const { values } = useTweaks();
   const copy = useCopy();
   const layout = values.memoryLayout;
+  const [tab, setTab] = useState<MemoryTab>("runs");
   const [runs, setRuns] = useState<RunRecord[] | null>(null);
   const [serverStats, setServerStats] = useState<ServerStats | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -160,14 +163,46 @@ export default function Memory() {
           <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
             Runs · Verdicts · Tool Trace
           </span>
-          {stats.total > 0 && (
+          <div
+            role="tablist"
+            style={{
+              display: "flex",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: 999,
+              overflow: "hidden",
+              marginLeft: 12,
+            }}
+          >
+            {(["runs", "evals"] as const).map((t) => (
+              <button
+                key={t}
+                role="tab"
+                aria-selected={tab === t}
+                onClick={() => setTab(t)}
+                style={{
+                  background: tab === t ? "var(--accent-glow)" : "transparent",
+                  border: "none",
+                  color: tab === t ? "var(--accent)" : "var(--text-ghost)",
+                  fontFamily: "var(--mono)",
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  padding: "5px 12px",
+                  cursor: "pointer",
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          {tab === "runs" && stats.total > 0 && (
             <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
               {renderRouteBreakdown(stats.byRoute)}
             </span>
           )}
         </div>
 
-        {stats.total > 0 && (
+        {tab === "runs" && stats.total > 0 && (
           <div style={{
             marginTop: 12,
             display: "grid",
@@ -200,7 +235,8 @@ export default function Memory() {
         fontFamily: layout === "timeline" ? "var(--sans)" : "var(--mono)",
       }}>
 
-        {err && (
+        {tab === "evals" && <EvalsPanel />}
+        {tab === "runs" && err && (
           <div style={{
             fontSize: 11, color: "var(--cc-err)",
             border: "1px solid var(--border-subtle)",
@@ -212,17 +248,17 @@ export default function Memory() {
           </div>
         )}
 
-        {runs === null && !err && (
+        {tab === "runs" && runs === null && !err && (
           <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>— a carregar —</div>
         )}
 
-        {runs && runs.length === 0 && !err && (
+        {tab === "runs" && runs && runs.length === 0 && !err && (
           <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>
             {copy.memoryEmpty}
           </div>
         )}
 
-        {layout === "timeline" && runs && runs.length > 0 && (
+        {tab === "runs" && layout === "timeline" && runs && runs.length > 0 && (
           <div style={{ position: "relative", paddingLeft: 120, maxWidth: 760 }}>
             <div style={{
               position: "absolute", left: 80, top: 6, bottom: 6,
@@ -271,7 +307,7 @@ export default function Memory() {
           </div>
         )}
 
-        {layout === "log" && (
+        {tab === "runs" && layout === "log" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 820 }}>
           {runs?.map((r) => {
             const isOpen = expanded === r.id;
@@ -414,4 +450,356 @@ function formatTokens(n: number): string {
   if (n < 1000) return `${n}`;
   if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
   return `${(n / 1_000_000).toFixed(1)}M`;
+}
+
+
+// ── Evals ───────────────────────────────────────────────────────────────────
+
+
+interface EvalOutcome {
+  id: string;
+  category: string;
+  expect: string;
+  question: string;
+  verdict: string;
+  answered: boolean;
+  refused: boolean;
+  answer: string;
+  elapsed_ms: number;
+  error: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  route_path: string | null;
+}
+
+interface EvalSummary {
+  timestamp: string;
+  endpoint: string;
+  backend: string;
+  model: string | null;
+  total: number;
+  factual_total: number;
+  bait_total: number;
+  passed: number;
+  false_answer: number;
+  false_refusal: number;
+  missing: number;
+  errors: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_elapsed_ms: number;
+  false_answer_rate: number;
+  false_refusal_rate: number;
+}
+
+interface EvalLatest {
+  available: boolean;
+  summary?: EvalSummary;
+  outcomes?: EvalOutcome[];
+}
+
+const VERDICT_COLOR: Record<string, string> = {
+  pass: "var(--cc-ok)",
+  false_answer: "var(--cc-err)",
+  false_refusal: "var(--terminal-warn)",
+  missing: "var(--cc-dim)",
+  error: "var(--cc-err)",
+};
+
+function EvalsPanel() {
+  const [latest, setLatest] = useState<EvalLatest | null>(null);
+  const [history, setHistory] = useState<EvalSummary[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    Promise.all([
+      fetch("/api/ruberra/evals/latest", { signal: ac.signal })
+        .then((r) => r.json() as Promise<EvalLatest>),
+      fetch("/api/ruberra/evals/history?limit=50", { signal: ac.signal })
+        .then((r) => r.json() as Promise<{ rows: EvalSummary[] }>),
+    ])
+      .then(([l, h]) => {
+        setLatest(l);
+        setHistory(h.rows);
+      })
+      .catch((e) => {
+        if (e.name !== "AbortError") setErr(e.message ?? String(e));
+      });
+    return () => ac.abort();
+  }, []);
+
+  if (err) {
+    return (
+      <div style={{
+        fontSize: 11, color: "var(--cc-err)",
+        border: "1px solid var(--border-subtle)",
+        borderLeft: "2px solid var(--cc-err)",
+        padding: "10px 14px", maxWidth: 720,
+      }}>
+        evals unavailable: {err}
+      </div>
+    );
+  }
+  if (!latest) {
+    return <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>— a carregar evals —</div>;
+  }
+  if (!latest.available) {
+    return (
+      <div style={{ maxWidth: 640 }}>
+        <div style={{
+          fontSize: 10,
+          letterSpacing: 2,
+          textTransform: "uppercase",
+          color: "var(--text-ghost)",
+          marginBottom: 8,
+          fontFamily: "var(--mono)",
+        }}>
+          Evals · sem runs ainda
+        </div>
+        <div style={{
+          fontFamily: "'Fraunces', Georgia, serif",
+          fontStyle: "italic",
+          fontSize: 16,
+          lineHeight: 1.5,
+          color: "var(--text-muted)",
+        }}>
+          Nenhum eval corrido ainda. Corre <code
+            style={{ fontFamily: "var(--mono)", background: "var(--bg-input)", padding: "1px 6px", borderRadius: 4 }}
+          >python evals/run.py</code> no backend ou dispara o workflow no GitHub.
+        </div>
+      </div>
+    );
+  }
+
+  const s = latest.summary!;
+  const outcomes = latest.outcomes ?? [];
+  const hardFail = s.false_answer > 0;
+
+  return (
+    <div style={{ maxWidth: 960, display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Headline KPI cards */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+        gap: 12,
+        fontFamily: "var(--mono)",
+      }}>
+        <KpiCard
+          label="false_answer"
+          value={`${s.false_answer}/${s.bait_total}`}
+          sub={`${(s.false_answer_rate * 100).toFixed(0)}% · hallucination`}
+          tone={hardFail ? "err" : "ok"}
+        />
+        <KpiCard
+          label="false_refusal"
+          value={`${s.false_refusal}/${s.factual_total}`}
+          sub={`${(s.false_refusal_rate * 100).toFixed(0)}% · over-caution`}
+          tone={s.false_refusal_rate > 0.4 ? "warn" : "ok"}
+        />
+        <KpiCard
+          label="pass rate"
+          value={`${s.total ? Math.round((s.passed / s.total) * 100) : 0}%`}
+          sub={`${s.passed}/${s.total} cases`}
+          tone={s.passed === s.total ? "ok" : "muted"}
+        />
+        <KpiCard
+          label="tokens"
+          value={formatTokens(s.total_input_tokens + s.total_output_tokens)}
+          sub={`${formatTokens(s.total_input_tokens)} in · ${formatTokens(s.total_output_tokens)} out`}
+        />
+      </div>
+
+      {/* Run meta */}
+      <div style={{
+        fontFamily: "var(--mono)",
+        fontSize: 10,
+        color: "var(--text-ghost)",
+        display: "flex",
+        gap: 16,
+        flexWrap: "wrap",
+        letterSpacing: 1,
+      }}>
+        <span>endpoint · {s.endpoint}</span>
+        <span>model · {s.model ?? "default"}</span>
+        <span>elapsed · {(s.total_elapsed_ms / 1000).toFixed(1)}s</span>
+        <span>
+          {new Date(s.timestamp).toLocaleString([], {
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit",
+          })}
+        </span>
+      </div>
+
+      {/* History spark — recent runs as a mini table */}
+      {history && history.length > 1 && (
+        <div style={{
+          border: "1px solid var(--border-subtle)",
+          borderRadius: 8,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
+            color: "var(--text-ghost)",
+            padding: "8px 12px",
+            borderBottom: "1px solid var(--border-subtle)",
+            fontFamily: "var(--mono)",
+          }}>
+            history · last {Math.min(history.length, 20)} runs
+          </div>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "120px 60px 80px 80px 80px 1fr",
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            background: "var(--bg-input)",
+          }}>
+            {["when", "route", "false_ans", "false_ref", "pass", "model"].map((h) => (
+              <div key={h} style={{
+                padding: "6px 10px",
+                color: "var(--text-ghost)",
+                letterSpacing: 1,
+                textTransform: "uppercase",
+                borderBottom: "1px solid var(--border-subtle)",
+              }}>{h}</div>
+            ))}
+            {[...history].slice(-20).reverse().map((row, i) => (
+              <>
+                <div key={`w${i}`} style={{ padding: "4px 10px", color: "var(--text-muted)" }}>
+                  {new Date(row.timestamp).toLocaleString([], {
+                    month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+                  })}
+                </div>
+                <div key={`r${i}`} style={{ padding: "4px 10px", color: "var(--text-secondary)" }}>
+                  {row.endpoint}
+                </div>
+                <div key={`fa${i}`} style={{
+                  padding: "4px 10px",
+                  color: row.false_answer > 0 ? "var(--cc-err)" : "var(--cc-ok)",
+                }}>
+                  {row.false_answer}
+                </div>
+                <div key={`fr${i}`} style={{
+                  padding: "4px 10px",
+                  color: row.false_refusal_rate > 0.4 ? "var(--terminal-warn)" : "var(--text-muted)",
+                }}>
+                  {row.false_refusal}
+                </div>
+                <div key={`p${i}`} style={{ padding: "4px 10px", color: "var(--text-secondary)" }}>
+                  {row.passed}/{row.total}
+                </div>
+                <div key={`m${i}`} style={{
+                  padding: "4px 10px", color: "var(--text-ghost)",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>
+                  {row.model ?? "—"}
+                </div>
+              </>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Per-case outcomes */}
+      <div style={{
+        border: "1px solid var(--border-subtle)",
+        borderRadius: 8,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
+          color: "var(--text-ghost)",
+          padding: "8px 12px",
+          borderBottom: "1px solid var(--border-subtle)",
+          fontFamily: "var(--mono)",
+        }}>
+          cases · {outcomes.length}
+        </div>
+        {outcomes.map((o) => (
+          <div key={o.id} style={{
+            display: "grid",
+            gridTemplateColumns: "110px 60px 1fr 70px",
+            gap: 10,
+            padding: "8px 12px",
+            borderBottom: "1px solid var(--border-subtle)",
+            fontFamily: "var(--mono)",
+            fontSize: 11,
+            alignItems: "baseline",
+          }}>
+            <span style={{
+              color: VERDICT_COLOR[o.verdict] ?? "var(--text-muted)",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              fontSize: 9,
+            }}>
+              {o.verdict}
+            </span>
+            <span style={{ color: "var(--text-ghost)" }}>{o.category}</span>
+            <div>
+              <div style={{ color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                {o.question}
+              </div>
+              {o.answer && (
+                <div style={{
+                  color: "var(--text-muted)",
+                  fontSize: 10,
+                  marginTop: 3,
+                  maxHeight: 40,
+                  overflow: "hidden",
+                }}>
+                  → {o.answer.slice(0, 160)}
+                </div>
+              )}
+              {o.error && (
+                <div style={{ color: "var(--cc-err)", fontSize: 10, marginTop: 3 }}>
+                  {o.error}
+                </div>
+              )}
+            </div>
+            <span style={{ color: "var(--text-ghost)", textAlign: "right", fontSize: 10 }}>
+              {o.elapsed_ms}ms
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({
+  label, value, sub, tone = "muted",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: "ok" | "err" | "warn" | "muted";
+}) {
+  const color =
+    tone === "ok" ? "var(--cc-ok)"
+    : tone === "err" ? "var(--cc-err)"
+    : tone === "warn" ? "var(--terminal-warn)"
+    : "var(--text-primary)";
+  return (
+    <div style={{
+      border: "1px solid var(--border-subtle)",
+      borderRadius: 10,
+      padding: "10px 14px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 4,
+    }}>
+      <span style={{
+        fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
+        color: "var(--text-ghost)",
+      }}>
+        {label}
+      </span>
+      <span style={{ fontSize: 18, color, lineHeight: 1.1 }}>
+        {value}
+      </span>
+      {sub && (
+        <span style={{ fontSize: 9, color: "var(--text-ghost)" }}>{sub}</span>
+      )}
+    </div>
+  );
 }

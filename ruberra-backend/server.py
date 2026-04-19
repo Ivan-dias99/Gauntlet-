@@ -32,6 +32,9 @@ from runs import run_store
 from spine import spine_store
 from tools import ToolRegistry
 
+from pathlib import Path as _Path
+_EVALS_DIR = _Path(__file__).parent / "data" / "evals"
+
 # ── Logging ─────────────────────────────────────────────────────────────────
 
 logging.basicConfig(
@@ -381,6 +384,42 @@ async def get_spine():
 async def put_spine(snapshot: SpineSnapshot):
     """Replace the full mission workspace snapshot. Full-state sync."""
     return await spine_store.put(snapshot)
+
+
+# ── Evals Endpoints ─────────────────────────────────────────────────────────
+
+
+def _read_eval_json(path: _Path) -> Any:
+    if not path.is_file():
+        return None
+    try:
+        return _json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        logger.error("failed to read %s: %s", path, e)
+        return None
+
+
+@app.get("/evals/latest")
+async def evals_latest():
+    """Most recent eval run: full per-case outcomes + summary.
+
+    Returns 200 with ``{"available": false}`` when no eval has run yet,
+    so the UI renders an empty state instead of treating it as an error.
+    """
+    data = _read_eval_json(_EVALS_DIR / "latest.json")
+    if data is None:
+        return {"available": False}
+    return {"available": True, **data}
+
+
+@app.get("/evals/history")
+async def evals_history(limit: int = 100):
+    """Append-only time series of summary rows for the Evals dashboard."""
+    data = _read_eval_json(_EVALS_DIR / "history.json")
+    if data is None:
+        return {"rows": []}
+    rows = data if isinstance(data, list) else []
+    return {"rows": rows[-limit:]}
 
 
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────

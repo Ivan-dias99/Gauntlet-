@@ -1,0 +1,116 @@
+name: evals
+
+on:
+  # Nightly at 04:00 UTC — cheap window, no overlap with usage.
+  schedule:
+    - cron: "0 4 * * *"
+  # Manual trigger from the Actions tab.
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: "which pipeline to exercise"
+        required: true
+        default: "crew"
+        type: choice
+        options: ["crew", "route"]
+      limit:
+        description: "limit N cases (0 = all)"
+        required: false
+        default: "0"
+
+jobs:
+  anti-hallucination:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ruberra-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard — require ANTHROPIC_API_KEY
+        # Without a real key the eval is a no-op. We still want the job to
+        # appear green so missing-secret doesn't block merges.
+        if: ${{ secrets.ANTHROPIC_API_KEY == '' }}
+        run: |
+          echo "::warning::ANTHROPIC_API_KEY is not set — skipping evals."
+          echo "skipped=true" >> "$GITHUB_OUTPUT"
+        id: guard
+
+      - uses: actions/setup-python@v5
+        if: ${{ steps.guard.outputs.skipped != 'true' }}
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ruberra-backend/requirements.txt
+
+      - name: Install deps
+        if: ${{ steps.guard.outputs.skipped != 'true' }}
+        run: pip install -r requirements.txt
+
+      - name: Boot backend
+        if: ${{ steps.guard.outputs.skipped != 'true' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RUBERRA_HOST: 127.0.0.1
+          RUBERRA_PORT: "3002"
+        run: |
+          nohup python -m uvicorn server:app \
+            --host 127.0.0.1 --port 3002 \
+            > /tmp/ruberra.log 2>&1 &
+          # Wait for /health to come up (max 40s).
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3002/health > /dev/null; then
+              echo "backend up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "backend failed to start" >&2
+          tail -n 80 /tmp/ruberra.log >&2
+          exit 1
+
+      - name: Run evals
+        if: ${{ steps.guard.outputs.skipped != 'true' }}
+        env:
+          RUBERRA_EVAL_MODEL: claude-sonnet-4-6
+        run: |
+          endpoint="${{ github.event.inputs.endpoint }}"
+          limit="${{ github.event.inputs.limit }}"
+          args=""
+          if [ -n "$endpoint" ]; then args="--endpoint $endpoint"; fi
+          if [ -n "$limit" ] && [ "$limit" != "0" ]; then args="$args --limit $limit"; fi
+          python evals/run.py $args
+
+      - name: Dump backend log on failure
+        if: failure() && steps.guard.outputs.skipped != 'true'
+        run: tail -n 200 /tmp/ruberra.log || true
+
+      - name: Upload artifacts
+        if: ${{ steps.guard.outputs.skipped != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-${{ github.run_id }}
+          path: |
+            ruberra-backend/data/evals/latest.json
+            ruberra-backend/data/evals/history.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Summary
+        if: ${{ steps.guard.outputs.skipped != 'true' && always() }}
+        run: |
+          if [ -f data/evals/latest.json ]; then
+            python -c "
+          import json
+          d = json.load(open('data/evals/latest.json'))['summary']
+          with open('${GITHUB_STEP_SUMMARY}', 'a') as f:
+              f.write(f\"### Evals — {d['endpoint']}\n\n\")
+              f.write(f\"| metric | value |\n|---|---|\n\")
+              f.write(f\"| false_answer | {d['false_answer']}/{d['bait_total']} ({d['false_answer_rate']:.0%}) |\n\")
+              f.write(f\"| false_refusal | {d['false_refusal']}/{d['factual_total']} ({d['false_refusal_rate']:.0%}) |\n\")
+              f.write(f\"| passed | {d['passed']}/{d['total']} |\n\")
+              f.write(f\"| tokens | {d['total_input_tokens']} in / {d['total_output_tokens']} out |\n\")
+              f.write(f\"| elapsed | {d['total_elapsed_ms']/1000:.1f}s |\n\")
+          "
+          fi
