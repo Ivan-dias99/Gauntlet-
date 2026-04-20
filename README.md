@@ -79,6 +79,10 @@ npm run dev                           # http://localhost:5173
 
 `npm run dev` proxies `/api/ruberra/*` to `http://127.0.0.1:3002/*`.
 
+Agent `run_command` and `execute_python` are gated by `RUBERRA_ALLOW_CODE_EXEC`
+(default `false`). Set it to `true` to allow `pip`, `npm`, `npx`, `node` and
+arbitrary Python execution inside the agent loop. See `.env.example`.
+
 ## State model
 
 **Backend owns:**

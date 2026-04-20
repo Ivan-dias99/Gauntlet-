@@ -198,5 +198,5 @@ export function addPrinciple(state: SpineState, text: string): SpineState {
 }
 
 export function switchMission(state: SpineState, id: string): SpineState {
-  return { ...state, activeMissionId: id };
+  return { ...state, activeMissionId: id, updatedAt: now() };
 }

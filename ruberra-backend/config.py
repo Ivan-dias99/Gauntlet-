@@ -1,5 +1,5 @@
 """
-Ruberra V1 — Configuration
+Ruberra — Configuration
 All environment-driven settings. No hardcoded secrets.
 """
 

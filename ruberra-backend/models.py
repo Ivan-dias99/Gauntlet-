@@ -1,6 +1,7 @@
 """
-Ruberra V1 — Data Models
+Ruberra — Data Models
 Pydantic models for request/response contracts and internal state.
+Confidence is binary: HIGH or LOW. No medium tier, no caveats.
 """
 
 from __future__ import annotations

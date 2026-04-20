@@ -1,7 +1,8 @@
 """
-Ruberra V1 — Self-Consistency Engine
+Ruberra — Self-Consistency Engine
 The core brain. Fires 3 parallel calls to Claude Sonnet,
-then routes the responses through the Judge for verdict.
+then routes the responses through the Judge for a binary verdict.
+Binary confidence: HIGH (all 3 agree) or LOW (refuse).
 """
 
 from __future__ import annotations
