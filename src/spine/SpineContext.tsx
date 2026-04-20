@@ -8,6 +8,7 @@ import {
   addTask as addTaskFn,
   completeTask as completeTaskFn,
   addPrinciple as addPrincipleFn,
+  logDoctrineApplied as logDoctrineAppliedFn,
   switchMission as switchFn,
   acceptArtifact as acceptArtifactFn,
 } from "./store";
@@ -24,6 +25,7 @@ interface SpineCtx {
   addTask: (title: string) => void;
   completeTask: (taskId: string) => void;
   addPrinciple: (text: string) => void;
+  logDoctrineApplied: (count: number) => void;
   acceptArtifact: (missionId: string, artifact: Omit<Artifact, "id">) => void;
   resetAll: () => void;
 }
@@ -78,6 +80,7 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       addTask: (title) => dispatch(s => addTaskFn(s, title)),
       completeTask: (id) => dispatch(s => completeTaskFn(s, id)),
       addPrinciple: (text) => dispatch(s => addPrincipleFn(s, text)),
+      logDoctrineApplied: (count) => dispatch(s => logDoctrineAppliedFn(s, count)),
       acceptArtifact: (id, artifact) => dispatch(s => acceptArtifactFn(s, id, artifact)),
       resetAll: () => setState(emptyState()),
     }}>

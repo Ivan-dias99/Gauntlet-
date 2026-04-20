@@ -18,7 +18,14 @@ export interface Task {
 
 export interface LogEvent {
   id: string;
-  type: "mission_created" | "note_added" | "task_added" | "task_done" | "ai_response";
+  type:
+    | "mission_created"
+    | "note_added"
+    | "task_added"
+    | "task_done"
+    | "ai_response"
+    | "doctrine_added"
+    | "doctrine_applied";
   label: string;
   at: number;
 }

@@ -45,7 +45,7 @@ const EMPTY_CREW: CrewState = {
 };
 
 export default function Creation() {
-  const { activeMission, addTask, completeTask, addNoteToMission, acceptArtifact, principles } = useSpine();
+  const { activeMission, addTask, completeTask, addNoteToMission, acceptArtifact, principles, logDoctrineApplied } = useSpine();
   const { streamDev, streamCrew, pending } = useRuberra();
   const { values } = useTweaks();
   const copy = useCopy();
@@ -170,6 +170,7 @@ export default function Creation() {
     if (!v || pending) return;
 
     addTask(v);
+    if (principles.length > 0) logDoctrineApplied(principles.length);
     setInput("");
     setLastTask(v);
     setErr(null);
