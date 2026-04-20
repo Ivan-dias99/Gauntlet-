@@ -1,85 +1,124 @@
 # Ruberra
 
 Two-process system: a React/Vite frontend (the **face**) and a FastAPI
-Python backend (the **brain**). The face renders the chambers and UI
-state; the brain runs the triad+judge pipeline, the agent loop, the
-tool registry, and the failure memory.
+Python backend (the **brain**). The face renders the chambers; the brain
+runs the triad+judge pipeline, the agent loop, the crew orchestrator,
+the tool registry, and the failure memory.
 
 ## Layout
 
 ```
-src/                    React frontend (Vite, TypeScript)
-  main.tsx              entry
-  App.tsx               ErrorBoundary → ThemeProvider → SpineProvider → Shell
-  shell/                Shell, CanonRibbon, RitualEntry
-  chambers/             Lab, Creation, Memory, School
-  spine/                UI state (localStorage) — NOT the source of truth
-  hooks/useAI.ts        SSE client for /api/chat
-  theme/                dark/light CSS vars
-  trust/ErrorBoundary   top-level error boundary
+src/                         React frontend (Vite, TypeScript)
+  main.tsx                   entry
+  App.tsx                    ErrorBoundary → TweaksProvider → SpineProvider → Shell
+  shell/                     Shell, CanonRibbon, RitualEntry, TweaksPanel, VisionLanding
+  chambers/                  Lab, Creation, Memory, School
+  hooks/useRuberra.ts        SSE client — all backend calls route through here
+  spine/                     Workspace state (SpineContext, store, client, types)
+  tweaks/                    Theme / UI preferences (localStorage only)
+  theme/                     ThemeContext (thin wrapper over TweaksContext)
+  trust/                     ErrorBoundary
+  i18n/                      copy.ts
 
-api/chat.ts             Vercel edge endpoint → forwards to RUBERRA_BACKEND_URL
-vite.config.ts          dev server + /api proxy to the Python backend
+api/ruberra/[...path].ts     Vercel edge catchall — forwards /api/ruberra/* to RUBERRA_BACKEND_URL
+vite.config.ts               dev proxy: /api/ruberra/* → http://127.0.0.1:3002/*
+vercel.json                  SPA catch-all (non-API routes → index.html)
 
-ruberra-backend/        FastAPI — the real cerebrum
-  server.py             /ask, /dev, /route, /memory/*, /diagnostics
-  engine.py             triad (3x parallel) + judge
-  agent.py              agent loop with tool-use + anti-loop guard
-  tools.py              8 tools: web_search, execute_python, read_file,
-                        list_directory, git, run_command, fetch_url, package_info
-  memory.py             persistent failure memory (JSON on disk)
-  doctrine.py           system / judge / agent prompts
-  models.py             Pydantic contracts
+ruberra-backend/             FastAPI — the brain
+  server.py                  all HTTP endpoints
+  engine.py                  triad (3× parallel) + judge pipeline
+  agent.py                   agent loop: tool-use + anti-loop guard
+  crew.py                    multi-agent: planner → researcher → coder → critic
+  tools.py                   8 tools: web_search, execute_python, read_file,
+                             list_directory, git, run_command, fetch_url, package_info
+  memory.py                  persistent failure memory (JSON on disk)
+  doctrine.py                system / judge / agent / crew prompts
+  models.py                  Pydantic contracts
+  spine.py                   workspace snapshot store
+  runs.py                    append-only run log
+  config.py                  env-driven settings
+  main.py                    uvicorn entry point
 ```
+
+## Runtime path
+
+```
+Browser → /api/ruberra/{route}
+  dev:  vite proxy            → http://127.0.0.1:3002/{route}
+  prod: Vercel edge function  → RUBERRA_BACKEND_URL/{route}
+                              → FastAPI (server.py)
+                              → engine / agent / crew
+                              → Anthropic API (server-side only)
+```
+
+No frontend-to-Anthropic calls. All AI routes through the backend.
+
+## Chambers → backend
+
+| Chamber  | Endpoint                    | Pipeline                          |
+|----------|-----------------------------|-----------------------------------|
+| Lab      | `POST /route/stream`        | auto-router: triad+judge or agent |
+| Creation | `POST /dev/stream`          | agent loop (tool-use)             |
+| Creation | `POST /crew/stream`         | multi-agent crew                  |
+| Memory   | `GET /runs`, `GET /runs/stats` | run log + aggregate stats      |
+| School   | `POST /spine` (via SpineContext) | workspace sync                |
 
 ## Run (local)
 
 ```bash
-# Terminal 1 — Python brain
+# Terminal 1 — brain
 cd ruberra-backend
 pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
-python main.py                       # http://127.0.0.1:3002
+python main.py                        # http://127.0.0.1:3002
 
-# Terminal 2 — React face
+# Terminal 2 — face
 npm install
-npm run dev                          # http://localhost:5173
+npm run dev                           # http://localhost:5173
 ```
 
-`npm run dev` proxies `/api/*` to `http://127.0.0.1:3002/*`.
+`npm run dev` proxies `/api/ruberra/*` to `http://127.0.0.1:3002/*`.
 
-## State model — honest
+## State model
 
-The frontend keeps UI state in `localStorage` under `ruberra:spine:v1`:
-missions, notes, tasks, principles, event log. It is **not** a sovereign
-memory. It is ephemeral UI state. The brain owns the truth.
+**Backend owns:**
+- Failure memory (`ruberra-backend/data/failure_memory.json`)
+- Run log (`ruberra-backend/data/runs.json`)
+- Workspace snapshot (`ruberra-backend/data/spine.json`) — missions, notes, tasks, principles
 
-The Python backend persists failure memory to
-`ruberra-backend/data/failure_memory.json`. Domain persistence beyond
-that (missions, artifacts, tool calls, agent runs) is not yet wired.
+**Frontend local-only:**
+- Theme, tweaks, density, accent (localStorage)
+- Optimistic UI state for in-flight mutations
 
-## What is wired today
-
-- Frontend ↔ `/api/chat` ↔ (dev: vite proxy | prod: Vercel edge) ↔
-  Anthropic, direct streaming chat.
-- Python backend ↔ Anthropic — triad, judge, agent loop, tools,
-  failure memory.
-
-## What is NOT wired yet
-
-- Chamber-level routing to `/route`, `/dev`, `/ask` on the Python
-  backend. The endpoints exist; the UI still talks to the plain
-  streaming chat.
-- Domain persistence beyond failure memory.
+The SpineContext syncs the workspace snapshot to the backend on every
+mutation (debounced 500 ms). On mount, the remote snapshot wins if its
+`updatedAt` timestamp is newer than the local copy — multi-device safe.
 
 ## Deploy
 
-- **Frontend** → Vercel. `api/chat.ts` runs at the edge and forwards to
-  `RUBERRA_BACKEND_URL`.
+- **Frontend** → Vercel. `api/ruberra/[...path].ts` runs at the edge and
+  forwards all `/api/ruberra/*` requests to `RUBERRA_BACKEND_URL`.
 - **Backend** → any host that runs FastAPI (Fly, Railway, Render, a VM).
-  Set `RUBERRA_BACKEND_URL` in the Vercel project to its public URL.
+  Set `RUBERRA_BACKEND_URL` in the Vercel project env to its public URL.
 
-## Status
+## Backend endpoints
 
-Local-first works. Production requires the Python backend to be hosted
-externally and `RUBERRA_BACKEND_URL` set in the Vercel project.
+```
+GET  /health
+POST /ask                 triad + judge (non-streaming)
+POST /route               auto-router (non-streaming)
+POST /route/stream        auto-router (SSE)
+POST /dev                 agent loop (non-streaming)
+POST /dev/stream          agent loop (SSE)
+POST /crew/stream         multi-agent crew (SSE)
+POST /ask/batch           batch up to 5 questions
+GET  /runs                run log (filterable by mission_id)
+GET  /runs/stats          aggregate stats
+GET  /runs/{id}           single run
+GET  /memory/stats        failure memory stats
+GET  /memory/failures     recent failure records
+POST /memory/clear        clear failure memory (confirm=true)
+GET  /spine               workspace snapshot
+POST /spine               replace workspace snapshot
+GET  /diagnostics         full system diagnostics
+```

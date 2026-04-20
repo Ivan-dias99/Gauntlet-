@@ -202,3 +202,4 @@ class SpineSnapshot(BaseModel):
     activeMissionId: Optional[str] = None
     principles: list[PrincipleRecord] = Field(default_factory=list)
     last_updated: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updatedAt: Optional[int] = None

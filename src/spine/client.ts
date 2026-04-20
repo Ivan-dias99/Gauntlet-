@@ -32,6 +32,7 @@ export async function pushSpine(state: SpineState, signal?: AbortSignal): Promis
         missions: state.missions,
         activeMissionId: state.activeMissionId,
         principles: state.principles,
+        updatedAt: state.updatedAt,
       }),
       signal,
     });
