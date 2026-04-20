@@ -9,26 +9,38 @@ Every tool:
   * is async and returns a ``ToolResult`` (ok/err, string content, metadata)
   * enforces its own timeout / resource limits — the agent does not trust input
 
-Safety posture:
+Safety posture (deny-by-default):
   * file / directory ops are rooted at ``TOOL_WORKSPACE_ROOT``
-  * shell and python execution are gated by ``AGENT_ALLOW_CODE_EXEC`` and by
-    a per-tool binary allow-list
-  * every tool carries a hard wall-clock timeout
+  * command execution is split into a minimal SAFE set (read-only, no exec
+    vector) and a GATED set (requires ``AGENT_ALLOW_CODE_EXEC`` plus a
+    per-binary forbidden-argument policy). Anything not on either list is
+    rejected — no default-allow.
+  * ``git`` is intentionally NOT reachable through the generic run_command;
+    it is only exposed through ``GitTool`` which hard-blocks config, exec-path,
+    upload-pack, receive-pack, worktree/git-dir overrides, and the pager.
+  * URL fetching never auto-follows redirects. Every hop (including the
+    final effective target) is re-validated: scheme, userinfo, literal IPs,
+    and every IP returned by ``getaddrinfo`` must be public (not loopback,
+    private, link-local, multicast, reserved, or unspecified). This blocks
+    redirect-based SSRF, cloud metadata services (169.254.169.254), IPv6
+    loopback / ULA, and decimal/octal IP encoding tricks.
+  * every tool carries a hard wall-clock timeout.
 """
 
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import logging
 import os
 import re
 import shlex
-import subprocess
+import socket
 import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Optional
 
 import httpx
 
@@ -45,26 +57,189 @@ AGENT_ALLOW_CODE_EXEC: bool = os.environ.get(
     "RUBERRA_ALLOW_CODE_EXEC", "false"
 ).strip().lower() in ("1", "true", "yes", "on")
 
-# Shell binaries always permitted (read-only, inspection, testing).
-SHELL_ALLOWLIST: tuple[str, ...] = (
-    "ls", "cat", "head", "tail", "wc", "grep", "find", "stat",
-    "node", "npm", "npx", "python", "python3", "pip", "pip3",
-    "pytest", "git", "echo", "which", "pwd", "tree",
-)
+# ── Command policy (deny-by-default) ────────────────────────────────────────
+#
+# SAFE: read-only inspection binaries with no built-in exec/shell escape.
+#   These run without ``AGENT_ALLOW_CODE_EXEC``. They can still read any
+#   file the process can read — that is an accepted read-only risk.
+_SAFE_COMMANDS: frozenset[str] = frozenset({
+    "ls", "cat", "head", "tail", "wc", "stat", "pwd", "tree",
+    "echo", "which", "grep",
+})
 
-# Binaries that can install or execute arbitrary code — require AGENT_ALLOW_CODE_EXEC.
-_EXEC_COMMANDS: frozenset[str] = frozenset({"pip", "pip3", "npm", "npx", "node"})
+# GATED: require ``AGENT_ALLOW_CODE_EXEC`` AND pass the per-binary argument
+#   validator below. Anything not in SAFE ∪ GATED is rejected outright.
+_GATED_COMMANDS: frozenset[str] = frozenset({
+    "find", "python", "python3", "pip", "pip3",
+    "npm", "npx", "node", "pytest",
+})
 
-# Hosts that must never be reachable via fetch_url (SSRF guard).
-_SSRF_BLOCKED = re.compile(
-    r"^(169\.254\.|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|::1$|localhost$)",
-    re.IGNORECASE,
-)
+# Per-binary forbidden argument patterns. Each arg of the invocation is
+# checked; if it equals a forbidden token or starts with ``token=``, the
+# whole command is rejected. ``find -exec`` and friends are the obvious
+# holes, but this is the place to add more as new escapes are discovered —
+# not the safe list.
+_FORBIDDEN_ARGS: dict[str, frozenset[str]] = {
+    "find": frozenset({
+        "-exec", "-execdir", "-ok", "-okdir",
+        "-delete", "-fprint", "-fprintf", "-fls",
+    }),
+}
+
+# Git is NEVER in the generic command runner. It is only reachable via
+# ``GitTool`` below, which enforces its own subcommand allow-list AND this
+# forbidden-flag set. These flags collectively cover the known ways to turn
+# a read-only git subcommand into code execution: ``-c`` / ``--config-env``
+# inject arbitrary config (core.sshCommand, core.pager, protocol.*);
+# ``--exec-path`` relocates helper binaries; ``--upload-pack`` /
+# ``--receive-pack`` run custom transports on fetch/push; ``-C``,
+# ``--work-tree``, ``--git-dir`` escape the workspace; ``--help`` /
+# ``--paginate`` spawn the pager.
+_GIT_FORBIDDEN_FLAGS: frozenset[str] = frozenset({
+    "-c", "-C", "-P", "-h", "--help", "--paginate",
+    "--exec-path", "--config-env", "--upload-pack", "--receive-pack",
+    "--work-tree", "--git-dir", "--namespace", "--bare",
+})
+
+_GIT_SUBCOMMANDS: frozenset[str] = frozenset({
+    "status", "diff", "log", "branch", "show",
+})
+
+# ── Fetch / SSRF policy ─────────────────────────────────────────────────────
+MAX_REDIRECT_HOPS: int = 3
+_ALLOWED_URL_SCHEMES: frozenset[str] = frozenset({"http", "https"})
 
 DEFAULT_TOOL_TIMEOUT_S: float = 20.0
 HTTP_TIMEOUT_S: float = 15.0
 MAX_FILE_BYTES: int = 256 * 1024     # 256 KiB
 MAX_OUTPUT_CHARS: int = 16_000       # truncate long tool outputs
+
+
+# ── SSRF helpers ────────────────────────────────────────────────────────────
+
+class _UrlRejected(ValueError):
+    """Raised when a URL fails the deny-by-default fetch policy."""
+
+
+def _ip_is_public(ip: ipaddress._BaseAddress) -> bool:
+    """True only for addresses safe to reach over the public internet."""
+    return not (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+def _validate_fetch_url(url: str) -> tuple[str, int]:
+    """Validate a URL against the SSRF policy.
+
+    Returns ``(hostname, port)`` on success; raises ``_UrlRejected`` otherwise.
+
+    Rejects:
+      * non-http/https schemes
+      * URLs containing userinfo (``user:pass@host``)
+      * literal private / loopback / link-local / reserved / multicast IPs
+        (both IPv4 and IPv6 — catches ``[::1]``, ``[fe80::..]`` etc.)
+      * hostnames that resolve to ANY non-public IP (catches DNS-based
+        redirects to internal infra, cloud metadata, and
+        decimal/octal IP encoding tricks like ``http://2130706433``).
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+    except ValueError as exc:
+        raise _UrlRejected(f"unparseable URL: {exc}") from exc
+
+    if parsed.scheme.lower() not in _ALLOWED_URL_SCHEMES:
+        raise _UrlRejected(f"scheme '{parsed.scheme}' not allowed")
+    if parsed.username or parsed.password:
+        raise _UrlRejected("URLs with userinfo are not allowed")
+
+    hostname = (parsed.hostname or "").strip()
+    if not hostname:
+        raise _UrlRejected("missing hostname")
+
+    try:
+        port = parsed.port or (443 if parsed.scheme.lower() == "https" else 80)
+    except ValueError as exc:
+        raise _UrlRejected(f"invalid port: {exc}") from exc
+
+    # Literal IP? Check directly — don't give DNS a chance to mask it.
+    stripped = hostname.strip("[]")
+    try:
+        literal = ipaddress.ip_address(stripped)
+    except ValueError:
+        literal = None
+    if literal is not None:
+        if not _ip_is_public(literal):
+            raise _UrlRejected(f"non-public literal IP: {literal}")
+        return hostname, port
+
+    # Hostname → DNS. Every returned address must be public.
+    try:
+        infos = socket.getaddrinfo(hostname, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as exc:
+        raise _UrlRejected(f"DNS resolution failed for '{hostname}': {exc}") from exc
+    if not infos:
+        raise _UrlRejected(f"no addresses for '{hostname}'")
+    for info in infos:
+        sockaddr = info[4]
+        ip_str = sockaddr[0]
+        try:
+            ip_obj = ipaddress.ip_address(ip_str)
+        except ValueError as exc:
+            raise _UrlRejected(f"unrecognised address '{ip_str}': {exc}") from exc
+        if not _ip_is_public(ip_obj):
+            raise _UrlRejected(
+                f"'{hostname}' resolves to non-public address {ip_obj}"
+            )
+    return hostname, port
+
+
+# ── Command policy helpers ──────────────────────────────────────────────────
+
+def _check_command_policy(argv: list[str]) -> Optional[str]:
+    """Validate an argv under the deny-by-default command policy.
+
+    Returns ``None`` if the command is permitted, or an error message
+    describing why it was rejected.
+    """
+    if not argv:
+        return "empty command"
+    binary = argv[0]
+    if binary in _SAFE_COMMANDS:
+        return None
+    if binary in _GATED_COMMANDS:
+        if not AGENT_ALLOW_CODE_EXEC:
+            return f"'{binary}' requires RUBERRA_ALLOW_CODE_EXEC=true"
+        forbidden = _FORBIDDEN_ARGS.get(binary, frozenset())
+        for arg in argv[1:]:
+            for bad in forbidden:
+                if arg == bad or arg.startswith(bad + "="):
+                    return f"'{binary}' argument '{arg}' is not allowed"
+        return None
+    # Deny-by-default: anything not explicitly listed is rejected. This is
+    # the whole point of the refactor — do not quietly pass through unknown
+    # binaries.
+    return (
+        f"binary '{binary}' is not in the safe or gated allow-list "
+        "(deny-by-default)"
+    )
+
+
+def _check_git_args(args: list[str]) -> Optional[str]:
+    """Validate args passed through to ``git <subcommand>``."""
+    for arg in args:
+        for bad in _GIT_FORBIDDEN_FLAGS:
+            if arg == bad or arg.startswith(bad + "="):
+                return f"git flag '{arg}' is not allowed"
+        # Catch compact forms like ``-cfoo=bar`` (git actually requires a
+        # space, but we reject the shape anyway as belt-and-braces).
+        if arg.startswith("-c") and arg != "-c" and "=" in arg:
+            return f"git flag '{arg}' is not allowed"
+    return None
 
 
 # ── Result Contract ─────────────────────────────────────────────────────────
@@ -314,14 +489,16 @@ class GitTool(Tool):
     name = "git"
     description = (
         "Run a read-only git command inside the workspace. "
-        "Supported subcommands: status, diff, log, branch, show."
+        "Supported subcommands: status, diff, log, branch, show. "
+        "Configuration, exec-path, pack-override, worktree-escape, and pager "
+        "flags are hard-blocked — they are known vectors for code execution."
     )
     input_schema = {
         "type": "object",
         "properties": {
             "subcommand": {
                 "type": "string",
-                "enum": ["status", "diff", "log", "branch", "show"],
+                "enum": sorted(_GIT_SUBCOMMANDS),
             },
             "args": {
                 "type": "array",
@@ -337,12 +514,20 @@ class GitTool(Tool):
         subcommand: str,
         args: Optional[list[str]] = None,
     ) -> ToolResult:
-        safe_args = [a for a in (args or []) if not a.startswith("--exec=")]
-        cmd = ["git", subcommand, *safe_args]
-        if subcommand == "log" and not any(a.startswith("-") for a in safe_args):
-            cmd.insert(2, "--oneline")
-            cmd.insert(3, "-n")
-            cmd.insert(4, "20")
+        if subcommand not in _GIT_SUBCOMMANDS:
+            return ToolResult(
+                ok=False,
+                content=f"git subcommand '{subcommand}' is not allowed",
+            )
+        raw_args = list(args or [])
+        rejection = _check_git_args(raw_args)
+        if rejection is not None:
+            return ToolResult(ok=False, content=rejection)
+        # ``--no-pager`` is always safe and prevents any residual pager-based
+        # exec path; place it before the subcommand where git expects it.
+        cmd = ["git", "--no-pager", subcommand, *raw_args]
+        if subcommand == "log" and not any(a.startswith("-") for a in raw_args):
+            cmd.extend(["--oneline", "-n", "20"])
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
@@ -364,9 +549,14 @@ class GitTool(Tool):
 class RunCommandTool(Tool):
     name = "run_command"
     description = (
-        "Run an allow-listed shell binary with arguments. The first token "
-        "must be one of: " + ", ".join(SHELL_ALLOWLIST) + ". No shell "
-        "interpolation — arguments are passed directly to execve."
+        "Run a vetted binary with arguments. Deny-by-default: the first token "
+        "must be either in the SAFE set "
+        f"({', '.join(sorted(_SAFE_COMMANDS))}) which runs ungated, or the "
+        f"GATED set ({', '.join(sorted(_GATED_COMMANDS))}) which additionally "
+        "requires RUBERRA_ALLOW_CODE_EXEC=true and passes a per-binary "
+        "forbidden-argument check (e.g. 'find -exec' is rejected). Git is NOT "
+        "reachable here — use the 'git' tool. No shell interpolation — "
+        "arguments go directly to execve."
     )
     input_schema = {
         "type": "object",
@@ -385,18 +575,9 @@ class RunCommandTool(Tool):
             argv = shlex.split(command)
         except ValueError as exc:
             return ToolResult(ok=False, content=f"Invalid command: {exc}")
-        if not argv:
-            return ToolResult(ok=False, content="Empty command")
-        if argv[0] not in SHELL_ALLOWLIST:
-            return ToolResult(
-                ok=False,
-                content=f"Binary '{argv[0]}' not in allow-list: {SHELL_ALLOWLIST}",
-            )
-        if argv[0] in _EXEC_COMMANDS and not AGENT_ALLOW_CODE_EXEC:
-            return ToolResult(
-                ok=False,
-                content=f"'{argv[0]}' requires RUBERRA_ALLOW_CODE_EXEC=true",
-            )
+        rejection = _check_command_policy(argv)
+        if rejection is not None:
+            return ToolResult(ok=False, content=rejection)
         proc = await asyncio.create_subprocess_exec(
             *argv,
             stdout=asyncio.subprocess.PIPE,
@@ -425,8 +606,9 @@ class FetchUrlTool(Tool):
     name = "fetch_url"
     description = (
         "Fetch a URL via HTTP GET and return its body as text (stripped of "
-        "HTML tags when the response is HTML). Use for docs pages, API "
-        "specs, RFCs, changelogs."
+        "HTML tags when the response is HTML). Redirects are NOT auto-"
+        "followed — each hop (up to 3) is re-validated against the SSRF "
+        "policy. Use for docs pages, API specs, RFCs, changelogs."
     )
     input_schema = {
         "type": "object",
@@ -437,21 +619,45 @@ class FetchUrlTool(Tool):
     }
 
     async def _run(self, url: str) -> ToolResult:
-        if not url.startswith(("http://", "https://")):
-            return ToolResult(ok=False, content="Only http/https URLs are allowed")
-        hostname = urllib.parse.urlparse(url).hostname or ""
-        if _SSRF_BLOCKED.match(hostname):
-            return ToolResult(ok=False, content=f"SSRF: blocked host '{hostname}'")
+        hops: list[str] = []
+        current = url
         async with httpx.AsyncClient(
             timeout=HTTP_TIMEOUT_S,
-            follow_redirects=True,
+            follow_redirects=False,
             headers={"User-Agent": "Ruberra-Dev/1.0"},
         ) as client:
-            resp = await client.get(url)
+            for _ in range(MAX_REDIRECT_HOPS + 1):
+                try:
+                    _validate_fetch_url(current)
+                except _UrlRejected as exc:
+                    return ToolResult(
+                        ok=False,
+                        content=(
+                            f"SSRF policy rejected URL '{current}': {exc}. "
+                            f"Hops so far: {hops or '(none)'}"
+                        ),
+                    )
+                hops.append(current)
+                resp = await client.get(current)
+                if not (300 <= resp.status_code < 400):
+                    break
+                location = resp.headers.get("location")
+                if not location:
+                    break
+                # Resolve relative redirects against the current URL BEFORE
+                # validating — the policy must see the final effective target.
+                current = str(httpx.URL(current).join(location))
+            else:
+                return ToolResult(
+                    ok=False,
+                    content=(
+                        f"exceeded {MAX_REDIRECT_HOPS} redirects; "
+                        f"last target: {current}. Hops: {hops}"
+                    ),
+                )
         body = resp.text
         content_type = resp.headers.get("content-type", "")
         if "html" in content_type.lower():
-            import re
             body = re.sub(r"<script[^>]*>.*?</script>", "", body, flags=re.S | re.I)
             body = re.sub(r"<style[^>]*>.*?</style>", "", body, flags=re.S | re.I)
             body = re.sub(r"<[^>]+>", " ", body)
@@ -459,7 +665,11 @@ class FetchUrlTool(Tool):
         return ToolResult(
             ok=resp.is_success,
             content=f"HTTP {resp.status_code} ({content_type})\n{body}",
-            metadata={"status": resp.status_code, "url": str(resp.url)},
+            metadata={
+                "status": resp.status_code,
+                "url": str(resp.url),
+                "hops": hops,
+            },
         )
 
 
