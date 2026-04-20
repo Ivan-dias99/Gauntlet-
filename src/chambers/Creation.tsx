@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep } from "../hooks/useRuberra";
 import { useTweaks } from "../tweaks/TweaksContext";
@@ -61,6 +61,7 @@ export default function Creation() {
   const [mode, setMode] = useState<RunMode>("agent");
   const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
   const [accepted, setAccepted] = useState(false);
+  const [lastAccepted, setLastAccepted] = useState<{ task: string; answer: string; at: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const outRef = useRef<HTMLDivElement>(null);
 
@@ -201,7 +202,15 @@ export default function Creation() {
     if (!done || !activeMission || accepted) return;
     const task = activeMission.tasks.find((t) => !t.done && t.title === lastTask);
     if (task) completeTask(task.id);
-    addNoteToMission(activeMission.id, done.answer, "ai");
+    const answerText = done.answer.trim();
+    if (answerText) {
+      addNoteToMission(activeMission.id, answerText, "ai");
+    }
+    setLastAccepted({
+      task: lastTask || task?.title || "artefacto",
+      answer: answerText || "(sem resposta textual — terminação antecipada)",
+      at: Date.now(),
+    });
     setAccepted(true);
   }
 
@@ -209,6 +218,13 @@ export default function Creation() {
   const doneTasks = tasks.filter((t) => t.done);
   const pendingTasks = tasks.filter((t) => !t.done);
   const exitCode = done ? 0 : err ? 1 : null;
+
+  const currentObjective = useMemo(() => {
+    if (lastTask) return lastTask;
+    if (!activeMission) return "";
+    const pending = activeMission.tasks.find((t) => !t.done);
+    return pending?.title ?? "";
+  }, [lastTask, activeMission]);
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
@@ -313,15 +329,23 @@ export default function Creation() {
             <span style={{ color: "var(--text-secondary)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {activeMission.title}
             </span>
-            {lastTask && (
+            {currentObjective && (
               <>
                 <span style={{ color: "var(--border-subtle)", fontSize: 13 }}>›</span>
                 <span style={{ color: "var(--accent)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {lastTask}
+                  {currentObjective}
                 </span>
-                {accepted && (
+                {accepted && lastTask === currentObjective && (
                   <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--cc-ok)", textTransform: "uppercase" }}>✓ aceite</span>
                 )}
+              </>
+            )}
+            {!currentObjective && pendingTasks.length === 0 && doneTasks.length > 0 && (
+              <>
+                <span style={{ color: "var(--border-subtle)", fontSize: 13 }}>›</span>
+                <span style={{ color: "var(--cc-ok)", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>
+                  tudo concluído
+                </span>
               </>
             )}
           </div>
@@ -408,6 +432,46 @@ export default function Creation() {
             {doneTasks.map((t) => (
               <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />
             ))}
+          </div>
+        )}
+
+        {lastAccepted && (
+          <div
+            className="fadeIn"
+            style={{
+              maxWidth: 820,
+              marginBottom: 14,
+              background: "color-mix(in oklab, var(--cc-ok) 8%, var(--bg-elevated))",
+              border: "1px solid var(--border-subtle)",
+              borderLeft: "2px solid var(--cc-ok)",
+              borderRadius: 12,
+              padding: "10px 14px",
+              fontFamily: "var(--mono)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--cc-ok)", marginBottom: 6 }}>
+              <span>✓ último artefacto aceite</span>
+              <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
+                {new Date(lastAccepted.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <span style={{ marginLeft: "auto", color: "var(--text-ghost)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                › {lastAccepted.task}
+              </span>
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--text-muted)",
+                fontFamily: "var(--sans)",
+                lineHeight: 1.55,
+                whiteSpace: "pre-wrap",
+                maxHeight: 72,
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              {lastAccepted.answer.length > 260 ? lastAccepted.answer.slice(0, 260) + "…" : lastAccepted.answer}
+            </div>
           </div>
         )}
 

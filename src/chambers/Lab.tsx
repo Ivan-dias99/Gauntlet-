@@ -35,7 +35,6 @@ function extractAnswer(
 interface VerdictState {
   routePath: "agent" | "triad";
   confidence: string | null;
-  shouldRefuse: boolean;
   refused: boolean;
   reasoning: string;
   divergenceCount: number;
@@ -165,7 +164,6 @@ export default function Lab() {
           setLastVerdict({
             routePath: path,
             confidence: capturedJudge.current?.confidence ?? conf ?? null,
-            shouldRefuse: capturedJudge.current?.shouldRefuse ?? refused,
             refused,
             reasoning: capturedJudge.current?.reasoning ?? r.judge_reasoning ?? "",
             divergenceCount: capturedJudge.current?.divergenceCount ?? 0,
@@ -208,11 +206,13 @@ export default function Lab() {
 
         {notes.length === 0 && !pending && !error && (
           <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 520, marginTop: "12vh" }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".4em", color: "var(--text-ghost)", textTransform: "uppercase", marginBottom: 18 }}>
-              — Sem entrada
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".4em", color: activeMission ? "var(--text-ghost)" : "var(--cc-warn)", textTransform: "uppercase", marginBottom: 18 }}>
+              {activeMission ? "— Sem entrada" : "— Sem missão activa"}
             </div>
             <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontStyle: "italic", fontSize: 24, lineHeight: 1.35, color: "var(--text-muted)", letterSpacing: "-0.005em" }}>
-              Sem evidências. Comece a investigar.
+              {activeMission
+                ? "Sem evidências. Comece a investigar."
+                : "Cria ou activa uma missão para investigar."}
             </div>
           </div>
         )}
@@ -244,10 +244,10 @@ export default function Lab() {
       )}
 
       {/* Input */}
-      <div className="glass" style={{ margin: "0 clamp(20px, 5vw, 64px) 18px", borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="glass" style={{ margin: "0 clamp(20px, 5vw, 64px) 18px", borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
         <span
           className={pending ? "breathe" : ""}
-          style={{ width: 8, height: 8, borderRadius: "50%", background: pending ? "var(--cc-info)" : "var(--cc-prompt)", boxShadow: `0 0 0 4px color-mix(in oklab, ${pending ? "var(--cc-info)" : "var(--cc-prompt)"} 22%, transparent)`, flexShrink: 0 }}
+          style={{ width: 8, height: 8, borderRadius: "50%", background: pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)", boxShadow: `0 0 0 4px color-mix(in oklab, ${pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)"} 22%, transparent)`, flexShrink: 0 }}
         />
         <input
           ref={inputRef}
@@ -256,17 +256,18 @@ export default function Lab() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
           placeholder={
+            !activeMission ? "Activa uma missão para investigar..." :
             pending ? "Aguardando verdict..." :
             lastVerdict?.refused ? "Reformula. Fractura. Pressiona mais." :
             "Evidência, análise, hipótese..."
           }
-          disabled={pending}
-          style={{ flex: 1, fontSize: 14, color: "var(--text-primary)", fontFamily: "var(--sans)", opacity: pending ? 0.55 : 1, padding: "6px 0" }}
+          disabled={pending || !activeMission}
+          style={{ flex: 1, fontSize: 14, color: "var(--text-primary)", fontFamily: "var(--sans)", opacity: pending || !activeMission ? 0.55 : 1, padding: "6px 0", cursor: !activeMission ? "not-allowed" : undefined }}
         />
         <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-ghost)", letterSpacing: ".2em", textTransform: "uppercase" }}>
           {input.length > 0 ? `${input.length}` : ""}
         </span>
-        {input.trim() && !pending && (
+        {input.trim() && !pending && activeMission && (
           <button
             onClick={submit}
             className="fadeIn"
