@@ -1,9 +1,9 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep } from "../hooks/useRuberra";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
-import { Task } from "../spine/types";
+import { Artifact, Task, TaskState } from "../spine/types";
 
 type RunMode = "agent" | "crew";
 
@@ -45,7 +45,10 @@ const EMPTY_CREW: CrewState = {
 };
 
 export default function Creation() {
-  const { activeMission, addTask, completeTask, addNoteToMission, acceptArtifact, principles } = useSpine();
+  const {
+    activeMission, addTask, completeTask, setTaskState, addNoteToMission,
+    acceptArtifact, principles,
+  } = useSpine();
   const { streamDev, streamCrew, pending } = useRuberra();
   const { values } = useTweaks();
   const copy = useCopy();
@@ -63,6 +66,12 @@ export default function Creation() {
   // Session-only guard against double-click on the accept button inside the
   // current done panel. Persisted acceptance is on spine.activeMission.lastArtifact.
   const [accepted, setAccepted] = useState(false);
+  // The task on the workbench. Resumed from spine on mount / mission switch,
+  // advanced by the next-step actions.
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  // True when activeTaskId was picked up from persisted state (not created in
+  // this session) — used to show a discreet "resume" cue.
+  const [resumedFromSpine, setResumedFromSpine] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const outRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +85,25 @@ export default function Creation() {
   useEffect(() => {
     outRef.current?.scrollTo({ top: 999999, behavior: "smooth" });
   }, [liveText, liveTools.length, done]);
+
+  // Resume: on mount or mission switch, if no active task was picked this
+  // session, re-acquire one from spine — prefer a task already "running",
+  // then the newest open task. This makes Creation feel resumable: the user
+  // re-enters and the workbench already holds the right piece of work.
+  useEffect(() => {
+    if (!activeMission) {
+      setActiveTaskId(null);
+      setResumedFromSpine(false);
+      return;
+    }
+    // If the currently tracked task still belongs to this mission, keep it.
+    if (activeTaskId && activeMission.tasks.some(t => t.id === activeTaskId)) return;
+    const running = activeMission.tasks.find(t => t.state === "running");
+    const open = [...activeMission.tasks].reverse().find(t => t.state === "open");
+    const pick = running ?? open ?? null;
+    setActiveTaskId(pick?.id ?? null);
+    setResumedFromSpine(pick !== null);
+  }, [activeMission?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleAgentEvent(ev: AgentEvent, role?: CrewRole) {
     switch (ev.type) {
@@ -108,6 +136,7 @@ export default function Creation() {
         break;
       case "error":
         setErr(ev.message);
+        if (activeTaskId) setTaskState(activeTaskId, "blocked");
         break;
     }
   }
@@ -161,6 +190,7 @@ export default function Creation() {
         break;
       case "error":
         setErr(ev.message);
+        if (activeTaskId) setTaskState(activeTaskId, "blocked");
         break;
     }
   }
@@ -169,7 +199,12 @@ export default function Creation() {
     const v = input.trim();
     if (!v || pending) return;
 
-    addTask(v);
+    const newTaskId = addTask(v, "manual");
+    // Move the task to the workbench and mark it running so the UI (and
+    // future resumes) reflect the real operational state.
+    setActiveTaskId(newTaskId);
+    setResumedFromSpine(false);
+    setTaskState(newTaskId, "running");
     setInput("");
     setLastTask(v);
     setErr(null);
@@ -201,29 +236,92 @@ export default function Creation() {
 
   function accept() {
     if (!done || !activeMission || accepted) return;
-    const task = activeMission.tasks.find((t) => !t.done && t.title === lastTask);
-    if (task) completeTask(task.id);
+    // Prefer the tracked workbench task; fall back to title match for legacy
+    // sessions that never set activeTaskId (first-run migration path).
+    const task =
+      activeMission.tasks.find(t => t.id === activeTaskId) ??
+      activeMission.tasks.find(t => !t.done && t.title === lastTask);
     const answerText = done.answer.trim();
     if (answerText) {
       addNoteToMission(activeMission.id, answerText, "ai");
     }
-    acceptArtifact(activeMission.id, {
-      taskTitle: lastTask,
-      answer: answerText,
-      terminatedEarly: done.terminated_early,
-      acceptedAt: Date.now(),
-    });
+    acceptArtifact(
+      activeMission.id,
+      {
+        taskTitle: task?.title ?? lastTask,
+        answer: answerText,
+        terminatedEarly: done.terminated_early,
+        acceptedAt: Date.now(),
+      },
+      task?.id,
+    );
     setAccepted(true);
   }
 
+  // Prefill the command input so the user sees what they are about to run.
+  // Operational, not fluff — the refine still goes through submit().
+  function handleRefine() {
+    if (pending) return;
+    const base = activeTask?.title ?? lastTask;
+    if (!base) return;
+    setInput(copy.refinePrefix + base);
+  }
+
+  function handleBlock() {
+    if (!activeTaskId) return;
+    setTaskState(activeTaskId, "blocked");
+  }
+
+  function handleReopen() {
+    if (!activeTaskId) return;
+    setTaskState(activeTaskId, "open");
+  }
+
+  function handleNextTask() {
+    if (!activeMission) return;
+    // Prefer the oldest still-open task so FIFO ordering is obvious.
+    const next = activeMission.tasks.find(
+      t => t.state === "open" && t.id !== activeTaskId,
+    );
+    if (!next) return;
+    setActiveTaskId(next.id);
+    setResumedFromSpine(true);
+    setDone(null);
+    setErr(null);
+    setLiveTools([]);
+    setLiveText("");
+    setAccepted(false);
+  }
+
   const tasks = activeMission?.tasks ?? [];
-  const doneTasks = tasks.filter((t) => t.done);
-  const pendingTasks = tasks.filter((t) => !t.done);
+  const doneTasks = tasks.filter((t) => t.state === "done");
+  const pendingTasks = tasks.filter((t) => t.state !== "done");
+  const openTasks = tasks.filter((t) => t.state === "open");
+  const blockedTasks = tasks.filter((t) => t.state === "blocked");
   const exitCode = done ? 0 : err ? 1 : null;
 
-  // Prefer the session's last submitted task; fall back to the most recently
-  // declared pending task (tasks are appended in order).
-  const currentObjective = lastTask || pendingTasks[pendingTasks.length - 1]?.title || "";
+  const activeTask = useMemo<Task | null>(() => {
+    if (!activeMission || !activeTaskId) return null;
+    return activeMission.tasks.find(t => t.id === activeTaskId) ?? null;
+  }, [activeMission, activeTaskId]);
+
+  // The header still shows the current objective string — prefer the task on
+  // the workbench, then the session's last submission, then the freshest open
+  // task. Kept as a string so the existing header chip stays unchanged.
+  const currentObjective =
+    activeTask?.title ||
+    lastTask ||
+    pendingTasks[pendingTasks.length - 1]?.title ||
+    "";
+
+  const nextOpenTask = activeMission?.tasks.find(
+    t => t.state === "open" && t.id !== activeTaskId,
+  ) ?? null;
+  const recentArtifacts = (activeMission?.artifacts ?? []).slice(0, 3);
+  // The next-step bar is operational: it appears once the user has something
+  // to act on (a completed run, an error, or a blocked task).
+  const showNextStep = !pending && activeMission !== null &&
+    ((done !== null) || err !== null || activeTask?.state === "blocked");
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
@@ -321,7 +419,7 @@ export default function Creation() {
           )}
         </div>
         </div>
-        {/* Row 2: active mission + current objective */}
+        {/* Row 2: active mission + current objective (condensed breadcrumb) */}
         {activeMission && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--mono)", fontSize: 11 }}>
             <span style={{ fontSize: 9, letterSpacing: 2, color: "var(--text-ghost)", textTransform: "uppercase" }}>missão</span>
@@ -334,18 +432,12 @@ export default function Creation() {
                 <span style={{ color: "var(--accent)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {currentObjective}
                 </span>
-                {activeMission.lastArtifact?.taskTitle === currentObjective && (
-                  <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--cc-ok)", textTransform: "uppercase" }}>✓ aceite</span>
-                )}
               </>
             )}
-            {!currentObjective && pendingTasks.length === 0 && doneTasks.length > 0 && (
-              <>
-                <span style={{ color: "var(--border-subtle)", fontSize: 13 }}>›</span>
-                <span style={{ color: "var(--cc-ok)", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>
-                  tudo concluído
-                </span>
-              </>
+            {openTasks.length === 0 && blockedTasks.length === 0 && doneTasks.length > 0 && (
+              <span style={{ color: "var(--cc-ok)", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>
+                · {copy.actionAllDone}
+              </span>
             )}
           </div>
         )}
@@ -359,6 +451,33 @@ export default function Creation() {
           padding: "24px clamp(20px, 5vw, 64px)",
         }}
       >
+        {activeMission && (
+          <WorkbenchCard
+            missionTitle={activeMission.title}
+            task={activeTask}
+            resumed={resumedFromSpine && !pending && !done && !err}
+            copy={copy}
+            lang={values.lang}
+            pending={pending}
+            iteration={iteration}
+            elapsed={elapsed}
+            openCount={openTasks.length}
+            runningCount={pendingTasks.filter(t => t.state === "running").length}
+            doneCount={doneTasks.length}
+            blockedCount={blockedTasks.length}
+            onSelectTask={(id) => {
+              setActiveTaskId(id);
+              setResumedFromSpine(true);
+              setDone(null);
+              setErr(null);
+              setLiveTools([]);
+              setLiveText("");
+              setAccepted(false);
+            }}
+            onReopen={handleReopen}
+          />
+        )}
+
         {tasks.length === 0 && liveTools.length === 0 && !liveText && !pending && !err && (
           <div
             style={{
@@ -399,7 +518,7 @@ export default function Creation() {
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
               }}>▲ {values.lang === "en" ? "pending" : "pendente"} · {pendingTasks.length}</div>
               {pendingTasks.map((t) => (
-                <KanbanCard key={t.id} task={t} onToggle={() => completeTask(t.id)} />
+                <KanbanCard key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
               ))}
             </div>
             <div>
@@ -408,7 +527,7 @@ export default function Creation() {
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
               }}>✓ {values.lang === "en" ? "done" : "concluída"} · {doneTasks.length}</div>
               {doneTasks.map((t) => (
-                <KanbanCard key={t.id} task={t} onToggle={() => completeTask(t.id)} />
+                <KanbanCard key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
               ))}
             </div>
           </div>
@@ -417,7 +536,7 @@ export default function Creation() {
         {tasks.length > 0 && layout === "terminal" && (
           <div style={{ maxWidth: 740, marginBottom: 24 }}>
             {pendingTasks.map((t) => (
-              <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />
+              <TaskRow key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
             ))}
             {doneTasks.length > 0 && pendingTasks.length > 0 && (
               <div
@@ -429,53 +548,8 @@ export default function Creation() {
               />
             )}
             {doneTasks.map((t) => (
-              <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />
+              <TaskRow key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
             ))}
-          </div>
-        )}
-
-        {activeMission?.lastArtifact && (
-          <div
-            className="fadeIn"
-            style={{
-              maxWidth: 820,
-              marginBottom: 14,
-              background: "color-mix(in oklab, var(--cc-ok) 8%, var(--bg-elevated))",
-              border: "1px solid var(--border-subtle)",
-              borderLeft: "2px solid var(--cc-ok)",
-              borderRadius: 12,
-              padding: "10px 14px",
-              fontFamily: "var(--mono)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--cc-ok)", marginBottom: 6 }}>
-              <span>✓ último artefacto aceite</span>
-              <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
-                {new Date(activeMission.lastArtifact.acceptedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-              <span style={{ marginLeft: "auto", color: "var(--text-ghost)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                › {activeMission.lastArtifact.taskTitle}
-              </span>
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: activeMission.lastArtifact.terminatedEarly && !activeMission.lastArtifact.answer
-                  ? "var(--cc-warn)"
-                  : "var(--text-muted)",
-                fontFamily: "var(--sans)",
-                lineHeight: 1.55,
-                whiteSpace: "pre-wrap",
-                maxHeight: 72,
-                overflow: "hidden",
-              }}
-            >
-              {activeMission.lastArtifact.answer
-                ? (activeMission.lastArtifact.answer.length > 260
-                    ? activeMission.lastArtifact.answer.slice(0, 260) + "…"
-                    : activeMission.lastArtifact.answer)
-                : "terminação antecipada — sem saída textual"}
-            </div>
           </div>
         )}
 
@@ -611,6 +685,37 @@ export default function Creation() {
               {err}
             </div>
           </div>
+        )}
+
+        {showNextStep && (
+          <NextStepBar
+            hasNextOpen={nextOpenTask !== null}
+            canRefine={Boolean(activeTask?.title || lastTask)}
+            isBlocked={activeTask?.state === "blocked"}
+            canBlock={activeTask !== null && activeTask.state !== "blocked"}
+            copy={copy}
+            onNext={handleNextTask}
+            onRefine={handleRefine}
+            onBlock={handleBlock}
+            onReopen={handleReopen}
+          />
+        )}
+
+        {activeMission && (
+          <ArtifactLedger
+            artifacts={recentArtifacts}
+            copy={copy}
+            onSelectArtifact={(a) => {
+              if (!a.taskId) return;
+              setActiveTaskId(a.taskId);
+              setResumedFromSpine(true);
+              setDone(null);
+              setErr(null);
+              setLiveTools([]);
+              setLiveText("");
+              setAccepted(false);
+            }}
+          />
         )}
       </div>
 
@@ -856,7 +961,62 @@ function ToolLine({ name, input, phase }: { name: string; input?: unknown; phase
   );
 }
 
-function KanbanCard({ task, onToggle }: { task: Task; onToggle: () => void }) {
+const STATE_COLOR: Record<TaskState, string> = {
+  open: "var(--text-ghost)",
+  running: "var(--cc-info)",
+  done: "var(--cc-ok)",
+  blocked: "var(--cc-err)",
+};
+
+const STATE_GLYPH: Record<TaskState, string> = {
+  open: "›",
+  running: "◐",
+  done: "✓",
+  blocked: "✕",
+};
+
+type Copy = ReturnType<typeof useCopy>;
+
+function stateLabel(state: TaskState, copy: Copy): string {
+  switch (state) {
+    case "open": return copy.taskStateOpen;
+    case "running": return copy.taskStateRunning;
+    case "done": return copy.taskStateDone;
+    case "blocked": return copy.taskStateBlocked;
+  }
+}
+
+function sourceLabel(source: Task["source"], copy: Copy): string {
+  switch (source) {
+    case "lab": return copy.taskSourceLab;
+    case "crew": return copy.taskSourceCrew;
+    case "other": return copy.taskSourceOther;
+    default: return copy.taskSourceManual;
+  }
+}
+
+function StateChip({ state, copy }: { state: TaskState; copy: Copy }) {
+  return (
+    <span
+      title={stateLabel(state, copy)}
+      style={{
+        fontSize: 9,
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+        color: STATE_COLOR[state],
+        border: `1px solid ${STATE_COLOR[state]}`,
+        padding: "1px 6px",
+        borderRadius: 999,
+        fontFamily: "var(--mono)",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {STATE_GLYPH[state]} {stateLabel(state, copy)}
+    </span>
+  );
+}
+
+function KanbanCard({ task, onToggle, copy }: { task: Task; onToggle: () => void; copy: Copy }) {
   return (
     <div
       onClick={onToggle}
@@ -883,8 +1043,8 @@ function KanbanCard({ task, onToggle }: { task: Task; onToggle: () => void }) {
         style={{
           fontSize: 13,
           fontFamily: "var(--sans)",
-          color: task.done ? "var(--text-muted)" : "var(--text-primary)",
-          textDecoration: task.done ? "line-through" : "none",
+          color: task.state === "done" ? "var(--text-muted)" : "var(--text-primary)",
+          textDecoration: task.state === "done" ? "line-through" : "none",
           lineHeight: 1.5,
         }}
       >
@@ -894,22 +1054,32 @@ function KanbanCard({ task, onToggle }: { task: Task; onToggle: () => void }) {
         style={{
           fontSize: 9,
           letterSpacing: 1.5,
-          color: task.done ? "var(--cc-ok)" : "var(--text-ghost)",
+          color: "var(--text-ghost)",
           fontFamily: "var(--mono)",
           marginTop: 8,
           textTransform: "uppercase",
           display: "flex",
           justifyContent: "space-between",
+          alignItems: "center",
+          gap: 8,
         }}
       >
         <span>{new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-        <span>{task.done ? "exit 0" : "pending"}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {task.source !== "manual" && (
+            <span style={{ color: "var(--accent-dim)" }}>· {sourceLabel(task.source, copy)}</span>
+          )}
+          {task.artifactId && (
+            <span title="artefacto aceite" style={{ color: "var(--cc-ok)" }}>◆</span>
+          )}
+          <StateChip state={task.state} copy={copy} />
+        </span>
       </div>
     </div>
   );
 }
 
-function TaskRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
+function TaskRow({ task, onToggle, copy }: { task: Task; onToggle: () => void; copy: Copy }) {
   return (
     <div
       onClick={onToggle}
@@ -934,35 +1104,313 @@ function TaskRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
       <span
         style={{
           fontSize: 13,
-          color: task.done ? "var(--cc-ok)" : "var(--cc-prompt)",
+          color: STATE_COLOR[task.state],
           width: 14,
           marginTop: 1,
         }}
       >
-        {task.done ? "✓" : "›"}
+        {STATE_GLYPH[task.state]}
       </span>
       <span
         style={{
           flex: 1,
           fontSize: 13,
-          color: task.done ? "var(--cc-dim)" : "var(--cc-fg)",
-          textDecoration: task.done ? "line-through" : "none",
+          color: task.state === "done" ? "var(--cc-dim)" : "var(--cc-fg)",
+          textDecoration: task.state === "done" ? "line-through" : "none",
           lineHeight: 1.55,
         }}
       >
         {task.title}
       </span>
-      <span
-        style={{
-          fontSize: 9,
-          letterSpacing: 1.5,
-          color: "var(--text-ghost)",
-          textTransform: "uppercase",
-          marginTop: 3,
-        }}
-      >
-        {task.done ? "exit 0" : "queue"}
+      {task.artifactId && (
+        <span title="artefacto aceite" style={{ color: "var(--cc-ok)", fontSize: 11, marginTop: 2 }}>◆</span>
+      )}
+      {task.source !== "manual" && (
+        <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--accent-dim)", textTransform: "uppercase", marginTop: 3 }}>
+          {sourceLabel(task.source, copy)}
+        </span>
+      )}
+      <StateChip state={task.state} copy={copy} />
+    </div>
+  );
+}
+
+interface WorkbenchCardProps {
+  missionTitle: string;
+  task: Task | null;
+  resumed: boolean;
+  copy: Copy;
+  lang: string;
+  pending: boolean;
+  iteration: number;
+  elapsed: number;
+  openCount: number;
+  runningCount: number;
+  doneCount: number;
+  blockedCount: number;
+  onSelectTask: (id: string) => void;
+  onReopen: () => void;
+}
+
+function WorkbenchCard({
+  missionTitle, task, resumed, copy, pending, iteration, elapsed,
+  openCount, runningCount, doneCount, blockedCount, onReopen,
+}: WorkbenchCardProps) {
+  return (
+    <div
+      className="fadeIn"
+      style={{
+        maxWidth: 820,
+        marginBottom: 20,
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-subtle)",
+        borderLeft: `2px solid ${task ? STATE_COLOR[task.state] : "var(--accent-dim)"}`,
+        borderRadius: 14,
+        padding: "14px 18px",
+        fontFamily: "var(--mono)",
+      }}
+    >
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, marginBottom: 8,
+        fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-ghost)",
+      }}>
+        <span>{copy.workbench}</span>
+        <span style={{ color: "var(--border-subtle)" }}>/</span>
+        <span style={{ color: "var(--text-secondary)", letterSpacing: 1, textTransform: "none", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {missionTitle}
+        </span>
+        {resumed && task && (
+          <span style={{ marginLeft: "auto", color: "var(--cc-info)", letterSpacing: 1.5 }}>
+            ↺ {copy.resumeHint}
+          </span>
+        )}
+      </div>
+      {task ? (
+        <>
+          <div style={{
+            fontSize: 16,
+            fontFamily: "var(--sans)",
+            color: task.state === "done" ? "var(--text-muted)" : "var(--text-primary)",
+            lineHeight: 1.4,
+            marginBottom: 10,
+            textDecoration: task.state === "done" ? "line-through" : "none",
+          }}>
+            {task.title}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <StateChip state={task.state} copy={copy} />
+            <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase" }}>
+              {sourceLabel(task.source, copy)}
+            </span>
+            <span style={{ fontSize: 10, color: "var(--text-ghost)" }}>
+              · {new Date(task.lastUpdateAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            {task.artifactId && (
+              <span style={{ fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
+                ◆ artefacto
+              </span>
+            )}
+            {pending && (
+              <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--cc-info)" }}>
+                ● iter {iteration} · {elapsed.toFixed(1)}s
+              </span>
+            )}
+            {task.state === "blocked" && !pending && (
+              <button
+                onClick={onReopen}
+                style={{
+                  marginLeft: "auto", background: "none", border: "1px solid var(--cc-warn)",
+                  color: "var(--cc-warn)", fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
+                  padding: "3px 10px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer",
+                }}
+              >
+                {copy.actionUnblock}
+              </button>
+            )}
+          </div>
+        </>
+      ) : (
+        <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", fontFamily: "var(--sans)" }}>
+          {copy.noActiveTask}
+        </div>
+      )}
+      <div style={{
+        marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--border-subtle)",
+        display: "flex", gap: 14, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
+        color: "var(--text-ghost)",
+      }}>
+        <span>{copy.taskStateOpen}: {openCount}</span>
+        <span style={{ color: runningCount > 0 ? "var(--cc-info)" : undefined }}>
+          {copy.taskStateRunning}: {runningCount}
+        </span>
+        <span style={{ color: doneCount > 0 ? "var(--cc-ok)" : undefined }}>
+          {copy.taskStateDone}: {doneCount}
+        </span>
+        <span style={{ color: blockedCount > 0 ? "var(--cc-err)" : undefined }}>
+          {copy.taskStateBlocked}: {blockedCount}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+interface NextStepBarProps {
+  hasNextOpen: boolean;
+  canRefine: boolean;
+  canBlock: boolean;
+  isBlocked: boolean;
+  copy: Copy;
+  onNext: () => void;
+  onRefine: () => void;
+  onBlock: () => void;
+  onReopen: () => void;
+}
+
+function NextStepBar({
+  hasNextOpen, canRefine, canBlock, isBlocked, copy,
+  onNext, onRefine, onBlock, onReopen,
+}: NextStepBarProps) {
+  const buttons: Array<{ label: string; onClick: () => void; color: string }> = [];
+  if (hasNextOpen) buttons.push({ label: copy.actionNextTask, onClick: onNext, color: "var(--accent)" });
+  if (canRefine) buttons.push({ label: copy.actionRefine, onClick: onRefine, color: "var(--cc-info)" });
+  if (isBlocked) {
+    buttons.push({ label: copy.actionUnblock, onClick: onReopen, color: "var(--cc-warn)" });
+  } else if (canBlock) {
+    buttons.push({ label: copy.actionBlock, onClick: onBlock, color: "var(--cc-err)" });
+  }
+  if (buttons.length === 0) {
+    return (
+      <div style={{ marginTop: 14, maxWidth: 820, fontFamily: "var(--mono)", fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
+        {copy.actionAllDone}
+      </div>
+    );
+  }
+  return (
+    <div
+      className="fadeIn"
+      style={{
+        marginTop: 14,
+        maxWidth: 820,
+        display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap",
+        fontFamily: "var(--mono)",
+      }}
+    >
+      <span style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-ghost)" }}>
+        {copy.nextStep}
       </span>
+      {buttons.map((b, i) => (
+        <button
+          key={i}
+          onClick={b.onClick}
+          style={{
+            background: "none",
+            border: `1px solid ${b.color}`,
+            color: b.color,
+            fontSize: 10,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            padding: "6px 12px",
+            borderRadius: 999,
+            fontFamily: "var(--mono)",
+            cursor: "pointer",
+            transition: "background .15s var(--ease-swift)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = `color-mix(in oklab, ${b.color} 10%, transparent)`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "none";
+          }}
+        >
+          {b.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ArtifactLedger({
+  artifacts, copy, onSelectArtifact,
+}: {
+  artifacts: Artifact[];
+  copy: Copy;
+  onSelectArtifact: (a: Artifact) => void;
+}) {
+  return (
+    <div style={{ marginTop: 24, maxWidth: 820 }}>
+      <div style={{
+        fontSize: 9, letterSpacing: 2.5, color: "var(--text-ghost)",
+        fontFamily: "var(--mono)", textTransform: "uppercase", marginBottom: 10,
+      }}>
+        ◆ {copy.recentArtifacts}
+        {artifacts.length > 0 && (
+          <span style={{ marginLeft: 8, color: "var(--text-ghost)", letterSpacing: 1 }}>
+            · {artifacts.length}
+          </span>
+        )}
+      </div>
+      {artifacts.length === 0 ? (
+        <div style={{
+          fontSize: 11, color: "var(--text-ghost)", fontStyle: "italic",
+          fontFamily: "var(--sans)",
+        }}>
+          {copy.artifactEmpty}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {artifacts.map((a) => {
+            const preview = a.answer
+              ? (a.answer.length > 200 ? a.answer.slice(0, 200) + "…" : a.answer)
+              : "—";
+            const clickable = Boolean(a.taskId);
+            return (
+              <div
+                key={a.id}
+                onClick={clickable ? () => onSelectArtifact(a) : undefined}
+                className="fadeIn"
+                style={{
+                  background: "color-mix(in oklab, var(--cc-ok) 6%, var(--bg-elevated))",
+                  border: "1px solid var(--border-subtle)",
+                  borderLeft: "2px solid var(--cc-ok)",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  fontFamily: "var(--mono)",
+                  cursor: clickable ? "pointer" : "default",
+                }}
+              >
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
+                  color: "var(--cc-ok)", marginBottom: 6,
+                }}>
+                  <span>◆</span>
+                  <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
+                    {new Date(a.acceptedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  {a.terminatedEarly && (
+                    <span style={{ color: "var(--cc-warn)" }}>· terminação antecipada</span>
+                  )}
+                  <span style={{
+                    marginLeft: "auto", color: "var(--text-ghost)",
+                    maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    › {a.taskTitle}
+                  </span>
+                </div>
+                <div style={{
+                  fontSize: 11,
+                  color: a.terminatedEarly && !a.answer ? "var(--cc-warn)" : "var(--text-muted)",
+                  fontFamily: "var(--sans)",
+                  lineHeight: 1.55,
+                  whiteSpace: "pre-wrap",
+                }}>
+                  {preview}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
