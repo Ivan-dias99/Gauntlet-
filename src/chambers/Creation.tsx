@@ -45,7 +45,7 @@ const EMPTY_CREW: CrewState = {
 };
 
 export default function Creation() {
-  const { activeMission, addTask, completeTask, principles } = useSpine();
+  const { activeMission, addTask, completeTask, addNoteToMission, acceptArtifact, principles } = useSpine();
   const { streamDev, streamCrew, pending } = useRuberra();
   const { values } = useTweaks();
   const copy = useCopy();
@@ -60,6 +60,9 @@ export default function Creation() {
   const [elapsed, setElapsed] = useState(0);
   const [mode, setMode] = useState<RunMode>("agent");
   const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
+  // Session-only guard against double-click on the accept button inside the
+  // current done panel. Persisted acceptance is on spine.activeMission.lastArtifact.
+  const [accepted, setAccepted] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const outRef = useRef<HTMLDivElement>(null);
 
@@ -175,6 +178,7 @@ export default function Creation() {
     setLiveText("");
     setDone(null);
     setElapsed(0);
+    setAccepted(false);
     setCrew({ ...EMPTY_CREW });
 
     abortRef.current?.abort();
@@ -195,10 +199,31 @@ export default function Creation() {
     }
   }
 
+  function accept() {
+    if (!done || !activeMission || accepted) return;
+    const task = activeMission.tasks.find((t) => !t.done && t.title === lastTask);
+    if (task) completeTask(task.id);
+    const answerText = done.answer.trim();
+    if (answerText) {
+      addNoteToMission(activeMission.id, answerText, "ai");
+    }
+    acceptArtifact(activeMission.id, {
+      taskTitle: lastTask,
+      answer: answerText,
+      terminatedEarly: done.terminated_early,
+      acceptedAt: Date.now(),
+    });
+    setAccepted(true);
+  }
+
   const tasks = activeMission?.tasks ?? [];
   const doneTasks = tasks.filter((t) => t.done);
   const pendingTasks = tasks.filter((t) => !t.done);
   const exitCode = done ? 0 : err ? 1 : null;
+
+  // Prefer the session's last submitted task; fall back to the most recently
+  // declared pending task (tasks are appended in order).
+  const currentObjective = lastTask || pendingTasks[pendingTasks.length - 1]?.title || "";
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
@@ -207,10 +232,12 @@ export default function Creation() {
           padding: "20px 40px 16px",
           borderBottom: "1px solid var(--border-subtle)",
           display: "flex",
-          alignItems: "baseline",
-          gap: 12,
+          flexDirection: "column",
+          gap: 8,
         }}
       >
+        {/* Row 1: chamber label + mode toggle + status */}
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
         <span
           style={{
             fontSize: 10,
@@ -293,6 +320,35 @@ export default function Creation() {
             </span>
           )}
         </div>
+        </div>
+        {/* Row 2: active mission + current objective */}
+        {activeMission && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--mono)", fontSize: 11 }}>
+            <span style={{ fontSize: 9, letterSpacing: 2, color: "var(--text-ghost)", textTransform: "uppercase" }}>missão</span>
+            <span style={{ color: "var(--text-secondary)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {activeMission.title}
+            </span>
+            {currentObjective && (
+              <>
+                <span style={{ color: "var(--border-subtle)", fontSize: 13 }}>›</span>
+                <span style={{ color: "var(--accent)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {currentObjective}
+                </span>
+                {activeMission.lastArtifact?.taskTitle === currentObjective && (
+                  <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--cc-ok)", textTransform: "uppercase" }}>✓ aceite</span>
+                )}
+              </>
+            )}
+            {!currentObjective && pendingTasks.length === 0 && doneTasks.length > 0 && (
+              <>
+                <span style={{ color: "var(--border-subtle)", fontSize: 13 }}>›</span>
+                <span style={{ color: "var(--cc-ok)", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>
+                  tudo concluído
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div
@@ -375,6 +431,51 @@ export default function Creation() {
             {doneTasks.map((t) => (
               <TaskRow key={t.id} task={t} onToggle={() => completeTask(t.id)} />
             ))}
+          </div>
+        )}
+
+        {activeMission?.lastArtifact && (
+          <div
+            className="fadeIn"
+            style={{
+              maxWidth: 820,
+              marginBottom: 14,
+              background: "color-mix(in oklab, var(--cc-ok) 8%, var(--bg-elevated))",
+              border: "1px solid var(--border-subtle)",
+              borderLeft: "2px solid var(--cc-ok)",
+              borderRadius: 12,
+              padding: "10px 14px",
+              fontFamily: "var(--mono)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--cc-ok)", marginBottom: 6 }}>
+              <span>✓ último artefacto aceite</span>
+              <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
+                {new Date(activeMission.lastArtifact.acceptedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <span style={{ marginLeft: "auto", color: "var(--text-ghost)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                › {activeMission.lastArtifact.taskTitle}
+              </span>
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: activeMission.lastArtifact.terminatedEarly && !activeMission.lastArtifact.answer
+                  ? "var(--cc-warn)"
+                  : "var(--text-muted)",
+                fontFamily: "var(--sans)",
+                lineHeight: 1.55,
+                whiteSpace: "pre-wrap",
+                maxHeight: 72,
+                overflow: "hidden",
+              }}
+            >
+              {activeMission.lastArtifact.answer
+                ? (activeMission.lastArtifact.answer.length > 260
+                    ? activeMission.lastArtifact.answer.slice(0, 260) + "…"
+                    : activeMission.lastArtifact.answer)
+                : "terminação antecipada — sem saída textual"}
+            </div>
           </div>
         )}
 
@@ -462,6 +563,29 @@ export default function Creation() {
               {done?.terminated_early && (
                 <div style={{ fontSize: 10, color: "var(--cc-warn)", marginTop: 10, fontFamily: "var(--mono)" }}>
                   terminado cedo: {done.termination_reason}
+                </div>
+              )}
+              {done && activeMission && (
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--border-subtle)", display: "flex", alignItems: "center", gap: 12 }}>
+                  {!accepted ? (
+                    <>
+                      <button
+                        onClick={accept}
+                        style={{ background: "none", border: "1px solid var(--cc-ok)", color: "var(--cc-ok)", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", padding: "6px 14px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer", transition: "all .2s var(--ease-swift)" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--cc-ok) 12%, transparent)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                      >
+                        ✓ aceitar artefacto
+                      </button>
+                      <span style={{ fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
+                        → marca tarefa concluída · regista na missão
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 10, color: "var(--cc-ok)", fontFamily: "var(--mono)", letterSpacing: 1.5 }}>
+                      ✓ artefacto aceite · missão actualizada
+                    </span>
+                  )}
                 </div>
               )}
             </div>

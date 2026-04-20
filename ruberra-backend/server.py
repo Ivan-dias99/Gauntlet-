@@ -1,13 +1,16 @@
 """
-Ruberra V1 — FastAPI Server
+Ruberra — FastAPI Server
 HTTP interface for the Ruberra intelligence system.
 
 Endpoints:
-  POST /ask              — Submit a question to Ruberra
-  GET  /health           — Health check
-  GET  /memory/stats     — Failure memory statistics
-  GET  /memory/failures  — List recent failures
-  POST /memory/clear     — Clear failure memory (admin)
+  POST /ask, /route, /route/stream  — triad+judge / auto-router
+  POST /dev, /dev/stream            — agent loop (tool-use)
+  POST /crew/stream                 — multi-agent crew
+  GET  /runs, /runs/stats, /runs/{id}
+  GET  /memory/stats, /memory/failures
+  POST /memory/clear
+  GET  /spine — POST /spine
+  GET  /health, /diagnostics
 """
 
 from __future__ import annotations
@@ -122,7 +125,7 @@ async def ask_ruberra(query: RuberraQuery):
     1. Check failure memory for prior failures on similar questions
     2. Fire 3 parallel calls to Claude Sonnet (self-consistency)
     3. Send responses to the implacable Judge
-    4. Return answer (high/medium confidence) or refusal (low confidence)
+    4. Return answer (high confidence) or refusal (low confidence)
     """
     if not engine:
         raise HTTPException(status_code=503, detail="Engine not initialized")

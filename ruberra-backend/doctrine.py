@@ -53,7 +53,10 @@ Responda apenas com o JSON. Nenhuma palavra a mais.
 {
   "confidence": "high" | "low",
   "should_refuse": true | false,
-  "consensus_answer": "string or null"
+  "refusal_reason": "inconsistency" | "insufficient_knowledge" | "safety" | "prior_failure" | null,
+  "consensus_answer": "string or null",
+  "reasoning": "uma frase — porquê este nível de confiança",
+  "divergence_points": ["ponto onde as respostas divergiram"]
 }
 ```
 """
@@ -110,30 +113,18 @@ def build_refusal_message(
 
 def build_cautious_answer_wrapper(
     answer: str,
-    confidence_level: str,
-    caveats: list[str] | None = None,
     prior_failure: bool = False,
 ) -> str:
-    """
-    Wrap an answer with warnings. Used only for HIGH confidence.
-    Medium confidence doesn't exist in V2 — it's either HIGH or refuse.
-    """
-    lines = []
-
-    if prior_failure:
-        lines.extend([
-            "⚠ Esta pergunta já causou problemas antes. "
-            "Respondo porque as 3 análises concordaram, mas verifica.",
-            "",
-        ])
-
-    lines.append(answer)
-
-    if caveats:
-        lines.append("")
-        for caveat in caveats:
-            lines.append(f"  — {caveat}")
-
+    """Wrap a HIGH confidence answer. If this query matched a prior failure,
+    prepend a warning so the user knows to double-check."""
+    if not prior_failure:
+        return answer
+    lines = [
+        "⚠ Esta pergunta já causou problemas antes. "
+        "Respondo porque as 3 análises concordaram, mas verifica.",
+        "",
+        answer,
+    ]
     return "\n".join(lines)
 
 

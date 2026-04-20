@@ -1,6 +1,7 @@
 """
-Ruberra V1 — Data Models
+Ruberra — Data Models
 Pydantic models for request/response contracts and internal state.
+Confidence is binary: HIGH or LOW. No medium tier, no caveats.
 """
 
 from __future__ import annotations
@@ -140,6 +141,7 @@ class RunRecord(BaseModel):
     answer: Optional[str] = None
     refused: bool = False
     confidence: Optional[str] = None
+    judge_reasoning: Optional[str] = None
     tool_calls: list[dict] = Field(default_factory=list)
     iterations: Optional[int] = None
     processing_time_ms: int = 0
@@ -179,6 +181,14 @@ class LogEventRecord(BaseModel):
     at: int
 
 
+class ArtifactRecord(BaseModel):
+    id: str
+    taskTitle: str
+    answer: str = ""
+    terminatedEarly: bool = False
+    acceptedAt: int
+
+
 class MissionRecord(BaseModel):
     id: str
     title: str
@@ -188,6 +198,7 @@ class MissionRecord(BaseModel):
     notes: list[NoteRecord] = Field(default_factory=list)
     tasks: list[TaskRecord] = Field(default_factory=list)
     events: list[LogEventRecord] = Field(default_factory=list)
+    lastArtifact: Optional[ArtifactRecord] = None
 
 
 class PrincipleRecord(BaseModel):
@@ -202,3 +213,4 @@ class SpineSnapshot(BaseModel):
     activeMissionId: Optional[str] = None
     principles: list[PrincipleRecord] = Field(default_factory=list)
     last_updated: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updatedAt: Optional[int] = None

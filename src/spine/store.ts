@@ -1,4 +1,4 @@
-import { SpineState, Mission, Chamber, Note, Task, LogEvent, Principle } from "./types";
+import { SpineState, Mission, Chamber, Note, Task, LogEvent, Principle, Artifact } from "./types";
 
 const KEY = "ruberra:spine:v1";
 
@@ -22,16 +22,30 @@ function onActive(state: SpineState, fn: (m: Mission) => Mission): SpineState {
   if (!state.activeMissionId) return state;
   return {
     ...state,
+    updatedAt: now(),
     missions: state.missions.map(m =>
       m.id === state.activeMissionId ? fn(m) : m
     ),
   };
 }
 
-const EMPTY: SpineState = { missions: [], activeMissionId: null, principles: [] };
+const EMPTY: SpineState = { missions: [], activeMissionId: null, principles: [], updatedAt: 0 };
 
 export function emptyState(): SpineState {
-  return { missions: [], activeMissionId: null, principles: [] };
+  return { missions: [], activeMissionId: null, principles: [], updatedAt: 0 };
+}
+
+function normalizeArtifact(v: unknown): Artifact | null {
+  if (!v || typeof v !== "object") return null;
+  const a = v as Record<string, unknown>;
+  if (typeof a.id !== "string" || typeof a.taskTitle !== "string") return null;
+  return {
+    id: a.id,
+    taskTitle: a.taskTitle,
+    answer: typeof a.answer === "string" ? a.answer : "",
+    terminatedEarly: a.terminatedEarly === true,
+    acceptedAt: typeof a.acceptedAt === "number" ? a.acceptedAt : Date.now(),
+  };
 }
 
 function normalizeMission(m: unknown): Mission | null {
@@ -81,6 +95,7 @@ function normalizeMission(m: unknown): Mission | null {
         at: typeof er.at === "number" ? er.at : Date.now(),
       }] as LogEvent[];
     }) : [],
+    lastArtifact: normalizeArtifact(r.lastArtifact),
   };
 }
 
@@ -107,7 +122,8 @@ export function loadState(): SpineState {
       missions.some(m => m.id === r.activeMissionId)
         ? r.activeMissionId
         : (missions[0]?.id ?? null);
-    return { missions, activeMissionId, principles };
+    const updatedAt = typeof r.updatedAt === "number" ? r.updatedAt : 0;
+    return { missions, activeMissionId, principles, updatedAt };
   } catch {
     return EMPTY;
   }
@@ -131,8 +147,9 @@ export function createMission(state: SpineState, title: string, chamber: Chamber
     notes: [],
     tasks: [],
     events: [log("mission_created", `Missão criada: ${title.trim()}`)],
+    lastArtifact: null,
   };
-  return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id };
+  return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id, updatedAt: now() };
 }
 
 export function addNote(state: SpineState, text: string, role: Note["role"] = "user"): SpineState {
@@ -149,6 +166,7 @@ export function addNoteToMission(
   const note: Note = { id: uid(), text: text.trim(), createdAt: now(), role };
   return {
     ...state,
+    updatedAt: now(),
     missions: state.missions.map(m =>
       m.id === missionId ? {
         ...m,
@@ -191,9 +209,24 @@ export function completeTask(state: SpineState, taskId: string): SpineState {
 
 export function addPrinciple(state: SpineState, text: string): SpineState {
   const p: Principle = { id: uid(), text: text.trim(), createdAt: now() };
-  return { ...state, principles: [p, ...state.principles] };
+  return { ...state, principles: [p, ...state.principles], updatedAt: now() };
+}
+
+export function acceptArtifact(
+  state: SpineState,
+  missionId: string,
+  artifact: Omit<Artifact, "id">,
+): SpineState {
+  const full: Artifact = { id: uid(), ...artifact };
+  return {
+    ...state,
+    updatedAt: now(),
+    missions: state.missions.map(m =>
+      m.id === missionId ? { ...m, lastArtifact: full } : m
+    ),
+  };
 }
 
 export function switchMission(state: SpineState, id: string): SpineState {
-  return { ...state, activeMissionId: id };
+  return { ...state, activeMissionId: id, updatedAt: now() };
 }

@@ -12,6 +12,7 @@ interface RunRecord {
   answer: string | null;
   refused: boolean;
   confidence: string | null;
+  judge_reasoning: string | null;
   iterations: number | null;
   tool_calls: Array<{ name: string; ok: boolean }>;
   processing_time_ms: number;
@@ -42,8 +43,7 @@ interface ServerStats {
 const ROUTE_COLOR: Record<string, string> = {
   agent: "var(--terminal-warn)",
   triad: "var(--accent)",
-  dev: "var(--terminal-warn)",
-  ask: "var(--accent)",
+  crew: "var(--terminal-ok)",
 };
 
 interface Stats {
@@ -279,6 +279,9 @@ export default function Memory() {
               <div key={r.id} style={{
                 borderBottom: "1px solid var(--border-subtle)",
                 padding: "10px 0",
+                borderLeft: r.refused ? "2px solid var(--cc-err)" : "2px solid transparent",
+                paddingLeft: r.refused ? 10 : 0,
+                marginLeft: r.refused ? -12 : 0,
               }}>
                 <div
                   onClick={() => setExpanded(isOpen ? null : r.id)}
@@ -293,10 +296,10 @@ export default function Memory() {
                   <span style={{
                     fontSize: 9,
                     letterSpacing: 1.5,
-                    color: ROUTE_COLOR[r.route] ?? "var(--text-muted)",
+                    color: r.refused ? "var(--cc-err)" : ROUTE_COLOR[r.route] ?? "var(--text-muted)",
                     textTransform: "uppercase",
                   }}>
-                    {r.route}
+                    {r.refused ? "✗ " : ""}{r.route}
                   </span>
                   <span style={{
                     fontSize: 12,
@@ -345,6 +348,14 @@ export default function Memory() {
                             {" "}{tc.name}
                           </div>
                         ))}
+                      </div>
+                    )}
+                    {r.judge_reasoning && (
+                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-subtle)" }}>
+                        <div style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase", marginBottom: 4, fontFamily: "var(--mono)" }}>judge</div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.55, fontFamily: "var(--sans)", whiteSpace: "pre-wrap" }}>
+                          {r.judge_reasoning.length > 320 ? r.judge_reasoning.slice(0, 320) + "…" : r.judge_reasoning}
+                        </div>
                       </div>
                     )}
                     {r.answer && (

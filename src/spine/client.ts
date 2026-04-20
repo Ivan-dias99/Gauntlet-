@@ -10,11 +10,13 @@ export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | nul
       missions?: unknown;
       activeMissionId?: unknown;
       principles?: unknown;
+      updatedAt?: unknown;
     };
     return {
       missions: Array.isArray(raw.missions) ? (raw.missions as SpineState["missions"]) : [],
       activeMissionId: typeof raw.activeMissionId === "string" ? raw.activeMissionId : null,
       principles: Array.isArray(raw.principles) ? (raw.principles as SpineState["principles"]) : [],
+      updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0,
     };
   } catch {
     return null;
@@ -30,6 +32,7 @@ export async function pushSpine(state: SpineState, signal?: AbortSignal): Promis
         missions: state.missions,
         activeMissionId: state.activeMissionId,
         principles: state.principles,
+        updatedAt: state.updatedAt,
       }),
       signal,
     });

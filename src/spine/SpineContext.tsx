@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
-import { SpineState, Mission, Principle, Chamber } from "./types";
+import { SpineState, Mission, Principle, Chamber, Artifact } from "./types";
 import {
   loadState, saveState, emptyState,
   createMission as mkMission,
@@ -9,6 +9,7 @@ import {
   completeTask as completeTaskFn,
   addPrinciple as addPrincipleFn,
   switchMission as switchFn,
+  acceptArtifact as acceptArtifactFn,
 } from "./store";
 import { fetchSpine, pushSpine } from "./client";
 
@@ -23,6 +24,7 @@ interface SpineCtx {
   addTask: (title: string) => void;
   completeTask: (taskId: string) => void;
   addPrinciple: (text: string) => void;
+  acceptArtifact: (missionId: string, artifact: Omit<Artifact, "id">) => void;
   resetAll: () => void;
 }
 
@@ -33,12 +35,17 @@ export function SpineProvider({ children }: { children: ReactNode }) {
   const hasHydrated = useRef(false);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Hydrate from server on mount; fall back to localStorage state already set.
+  // Hydrate from server on mount. Remote wins only if its updatedAt is newer
+  // than the local snapshot — prevents an offline client with stale data from
+  // overwriting a more recent server state when it reconnects.
   useEffect(() => {
     const ac = new AbortController();
     fetchSpine(ac.signal).then((remote) => {
-      if (remote && (remote.missions.length > 0 || remote.principles.length > 0)) {
-        setState(remote);
+      if (remote) {
+        setState(prev => {
+          const remoteNewer = (remote.updatedAt ?? 0) > (prev.updatedAt ?? 0);
+          return remoteNewer ? remote : prev;
+        });
       }
       hasHydrated.current = true;
     });
@@ -71,6 +78,7 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       addTask: (title) => dispatch(s => addTaskFn(s, title)),
       completeTask: (id) => dispatch(s => completeTaskFn(s, id)),
       addPrinciple: (text) => dispatch(s => addPrincipleFn(s, text)),
+      acceptArtifact: (id, artifact) => dispatch(s => acceptArtifactFn(s, id, artifact)),
       resetAll: () => setState(emptyState()),
     }}>
       {children}

@@ -23,6 +23,14 @@ export interface LogEvent {
   at: number;
 }
 
+export interface Artifact {
+  id: string;
+  taskTitle: string;
+  answer: string;
+  terminatedEarly: boolean;
+  acceptedAt: number;
+}
+
 export interface Mission {
   id: string;
   title: string;
@@ -32,6 +40,7 @@ export interface Mission {
   notes: Note[];
   tasks: Task[];
   events: LogEvent[];
+  lastArtifact: Artifact | null;
 }
 
 export interface Principle {
@@ -44,4 +53,5 @@ export interface SpineState {
   missions: Mission[];
   activeMissionId: string | null;
   principles: Principle[];
+  updatedAt: number;
 }

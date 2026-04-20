@@ -1,5 +1,5 @@
 """
-Ruberra V1 — Configuration
+Ruberra — Configuration
 All environment-driven settings. No hardcoded secrets.
 """
 
@@ -48,22 +48,3 @@ MAX_FAILURE_ENTRIES: int = 500
 # How many past failures to inject as context into the system prompt
 FAILURE_CONTEXT_WINDOW: int = 10
 
-# ── Confidence Thresholds ───────────────────────────────────────────────────
-# These are semantic similarity thresholds used by the judge.
-# The judge itself assigns confidence — these are fallback heuristics.
-CONFIDENCE_HIGH_THRESHOLD: float = 0.95
-CONFIDENCE_MEDIUM_THRESHOLD: float = 0.70
-
-# ── Paranoia Gates ──────────────────────────────────────────────────────────
-# Topics Ruberra refuses to touch regardless of judge verdict.
-PROHIBITED_TOPICS: list[str] = [
-    "previsão de futuro", "futuro", "vai acontecer", "previsão",
-    "conselho médico", "saúde", "doença", "tratamento",
-    "opinião sobre pessoa", "fulano", "beltrano", "sicrano",
-]
-
-# Default is OFF — turning this on short-circuits the entire pipeline and
-# every request is refused. Enable via env: RUBERRA_ULTRA_PARANOIA=true
-ULTRA_PARANOIA_MODE: bool = os.environ.get(
-    "RUBERRA_ULTRA_PARANOIA", "false"
-).strip().lower() in ("1", "true", "yes", "on")

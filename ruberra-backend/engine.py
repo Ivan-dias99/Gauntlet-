@@ -1,7 +1,8 @@
 """
-Ruberra V1 — Self-Consistency Engine
+Ruberra — Self-Consistency Engine
 The core brain. Fires 3 parallel calls to Claude Sonnet,
-then routes the responses through the Judge for verdict.
+then routes the responses through the Judge for a binary verdict.
+Binary confidence: HIGH (all 3 agree) or LOW (refuse).
 """
 
 from __future__ import annotations
@@ -86,7 +87,6 @@ class RuberraEngine:
     7. Parse judge verdict
     8. Decision logic:
        - HIGH confidence → deliver answer
-       - MEDIUM confidence → deliver with explicit caveats
        - LOW confidence → refuse and explain why
     9. If refused → record failure in memory
     10. Return structured response
@@ -495,7 +495,7 @@ class RuberraEngine:
             answer = verdict.consensus_answer or triad_responses[0].content
             if has_prior_failure:
                 answer = build_cautious_answer_wrapper(
-                    answer=answer, confidence_level="high", prior_failure=True,
+                    answer=answer, prior_failure=True,
                 )
             response = RuberraResponse(
                 answer=answer,
@@ -564,6 +564,7 @@ class RuberraEngine:
             answer=response.answer,
             refused=response.refused or (response.refusal_message is not None),
             confidence=response.confidence.value if response.confidence else None,
+            judge_reasoning=response.judge_reasoning or None,
             processing_time_ms=response.processing_time_ms,
             input_tokens=response.total_input_tokens,
             output_tokens=response.total_output_tokens,
