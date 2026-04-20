@@ -86,7 +86,6 @@ class RuberraEngine:
     7. Parse judge verdict
     8. Decision logic:
        - HIGH confidence → deliver answer
-       - MEDIUM confidence → deliver with explicit caveats
        - LOW confidence → refuse and explain why
     9. If refused → record failure in memory
     10. Return structured response
@@ -495,7 +494,7 @@ class RuberraEngine:
             answer = verdict.consensus_answer or triad_responses[0].content
             if has_prior_failure:
                 answer = build_cautious_answer_wrapper(
-                    answer=answer, confidence_level="high", prior_failure=True,
+                    answer=answer, prior_failure=True,
                 )
             response = RuberraResponse(
                 answer=answer,

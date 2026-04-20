@@ -22,16 +22,17 @@ function onActive(state: SpineState, fn: (m: Mission) => Mission): SpineState {
   if (!state.activeMissionId) return state;
   return {
     ...state,
+    updatedAt: now(),
     missions: state.missions.map(m =>
       m.id === state.activeMissionId ? fn(m) : m
     ),
   };
 }
 
-const EMPTY: SpineState = { missions: [], activeMissionId: null, principles: [] };
+const EMPTY: SpineState = { missions: [], activeMissionId: null, principles: [], updatedAt: 0 };
 
 export function emptyState(): SpineState {
-  return { missions: [], activeMissionId: null, principles: [] };
+  return { missions: [], activeMissionId: null, principles: [], updatedAt: 0 };
 }
 
 function normalizeMission(m: unknown): Mission | null {
@@ -107,7 +108,8 @@ export function loadState(): SpineState {
       missions.some(m => m.id === r.activeMissionId)
         ? r.activeMissionId
         : (missions[0]?.id ?? null);
-    return { missions, activeMissionId, principles };
+    const updatedAt = typeof r.updatedAt === "number" ? r.updatedAt : 0;
+    return { missions, activeMissionId, principles, updatedAt };
   } catch {
     return EMPTY;
   }
@@ -132,7 +134,7 @@ export function createMission(state: SpineState, title: string, chamber: Chamber
     tasks: [],
     events: [log("mission_created", `Missão criada: ${title.trim()}`)],
   };
-  return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id };
+  return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id, updatedAt: now() };
 }
 
 export function addNote(state: SpineState, text: string, role: Note["role"] = "user"): SpineState {
@@ -149,6 +151,7 @@ export function addNoteToMission(
   const note: Note = { id: uid(), text: text.trim(), createdAt: now(), role };
   return {
     ...state,
+    updatedAt: now(),
     missions: state.missions.map(m =>
       m.id === missionId ? {
         ...m,
@@ -191,7 +194,7 @@ export function completeTask(state: SpineState, taskId: string): SpineState {
 
 export function addPrinciple(state: SpineState, text: string): SpineState {
   const p: Principle = { id: uid(), text: text.trim(), createdAt: now() };
-  return { ...state, principles: [p, ...state.principles] };
+  return { ...state, principles: [p, ...state.principles], updatedAt: now() };
 }
 
 export function switchMission(state: SpineState, id: string): SpineState {

@@ -33,12 +33,17 @@ export function SpineProvider({ children }: { children: ReactNode }) {
   const hasHydrated = useRef(false);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Hydrate from server on mount; fall back to localStorage state already set.
+  // Hydrate from server on mount. Remote wins only if its updatedAt is newer
+  // than the local snapshot — prevents an offline client with stale data from
+  // overwriting a more recent server state when it reconnects.
   useEffect(() => {
     const ac = new AbortController();
     fetchSpine(ac.signal).then((remote) => {
-      if (remote && (remote.missions.length > 0 || remote.principles.length > 0)) {
-        setState(remote);
+      if (remote) {
+        setState(prev => {
+          const remoteNewer = (remote.updatedAt ?? 0) > (prev.updatedAt ?? 0);
+          return remoteNewer ? remote : prev;
+        });
       }
       hasHydrated.current = true;
     });

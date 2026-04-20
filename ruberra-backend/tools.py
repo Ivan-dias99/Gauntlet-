@@ -22,8 +22,10 @@ import asyncio
 import json
 import logging
 import os
+import re
 import shlex
 import subprocess
+import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional
@@ -43,11 +45,20 @@ AGENT_ALLOW_CODE_EXEC: bool = os.environ.get(
     "RUBERRA_ALLOW_CODE_EXEC", "false"
 ).strip().lower() in ("1", "true", "yes", "on")
 
-# Shell binaries the agent may invoke via ``run_command``.
+# Shell binaries always permitted (read-only, inspection, testing).
 SHELL_ALLOWLIST: tuple[str, ...] = (
     "ls", "cat", "head", "tail", "wc", "grep", "find", "stat",
-    "node", "npm", "npx", "python", "python3", "pip", "pytest",
-    "git", "echo", "which", "pwd", "tree",
+    "node", "npm", "npx", "python", "python3", "pip", "pip3",
+    "pytest", "git", "echo", "which", "pwd", "tree",
+)
+
+# Binaries that can install or execute arbitrary code — require AGENT_ALLOW_CODE_EXEC.
+_EXEC_COMMANDS: frozenset[str] = frozenset({"pip", "pip3", "npm", "npx", "node"})
+
+# Hosts that must never be reachable via fetch_url (SSRF guard).
+_SSRF_BLOCKED = re.compile(
+    r"^(169\.254\.|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|::1$|localhost$)",
+    re.IGNORECASE,
 )
 
 DEFAULT_TOOL_TIMEOUT_S: float = 20.0
@@ -381,6 +392,11 @@ class RunCommandTool(Tool):
                 ok=False,
                 content=f"Binary '{argv[0]}' not in allow-list: {SHELL_ALLOWLIST}",
             )
+        if argv[0] in _EXEC_COMMANDS and not AGENT_ALLOW_CODE_EXEC:
+            return ToolResult(
+                ok=False,
+                content=f"'{argv[0]}' requires RUBERRA_ALLOW_CODE_EXEC=true",
+            )
         proc = await asyncio.create_subprocess_exec(
             *argv,
             stdout=asyncio.subprocess.PIPE,
@@ -423,6 +439,9 @@ class FetchUrlTool(Tool):
     async def _run(self, url: str) -> ToolResult:
         if not url.startswith(("http://", "https://")):
             return ToolResult(ok=False, content="Only http/https URLs are allowed")
+        hostname = urllib.parse.urlparse(url).hostname or ""
+        if _SSRF_BLOCKED.match(hostname):
+            return ToolResult(ok=False, content=f"SSRF: blocked host '{hostname}'")
         async with httpx.AsyncClient(
             timeout=HTTP_TIMEOUT_S,
             follow_redirects=True,

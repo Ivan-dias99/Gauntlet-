@@ -44,4 +44,5 @@ export interface SpineState {
   missions: Mission[];
   activeMissionId: string | null;
   principles: Principle[];
+  updatedAt: number;
 }

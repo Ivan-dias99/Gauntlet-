@@ -42,8 +42,7 @@ interface ServerStats {
 const ROUTE_COLOR: Record<string, string> = {
   agent: "var(--terminal-warn)",
   triad: "var(--accent)",
-  dev: "var(--terminal-warn)",
-  ask: "var(--accent)",
+  crew: "var(--terminal-ok)",
 };
 
 interface Stats {
