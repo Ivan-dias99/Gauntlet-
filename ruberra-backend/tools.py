@@ -53,7 +53,9 @@ SHELL_ALLOWLIST: tuple[str, ...] = (
 )
 
 # Binaries that can install or execute arbitrary code — require AGENT_ALLOW_CODE_EXEC.
-_EXEC_COMMANDS: frozenset[str] = frozenset({"pip", "pip3", "npm", "npx", "node"})
+_EXEC_COMMANDS: frozenset[str] = frozenset(
+    {"pip", "pip3", "npm", "npx", "node", "python", "python3"}
+)
 
 # Hosts that must never be reachable via fetch_url (SSRF guard).
 _SSRF_BLOCKED = re.compile(

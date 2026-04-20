@@ -179,13 +179,17 @@ export function addNoteToMission(
   };
 }
 
-export function addTask(state: SpineState, title: string): SpineState {
+export function addTask(
+  state: SpineState,
+  title: string,
+): { state: SpineState; taskId: string } {
   const task: Task = { id: uid(), title: title.trim(), done: false, createdAt: now() };
-  return onActive(state, m => ({
+  const next = onActive(state, m => ({
     ...m,
     tasks: [...m.tasks, task],
     events: [log("task_added", `Tarefa: ${title.trim().slice(0, 48)}`), ...m.events],
   }));
+  return { state: next, taskId: task.id };
 }
 
 export function completeTask(state: SpineState, taskId: string): SpineState {

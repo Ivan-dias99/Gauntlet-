@@ -52,6 +52,7 @@ export default function Creation() {
   const layout = values.creationLayout;
   const [input, setInput] = useState("");
   const [lastTask, setLastTask] = useState("");
+  const [lastTaskId, setLastTaskId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [iteration, setIteration] = useState(0);
   const [liveTools, setLiveTools] = useState<LiveTool[]>([]);
@@ -169,9 +170,10 @@ export default function Creation() {
     const v = input.trim();
     if (!v || pending) return;
 
-    addTask(v);
+    const newTaskId = addTask(v);
     setInput("");
     setLastTask(v);
+    setLastTaskId(newTaskId);
     setErr(null);
     setIteration(0);
     setLiveTools([]);
@@ -201,7 +203,9 @@ export default function Creation() {
 
   function accept() {
     if (!done || !activeMission || accepted) return;
-    const task = activeMission.tasks.find((t) => !t.done && t.title === lastTask);
+    const task = lastTaskId
+      ? activeMission.tasks.find((t) => t.id === lastTaskId && !t.done)
+      : undefined;
     if (task) completeTask(task.id);
     const answerText = done.answer.trim();
     if (answerText) {
