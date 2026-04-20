@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { SpineState, Mission, Principle, Chamber, Artifact } from "./types";
 import {
-  loadState, saveState, emptyState,
+  loadState, saveState, emptyState, uid,
   createMission as mkMission,
   addNote as addNoteFn,
   addNoteToMission as addNoteToMissionFn,
@@ -21,7 +21,7 @@ interface SpineCtx {
   switchMission: (id: string) => void;
   addNote: (text: string, role?: "user" | "ai") => void;
   addNoteToMission: (missionId: string, text: string, role?: "user" | "ai") => void;
-  addTask: (title: string) => void;
+  addTask: (title: string) => string;
   completeTask: (taskId: string) => void;
   addPrinciple: (text: string) => void;
   acceptArtifact: (missionId: string, artifact: Omit<Artifact, "id">) => void;
@@ -75,7 +75,11 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       switchMission: (id) => dispatch(s => switchFn(s, id)),
       addNote: (text, role) => dispatch(s => addNoteFn(s, text, role)),
       addNoteToMission: (id, text, role) => dispatch(s => addNoteToMissionFn(s, id, text, role)),
-      addTask: (title) => dispatch(s => addTaskFn(s, title)),
+      addTask: (title) => {
+        const id = uid();
+        dispatch(s => addTaskFn(s, title, id));
+        return id;
+      },
       completeTask: (id) => dispatch(s => completeTaskFn(s, id)),
       addPrinciple: (text) => dispatch(s => addPrincipleFn(s, text)),
       acceptArtifact: (id, artifact) => dispatch(s => acceptArtifactFn(s, id, artifact)),

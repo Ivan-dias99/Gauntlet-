@@ -2,7 +2,7 @@ import { SpineState, Mission, Chamber, Note, Task, LogEvent, Principle, Artifact
 
 const KEY = "ruberra:spine:v1";
 
-function uid(): string {
+export function uid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
@@ -179,8 +179,8 @@ export function addNoteToMission(
   };
 }
 
-export function addTask(state: SpineState, title: string): SpineState {
-  const task: Task = { id: uid(), title: title.trim(), done: false, createdAt: now() };
+export function addTask(state: SpineState, title: string, id: string): SpineState {
+  const task: Task = { id, title: title.trim(), done: false, createdAt: now() };
   return onActive(state, m => ({
     ...m,
     tasks: [...m.tasks, task],
