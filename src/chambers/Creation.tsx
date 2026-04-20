@@ -45,7 +45,7 @@ const EMPTY_CREW: CrewState = {
 };
 
 export default function Creation() {
-  const { activeMission, addTask, completeTask, addNoteToMission, principles } = useSpine();
+  const { activeMission, addTask, completeTask, addNoteToMission, acceptArtifact, principles } = useSpine();
   const { streamDev, streamCrew, pending } = useRuberra();
   const { values } = useTweaks();
   const copy = useCopy();
@@ -61,7 +61,6 @@ export default function Creation() {
   const [mode, setMode] = useState<RunMode>("agent");
   const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
   const [accepted, setAccepted] = useState(false);
-  const [lastAccepted, setLastAccepted] = useState<{ task: string; answer: string; at: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const outRef = useRef<HTMLDivElement>(null);
 
@@ -206,10 +205,11 @@ export default function Creation() {
     if (answerText) {
       addNoteToMission(activeMission.id, answerText, "ai");
     }
-    setLastAccepted({
-      task: lastTask || task?.title || "artefacto",
-      answer: answerText || "(sem resposta textual — terminação antecipada)",
-      at: Date.now(),
+    acceptArtifact(activeMission.id, {
+      taskTitle: lastTask || task?.title || "(sem tarefa)",
+      answer: answerText,
+      terminatedEarly: done.terminated_early,
+      acceptedAt: Date.now(),
     });
     setAccepted(true);
   }
@@ -222,7 +222,8 @@ export default function Creation() {
   const currentObjective = useMemo(() => {
     if (lastTask) return lastTask;
     if (!activeMission) return "";
-    const pending = activeMission.tasks.find((t) => !t.done);
+    // Most recently declared pending task (tasks appended in order)
+    const pending = [...activeMission.tasks].reverse().find((t) => !t.done);
     return pending?.title ?? "";
   }, [lastTask, activeMission]);
 
@@ -335,7 +336,7 @@ export default function Creation() {
                 <span style={{ color: "var(--accent)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {currentObjective}
                 </span>
-                {accepted && lastTask === currentObjective && (
+                {activeMission.lastArtifact?.taskTitle === currentObjective && (
                   <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--cc-ok)", textTransform: "uppercase" }}>✓ aceite</span>
                 )}
               </>
@@ -435,7 +436,7 @@ export default function Creation() {
           </div>
         )}
 
-        {lastAccepted && (
+        {activeMission?.lastArtifact && (
           <div
             className="fadeIn"
             style={{
@@ -452,25 +453,30 @@ export default function Creation() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--cc-ok)", marginBottom: 6 }}>
               <span>✓ último artefacto aceite</span>
               <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
-                {new Date(lastAccepted.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {new Date(activeMission.lastArtifact.acceptedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </span>
               <span style={{ marginLeft: "auto", color: "var(--text-ghost)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                › {lastAccepted.task}
+                › {activeMission.lastArtifact.taskTitle}
               </span>
             </div>
             <div
               style={{
                 fontSize: 11,
-                color: "var(--text-muted)",
+                color: activeMission.lastArtifact.terminatedEarly && !activeMission.lastArtifact.answer
+                  ? "var(--cc-warn)"
+                  : "var(--text-muted)",
                 fontFamily: "var(--sans)",
                 lineHeight: 1.55,
                 whiteSpace: "pre-wrap",
                 maxHeight: 72,
                 overflow: "hidden",
-                position: "relative",
               }}
             >
-              {lastAccepted.answer.length > 260 ? lastAccepted.answer.slice(0, 260) + "…" : lastAccepted.answer}
+              {activeMission.lastArtifact.answer
+                ? (activeMission.lastArtifact.answer.length > 260
+                    ? activeMission.lastArtifact.answer.slice(0, 260) + "…"
+                    : activeMission.lastArtifact.answer)
+                : "terminação antecipada — sem saída textual"}
             </div>
           </div>
         )}

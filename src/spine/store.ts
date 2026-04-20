@@ -1,4 +1,4 @@
-import { SpineState, Mission, Chamber, Note, Task, LogEvent, Principle } from "./types";
+import { SpineState, Mission, Chamber, Note, Task, LogEvent, Principle, Artifact } from "./types";
 
 const KEY = "ruberra:spine:v1";
 
@@ -82,6 +82,18 @@ function normalizeMission(m: unknown): Mission | null {
         at: typeof er.at === "number" ? er.at : Date.now(),
       }] as LogEvent[];
     }) : [],
+    lastArtifact: (() => {
+      if (!r.lastArtifact || typeof r.lastArtifact !== "object") return null;
+      const a = r.lastArtifact as Record<string, unknown>;
+      if (typeof a.id !== "string" || typeof a.taskTitle !== "string") return null;
+      return {
+        id: a.id,
+        taskTitle: a.taskTitle,
+        answer: typeof a.answer === "string" ? a.answer : "",
+        terminatedEarly: a.terminatedEarly === true,
+        acceptedAt: typeof a.acceptedAt === "number" ? a.acceptedAt : Date.now(),
+      } as Artifact;
+    })(),
   };
 }
 
@@ -133,6 +145,7 @@ export function createMission(state: SpineState, title: string, chamber: Chamber
     notes: [],
     tasks: [],
     events: [log("mission_created", `Missão criada: ${title.trim()}`)],
+    lastArtifact: null,
   };
   return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id, updatedAt: now() };
 }
@@ -195,6 +208,21 @@ export function completeTask(state: SpineState, taskId: string): SpineState {
 export function addPrinciple(state: SpineState, text: string): SpineState {
   const p: Principle = { id: uid(), text: text.trim(), createdAt: now() };
   return { ...state, principles: [p, ...state.principles], updatedAt: now() };
+}
+
+export function acceptArtifact(
+  state: SpineState,
+  missionId: string,
+  artifact: Omit<Artifact, "id">,
+): SpineState {
+  const full: Artifact = { id: uid(), ...artifact };
+  return {
+    ...state,
+    updatedAt: now(),
+    missions: state.missions.map(m =>
+      m.id === missionId ? { ...m, lastArtifact: full } : m
+    ),
+  };
 }
 
 export function switchMission(state: SpineState, id: string): SpineState {

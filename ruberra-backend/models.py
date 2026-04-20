@@ -181,6 +181,14 @@ class LogEventRecord(BaseModel):
     at: int
 
 
+class ArtifactRecord(BaseModel):
+    id: str
+    taskTitle: str
+    answer: str = ""
+    terminatedEarly: bool = False
+    acceptedAt: int
+
+
 class MissionRecord(BaseModel):
     id: str
     title: str
@@ -190,6 +198,7 @@ class MissionRecord(BaseModel):
     notes: list[NoteRecord] = Field(default_factory=list)
     tasks: list[TaskRecord] = Field(default_factory=list)
     events: list[LogEventRecord] = Field(default_factory=list)
+    lastArtifact: Optional[ArtifactRecord] = None
 
 
 class PrincipleRecord(BaseModel):
