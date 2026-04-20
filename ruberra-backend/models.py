@@ -141,6 +141,7 @@ class RunRecord(BaseModel):
     answer: Optional[str] = None
     refused: bool = False
     confidence: Optional[str] = None
+    judge_reasoning: Optional[str] = None
     tool_calls: list[dict] = Field(default_factory=list)
     iterations: Optional[int] = None
     processing_time_ms: int = 0

@@ -564,6 +564,7 @@ class RuberraEngine:
             answer=response.answer,
             refused=response.refused or (response.refusal_message is not None),
             confidence=response.confidence.value if response.confidence else None,
+            judge_reasoning=response.judge_reasoning or None,
             processing_time_ms=response.processing_time_ms,
             input_tokens=response.total_input_tokens,
             output_tokens=response.total_output_tokens,

@@ -4,11 +4,12 @@ import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 
 export default function School() {
-  const { principles, addPrinciple } = useSpine();
+  const { principles, addPrinciple, activeMission } = useSpine();
   const { values } = useTweaks();
   const copy = useCopy();
   const [input, setInput] = useState("");
   const layout = values.schoolLayout;
+  const isGoverning = principles.length > 0;
 
   function submit() {
     const v = input.trim();
@@ -47,7 +48,7 @@ export default function School() {
             style={{
               marginLeft: "auto",
               fontSize: 10,
-              color: "var(--text-ghost)",
+              color: isGoverning ? "var(--accent)" : "var(--text-ghost)",
               fontFamily: "var(--mono)",
               letterSpacing: 1.5,
             }}
@@ -61,6 +62,38 @@ export default function School() {
         flex: 1, overflow: "auto",
         padding: "calc(32px * var(--density, 1)) clamp(20px, 5vw, 64px)",
       }}>
+
+        {/* Governance status panel */}
+        {isGoverning && (
+          <div
+            className="fadeIn"
+            style={{
+              marginBottom: 28,
+              padding: "12px 16px",
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--border-subtle)",
+              borderLeft: "2px solid var(--accent-dim)",
+              borderRadius: 8,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent)", flexShrink: 0 }} />
+              <span style={{ fontSize: 10, color: "var(--accent)", letterSpacing: 2, textTransform: "uppercase", fontFamily: "var(--mono)" }}>
+                {principles.length} {principles.length === 1 ? "princípio" : "princípios"} activo{principles.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.55 }}>
+              Injectados no sistema em cada query de Lab e Creation.
+              {activeMission
+                ? <> Missão activa: <span style={{ color: "var(--text-secondary)" }}>{activeMission.title}</span>.</>
+                : " Nenhuma missão activa — princípios prontos para quando houver."}
+            </div>
+            <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1 }}>
+              → Lab · Creation · auto-router
+            </div>
+          </div>
+        )}
+
         {principles.length === 0 && (
           <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 520, marginTop: "10vh" }}>
             <div
@@ -119,8 +152,14 @@ export default function School() {
                     letterSpacing: 2,
                     marginBottom: 10,
                     textTransform: "uppercase",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
+                  {isGoverning && (
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", display: "inline-block", flexShrink: 0 }} />
+                  )}
                   § {String(principles.length - i).padStart(2, "0")}
                 </div>
                 <div style={{ fontSize: 15, color: "var(--text-primary)", lineHeight: 1.6 }}>
@@ -138,24 +177,36 @@ export default function School() {
                 style={{
                   animationDelay: `${i * 35}ms`,
                   display: "grid",
-                  gridTemplateColumns: "40px 1fr",
+                  gridTemplateColumns: "44px 1fr",
                   gap: "0 20px",
                   padding: "18px 0",
                   borderBottom: "1px solid var(--border-subtle)",
                   alignItems: "flex-start",
                 }}
               >
-                <span
+                <div
                   style={{
-                    fontSize: 10,
-                    color: "var(--accent-dim)",
-                    fontFamily: "var(--mono)",
-                    letterSpacing: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 6,
                     paddingTop: 3,
                   }}
                 >
-                  {String(i + 1).padStart(2, "0")}
-                </span>
+                  {isGoverning && (
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 0 2px color-mix(in oklab, var(--accent) 20%, transparent)" }} />
+                  )}
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "var(--accent-dim)",
+                      fontFamily: "var(--mono)",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                </div>
                 <span
                   style={{
                     fontSize: 15,

@@ -45,7 +45,7 @@ const EMPTY_CREW: CrewState = {
 };
 
 export default function Creation() {
-  const { activeMission, addTask, completeTask, principles } = useSpine();
+  const { activeMission, addTask, completeTask, addNoteToMission, principles } = useSpine();
   const { streamDev, streamCrew, pending } = useRuberra();
   const { values } = useTweaks();
   const copy = useCopy();
@@ -60,6 +60,7 @@ export default function Creation() {
   const [elapsed, setElapsed] = useState(0);
   const [mode, setMode] = useState<RunMode>("agent");
   const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
+  const [accepted, setAccepted] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const outRef = useRef<HTMLDivElement>(null);
 
@@ -175,6 +176,7 @@ export default function Creation() {
     setLiveText("");
     setDone(null);
     setElapsed(0);
+    setAccepted(false);
     setCrew({ ...EMPTY_CREW });
 
     abortRef.current?.abort();
@@ -195,6 +197,14 @@ export default function Creation() {
     }
   }
 
+  function accept() {
+    if (!done || !activeMission || accepted) return;
+    const task = activeMission.tasks.find((t) => !t.done && t.title === lastTask);
+    if (task) completeTask(task.id);
+    addNoteToMission(activeMission.id, done.answer, "ai");
+    setAccepted(true);
+  }
+
   const tasks = activeMission?.tasks ?? [];
   const doneTasks = tasks.filter((t) => t.done);
   const pendingTasks = tasks.filter((t) => !t.done);
@@ -207,10 +217,12 @@ export default function Creation() {
           padding: "20px 40px 16px",
           borderBottom: "1px solid var(--border-subtle)",
           display: "flex",
-          alignItems: "baseline",
-          gap: 12,
+          flexDirection: "column",
+          gap: 8,
         }}
       >
+        {/* Row 1: chamber label + mode toggle + status */}
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
         <span
           style={{
             fontSize: 10,
@@ -293,6 +305,27 @@ export default function Creation() {
             </span>
           )}
         </div>
+        </div>
+        {/* Row 2: active mission + current objective */}
+        {activeMission && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--mono)", fontSize: 11 }}>
+            <span style={{ fontSize: 9, letterSpacing: 2, color: "var(--text-ghost)", textTransform: "uppercase" }}>missão</span>
+            <span style={{ color: "var(--text-secondary)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {activeMission.title}
+            </span>
+            {lastTask && (
+              <>
+                <span style={{ color: "var(--border-subtle)", fontSize: 13 }}>›</span>
+                <span style={{ color: "var(--accent)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {lastTask}
+                </span>
+                {accepted && (
+                  <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--cc-ok)", textTransform: "uppercase" }}>✓ aceite</span>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div
@@ -462,6 +495,29 @@ export default function Creation() {
               {done?.terminated_early && (
                 <div style={{ fontSize: 10, color: "var(--cc-warn)", marginTop: 10, fontFamily: "var(--mono)" }}>
                   terminado cedo: {done.termination_reason}
+                </div>
+              )}
+              {done && activeMission && (
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--border-subtle)", display: "flex", alignItems: "center", gap: 12 }}>
+                  {!accepted ? (
+                    <>
+                      <button
+                        onClick={accept}
+                        style={{ background: "none", border: "1px solid var(--cc-ok)", color: "var(--cc-ok)", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", padding: "6px 14px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer", transition: "all .2s var(--ease-swift)" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--cc-ok) 12%, transparent)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                      >
+                        ✓ aceitar artefacto
+                      </button>
+                      <span style={{ fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
+                        → marca tarefa concluída · regista na missão
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 10, color: "var(--cc-ok)", fontFamily: "var(--mono)", letterSpacing: 1.5 }}>
+                      ✓ artefacto aceite · missão actualizada
+                    </span>
+                  )}
                 </div>
               )}
             </div>
