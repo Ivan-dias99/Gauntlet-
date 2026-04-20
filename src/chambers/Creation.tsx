@@ -69,11 +69,19 @@ export default function Creation() {
   // The task on the workbench. Resumed from spine on mount / mission switch,
   // advanced by the next-step actions.
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  // Mirror of activeTaskId in a ref. The streaming event callbacks are
+  // created once per submit() and outlive the render that scheduled them;
+  // reading the id through this ref defeats the stale-closure bug where an
+  // error mid-run would blame the previously-active task instead of the
+  // task that actually failed.
+  const activeTaskIdRef = useRef<string | null>(null);
   // True when activeTaskId was picked up from persisted state (not created in
   // this session) — used to show a discreet "resume" cue.
   const [resumedFromSpine, setResumedFromSpine] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const outRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { activeTaskIdRef.current = activeTaskId; }, [activeTaskId]);
 
   useEffect(() => {
     if (!pending) return;
@@ -136,7 +144,7 @@ export default function Creation() {
         break;
       case "error":
         setErr(ev.message);
-        if (activeTaskId) setTaskState(activeTaskId, "blocked");
+        if (activeTaskIdRef.current) setTaskState(activeTaskIdRef.current, "blocked");
         break;
     }
   }
@@ -190,7 +198,7 @@ export default function Creation() {
         break;
       case "error":
         setErr(ev.message);
-        if (activeTaskId) setTaskState(activeTaskId, "blocked");
+        if (activeTaskIdRef.current) setTaskState(activeTaskIdRef.current, "blocked");
         break;
     }
   }
@@ -201,7 +209,10 @@ export default function Creation() {
 
     const newTaskId = addTask(v, "manual");
     // Move the task to the workbench and mark it running so the UI (and
-    // future resumes) reflect the real operational state.
+    // future resumes) reflect the real operational state. Update the ref
+    // synchronously so event callbacks created after this line blame the
+    // right task if the stream fails before React commits the re-render.
+    activeTaskIdRef.current = newTaskId;
     setActiveTaskId(newTaskId);
     setResumedFromSpine(false);
     setTaskState(newTaskId, "running");
