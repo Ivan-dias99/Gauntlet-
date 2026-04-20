@@ -35,6 +35,19 @@ export function emptyState(): SpineState {
   return { missions: [], activeMissionId: null, principles: [], updatedAt: 0 };
 }
 
+function normalizeArtifact(v: unknown): Artifact | null {
+  if (!v || typeof v !== "object") return null;
+  const a = v as Record<string, unknown>;
+  if (typeof a.id !== "string" || typeof a.taskTitle !== "string") return null;
+  return {
+    id: a.id,
+    taskTitle: a.taskTitle,
+    answer: typeof a.answer === "string" ? a.answer : "",
+    terminatedEarly: a.terminatedEarly === true,
+    acceptedAt: typeof a.acceptedAt === "number" ? a.acceptedAt : Date.now(),
+  };
+}
+
 function normalizeMission(m: unknown): Mission | null {
   if (!m || typeof m !== "object") return null;
   const r = m as Record<string, unknown>;
@@ -82,18 +95,7 @@ function normalizeMission(m: unknown): Mission | null {
         at: typeof er.at === "number" ? er.at : Date.now(),
       }] as LogEvent[];
     }) : [],
-    lastArtifact: (() => {
-      if (!r.lastArtifact || typeof r.lastArtifact !== "object") return null;
-      const a = r.lastArtifact as Record<string, unknown>;
-      if (typeof a.id !== "string" || typeof a.taskTitle !== "string") return null;
-      return {
-        id: a.id,
-        taskTitle: a.taskTitle,
-        answer: typeof a.answer === "string" ? a.answer : "",
-        terminatedEarly: a.terminatedEarly === true,
-        acceptedAt: typeof a.acceptedAt === "number" ? a.acceptedAt : Date.now(),
-      } as Artifact;
-    })(),
+    lastArtifact: normalizeArtifact(r.lastArtifact),
   };
 }
 

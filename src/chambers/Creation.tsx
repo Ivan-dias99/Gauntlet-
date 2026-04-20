@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep } from "../hooks/useRuberra";
 import { useTweaks } from "../tweaks/TweaksContext";
@@ -60,6 +60,8 @@ export default function Creation() {
   const [elapsed, setElapsed] = useState(0);
   const [mode, setMode] = useState<RunMode>("agent");
   const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
+  // Session-only guard against double-click on the accept button inside the
+  // current done panel. Persisted acceptance is on spine.activeMission.lastArtifact.
   const [accepted, setAccepted] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const outRef = useRef<HTMLDivElement>(null);
@@ -206,7 +208,7 @@ export default function Creation() {
       addNoteToMission(activeMission.id, answerText, "ai");
     }
     acceptArtifact(activeMission.id, {
-      taskTitle: lastTask || task?.title || "(sem tarefa)",
+      taskTitle: lastTask,
       answer: answerText,
       terminatedEarly: done.terminated_early,
       acceptedAt: Date.now(),
@@ -219,13 +221,9 @@ export default function Creation() {
   const pendingTasks = tasks.filter((t) => !t.done);
   const exitCode = done ? 0 : err ? 1 : null;
 
-  const currentObjective = useMemo(() => {
-    if (lastTask) return lastTask;
-    if (!activeMission) return "";
-    // Most recently declared pending task (tasks appended in order)
-    const pending = [...activeMission.tasks].reverse().find((t) => !t.done);
-    return pending?.title ?? "";
-  }, [lastTask, activeMission]);
+  // Prefer the session's last submitted task; fall back to the most recently
+  // declared pending task (tasks are appended in order).
+  const currentObjective = lastTask || pendingTasks[pendingTasks.length - 1]?.title || "";
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
