@@ -1,8 +1,15 @@
 import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
-import { SpineState } from "./types";
+import { SpineState, Mission } from "./types";
+import { normalizeMission, normalizePrinciples } from "./store";
 
 const PATH = "/spine";
 
+// Normalize server responses through the same sanitizer we use for localStorage
+// data. The Python Pydantic models silently drop unknown fields, so a mission
+// coming back from the server can have fields missing that the UI assumes are
+// always arrays (e.g. `artifacts`). Without normalization, pulse.ts crashes on
+// `mission.artifacts.length`. Defense-in-depth: even after the backend is
+// fixed, older persisted snapshots on a mounted volume may still be skinny.
 export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | null> {
   try {
     const res = await ruberraFetch(PATH, { signal });
@@ -13,10 +20,17 @@ export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | nul
       principles?: unknown;
       updatedAt?: unknown;
     };
+    const missions = Array.isArray(raw.missions)
+      ? (raw.missions.map(normalizeMission).filter(Boolean) as Mission[])
+      : [];
     return {
-      missions: Array.isArray(raw.missions) ? (raw.missions as SpineState["missions"]) : [],
-      activeMissionId: typeof raw.activeMissionId === "string" ? raw.activeMissionId : null,
-      principles: Array.isArray(raw.principles) ? (raw.principles as SpineState["principles"]) : [],
+      missions,
+      activeMissionId:
+        typeof raw.activeMissionId === "string" &&
+        missions.some((m) => m.id === raw.activeMissionId)
+          ? raw.activeMissionId
+          : null,
+      principles: normalizePrinciples(raw.principles),
       updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0,
     };
   } catch (err) {
