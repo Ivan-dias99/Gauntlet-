@@ -3,19 +3,35 @@ import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 
+const PRINCIPLE_MAX_LEN = 300;
+
+function normalizeForDedup(s: string): string {
+  return s.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
+}
+
 export default function School() {
   const { principles, addPrinciple, activeMission } = useSpine();
   const { values } = useTweaks();
   const copy = useCopy();
   const [input, setInput] = useState("");
+  const [rejection, setRejection] = useState<null | "duplicate" | "empty" | "tooLong">(null);
   const layout = values.schoolLayout;
   const isGoverning = principles.length > 0;
 
+  const trimmed = input.trim();
+  const isDuplicate = !!trimmed && principles.some(
+    (p) => normalizeForDedup(p.text) === normalizeForDedup(trimmed),
+  );
+  const isTooLong = trimmed.length > PRINCIPLE_MAX_LEN;
+  const charsLeft = PRINCIPLE_MAX_LEN - trimmed.length;
+
   function submit() {
-    const v = input.trim();
-    if (!v) return;
-    addPrinciple(v);
+    if (!trimmed) { setRejection("empty"); return; }
+    if (isTooLong) { setRejection("tooLong"); return; }
+    if (isDuplicate) { setRejection("duplicate"); return; }
+    addPrinciple(trimmed);
     setInput("");
+    setRejection(null);
   }
 
   return (
@@ -223,59 +239,100 @@ export default function School() {
         )}
       </div>
 
-      <div
-        className="glass"
-        style={{
-          margin: "0 clamp(20px, 5vw, 64px) 18px",
-          borderRadius: 14,
-          padding: "12px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <span style={{ color: "var(--accent-dim)", fontSize: 14 }}>›</span>
-        <input
-          autoFocus
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder={copy.schoolPlaceholder}
-          style={{
-            flex: 1,
-            fontSize: 14,
-            color: "var(--text-primary)",
-            fontFamily: "var(--sans)",
-            padding: "6px 0",
-          }}
-        />
-        {input.trim() && (
-          <button
-            onClick={submit}
+      <div style={{ margin: "0 clamp(20px, 5vw, 64px) 18px" }}>
+        {rejection !== null && (
+          <div
             className="fadeIn"
+            data-testid="school-rejection"
             style={{
-              background: "none",
-              border: "1px solid var(--accent-dim)",
-              color: "var(--accent)",
-              fontSize: 10,
-              letterSpacing: 2,
-              textTransform: "uppercase",
-              padding: "7px 14px",
-              borderRadius: 999,
+              marginBottom: 8,
+              fontSize: 11,
+              color: "var(--cc-warn)",
               fontFamily: "var(--mono)",
-              cursor: "pointer",
-              transition: "all .2s var(--ease-swift)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--accent-glow)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
+              letterSpacing: 1,
+              paddingLeft: 4,
             }}
           >
-            {copy.schoolInscribe}
-          </button>
+            {rejection === "duplicate" && "✗ princípio já inscrito — normalizar antes de repetir."}
+            {rejection === "tooLong" && `✗ princípio excede ${PRINCIPLE_MAX_LEN} caracteres.`}
+            {rejection === "empty" && "✗ nada para inscrever."}
+          </div>
         )}
+        <div
+          className="glass"
+          style={{
+            borderRadius: 14,
+            padding: "12px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <span style={{ color: "var(--accent-dim)", fontSize: 14 }}>›</span>
+          <input
+            autoFocus
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              if (rejection !== null) setRejection(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submit();
+              else if (e.key === "Escape" && input.length > 0) { setInput(""); setRejection(null); }
+            }}
+            maxLength={PRINCIPLE_MAX_LEN * 2}
+            placeholder={copy.schoolPlaceholder}
+            style={{
+              flex: 1,
+              fontSize: 14,
+              color: "var(--text-primary)",
+              fontFamily: "var(--sans)",
+              padding: "6px 0",
+            }}
+          />
+          {trimmed.length > 0 && charsLeft <= 60 && (
+            <span
+              data-testid="school-charcount"
+              style={{
+                fontSize: 10,
+                fontFamily: "var(--mono)",
+                color: charsLeft < 0 ? "var(--cc-err)" : charsLeft <= 20 ? "var(--cc-warn)" : "var(--text-ghost)",
+                letterSpacing: 1,
+              }}
+            >
+              {charsLeft}
+            </span>
+          )}
+          {trimmed.length > 0 && (
+            <button
+              onClick={submit}
+              disabled={isTooLong}
+              className="fadeIn"
+              style={{
+                background: "none",
+                border: `1px solid ${isDuplicate || isTooLong ? "var(--cc-warn)" : "var(--accent-dim)"}`,
+                color: isDuplicate || isTooLong ? "var(--cc-warn)" : "var(--accent)",
+                fontSize: 10,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                padding: "7px 14px",
+                borderRadius: 999,
+                fontFamily: "var(--mono)",
+                cursor: isTooLong ? "not-allowed" : "pointer",
+                opacity: isTooLong ? 0.5 : 1,
+                transition: "all .2s var(--ease-swift)",
+              }}
+              onMouseEnter={(e) => {
+                if (!isTooLong) e.currentTarget.style.background = "var(--accent-glow)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              {copy.schoolInscribe}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
