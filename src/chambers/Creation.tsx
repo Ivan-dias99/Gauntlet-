@@ -47,7 +47,7 @@ const EMPTY_CREW: CrewState = {
 export default function Creation() {
   const {
     activeMission, addTask, completeTask, setTaskState, addNoteToMission,
-    acceptArtifact, principles,
+    acceptArtifact, principles, logDoctrineApplied,
   } = useSpine();
   const { streamDev, streamCrew, pending } = useRuberra();
   const { values } = useTweaks();
@@ -216,6 +216,7 @@ export default function Creation() {
     setActiveTaskId(newTaskId);
     setResumedFromSpine(false);
     setTaskState(newTaskId, "running");
+    if (principles.length > 0) logDoctrineApplied(principles.length);
     setInput("");
     setLastTask(v);
     setErr(null);

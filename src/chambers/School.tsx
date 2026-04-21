@@ -10,6 +10,7 @@ export default function School() {
   const [input, setInput] = useState("");
   const layout = values.schoolLayout;
   const isGoverning = principles.length > 0;
+  const lastApplied = activeMission?.events.find((e) => e.type === "doctrine_applied") ?? null;
 
   function submit() {
     const v = input.trim();
@@ -91,6 +92,21 @@ export default function School() {
             <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1 }}>
               → Lab · Creation · auto-router
             </div>
+            {activeMission && (
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--border-subtle)", fontSize: 10, color: lastApplied ? "var(--cc-ok)" : "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ textTransform: "uppercase", letterSpacing: 2 }}>última aplicação:</span>
+                {lastApplied ? (
+                  <>
+                    <span>{lastApplied.label}</span>
+                    <span style={{ color: "var(--text-ghost)", marginLeft: "auto" }}>
+                      {new Date(lastApplied.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </>
+                ) : (
+                  <span>nenhuma nesta missão ainda — doutrina existe, mas ainda não governou</span>
+                )}
+              </div>
+            )}
           </div>
         )}
 

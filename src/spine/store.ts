@@ -115,6 +115,7 @@ function normalizeMission(m: unknown): Mission | null {
       const validTypes = [
         "mission_created", "note_added", "task_added", "task_done",
         "task_state", "ai_response", "artifact_accepted",
+        "doctrine_added", "doctrine_applied",
       ];
       if (!validTypes.includes(er.type as string)) return [];
       return [{
@@ -301,7 +302,27 @@ export function setTaskState(
 
 export function addPrinciple(state: SpineState, text: string): SpineState {
   const p: Principle = { id: uid(), text: text.trim(), createdAt: now() };
-  return { ...state, principles: [p, ...state.principles], updatedAt: now() };
+  const withPrinciple = { ...state, principles: [p, ...state.principles], updatedAt: now() };
+  // Leave a trail in the active mission: principles are global but they only
+  // matter because missions exist. Recording the inscription inside the
+  // mission's event log is what makes doctrine a governance act, not just a
+  // list entry.
+  return onActive(withPrinciple, m => ({
+    ...m,
+    events: [log("doctrine_added", `Doutrina: ${p.text.slice(0, 48)}`), ...m.events],
+  }));
+}
+
+// Recorded when Lab/Creation fires a request WITH principles attached. Proves
+// the doctrine reached the brain for this mission at this moment — the
+// difference between "doctrine exists" and "doctrine governs".
+export function logDoctrineApplied(state: SpineState, count: number): SpineState {
+  if (count <= 0 || !state.activeMissionId) return state;
+  const label = `Doutrina aplicada: ${count} princípio${count === 1 ? "" : "s"}`;
+  return onActive(state, m => ({
+    ...m,
+    events: [log("doctrine_applied", label), ...m.events],
+  }));
 }
 
 export function acceptArtifact(

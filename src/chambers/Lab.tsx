@@ -66,7 +66,7 @@ const EMPTY_LIVE: LiveState = {
 };
 
 export default function Lab() {
-  const { activeMission, addNote, addNoteToMission, principles } = useSpine();
+  const { activeMission, addNote, addNoteToMission, principles, logDoctrineApplied } = useSpine();
   const { streamRoute, pending, error } = useRuberra();
   const [input, setInput] = useState("");
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
@@ -100,6 +100,7 @@ export default function Lab() {
     if (!targetMissionId) return;
 
     addNote(v, "user");
+    if (principles.length > 0) logDoctrineApplied(principles.length);
     setInput("");
     setLive({ ...EMPTY_LIVE });
     setLastConfidence(null);

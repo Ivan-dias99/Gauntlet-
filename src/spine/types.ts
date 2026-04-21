@@ -34,7 +34,9 @@ export interface LogEvent {
     | "task_done"
     | "task_state"
     | "ai_response"
-    | "artifact_accepted";
+    | "artifact_accepted"
+    | "doctrine_added"
+    | "doctrine_applied";
   label: string;
   at: number;
 }
