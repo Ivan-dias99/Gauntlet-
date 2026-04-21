@@ -108,7 +108,12 @@ export default function Creation() {
     if (activeTaskId && activeMission.tasks.some(t => t.id === activeTaskId)) return;
     const running = activeMission.tasks.find(t => t.state === "running");
     const open = [...activeMission.tasks].reverse().find(t => t.state === "open");
-    const pick = running ?? open ?? null;
+    // Fall through to blocked so the workbench can surface an action
+    // (unblock / next) instead of sitting silent when only blocked tasks
+    // exist — matches the user mental model of "there is work here, it is
+    // stuck" better than "nothing to do".
+    const blocked = activeMission.tasks.find(t => t.state === "blocked");
+    const pick = running ?? open ?? blocked ?? null;
     setActiveTaskId(pick?.id ?? null);
     setResumedFromSpine(pick !== null);
   }, [activeMission?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
@@ -331,9 +336,12 @@ export default function Creation() {
   ) ?? null;
   const recentArtifacts = (activeMission?.artifacts ?? []).slice(0, 3);
   // The next-step bar is operational: it appears once the user has something
-  // to act on (a completed run, an error, or a blocked task).
+  // to act on — a completed run, an error, a blocked task, or a stale-running
+  // task (page reloaded mid-stream; spine still marks it running but no
+  // stream is live).
+  const staleRunning = activeTask?.state === "running" && !pending && done === null && err === null;
   const showNextStep = !pending && activeMission !== null &&
-    ((done !== null) || err !== null || activeTask?.state === "blocked");
+    ((done !== null) || err !== null || activeTask?.state === "blocked" || staleRunning);
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
@@ -702,9 +710,9 @@ export default function Creation() {
         {showNextStep && (
           <NextStepBar
             hasNextOpen={nextOpenTask !== null}
-            canRefine={Boolean(activeTask?.title || lastTask)}
+            canRefine={Boolean(activeTask?.title || lastTask) && activeTask?.state !== "done"}
             isBlocked={activeTask?.state === "blocked"}
-            canBlock={activeTask !== null && activeTask.state !== "blocked"}
+            canBlock={activeTask !== null && activeTask.state !== "blocked" && activeTask.state !== "done"}
             copy={copy}
             onNext={handleNextTask}
             onRefine={handleRefine}
