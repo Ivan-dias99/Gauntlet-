@@ -671,10 +671,11 @@ export default function Creation() {
             className="toolRise"
             style={{
               maxWidth: 820,
-              marginTop: 6,
+              marginTop: 4,
               background: "var(--bg-input)",
               border: "1px solid var(--border-subtle)",
-              borderRadius: 12,
+              borderLeft: `2px solid ${pending ? "var(--cc-info)" : done ? "var(--cc-ok)" : "var(--border-subtle)"}`,
+              borderRadius: 14,
               overflow: "hidden",
             }}
           >
@@ -693,10 +694,10 @@ export default function Creation() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ display: "flex", gap: 5 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--cc-err)", opacity: 0.5 }} />
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--cc-warn)", opacity: 0.5 }} />
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--cc-ok)", opacity: 0.5 }} />
+                <span style={{ display: "flex", gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-err)", opacity: 0.35 }} />
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-warn)", opacity: 0.35 }} />
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-ok)", opacity: 0.35 }} />
                 </span>
                 <span style={{ color: "var(--text-muted)" }}>
                   ruberra · exec{(() => {
@@ -724,9 +725,9 @@ export default function Creation() {
               )}
             </div>
 
-            <div style={{ padding: "14px 16px" }}>
+            <div style={{ padding: "12px 16px" }}>
               {liveTools.length > 0 && (
-                <div style={{ marginBottom: liveText || done ? 14 : 0 }}>
+                <div style={{ marginBottom: liveText || done ? 10 : 0 }}>
                   {liveTools.map((tc) => (
                     <ToolLine
                       key={tc.id}
@@ -755,12 +756,12 @@ export default function Creation() {
                 </div>
               )}
               {done?.terminated_early && (
-                <div style={{ fontSize: 10, color: "var(--cc-warn)", marginTop: 10, fontFamily: "var(--mono)" }}>
-                  {copy.runInterrupted} · {done.termination_reason}
+                <div style={{ fontSize: 10, color: "var(--cc-warn)", marginTop: 8, fontFamily: "var(--mono)" }}>
+                  terminado cedo: {done.termination_reason}
                 </div>
               )}
               {done && activeMission && (
-                <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--border-subtle)", display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed var(--border-subtle)", display: "flex", alignItems: "center", gap: 12 }}>
                   {!accepted ? (
                     <>
                       <button
@@ -790,13 +791,13 @@ export default function Creation() {
           <div
             className="toolRise"
             style={{
-              marginTop: 16,
+              marginTop: 8,
               maxWidth: 820,
               background: "var(--bg-input)",
               border: "1px solid var(--border-subtle)",
               borderLeft: "2px solid var(--cc-err)",
               borderRadius: 14,
-              padding: "14px 18px",
+              padding: "12px 18px",
               fontFamily: "var(--mono)",
             }}
           >
@@ -1496,7 +1497,7 @@ function NextStepBar({
   }
   if (buttons.length === 0) {
     return (
-      <div style={{ marginTop: 16, maxWidth: 820, fontFamily: "var(--mono)", fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
+      <div style={{ marginTop: 8, maxWidth: 820, fontFamily: "var(--mono)", fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
         {copy.actionAllDone}
       </div>
     );
@@ -1505,7 +1506,7 @@ function NextStepBar({
     <div
       className="fadeIn"
       style={{
-        marginTop: 16,
+        marginTop: 8,
         maxWidth: 820,
         display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap",
         fontFamily: "var(--mono)",
