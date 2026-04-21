@@ -3,6 +3,8 @@ import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import ErrorPanel from "../shell/ErrorPanel";
+import DormantPanel, { isBackendOffline } from "../shell/DormantPanel";
+import { apiUrl } from "../lib/ruberraApi";
 import type { Artifact, Chamber } from "../spine/types";
 
 interface RunRecord {
@@ -218,12 +220,12 @@ export default function Memory() {
     const ac = new AbortController();
     const mid = encodeURIComponent(activeMission.id);
     Promise.all([
-      fetch(`/api/ruberra/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
+      fetch(apiUrl(`/runs?mission_id=${mid}&limit=100`), { signal: ac.signal })
         .then(async (r) => {
           if (!r.ok) throw new Error(`runs ${r.status}`);
           return (await r.json()) as RunsResponse;
         }),
-      fetch(`/api/ruberra/runs/stats?mission_id=${mid}`, { signal: ac.signal })
+      fetch(apiUrl(`/runs/stats?mission_id=${mid}`), { signal: ac.signal })
         .then(async (r) => {
           if (!r.ok) throw new Error(`stats ${r.status}`);
           return (await r.json()) as ServerStats;
@@ -329,13 +331,18 @@ export default function Memory() {
         fontFamily: layout === "timeline" ? "var(--sans)" : "var(--mono)",
       }}>
 
-        {err && (
+        {err && (isBackendOffline(err) ? (
+          <DormantPanel
+            title={copy.memoryTelemetryTitle}
+            detail={copy.dormantMemory}
+          />
+        ) : (
           <ErrorPanel
             severity="critical"
             title={copy.memoryErrorTitle}
             message={`${copy.memoryErrorPrefix} ${err}`}
           />
-        )}
+        ))}
 
         {runs === null && !err && (
           <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>{copy.memoryLoading}</div>

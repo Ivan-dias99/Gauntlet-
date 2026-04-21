@@ -3,6 +3,7 @@ import { useSpine } from "../spine/SpineContext";
 import { useRuberra, RouteEvent } from "../hooks/useRuberra";
 import { Note } from "../spine/types";
 import ErrorPanel from "../shell/ErrorPanel";
+import DormantPanel, { isBackendOffline } from "../shell/DormantPanel";
 import EmptyState from "../shell/EmptyState";
 import { useCopy } from "../i18n/copy";
 
@@ -298,9 +299,11 @@ export default function Lab() {
           </div>
         )}
 
-        {error && !pending && (
+        {error && !pending && (isBackendOffline(error) ? (
+          <DormantPanel title={copy.labErrorTitle} detail={copy.dormantLab} />
+        ) : (
           <ErrorPanel severity="critical" title={copy.labErrorTitle} message={error} />
-        )}
+        ))}
 
         <div ref={bottomRef} />
       </div>

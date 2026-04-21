@@ -35,7 +35,15 @@ TRIAD_COUNT: int = 3
 # ── Server ──────────────────────────────────────────────────────────────────
 SERVER_HOST: str = os.environ.get("RUBERRA_HOST", "127.0.0.1")
 SERVER_PORT: int = int(os.environ.get("RUBERRA_PORT", "3002"))
-ALLOWED_ORIGIN: str = os.environ.get("RUBERRA_ORIGIN", "http://localhost:5173")
+
+# RUBERRA_ORIGIN accepts a single origin or a comma-separated list, so one
+# backend can serve production, preview deploys, and local dev at once.
+_raw_origins = os.environ.get("RUBERRA_ORIGIN", "http://localhost:5173")
+ALLOWED_ORIGINS: list[str] = [
+    o.strip() for o in _raw_origins.split(",") if o.strip()
+]
+# Backwards compatibility — existing imports of ALLOWED_ORIGIN keep working.
+ALLOWED_ORIGIN: str = ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "http://localhost:5173"
 
 # ── Memory ──────────────────────────────────────────────────────────────────
 # Failure memory persists to disk

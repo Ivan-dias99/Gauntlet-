@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { apiUrl } from "../lib/ruberraApi";
 
 // Client for the Python backend (ruberra-backend/) via the /api/ruberra
 // proxy.
@@ -122,7 +123,7 @@ export function useRuberra() {
     setPending(true);
     setError(null);
     try {
-      const res = await fetch(`/api/ruberra/${route}`, {
+      const res = await fetch(apiUrl(route), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -150,7 +151,7 @@ export function useRuberra() {
     setPending(true);
     setError(null);
     try {
-      const res = await fetch(`/api/ruberra/${path}`, {
+      const res = await fetch(apiUrl(path), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

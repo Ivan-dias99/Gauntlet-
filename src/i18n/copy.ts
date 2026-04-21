@@ -81,6 +81,11 @@ export interface Copy {
   memoryLoading: string;
   memoryErrorTitle: string;
   memoryErrorPrefix: string;
+  dormantKicker: string;
+  dormantDetail: string;
+  dormantLab: string;
+  dormantMemory: string;
+  dormantCreation: string;
   severityCritical: string;
   severityWarn: string;
   severityInfo: string;
@@ -228,6 +233,11 @@ const PT: Copy = {
   memoryLoading: "— a carregar —",
   memoryErrorTitle: "BACKEND",
   memoryErrorPrefix: "backend off?",
+  dormantKicker: "— DORMENTE",
+  dormantDetail: "backend silencioso — o arquivo está intacto, só o pulso em directo está em pausa.",
+  dormantLab: "laboratório em silêncio — nada é perdido; volta quando o backend regressar.",
+  dormantMemory: "telemetria em pausa — o arquivo permanece; só o pulso em directo está dormente.",
+  dormantCreation: "execução em pausa — a plataforma segue pronta; a ponte para o backend está silenciosa.",
   severityCritical: "— CRÍTICO",
   severityWarn: "— AVISO",
   severityInfo: "— INFO",
@@ -364,6 +374,11 @@ const EN: Copy = {
   memoryLoading: "— loading —",
   memoryErrorTitle: "BACKEND",
   memoryErrorPrefix: "backend off?",
+  dormantKicker: "— DORMANT",
+  dormantDetail: "backend quiet — the archive is intact; only the live pulse is paused.",
+  dormantLab: "lab quiet — nothing is lost; it resumes when the backend returns.",
+  dormantMemory: "telemetry paused — the archive remains; only the live pulse is dormant.",
+  dormantCreation: "execution paused — the workstation is ready; the bridge to the backend is quiet.",
   severityCritical: "— CRITICAL",
   severityWarn: "— WARNING",
   severityInfo: "— INFO",

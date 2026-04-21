@@ -5,6 +5,7 @@ import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import { Artifact, Task, TaskState } from "../spine/types";
 import ErrorPanel from "../shell/ErrorPanel";
+import DormantPanel, { isBackendOffline } from "../shell/DormantPanel";
 
 type RunMode = "agent" | "crew";
 
@@ -803,14 +804,20 @@ export default function Creation() {
           </section>
         )}
 
-        {err && (
+        {err && (isBackendOffline(err) ? (
+          <DormantPanel
+            title={copy.creationErrorTitle}
+            detail={copy.dormantCreation}
+            style={{ marginTop: 20, maxWidth: 820 }}
+          />
+        ) : (
           <ErrorPanel
             severity="critical"
             title={copy.creationErrorTitle}
             message={err}
             style={{ marginTop: 20, maxWidth: 820 }}
           />
-        )}
+        ))}
 
         {showNextStep && (
           <NextStepBar
