@@ -801,7 +801,10 @@ export default function Creation() {
             hasNextOpen={nextOpenTask !== null}
             canRefine={Boolean(activeTask?.title || lastTask) && activeTask?.state !== "done"}
             isBlocked={activeTask?.state === "blocked"}
-            canBlock={activeTask !== null && activeTask.state !== "blocked" && activeTask.state !== "done"}
+            canBlock={
+              activeTask !== null &&
+              (activeTask.state === "open" || activeTask.state === "running")
+            }
             copy={copy}
             onNext={handleNextTask}
             onRefine={handleRefine}
