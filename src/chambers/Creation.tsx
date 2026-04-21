@@ -276,11 +276,11 @@ export default function Creation() {
 
   function accept() {
     if (!done || !activeMission || accepted) return;
-    // Prefer the tracked workbench task; fall back to title match for legacy
-    // sessions that never set activeTaskId (first-run migration path).
-    const task =
-      activeMission.tasks.find(t => t.id === activeTaskId) ??
-      activeMission.tasks.find(t => !t.done && t.title === lastTask);
+    // Strictly id-based: the workbench task is the accepted run's owner.
+    // The title-based fallback is gone — with duplicate titles it would
+    // backlink to the wrong task. If activeTaskId is unresolvable the
+    // artifact still persists, just without a taskId reference.
+    const task = activeMission.tasks.find(t => t.id === activeTaskId) ?? null;
     const answerText = done.answer.trim();
     if (answerText) {
       addNoteToMission(activeMission.id, answerText, "ai");
@@ -343,10 +343,16 @@ export default function Creation() {
   const openTasks = tasks.filter((t) => t.state === "open");
   const runningTasks = tasks.filter((t) => t.state === "running");
   const blockedTasks = tasks.filter((t) => t.state === "blocked");
-  // Queue order: running first (live), then open (ready), then blocked (frozen).
-  // Blocked tasks ride last in the pending column so they do not compete with
-  // active work for attention, but remain reachable.
-  const pendingOrdered = [...runningTasks, ...openTasks];
+  // Titles that appear more than once in this mission's task list.
+  // Used to reveal a short #id suffix only where ambiguity exists, so the
+  // common case (unique titles) stays visually clean.
+  const duplicateTitles = useMemo<Set<string>>(() => {
+    const counts = new Map<string, number>();
+    for (const t of tasks) counts.set(t.title, (counts.get(t.title) ?? 0) + 1);
+    const dupes = new Set<string>();
+    counts.forEach((n, title) => { if (n > 1) dupes.add(title); });
+    return dupes;
+  }, [tasks]);
   const exitCode = done ? 0 : err ? 1 : null;
 
   function selectTaskFromQueue(id: string) {
@@ -571,13 +577,9 @@ export default function Creation() {
               <div style={{
                 fontSize: 9, letterSpacing: 2.5, color: "var(--text-ghost)",
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
-              }}>▲ {values.lang === "en" ? "pending" : "pendente"} · {pendingOrdered.length}</div>
-              {pendingOrdered.map((t) => (
-                <KanbanCard
-                  key={t.id} task={t} copy={copy}
-                  active={t.id === activeTaskId}
-                  onToggle={() => completeTask(t.id)}
-                />
+              }}>▲ {values.lang === "en" ? "pending" : "pendente"} · {pendingTasks.length}</div>
+              {pendingTasks.map((t) => (
+                <KanbanCard key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
               ))}
               {blockedTasks.length > 0 && (
                 <>
@@ -603,11 +605,7 @@ export default function Creation() {
                 opacity: 0.7,
               }}>✓ {copy.doneSection} · {doneTasks.length}</div>
               {doneTasks.map((t) => (
-                <KanbanCard
-                  key={t.id} task={t} copy={copy}
-                  active={t.id === activeTaskId}
-                  onToggle={() => completeTask(t.id)}
-                />
+                <KanbanCard key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
               ))}
             </div>
           </div>
@@ -615,12 +613,20 @@ export default function Creation() {
 
         {tasks.length > 0 && layout === "terminal" && (
           <div style={{ maxWidth: 740, marginBottom: 24 }}>
-            {pendingOrdered.map((t) => (
-              <TaskRow
-                key={t.id} task={t} copy={copy}
-                active={t.id === activeTaskId}
-                onToggle={() => completeTask(t.id)}
+            {pendingTasks.map((t) => (
+              <TaskRow key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
+            ))}
+            {doneTasks.length > 0 && pendingTasks.length > 0 && (
+              <div
+                style={{
+                  borderTop: "1px solid var(--border)",
+                  margin: "14px 0",
+                  opacity: 0.4,
+                }}
               />
+            )}
+            {doneTasks.map((t) => (
+              <TaskRow key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
             ))}
             {blockedTasks.length > 0 && (
               <>
@@ -1122,10 +1128,8 @@ function StateChip({ state, copy }: { state: TaskState; copy: Copy }) {
 }
 
 function KanbanCard({
-  task, onToggle, copy, active = false,
-}: { task: Task; onToggle: () => void; copy: Copy; active?: boolean }) {
-  const isDone = task.state === "done";
-  const isBlocked = task.state === "blocked";
+  task, onToggle, copy, duplicate = false,
+}: { task: Task; onToggle: () => void; copy: Copy; duplicate?: boolean }) {
   return (
     <div
       onClick={onSelect}
@@ -1166,6 +1170,17 @@ function KanbanCard({
         }}
       >
         {task.title}
+        {duplicate && (
+          <span
+            title={`task id · ${task.id}`}
+            style={{
+              marginLeft: 8, fontSize: 10, color: "var(--text-ghost)",
+              fontFamily: "var(--mono)", letterSpacing: 1, fontWeight: 400,
+            }}
+          >
+            #{task.id.slice(0, 4)}
+          </span>
+        )}
       </div>
       <div
         style={{
@@ -1202,10 +1217,8 @@ function KanbanCard({
 }
 
 function TaskRow({
-  task, onToggle, copy, active = false,
-}: { task: Task; onToggle: () => void; copy: Copy; active?: boolean }) {
-  const isDone = task.state === "done";
-  const isBlocked = task.state === "blocked";
+  task, onToggle, copy, duplicate = false,
+}: { task: Task; onToggle: () => void; copy: Copy; duplicate?: boolean }) {
   return (
     <div
       onClick={onSelect}
@@ -1254,6 +1267,17 @@ function TaskRow({
         }}
       >
         {task.title}
+        {duplicate && (
+          <span
+            title={`task id · ${task.id}`}
+            style={{
+              marginLeft: 8, fontSize: 11, color: "var(--text-ghost)",
+              letterSpacing: 1,
+            }}
+          >
+            #{task.id.slice(0, 4)}
+          </span>
+        )}
       </span>
       {active && (
         <span style={{ fontSize: 9, letterSpacing: 2, color: "var(--accent)", textTransform: "uppercase", marginTop: 3 }}>
@@ -1521,12 +1545,20 @@ function ArtifactLedger({
   lang: "pt" | "en";
   onSelectArtifact: (a: Artifact) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const total = artifacts.length;
-  const hasMore = total > LEDGER_COLLAPSED_COUNT;
-  const shown = expanded ? artifacts : artifacts.slice(0, LEDGER_COLLAPSED_COUNT);
-  const termEarly = artifacts.filter(a => a.terminatedEarly).length;
-
+  // A title is ambiguous in the ledger only when it points to more than one
+  // distinct taskId (or one has no taskId). Same-task repeat runs share the
+  // same id and are already disambiguated by acceptedAt timestamp.
+  const duplicateLedgerTitles = (() => {
+    const byTitle = new Map<string, Set<string>>();
+    for (const a of artifacts) {
+      const key = a.taskId ?? "__none__";
+      if (!byTitle.has(a.taskTitle)) byTitle.set(a.taskTitle, new Set());
+      byTitle.get(a.taskTitle)!.add(key);
+    }
+    const dupes = new Set<string>();
+    byTitle.forEach((ids, title) => { if (ids.size > 1) dupes.add(title); });
+    return dupes;
+  })();
   return (
     <div style={{ marginTop: 24, maxWidth: 820 }}>
       <div style={{
@@ -1586,117 +1618,65 @@ function ArtifactLedger({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {shown.map((a) => (
-            <ArtifactCard
-              key={a.id}
-              artifact={a}
-              lang={lang}
-              onSelect={() => onSelectArtifact(a)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ArtifactCard({
-  artifact: a, lang, onSelect,
-}: {
-  artifact: Artifact;
-  lang: "pt" | "en";
-  onSelect: () => void;
-}) {
-  const preview = a.answer
-    ? (a.answer.length > 200 ? a.answer.slice(0, 200) + "…" : a.answer)
-    : "—";
-  const clickable = Boolean(a.taskId);
-  const hasMetrics = a.iterations !== undefined
-    || a.toolCount !== undefined
-    || a.processingTimeMs !== undefined;
-  return (
-    <div
-      onClick={clickable ? onSelect : undefined}
-      className="fadeIn"
-      style={{
-        background: "color-mix(in oklab, var(--cc-ok) 6%, var(--bg-elevated))",
-        border: "1px solid var(--border-subtle)",
-        borderLeft: `2px solid ${a.terminatedEarly ? "var(--cc-warn)" : "var(--cc-ok)"}`,
-        borderRadius: 12,
-        padding: "10px 14px",
-        fontFamily: "var(--mono)",
-        cursor: clickable ? "pointer" : "default",
-        transition: "border-color .15s, transform .2s var(--ease-emph)",
-      }}
-      onMouseEnter={(e) => {
-        if (clickable) {
-          e.currentTarget.style.transform = "translateX(2px)";
-        }
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "";
-      }}
-    >
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
-        color: "var(--cc-ok)", marginBottom: 6,
-      }}>
-        <span>◆</span>
-        <span
-          title={new Date(a.acceptedAt).toLocaleString()}
-          style={{ color: "var(--text-ghost)", letterSpacing: 1 }}
-        >
-          {relTime(a.acceptedAt, lang)}
-        </span>
-        {a.terminatedEarly && (
-          <span style={{ color: "var(--cc-warn)" }}>
-            · {lang === "en" ? "terminated early" : "terminação antecipada"}
-          </span>
-        )}
-        <span style={{
-          marginLeft: "auto", color: "var(--text-ghost)",
-          maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          › {a.taskTitle}
-        </span>
-        {clickable && (
-          <span
-            title={lang === "en" ? "open task" : "abrir tarefa"}
-            style={{ color: "var(--accent-dim)", letterSpacing: 1 }}
-          >
-            →
-          </span>
-        )}
-      </div>
-      {hasMetrics && (
-        <div style={{
-          display: "flex", gap: 12, marginBottom: 6,
-          fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase",
-        }}>
-          {a.iterations !== undefined && <span>{a.iterations} iter</span>}
-          {a.toolCount !== undefined && <span>{a.toolCount} tools</span>}
-          {a.processingTimeMs !== undefined && (
-            <span>{formatMs(a.processingTimeMs)}</span>
-          )}
-        </div>
-      )}
-      <div style={{
-        fontSize: 11,
-        color: a.terminatedEarly && !a.answer ? "var(--cc-warn)" : "var(--text-muted)",
-        fontFamily: "var(--sans)",
-        lineHeight: 1.55,
-        whiteSpace: "pre-wrap",
-      }}>
-        {preview}
-      </div>
-      {a.terminatedEarly && a.terminationReason && (
-        <div style={{
-          marginTop: 8, paddingTop: 6, borderTop: "1px dashed var(--border-subtle)",
-          fontSize: 10, color: "var(--cc-warn)", fontFamily: "var(--mono)",
-          lineHeight: 1.5,
-        }}>
-          {lang === "en" ? "reason" : "razão"}: {a.terminationReason}
+          {artifacts.map((a) => {
+            const preview = a.answer
+              ? (a.answer.length > 200 ? a.answer.slice(0, 200) + "…" : a.answer)
+              : "—";
+            const clickable = Boolean(a.taskId);
+            return (
+              <div
+                key={a.id}
+                onClick={clickable ? () => onSelectArtifact(a) : undefined}
+                className="fadeIn"
+                style={{
+                  background: "color-mix(in oklab, var(--cc-ok) 6%, var(--bg-elevated))",
+                  border: "1px solid var(--border-subtle)",
+                  borderLeft: "2px solid var(--cc-ok)",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  fontFamily: "var(--mono)",
+                  cursor: clickable ? "pointer" : "default",
+                }}
+              >
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
+                  color: "var(--cc-ok)", marginBottom: 6,
+                }}>
+                  <span>◆</span>
+                  <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
+                    {new Date(a.acceptedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  {a.terminatedEarly && (
+                    <span style={{ color: "var(--cc-warn)" }}>· terminação antecipada</span>
+                  )}
+                  <span style={{
+                    marginLeft: "auto", color: "var(--text-ghost)",
+                    maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    › {a.taskTitle}
+                    {duplicateLedgerTitles.has(a.taskTitle) && a.taskId && (
+                      <span
+                        title={`task id · ${a.taskId}`}
+                        style={{ marginLeft: 6, color: "var(--text-ghost)", letterSpacing: 1 }}
+                      >
+                        #{a.taskId.slice(0, 4)}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div style={{
+                  fontSize: 11,
+                  color: a.terminatedEarly && !a.answer ? "var(--cc-warn)" : "var(--text-muted)",
+                  fontFamily: "var(--sans)",
+                  lineHeight: 1.55,
+                  whiteSpace: "pre-wrap",
+                }}>
+                  {preview}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
