@@ -358,9 +358,9 @@ export default function Creation() {
             fontFamily: "var(--mono)",
           }}
         >
-          Creation
+          {copy.creationKicker}
         </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
           {copy.creationTagline}
         </span>
         {principles.length > 0 && (

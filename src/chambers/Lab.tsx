@@ -188,9 +188,9 @@ export default function Lab() {
       {/* Header */}
       <div style={{ padding: "20px 40px 16px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "baseline", gap: 12 }}>
         <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
-          Lab
+          {copy.labKicker}
         </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
           {copy.labTagline}
         </span>
         {principles.length > 0 && (

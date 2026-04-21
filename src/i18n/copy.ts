@@ -17,6 +17,7 @@ export interface Copy {
   cancel: string;
   switchMission: string;
   missions: string;
+  labKicker: string;
   labTagline: string;
   labInputVoice: string;
   labErrorTitle: string;
@@ -32,6 +33,7 @@ export interface Copy {
   labPlaceholderRefused: string;
   labAwait: string;
   labAnalyzing: string;
+  creationKicker: string;
   creationTagline: string;
   creationInputVoice: string;
   creationErrorTitle: string;
@@ -136,6 +138,7 @@ const PT: Copy = {
   cancel: "cancelar",
   switchMission: "Trocar missão",
   missions: "Missões",
+  labKicker: "— PRESSÃO FORENSE",
   labTagline: "Investigação · Evidência · Pressão",
   labInputVoice: "— DIRECTIVA",
   labErrorTitle: "FALHA",
@@ -151,6 +154,7 @@ const PT: Copy = {
   labPlaceholderRefused: "Reformula. Fractura. Pressiona mais.",
   labAwait: "Aguardando resposta...",
   labAnalyzing: "ANALISANDO",
+  creationKicker: "— TERMINAL SOBERANO",
   creationTagline: "Construção · Execução · Consequência",
   creationInputVoice: "— COMANDO",
   creationErrorTitle: "EXECUÇÃO",
@@ -243,6 +247,7 @@ const EN: Copy = {
   cancel: "cancel",
   switchMission: "Switch mission",
   missions: "Missions",
+  labKicker: "— FORENSIC PRESSURE",
   labTagline: "Investigation · Evidence · Pressure",
   labInputVoice: "— DIRECTIVE",
   labErrorTitle: "FAILURE",
@@ -258,6 +263,7 @@ const EN: Copy = {
   labPlaceholderRefused: "Reformulate. Fracture. Press harder.",
   labAwait: "Awaiting response...",
   labAnalyzing: "ANALYZING",
+  creationKicker: "— SOVEREIGN TERMINAL",
   creationTagline: "Construction · Execution · Consequence",
   creationInputVoice: "— COMMAND",
   creationErrorTitle: "EXECUTION",
