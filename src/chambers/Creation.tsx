@@ -359,7 +359,7 @@ export default function Creation() {
           Creation
         </span>
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Construção · Execução · Consequência
+          {copy.chambers.Creation.lead}
         </span>
         <div
           role="tablist"
@@ -647,7 +647,7 @@ export default function Creation() {
               )}
               {done?.terminated_early && (
                 <div style={{ fontSize: 10, color: "var(--cc-warn)", marginTop: 10, fontFamily: "var(--mono)" }}>
-                  terminado cedo: {done.termination_reason}
+                  {copy.terminatedEarly}: {done.termination_reason}
                 </div>
               )}
               {done && activeMission && (
@@ -660,7 +660,7 @@ export default function Creation() {
                         onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--cc-ok) 12%, transparent)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
                       >
-                        ✓ aceitar artefacto
+                        {copy.acceptArtifact}
                       </button>
                       <span style={{ fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
                         → marca tarefa concluída · regista na missão
@@ -668,7 +668,7 @@ export default function Creation() {
                     </>
                   ) : (
                     <span style={{ fontSize: 10, color: "var(--cc-ok)", fontFamily: "var(--mono)", letterSpacing: 1.5 }}>
-                      ✓ artefacto aceite · missão actualizada
+                      {copy.artifactAccepted}
                     </span>
                   )}
                 </div>
@@ -1081,7 +1081,7 @@ function KanbanCard({ task, onToggle, copy }: { task: Task; onToggle: () => void
             <span style={{ color: "var(--accent-dim)" }}>· {sourceLabel(task.source, copy)}</span>
           )}
           {task.artifactId && (
-            <span title="artefacto aceite" style={{ color: "var(--cc-ok)" }}>◆</span>
+            <span title={copy.artifactAcceptedTitle} style={{ color: "var(--cc-ok)" }}>◆</span>
           )}
           <StateChip state={task.state} copy={copy} />
         </span>
@@ -1134,7 +1134,7 @@ function TaskRow({ task, onToggle, copy }: { task: Task; onToggle: () => void; c
         {task.title}
       </span>
       {task.artifactId && (
-        <span title="artefacto aceite" style={{ color: "var(--cc-ok)", fontSize: 11, marginTop: 2 }}>◆</span>
+        <span title={copy.artifactAcceptedTitle} style={{ color: "var(--cc-ok)", fontSize: 11, marginTop: 2 }}>◆</span>
       )}
       {task.source !== "manual" && (
         <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--accent-dim)", textTransform: "uppercase", marginTop: 3 }}>
@@ -1218,7 +1218,7 @@ function WorkbenchCard({
             </span>
             {task.artifactId && (
               <span style={{ fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
-                ◆ artefacto
+                {copy.artifactShort}
               </span>
             )}
             {pending && (

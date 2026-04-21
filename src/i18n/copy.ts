@@ -44,6 +44,11 @@ export interface Copy {
   taskSourceCrew: string;
   taskSourceOther: string;
   artifactEmpty: string;
+  acceptArtifact: string;
+  artifactAccepted: string;
+  artifactShort: string;
+  artifactAcceptedTitle: string;
+  terminatedEarly: string;
   refinePrefix: string;
   memoryEmpty: string;
   memoryCount: (n: number) => string;
@@ -116,7 +121,7 @@ const PT: Copy = {
   workQueue: "fila de trabalho",
   recentArtifacts: "artefactos recentes",
   nextStep: "próximo passo",
-  noActiveTask: "Nenhuma tarefa activa. Declara a próxima.",
+  noActiveTask: "Nenhuma tarefa ativa. Declara a próxima.",
   resumeHint: "Retomar aqui",
   actionNextTask: "→ próxima tarefa",
   actionRefine: "↻ refinar",
@@ -132,6 +137,11 @@ const PT: Copy = {
   taskSourceCrew: "crew",
   taskSourceOther: "outra",
   artifactEmpty: "ainda sem artefactos aceites nesta missão",
+  acceptArtifact: "✓ aceitar artefacto",
+  artifactAccepted: "✓ artefacto aceite · missão atualizada",
+  artifactShort: "◆ artefacto",
+  artifactAcceptedTitle: "artefacto aceite",
+  terminatedEarly: "terminado cedo",
   refinePrefix: "refinar: ",
   memoryEmpty: "— log vazio —",
   memoryCount: (n) => `${n} evento${n === 1 ? "" : "s"}`,
@@ -208,6 +218,11 @@ const EN: Copy = {
   taskSourceCrew: "crew",
   taskSourceOther: "other",
   artifactEmpty: "no accepted artifacts on this mission yet",
+  acceptArtifact: "✓ accept artifact",
+  artifactAccepted: "✓ artifact accepted · mission updated",
+  artifactShort: "◆ artifact",
+  artifactAcceptedTitle: "artifact accepted",
+  terminatedEarly: "terminated early",
   refinePrefix: "refine: ",
   memoryEmpty: "— empty log —",
   memoryCount: (n) => `${n} event${n === 1 ? "" : "s"}`,
