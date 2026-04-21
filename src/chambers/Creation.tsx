@@ -710,15 +710,13 @@ export default function Creation() {
 
         {(pending || liveTools.length > 0 || liveText || done) && (
           <div
-            className="toolRise"
+            className="toolRise surface-flagship"
             style={{
               maxWidth: 820,
-              marginTop: 4,
-              background: "var(--bg-input)",
-              border: "1px solid var(--border-subtle)",
+              marginTop: "var(--sp-1)",
               borderLeft: `2px solid ${pending ? "var(--cc-info)" : done ? "var(--cc-ok)" : "var(--border-subtle)"}`,
-              borderRadius: 14,
               overflow: "hidden",
+              padding: 0,
             }}
           >
             <div
@@ -726,9 +724,8 @@ export default function Creation() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "8px 14px",
+                padding: "var(--sp-3) var(--sp-4)",
                 borderBottom: "1px solid var(--border-subtle)",
-                background: "color-mix(in oklab, var(--bg-surface) 50%, transparent)",
                 fontFamily: "var(--mono)",
                 fontSize: 10,
                 letterSpacing: 1.5,
@@ -736,38 +733,48 @@ export default function Creation() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ display: "flex", gap: 4 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-err)", opacity: 0.35 }} />
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-warn)", opacity: 0.35 }} />
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-ok)", opacity: 0.35 }} />
-                </span>
-                <span style={{ color: "var(--text-muted)" }}>
-                  ruberra · exec{(() => {
+                <span style={{ color: "var(--text-ghost)" }}>exec</span>
+                <span style={{ color: "var(--text-muted)", textTransform: "none", letterSpacing: 0 }}>
+                  {(() => {
                     const label = activeTask?.title || lastTask;
-                    if (!label) return "";
-                    return ` › ${label.slice(0, 48)}${label.length > 48 ? "…" : ""}`;
+                    if (!label) return "ruberra";
+                    return `› ${label.slice(0, 48)}${label.length > 48 ? "…" : ""}`;
                   })()}
                 </span>
               </div>
               {pending && (
-                <span style={{ color: "var(--cc-info)" }}>● running · iter {iteration} · {elapsed.toFixed(1)}s</span>
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  color: "var(--ember)",
+                  padding: "2px 10px",
+                  borderRadius: 999,
+                  border: "1px solid color-mix(in oklab, var(--ember) 30%, transparent)",
+                  background: "color-mix(in oklab, var(--ember) 6%, transparent)",
+                }}>
+                  <span className="breathe" style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--ember)" }} />
+                  running · iter {iteration} · {elapsed.toFixed(1)}s
+                </span>
               )}
               {!pending && done && (
-                <span style={{ color: "var(--cc-ok)" }}>
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  color: "var(--cc-ok)",
+                  padding: "2px 10px",
+                  borderRadius: 999,
+                  border: "1px solid color-mix(in oklab, var(--cc-ok) 30%, transparent)",
+                  background: "color-mix(in oklab, var(--cc-ok) 6%, transparent)",
+                }}>
                   {(() => {
-                    // Telemetry is meaningless on a replayed artifact (all
-                    // fields default to 0). Only surface the breakdown when
-                    // there is real signal — otherwise just the exit code.
                     const hasTelemetry =
                       done.iterations > 0 || done.tool_count > 0 || done.processing_time_ms > 0;
-                    if (!hasTelemetry) return "● exit 0";
-                    return `● exit 0 · ${done.iterations} iter · ${done.tool_count} tools · ${done.processing_time_ms}ms`;
+                    if (!hasTelemetry) return "exit 0";
+                    return `exit 0 · ${done.iterations} iter · ${done.tool_count} tools · ${done.processing_time_ms}ms`;
                   })()}
                 </span>
               )}
             </div>
 
-            <div style={{ padding: "12px 16px" }}>
+            <div style={{ padding: "var(--sp-4) var(--sp-5)", background: "var(--bg-sunken)" }}>
               {liveTools.length > 0 && (
                 <div style={{ marginBottom: liveText || done ? 10 : 0 }}>
                   {liveTools.map((tc) => (
@@ -1438,19 +1445,14 @@ function WorkbenchCard({
   const bottleneck = bottleneckBits.length > 0 ? bottleneckBits.join(" · ") : null;
   return (
     <div
-      className="fadeIn"
+      className="fadeIn surface-flagship"
       style={{
         maxWidth: 820,
-        marginBottom: 16,
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border-subtle)",
-        borderLeft: `${isActive ? 3 : 2}px solid ${task ? STATE_COLOR[task.state] : "var(--accent-dim)"}`,
-        borderRadius: 14,
-        padding: "18px 22px",
+        marginBottom: "var(--sp-4)",
+        borderLeft: `2px solid ${task ? STATE_COLOR[task.state] : "var(--border-subtle)"}`,
+        padding: "var(--sp-5) var(--sp-5)",
         fontFamily: "var(--mono)",
-        boxShadow: isLive
-          ? "0 10px 30px -18px color-mix(in oklab, var(--accent) 40%, transparent), 0 1px 4px rgba(0,0,0,.25)"
-          : isActive ? "var(--shadow-sm)" : "none",
+        boxShadow: isLive ? "var(--shadow-md)" : "var(--shadow-sm)",
         transition: "box-shadow .3s var(--ease-swift), border-color .2s",
       }}
     >
@@ -1529,7 +1531,7 @@ function WorkbenchCard({
         </div>
       )}
       <div style={{
-        marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--border-subtle)",
+        marginTop: "var(--sp-3)", paddingTop: "var(--sp-3)", borderTop: "1px solid var(--border-subtle)",
         display: "flex", gap: 14, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
         color: "var(--text-ghost)",
         alignItems: "center", flexWrap: "wrap",

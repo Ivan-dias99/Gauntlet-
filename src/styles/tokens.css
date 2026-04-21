@@ -6,10 +6,11 @@
 [data-theme="dark"] {
   --bg: #0e0c0a;
   --bg-surface: #16130f;
+  --bg-sunken: #0a0908;
   --bg-elevated: #1f1b16;
   --bg-input: #12100d;
-  --border: #2a2520;
-  --border-subtle: #1c1915;
+  --border: color-mix(in oklab, #f3ede2 10%, #0e0c0a);
+  --border-subtle: color-mix(in oklab, #f3ede2 5%, #0e0c0a);
   --text-primary: #f3ede2;
   --text-secondary: #a89a84;
   --text-muted: #6b5f50;
@@ -20,11 +21,13 @@
   --ember: #c47a5a; /* shared ember pulse */
   --terminal-ok: #7aa070;
   --terminal-warn: #d8b058;
-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.45);
-  --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 10px 32px -14px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 24px 60px -28px rgba(0, 0, 0, 0.65);
   --radius: 4px;
   --mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   --sans: "Inter", system-ui, -apple-system, sans-serif;
+  --serif: "Fraunces", Georgia, "Times New Roman", serif;
   --density: 1;
 
   /* Claude Code terminal hues */
@@ -59,10 +62,11 @@
 [data-theme="light"] {
   --bg: #f8f5f0;
   --bg-surface: #fffdf8;
+  --bg-sunken: #efeadf;
   --bg-elevated: #ffffff;
   --bg-input: #f2eee6;
-  --border: #e1dac9;
-  --border-subtle: #ede7d9;
+  --border: color-mix(in oklab, #1b1915 12%, #f8f5f0);
+  --border-subtle: color-mix(in oklab, #1b1915 6%, #f8f5f0);
   --text-primary: #1b1915;
   --text-secondary: #5a5248;
   --text-muted: #9a8f7e;
@@ -73,8 +77,9 @@
   --ember: #c47a5a;
   --terminal-ok: #3a6a3a;
   --terminal-warn: #8a6a20;
-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 10px 32px -14px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 24px 60px -28px rgba(0, 0, 0, 0.12);
 
   /* Claude Code terminal hues (light) */
   --cc-fg: #2a2620;
@@ -98,10 +103,11 @@
 [data-theme="sepia"] {
   --bg: #1b1410;
   --bg-surface: #241b14;
+  --bg-sunken: #140e0a;
   --bg-elevated: #2d2219;
   --bg-input: #1a120d;
-  --border: #3a2c1f;
-  --border-subtle: #2a1f15;
+  --border: color-mix(in oklab, #f4e6cc 12%, #1b1410);
+  --border-subtle: color-mix(in oklab, #f4e6cc 6%, #1b1410);
   --text-primary: #f4e6cc;
   --text-secondary: #b89b72;
   --text-muted: #7a6250;
@@ -112,8 +118,9 @@
   --ember: #e88860;
   --terminal-ok: #7aa050;
   --terminal-warn: #e8b050;
-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.55);
-  --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.7);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 10px 32px -14px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 24px 60px -28px rgba(0, 0, 0, 0.7);
 
   /* Claude Code terminal hues (sepia) */
   --cc-fg: #f4e6cc;
@@ -461,36 +468,95 @@ textarea {
   text-transform: uppercase;
 }
 
-.chamberCard {
-  position: relative;
-  padding: 32px 28px 30px;
-  border-radius: 16px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  overflow: hidden;
-  cursor: default;
-  transition: transform 0.35s var(--ease-emph), border-color 0.35s, box-shadow 0.35s;
+/* ——— Systematic scales (radius / spacing / type / tracking) ——— */
+:root {
+  --r-xs: 2px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 20px;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+  --sp-9: 96px;
+  --sp-10: 128px;
+
+  --t-micro: 10px;
+  --t-meta: 11px;
+  --t-label: 12px;
+  --t-body: 14px;
+  --t-serif: 18px;
+  --t-display: 34px;
+
+  --track-tight: -0.015em;
+  --track-normal: 0;
+  --track-meta: 0.12em;
+  --track-label: 0.2em;
+  --track-kicker: 0.26em;
 }
-.chamberCard::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    600px 200px at 30% -10%,
-    color-mix(in oklab, var(--ember) 14%, transparent),
-    transparent 60%
-  );
-  opacity: 0;
-  transition: opacity 0.45s var(--ease-emph);
+
+/* ——— Surface primitives ———
+   One border width, tonal borders, near-invisible shadows; only .surface-flagship earns elevation. */
+.surface {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
 }
-.chamberCard:hover {
-  transform: translateY(-4px);
-  border-color: color-mix(in oklab, var(--accent) 30%, transparent);
-  box-shadow: 0 22px 60px -24px color-mix(in oklab, var(--ember) 30%, transparent);
+.surface-quiet {
+  background: color-mix(in oklab, var(--text-primary) 2%, var(--bg));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
 }
-.chamberCard:hover::before {
-  opacity: 1;
+.surface-sunken {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+}
+.surface-flagship {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* ——— Typography primitives ——— */
+.t-display {
+  font-family: var(--serif);
+  font-size: var(--t-display);
+  line-height: 1.1;
+  letter-spacing: var(--track-tight);
+  color: var(--text-primary);
+}
+.t-serif {
+  font-family: var(--serif);
+  font-size: var(--t-serif);
+  line-height: 1.5;
+  letter-spacing: var(--track-tight);
+  color: var(--text-primary);
+}
+.t-label {
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.t-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.t-meta {
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
 }

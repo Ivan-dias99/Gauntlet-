@@ -102,31 +102,40 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
         />
       </button>
 
-      {CHAMBERS.map((c) => (
-        <button
-          key={c}
-          onClick={() => onSelect(c)}
-          style={{
-            background: "none",
-            border: "none",
-            borderBottom:
-              active === c ? "1px solid var(--accent)" : "1px solid transparent",
-            cursor: "pointer",
-            padding: "0 20px",
-            height: 56,
-            color: active === c ? "var(--accent)" : "var(--text-muted)",
-            fontSize: 13,
-            fontFamily: "var(--sans)",
-            letterSpacing: 0.3,
-            transition: "color 0.15s, border-color 0.15s",
-            fontWeight: active === c ? 500 : 400,
-          }}
-        >
-          {copy.chambers[c].label}
-        </button>
-      ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {CHAMBERS.map((c) => (
+          <button
+            key={c}
+            onClick={() => onSelect(c)}
+            style={{
+              background: active === c ? "var(--bg)" : "none",
+              border: active === c ? "1px solid var(--border-subtle)" : "1px solid transparent",
+              cursor: "pointer",
+              padding: "8px 14px",
+              color: active === c ? "var(--text-primary)" : "var(--text-muted)",
+              fontSize: 13,
+              fontFamily: "var(--sans)",
+              letterSpacing: 0.3,
+              borderRadius: 999,
+              transition: "background 0.18s, color 0.18s, border-color 0.18s",
+              fontWeight: active === c ? 500 : 400,
+            }}
+          >
+            {copy.chambers[c].label}
+          </button>
+        ))}
+      </div>
 
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
+        <span
+          aria-hidden
+          style={{
+            width: 1,
+            height: 20,
+            background: "var(--border-subtle)",
+            display: "inline-block",
+          }}
+        />
         {missions.length > 0 && (
           <div ref={dropdownRef} style={{ position: "relative" }}>
             <button
@@ -138,9 +147,9 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                 color: open ? "var(--accent)" : "var(--text-secondary)",
                 fontSize: 12,
                 fontFamily: "var(--sans)",
-                padding: "6px 12px",
+                padding: "6px 14px",
                 cursor: "pointer",
-                borderRadius: "var(--radius)",
+                borderRadius: 999,
                 maxWidth: 280,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -174,10 +183,10 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                         height: 6,
                         borderRadius: "50%",
                         background: pulseLive
-                          ? "var(--accent)"
+                          ? "var(--ember)"
                           : "var(--text-ghost)",
                         boxShadow: pulseLive
-                          ? "0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent)"
+                          ? "0 0 8px color-mix(in oklab, var(--ember) 55%, transparent)"
                           : "none",
                         flexShrink: 0,
                       }}

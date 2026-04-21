@@ -358,16 +358,18 @@ export default function Memory() {
                   }}
                 >
                   <span style={{
-                    position: "absolute", left: -120, top: -2, width: 62, textAlign: "right",
-                    fontSize: 9, letterSpacing: 2,
-                    color: "var(--text-ghost)", fontFamily: "var(--mono)",
-                  }}>{g.label}</span>
+                    position: "absolute", left: -120, top: -6, width: 92, textAlign: "right",
+                    fontFamily: "var(--serif)",
+                    fontSize: 18, fontWeight: 400,
+                    letterSpacing: "-0.01em",
+                    color: "var(--text-secondary)",
+                  }}>{g.label.charAt(0) + g.label.slice(1).toLowerCase()}</span>
                   <div style={{
                     flex: 1, height: 1,
-                    background: "var(--border-subtle)", opacity: 0.55,
+                    background: "var(--border-subtle)", opacity: 0.7,
                   }} />
                   <span style={{
-                    fontSize: 9, letterSpacing: 1.5,
+                    fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase",
                     color: "var(--text-ghost)", fontFamily: "var(--mono)",
                   }}>
                     {copy.memoryDayEntry(g.runs.length)}
@@ -663,22 +665,26 @@ function StatCell({
   label, value, sub, warn,
 }: { label: string; value: string; sub?: string; warn?: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
       <span style={{
-        fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
+        fontFamily: "var(--mono)",
+        fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase",
         color: "var(--text-ghost)",
       }}>
         {label}
       </span>
       <span style={{
-        fontSize: 15,
+        fontFamily: "var(--serif)",
+        fontSize: 26,
+        fontWeight: 400,
+        letterSpacing: "-0.02em",
         color: warn ? "var(--terminal-warn)" : "var(--text-primary)",
-        lineHeight: 1.2,
+        lineHeight: 1.05,
       }}>
         {value}
       </span>
       {sub && (
-        <span style={{ fontSize: 9, color: "var(--text-ghost)" }}>{sub}</span>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-ghost)", letterSpacing: 0.5 }}>{sub}</span>
       )}
     </div>
   );
