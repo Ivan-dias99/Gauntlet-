@@ -47,6 +47,10 @@ function normalizeArtifact(v: unknown): Artifact | null {
     terminatedEarly: a.terminatedEarly === true,
     acceptedAt: typeof a.acceptedAt === "number" ? a.acceptedAt : Date.now(),
     ...(typeof a.taskId === "string" ? { taskId: a.taskId } : {}),
+    ...(typeof a.iterations === "number" ? { iterations: a.iterations } : {}),
+    ...(typeof a.toolCount === "number" ? { toolCount: a.toolCount } : {}),
+    ...(typeof a.processingTimeMs === "number" ? { processingTimeMs: a.processingTimeMs } : {}),
+    ...(typeof a.terminationReason === "string" ? { terminationReason: a.terminationReason } : {}),
   };
 }
 

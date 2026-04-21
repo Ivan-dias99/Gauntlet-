@@ -263,6 +263,10 @@ export default function Creation() {
         answer: answerText,
         terminatedEarly: done.terminated_early,
         acceptedAt: Date.now(),
+        iterations: done.iterations,
+        toolCount: done.tool_count,
+        processingTimeMs: done.processing_time_ms,
+        terminationReason: done.termination_reason,
       },
       task?.id,
     );
@@ -328,7 +332,7 @@ export default function Creation() {
   const nextOpenTask = activeMission?.tasks.find(
     t => t.state === "open" && t.id !== activeTaskId,
   ) ?? null;
-  const recentArtifacts = (activeMission?.artifacts ?? []).slice(0, 3);
+  const allArtifacts = activeMission?.artifacts ?? [];
   // The next-step bar is operational: it appears once the user has something
   // to act on (a completed run, an error, or a blocked task).
   const showNextStep = !pending && activeMission !== null &&
@@ -714,8 +718,9 @@ export default function Creation() {
 
         {activeMission && (
           <ArtifactLedger
-            artifacts={recentArtifacts}
+            artifacts={allArtifacts}
             copy={copy}
+            lang={values.lang}
             onSelectArtifact={(a) => {
               if (!a.taskId) return;
               setActiveTaskId(a.taskId);
@@ -1340,27 +1345,96 @@ function NextStepBar({
   );
 }
 
+const LEDGER_COLLAPSED_COUNT = 3;
+
+// Short relative-time string — the ledger is about "when did this happen in
+// the arc of the mission?", not a precise clock. Absolute timestamps remain
+// in the title attribute for anyone hovering.
+function artifactRelTime(ms: number, lang: "pt" | "en"): string {
+  const diff = Math.max(0, Date.now() - ms);
+  if (diff < 45_000) return lang === "en" ? "just now" : "agora";
+  const min = Math.round(diff / 60_000);
+  if (min < 60) return lang === "en" ? `${min}m ago` : `há ${min}m`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return lang === "en" ? `${hr}h ago` : `há ${hr}h`;
+  const d = Math.round(hr / 24);
+  return lang === "en" ? `${d}d ago` : `há ${d}d`;
+}
+
+function formatMs(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(s < 10 ? 1 : 0)}s`;
+  const m = Math.floor(s / 60);
+  const rem = Math.round(s % 60);
+  return `${m}m${rem ? rem + "s" : ""}`;
+}
+
 function ArtifactLedger({
-  artifacts, copy, onSelectArtifact,
+  artifacts, copy, lang, onSelectArtifact,
 }: {
   artifacts: Artifact[];
   copy: Copy;
+  lang: "pt" | "en";
   onSelectArtifact: (a: Artifact) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const total = artifacts.length;
+  const hasMore = total > LEDGER_COLLAPSED_COUNT;
+  const shown = expanded ? artifacts : artifacts.slice(0, LEDGER_COLLAPSED_COUNT);
+  const termEarly = artifacts.filter(a => a.terminatedEarly).length;
+
   return (
     <div style={{ marginTop: 24, maxWidth: 820 }}>
       <div style={{
         fontSize: 9, letterSpacing: 2.5, color: "var(--text-ghost)",
         fontFamily: "var(--mono)", textTransform: "uppercase", marginBottom: 10,
+        display: "flex", alignItems: "center", gap: 10,
       }}>
-        ◆ {copy.recentArtifacts}
-        {artifacts.length > 0 && (
-          <span style={{ marginLeft: 8, color: "var(--text-ghost)", letterSpacing: 1 }}>
-            · {artifacts.length}
+        <span>◆ {copy.recentArtifacts}</span>
+        {total > 0 && (
+          <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
+            ·{" "}
+            {expanded || !hasMore
+              ? `${total}`
+              : `${shown.length}/${total}`}
           </span>
         )}
+        {termEarly > 0 && (
+          <span
+            title={lang === "en"
+              ? `${termEarly} terminated early`
+              : `${termEarly} terminação${termEarly === 1 ? "" : "ões"} antecipada${termEarly === 1 ? "" : "s"}`}
+            style={{ color: "var(--cc-warn)", letterSpacing: 1 }}
+          >
+            · ⚠ {termEarly}
+          </span>
+        )}
+        {hasMore && (
+          <button
+            onClick={() => setExpanded(v => !v)}
+            style={{
+              marginLeft: "auto", background: "none", border: "1px solid var(--border-subtle)",
+              color: "var(--text-ghost)", fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
+              padding: "3px 10px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer",
+              transition: "color .15s, border-color .15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--accent)";
+              e.currentTarget.style.borderColor = "var(--accent-dim)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--text-ghost)";
+              e.currentTarget.style.borderColor = "var(--border-subtle)";
+            }}
+          >
+            {expanded
+              ? (lang === "en" ? "↑ collapse" : "↑ recolher")
+              : (lang === "en" ? `↓ show all (${total})` : `↓ ver todos (${total})`)}
+          </button>
+        )}
       </div>
-      {artifacts.length === 0 ? (
+      {total === 0 ? (
         <div style={{
           fontSize: 11, color: "var(--text-ghost)", fontStyle: "italic",
           fontFamily: "var(--sans)",
@@ -1369,57 +1443,117 @@ function ArtifactLedger({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {artifacts.map((a) => {
-            const preview = a.answer
-              ? (a.answer.length > 200 ? a.answer.slice(0, 200) + "…" : a.answer)
-              : "—";
-            const clickable = Boolean(a.taskId);
-            return (
-              <div
-                key={a.id}
-                onClick={clickable ? () => onSelectArtifact(a) : undefined}
-                className="fadeIn"
-                style={{
-                  background: "color-mix(in oklab, var(--cc-ok) 6%, var(--bg-elevated))",
-                  border: "1px solid var(--border-subtle)",
-                  borderLeft: "2px solid var(--cc-ok)",
-                  borderRadius: 12,
-                  padding: "10px 14px",
-                  fontFamily: "var(--mono)",
-                  cursor: clickable ? "pointer" : "default",
-                }}
-              >
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
-                  color: "var(--cc-ok)", marginBottom: 6,
-                }}>
-                  <span>◆</span>
-                  <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
-                    {new Date(a.acceptedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  {a.terminatedEarly && (
-                    <span style={{ color: "var(--cc-warn)" }}>· terminação antecipada</span>
-                  )}
-                  <span style={{
-                    marginLeft: "auto", color: "var(--text-ghost)",
-                    maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
-                    › {a.taskTitle}
-                  </span>
-                </div>
-                <div style={{
-                  fontSize: 11,
-                  color: a.terminatedEarly && !a.answer ? "var(--cc-warn)" : "var(--text-muted)",
-                  fontFamily: "var(--sans)",
-                  lineHeight: 1.55,
-                  whiteSpace: "pre-wrap",
-                }}>
-                  {preview}
-                </div>
-              </div>
-            );
-          })}
+          {shown.map((a) => (
+            <ArtifactCard
+              key={a.id}
+              artifact={a}
+              lang={lang}
+              onSelect={() => onSelectArtifact(a)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ArtifactCard({
+  artifact: a, lang, onSelect,
+}: {
+  artifact: Artifact;
+  lang: "pt" | "en";
+  onSelect: () => void;
+}) {
+  const preview = a.answer
+    ? (a.answer.length > 200 ? a.answer.slice(0, 200) + "…" : a.answer)
+    : "—";
+  const clickable = Boolean(a.taskId);
+  const hasMetrics = a.iterations !== undefined
+    || a.toolCount !== undefined
+    || a.processingTimeMs !== undefined;
+  return (
+    <div
+      onClick={clickable ? onSelect : undefined}
+      className="fadeIn"
+      style={{
+        background: "color-mix(in oklab, var(--cc-ok) 6%, var(--bg-elevated))",
+        border: "1px solid var(--border-subtle)",
+        borderLeft: `2px solid ${a.terminatedEarly ? "var(--cc-warn)" : "var(--cc-ok)"}`,
+        borderRadius: 12,
+        padding: "10px 14px",
+        fontFamily: "var(--mono)",
+        cursor: clickable ? "pointer" : "default",
+        transition: "border-color .15s, transform .2s var(--ease-emph)",
+      }}
+      onMouseEnter={(e) => {
+        if (clickable) {
+          e.currentTarget.style.transform = "translateX(2px)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "";
+      }}
+    >
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
+        color: "var(--cc-ok)", marginBottom: 6,
+      }}>
+        <span>◆</span>
+        <span
+          title={new Date(a.acceptedAt).toLocaleString()}
+          style={{ color: "var(--text-ghost)", letterSpacing: 1 }}
+        >
+          {artifactRelTime(a.acceptedAt, lang)}
+        </span>
+        {a.terminatedEarly && (
+          <span style={{ color: "var(--cc-warn)" }}>
+            · {lang === "en" ? "terminated early" : "terminação antecipada"}
+          </span>
+        )}
+        <span style={{
+          marginLeft: "auto", color: "var(--text-ghost)",
+          maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          › {a.taskTitle}
+        </span>
+        {clickable && (
+          <span
+            title={lang === "en" ? "open task" : "abrir tarefa"}
+            style={{ color: "var(--accent-dim)", letterSpacing: 1 }}
+          >
+            →
+          </span>
+        )}
+      </div>
+      {hasMetrics && (
+        <div style={{
+          display: "flex", gap: 12, marginBottom: 6,
+          fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase",
+        }}>
+          {a.iterations !== undefined && <span>{a.iterations} iter</span>}
+          {a.toolCount !== undefined && <span>{a.toolCount} tools</span>}
+          {a.processingTimeMs !== undefined && (
+            <span>{formatMs(a.processingTimeMs)}</span>
+          )}
+        </div>
+      )}
+      <div style={{
+        fontSize: 11,
+        color: a.terminatedEarly && !a.answer ? "var(--cc-warn)" : "var(--text-muted)",
+        fontFamily: "var(--sans)",
+        lineHeight: 1.55,
+        whiteSpace: "pre-wrap",
+      }}>
+        {preview}
+      </div>
+      {a.terminatedEarly && a.terminationReason && (
+        <div style={{
+          marginTop: 8, paddingTop: 6, borderTop: "1px dashed var(--border-subtle)",
+          fontSize: 10, color: "var(--cc-warn)", fontFamily: "var(--mono)",
+          lineHeight: 1.5,
+        }}>
+          {lang === "en" ? "reason" : "razão"}: {a.terminationReason}
         </div>
       )}
     </div>
