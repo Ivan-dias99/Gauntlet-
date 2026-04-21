@@ -521,7 +521,8 @@ export default function Creation() {
 
         {tasks.length > 0 && layout === "kanban" && (
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24,
+            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20,
+            maxWidth: 820,
           }}>
             <div>
               <div style={{
@@ -545,7 +546,7 @@ export default function Creation() {
         )}
 
         {tasks.length > 0 && layout === "terminal" && (
-          <div style={{ maxWidth: 740, marginBottom: 24 }}>
+          <div style={{ maxWidth: 820, marginBottom: 20 }}>
             {pendingTasks.map((t) => (
               <TaskRow key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
             ))}
@@ -573,7 +574,7 @@ export default function Creation() {
             className="toolRise"
             style={{
               maxWidth: 820,
-              marginTop: 8,
+              marginTop: 6,
               background: "var(--bg-input)",
               border: "1px solid var(--border-subtle)",
               borderRadius: 14,
@@ -681,7 +682,7 @@ export default function Creation() {
           <div
             className="toolRise"
             style={{
-              marginTop: 20,
+              marginTop: 16,
               maxWidth: 820,
               background: "var(--bg-input)",
               border: "1px solid var(--border-subtle)",
@@ -1172,7 +1173,7 @@ function WorkbenchCard({
       className="fadeIn"
       style={{
         maxWidth: 820,
-        marginBottom: 20,
+        marginBottom: 16,
         background: "var(--bg-elevated)",
         border: "1px solid var(--border-subtle)",
         borderLeft: `2px solid ${task ? STATE_COLOR[task.state] : "var(--accent-dim)"}`,
@@ -1291,7 +1292,7 @@ function NextStepBar({
   }
   if (buttons.length === 0) {
     return (
-      <div style={{ marginTop: 14, maxWidth: 820, fontFamily: "var(--mono)", fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
+      <div style={{ marginTop: 16, maxWidth: 820, fontFamily: "var(--mono)", fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
         {copy.actionAllDone}
       </div>
     );
@@ -1300,7 +1301,7 @@ function NextStepBar({
     <div
       className="fadeIn"
       style={{
-        marginTop: 14,
+        marginTop: 16,
         maxWidth: 820,
         display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap",
         fontFamily: "var(--mono)",
@@ -1348,7 +1349,12 @@ function ArtifactLedger({
   onSelectArtifact: (a: Artifact) => void;
 }) {
   return (
-    <div style={{ marginTop: 24, maxWidth: 820 }}>
+    <div style={{
+      marginTop: 28,
+      paddingTop: 18,
+      borderTop: "1px dashed var(--border-subtle)",
+      maxWidth: 820,
+    }}>
       <div style={{
         fontSize: 9, letterSpacing: 2.5, color: "var(--text-ghost)",
         fontFamily: "var(--mono)", textTransform: "uppercase", marginBottom: 10,
