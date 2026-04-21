@@ -260,6 +260,9 @@ export default function Lab() {
             !activeMission ? "Activa uma missão para investigar..." :
             pending ? "Aguardando verdict..." :
             lastVerdict?.refused ? "Reformula. Fractura. Pressiona mais." :
+            lastVerdict && lastVerdict.divergenceCount > 0 ? "Divergência detectada. Pressiona a premissa." :
+            lastVerdict?.confidence === "low" ? "Confiança baixa. Exige evidência." :
+            lastVerdict?.priorFailure ? "Falha prévia. Muda o ângulo." :
             "Evidência, análise, hipótese..."
           }
           disabled={pending || !activeMission}
@@ -351,14 +354,28 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
         </div>
       )}
 
-      {/* Pressure hint — shown when refused or divergence found */}
-      {(isRefused || verdict.divergenceCount > 0) && (
-        <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", letterSpacing: 0.5 }}>
-          {isRefused
-            ? "→ reformula · fractura a questão · adiciona contexto específico"
-            : "→ pressiona onde divergiu · pede clarificação · verifica a premissa"}
-        </div>
-      )}
+      {/* Pressure hint — tailored to the dominant pressure signal */}
+      {(() => {
+        const isLowConfidence = verdict.confidence === "low" && !isAgent;
+        const hasPressureSignal =
+          isRefused ||
+          verdict.divergenceCount > 0 ||
+          isLowConfidence ||
+          verdict.priorFailure;
+        if (!hasPressureSignal) return null;
+        const hint = isRefused
+          ? "→ reformula · fractura a questão · adiciona contexto específico"
+          : verdict.divergenceCount > 0
+          ? "→ pressiona onde divergiu · pede clarificação · verifica a premissa"
+          : isLowConfidence
+          ? "→ confiança baixa · exige evidência · fractura a questão"
+          : "→ falha prévia registada · muda o ângulo · evita a mesma premissa";
+        return (
+          <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", letterSpacing: 0.5 }}>
+            {hint}
+          </div>
+        );
+      })()}
     </div>
   );
 }
