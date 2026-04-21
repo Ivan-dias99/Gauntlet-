@@ -47,6 +47,24 @@ export interface Copy {
   refinePrefix: string;
   memoryEmpty: string;
   memoryCount: (n: number) => string;
+  memoryLoading: string;
+  memoryBackendOff: string;
+  memoryStatRuns: string;
+  memoryStatRefused: string;
+  memoryStatAvgLatency: string;
+  memoryStatTokens: string;
+  memoryStatToolCalls: string;
+  memoryTokensIn: string;
+  memoryTokensOut: string;
+  memoryMetaConfidence: string;
+  memoryMetaIterations: string;
+  memoryMetaTools: string;
+  memoryMetaTokens: string;
+  memoryMetaLatency: string;
+  memoryMetaTerminated: string;
+  memoryTerminatedFallback: string;
+  memoryJudge: string;
+  memoryTimelineToolsSuffix: string;
   schoolEmpty: string;
   schoolPlaceholder: string;
   schoolInscribe: string;
@@ -135,6 +153,24 @@ const PT: Copy = {
   refinePrefix: "refinar: ",
   memoryEmpty: "— log vazio —",
   memoryCount: (n) => `${n} evento${n === 1 ? "" : "s"}`,
+  memoryLoading: "— a carregar —",
+  memoryBackendOff: "backend off? ",
+  memoryStatRuns: "execuções",
+  memoryStatRefused: "recusadas",
+  memoryStatAvgLatency: "latência média",
+  memoryStatTokens: "tokens",
+  memoryStatToolCalls: "chamadas",
+  memoryTokensIn: "in",
+  memoryTokensOut: "out",
+  memoryMetaConfidence: "confiança",
+  memoryMetaIterations: "iterações",
+  memoryMetaTools: "ferramentas",
+  memoryMetaTokens: "tokens",
+  memoryMetaLatency: "latência",
+  memoryMetaTerminated: "terminada",
+  memoryTerminatedFallback: "cedo",
+  memoryJudge: "juiz",
+  memoryTimelineToolsSuffix: "ferramentas",
   schoolEmpty: "Sem princípios registados. A constituição está em branco.",
   schoolPlaceholder: "Novo princípio...",
   schoolInscribe: "Inscrever",
@@ -211,6 +247,24 @@ const EN: Copy = {
   refinePrefix: "refine: ",
   memoryEmpty: "— empty log —",
   memoryCount: (n) => `${n} event${n === 1 ? "" : "s"}`,
+  memoryLoading: "— loading —",
+  memoryBackendOff: "backend off? ",
+  memoryStatRuns: "runs",
+  memoryStatRefused: "refused",
+  memoryStatAvgLatency: "avg latency",
+  memoryStatTokens: "tokens",
+  memoryStatToolCalls: "tool calls",
+  memoryTokensIn: "in",
+  memoryTokensOut: "out",
+  memoryMetaConfidence: "confidence",
+  memoryMetaIterations: "iterations",
+  memoryMetaTools: "tools",
+  memoryMetaTokens: "tokens",
+  memoryMetaLatency: "latency",
+  memoryMetaTerminated: "terminated",
+  memoryTerminatedFallback: "early",
+  memoryJudge: "judge",
+  memoryTimelineToolsSuffix: "tools",
   schoolEmpty: "No principles recorded. Constitution is blank.",
   schoolPlaceholder: "New principle...",
   schoolInscribe: "Inscribe",

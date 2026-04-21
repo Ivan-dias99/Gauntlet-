@@ -158,7 +158,7 @@ export default function Memory() {
             Memory
           </span>
           <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            Runs · Verdicts · Tool Trace
+            {copy.chambers.Memory.lead}
           </span>
           {stats.total > 0 && (
             <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
@@ -176,20 +176,20 @@ export default function Memory() {
             fontFamily: "var(--mono)",
             maxWidth: 820,
           }}>
-            <StatCell label="runs" value={`${stats.total}`} />
+            <StatCell label={copy.memoryStatRuns} value={`${stats.total}`} />
             <StatCell
-              label="refused"
+              label={copy.memoryStatRefused}
               value={`${(stats.refusalRate * 100).toFixed(0)}%`}
               sub={`${stats.refused}/${stats.total}`}
               warn={stats.refusalRate >= 0.5}
             />
-            <StatCell label="avg latency" value={`${stats.avgLatencyMs} ms`} />
+            <StatCell label={copy.memoryStatAvgLatency} value={`${stats.avgLatencyMs} ms`} />
             <StatCell
-              label="tokens"
+              label={copy.memoryStatTokens}
               value={formatTokens(stats.totalInput + stats.totalOutput)}
-              sub={`${formatTokens(stats.totalInput)} in · ${formatTokens(stats.totalOutput)} out`}
+              sub={`${formatTokens(stats.totalInput)} ${copy.memoryTokensIn} · ${formatTokens(stats.totalOutput)} ${copy.memoryTokensOut}`}
             />
-            <StatCell label="tool calls" value={`${stats.toolCalls}`} />
+            <StatCell label={copy.memoryStatToolCalls} value={`${stats.toolCalls}`} />
           </div>
         )}
       </div>
@@ -208,12 +208,12 @@ export default function Memory() {
             padding: "10px 14px", maxWidth: 720,
             whiteSpace: "pre-wrap",
           }}>
-            backend off? {err}
+            {copy.memoryBackendOff}{err}
           </div>
         )}
 
         {runs === null && !err && (
-          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>— a carregar —</div>
+          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>{copy.memoryLoading}</div>
         )}
 
         {runs && runs.length === 0 && !err && (
@@ -263,7 +263,7 @@ export default function Memory() {
                   }}>
                     {new Date(r.timestamp).toLocaleString([], {
                       hour: "2-digit", minute: "2-digit", second: "2-digit",
-                    })} · {r.processing_time_ms}ms · {r.tool_calls.length} tools
+                    })} · {r.processing_time_ms}ms · {r.tool_calls.length} {copy.memoryTimelineToolsSuffix}
                   </div>
                 </div>
               );
@@ -327,16 +327,16 @@ export default function Memory() {
                     borderRadius: "var(--radius)",
                     padding: "10px 14px",
                   }}>
-                    <MetaRow label="confidence" value={r.confidence ?? "—"} />
-                    <MetaRow label="iterations" value={r.iterations?.toString() ?? "—"} />
-                    <MetaRow label="tools" value={`${r.tool_calls.length}`} />
+                    <MetaRow label={copy.memoryMetaConfidence} value={r.confidence ?? "—"} />
+                    <MetaRow label={copy.memoryMetaIterations} value={r.iterations?.toString() ?? "—"} />
+                    <MetaRow label={copy.memoryMetaTools} value={`${r.tool_calls.length}`} />
                     <MetaRow
-                      label="tokens"
-                      value={`${r.input_tokens} in · ${r.output_tokens} out`}
+                      label={copy.memoryMetaTokens}
+                      value={`${r.input_tokens} ${copy.memoryTokensIn} · ${r.output_tokens} ${copy.memoryTokensOut}`}
                     />
-                    <MetaRow label="latency" value={`${r.processing_time_ms} ms`} />
+                    <MetaRow label={copy.memoryMetaLatency} value={`${r.processing_time_ms} ms`} />
                     {r.terminated_early && (
-                      <MetaRow label="terminated" value={r.termination_reason ?? "early"} />
+                      <MetaRow label={copy.memoryMetaTerminated} value={r.termination_reason ?? copy.memoryTerminatedFallback} />
                     )}
                     {r.tool_calls.length > 0 && (
                       <div style={{ marginTop: 8 }}>
@@ -352,7 +352,7 @@ export default function Memory() {
                     )}
                     {r.judge_reasoning && (
                       <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-subtle)" }}>
-                        <div style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase", marginBottom: 4, fontFamily: "var(--mono)" }}>judge</div>
+                        <div style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase", marginBottom: 4, fontFamily: "var(--mono)" }}>{copy.memoryJudge}</div>
                         <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.55, fontFamily: "var(--sans)", whiteSpace: "pre-wrap" }}>
                           {r.judge_reasoning.length > 320 ? r.judge_reasoning.slice(0, 320) + "…" : r.judge_reasoning}
                         </div>
