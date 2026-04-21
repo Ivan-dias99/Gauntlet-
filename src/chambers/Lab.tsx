@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRuberra, RouteEvent } from "../hooks/useRuberra";
 import { Note } from "../spine/types";
+import ErrorPanel from "../shell/ErrorPanel";
+import EmptyState from "../shell/EmptyState";
+import { useCopy } from "../i18n/copy";
 
 interface TriadResult {
   answer?: string | null;
@@ -41,6 +44,7 @@ interface VerdictState {
   priorFailure: boolean;
   agentIter: number;
   agentToolCount: number;
+  question: string;
 }
 
 interface LiveState {
@@ -66,15 +70,34 @@ const EMPTY_LIVE: LiveState = {
 };
 
 export default function Lab() {
-  const { activeMission, addNote, addNoteToMission, principles } = useSpine();
+  const { activeMission, addNote, addNoteToMission, addTask, principles, logDoctrineApplied } = useSpine();
   const { streamRoute, pending, error } = useRuberra();
+  const copy = useCopy();
   const [input, setInput] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
+  const [promoteId, setPromoteId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Esc closes any pending handoff confirm.
+  useEffect(() => {
+    if (!promoteId) return;
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setPromoteId(null); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [promoteId]);
+
+  function confirmPromote(note: Note) {
+    const raw = note.text.trim();
+    const title = raw.length > 120 ? raw.slice(0, 117).trimEnd() + "…" : raw;
+    addTask(title, "lab");
+    setPromoteId(null);
+    window.dispatchEvent(new CustomEvent("ruberra:chamber", { detail: "Creation" }));
+  }
 
   // Refs capture streaming metadata without stale closure issues
   const capturedJudge = useRef<{
@@ -100,6 +123,7 @@ export default function Lab() {
     if (!targetMissionId) return;
 
     addNote(v, "user");
+    if (principles.length > 0) logDoctrineApplied(principles.length);
     setInput("");
     setLive({ ...EMPTY_LIVE });
     setLastConfidence(null);
@@ -170,6 +194,7 @@ export default function Lab() {
             priorFailure: capturedTriad.current.priorFailure || priorFail,
             agentIter: capturedAgent.current.iter,
             agentToolCount: capturedAgent.current.toolCount,
+            question: v,
           });
         }
       },
@@ -183,42 +208,86 @@ export default function Lab() {
       {/* Header */}
       <div style={{ padding: "20px 40px 16px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "baseline", gap: 12 }}>
         <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
-          Lab
+          {copy.labKicker}
         </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Investigação · Evidência · Pressão
+        <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+          {copy.labTagline}
         </span>
+        {principles.length > 0 && (
+          <span
+            data-principles-in-context
+            title={`${principles.length} princípio${principles.length !== 1 ? "s" : ""} da doutrina bem presentes nesta câmara`}
+            style={{
+              fontSize: 9,
+              letterSpacing: 1.5,
+              color: "var(--accent)",
+              fontFamily: "var(--mono)",
+              textTransform: "uppercase",
+              padding: "2px 7px",
+              border: "1px solid color-mix(in oklab, var(--accent) 32%, transparent)",
+              borderRadius: 4,
+              lineHeight: 1.4,
+            }}
+          >
+            sob § {principles.length}
+          </span>
+        )}
         {pending && (
           <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--cc-info)", fontFamily: "var(--mono)", letterSpacing: 2, display: "flex", alignItems: "center", gap: 8 }}>
             <span className="breathe" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-info)" }} />
             {live.routePath ? live.routePath.toUpperCase() : "ANALISANDO"}
           </span>
         )}
-        {!pending && live.routePath && lastConfidence && (
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1 }}>
-            {live.routePath.toUpperCase()} · {lastConfidence}
-          </span>
-        )}
+        {!pending && live.routePath && lastConfidence && (() => {
+          const refused = !!lastVerdict?.refused;
+          const chipColor = refused
+            ? "var(--cc-err)"
+            : lastConfidence === "high"
+            ? "var(--cc-ok)"
+            : lastConfidence === "low"
+            ? "var(--cc-warn)"
+            : "var(--text-ghost)";
+          return (
+            <span style={{ marginLeft: "auto", fontSize: 10, color: chipColor, fontFamily: "var(--mono)", letterSpacing: 1 }}>
+              {live.routePath.toUpperCase()} · {refused ? "recusado" : lastConfidence}
+            </span>
+          );
+        })()}
       </div>
 
       {/* Message thread */}
       <div style={{ flex: 1, overflow: "auto", padding: "24px clamp(20px, 5vw, 64px)", display: "flex", flexDirection: "column", gap: 14 }}>
 
         {notes.length === 0 && !pending && !error && (
-          <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 520, marginTop: "12vh" }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".4em", color: activeMission ? "var(--text-ghost)" : "var(--cc-warn)", textTransform: "uppercase", marginBottom: 18 }}>
-              {activeMission ? "— Sem entrada" : "— Sem missão activa"}
-            </div>
-            <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontStyle: "italic", fontSize: 24, lineHeight: 1.35, color: "var(--text-muted)", letterSpacing: "-0.005em" }}>
-              {activeMission
-                ? "Sem evidências. Comece a investigar."
-                : "Cria ou activa uma missão para investigar."}
-            </div>
-          </div>
+          activeMission ? (
+            <EmptyState
+              glyph="※"
+              kicker={copy.labEmptyActiveKicker}
+              body={copy.labEmpty}
+              hint={copy.labEmptyActiveHint}
+              style={{ marginTop: "12vh" }}
+            />
+          ) : (
+            <EmptyState
+              glyph="◌"
+              kicker={copy.labEmptyNoMissionKicker}
+              body={copy.labEmptyNoMissionBody}
+              hint={copy.labEmptyNoMissionHint}
+              tone="warn"
+              style={{ marginTop: "12vh" }}
+            />
+          )
         )}
 
         {notes.map((n) => (
-          <MessageBubble key={n.id} note={n} />
+          <LabTurnRow
+            key={n.id}
+            note={n}
+            promoting={promoteId === n.id}
+            onPromoteRequest={() => setPromoteId(n.id)}
+            onPromoteConfirm={() => confirmPromote(n)}
+            onPromoteCancel={() => setPromoteId(null)}
+          />
         ))}
 
         {pending && (
@@ -230,9 +299,7 @@ export default function Lab() {
         )}
 
         {error && !pending && (
-          <div className="toolRise" style={{ background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderLeft: "2px solid var(--cc-err)", borderRadius: 12, padding: "12px 16px", maxWidth: 680, alignSelf: "flex-start", fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>
-            {error}
-          </div>
+          <ErrorPanel severity="critical" title={copy.labErrorTitle} message={error} />
         )}
 
         <div ref={bottomRef} />
@@ -244,7 +311,27 @@ export default function Lab() {
       )}
 
       {/* Input */}
-      <div className="glass" style={{ margin: "0 clamp(20px, 5vw, 64px) 18px", borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
+      <div
+        data-architect-input="directiva"
+        data-architect-input-state={inputFocused ? "focused" : "idle"}
+        style={{ margin: "0 clamp(20px, 5vw, 64px) 18px" }}
+      >
+        <div
+          data-architect-voice
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 9,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: inputFocused ? "var(--accent)" : "var(--text-ghost)",
+            marginBottom: 8,
+            paddingLeft: 4,
+            transition: "color 0.15s",
+          }}
+        >
+          {copy.labInputVoice}
+        </div>
+        <div className="glass" style={{ borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
         <span
           className={pending ? "breathe" : ""}
           style={{ width: 8, height: 8, borderRadius: "50%", background: pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)", boxShadow: `0 0 0 4px color-mix(in oklab, ${pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)"} 22%, transparent)`, flexShrink: 0 }}
@@ -254,12 +341,14 @@ export default function Lab() {
           autoFocus
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
           placeholder={
-            !activeMission ? "Activa uma missão para investigar..." :
-            pending ? "Aguardando verdict..." :
-            lastVerdict?.refused ? "Reformula. Fractura. Pressiona mais." :
-            "Evidência, análise, hipótese..."
+            !activeMission ? copy.labPlaceholderNoMission :
+            pending ? copy.labPlaceholderPending :
+            lastVerdict?.refused ? copy.labPlaceholderRefused :
+            copy.labPlaceholder
           }
           disabled={pending || !activeMission}
           style={{ flex: 1, fontSize: 14, color: "var(--text-primary)", fontFamily: "var(--sans)", opacity: pending || !activeMission ? 0.55 : 1, padding: "6px 0", cursor: !activeMission ? "not-allowed" : undefined }}
@@ -278,17 +367,23 @@ export default function Lab() {
             Enter ↵
           </button>
         )}
+        </div>
       </div>
     </div>
   );
 }
 
 function VerdictPanel({ verdict }: { verdict: VerdictState }) {
+  const [reasoningExpanded, setReasoningExpanded] = useState(false);
   const isAgent = verdict.routePath === "agent";
   const isHigh = verdict.confidence === "high";
   const isRefused = verdict.refused;
 
-  const routeColor = isAgent ? "var(--cc-warn)" : "var(--accent)";
+  const routeColor = isRefused
+    ? "var(--cc-err)"
+    : isAgent
+    ? "var(--cc-warn)"
+    : "var(--accent)";
   const leftAccent = isRefused
     ? "var(--cc-err)"
     : isHigh
@@ -299,6 +394,11 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
     : isHigh
     ? "var(--cc-ok)"
     : "var(--cc-warn)";
+  const kickerColor = isRefused ? "var(--cc-err)" : "var(--text-ghost)";
+
+  const shortQ = verdict.question.length > 90
+    ? verdict.question.slice(0, 90).trimEnd() + "…"
+    : verdict.question;
 
   return (
     <div
@@ -309,11 +409,29 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
         border: "1px solid var(--border-subtle)",
         borderLeft: `2px solid ${leftAccent}`,
         borderRadius: 10,
-        padding: "10px 14px",
+        padding: "10px 14px 12px",
         fontFamily: "var(--mono)",
       }}
     >
-      {/* First row: route · confidence · divergence · prior failure */}
+      {/* Kicker: anchors the panel as the lineage of the preceding AI turn */}
+      <div style={{
+        fontSize: 9.5, letterSpacing: 2, textTransform: "uppercase",
+        color: kickerColor, marginBottom: 4,
+      }}>
+        — VERDITO
+      </div>
+
+      {/* Citation: the question this verdict judges */}
+      {verdict.question && (
+        <div style={{
+          fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--sans)",
+          fontStyle: "italic", marginBottom: 8, lineHeight: 1.45,
+        }}>
+          sobre: «{shortQ}»
+        </div>
+      )}
+
+      {/* Provenance trail: route · stages · outcome */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: routeColor }}>
           {verdict.routePath}
@@ -343,78 +461,203 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
         )}
       </div>
 
-      {/* Judge reasoning */}
-      {verdict.reasoning && (
-        <div style={{ marginTop: 5, fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5, fontFamily: "var(--sans)" }}>
-          {verdict.reasoning.length > 200 ? verdict.reasoning.slice(0, 200) + "…" : verdict.reasoning}
-        </div>
-      )}
+      {/* Judge reasoning — expandable when long */}
+      {verdict.reasoning && (() => {
+        const overflows = verdict.reasoning.length > 200;
+        const displayed = !overflows || reasoningExpanded
+          ? verdict.reasoning
+          : verdict.reasoning.slice(0, 200) + "…";
+        return (
+          <div style={{ marginTop: 5, fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5, fontFamily: "var(--sans)" }}>
+            {displayed}
+            {overflows && (
+              <button
+                onClick={() => setReasoningExpanded((v) => !v)}
+                style={{
+                  marginLeft: 8, background: "none", border: "none", padding: 0,
+                  color: "var(--accent)", fontFamily: "var(--mono)", fontSize: 10,
+                  letterSpacing: 1, textTransform: "uppercase", cursor: "pointer",
+                }}
+              >
+                {reasoningExpanded ? "menos" : "mais"}
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
-      {/* Pressure hint — shown when refused or divergence found */}
-      {(isRefused || verdict.divergenceCount > 0) && (
-        <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", letterSpacing: 0.5 }}>
-          {isRefused
-            ? "→ reformula · fractura a questão · adiciona contexto específico"
-            : "→ pressiona onde divergiu · pede clarificação · verifica a premissa"}
-        </div>
-      )}
+      {/* Pressure hint — tailored to the dominant pressure signal */}
+      {(() => {
+        const isLowConfidence = verdict.confidence === "low" && !isAgent;
+        const hasPressureSignal =
+          isRefused ||
+          verdict.divergenceCount > 0 ||
+          isLowConfidence ||
+          verdict.priorFailure;
+        if (!hasPressureSignal) return null;
+        const hint = isRefused
+          ? "→ reformula · fractura a questão · adiciona contexto específico"
+          : verdict.divergenceCount > 0
+          ? "→ pressiona onde divergiu · pede clarificação · verifica a premissa"
+          : isLowConfidence
+          ? "→ confiança baixa · exige evidência · fractura a questão"
+          : "→ falha prévia registada · muda o ângulo · evita a mesma premissa";
+        return (
+          <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", letterSpacing: 0.5 }}>
+            {hint}
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
-function MessageBubble({ note }: { note: Note }) {
+function LabTurnRow({
+  note,
+  promoting,
+  onPromoteRequest,
+  onPromoteConfirm,
+  onPromoteCancel,
+}: {
+  note: Note;
+  promoting: boolean;
+  onPromoteRequest: () => void;
+  onPromoteConfirm: () => void;
+  onPromoteCancel: () => void;
+}) {
   const isAI = note.role === "ai";
   const isRefusal = isAI && (
     note.text.startsWith("Não sei responder") ||
     note.text.startsWith("⚠️ **Ruberra")
   );
   const isWarning = isAI && note.text.startsWith("⚠ Esta pergunta");
+  const canPromote = isAI && !isRefusal && !isWarning;
 
-  const len = (note.text || "").length;
-  const maxW = len < 60 ? 360 : len < 200 ? 520 : 680;
-
-  const aiLabel = isRefusal ? "RECUSADO" : isWarning ? "AVISO" : "ANÁLISE";
-  const leftBorder = isRefusal
-    ? "2px solid var(--cc-err)"
-    : isWarning
-    ? "2px solid var(--cc-warn)"
-    : "2px solid var(--accent-dim)";
-  const dotColor = isRefusal ? "var(--cc-err)" : isWarning ? "var(--cc-warn)" : "var(--ember)";
-  const labelColor = isRefusal ? "var(--cc-err)" : isWarning ? "var(--cc-warn)" : "var(--text-ghost)";
+  let label: string;
+  let borderColor: string;
+  let labelColor: string;
+  let dotColor: string;
+  if (!isAI) {
+    label = "PRESSÃO";
+    borderColor = "var(--cc-prompt)";
+    labelColor = "var(--text-muted)";
+    dotColor = "var(--cc-prompt)";
+  } else if (isRefusal) {
+    label = "RECUSADO";
+    borderColor = "var(--cc-err)";
+    labelColor = "var(--cc-err)";
+    dotColor = "var(--cc-err)";
+  } else if (isWarning) {
+    label = "AVISO";
+    borderColor = "var(--cc-warn)";
+    labelColor = "var(--cc-warn)";
+    dotColor = "var(--cc-warn)";
+  } else {
+    label = "ANÁLISE";
+    borderColor = "var(--accent-dim)";
+    labelColor = "var(--text-ghost)";
+    dotColor = "var(--ember)";
+  }
 
   return (
     <div
       className="fadeUp"
-      style={{ display: "flex", flexDirection: "column", alignItems: isAI ? "flex-start" : "flex-end", width: "100%" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        padding: "10px 16px 12px",
+        background: isAI ? "var(--bg-input)" : "transparent",
+        borderLeft: `2px solid ${borderColor}`,
+        borderRadius: "0 10px 10px 0",
+        opacity: isRefusal ? 0.92 : 1,
+        maxWidth: 780,
+      }}
     >
-      <div
-        style={{
-          position: "relative",
-          background: isAI ? "var(--bg-input)" : "var(--bg-elevated)",
-          border: `1px solid ${isAI ? "var(--border-subtle)" : "var(--border)"}`,
-          borderLeft: isAI ? leftBorder : undefined,
-          borderRadius: 14,
-          padding: "14px 18px",
-          maxWidth: maxW,
-          minWidth: 80,
-          boxShadow: isAI ? "none" : "var(--shadow-sm)",
-          opacity: isRefusal ? 0.88 : 1,
-        }}
-      >
-        <div style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.65, whiteSpace: "pre-wrap", fontFamily: "var(--sans)" }}>
-          {note.text}
-        </div>
-        <div style={{ fontSize: 10, color: "var(--text-ghost)", marginTop: 8, letterSpacing: 0.3, fontFamily: "var(--mono)", display: "flex", alignItems: "center", gap: 8 }}>
-          {isAI && (
-            <>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, boxShadow: `0 0 0 2px color-mix(in oklab, ${dotColor} 20%, transparent)` }} />
-              <span style={{ color: labelColor, letterSpacing: 1.5, textTransform: "uppercase", fontSize: 9 }}>{aiLabel}</span>
-              <span style={{ color: "var(--text-muted)" }}>·</span>
-            </>
-          )}
-          <span>{new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-        </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: 1.5, textTransform: "uppercase" }}>
+        <span style={{ width: 5, height: 5, borderRadius: "50%", background: dotColor }} />
+        <span style={{ color: labelColor }}>{label}</span>
+        <span style={{ color: "var(--text-ghost)", marginLeft: "auto", letterSpacing: 0.5 }}>
+          {new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
       </div>
+      <div style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.65, whiteSpace: "pre-wrap", fontFamily: "var(--sans)" }}>
+        {note.text}
+      </div>
+      {canPromote && !promoting && (
+        <button
+          onClick={onPromoteRequest}
+          style={{
+            alignSelf: "flex-end",
+            background: "none",
+            border: "none",
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+            color: "var(--text-ghost)",
+            padding: 0,
+            marginTop: 2,
+            cursor: "pointer",
+            transition: "color .16s var(--ease-swift)",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-ghost)"; }}
+        >
+          → construção
+        </button>
+      )}
+      {canPromote && promoting && (
+        <div style={{
+          marginTop: 6,
+          paddingTop: 8,
+          borderTop: "1px dashed var(--border-subtle)",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          fontFamily: "var(--mono)",
+          fontSize: 10,
+          letterSpacing: 1.3,
+          textTransform: "uppercase",
+        }}>
+          <span style={{ color: "var(--text-muted)" }}>
+            — transferir para construção
+          </span>
+          <button
+            onClick={onPromoteConfirm}
+            style={{
+              marginLeft: "auto",
+              background: "none",
+              border: "none",
+              color: "var(--cc-ok)",
+              fontFamily: "inherit",
+              fontSize: "inherit",
+              letterSpacing: "inherit",
+              textTransform: "inherit",
+              padding: 0,
+              cursor: "pointer",
+            }}
+          >
+            ↵ confirmar
+          </button>
+          <button
+            onClick={onPromoteCancel}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--text-ghost)",
+              fontFamily: "inherit",
+              fontSize: "inherit",
+              letterSpacing: "inherit",
+              textTransform: "inherit",
+              padding: 0,
+              cursor: "pointer",
+            }}
+          >
+            esc cancelar
+          </button>
+        </div>
+      )}
     </div>
   );
 }

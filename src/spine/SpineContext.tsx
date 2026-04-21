@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
-import { SpineState, Mission, Principle, Chamber, Artifact } from "./types";
+import { SpineState, Mission, Principle, Chamber, Artifact, TaskState, TaskSource } from "./types";
 import {
   loadState, saveState, emptyState,
   createMission as mkMission,
@@ -7,11 +7,23 @@ import {
   addNoteToMission as addNoteToMissionFn,
   addTask as addTaskFn,
   completeTask as completeTaskFn,
+  setTaskState as setTaskStateFn,
   addPrinciple as addPrincipleFn,
+  logDoctrineApplied as logDoctrineAppliedFn,
   switchMission as switchFn,
   acceptArtifact as acceptArtifactFn,
 } from "./store";
 import { fetchSpine, pushSpine } from "./client";
+
+function uid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
 
 interface SpineCtx {
   state: SpineState;
@@ -21,10 +33,14 @@ interface SpineCtx {
   switchMission: (id: string) => void;
   addNote: (text: string, role?: "user" | "ai") => void;
   addNoteToMission: (missionId: string, text: string, role?: "user" | "ai") => void;
-  addTask: (title: string) => void;
+  // addTask returns the id of the newly-created task so callers can track
+  // its state transitions (running → done / blocked) through the run.
+  addTask: (title: string, source?: TaskSource) => string;
   completeTask: (taskId: string) => void;
+  setTaskState: (taskId: string, state: TaskState) => void;
   addPrinciple: (text: string) => void;
-  acceptArtifact: (missionId: string, artifact: Omit<Artifact, "id">) => void;
+  logDoctrineApplied: (count: number) => void;
+  acceptArtifact: (missionId: string, artifact: Omit<Artifact, "id">, taskId?: string) => void;
   resetAll: () => void;
 }
 
@@ -75,10 +91,16 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       switchMission: (id) => dispatch(s => switchFn(s, id)),
       addNote: (text, role) => dispatch(s => addNoteFn(s, text, role)),
       addNoteToMission: (id, text, role) => dispatch(s => addNoteToMissionFn(s, id, text, role)),
-      addTask: (title) => dispatch(s => addTaskFn(s, title)),
+      addTask: (title, source) => {
+        const newId = uid();
+        dispatch(s => addTaskFn(s, title, { id: newId, source }));
+        return newId;
+      },
       completeTask: (id) => dispatch(s => completeTaskFn(s, id)),
+      setTaskState: (id, next) => dispatch(s => setTaskStateFn(s, id, next)),
       addPrinciple: (text) => dispatch(s => addPrincipleFn(s, text)),
-      acceptArtifact: (id, artifact) => dispatch(s => acceptArtifactFn(s, id, artifact)),
+      logDoctrineApplied: (count) => dispatch(s => logDoctrineAppliedFn(s, count)),
+      acceptArtifact: (id, artifact, taskId) => dispatch(s => acceptArtifactFn(s, id, artifact, taskId)),
       resetAll: () => setState(emptyState()),
     }}>
       {children}
