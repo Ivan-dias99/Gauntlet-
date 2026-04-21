@@ -343,23 +343,11 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               borderBottom: "1px solid var(--border-subtle)",
             }}
           >
-            {copy.chamberDeck.map((c, i) => (
+            {copy.chamberDeck.map((c) => (
               <article
                 key={c.key}
-                style={{
-                  padding: "var(--sp-6) var(--sp-5)",
-                  borderLeft: i === 0 ? "none" : "1px solid var(--border-subtle)",
-                  display: "flex",
-                  flexDirection: "column",
-                  transition: "background 0.18s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background =
-                    "color-mix(in oklab, var(--text-primary) 2%, var(--bg))";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                }}
+                className="vl-chamber"
+                data-dna={c.key.toLowerCase()}
               >
                 <div
                   style={{
@@ -369,18 +357,11 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                     marginBottom: 28,
                   }}
                 >
-                  <span
-                    style={{
-                      fontFamily: "var(--mono)",
-                      fontSize: 10,
-                      letterSpacing: ".32em",
-                      color: "var(--text-ghost)",
-                      textTransform: "uppercase",
-                    }}
-                  >
+                  <span className="t-kicker" style={{ color: "var(--text-ghost)" }}>
                     {c.k}
                   </span>
                   <span
+                    aria-hidden
                     style={{
                       fontFamily: "var(--mono)",
                       fontSize: 20,
@@ -392,11 +373,10 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                   </span>
                 </div>
                 <h3
+                  className="t-serif"
                   style={{
-                    fontFamily: "var(--serif)",
                     fontSize: 26,
                     fontWeight: 400,
-                    letterSpacing: "-0.02em",
                     lineHeight: 1.1,
                     margin: "0 0 6px",
                   }}
@@ -404,14 +384,8 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                   {c.title}
                 </h3>
                 <div
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 10,
-                    letterSpacing: ".2em",
-                    color: "var(--ember)",
-                    textTransform: "uppercase",
-                    marginBottom: 20,
-                  }}
+                  className="t-kicker"
+                  style={{ color: "var(--ember)", marginBottom: 20 }}
                 >
                   {c.tag}
                 </div>
