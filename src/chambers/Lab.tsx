@@ -195,11 +195,21 @@ export default function Lab() {
             {live.routePath ? live.routePath.toUpperCase() : "ANALISANDO"}
           </span>
         )}
-        {!pending && live.routePath && lastConfidence && (
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1 }}>
-            {live.routePath.toUpperCase()} · {lastConfidence}
-          </span>
-        )}
+        {!pending && live.routePath && lastConfidence && (() => {
+          const refused = !!lastVerdict?.refused;
+          const chipColor = refused
+            ? "var(--cc-err)"
+            : lastConfidence === "high"
+            ? "var(--cc-ok)"
+            : lastConfidence === "low"
+            ? "var(--cc-warn)"
+            : "var(--text-ghost)";
+          return (
+            <span style={{ marginLeft: "auto", fontSize: 10, color: chipColor, fontFamily: "var(--mono)", letterSpacing: 1 }}>
+              {live.routePath.toUpperCase()} · {refused ? "recusado" : lastConfidence}
+            </span>
+          );
+        })()}
       </div>
 
       {/* Message thread */}
@@ -288,11 +298,16 @@ export default function Lab() {
 }
 
 function VerdictPanel({ verdict }: { verdict: VerdictState }) {
+  const [reasoningExpanded, setReasoningExpanded] = useState(false);
   const isAgent = verdict.routePath === "agent";
   const isHigh = verdict.confidence === "high";
   const isRefused = verdict.refused;
 
-  const routeColor = isAgent ? "var(--cc-warn)" : "var(--accent)";
+  const routeColor = isRefused
+    ? "var(--cc-err)"
+    : isAgent
+    ? "var(--cc-warn)"
+    : "var(--accent)";
   const leftAccent = isRefused
     ? "var(--cc-err)"
     : isHigh
@@ -347,12 +362,30 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
         )}
       </div>
 
-      {/* Judge reasoning */}
-      {verdict.reasoning && (
-        <div style={{ marginTop: 5, fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5, fontFamily: "var(--sans)" }}>
-          {verdict.reasoning.length > 200 ? verdict.reasoning.slice(0, 200) + "…" : verdict.reasoning}
-        </div>
-      )}
+      {/* Judge reasoning — expandable when long */}
+      {verdict.reasoning && (() => {
+        const overflows = verdict.reasoning.length > 200;
+        const displayed = !overflows || reasoningExpanded
+          ? verdict.reasoning
+          : verdict.reasoning.slice(0, 200) + "…";
+        return (
+          <div style={{ marginTop: 5, fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5, fontFamily: "var(--sans)" }}>
+            {displayed}
+            {overflows && (
+              <button
+                onClick={() => setReasoningExpanded((v) => !v)}
+                style={{
+                  marginLeft: 8, background: "none", border: "none", padding: 0,
+                  color: "var(--accent)", fontFamily: "var(--mono)", fontSize: 10,
+                  letterSpacing: 1, textTransform: "uppercase", cursor: "pointer",
+                }}
+              >
+                {reasoningExpanded ? "menos" : "mais"}
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Pressure hint — tailored to the dominant pressure signal */}
       {(() => {
