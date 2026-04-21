@@ -205,20 +205,20 @@ export default function Lab() {
       <div style={{ flex: 1, overflow: "auto", padding: "24px clamp(20px, 5vw, 64px)", display: "flex", flexDirection: "column", gap: 14 }}>
 
         {notes.length === 0 && !pending && !error && (
-          <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 520, marginTop: "12vh" }}>
+          <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 560, marginTop: "12vh" }}>
             <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".4em", color: activeMission ? "var(--text-ghost)" : "var(--cc-warn)", textTransform: "uppercase", marginBottom: 18 }}>
-              {activeMission ? "— Sem entrada" : "— Sem missão activa"}
+              {activeMission ? "— PRESSÃO EM REPOUSO" : "— Sem missão activa"}
             </div>
             <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontStyle: "italic", fontSize: 24, lineHeight: 1.35, color: "var(--text-muted)", letterSpacing: "-0.005em" }}>
               {activeMission
-                ? "Sem evidências. Comece a investigar."
-                : "Cria ou activa uma missão para investigar."}
+                ? "A verdade não se entrega sem atrito. Abre a pressão."
+                : "Activa uma missão para abrir pressão."}
             </div>
           </div>
         )}
 
         {notes.map((n) => (
-          <MessageBubble key={n.id} note={n} />
+          <LabTurnRow key={n.id} note={n} />
         ))}
 
         {pending && (
@@ -256,10 +256,10 @@ export default function Lab() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
           placeholder={
-            !activeMission ? "Activa uma missão para investigar..." :
-            pending ? "Aguardando verdict..." :
+            !activeMission ? "Activa uma missão para pressionar…" :
+            pending ? "a pressionar…" :
             lastVerdict?.refused ? "Reformula. Fractura. Pressiona mais." :
-            "Evidência, análise, hipótese..."
+            "interroga, fractura, pressiona…"
           }
           disabled={pending || !activeMission}
           style={{ flex: 1, fontSize: 14, color: "var(--text-primary)", fontFamily: "var(--sans)", opacity: pending || !activeMission ? 0.55 : 1, padding: "6px 0", cursor: !activeMission ? "not-allowed" : undefined }}
@@ -362,7 +362,7 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
   );
 }
 
-function MessageBubble({ note }: { note: Note }) {
+function LabTurnRow({ note }: { note: Note }) {
   const isAI = note.role === "ai";
   const isRefusal = isAI && (
     note.text.startsWith("Não sei responder") ||
@@ -370,50 +370,56 @@ function MessageBubble({ note }: { note: Note }) {
   );
   const isWarning = isAI && note.text.startsWith("⚠ Esta pergunta");
 
-  const len = (note.text || "").length;
-  const maxW = len < 60 ? 360 : len < 200 ? 520 : 680;
-
-  const aiLabel = isRefusal ? "RECUSADO" : isWarning ? "AVISO" : "ANÁLISE";
-  const leftBorder = isRefusal
-    ? "2px solid var(--cc-err)"
-    : isWarning
-    ? "2px solid var(--cc-warn)"
-    : "2px solid var(--accent-dim)";
-  const dotColor = isRefusal ? "var(--cc-err)" : isWarning ? "var(--cc-warn)" : "var(--ember)";
-  const labelColor = isRefusal ? "var(--cc-err)" : isWarning ? "var(--cc-warn)" : "var(--text-ghost)";
+  let label: string;
+  let borderColor: string;
+  let labelColor: string;
+  let dotColor: string;
+  if (!isAI) {
+    label = "PRESSÃO";
+    borderColor = "var(--cc-prompt)";
+    labelColor = "var(--text-muted)";
+    dotColor = "var(--cc-prompt)";
+  } else if (isRefusal) {
+    label = "RECUSADO";
+    borderColor = "var(--cc-err)";
+    labelColor = "var(--cc-err)";
+    dotColor = "var(--cc-err)";
+  } else if (isWarning) {
+    label = "AVISO";
+    borderColor = "var(--cc-warn)";
+    labelColor = "var(--cc-warn)";
+    dotColor = "var(--cc-warn)";
+  } else {
+    label = "ANÁLISE";
+    borderColor = "var(--accent-dim)";
+    labelColor = "var(--text-ghost)";
+    dotColor = "var(--ember)";
+  }
 
   return (
     <div
       className="fadeUp"
-      style={{ display: "flex", flexDirection: "column", alignItems: isAI ? "flex-start" : "flex-end", width: "100%" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        padding: "10px 16px 12px",
+        background: isAI ? "var(--bg-input)" : "transparent",
+        borderLeft: `2px solid ${borderColor}`,
+        borderRadius: "0 10px 10px 0",
+        opacity: isRefusal ? 0.92 : 1,
+        maxWidth: 780,
+      }}
     >
-      <div
-        style={{
-          position: "relative",
-          background: isAI ? "var(--bg-input)" : "var(--bg-elevated)",
-          border: `1px solid ${isAI ? "var(--border-subtle)" : "var(--border)"}`,
-          borderLeft: isAI ? leftBorder : undefined,
-          borderRadius: 14,
-          padding: "14px 18px",
-          maxWidth: maxW,
-          minWidth: 80,
-          boxShadow: isAI ? "none" : "var(--shadow-sm)",
-          opacity: isRefusal ? 0.88 : 1,
-        }}
-      >
-        <div style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.65, whiteSpace: "pre-wrap", fontFamily: "var(--sans)" }}>
-          {note.text}
-        </div>
-        <div style={{ fontSize: 10, color: "var(--text-ghost)", marginTop: 8, letterSpacing: 0.3, fontFamily: "var(--mono)", display: "flex", alignItems: "center", gap: 8 }}>
-          {isAI && (
-            <>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, boxShadow: `0 0 0 2px color-mix(in oklab, ${dotColor} 20%, transparent)` }} />
-              <span style={{ color: labelColor, letterSpacing: 1.5, textTransform: "uppercase", fontSize: 9 }}>{aiLabel}</span>
-              <span style={{ color: "var(--text-muted)" }}>·</span>
-            </>
-          )}
-          <span>{new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-        </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: 1.5, textTransform: "uppercase" }}>
+        <span style={{ width: 5, height: 5, borderRadius: "50%", background: dotColor }} />
+        <span style={{ color: labelColor }}>{label}</span>
+        <span style={{ color: "var(--text-ghost)", marginLeft: "auto", letterSpacing: 0.5 }}>
+          {new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
+      </div>
+      <div style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.65, whiteSpace: "pre-wrap", fontFamily: "var(--sans)" }}>
+        {note.text}
       </div>
     </div>
   );
