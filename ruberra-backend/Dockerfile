@@ -16,4 +16,4 @@ EXPOSE 8080
 ENV RUBERRA_HOST=0.0.0.0 \
     RUBERRA_PORT=8080
 
-CMD ["sh", "-c", "uvicorn server:app --host ${RUBERRA_HOST:-0.0.0.0} --port ${PORT:-${RUBERRA_PORT:-8080}}"]
+CMD ["sh", "-c", "uvicorn server:app --host ${RUBERRA_HOST:-0.0.0.0} --port ${PORT:-8080}"]
