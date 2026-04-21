@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
+import EmptyState from "../shell/EmptyState";
 
 function toRoman(n: number): string {
   if (n <= 0) return "";
@@ -115,32 +116,13 @@ export default function School() {
         )}
 
         {principles.length === 0 && (
-          <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 520, marginTop: "10vh" }}>
-            <div
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                letterSpacing: ".4em",
-                color: "var(--text-ghost)",
-                textTransform: "uppercase",
-                marginBottom: 18,
-              }}
-            >
-              — Constituição em branco
-            </div>
-            <div
-              style={{
-                fontFamily: "'Fraunces', Georgia, serif",
-                fontStyle: "italic",
-                fontSize: 22,
-                lineHeight: 1.4,
-                color: "var(--text-muted)",
-                letterSpacing: "-0.005em",
-              }}
-            >
-              {copy.schoolEmpty}
-            </div>
-          </div>
+          <EmptyState
+            glyph="§"
+            kicker="— Constituição em branco"
+            body={copy.schoolEmpty}
+            hint="inscreve o primeiro artigo abaixo"
+            style={{ marginTop: "10vh" }}
+          />
         )}
 
         {layout === "tablets" ? (

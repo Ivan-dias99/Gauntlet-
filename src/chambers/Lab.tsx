@@ -3,6 +3,7 @@ import { useSpine } from "../spine/SpineContext";
 import { useRuberra, RouteEvent } from "../hooks/useRuberra";
 import { Note } from "../spine/types";
 import ErrorPanel from "../shell/ErrorPanel";
+import EmptyState from "../shell/EmptyState";
 
 interface TriadResult {
   answer?: string | null;
@@ -226,16 +227,24 @@ export default function Lab() {
       <div style={{ flex: 1, overflow: "auto", padding: "24px clamp(20px, 5vw, 64px)", display: "flex", flexDirection: "column", gap: 14 }}>
 
         {notes.length === 0 && !pending && !error && (
-          <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 520, marginTop: "12vh" }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".4em", color: activeMission ? "var(--text-ghost)" : "var(--cc-warn)", textTransform: "uppercase", marginBottom: 18 }}>
-              {activeMission ? "— Sem entrada" : "— Sem missão activa"}
-            </div>
-            <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontStyle: "italic", fontSize: 24, lineHeight: 1.35, color: "var(--text-muted)", letterSpacing: "-0.005em" }}>
-              {activeMission
-                ? "Sem evidências. Comece a investigar."
-                : "Cria ou activa uma missão para investigar."}
-            </div>
-          </div>
+          activeMission ? (
+            <EmptyState
+              glyph="※"
+              kicker="— Sem entrada"
+              body="Sem evidências. Comece a investigar."
+              hint="uma questão, uma hipótese, uma fractura"
+              style={{ marginTop: "12vh" }}
+            />
+          ) : (
+            <EmptyState
+              glyph="◌"
+              kicker="— Sem missão activa"
+              body="Cria ou activa uma missão para investigar."
+              hint="+ missão no canto superior"
+              tone="warn"
+              style={{ marginTop: "12vh" }}
+            />
+          )
         )}
 
         {notes.map((n) => (
