@@ -293,43 +293,72 @@ export default function Memory() {
                   const isLowConf = conf === "low";
                   const isHighConf = conf === "high";
                   const toolHeavy = r.tool_calls.length >= 3;
+                  const hasJudgment = !!(r.judge_reasoning && r.judge_reasoning.trim());
+                  const hasTools = r.tool_calls.length > 0;
+                  const consequence: "primary" | "secondary" | "routine" =
+                    isRefused || hasJudgment ? "primary"
+                    : hasTools ? "secondary"
+                    : "routine";
+                  const isRoutine = consequence === "routine";
+                  const isPrimary = consequence === "primary";
                   const bodyColor = isRefused ? "var(--cc-err)"
+                    : isRoutine ? "var(--text-ghost)"
                     : isLowConf ? "var(--text-muted)"
                     : "var(--text-secondary)";
                   const bodyStyle = isRefused ? "italic" : "normal";
                   const bodyWeight = isHighConf ? 500 : 400;
+                  const bodySize = isRoutine ? 12 : 13;
                   const routeColor = isRefused ? "var(--cc-err)" : color;
                   return (
                     <div
                       key={r.id}
-                      className="fadeUp"
+                      className={isRoutine ? undefined : "fadeUp"}
                       data-event-class={isRefused ? "refused" : isLowConf ? "low-conf" : isHighConf ? "high-conf" : "default"}
+                      data-consequence={consequence}
                       style={{
-                        animationDelay: `${i * 16}ms`,
+                        animationDelay: isRoutine ? undefined : `${i * 16}ms`,
                         position: "relative",
-                        marginBottom: 18,
+                        marginBottom: isRoutine ? 12 : 18,
+                        opacity: isRoutine ? 0.78 : 1,
                       }}
                     >
                       <span style={{
                         position: "absolute", left: -46, top: 8,
-                        width: isRefused ? 6 : 8, height: isRefused ? 6 : 8,
+                        width: isRefused || isRoutine ? 6 : 8,
+                        height: isRefused || isRoutine ? 6 : 8,
                         borderRadius: "50%",
                         background: routeColor,
                         boxShadow: isHighConf
                           ? `0 0 0 3px var(--bg), 0 0 0 4px ${color}`
                           : "0 0 0 3px var(--bg)",
-                        opacity: isLowConf ? 0.55 : 1,
+                        opacity: isLowConf ? 0.55 : isRoutine ? 0.6 : 1,
                       }} />
                       <span style={{
                         position: "absolute", left: -120, top: 4, width: 62, textAlign: "right",
                         fontSize: 9, letterSpacing: 1.5,
                         color: routeColor, fontFamily: "var(--mono)", textTransform: "uppercase",
-                        opacity: isLowConf ? 0.7 : 1,
+                        opacity: isLowConf ? 0.7 : isRoutine ? 0.7 : 1,
                       }}>
                         {r.route}{toolHeavy ? "·T" : ""}
                       </span>
+                      {isPrimary && (
+                        <span
+                          data-consequence-mark="primary"
+                          aria-hidden
+                          style={{
+                            position: "absolute",
+                            right: -18, top: 6,
+                            fontSize: 10,
+                            color: isRefused ? "var(--cc-err)" : "var(--accent)",
+                            fontFamily: "var(--mono)",
+                            opacity: 0.9,
+                          }}
+                        >
+                          ◆
+                        </span>
+                      )}
                       <div style={{
-                        fontSize: 13,
+                        fontSize: bodySize,
                         color: bodyColor,
                         fontStyle: bodyStyle,
                         fontWeight: bodyWeight,
@@ -340,6 +369,7 @@ export default function Memory() {
                       <div style={{
                         fontSize: 10, color: "var(--text-ghost)",
                         fontFamily: "var(--mono)", marginTop: 2,
+                        opacity: isRoutine ? 0.75 : 1,
                       }}>
                         {new Date(r.timestamp).toLocaleTimeString([], {
                           hour: "2-digit", minute: "2-digit", second: "2-digit",
