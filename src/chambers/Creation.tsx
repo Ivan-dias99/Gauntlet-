@@ -247,11 +247,11 @@ export default function Creation() {
 
   function accept() {
     if (!done || !activeMission || accepted) return;
-    // Prefer the tracked workbench task; fall back to title match for legacy
-    // sessions that never set activeTaskId (first-run migration path).
-    const task =
-      activeMission.tasks.find(t => t.id === activeTaskId) ??
-      activeMission.tasks.find(t => !t.done && t.title === lastTask);
+    // Strictly id-based: the workbench task is the accepted run's owner.
+    // The title-based fallback is gone — with duplicate titles it would
+    // backlink to the wrong task. If activeTaskId is unresolvable the
+    // artifact still persists, just without a taskId reference.
+    const task = activeMission.tasks.find(t => t.id === activeTaskId) ?? null;
     const answerText = done.answer.trim();
     if (answerText) {
       addNoteToMission(activeMission.id, answerText, "ai");
@@ -309,6 +309,16 @@ export default function Creation() {
   const pendingTasks = tasks.filter((t) => t.state !== "done");
   const openTasks = tasks.filter((t) => t.state === "open");
   const blockedTasks = tasks.filter((t) => t.state === "blocked");
+  // Titles that appear more than once in this mission's task list.
+  // Used to reveal a short #id suffix only where ambiguity exists, so the
+  // common case (unique titles) stays visually clean.
+  const duplicateTitles = useMemo<Set<string>>(() => {
+    const counts = new Map<string, number>();
+    for (const t of tasks) counts.set(t.title, (counts.get(t.title) ?? 0) + 1);
+    const dupes = new Set<string>();
+    counts.forEach((n, title) => { if (n > 1) dupes.add(title); });
+    return dupes;
+  }, [tasks]);
   const exitCode = done ? 0 : err ? 1 : null;
 
   const activeTask = useMemo<Task | null>(() => {
@@ -529,7 +539,7 @@ export default function Creation() {
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
               }}>▲ {values.lang === "en" ? "pending" : "pendente"} · {pendingTasks.length}</div>
               {pendingTasks.map((t) => (
-                <KanbanCard key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
+                <KanbanCard key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
               ))}
             </div>
             <div>
@@ -538,7 +548,7 @@ export default function Creation() {
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
               }}>✓ {values.lang === "en" ? "done" : "concluída"} · {doneTasks.length}</div>
               {doneTasks.map((t) => (
-                <KanbanCard key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
+                <KanbanCard key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
               ))}
             </div>
           </div>
@@ -547,7 +557,7 @@ export default function Creation() {
         {tasks.length > 0 && layout === "terminal" && (
           <div style={{ maxWidth: 740, marginBottom: 24 }}>
             {pendingTasks.map((t) => (
-              <TaskRow key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
+              <TaskRow key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
             ))}
             {doneTasks.length > 0 && pendingTasks.length > 0 && (
               <div
@@ -559,7 +569,7 @@ export default function Creation() {
               />
             )}
             {doneTasks.map((t) => (
-              <TaskRow key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
+              <TaskRow key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
             ))}
           </div>
         )}
@@ -1027,7 +1037,9 @@ function StateChip({ state, copy }: { state: TaskState; copy: Copy }) {
   );
 }
 
-function KanbanCard({ task, onToggle, copy }: { task: Task; onToggle: () => void; copy: Copy }) {
+function KanbanCard({
+  task, onToggle, copy, duplicate = false,
+}: { task: Task; onToggle: () => void; copy: Copy; duplicate?: boolean }) {
   return (
     <div
       onClick={onToggle}
@@ -1060,6 +1072,17 @@ function KanbanCard({ task, onToggle, copy }: { task: Task; onToggle: () => void
         }}
       >
         {task.title}
+        {duplicate && (
+          <span
+            title={`task id · ${task.id}`}
+            style={{
+              marginLeft: 8, fontSize: 10, color: "var(--text-ghost)",
+              fontFamily: "var(--mono)", letterSpacing: 1, fontWeight: 400,
+            }}
+          >
+            #{task.id.slice(0, 4)}
+          </span>
+        )}
       </div>
       <div
         style={{
@@ -1090,7 +1113,9 @@ function KanbanCard({ task, onToggle, copy }: { task: Task; onToggle: () => void
   );
 }
 
-function TaskRow({ task, onToggle, copy }: { task: Task; onToggle: () => void; copy: Copy }) {
+function TaskRow({
+  task, onToggle, copy, duplicate = false,
+}: { task: Task; onToggle: () => void; copy: Copy; duplicate?: boolean }) {
   return (
     <div
       onClick={onToggle}
@@ -1132,6 +1157,17 @@ function TaskRow({ task, onToggle, copy }: { task: Task; onToggle: () => void; c
         }}
       >
         {task.title}
+        {duplicate && (
+          <span
+            title={`task id · ${task.id}`}
+            style={{
+              marginLeft: 8, fontSize: 11, color: "var(--text-ghost)",
+              letterSpacing: 1,
+            }}
+          >
+            #{task.id.slice(0, 4)}
+          </span>
+        )}
       </span>
       {task.artifactId && (
         <span title="artefacto aceite" style={{ color: "var(--cc-ok)", fontSize: 11, marginTop: 2 }}>◆</span>
@@ -1347,6 +1383,20 @@ function ArtifactLedger({
   copy: Copy;
   onSelectArtifact: (a: Artifact) => void;
 }) {
+  // A title is ambiguous in the ledger only when it points to more than one
+  // distinct taskId (or one has no taskId). Same-task repeat runs share the
+  // same id and are already disambiguated by acceptedAt timestamp.
+  const duplicateLedgerTitles = (() => {
+    const byTitle = new Map<string, Set<string>>();
+    for (const a of artifacts) {
+      const key = a.taskId ?? "__none__";
+      if (!byTitle.has(a.taskTitle)) byTitle.set(a.taskTitle, new Set());
+      byTitle.get(a.taskTitle)!.add(key);
+    }
+    const dupes = new Set<string>();
+    byTitle.forEach((ids, title) => { if (ids.size > 1) dupes.add(title); });
+    return dupes;
+  })();
   return (
     <div style={{ marginTop: 24, maxWidth: 820 }}>
       <div style={{
@@ -1406,6 +1456,14 @@ function ArtifactLedger({
                     maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
                     › {a.taskTitle}
+                    {duplicateLedgerTitles.has(a.taskTitle) && a.taskId && (
+                      <span
+                        title={`task id · ${a.taskId}`}
+                        style={{ marginLeft: 6, color: "var(--text-ghost)", letterSpacing: 1 }}
+                      >
+                        #{a.taskId.slice(0, 4)}
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div style={{
