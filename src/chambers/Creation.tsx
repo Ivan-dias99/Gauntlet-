@@ -733,7 +733,7 @@ export default function Creation() {
               </div>
               {pending && (
                 <span className="xc-pill xc-pill-running">
-                  <span className="breathe" style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--cc-info)" }} />
+                  <span className="breathe" style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--ember)" }} />
                   running · iter {iteration} · {elapsed.toFixed(1)}s
                 </span>
               )}

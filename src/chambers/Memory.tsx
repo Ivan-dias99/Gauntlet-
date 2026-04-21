@@ -291,16 +291,13 @@ export default function Memory() {
 
         {stats.total > 0 && (
           <div style={{ maxWidth: 820, marginTop: 20 }}>
-            <div
-              className="t-kicker"
-              style={{ color: "var(--text-ghost)" }}
-            >
+            <div className="t-kicker" data-tone="ghost">
               {copy.memoryTelemetryKicker}
             </div>
             <h3
               className="t-serif"
               style={{
-                margin: "4px 0 14px",
+                margin: "8px 0 18px",
                 fontSize: 20,
                 color: "var(--text-secondary)",
                 fontStyle: "italic",
@@ -313,7 +310,7 @@ export default function Memory() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-                gap: "var(--sp-3)",
+                gap: "var(--sp-5)",
               }}
             >
               <StatCell label="runs" value={`${stats.total}`} />
@@ -694,7 +691,7 @@ function StatCell({
         minWidth: 0,
       }}
     >
-      <span className="t-kicker" style={{ color: "var(--text-ghost)" }}>
+      <span className="t-kicker" data-tone="ghost">
         {label}
       </span>
       <span className="t-stat" data-tone={warn ? "warn" : undefined}>

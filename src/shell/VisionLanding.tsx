@@ -357,7 +357,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                     marginBottom: 28,
                   }}
                 >
-                  <span className="t-kicker" style={{ color: "var(--text-ghost)" }}>
+                  <span className="t-kicker" data-tone="ghost">
                     {c.k}
                   </span>
                   <span

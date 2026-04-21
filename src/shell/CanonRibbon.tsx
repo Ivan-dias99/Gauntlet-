@@ -110,14 +110,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
               data-mission-pulse-surface
               data-open={open ? "true" : undefined}
               className="btn"
-              style={{
-                fontSize: 12,
-                fontFamily: "var(--sans)",
-                maxWidth: 280,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
+              data-variant="mission"
               title={copy.switchMission}
             >
               {activeMission ? (() => {
@@ -133,40 +126,13 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                 return (
                   <>
                     <span
-                      data-mission-pulse
-                      data-mission-pulse-state={pulseLive ? "live" : "dormant"}
                       aria-hidden
-                      className={pulseLive ? "breathe" : undefined}
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: pulseLive
-                          ? "var(--ember)"
-                          : "var(--text-ghost)",
-                        boxShadow: pulseLive ? "var(--glow-ember-sm)" : "none",
-                        flexShrink: 0,
-                      }}
+                      className={pulseLive ? "m-pill-dot breathe" : "m-pill-dot"}
+                      data-state={pulseLive ? "live" : "dormant"}
                     />
+                    <span className="m-pill-title">{activeMission.title}</span>
                     <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: 140,
-                      }}
-                    >
-                      {activeMission.title}
-                    </span>
-                    <span
-                      data-mission-stats
-                      style={{
-                        fontFamily: "var(--mono)",
-                        fontSize: 9,
-                        letterSpacing: 0.8,
-                        color: "var(--text-ghost)",
-                        flexShrink: 0,
-                      }}
+                      className="m-pill-meta"
                       title={
                         lastArtifactAgoMs !== null
                           ? copy.missionLastArtifact(formatAgo(lastArtifactAgoMs))
@@ -175,7 +141,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                     >
                       {openTasks}/{totalTasks}t · {notesCount}n
                     </span>
-                    <span aria-hidden style={{ color: "var(--text-ghost)", flexShrink: 0 }}>▾</span>
+                    <span aria-hidden className="m-pill-caret">▾</span>
                   </>
                 );
               })() : (
@@ -184,34 +150,8 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
             </button>
 
             {open && (
-              <div
-                className="fadeIn"
-                style={{
-                  position: "absolute",
-                  top: "calc(100% + 8px)",
-                  right: 0,
-                  minWidth: 260,
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                  boxShadow: "var(--shadow-md)",
-                  overflow: "hidden",
-                  zIndex: 100,
-                }}
-              >
-                <div
-                  style={{
-                    padding: "8px 14px 6px",
-                    fontSize: 9,
-                    letterSpacing: 2,
-                    textTransform: "uppercase",
-                    color: "var(--text-ghost)",
-                    fontFamily: "var(--mono)",
-                    borderBottom: "1px solid var(--border-subtle)",
-                  }}
-                >
-                  {copy.missions}
-                </div>
+              <div className="fadeIn dropdown-panel">
+                <div className="dropdown-header">{copy.missions}</div>
                 {missions.map((m) => {
                   const isActive = m.id === state.activeMissionId;
                   return (
@@ -221,33 +161,11 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                         switchMission(m.id);
                         setOpen(false);
                       }}
-                      style={{
-                        display: "block",
-                        width: "100%",
-                        textAlign: "left",
-                        background: isActive ? "var(--accent-glow)" : "none",
-                        border: "none",
-                        borderBottom: "1px solid var(--border-subtle)",
-                        padding: "10px 14px",
-                        cursor: "pointer",
-                      }}
+                      className="dropdown-item"
+                      data-active={isActive ? "true" : undefined}
                     >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: isActive ? "var(--accent)" : "var(--text-secondary)",
-                          marginBottom: 2,
-                        }}
-                      >
-                        {m.title}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          color: "var(--text-ghost)",
-                          fontFamily: "var(--mono)",
-                        }}
-                      >
+                      <div className="dropdown-item-title">{m.title}</div>
+                      <div className="dropdown-item-meta">
                         {(() => {
                           const pulse = formatPulse(m);
                           const label = copy.chambers[m.chamber].label;

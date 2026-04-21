@@ -569,6 +569,12 @@ textarea {
   text-transform: uppercase;
   color: var(--text-muted);
 }
+.t-kicker[data-tone="ghost"] {
+  color: var(--text-ghost);
+}
+.t-kicker[data-tone="ember"] {
+  color: var(--ember);
+}
 .t-meta {
   font-family: var(--mono);
   font-size: var(--t-meta);
@@ -613,6 +619,13 @@ textarea {
 .btn:disabled {
   cursor: default;
   opacity: 0.6;
+}
+.btn[data-variant="mission"] {
+  font-size: 12px;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-ghost {
@@ -725,6 +738,91 @@ textarea {
   flex-shrink: 0;
 }
 
+/* ——— Dropdown primitives ———
+   Popover + rows. Class-driven hover, one border system, no inline styling. */
+.dropdown-panel {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  right: 0;
+  min-width: 260px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  z-index: 100;
+}
+.dropdown-header {
+  padding: var(--sp-2) var(--sp-4) 6px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--sp-2) var(--sp-4);
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.dropdown-item:last-child {
+  border-bottom: 0;
+}
+.dropdown-item:hover,
+.dropdown-item[data-active="true"] {
+  background: var(--accent-glow);
+}
+.dropdown-item-title {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+.dropdown-item[data-active="true"] .dropdown-item-title {
+  color: var(--accent);
+}
+.dropdown-item-meta {
+  font-size: var(--t-micro);
+  font-family: var(--mono);
+  color: var(--text-ghost);
+}
+
+/* ——— Mission pill interior ——— */
+.m-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-ghost);
+}
+.m-pill-dot[data-state="live"] {
+  background: var(--ember);
+  box-shadow: var(--glow-ember-sm);
+}
+.m-pill-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+.m-pill-meta {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--text-ghost);
+  flex-shrink: 0;
+}
+.m-pill-caret {
+  color: var(--text-ghost);
+  flex-shrink: 0;
+}
+
 /* ——— Creation exec panel (flagship) ———
    Flatten the AI output region to a single surface with two regions.
    Left-hairline color encodes run state (idle/running/done) without reshuffle. */
@@ -738,7 +836,7 @@ textarea {
   transition: border-color 0.25s var(--ease-emph);
 }
 .xc-exec[data-state="running"] {
-  border-left-color: var(--cc-info);
+  border-left-color: var(--ember);
 }
 .xc-exec[data-state="done"] {
   border-left-color: var(--cc-ok);
@@ -786,9 +884,9 @@ textarea {
   background: color-mix(in oklab, var(--text-primary) 3%, transparent);
 }
 .xc-pill-running {
-  color: var(--cc-info);
-  border-color: color-mix(in oklab, var(--cc-info) 30%, transparent);
-  background: color-mix(in oklab, var(--cc-info) 8%, transparent);
+  color: var(--ember);
+  border-color: color-mix(in oklab, var(--ember) 30%, transparent);
+  background: color-mix(in oklab, var(--ember) 8%, transparent);
 }
 .xc-pill-ok {
   color: var(--cc-ok);
@@ -805,6 +903,13 @@ textarea {
   flex-direction: column;
   border-left: 2px solid var(--border-subtle);
   transition: background 0.22s var(--ease-emph), border-left-color 0.22s var(--ease-emph);
+}
+/* First column leads the row — no accent bar, DNA stays in the content tier. */
+.vl-chamber:first-child {
+  border-left-color: transparent;
+}
+.vl-chamber:first-child:hover {
+  border-left-color: transparent;
 }
 .vl-chamber[data-dna="lab"] {
   border-left-color: color-mix(in oklab, var(--chamber-lab) 55%, var(--border-subtle));
