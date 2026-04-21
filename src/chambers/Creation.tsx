@@ -5,7 +5,7 @@ import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import { Artifact, Task, TaskState } from "../spine/types";
 import ErrorPanel from "../shell/ErrorPanel";
-import DormantPanel, { isBackendOffline } from "../shell/DormantPanel";
+import DormantPanel from "../shell/DormantPanel";
 
 type RunMode = "agent" | "crew";
 
@@ -74,7 +74,7 @@ export default function Creation() {
     activeMission, addTask, setTaskState, addNoteToMission,
     acceptArtifact, principles, logDoctrineApplied,
   } = useSpine();
-  const { streamDev, streamCrew, pending } = useRuberra();
+  const { streamDev, streamCrew, pending, unreachable } = useRuberra();
   const { values } = useTweaks();
   const copy = useCopy();
   const layout = values.creationLayout;
@@ -804,7 +804,7 @@ export default function Creation() {
           </section>
         )}
 
-        {err && (isBackendOffline(err) ? (
+        {err && (unreachable ? (
           <DormantPanel
             title={copy.creationErrorTitle}
             detail={copy.dormantCreation}

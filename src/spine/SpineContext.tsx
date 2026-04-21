@@ -14,6 +14,9 @@ import {
   acceptArtifact as acceptArtifactFn,
 } from "./store";
 import { fetchSpine, pushSpine } from "./client";
+import { isBackendUnreachable } from "../lib/ruberraApi";
+
+export type SpineSyncState = "synced" | "syncing" | "unsynced";
 
 function uid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -29,6 +32,7 @@ interface SpineCtx {
   state: SpineState;
   activeMission: Mission | null;
   principles: Principle[];
+  syncState: SpineSyncState;
   createMission: (title: string, chamber: Chamber) => void;
   switchMission: (id: string) => void;
   addNote: (text: string, role?: "user" | "ai") => void;
@@ -48,6 +52,7 @@ const Ctx = createContext<SpineCtx | null>(null);
 
 export function SpineProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SpineState>(() => loadState());
+  const [syncState, setSyncState] = useState<SpineSyncState>("synced");
   const hasHydrated = useRef(false);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -69,11 +74,26 @@ export function SpineProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Persist locally immediately, push to server debounced once hydrated.
+  // Track the real sync state so the UI can surface it — never silent.
   useEffect(() => {
     saveState(state);
     if (!hasHydrated.current) return;
     if (pushTimer.current) clearTimeout(pushTimer.current);
-    pushTimer.current = setTimeout(() => { pushSpine(state); }, 500);
+    setSyncState("syncing");
+    pushTimer.current = setTimeout(async () => {
+      try {
+        await pushSpine(state);
+        setSyncState("synced");
+      } catch (err) {
+        // Both backend-unreachable and generic HTTP failures mean the server
+        // does not have the latest snapshot. Surface it honestly.
+        if (isBackendUnreachable(err) || err instanceof Error) {
+          setSyncState("unsynced");
+          return;
+        }
+        setSyncState("unsynced");
+      }
+    }, 500);
     return () => { if (pushTimer.current) clearTimeout(pushTimer.current); };
   }, [state]);
 
@@ -87,6 +107,7 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       state,
       activeMission,
       principles: state.principles,
+      syncState,
       createMission: (t, c) => dispatch(s => mkMission(s, t, c)),
       switchMission: (id) => dispatch(s => switchFn(s, id)),
       addNote: (text, role) => dispatch(s => addNoteFn(s, text, role)),

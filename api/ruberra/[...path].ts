@@ -1,26 +1,41 @@
 // Vercel edge catchall — forwards /api/ruberra/* to the Python backend
-// (typically deployed on Railway / Fly / Render). Mirrors the dev-mode
-// vite proxy in vite.config.ts.
+// (typically deployed on Railway). Mirrors the dev-mode vite proxy in
+// vite.config.ts.
 //
 // Env:
 //   RUBERRA_BACKEND_URL — base URL of the FastAPI instance (no trailing slash)
+//
+// Contract for "backend unreachable":
+//   - status: 503
+//   - header: x-ruberra-backend: unreachable
+//   - body:   { error: "backend_unreachable", reason: "<short kind>" }
+//
+// This is the ONLY way the forwarder signals "backend offline". The frontend
+// reads the header, not the error text. Every other non-2xx is a real upstream
+// response and surfaces through the normal error path.
 
 export const config = { runtime: "edge" };
 
+const UNREACHABLE_HEADER = "x-ruberra-backend";
+const UNREACHABLE_VALUE = "unreachable";
+
+function unreachable(reason: string, status = 503): Response {
+  return new Response(
+    JSON.stringify({ error: "backend_unreachable", reason }),
+    {
+      status,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+        [UNREACHABLE_HEADER]: UNREACHABLE_VALUE,
+      },
+    },
+  );
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const backend = process.env.RUBERRA_BACKEND_URL;
-  if (!backend) {
-    return new Response(
-      JSON.stringify({ error: "RUBERRA_BACKEND_URL_not_configured" }),
-      {
-        status: 503,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-store",
-        },
-      },
-    );
-  }
+  if (!backend) return unreachable("backend_url_not_configured");
 
   const url = new URL(req.url);
   const tail = url.pathname.replace(/^\/api\/ruberra/, "");
@@ -43,16 +58,10 @@ export default async function handler(req: Request): Promise<Response> {
       headers: upstream.headers,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return new Response(
-      JSON.stringify({ error: "backend_unreachable", detail: message }),
-      {
-        status: 503,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-store",
-        },
-      },
-    );
+    const kind =
+      err instanceof TypeError ? "network_error" :
+      err instanceof Error && err.name === "AbortError" ? "timeout" :
+      "upstream_fetch_failed";
+    return unreachable(kind);
   }
 }

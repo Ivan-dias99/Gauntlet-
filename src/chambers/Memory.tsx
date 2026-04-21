@@ -3,8 +3,8 @@ import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import ErrorPanel from "../shell/ErrorPanel";
-import DormantPanel, { isBackendOffline } from "../shell/DormantPanel";
-import { apiUrl } from "../lib/ruberraApi";
+import DormantPanel from "../shell/DormantPanel";
+import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
 import type { Artifact, Chamber } from "../spine/types";
 
 interface RunRecord {
@@ -180,6 +180,7 @@ export default function Memory() {
   const [runs, setRuns] = useState<RunRecord[] | null>(null);
   const [serverStats, setServerStats] = useState<ServerStats | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const activeTokens = useMemo<Set<string>>(() => {
     const set = new Set<string>();
@@ -217,15 +218,16 @@ export default function Memory() {
     setRuns(null);
     setServerStats(null);
     setErr(null);
+    setOffline(false);
     const ac = new AbortController();
     const mid = encodeURIComponent(activeMission.id);
     Promise.all([
-      fetch(apiUrl(`/runs?mission_id=${mid}&limit=100`), { signal: ac.signal })
+      ruberraFetch(`/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
         .then(async (r) => {
           if (!r.ok) throw new Error(`runs ${r.status}`);
           return (await r.json()) as RunsResponse;
         }),
-      fetch(apiUrl(`/runs/stats?mission_id=${mid}`), { signal: ac.signal })
+      ruberraFetch(`/runs/stats?mission_id=${mid}`, { signal: ac.signal })
         .then(async (r) => {
           if (!r.ok) throw new Error(`stats ${r.status}`);
           return (await r.json()) as ServerStats;
@@ -236,7 +238,13 @@ export default function Memory() {
         setServerStats(statsData);
       })
       .catch((e) => {
-        if (e.name !== "AbortError") setErr(e.message ?? String(e));
+        if (e.name === "AbortError") return;
+        if (isBackendUnreachable(e)) {
+          setOffline(true);
+          setErr(e.message);
+          return;
+        }
+        setErr(e.message ?? String(e));
       });
     return () => ac.abort();
   }, [activeMission?.id]);
@@ -331,7 +339,7 @@ export default function Memory() {
         fontFamily: layout === "timeline" ? "var(--sans)" : "var(--mono)",
       }}>
 
-        {err && (isBackendOffline(err) ? (
+        {err && (offline ? (
           <DormantPanel
             title={copy.memoryTelemetryTitle}
             detail={copy.dormantMemory}

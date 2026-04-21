@@ -82,10 +82,11 @@ export interface Copy {
   memoryErrorTitle: string;
   memoryErrorPrefix: string;
   dormantKicker: string;
-  dormantDetail: string;
   dormantLab: string;
   dormantMemory: string;
   dormantCreation: string;
+  spineSyncLabel: (state: "synced" | "syncing" | "unsynced") => string;
+  spineSyncTitle: (state: "synced" | "syncing" | "unsynced") => string;
   severityCritical: string;
   severityWarn: string;
   severityInfo: string;
@@ -234,10 +235,15 @@ const PT: Copy = {
   memoryErrorTitle: "BACKEND",
   memoryErrorPrefix: "backend off?",
   dormantKicker: "— DORMENTE",
-  dormantDetail: "backend silencioso — o arquivo está intacto, só o pulso em directo está em pausa.",
   dormantLab: "laboratório em silêncio — nada é perdido; volta quando o backend regressar.",
   dormantMemory: "telemetria em pausa — o arquivo permanece; só o pulso em directo está dormente.",
   dormantCreation: "execução em pausa — a plataforma segue pronta; a ponte para o backend está silenciosa.",
+  spineSyncLabel: (s) =>
+    s === "synced" ? "sincronizado" : s === "syncing" ? "a sincronizar" : "local",
+  spineSyncTitle: (s) =>
+    s === "synced" ? "missão sincronizada com o backend" :
+    s === "syncing" ? "a enviar alterações para o backend" :
+    "backend indisponível — alterações guardadas localmente, por sincronizar",
   severityCritical: "— CRÍTICO",
   severityWarn: "— AVISO",
   severityInfo: "— INFO",
@@ -375,10 +381,15 @@ const EN: Copy = {
   memoryErrorTitle: "BACKEND",
   memoryErrorPrefix: "backend off?",
   dormantKicker: "— DORMANT",
-  dormantDetail: "backend quiet — the archive is intact; only the live pulse is paused.",
   dormantLab: "lab quiet — nothing is lost; it resumes when the backend returns.",
   dormantMemory: "telemetry paused — the archive remains; only the live pulse is dormant.",
   dormantCreation: "execution paused — the workstation is ready; the bridge to the backend is quiet.",
+  spineSyncLabel: (s) =>
+    s === "synced" ? "synced" : s === "syncing" ? "syncing" : "local only",
+  spineSyncTitle: (s) =>
+    s === "synced" ? "mission synced with backend" :
+    s === "syncing" ? "pushing changes to backend" :
+    "backend unavailable — changes held locally, not yet synced",
   severityCritical: "— CRITICAL",
   severityWarn: "— WARNING",
   severityInfo: "— INFO",

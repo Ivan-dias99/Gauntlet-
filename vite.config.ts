@@ -8,8 +8,14 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       // Bridge to the Python backend (ruberra-backend/).
-      // UI calls /api/ruberra/{route,dev,ask,memory/...} — rewritten to /*
-      // on the FastAPI server.
+      //
+      // The UI calls apiUrl(path) from src/lib/ruberraApi. By default that
+      // resolves to /api/ruberra/* and hits this proxy. Setting
+      // VITE_RUBERRA_API_BASE overrides the default with a direct URL — in
+      // that case this proxy is BYPASSED and the browser talks to the
+      // backend directly (CORS must allow the dev origin). Use the proxy
+      // for same-origin dev; use the override only for testing against a
+      // remote backend.
       proxy: {
         "/api/ruberra": {
           target: backendUrl,

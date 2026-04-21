@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { apiUrl } from "../lib/ruberraApi";
+import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
 
 // Client for the Python backend (ruberra-backend/) via the /api/ruberra
 // proxy.
@@ -118,12 +118,14 @@ type Route = "route" | "dev" | "ask";
 export function useRuberra() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unreachable, setUnreachable] = useState(false);
 
   const call = useCallback(async (route: Route, body: RuberraQueryBody) => {
     setPending(true);
     setError(null);
+    setUnreachable(false);
     try {
-      const res = await fetch(apiUrl(route), {
+      const res = await ruberraFetch(route, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -134,6 +136,11 @@ export function useRuberra() {
       }
       return await res.json();
     } catch (e) {
+      if (isBackendUnreachable(e)) {
+        setUnreachable(true);
+        setError(e.message);
+        throw e;
+      }
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
       throw e;
@@ -150,8 +157,9 @@ export function useRuberra() {
   ) => {
     setPending(true);
     setError(null);
+    setUnreachable(false);
     try {
-      const res = await fetch(apiUrl(path), {
+      const res = await ruberraFetch(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -184,6 +192,12 @@ export function useRuberra() {
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
+      if (isBackendUnreachable(e)) {
+        setUnreachable(true);
+        setError(e.message);
+        onEvent({ type: "error", message: e.message } as E);
+        return;
+      }
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
       onEvent({ type: "error", message: msg } as E);
@@ -210,5 +224,5 @@ export function useRuberra() {
     [openStream],
   );
 
-  return { call, streamDev, streamRoute, streamCrew, pending, error };
+  return { call, streamDev, streamRoute, streamCrew, pending, error, unreachable };
 }

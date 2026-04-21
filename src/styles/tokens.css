@@ -955,3 +955,69 @@ textarea {
   color: var(--chamber-dna, var(--text-muted));
   margin-bottom: 20px;
 }
+
+/* ——— Dormant panel ———
+   Calm degraded-state primitive for chambers whose backend is unreachable.
+   Neutral hue (ghost), no red, no urgency. Visual weight sits below
+   ErrorPanel on purpose — dormant is ambient, error is actionable. */
+[data-dormant-panel] {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-left: 2px solid var(--text-ghost);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-family: var(--mono);
+  max-width: 560px;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+[data-dormant-kicker] {
+  font-size: 9px;
+  color: var(--text-ghost);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+[data-dormant-body] {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+[data-dormant-action] {
+  margin-top: 2px;
+}
+
+/* ——— Spine sync indicator ———
+   Minimal pill that reports whether the mission spine is in sync with the
+   backend. Three honest states — synced, syncing, unsynced — driven by a
+   single data-sync-state attribute. Never loud; never silent. */
+.spine-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  transition: color 0.2s var(--ease-emph), border-color 0.2s var(--ease-emph);
+}
+.spine-sync-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.spine-sync[data-sync-state="synced"] { color: var(--text-ghost); }
+.spine-sync[data-sync-state="syncing"] { color: var(--cc-info); }
+.spine-sync[data-sync-state="unsynced"] {
+  color: var(--cc-warn);
+  border-color: color-mix(in oklab, var(--cc-warn) 35%, var(--border-subtle));
+}
+.spine-sync[data-sync-state="syncing"] .spine-sync-dot { animation: breathe 1.6s var(--ease-emph) infinite; }
