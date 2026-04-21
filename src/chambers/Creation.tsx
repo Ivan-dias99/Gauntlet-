@@ -671,12 +671,11 @@ export default function Creation() {
             className="toolRise"
             style={{
               maxWidth: 820,
-              marginTop: 8,
+              marginTop: 6,
               background: "var(--bg-input)",
               border: "1px solid var(--border-subtle)",
-              borderRadius: 14,
+              borderRadius: 12,
               overflow: "hidden",
-              boxShadow: "var(--shadow-sm)",
             }}
           >
             <div
@@ -684,9 +683,9 @@ export default function Creation() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "10px 14px",
+                padding: "8px 14px",
                 borderBottom: "1px solid var(--border-subtle)",
-                background: "color-mix(in oklab, var(--bg-surface) 60%, transparent)",
+                background: "color-mix(in oklab, var(--bg-surface) 50%, transparent)",
                 fontFamily: "var(--mono)",
                 fontSize: 10,
                 letterSpacing: 1.5,
@@ -694,10 +693,10 @@ export default function Creation() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ display: "flex", gap: 6 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--cc-err)", opacity: 0.75 }} />
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--cc-warn)", opacity: 0.75 }} />
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--cc-ok)", opacity: 0.75 }} />
+                <span style={{ display: "flex", gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--cc-err)", opacity: 0.5 }} />
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--cc-warn)", opacity: 0.5 }} />
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--cc-ok)", opacity: 0.5 }} />
                 </span>
                 <span style={{ color: "var(--text-muted)" }}>
                   ruberra · exec{(() => {
@@ -1347,35 +1346,24 @@ function WorkbenchCard({
   missionTitle, task, resumed, copy, lang, pending, iteration, elapsed,
   openCount, runningCount, doneCount, blockedCount, staleCount, onReopen,
 }: WorkbenchCardProps) {
-  const stale = task ? isStaleRunning(task) : false;
-  const bottleneckBits: string[] = [];
-  if (blockedCount > 0) {
-    bottleneckBits.push(
-      lang === "en"
-        ? `${blockedCount} blocked`
-        : `${blockedCount} bloqueada${blockedCount === 1 ? "" : "s"}`,
-    );
-  }
-  if (staleCount > 0) {
-    bottleneckBits.push(
-      lang === "en"
-        ? `${staleCount} stale`
-        : `${staleCount} parada${staleCount === 1 ? "" : "s"}`,
-    );
-  }
-  const bottleneck = bottleneckBits.length > 0 ? bottleneckBits.join(" · ") : null;
+  const isLive = pending || (task !== null && task.state === "running");
+  const isActive = task !== null && task.state !== "done";
   return (
     <div
       className="fadeIn"
       style={{
         maxWidth: 820,
-        marginBottom: 20,
+        marginBottom: 22,
         background: "var(--bg-elevated)",
         border: "1px solid var(--border-subtle)",
-        borderLeft: `2px solid ${task ? STATE_COLOR[task.state] : "var(--accent-dim)"}`,
+        borderLeft: `${isActive ? 3 : 2}px solid ${task ? STATE_COLOR[task.state] : "var(--accent-dim)"}`,
         borderRadius: 14,
-        padding: "14px 18px",
+        padding: "18px 22px",
         fontFamily: "var(--mono)",
+        boxShadow: isLive
+          ? "0 10px 30px -18px color-mix(in oklab, var(--accent) 40%, transparent), 0 1px 4px rgba(0,0,0,.25)"
+          : isActive ? "var(--shadow-sm)" : "none",
+        transition: "box-shadow .3s var(--ease-swift), border-color .2s",
       }}
     >
       <div style={{
@@ -1396,11 +1384,13 @@ function WorkbenchCard({
       {task ? (
         <>
           <div style={{
-            fontSize: 16,
+            fontSize: 17,
             fontFamily: "var(--sans)",
+            fontWeight: task.state === "done" ? 400 : 500,
             color: task.state === "done" ? "var(--text-muted)" : "var(--text-primary)",
             lineHeight: 1.4,
-            marginBottom: 10,
+            marginBottom: 12,
+            letterSpacing: "-0.005em",
             textDecoration: task.state === "done" ? "line-through" : "none",
           }}>
             {task.title}
@@ -1589,19 +1579,17 @@ function ArtifactLedger({
     return dupes;
   })();
   return (
-    <div style={{ marginTop: 24, maxWidth: 820 }}>
+    <div style={{ marginTop: 32, maxWidth: 820, paddingTop: 16, borderTop: "1px dashed var(--border-subtle)" }}>
       <div style={{
-        fontSize: 9, letterSpacing: 2.5, color: "var(--text-ghost)",
-        fontFamily: "var(--mono)", textTransform: "uppercase", marginBottom: 10,
-        display: "flex", alignItems: "center", gap: 10,
+        fontSize: 9, letterSpacing: 2.5, color: "var(--text-muted)",
+        fontFamily: "var(--mono)", textTransform: "uppercase", marginBottom: 12,
+        display: "flex", alignItems: "center", gap: 8,
       }}>
-        <span>◆ {copy.recentArtifacts}</span>
-        {total > 0 && (
+        <span style={{ color: "var(--cc-ok)", opacity: 0.7 }}>◆</span>
+        <span>{copy.recentArtifacts}</span>
+        {artifacts.length > 0 && (
           <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
-            ·{" "}
-            {expanded || !hasMore
-              ? `${total}`
-              : `${shown.length}/${total}`}
+            · {artifacts.length}
           </span>
         )}
         {termEarly > 0 && (
@@ -1646,7 +1634,7 @@ function ArtifactLedger({
           {copy.artifactEmpty}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {artifacts.map((a) => {
             const preview = a.answer
               ? (a.answer.length > 200 ? a.answer.slice(0, 200) + "…" : a.answer)
@@ -1658,14 +1646,21 @@ function ArtifactLedger({
                 title="replay"
                 className="fadeIn"
                 style={{
-                  background: "color-mix(in oklab, var(--cc-ok) 6%, var(--bg-elevated))",
+                  background: "transparent",
                   border: "1px solid var(--border-subtle)",
                   borderLeft: "2px solid var(--cc-ok)",
-                  borderRadius: 12,
-                  padding: "10px 14px",
+                  borderRadius: 10,
+                  padding: "9px 13px",
                   fontFamily: "var(--mono)",
-                  cursor: "pointer",
+                  cursor: clickable ? "pointer" : "default",
+                  transition: "background .2s var(--ease-swift), border-color .2s",
                 }}
+                onMouseEnter={clickable ? (e) => {
+                  e.currentTarget.style.background = "color-mix(in oklab, var(--bg-elevated) 80%, transparent)";
+                } : undefined}
+                onMouseLeave={clickable ? (e) => {
+                  e.currentTarget.style.background = "transparent";
+                } : undefined}
               >
                 <div style={{
                   display: "flex", alignItems: "center", gap: 10,
