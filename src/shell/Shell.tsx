@@ -34,6 +34,18 @@ export default function Shell() {
     if (activeMission) setActiveTab(activeMission.chamber);
   }, [activeMission?.id]);
 
+  // Cross-chamber handoff — chambers can request a chamber switch by
+  // dispatching `ruberra:chamber` with a Chamber detail (e.g. Lab promoting
+  // an analysis into a Creation task).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<Chamber>;
+      if (ce.detail) setActiveTab(ce.detail);
+    };
+    window.addEventListener("ruberra:chamber", handler);
+    return () => window.removeEventListener("ruberra:chamber", handler);
+  }, []);
+
   useEffect(() => {
     try { localStorage.setItem("ruberra:landed", landed ? "1" : "0"); } catch {}
   }, [landed]);

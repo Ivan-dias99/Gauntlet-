@@ -67,15 +67,32 @@ const EMPTY_LIVE: LiveState = {
 };
 
 export default function Lab() {
-  const { activeMission, addNote, addNoteToMission, principles } = useSpine();
+  const { activeMission, addNote, addNoteToMission, addTask, principles } = useSpine();
   const { streamRoute, pending, error } = useRuberra();
   const [input, setInput] = useState("");
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
+  const [promoteId, setPromoteId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Esc closes any pending handoff confirm.
+  useEffect(() => {
+    if (!promoteId) return;
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setPromoteId(null); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [promoteId]);
+
+  function confirmPromote(note: Note) {
+    const raw = note.text.trim();
+    const title = raw.length > 120 ? raw.slice(0, 117).trimEnd() + "…" : raw;
+    addTask(title, "lab");
+    setPromoteId(null);
+    window.dispatchEvent(new CustomEvent("ruberra:chamber", { detail: "Creation" }));
+  }
 
   // Refs capture streaming metadata without stale closure issues
   const capturedJudge = useRef<{
@@ -220,7 +237,14 @@ export default function Lab() {
         )}
 
         {notes.map((n) => (
-          <LabTurnRow key={n.id} note={n} />
+          <LabTurnRow
+            key={n.id}
+            note={n}
+            promoting={promoteId === n.id}
+            onPromoteRequest={() => setPromoteId(n.id)}
+            onPromoteConfirm={() => confirmPromote(n)}
+            onPromoteCancel={() => setPromoteId(null)}
+          />
         ))}
 
         {pending && (
@@ -387,13 +411,26 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
   );
 }
 
-function LabTurnRow({ note }: { note: Note }) {
+function LabTurnRow({
+  note,
+  promoting,
+  onPromoteRequest,
+  onPromoteConfirm,
+  onPromoteCancel,
+}: {
+  note: Note;
+  promoting: boolean;
+  onPromoteRequest: () => void;
+  onPromoteConfirm: () => void;
+  onPromoteCancel: () => void;
+}) {
   const isAI = note.role === "ai";
   const isRefusal = isAI && (
     note.text.startsWith("Não sei responder") ||
     note.text.startsWith("⚠️ **Ruberra")
   );
   const isWarning = isAI && note.text.startsWith("⚠ Esta pergunta");
+  const canPromote = isAI && !isRefusal && !isWarning;
 
   let label: string;
   let borderColor: string;
@@ -446,6 +483,80 @@ function LabTurnRow({ note }: { note: Note }) {
       <div style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.65, whiteSpace: "pre-wrap", fontFamily: "var(--sans)" }}>
         {note.text}
       </div>
+      {canPromote && !promoting && (
+        <button
+          onClick={onPromoteRequest}
+          style={{
+            alignSelf: "flex-end",
+            background: "none",
+            border: "none",
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+            color: "var(--text-ghost)",
+            padding: 0,
+            marginTop: 2,
+            cursor: "pointer",
+            transition: "color .16s var(--ease-swift)",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-ghost)"; }}
+        >
+          → construção
+        </button>
+      )}
+      {canPromote && promoting && (
+        <div style={{
+          marginTop: 6,
+          paddingTop: 8,
+          borderTop: "1px dashed var(--border-subtle)",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          fontFamily: "var(--mono)",
+          fontSize: 10,
+          letterSpacing: 1.3,
+          textTransform: "uppercase",
+        }}>
+          <span style={{ color: "var(--text-muted)" }}>
+            — transferir para construção
+          </span>
+          <button
+            onClick={onPromoteConfirm}
+            style={{
+              marginLeft: "auto",
+              background: "none",
+              border: "none",
+              color: "var(--cc-ok)",
+              fontFamily: "inherit",
+              fontSize: "inherit",
+              letterSpacing: "inherit",
+              textTransform: "inherit",
+              padding: 0,
+              cursor: "pointer",
+            }}
+          >
+            ↵ confirmar
+          </button>
+          <button
+            onClick={onPromoteCancel}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--text-ghost)",
+              fontFamily: "inherit",
+              fontSize: "inherit",
+              letterSpacing: "inherit",
+              textTransform: "inherit",
+              padding: 0,
+              cursor: "pointer",
+            }}
+          >
+            esc cancelar
+          </button>
+        </div>
+      )}
     </div>
   );
 }
