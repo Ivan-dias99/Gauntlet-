@@ -50,6 +50,13 @@ export interface Artifact {
   // Optional backlink to the task this artifact closed. Older artifacts
   // loaded from persisted state may not carry it.
   taskId?: string;
+  // Run telemetry captured at accept time so the ledger can tell you what
+  // actually happened — not just "something terminated early". All optional
+  // for back-compat with artifacts persisted before these fields existed.
+  iterations?: number;
+  toolCount?: number;
+  processingTimeMs?: number;
+  terminationReason?: string | null;
 }
 
 export interface Mission {
