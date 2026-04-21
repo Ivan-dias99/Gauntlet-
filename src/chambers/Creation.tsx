@@ -340,7 +340,7 @@ export default function Creation() {
 
   const tasks = activeMission?.tasks ?? [];
   const doneTasks = tasks.filter((t) => t.state === "done");
-  const pendingTasks = tasks.filter((t) => t.state !== "done");
+  const pendingTasks = tasks.filter((t) => t.state !== "done" && t.state !== "blocked");
   const openTasks = tasks.filter((t) => t.state === "open");
   const runningTasks = tasks.filter((t) => t.state === "running");
   const blockedTasks = tasks.filter((t) => t.state === "blocked");

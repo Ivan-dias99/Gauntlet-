@@ -342,7 +342,7 @@ export function acceptArtifact(
     updatedAt: ts,
     missions: state.missions.map(m => {
       if (m.id !== missionId) return m;
-      const ledger = [full, ...m.artifacts].slice(0, ARTIFACT_LEDGER_CAP);
+      const ledger = [full, ...(m.artifacts ?? [])].slice(0, ARTIFACT_LEDGER_CAP);
       const tasks = taskId
         ? m.tasks.map(t =>
             t.id === taskId
