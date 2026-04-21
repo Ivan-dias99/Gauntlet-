@@ -188,6 +188,25 @@ export default function Lab() {
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
           Investigação · Evidência · Pressão
         </span>
+        {principles.length > 0 && (
+          <span
+            data-principles-in-context
+            title={`${principles.length} princípio${principles.length !== 1 ? "s" : ""} da doutrina bem presentes nesta câmara`}
+            style={{
+              fontSize: 9,
+              letterSpacing: 1.5,
+              color: "var(--accent)",
+              fontFamily: "var(--mono)",
+              textTransform: "uppercase",
+              padding: "2px 7px",
+              border: "1px solid color-mix(in oklab, var(--accent) 32%, transparent)",
+              borderRadius: 4,
+              lineHeight: 1.4,
+            }}
+          >
+            sob § {principles.length}
+          </span>
+        )}
         {pending && (
           <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--cc-info)", fontFamily: "var(--mono)", letterSpacing: 2, display: "flex", alignItems: "center", gap: 8 }}>
             <span className="breathe" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-info)" }} />

@@ -361,6 +361,25 @@ export default function Creation() {
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
           Construção · Execução · Consequência
         </span>
+        {principles.length > 0 && (
+          <span
+            data-principles-in-context
+            title={`${principles.length} princípio${principles.length !== 1 ? "s" : ""} da doutrina bem presentes nesta câmara`}
+            style={{
+              fontSize: 9,
+              letterSpacing: 1.5,
+              color: "var(--accent)",
+              fontFamily: "var(--mono)",
+              textTransform: "uppercase",
+              padding: "2px 7px",
+              border: "1px solid color-mix(in oklab, var(--accent) 32%, transparent)",
+              borderRadius: 4,
+              lineHeight: 1.4,
+            }}
+          >
+            sob § {principles.length}
+          </span>
+        )}
         <div
           role="tablist"
           aria-label="Execution mode"
