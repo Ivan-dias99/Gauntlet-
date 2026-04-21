@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Chamber } from "../spine/types";
+import { formatPulse } from "../spine/pulse";
 import { useTheme } from "../theme/ThemeContext";
 import { useSpine } from "../spine/SpineContext";
 import { useCopy } from "../i18n/copy";
@@ -204,7 +205,11 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                           fontFamily: "var(--mono)",
                         }}
                       >
-                        {copy.chambers[m.chamber].label} · {m.tasks.length}t · {m.notes.length}n
+                        {(() => {
+                          const pulse = formatPulse(m);
+                          const label = copy.chambers[m.chamber].label;
+                          return pulse ? `${label} · ${pulse}` : label;
+                        })()}
                       </div>
                     </button>
                   );
