@@ -43,6 +43,9 @@ export interface Copy {
   taskSourceLab: string;
   taskSourceCrew: string;
   taskSourceOther: string;
+  promoteToTask: string;
+  promoteToTaskDone: string;
+  promoteToTaskHint: string;
   artifactEmpty: string;
   refinePrefix: string;
   memoryEmpty: string;
@@ -131,6 +134,9 @@ const PT: Copy = {
   taskSourceLab: "lab",
   taskSourceCrew: "crew",
   taskSourceOther: "outra",
+  promoteToTask: "→ criar tarefa em Construção",
+  promoteToTaskDone: "✓ tarefa criada",
+  promoteToTaskHint: "transferir a investigação para a bancada de construção",
   artifactEmpty: "ainda sem artefactos aceites nesta missão",
   refinePrefix: "refinar: ",
   memoryEmpty: "— log vazio —",
@@ -207,6 +213,9 @@ const EN: Copy = {
   taskSourceLab: "lab",
   taskSourceCrew: "crew",
   taskSourceOther: "other",
+  promoteToTask: "→ create task in Creation",
+  promoteToTaskDone: "✓ task created",
+  promoteToTaskHint: "carry this investigation over to the workshop",
   artifactEmpty: "no accepted artifacts on this mission yet",
   refinePrefix: "refine: ",
   memoryEmpty: "— empty log —",

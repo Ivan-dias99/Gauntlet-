@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRuberra, RouteEvent } from "../hooks/useRuberra";
-import { Note } from "../spine/types";
+import { Note, Chamber } from "../spine/types";
+import { useCopy, Copy } from "../i18n/copy";
 
 interface TriadResult {
   answer?: string | null;
@@ -65,13 +66,29 @@ const EMPTY_LIVE: LiveState = {
   lastEventLabel: "a rotear...",
 };
 
-export default function Lab() {
-  const { activeMission, addNote, addNoteToMission, principles } = useSpine();
+interface LabProps {
+  onNavigate?: (to: Chamber) => void;
+}
+
+function deriveTaskTitle(question: string, answer: string | null): string {
+  const q = (question || "").trim().replace(/\s+/g, " ");
+  if (q) return q.length > 80 ? q.slice(0, 77) + "…" : q;
+  const a = (answer || "").trim().replace(/\s+/g, " ");
+  if (a) return a.length > 80 ? a.slice(0, 77) + "…" : a;
+  return "Tarefa da investigação";
+}
+
+export default function Lab({ onNavigate }: LabProps = {}) {
+  const { activeMission, addNote, addNoteToMission, addTask, principles } = useSpine();
   const { streamRoute, pending, error } = useRuberra();
+  const copy = useCopy();
   const [input, setInput] = useState("");
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
+  const [lastQuestion, setLastQuestion] = useState<string>("");
+  const [lastAnswer, setLastAnswer] = useState<string>("");
+  const [promotedTaskId, setPromotedTaskId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -104,6 +121,9 @@ export default function Lab() {
     setLive({ ...EMPTY_LIVE });
     setLastConfidence(null);
     setLastVerdict(null);
+    setLastQuestion(v);
+    setLastAnswer("");
+    setPromotedTaskId(null);
     capturedJudge.current = null;
     capturedTriad.current = { priorFailure: false };
     capturedAgent.current = { iter: 0, toolCount: 0 };
@@ -154,6 +174,7 @@ export default function Lab() {
           const path = capturedPath ?? inferPath(ev);
           const answer = extractAnswer(path, ev.result);
           if (answer) addNoteToMission(targetMissionId, answer.trim(), "ai");
+          setLastAnswer((answer || "").trim());
 
           const r = ev.result as TriadResult;
           const refused = !!r.refused;
@@ -240,7 +261,19 @@ export default function Lab() {
 
       {/* Verdict panel — appears after each query, clears on next submit */}
       {lastVerdict && !pending && (
-        <VerdictPanel verdict={lastVerdict} />
+        <VerdictPanel
+          verdict={lastVerdict}
+          copy={copy}
+          canPromote={!lastVerdict.refused && !!activeMission}
+          promoted={promotedTaskId !== null}
+          onPromote={() => {
+            if (promotedTaskId !== null) return;
+            const title = deriveTaskTitle(lastQuestion, lastAnswer);
+            const id = addTask(title, "lab");
+            setPromotedTaskId(id);
+            onNavigate?.("Creation");
+          }}
+        />
       )}
 
       {/* Input */}
@@ -283,7 +316,15 @@ export default function Lab() {
   );
 }
 
-function VerdictPanel({ verdict }: { verdict: VerdictState }) {
+function VerdictPanel({
+  verdict, copy, canPromote, promoted, onPromote,
+}: {
+  verdict: VerdictState;
+  copy: Copy;
+  canPromote: boolean;
+  promoted: boolean;
+  onPromote: () => void;
+}) {
   const isAgent = verdict.routePath === "agent";
   const isHigh = verdict.confidence === "high";
   const isRefused = verdict.refused;
@@ -356,6 +397,34 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
           {isRefused
             ? "→ reformula · fractura a questão · adiciona contexto específico"
             : "→ pressiona onde divergiu · pede clarificação · verifica a premissa"}
+        </div>
+      )}
+
+      {/* Handoff — promote this verdict into a Creation task */}
+      {canPromote && (
+        <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <button
+            onClick={onPromote}
+            disabled={promoted}
+            title={copy.promoteToTaskHint}
+            style={{
+              background: promoted ? "transparent" : "var(--accent-glow)",
+              border: `1px solid ${promoted ? "var(--border-subtle)" : "var(--accent-dim)"}`,
+              color: promoted ? "var(--cc-ok)" : "var(--accent)",
+              fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase",
+              padding: "6px 12px", borderRadius: 999,
+              fontFamily: "var(--mono)",
+              cursor: promoted ? "default" : "pointer",
+              transition: "all .2s var(--ease-swift)",
+            }}
+          >
+            {promoted ? copy.promoteToTaskDone : copy.promoteToTask}
+          </button>
+          {!promoted && (
+            <span style={{ fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--sans)" }}>
+              {copy.promoteToTaskHint}
+            </span>
+          )}
         </div>
       )}
     </div>

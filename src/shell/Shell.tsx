@@ -10,9 +10,9 @@ import Creation from "../chambers/Creation";
 import Memory from "../chambers/Memory";
 import School from "../chambers/School";
 
-function renderChamber(c: Chamber) {
+function renderChamber(c: Chamber, onNavigate: (to: Chamber) => void) {
   switch (c) {
-    case "Lab":      return <Lab />;
+    case "Lab":      return <Lab onNavigate={onNavigate} />;
     case "Creation": return <Creation />;
     case "Memory":   return <Memory />;
     case "School":   return <School />;
@@ -87,7 +87,7 @@ export default function Shell() {
         onTweaks={() => setTweaksOpen((v) => !v)}
       />
       <main style={{ flex: 1, overflow: "auto" }}>
-        {renderChamber(activeTab)}
+        {renderChamber(activeTab, setActiveTab)}
       </main>
       <TweaksPanel
         open={tweaksOpen}
