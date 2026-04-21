@@ -717,14 +717,29 @@ export default function Creation() {
             artifacts={recentArtifacts}
             copy={copy}
             onSelectArtifact={(a) => {
-              if (!a.taskId) return;
-              setActiveTaskId(a.taskId);
-              setResumedFromSpine(true);
-              setDone(null);
+              // Replay: the artifact IS the archive of truth. Restore the
+              // done panel from it so the user sees the accepted answer,
+              // not a bare task title. Telemetry (iterations, tool_count,
+              // processing_time_ms, termination_reason) isn't persisted on
+              // artifacts, so those reset to defaults — the answer and the
+              // terminatedEarly bit are what matter for replay.
+              setDone({
+                answer: a.answer,
+                iterations: 0,
+                tool_count: 0,
+                processing_time_ms: 0,
+                terminated_early: a.terminatedEarly,
+                termination_reason: null,
+              });
               setErr(null);
               setLiveTools([]);
               setLiveText("");
-              setAccepted(false);
+              setAccepted(true);
+              // Rebind the workbench to the task if it still exists here.
+              if (a.taskId && activeMission?.tasks.some(t => t.id === a.taskId)) {
+                setActiveTaskId(a.taskId);
+                setResumedFromSpine(true);
+              }
             }}
           />
         )}
@@ -1373,11 +1388,11 @@ function ArtifactLedger({
             const preview = a.answer
               ? (a.answer.length > 200 ? a.answer.slice(0, 200) + "…" : a.answer)
               : "—";
-            const clickable = Boolean(a.taskId);
             return (
               <div
                 key={a.id}
-                onClick={clickable ? () => onSelectArtifact(a) : undefined}
+                onClick={() => onSelectArtifact(a)}
+                title="replay"
                 className="fadeIn"
                 style={{
                   background: "color-mix(in oklab, var(--cc-ok) 6%, var(--bg-elevated))",
@@ -1386,7 +1401,7 @@ function ArtifactLedger({
                   borderRadius: 12,
                   padding: "10px 14px",
                   fontFamily: "var(--mono)",
-                  cursor: clickable ? "pointer" : "default",
+                  cursor: "pointer",
                 }}
               >
                 <div style={{
