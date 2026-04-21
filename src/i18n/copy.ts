@@ -39,6 +39,9 @@ export interface Copy {
   taskStateRunning: string;
   taskStateDone: string;
   taskStateBlocked: string;
+  onBench: string;
+  blockedSection: string;
+  doneSection: string;
   taskSourceManual: string;
   taskSourceLab: string;
   taskSourceCrew: string;
@@ -127,6 +130,9 @@ const PT: Copy = {
   taskStateRunning: "em curso",
   taskStateDone: "concluída",
   taskStateBlocked: "bloqueada",
+  onBench: "na bancada",
+  blockedSection: "bloqueadas",
+  doneSection: "concluídas",
   taskSourceManual: "manual",
   taskSourceLab: "lab",
   taskSourceCrew: "crew",
@@ -203,6 +209,9 @@ const EN: Copy = {
   taskStateRunning: "running",
   taskStateDone: "done",
   taskStateBlocked: "blocked",
+  onBench: "on bench",
+  blockedSection: "blocked",
+  doneSection: "done",
   taskSourceManual: "manual",
   taskSourceLab: "lab",
   taskSourceCrew: "crew",

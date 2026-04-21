@@ -341,8 +341,12 @@ export default function Creation() {
   const doneTasks = tasks.filter((t) => t.state === "done");
   const pendingTasks = tasks.filter((t) => t.state !== "done");
   const openTasks = tasks.filter((t) => t.state === "open");
+  const runningTasks = tasks.filter((t) => t.state === "running");
   const blockedTasks = tasks.filter((t) => t.state === "blocked");
-  const staleRunningTasks = tasks.filter(isStaleRunning);
+  // Queue order: running first (live), then open (ready), then blocked (frozen).
+  // Blocked tasks ride last in the pending column so they do not compete with
+  // active work for attention, but remain reachable.
+  const pendingOrdered = [...runningTasks, ...openTasks];
   const exitCode = done ? 0 : err ? 1 : null;
 
   function selectTaskFromQueue(id: string) {
@@ -567,31 +571,42 @@ export default function Creation() {
               <div style={{
                 fontSize: 9, letterSpacing: 2.5, color: "var(--text-ghost)",
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
-              }}>▲ {values.lang === "en" ? "pending" : "pendente"} · {pendingTasks.length}</div>
-              {pendingTasks.map((t) => (
+              }}>▲ {values.lang === "en" ? "pending" : "pendente"} · {pendingOrdered.length}</div>
+              {pendingOrdered.map((t) => (
                 <KanbanCard
-                  key={t.id}
-                  task={t}
-                  copy={copy}
-                  lang={values.lang}
+                  key={t.id} task={t} copy={copy}
                   active={t.id === activeTaskId}
-                  onSelect={() => selectTaskFromQueue(t.id)}
+                  onToggle={() => completeTask(t.id)}
                 />
               ))}
+              {blockedTasks.length > 0 && (
+                <>
+                  <div style={{
+                    fontSize: 9, letterSpacing: 2.5, color: "var(--cc-err)",
+                    fontFamily: "var(--mono)", margin: "16px 0 10px", textTransform: "uppercase",
+                    opacity: 0.7,
+                  }}>✕ {copy.blockedSection} · {blockedTasks.length}</div>
+                  {blockedTasks.map((t) => (
+                    <KanbanCard
+                      key={t.id} task={t} copy={copy}
+                      active={t.id === activeTaskId}
+                      onToggle={() => completeTask(t.id)}
+                    />
+                  ))}
+                </>
+              )}
             </div>
             <div>
               <div style={{
                 fontSize: 9, letterSpacing: 2.5, color: "var(--cc-ok)",
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
-              }}>✓ {values.lang === "en" ? "done" : "concluída"} · {doneTasks.length}</div>
+                opacity: 0.7,
+              }}>✓ {copy.doneSection} · {doneTasks.length}</div>
               {doneTasks.map((t) => (
                 <KanbanCard
-                  key={t.id}
-                  task={t}
-                  copy={copy}
-                  lang={values.lang}
+                  key={t.id} task={t} copy={copy}
                   active={t.id === activeTaskId}
-                  onSelect={() => selectTaskFromQueue(t.id)}
+                  onToggle={() => completeTask(t.id)}
                 />
               ))}
             </div>
@@ -600,35 +615,45 @@ export default function Creation() {
 
         {tasks.length > 0 && layout === "terminal" && (
           <div style={{ maxWidth: 740, marginBottom: 24 }}>
-            {pendingTasks.map((t) => (
+            {pendingOrdered.map((t) => (
               <TaskRow
-                key={t.id}
-                task={t}
-                copy={copy}
-                lang={values.lang}
+                key={t.id} task={t} copy={copy}
                 active={t.id === activeTaskId}
-                onSelect={() => selectTaskFromQueue(t.id)}
+                onToggle={() => completeTask(t.id)}
               />
             ))}
-            {doneTasks.length > 0 && pendingTasks.length > 0 && (
-              <div
-                style={{
-                  borderTop: "1px solid var(--border)",
-                  margin: "14px 0",
-                  opacity: 0.4,
-                }}
-              />
+            {blockedTasks.length > 0 && (
+              <>
+                <div style={{
+                  fontSize: 9, letterSpacing: 2.5, color: "var(--cc-err)",
+                  fontFamily: "var(--mono)", margin: "14px 0 6px", textTransform: "uppercase",
+                  opacity: 0.7,
+                }}>✕ {copy.blockedSection} · {blockedTasks.length}</div>
+                {blockedTasks.map((t) => (
+                  <TaskRow
+                    key={t.id} task={t} copy={copy}
+                    active={t.id === activeTaskId}
+                    onToggle={() => completeTask(t.id)}
+                  />
+                ))}
+              </>
             )}
-            {doneTasks.map((t) => (
-              <TaskRow
-                key={t.id}
-                task={t}
-                copy={copy}
-                lang={values.lang}
-                active={t.id === activeTaskId}
-                onSelect={() => selectTaskFromQueue(t.id)}
-              />
-            ))}
+            {doneTasks.length > 0 && (
+              <>
+                <div style={{
+                  fontSize: 9, letterSpacing: 2.5, color: "var(--cc-ok)",
+                  fontFamily: "var(--mono)", margin: "14px 0 6px", textTransform: "uppercase",
+                  opacity: 0.7,
+                }}>✓ {copy.doneSection} · {doneTasks.length}</div>
+                {doneTasks.map((t) => (
+                  <TaskRow
+                    key={t.id} task={t} copy={copy}
+                    active={t.id === activeTaskId}
+                    onToggle={() => completeTask(t.id)}
+                  />
+                ))}
+              </>
+            )}
           </div>
         )}
 
@@ -1097,26 +1122,29 @@ function StateChip({ state, copy }: { state: TaskState; copy: Copy }) {
 }
 
 function KanbanCard({
-  task, onSelect, copy, lang, active,
-}: {
-  task: Task; onSelect: () => void; copy: Copy; lang: "pt" | "en"; active: boolean;
-}) {
-  const stale = isStaleRunning(task);
-  const borderBase = active ? "var(--accent)" : "var(--border-subtle)";
+  task, onToggle, copy, active = false,
+}: { task: Task; onToggle: () => void; copy: Copy; active?: boolean }) {
+  const isDone = task.state === "done";
+  const isBlocked = task.state === "blocked";
   return (
     <div
       onClick={onSelect}
       className="fadeUp"
       aria-current={active ? "true" : undefined}
       style={{
-        background: active ? "var(--accent-glow)" : "var(--bg-elevated)",
-        border: `1px solid ${borderBase}`,
-        borderLeft: stale ? "2px solid var(--cc-warn)" : `1px solid ${borderBase}`,
+        background: active
+          ? "color-mix(in oklab, var(--accent-glow) 55%, var(--bg-elevated))"
+          : "var(--bg-elevated)",
+        border: "1px solid var(--border-subtle)",
+        borderLeft: active
+          ? "3px solid var(--accent)"
+          : `1px solid var(--border-subtle)`,
         borderRadius: 12,
         padding: 14,
         marginBottom: 10,
         cursor: "pointer",
-        transition: "transform .25s var(--ease-emph), border-color .2s, background .2s",
+        opacity: isDone ? 0.55 : isBlocked ? 0.75 : 1,
+        transition: "transform .25s var(--ease-emph), border-color .2s, opacity .2s",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-2px)";
@@ -1131,9 +1159,10 @@ function KanbanCard({
         style={{
           fontSize: 13,
           fontFamily: "var(--sans)",
-          color: task.state === "done" ? "var(--text-muted)" : "var(--text-primary)",
-          textDecoration: task.state === "done" ? "line-through" : "none",
+          color: isDone ? "var(--text-muted)" : "var(--text-primary)",
+          textDecoration: isDone ? "line-through" : "none",
           lineHeight: 1.5,
+          fontWeight: active ? 500 : 400,
         }}
       >
         {task.title}
@@ -1156,16 +1185,16 @@ function KanbanCard({
           {relTime(task.lastUpdateAt, lang)}
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {active && (
+            <span style={{ color: "var(--accent)", letterSpacing: 2 }}>◉ {copy.onBench}</span>
+          )}
           {task.source !== "manual" && (
             <span style={{ color: "var(--accent-dim)" }}>· {sourceLabel(task.source, copy)}</span>
           )}
           {task.artifactId && (
             <span title="artefacto aceite" style={{ color: "var(--cc-ok)" }}>◆</span>
           )}
-          {stale && (
-            <span title={lang === "en" ? "stalled run" : "execução parada"} style={{ color: "var(--cc-warn)" }}>⚠</span>
-          )}
-          <StateChip state={task.state} copy={copy} />
+          {!active && <StateChip state={task.state} copy={copy} />}
         </span>
       </div>
     </div>
@@ -1173,11 +1202,10 @@ function KanbanCard({
 }
 
 function TaskRow({
-  task, onSelect, copy, lang, active,
-}: {
-  task: Task; onSelect: () => void; copy: Copy; lang: "pt" | "en"; active: boolean;
-}) {
-  const stale = isStaleRunning(task);
+  task, onToggle, copy, active = false,
+}: { task: Task; onToggle: () => void; copy: Copy; active?: boolean }) {
+  const isDone = task.state === "done";
+  const isBlocked = task.state === "blocked";
   return (
     <div
       onClick={onSelect}
@@ -1187,19 +1215,22 @@ function TaskRow({
         display: "flex",
         alignItems: "flex-start",
         gap: 14,
-        padding: "11px 0 11px 10px",
+        padding: "11px 0 11px 12px",
         borderBottom: "1px solid var(--border-subtle)",
         borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent",
-        background: active ? "color-mix(in oklab, var(--accent) 6%, transparent)" : "transparent",
+        background: active
+          ? "color-mix(in oklab, var(--accent-glow) 40%, transparent)"
+          : "transparent",
         cursor: "pointer",
         fontFamily: "var(--mono)",
-        transition: "padding-left .28s var(--ease-emph), background .2s",
+        opacity: isDone ? 0.55 : isBlocked ? 0.75 : 1,
+        transition: "padding-left .28s var(--ease-emph), opacity .2s",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.paddingLeft = "18px";
+        e.currentTarget.style.paddingLeft = active ? "16px" : "18px";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.paddingLeft = "10px";
+        e.currentTarget.style.paddingLeft = "12px";
       }}
     >
       <span
@@ -1216,26 +1247,19 @@ function TaskRow({
         style={{
           flex: 1,
           fontSize: 13,
-          color: task.state === "done" ? "var(--cc-dim)" : "var(--cc-fg)",
-          textDecoration: task.state === "done" ? "line-through" : "none",
+          color: isDone ? "var(--cc-dim)" : "var(--cc-fg)",
+          textDecoration: isDone ? "line-through" : "none",
           lineHeight: 1.55,
+          fontWeight: active ? 500 : 400,
         }}
       >
         {task.title}
       </span>
-      <span
-        title={new Date(task.lastUpdateAt).toLocaleString()}
-        style={{
-          fontSize: 9,
-          letterSpacing: 1.5,
-          color: stale ? "var(--cc-warn)" : "var(--text-ghost)",
-          textTransform: "uppercase",
-          marginTop: 3,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {stale ? "⚠ " : ""}{relTime(task.lastUpdateAt, lang)}
-      </span>
+      {active && (
+        <span style={{ fontSize: 9, letterSpacing: 2, color: "var(--accent)", textTransform: "uppercase", marginTop: 3 }}>
+          ◉ {copy.onBench}
+        </span>
+      )}
       {task.artifactId && (
         <span title="artefacto aceite" style={{ color: "var(--cc-ok)", fontSize: 11, marginTop: 2 }}>◆</span>
       )}
@@ -1244,7 +1268,7 @@ function TaskRow({
           {sourceLabel(task.source, copy)}
         </span>
       )}
-      <StateChip state={task.state} copy={copy} />
+      {!active && <StateChip state={task.state} copy={copy} />}
     </div>
   );
 }
