@@ -527,7 +527,7 @@ export default function Creation() {
               <div style={{
                 fontSize: 9, letterSpacing: 2.5, color: "var(--text-ghost)",
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
-              }}>▲ {values.lang === "en" ? "pending" : "pendente"} · {pendingTasks.length}</div>
+              }}>▲ {copy.kanbanPending} · {pendingTasks.length}</div>
               {pendingTasks.map((t) => (
                 <KanbanCard key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
               ))}
@@ -536,7 +536,7 @@ export default function Creation() {
               <div style={{
                 fontSize: 9, letterSpacing: 2.5, color: "var(--cc-ok)",
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
-              }}>✓ {values.lang === "en" ? "done" : "concluída"} · {doneTasks.length}</div>
+              }}>✓ {copy.kanbanDone} · {doneTasks.length}</div>
               {doneTasks.map((t) => (
                 <KanbanCard key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
               ))}
@@ -647,7 +647,7 @@ export default function Creation() {
               )}
               {done?.terminated_early && (
                 <div style={{ fontSize: 10, color: "var(--cc-warn)", marginTop: 10, fontFamily: "var(--mono)" }}>
-                  terminado cedo: {done.termination_reason}
+                  {copy.runInterrupted} · {done.termination_reason}
                 </div>
               )}
               {done && activeMission && (
@@ -660,15 +660,15 @@ export default function Creation() {
                         onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--cc-ok) 12%, transparent)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
                       >
-                        ✓ aceitar artefacto
+                        {copy.acceptArtifact}
                       </button>
                       <span style={{ fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
-                        → marca tarefa concluída · regista na missão
+                        {copy.acceptHint}
                       </span>
                     </>
                   ) : (
                     <span style={{ fontSize: 10, color: "var(--cc-ok)", fontFamily: "var(--mono)", letterSpacing: 1.5 }}>
-                      ✓ artefacto aceite · missão actualizada
+                      {copy.artifactSealed}
                     </span>
                   )}
                 </div>
@@ -691,7 +691,7 @@ export default function Creation() {
               fontFamily: "var(--mono)",
             }}
           >
-            <div style={{ fontSize: 10, color: "var(--cc-err)", letterSpacing: 1.5 }}>ERRO</div>
+            <div style={{ fontSize: 10, color: "var(--cc-err)", letterSpacing: 1.5 }}>{copy.errorLabel}</div>
             <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, whiteSpace: "pre-wrap" }}>
               {err}
             </div>
@@ -1081,7 +1081,7 @@ function KanbanCard({ task, onToggle, copy }: { task: Task; onToggle: () => void
             <span style={{ color: "var(--accent-dim)" }}>· {sourceLabel(task.source, copy)}</span>
           )}
           {task.artifactId && (
-            <span title="artefacto aceite" style={{ color: "var(--cc-ok)" }}>◆</span>
+            <span title={copy.artifactTooltip} style={{ color: "var(--cc-ok)" }}>◆</span>
           )}
           <StateChip state={task.state} copy={copy} />
         </span>
@@ -1134,7 +1134,7 @@ function TaskRow({ task, onToggle, copy }: { task: Task; onToggle: () => void; c
         {task.title}
       </span>
       {task.artifactId && (
-        <span title="artefacto aceite" style={{ color: "var(--cc-ok)", fontSize: 11, marginTop: 2 }}>◆</span>
+        <span title={copy.artifactTooltip} style={{ color: "var(--cc-ok)", fontSize: 11, marginTop: 2 }}>◆</span>
       )}
       {task.source !== "manual" && (
         <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--accent-dim)", textTransform: "uppercase", marginTop: 3 }}>
@@ -1218,7 +1218,7 @@ function WorkbenchCard({
             </span>
             {task.artifactId && (
               <span style={{ fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
-                ◆ artefacto
+                {copy.artifactChip}
               </span>
             )}
             {pending && (
@@ -1399,7 +1399,7 @@ function ArtifactLedger({
                     {new Date(a.acceptedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                   {a.terminatedEarly && (
-                    <span style={{ color: "var(--cc-warn)" }}>· terminação antecipada</span>
+                    <span style={{ color: "var(--cc-warn)" }}>· {copy.artifactInterrupted}</span>
                   )}
                   <span style={{
                     marginLeft: "auto", color: "var(--text-ghost)",

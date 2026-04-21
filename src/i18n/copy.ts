@@ -44,6 +44,16 @@ export interface Copy {
   taskSourceCrew: string;
   taskSourceOther: string;
   artifactEmpty: string;
+  acceptArtifact: string;
+  acceptHint: string;
+  artifactSealed: string;
+  artifactChip: string;
+  artifactTooltip: string;
+  runInterrupted: string;
+  artifactInterrupted: string;
+  errorLabel: string;
+  kanbanPending: string;
+  kanbanDone: string;
   refinePrefix: string;
   memoryEmpty: string;
   memoryCount: (n: number) => string;
@@ -110,15 +120,15 @@ const PT: Copy = {
   labAwait: "Aguardando resposta...",
   labAnalyzing: "ANALISANDO",
   creationEmptyPrompt: "$ _",
-  creationPlaceholder: "nova tarefa...",
-  creationRunning: "executando...",
+  creationPlaceholder: "declarar próxima tarefa…",
+  creationRunning: "a executar…",
   workbench: "bancada",
   workQueue: "fila de trabalho",
-  recentArtifacts: "artefactos recentes",
-  nextStep: "próximo passo",
-  noActiveTask: "Nenhuma tarefa activa. Declara a próxima.",
+  recentArtifacts: "arquivo da missão",
+  nextStep: "próximo",
+  noActiveTask: "Sem tarefa activa. Declara a próxima.",
   resumeHint: "Retomar aqui",
-  actionNextTask: "→ próxima tarefa",
+  actionNextTask: "→ próxima",
   actionRefine: "↻ refinar",
   actionBlock: "✕ bloquear",
   actionUnblock: "↺ reabrir",
@@ -131,7 +141,17 @@ const PT: Copy = {
   taskSourceLab: "lab",
   taskSourceCrew: "crew",
   taskSourceOther: "outra",
-  artifactEmpty: "ainda sem artefactos aceites nesta missão",
+  artifactEmpty: "arquivo vazio · nenhuma consequência selada",
+  acceptArtifact: "✓ selar artefacto",
+  acceptHint: "→ fecha tarefa · entra no arquivo",
+  artifactSealed: "✓ selado · arquivado na missão",
+  artifactChip: "◆ selado",
+  artifactTooltip: "selado",
+  runInterrupted: "⚠ interrompido cedo",
+  artifactInterrupted: "⚠ interrompido cedo",
+  errorLabel: "ERRO",
+  kanbanPending: "pendente",
+  kanbanDone: "concluída",
   refinePrefix: "refinar: ",
   memoryEmpty: "— log vazio —",
   memoryCount: (n) => `${n} evento${n === 1 ? "" : "s"}`,
@@ -186,15 +206,15 @@ const EN: Copy = {
   labAwait: "Awaiting response...",
   labAnalyzing: "ANALYZING",
   creationEmptyPrompt: "$ _",
-  creationPlaceholder: "new task...",
-  creationRunning: "running...",
+  creationPlaceholder: "declare next task…",
+  creationRunning: "running…",
   workbench: "workbench",
   workQueue: "work queue",
-  recentArtifacts: "recent artifacts",
-  nextStep: "next step",
-  noActiveTask: "No active task. Declare the next one.",
+  recentArtifacts: "mission archive",
+  nextStep: "next",
+  noActiveTask: "No active task. Declare the next.",
   resumeHint: "Resume here",
-  actionNextTask: "→ next task",
+  actionNextTask: "→ next",
   actionRefine: "↻ refine",
   actionBlock: "✕ block",
   actionUnblock: "↺ reopen",
@@ -207,7 +227,17 @@ const EN: Copy = {
   taskSourceLab: "lab",
   taskSourceCrew: "crew",
   taskSourceOther: "other",
-  artifactEmpty: "no accepted artifacts on this mission yet",
+  artifactEmpty: "archive empty · no consequences sealed",
+  acceptArtifact: "✓ seal artifact",
+  acceptHint: "→ closes task · enters the archive",
+  artifactSealed: "✓ sealed · logged on mission",
+  artifactChip: "◆ sealed",
+  artifactTooltip: "sealed",
+  runInterrupted: "⚠ cut short",
+  artifactInterrupted: "⚠ cut short",
+  errorLabel: "ERROR",
+  kanbanPending: "pending",
+  kanbanDone: "done",
   refinePrefix: "refine: ",
   memoryEmpty: "— empty log —",
   memoryCount: (n) => `${n} event${n === 1 ? "" : "s"}`,
