@@ -344,6 +344,7 @@ export default function Creation() {
   const openTasks = tasks.filter((t) => t.state === "open");
   const runningTasks = tasks.filter((t) => t.state === "running");
   const blockedTasks = tasks.filter((t) => t.state === "blocked");
+  const staleRunningTasks = runningTasks.filter(isStaleRunning);
   // Titles that appear more than once in this mission's task list.
   // Used to reveal a short #id suffix only where ambiguity exists, so the
   // common case (unique titles) stays visually clean.
@@ -600,7 +601,12 @@ export default function Creation() {
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
               }}>▲ {copy.kanbanPending} · {pendingTasks.length}</div>
               {pendingTasks.map((t) => (
-                <KanbanCard key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
+                <KanbanCard
+                  key={t.id} task={t} copy={copy} lang={values.lang}
+                  active={t.id === activeTaskId}
+                  duplicate={duplicateTitles.has(t.title)}
+                  onSelect={() => setActiveTaskId(t.id)}
+                />
               ))}
               {blockedTasks.length > 0 && (
                 <>
@@ -611,9 +617,9 @@ export default function Creation() {
                   }}>✕ {copy.blockedSection} · {blockedTasks.length}</div>
                   {blockedTasks.map((t) => (
                     <KanbanCard
-                      key={t.id} task={t} copy={copy}
+                      key={t.id} task={t} copy={copy} lang={values.lang}
                       active={t.id === activeTaskId}
-                      onToggle={() => completeTask(t.id)}
+                      onSelect={() => setActiveTaskId(t.id)}
                     />
                   ))}
                 </>
@@ -625,7 +631,12 @@ export default function Creation() {
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
               }}>✓ {copy.kanbanDone} · {doneTasks.length}</div>
               {doneTasks.map((t) => (
-                <KanbanCard key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
+                <KanbanCard
+                  key={t.id} task={t} copy={copy} lang={values.lang}
+                  active={t.id === activeTaskId}
+                  duplicate={duplicateTitles.has(t.title)}
+                  onSelect={() => setActiveTaskId(t.id)}
+                />
               ))}
             </div>
           </div>
@@ -634,7 +645,12 @@ export default function Creation() {
         {tasks.length > 0 && layout === "terminal" && (
           <div style={{ maxWidth: 820, marginBottom: 20 }}>
             {pendingTasks.map((t) => (
-              <TaskRow key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
+              <TaskRow
+                key={t.id} task={t} copy={copy}
+                active={t.id === activeTaskId}
+                duplicate={duplicateTitles.has(t.title)}
+                onSelect={() => setActiveTaskId(t.id)}
+              />
             ))}
             {doneTasks.length > 0 && pendingTasks.length > 0 && (
               <div
@@ -646,7 +662,12 @@ export default function Creation() {
               />
             )}
             {doneTasks.map((t) => (
-              <TaskRow key={t.id} task={t} copy={copy} duplicate={duplicateTitles.has(t.title)} onToggle={() => completeTask(t.id)} />
+              <TaskRow
+                key={t.id} task={t} copy={copy}
+                active={t.id === activeTaskId}
+                duplicate={duplicateTitles.has(t.title)}
+                onSelect={() => setActiveTaskId(t.id)}
+              />
             ))}
             {blockedTasks.length > 0 && (
               <>
@@ -659,7 +680,7 @@ export default function Creation() {
                   <TaskRow
                     key={t.id} task={t} copy={copy}
                     active={t.id === activeTaskId}
-                    onToggle={() => completeTask(t.id)}
+                    onSelect={() => setActiveTaskId(t.id)}
                   />
                 ))}
               </>
@@ -675,7 +696,7 @@ export default function Creation() {
                   <TaskRow
                     key={t.id} task={t} copy={copy}
                     active={t.id === activeTaskId}
-                    onToggle={() => completeTask(t.id)}
+                    onSelect={() => setActiveTaskId(t.id)}
                   />
                 ))}
               </>
@@ -1188,8 +1209,18 @@ function StateChip({ state, copy }: { state: TaskState; copy: Copy }) {
 }
 
 function KanbanCard({
-  task, onToggle, copy, duplicate = false,
-}: { task: Task; onToggle: () => void; copy: Copy; duplicate?: boolean }) {
+  task, onSelect, copy, lang, active = false, duplicate = false,
+}: {
+  task: Task;
+  onSelect: () => void;
+  copy: Copy;
+  lang: "pt" | "en";
+  active?: boolean;
+  duplicate?: boolean;
+}) {
+  const isDone = task.state === "done";
+  const isBlocked = task.state === "blocked";
+  const stale = isStaleRunning(task);
   return (
     <div
       onClick={onSelect}
@@ -1277,8 +1308,16 @@ function KanbanCard({
 }
 
 function TaskRow({
-  task, onToggle, copy, duplicate = false,
-}: { task: Task; onToggle: () => void; copy: Copy; duplicate?: boolean }) {
+  task, onSelect, copy, active = false, duplicate = false,
+}: {
+  task: Task;
+  onSelect: () => void;
+  copy: Copy;
+  active?: boolean;
+  duplicate?: boolean;
+}) {
+  const isDone = task.state === "done";
+  const isBlocked = task.state === "blocked";
   return (
     <div
       onClick={onSelect}
@@ -1380,6 +1419,23 @@ function WorkbenchCard({
 }: WorkbenchCardProps) {
   const isLive = pending || (task !== null && task.state === "running");
   const isActive = task !== null && task.state !== "done";
+  const stale = task ? isStaleRunning(task) : false;
+  const bottleneckBits: string[] = [];
+  if (blockedCount > 0) {
+    bottleneckBits.push(
+      lang === "en"
+        ? `${blockedCount} blocked`
+        : `${blockedCount} bloqueada${blockedCount === 1 ? "" : "s"}`,
+    );
+  }
+  if (staleCount > 0) {
+    bottleneckBits.push(
+      lang === "en"
+        ? `${staleCount} stale`
+        : `${staleCount} parada${staleCount === 1 ? "" : "s"}`,
+    );
+  }
+  const bottleneck = bottleneckBits.length > 0 ? bottleneckBits.join(" · ") : null;
   return (
     <div
       className="fadeIn"
@@ -1597,6 +1653,12 @@ function ArtifactLedger({
   onSelectArtifact: (a: Artifact) => void;
 }) {
   const [hoverId, setHoverId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const total = artifacts.length;
+  const COLLAPSED_LIMIT = 5;
+  const hasMore = total > COLLAPSED_LIMIT;
+  const visible = expanded ? artifacts : artifacts.slice(0, COLLAPSED_LIMIT);
+  const termEarly = artifacts.filter((a) => a.terminatedEarly).length;
 
   const fmtRel = (then: number) => {
     const diff = Date.now() - then;
@@ -1679,7 +1741,7 @@ function ArtifactLedger({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {artifacts.map((a, i) => {
+          {visible.map((a, i) => {
             const preview = a.answer
               ? (a.answer.length > 120 ? a.answer.slice(0, 120) + "…" : a.answer)
               : "—";
@@ -1720,12 +1782,6 @@ function ArtifactLedger({
                   cursor: clickable ? "pointer" : "default",
                   transition: "background .18s var(--ease-swift), border-color .18s",
                 }}
-                onMouseEnter={clickable ? (e) => {
-                  e.currentTarget.style.background = "color-mix(in oklab, var(--bg-elevated) 80%, transparent)";
-                } : undefined}
-                onMouseLeave={clickable ? (e) => {
-                  e.currentTarget.style.background = "transparent";
-                } : undefined}
               >
                 <div style={{
                   display: "flex", alignItems: "center", gap: 10,

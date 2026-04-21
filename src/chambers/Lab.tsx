@@ -70,7 +70,7 @@ const EMPTY_LIVE: LiveState = {
 };
 
 export default function Lab() {
-  const { activeMission, addNote, addNoteToMission, addTask, principles } = useSpine();
+  const { activeMission, addNote, addNoteToMission, addTask, principles, logDoctrineApplied } = useSpine();
   const { streamRoute, pending, error } = useRuberra();
   const copy = useCopy();
   const [input, setInput] = useState("");

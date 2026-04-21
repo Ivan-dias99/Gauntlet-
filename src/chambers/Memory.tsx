@@ -3,6 +3,7 @@ import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import ErrorPanel from "../shell/ErrorPanel";
+import type { Artifact, Chamber } from "../spine/types";
 
 interface RunRecord {
   id: string;
@@ -46,6 +47,33 @@ const ROUTE_COLOR: Record<string, string> = {
   triad: "var(--accent)",
   crew: "var(--terminal-ok)",
 };
+
+// Memory is a timeline of what happened; telling the user *where* each thing
+// happened turns a flat run list into governance story.
+const ROUTE_ORIGIN: Record<string, Chamber> = {
+  agent: "Lab",
+  dev:   "Creation",
+  crew:  "Creation",
+  triad: "School",
+  ask:   "Lab",
+};
+
+function originFor(route: string): Chamber | null {
+  return ROUTE_ORIGIN[route] ?? null;
+}
+
+// Heuristic link between a run and an accepted artifact: same mission, and
+// the artifact was accepted within a short window after the run finished.
+const ARTIFACT_MATCH_WINDOW_MS = 5 * 60 * 1000;
+
+function linkArtifact(run: RunRecord, artifact: Artifact | null | undefined): Artifact | null {
+  if (!artifact) return null;
+  const runMs = Date.parse(run.timestamp);
+  if (!Number.isFinite(runMs)) return null;
+  const delta = artifact.acceptedAt - runMs;
+  if (delta < 0 || delta > ARTIFACT_MATCH_WINDOW_MS) return null;
+  return artifact;
+}
 
 function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear()

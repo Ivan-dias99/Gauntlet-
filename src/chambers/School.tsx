@@ -21,6 +21,19 @@ function toRoman(n: number): string {
 
 const PRINCIPLE_MAX_LEN = 300;
 
+function relativeTime(ts: number, nowMs: number): string {
+  const diff = Math.max(0, nowMs - ts);
+  const s = Math.floor(diff / 1000);
+  if (s < 45) return "agora";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `há ${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `há ${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `há ${d}d`;
+  return new Date(ts).toLocaleDateString([], { year: "numeric", month: "2-digit", day: "2-digit" });
+}
+
 function normalizeForDedup(s: string): string {
   return s.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
 }
@@ -31,6 +44,7 @@ export default function School() {
   const copy = useCopy();
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
+  const [rejection, setRejection] = useState<null | "duplicate" | "empty" | "tooLong">(null);
   const layout = values.schoolLayout;
   const isGoverning = principles.length > 0;
   const lastApplied = activeMission?.events.find((e) => e.type === "doctrine_applied") ?? null;
@@ -303,36 +317,8 @@ export default function School() {
         >
           {copy.schoolInputVoice}
         </div>
-      <div
-        className="glass"
-        style={{
-          borderRadius: 14,
-          padding: "12px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <span style={{ color: "var(--accent-dim)", fontSize: 14 }}>›</span>
-        <input
-          autoFocus
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setInputFocused(false)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder={copy.schoolPlaceholder}
-          style={{
-            flex: 1,
-            fontSize: 14,
-            color: "var(--text-primary)",
-            fontFamily: "var(--sans)",
-            padding: "6px 0",
-          }}
-        />
-        {input.trim() && (
-          <button
-            onClick={submit}
+        {rejection !== null && (
+          <div
             className="fadeIn"
             data-testid="school-rejection"
             style={{
@@ -424,7 +410,6 @@ export default function School() {
             </button>
           )}
         </div>
-      </div>
       </div>
     </div>
   );
