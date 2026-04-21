@@ -79,14 +79,14 @@ export default function School() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent)", flexShrink: 0 }} />
               <span style={{ fontSize: 10, color: "var(--accent)", letterSpacing: 2, textTransform: "uppercase", fontFamily: "var(--mono)" }}>
-                {principles.length} {principles.length === 1 ? "princípio" : "princípios"} activo{principles.length !== 1 ? "s" : ""}
+                {principles.length} {principles.length === 1 ? "princípio" : "princípios"} ativo{principles.length !== 1 ? "s" : ""}
               </span>
             </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.55 }}>
               Injectados no sistema em cada query de Lab e Creation.
               {activeMission
-                ? <> Missão activa: <span style={{ color: "var(--text-secondary)" }}>{activeMission.title}</span>.</>
-                : " Nenhuma missão activa — princípios prontos para quando houver."}
+                ? <> Missão ativa: <span style={{ color: "var(--text-secondary)" }}>{activeMission.title}</span>.</>
+                : " Nenhuma missão ativa — princípios prontos para quando houver."}
             </div>
             <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1 }}>
               → Lab · Creation · auto-router

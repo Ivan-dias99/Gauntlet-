@@ -18,6 +18,9 @@ export interface Copy {
   switchMission: string;
   missions: string;
   labEmpty: string;
+  labNoInput: string;
+  labNoMission: string;
+  labNeedMission: string;
   labPlaceholder: string;
   labAwait: string;
   labAnalyzing: string;
@@ -106,6 +109,9 @@ const PT: Copy = {
   switchMission: "Trocar missão",
   missions: "Missões",
   labEmpty: "Sem evidências. Comece a investigar.",
+  labNoInput: "— Sem entrada",
+  labNoMission: "— Sem missão ativa",
+  labNeedMission: "Cria ou ativa uma missão para investigar.",
   labPlaceholder: "Evidência, análise, hipótese...",
   labAwait: "Aguardando resposta...",
   labAnalyzing: "ANALISANDO",
@@ -116,7 +122,7 @@ const PT: Copy = {
   workQueue: "fila de trabalho",
   recentArtifacts: "artefactos recentes",
   nextStep: "próximo passo",
-  noActiveTask: "Nenhuma tarefa activa. Declara a próxima.",
+  noActiveTask: "Nenhuma tarefa ativa. Declara a próxima.",
   resumeHint: "Retomar aqui",
   actionNextTask: "→ próxima tarefa",
   actionRefine: "↻ refinar",
@@ -182,6 +188,9 @@ const EN: Copy = {
   switchMission: "Switch mission",
   missions: "Missions",
   labEmpty: "No evidence. Begin investigating.",
+  labNoInput: "— No input",
+  labNoMission: "— No active mission",
+  labNeedMission: "Create or activate a mission to investigate.",
   labPlaceholder: "Evidence, analysis, hypothesis...",
   labAwait: "Awaiting response...",
   labAnalyzing: "ANALYZING",

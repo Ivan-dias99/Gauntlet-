@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRuberra, RouteEvent } from "../hooks/useRuberra";
+import { useCopy } from "../i18n/copy";
 import { Note } from "../spine/types";
 
 interface TriadResult {
@@ -68,6 +69,7 @@ const EMPTY_LIVE: LiveState = {
 export default function Lab() {
   const { activeMission, addNote, addNoteToMission, principles } = useSpine();
   const { streamRoute, pending, error } = useRuberra();
+  const copy = useCopy();
   const [input, setInput] = useState("");
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
@@ -207,12 +209,12 @@ export default function Lab() {
         {notes.length === 0 && !pending && !error && (
           <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 520, marginTop: "12vh" }}>
             <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".4em", color: activeMission ? "var(--text-ghost)" : "var(--cc-warn)", textTransform: "uppercase", marginBottom: 18 }}>
-              {activeMission ? "— Sem entrada" : "— Sem missão activa"}
+              {activeMission ? copy.labNoInput : copy.labNoMission}
             </div>
             <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontStyle: "italic", fontSize: 24, lineHeight: 1.35, color: "var(--text-muted)", letterSpacing: "-0.005em" }}>
               {activeMission
-                ? "Sem evidências. Comece a investigar."
-                : "Cria ou activa uma missão para investigar."}
+                ? copy.labEmpty
+                : copy.labNeedMission}
             </div>
           </div>
         )}
