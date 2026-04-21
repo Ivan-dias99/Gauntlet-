@@ -7,6 +7,29 @@ import { Artifact, Task, TaskState } from "../spine/types";
 
 type RunMode = "agent" | "crew";
 
+// A running task that hasn't received an event in this long is treated as
+// stale: the stream almost certainly died (reload, crash, network) even if
+// the persisted state still says "running". The bancada flags it so the user
+// sees the jam instead of staring at a silent ● forever.
+const STALE_RUNNING_MS = 120_000;
+
+// Short, operational relative-time string. The goal is "is this fresh or
+// rotting?" at a glance — not a precise timestamp.
+function relTime(ms: number, lang: "pt" | "en"): string {
+  const diff = Math.max(0, Date.now() - ms);
+  if (diff < 45_000) return lang === "en" ? "just now" : "agora";
+  const min = Math.round(diff / 60_000);
+  if (min < 60) return lang === "en" ? `${min}m ago` : `há ${min}m`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return lang === "en" ? `${hr}h ago` : `há ${hr}h`;
+  const d = Math.round(hr / 24);
+  return lang === "en" ? `${d}d ago` : `há ${d}d`;
+}
+
+function isStaleRunning(task: Task): boolean {
+  return task.state === "running" && (Date.now() - task.lastUpdateAt) > STALE_RUNNING_MS;
+}
+
 interface LiveTool {
   id: string;
   name: string;
@@ -46,7 +69,7 @@ const EMPTY_CREW: CrewState = {
 
 export default function Creation() {
   const {
-    activeMission, addTask, completeTask, setTaskState, addNoteToMission,
+    activeMission, addTask, setTaskState, addNoteToMission,
     acceptArtifact, principles,
   } = useSpine();
   const { streamDev, streamCrew, pending } = useRuberra();
@@ -309,7 +332,19 @@ export default function Creation() {
   const pendingTasks = tasks.filter((t) => t.state !== "done");
   const openTasks = tasks.filter((t) => t.state === "open");
   const blockedTasks = tasks.filter((t) => t.state === "blocked");
+  const staleRunningTasks = tasks.filter(isStaleRunning);
   const exitCode = done ? 0 : err ? 1 : null;
+
+  function selectTaskFromQueue(id: string) {
+    if (id === activeTaskId) return;
+    setActiveTaskId(id);
+    setResumedFromSpine(true);
+    setDone(null);
+    setErr(null);
+    setLiveTools([]);
+    setLiveText("");
+    setAccepted(false);
+  }
 
   const activeTask = useMemo<Task | null>(() => {
     if (!activeMission || !activeTaskId) return null;
@@ -476,15 +511,7 @@ export default function Creation() {
             runningCount={pendingTasks.filter(t => t.state === "running").length}
             doneCount={doneTasks.length}
             blockedCount={blockedTasks.length}
-            onSelectTask={(id) => {
-              setActiveTaskId(id);
-              setResumedFromSpine(true);
-              setDone(null);
-              setErr(null);
-              setLiveTools([]);
-              setLiveText("");
-              setAccepted(false);
-            }}
+            staleCount={staleRunningTasks.length}
             onReopen={handleReopen}
           />
         )}
@@ -529,7 +556,14 @@ export default function Creation() {
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
               }}>▲ {values.lang === "en" ? "pending" : "pendente"} · {pendingTasks.length}</div>
               {pendingTasks.map((t) => (
-                <KanbanCard key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
+                <KanbanCard
+                  key={t.id}
+                  task={t}
+                  copy={copy}
+                  lang={values.lang}
+                  active={t.id === activeTaskId}
+                  onSelect={() => selectTaskFromQueue(t.id)}
+                />
               ))}
             </div>
             <div>
@@ -538,7 +572,14 @@ export default function Creation() {
                 fontFamily: "var(--mono)", marginBottom: 12, textTransform: "uppercase",
               }}>✓ {values.lang === "en" ? "done" : "concluída"} · {doneTasks.length}</div>
               {doneTasks.map((t) => (
-                <KanbanCard key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
+                <KanbanCard
+                  key={t.id}
+                  task={t}
+                  copy={copy}
+                  lang={values.lang}
+                  active={t.id === activeTaskId}
+                  onSelect={() => selectTaskFromQueue(t.id)}
+                />
               ))}
             </div>
           </div>
@@ -547,7 +588,14 @@ export default function Creation() {
         {tasks.length > 0 && layout === "terminal" && (
           <div style={{ maxWidth: 740, marginBottom: 24 }}>
             {pendingTasks.map((t) => (
-              <TaskRow key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
+              <TaskRow
+                key={t.id}
+                task={t}
+                copy={copy}
+                lang={values.lang}
+                active={t.id === activeTaskId}
+                onSelect={() => selectTaskFromQueue(t.id)}
+              />
             ))}
             {doneTasks.length > 0 && pendingTasks.length > 0 && (
               <div
@@ -559,7 +607,14 @@ export default function Creation() {
               />
             )}
             {doneTasks.map((t) => (
-              <TaskRow key={t.id} task={t} copy={copy} onToggle={() => completeTask(t.id)} />
+              <TaskRow
+                key={t.id}
+                task={t}
+                copy={copy}
+                lang={values.lang}
+                active={t.id === activeTaskId}
+                onSelect={() => selectTaskFromQueue(t.id)}
+              />
             ))}
           </div>
         )}
@@ -716,6 +771,7 @@ export default function Creation() {
           <ArtifactLedger
             artifacts={recentArtifacts}
             copy={copy}
+            lang={values.lang}
             onSelectArtifact={(a) => {
               if (!a.taskId) return;
               setActiveTaskId(a.taskId);
@@ -1027,27 +1083,35 @@ function StateChip({ state, copy }: { state: TaskState; copy: Copy }) {
   );
 }
 
-function KanbanCard({ task, onToggle, copy }: { task: Task; onToggle: () => void; copy: Copy }) {
+function KanbanCard({
+  task, onSelect, copy, lang, active,
+}: {
+  task: Task; onSelect: () => void; copy: Copy; lang: "pt" | "en"; active: boolean;
+}) {
+  const stale = isStaleRunning(task);
+  const borderBase = active ? "var(--accent)" : "var(--border-subtle)";
   return (
     <div
-      onClick={onToggle}
+      onClick={onSelect}
       className="fadeUp"
+      aria-current={active ? "true" : undefined}
       style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border-subtle)",
+        background: active ? "var(--accent-glow)" : "var(--bg-elevated)",
+        border: `1px solid ${borderBase}`,
+        borderLeft: stale ? "2px solid var(--cc-warn)" : `1px solid ${borderBase}`,
         borderRadius: 12,
         padding: 14,
         marginBottom: 10,
         cursor: "pointer",
-        transition: "transform .25s var(--ease-emph), border-color .2s",
+        transition: "transform .25s var(--ease-emph), border-color .2s, background .2s",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-2px)";
-        e.currentTarget.style.borderColor = "var(--accent-dim)";
+        if (!active) e.currentTarget.style.borderColor = "var(--accent-dim)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "";
-        e.currentTarget.style.borderColor = "var(--border-subtle)";
+        if (!active) e.currentTarget.style.borderColor = "var(--border-subtle)";
       }}
     >
       <div
@@ -1075,13 +1139,18 @@ function KanbanCard({ task, onToggle, copy }: { task: Task; onToggle: () => void
           gap: 8,
         }}
       >
-        <span>{new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+        <span title={new Date(task.lastUpdateAt).toLocaleString()} style={{ color: stale ? "var(--cc-warn)" : undefined }}>
+          {relTime(task.lastUpdateAt, lang)}
+        </span>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {task.source !== "manual" && (
             <span style={{ color: "var(--accent-dim)" }}>· {sourceLabel(task.source, copy)}</span>
           )}
           {task.artifactId && (
             <span title="artefacto aceite" style={{ color: "var(--cc-ok)" }}>◆</span>
+          )}
+          {stale && (
+            <span title={lang === "en" ? "stalled run" : "execução parada"} style={{ color: "var(--cc-warn)" }}>⚠</span>
           )}
           <StateChip state={task.state} copy={copy} />
         </span>
@@ -1090,26 +1159,34 @@ function KanbanCard({ task, onToggle, copy }: { task: Task; onToggle: () => void
   );
 }
 
-function TaskRow({ task, onToggle, copy }: { task: Task; onToggle: () => void; copy: Copy }) {
+function TaskRow({
+  task, onSelect, copy, lang, active,
+}: {
+  task: Task; onSelect: () => void; copy: Copy; lang: "pt" | "en"; active: boolean;
+}) {
+  const stale = isStaleRunning(task);
   return (
     <div
-      onClick={onToggle}
+      onClick={onSelect}
       className="fadeUp"
+      aria-current={active ? "true" : undefined}
       style={{
         display: "flex",
         alignItems: "flex-start",
         gap: 14,
-        padding: "11px 0",
+        padding: "11px 0 11px 10px",
         borderBottom: "1px solid var(--border-subtle)",
+        borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent",
+        background: active ? "color-mix(in oklab, var(--accent) 6%, transparent)" : "transparent",
         cursor: "pointer",
         fontFamily: "var(--mono)",
-        transition: "padding-left .28s var(--ease-emph)",
+        transition: "padding-left .28s var(--ease-emph), background .2s",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.paddingLeft = "8px";
+        e.currentTarget.style.paddingLeft = "18px";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.paddingLeft = "0";
+        e.currentTarget.style.paddingLeft = "10px";
       }}
     >
       <span
@@ -1133,6 +1210,19 @@ function TaskRow({ task, onToggle, copy }: { task: Task; onToggle: () => void; c
       >
         {task.title}
       </span>
+      <span
+        title={new Date(task.lastUpdateAt).toLocaleString()}
+        style={{
+          fontSize: 9,
+          letterSpacing: 1.5,
+          color: stale ? "var(--cc-warn)" : "var(--text-ghost)",
+          textTransform: "uppercase",
+          marginTop: 3,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {stale ? "⚠ " : ""}{relTime(task.lastUpdateAt, lang)}
+      </span>
       {task.artifactId && (
         <span title="artefacto aceite" style={{ color: "var(--cc-ok)", fontSize: 11, marginTop: 2 }}>◆</span>
       )}
@@ -1151,7 +1241,7 @@ interface WorkbenchCardProps {
   task: Task | null;
   resumed: boolean;
   copy: Copy;
-  lang: string;
+  lang: "pt" | "en";
   pending: boolean;
   iteration: number;
   elapsed: number;
@@ -1159,14 +1249,31 @@ interface WorkbenchCardProps {
   runningCount: number;
   doneCount: number;
   blockedCount: number;
-  onSelectTask: (id: string) => void;
+  staleCount: number;
   onReopen: () => void;
 }
 
 function WorkbenchCard({
-  missionTitle, task, resumed, copy, pending, iteration, elapsed,
-  openCount, runningCount, doneCount, blockedCount, onReopen,
+  missionTitle, task, resumed, copy, lang, pending, iteration, elapsed,
+  openCount, runningCount, doneCount, blockedCount, staleCount, onReopen,
 }: WorkbenchCardProps) {
+  const stale = task ? isStaleRunning(task) : false;
+  const bottleneckBits: string[] = [];
+  if (blockedCount > 0) {
+    bottleneckBits.push(
+      lang === "en"
+        ? `${blockedCount} blocked`
+        : `${blockedCount} bloqueada${blockedCount === 1 ? "" : "s"}`,
+    );
+  }
+  if (staleCount > 0) {
+    bottleneckBits.push(
+      lang === "en"
+        ? `${staleCount} stale`
+        : `${staleCount} parada${staleCount === 1 ? "" : "s"}`,
+    );
+  }
+  const bottleneck = bottleneckBits.length > 0 ? bottleneckBits.join(" · ") : null;
   return (
     <div
       className="fadeIn"
@@ -1213,9 +1320,17 @@ function WorkbenchCard({
             <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase" }}>
               {sourceLabel(task.source, copy)}
             </span>
-            <span style={{ fontSize: 10, color: "var(--text-ghost)" }}>
-              · {new Date(task.lastUpdateAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            <span
+              title={new Date(task.lastUpdateAt).toLocaleString()}
+              style={{ fontSize: 10, color: stale ? "var(--cc-warn)" : "var(--text-ghost)" }}
+            >
+              · {relTime(task.lastUpdateAt, lang)}
             </span>
+            {stale && (
+              <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--cc-warn)", textTransform: "uppercase" }}>
+                ⚠ {lang === "en" ? "stalled" : "parada"}
+              </span>
+            )}
             {task.artifactId && (
               <span style={{ fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
                 ◆ artefacto
@@ -1249,6 +1364,7 @@ function WorkbenchCard({
         marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--border-subtle)",
         display: "flex", gap: 14, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
         color: "var(--text-ghost)",
+        alignItems: "center", flexWrap: "wrap",
       }}>
         <span>{copy.taskStateOpen}: {openCount}</span>
         <span style={{ color: runningCount > 0 ? "var(--cc-info)" : undefined }}>
@@ -1260,6 +1376,15 @@ function WorkbenchCard({
         <span style={{ color: blockedCount > 0 ? "var(--cc-err)" : undefined }}>
           {copy.taskStateBlocked}: {blockedCount}
         </span>
+        {bottleneck && (
+          <span style={{
+            marginLeft: "auto", color: "var(--cc-warn)", letterSpacing: 1.5,
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <span>⚠</span>
+            <span>{lang === "en" ? "bottleneck" : "gargalo"}: {bottleneck}</span>
+          </span>
+        )}
       </div>
     </div>
   );
@@ -1341,10 +1466,11 @@ function NextStepBar({
 }
 
 function ArtifactLedger({
-  artifacts, copy, onSelectArtifact,
+  artifacts, copy, lang, onSelectArtifact,
 }: {
   artifacts: Artifact[];
   copy: Copy;
+  lang: "pt" | "en";
   onSelectArtifact: (a: Artifact) => void;
 }) {
   return (
@@ -1395,8 +1521,11 @@ function ArtifactLedger({
                   color: "var(--cc-ok)", marginBottom: 6,
                 }}>
                   <span>◆</span>
-                  <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
-                    {new Date(a.acceptedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  <span
+                    title={new Date(a.acceptedAt).toLocaleString()}
+                    style={{ color: "var(--text-ghost)", letterSpacing: 1 }}
+                  >
+                    {relTime(a.acceptedAt, lang)}
                   </span>
                   {a.terminatedEarly && (
                     <span style={{ color: "var(--cc-warn)" }}>· terminação antecipada</span>
