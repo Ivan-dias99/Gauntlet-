@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useCopy } from "../i18n/copy";
 import { useTweaks } from "../tweaks/TweaksContext";
+import { formatPulse } from "../spine/pulse";
 
 interface Props {
   onEnter: () => void;
@@ -531,7 +532,11 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                       <span className="vmK">{String(i + 1).padStart(2, "0")}</span>
                       <span className="vmT">{m.title}</span>
                       <span className="vmM">
-                        {copy.chambers[m.chamber].label} · {m.tasks.length}t · {m.notes.length}n
+                        {(() => {
+                          const pulse = formatPulse(m);
+                          const label = copy.chambers[m.chamber].label;
+                          return pulse ? `${label} · ${pulse}` : label;
+                        })()}
                       </span>
                     </button>
                   ))}
