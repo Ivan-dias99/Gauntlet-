@@ -290,28 +290,47 @@ export default function Memory() {
         )}
 
         {stats.total > 0 && (
-          <div style={{
-            marginTop: 12,
-            display: "grid",
-            gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-            gap: 16,
-            fontFamily: "var(--mono)",
-            maxWidth: 820,
-          }}>
-            <StatCell label="runs" value={`${stats.total}`} />
-            <StatCell
-              label="refused"
-              value={`${(stats.refusalRate * 100).toFixed(0)}%`}
-              sub={`${stats.refused}/${stats.total}`}
-              warn={stats.refusalRate >= 0.5}
-            />
-            <StatCell label="avg latency" value={`${stats.avgLatencyMs} ms`} />
-            <StatCell
-              label="tokens"
-              value={formatTokens(stats.totalInput + stats.totalOutput)}
-              sub={`${formatTokens(stats.totalInput)} in · ${formatTokens(stats.totalOutput)} out`}
-            />
-            <StatCell label="tool calls" value={`${stats.toolCalls}`} />
+          <div style={{ maxWidth: 820, marginTop: 20 }}>
+            <div
+              className="t-kicker"
+              style={{ color: "var(--text-ghost)" }}
+            >
+              {copy.memoryTelemetryKicker}
+            </div>
+            <h3
+              className="t-serif"
+              style={{
+                margin: "4px 0 14px",
+                fontSize: 20,
+                color: "var(--text-secondary)",
+                fontStyle: "italic",
+                fontWeight: 400,
+              }}
+            >
+              {copy.memoryTelemetryTitle}
+            </h3>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                gap: "var(--sp-3)",
+              }}
+            >
+              <StatCell label="runs" value={`${stats.total}`} />
+              <StatCell
+                label="refused"
+                value={`${(stats.refusalRate * 100).toFixed(0)}%`}
+                sub={`${stats.refused}/${stats.total}`}
+                warn={stats.refusalRate >= 0.5}
+              />
+              <StatCell label="avg latency" value={`${stats.avgLatencyMs} ms`} />
+              <StatCell
+                label="tokens"
+                value={formatTokens(stats.totalInput + stats.totalOutput)}
+                sub={`${formatTokens(stats.totalInput)} in · ${formatTokens(stats.totalOutput)} out`}
+              />
+              <StatCell label="tool calls" value={`${stats.toolCalls}`} />
+            </div>
           </div>
         )}
       </div>
@@ -665,26 +684,26 @@ function StatCell({
   label, value, sub, warn,
 }: { label: string; value: string; sub?: string; warn?: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-      <span style={{
-        fontFamily: "var(--mono)",
-        fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase",
-        color: "var(--text-ghost)",
-      }}>
+    <div
+      className="surface-quiet"
+      style={{
+        padding: "var(--sp-3) var(--sp-4)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        minWidth: 0,
+      }}
+    >
+      <span className="t-kicker" style={{ color: "var(--text-ghost)" }}>
         {label}
       </span>
-      <span style={{
-        fontFamily: "var(--serif)",
-        fontSize: 26,
-        fontWeight: 400,
-        letterSpacing: "-0.02em",
-        color: warn ? "var(--terminal-warn)" : "var(--text-primary)",
-        lineHeight: 1.05,
-      }}>
+      <span className="t-stat" data-tone={warn ? "warn" : undefined}>
         {value}
       </span>
       {sub && (
-        <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-ghost)", letterSpacing: 0.5 }}>{sub}</span>
+        <span className="t-meta" style={{ color: "var(--text-ghost)" }}>
+          {sub}
+        </span>
       )}
     </div>
   );

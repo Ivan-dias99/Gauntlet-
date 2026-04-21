@@ -709,32 +709,21 @@ export default function Creation() {
         )}
 
         {(pending || liveTools.length > 0 || liveText || done) && (
-          <div
-            className="toolRise surface-flagship"
-            style={{
-              maxWidth: 820,
-              marginTop: "var(--sp-1)",
-              borderLeft: `2px solid ${pending ? "var(--cc-info)" : done ? "var(--cc-ok)" : "var(--border-subtle)"}`,
-              overflow: "hidden",
-              padding: 0,
-            }}
+          <section
+            className="toolRise xc-exec"
+            data-state={pending ? "running" : done ? "done" : "idle"}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "var(--sp-3) var(--sp-4)",
-                borderBottom: "1px solid var(--border-subtle)",
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ color: "var(--text-ghost)" }}>exec</span>
-                <span style={{ color: "var(--text-muted)", textTransform: "none", letterSpacing: 0 }}>
+            <header className="xc-exec-head">
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <span className="t-kicker">exec</span>
+                <span style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 11,
+                  color: "var(--text-muted)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}>
                   {(() => {
                     const label = activeTask?.title || lastTask;
                     if (!label) return "ruberra";
@@ -743,27 +732,13 @@ export default function Creation() {
                 </span>
               </div>
               {pending && (
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  color: "var(--ember)",
-                  padding: "2px 10px",
-                  borderRadius: 999,
-                  border: "1px solid color-mix(in oklab, var(--ember) 30%, transparent)",
-                  background: "color-mix(in oklab, var(--ember) 6%, transparent)",
-                }}>
-                  <span className="breathe" style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--ember)" }} />
+                <span className="xc-pill xc-pill-running">
+                  <span className="breathe" style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--cc-info)" }} />
                   running · iter {iteration} · {elapsed.toFixed(1)}s
                 </span>
               )}
               {!pending && done && (
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  color: "var(--cc-ok)",
-                  padding: "2px 10px",
-                  borderRadius: 999,
-                  border: "1px solid color-mix(in oklab, var(--cc-ok) 30%, transparent)",
-                  background: "color-mix(in oklab, var(--cc-ok) 6%, transparent)",
-                }}>
+                <span className="xc-pill xc-pill-ok">
                   {(() => {
                     const hasTelemetry =
                       done.iterations > 0 || done.tool_count > 0 || done.processing_time_ms > 0;
@@ -772,9 +747,9 @@ export default function Creation() {
                   })()}
                 </span>
               )}
-            </div>
+            </header>
 
-            <div style={{ padding: "var(--sp-4) var(--sp-5)", background: "var(--bg-sunken)" }}>
+            <div className="xc-exec-body">
               {liveTools.length > 0 && (
                 <div style={{ marginBottom: liveText || done ? 10 : 0 }}>
                   {liveTools.map((tc) => (
@@ -789,12 +764,8 @@ export default function Creation() {
               )}
               {(liveText || done) && (
                 <div
+                  className="xc-exec-answer"
                   style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 12.5,
-                    color: "var(--cc-fg)",
-                    lineHeight: 1.75,
-                    whiteSpace: "pre-wrap",
                     borderTop: liveTools.length ? "1px dashed var(--border-subtle)" : "none",
                     paddingTop: liveTools.length ? 12 : 0,
                   }}
@@ -810,14 +781,13 @@ export default function Creation() {
                 </div>
               )}
               {done && activeMission && (
-                <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed var(--border-subtle)", display: "flex", alignItems: "center", gap: 12 }}>
+                <div className="xc-exec-foot">
                   {!accepted ? (
                     <>
                       <button
                         onClick={accept}
-                        style={{ background: "none", border: "1px solid var(--cc-ok)", color: "var(--cc-ok)", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", padding: "6px 14px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer", transition: "all .2s var(--ease-swift)" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--cc-ok) 12%, transparent)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                        className="btn-chip"
+                        data-variant="ok"
                       >
                         {copy.acceptArtifact}
                       </button>
@@ -833,7 +803,7 @@ export default function Creation() {
                 </div>
               )}
             </div>
-          </div>
+          </section>
         )}
 
         {err && (

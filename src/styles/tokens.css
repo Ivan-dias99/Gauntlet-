@@ -682,6 +682,15 @@ textarea {
   color: var(--accent);
   border-color: var(--accent-dim);
 }
+.btn-chip[data-variant="ok"] {
+  color: var(--cc-ok);
+  border-color: var(--cc-ok);
+}
+.btn-chip[data-variant="ok"]:hover {
+  color: var(--cc-ok);
+  border-color: var(--cc-ok);
+  background: color-mix(in oklab, var(--cc-ok) 12%, transparent);
+}
 
 .tab {
   display: inline-flex;
@@ -744,6 +753,15 @@ textarea {
 }
 .xc-exec-body {
   padding: var(--sp-4) var(--sp-5);
+  background: var(--bg-sunken);
+}
+.xc-exec-foot {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-2);
+  border-top: 1px dashed var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
 }
 .xc-exec-answer {
   font-family: var(--mono);

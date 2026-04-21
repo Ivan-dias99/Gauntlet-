@@ -65,27 +65,14 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
         onClick={onHome}
         disabled={!onHome}
         title={onHome ? copy.homeTitle : undefined}
+        className="btn-ghost"
         style={{
-          display: "inline-flex",
-          alignItems: "baseline",
-          gap: 8,
-          background: "none",
-          border: "none",
-          padding: 0,
           fontFamily: "'Fraunces', Georgia, serif",
           fontSize: 20,
           fontWeight: 400,
           letterSpacing: "-0.02em",
-          color: "var(--text-primary)",
           marginRight: 48,
           cursor: onHome ? "pointer" : "default",
-          transition: "color 0.15s",
-        }}
-        onMouseEnter={(e) => {
-          if (onHome) e.currentTarget.style.color = "var(--accent)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = "var(--text-primary)";
         }}
       >
         Ruberra
@@ -97,7 +84,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
             borderRadius: "50%",
             background: "var(--ember)",
             display: "inline-block",
-            boxShadow: "0 0 8px color-mix(in oklab, var(--ember) 60%, transparent)",
+            boxShadow: "var(--glow-ember-sm)",
           }}
         />
       </button>
@@ -107,19 +94,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
           <button
             key={c}
             onClick={() => onSelect(c)}
-            style={{
-              background: active === c ? "var(--bg)" : "none",
-              border: active === c ? "1px solid var(--border-subtle)" : "1px solid transparent",
-              cursor: "pointer",
-              padding: "8px 14px",
-              color: active === c ? "var(--text-primary)" : "var(--text-muted)",
-              fontSize: 13,
-              fontFamily: "var(--sans)",
-              letterSpacing: 0.3,
-              borderRadius: 999,
-              transition: "background 0.18s, color 0.18s, border-color 0.18s",
-              fontWeight: active === c ? 500 : 400,
-            }}
+            className={active === c ? "tab tab-active" : "tab"}
           >
             {copy.chambers[c].label}
           </button>
@@ -127,37 +102,21 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
       </div>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
-        <span
-          aria-hidden
-          style={{
-            width: 1,
-            height: 20,
-            background: "var(--border-subtle)",
-            display: "inline-block",
-          }}
-        />
+        <span aria-hidden className="vbar" />
         {missions.length > 0 && (
           <div ref={dropdownRef} style={{ position: "relative" }}>
             <button
               onClick={() => setOpen((o) => !o)}
               data-mission-pulse-surface
+              data-open={open ? "true" : undefined}
+              className="btn"
               style={{
-                background: "none",
-                border: `1px solid ${open ? "var(--accent-dim)" : "var(--border)"}`,
-                color: open ? "var(--accent)" : "var(--text-secondary)",
                 fontSize: 12,
                 fontFamily: "var(--sans)",
-                padding: "6px 14px",
-                cursor: "pointer",
-                borderRadius: 999,
                 maxWidth: 280,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
-                transition: "color 0.15s, border-color 0.15s",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
               }}
               title={copy.switchMission}
             >
@@ -185,9 +144,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                         background: pulseLive
                           ? "var(--ember)"
                           : "var(--text-ghost)",
-                        boxShadow: pulseLive
-                          ? "0 0 8px color-mix(in oklab, var(--ember) 55%, transparent)"
-                          : "none",
+                        boxShadow: pulseLive ? "var(--glow-ember-sm)" : "none",
                         flexShrink: 0,
                       }}
                     />
@@ -306,90 +263,17 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
         )}
 
         {onTweaks && (
-          <button
-            onClick={onTweaks}
-            title={copy.retune}
-            style={{
-              background: "none",
-              border: "1px solid var(--border)",
-              color: "var(--text-muted)",
-              fontSize: 10,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              padding: "7px 12px",
-              cursor: "pointer",
-              fontFamily: "var(--mono)",
-              borderRadius: "var(--radius)",
-              transition: "border-color 0.15s, color 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "var(--accent-dim)";
-              e.currentTarget.style.color = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "var(--border)";
-              e.currentTarget.style.color = "var(--text-muted)";
-            }}
-          >
+          <button onClick={onTweaks} title={copy.retune} className="btn-chip">
             ⚙ tweaks
           </button>
         )}
 
-        <button
-          onClick={toggle}
-          title={copy.themeTitle(theme)}
-          style={{
-            background: "none",
-            border: "1px solid var(--border)",
-            color: "var(--text-muted)",
-            fontSize: 14,
-            width: 32,
-            height: 32,
-            cursor: "pointer",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            transition: "border-color 0.15s, color 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "var(--accent-dim)";
-            e.currentTarget.style.color = "var(--accent)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "var(--border)";
-            e.currentTarget.style.color = "var(--text-muted)";
-          }}
-        >
+        <button onClick={toggle} title={copy.themeTitle(theme)} className="btn-icon">
           {themeLabel}
         </button>
 
         {onNew && (
-          <button
-            onClick={onNew}
-            style={{
-              background: "none",
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-              fontSize: 10,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              padding: "7px 16px",
-              cursor: "pointer",
-              fontFamily: "var(--sans)",
-              borderRadius: "var(--radius)",
-              transition: "border-color 0.15s, color 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "var(--accent-dim)";
-              e.currentTarget.style.color = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "var(--border)";
-              e.currentTarget.style.color = "var(--text-secondary)";
-            }}
-          >
+          <button onClick={onNew} className="btn-chip" data-variant="sans">
             {copy.newMission}
           </button>
         )}
