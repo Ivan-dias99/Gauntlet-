@@ -71,7 +71,7 @@ function normalizeTaskSource(raw: unknown): TaskSource {
   return "manual";
 }
 
-function normalizeMission(m: unknown): Mission | null {
+export function normalizeMission(m: unknown): Mission | null {
   if (!m || typeof m !== "object") return null;
   const r = m as Record<string, unknown>;
   if (typeof r.id !== "string" || typeof r.title !== "string") return null;
@@ -143,6 +143,20 @@ function normalizeMission(m: unknown): Mission | null {
   };
 }
 
+export function normalizePrinciples(raw: unknown): Principle[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((p: unknown) => {
+    if (!p || typeof p !== "object") return [];
+    const pr = p as Record<string, unknown>;
+    if (typeof pr.id !== "string" || typeof pr.text !== "string") return [];
+    return [{
+      id: pr.id,
+      text: pr.text,
+      createdAt: typeof pr.createdAt === "number" ? pr.createdAt : Date.now(),
+    }];
+  });
+}
+
 export function loadState(): SpineState {
   try {
     const raw = localStorage.getItem(KEY);
@@ -153,14 +167,7 @@ export function loadState(): SpineState {
     const missions = Array.isArray(r.missions)
       ? (r.missions.map(normalizeMission).filter(Boolean) as Mission[])
       : [];
-    const principles = Array.isArray(r.principles)
-      ? r.principles.flatMap((p: unknown) => {
-          if (!p || typeof p !== "object") return [];
-          const pr = p as Record<string, unknown>;
-          if (typeof pr.id !== "string" || typeof pr.text !== "string") return [];
-          return [{ id: pr.id, text: pr.text, createdAt: typeof pr.createdAt === "number" ? pr.createdAt : Date.now() }];
-        })
-      : [];
+    const principles = normalizePrinciples(r.principles);
     const activeMissionId =
       typeof r.activeMissionId === "string" &&
       missions.some(m => m.id === r.activeMissionId)

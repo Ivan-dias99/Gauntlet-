@@ -172,6 +172,14 @@ class TaskRecord(BaseModel):
     done: bool = False
     createdAt: int
     doneAt: Optional[int] = None
+    # Richer operational state from the Creation work surface. Pydantic drops
+    # unknown fields by default, so any field the TS client writes must be
+    # declared here — otherwise it vanishes on the first push/fetch round-trip
+    # and the UI crashes reading `.length` / `.state` on undefined.
+    state: Optional[str] = None
+    source: Optional[str] = None
+    lastUpdateAt: Optional[int] = None
+    artifactId: Optional[str] = None
 
 
 class LogEventRecord(BaseModel):
@@ -187,6 +195,14 @@ class ArtifactRecord(BaseModel):
     answer: str = ""
     terminatedEarly: bool = False
     acceptedAt: int
+    # Run telemetry + backlink captured at accept time. Optional for back-compat
+    # with artifacts persisted before these fields existed. See TaskRecord note
+    # for why every TS field must be declared on the Pydantic side.
+    taskId: Optional[str] = None
+    iterations: Optional[int] = None
+    toolCount: Optional[int] = None
+    processingTimeMs: Optional[int] = None
+    terminationReason: Optional[str] = None
 
 
 class MissionRecord(BaseModel):
@@ -199,6 +215,10 @@ class MissionRecord(BaseModel):
     tasks: list[TaskRecord] = Field(default_factory=list)
     events: list[LogEventRecord] = Field(default_factory=list)
     lastArtifact: Optional[ArtifactRecord] = None
+    # Ledger of accepted artifacts, newest first. Without this declaration the
+    # TS client's `mission.artifacts` round-trips to `undefined` and pulse.ts
+    # crashes on `.length`.
+    artifacts: list[ArtifactRecord] = Field(default_factory=list)
 
 
 class PrincipleRecord(BaseModel):
