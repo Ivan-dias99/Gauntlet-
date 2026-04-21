@@ -6,6 +6,17 @@ import { useCopy } from "../i18n/copy";
 
 export const CHAMBERS: Chamber[] = ["Lab", "Creation", "Memory", "School"];
 
+function formatAgo(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} h`;
+  const d = Math.floor(h / 24);
+  return `${d} d`;
+}
+
 interface Props {
   active: Chamber;
   onSelect: (c: Chamber) => void;
@@ -119,6 +130,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
           <div ref={dropdownRef} style={{ position: "relative" }}>
             <button
               onClick={() => setOpen((o) => !o)}
+              data-mission-pulse-surface
               style={{
                 background: "none",
                 border: `1px solid ${open ? "var(--accent-dim)" : "var(--border)"}`,
@@ -128,15 +140,80 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                 padding: "6px 12px",
                 cursor: "pointer",
                 borderRadius: "var(--radius)",
-                maxWidth: 200,
+                maxWidth: 280,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
                 transition: "color 0.15s, border-color 0.15s",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
               }}
               title={copy.switchMission}
             >
-              {activeMission?.title ?? "—"} ▾
+              {activeMission ? (() => {
+                const openTasks = activeMission.tasks.filter(
+                  (t) => t.state !== "done"
+                ).length;
+                const totalTasks = activeMission.tasks.length;
+                const notesCount = activeMission.notes.length;
+                const lastArtifactAgoMs = activeMission.lastArtifact
+                  ? Date.now() - activeMission.lastArtifact.acceptedAt
+                  : null;
+                const pulseLive = openTasks > 0;
+                return (
+                  <>
+                    <span
+                      data-mission-pulse
+                      data-mission-pulse-state={pulseLive ? "live" : "dormant"}
+                      aria-hidden
+                      className={pulseLive ? "breathe" : undefined}
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: pulseLive
+                          ? "var(--accent)"
+                          : "var(--text-ghost)",
+                        boxShadow: pulseLive
+                          ? "0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent)"
+                          : "none",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: 140,
+                      }}
+                    >
+                      {activeMission.title}
+                    </span>
+                    <span
+                      data-mission-stats
+                      style={{
+                        fontFamily: "var(--mono)",
+                        fontSize: 9,
+                        letterSpacing: 0.8,
+                        color: "var(--text-ghost)",
+                        flexShrink: 0,
+                      }}
+                      title={
+                        lastArtifactAgoMs !== null
+                          ? `último artefacto há ${formatAgo(lastArtifactAgoMs)}`
+                          : "ainda sem artefactos"
+                      }
+                    >
+                      {openTasks}/{totalTasks}t · {notesCount}n
+                    </span>
+                    <span aria-hidden style={{ color: "var(--text-ghost)", flexShrink: 0 }}>▾</span>
+                  </>
+                );
+              })() : (
+                <>— ▾</>
+              )}
             </button>
 
             {open && (
