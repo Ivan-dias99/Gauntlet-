@@ -1,11 +1,11 @@
-import { apiUrl } from "../lib/ruberraApi";
+import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
 import { SpineState } from "./types";
 
-const ENDPOINT = apiUrl("/spine");
+const PATH = "/spine";
 
 export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | null> {
   try {
-    const res = await fetch(ENDPOINT, { signal });
+    const res = await ruberraFetch(PATH, { signal });
     if (!res.ok) return null;
     const raw = (await res.json()) as {
       missions?: unknown;
@@ -19,25 +19,31 @@ export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | nul
       principles: Array.isArray(raw.principles) ? (raw.principles as SpineState["principles"]) : [],
       updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0,
     };
-  } catch {
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") return null;
+    if (isBackendUnreachable(err)) return null;
     return null;
   }
 }
 
-export async function pushSpine(state: SpineState, signal?: AbortSignal): Promise<void> {
-  try {
-    await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        missions: state.missions,
-        activeMissionId: state.activeMissionId,
-        principles: state.principles,
-        updatedAt: state.updatedAt,
-      }),
-      signal,
-    });
-  } catch {
-    // offline — localStorage still holds the state
+// Returns true if the push was accepted by the backend.
+// Throws BackendUnreachableError when the backend cannot be reached, so the
+// caller (SpineContext) can surface a sync-state indicator instead of
+// swallowing silent data-loss risk. Non-unreachable HTTP failures also throw.
+export async function pushSpine(state: SpineState, signal?: AbortSignal): Promise<boolean> {
+  const res = await ruberraFetch(PATH, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      missions: state.missions,
+      activeMissionId: state.activeMissionId,
+      principles: state.principles,
+      updatedAt: state.updatedAt,
+    }),
+    signal,
+  });
+  if (!res.ok) {
+    throw new Error(`spine push ${res.status}`);
   }
+  return true;
 }

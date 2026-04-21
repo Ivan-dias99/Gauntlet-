@@ -46,8 +46,12 @@ ALLOWED_ORIGINS: list[str] = [
 ALLOWED_ORIGIN: str = ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "http://localhost:5173"
 
 # ── Memory ──────────────────────────────────────────────────────────────────
-# Failure memory persists to disk
-MEMORY_DIR: Path = Path(__file__).parent / "data"
+# Persistent state (failure memory, run log, spine snapshot) is written here.
+# In prod this MUST point at a mounted volume (e.g. Railway volume at /data).
+# Container filesystems are ephemeral — if this is left at the default, every
+# restart/deploy wipes the archive, which silently corrupts doctrine.
+_default_memory_dir = Path(__file__).parent / "data"
+MEMORY_DIR: Path = Path(os.environ.get("RUBERRA_DATA_DIR", str(_default_memory_dir)))
 FAILURE_MEMORY_FILE: Path = MEMORY_DIR / "failure_memory.json"
 
 # Maximum failure entries to retain (oldest pruned first)

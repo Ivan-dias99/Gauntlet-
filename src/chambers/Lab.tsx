@@ -3,7 +3,7 @@ import { useSpine } from "../spine/SpineContext";
 import { useRuberra, RouteEvent } from "../hooks/useRuberra";
 import { Note } from "../spine/types";
 import ErrorPanel from "../shell/ErrorPanel";
-import DormantPanel, { isBackendOffline } from "../shell/DormantPanel";
+import DormantPanel from "../shell/DormantPanel";
 import EmptyState from "../shell/EmptyState";
 import { useCopy } from "../i18n/copy";
 
@@ -72,7 +72,7 @@ const EMPTY_LIVE: LiveState = {
 
 export default function Lab() {
   const { activeMission, addNote, addNoteToMission, addTask, principles, logDoctrineApplied } = useSpine();
-  const { streamRoute, pending, error } = useRuberra();
+  const { streamRoute, pending, error, unreachable } = useRuberra();
   const copy = useCopy();
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
@@ -299,7 +299,7 @@ export default function Lab() {
           </div>
         )}
 
-        {error && !pending && (isBackendOffline(error) ? (
+        {error && !pending && (unreachable ? (
           <DormantPanel title={copy.labErrorTitle} detail={copy.dormantLab} />
         ) : (
           <ErrorPanel severity="critical" title={copy.labErrorTitle} message={error} />

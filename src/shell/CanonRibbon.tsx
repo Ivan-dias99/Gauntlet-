@@ -28,7 +28,7 @@ interface Props {
 
 export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks }: Props) {
   const { theme, toggle } = useTheme();
-  const { state, activeMission, switchMission } = useSpine();
+  const { state, activeMission, switchMission, syncState } = useSpine();
   const copy = useCopy();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -102,6 +102,15 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
       </div>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
+        <span
+          className="spine-sync"
+          data-sync-state={syncState}
+          title={copy.spineSyncTitle(syncState)}
+          aria-live="polite"
+        >
+          <span aria-hidden className="spine-sync-dot" />
+          {copy.spineSyncLabel(syncState)}
+        </span>
         <span aria-hidden className="vbar" />
         {missions.length > 0 && (
           <div ref={dropdownRef} style={{ position: "relative" }}>
