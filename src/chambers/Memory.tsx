@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
@@ -287,61 +287,74 @@ export default function Memory() {
               position: "absolute", left: 80, top: 6, bottom: 6,
               width: 1, background: "var(--border-subtle)",
             }} />
-            {runs.map((r, i) => {
-              const color = ROUTE_COLOR[r.route] ?? "var(--text-muted)";
-              const origin = originFor(r.route);
-              const linkedArtifact = linkArtifact(r, missionArtifact);
-              return (
-                <div
-                  key={r.id}
-                  className="fadeUp"
-                  style={{
-                    animationDelay: `${i * 16}ms`,
-                    position: "relative",
-                    marginBottom: 18,
-                  }}
-                >
-                  <span style={{
-                    position: "absolute", left: -46, top: 8,
-                    width: 8, height: 8, borderRadius: "50%",
-                    background: color, boxShadow: "0 0 0 3px var(--bg)",
-                  }} />
-                  <span style={{
-                    position: "absolute", left: -120, top: 4, width: 62, textAlign: "right",
-                    fontSize: 9, letterSpacing: 1.5,
-                    color, fontFamily: "var(--mono)", textTransform: "uppercase",
-                  }}>{r.route}</span>
-                  <div style={{
-                    fontSize: 13,
-                    color: r.refused ? "var(--terminal-warn)" : "var(--text-secondary)",
-                    lineHeight: 1.5,
-                  }}>
-                    {r.refused ? "✗ " : ""}{r.question}
-                  </div>
-                  <div style={{
-                    fontSize: 10, color: "var(--text-ghost)",
-                    fontFamily: "var(--mono)", marginTop: 2,
-                    display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap",
-                  }}>
-                    <span>
-                      {new Date(r.timestamp).toLocaleString([], {
+            {(() => {
+              const out: ReactNode[] = [];
+              let lastDate: string | null = null;
+              for (let i = 0; i < runs.length; i++) {
+                const r = runs[i];
+                const d = new Date(r.timestamp);
+                const dateStr = d.toLocaleDateString([], {
+                  year: "numeric", month: "2-digit", day: "2-digit",
+                });
+                if (dateStr !== lastDate) {
+                  out.push(
+                    <div
+                      key={`date-${dateStr}-${i}`}
+                      style={{
+                        position: "relative",
+                        margin: i === 0 ? "0 0 8px -120px" : "16px 0 8px -120px",
+                        paddingLeft: 0,
+                        fontSize: 9, letterSpacing: 2,
+                        color: "var(--text-ghost)", textTransform: "uppercase",
+                        fontFamily: "var(--mono)",
+                      }}
+                    >
+                      — {dateStr} —
+                    </div>
+                  );
+                  lastDate = dateStr;
+                }
+                const color = ROUTE_COLOR[r.route] ?? "var(--text-muted)";
+                out.push(
+                  <div
+                    key={r.id}
+                    className="fadeUp"
+                    style={{
+                      animationDelay: `${i * 16}ms`,
+                      position: "relative",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <span style={{
+                      position: "absolute", left: -46, top: 8,
+                      width: 8, height: 8, borderRadius: "50%",
+                      background: color, boxShadow: "0 0 0 3px var(--bg)",
+                    }} />
+                    <span style={{
+                      position: "absolute", left: -120, top: 4, width: 62, textAlign: "right",
+                      fontSize: 9, letterSpacing: 1.5,
+                      color, fontFamily: "var(--mono)", textTransform: "uppercase",
+                    }}>{r.route}</span>
+                    <div style={{
+                      fontSize: 13,
+                      color: r.refused ? "var(--terminal-warn)" : "var(--text-secondary)",
+                      lineHeight: 1.5,
+                    }}>
+                      {r.refused ? "✗ " : ""}{r.question}
+                    </div>
+                    <div style={{
+                      fontSize: 10, color: "var(--text-ghost)",
+                      fontFamily: "var(--mono)", marginTop: 2,
+                    }}>
+                      {d.toLocaleTimeString([], {
                         hour: "2-digit", minute: "2-digit", second: "2-digit",
                       })} · {r.processing_time_ms}ms · {r.tool_calls.length} tools
-                    </span>
-                    {renderOutcomeChip(r)}
-                  </div>
-                  {linkedArtifact && (
-                    <div style={{
-                      fontSize: 10, marginTop: 3,
-                      fontFamily: "var(--mono)", letterSpacing: 0.5,
-                      color: "var(--cc-ok)",
-                    }}>
-                      → artefacto: {linkedArtifact.taskTitle}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                );
+              }
+              return out;
+            })()}
           </div>
         )}
 
