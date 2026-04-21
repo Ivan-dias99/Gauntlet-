@@ -350,25 +350,35 @@ export default function Memory() {
                         ))}
                       </div>
                     )}
-                    {r.judge_reasoning && (
+                    {(r.judge_reasoning || r.refused) && (
                       <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-subtle)" }}>
                         <div style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase", marginBottom: 4, fontFamily: "var(--mono)" }}>judge</div>
-                        <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.55, fontFamily: "var(--sans)", whiteSpace: "pre-wrap" }}>
-                          {r.judge_reasoning.length > 320 ? r.judge_reasoning.slice(0, 320) + "…" : r.judge_reasoning}
-                        </div>
+                        {r.judge_reasoning ? (
+                          <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.55, fontFamily: "var(--sans)", whiteSpace: "pre-wrap" }}>
+                            {r.judge_reasoning.length > 320 ? r.judge_reasoning.slice(0, 320) + "…" : r.judge_reasoning}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 11, color: "var(--text-ghost)", fontStyle: "italic", fontFamily: "var(--sans)" }}>
+                            — sem motivo registado —
+                          </div>
+                        )}
                       </div>
                     )}
-                    {r.answer && (
-                      <div style={{
-                        marginTop: 10, padding: "8px 0 0",
-                        borderTop: "1px solid var(--border-subtle)",
-                        fontSize: 11, color: "var(--text-secondary)",
-                        whiteSpace: "pre-wrap", lineHeight: 1.6,
-                        fontFamily: "var(--sans)",
-                      }}>
-                        {r.answer}
-                      </div>
-                    )}
+                    <div style={{
+                      marginTop: 10, padding: "8px 0 0",
+                      borderTop: "1px solid var(--border-subtle)",
+                      fontSize: 11,
+                      color: r.answer ? "var(--text-secondary)" : "var(--text-ghost)",
+                      fontStyle: r.answer ? "normal" : "italic",
+                      whiteSpace: "pre-wrap", lineHeight: 1.6,
+                      fontFamily: "var(--sans)",
+                    }}>
+                      {r.answer
+                        ? r.answer
+                        : r.refused
+                        ? "— recusada sem resposta registada —"
+                        : "— sem resposta —"}
+                    </div>
                   </div>
                 )}
               </div>
