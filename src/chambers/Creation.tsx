@@ -119,24 +119,23 @@ export default function Creation() {
 
   // Resume: on mount or mission switch, if no active task was picked this
   // session, re-acquire one from spine — prefer a task already "running",
-  // then the newest open task. This makes Creation feel resumable: the user
-  // re-enters and the workbench already holds the right piece of work.
+  // then the oldest open task (FIFO, matching → próxima tarefa). Stale
+  // pointers (done/blocked, or to a task that left this mission) are dropped
+  // so the workbench advances on re-entry instead of holding expired work.
   useEffect(() => {
     if (!activeMission) {
       setActiveTaskId(null);
       setResumedFromSpine(false);
       return;
     }
-    // If the currently tracked task still belongs to this mission, keep it.
-    if (activeTaskId && activeMission.tasks.some(t => t.id === activeTaskId)) return;
+    // Keep the tracked task only if it still exists here and is still pending.
+    const current = activeTaskId
+      ? activeMission.tasks.find(t => t.id === activeTaskId)
+      : null;
+    if (current && (current.state === "running" || current.state === "open")) return;
     const running = activeMission.tasks.find(t => t.state === "running");
-    const open = [...activeMission.tasks].reverse().find(t => t.state === "open");
-    // Fall through to blocked so the workbench can surface an action
-    // (unblock / next) instead of sitting silent when only blocked tasks
-    // exist — matches the user mental model of "there is work here, it is
-    // stuck" better than "nothing to do".
-    const blocked = activeMission.tasks.find(t => t.state === "blocked");
-    const pick = running ?? open ?? blocked ?? null;
+    const open = activeMission.tasks.find(t => t.state === "open");
+    const pick = running ?? open ?? null;
     setActiveTaskId(pick?.id ?? null);
     setResumedFromSpine(pick !== null);
   }, [activeMission?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
@@ -372,12 +371,12 @@ export default function Creation() {
   }, [activeMission, activeTaskId]);
 
   // The header still shows the current objective string — prefer the task on
-  // the workbench, then the session's last submission, then the freshest open
-  // task. Kept as a string so the existing header chip stays unchanged.
+  // the workbench, then the session's last submission, then the oldest
+  // pending task (FIFO, so the header and → próxima tarefa agree).
   const currentObjective =
     activeTask?.title ||
     lastTask ||
-    pendingTasks[pendingTasks.length - 1]?.title ||
+    pendingTasks[0]?.title ||
     "";
 
   const nextOpenTask = activeMission?.tasks.find(
