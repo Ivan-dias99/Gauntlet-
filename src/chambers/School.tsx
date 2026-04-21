@@ -1,7 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
+
+function relativeTime(ts: number, nowMs: number): string {
+  const diff = Math.max(0, nowMs - ts);
+  const s = Math.floor(diff / 1000);
+  if (s < 45) return "agora";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `há ${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `há ${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `há ${d}d`;
+  return new Date(ts).toLocaleDateString([], { year: "numeric", month: "2-digit", day: "2-digit" });
+}
 
 export default function School() {
   const { principles, addPrinciple, activeMission } = useSpine();
@@ -10,6 +23,15 @@ export default function School() {
   const [input, setInput] = useState("");
   const layout = values.schoolLayout;
   const isGoverning = principles.length > 0;
+
+  // Tick so relative timestamps refresh periodically without a heavy timer.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const lastInscribedAt = principles.length > 0 ? principles[0].createdAt : null;
 
   function submit() {
     const v = input.trim();
@@ -88,8 +110,13 @@ export default function School() {
                 ? <> Missão activa: <span style={{ color: "var(--text-secondary)" }}>{activeMission.title}</span>.</>
                 : " Nenhuma missão activa — princípios prontos para quando houver."}
             </div>
-            <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1 }}>
-              → Lab · Creation · auto-router
+            <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1, display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <span>→ Lab · Creation · auto-router</span>
+              {lastInscribedAt !== null && (
+                <span>
+                  última inscrição <span style={{ color: "var(--text-muted)" }}>{relativeTime(lastInscribedAt, nowMs)}</span>
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -161,6 +188,9 @@ export default function School() {
                     <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", display: "inline-block", flexShrink: 0 }} />
                   )}
                   § {String(principles.length - i).padStart(2, "0")}
+                  <span style={{ marginLeft: "auto", color: "var(--text-ghost)", textTransform: "none", letterSpacing: 1 }}>
+                    {relativeTime(p.createdAt, nowMs)}
+                  </span>
                 </div>
                 <div style={{ fontSize: 15, color: "var(--text-primary)", lineHeight: 1.6 }}>
                   {p.text}
@@ -207,16 +237,28 @@ export default function School() {
                     {String(i + 1).padStart(2, "0")}
                   </span>
                 </div>
-                <span
-                  style={{
-                    fontSize: 15,
-                    color: "var(--text-primary)",
-                    lineHeight: 1.7,
-                    fontFamily: "'Fraunces', Georgia, serif",
-                  }}
-                >
-                  {p.text}
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span
+                    style={{
+                      fontSize: 15,
+                      color: "var(--text-primary)",
+                      lineHeight: 1.7,
+                      fontFamily: "'Fraunces', Georgia, serif",
+                    }}
+                  >
+                    {p.text}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 9,
+                      color: "var(--text-ghost)",
+                      fontFamily: "var(--mono)",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    {relativeTime(p.createdAt, nowMs)}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
