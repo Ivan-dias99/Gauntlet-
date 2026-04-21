@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
+import { Artifact, Chamber } from "../spine/types";
 
 interface RunRecord {
   id: string;
@@ -45,6 +46,35 @@ const ROUTE_COLOR: Record<string, string> = {
   triad: "var(--accent)",
   crew: "var(--terminal-ok)",
 };
+
+// Map a backend route to the chamber where the consequence really belongs.
+// Memory is a timeline of what happened; telling the user *where* each thing
+// happened turns a flat run list into governance story.
+const ROUTE_ORIGIN: Record<string, Chamber> = {
+  agent: "Lab",
+  dev:   "Creation",
+  crew:  "Creation",
+  triad: "School",
+  ask:   "Lab",
+};
+
+function originFor(route: string): Chamber | null {
+  return ROUTE_ORIGIN[route] ?? null;
+}
+
+// Heuristic link between a run and an accepted artifact: same mission, and
+// the artifact was accepted within a short window after the run finished.
+// This is the best the UI can do without a backend-side artifact↔run backlink.
+const ARTIFACT_MATCH_WINDOW_MS = 5 * 60 * 1000;
+
+function linkArtifact(run: RunRecord, artifact: Artifact | null | undefined): Artifact | null {
+  if (!artifact) return null;
+  const runMs = Date.parse(run.timestamp);
+  if (!Number.isFinite(runMs)) return null;
+  const delta = artifact.acceptedAt - runMs;
+  if (delta < 0 || delta > ARTIFACT_MATCH_WINDOW_MS) return null;
+  return artifact;
+}
 
 interface Stats {
   total: number;
@@ -91,10 +121,12 @@ function computeStats(runs: RunRecord[]): Stats {
 }
 
 export default function Memory() {
-  const { activeMission } = useSpine();
+  const { activeMission, principles } = useSpine();
   const { values } = useTweaks();
   const copy = useCopy();
   const layout = values.memoryLayout;
+  const missionArtifact = activeMission?.lastArtifact ?? null;
+  const doctrineCount = principles.length;
   const [runs, setRuns] = useState<RunRecord[] | null>(null);
   const [serverStats, setServerStats] = useState<ServerStats | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -167,6 +199,33 @@ export default function Memory() {
           )}
         </div>
 
+        {/* Governance chips: tell the user that this run list is scoped to one
+            mission and that N doctrine principles are governing it. Without
+            this framing Memory feels like "just another list". */}
+        {(activeMission || doctrineCount > 0) && (
+          <div style={{
+            marginTop: 8,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            letterSpacing: 1.2,
+            textTransform: "uppercase",
+            color: "var(--text-ghost)",
+          }}>
+            {activeMission && (
+              <GovernanceChip label="sob missão" value={activeMission.title} />
+            )}
+            {doctrineCount > 0 && (
+              <GovernanceChip
+                label="doutrina activa"
+                value={`${doctrineCount} princípio${doctrineCount === 1 ? "" : "s"}`}
+              />
+            )}
+          </div>
+        )}
+
         {stats.total > 0 && (
           <div style={{
             marginTop: 12,
@@ -230,6 +289,8 @@ export default function Memory() {
             }} />
             {runs.map((r, i) => {
               const color = ROUTE_COLOR[r.route] ?? "var(--text-muted)";
+              const origin = originFor(r.route);
+              const linkedArtifact = linkArtifact(r, missionArtifact);
               return (
                 <div
                   key={r.id}
@@ -264,7 +325,17 @@ export default function Memory() {
                     {new Date(r.timestamp).toLocaleString([], {
                       hour: "2-digit", minute: "2-digit", second: "2-digit",
                     })} · {r.processing_time_ms}ms · {r.tool_calls.length} tools
+                    {origin && <span style={{ marginLeft: 8 }}>· in {origin}</span>}
                   </div>
+                  {linkedArtifact && (
+                    <div style={{
+                      fontSize: 10, marginTop: 3,
+                      fontFamily: "var(--mono)", letterSpacing: 0.5,
+                      color: "var(--cc-ok)",
+                    }}>
+                      → artefacto: {linkedArtifact.taskTitle}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -275,6 +346,8 @@ export default function Memory() {
         <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 820 }}>
           {runs?.map((r) => {
             const isOpen = expanded === r.id;
+            const origin = originFor(r.route);
+            const linkedArtifact = linkArtifact(r, missionArtifact);
             return (
               <div key={r.id} style={{
                 borderBottom: "1px solid var(--border-subtle)",
@@ -300,6 +373,14 @@ export default function Memory() {
                     textTransform: "uppercase",
                   }}>
                     {r.refused ? "✗ " : ""}{r.route}
+                    {origin && (
+                      <span style={{
+                        marginLeft: 6, color: "var(--text-ghost)",
+                        letterSpacing: 1.5, textTransform: "uppercase",
+                      }}>
+                        · {origin}
+                      </span>
+                    )}
                   </span>
                   <span style={{
                     fontSize: 12,
@@ -327,6 +408,19 @@ export default function Memory() {
                     borderRadius: "var(--radius)",
                     padding: "10px 14px",
                   }}>
+                    {origin && <MetaRow label="origem" value={origin} />}
+                    {linkedArtifact && (
+                      <MetaRow
+                        label="artefacto"
+                        value={`${linkedArtifact.taskTitle}${linkedArtifact.terminatedEarly ? " (parcial)" : ""}`}
+                      />
+                    )}
+                    {doctrineCount > 0 && (
+                      <MetaRow
+                        label="doutrina"
+                        value={`${doctrineCount} princípio${doctrineCount === 1 ? "" : "s"} em vigor`}
+                      />
+                    )}
                     <MetaRow label="confidence" value={r.confidence ?? "—"} />
                     <MetaRow label="iterations" value={r.iterations?.toString() ?? "—"} />
                     <MetaRow label="tools" value={`${r.tool_calls.length}`} />
@@ -378,6 +472,26 @@ export default function Memory() {
         )}
       </div>
     </div>
+  );
+}
+
+function GovernanceChip({ label, value }: { label: string; value: string }) {
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "baseline",
+      gap: 6,
+      padding: "3px 9px",
+      border: "1px solid var(--border-subtle)",
+      borderRadius: 999,
+      background: "var(--bg-input)",
+      color: "var(--text-ghost)",
+    }}>
+      <span style={{ color: "var(--text-ghost)" }}>{label}</span>
+      <span style={{ color: "var(--text-secondary)", textTransform: "none", letterSpacing: 0 }}>
+        {value}
+      </span>
+    </span>
   );
 }
 
