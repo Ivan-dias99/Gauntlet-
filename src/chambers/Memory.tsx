@@ -260,10 +260,14 @@ export default function Memory() {
                   <div style={{
                     fontSize: 10, color: "var(--text-ghost)",
                     fontFamily: "var(--mono)", marginTop: 2,
+                    display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap",
                   }}>
-                    {new Date(r.timestamp).toLocaleString([], {
-                      hour: "2-digit", minute: "2-digit", second: "2-digit",
-                    })} · {r.processing_time_ms}ms · {r.tool_calls.length} tools
+                    <span>
+                      {new Date(r.timestamp).toLocaleString([], {
+                        hour: "2-digit", minute: "2-digit", second: "2-digit",
+                      })} · {r.processing_time_ms}ms · {r.tool_calls.length} tools
+                    </span>
+                    {renderOutcomeChip(r)}
                   </div>
                 </div>
               );
@@ -309,12 +313,15 @@ export default function Memory() {
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                   }}>
-                    {r.refused ? "✗ " : ""}{r.question}
+                    {r.question}
                   </span>
-                  <span style={{ fontSize: 10, color: "var(--text-ghost)", whiteSpace: "nowrap" }}>
-                    {new Date(r.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit", minute: "2-digit", second: "2-digit",
-                    })}
+                  <span style={{ fontSize: 10, color: "var(--text-ghost)", whiteSpace: "nowrap", display: "inline-flex", alignItems: "baseline", gap: 8 }}>
+                    {renderOutcomeChip(r)}
+                    <span>
+                      {new Date(r.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit", minute: "2-digit", second: "2-digit",
+                      })}
+                    </span>
                   </span>
                 </div>
 
@@ -425,4 +432,36 @@ function formatTokens(n: number): string {
   if (n < 1000) return `${n}`;
   if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
   return `${(n / 1_000_000).toFixed(1)}M`;
+}
+
+// Row-level consequence chip. Priority: refused → terminated-early → confidence.
+// Returns null when the run carried no outcome-pressure signal (a clean run
+// with no confidence reported). Caller wraps in the row's metadata span.
+function renderOutcomeChip(r: RunRecord) {
+  if (r.refused) {
+    return (
+      <span style={{ color: "var(--cc-err)", fontFamily: "var(--mono)", letterSpacing: 1, textTransform: "uppercase", fontSize: 9 }}>
+        recusado
+      </span>
+    );
+  }
+  if (r.terminated_early) {
+    return (
+      <span style={{ color: "var(--cc-warn)", fontFamily: "var(--mono)", letterSpacing: 1, textTransform: "uppercase", fontSize: 9 }}>
+        terminado cedo
+      </span>
+    );
+  }
+  if (r.confidence) {
+    const color =
+      r.confidence === "high" ? "var(--cc-ok)" :
+      r.confidence === "low"  ? "var(--cc-warn)" :
+      "var(--text-ghost)";
+    return (
+      <span style={{ color, fontFamily: "var(--mono)", letterSpacing: 1, textTransform: "uppercase", fontSize: 9 }}>
+        {r.confidence}
+      </span>
+    );
+  }
+  return null;
 }
