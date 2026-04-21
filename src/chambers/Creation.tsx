@@ -716,6 +716,7 @@ export default function Creation() {
           <ArtifactLedger
             artifacts={recentArtifacts}
             copy={copy}
+            lang={values.lang}
             onSelectArtifact={(a) => {
               if (!a.taskId) return;
               setActiveTaskId(a.taskId);
@@ -1341,12 +1342,34 @@ function NextStepBar({
 }
 
 function ArtifactLedger({
-  artifacts, copy, onSelectArtifact,
+  artifacts, copy, lang, onSelectArtifact,
 }: {
   artifacts: Artifact[];
   copy: Copy;
+  lang: string;
   onSelectArtifact: (a: Artifact) => void;
 }) {
+  const [hoverId, setHoverId] = useState<string | null>(null);
+
+  const fmtRel = (then: number) => {
+    const diff = Date.now() - then;
+    const en = lang === "en";
+    if (diff < 60_000) return en ? "now" : "agora";
+    if (diff < 3_600_000) {
+      const m = Math.max(1, Math.round(diff / 60_000));
+      return en ? `${m}m ago` : `há ${m}m`;
+    }
+    if (diff < 86_400_000) {
+      const h = Math.round(diff / 3_600_000);
+      return en ? `${h}h ago` : `há ${h}h`;
+    }
+    const d = Math.round(diff / 86_400_000);
+    return en ? `${d}d ago` : `há ${d}d`;
+  };
+
+  const replayLabel = lang === "en" ? "↺ replay" : "↺ retomar";
+  const interruptedLabel = lang === "en" ? "cut short" : "terminação antecipada";
+
   return (
     <div style={{ marginTop: 24, maxWidth: 820 }}>
       <div style={{
@@ -1368,25 +1391,47 @@ function ArtifactLedger({
           {copy.artifactEmpty}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {artifacts.map((a) => {
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {artifacts.map((a, i) => {
             const preview = a.answer
-              ? (a.answer.length > 200 ? a.answer.slice(0, 200) + "…" : a.answer)
+              ? (a.answer.length > 120 ? a.answer.slice(0, 120) + "…" : a.answer)
               : "—";
             const clickable = Boolean(a.taskId);
+            const hovered = hoverId === a.id;
+            const tier = Math.min(i, 2);
+            const baseBg = [
+              "color-mix(in oklab, var(--cc-ok) 10%, var(--bg-elevated))",
+              "color-mix(in oklab, var(--cc-ok) 5%, var(--bg-elevated))",
+              "var(--bg-elevated)",
+            ][tier];
+            const baseBorderLeft = [
+              "3px solid var(--cc-ok)",
+              "2px solid var(--cc-ok)",
+              "2px solid color-mix(in oklab, var(--cc-ok) 45%, transparent)",
+            ][tier];
+            const bg = clickable && hovered
+              ? "color-mix(in oklab, var(--cc-ok) 16%, var(--bg-elevated))"
+              : baseBg;
+            const borderLeft = clickable && hovered
+              ? "3px solid var(--cc-ok)"
+              : baseBorderLeft;
+
             return (
               <div
                 key={a.id}
                 onClick={clickable ? () => onSelectArtifact(a) : undefined}
+                onMouseEnter={clickable ? () => setHoverId(a.id) : undefined}
+                onMouseLeave={clickable ? () => setHoverId(null) : undefined}
                 className="fadeIn"
                 style={{
-                  background: "color-mix(in oklab, var(--cc-ok) 6%, var(--bg-elevated))",
+                  background: bg,
                   border: "1px solid var(--border-subtle)",
-                  borderLeft: "2px solid var(--cc-ok)",
+                  borderLeft,
                   borderRadius: 12,
                   padding: "10px 14px",
                   fontFamily: "var(--mono)",
                   cursor: clickable ? "pointer" : "default",
+                  transition: "background .18s var(--ease-swift), border-color .18s",
                 }}
               >
                 <div style={{
@@ -1396,23 +1441,40 @@ function ArtifactLedger({
                 }}>
                   <span>◆</span>
                   <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
-                    {new Date(a.acceptedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {fmtRel(a.acceptedAt)}
                   </span>
                   {a.terminatedEarly && (
-                    <span style={{ color: "var(--cc-warn)" }}>· terminação antecipada</span>
+                    <span style={{ color: "var(--cc-warn)" }}>· {interruptedLabel}</span>
                   )}
-                  <span style={{
-                    marginLeft: "auto", color: "var(--text-ghost)",
-                    maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
-                    › {a.taskTitle}
-                  </span>
+                  {clickable && (
+                    <span style={{
+                      marginLeft: "auto",
+                      color: hovered ? "var(--cc-ok)" : "var(--text-ghost)",
+                      letterSpacing: 1.5,
+                      transition: "color .18s var(--ease-swift)",
+                    }}>
+                      {replayLabel}
+                    </span>
+                  )}
+                </div>
+                <div style={{
+                  fontSize: 13.5,
+                  fontFamily: "var(--sans)",
+                  color: ["var(--text-primary)", "var(--text-secondary)", "var(--text-muted)"][tier],
+                  fontWeight: tier === 0 ? 500 : 400,
+                  lineHeight: 1.4,
+                  marginBottom: 4,
+                  letterSpacing: "-0.005em",
+                }}>
+                  {a.taskTitle}
                 </div>
                 <div style={{
                   fontSize: 11,
-                  color: a.terminatedEarly && !a.answer ? "var(--cc-warn)" : "var(--text-muted)",
-                  fontFamily: "var(--sans)",
-                  lineHeight: 1.55,
+                  color: a.terminatedEarly && !a.answer
+                    ? "var(--cc-warn)"
+                    : ["var(--text-muted)", "var(--text-muted)", "var(--text-ghost)"][tier],
+                  fontFamily: "var(--mono)",
+                  lineHeight: 1.5,
                   whiteSpace: "pre-wrap",
                 }}>
                   {preview}
