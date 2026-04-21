@@ -61,6 +61,24 @@ function formatDayLabel(d: Date, now: Date): string {
     .toUpperCase().replace(/\./g, "");
 }
 
+function tokenize(text: string): string[] {
+  return (text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}+/gu, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter(w => w.length >= 5);
+}
+
+function isLinked(question: string, active: Set<string>): boolean {
+  if (active.size === 0) return false;
+  for (const t of tokenize(question)) {
+    if (active.has(t)) return true;
+  }
+  return false;
+}
+
 function groupByDay(runs: RunRecord[]): Array<{ key: string; label: string; runs: RunRecord[] }> {
   const now = new Date();
   const groups: Array<{ key: string; label: string; runs: RunRecord[] }> = [];
@@ -130,6 +148,21 @@ export default function Memory() {
   const [serverStats, setServerStats] = useState<ServerStats | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const activeTokens = useMemo<Set<string>>(() => {
+    const set = new Set<string>();
+    if (!activeMission) return set;
+    for (const n of activeMission.notes ?? []) {
+      for (const t of tokenize(n.text)) set.add(t);
+    }
+    for (const t of activeMission.tasks ?? []) {
+      for (const tk of tokenize(t.title)) set.add(tk);
+    }
+    for (const a of activeMission.artifacts ?? []) {
+      for (const tk of tokenize(a.taskTitle)) set.add(tk);
+    }
+    for (const tk of tokenize(activeMission.title)) set.add(tk);
+    return set;
+  }, [activeMission]);
   const fallbackStats = useMemo(() => computeStats(runs ?? []), [runs]);
   const stats: Stats = serverStats ? {
     total: serverStats.total,
@@ -301,6 +334,8 @@ export default function Memory() {
                     : "routine";
                   const isRoutine = consequence === "routine";
                   const isPrimary = consequence === "primary";
+                  const linked = isLinked(r.question, activeTokens);
+                  const linkClass: "linked" | "orphan" = linked ? "linked" : "orphan";
                   const bodyColor = isRefused ? "var(--cc-err)"
                     : isRoutine ? "var(--text-ghost)"
                     : isLowConf ? "var(--text-muted)"
@@ -315,6 +350,7 @@ export default function Memory() {
                       className={isRoutine ? undefined : "fadeUp"}
                       data-event-class={isRefused ? "refused" : isLowConf ? "low-conf" : isHighConf ? "high-conf" : "default"}
                       data-consequence={consequence}
+                      data-link={linkClass}
                       style={{
                         animationDelay: isRoutine ? undefined : `${i * 16}ms`,
                         position: "relative",
@@ -375,6 +411,16 @@ export default function Memory() {
                           hour: "2-digit", minute: "2-digit", second: "2-digit",
                         })} · {r.processing_time_ms}ms · {r.tool_calls.length} tools
                         {r.terminated_early ? " · terminado" : ""}
+                        {" · "}
+                        <span
+                          data-link-mark={linkClass}
+                          style={{
+                            color: linked ? "var(--accent)" : "var(--text-ghost)",
+                            opacity: linked ? 1 : 0.75,
+                          }}
+                        >
+                          {linked ? "→ ligado" : "· solto"}
+                        </span>
                       </div>
                     </div>
                   );
