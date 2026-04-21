@@ -24,6 +24,27 @@ export interface Copy {
   creationEmptyPrompt: string;
   creationPlaceholder: string;
   creationRunning: string;
+  workbench: string;
+  workQueue: string;
+  recentArtifacts: string;
+  nextStep: string;
+  noActiveTask: string;
+  resumeHint: string;
+  actionNextTask: string;
+  actionRefine: string;
+  actionBlock: string;
+  actionUnblock: string;
+  actionAllDone: string;
+  taskStateOpen: string;
+  taskStateRunning: string;
+  taskStateDone: string;
+  taskStateBlocked: string;
+  taskSourceManual: string;
+  taskSourceLab: string;
+  taskSourceCrew: string;
+  taskSourceOther: string;
+  artifactEmpty: string;
+  refinePrefix: string;
   memoryEmpty: string;
   memoryCount: (n: number) => string;
   schoolEmpty: string;
@@ -91,6 +112,27 @@ const PT: Copy = {
   creationEmptyPrompt: "$ _",
   creationPlaceholder: "nova tarefa...",
   creationRunning: "executando...",
+  workbench: "bancada",
+  workQueue: "fila de trabalho",
+  recentArtifacts: "artefactos recentes",
+  nextStep: "próximo passo",
+  noActiveTask: "Nenhuma tarefa activa. Declara a próxima.",
+  resumeHint: "Retomar aqui",
+  actionNextTask: "→ próxima tarefa",
+  actionRefine: "↻ refinar",
+  actionBlock: "✕ bloquear",
+  actionUnblock: "↺ reabrir",
+  actionAllDone: "✓ fila limpa",
+  taskStateOpen: "aberta",
+  taskStateRunning: "em curso",
+  taskStateDone: "concluída",
+  taskStateBlocked: "bloqueada",
+  taskSourceManual: "manual",
+  taskSourceLab: "lab",
+  taskSourceCrew: "crew",
+  taskSourceOther: "outra",
+  artifactEmpty: "ainda sem artefactos aceites nesta missão",
+  refinePrefix: "refinar: ",
   memoryEmpty: "— log vazio —",
   memoryCount: (n) => `${n} evento${n === 1 ? "" : "s"}`,
   schoolEmpty: "Sem princípios registados. A constituição está em branco.",
@@ -146,6 +188,27 @@ const EN: Copy = {
   creationEmptyPrompt: "$ _",
   creationPlaceholder: "new task...",
   creationRunning: "running...",
+  workbench: "workbench",
+  workQueue: "work queue",
+  recentArtifacts: "recent artifacts",
+  nextStep: "next step",
+  noActiveTask: "No active task. Declare the next one.",
+  resumeHint: "Resume here",
+  actionNextTask: "→ next task",
+  actionRefine: "↻ refine",
+  actionBlock: "✕ block",
+  actionUnblock: "↺ reopen",
+  actionAllDone: "✓ queue clear",
+  taskStateOpen: "open",
+  taskStateRunning: "running",
+  taskStateDone: "done",
+  taskStateBlocked: "blocked",
+  taskSourceManual: "manual",
+  taskSourceLab: "lab",
+  taskSourceCrew: "crew",
+  taskSourceOther: "other",
+  artifactEmpty: "no accepted artifacts on this mission yet",
+  refinePrefix: "refine: ",
   memoryEmpty: "— empty log —",
   memoryCount: (n) => `${n} event${n === 1 ? "" : "s"}`,
   schoolEmpty: "No principles recorded. Constitution is blank.",
