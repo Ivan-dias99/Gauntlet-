@@ -46,6 +46,37 @@ const ROUTE_COLOR: Record<string, string> = {
   crew: "var(--terminal-ok)",
 };
 
+function sameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate();
+}
+
+function formatDayLabel(d: Date, now: Date): string {
+  if (sameDay(d, now)) return "HOJE";
+  const y = new Date(now);
+  y.setDate(now.getDate() - 1);
+  if (sameDay(d, y)) return "ONTEM";
+  return d.toLocaleDateString("pt-PT", { weekday: "short", day: "2-digit", month: "short" })
+    .toUpperCase().replace(/\./g, "");
+}
+
+function groupByDay(runs: RunRecord[]): Array<{ key: string; label: string; runs: RunRecord[] }> {
+  const now = new Date();
+  const groups: Array<{ key: string; label: string; runs: RunRecord[] }> = [];
+  const idx = new Map<string, number>();
+  for (const r of runs) {
+    const d = new Date(r.timestamp);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!idx.has(key)) {
+      idx.set(key, groups.length);
+      groups.push({ key, label: formatDayLabel(d, now), runs: [] });
+    }
+    groups[idx.get(key)!].runs.push(r);
+  }
+  return groups;
+}
+
 interface Stats {
   total: number;
   refused: number;
@@ -154,11 +185,11 @@ export default function Memory() {
         <div style={{
           display: "flex", alignItems: "baseline", gap: 12,
         }}>
-          <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)" }}>
-            Memory
+          <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
+            — ARQUIVO VIVO
           </span>
-          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            Runs · Verdicts · Tool Trace
+          <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+            o que a missão já decidiu
           </span>
           {stats.total > 0 && (
             <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
@@ -228,46 +259,98 @@ export default function Memory() {
               position: "absolute", left: 80, top: 6, bottom: 6,
               width: 1, background: "var(--border-subtle)",
             }} />
-            {runs.map((r, i) => {
-              const color = ROUTE_COLOR[r.route] ?? "var(--text-muted)";
-              return (
+            {groupByDay(runs).map((g, gi) => (
+              <div key={g.key}>
                 <div
-                  key={r.id}
-                  className="fadeUp"
+                  data-day-separator={g.label}
                   style={{
-                    animationDelay: `${i * 16}ms`,
                     position: "relative",
-                    marginBottom: 18,
+                    marginTop: gi === 0 ? 0 : 24,
+                    marginBottom: 14,
+                    display: "flex", alignItems: "center", gap: 12,
                   }}
                 >
                   <span style={{
-                    position: "absolute", left: -46, top: 8,
-                    width: 8, height: 8, borderRadius: "50%",
-                    background: color, boxShadow: "0 0 0 3px var(--bg)",
+                    position: "absolute", left: -120, top: -2, width: 62, textAlign: "right",
+                    fontSize: 9, letterSpacing: 2,
+                    color: "var(--text-ghost)", fontFamily: "var(--mono)",
+                  }}>{g.label}</span>
+                  <div style={{
+                    flex: 1, height: 1,
+                    background: "var(--border-subtle)", opacity: 0.55,
                   }} />
                   <span style={{
-                    position: "absolute", left: -120, top: 4, width: 62, textAlign: "right",
                     fontSize: 9, letterSpacing: 1.5,
-                    color, fontFamily: "var(--mono)", textTransform: "uppercase",
-                  }}>{r.route}</span>
-                  <div style={{
-                    fontSize: 13,
-                    color: r.refused ? "var(--terminal-warn)" : "var(--text-secondary)",
-                    lineHeight: 1.5,
+                    color: "var(--text-ghost)", fontFamily: "var(--mono)",
                   }}>
-                    {r.refused ? "✗ " : ""}{r.question}
-                  </div>
-                  <div style={{
-                    fontSize: 10, color: "var(--text-ghost)",
-                    fontFamily: "var(--mono)", marginTop: 2,
-                  }}>
-                    {new Date(r.timestamp).toLocaleString([], {
-                      hour: "2-digit", minute: "2-digit", second: "2-digit",
-                    })} · {r.processing_time_ms}ms · {r.tool_calls.length} tools
-                  </div>
+                    {g.runs.length} {g.runs.length === 1 ? "entrada" : "entradas"}
+                  </span>
                 </div>
-              );
-            })}
+                {g.runs.map((r, i) => {
+                  const color = ROUTE_COLOR[r.route] ?? "var(--text-muted)";
+                  const isRefused = r.refused;
+                  const conf = (r.confidence || "").toLowerCase();
+                  const isLowConf = conf === "low";
+                  const isHighConf = conf === "high";
+                  const toolHeavy = r.tool_calls.length >= 3;
+                  const bodyColor = isRefused ? "var(--cc-err)"
+                    : isLowConf ? "var(--text-muted)"
+                    : "var(--text-secondary)";
+                  const bodyStyle = isRefused ? "italic" : "normal";
+                  const bodyWeight = isHighConf ? 500 : 400;
+                  const routeColor = isRefused ? "var(--cc-err)" : color;
+                  return (
+                    <div
+                      key={r.id}
+                      className="fadeUp"
+                      data-event-class={isRefused ? "refused" : isLowConf ? "low-conf" : isHighConf ? "high-conf" : "default"}
+                      style={{
+                        animationDelay: `${i * 16}ms`,
+                        position: "relative",
+                        marginBottom: 18,
+                      }}
+                    >
+                      <span style={{
+                        position: "absolute", left: -46, top: 8,
+                        width: isRefused ? 6 : 8, height: isRefused ? 6 : 8,
+                        borderRadius: "50%",
+                        background: routeColor,
+                        boxShadow: isHighConf
+                          ? `0 0 0 3px var(--bg), 0 0 0 4px ${color}`
+                          : "0 0 0 3px var(--bg)",
+                        opacity: isLowConf ? 0.55 : 1,
+                      }} />
+                      <span style={{
+                        position: "absolute", left: -120, top: 4, width: 62, textAlign: "right",
+                        fontSize: 9, letterSpacing: 1.5,
+                        color: routeColor, fontFamily: "var(--mono)", textTransform: "uppercase",
+                        opacity: isLowConf ? 0.7 : 1,
+                      }}>
+                        {r.route}{toolHeavy ? "·T" : ""}
+                      </span>
+                      <div style={{
+                        fontSize: 13,
+                        color: bodyColor,
+                        fontStyle: bodyStyle,
+                        fontWeight: bodyWeight,
+                        lineHeight: 1.5,
+                      }}>
+                        {isRefused ? "✗ " : ""}{r.question}
+                      </div>
+                      <div style={{
+                        fontSize: 10, color: "var(--text-ghost)",
+                        fontFamily: "var(--mono)", marginTop: 2,
+                      }}>
+                        {new Date(r.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit", minute: "2-digit", second: "2-digit",
+                        })} · {r.processing_time_ms}ms · {r.tool_calls.length} tools
+                        {r.terminated_early ? " · terminado" : ""}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
 
