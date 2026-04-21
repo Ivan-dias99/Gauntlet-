@@ -14,6 +14,7 @@ export default function RitualEntry({ onDone }: Props) {
   const copy = useCopy();
   const [title, setTitle] = useState("");
   const [chamber, setChamber] = useState<Chamber | null>(null);
+  const [inputFocused, setInputFocused] = useState(false);
 
   const ready = title.trim().length > 0 && chamber !== null;
 
@@ -42,20 +43,44 @@ export default function RitualEntry({ onDone }: Props) {
           {copy.ritualTag}
         </div>
 
-        <input
-          autoFocus
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && commit()}
-          placeholder={copy.missionName}
-          style={{
-            width: "100%", background: "none",
-            border: "none", borderBottom: "1px solid var(--border)",
-            outline: "none", fontSize: 26, color: "var(--text-primary)",
-            padding: "6px 0 20px", marginBottom: 48,
-            fontFamily: "var(--sans)", letterSpacing: "-0.5px",
-          }}
-        />
+        <div
+          data-architect-input="missao"
+          data-architect-input-state={inputFocused ? "focused" : "idle"}
+          style={{ marginBottom: 48 }}
+        >
+          <div
+            data-architect-voice
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 9,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              color: inputFocused ? "var(--accent)" : "var(--text-ghost)",
+              marginBottom: 10,
+              transition: "color 0.15s",
+            }}
+          >
+            — MISSÃO
+          </div>
+          <input
+            autoFocus
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            onKeyDown={e => e.key === "Enter" && commit()}
+            placeholder={copy.missionName}
+            style={{
+              width: "100%", background: "none",
+              border: "none",
+              borderBottom: `1px solid ${inputFocused ? "var(--accent-dim)" : "var(--border)"}`,
+              outline: "none", fontSize: 26, color: "var(--text-primary)",
+              padding: "6px 0 20px",
+              fontFamily: "var(--sans)", letterSpacing: "-0.5px",
+              transition: "border-color 0.15s",
+            }}
+          />
+        </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 48 }}>
           {ORDER.map(id => {

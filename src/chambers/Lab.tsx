@@ -69,6 +69,7 @@ export default function Lab() {
   const { activeMission, addNote, addNoteToMission, principles } = useSpine();
   const { streamRoute, pending, error } = useRuberra();
   const [input, setInput] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
@@ -263,7 +264,27 @@ export default function Lab() {
       )}
 
       {/* Input */}
-      <div className="glass" style={{ margin: "0 clamp(20px, 5vw, 64px) 18px", borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
+      <div
+        data-architect-input="directiva"
+        data-architect-input-state={inputFocused ? "focused" : "idle"}
+        style={{ margin: "0 clamp(20px, 5vw, 64px) 18px" }}
+      >
+        <div
+          data-architect-voice
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 9,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: inputFocused ? "var(--accent)" : "var(--text-ghost)",
+            marginBottom: 8,
+            paddingLeft: 4,
+            transition: "color 0.15s",
+          }}
+        >
+          — DIRECTIVA
+        </div>
+        <div className="glass" style={{ borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
         <span
           className={pending ? "breathe" : ""}
           style={{ width: 8, height: 8, borderRadius: "50%", background: pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)", boxShadow: `0 0 0 4px color-mix(in oklab, ${pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)"} 22%, transparent)`, flexShrink: 0 }}
@@ -273,6 +294,8 @@ export default function Lab() {
           autoFocus
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
           placeholder={
             !activeMission ? "Activa uma missão para investigar..." :
@@ -297,6 +320,7 @@ export default function Lab() {
             Enter ↵
           </button>
         )}
+        </div>
       </div>
     </div>
   );

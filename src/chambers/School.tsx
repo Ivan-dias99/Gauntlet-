@@ -23,6 +23,7 @@ export default function School() {
   const { values } = useTweaks();
   const copy = useCopy();
   const [input, setInput] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
   const layout = values.schoolLayout;
   const isGoverning = principles.length > 0;
 
@@ -244,9 +245,28 @@ export default function School() {
       </div>
 
       <div
+        data-architect-input="principio"
+        data-architect-input-state={inputFocused ? "focused" : "idle"}
+        style={{ margin: "0 clamp(20px, 5vw, 64px) 18px" }}
+      >
+        <div
+          data-architect-voice
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 9,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: inputFocused ? "var(--accent)" : "var(--text-ghost)",
+            marginBottom: 8,
+            paddingLeft: 4,
+            transition: "color 0.15s",
+          }}
+        >
+          — PRINCÍPIO
+        </div>
+      <div
         className="glass"
         style={{
-          margin: "0 clamp(20px, 5vw, 64px) 18px",
           borderRadius: 14,
           padding: "12px 16px",
           display: "flex",
@@ -259,6 +279,8 @@ export default function School() {
           autoFocus
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder={copy.schoolPlaceholder}
           style={{
@@ -296,6 +318,7 @@ export default function School() {
             {copy.schoolInscribe}
           </button>
         )}
+      </div>
       </div>
     </div>
   );

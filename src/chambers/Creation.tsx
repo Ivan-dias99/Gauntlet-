@@ -54,6 +54,7 @@ export default function Creation() {
   const copy = useCopy();
   const layout = values.creationLayout;
   const [input, setInput] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
   const [lastTask, setLastTask] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [iteration, setIteration] = useState(0);
@@ -750,9 +751,28 @@ export default function Creation() {
       </div>
 
       <div
+        data-architect-input="comando"
+        data-architect-input-state={inputFocused ? "focused" : "idle"}
+        style={{ margin: "0 clamp(20px, 5vw, 64px) 18px" }}
+      >
+        <div
+          data-architect-voice
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 9,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: inputFocused ? "var(--accent)" : "var(--text-ghost)",
+            marginBottom: 8,
+            paddingLeft: 4,
+            transition: "color 0.15s",
+          }}
+        >
+          — COMANDO
+        </div>
+      <div
         className="glass"
         style={{
-          margin: "0 clamp(20px, 5vw, 64px) 18px",
           borderRadius: 14,
           padding: "12px 16px",
           fontFamily: "var(--mono)",
@@ -772,6 +792,8 @@ export default function Creation() {
             autoFocus
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
             placeholder={pending ? copy.creationRunning : copy.creationPlaceholder}
             disabled={pending}
@@ -817,6 +839,7 @@ export default function Creation() {
             ↵ run
           </button>
         )}
+      </div>
       </div>
     </div>
   );
