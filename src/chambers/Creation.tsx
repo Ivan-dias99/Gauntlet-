@@ -5,6 +5,7 @@ import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import { Artifact, Task, TaskState } from "../spine/types";
 import ErrorPanel from "../shell/ErrorPanel";
+import DormantPanel, { isBackendOffline } from "../shell/DormantPanel";
 
 type RunMode = "agent" | "crew";
 
@@ -709,65 +710,47 @@ export default function Creation() {
         )}
 
         {(pending || liveTools.length > 0 || liveText || done) && (
-          <div
-            className="toolRise"
-            style={{
-              maxWidth: 820,
-              marginTop: 4,
-              background: "var(--bg-input)",
-              border: "1px solid var(--border-subtle)",
-              borderLeft: `2px solid ${pending ? "var(--cc-info)" : done ? "var(--cc-ok)" : "var(--border-subtle)"}`,
-              borderRadius: 14,
-              overflow: "hidden",
-            }}
+          <section
+            className="toolRise xc-exec"
+            data-state={pending ? "running" : done ? "done" : "idle"}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "8px 14px",
-                borderBottom: "1px solid var(--border-subtle)",
-                background: "color-mix(in oklab, var(--bg-surface) 50%, transparent)",
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ display: "flex", gap: 4 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-err)", opacity: 0.35 }} />
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-warn)", opacity: 0.35 }} />
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-ok)", opacity: 0.35 }} />
-                </span>
-                <span style={{ color: "var(--text-muted)" }}>
-                  ruberra · exec{(() => {
+            <header className="xc-exec-head">
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <span className="t-kicker">exec</span>
+                <span style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 11,
+                  color: "var(--text-muted)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}>
+                  {(() => {
                     const label = activeTask?.title || lastTask;
-                    if (!label) return "";
-                    return ` › ${label.slice(0, 48)}${label.length > 48 ? "…" : ""}`;
+                    if (!label) return "ruberra";
+                    return `› ${label.slice(0, 48)}${label.length > 48 ? "…" : ""}`;
                   })()}
                 </span>
               </div>
               {pending && (
-                <span style={{ color: "var(--cc-info)" }}>● running · iter {iteration} · {elapsed.toFixed(1)}s</span>
+                <span className="xc-pill xc-pill-running">
+                  <span aria-hidden className="xc-pill-dot breathe" />
+                  running · iter {iteration} · {elapsed.toFixed(1)}s
+                </span>
               )}
               {!pending && done && (
-                <span style={{ color: "var(--cc-ok)" }}>
+                <span className="xc-pill xc-pill-ok">
                   {(() => {
-                    // Telemetry is meaningless on a replayed artifact (all
-                    // fields default to 0). Only surface the breakdown when
-                    // there is real signal — otherwise just the exit code.
                     const hasTelemetry =
                       done.iterations > 0 || done.tool_count > 0 || done.processing_time_ms > 0;
-                    if (!hasTelemetry) return "● exit 0";
-                    return `● exit 0 · ${done.iterations} iter · ${done.tool_count} tools · ${done.processing_time_ms}ms`;
+                    if (!hasTelemetry) return "exit 0";
+                    return `exit 0 · ${done.iterations} iter · ${done.tool_count} tools · ${done.processing_time_ms}ms`;
                   })()}
                 </span>
               )}
-            </div>
+            </header>
 
-            <div style={{ padding: "12px 16px" }}>
+            <div className="xc-exec-body">
               {liveTools.length > 0 && (
                 <div style={{ marginBottom: liveText || done ? 10 : 0 }}>
                   {liveTools.map((tc) => (
@@ -782,15 +765,8 @@ export default function Creation() {
               )}
               {(liveText || done) && (
                 <div
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 12.5,
-                    color: "var(--cc-fg)",
-                    lineHeight: 1.75,
-                    whiteSpace: "pre-wrap",
-                    borderTop: liveTools.length ? "1px dashed var(--border-subtle)" : "none",
-                    paddingTop: liveTools.length ? 12 : 0,
-                  }}
+                  className="xc-exec-answer"
+                  data-has-tools={liveTools.length > 0 ? "true" : undefined}
                 >
                   <span style={{ color: "var(--cc-prompt)" }}>⏺ </span>
                   {done ? done.answer : liveText}
@@ -803,14 +779,13 @@ export default function Creation() {
                 </div>
               )}
               {done && activeMission && (
-                <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed var(--border-subtle)", display: "flex", alignItems: "center", gap: 12 }}>
+                <div className="xc-exec-foot">
                   {!accepted ? (
                     <>
                       <button
                         onClick={accept}
-                        style={{ background: "none", border: "1px solid var(--cc-ok)", color: "var(--cc-ok)", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", padding: "6px 14px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer", transition: "all .2s var(--ease-swift)" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--cc-ok) 12%, transparent)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                        className="btn-chip"
+                        data-variant="ok"
                       >
                         {copy.acceptArtifact}
                       </button>
@@ -826,17 +801,23 @@ export default function Creation() {
                 </div>
               )}
             </div>
-          </div>
+          </section>
         )}
 
-        {err && (
+        {err && (isBackendOffline(err) ? (
+          <DormantPanel
+            title={copy.creationErrorTitle}
+            detail={copy.dormantCreation}
+            style={{ marginTop: 20, maxWidth: 820 }}
+          />
+        ) : (
           <ErrorPanel
             severity="critical"
             title={copy.creationErrorTitle}
             message={err}
             style={{ marginTop: 20, maxWidth: 820 }}
           />
-        )}
+        ))}
 
         {showNextStep && (
           <NextStepBar
@@ -1438,19 +1419,14 @@ function WorkbenchCard({
   const bottleneck = bottleneckBits.length > 0 ? bottleneckBits.join(" · ") : null;
   return (
     <div
-      className="fadeIn"
+      className="fadeIn surface-flagship"
       style={{
         maxWidth: 820,
-        marginBottom: 16,
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border-subtle)",
-        borderLeft: `${isActive ? 3 : 2}px solid ${task ? STATE_COLOR[task.state] : "var(--accent-dim)"}`,
-        borderRadius: 14,
-        padding: "18px 22px",
+        marginBottom: "var(--sp-4)",
+        borderLeft: `2px solid ${task ? STATE_COLOR[task.state] : "var(--border-subtle)"}`,
+        padding: "var(--sp-5) var(--sp-5)",
         fontFamily: "var(--mono)",
-        boxShadow: isLive
-          ? "0 10px 30px -18px color-mix(in oklab, var(--accent) 40%, transparent), 0 1px 4px rgba(0,0,0,.25)"
-          : isActive ? "var(--shadow-sm)" : "none",
+        boxShadow: isLive ? "var(--shadow-md)" : "var(--shadow-sm)",
         transition: "box-shadow .3s var(--ease-swift), border-color .2s",
       }}
     >
@@ -1529,7 +1505,7 @@ function WorkbenchCard({
         </div>
       )}
       <div style={{
-        marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--border-subtle)",
+        marginTop: "var(--sp-3)", paddingTop: "var(--sp-3)", borderTop: "1px solid var(--border-subtle)",
         display: "flex", gap: 14, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
         color: "var(--text-ghost)",
         alignItems: "center", flexWrap: "wrap",

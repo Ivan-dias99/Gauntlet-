@@ -1,5 +1,6 @@
-// Vercel edge catchall — forwards /api/ruberra/* to the Python backend.
-// Mirrors the dev-mode vite proxy in vite.config.ts.
+// Vercel edge catchall — forwards /api/ruberra/* to the Python backend
+// (typically deployed on Railway / Fly / Render). Mirrors the dev-mode
+// vite proxy in vite.config.ts.
 //
 // Env:
 //   RUBERRA_BACKEND_URL — base URL of the FastAPI instance (no trailing slash)
@@ -10,8 +11,14 @@ export default async function handler(req: Request): Promise<Response> {
   const backend = process.env.RUBERRA_BACKEND_URL;
   if (!backend) {
     return new Response(
-      JSON.stringify({ error: "RUBERRA_BACKEND_URL not configured" }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      JSON.stringify({ error: "RUBERRA_BACKEND_URL_not_configured" }),
+      {
+        status: 503,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+        },
+      },
     );
   }
 
@@ -28,10 +35,24 @@ export default async function handler(req: Request): Promise<Response> {
     redirect: "manual",
   };
 
-  const upstream = await fetch(target, init);
-  return new Response(upstream.body, {
-    status: upstream.status,
-    statusText: upstream.statusText,
-    headers: upstream.headers,
-  });
+  try {
+    const upstream = await fetch(target, init);
+    return new Response(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: upstream.headers,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return new Response(
+      JSON.stringify({ error: "backend_unreachable", detail: message }),
+      {
+        status: 503,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  }
 }

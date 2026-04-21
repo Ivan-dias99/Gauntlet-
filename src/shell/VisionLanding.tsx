@@ -338,70 +338,57 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-              gap: 20,
+              gridTemplateColumns: `repeat(${copy.chamberDeck.length}, 1fr)`,
+              borderTop: "1px solid var(--border-subtle)",
+              borderBottom: "1px solid var(--border-subtle)",
             }}
           >
             {copy.chamberDeck.map((c) => (
-              <article key={c.key} className="chamberCard">
+              <article
+                key={c.key}
+                className="vl-chamber"
+                data-dna={c.key.toLowerCase()}
+              >
                 <div
                   style={{
                     display: "flex",
                     alignItems: "baseline",
                     justifyContent: "space-between",
-                    marginBottom: 24,
+                    marginBottom: 28,
                   }}
                 >
-                  <span
-                    style={{
-                      fontFamily: "var(--mono)",
-                      fontSize: 10,
-                      letterSpacing: ".32em",
-                      color: "var(--text-ghost)",
-                      textTransform: "uppercase",
-                    }}
-                  >
+                  <span className="t-kicker" data-tone="ghost">
                     {c.k}
                   </span>
                   <span
+                    aria-hidden
                     style={{
                       fontFamily: "var(--mono)",
-                      fontSize: 22,
-                      color: "var(--accent)",
-                      opacity: 0.7,
+                      fontSize: 20,
+                      color: "var(--text-muted)",
+                      opacity: 0.6,
                     }}
                   >
                     {c.glyph}
                   </span>
                 </div>
                 <h3
+                  className="t-serif"
                   style={{
-                    fontFamily: "'Fraunces', serif",
-                    fontSize: 34,
+                    fontSize: 26,
                     fontWeight: 400,
-                    letterSpacing: "-0.02em",
+                    lineHeight: 1.1,
                     margin: "0 0 6px",
                   }}
                 >
                   {c.title}
                 </h3>
-                <div
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 10,
-                    letterSpacing: ".2em",
-                    color: "var(--ember)",
-                    textTransform: "uppercase",
-                    marginBottom: 20,
-                  }}
-                >
-                  {c.tag}
-                </div>
+                <div className="vl-chamber-tag">{c.tag}</div>
                 <p
                   style={{
-                    fontFamily: "'Fraunces', serif",
+                    fontFamily: "var(--serif)",
                     fontStyle: "italic",
-                    fontSize: 17,
+                    fontSize: 15,
                     lineHeight: 1.55,
                     color: "var(--text-secondary)",
                     margin: 0,
@@ -420,7 +407,6 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
           style={{
             padding: "clamp(80px, 12vh, 160px) clamp(32px, 4vw, 72px)",
             borderTop: "1px solid var(--border-subtle)",
-            borderBottom: "1px solid var(--border-subtle)",
           }}
         >
           <div

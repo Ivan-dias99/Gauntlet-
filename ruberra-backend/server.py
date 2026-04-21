@@ -26,7 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from config import ALLOWED_ORIGIN, RUBERRA_MOCK, SERVER_HOST, SERVER_PORT
+from config import ALLOWED_ORIGIN, ALLOWED_ORIGINS, RUBERRA_MOCK, SERVER_HOST, SERVER_PORT
 from models import RuberraQuery, RuberraResponse, SpineSnapshot
 from engine import RuberraEngine
 from memory import failure_memory
@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
         "═══════════════════════════════════════════════════════════\n"
         "  Ruberra V1 — Conservative Intelligence System\n"
         f"  Listening: http://{SERVER_HOST}:{SERVER_PORT}\n"
-        f"  CORS Origin: {ALLOWED_ORIGIN}\n"
+        f"  CORS Origins: {', '.join(_cors_origins)}\n"
         "  Doctrine: ACTIVE\n"
         "  Self-Consistency: 3x parallel triad\n"
         "  Judge: IMPLACABLE\n"
@@ -93,10 +93,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# CORS — production origins come from RUBERRA_ORIGIN (comma-separated), with
+# localhost dev origins always appended so the backend stays usable locally.
+_cors_origins = sorted({
+    *ALLOWED_ORIGINS,
+    "http://localhost:5173",
+    "http://localhost:3000",
+})
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[ALLOWED_ORIGIN, "http://localhost:5173", "http://localhost:3000"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

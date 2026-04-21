@@ -1,6 +1,7 @@
+import { apiUrl } from "../lib/ruberraApi";
 import { SpineState } from "./types";
 
-const ENDPOINT = "/api/ruberra/spine";
+const ENDPOINT = apiUrl("/spine");
 
 export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | null> {
   try {

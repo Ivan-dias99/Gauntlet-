@@ -3,6 +3,8 @@ import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import ErrorPanel from "../shell/ErrorPanel";
+import DormantPanel, { isBackendOffline } from "../shell/DormantPanel";
+import { apiUrl } from "../lib/ruberraApi";
 import type { Artifact, Chamber } from "../spine/types";
 
 interface RunRecord {
@@ -218,12 +220,12 @@ export default function Memory() {
     const ac = new AbortController();
     const mid = encodeURIComponent(activeMission.id);
     Promise.all([
-      fetch(`/api/ruberra/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
+      fetch(apiUrl(`/runs?mission_id=${mid}&limit=100`), { signal: ac.signal })
         .then(async (r) => {
           if (!r.ok) throw new Error(`runs ${r.status}`);
           return (await r.json()) as RunsResponse;
         }),
-      fetch(`/api/ruberra/runs/stats?mission_id=${mid}`, { signal: ac.signal })
+      fetch(apiUrl(`/runs/stats?mission_id=${mid}`), { signal: ac.signal })
         .then(async (r) => {
           if (!r.ok) throw new Error(`stats ${r.status}`);
           return (await r.json()) as ServerStats;
@@ -290,28 +292,35 @@ export default function Memory() {
         )}
 
         {stats.total > 0 && (
-          <div style={{
-            marginTop: 12,
-            display: "grid",
-            gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-            gap: 16,
-            fontFamily: "var(--mono)",
-            maxWidth: 820,
-          }}>
-            <StatCell label="runs" value={`${stats.total}`} />
-            <StatCell
-              label="refused"
-              value={`${(stats.refusalRate * 100).toFixed(0)}%`}
-              sub={`${stats.refused}/${stats.total}`}
-              warn={stats.refusalRate >= 0.5}
-            />
-            <StatCell label="avg latency" value={`${stats.avgLatencyMs} ms`} />
-            <StatCell
-              label="tokens"
-              value={formatTokens(stats.totalInput + stats.totalOutput)}
-              sub={`${formatTokens(stats.totalInput)} in · ${formatTokens(stats.totalOutput)} out`}
-            />
-            <StatCell label="tool calls" value={`${stats.toolCalls}`} />
+          <div style={{ maxWidth: 820, marginTop: 20 }}>
+            <div className="t-kicker" data-tone="ghost">
+              {copy.memoryTelemetryKicker}
+            </div>
+            <h3 className="memory-telemetry-head">
+              {copy.memoryTelemetryTitle}
+            </h3>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                gap: "var(--sp-5)",
+              }}
+            >
+              <StatCell label="runs" value={`${stats.total}`} />
+              <StatCell
+                label="refused"
+                value={`${(stats.refusalRate * 100).toFixed(0)}%`}
+                sub={`${stats.refused}/${stats.total}`}
+                warn={stats.refusalRate >= 0.5}
+              />
+              <StatCell label="avg latency" value={`${stats.avgLatencyMs} ms`} />
+              <StatCell
+                label="tokens"
+                value={formatTokens(stats.totalInput + stats.totalOutput)}
+                sub={`${formatTokens(stats.totalInput)} in · ${formatTokens(stats.totalOutput)} out`}
+              />
+              <StatCell label="tool calls" value={`${stats.toolCalls}`} />
+            </div>
           </div>
         )}
       </div>
@@ -322,13 +331,18 @@ export default function Memory() {
         fontFamily: layout === "timeline" ? "var(--sans)" : "var(--mono)",
       }}>
 
-        {err && (
+        {err && (isBackendOffline(err) ? (
+          <DormantPanel
+            title={copy.memoryTelemetryTitle}
+            detail={copy.dormantMemory}
+          />
+        ) : (
           <ErrorPanel
             severity="critical"
             title={copy.memoryErrorTitle}
             message={`${copy.memoryErrorPrefix} ${err}`}
           />
-        )}
+        ))}
 
         {runs === null && !err && (
           <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>{copy.memoryLoading}</div>
@@ -358,16 +372,18 @@ export default function Memory() {
                   }}
                 >
                   <span style={{
-                    position: "absolute", left: -120, top: -2, width: 62, textAlign: "right",
-                    fontSize: 9, letterSpacing: 2,
-                    color: "var(--text-ghost)", fontFamily: "var(--mono)",
-                  }}>{g.label}</span>
+                    position: "absolute", left: -120, top: -6, width: 92, textAlign: "right",
+                    fontFamily: "var(--serif)",
+                    fontSize: 18, fontWeight: 400,
+                    letterSpacing: "-0.01em",
+                    color: "var(--text-secondary)",
+                  }}>{g.label.charAt(0) + g.label.slice(1).toLowerCase()}</span>
                   <div style={{
                     flex: 1, height: 1,
-                    background: "var(--border-subtle)", opacity: 0.55,
+                    background: "var(--border-subtle)", opacity: 0.7,
                   }} />
                   <span style={{
-                    fontSize: 9, letterSpacing: 1.5,
+                    fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase",
                     color: "var(--text-ghost)", fontFamily: "var(--mono)",
                   }}>
                     {copy.memoryDayEntry(g.runs.length)}
@@ -663,22 +679,26 @@ function StatCell({
   label, value, sub, warn,
 }: { label: string; value: string; sub?: string; warn?: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-      <span style={{
-        fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
-        color: "var(--text-ghost)",
-      }}>
+    <div
+      className="surface-quiet"
+      style={{
+        padding: "var(--sp-3) var(--sp-4)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        minWidth: 0,
+      }}
+    >
+      <span className="t-kicker" data-tone="ghost">
         {label}
       </span>
-      <span style={{
-        fontSize: 15,
-        color: warn ? "var(--terminal-warn)" : "var(--text-primary)",
-        lineHeight: 1.2,
-      }}>
+      <span className="t-stat" data-tone={warn ? "warn" : undefined}>
         {value}
       </span>
       {sub && (
-        <span style={{ fontSize: 9, color: "var(--text-ghost)" }}>{sub}</span>
+        <span className="t-meta" style={{ color: "var(--text-ghost)" }}>
+          {sub}
+        </span>
       )}
     </div>
   );
