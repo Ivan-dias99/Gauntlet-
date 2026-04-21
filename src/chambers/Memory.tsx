@@ -313,7 +313,7 @@ export default function Memory() {
                     fontSize: 9, letterSpacing: 1.5,
                     color: "var(--text-ghost)", fontFamily: "var(--mono)",
                   }}>
-                    {g.runs.length} {g.runs.length === 1 ? "entrada" : "entradas"}
+                    {copy.memoryDayEntry(g.runs.length)}
                   </span>
                 </div>
                 {g.runs.map((r, i) => {

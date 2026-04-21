@@ -87,6 +87,13 @@ export interface Copy {
   themeTitle: (name: string) => string;
   missionLastArtifact: (time: string) => string;
   missionNoArtifacts: string;
+  tweaksTitle: string;
+  tweaksClose: string;
+  resetTweaks: string;
+  resetSpine: string;
+  resetSpineConfirm: string;
+  memoryDayEntry: (n: number) => string;
+  creationPrinciplesPresent: (n: number) => string;
   enterKey: string;
   resumeMission: string;
   newMissionLong: string;
@@ -212,6 +219,14 @@ const PT: Copy = {
   themeTitle: (name) => `Tema: ${name}`,
   missionLastArtifact: (time) => `último artefacto há ${time}`,
   missionNoArtifacts: "ainda sem artefactos",
+  tweaksTitle: "Tweaks",
+  tweaksClose: "FECHAR ×",
+  resetTweaks: "repor tweaks",
+  resetSpine: "repor spine",
+  resetSpineConfirm: "Repor spine? Missões, notas, tarefas e princípios serão apagados.",
+  memoryDayEntry: (n) => `${n} ${n === 1 ? "entrada" : "entradas"}`,
+  creationPrinciplesPresent: (n) =>
+    `${n} princípio${n !== 1 ? "s" : ""} da doutrina bem presentes nesta câmara`,
   enterKey: "Enter",
   resumeMission: "Retomar missão",
   newMissionLong: "+ Nova missão",
@@ -325,6 +340,14 @@ const EN: Copy = {
   themeTitle: (name) => `Theme: ${name}`,
   missionLastArtifact: (time) => `last artifact ${time} ago`,
   missionNoArtifacts: "no artifacts yet",
+  tweaksTitle: "Tweaks",
+  tweaksClose: "CLOSE ×",
+  resetTweaks: "reset tweaks",
+  resetSpine: "reset spine",
+  resetSpineConfirm: "Reset spine? Missions, notes, tasks and principles will be erased.",
+  memoryDayEntry: (n) => `${n} ${n === 1 ? "entry" : "entries"}`,
+  creationPrinciplesPresent: (n) =>
+    `${n} doctrine principle${n !== 1 ? "s" : ""} present in this chamber`,
   enterKey: "Enter",
   resumeMission: "Resume mission",
   newMissionLong: "+ New mission",

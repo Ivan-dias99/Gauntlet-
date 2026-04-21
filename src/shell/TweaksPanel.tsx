@@ -14,6 +14,7 @@ import {
 } from "../tweaks/TweaksContext";
 import { useSpine } from "../spine/SpineContext";
 import { Chamber } from "../spine/types";
+import { useCopy } from "../i18n/copy";
 
 interface Props {
   open: boolean;
@@ -24,6 +25,7 @@ interface Props {
 export default function TweaksPanel({ open, onClose, chamber }: Props) {
   const { values, set, reset } = useTweaks();
   const { resetAll } = useSpine();
+  const copy = useCopy();
 
   if (!open) return null;
 
@@ -61,7 +63,7 @@ export default function TweaksPanel({ open, onClose, chamber }: Props) {
             textTransform: "uppercase",
           }}
         >
-          Tweaks
+          {copy.tweaksTitle}
         </span>
         <button
           onClick={onClose}
@@ -72,7 +74,7 @@ export default function TweaksPanel({ open, onClose, chamber }: Props) {
             letterSpacing: 1,
           }}
         >
-          CLOSE ×
+          {copy.tweaksClose}
         </button>
       </div>
 
@@ -196,11 +198,11 @@ export default function TweaksPanel({ open, onClose, chamber }: Props) {
             textTransform: "uppercase",
           }}
         >
-          reset tweaks
+          {copy.resetTweaks}
         </button>
         <button
           onClick={() => {
-            if (confirm("Reset spine? Missões, notas, tarefas e princípios serão apagados.")) {
+            if (confirm(copy.resetSpineConfirm)) {
               resetAll();
             }
           }}
@@ -212,7 +214,7 @@ export default function TweaksPanel({ open, onClose, chamber }: Props) {
             textTransform: "uppercase",
           }}
         >
-          reset spine
+          {copy.resetSpine}
         </button>
       </div>
     </div>

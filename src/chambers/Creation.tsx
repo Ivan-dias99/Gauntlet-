@@ -366,7 +366,7 @@ export default function Creation() {
         {principles.length > 0 && (
           <span
             data-principles-in-context
-            title={`${principles.length} princípio${principles.length !== 1 ? "s" : ""} da doutrina bem presentes nesta câmara`}
+            title={copy.creationPrinciplesPresent(principles.length)}
             style={{
               fontSize: 9,
               letterSpacing: 1.5,
