@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/ruberra/:match*", "destination": "/api/ruberra" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

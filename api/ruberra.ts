@@ -1,6 +1,12 @@
-// Vercel edge catchall — forwards /api/ruberra/* to the Python backend
+// Vercel edge forwarder — proxies /api/ruberra/* to the Python backend
 // (typically deployed on Railway). Mirrors the dev-mode vite proxy in
 // vite.config.ts.
+//
+// Routing: this file is registered at /api/ruberra. All sub-paths
+// (/api/ruberra/foo, /api/ruberra/foo/bar, …) reach it via the rewrite
+// declared in vercel.json. Using a flat filename + explicit rewrite is more
+// reliable than the [...path].ts catch-all convention, which silently drops
+// multi-segment paths on standalone (non-Next.js) Vercel projects.
 //
 // Env:
 //   RUBERRA_BACKEND_URL — base URL of the FastAPI instance (no trailing slash)
