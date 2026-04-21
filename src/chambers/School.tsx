@@ -3,6 +3,21 @@ import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 
+function toRoman(n: number): string {
+  if (n <= 0) return "";
+  const map: Array<[number, string]> = [
+    [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"],
+    [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
+    [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+  ];
+  let out = "";
+  let x = n;
+  for (const [v, s] of map) {
+    while (x >= v) { out += s; x -= v; }
+  }
+  return out;
+}
+
 export default function School() {
   const { principles, addPrinciple, activeMission } = useSpine();
   const { values } = useTweaks();
@@ -38,10 +53,14 @@ export default function School() {
             fontFamily: "var(--mono)",
           }}
         >
-          School
+          — DOUTRINA SOBERANA
         </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          {copy.chambers.School.lead}
+        <span style={{
+          fontSize: 12,
+          color: "var(--text-muted)",
+          fontStyle: "italic",
+        }}>
+          princípios que vinculam lab e construção
         </span>
         {principles.length > 0 && (
           <span
@@ -79,7 +98,7 @@ export default function School() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent)", flexShrink: 0 }} />
               <span style={{ fontSize: 10, color: "var(--accent)", letterSpacing: 2, textTransform: "uppercase", fontFamily: "var(--mono)" }}>
-                {principles.length} {principles.length === 1 ? "princípio" : "princípios"} activo{principles.length !== 1 ? "s" : ""}
+                VIGOR CONSTITUCIONAL · {principles.length} {principles.length === 1 ? "artigo" : "artigos"}
               </span>
             </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.55 }}>
@@ -160,7 +179,7 @@ export default function School() {
                   {isGoverning && (
                     <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", display: "inline-block", flexShrink: 0 }} />
                   )}
-                  § {String(principles.length - i).padStart(2, "0")}
+                  <span data-article-roman>§ {toRoman(principles.length - i)}</span>
                 </div>
                 <div style={{ fontSize: 15, color: "var(--text-primary)", lineHeight: 1.6 }}>
                   {p.text}
@@ -177,7 +196,7 @@ export default function School() {
                 style={{
                   animationDelay: `${i * 35}ms`,
                   display: "grid",
-                  gridTemplateColumns: "44px 1fr",
+                  gridTemplateColumns: "64px 1fr",
                   gap: "0 20px",
                   padding: "18px 0",
                   borderBottom: "1px solid var(--border-subtle)",
@@ -197,14 +216,15 @@ export default function School() {
                     <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 0 2px color-mix(in oklab, var(--accent) 20%, transparent)" }} />
                   )}
                   <span
+                    data-article-roman
                     style={{
-                      fontSize: 10,
+                      fontSize: 11,
                       color: "var(--accent-dim)",
                       fontFamily: "var(--mono)",
-                      letterSpacing: 1,
+                      letterSpacing: 1.5,
                     }}
                   >
-                    {String(i + 1).padStart(2, "0")}
+                    § {toRoman(i + 1)}
                   </span>
                 </div>
                 <span
