@@ -60,7 +60,7 @@ export default function RitualEntry({ onDone }: Props) {
               transition: "color 0.15s",
             }}
           >
-            — MISSÃO
+            {copy.ritualMissionVoice}
           </div>
           <input
             autoFocus

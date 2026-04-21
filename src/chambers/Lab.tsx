@@ -4,6 +4,7 @@ import { useRuberra, RouteEvent } from "../hooks/useRuberra";
 import { Note } from "../spine/types";
 import ErrorPanel from "../shell/ErrorPanel";
 import EmptyState from "../shell/EmptyState";
+import { useCopy } from "../i18n/copy";
 
 interface TriadResult {
   answer?: string | null;
@@ -70,6 +71,7 @@ const EMPTY_LIVE: LiveState = {
 export default function Lab() {
   const { activeMission, addNote, addNoteToMission, principles } = useSpine();
   const { streamRoute, pending, error } = useRuberra();
+  const copy = useCopy();
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
@@ -189,7 +191,7 @@ export default function Lab() {
           Lab
         </span>
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Investigação · Evidência · Pressão
+          {copy.labTagline}
         </span>
         {principles.length > 0 && (
           <span
@@ -230,17 +232,17 @@ export default function Lab() {
           activeMission ? (
             <EmptyState
               glyph="※"
-              kicker="— Sem entrada"
-              body="Sem evidências. Comece a investigar."
-              hint="uma questão, uma hipótese, uma fractura"
+              kicker={copy.labEmptyActiveKicker}
+              body={copy.labEmpty}
+              hint={copy.labEmptyActiveHint}
               style={{ marginTop: "12vh" }}
             />
           ) : (
             <EmptyState
               glyph="◌"
-              kicker="— Sem missão activa"
-              body="Cria ou activa uma missão para investigar."
-              hint="+ missão no canto superior"
+              kicker={copy.labEmptyNoMissionKicker}
+              body={copy.labEmptyNoMissionBody}
+              hint={copy.labEmptyNoMissionHint}
               tone="warn"
               style={{ marginTop: "12vh" }}
             />
@@ -260,7 +262,7 @@ export default function Lab() {
         )}
 
         {error && !pending && (
-          <ErrorPanel severity="critical" title="FALHA" message={error} />
+          <ErrorPanel severity="critical" title={copy.labErrorTitle} message={error} />
         )}
 
         <div ref={bottomRef} />
@@ -290,7 +292,7 @@ export default function Lab() {
             transition: "color 0.15s",
           }}
         >
-          — DIRECTIVA
+          {copy.labInputVoice}
         </div>
         <div className="glass" style={{ borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
         <span
@@ -306,10 +308,10 @@ export default function Lab() {
           onBlur={() => setInputFocused(false)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
           placeholder={
-            !activeMission ? "Activa uma missão para investigar..." :
-            pending ? "Aguardando verdict..." :
-            lastVerdict?.refused ? "Reformula. Fractura. Pressiona mais." :
-            "Evidência, análise, hipótese..."
+            !activeMission ? copy.labPlaceholderNoMission :
+            pending ? copy.labPlaceholderPending :
+            lastVerdict?.refused ? copy.labPlaceholderRefused :
+            copy.labPlaceholder
           }
           disabled={pending || !activeMission}
           style={{ flex: 1, fontSize: 14, color: "var(--text-primary)", fontFamily: "var(--sans)", opacity: pending || !activeMission ? 0.55 : 1, padding: "6px 0", cursor: !activeMission ? "not-allowed" : undefined }}

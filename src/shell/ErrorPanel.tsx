@@ -1,4 +1,5 @@
 import { CSSProperties } from "react";
+import { useCopy } from "../i18n/copy";
 
 export type ErrorSeverity = "critical" | "warn" | "info";
 
@@ -16,14 +17,13 @@ const SEVERITY_TOKEN: Record<ErrorSeverity, string> = {
   info: "var(--cc-info)",
 };
 
-const SEVERITY_KICKER: Record<ErrorSeverity, string> = {
-  critical: "— CRÍTICO",
-  warn: "— AVISO",
-  info: "— INFO",
-};
-
 export default function ErrorPanel({ severity, title, message, onDismiss, style }: Props) {
+  const copy = useCopy();
   const accent = SEVERITY_TOKEN[severity];
+  const severityKicker =
+    severity === "critical" ? copy.severityCritical :
+    severity === "warn" ? copy.severityWarn :
+    copy.severityInfo;
   return (
     <div
       data-error-panel
@@ -61,12 +61,12 @@ export default function ErrorPanel({ severity, title, message, onDismiss, style 
             textTransform: "uppercase",
           }}
         >
-          {SEVERITY_KICKER[severity]}{title ? ` · ${title}` : ""}
+          {severityKicker}{title ? ` · ${title}` : ""}
         </span>
         {onDismiss && (
           <button
             onClick={onDismiss}
-            title="dispensar"
+            title={copy.dismiss}
             style={{
               background: "none",
               border: "none",

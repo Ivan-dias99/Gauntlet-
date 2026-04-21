@@ -55,14 +55,14 @@ export default function School() {
             fontFamily: "var(--mono)",
           }}
         >
-          — DOUTRINA SOBERANA
+          {copy.schoolTagline}
         </span>
         <span style={{
           fontSize: 12,
           color: "var(--text-muted)",
           fontStyle: "italic",
         }}>
-          princípios que vinculam lab e construção
+          {copy.schoolSubtitle}
         </span>
         {principles.length > 0 && (
           <span
@@ -118,9 +118,9 @@ export default function School() {
         {principles.length === 0 && (
           <EmptyState
             glyph="§"
-            kicker="— Constituição em branco"
+            kicker={copy.schoolEmptyKicker}
             body={copy.schoolEmpty}
-            hint="inscreve o primeiro artigo abaixo"
+            hint={copy.schoolEmptyHint}
             style={{ marginTop: "10vh" }}
           />
         )}
@@ -244,7 +244,7 @@ export default function School() {
             transition: "color 0.15s",
           }}
         >
-          — PRINCÍPIO
+          {copy.schoolInputVoice}
         </div>
       <div
         className="glass"

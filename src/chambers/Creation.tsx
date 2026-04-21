@@ -361,7 +361,7 @@ export default function Creation() {
           Creation
         </span>
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Construção · Execução · Consequência
+          {copy.creationTagline}
         </span>
         {principles.length > 0 && (
           <span
@@ -701,7 +701,7 @@ export default function Creation() {
         {err && (
           <ErrorPanel
             severity="critical"
-            title="EXECUÇÃO"
+            title={copy.creationErrorTitle}
             message={err}
             style={{ marginTop: 20, maxWidth: 820 }}
           />
@@ -757,7 +757,7 @@ export default function Creation() {
             transition: "color 0.15s",
           }}
         >
-          — COMANDO
+          {copy.creationInputVoice}
         </div>
       <div
         className="glass"

@@ -1,4 +1,5 @@
 import { Component, ReactNode, ErrorInfo } from "react";
+import { fallbackCopy } from "../i18n/copy";
 
 interface Props { children: ReactNode; }
 interface State { error: Error | null; }
@@ -16,6 +17,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
+      const copy = fallbackCopy();
       return (
         <div
           data-error-panel
@@ -42,7 +44,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 fontFamily: "var(--mono)",
               }}
             >
-              — CRÍTICO · ERRO INTERNO
+              {copy.errorBoundaryKicker}
             </div>
             <div
               data-error-message
@@ -74,7 +76,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 e.currentTarget.style.color = "var(--text-muted)";
               }}
             >
-              TENTAR NOVAMENTE
+              {copy.errorBoundaryRetry}
             </button>
           </div>
         </div>

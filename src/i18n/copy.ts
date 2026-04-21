@@ -17,10 +17,24 @@ export interface Copy {
   cancel: string;
   switchMission: string;
   missions: string;
+  labTagline: string;
+  labInputVoice: string;
+  labErrorTitle: string;
   labEmpty: string;
+  labEmptyActiveKicker: string;
+  labEmptyActiveHint: string;
+  labEmptyNoMissionKicker: string;
+  labEmptyNoMissionBody: string;
+  labEmptyNoMissionHint: string;
   labPlaceholder: string;
+  labPlaceholderNoMission: string;
+  labPlaceholderPending: string;
+  labPlaceholderRefused: string;
   labAwait: string;
   labAnalyzing: string;
+  creationTagline: string;
+  creationInputVoice: string;
+  creationErrorTitle: string;
   creationEmptyPrompt: string;
   creationPlaceholder: string;
   creationRunning: string;
@@ -45,11 +59,28 @@ export interface Copy {
   taskSourceOther: string;
   artifactEmpty: string;
   refinePrefix: string;
+  memoryTagline: string;
+  memorySubtitle: string;
+  memoryLoading: string;
+  memoryErrorTitle: string;
+  memoryErrorPrefix: string;
+  severityCritical: string;
+  severityWarn: string;
+  severityInfo: string;
+  dismiss: string;
   memoryEmpty: string;
   memoryCount: (n: number) => string;
+  schoolTagline: string;
+  schoolSubtitle: string;
+  schoolInputVoice: string;
   schoolEmpty: string;
+  schoolEmptyKicker: string;
+  schoolEmptyHint: string;
   schoolPlaceholder: string;
   schoolInscribe: string;
+  ritualMissionVoice: string;
+  errorBoundaryKicker: string;
+  errorBoundaryRetry: string;
   enterKey: string;
   resumeMission: string;
   newMissionLong: string;
@@ -105,10 +136,24 @@ const PT: Copy = {
   cancel: "cancelar",
   switchMission: "Trocar missão",
   missions: "Missões",
+  labTagline: "Investigação · Evidência · Pressão",
+  labInputVoice: "— DIRECTIVA",
+  labErrorTitle: "FALHA",
   labEmpty: "Sem evidências. Comece a investigar.",
+  labEmptyActiveKicker: "— Sem entrada",
+  labEmptyActiveHint: "uma questão, uma hipótese, uma fractura",
+  labEmptyNoMissionKicker: "— Sem missão activa",
+  labEmptyNoMissionBody: "Cria ou activa uma missão para investigar.",
+  labEmptyNoMissionHint: "+ missão no canto superior",
   labPlaceholder: "Evidência, análise, hipótese...",
+  labPlaceholderNoMission: "Activa uma missão para investigar...",
+  labPlaceholderPending: "Aguardando verdict...",
+  labPlaceholderRefused: "Reformula. Fractura. Pressiona mais.",
   labAwait: "Aguardando resposta...",
   labAnalyzing: "ANALISANDO",
+  creationTagline: "Construção · Execução · Consequência",
+  creationInputVoice: "— COMANDO",
+  creationErrorTitle: "EXECUÇÃO",
   creationEmptyPrompt: "$ _",
   creationPlaceholder: "nova tarefa...",
   creationRunning: "executando...",
@@ -133,11 +178,28 @@ const PT: Copy = {
   taskSourceOther: "outra",
   artifactEmpty: "ainda sem artefactos aceites nesta missão",
   refinePrefix: "refinar: ",
+  memoryTagline: "— ARQUIVO VIVO",
+  memorySubtitle: "o que a missão já decidiu",
+  memoryLoading: "— a carregar —",
+  memoryErrorTitle: "BACKEND",
+  memoryErrorPrefix: "backend off?",
+  severityCritical: "— CRÍTICO",
+  severityWarn: "— AVISO",
+  severityInfo: "— INFO",
+  dismiss: "dispensar",
   memoryEmpty: "— log vazio —",
   memoryCount: (n) => `${n} evento${n === 1 ? "" : "s"}`,
+  schoolTagline: "— DOUTRINA SOBERANA",
+  schoolSubtitle: "princípios que vinculam lab e construção",
+  schoolInputVoice: "— PRINCÍPIO",
   schoolEmpty: "Sem princípios registados. A constituição está em branco.",
+  schoolEmptyKicker: "— Constituição em branco",
+  schoolEmptyHint: "inscreve o primeiro artigo abaixo",
   schoolPlaceholder: "Novo princípio...",
   schoolInscribe: "Inscrever",
+  ritualMissionVoice: "— MISSÃO",
+  errorBoundaryKicker: "— CRÍTICO · ERRO INTERNO",
+  errorBoundaryRetry: "TENTAR NOVAMENTE",
   enterKey: "Enter",
   resumeMission: "Retomar missão",
   newMissionLong: "+ Nova missão",
@@ -181,10 +243,24 @@ const EN: Copy = {
   cancel: "cancel",
   switchMission: "Switch mission",
   missions: "Missions",
+  labTagline: "Investigation · Evidence · Pressure",
+  labInputVoice: "— DIRECTIVE",
+  labErrorTitle: "FAILURE",
   labEmpty: "No evidence. Begin investigating.",
+  labEmptyActiveKicker: "— No entry",
+  labEmptyActiveHint: "a question, a hypothesis, a fracture",
+  labEmptyNoMissionKicker: "— No active mission",
+  labEmptyNoMissionBody: "Create or activate a mission to investigate.",
+  labEmptyNoMissionHint: "+ mission in the top corner",
   labPlaceholder: "Evidence, analysis, hypothesis...",
+  labPlaceholderNoMission: "Activate a mission to investigate...",
+  labPlaceholderPending: "Awaiting verdict...",
+  labPlaceholderRefused: "Reformulate. Fracture. Press harder.",
   labAwait: "Awaiting response...",
   labAnalyzing: "ANALYZING",
+  creationTagline: "Construction · Execution · Consequence",
+  creationInputVoice: "— COMMAND",
+  creationErrorTitle: "EXECUTION",
   creationEmptyPrompt: "$ _",
   creationPlaceholder: "new task...",
   creationRunning: "running...",
@@ -209,11 +285,28 @@ const EN: Copy = {
   taskSourceOther: "other",
   artifactEmpty: "no accepted artifacts on this mission yet",
   refinePrefix: "refine: ",
+  memoryTagline: "— LIVING ARCHIVE",
+  memorySubtitle: "what the mission has already decided",
+  memoryLoading: "— loading —",
+  memoryErrorTitle: "BACKEND",
+  memoryErrorPrefix: "backend off?",
+  severityCritical: "— CRITICAL",
+  severityWarn: "— WARNING",
+  severityInfo: "— INFO",
+  dismiss: "dismiss",
   memoryEmpty: "— empty log —",
   memoryCount: (n) => `${n} event${n === 1 ? "" : "s"}`,
+  schoolTagline: "— SOVEREIGN DOCTRINE",
+  schoolSubtitle: "principles that bind lab and creation",
+  schoolInputVoice: "— PRINCIPLE",
   schoolEmpty: "No principles recorded. Constitution is blank.",
+  schoolEmptyKicker: "— Blank constitution",
+  schoolEmptyHint: "inscribe the first article below",
   schoolPlaceholder: "New principle...",
   schoolInscribe: "Inscribe",
+  ritualMissionVoice: "— MISSION",
+  errorBoundaryKicker: "— CRITICAL · INTERNAL ERROR",
+  errorBoundaryRetry: "TRY AGAIN",
   enterKey: "Enter",
   resumeMission: "Resume mission",
   newMissionLong: "+ New mission",
@@ -247,4 +340,11 @@ const DICT: Record<Lang, Copy> = { pt: PT, en: EN };
 export function useCopy(): Copy {
   const { values } = useTweaks();
   return DICT[values.lang] ?? PT;
+}
+
+// Hookless accessor for contexts that cannot call hooks (ErrorBoundary,
+// module-level rendering, tests). Defaults to PT — language preference lives
+// inside TweaksContext, which may itself be the thing that failed.
+export function fallbackCopy(): Copy {
+  return PT;
 }

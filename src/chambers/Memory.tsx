@@ -220,10 +220,10 @@ export default function Memory() {
           display: "flex", alignItems: "baseline", gap: 12,
         }}>
           <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
-            — ARQUIVO VIVO
+            {copy.memoryTagline}
           </span>
           <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
-            o que a missão já decidiu
+            {copy.memorySubtitle}
           </span>
           {stats.total > 0 && (
             <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
@@ -268,13 +268,13 @@ export default function Memory() {
         {err && (
           <ErrorPanel
             severity="critical"
-            title="BACKEND"
-            message={`backend off? ${err}`}
+            title={copy.memoryErrorTitle}
+            message={`${copy.memoryErrorPrefix} ${err}`}
           />
         )}
 
         {runs === null && !err && (
-          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>— a carregar —</div>
+          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>{copy.memoryLoading}</div>
         )}
 
         {runs && runs.length === 0 && !err && (
