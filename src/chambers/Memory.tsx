@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
+import ErrorPanel from "../shell/ErrorPanel";
 
 interface RunRecord {
   id: string;
@@ -265,15 +266,11 @@ export default function Memory() {
       }}>
 
         {err && (
-          <div style={{
-            fontSize: 11, color: "var(--cc-err)",
-            border: "1px solid var(--border-subtle)",
-            borderLeft: "2px solid var(--cc-err)",
-            padding: "10px 14px", maxWidth: 720,
-            whiteSpace: "pre-wrap",
-          }}>
-            backend off? {err}
-          </div>
+          <ErrorPanel
+            severity="critical"
+            title="BACKEND"
+            message={`backend off? ${err}`}
+          />
         )}
 
         {runs === null && !err && (

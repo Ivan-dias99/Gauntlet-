@@ -17,25 +17,37 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div style={{
-          height: "100vh",
-          background: "#0c0c0c",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "system-ui, sans-serif",
-        }}>
+        <div
+          data-error-panel
+          data-error-severity="critical"
+          data-error-boundary
+          style={{
+            height: "100vh",
+            background: "var(--bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "var(--sans)",
+          }}
+        >
           <div style={{ maxWidth: 480, padding: "0 32px" }}>
-            <div style={{
-              fontSize: 10,
-              letterSpacing: 3,
-              color: "#7a2020",
-              textTransform: "uppercase",
-              marginBottom: 20,
-            }}>
-              ERRO INTERNO
+            <div
+              data-error-kicker
+              style={{
+                fontSize: 10,
+                letterSpacing: 3,
+                color: "var(--cc-err)",
+                textTransform: "uppercase",
+                marginBottom: 20,
+                fontFamily: "var(--mono)",
+              }}
+            >
+              — CRÍTICO · ERRO INTERNO
             </div>
-            <div style={{ fontSize: 13, color: "#4a4540", lineHeight: 1.7 }}>
+            <div
+              data-error-message
+              style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7 }}
+            >
               {this.state.error.message}
             </div>
             <button
@@ -43,13 +55,23 @@ export default class ErrorBoundary extends Component<Props, State> {
               style={{
                 marginTop: 24,
                 background: "none",
-                border: "1px solid #2a2520",
-                color: "#7a7060",
+                border: "1px solid var(--border)",
+                color: "var(--text-muted)",
                 fontSize: 11,
                 letterSpacing: 2,
                 padding: "10px 24px",
                 cursor: "pointer",
-                fontFamily: "system-ui, sans-serif",
+                fontFamily: "var(--mono)",
+                borderRadius: "var(--radius)",
+                transition: "border-color 0.15s, color 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--accent-dim)";
+                e.currentTarget.style.color = "var(--accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.color = "var(--text-muted)";
               }}
             >
               TENTAR NOVAMENTE

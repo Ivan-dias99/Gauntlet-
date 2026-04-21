@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRuberra, RouteEvent } from "../hooks/useRuberra";
 import { Note } from "../spine/types";
+import ErrorPanel from "../shell/ErrorPanel";
 
 interface TriadResult {
   answer?: string | null;
@@ -250,9 +251,7 @@ export default function Lab() {
         )}
 
         {error && !pending && (
-          <div className="toolRise" style={{ background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderLeft: "2px solid var(--cc-err)", borderRadius: 12, padding: "12px 16px", maxWidth: 680, alignSelf: "flex-start", fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>
-            {error}
-          </div>
+          <ErrorPanel severity="critical" title="FALHA" message={error} />
         )}
 
         <div ref={bottomRef} />

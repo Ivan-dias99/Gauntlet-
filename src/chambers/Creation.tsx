@@ -4,6 +4,7 @@ import { useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep } from "../ho
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import { Artifact, Task, TaskState } from "../spine/types";
+import ErrorPanel from "../shell/ErrorPanel";
 
 type RunMode = "agent" | "crew";
 
@@ -698,24 +699,12 @@ export default function Creation() {
         )}
 
         {err && (
-          <div
-            className="toolRise"
-            style={{
-              marginTop: 20,
-              maxWidth: 820,
-              background: "var(--bg-input)",
-              border: "1px solid var(--border-subtle)",
-              borderLeft: "2px solid var(--cc-err)",
-              borderRadius: 14,
-              padding: "14px 18px",
-              fontFamily: "var(--mono)",
-            }}
-          >
-            <div style={{ fontSize: 10, color: "var(--cc-err)", letterSpacing: 1.5 }}>ERRO</div>
-            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, whiteSpace: "pre-wrap" }}>
-              {err}
-            </div>
-          </div>
+          <ErrorPanel
+            severity="critical"
+            title="EXECUÇÃO"
+            message={err}
+            style={{ marginTop: 20, maxWidth: 820 }}
+          />
         )}
 
         {showNextStep && (
