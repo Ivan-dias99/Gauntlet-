@@ -83,6 +83,10 @@ export interface Copy {
   ritualMissionVoice: string;
   errorBoundaryKicker: string;
   errorBoundaryRetry: string;
+  homeTitle: string;
+  themeTitle: (name: string) => string;
+  missionLastArtifact: (time: string) => string;
+  missionNoArtifacts: string;
   enterKey: string;
   resumeMission: string;
   newMissionLong: string;
@@ -204,6 +208,10 @@ const PT: Copy = {
   ritualMissionVoice: "— MISSÃO",
   errorBoundaryKicker: "— CRÍTICO · ERRO INTERNO",
   errorBoundaryRetry: "TENTAR NOVAMENTE",
+  homeTitle: "Voltar ao início",
+  themeTitle: (name) => `Tema: ${name}`,
+  missionLastArtifact: (time) => `último artefacto há ${time}`,
+  missionNoArtifacts: "ainda sem artefactos",
   enterKey: "Enter",
   resumeMission: "Retomar missão",
   newMissionLong: "+ Nova missão",
@@ -313,6 +321,10 @@ const EN: Copy = {
   ritualMissionVoice: "— MISSION",
   errorBoundaryKicker: "— CRITICAL · INTERNAL ERROR",
   errorBoundaryRetry: "TRY AGAIN",
+  homeTitle: "Back to landing",
+  themeTitle: (name) => `Theme: ${name}`,
+  missionLastArtifact: (time) => `last artifact ${time} ago`,
+  missionNoArtifacts: "no artifacts yet",
   enterKey: "Enter",
   resumeMission: "Resume mission",
   newMissionLong: "+ New mission",

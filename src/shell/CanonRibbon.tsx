@@ -63,7 +63,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
       <button
         onClick={onHome}
         disabled={!onHome}
-        title={onHome ? "Voltar ao início" : undefined}
+        title={onHome ? copy.homeTitle : undefined}
         style={{
           display: "inline-flex",
           alignItems: "baseline",
@@ -202,8 +202,8 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                       }}
                       title={
                         lastArtifactAgoMs !== null
-                          ? `último artefacto há ${formatAgo(lastArtifactAgoMs)}`
-                          : "ainda sem artefactos"
+                          ? copy.missionLastArtifact(formatAgo(lastArtifactAgoMs))
+                          : copy.missionNoArtifacts
                       }
                     >
                       {openTasks}/{totalTasks}t · {notesCount}n
@@ -294,7 +294,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
         {onTweaks && (
           <button
             onClick={onTweaks}
-            title="Tweaks"
+            title={copy.retune}
             style={{
               background: "none",
               border: "1px solid var(--border)",
@@ -323,7 +323,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
 
         <button
           onClick={toggle}
-          title={`Tema: ${theme}`}
+          title={copy.themeTitle(theme)}
           style={{
             background: "none",
             border: "1px solid var(--border)",
