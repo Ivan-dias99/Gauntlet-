@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRuberra, RouteEvent } from "../hooks/useRuberra";
 import { Note } from "../spine/types";
+import ErrorPanel from "../shell/ErrorPanel";
+import EmptyState from "../shell/EmptyState";
+import { useCopy } from "../i18n/copy";
 
 interface TriadResult {
   answer?: string | null;
@@ -69,7 +72,9 @@ const EMPTY_LIVE: LiveState = {
 export default function Lab() {
   const { activeMission, addNote, addNoteToMission, addTask, principles } = useSpine();
   const { streamRoute, pending, error } = useRuberra();
+  const copy = useCopy();
   const [input, setInput] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
@@ -203,11 +208,30 @@ export default function Lab() {
       {/* Header */}
       <div style={{ padding: "20px 40px 16px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "baseline", gap: 12 }}>
         <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
-          Lab
+          {copy.labKicker}
         </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Investigação · Evidência · Pressão
+        <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+          {copy.labTagline}
         </span>
+        {principles.length > 0 && (
+          <span
+            data-principles-in-context
+            title={`${principles.length} princípio${principles.length !== 1 ? "s" : ""} da doutrina bem presentes nesta câmara`}
+            style={{
+              fontSize: 9,
+              letterSpacing: 1.5,
+              color: "var(--accent)",
+              fontFamily: "var(--mono)",
+              textTransform: "uppercase",
+              padding: "2px 7px",
+              border: "1px solid color-mix(in oklab, var(--accent) 32%, transparent)",
+              borderRadius: 4,
+              lineHeight: 1.4,
+            }}
+          >
+            sob § {principles.length}
+          </span>
+        )}
         {pending && (
           <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--cc-info)", fontFamily: "var(--mono)", letterSpacing: 2, display: "flex", alignItems: "center", gap: 8 }}>
             <span className="breathe" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-info)" }} />
@@ -235,16 +259,24 @@ export default function Lab() {
       <div style={{ flex: 1, overflow: "auto", padding: "24px clamp(20px, 5vw, 64px)", display: "flex", flexDirection: "column", gap: 14 }}>
 
         {notes.length === 0 && !pending && !error && (
-          <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 560, marginTop: "12vh" }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".4em", color: activeMission ? "var(--text-ghost)" : "var(--cc-warn)", textTransform: "uppercase", marginBottom: 18 }}>
-              {activeMission ? "— PRESSÃO EM REPOUSO" : "— Sem missão activa"}
-            </div>
-            <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontStyle: "italic", fontSize: 24, lineHeight: 1.35, color: "var(--text-muted)", letterSpacing: "-0.005em" }}>
-              {activeMission
-                ? "A verdade não se entrega sem atrito. Abre a pressão."
-                : "Activa uma missão para abrir pressão."}
-            </div>
-          </div>
+          activeMission ? (
+            <EmptyState
+              glyph="※"
+              kicker={copy.labEmptyActiveKicker}
+              body={copy.labEmpty}
+              hint={copy.labEmptyActiveHint}
+              style={{ marginTop: "12vh" }}
+            />
+          ) : (
+            <EmptyState
+              glyph="◌"
+              kicker={copy.labEmptyNoMissionKicker}
+              body={copy.labEmptyNoMissionBody}
+              hint={copy.labEmptyNoMissionHint}
+              tone="warn"
+              style={{ marginTop: "12vh" }}
+            />
+          )
         )}
 
         {notes.map((n) => (
@@ -267,9 +299,7 @@ export default function Lab() {
         )}
 
         {error && !pending && (
-          <div className="toolRise" style={{ background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderLeft: "2px solid var(--cc-err)", borderRadius: 12, padding: "12px 16px", maxWidth: 680, alignSelf: "flex-start", fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>
-            {error}
-          </div>
+          <ErrorPanel severity="critical" title={copy.labErrorTitle} message={error} />
         )}
 
         <div ref={bottomRef} />
@@ -281,7 +311,27 @@ export default function Lab() {
       )}
 
       {/* Input */}
-      <div className="glass" style={{ margin: "0 clamp(20px, 5vw, 64px) 18px", borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
+      <div
+        data-architect-input="directiva"
+        data-architect-input-state={inputFocused ? "focused" : "idle"}
+        style={{ margin: "0 clamp(20px, 5vw, 64px) 18px" }}
+      >
+        <div
+          data-architect-voice
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 9,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: inputFocused ? "var(--accent)" : "var(--text-ghost)",
+            marginBottom: 8,
+            paddingLeft: 4,
+            transition: "color 0.15s",
+          }}
+        >
+          {copy.labInputVoice}
+        </div>
+        <div className="glass" style={{ borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
         <span
           className={pending ? "breathe" : ""}
           style={{ width: 8, height: 8, borderRadius: "50%", background: pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)", boxShadow: `0 0 0 4px color-mix(in oklab, ${pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)"} 22%, transparent)`, flexShrink: 0 }}
@@ -291,12 +341,14 @@ export default function Lab() {
           autoFocus
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
           placeholder={
-            !activeMission ? "Activa uma missão para pressionar…" :
-            pending ? "a pressionar…" :
-            lastVerdict?.refused ? "Reformula. Fractura. Pressiona mais." :
-            "interroga, fractura, pressiona…"
+            !activeMission ? copy.labPlaceholderNoMission :
+            pending ? copy.labPlaceholderPending :
+            lastVerdict?.refused ? copy.labPlaceholderRefused :
+            copy.labPlaceholder
           }
           disabled={pending || !activeMission}
           style={{ flex: 1, fontSize: 14, color: "var(--text-primary)", fontFamily: "var(--sans)", opacity: pending || !activeMission ? 0.55 : 1, padding: "6px 0", cursor: !activeMission ? "not-allowed" : undefined }}
@@ -315,6 +367,7 @@ export default function Lab() {
             Enter ↵
           </button>
         )}
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,22 @@ import { useEffect, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
+import EmptyState from "../shell/EmptyState";
+
+function toRoman(n: number): string {
+  if (n <= 0) return "";
+  const map: Array<[number, string]> = [
+    [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"],
+    [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
+    [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+  ];
+  let out = "";
+  let x = n;
+  for (const [v, s] of map) {
+    while (x >= v) { out += s; x -= v; }
+  }
+  return out;
+}
 
 const PRINCIPLE_MAX_LEN = 300;
 
@@ -14,7 +30,7 @@ export default function School() {
   const { values } = useTweaks();
   const copy = useCopy();
   const [input, setInput] = useState("");
-  const [rejection, setRejection] = useState<null | "duplicate" | "empty" | "tooLong">(null);
+  const [inputFocused, setInputFocused] = useState(false);
   const layout = values.schoolLayout;
   const isGoverning = principles.length > 0;
   const lastApplied = activeMission?.events.find((e) => e.type === "doctrine_applied") ?? null;
@@ -64,10 +80,14 @@ export default function School() {
             fontFamily: "var(--mono)",
           }}
         >
-          School
+          {copy.schoolTagline}
         </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          {copy.chambers.School.lead}
+        <span style={{
+          fontSize: 12,
+          color: "var(--text-muted)",
+          fontStyle: "italic",
+        }}>
+          {copy.schoolSubtitle}
         </span>
         {principles.length > 0 && (
           <span
@@ -105,7 +125,7 @@ export default function School() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent)", flexShrink: 0 }} />
               <span style={{ fontSize: 10, color: "var(--accent)", letterSpacing: 2, textTransform: "uppercase", fontFamily: "var(--mono)" }}>
-                {principles.length} {principles.length === 1 ? "princípio" : "princípios"} activo{principles.length !== 1 ? "s" : ""}
+                VIGOR CONSTITUCIONAL · {principles.length} {principles.length === 1 ? "artigo" : "artigos"}
               </span>
             </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.55 }}>
@@ -141,32 +161,13 @@ export default function School() {
         )}
 
         {principles.length === 0 && (
-          <div style={{ alignSelf: "center", textAlign: "center", maxWidth: 520, marginTop: "10vh" }}>
-            <div
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                letterSpacing: ".4em",
-                color: "var(--text-ghost)",
-                textTransform: "uppercase",
-                marginBottom: 18,
-              }}
-            >
-              — Constituição em branco
-            </div>
-            <div
-              style={{
-                fontFamily: "'Fraunces', Georgia, serif",
-                fontStyle: "italic",
-                fontSize: 22,
-                lineHeight: 1.4,
-                color: "var(--text-muted)",
-                letterSpacing: "-0.005em",
-              }}
-            >
-              {copy.schoolEmpty}
-            </div>
-          </div>
+          <EmptyState
+            glyph="§"
+            kicker={copy.schoolEmptyKicker}
+            body={copy.schoolEmpty}
+            hint={copy.schoolEmptyHint}
+            style={{ marginTop: "10vh" }}
+          />
         )}
 
         {layout === "tablets" ? (
@@ -206,10 +207,7 @@ export default function School() {
                   {isGoverning && (
                     <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", display: "inline-block", flexShrink: 0 }} />
                   )}
-                  § {String(principles.length - i).padStart(2, "0")}
-                  <span style={{ marginLeft: "auto", color: "var(--text-ghost)", textTransform: "none", letterSpacing: 1 }}>
-                    {relativeTime(p.createdAt, nowMs)}
-                  </span>
+                  <span data-article-roman>§ {toRoman(principles.length - i)}</span>
                 </div>
                 <div style={{ fontSize: 15, color: "var(--text-primary)", lineHeight: 1.6 }}>
                   {p.text}
@@ -226,7 +224,7 @@ export default function School() {
                 style={{
                   animationDelay: `${i * 35}ms`,
                   display: "grid",
-                  gridTemplateColumns: "44px 1fr",
+                  gridTemplateColumns: "64px 1fr",
                   gap: "0 20px",
                   padding: "18px 0",
                   borderBottom: "1px solid var(--border-subtle)",
@@ -246,14 +244,15 @@ export default function School() {
                     <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 0 2px color-mix(in oklab, var(--accent) 20%, transparent)" }} />
                   )}
                   <span
+                    data-article-roman
                     style={{
-                      fontSize: 10,
+                      fontSize: 11,
                       color: "var(--accent-dim)",
                       fontFamily: "var(--mono)",
-                      letterSpacing: 1,
+                      letterSpacing: 1.5,
                     }}
                   >
-                    {String(i + 1).padStart(2, "0")}
+                    § {toRoman(i + 1)}
                   </span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -284,9 +283,56 @@ export default function School() {
         )}
       </div>
 
-      <div style={{ margin: "0 clamp(20px, 5vw, 64px) 18px" }}>
-        {rejection !== null && (
-          <div
+      <div
+        data-architect-input="principio"
+        data-architect-input-state={inputFocused ? "focused" : "idle"}
+        style={{ margin: "0 clamp(20px, 5vw, 64px) 18px" }}
+      >
+        <div
+          data-architect-voice
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 9,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: inputFocused ? "var(--accent)" : "var(--text-ghost)",
+            marginBottom: 8,
+            paddingLeft: 4,
+            transition: "color 0.15s",
+          }}
+        >
+          {copy.schoolInputVoice}
+        </div>
+      <div
+        className="glass"
+        style={{
+          borderRadius: 14,
+          padding: "12px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <span style={{ color: "var(--accent-dim)", fontSize: 14 }}>›</span>
+        <input
+          autoFocus
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder={copy.schoolPlaceholder}
+          style={{
+            flex: 1,
+            fontSize: 14,
+            color: "var(--text-primary)",
+            fontFamily: "var(--sans)",
+            padding: "6px 0",
+          }}
+        />
+        {input.trim() && (
+          <button
+            onClick={submit}
             className="fadeIn"
             data-testid="school-rejection"
             style={{
@@ -378,6 +424,7 @@ export default function School() {
             </button>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

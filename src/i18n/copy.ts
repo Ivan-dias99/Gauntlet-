@@ -17,10 +17,26 @@ export interface Copy {
   cancel: string;
   switchMission: string;
   missions: string;
+  labKicker: string;
+  labTagline: string;
+  labInputVoice: string;
+  labErrorTitle: string;
   labEmpty: string;
+  labEmptyActiveKicker: string;
+  labEmptyActiveHint: string;
+  labEmptyNoMissionKicker: string;
+  labEmptyNoMissionBody: string;
+  labEmptyNoMissionHint: string;
   labPlaceholder: string;
+  labPlaceholderNoMission: string;
+  labPlaceholderPending: string;
+  labPlaceholderRefused: string;
   labAwait: string;
   labAnalyzing: string;
+  creationKicker: string;
+  creationTagline: string;
+  creationInputVoice: string;
+  creationErrorTitle: string;
   creationEmptyPrompt: string;
   creationPlaceholder: string;
   creationRunning: string;
@@ -58,11 +74,39 @@ export interface Copy {
   kanbanPending: string;
   kanbanDone: string;
   refinePrefix: string;
+  memoryTagline: string;
+  memorySubtitle: string;
+  memoryLoading: string;
+  memoryErrorTitle: string;
+  memoryErrorPrefix: string;
+  severityCritical: string;
+  severityWarn: string;
+  severityInfo: string;
+  dismiss: string;
   memoryEmpty: string;
   memoryCount: (n: number) => string;
+  schoolTagline: string;
+  schoolSubtitle: string;
+  schoolInputVoice: string;
   schoolEmpty: string;
+  schoolEmptyKicker: string;
+  schoolEmptyHint: string;
   schoolPlaceholder: string;
   schoolInscribe: string;
+  ritualMissionVoice: string;
+  errorBoundaryKicker: string;
+  errorBoundaryRetry: string;
+  homeTitle: string;
+  themeTitle: (name: string) => string;
+  missionLastArtifact: (time: string) => string;
+  missionNoArtifacts: string;
+  tweaksTitle: string;
+  tweaksClose: string;
+  resetTweaks: string;
+  resetSpine: string;
+  resetSpineConfirm: string;
+  memoryDayEntry: (n: number) => string;
+  creationPrinciplesPresent: (n: number) => string;
   enterKey: string;
   resumeMission: string;
   newMissionLong: string;
@@ -118,10 +162,26 @@ const PT: Copy = {
   cancel: "cancelar",
   switchMission: "Trocar missão",
   missions: "Missões",
+  labKicker: "— PRESSÃO FORENSE",
+  labTagline: "Investigação · Evidência · Pressão",
+  labInputVoice: "— DIRECTIVA",
+  labErrorTitle: "FALHA",
   labEmpty: "Sem evidências. Comece a investigar.",
+  labEmptyActiveKicker: "— Sem entrada",
+  labEmptyActiveHint: "uma questão, uma hipótese, uma fractura",
+  labEmptyNoMissionKicker: "— Sem missão activa",
+  labEmptyNoMissionBody: "Cria ou activa uma missão para investigar.",
+  labEmptyNoMissionHint: "+ missão no canto superior",
   labPlaceholder: "Evidência, análise, hipótese...",
+  labPlaceholderNoMission: "Activa uma missão para investigar...",
+  labPlaceholderPending: "Aguardando verdict...",
+  labPlaceholderRefused: "Reformula. Fractura. Pressiona mais.",
   labAwait: "Aguardando resposta...",
   labAnalyzing: "ANALISANDO",
+  creationKicker: "— TERMINAL SOBERANO",
+  creationTagline: "Construção · Execução · Consequência",
+  creationInputVoice: "— COMANDO",
+  creationErrorTitle: "EXECUÇÃO",
   creationEmptyPrompt: "$ _",
   creationPlaceholder: "declarar próxima tarefa…",
   creationRunning: "a executar…",
@@ -159,11 +219,40 @@ const PT: Copy = {
   kanbanPending: "pendente",
   kanbanDone: "concluída",
   refinePrefix: "refinar: ",
+  memoryTagline: "— ARQUIVO VIVO",
+  memorySubtitle: "o que a missão já decidiu",
+  memoryLoading: "— a carregar —",
+  memoryErrorTitle: "BACKEND",
+  memoryErrorPrefix: "backend off?",
+  severityCritical: "— CRÍTICO",
+  severityWarn: "— AVISO",
+  severityInfo: "— INFO",
+  dismiss: "dispensar",
   memoryEmpty: "— log vazio —",
   memoryCount: (n) => `${n} evento${n === 1 ? "" : "s"}`,
+  schoolTagline: "— DOUTRINA SOBERANA",
+  schoolSubtitle: "princípios que vinculam lab e construção",
+  schoolInputVoice: "— PRINCÍPIO",
   schoolEmpty: "Sem princípios registados. A constituição está em branco.",
+  schoolEmptyKicker: "— Constituição em branco",
+  schoolEmptyHint: "inscreve o primeiro artigo abaixo",
   schoolPlaceholder: "Novo princípio...",
   schoolInscribe: "Inscrever",
+  ritualMissionVoice: "— MISSÃO",
+  errorBoundaryKicker: "— CRÍTICO · ERRO INTERNO",
+  errorBoundaryRetry: "TENTAR NOVAMENTE",
+  homeTitle: "Voltar ao início",
+  themeTitle: (name) => `Tema: ${name}`,
+  missionLastArtifact: (time) => `último artefacto há ${time}`,
+  missionNoArtifacts: "ainda sem artefactos",
+  tweaksTitle: "Tweaks",
+  tweaksClose: "FECHAR ×",
+  resetTweaks: "repor tweaks",
+  resetSpine: "repor spine",
+  resetSpineConfirm: "Repor spine? Missões, notas, tarefas e princípios serão apagados.",
+  memoryDayEntry: (n) => `${n} ${n === 1 ? "entrada" : "entradas"}`,
+  creationPrinciplesPresent: (n) =>
+    `${n} princípio${n !== 1 ? "s" : ""} da doutrina bem presentes nesta câmara`,
   enterKey: "Enter",
   resumeMission: "Retomar missão",
   newMissionLong: "+ Nova missão",
@@ -207,10 +296,26 @@ const EN: Copy = {
   cancel: "cancel",
   switchMission: "Switch mission",
   missions: "Missions",
+  labKicker: "— FORENSIC PRESSURE",
+  labTagline: "Investigation · Evidence · Pressure",
+  labInputVoice: "— DIRECTIVE",
+  labErrorTitle: "FAILURE",
   labEmpty: "No evidence. Begin investigating.",
+  labEmptyActiveKicker: "— No entry",
+  labEmptyActiveHint: "a question, a hypothesis, a fracture",
+  labEmptyNoMissionKicker: "— No active mission",
+  labEmptyNoMissionBody: "Create or activate a mission to investigate.",
+  labEmptyNoMissionHint: "+ mission in the top corner",
   labPlaceholder: "Evidence, analysis, hypothesis...",
+  labPlaceholderNoMission: "Activate a mission to investigate...",
+  labPlaceholderPending: "Awaiting verdict...",
+  labPlaceholderRefused: "Reformulate. Fracture. Press harder.",
   labAwait: "Awaiting response...",
   labAnalyzing: "ANALYZING",
+  creationKicker: "— SOVEREIGN TERMINAL",
+  creationTagline: "Construction · Execution · Consequence",
+  creationInputVoice: "— COMMAND",
+  creationErrorTitle: "EXECUTION",
   creationEmptyPrompt: "$ _",
   creationPlaceholder: "declare next task…",
   creationRunning: "running…",
@@ -248,11 +353,40 @@ const EN: Copy = {
   kanbanPending: "pending",
   kanbanDone: "done",
   refinePrefix: "refine: ",
+  memoryTagline: "— LIVING ARCHIVE",
+  memorySubtitle: "what the mission has already decided",
+  memoryLoading: "— loading —",
+  memoryErrorTitle: "BACKEND",
+  memoryErrorPrefix: "backend off?",
+  severityCritical: "— CRITICAL",
+  severityWarn: "— WARNING",
+  severityInfo: "— INFO",
+  dismiss: "dismiss",
   memoryEmpty: "— empty log —",
   memoryCount: (n) => `${n} event${n === 1 ? "" : "s"}`,
+  schoolTagline: "— SOVEREIGN DOCTRINE",
+  schoolSubtitle: "principles that bind lab and creation",
+  schoolInputVoice: "— PRINCIPLE",
   schoolEmpty: "No principles recorded. Constitution is blank.",
+  schoolEmptyKicker: "— Blank constitution",
+  schoolEmptyHint: "inscribe the first article below",
   schoolPlaceholder: "New principle...",
   schoolInscribe: "Inscribe",
+  ritualMissionVoice: "— MISSION",
+  errorBoundaryKicker: "— CRITICAL · INTERNAL ERROR",
+  errorBoundaryRetry: "TRY AGAIN",
+  homeTitle: "Back to landing",
+  themeTitle: (name) => `Theme: ${name}`,
+  missionLastArtifact: (time) => `last artifact ${time} ago`,
+  missionNoArtifacts: "no artifacts yet",
+  tweaksTitle: "Tweaks",
+  tweaksClose: "CLOSE ×",
+  resetTweaks: "reset tweaks",
+  resetSpine: "reset spine",
+  resetSpineConfirm: "Reset spine? Missions, notes, tasks and principles will be erased.",
+  memoryDayEntry: (n) => `${n} ${n === 1 ? "entry" : "entries"}`,
+  creationPrinciplesPresent: (n) =>
+    `${n} doctrine principle${n !== 1 ? "s" : ""} present in this chamber`,
   enterKey: "Enter",
   resumeMission: "Resume mission",
   newMissionLong: "+ New mission",
@@ -286,4 +420,11 @@ const DICT: Record<Lang, Copy> = { pt: PT, en: EN };
 export function useCopy(): Copy {
   const { values } = useTweaks();
   return DICT[values.lang] ?? PT;
+}
+
+// Hookless accessor for contexts that cannot call hooks (ErrorBoundary,
+// module-level rendering, tests). Defaults to PT — language preference lives
+// inside TweaksContext, which may itself be the thing that failed.
+export function fallbackCopy(): Copy {
+  return PT;
 }
