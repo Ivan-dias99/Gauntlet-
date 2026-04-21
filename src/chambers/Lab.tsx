@@ -41,6 +41,7 @@ interface VerdictState {
   priorFailure: boolean;
   agentIter: number;
   agentToolCount: number;
+  question: string;
 }
 
 interface LiveState {
@@ -170,6 +171,7 @@ export default function Lab() {
             priorFailure: capturedTriad.current.priorFailure || priorFail,
             agentIter: capturedAgent.current.iter,
             agentToolCount: capturedAgent.current.toolCount,
+            question: v,
           });
         }
       },
@@ -299,6 +301,11 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
     : isHigh
     ? "var(--cc-ok)"
     : "var(--cc-warn)";
+  const kickerColor = isRefused ? "var(--cc-err)" : "var(--text-ghost)";
+
+  const shortQ = verdict.question.length > 90
+    ? verdict.question.slice(0, 90).trimEnd() + "…"
+    : verdict.question;
 
   return (
     <div
@@ -309,11 +316,29 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
         border: "1px solid var(--border-subtle)",
         borderLeft: `2px solid ${leftAccent}`,
         borderRadius: 10,
-        padding: "10px 14px",
+        padding: "10px 14px 12px",
         fontFamily: "var(--mono)",
       }}
     >
-      {/* First row: route · confidence · divergence · prior failure */}
+      {/* Kicker: anchors the panel as the lineage of the preceding AI turn */}
+      <div style={{
+        fontSize: 9.5, letterSpacing: 2, textTransform: "uppercase",
+        color: kickerColor, marginBottom: 4,
+      }}>
+        — VERDITO
+      </div>
+
+      {/* Citation: the question this verdict judges */}
+      {verdict.question && (
+        <div style={{
+          fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--sans)",
+          fontStyle: "italic", marginBottom: 8, lineHeight: 1.45,
+        }}>
+          sobre: «{shortQ}»
+        </div>
+      )}
+
+      {/* Provenance trail: route · stages · outcome */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: routeColor }}>
           {verdict.routePath}
