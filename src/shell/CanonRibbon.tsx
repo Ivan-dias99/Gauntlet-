@@ -127,12 +127,12 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                   <>
                     <span
                       aria-hidden
-                      className={pulseLive ? "m-pill-dot breathe" : "m-pill-dot"}
+                      className={pulseLive ? "mission-pill-dot breathe" : "mission-pill-dot"}
                       data-state={pulseLive ? "live" : "dormant"}
                     />
-                    <span className="m-pill-title">{activeMission.title}</span>
+                    <span className="mission-pill-title">{activeMission.title}</span>
                     <span
-                      className="m-pill-meta"
+                      className="mission-pill-meta"
                       title={
                         lastArtifactAgoMs !== null
                           ? copy.missionLastArtifact(formatAgo(lastArtifactAgoMs))
@@ -141,7 +141,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                     >
                       {openTasks}/{totalTasks}t · {notesCount}n
                     </span>
-                    <span aria-hidden className="m-pill-caret">▾</span>
+                    <span aria-hidden className="mission-pill-caret">▾</span>
                   </>
                 );
               })() : (

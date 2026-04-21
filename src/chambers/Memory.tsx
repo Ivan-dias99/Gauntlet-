@@ -294,16 +294,7 @@ export default function Memory() {
             <div className="t-kicker" data-tone="ghost">
               {copy.memoryTelemetryKicker}
             </div>
-            <h3
-              className="t-serif"
-              style={{
-                margin: "8px 0 18px",
-                fontSize: 20,
-                color: "var(--text-secondary)",
-                fontStyle: "italic",
-                fontWeight: 400,
-              }}
-            >
+            <h3 className="memory-telemetry-head">
               {copy.memoryTelemetryTitle}
             </h3>
             <div

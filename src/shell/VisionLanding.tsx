@@ -383,12 +383,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                 >
                   {c.title}
                 </h3>
-                <div
-                  className="t-kicker"
-                  style={{ color: "var(--ember)", marginBottom: 20 }}
-                >
-                  {c.tag}
-                </div>
+                <div className="vl-chamber-tag">{c.tag}</div>
                 <p
                   style={{
                     fontFamily: "var(--serif)",

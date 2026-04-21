@@ -733,7 +733,7 @@ export default function Creation() {
               </div>
               {pending && (
                 <span className="xc-pill xc-pill-running">
-                  <span className="breathe" style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--ember)" }} />
+                  <span aria-hidden className="xc-pill-dot breathe" />
                   running · iter {iteration} · {elapsed.toFixed(1)}s
                 </span>
               )}
@@ -765,10 +765,7 @@ export default function Creation() {
               {(liveText || done) && (
                 <div
                   className="xc-exec-answer"
-                  style={{
-                    borderTop: liveTools.length ? "1px dashed var(--border-subtle)" : "none",
-                    paddingTop: liveTools.length ? 12 : 0,
-                  }}
+                  data-has-tools={liveTools.length > 0 ? "true" : undefined}
                 >
                   <span style={{ color: "var(--cc-prompt)" }}>⏺ </span>
                   {done ? done.answer : liveText}

@@ -572,9 +572,6 @@ textarea {
 .t-kicker[data-tone="ghost"] {
   color: var(--text-ghost);
 }
-.t-kicker[data-tone="ember"] {
-  color: var(--ember);
-}
 .t-meta {
   font-family: var(--mono);
   font-size: var(--t-meta);
@@ -739,7 +736,10 @@ textarea {
 }
 
 /* ——— Dropdown primitives ———
-   Popover + rows. Class-driven hover, one border system, no inline styling. */
+   Popover + rows. Class-driven hover, one border system, no inline styling.
+   Contract: .dropdown-panel is position:absolute and anchors to the nearest
+   positioned ancestor. Callers MUST wrap the trigger + panel in a
+   position:relative container so the panel aligns to the trigger. */
 .dropdown-panel {
   position: absolute;
   top: calc(100% + var(--sp-2));
@@ -794,31 +794,31 @@ textarea {
 }
 
 /* ——— Mission pill interior ——— */
-.m-pill-dot {
+.mission-pill-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
   background: var(--text-ghost);
 }
-.m-pill-dot[data-state="live"] {
+.mission-pill-dot[data-state="live"] {
   background: var(--ember);
   box-shadow: var(--glow-ember-sm);
 }
-.m-pill-title {
+.mission-pill-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 140px;
 }
-.m-pill-meta {
+.mission-pill-meta {
   font-family: var(--mono);
   font-size: 9px;
   letter-spacing: 0.08em;
   color: var(--text-ghost);
   flex-shrink: 0;
 }
-.m-pill-caret {
+.mission-pill-caret {
   color: var(--text-ghost);
   flex-shrink: 0;
 }
@@ -869,6 +869,10 @@ textarea {
   white-space: pre-wrap;
   word-break: break-word;
 }
+.xc-exec-answer[data-has-tools="true"] {
+  border-top: 1px dashed var(--border-subtle);
+  padding-top: var(--sp-3);
+}
 .xc-pill {
   display: inline-flex;
   align-items: center;
@@ -893,49 +897,61 @@ textarea {
   border-color: color-mix(in oklab, var(--cc-ok) 30%, transparent);
   background: color-mix(in oklab, var(--cc-ok) 8%, transparent);
 }
+.xc-pill-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+/* ——— Memory telemetry head ———
+   Purpose-built: serif italic headline for the Memory chamber telemetry
+   region. Owns its own size/weight/spacing — does not extend .t-serif. */
+.memory-telemetry-head {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.3;
+  letter-spacing: var(--track-tight);
+  color: var(--text-secondary);
+  margin: var(--sp-2) 0 18px;
+}
 
 /* ——— Landing chamber DNA ———
-   Each column gets a 2px left accent in its own chamber hue and a calm tint on hover.
-   No transform, no shadow — structural signal only. */
+   Each column carries a 2px left accent in its own chamber hue and a calm
+   tint on hover. DNA is a single cascading variable (--chamber-dna) set per
+   data-dna attribute; border, hover tint, and the chamber tag all resolve
+   from that var. No transform, no shadow — structural signal only. */
 .vl-chamber {
   padding: var(--sp-6) var(--sp-5);
   display: flex;
   flex-direction: column;
-  border-left: 2px solid var(--border-subtle);
+  border-left: 2px solid color-mix(in oklab, var(--chamber-dna, var(--text-muted)) 55%, var(--border-subtle));
   transition: background 0.22s var(--ease-emph), border-left-color 0.22s var(--ease-emph);
 }
-/* First column leads the row — no accent bar, DNA stays in the content tier. */
-.vl-chamber:first-child {
-  border-left-color: transparent;
-}
-.vl-chamber:first-child:hover {
-  border-left-color: transparent;
+.vl-chamber:hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--text-muted)) 6%, transparent);
+  border-left-color: var(--chamber-dna, var(--text-muted));
 }
 .vl-chamber[data-dna="lab"] {
-  border-left-color: color-mix(in oklab, var(--chamber-lab) 55%, var(--border-subtle));
+  --chamber-dna: var(--chamber-lab);
 }
 .vl-chamber[data-dna="creation"] {
-  border-left-color: color-mix(in oklab, var(--chamber-creation) 55%, var(--border-subtle));
+  --chamber-dna: var(--chamber-creation);
 }
 .vl-chamber[data-dna="memory"] {
-  border-left-color: color-mix(in oklab, var(--chamber-memory) 55%, var(--border-subtle));
+  --chamber-dna: var(--chamber-memory);
 }
 .vl-chamber[data-dna="school"] {
-  border-left-color: color-mix(in oklab, var(--chamber-school) 55%, var(--border-subtle));
+  --chamber-dna: var(--chamber-school);
 }
-.vl-chamber[data-dna="lab"]:hover {
-  background: color-mix(in oklab, var(--chamber-lab) 5%, transparent);
-  border-left-color: var(--chamber-lab);
-}
-.vl-chamber[data-dna="creation"]:hover {
-  background: color-mix(in oklab, var(--chamber-creation) 5%, transparent);
-  border-left-color: var(--chamber-creation);
-}
-.vl-chamber[data-dna="memory"]:hover {
-  background: color-mix(in oklab, var(--chamber-memory) 6%, transparent);
-  border-left-color: var(--chamber-memory);
-}
-.vl-chamber[data-dna="school"]:hover {
-  background: color-mix(in oklab, var(--chamber-school) 6%, transparent);
-  border-left-color: var(--chamber-school);
+.vl-chamber-tag {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--chamber-dna, var(--text-muted));
+  margin-bottom: 20px;
 }
