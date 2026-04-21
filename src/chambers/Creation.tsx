@@ -700,7 +700,11 @@ export default function Creation() {
                   <span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--cc-ok)", opacity: 0.75 }} />
                 </span>
                 <span style={{ color: "var(--text-muted)" }}>
-                  ruberra · exec › {lastTask.slice(0, 48)}{lastTask.length > 48 ? "…" : ""}
+                  ruberra · exec{(() => {
+                    const label = activeTask?.title || lastTask;
+                    if (!label) return "";
+                    return ` › ${label.slice(0, 48)}${label.length > 48 ? "…" : ""}`;
+                  })()}
                 </span>
               </div>
               {pending && (
@@ -708,7 +712,15 @@ export default function Creation() {
               )}
               {!pending && done && (
                 <span style={{ color: "var(--cc-ok)" }}>
-                  ● exit 0 · {done.iterations} iter · {done.tool_count} tools · {done.processing_time_ms}ms
+                  {(() => {
+                    // Telemetry is meaningless on a replayed artifact (all
+                    // fields default to 0). Only surface the breakdown when
+                    // there is real signal — otherwise just the exit code.
+                    const hasTelemetry =
+                      done.iterations > 0 || done.tool_count > 0 || done.processing_time_ms > 0;
+                    if (!hasTelemetry) return "● exit 0";
+                    return `● exit 0 · ${done.iterations} iter · ${done.tool_count} tools · ${done.processing_time_ms}ms`;
+                  })()}
                 </span>
               )}
             </div>
@@ -745,7 +757,7 @@ export default function Creation() {
               )}
               {done?.terminated_early && (
                 <div style={{ fontSize: 10, color: "var(--cc-warn)", marginTop: 10, fontFamily: "var(--mono)" }}>
-                  terminado cedo: {done.termination_reason}
+                  terminado cedo{done.termination_reason ? `: ${done.termination_reason}` : ""}
                 </div>
               )}
               {done && activeMission && (
