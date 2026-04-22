@@ -59,12 +59,14 @@ const ROUTE_COLOR: Record<string, string> = {
 
 // Memory is a timeline of what happened; telling the user *where* each thing
 // happened turns a flat run list into governance story.
-const ROUTE_ORIGIN: Record<string, Chamber> = {
-  agent: "Lab",
-  dev:   "Creation",
+//
+// Backend reality (engine.py): only three values are ever written —
+// "agent", "crew", "triad". `agent` is ambiguous (Lab auto-router OR
+// Creation /dev) so we deliberately omit it instead of half-lying.
+// `crew` is Creation-only; `triad` is Lab-only.
+const ROUTE_ORIGIN: Partial<Record<string, Chamber>> = {
   crew:  "Creation",
-  triad: "School",
-  ask:   "Lab",
+  triad: "Lab",
 };
 
 function originFor(route: string): Chamber | null {
