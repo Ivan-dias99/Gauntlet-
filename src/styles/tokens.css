@@ -1338,21 +1338,19 @@ textarea {
    Authored ≤640px: phones + narrow tablet portrait. */
 @media (max-width: 640px) {
   :root {
-    /* Primary rhythm scale — shrinks the 24/32/48/64/96 desktop steps
-       to a denser 18/22/32/44/64 mobile cadence. --sp-1..4 left alone:
-       already tight (4/8/12/16), shrinking would cramp. */
-    --sp-5: 18px;
-    --sp-6: 22px;
-    --sp-7: 32px;
-    --sp-8: 44px;
-    --sp-9: 64px;
-    --sp-10: 84px;
+    /* Primary rhythm scale — shrinks the 24/32/48/64 desktop steps
+       to a denser mobile cadence. --space-1..3 left alone: already
+       tight (8/12/16), shrinking would cramp. */
+    --space-4: 18px;  /* 24 → 18 */
+    --space-5: 22px;  /* 32 → 22 */
+    --space-6: 32px;  /* 48 → 32 */
+    --space-7: 44px;  /* 64 → 44 */
 
     /* Display type — hero-class sizes lose their desktop scale so they
-       don't devour small viewports. Body (--t-body: 14px) stays. */
-    --t-display: 26px;
-    --t-stat: 22px;
-    --t-serif: 17px;
+       don't devour small viewports. */
+    --t-display:  32px;  --lh-display: 38px;
+    --t-chamber:  24px;  --lh-chamber: 30px;
+    --t-section:  18px;  --lh-section: 24px;
   }
 
   /* Chamber shells — primary sparsity blocker on mobile was the fixed
