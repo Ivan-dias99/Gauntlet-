@@ -19,19 +19,33 @@ import json as _json
 import logging
 import os
 import sys
+import time
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from config import ALLOWED_ORIGIN, ALLOWED_ORIGINS, RUBERRA_MOCK, SERVER_HOST, SERVER_PORT
+from config import (
+    ALLOWED_ORIGIN,
+    ALLOWED_ORIGINS,
+    ANTHROPIC_API_KEY,
+    MEMORY_DIR,
+    RUBERRA_MOCK,
+    SERVER_HOST,
+    SERVER_PORT,
+)
 from models import RuberraQuery, RuberraResponse, SpineSnapshot
 from engine import RuberraEngine
 from memory import failure_memory
 from runs import run_store
 from spine import spine_store
+
+# Captured at import time so /diagnostics can report uptime honestly.
+_PROCESS_START_MONO = time.monotonic()
+_PROCESS_START_ISO = datetime.now(timezone.utc).isoformat()
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -453,6 +467,21 @@ async def diagnostics():
 
     mem_stats = await failure_memory.get_stats()
 
+    # Honest boot signal: how the process was configured, not how the
+    # operator intended it. Mock-mode and missing API key are the two
+    # most common reasons the deployed brain silently returns canned
+    # answers — both are surfaced here without exposing the key itself.
+    boot = {
+        "start_iso": _PROCESS_START_ISO,
+        "uptime_seconds": int(time.monotonic() - _PROCESS_START_MONO),
+        "mode": "mock" if RUBERRA_MOCK else "real",
+        "anthropic_api_key_present": bool(ANTHROPIC_API_KEY),
+        "data_dir": str(MEMORY_DIR),
+        "allowed_origins": ALLOWED_ORIGINS,
+        "host": SERVER_HOST,
+        "port": SERVER_PORT,
+    }
+
     return {
         "system": "Ruberra V1",
         "model": MODEL_ID,
@@ -460,6 +489,7 @@ async def diagnostics():
         "judge_temperature": JUDGE_TEMPERATURE,
         "triad_count": TRIAD_COUNT,
         "engine_status": "ready" if engine else "not_initialized",
+        "boot": boot,
         "failure_memory": mem_stats,
         "persistence": {
             "spine_last_save_error": spine_store._last_save_error,
