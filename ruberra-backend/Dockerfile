@@ -23,5 +23,4 @@ EXPOSE 8080
 ENV RUBERRA_HOST=0.0.0.0 \
     PORT=8080
 
-CMD ["sh", "-c", "exec uvicorn server:app --host \"$RUBERRA_HOST\" --port \"$PORT\""]
 CMD python -c "import os, uvicorn; uvicorn.run('server:app', host='0.0.0.0', port=int(os.environ.get('PORT', '8080')))"
