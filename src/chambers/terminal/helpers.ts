@@ -36,6 +36,62 @@ export function isStaleRunning(task: Task): boolean {
   return task.state === "running" && (Date.now() - task.lastUpdateAt) > STALE_RUNNING_MS;
 }
 
+export type ToolPhase = "running" | "ok" | "err";
+
+// Copy is Record<string, string | fn(...)> of every localized string.
+// Imported by primitives that need localized labels without piping
+// them down individually. Use `import type { Copy } from "./helpers"`.
+import type { useCopy } from "../../i18n/copy";
+export type Copy = ReturnType<typeof useCopy>;
+
+export function formatMs(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(s < 10 ? 1 : 0)}s`;
+  const m = Math.floor(s / 60);
+  const rem = Math.round(s % 60);
+  return `${m}m${rem ? rem + "s" : ""}`;
+}
+
+export const STATE_COLOR: Record<TaskState, string> = {
+  open: "var(--text-ghost)",
+  running: "var(--cc-info)",
+  done: "var(--cc-ok)",
+  blocked: "var(--cc-err)",
+};
+
+export const STATE_GLYPH: Record<TaskState, string> = {
+  open: "›",
+  running: "◐",
+  done: "✓",
+  blocked: "✕",
+};
+
+export const ROLE_COLOR: Record<CrewRole, string> = {
+  planner: "var(--accent)",
+  researcher: "var(--cc-info)",
+  coder: "var(--cc-prompt)",
+  critic: "var(--cc-warn)",
+};
+
+export function stateLabel(state: TaskState, copy: Copy): string {
+  switch (state) {
+    case "open": return copy.taskStateOpen;
+    case "running": return copy.taskStateRunning;
+    case "done": return copy.taskStateDone;
+    case "blocked": return copy.taskStateBlocked;
+  }
+}
+
+export function sourceLabel(source: Task["source"], copy: Copy): string {
+  switch (source) {
+    case "lab": return copy.taskSourceLab;
+    case "crew": return copy.taskSourceCrew;
+    case "other": return copy.taskSourceOther;
+    default: return copy.taskSourceManual;
+  }
+}
+
 export interface LiveTool {
   id: string;
   name: string;
