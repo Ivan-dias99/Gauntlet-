@@ -14,7 +14,6 @@ import {
   acceptArtifact as acceptArtifactFn,
 } from "./store";
 import { fetchSpine, pushSpine } from "./client";
-import { isBackendUnreachable } from "../lib/ruberraApi";
 
 export type SpineSyncState = "synced" | "syncing" | "unsynced";
 
@@ -84,13 +83,11 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       try {
         await pushSpine(state);
         setSyncState("synced");
-      } catch (err) {
-        // Both backend-unreachable and generic HTTP failures mean the server
-        // does not have the latest snapshot. Surface it honestly.
-        if (isBackendUnreachable(err) || err instanceof Error) {
-          setSyncState("unsynced");
-          return;
-        }
+      } catch {
+        // Any failure — unreachable edge, network flake, upstream 5xx —
+        // means the server does not have the latest snapshot. Single
+        // honest bucket; Phase B will split offline vs error when the
+        // UI is ready to differentiate them.
         setSyncState("unsynced");
       }
     }, 500);

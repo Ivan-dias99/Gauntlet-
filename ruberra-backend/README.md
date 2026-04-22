@@ -74,7 +74,7 @@ railway up
 After the first successful deploy, Railway exposes a public domain (e.g.
 `https://ruberra-backend.up.railway.app`). Set that URL as
 `RUBERRA_BACKEND_URL` in the Vercel project so the edge forwarder
-(`api/ruberra/[...path].ts`) can reach it.
+(`api/ruberra.ts`, routed via the `vercel.json` rewrite) can reach it.
 
 Health check: `GET /health` — Railway's healthcheck probe is configured
 against this route in `railway.json` with a 120s timeout (cold start

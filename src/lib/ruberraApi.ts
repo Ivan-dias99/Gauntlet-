@@ -6,7 +6,7 @@
 // dev against a remote backend).
 //
 // Backend-unreachable is a first-class state — NOT a regex on error text.
-// The Vercel edge forwarder (api/ruberra/[...path].ts) signals it with:
+// The Vercel edge forwarder (api/ruberra.ts) signals it with:
 //   status: 503
 //   header: x-ruberra-backend: unreachable
 //   body:   { error: "backend_unreachable", reason: <kind> }
