@@ -831,7 +831,15 @@ export default function Creation() {
                   data-has-tools={liveTools.length > 0 ? "true" : undefined}
                 >
                   <span style={{ color: "var(--cc-prompt)" }}>⏺ </span>
-                  {done ? done.answer : liveText}
+                  {done
+                    ? (done.answer.trim()
+                        ? done.answer
+                        : (
+                          <span style={{ color: "var(--text-ghost)", fontStyle: "italic" }}>
+                            — sem resposta gerada —
+                          </span>
+                        ))
+                    : liveText}
                   {pending && <span className="cc-cursor working" />}
                 </div>
               )}
