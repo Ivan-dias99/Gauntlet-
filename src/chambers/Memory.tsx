@@ -307,7 +307,7 @@ export default function Memory() {
           <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
             {copy.memoryTagline}
           </span>
-          <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+          <span style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)" }}>
             {copy.memorySubtitle}
           </span>
           {backend.mode === "mock" && (
@@ -315,14 +315,14 @@ export default function Memory() {
               data-backend-mode="mock"
               title="Backend em modo simulado — runs registadas durante mock são canned"
               style={{
-                fontSize: 9,
-                letterSpacing: 1.5,
+                fontSize: "var(--t-micro)",
+                letterSpacing: "var(--track-label)",
                 color: "var(--cc-warn)",
                 fontFamily: "var(--mono)",
                 textTransform: "uppercase",
-                padding: "2px 7px",
+                padding: "2px 8px",
                 border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-                borderRadius: 4,
+                borderRadius: "var(--radius-pill)",
                 lineHeight: 1.4,
               }}
             >
