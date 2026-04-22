@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { useSpine } from "../spine/SpineContext";
-import { useRuberra, RouteEvent } from "../hooks/useRuberra";
-import { useBackendStatus } from "../hooks/useBackendStatus";
-import { Note } from "../spine/types";
-import ErrorPanel from "../shell/ErrorPanel";
-import DormantPanel from "../shell/DormantPanel";
-import EmptyState from "../shell/EmptyState";
-import { useCopy } from "../i18n/copy";
+import { useSpine } from "../../spine/SpineContext";
+import { useRuberra, RouteEvent } from "../../hooks/useRuberra";
+import { useBackendStatus } from "../../hooks/useBackendStatus";
+import { Note } from "../../spine/types";
+import ErrorPanel from "../../shell/ErrorPanel";
+import DormantPanel from "../../shell/DormantPanel";
+import EmptyState from "../../shell/EmptyState";
+import { useCopy } from "../../i18n/copy";
 
 interface TriadResult {
   answer?: string | null;

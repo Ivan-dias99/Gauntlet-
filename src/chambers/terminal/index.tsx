@@ -1,12 +1,12 @@
 import { useRef, useState, useEffect, useMemo } from "react";
-import { useSpine } from "../spine/SpineContext";
-import { useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep } from "../hooks/useRuberra";
-import { useBackendStatus } from "../hooks/useBackendStatus";
-import { useTweaks } from "../tweaks/TweaksContext";
-import { useCopy } from "../i18n/copy";
-import { Artifact, Task, TaskState } from "../spine/types";
-import ErrorPanel from "../shell/ErrorPanel";
-import DormantPanel from "../shell/DormantPanel";
+import { useSpine } from "../../spine/SpineContext";
+import { useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep } from "../../hooks/useRuberra";
+import { useBackendStatus } from "../../hooks/useBackendStatus";
+import { useTweaks } from "../../tweaks/TweaksContext";
+import { useCopy } from "../../i18n/copy";
+import { Artifact, Task, TaskState } from "../../spine/types";
+import ErrorPanel from "../../shell/ErrorPanel";
+import DormantPanel from "../../shell/DormantPanel";
 
 type RunMode = "agent" | "crew";
 

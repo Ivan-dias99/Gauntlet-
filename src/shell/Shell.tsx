@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import CanonRibbon from "./CanonRibbon";
 import { useSpine } from "../spine/SpineContext";
 import { Chamber } from "../spine/types";
-import Lab from "../chambers/Lab";
-import Creation from "../chambers/Creation";
-import Memory from "../chambers/Memory";
-import School from "../chambers/School";
+import Insight from "../chambers/insight";
+import Terminal from "../chambers/terminal";
+import Archive from "../chambers/archive";
+import Core from "../chambers/core";
 import Surface from "../chambers/surface";
 
 // Wave-2: shell is stripped of landing, ritual entry, and tweak-panel
@@ -17,10 +17,10 @@ import Surface from "../chambers/surface";
 
 function renderChamber(c: Chamber) {
   switch (c) {
-    case "insight":  return <Lab />;
-    case "terminal": return <Creation />;
-    case "archive":  return <Memory />;
-    case "core":     return <School />;
+    case "insight":  return <Insight />;
+    case "terminal": return <Terminal />;
+    case "archive":  return <Archive />;
+    case "core":     return <Core />;
     case "surface":  return <Surface />;
   }
 }

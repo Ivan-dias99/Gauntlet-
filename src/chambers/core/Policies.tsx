@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { useSpine } from "../spine/SpineContext";
-import { useTweaks } from "../tweaks/TweaksContext";
-import { useCopy } from "../i18n/copy";
-import EmptyState from "../shell/EmptyState";
-import DormantPanel from "../shell/DormantPanel";
+import { useSpine } from "../../spine/SpineContext";
+import { useTweaks } from "../../tweaks/TweaksContext";
+import { useCopy } from "../../i18n/copy";
+import EmptyState from "../../shell/EmptyState";
+import DormantPanel from "../../shell/DormantPanel";
 
 function toRoman(n: number): string {
   if (n <= 0) return "";
