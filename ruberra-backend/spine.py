@@ -17,7 +17,7 @@ from pathlib import Path
 
 from config import MEMORY_DIR
 from models import SpineSnapshot
-from persistence import atomic_write_text
+from persistence import atomic_write_text, quarantine_corrupt_file
 
 logger = logging.getLogger("ruberra.spine")
 
@@ -34,6 +34,10 @@ class SpineStore:
         # Honest surface for disk-write failures. put() raises, but for
         # diagnostics / health checks we keep the last error message.
         self._last_save_error: str | None = None
+        # Load-path errors — corrupt files, unreadable filesystem. The
+        # store still boots on an empty snapshot so the server stays up,
+        # but the degraded state is visible via /diagnostics.
+        self._last_load_error: str | None = None
 
     async def _ensure_loaded(self) -> None:
         if self._loaded:
@@ -45,19 +49,28 @@ class SpineStore:
             self._loaded = True
 
     async def _load(self) -> None:
+        if not SPINE_FILE.exists():
+            logger.info("No spine file found — starting fresh")
+            return
         try:
-            if SPINE_FILE.exists():
-                raw = SPINE_FILE.read_text(encoding="utf-8")
-                self._snapshot = SpineSnapshot(**json.loads(raw))
-                logger.info(
-                    "Loaded spine snapshot: %d missions, %d principles",
-                    len(self._snapshot.missions),
-                    len(self._snapshot.principles),
-                )
-            else:
-                logger.info("No spine file found — starting fresh")
+            raw = SPINE_FILE.read_text(encoding="utf-8")
+            self._snapshot = SpineSnapshot(**json.loads(raw))
+            logger.info(
+                "Loaded spine snapshot: %d missions, %d principles",
+                len(self._snapshot.missions),
+                len(self._snapshot.principles),
+            )
         except Exception as e:
-            logger.error("Failed to load spine: %s", e)
+            # Corrupt or unparseable — quarantine the file so the next
+            # put() does not overwrite the only evidence. Server keeps
+            # booting on an empty snapshot; /diagnostics surfaces the
+            # error and the sidecar path.
+            sidecar = quarantine_corrupt_file(SPINE_FILE)
+            detail = f"{type(e).__name__}: {e}"
+            if sidecar is not None:
+                detail += f" (quarantined to {sidecar.name})"
+            self._last_load_error = detail
+            logger.error("Failed to load spine: %s", detail)
             self._snapshot = SpineSnapshot()
 
     def _write_snapshot(self, snapshot: SpineSnapshot) -> None:

@@ -406,8 +406,11 @@ async def diagnostics():
         "failure_memory": mem_stats,
         "persistence": {
             "spine_last_save_error": spine_store._last_save_error,
+            "spine_last_load_error": spine_store._last_load_error,
             "runs_last_save_error": run_store._last_save_error,
+            "runs_last_load_error": run_store._last_load_error,
             "memory_last_save_error": failure_memory._last_save_error,
+            "memory_last_load_error": failure_memory._last_load_error,
         },
         "doctrine": "Conservative Intelligence — prefer refusal over error",
     }
