@@ -40,7 +40,7 @@ function normalizeForDedup(s: string): string {
 }
 
 export default function School() {
-  const { principles, addPrinciple, activeMission, syncState, hydratedFromBackend, syncError } = useSpine();
+  const { state, principles, addPrinciple, activeMission, syncState, hydratedFromBackend, syncError } = useSpine();
   const { values } = useTweaks();
   const copy = useCopy();
   const [input, setInput] = useState("");
@@ -49,6 +49,22 @@ export default function School() {
   const layout = values.schoolLayout;
   const isGoverning = principles.length > 0;
   const lastApplied = activeMission?.events.find((e) => e.type === "doctrine_applied") ?? null;
+
+  // Consequence substrate — every `doctrine_applied` event is Lab or
+  // Creation firing a real query with principles attached. We can count
+  // those across all missions, not just the active one, and derive
+  // coverage: "governed N of M missions". No fabricated per-principle
+  // tracking — the substrate doesn't carry it, so we don't show it.
+  const totalMissions = state.missions.length;
+  let totalApplications = 0;
+  let missionsGoverned = 0;
+  for (const m of state.missions) {
+    const applied = m.events.filter((e) => e.type === "doctrine_applied").length;
+    if (applied > 0) {
+      missionsGoverned += 1;
+      totalApplications += applied;
+    }
+  }
 
   // Tick so relative timestamps refresh periodically without a heavy timer.
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -99,7 +115,6 @@ export default function School() {
         <span style={{
           fontSize: 12,
           color: "var(--text-muted)",
-          fontStyle: "italic",
         }}>
           {copy.schoolSubtitle}
         </span>
@@ -117,50 +132,90 @@ export default function School() {
 
       <div className="chamber-body" data-pad="calm">
 
-        {/* Constitutional seal — the doctrine's current reach as a seal,
-            not as a thin governance chip. */}
+        {/* Constitutional seal — declarative institutional header, a
+            declaration line, a row of consequence counters pulled from
+            real `doctrine_applied` events, and a status row. No italic,
+            no stat-card composition, no fabricated per-principle data. */}
         {isGoverning && (
           <div className="fadeIn doctrine-seal">
-            <div className="doctrine-seal-count">
-              <span className="doctrine-seal-count-num">
-                {toRoman(principles.length)}
-              </span>
-              <span className="doctrine-seal-count-unit">
-                {principles.length === 1 ? "artigo vigente" : "artigos vigentes"}
-              </span>
+            <div className="doctrine-seal-title">
+              <span className="doctrine-seal-title-kicker">doutrina</span>
+              <span aria-hidden className="doctrine-seal-title-sep">·</span>
+              {activeMission ? (
+                <span className="doctrine-seal-title-mission">
+                  missão {activeMission.title}
+                </span>
+              ) : (
+                <span className="doctrine-seal-title-null">
+                  sem missão activa
+                </span>
+              )}
             </div>
-            <div className="doctrine-seal-body">
-              <span className="doctrine-seal-kicker">
-                vigor constitucional
-              </span>
-              <span className="doctrine-seal-desc">
-                Injectados em cada query de Lab e Creation.{" "}
-                {activeMission ? (
-                  <>Missão activa: <span style={{ color: "var(--text-primary)", fontStyle: "normal" }}>{activeMission.title}</span>.</>
-                ) : (
-                  "Nenhuma missão activa — princípios prontos para quando houver."
-                )}
-              </span>
-              <div className="doctrine-seal-chips">
-                <span>→ Lab · Creation · auto-router</span>
-                {lastInscribedAt !== null && (
-                  <span>
-                    última inscrição{" "}
-                    <span style={{ color: "var(--text-muted)" }}>
-                      {relativeTime(lastInscribedAt, nowMs)}
-                    </span>
-                  </span>
-                )}
+
+            <div className="doctrine-seal-declaration">
+              {principles.length === 1 ? (
+                <>
+                  <strong>Um princípio</strong> sob vigor. Vincula cada query de Lab e Creation
+                  {activeMission ? " e governa esta missão." : "."}
+                </>
+              ) : (
+                <>
+                  <strong>{principles.length} princípios</strong> sob vigor. Vinculam cada query de Lab e Creation
+                  {activeMission ? " e governam esta missão." : "."}
+                </>
+              )}
+            </div>
+
+            <div className="doctrine-seal-counters">
+              <span className="doctrine-seal-counter">
                 <span
+                  className="doctrine-seal-counter-value"
+                  data-tone={totalApplications > 0 ? "accent" : "dim"}
+                >
+                  {totalApplications}
+                </span>
+                <span className="doctrine-seal-counter-label">
+                  {totalApplications === 1 ? "aplicação" : "aplicações"}
+                </span>
+              </span>
+              <span className="doctrine-seal-counter">
+                <span
+                  className="doctrine-seal-counter-value"
+                  data-tone={missionsGoverned > 0 ? undefined : "dim"}
+                >
+                  {missionsGoverned}
+                </span>
+                <span className="doctrine-seal-counter-label">
+                  de {totalMissions} missões governadas
+                </span>
+              </span>
+              {lastApplied ? (
+                <span className="doctrine-seal-counter">
+                  <span className="doctrine-seal-counter-value">
+                    {new Date(lastApplied.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <span className="doctrine-seal-counter-label">
+                    última aplicação
+                  </span>
+                </span>
+              ) : (
+                <span className="doctrine-seal-counter-null">
+                  {activeMission
+                    ? "ainda não aplicada nesta missão"
+                    : "aguarda missão activa"}
+                </span>
+              )}
+            </div>
+
+            {(syncState !== "synced" || hydratedFromBackend === false || syncError) && (
+              <div className="doctrine-seal-status">
+                <span
+                  className="doctrine-seal-status-item"
                   data-doctrine-sync={syncState}
-                  style={{
-                    color:
-                      syncState === "synced"
-                        ? "var(--cc-ok)"
-                        : syncState === "syncing"
-                        ? "var(--cc-info)"
-                        : "var(--cc-warn)",
-                  }}
+                  data-state={
+                    syncState === "synced" ? "ok" :
+                    syncState === "syncing" ? "info" : "warn"
+                  }
                 >
                   {syncState === "synced"
                     ? "sincronizado"
@@ -170,17 +225,19 @@ export default function School() {
                 </span>
                 {hydratedFromBackend === false && (
                   <span
+                    className="doctrine-seal-status-item"
                     data-doctrine-load="local-only"
-                    style={{ color: "var(--cc-warn)" }}
+                    data-state="warn"
                   >
                     carregada da cache — backend não respondeu
                   </span>
                 )}
                 {syncError && (
                   <span
+                    className="doctrine-seal-status-item"
                     data-doctrine-sync-error={syncError.kind}
+                    data-state="warn"
                     title={syncError.message}
-                    style={{ color: "var(--cc-warn)" }}
                   >
                     motivo:{" "}
                     {syncError.kind === "unreachable"
@@ -189,29 +246,7 @@ export default function School() {
                   </span>
                 )}
               </div>
-              {activeMission && (
-                <div
-                  className="doctrine-seal-applied"
-                  data-fired={lastApplied ? "true" : "false"}
-                >
-                  <span className="doctrine-seal-applied-kicker">
-                    última aplicação:
-                  </span>
-                  {lastApplied ? (
-                    <>
-                      <span className="doctrine-seal-applied-label">
-                        {lastApplied.label}
-                      </span>
-                      <span className="doctrine-seal-applied-time">
-                        {new Date(lastApplied.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </>
-                  ) : (
-                    <span>nenhuma nesta missão ainda — doutrina existe, mas ainda não governou</span>
-                  )}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
 
@@ -245,11 +280,15 @@ export default function School() {
                 : `${principles.length} artigos`}
             </span>
             <span className="doctrine-preamble-order">
-              {layout === "tablets" ? "por vigência · mais recente primeiro" : "por vigência · mais recente em cima"}
+              por ordem de inscrição
             </span>
           </div>
         )}
 
+        {/* Constitutional ordering: the register reads ascending. Article I
+            is the first inscribed; Article N is the most recent. Source
+            state stores principles newest-first, so we reverse once for
+            display. */}
         {layout === "tablets" ? (
           <div
             style={{
@@ -258,22 +297,18 @@ export default function School() {
               gap: 16,
             }}
           >
-            {principles.map((p, i) => {
-              // Articles are numbered in inscription order (oldest = §I), even
-              // though the display is newest-first. This mirrors constitutional
-              // practice: amendments keep their original article numbers.
-              const articleNumber = principles.length - i;
+            {[...principles].reverse().map((p, i) => {
+              const articleNumber = i + 1;
               return (
                 <div
                   key={p.id}
                   className="fadeUp doctrine-tablet"
-                  data-governing={isGoverning ? "true" : undefined}
                   style={{ animationDelay: `${i * 40}ms` }}
                 >
                   <div className="doctrine-tablet-head">
-                    {isGoverning && <span className="doctrine-article-dot" />}
+                    <span className="doctrine-tablet-kicker">artigo</span>
                     <span className="doctrine-tablet-num" data-article-roman>
-                      § {toRoman(articleNumber)}
+                      {toRoman(articleNumber)}
                     </span>
                   </div>
                   <div className="doctrine-tablet-text">{p.text}</div>
@@ -282,9 +317,9 @@ export default function School() {
             })}
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", maxWidth: 760 }}>
-            {principles.map((p, i) => {
-              const articleNumber = principles.length - i;
+          <div style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
+            {[...principles].reverse().map((p, i) => {
+              const articleNumber = i + 1;
               return (
                 <div
                   key={p.id}
@@ -292,15 +327,15 @@ export default function School() {
                   style={{ animationDelay: `${i * 35}ms` }}
                 >
                   <div className="doctrine-article-gutter">
-                    {isGoverning && <span className="doctrine-article-dot" />}
+                    <span className="doctrine-article-kicker">artigo</span>
                     <span className="doctrine-article-num" data-article-roman>
-                      § {toRoman(articleNumber)}
+                      {toRoman(articleNumber)}
                     </span>
                   </div>
                   <div className="doctrine-article-body">
                     <span className="doctrine-article-text">{p.text}</span>
                     <span className="doctrine-article-meta">
-                      {relativeTime(p.createdAt, nowMs)}
+                      inscrita {relativeTime(p.createdAt, nowMs)}
                     </span>
                   </div>
                 </div>
