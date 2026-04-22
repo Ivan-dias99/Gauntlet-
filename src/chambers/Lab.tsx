@@ -225,7 +225,7 @@ export default function Lab() {
         <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
           {copy.labKicker}
         </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+        <span style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)" }}>
           {copy.labTagline}
         </span>
         {backend.mode === "mock" && (
@@ -233,14 +233,14 @@ export default function Lab() {
             data-backend-mode="mock"
             title="Backend em modo simulado — respostas são canned, não Anthropic real"
             style={{
-              fontSize: 9,
-              letterSpacing: 1.5,
+              fontSize: "var(--t-micro)",
+              letterSpacing: "var(--track-label)",
               color: "var(--cc-warn)",
               fontFamily: "var(--mono)",
               textTransform: "uppercase",
-              padding: "2px 7px",
+              padding: "2px 8px",
               border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-              borderRadius: 4,
+              borderRadius: "var(--radius-pill)",
               lineHeight: 1.4,
             }}
           >
@@ -250,16 +250,16 @@ export default function Lab() {
         {principles.length > 0 && (
           <span
             data-principles-in-context
-            title={`${principles.length} princípio${principles.length !== 1 ? "s" : ""} da doutrina bem presentes nesta câmara`}
+            title={`${principles.length} princípio${principles.length !== 1 ? "s" : ""} da doutrina presente nesta câmara`}
             style={{
-              fontSize: 9,
-              letterSpacing: 1.5,
+              fontSize: "var(--t-micro)",
+              letterSpacing: "var(--track-label)",
               color: "var(--accent)",
               fontFamily: "var(--mono)",
               textTransform: "uppercase",
-              padding: "2px 7px",
+              padding: "2px 8px",
               border: "1px solid color-mix(in oklab, var(--accent) 32%, transparent)",
-              borderRadius: 4,
+              borderRadius: "var(--radius-pill)",
               lineHeight: 1.4,
             }}
           >
@@ -328,7 +328,7 @@ export default function Lab() {
           <div className="toolRise" style={{ alignSelf: "flex-start", maxWidth: 520, minWidth: 260, display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--bg-input)", border: "1px dashed var(--border)", borderRadius: 12, fontFamily: "var(--mono)", fontSize: 11, color: "var(--cc-dim)", letterSpacing: ".04em" }}>
             <span className="breathe" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--cc-info)", boxShadow: "0 0 0 4px color-mix(in oklab, var(--cc-info) 22%, transparent)" }} />
             <span>{live.lastEventLabel}</span>
-            <div className="scanbar" style={{ flex: 1, height: 2, background: "var(--border-subtle)", borderRadius: 2 }} />
+            <div className="scanbar" style={{ flex: 1, height: 2, background: "var(--border-soft)", borderRadius: 2 }} />
           </div>
         )}
 
@@ -454,7 +454,7 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
       style={{
         margin: "0 clamp(20px, 5vw, 64px) 8px",
         background: "var(--bg-elevated)",
-        border: "1px solid var(--border-subtle)",
+        border: "1px solid var(--border-soft)",
         borderLeft: `2px solid ${leftAccent}`,
         borderRadius: 10,
         padding: "10px 14px 12px",
@@ -659,7 +659,7 @@ function LabTurnRow({
         <div style={{
           marginTop: 6,
           paddingTop: 8,
-          borderTop: "1px dashed var(--border-subtle)",
+          borderTop: "1px dashed var(--border-soft)",
           display: "flex",
           alignItems: "center",
           gap: 14,

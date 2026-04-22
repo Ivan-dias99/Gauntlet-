@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Chamber } from "../spine/types";
 import { formatPulse } from "../spine/pulse";
-import { useTheme } from "../theme/ThemeContext";
+import { useTweaks } from "../tweaks/TweaksContext";
 import { useSpine } from "../spine/SpineContext";
 import { useBackendStatus } from "../hooks/useBackendStatus";
 import { useCopy } from "../i18n/copy";
@@ -28,7 +28,8 @@ interface Props {
 }
 
 export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks }: Props) {
-  const { theme, toggle } = useTheme();
+  const { values, cycleTheme } = useTweaks();
+  const theme = values.theme;
   const { state, activeMission, switchMission, syncState, syncError, hydratedFromBackend } = useSpine();
   const backend = useBackendStatus();
   const copy = useCopy();
@@ -203,12 +204,12 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
         )}
 
         {onTweaks && (
-          <button onClick={onTweaks} title={copy.retune} className="btn-chip">
-            ⚙ tweaks
+          <button onClick={onTweaks} title={copy.retune} className="btn-icon" aria-label={copy.retune}>
+            ⚙
           </button>
         )}
 
-        <button onClick={toggle} title={copy.themeTitle(theme)} className="btn-icon">
+        <button onClick={cycleTheme} title={copy.themeTitle(theme)} className="btn-icon" aria-label={copy.themeTitle(theme)}>
           {themeLabel}
         </button>
 

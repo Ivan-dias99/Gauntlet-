@@ -31,7 +31,7 @@ export default function ErrorPanel({ severity, title, message, onDismiss, style 
       className="toolRise"
       style={{
         background: "var(--bg-input)",
-        border: "1px solid var(--border-subtle)",
+        border: "1px solid var(--border-soft)",
         borderLeft: `2px solid ${accent}`,
         borderRadius: 12,
         padding: "12px 16px",

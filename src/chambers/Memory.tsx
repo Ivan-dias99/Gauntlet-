@@ -307,7 +307,7 @@ export default function Memory() {
           <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
             {copy.memoryTagline}
           </span>
-          <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+          <span style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)" }}>
             {copy.memorySubtitle}
           </span>
           {backend.mode === "mock" && (
@@ -315,14 +315,14 @@ export default function Memory() {
               data-backend-mode="mock"
               title="Backend em modo simulado — runs registadas durante mock são canned"
               style={{
-                fontSize: 9,
-                letterSpacing: 1.5,
+                fontSize: "var(--t-micro)",
+                letterSpacing: "var(--track-label)",
                 color: "var(--cc-warn)",
                 fontFamily: "var(--mono)",
                 textTransform: "uppercase",
-                padding: "2px 7px",
+                padding: "2px 8px",
                 border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-                borderRadius: 4,
+                borderRadius: "var(--radius-pill)",
                 lineHeight: 1.4,
               }}
             >
@@ -375,7 +375,7 @@ export default function Memory() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-                gap: "var(--sp-5)",
+                gap: "var(--space-4)",
               }}
             >
               <StatCell label="runs" value={`${stats.total}`} />
@@ -477,7 +477,7 @@ export default function Memory() {
           <div style={{ position: "relative", paddingLeft: 120, maxWidth: 760 }}>
             <div style={{
               position: "absolute", left: 80, top: 6, bottom: 6,
-              width: 1, background: "var(--border-subtle)",
+              width: 1, background: "var(--border-soft)",
             }} />
             {groupByDay(runs).map((g, gi) => (
               <div key={g.key}>
@@ -499,7 +499,7 @@ export default function Memory() {
                   }}>{g.label.charAt(0) + g.label.slice(1).toLowerCase()}</span>
                   <div style={{
                     flex: 1, height: 1,
-                    background: "var(--border-subtle)", opacity: 0.7,
+                    background: "var(--border-soft)", opacity: 0.7,
                   }} />
                   <span style={{
                     fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase",
@@ -627,7 +627,7 @@ export default function Memory() {
             const linkedArtifact = linkArtifact(r, missionArtifact);
             return (
               <div key={r.id} style={{
-                borderBottom: "1px solid var(--border-subtle)",
+                borderBottom: "1px solid var(--border-soft)",
                 padding: "10px 0",
                 borderLeft: r.refused ? "2px solid var(--cc-err)" : "2px solid transparent",
                 paddingLeft: r.refused ? 10 : 0,
@@ -684,7 +684,7 @@ export default function Memory() {
                     marginTop: 10, marginLeft: 74,
                     fontSize: 11, color: "var(--text-secondary)",
                     background: "var(--bg-input)",
-                    border: "1px solid var(--border-subtle)",
+                    border: "1px solid var(--border-soft)",
                     borderRadius: "var(--radius)",
                     padding: "10px 14px",
                   }}>
@@ -725,7 +725,7 @@ export default function Memory() {
                       </div>
                     )}
                     {(r.judge_reasoning || r.refused) && (
-                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-subtle)" }}>
+                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-soft)" }}>
                         <div style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase", marginBottom: 4, fontFamily: "var(--mono)" }}>judge</div>
                         {r.judge_reasoning ? (
                           <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.55, fontFamily: "var(--sans)", whiteSpace: "pre-wrap" }}>
@@ -740,7 +740,7 @@ export default function Memory() {
                     )}
                     <div style={{
                       marginTop: 10, padding: "8px 0 0",
-                      borderTop: "1px solid var(--border-subtle)",
+                      borderTop: "1px solid var(--border-soft)",
                       fontSize: 11,
                       color: r.answer ? "var(--text-secondary)" : "var(--text-ghost)",
                       fontStyle: r.answer ? "normal" : "italic",
@@ -792,7 +792,7 @@ function GovernanceChip({ label, value }: { label: string; value: string }) {
       alignItems: "baseline",
       gap: 6,
       padding: "3px 9px",
-      border: "1px solid var(--border-subtle)",
+      border: "1px solid var(--border-soft)",
       borderRadius: 999,
       background: "var(--bg-input)",
       color: "var(--text-ghost)",
@@ -821,7 +821,7 @@ function StatCell({
     <div
       className="surface-quiet"
       style={{
-        padding: "var(--sp-3) var(--sp-4)",
+        padding: "var(--space-2) var(--space-3)",
         display: "flex",
         flexDirection: "column",
         gap: 6,

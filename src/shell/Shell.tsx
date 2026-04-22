@@ -85,12 +85,14 @@ export default function Shell() {
   }
 
   return (
-    <div style={{
-      height: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      background: "var(--bg)",
-    }}>
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--bg)",
+      }}
+    >
       <CanonRibbon
         active={activeTab}
         onSelect={setActiveTab}
