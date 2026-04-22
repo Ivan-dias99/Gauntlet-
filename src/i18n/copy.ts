@@ -140,32 +140,35 @@ export interface Copy {
 }
 
 const PT: Copy = {
-  brand: "RUBERRA",
+  brand: "Signal",
   chambers: {
-    // Wave-1 keys flip to canonical taxonomy. Displayed labels are
-    // preserved verbatim; they will be retoned in Wave 6 alongside the
-    // chamber-DNA copy pass. Surface has no visual tab yet — carries a
-    // placeholder label so Record<Chamber, ChamberCopy> stays complete.
+    // Wave-6 retone. Insight / Terminal / Archive labels move to the
+    // canonical taxonomy ("Insight" / "Terminal" / "Archive"). Core
+    // alone keeps its institutional tone — governance reads as
+    // constitution, not as dashboard. Surface gains a real label now
+    // that the chamber ships (Wave 3).
     insight: {
-      label: "Investigação",
-      sub: "Análise · Evidência · Verdade",
-      lead: "Investigação · Evidência · Verdade",
+      label: "Insight",
+      sub: "Análise · Evidência · Direção",
+      lead: "Insight · evidência · direção",
     },
     surface: {
       label: "Surface",
-      sub: "—",
-      lead: "Surface",
+      sub: "Design · Estrutura · Fidelidade",
+      lead: "Surface · design workstation",
     },
     terminal: {
-      label: "Construção",
-      sub: "Arquitetura · Execução · Consequência",
-      lead: "Construção · Execução · Consequência",
+      label: "Terminal",
+      sub: "Código · Execução · Consequência",
+      lead: "Terminal · execução",
     },
     archive: {
-      label: "Memória",
-      sub: "Retenção · Inteligência · Continuidade",
-      lead: "Memória Viva · Retenção · Inteligência",
+      label: "Archive",
+      sub: "Retenção · Proveniência · Continuidade",
+      lead: "Archive · retenção · proveniência",
     },
+    // Core retains the institutional register by design — governance
+    // is the one place the Ruberra-era tone survives intentionally.
     core: {
       label: "Doutrina",
       sub: "Formação · Constituição · Princípio",
@@ -179,7 +182,7 @@ const PT: Copy = {
   cancel: "cancelar",
   switchMission: "Trocar missão",
   missions: "Missões",
-  labKicker: "— PRESSÃO FORENSE",
+  labKicker: "— INSIGHT · PRESSÃO",
   labTagline: "Investigação · Evidência · Pressão",
   labInputVoice: "— DIRECTIVA",
   labErrorTitle: "FALHA",
@@ -195,7 +198,7 @@ const PT: Copy = {
   labPlaceholderRefused: "Reformula. Fractura. Pressiona mais.",
   labAwait: "Aguardando resposta...",
   labAnalyzing: "ANALISANDO",
-  creationKicker: "— TERMINAL SOBERANO",
+  creationKicker: "— TERMINAL · EXECUÇÃO",
   creationTagline: "Construção · Execução · Consequência",
   creationInputVoice: "— COMANDO",
   creationErrorTitle: "EXECUÇÃO",
@@ -311,13 +314,14 @@ const PT: Copy = {
 };
 
 const EN: Copy = {
-  brand: "RUBERRA",
+  brand: "Signal",
   chambers: {
-    insight:  { label: "Lab", sub: "Analysis · Evidence · Truth", lead: "Lab · Evidence · Truth" },
-    surface:  { label: "Surface", sub: "—", lead: "Surface" },
-    terminal: { label: "Creation", sub: "Architecture · Execution · Consequence", lead: "Creation · Execution · Consequence" },
-    archive:  { label: "Memory", sub: "Retention · Intelligence · Continuity", lead: "Living Memory · Retention · Intelligence" },
-    core:     { label: "School", sub: "Formation · Constitution · Principle", lead: "School · Constitution · Principle" },
+    insight:  { label: "Insight",  sub: "Analysis · Evidence · Direction",      lead: "Insight · evidence · direction" },
+    surface:  { label: "Surface",  sub: "Design · Structure · Fidelity",        lead: "Surface · design workstation" },
+    terminal: { label: "Terminal", sub: "Code · Execution · Consequence",       lead: "Terminal · execution" },
+    archive:  { label: "Archive",  sub: "Retention · Provenance · Continuity",  lead: "Archive · retention · provenance" },
+    // Core keeps its School-era "School / Doctrine" register by design.
+    core:     { label: "Doctrine", sub: "Formation · Constitution · Principle", lead: "Doctrine · Constitution · Principle" },
   },
   newMission: "+ Mission",
   ritualTag: "RUBERRA · NEW MISSION",
@@ -326,7 +330,7 @@ const EN: Copy = {
   cancel: "cancel",
   switchMission: "Switch mission",
   missions: "Missions",
-  labKicker: "— FORENSIC PRESSURE",
+  labKicker: "— INSIGHT · PRESSURE",
   labTagline: "Investigation · Evidence · Pressure",
   labInputVoice: "— DIRECTIVE",
   labErrorTitle: "FAILURE",

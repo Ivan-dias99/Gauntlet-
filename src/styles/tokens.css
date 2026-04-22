@@ -425,139 +425,8 @@ textarea {
   animation: toolRise var(--dur-slow) var(--ease-swift) both;
 }
 
-/* ——— Landing (VisionLanding) ——— */
-@keyframes landingIn {
-  from {
-    opacity: 0;
-    transform: scale(0.995);
-    filter: blur(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
-}
-.visionKicker {
-  animation: landingIn var(--dur-slow) 80ms var(--ease-swift) both;
-}
-.visionTitle {
-  animation: landingIn var(--dur-slow) 140ms var(--ease-swift) both;
-}
-.visionSub {
-  animation: landingIn var(--dur-slow) 200ms var(--ease-swift) both;
-}
-.visionActions {
-  animation: landingIn var(--dur-slow) 260ms var(--ease-swift) both;
-}
-
-.landingPill {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  padding: 8px 18px;
-  border-radius: 999px;
-  cursor: pointer;
-  background: var(--text-primary);
-  color: var(--bg);
-  border: 1px solid var(--text-primary);
-  transition: transform 0.25s var(--ease-swift), opacity 0.25s;
-}
-.landingPill:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-.landingPill:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.visionPrimary {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  padding: 16px 28px;
-  border-radius: 999px;
-  cursor: pointer;
-  background: var(--text-primary);
-  color: var(--bg);
-  border: 1px solid var(--text-primary);
-  box-shadow: 0 10px 40px -10px color-mix(in oklab, var(--ember) 40%, transparent);
-  transition: transform 0.25s var(--ease-swift), box-shadow 0.25s, opacity 0.25s;
-}
-.visionPrimary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 50px -10px color-mix(in oklab, var(--ember) 55%, transparent);
-}
-.visionPrimary:disabled {
-  opacity: 0.35;
-  cursor: default;
-  box-shadow: none;
-}
-
-.visionGhost {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  padding: 16px 26px;
-  border-radius: 999px;
-  cursor: pointer;
-  background: transparent;
-  color: var(--text-secondary);
-  border: var(--border-mid);
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
-}
-.visionGhost:hover {
-  color: var(--accent);
-  border-color: var(--accent-dim);
-  background: var(--accent-glow);
-}
-
-.visionMission {
-  display: grid;
-  grid-template-columns: 36px 1fr auto;
-  gap: 0 24px;
-  align-items: baseline;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--border-soft);
-  background: transparent;
-  border-left: 0;
-  border-right: 0;
-  border-top: 0;
-  cursor: pointer;
-  text-align: left;
-  transition: padding-left 0.25s var(--ease-swift);
-}
-.visionMission:hover {
-  padding-left: 12px;
-}
-.visionMission .vmK {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  color: var(--text-ghost);
-}
-.visionMission .vmT {
-  font-family: "Fraunces", Georgia, serif;
-  font-size: 22px;
-  color: var(--text-primary);
-  letter-spacing: -0.015em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.visionMission:hover .vmT {
-  color: var(--accent);
-}
-.visionMission .vmM {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  color: var(--text-muted);
-  text-transform: uppercase;
-}
+/* (Landing VisionLanding CSS removed in Wave 6 — VisionLanding.tsx
+   was deleted in Wave 2; its classes were orphan rules.) */
 
 /* ——— Auxiliary tokens — not superseded by the canon ——— */
 :root {
@@ -568,7 +437,36 @@ textarea {
   --chamber-creation: var(--ember);
   --chamber-memory: var(--accent-dim);
   --chamber-school: var(--accent);
+
+  /* ——— Chamber-DNA (Wave 6) ———
+     Five-chamber token pack layered on top of the canon. Each chamber
+     exposes a tint var (--ch-<key>) and a glyph var (--ch-<key>-glyph)
+     so chamber-scoped UI can resolve its own identity without touching
+     the invariants above. Values intentionally pull from existing canon
+     primitives (accent / cc-info / ember / terminal-ok) — no new hues
+     are minted; the canon stays the source of truth. Legacy
+     --chamber-{lab,creation,memory,school} aliases kept until Wave 8. */
+  --ch-insight:        var(--cc-info);
+  --ch-insight-glyph:  "※";
+  --ch-surface:        var(--accent);
+  --ch-surface-glyph:  "◐";
+  --ch-terminal:       var(--ember);
+  --ch-terminal-glyph: "›_";
+  --ch-archive:        var(--accent-dim);
+  --ch-archive-glyph:  "◇";
+  --ch-core:           var(--terminal-ok);
+  --ch-core-glyph:     "§";
 }
+
+/* Chamber-DNA surface rules. A single CSS variable --chamber-dna
+   cascades from the [data-chamber="<key>"] attribute set by each
+   chamber's outermost element, so hover tints, left-accents and glyphs
+   can resolve without a chamber-specific selector each time. */
+[data-chamber="insight"]  { --chamber-dna: var(--ch-insight); }
+[data-chamber="surface"]  { --chamber-dna: var(--ch-surface); }
+[data-chamber="terminal"] { --chamber-dna: var(--ch-terminal); }
+[data-chamber="archive"]  { --chamber-dna: var(--ch-archive); }
+[data-chamber="core"]     { --chamber-dna: var(--ch-core); }
 
 /* ——— Surface primitives ———
    One border width, tonal borders, near-invisible shadows; only .surface-flagship earns elevation. */
@@ -1090,42 +988,10 @@ textarea {
   margin: var(--space-1) 0 18px;
 }
 
-/* ——— Landing chamber DNA ———
-   Each column carries a 2px left accent in its own chamber hue and a calm
-   tint on hover. DNA is a single cascading variable (--chamber-dna) set per
-   data-dna attribute; border, hover tint, and the chamber tag all resolve
-   from that var. No transform, no shadow — structural signal only. */
-.vl-chamber {
-  padding: var(--space-5) var(--space-4);
-  display: flex;
-  flex-direction: column;
-  border-left: 2px solid color-mix(in oklab, var(--chamber-dna, var(--text-muted)) 55%, var(--border-soft));
-  transition: background 0.22s var(--ease-swift), border-left-color 0.22s var(--ease-swift);
-}
-.vl-chamber:hover {
-  background: color-mix(in oklab, var(--chamber-dna, var(--text-muted)) 6%, transparent);
-  border-left-color: var(--chamber-dna, var(--text-muted));
-}
-.vl-chamber[data-dna="lab"] {
-  --chamber-dna: var(--chamber-lab);
-}
-.vl-chamber[data-dna="creation"] {
-  --chamber-dna: var(--chamber-creation);
-}
-.vl-chamber[data-dna="memory"] {
-  --chamber-dna: var(--chamber-memory);
-}
-.vl-chamber[data-dna="school"] {
-  --chamber-dna: var(--chamber-school);
-}
-.vl-chamber-tag {
-  font-family: var(--mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-kicker);
-  text-transform: uppercase;
-  color: var(--chamber-dna, var(--text-muted));
-  margin-bottom: 20px;
-}
+/* (Landing chamber DNA CSS removed in Wave 6 — .vl-chamber belonged to
+   VisionLanding's chamber deck, which was deleted in Wave 2. The
+   chamber-DNA concept survives as the --ch-* token pack added at the
+   bottom of this file.) */
 
 /* ——— Dormant panel ———
    Calm degraded-state primitive for chambers whose backend is unreachable.
@@ -1464,29 +1330,8 @@ textarea {
     margin: 6px 0 12px;
   }
 
-  /* Landing chamber columns — 32/24 padding on a 375px column is
-     empty-luxury; tighten so the vertical rhythm stacks densely. */
-  .vl-chamber {
-    padding: 20px 16px;
-  }
-  .vl-chamber-tag {
-    margin-bottom: 12px;
-  }
-
-  /* Vision landing mission rows — 18px vertical pad and 24px grid gap
-     were composed for wide screens; compress so a stack of four missions
-     reads as a list, not as four separate scroll screens. */
-  .visionMission {
-    grid-template-columns: 28px 1fr auto;
-    gap: 0 14px;
-    padding: 12px 0;
-  }
-  .visionMission:hover {
-    padding-left: 6px;
-  }
-  .visionMission .vmT {
-    font-size: 17px;
-  }
+  /* (Mobile VisionLanding overrides removed in Wave 6 alongside the
+     main landing block — classes no longer exist.) */
 
   /* Pill-class controls — landing CTAs dominate the viewport at 16/28px
      pad; drop to a phone-native size without losing the ceremonial font. */
