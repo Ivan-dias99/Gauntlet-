@@ -118,6 +118,18 @@ export default function Lab() {
   const capturedAgent = useRef<{ iter: number; toolCount: number }>({ iter: 0, toolCount: 0 });
 
   const notes: Note[] = [...(activeMission?.notes ?? [])].reverse();
+  // Spine notes are mission-scoped, not chamber-scoped. Creation's
+  // acceptArtifact() also writes AI notes on the same mission, which
+  // then surface in Lab's thread with no user PRESSÃO preceding them
+  // — the user sees AI monologue and can't tell where it came from.
+  // Compute an orphan flag per AI note: true iff no user note
+  // immediately precedes it (or it's the first entry). LabTurnRow
+  // renders orphan AI rows with an "— externa" tag.
+  const orphanFlags: boolean[] = notes.map((n, i) => {
+    if (n.role !== "ai") return false;
+    const prev = notes[i - 1];
+    return !prev || prev.role !== "user";
+  });
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -393,10 +405,11 @@ export default function Lab() {
           )
         )}
 
-        {notes.map((n) => (
+        {notes.map((n, i) => (
           <LabTurnRow
             key={n.id}
             note={n}
+            orphan={orphanFlags[i]}
             promoting={promoteId === n.id}
             onPromoteRequest={() => setPromoteId(n.id)}
             onPromoteConfirm={() => confirmPromote(n)}
@@ -642,12 +655,14 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
 
 function LabTurnRow({
   note,
+  orphan,
   promoting,
   onPromoteRequest,
   onPromoteConfirm,
   onPromoteCancel,
 }: {
   note: Note;
+  orphan: boolean;
   promoting: boolean;
   onPromoteRequest: () => void;
   onPromoteConfirm: () => void;
@@ -705,6 +720,15 @@ function LabTurnRow({
       <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: 1.5, textTransform: "uppercase" }}>
         <span style={{ width: 5, height: 5, borderRadius: "50%", background: dotColor }} />
         <span style={{ color: labelColor }}>{label}</span>
+        {isAI && orphan && (
+          <span
+            data-note-origin="external"
+            title="resposta produzida noutra câmara da mesma missão"
+            style={{ color: "var(--text-ghost)", opacity: 0.7 }}
+          >
+            · externa
+          </span>
+        )}
         <span style={{ color: "var(--text-ghost)", marginLeft: "auto", letterSpacing: 0.5 }}>
           {new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>

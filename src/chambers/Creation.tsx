@@ -725,23 +725,6 @@ export default function Creation() {
                 onSelect={() => setActiveTaskId(t.id)}
               />
             ))}
-            {doneTasks.length > 0 && pendingTasks.length > 0 && (
-              <div
-                style={{
-                  borderTop: "1px solid var(--border)",
-                  margin: "14px 0",
-                  opacity: 0.4,
-                }}
-              />
-            )}
-            {doneTasks.map((t) => (
-              <TaskRow
-                key={t.id} task={t} copy={copy}
-                active={t.id === activeTaskId}
-                duplicate={duplicateTitles.has(t.title)}
-                onSelect={() => setActiveTaskId(t.id)}
-              />
-            ))}
             {blockedTasks.length > 0 && (
               <>
                 <div style={{
@@ -769,6 +752,7 @@ export default function Creation() {
                   <TaskRow
                     key={t.id} task={t} copy={copy}
                     active={t.id === activeTaskId}
+                    duplicate={duplicateTitles.has(t.title)}
                     onSelect={() => setActiveTaskId(t.id)}
                   />
                 ))}

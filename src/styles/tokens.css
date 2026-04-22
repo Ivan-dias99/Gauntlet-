@@ -292,6 +292,28 @@ textarea {
     opacity: 1;
   }
 }
+/* Hide the horizontal scrollbar on the chamber tab strip without
+   disabling scroll itself — scroll chrome is visual noise in a header. */
+[data-chamber-tabs]::-webkit-scrollbar {
+  display: none;
+}
+
+/* Respect the user's prefers-reduced-motion setting (WCAG 2.3.3).
+   Disables our only two non-trivial animations (breathe pulses and
+   fadeUp enter transitions) so users with vestibular sensitivity
+   don't get spammed by breathing dots. */
+@media (prefers-reduced-motion: reduce) {
+  .breathe,
+  .spine-sync[data-sync-state="syncing"] .spine-sync-dot {
+    animation: none !important;
+  }
+  .fadeUp,
+  .fadeIn,
+  .toolRise {
+    animation: none !important;
+  }
+}
+
 .breathe {
   /* 3.3s (not 3.2s) so the ambient mission-pulse breathe never locks
      into a clean 2:1 ratio with the 1.6s spine-sync breathe — the

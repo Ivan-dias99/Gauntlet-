@@ -115,13 +115,31 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
         />
       </button>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      {/* Mobile-safe tab strip: horizontally scrollable instead of
+          clipping/wrapping when the viewport is too narrow for all four
+          chambers + the brand mark. WebkitOverflowScrolling keeps the
+          momentum-scroll feel on iOS. flexShrink on each tab prevents
+          the label from compressing below legibility. */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+          minWidth: 0,
+        }}
+        data-chamber-tabs
+      >
         {CHAMBERS.map((c) => (
           <button
             key={c}
             onClick={() => onSelect(c)}
             className={active === c ? "tab tab-active" : "tab"}
             aria-current={active === c ? "page" : undefined}
+            style={{ flexShrink: 0 }}
           >
             {copy.chambers[c].label}
           </button>
