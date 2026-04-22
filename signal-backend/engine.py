@@ -401,8 +401,29 @@ class RuberraEngine:
         if query.chamber == ChamberKey.SURFACE:
             from chambers.surface import process_surface_mock_streaming
             yield {"type": "route", "path": "surface"}
+            # Improvement after Wave 8: Surface runs are persisted to the
+            # run log just like agent / triad / crew, so the Archive chamber
+            # can surface them alongside other mission activity. Without
+            # this record the mission ledger showed zero Surface events.
+            surface_final: Optional[dict[str, Any]] = None
             async for event in process_surface_mock_streaming(query.question, query.surface):
                 yield event
+                if event.get("type") == "done":
+                    surface_final = event
+            if surface_final is not None:
+                is_mock = bool(surface_final.get("mock"))
+                await run_store.record(RunRecord(
+                    route="surface",
+                    mission_id=query.mission_id,
+                    question=query.question,
+                    context=query.context,
+                    answer=surface_final.get("answer"),
+                    processing_time_ms=surface_final.get("processing_time_ms", 0),
+                    input_tokens=surface_final.get("input_tokens", 0),
+                    output_tokens=surface_final.get("output_tokens", 0),
+                    terminated_early=is_mock,
+                    termination_reason="surface_mock" if is_mock else None,
+                ))
             return
 
         if self._auto_route_agent(query):

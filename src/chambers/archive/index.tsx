@@ -60,18 +60,18 @@ const ROUTE_COLOR: Record<string, string> = {
 // Memory is a timeline of what happened; telling the user *where* each thing
 // happened turns a flat run list into governance story.
 //
-// Backend reality (engine.py): only three values are ever written —
-// "agent", "crew", "triad". `agent` is ambiguous (Lab auto-router OR
-// Creation /dev) so we deliberately omit it instead of half-lying.
-// `crew` is Creation-only; `triad` is Lab-only.
-// Wave-1 chamber keys. The backend run records still store the three
-// route strings "agent" / "crew" / "triad" verbatim — we only flip the
-// Chamber value the UI attaches to each route for chamber-of-origin
-// display. `agent` remains ambiguous (Lab/Insight auto-router OR
-// Creation/Terminal /dev) so we deliberately omit it instead of half-lying.
+// Backend reality (engine.py): four route strings are ever written —
+// "agent" | "crew" | "triad" | "surface". `agent` stays ambiguous
+// (Insight auto-router OR Terminal /dev) so we deliberately omit it
+// instead of half-lying. `crew` is Terminal-only; `triad` is Insight-
+// dominant (Archive and Core also dispatch triad; their chamber-of-
+// origin is disambiguated via the run's mission metadata, not by
+// route alone). `surface` lands here post-Wave-8 once the Surface
+// mock handler persists a RunRecord alongside the SSE stream.
 const ROUTE_ORIGIN: Partial<Record<string, Chamber>> = {
-  crew:  "terminal",
-  triad: "insight",
+  crew:    "terminal",
+  triad:   "insight",
+  surface: "surface",
 };
 
 function originFor(route: string): Chamber | null {

@@ -38,7 +38,16 @@ jobs:
         run: |
           python -c "
           import importlib
-          for mod in ('config','models','doctrine','memory','tools','agent','engine','server','main'):
+          mods = (
+              # core runtime
+              'config','models','doctrine','memory','tools',
+              'agent','engine','server','main',
+              # chamber profiles + per-chamber prompt modules (Wave 1/5)
+              'chambers','chambers.profiles',
+              'chambers.insight','chambers.surface','chambers.terminal',
+              'chambers.archive','chambers.core',
+          )
+          for mod in mods:
               importlib.import_module(mod)
-          print('all modules import cleanly')
+          print(f'all {len(mods)} modules import cleanly')
           "
