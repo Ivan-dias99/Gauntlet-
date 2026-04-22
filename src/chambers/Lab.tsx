@@ -79,11 +79,13 @@ export default function Lab() {
   const copy = useCopy();
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
-  // Backend-side /runs count for the active mission. If the spine push
-  // failed before this exchange persisted, the AI note may be missing
-  // from the thread but the run IS in /runs on the backend. We surface
-  // the discrepancy instead of silently swallowing a lost message.
-  const [serverRunCount, setServerRunCount] = useState<number | null>(null);
+  // Backend-side run count scoped to runs Lab can possibly be responsible
+  // for. The /runs log also holds `crew` (Creation-only) and `agent`
+  // (ambiguous between Lab auto-router and Creation /dev — see T168) rows
+  // for the same mission. We only count `triad` — the one route engine.py
+  // writes that is Lab-exclusive — so the "N no arquivo" chip never
+  // accuses Lab of losing exchanges that Creation actually produced.
+  const [serverTriadRunCount, setServerTriadRunCount] = useState<number | null>(null);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
@@ -126,12 +128,14 @@ export default function Lab() {
   }, [pending]);
 
   // Reconciliation probe: on mission change, ask the backend how many
-  // runs it has for this mission. If it exceeds our local AI-note count,
-  // a previous session's spine push failed mid-exchange and the user is
-  // seeing fewer exchanges than actually happened. Surface the gap.
+  // triad runs it has for this mission. If that count exceeds our local
+  // AI-note count, a previous session's spine push dropped the exchange
+  // and the user is seeing fewer rows than Lab actually produced.
+  // Filter is client-side — the /runs endpoint doesn't accept a route
+  // query param and we prefer not to add one just for this chip.
   useEffect(() => {
     if (!activeMission?.id) {
-      setServerRunCount(null);
+      setServerTriadRunCount(null);
       return;
     }
     const ac = new AbortController();
@@ -139,8 +143,11 @@ export default function Lab() {
     ruberraFetch(`/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
       .then(async (r) => {
         if (!r.ok) return;
-        const body = (await r.json()) as { count?: number };
-        setServerRunCount(typeof body.count === "number" ? body.count : null);
+        const body = (await r.json()) as { records?: Array<{ route?: string }> };
+        const triad = Array.isArray(body.records)
+          ? body.records.filter((rec) => rec.route === "triad").length
+          : 0;
+        setServerTriadRunCount(triad);
       })
       .catch((e) => {
         if (e instanceof DOMException && e.name === "AbortError") return;
@@ -279,16 +286,17 @@ export default function Lab() {
           </span>
         )}
         {(() => {
-          // Lab-thread vs /runs reconciliation. If the backend's run log has
-          // more entries than the AI notes we're rendering locally, a prior
-          // spine push dropped answers. Surface a clickable chip to Memory
-          // so the user can recover the lost exchanges from the run archive.
+          // Lab-thread vs /runs reconciliation, scoped to triad (Lab-only).
+          // If the backend logged more triad exchanges than the thread has
+          // AI notes, a prior spine push dropped answers — surface a
+          // clickable chip to Memory so the user can recover them from the
+          // run archive.
           const localAI = (activeMission?.notes ?? []).filter(
             (n) => n.role === "ai",
           ).length;
           const gap =
-            serverRunCount !== null && serverRunCount > localAI
-              ? serverRunCount - localAI
+            serverTriadRunCount !== null && serverTriadRunCount > localAI
+              ? serverTriadRunCount - localAI
               : 0;
           if (gap <= 0) return null;
           return (
@@ -299,7 +307,7 @@ export default function Lab() {
                   new CustomEvent("ruberra:chamber", { detail: "Memory" }),
                 )
               }
-              title="o arquivo do backend tem mais execuções do que o fio local — clicar para ver"
+              title="o arquivo do backend tem mais triad runs do que o fio local — clicar para ver"
               style={{
                 background: "none",
                 fontFamily: "var(--mono)",
@@ -314,7 +322,7 @@ export default function Lab() {
                 lineHeight: 1.4,
               }}
             >
-              +{gap} no arquivo
+              +{gap} triad no arquivo
             </button>
           );
         })()}

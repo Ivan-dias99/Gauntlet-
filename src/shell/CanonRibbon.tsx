@@ -221,10 +221,19 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                   const focusedIdx = items.indexOf(
                     document.activeElement as HTMLButtonElement,
                   );
-                  const nextIdx =
-                    e.key === "ArrowDown"
-                      ? (focusedIdx + 1) % items.length
-                      : (focusedIdx - 1 + items.length) % items.length;
+                  // Cold focus (trigger button still has focus → -1) must
+                  // wrap to the correct end: ArrowDown → first, ArrowUp →
+                  // last. The unified modulo was landing ArrowUp on
+                  // items.length - 2, which is the penultimate row, not
+                  // the last — a real WAI-ARIA listbox violation.
+                  let nextIdx: number;
+                  if (focusedIdx < 0) {
+                    nextIdx = e.key === "ArrowDown" ? 0 : items.length - 1;
+                  } else if (e.key === "ArrowDown") {
+                    nextIdx = (focusedIdx + 1) % items.length;
+                  } else {
+                    nextIdx = (focusedIdx - 1 + items.length) % items.length;
+                  }
                   items[nextIdx]?.focus();
                 }}
               >
