@@ -1,5 +1,5 @@
 // Wave-4 Permissions tab — read-only view over the tool allowlist and
-// the code-execution gate. Mirrors ruberra-backend/tools.py. Wave 5
+// the code-execution gate. Mirrors signal-backend/tools.py. Wave 5
 // splits per-chamber allowlists (insight=none, terminal=all, surface=
 // mock-only, archive=retrieval-subset, core=none).
 

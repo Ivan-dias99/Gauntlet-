@@ -44,7 +44,7 @@ from typing import Any, Optional
 
 import httpx
 
-logger = logging.getLogger("ruberra.tools")
+logger = logging.getLogger("signal.tools")
 
 
 # ── Configuration ───────────────────────────────────────────────────────────

@@ -35,7 +35,7 @@ from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
 from models import RuberraQuery
 from tools import ToolRegistry, ToolResult
 
-logger = logging.getLogger("ruberra.agent")
+logger = logging.getLogger("signal.agent")
 
 
 # ── Tunables ────────────────────────────────────────────────────────────────

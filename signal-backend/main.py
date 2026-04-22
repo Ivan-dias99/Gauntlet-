@@ -1,10 +1,10 @@
 """
-Ruberra V1 — Entry Point
+Signal — Entry Point
 Start the conservative intelligence server.
 
 Usage:
   python main.py
-  
+
   Or with uvicorn directly:
   uvicorn server:app --host 127.0.0.1 --port 3002 --reload
 """
@@ -14,13 +14,13 @@ from config import SERVER_HOST, SERVER_PORT
 
 
 def main() -> None:
-    """Launch the Ruberra V1 server."""
+    """Launch the Signal backend."""
     print(
         "\n"
         "  ╔═══════════════════════════════════════════════════════╗\n"
         "  ║                                                       ║\n"
-        "  ║   R U B E I R A   V 1                                 ║\n"
-        "  ║   Conservative Intelligence System                    ║\n"
+        "  ║   S I G N A L                                         ║\n"
+        "  ║   Sovereign AI workspace — five chambers              ║\n"
         "  ║                                                       ║\n"
         "  ║   «Prefiro não responder a arriscar estar errado.»    ║\n"
         "  ║                                                       ║\n"

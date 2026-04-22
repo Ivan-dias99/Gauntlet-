@@ -1,6 +1,6 @@
 """
-Ruberra — FastAPI Server
-HTTP interface for the Ruberra intelligence system.
+Signal — FastAPI Server
+HTTP interface for the Signal sovereign AI workspace.
 
 Endpoints:
   POST /ask, /route, /route/stream  — triad+judge / auto-router
@@ -54,7 +54,7 @@ logging.basicConfig(
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("ruberra.server")
+logger = logging.getLogger("signal.server")
 
 # ── App Lifecycle ───────────────────────────────────────────────────────────
 
@@ -80,28 +80,31 @@ async def lifespan(app: FastAPI):
     engine = RuberraEngine()
     logger.info(
         "═══════════════════════════════════════════════════════════\n"
-        "  Ruberra V1 — Conservative Intelligence System\n"
+        "  Signal — sovereign AI workspace\n"
         f"  Listening: http://{SERVER_HOST}:{SERVER_PORT}\n"
         f"  CORS Origins: {', '.join(_cors_origins)}\n"
+        "  Chambers: Insight · Surface · Terminal · Archive · Core\n"
         "  Doctrine: ACTIVE\n"
         "  Self-Consistency: 3x parallel triad\n"
         "  Judge: IMPLACABLE\n"
         "  Failure Memory: PERSISTENT\n"
         "═══════════════════════════════════════════════════════════"
     )
-    
+
     yield
-    
-    logger.info("Ruberra shutting down.")
+
+    logger.info("Signal backend shutting down.")
 
 
 # ── FastAPI App ─────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Ruberra V1",
+    title="Signal",
     description=(
-        "A conservative, honest AI system that prefers to say "
-        "'I don't know' rather than risk being wrong."
+        "Signal — sovereign AI workspace over external models. Five "
+        "chambers (Insight · Surface · Terminal · Archive · Core) "
+        "sharing one shell and one conservative doctrine: prefer "
+        "refusal over the risk of being wrong."
     ),
     version="1.0.0",
     lifespan=lifespan,
@@ -171,7 +174,7 @@ async def health_check():
     """
     return {
         "status": "operational",
-        "system": "Ruberra V1",
+        "system": "Signal",
         "doctrine": "active",
         "engine": "ready" if engine else "not_initialized",
         "mode": "mock" if RUBERRA_MOCK else "real",

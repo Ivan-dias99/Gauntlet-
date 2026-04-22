@@ -1,4 +1,4 @@
-// Wave-4 Routing tab — read-only mirror of ruberra-backend/chambers/profiles.py.
+// Wave-4 Routing tab — read-only mirror of signal-backend/chambers/profiles.py.
 //
 // Wave 5 adds editability + live fetch from a /chambers endpoint. In the
 // meantime this table is the single place a governor can inspect what

@@ -46,7 +46,7 @@ from models import (
 from memory import failure_memory
 from runs import run_store
 
-logger = logging.getLogger("ruberra.engine")
+logger = logging.getLogger("signal.engine")
 
 # Agent layer is imported lazily to avoid an import cycle and to keep the
 # triad path usable even if the agent module is later swapped out.

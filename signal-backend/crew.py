@@ -53,7 +53,7 @@ from mock_client import MockAsyncAnthropic
 from models import RuberraQuery
 from tools import ToolRegistry
 
-logger = logging.getLogger("ruberra.crew")
+logger = logging.getLogger("signal.crew")
 
 
 # ── Tunables ────────────────────────────────────────────────────────────────

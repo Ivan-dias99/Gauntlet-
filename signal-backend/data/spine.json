@@ -1,0 +1,20 @@
+{
+  "missions": [
+    {
+      "id": "m1",
+      "title": "legacy",
+      "chamber": "Lab",
+      "status": "active",
+      "createdAt": 0,
+      "notes": [],
+      "tasks": [],
+      "events": [],
+      "lastArtifact": null,
+      "artifacts": []
+    }
+  ],
+  "activeMissionId": "m1",
+  "principles": [],
+  "last_updated": "2026-04-22T20:53:46.196949+00:00",
+  "updatedAt": 1
+}

@@ -18,7 +18,7 @@ from config import FAILURE_MEMORY_FILE, MAX_FAILURE_ENTRIES, FAILURE_CONTEXT_WIN
 from models import FailureRecord, FailureMemory, RefusalReason
 from persistence import atomic_write_text, quarantine_corrupt_file
 
-logger = logging.getLogger("ruberra.memory")
+logger = logging.getLogger("signal.memory")
 
 
 class FailureMemoryStore:

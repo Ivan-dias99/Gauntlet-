@@ -1,6 +1,6 @@
 // Wave-4 Orchestration tab — read-only display of the three pipelines
 // the engine currently operates, with the budgets that keep them honest.
-// Values mirror ruberra-backend/agent.py and engine.py constants. Wave 5
+// Values mirror signal-backend/agent.py and engine.py constants. Wave 5
 // lifts these into editable per-chamber profile slots.
 
 interface Row { label: string; value: string; }

@@ -7,8 +7,9 @@ import {
   type BackendErrorEnvelope,
 } from "../lib/ruberraApi";
 
-// Client for the Python backend (ruberra-backend/) via the /api/ruberra
-// proxy.
+// Client for the Python backend (signal-backend/) via the /api/signal
+// proxy (legacy /api/ruberra alias still routes during the Wave-0 →
+// Wave-8 compat window).
 //
 // Endpoints:
 //   POST /api/ruberra/route        → { route: "agent" | "triad", result: {...} }

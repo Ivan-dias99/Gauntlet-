@@ -19,7 +19,7 @@ from config import MEMORY_DIR
 from models import SpineSnapshot
 from persistence import atomic_write_text, quarantine_corrupt_file
 
-logger = logging.getLogger("ruberra.spine")
+logger = logging.getLogger("signal.spine")
 
 SPINE_FILE: Path = MEMORY_DIR / "spine.json"
 
