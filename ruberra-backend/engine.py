@@ -386,7 +386,22 @@ class RuberraEngine:
         self, query: RuberraQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """Auto-router streaming variant. Emits a ``route`` event first, then
-        streams agent or triad events under a unified envelope."""
+        streams agent, triad or surface-mock events under a unified envelope.
+
+        Wave-3 addition: when ``query.chamber == "surface"`` the router forks
+        to the chamber-specific mock handler instead of the generic agent
+        loop. The mock emits a structured ``surface_plan`` event and a
+        ``done`` event with ``mock: True`` in the payload — no provider is
+        invoked. Replaced by real generation in Wave 5.
+        """
+        from chambers.profiles import ChamberKey
+        if query.chamber == ChamberKey.SURFACE:
+            from chambers.surface import process_surface_mock_streaming
+            yield {"type": "route", "path": "surface"}
+            async for event in process_surface_mock_streaming(query.question, query.surface):
+                yield event
+            return
+
         if self._auto_route_agent(query):
             yield {"type": "route", "path": "agent"}
             async for event in self.process_dev_query_streaming(query):

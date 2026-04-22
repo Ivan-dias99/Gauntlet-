@@ -6,7 +6,7 @@ import Lab from "../chambers/Lab";
 import Creation from "../chambers/Creation";
 import Memory from "../chambers/Memory";
 import School from "../chambers/School";
-import SurfaceStub from "../chambers/SurfaceStub";
+import Surface from "../chambers/surface";
 
 // Wave-2: shell is stripped of landing, ritual entry, and tweak-panel
 // gates. Boot opens directly on the active chamber with its composer
@@ -21,7 +21,7 @@ function renderChamber(c: Chamber) {
     case "terminal": return <Creation />;
     case "archive":  return <Memory />;
     case "core":     return <School />;
-    case "surface":  return <SurfaceStub />;
+    case "surface":  return <Surface />;
   }
 }
 
