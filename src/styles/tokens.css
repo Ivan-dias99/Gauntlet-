@@ -287,7 +287,7 @@ textarea {
 }
 
 .theme-transitioning * {
-  transition: background-color 0.28s, color 0.28s, border-color 0.28s;
+  transition: background-color var(--dur-normal) var(--ease-swift), color var(--dur-normal) var(--ease-swift), border-color var(--dur-normal) var(--ease-swift);
 }
 
 /* ——— Font overrides (body-level classes) ——— */
@@ -313,7 +313,7 @@ textarea {
   }
 }
 .fadeUp {
-  animation: fadeUp 0.28s ease-out both;
+  animation: fadeUp var(--dur-slow) var(--ease-swift) both;
 }
 
 @keyframes fadeIn {
@@ -325,7 +325,7 @@ textarea {
   }
 }
 .fadeIn {
-  animation: fadeIn 0.22s ease-out both;
+  animation: fadeIn var(--dur-normal) var(--ease-swift) both;
 }
 
 /* ——— Liquid glass primitive ——— */
@@ -422,7 +422,7 @@ textarea {
   }
 }
 .toolRise {
-  animation: toolRise 0.42s var(--ease-swift) both;
+  animation: toolRise var(--dur-slow) var(--ease-swift) both;
 }
 
 /* ——— Landing (VisionLanding) ——— */
@@ -439,16 +439,16 @@ textarea {
   }
 }
 .visionKicker {
-  animation: landingIn 1s 0.1s var(--ease-swift) both;
+  animation: landingIn var(--dur-slow) 80ms var(--ease-swift) both;
 }
 .visionTitle {
-  animation: landingIn 1.2s 0.18s var(--ease-swift) both;
+  animation: landingIn var(--dur-slow) 140ms var(--ease-swift) both;
 }
 .visionSub {
-  animation: landingIn 1.2s 0.32s var(--ease-swift) both;
+  animation: landingIn var(--dur-slow) 200ms var(--ease-swift) both;
 }
 .visionActions {
-  animation: landingIn 1s 0.46s var(--ease-swift) both;
+  animation: landingIn var(--dur-slow) 260ms var(--ease-swift) both;
 }
 
 .landingPill {
