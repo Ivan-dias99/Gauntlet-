@@ -34,6 +34,14 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
   const copy = useCopy();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Typeahead buffer: accumulates printable keystrokes while the dropdown
+  // is open so the user can jump to "p" then "pr" without the first match
+  // stealing focus before they finish typing. 800ms idle clears it —
+  // standard WAI-ARIA listbox typeahead behaviour.
+  const typeaheadRef = useRef<{ query: string; clear: number | null }>({
+    query: "",
+    clear: null,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -217,14 +225,10 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                 role="listbox"
                 aria-label={copy.missions}
                 onKeyDown={(e) => {
-                  // Full WAI-ARIA listbox keyboard contract: Arrow wraps,
-                  // Home → first, End → last. Opening the panel already
-                  // focused the first item, so focusedIdx is 0 on first
-                  // key; the cold-focus (-1) branch remains for the rare
-                  // case where focus drifted outside the list.
-                  if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key))
-                    return;
-                  e.preventDefault();
+                  // WAI-ARIA listbox keyboard contract: Arrow wraps,
+                  // Home/End jump, printable chars type-ahead to the
+                  // first matching option. Opening the panel already
+                  // focused the first item.
                   const items = Array.from(
                     dropdownRef.current?.querySelectorAll<HTMLButtonElement>(
                       ".dropdown-item",
@@ -234,6 +238,38 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                   const focusedIdx = items.indexOf(
                     document.activeElement as HTMLButtonElement,
                   );
+
+                  // Typeahead: any printable single-char key accumulates
+                  // into the buffer and jumps to the first option whose
+                  // title starts with the buffer (diacritic-insensitive).
+                  if (e.key.length === 1 && /\S/.test(e.key)) {
+                    e.preventDefault();
+                    const fold = (s: string) =>
+                      s
+                        .toLocaleLowerCase()
+                        .normalize("NFD")
+                        .replace(/\p{M}+/gu, "");
+                    typeaheadRef.current.query += fold(e.key);
+                    const q = typeaheadRef.current.query;
+                    const hit = items.findIndex((el) =>
+                      fold(
+                        el.querySelector(".dropdown-item-title")?.textContent ?? "",
+                      ).startsWith(q),
+                    );
+                    if (hit >= 0) items[hit]?.focus();
+                    if (typeaheadRef.current.clear !== null) {
+                      window.clearTimeout(typeaheadRef.current.clear);
+                    }
+                    typeaheadRef.current.clear = window.setTimeout(() => {
+                      typeaheadRef.current.query = "";
+                      typeaheadRef.current.clear = null;
+                    }, 800);
+                    return;
+                  }
+
+                  if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key))
+                    return;
+                  e.preventDefault();
                   let nextIdx: number;
                   if (e.key === "Home") {
                     nextIdx = 0;

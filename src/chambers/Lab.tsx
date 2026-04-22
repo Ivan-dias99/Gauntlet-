@@ -285,40 +285,48 @@ export default function Lab() {
             mock
           </span>
         )}
-        {serverTriadRunCount !== null && serverTriadRunCount > 0 && (
-          // Factual, not accusatory. Earlier versions compared this count
-          // against local AI notes and rendered a gap — but spine notes
-          // don't record which route produced them, so a mission mixing
-          // triad + agent paths produced false gaps in both directions.
-          // The honest surface is simply: this mission has N triad runs
-          // in the backend archive. Clicking jumps to Memory to read
-          // them. The user decides whether any are missing from the
-          // local thread.
-          <button
-            data-lab-triad-archive={serverTriadRunCount}
-            onClick={() =>
-              window.dispatchEvent(
-                new CustomEvent("ruberra:chamber", { detail: "Memory" }),
-              )
-            }
-            title="abrir Memory para ver as triad runs desta missão"
-            style={{
-              background: "none",
-              fontFamily: "var(--mono)",
-              fontSize: 9,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              color: "var(--text-ghost)",
-              padding: "2px 7px",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: 4,
-              cursor: "pointer",
-              lineHeight: 1.4,
-            }}
-          >
-            {serverTriadRunCount} triad no arquivo
-          </button>
-        )}
+        {(() => {
+          // Tight trigger: only when the local thread has zero AI notes
+          // AND the backend has triad runs for this mission. That's the
+          // one case where a chip in Lab carries real signal — "your
+          // thread is empty but there IS an archive". Any other state
+          // (thread has content, backend has content) is ambiguous
+          // because spine notes don't track route, so rendering the
+          // chip there is either noise or a misleading comparison.
+          if (serverTriadRunCount === null || serverTriadRunCount === 0) {
+            return null;
+          }
+          const localAI = (activeMission?.notes ?? []).filter(
+            (n) => n.role === "ai",
+          ).length;
+          if (localAI > 0) return null;
+          return (
+            <button
+              data-lab-triad-archive={serverTriadRunCount}
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent("ruberra:chamber", { detail: "Memory" }),
+                )
+              }
+              title="thread local está vazio mas o arquivo do backend tem triad runs desta missão"
+              style={{
+                background: "none",
+                fontFamily: "var(--mono)",
+                fontSize: 9,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+                color: "var(--cc-warn)",
+                padding: "2px 7px",
+                border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+                borderRadius: 4,
+                cursor: "pointer",
+                lineHeight: 1.4,
+              }}
+            >
+              {serverTriadRunCount} triad no arquivo
+            </button>
+          );
+        })()}
         {principles.length > 0 && (
           <span
             data-principles-in-context

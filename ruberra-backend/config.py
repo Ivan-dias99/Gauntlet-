@@ -49,20 +49,34 @@ ALLOWED_ORIGINS: list[str] = [
 ALLOWED_ORIGIN: str = ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "http://localhost:5173"
 
 # Config sanity warning. A common misconfiguration: RUBERRA_ORIGIN gets set
-# to the backend's own URL (because the operator confused "where does
-# traffic come from" with "where am I deployed"). Check for the common
-# frontend-origin shapes and warn loudly if none are present — this does
-# not affect normal prod flow (the Vercel edge forwarder proxies server-
-# to-server and never triggers browser CORS) but it WILL break direct-
-# backend preview deploys and curl-from-dev workflows.
-_FRONTEND_HINTS = ("localhost", "127.0.0.1", "vercel.app", "netlify.app")
-if not any(
-    any(hint in o for hint in _FRONTEND_HINTS) for o in ALLOWED_ORIGINS
+# to the backend's own deploy URL (Railway / Heroku / Render / Fly) because
+# the operator confused "where does traffic come from" with "where am I
+# deployed". Warning is inverted from "no frontend hint" — which
+# false-positives on custom domains like ruberra.app — to "all origins
+# match backend-host hints". If every entry in the list looks like a
+# PaaS backend domain, the operator almost certainly meant to configure
+# a frontend origin instead.
+#
+# Normal prod flow is unaffected (the Vercel edge forwarder proxies
+# server-to-server and never triggers browser CORS), but direct-backend
+# preview deploys and curl-from-dev workflows would break silently.
+_BACKEND_HOST_HINTS = (
+    "railway.app",
+    "up.railway.app",
+    "herokuapp.com",
+    "onrender.com",
+    "fly.dev",
+    "render.com",
+)
+if ALLOWED_ORIGINS and all(
+    any(hint in o for hint in _BACKEND_HOST_HINTS) for o in ALLOWED_ORIGINS
 ):
     _cfg_log.warning(
-        "RUBERRA_ORIGIN contains no recognisable frontend host "
-        "(%s). Direct-backend browser requests will fail CORS. "
-        "Normal Vercel-edge-proxied requests are unaffected.",
+        "RUBERRA_ORIGIN contains only backend-host domains (%s). "
+        "That is almost certainly a misconfiguration — set it to the "
+        "frontend origin (e.g. https://<your-app>.vercel.app). "
+        "Vercel-edge-proxied requests work regardless; direct-backend "
+        "browser requests will fail CORS.",
         ALLOWED_ORIGINS,
     )
 
