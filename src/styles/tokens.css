@@ -1312,3 +1312,360 @@ textarea {
     padding: calc(14px * var(--density, 1)) 12px;
   }
 }
+
+/* ——— School doctrine primitives ———
+   Constitutional surfaces for the School chamber. Upright legal type,
+   not literary italic. Declarative composition, not dashboard card.
+   Four zones per seal: institutional header, declaration line,
+   invocation counters, optional status row — each separated by a
+   hairline. Articles read as a sober register with a mono "ARTIGO"
+   kicker + upright serif numeral. Invocation data is surfaced from
+   real substrate (`doctrine_applied` events in mission logs) — never
+   labelled "consequence" because the substrate does not carry
+   per-principle causal effects, only whether the doctrine was
+   invoked. */
+
+/* Seal — the constitutional declaration that frames the register. */
+.doctrine-seal {
+  margin-bottom: var(--sp-6);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.doctrine-seal-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.doctrine-seal-title-kicker {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.doctrine-seal-title-sep {
+  color: var(--border);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.doctrine-seal-title-mission {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.3;
+  color: var(--text-primary);
+  letter-spacing: var(--track-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.doctrine-seal-title-null {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.doctrine-seal-declaration {
+  padding: var(--sp-4) var(--sp-5);
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  letter-spacing: var(--track-tight);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.doctrine-seal-declaration strong {
+  font-weight: 500;
+  color: var(--accent);
+}
+.doctrine-seal-counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: var(--sp-3) var(--sp-5);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.doctrine-seal-counter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-right: var(--sp-4);
+}
+.doctrine-seal-counter + .doctrine-seal-counter {
+  border-left: 1px solid var(--border-subtle);
+  padding-left: var(--sp-4);
+}
+.doctrine-seal-counter-value {
+  font-family: var(--serif);
+  font-size: 17px;
+  color: var(--text-primary);
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.doctrine-seal-counter-value[data-tone="dim"] {
+  color: var(--text-ghost);
+}
+.doctrine-seal-counter-value[data-tone="accent"] {
+  color: var(--accent);
+}
+.doctrine-seal-counter-label {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.doctrine-seal-counter-null {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-ghost);
+  letter-spacing: var(--track-meta);
+  padding: 2px 0;
+}
+.doctrine-seal-status {
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3) var(--sp-4);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-meta);
+  color: var(--text-ghost);
+}
+.doctrine-seal-status-item[data-state="ok"]   { color: var(--cc-ok); }
+.doctrine-seal-status-item[data-state="info"] { color: var(--cc-info); }
+.doctrine-seal-status-item[data-state="warn"] { color: var(--cc-warn); }
+
+/* Preamble — strip that marks the registry before the articles. */
+.doctrine-preamble {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.doctrine-preamble-heavy {
+  color: var(--accent-dim);
+}
+.doctrine-preamble-order {
+  margin-left: auto;
+  color: var(--text-ghost);
+  letter-spacing: var(--track-meta);
+  font-size: 9px;
+}
+
+/* Article row — register entry in the list layout. Upright serif numeral,
+   mono "ARTIGO" kicker, hairline between each row plus a closing rule
+   after the last so the registry actually closes. */
+.doctrine-article {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  gap: 0 var(--sp-5);
+  padding: 22px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  align-items: flex-start;
+}
+.doctrine-article-gutter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-top: 3px;
+}
+.doctrine-article-kicker {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--accent-dim);
+}
+.doctrine-article-num {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.doctrine-article-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.doctrine-article-text {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.7;
+  color: var(--text-primary);
+  letter-spacing: var(--track-tight);
+}
+.doctrine-article-meta {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+/* Tablet card — upright mirror of the article row in grid form. */
+.doctrine-tablet {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-left: 2px solid color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+  border-radius: var(--r-md);
+  padding: var(--sp-5) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.doctrine-tablet-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.doctrine-tablet-kicker {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--accent-dim);
+}
+.doctrine-tablet-num {
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.doctrine-tablet-text {
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  letter-spacing: var(--track-tight);
+}
+
+/* Chamber head crest — serif-upright count on the head strip. */
+.chamber-head-crest {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.chamber-head-crest-num {
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.chamber-head-crest-kicker {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--accent-dim);
+}
+
+/* Inscription affordance. Idle state is transparent so only an active
+   draft pulls weight — ratification is an act, not an ambient signal. */
+.doctrine-ratify {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  cursor: pointer;
+  transition: background 0.2s var(--ease-swift), border-color 0.2s, color 0.2s;
+}
+.doctrine-ratify:hover:not(:disabled) {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+}
+.doctrine-ratify[data-warn="true"] {
+  color: var(--cc-warn);
+  border-color: var(--cc-warn);
+}
+.doctrine-ratify:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mobile — doctrine primitives respect the ≤640 density layer. */
+@media (max-width: 640px) {
+  .doctrine-seal {
+    margin-bottom: var(--sp-5);
+  }
+  .doctrine-seal-title,
+  .doctrine-seal-declaration,
+  .doctrine-seal-counters,
+  .doctrine-seal-status {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+  .doctrine-seal-declaration {
+    font-size: 14.5px;
+  }
+  .doctrine-seal-counters {
+    padding-top: var(--sp-2);
+    padding-bottom: var(--sp-2);
+  }
+  .doctrine-seal-counter {
+    padding-right: var(--sp-3);
+  }
+  .doctrine-seal-counter + .doctrine-seal-counter {
+    padding-left: var(--sp-3);
+  }
+  .doctrine-seal-counter-value {
+    font-size: 15px;
+  }
+  .doctrine-article {
+    grid-template-columns: 72px 1fr;
+    gap: 0 var(--sp-3);
+    padding: 18px 0;
+  }
+  .doctrine-article-num {
+    font-size: 20px;
+  }
+  .doctrine-article-text {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .doctrine-tablet {
+    padding: var(--sp-4) var(--sp-4);
+  }
+  .doctrine-tablet-num {
+    font-size: 18px;
+  }
+  .doctrine-tablet-text {
+    font-size: 14.5px;
+  }
+  .chamber-head-crest-num {
+    font-size: 18px;
+  }
+}

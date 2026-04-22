@@ -40,7 +40,7 @@ function normalizeForDedup(s: string): string {
 }
 
 export default function School() {
-  const { principles, addPrinciple, activeMission, syncState, hydratedFromBackend, syncError } = useSpine();
+  const { state, principles, addPrinciple, activeMission, syncState, hydratedFromBackend, syncError } = useSpine();
   const { values } = useTweaks();
   const copy = useCopy();
   const [input, setInput] = useState("");
@@ -49,6 +49,24 @@ export default function School() {
   const layout = values.schoolLayout;
   const isGoverning = principles.length > 0;
   const lastApplied = activeMission?.events.find((e) => e.type === "doctrine_applied") ?? null;
+
+  // Invocation substrate — every `doctrine_applied` event is Lab or
+  // Creation firing with principles attached. We count them across all
+  // missions to derive two honest metrics: total invocations and
+  // mission coverage ("governed N of M missions"). The substrate does
+  // not carry per-principle causal effects, so we do not claim
+  // "consequence"; we report "invocation" — what the substrate actually
+  // proves.
+  const totalMissions = state.missions.length;
+  let totalApplications = 0;
+  let missionsGoverned = 0;
+  for (const m of state.missions) {
+    const applied = m.events.filter((e) => e.type === "doctrine_applied").length;
+    if (applied > 0) {
+      missionsGoverned += 1;
+      totalApplications += applied;
+    }
+  }
 
   // Tick so relative timestamps refresh periodically without a heavy timer.
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -99,117 +117,135 @@ export default function School() {
         <span style={{
           fontSize: 12,
           color: "var(--text-muted)",
-          fontStyle: "italic",
         }}>
           {copy.schoolSubtitle}
         </span>
         {principles.length > 0 && (
-          <span
-            style={{
-              marginLeft: "auto",
-              fontSize: 10,
-              color: isGoverning ? "var(--accent)" : "var(--text-ghost)",
-              fontFamily: "var(--mono)",
-              letterSpacing: 1.5,
-            }}
-          >
-            {principles.length} §
+          <span className="chamber-head-crest" aria-hidden>
+            <span className="chamber-head-crest-num">
+              {toRoman(principles.length)}
+            </span>
+            <span className="chamber-head-crest-kicker">
+              {principles.length === 1 ? "artigo" : "artigos"}
+            </span>
           </span>
         )}
       </div>
 
       <div className="chamber-body" data-pad="calm">
 
-        {/* Governance status panel */}
+        {/* Constitutional seal — declarative institutional header, a
+            declaration line, a row of invocation counters pulled from
+            real `doctrine_applied` events, and a status row. No italic,
+            no stat-card composition, no fabricated per-principle data. */}
         {isGoverning && (
-          <div
-            className="fadeIn"
-            style={{
-              marginBottom: 28,
-              padding: "12px 16px",
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--border-subtle)",
-              borderLeft: "2px solid var(--accent-dim)",
-              borderRadius: 8,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent)", flexShrink: 0 }} />
-              <span style={{ fontSize: 10, color: "var(--accent)", letterSpacing: 2, textTransform: "uppercase", fontFamily: "var(--mono)" }}>
-                VIGOR CONSTITUCIONAL · {principles.length} {principles.length === 1 ? "artigo" : "artigos"}
-              </span>
-            </div>
-            <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.55 }}>
-              Injectados no sistema em cada query de Lab e Creation.
-              {activeMission
-                ? <> Missão activa: <span style={{ color: "var(--text-secondary)" }}>{activeMission.title}</span>.</>
-                : " Nenhuma missão activa — princípios prontos para quando houver."}
-            </div>
-            <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1, display: "flex", gap: 14, flexWrap: "wrap" }}>
-              <span>→ Lab · Creation · auto-router</span>
-              {lastInscribedAt !== null && (
-                <span>
-                  última inscrição <span style={{ color: "var(--text-muted)" }}>{relativeTime(lastInscribedAt, nowMs)}</span>
+          <div className="fadeIn doctrine-seal">
+            <div className="doctrine-seal-title">
+              <span className="doctrine-seal-title-kicker">doutrina</span>
+              <span aria-hidden className="doctrine-seal-title-sep">·</span>
+              {activeMission ? (
+                <span className="doctrine-seal-title-mission">
+                  missão {activeMission.title}
+                </span>
+              ) : (
+                <span className="doctrine-seal-title-null">
+                  sem missão activa
                 </span>
               )}
-              {/* Persistence honesty: the doctrine exists in browser state the
-                  moment a principle is inscribed, but the user must see whether
-                  the snapshot has actually reached the backend. */}
-              <span
-                data-doctrine-sync={syncState}
-                style={{
-                  color:
-                    syncState === "synced"
-                      ? "var(--cc-ok)"
-                      : syncState === "syncing"
-                      ? "var(--cc-info)"
-                      : "var(--cc-warn)",
-                }}
-              >
-                {syncState === "synced"
-                  ? "sincronizado"
-                  : syncState === "syncing"
-                  ? "a sincronizar…"
-                  : "local — backend não confirmou"}
-              </span>
-              {/* Load-truth: distinguish "doctrine confirmed by backend at boot"
-                  from "doctrine never reached the backend in this session". */}
-              {hydratedFromBackend === false && (
+            </div>
+
+            <div className="doctrine-seal-declaration">
+              {principles.length === 1 ? (
+                <>
+                  <strong>Um princípio</strong> sob vigor. Vincula cada invocação de Lab e Creation
+                  {activeMission ? " e governa esta missão." : "."}
+                </>
+              ) : (
+                <>
+                  <strong>{principles.length} princípios</strong> sob vigor. Vinculam cada invocação de Lab e Creation
+                  {activeMission ? " e governam esta missão." : "."}
+                </>
+              )}
+            </div>
+
+            <div className="doctrine-seal-counters">
+              <span className="doctrine-seal-counter">
                 <span
-                  data-doctrine-load="local-only"
-                  style={{ color: "var(--cc-warn)" }}
+                  className="doctrine-seal-counter-value"
+                  data-tone={totalApplications > 0 ? "accent" : "dim"}
                 >
-                  carregada da cache — backend não respondeu
+                  {totalApplications}
                 </span>
-              )}
-              {/* Typed sync-error surface (T088). When the last push failed,
-                  show the backend's own reason rather than the opaque
-                  "unsynced" pill. */}
-              {syncError && (
+                <span className="doctrine-seal-counter-label">
+                  {totalApplications === 1 ? "invocação" : "invocações"}
+                </span>
+              </span>
+              <span className="doctrine-seal-counter">
                 <span
-                  data-doctrine-sync-error={syncError.kind}
-                  title={syncError.message}
-                  style={{ color: "var(--cc-warn)" }}
+                  className="doctrine-seal-counter-value"
+                  data-tone={missionsGoverned > 0 ? undefined : "dim"}
                 >
-                  motivo:{" "}
-                  {syncError.kind === "unreachable"
-                    ? "backend inacessível"
-                    : syncError.envelope?.error ?? "erro do backend"}
+                  {missionsGoverned}
+                </span>
+                <span className="doctrine-seal-counter-label">
+                  de {totalMissions} missões governadas
+                </span>
+              </span>
+              {lastApplied ? (
+                <span className="doctrine-seal-counter">
+                  <span className="doctrine-seal-counter-value">
+                    {new Date(lastApplied.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <span className="doctrine-seal-counter-label">
+                    última invocação
+                  </span>
+                </span>
+              ) : (
+                <span className="doctrine-seal-counter-null">
+                  {activeMission
+                    ? "ainda não invocada nesta missão"
+                    : "aguarda missão activa"}
                 </span>
               )}
             </div>
-            {activeMission && (
-              <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--border-subtle)", fontSize: 10, color: lastApplied ? "var(--cc-ok)" : "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ textTransform: "uppercase", letterSpacing: 2 }}>última aplicação:</span>
-                {lastApplied ? (
-                  <>
-                    <span>{lastApplied.label}</span>
-                    <span style={{ color: "var(--text-ghost)", marginLeft: "auto" }}>
-                      {new Date(lastApplied.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </>
-                ) : (
-                  <span>nenhuma nesta missão ainda — doutrina existe, mas ainda não governou</span>
+
+            {(syncState !== "synced" || hydratedFromBackend === false || syncError) && (
+              <div className="doctrine-seal-status">
+                <span
+                  className="doctrine-seal-status-item"
+                  data-doctrine-sync={syncState}
+                  data-state={
+                    syncState === "synced" ? "ok" :
+                    syncState === "syncing" ? "info" : "warn"
+                  }
+                >
+                  {syncState === "synced"
+                    ? "sincronizado"
+                    : syncState === "syncing"
+                    ? "a sincronizar…"
+                    : "local — backend não confirmou"}
+                </span>
+                {hydratedFromBackend === false && (
+                  <span
+                    className="doctrine-seal-status-item"
+                    data-doctrine-load="local-only"
+                    data-state="warn"
+                  >
+                    carregada da cache — backend não respondeu
+                  </span>
+                )}
+                {syncError && (
+                  <span
+                    className="doctrine-seal-status-item"
+                    data-doctrine-sync-error={syncError.kind}
+                    data-state="warn"
+                    title={syncError.message}
+                  >
+                    motivo:{" "}
+                    {syncError.kind === "unreachable"
+                      ? "backend inacessível"
+                      : syncError.envelope?.error ?? "erro do backend"}
+                  </span>
                 )}
               </div>
             )}
@@ -237,6 +273,24 @@ export default function School() {
           )
         )}
 
+        {principles.length > 0 && (
+          <div className="doctrine-preamble">
+            <span className="doctrine-preamble-heavy">registo constitucional</span>
+            <span>
+              {principles.length === 1
+                ? "1 artigo"
+                : `${principles.length} artigos`}
+            </span>
+            <span className="doctrine-preamble-order">
+              por ordem de inscrição
+            </span>
+          </div>
+        )}
+
+        {/* Constitutional ordering: the register reads ascending. Article I
+            is the first inscribed; Article N is the most recent. Source
+            state stores principles newest-first, so we reverse once for
+            display. */}
         {layout === "tablets" ? (
           <div
             style={{
@@ -245,107 +299,50 @@ export default function School() {
               gap: 16,
             }}
           >
-            {principles.map((p, i) => (
-              <div
-                key={p.id}
-                className="fadeUp"
-                style={{
-                  animationDelay: `${i * 40}ms`,
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--border-subtle)",
-                  borderRadius: "var(--radius)",
-                  padding: "18px 20px",
-                  position: "relative",
-                }}
-              >
+            {[...principles].reverse().map((p, i) => {
+              const articleNumber = i + 1;
+              return (
                 <div
-                  style={{
-                    fontSize: 9,
-                    color: "var(--accent-dim)",
-                    fontFamily: "var(--mono)",
-                    letterSpacing: 2,
-                    marginBottom: 10,
-                    textTransform: "uppercase",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
+                  key={p.id}
+                  className="fadeUp doctrine-tablet"
+                  style={{ animationDelay: `${i * 40}ms` }}
                 >
-                  {isGoverning && (
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", display: "inline-block", flexShrink: 0 }} />
-                  )}
-                  <span data-article-roman>§ {toRoman(principles.length - i)}</span>
+                  <div className="doctrine-tablet-head">
+                    <span className="doctrine-tablet-kicker">artigo</span>
+                    <span className="doctrine-tablet-num" data-article-roman>
+                      {toRoman(articleNumber)}
+                    </span>
+                  </div>
+                  <div className="doctrine-tablet-text">{p.text}</div>
                 </div>
-                <div style={{ fontSize: 15, color: "var(--text-primary)", lineHeight: 1.6 }}>
-                  {p.text}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 720 }}>
-            {principles.map((p, i) => (
-              <div
-                key={p.id}
-                className="fadeUp"
-                style={{
-                  animationDelay: `${i * 35}ms`,
-                  display: "grid",
-                  gridTemplateColumns: "64px 1fr",
-                  gap: "0 20px",
-                  padding: "18px 0",
-                  borderBottom: "1px solid var(--border-subtle)",
-                  alignItems: "flex-start",
-                }}
-              >
+          <div style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
+            {[...principles].reverse().map((p, i) => {
+              const articleNumber = i + 1;
+              return (
                 <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 6,
-                    paddingTop: 3,
-                  }}
+                  key={p.id}
+                  className="fadeUp doctrine-article"
+                  style={{ animationDelay: `${i * 35}ms` }}
                 >
-                  {isGoverning && (
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 0 2px color-mix(in oklab, var(--accent) 20%, transparent)" }} />
-                  )}
-                  <span
-                    data-article-roman
-                    style={{
-                      fontSize: 11,
-                      color: "var(--accent-dim)",
-                      fontFamily: "var(--mono)",
-                      letterSpacing: 1.5,
-                    }}
-                  >
-                    § {toRoman(i + 1)}
-                  </span>
+                  <div className="doctrine-article-gutter">
+                    <span className="doctrine-article-kicker">artigo</span>
+                    <span className="doctrine-article-num" data-article-roman>
+                      {toRoman(articleNumber)}
+                    </span>
+                  </div>
+                  <div className="doctrine-article-body">
+                    <span className="doctrine-article-text">{p.text}</span>
+                    <span className="doctrine-article-meta">
+                      inscrita {relativeTime(p.createdAt, nowMs)}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span
-                    style={{
-                      fontSize: 15,
-                      color: "var(--text-primary)",
-                      lineHeight: 1.7,
-                      fontFamily: "'Fraunces', Georgia, serif",
-                    }}
-                  >
-                    {p.text}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 9,
-                      color: "var(--text-ghost)",
-                      fontFamily: "var(--mono)",
-                      letterSpacing: 1,
-                    }}
-                  >
-                    {relativeTime(p.createdAt, nowMs)}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -437,27 +434,8 @@ export default function School() {
             <button
               onClick={submit}
               disabled={isTooLong}
-              className="fadeIn"
-              style={{
-                background: "none",
-                border: `1px solid ${isDuplicate || isTooLong ? "var(--cc-warn)" : "var(--accent-dim)"}`,
-                color: isDuplicate || isTooLong ? "var(--cc-warn)" : "var(--accent)",
-                fontSize: 10,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                padding: "7px 14px",
-                borderRadius: 999,
-                fontFamily: "var(--mono)",
-                cursor: isTooLong ? "not-allowed" : "pointer",
-                opacity: isTooLong ? 0.5 : 1,
-                transition: "all .2s var(--ease-swift)",
-              }}
-              onMouseEnter={(e) => {
-                if (!isTooLong) e.currentTarget.style.background = "var(--accent-glow)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
+              className="fadeIn doctrine-ratify"
+              data-warn={isDuplicate || isTooLong ? "true" : undefined}
             >
               {copy.schoolInscribe}
             </button>
