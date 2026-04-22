@@ -19,9 +19,9 @@
   --school-line-strong: rgba(226, 220, 204, 0.18);
 
   --school-text-primary:   #E7E1D4;
-  --school-text-secondary: rgba(231, 225, 212, 0.72);
-  --school-text-tertiary:  rgba(231, 225, 212, 0.46);
-  --school-text-micro:     rgba(231, 225, 212, 0.34);
+  --school-text-secondary: rgba(231, 225, 212, 0.74);
+  --school-text-tertiary:  rgba(231, 225, 212, 0.54);
+  --school-text-micro:     rgba(231, 225, 212, 0.42);
 
   --school-accent-olive: #C7D58B;
   --school-accent-warm:  #B89B79;
@@ -1489,10 +1489,12 @@ textarea {
 /* Mission panel — four-zone institutional surface. Natural height
    160-190px when populated (header ~48 + declaration ~48 + metrics ~44
    + optional status ~36 + borders). Left accent is a disciplined 2px
-   olive rule — structural signal, never decoration. */
+   olive rule — structural signal, never decoration.
+   Background climbs to surface-2 so the panel reads as a clearly
+   tonal step above the chamber bg, even in daylight. */
 .doctrine-seal {
   margin-bottom: 28px;
-  background: var(--school-surface-1);
+  background: var(--school-surface-2);
   border: 1px solid var(--school-line-soft);
   border-left: 2px solid var(--school-accent-olive);
   border-radius: 4px;
@@ -1755,9 +1757,12 @@ textarea {
 }
 
 /* Composer — constitutional inscription surface. Not glass, not a pill.
-   A bordered bay with a transparent left accent that activates on focus. */
+   A bordered bay with a transparent left accent that activates on focus.
+   Sits at surface-1 by idle so the mission panel (surface-2) reads as
+   the chamber's primary anchor; on focus, composer climbs to surface-2
+   to declare that inscription is now an active act. */
 .doctrine-composer {
-  margin: 18px clamp(20px, 5vw, 64px) 22px;
+  margin: 14px clamp(20px, 5vw, 64px) 22px;
   background: var(--school-surface-1);
   border: 1px solid var(--school-line-soft);
   border-left: 2px solid transparent;
@@ -1795,16 +1800,16 @@ textarea {
 }
 .doctrine-composer-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
 }
 .doctrine-composer-lead {
   font-family: var(--serif);
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
   color: var(--school-accent-olive);
   flex-shrink: 0;
-  padding-top: 2px;
+  padding-top: 6px;
 }
 .doctrine-composer-input {
   flex: 1;
@@ -1814,15 +1819,28 @@ textarea {
   box-shadow: none;
   font-family: var(--serif);
   font-size: 16px;
-  line-height: 1.4;
+  line-height: 1.5;
   color: var(--school-text-primary);
   letter-spacing: -0.005em;
   padding: 4px 0;
   min-width: 0;
+  resize: none;
+  overflow-y: auto;
+  min-height: 26px;
+  max-height: 132px;
+  display: block;
+  width: 100%;
 }
 .doctrine-composer-input::placeholder {
   color: var(--school-text-tertiary);
   font-style: normal;
+}
+.doctrine-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  align-self: flex-end;
 }
 .doctrine-composer-count {
   font-family: var(--mono);

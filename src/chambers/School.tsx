@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
@@ -72,6 +72,17 @@ export default function School() {
     return () => clearInterval(id);
   }, []);
 
+  // Composer auto-grow — the inscription surface is a textarea so a
+  // principle can span multiple lines. Height tracks content between
+  // the CSS min-height (~one line) and max-height (~four lines).
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
+
   const trimmed = input.trim();
   const isDuplicate = !!trimmed && principles.some(
     (p) => normalizeForDedup(p.text) === normalizeForDedup(trimmed),
@@ -88,6 +99,8 @@ export default function School() {
     addPrinciple(trimmed);
     setInput("");
     setRejection(null);
+    // Keep the inscription surface ready for the next article.
+    requestAnimationFrame(() => inputRef.current?.focus());
   }
 
   const showStatus =
@@ -337,8 +350,10 @@ export default function School() {
         )}
         <div className="doctrine-composer-row">
           <span aria-hidden className="doctrine-composer-lead">§</span>
-          <input
+          <textarea
+            ref={inputRef}
             autoFocus
+            rows={1}
             value={input}
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
@@ -347,31 +362,41 @@ export default function School() {
               if (rejection !== null) setRejection(null);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") submit();
-              else if (e.key === "Escape" && input.length > 0) { setInput(""); setRejection(null); }
+              // Enter ratifies; Shift+Enter / Cmd+Enter break line.
+              if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                submit();
+              } else if (e.key === "Escape" && input.length > 0) {
+                setInput("");
+                setRejection(null);
+              }
             }}
             maxLength={PRINCIPLE_MAX_LEN * 2}
             placeholder={copy.schoolPlaceholder}
             className="doctrine-composer-input"
           />
-          {showCount && (
-            <span
-              data-testid="school-charcount"
-              className="doctrine-composer-count"
-              data-tone={countTone}
-            >
-              {charsLeft}
-            </span>
-          )}
-          {trimmed.length > 0 && (
-            <button
-              onClick={submit}
-              disabled={isTooLong}
-              className="fadeIn doctrine-ratify"
-              data-warn={isDuplicate || isTooLong ? "true" : undefined}
-            >
-              {copy.schoolInscribe}
-            </button>
+          {(showCount || trimmed.length > 0) && (
+            <div className="doctrine-composer-actions">
+              {showCount && (
+                <span
+                  data-testid="school-charcount"
+                  className="doctrine-composer-count"
+                  data-tone={countTone}
+                >
+                  {charsLeft}
+                </span>
+              )}
+              {trimmed.length > 0 && (
+                <button
+                  onClick={submit}
+                  disabled={isTooLong}
+                  className="fadeIn doctrine-ratify"
+                  data-warn={isDuplicate || isTooLong ? "true" : undefined}
+                >
+                  {copy.schoolInscribe}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
