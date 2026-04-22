@@ -72,7 +72,10 @@ const EMPTY_LIVE: LiveState = {
 };
 
 export default function Lab() {
-  const { activeMission, addNote, addNoteToMission, addTask, principles, logDoctrineApplied } = useSpine();
+  const {
+    activeMission, addNoteToMission, addTask, createMission,
+    principles, logDoctrineApplied,
+  } = useSpine();
   const { streamRoute, pending, error, unreachable, errorEnvelope } = useRuberra();
   const backend = useBackendStatus();
   const copy = useCopy();
@@ -99,7 +102,17 @@ export default function Lab() {
     const title = raw.length > 120 ? raw.slice(0, 117).trimEnd() + "…" : raw;
     addTask(title, "lab");
     setPromoteId(null);
-    window.dispatchEvent(new CustomEvent("ruberra:chamber", { detail: "Creation" }));
+    // Dispatch both the new and the legacy event name during the Wave-0 →
+    // Wave-8 compatibility window so any listener wired to either key
+    // keeps firing. Shell.tsx listens to both; tests or external listeners
+    // written against the old name are not silently broken.
+    //
+    // Detail value flipped to the Wave-1 canonical key "terminal". The
+    // legacy event dispatch keeps the new detail value — Shell's listener
+    // normalizes through the Chamber type either way, and no external
+    // listener in this repo reads the detail expecting the old string.
+    window.dispatchEvent(new CustomEvent("signal:chamber", { detail: "terminal" }));
+    window.dispatchEvent(new CustomEvent("ruberra:chamber", { detail: "terminal" }));
   }
 
   // Refs capture streaming metadata without stale closure issues
@@ -122,10 +135,19 @@ export default function Lab() {
   async function submit() {
     const v = input.trim();
     if (!v || pending) return;
-    const targetMissionId = activeMission?.id;
-    if (!targetMissionId) return;
 
-    addNote(v, "user");
+    // Wave-2 inline new-thread: when there is no active mission, the first
+    // send creates one implicitly. Title is derived from the question (≤64
+    // chars so the mission pill stays clean). The new id is known
+    // synchronously because createMission returns it — we do not wait for
+    // the setState round-trip to expose activeMission.id.
+    let targetMissionId = activeMission?.id;
+    if (!targetMissionId) {
+      const title = v.length > 64 ? v.slice(0, 61).trimEnd() + "…" : v;
+      targetMissionId = createMission(title, "insight");
+    }
+
+    addNoteToMission(targetMissionId, v, "user");
     if (principles.length > 0) logDoctrineApplied(principles.length);
     setInput("");
     setLive({ ...EMPTY_LIVE });

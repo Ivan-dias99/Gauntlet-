@@ -64,9 +64,14 @@ const ROUTE_COLOR: Record<string, string> = {
 // "agent", "crew", "triad". `agent` is ambiguous (Lab auto-router OR
 // Creation /dev) so we deliberately omit it instead of half-lying.
 // `crew` is Creation-only; `triad` is Lab-only.
+// Wave-1 chamber keys. The backend run records still store the three
+// route strings "agent" / "crew" / "triad" verbatim — we only flip the
+// Chamber value the UI attaches to each route for chamber-of-origin
+// display. `agent` remains ambiguous (Lab/Insight auto-router OR
+// Creation/Terminal /dev) so we deliberately omit it instead of half-lying.
 const ROUTE_ORIGIN: Partial<Record<string, Chamber>> = {
-  crew:  "Creation",
-  triad: "Lab",
+  crew:  "terminal",
+  triad: "insight",
 };
 
 function originFor(route: string): Chamber | null {

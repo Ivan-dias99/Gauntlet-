@@ -1,6 +1,14 @@
-import { SpineState, Mission, Chamber, Note, Task, TaskState, TaskSource, LogEvent, Principle, Artifact } from "./types";
+import {
+  SpineState, Mission, Chamber, Note, Task, TaskState, TaskSource,
+  LogEvent, Principle, Artifact, normalizeChamberKey,
+} from "./types";
 
-const KEY = "ruberra:spine:v1";
+// Wave-0 rename: signal:spine:v1 is canonical. ruberra:spine:v1 is still
+// read as a silent legacy fallback so existing users keep their missions,
+// tasks, notes, artifacts and principles across the rename. Writes always
+// target the new key; the legacy key is left in place until Wave 8.
+const KEY = "signal:spine:v1";
+const LEGACY_KEY = "ruberra:spine:v1";
 const ARTIFACT_LEDGER_CAP = 12;
 
 function uid(): string {
@@ -78,8 +86,11 @@ export function normalizeMission(m: unknown): Mission | null {
   return {
     id: r.id,
     title: r.title,
-    chamber: (["Lab", "Creation", "Memory", "School"].includes(r.chamber as string)
-      ? r.chamber : "Lab") as Mission["chamber"],
+    // Wave-1 silent migration: "Lab" → "insight", "Creation" → "terminal",
+    // "Memory" → "archive", "School" → "core". Unknown / malformed values
+    // collapse to "insight" (the old normalizer collapsed to "Lab", which
+    // is exactly what "insight" replaces).
+    chamber: normalizeChamberKey(r.chamber),
     status: r.status === "closed" ? "closed" : "active",
     createdAt: typeof r.createdAt === "number" ? r.createdAt : Date.now(),
     notes: Array.isArray(r.notes) ? r.notes.flatMap((n: unknown) => {
@@ -159,7 +170,9 @@ export function normalizePrinciples(raw: unknown): Principle[] {
 
 export function loadState(): SpineState {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw =
+      localStorage.getItem(KEY) ??
+      localStorage.getItem(LEGACY_KEY);
     if (!raw) return EMPTY;
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return EMPTY;
@@ -188,9 +201,18 @@ export function saveState(state: SpineState): void {
   }
 }
 
-export function createMission(state: SpineState, title: string, chamber: Chamber): SpineState {
+export function createMission(
+  state: SpineState,
+  title: string,
+  chamber: Chamber,
+  opts: { id?: string } = {},
+): SpineState {
+  // Wave-2 inline new-thread: callers (notably Insight's first-send path)
+  // can pre-generate the id and pass it in so the id is known before the
+  // setState round-trip. The old signature still works — unspecified
+  // opts keep the old "store mints the uid" behavior.
   const mission: Mission = {
-    id: uid(),
+    id: opts.id ?? uid(),
     title: title.trim(),
     chamber,
     status: "active",
@@ -202,6 +224,14 @@ export function createMission(state: SpineState, title: string, chamber: Chamber
     artifacts: [],
   };
   return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id, updatedAt: now() };
+}
+
+export function clearActiveMission(state: SpineState): SpineState {
+  // Wave-2 "new thread" path: deselecting the active mission returns the
+  // chamber to its empty state so the next send creates a fresh mission.
+  // Missions themselves are preserved — only the active pointer clears.
+  if (state.activeMissionId === null) return state;
+  return { ...state, activeMissionId: null, updatedAt: now() };
 }
 
 export function addNote(state: SpineState, text: string, role: Note["role"] = "user"): SpineState {

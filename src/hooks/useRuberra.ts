@@ -23,7 +23,57 @@ export interface RuberraQueryBody {
   force_cautious?: boolean;
   mission_id?: string;
   principles?: string[];
+  // Wave-1: optional canonical chamber key.
+  chamber?: "insight" | "surface" | "terminal" | "archive" | "core";
+  // Wave-3: optional Surface-chamber brief. Consumed server-side only
+  // when chamber === "surface".
+  surface?: SurfaceBriefPayload;
 }
+
+export interface SurfaceBriefPayload {
+  mode: "prototype" | "slide_deck" | "from_template" | "other";
+  fidelity: "wireframe" | "hi-fi";
+  design_system?: string | null;
+}
+
+export interface SurfaceScreenPayload {
+  name: string;
+  purpose: string;
+}
+
+export interface SurfaceComponentPayload {
+  screen: string;
+  name: string;
+  kind: string;
+}
+
+export interface SurfacePlanPayload {
+  mode: SurfaceBriefPayload["mode"];
+  fidelity: SurfaceBriefPayload["fidelity"];
+  design_system_binding: string | null;
+  screens: SurfaceScreenPayload[];
+  components: SurfaceComponentPayload[];
+  notes: string[];
+  mock: boolean;
+}
+
+export type SurfaceEvent =
+  | { type: "start" }
+  | { type: "route"; path: "surface" }
+  | { type: "surface_plan"; plan: SurfacePlanPayload }
+  | {
+      type: "done";
+      answer: string;
+      plan: SurfacePlanPayload;
+      mock: boolean;
+      chamber: "surface";
+      processing_time_ms: number;
+      input_tokens: number;
+      output_tokens: number;
+      terminated_early: boolean;
+      termination_reason: string | null;
+    }
+  | { type: "error"; message: string; error?: string; reason?: string };
 
 export type AgentEvent =
   | { type: "start" }
@@ -297,11 +347,22 @@ export function useRuberra() {
     [openStream],
   );
 
+  // Wave-3: Surface streams through /route/stream with chamber="surface".
+  // The backend forks to the mock handler before reaching agent/triad.
+  const streamSurface = useCallback(
+    (body: RuberraQueryBody & { chamber: "surface"; surface: SurfaceBriefPayload },
+     onEvent: (ev: SurfaceEvent) => void,
+     signal?: AbortSignal) =>
+      openStream<SurfaceEvent>("route/stream", body, onEvent, signal),
+    [openStream],
+  );
+
   return {
     call,
     streamDev,
     streamRoute,
     streamCrew,
+    streamSurface,
     pending,
     error,
     errorEnvelope,

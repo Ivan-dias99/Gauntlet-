@@ -142,22 +142,31 @@ export interface Copy {
 const PT: Copy = {
   brand: "RUBERRA",
   chambers: {
-    Lab: {
+    // Wave-1 keys flip to canonical taxonomy. Displayed labels are
+    // preserved verbatim; they will be retoned in Wave 6 alongside the
+    // chamber-DNA copy pass. Surface has no visual tab yet — carries a
+    // placeholder label so Record<Chamber, ChamberCopy> stays complete.
+    insight: {
       label: "Investigação",
       sub: "Análise · Evidência · Verdade",
       lead: "Investigação · Evidência · Verdade",
     },
-    Creation: {
+    surface: {
+      label: "Surface",
+      sub: "—",
+      lead: "Surface",
+    },
+    terminal: {
       label: "Construção",
       sub: "Arquitetura · Execução · Consequência",
       lead: "Construção · Execução · Consequência",
     },
-    Memory: {
+    archive: {
       label: "Memória",
       sub: "Retenção · Inteligência · Continuidade",
       lead: "Memória Viva · Retenção · Inteligência",
     },
-    School: {
+    core: {
       label: "Doutrina",
       sub: "Formação · Constituição · Princípio",
       lead: "Doutrina · Constituição · Princípio",
@@ -178,10 +187,10 @@ const PT: Copy = {
   labEmptyActiveKicker: "— Sem entrada",
   labEmptyActiveHint: "uma questão, uma hipótese, uma fractura",
   labEmptyNoMissionKicker: "— Sem missão activa",
-  labEmptyNoMissionBody: "Cria ou activa uma missão para investigar.",
-  labEmptyNoMissionHint: "+ missão no canto superior",
+  labEmptyNoMissionBody: "Escreve uma pergunta — a missão cria-se automaticamente.",
+  labEmptyNoMissionHint: "o primeiro envio inicia a investigação",
   labPlaceholder: "Evidência, análise, hipótese...",
-  labPlaceholderNoMission: "Activa uma missão para investigar...",
+  labPlaceholderNoMission: "Pergunta para iniciar uma investigação...",
   labPlaceholderPending: "Aguardando verdict...",
   labPlaceholderRefused: "Reformula. Fractura. Pressiona mais.",
   labAwait: "Aguardando resposta...",
@@ -294,20 +303,21 @@ const PT: Copy = {
     "Arquivo sobre memória",
   ],
   chamberDeck: [
-    { key: "Lab", k: "01", title: "Investigação", tag: "Forense, cirúrgica", body: "Interrogatório do real. Separa o que é sabido, presumido e ausente. A IA não concorda — ela pressiona.", glyph: "※" },
-    { key: "Creation", k: "02", title: "Construção", tag: "Terminal soberano", body: "Intenção vira ação. Cada tarefa é um comando. Exit code visível. Sem motivação.", glyph: "›_" },
-    { key: "Memory", k: "03", title: "Memória", tag: "Arquivo estrutural", body: "Tudo é gravado em linha do tempo. Nenhum evento se perde. A missão lembra-se de si.", glyph: "◇" },
-    { key: "School", k: "04", title: "Doutrina", tag: "Princípios codificados", body: "A voz que permanece. Princípios numerados, referenciáveis, imutáveis até reescritos.", glyph: "§" },
+    { key: "insight",  k: "01", title: "Investigação", tag: "Forense, cirúrgica", body: "Interrogatório do real. Separa o que é sabido, presumido e ausente. A IA não concorda — ela pressiona.", glyph: "※" },
+    { key: "terminal", k: "02", title: "Construção", tag: "Terminal soberano", body: "Intenção vira ação. Cada tarefa é um comando. Exit code visível. Sem motivação.", glyph: "›_" },
+    { key: "archive",  k: "03", title: "Memória", tag: "Arquivo estrutural", body: "Tudo é gravado em linha do tempo. Nenhum evento se perde. A missão lembra-se de si.", glyph: "◇" },
+    { key: "core",     k: "04", title: "Doutrina", tag: "Princípios codificados", body: "A voz que permanece. Princípios numerados, referenciáveis, imutáveis até reescritos.", glyph: "§" },
   ],
 };
 
 const EN: Copy = {
   brand: "RUBERRA",
   chambers: {
-    Lab: { label: "Lab", sub: "Analysis · Evidence · Truth", lead: "Lab · Evidence · Truth" },
-    Creation: { label: "Creation", sub: "Architecture · Execution · Consequence", lead: "Creation · Execution · Consequence" },
-    Memory: { label: "Memory", sub: "Retention · Intelligence · Continuity", lead: "Living Memory · Retention · Intelligence" },
-    School: { label: "School", sub: "Formation · Constitution · Principle", lead: "School · Constitution · Principle" },
+    insight:  { label: "Lab", sub: "Analysis · Evidence · Truth", lead: "Lab · Evidence · Truth" },
+    surface:  { label: "Surface", sub: "—", lead: "Surface" },
+    terminal: { label: "Creation", sub: "Architecture · Execution · Consequence", lead: "Creation · Execution · Consequence" },
+    archive:  { label: "Memory", sub: "Retention · Intelligence · Continuity", lead: "Living Memory · Retention · Intelligence" },
+    core:     { label: "School", sub: "Formation · Constitution · Principle", lead: "School · Constitution · Principle" },
   },
   newMission: "+ Mission",
   ritualTag: "RUBERRA · NEW MISSION",
@@ -324,10 +334,10 @@ const EN: Copy = {
   labEmptyActiveKicker: "— No entry",
   labEmptyActiveHint: "a question, a hypothesis, a fracture",
   labEmptyNoMissionKicker: "— No active mission",
-  labEmptyNoMissionBody: "Create or activate a mission to investigate.",
-  labEmptyNoMissionHint: "+ mission in the top corner",
+  labEmptyNoMissionBody: "Type a question — the mission is created automatically.",
+  labEmptyNoMissionHint: "the first send starts the investigation",
   labPlaceholder: "Evidence, analysis, hypothesis...",
-  labPlaceholderNoMission: "Activate a mission to investigate...",
+  labPlaceholderNoMission: "Question to start an investigation...",
   labPlaceholderPending: "Awaiting verdict...",
   labPlaceholderRefused: "Reformulate. Fracture. Press harder.",
   labAwait: "Awaiting response...",
@@ -440,10 +450,10 @@ const EN: Copy = {
     "Archive over memory",
   ],
   chamberDeck: [
-    { key: "Lab", k: "01", title: "Investigation", tag: "Forensic, surgical", body: "Interrogation of the real. Separates known, assumed, absent. The AI doesn't agree — it presses.", glyph: "※" },
-    { key: "Creation", k: "02", title: "Construction", tag: "Sovereign terminal", body: "Intent becomes action. Each task is a command. Exit code visible. No motivation.", glyph: "›_" },
-    { key: "Memory", k: "03", title: "Memory", tag: "Structural archive", body: "Everything recorded on a timeline. No event lost. The mission remembers itself.", glyph: "◇" },
-    { key: "School", k: "04", title: "Doctrine", tag: "Codified principles", body: "The voice that remains. Numbered, referenceable principles — immutable until rewritten.", glyph: "§" },
+    { key: "insight",  k: "01", title: "Investigation", tag: "Forensic, surgical", body: "Interrogation of the real. Separates known, assumed, absent. The AI doesn't agree — it presses.", glyph: "※" },
+    { key: "terminal", k: "02", title: "Construction", tag: "Sovereign terminal", body: "Intent becomes action. Each task is a command. Exit code visible. No motivation.", glyph: "›_" },
+    { key: "archive",  k: "03", title: "Memory", tag: "Structural archive", body: "Everything recorded on a timeline. No event lost. The mission remembers itself.", glyph: "◇" },
+    { key: "core",     k: "04", title: "Doctrine", tag: "Codified principles", body: "The voice that remains. Numbered, referenceable principles — immutable until rewritten.", glyph: "§" },
   ],
 };
 

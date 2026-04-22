@@ -11,6 +11,7 @@ import {
   addPrinciple as addPrincipleFn,
   logDoctrineApplied as logDoctrineAppliedFn,
   switchMission as switchFn,
+  clearActiveMission as clearActiveMissionFn,
   acceptArtifact as acceptArtifactFn,
 } from "./store";
 import { fetchSpine, pushSpine } from "./client";
@@ -47,8 +48,15 @@ interface SpineCtx {
   // `kind` distinguishes a network/edge unreachable from a typed backend
   // error so the UI can show the right copy without regex-ing strings.
   syncError: { kind: "unreachable" | "backend"; envelope: BackendErrorEnvelope | null; message: string } | null;
-  createMission: (title: string, chamber: Chamber) => void;
+  // Wave-2: createMission returns the new mission id so callers (Insight's
+  // inline new-thread path) can build HTTP bodies in the same tick without
+  // waiting for the React setState round-trip to expose activeMission.
+  createMission: (title: string, chamber: Chamber) => string;
   switchMission: (id: string) => void;
+  // Wave-2 "new thread" trigger. Clears activeMissionId so the next send
+  // from a chamber composer creates a fresh mission. Missions themselves
+  // stay persisted.
+  clearActiveMission: () => void;
   addNote: (text: string, role?: "user" | "ai") => void;
   addNoteToMission: (missionId: string, text: string, role?: "user" | "ai") => void;
   // addTask returns the id of the newly-created task so callers can track
@@ -154,8 +162,13 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       syncState,
       hydratedFromBackend,
       syncError,
-      createMission: (t, c) => dispatch(s => mkMission(s, t, c)),
+      createMission: (t, c) => {
+        const id = uid();
+        dispatch(s => mkMission(s, t, c, { id }));
+        return id;
+      },
       switchMission: (id) => dispatch(s => switchFn(s, id)),
+      clearActiveMission: () => dispatch(s => clearActiveMissionFn(s)),
       addNote: (text, role) => dispatch(s => addNoteFn(s, text, role)),
       addNoteToMission: (id, text, role) => dispatch(s => addNoteToMissionFn(s, id, text, role)),
       addTask: (title, source) => {

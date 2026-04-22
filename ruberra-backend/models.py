@@ -13,6 +13,9 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from chambers.profiles import ChamberKey
+from chambers.surface import SurfaceBrief
+
 
 # ── Enums ───────────────────────────────────────────────────────────────────
 
@@ -50,6 +53,25 @@ class RuberraQuery(BaseModel):
         None,
         max_length=64,
         description="User-defined doctrine principles appended to the system prompt",
+    )
+    # Wave-1 addition — optional canonical chamber key. When present the
+    # auto-router dispatches by chamber profile instead of is_dev_intent.
+    # Kept optional so pre-Wave-1 clients keep working unchanged; becomes
+    # mandatory in Wave 5 once profile behavior diverges.
+    chamber: Optional[ChamberKey] = Field(
+        None,
+        description="Optional chamber key (insight|surface|terminal|archive|core). "
+                    "When set, auto-routing uses the chamber profile; otherwise "
+                    "falls back to the is_dev_intent heuristic.",
+    )
+    # Wave-3 Surface chamber brief. Carried inside the shared RuberraQuery
+    # so /route/stream does not fragment into per-chamber endpoints. All
+    # sub-fields are optional; defaults are applied server-side when the
+    # surface chamber runs without an explicit brief.
+    surface: Optional[SurfaceBrief] = Field(
+        None,
+        description="Surface-chamber brief (mode, fidelity, design_system). "
+                    "Consumed only when chamber == 'surface'.",
     )
 
 
