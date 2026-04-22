@@ -1,16 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { Chamber } from "../spine/types";
 import { formatPulse } from "../spine/pulse";
-import { useTweaks } from "../tweaks/TweaksContext";
 import { useSpine } from "../spine/SpineContext";
 import { useBackendStatus } from "../hooks/useBackendStatus";
 import { useCopy } from "../i18n/copy";
 
-// Wave-1: internal keys flip to canonical taxonomy. Surface is not in
-// the visual ribbon until Wave 2 (which adds the 5-tab surface slot
-// alongside the shell demolition). Display labels still come from
-// copy.chambers[c].label and have not moved.
-export const CHAMBERS: Chamber[] = ["insight", "terminal", "archive", "core"];
+// Wave-2 ribbon.
+//
+// Five canonical tabs — Insight, Surface, Terminal, Archive, Core —
+// backed by a single visual grammar. The theme-cycle button and the
+// gear-icon tweak toggle have been removed from the ribbon (they return
+// inside Core → System in Wave 4). The explicit "+ Mission" chip has
+// been removed too: first-send inside Insight creates a mission
+// implicitly, and the mission dropdown carries a "+ nova thread" entry
+// for users who already have at least one mission.
+
+export const CHAMBERS: Chamber[] = ["insight", "surface", "terminal", "archive", "core"];
 
 function formatAgo(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -26,15 +31,13 @@ function formatAgo(ms: number): string {
 interface Props {
   active: Chamber;
   onSelect: (c: Chamber) => void;
-  onNew?: () => void;
-  onHome?: () => void;
-  onTweaks?: () => void;
 }
 
-export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks }: Props) {
-  const { values, cycleTheme } = useTweaks();
-  const theme = values.theme;
-  const { state, activeMission, switchMission, syncState, syncError, hydratedFromBackend } = useSpine();
+export default function CanonRibbon({ active, onSelect }: Props) {
+  const {
+    state, activeMission, switchMission, clearActiveMission,
+    syncState, syncError, hydratedFromBackend,
+  } = useSpine();
   const backend = useBackendStatus();
   const copy = useCopy();
   const [open, setOpen] = useState(false);
@@ -57,20 +60,21 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
   }, [open]);
 
   const missions = state.missions;
-  const themeLabel = theme === "dark" ? "●" : theme === "light" ? "○" : "◐";
+
+  function startNewThread() {
+    // Return to Insight and drop the active mission pointer. Insight's
+    // first-send path creates a fresh mission on next submit.
+    clearActiveMission();
+    onSelect("insight");
+    setOpen(false);
+  }
 
   return (
     <header className="canon-ribbon">
-      <button
-        onClick={onHome}
-        disabled={!onHome}
-        title={onHome ? copy.homeTitle : undefined}
-        className="btn-ghost canon-ribbon-brand"
-        style={{ cursor: onHome ? "pointer" : "default" }}
-      >
+      <span className="canon-ribbon-brand" aria-label="Signal">
         Signal
         <span aria-hidden className="canon-ribbon-brand-dot" />
-      </button>
+      </span>
 
       <div className="canon-ribbon-tabs">
         {CHAMBERS.map((c) => (
@@ -128,7 +132,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
           {copy.spineSyncLabel(syncState)}
         </span>
         <span aria-hidden className="vbar" />
-        {missions.length > 0 && (
+        {missions.length > 0 ? (
           <div ref={dropdownRef} style={{ position: "relative" }}>
             <button
               onClick={() => setOpen((o) => !o)}
@@ -172,12 +176,25 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                   </>
                 );
               })() : (
-                <>— ▾</>
+                <>
+                  <span aria-hidden className="mission-pill-dot" data-state="dormant" />
+                  <span className="mission-pill-title">nova thread</span>
+                  <span aria-hidden className="mission-pill-caret">▾</span>
+                </>
               )}
             </button>
 
             {open && (
               <div className="fadeIn dropdown-panel">
+                <button
+                  onClick={startNewThread}
+                  className="dropdown-item"
+                  data-new-thread
+                  style={{ borderBottom: "1px solid var(--border-soft)" }}
+                >
+                  <div className="dropdown-item-title">+ nova thread</div>
+                  <div className="dropdown-item-meta">Insight · primeira pergunta cria missão</div>
+                </button>
                 <div className="dropdown-header">{copy.missions}</div>
                 {missions.map((m) => {
                   const isActive = m.id === state.activeMissionId;
@@ -205,23 +222,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
               </div>
             )}
           </div>
-        )}
-
-        {onTweaks && (
-          <button onClick={onTweaks} title={copy.retune} className="btn-icon" aria-label={copy.retune}>
-            ⚙
-          </button>
-        )}
-
-        <button onClick={cycleTheme} title={copy.themeTitle(theme)} className="btn-icon" aria-label={copy.themeTitle(theme)}>
-          {themeLabel}
-        </button>
-
-        {onNew && (
-          <button onClick={onNew} className="btn-chip" data-variant="sans">
-            {copy.newMission}
-          </button>
-        )}
+        ) : null}
       </div>
     </header>
   );

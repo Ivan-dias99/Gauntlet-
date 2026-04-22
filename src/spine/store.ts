@@ -201,9 +201,18 @@ export function saveState(state: SpineState): void {
   }
 }
 
-export function createMission(state: SpineState, title: string, chamber: Chamber): SpineState {
+export function createMission(
+  state: SpineState,
+  title: string,
+  chamber: Chamber,
+  opts: { id?: string } = {},
+): SpineState {
+  // Wave-2 inline new-thread: callers (notably Insight's first-send path)
+  // can pre-generate the id and pass it in so the id is known before the
+  // setState round-trip. The old signature still works — unspecified
+  // opts keep the old "store mints the uid" behavior.
   const mission: Mission = {
-    id: uid(),
+    id: opts.id ?? uid(),
     title: title.trim(),
     chamber,
     status: "active",
@@ -215,6 +224,14 @@ export function createMission(state: SpineState, title: string, chamber: Chamber
     artifacts: [],
   };
   return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id, updatedAt: now() };
+}
+
+export function clearActiveMission(state: SpineState): SpineState {
+  // Wave-2 "new thread" path: deselecting the active mission returns the
+  // chamber to its empty state so the next send creates a fresh mission.
+  // Missions themselves are preserved — only the active pointer clears.
+  if (state.activeMissionId === null) return state;
+  return { ...state, activeMissionId: null, updatedAt: now() };
 }
 
 export function addNote(state: SpineState, text: string, role: Note["role"] = "user"): SpineState {

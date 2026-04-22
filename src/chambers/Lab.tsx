@@ -72,7 +72,10 @@ const EMPTY_LIVE: LiveState = {
 };
 
 export default function Lab() {
-  const { activeMission, addNote, addNoteToMission, addTask, principles, logDoctrineApplied } = useSpine();
+  const {
+    activeMission, addNoteToMission, addTask, createMission,
+    principles, logDoctrineApplied,
+  } = useSpine();
   const { streamRoute, pending, error, unreachable, errorEnvelope } = useRuberra();
   const backend = useBackendStatus();
   const copy = useCopy();
@@ -132,10 +135,19 @@ export default function Lab() {
   async function submit() {
     const v = input.trim();
     if (!v || pending) return;
-    const targetMissionId = activeMission?.id;
-    if (!targetMissionId) return;
 
-    addNote(v, "user");
+    // Wave-2 inline new-thread: when there is no active mission, the first
+    // send creates one implicitly. Title is derived from the question (≤64
+    // chars so the mission pill stays clean). The new id is known
+    // synchronously because createMission returns it — we do not wait for
+    // the setState round-trip to expose activeMission.id.
+    let targetMissionId = activeMission?.id;
+    if (!targetMissionId) {
+      const title = v.length > 64 ? v.slice(0, 61).trimEnd() + "…" : v;
+      targetMissionId = createMission(title, "insight");
+    }
+
+    addNoteToMission(targetMissionId, v, "user");
     if (principles.length > 0) logDoctrineApplied(principles.length);
     setInput("");
     setLive({ ...EMPTY_LIVE });
