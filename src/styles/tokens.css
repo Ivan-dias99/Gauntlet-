@@ -874,6 +874,16 @@ textarea {
   background: var(--ember);
   box-shadow: var(--glow-ember-sm);
 }
+/* Wave-7 chamber-of-origin tint — a thin 1.5px accent on the left edge
+   of the mission pill that resolves from --chamber-dna cascaded by
+   [data-chamber="<key>"] on the pill button itself. Calm, not loud;
+   structural not decorative. */
+.btn[data-variant="mission"][data-chamber] {
+  border-left: 1.5px solid color-mix(in oklab, var(--chamber-dna, var(--text-muted)) 72%, transparent);
+}
+.btn[data-variant="mission"][data-chamber] .mission-pill-dot[data-state="dormant"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--text-muted)) 80%, transparent);
+}
 .mission-pill-title {
   overflow: hidden;
   text-overflow: ellipsis;

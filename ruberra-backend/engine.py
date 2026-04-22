@@ -113,21 +113,26 @@ class RuberraEngine:
         system_prompt: str,
         question: str,
         context: Optional[str] = None,
+        temperature: float = TRIAD_TEMPERATURE,
     ) -> TriadResponse:
         """
         Execute a single call in the self-consistency triad.
         Each call uses the same system prompt and question but
         may produce slightly different responses due to model stochasticity.
+
+        Wave-7: temperature is a parameter so chamber profiles that
+        specify their own temperature (e.g. Archive 0.1, Core 0.1) are
+        honored end-to-end. Absent override keeps TRIAD_TEMPERATURE.
         """
         user_message = question
         if context:
             user_message = f"Context: {context}\n\nQuestion: {question}"
-        
+
         try:
             response = await self._client.messages.create(
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
-                temperature=TRIAD_TEMPERATURE,
+                temperature=temperature,
                 system=system_prompt,
                 messages=[
                     {"role": "user", "content": user_message}
@@ -466,9 +471,12 @@ class RuberraEngine:
                     "Prefer refusal over any risk of error."
                 )
         system_prompt += build_principles_context(query.principles)
-        # Note: profile.temperature is exposed via Core → Routing but not
-        # yet applied to triad calls. Wave 7 threads it through
-        # _single_triad_call so the override is honored end-to-end.
+        # Wave-7: profile.temperature threads through to the triad calls.
+        _triad_temperature = (
+            _profile.temperature
+            if _profile and _profile.temperature is not None
+            else TRIAD_TEMPERATURE
+        )
 
         # ── Step 3: parallel triad with per-completion events ───────────────
         yield {
@@ -478,7 +486,10 @@ class RuberraEngine:
         }
         tasks = [
             asyncio.create_task(
-                self._single_triad_call(i, system_prompt, query.question, query.context)
+                self._single_triad_call(
+                    i, system_prompt, query.question, query.context,
+                    _triad_temperature,
+                )
             )
             for i in range(TRIAD_COUNT)
         ]

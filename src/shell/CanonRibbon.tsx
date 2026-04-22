@@ -138,6 +138,7 @@ export default function CanonRibbon({ active, onSelect }: Props) {
               onClick={() => setOpen((o) => !o)}
               data-mission-pulse-surface
               data-open={open ? "true" : undefined}
+              data-chamber={activeMission?.chamber ?? undefined}
               className="btn"
               data-variant="mission"
               title={copy.switchMission}

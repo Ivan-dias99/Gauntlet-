@@ -101,16 +101,23 @@ export default function Lab() {
     const raw = note.text.trim();
     const title = raw.length > 120 ? raw.slice(0, 117).trimEnd() + "…" : raw;
     addTask(title, "lab");
+    // Wave-7 handoff continuity: record the crossover in the mission log
+    // so Archive (and any future timeline view) can reconstruct why a
+    // Terminal task appeared from an Insight thread. Stored as a system
+    // note attached to the active mission — the same spine primitive
+    // user notes and AI responses use.
+    if (activeMission) {
+      const preview = raw.length > 80 ? raw.slice(0, 77).trimEnd() + "…" : raw;
+      addNoteToMission(
+        activeMission.id,
+        `↪ handoff → terminal: ${preview}`,
+        "ai",
+      );
+    }
     setPromoteId(null);
     // Dispatch both the new and the legacy event name during the Wave-0 →
     // Wave-8 compatibility window so any listener wired to either key
-    // keeps firing. Shell.tsx listens to both; tests or external listeners
-    // written against the old name are not silently broken.
-    //
-    // Detail value flipped to the Wave-1 canonical key "terminal". The
-    // legacy event dispatch keeps the new detail value — Shell's listener
-    // normalizes through the Chamber type either way, and no external
-    // listener in this repo reads the detail expecting the old string.
+    // keeps firing. Detail is the canonical chamber key.
     window.dispatchEvent(new CustomEvent("signal:chamber", { detail: "terminal" }));
     window.dispatchEvent(new CustomEvent("ruberra:chamber", { detail: "terminal" }));
   }

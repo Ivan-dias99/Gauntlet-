@@ -53,6 +53,30 @@ export default function Shell() {
     };
   }, []);
 
+  // Wave-7 keyboard shortcut: Alt+[1-5] switches chambers.
+  // Index order mirrors the ribbon (insight, surface, terminal, archive, core).
+  // Ignored when the user is typing — textarea / input / contenteditable
+  // targets do not steal focus, and Alt is Option on macOS which avoids
+  // the Cmd+K palette territory (reserved for a later wave).
+  useEffect(() => {
+    const ORDER: Chamber[] = ["insight", "surface", "terminal", "archive", "core"];
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return;
+      }
+      const idx = Number(e.key) - 1;
+      if (Number.isInteger(idx) && idx >= 0 && idx < ORDER.length) {
+        e.preventDefault();
+        setActiveTab(ORDER[idx]);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div
       style={{
