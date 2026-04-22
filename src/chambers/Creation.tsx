@@ -819,7 +819,7 @@ export default function Creation() {
                     ? (done.answer.trim()
                         ? done.answer
                         : (
-                          <span style={{ color: "var(--text-ghost)", fontStyle: "italic" }}>
+                          <span style={{ color: "var(--text-ghost)" }}>
                             — sem resposta gerada —
                           </span>
                         ))
@@ -1066,7 +1066,6 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
           marginBottom: 12,
           lineHeight: 1.5,
           fontFamily: "var(--sans)",
-          fontStyle: "italic",
         }}>
           {crew.analysis}
         </div>
@@ -1553,7 +1552,7 @@ function WorkbenchCard({
           </div>
         </>
       ) : (
-        <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", fontFamily: "var(--sans)" }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "var(--sans)" }}>
           {copy.noActiveTask}
         </div>
       )}
@@ -1763,7 +1762,7 @@ function ArtifactLedger({
       </div>
       {total === 0 ? (
         <div style={{
-          fontSize: 11, color: "var(--text-ghost)", fontStyle: "italic",
+          fontSize: 11, color: "var(--text-ghost)",
           fontFamily: "var(--sans)",
         }}>
           {copy.artifactEmpty}

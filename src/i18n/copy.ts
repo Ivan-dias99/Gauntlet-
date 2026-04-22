@@ -76,8 +76,6 @@ export interface Copy {
   refinePrefix: string;
   memoryTagline: string;
   memorySubtitle: string;
-  memoryTelemetryKicker: string;
-  memoryTelemetryTitle: string;
   memoryLoading: string;
   memoryErrorTitle: string;
   memoryErrorPrefix: string;
@@ -229,8 +227,6 @@ const PT: Copy = {
   refinePrefix: "refinar: ",
   memoryTagline: "— ARQUIVO VIVO",
   memorySubtitle: "o que a missão já decidiu",
-  memoryTelemetryKicker: "— TELEMETRIA",
-  memoryTelemetryTitle: "Pulso da missão",
   memoryLoading: "— a carregar —",
   memoryErrorTitle: "BACKEND",
   memoryErrorPrefix: "falha do backend:",
@@ -375,8 +371,6 @@ const EN: Copy = {
   refinePrefix: "refine: ",
   memoryTagline: "— LIVING ARCHIVE",
   memorySubtitle: "what the mission has already decided",
-  memoryTelemetryKicker: "— TELEMETRY",
-  memoryTelemetryTitle: "Mission pulse",
   memoryLoading: "— loading —",
   memoryErrorTitle: "BACKEND",
   memoryErrorPrefix: "backend failure:",

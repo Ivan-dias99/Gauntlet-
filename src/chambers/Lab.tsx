@@ -452,28 +452,28 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
     <div
       className="fadeUp"
       style={{
-        margin: "0 clamp(20px, 5vw, 64px) 8px",
+        margin: "0 clamp(20px, 5vw, 64px) var(--space-1)",
         background: "var(--bg-elevated)",
-        border: "1px solid var(--border-soft)",
+        border: "var(--border-soft)",
         borderLeft: `2px solid ${leftAccent}`,
-        borderRadius: 10,
-        padding: "10px 14px 12px",
+        borderRadius: "var(--radius-control)",
+        padding: "var(--space-2) var(--space-3) var(--space-2)",
         fontFamily: "var(--mono)",
       }}
     >
       {/* Kicker: anchors the panel as the lineage of the preceding AI turn */}
       <div style={{
-        fontSize: 9.5, letterSpacing: 2, textTransform: "uppercase",
+        fontSize: "var(--t-micro)", letterSpacing: "var(--track-label)", textTransform: "uppercase",
         color: kickerColor, marginBottom: 4,
       }}>
-        — VERDITO
+        VERDITO
       </div>
 
       {/* Citation: the question this verdict judges */}
       {verdict.question && (
         <div style={{
           fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--sans)",
-          fontStyle: "italic", marginBottom: 8, lineHeight: 1.45,
+          marginBottom: 8, lineHeight: 1.45,
         }}>
           sobre: «{shortQ}»
         </div>

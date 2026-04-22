@@ -570,30 +570,6 @@ textarea {
   --chamber-school: var(--accent);
 }
 
-/* ——— Surface primitives ———
-   One border width, tonal borders, near-invisible shadows; only .surface-flagship earns elevation. */
-.surface {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-control);
-}
-.surface-quiet {
-  background: color-mix(in oklab, var(--text-primary) 2%, var(--bg));
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-control);
-}
-.surface-sunken {
-  background: var(--bg-sunken);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-control);
-}
-.surface-flagship {
-  background: var(--bg-surface);
-  border: var(--border-mid);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-panel);
-}
-
 /* ——— Typography primitives ——— */
 .t-display {
   font-family: var(--serif);
@@ -632,17 +608,6 @@ textarea {
   letter-spacing: var(--track-meta);
   color: var(--text-muted);
 }
-.t-stat {
-  font-family: var(--serif);
-  font-size: var(--t-chamber);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  font-weight: 400;
-  color: var(--text-primary);
-}
-.t-stat[data-tone="warn"] {
-  color: var(--terminal-warn);
-}
 
 /* ——— Interaction primitives ———
    One button system. Class-driven hover / focus / active. No inline onMouseEnter.
@@ -652,14 +617,17 @@ textarea {
   align-items: center;
   gap: var(--space-1);
   font-family: var(--sans);
-  font-size: 13px;
-  padding: 6px 14px;
-  border-radius: 999px;
+  font-size: var(--t-body-sec);
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
   border: var(--border-mid);
   background: none;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: color 0.18s, border-color 0.18s, background 0.18s;
+  transition: color var(--dur-fast) var(--ease-swift),
+              border-color var(--dur-fast) var(--ease-swift),
+              background var(--dur-fast) var(--ease-swift);
 }
 .btn:hover,
 .btn[data-open="true"] {
@@ -1076,20 +1044,6 @@ textarea {
   background: currentColor;
 }
 
-/* ——— Memory telemetry head ———
-   Purpose-built: serif italic headline for the Memory chamber telemetry
-   region. Owns its own size/weight/spacing — does not extend .t-serif. */
-.memory-telemetry-head {
-  font-family: var(--serif);
-  font-size: 20px;
-  font-weight: 400;
-  font-style: italic;
-  line-height: 1.3;
-  letter-spacing: var(--track-tight);
-  color: var(--text-secondary);
-  margin: var(--space-1) 0 18px;
-}
-
 /* ——— Landing chamber DNA ———
    Each column carries a 2px left accent in its own chamber hue and a calm
    tint on hover. DNA is a single cascading variable (--chamber-dna) set per
@@ -1455,13 +1409,6 @@ textarea {
     padding: 11px 14px;
     gap: 6px;
     max-width: 100%;
-  }
-
-  /* Memory telemetry headline — its 20px italic serif is too grand at
-     narrow widths; pulls the whole Memory scan path too tall. */
-  .memory-telemetry-head {
-    font-size: 16px;
-    margin: 6px 0 12px;
   }
 
   /* Landing chamber columns — 32/24 padding on a 375px column is

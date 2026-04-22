@@ -364,35 +364,61 @@ export default function Memory() {
         )}
 
         {stats.total > 0 && (
-          <div style={{ maxWidth: 820, marginTop: 20 }}>
-            <div className="t-kicker" data-tone="ghost">
-              {copy.memoryTelemetryKicker}
-            </div>
-            <h3 className="memory-telemetry-head">
-              {copy.memoryTelemetryTitle}
-            </h3>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-                gap: "var(--space-4)",
-              }}
-            >
-              <StatCell label="runs" value={`${stats.total}`} />
-              <StatCell
-                label="refused"
-                value={`${(stats.refusalRate * 100).toFixed(0)}%`}
-                sub={`${stats.refused}/${stats.total}`}
-                warn={stats.refusalRate >= 0.5}
-              />
-              <StatCell label="avg latency" value={`${stats.avgLatencyMs} ms`} />
-              <StatCell
-                label="tokens"
-                value={formatTokens(stats.totalInput + stats.totalOutput)}
-                sub={`${formatTokens(stats.totalInput)} in · ${formatTokens(stats.totalOutput)} out`}
-              />
-              <StatCell label="tool calls" value={`${stats.toolCalls}`} />
-            </div>
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "baseline",
+              gap: "var(--space-3)",
+              fontFamily: "var(--mono)",
+              fontSize: "var(--t-meta)",
+              letterSpacing: "var(--track-meta)",
+              textTransform: "uppercase",
+              color: "var(--text-muted)",
+            }}
+          >
+            <span>
+              <strong style={{ color: "var(--text-primary)", fontWeight: 500 }}>
+                {stats.total}
+              </strong>{" "}
+              runs
+            </span>
+            <span aria-hidden style={{ color: "var(--border-color-mid)" }}>·</span>
+            <span style={{ color: stats.refusalRate >= 0.5 ? "var(--cc-warn)" : undefined }}>
+              <strong style={{
+                color: stats.refusalRate >= 0.5 ? "var(--cc-warn)" : "var(--text-primary)",
+                fontWeight: 500,
+              }}>
+                {(stats.refusalRate * 100).toFixed(0)}%
+              </strong>{" "}
+              refused
+            </span>
+            <span aria-hidden style={{ color: "var(--border-color-mid)" }}>·</span>
+            <span>
+              <strong style={{ color: "var(--text-primary)", fontWeight: 500 }}>
+                {stats.avgLatencyMs}ms
+              </strong>{" "}
+              avg
+            </span>
+            <span aria-hidden style={{ color: "var(--border-color-mid)" }}>·</span>
+            <span>
+              <strong style={{ color: "var(--text-primary)", fontWeight: 500 }}>
+                {formatTokens(stats.totalInput + stats.totalOutput)}
+              </strong>{" "}
+              tokens
+            </span>
+            {stats.toolCalls > 0 && (
+              <>
+                <span aria-hidden style={{ color: "var(--border-color-mid)" }}>·</span>
+                <span>
+                  <strong style={{ color: "var(--text-primary)", fontWeight: 500 }}>
+                    {stats.toolCalls}
+                  </strong>{" "}
+                  tools
+                </span>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -732,7 +758,7 @@ export default function Memory() {
                             {r.judge_reasoning.length > 320 ? r.judge_reasoning.slice(0, 320) + "…" : r.judge_reasoning}
                           </div>
                         ) : (
-                          <div style={{ fontSize: 11, color: "var(--text-ghost)", fontStyle: "italic", fontFamily: "var(--sans)" }}>
+                          <div style={{ fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--sans)" }}>
                             — sem motivo registado —
                           </div>
                         )}
@@ -810,35 +836,6 @@ function MetaRow({ label, value }: { label: string; value: string }) {
     <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", fontSize: 10 }}>
       <span style={{ color: "var(--text-ghost)", letterSpacing: 1, textTransform: "uppercase" }}>{label}</span>
       <span style={{ color: "var(--text-muted)" }}>{value}</span>
-    </div>
-  );
-}
-
-function StatCell({
-  label, value, sub, warn,
-}: { label: string; value: string; sub?: string; warn?: boolean }) {
-  return (
-    <div
-      className="surface-quiet"
-      style={{
-        padding: "var(--space-2) var(--space-3)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        minWidth: 0,
-      }}
-    >
-      <span className="t-kicker" data-tone="ghost">
-        {label}
-      </span>
-      <span className="t-stat" data-tone={warn ? "warn" : undefined}>
-        {value}
-      </span>
-      {sub && (
-        <span className="t-meta" style={{ color: "var(--text-ghost)" }}>
-          {sub}
-        </span>
-      )}
     </div>
   );
 }
