@@ -1,5 +1,5 @@
 import type { Task, TaskState } from "../../spine/types";
-import type { CrewPlanStep, CrewRole } from "../../hooks/useRuberra";
+import type { CrewPlanStep, CrewRole } from "../../hooks/useSignal";
 
 // Shared types + pure helpers for the Terminal chamber. The aggregator
 // (index.tsx) is still the home of state, effects, submit flow and

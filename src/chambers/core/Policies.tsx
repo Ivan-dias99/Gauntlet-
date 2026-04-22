@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
-import { useTweaks } from "../../tweaks/TweaksContext";
 import { useCopy } from "../../i18n/copy";
 import EmptyState from "../../shell/EmptyState";
 import DormantPanel from "../../shell/DormantPanel";
@@ -41,12 +40,10 @@ function normalizeForDedup(s: string): string {
 
 export default function School() {
   const { state, principles, addPrinciple, activeMission, syncState, hydratedFromBackend, syncError } = useSpine();
-  const { values } = useTweaks();
   const copy = useCopy();
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
   const [rejection, setRejection] = useState<null | "duplicate" | "empty" | "tooLong">(null);
-  const layout = values.schoolLayout;
   const isGoverning = principles.length > 0;
   const lastApplied = activeMission?.events.find((e) => e.type === "doctrine_applied") ?? null;
 
@@ -272,61 +269,34 @@ export default function School() {
 
         {/* Constitutional ordering: article I is the first inscribed;
             article N is the most recent. Source state stores newest-
-            first, so we reverse once for display. */}
-        {layout === "tablets" ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-              gap: 16,
-            }}
-          >
-            {[...principles].reverse().map((p, i) => {
-              const articleNumber = i + 1;
-              return (
-                <div
-                  key={p.id}
-                  className="fadeUp doctrine-tablet"
-                  style={{ animationDelay: `${i * 40}ms` }}
-                >
-                  <div className="doctrine-tablet-head">
-                    <span className="doctrine-tablet-kicker">artigo</span>
-                    <span className="doctrine-tablet-num" data-article-roman>
-                      {toRoman(articleNumber)}
-                    </span>
-                  </div>
-                  <div className="doctrine-tablet-text">{p.text}</div>
+            first, so we reverse once for display. The tablet-grid
+            variant was dropped when the tweak that toggled it went
+            away — the article-list variant is the operational view. */}
+        <div style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
+          {[...principles].reverse().map((p, i) => {
+            const articleNumber = i + 1;
+            return (
+              <div
+                key={p.id}
+                className="fadeUp doctrine-article"
+                style={{ animationDelay: `${i * 35}ms` }}
+              >
+                <div className="doctrine-article-gutter">
+                  <span className="doctrine-article-kicker">artigo</span>
+                  <span className="doctrine-article-num" data-article-roman>
+                    {toRoman(articleNumber)}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
-            {[...principles].reverse().map((p, i) => {
-              const articleNumber = i + 1;
-              return (
-                <div
-                  key={p.id}
-                  className="fadeUp doctrine-article"
-                  style={{ animationDelay: `${i * 35}ms` }}
-                >
-                  <div className="doctrine-article-gutter">
-                    <span className="doctrine-article-kicker">artigo</span>
-                    <span className="doctrine-article-num" data-article-roman>
-                      {toRoman(articleNumber)}
-                    </span>
-                  </div>
-                  <div className="doctrine-article-body">
-                    <span className="doctrine-article-text">{p.text}</span>
-                  </div>
-                  <div className="doctrine-article-aside">
-                    inscrita {relativeTime(p.createdAt, nowMs)}
-                  </div>
+                <div className="doctrine-article-body">
+                  <span className="doctrine-article-text">{p.text}</span>
                 </div>
-              );
-            })}
-          </div>
-        )}
+                <div className="doctrine-article-aside">
+                  inscrita {relativeTime(p.createdAt, nowMs)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Composer — ceremonial inscription surface. Not a glass pill.

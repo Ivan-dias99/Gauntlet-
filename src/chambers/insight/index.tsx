@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../../spine/SpineContext";
-import { useRuberra, RouteEvent } from "../../hooks/useRuberra";
+import { useSignal, RouteEvent } from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { Note } from "../../spine/types";
 import ChamberHead from "../../shell/ChamberHead";
@@ -32,7 +32,7 @@ export default function Insight() {
     activeMission, addNoteToMission, addTask, createMission,
     principles, logDoctrineApplied,
   } = useSpine();
-  const { streamRoute, pending, error, unreachable, errorEnvelope } = useRuberra();
+  const { streamRoute, pending, error, unreachable, errorEnvelope } = useSignal();
   const backend = useBackendStatus();
   const copy = useCopy();
 

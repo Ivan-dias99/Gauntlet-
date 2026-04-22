@@ -1,13 +1,14 @@
 import { useRef, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import {
-  useRuberra,
+  useSignal,
   type SurfaceBriefPayload,
   type SurfaceEvent,
   type SurfacePlanPayload,
-} from "../../hooks/useRuberra";
+} from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import ChamberHead from "../../shell/ChamberHead";
+import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
 import CreationPanel from "./CreationPanel";
 import ExplorationRail from "./ExplorationRail";
@@ -26,7 +27,7 @@ const DEFAULT_BRIEF: SurfaceBriefPayload = {
 
 export default function Surface() {
   const { activeMission, createMission, addNoteToMission } = useSpine();
-  const { streamSurface, pending } = useRuberra();
+  const { streamSurface, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
 
   const [brief, setBrief] = useState<SurfaceBriefPayload>(DEFAULT_BRIEF);
@@ -115,7 +116,10 @@ export default function Surface() {
               pending={pending}
               mockBanner={mockBannerVisible}
             />
-            {err && (
+            {unreachable && (
+              <DormantPanel detail="Backend de Surface inacessível. Os modos, a fidelidade e o design system ficam guardados localmente; a geração do plano fica suspensa até o backend voltar." />
+            )}
+            {err && !unreachable && (
               <div
                 data-surface-error
                 style={{

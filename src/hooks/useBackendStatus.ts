@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
+import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
 
 // Honest surface for the two backend truths every chamber cares about:
 //   - mode: "mock" | "real"  (is the brain running canned responses?)
@@ -38,7 +38,7 @@ export function useBackendStatus(): BackendStatus {
     const ac = new AbortController();
     (async () => {
       try {
-        const res = await ruberraFetch("/health", { signal: ac.signal });
+        const res = await signalFetch("/health", { signal: ac.signal });
         if (!res.ok) {
           setStatus({ ...INITIAL, reachable: true, engine: "not_initialized" });
           return;

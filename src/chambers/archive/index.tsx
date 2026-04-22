@@ -3,11 +3,11 @@ import { useSpine } from "../../spine/SpineContext";
 import ErrorPanel from "../../shell/ErrorPanel";
 import DormantPanel from "../../shell/DormantPanel";
 import {
-  ruberraFetch,
+  signalFetch,
   isBackendUnreachable,
   parseBackendError,
   BackendError,
-} from "../../lib/ruberraApi";
+} from "../../lib/signalApi";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
@@ -76,7 +76,7 @@ export default function Archive() {
     setOffline(false);
     const mid = encodeURIComponent(missionId);
     return Promise.allSettled([
-      ruberraFetch(`/runs?mission_id=${mid}&limit=100`, { signal })
+      signalFetch(`/runs?mission_id=${mid}&limit=100`, { signal })
         .then(async (r) => {
           if (!r.ok) {
             const env = await parseBackendError(r);
@@ -84,7 +84,7 @@ export default function Archive() {
           }
           return (await r.json()) as RunsResponse;
         }),
-      ruberraFetch(`/runs/stats?mission_id=${mid}`, { signal })
+      signalFetch(`/runs/stats?mission_id=${mid}`, { signal })
         .then(async (r) => {
           if (!r.ok) {
             const env = await parseBackendError(r);

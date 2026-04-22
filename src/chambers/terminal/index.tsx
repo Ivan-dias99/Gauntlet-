@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo } from "react";
 import { useSpine } from "../../spine/SpineContext";
-import { useRuberra, AgentEvent, CrewEvent, type CrewRole } from "../../hooks/useRuberra";
+import { useSignal, AgentEvent, CrewEvent, type CrewRole } from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { useTweaks } from "../../tweaks/TweaksContext";
 import { useCopy } from "../../i18n/copy";
@@ -30,7 +30,7 @@ export default function Terminal() {
     activeMission, addTask, setTaskState, addNoteToMission,
     acceptArtifact, principles, logDoctrineApplied,
   } = useSpine();
-  const { streamDev, streamCrew, pending, unreachable } = useRuberra();
+  const { streamDev, streamCrew, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
   const { values } = useTweaks();
   const copy = useCopy();

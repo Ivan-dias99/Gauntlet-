@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SurfacePlanPayload } from "../../hooks/useRuberra";
+import type { SurfacePlanPayload } from "../../hooks/useSignal";
 
 // Wave-3 right-side exploration rail. Five tabs: Examples, Templates,
 // Recent, Search, Library. Data is canned in W3 — real catalog comes

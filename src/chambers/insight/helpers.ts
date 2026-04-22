@@ -1,4 +1,4 @@
-import type { RouteEvent } from "../../hooks/useRuberra";
+import type { RouteEvent } from "../../hooks/useSignal";
 
 // Shared types + pure helpers for the Insight chamber. Kept in a
 // dedicated module so the visual primitives (Thread, Composer,

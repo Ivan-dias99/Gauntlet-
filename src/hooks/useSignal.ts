@@ -1,24 +1,25 @@
 import { useState, useCallback } from "react";
 import {
-  ruberraFetch,
+  signalFetch,
   isBackendUnreachable,
   parseBackendError,
   BackendError,
   type BackendErrorEnvelope,
-} from "../lib/ruberraApi";
+} from "../lib/signalApi";
 
 // Client for the Python backend (signal-backend/) via the /api/signal
-// proxy (legacy /api/ruberra alias still routes during the Wave-0 →
-// Wave-8 compat window).
+// proxy. The legacy /api/ruberra alias still routes during the compat
+// window — the shell reaches both with the same contract.
 //
 // Endpoints:
-//   POST /api/ruberra/route        → { route: "agent" | "triad", result: {...} }
-//   POST /api/ruberra/dev          → agent loop with tool-use (AgentResponse)
-//   POST /api/ruberra/dev/stream   → SSE stream of agent events
-//   POST /api/ruberra/ask          → triad + judge (RuberraResponse)
-//   POST /api/ruberra/crew/stream  → SSE stream of multi-agent crew events
+//   POST /api/signal/route        → { route: "agent" | "triad", result: {...} }
+//   POST /api/signal/dev          → agent loop with tool-use (AgentResponse)
+//   POST /api/signal/dev/stream   → SSE stream of agent events
+//   POST /api/signal/ask          → triad + judge (SignalResponse)
+//   POST /api/signal/crew/stream  → SSE stream of multi-agent crew events
+//   POST /api/signal/route/stream → SSE router (forks to Surface mock on chamber=surface)
 
-export interface RuberraQueryBody {
+export interface SignalQueryBody {
   question: string;
   context?: string;
   force_cautious?: boolean;
@@ -172,19 +173,19 @@ export type RouteEvent =
 
 type Route = "route" | "dev" | "ask";
 
-export function useRuberra() {
+export function useSignal() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorEnvelope, setErrorEnvelope] = useState<BackendErrorEnvelope | null>(null);
   const [unreachable, setUnreachable] = useState(false);
 
-  const call = useCallback(async (route: Route, body: RuberraQueryBody) => {
+  const call = useCallback(async (route: Route, body: SignalQueryBody) => {
     setPending(true);
     setError(null);
     setErrorEnvelope(null);
     setUnreachable(false);
     try {
-      const res = await ruberraFetch(route, {
+      const res = await signalFetch(route, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -194,7 +195,7 @@ export function useRuberra() {
         throw new BackendError(
           res.status,
           envelope,
-          `ruberra ${route} ${res.status}`,
+          `signal ${route} ${res.status}`,
         );
       }
       return await res.json();
@@ -217,7 +218,7 @@ export function useRuberra() {
 
   const openStream = useCallback(async <E,>(
     path: string,
-    body: RuberraQueryBody,
+    body: SignalQueryBody,
     onEvent: (ev: E) => void,
     signal?: AbortSignal,
   ) => {
@@ -226,7 +227,7 @@ export function useRuberra() {
     setErrorEnvelope(null);
     setUnreachable(false);
     try {
-      const res = await ruberraFetch(path, {
+      const res = await signalFetch(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -234,7 +235,7 @@ export function useRuberra() {
       });
       if (!res.ok || !res.body) {
         const envelope = res.body ? await parseBackendError(res) : null;
-        throw new BackendError(res.status, envelope, `ruberra ${path} ${res.status}`);
+        throw new BackendError(res.status, envelope, `signal ${path} ${res.status}`);
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -331,19 +332,19 @@ export function useRuberra() {
   }, []);
 
   const streamDev = useCallback(
-    (body: RuberraQueryBody, onEvent: (ev: AgentEvent) => void, signal?: AbortSignal) =>
+    (body: SignalQueryBody, onEvent: (ev: AgentEvent) => void, signal?: AbortSignal) =>
       openStream<AgentEvent>("dev/stream", body, onEvent, signal),
     [openStream],
   );
 
   const streamRoute = useCallback(
-    (body: RuberraQueryBody, onEvent: (ev: RouteEvent) => void, signal?: AbortSignal) =>
+    (body: SignalQueryBody, onEvent: (ev: RouteEvent) => void, signal?: AbortSignal) =>
       openStream<RouteEvent>("route/stream", body, onEvent, signal),
     [openStream],
   );
 
   const streamCrew = useCallback(
-    (body: RuberraQueryBody, onEvent: (ev: CrewEvent) => void, signal?: AbortSignal) =>
+    (body: SignalQueryBody, onEvent: (ev: CrewEvent) => void, signal?: AbortSignal) =>
       openStream<CrewEvent>("crew/stream", body, onEvent, signal),
     [openStream],
   );
@@ -351,7 +352,7 @@ export function useRuberra() {
   // Wave-3: Surface streams through /route/stream with chamber="surface".
   // The backend forks to the mock handler before reaching agent/triad.
   const streamSurface = useCallback(
-    (body: RuberraQueryBody & { chamber: "surface"; surface: SurfaceBriefPayload },
+    (body: SignalQueryBody & { chamber: "surface"; surface: SurfaceBriefPayload },
      onEvent: (ev: SurfaceEvent) => void,
      signal?: AbortSignal) =>
       openStream<SurfaceEvent>("route/stream", body, onEvent, signal),

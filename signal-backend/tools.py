@@ -48,13 +48,21 @@ logger = logging.getLogger("signal.tools")
 
 
 # ── Configuration ───────────────────────────────────────────────────────────
+# Env precedence: SIGNAL_* is canonical; RUBERRA_* is honored as a silent
+# legacy fallback so existing deploys keep working until operators flip
+# to the new variable names.
+
+
+def _env(new: str, legacy: str, default: str = "") -> str:
+    return os.environ.get(new) or os.environ.get(legacy) or default
+
 
 TOOL_WORKSPACE_ROOT: Path = Path(
-    os.environ.get("RUBERRA_WORKSPACE", Path(__file__).resolve().parent.parent)
+    _env("SIGNAL_WORKSPACE", "RUBERRA_WORKSPACE", str(Path(__file__).resolve().parent.parent))
 ).resolve()
 
-AGENT_ALLOW_CODE_EXEC: bool = os.environ.get(
-    "RUBERRA_ALLOW_CODE_EXEC", "false"
+AGENT_ALLOW_CODE_EXEC: bool = _env(
+    "SIGNAL_ALLOW_CODE_EXEC", "RUBERRA_ALLOW_CODE_EXEC", "false"
 ).strip().lower() in ("1", "true", "yes", "on")
 
 # ── Command policy (deny-by-default) ────────────────────────────────────────
