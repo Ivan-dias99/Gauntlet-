@@ -204,12 +204,12 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
         )}
 
         {onTweaks && (
-          <button onClick={onTweaks} title={copy.retune} className="btn-chip">
-            ⚙ tweaks
+          <button onClick={onTweaks} title={copy.retune} className="btn-icon" aria-label={copy.retune}>
+            ⚙
           </button>
         )}
 
-        <button onClick={cycleTheme} title={copy.themeTitle(theme)} className="btn-icon">
+        <button onClick={cycleTheme} title={copy.themeTitle(theme)} className="btn-icon" aria-label={copy.themeTitle(theme)}>
           {themeLabel}
         </button>
 
