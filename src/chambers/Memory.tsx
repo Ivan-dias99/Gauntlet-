@@ -654,9 +654,13 @@ export default function Memory() {
             return (
               <div key={r.id} style={{
                 borderBottom: "1px solid var(--border-color-soft)",
-                padding: "10px 0",
+                padding: "12px 0",
+                minHeight: 64,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
                 borderLeft: r.refused ? "2px solid var(--cc-err)" : "2px solid transparent",
-                paddingLeft: r.refused ? 10 : 0,
+                paddingLeft: r.refused ? 12 : 0,
                 marginLeft: r.refused ? -12 : 0,
               }}>
                 <div
@@ -665,7 +669,7 @@ export default function Memory() {
                     display: "grid",
                     gridTemplateColumns: "58px 1fr auto",
                     gap: "0 16px",
-                    alignItems: "baseline",
+                    alignItems: "center",
                     cursor: "pointer",
                   }}
                 >
