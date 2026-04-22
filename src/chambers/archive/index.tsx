@@ -10,6 +10,7 @@ import {
 } from "../../lib/ruberraApi";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { useCopy } from "../../i18n/copy";
+import ChamberHead from "../../shell/ChamberHead";
 import ArchiveLayout from "./ArchiveLayout";
 import StatsBar from "./StatsBar";
 import RunList from "./RunList";
@@ -140,46 +141,17 @@ export default function Archive() {
     loadMissionTelemetry(activeMission.id, ac.signal);
   }
 
-  // Head — chamber identity + mission + mock pill, matches Surface's
-  // composition rule (head above, split below).
+  // Head — chamber identity + mission + mock pill, matches the shared
+  // ChamberHead grammar used by every chamber. Right slot carries the
+  // current mission label so retrieval scope is always visible.
   const head = (
-    <div className="chamber-head" style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-      <span
-        style={{
-          fontSize: 10,
-          letterSpacing: 3,
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-          fontFamily: "var(--mono)",
-        }}
-      >
-        — ARCHIVE
-      </span>
-      <span style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)" }}>
-        Retenção · proveniência · continuidade
-      </span>
-      {backend.mode === "mock" && (
-        <span
-          data-backend-mode="mock"
-          title="Backend em modo simulado — runs registadas durante mock são canned"
-          style={{
-            fontSize: "var(--t-micro)",
-            letterSpacing: "var(--track-label)",
-            color: "var(--cc-warn)",
-            fontFamily: "var(--mono)",
-            textTransform: "uppercase",
-            padding: "2px 8px",
-            border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-            borderRadius: "var(--radius-pill)",
-          }}
-        >
-          mock
-        </span>
-      )}
-      {activeMission && (
+    <ChamberHead
+      kicker="— ARCHIVE"
+      tagline="Retenção · proveniência · continuidade"
+      mock={backend.mode === "mock"}
+      right={activeMission ? (
         <span
           style={{
-            marginLeft: "auto",
             fontFamily: "var(--mono)",
             fontSize: 10,
             color: "var(--text-ghost)",
@@ -189,8 +161,8 @@ export default function Archive() {
         >
           missão · {activeMission.title}
         </span>
-      )}
-    </div>
+      ) : null}
+    />
   );
 
   // Left column: stats on top + list below.

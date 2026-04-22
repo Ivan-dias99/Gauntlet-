@@ -1,24 +1,25 @@
-// Wave-4 Orchestration tab — read-only display of the three pipelines
-// the engine currently operates, with the budgets that keep them honest.
-// Values mirror signal-backend/agent.py and engine.py constants. Wave 5
-// lifts these into editable per-chamber profile slots.
+// Core · Orchestration — read-only display of the four pipelines the
+// engine operates today, with the budgets that keep them honest.
+// Values mirror signal-backend/agent.py and engine.py constants. When
+// Core opens a writeable governance surface these rows become editable
+// per-chamber profile slots.
 
 interface Row { label: string; value: string; }
 
 const AGENT: Row[] = [
   { label: "MAX_AGENT_ITERATIONS", value: "10 turns" },
-  { label: "MAX_TOOL_CALLS",        value: "20 per run" },
-  { label: "MAX_REPEATS",           value: "3 (anti-loop fingerprint)" },
-  { label: "AGENT_TEMPERATURE",     value: "0.2" },
-  { label: "AGENT_WALL_CLOCK_S",    value: "90s" },
+  { label: "MAX_TOOL_CALLS",       value: "20 per run" },
+  { label: "MAX_REPEATS",          value: "3 (anti-loop fingerprint)" },
+  { label: "AGENT_TEMPERATURE",    value: "0.2" },
+  { label: "AGENT_WALL_CLOCK_S",   value: "90s" },
 ];
 
 const TRIAD: Row[] = [
-  { label: "TRIAD_COUNT",            value: "3 parallel calls" },
-  { label: "TRIAD_TEMPERATURE",      value: "0.15" },
-  { label: "JUDGE_TEMPERATURE",      value: "0.05 (implacable)" },
-  { label: "Confidence tiers",       value: "HIGH (3 concordam) · LOW (qualquer diferença → refusal)" },
-  { label: "Failure memory",         value: "Persistent; matches fingerprint; reforça caução" },
+  { label: "TRIAD_COUNT",        value: "3 parallel calls" },
+  { label: "TRIAD_TEMPERATURE",  value: "0.15" },
+  { label: "JUDGE_TEMPERATURE",  value: "0.05 (implacable)" },
+  { label: "Confidence tiers",   value: "HIGH (3 concordam) · LOW (qualquer diferença → refusal)" },
+  { label: "Failure memory",     value: "Persistent; matches fingerprint; reforça caução" },
 ];
 
 const CREW: Row[] = [
@@ -28,9 +29,9 @@ const CREW: Row[] = [
 ];
 
 const SURFACE: Row[] = [
-  { label: "Wave 3 dispatch", value: "Mock handler — process_surface_mock_streaming" },
-  { label: "Output contract", value: "SurfacePlan { screens, components, design_system_binding, fidelity, mode, notes, mock }" },
-  { label: "Wave 5 plan",     value: "Real provider + schema validation antes de done · design_system obrigatório" },
+  { label: "Dispatch",         value: "Mock handler — process_surface_mock_streaming" },
+  { label: "Output contract",  value: "SurfacePlan { screens, components, design_system_binding, fidelity, mode, notes, mock }" },
+  { label: "Run recording",    value: "Registado em /runs com route=\"surface\", termination_reason=\"surface_mock\" enquanto o mock é a fonte." },
 ];
 
 export default function Orchestration() {
@@ -44,10 +45,10 @@ export default function Orchestration() {
         maxWidth: 1100,
       }}
     >
-      <Panel title="Agent loop" sub="Terminal · Surface (W5)" rows={AGENT} />
-      <Panel title="Self-consistency triad" sub="Insight · Archive · Core" rows={TRIAD} />
-      <Panel title="Crew pipeline" sub="Terminal opt-in" rows={CREW} />
-      <Panel title="Surface (mock)" sub="Wave 3 scaffolding" rows={SURFACE} />
+      <Panel title="Agent loop"              sub="Terminal"                 rows={AGENT} />
+      <Panel title="Self-consistency triad"  sub="Insight · Archive · Core" rows={TRIAD} />
+      <Panel title="Crew pipeline"           sub="Terminal opt-in"          rows={CREW} />
+      <Panel title="Surface (mock)"          sub="Design workstation"       rows={SURFACE} />
     </div>
   );
 }

@@ -1,7 +1,8 @@
-// Wave-4 Permissions tab — read-only view over the tool allowlist and
-// the code-execution gate. Mirrors signal-backend/tools.py. Wave 5
-// splits per-chamber allowlists (insight=none, terminal=all, surface=
-// mock-only, archive=retrieval-subset, core=none).
+// Core · Permissions — read-only view over the tool allowlist and the
+// code-execution gate. Mirrors signal-backend/tools.py. Per-chamber
+// allowlists are already enforced on the backend (Insight and Core
+// receive no tools; Terminal carries the full set; Surface only
+// reaches the mock handler; Archive keeps a retrieval subset).
 
 interface ToolEntry {
   name: string;
@@ -66,9 +67,9 @@ export default function Permissions() {
         Postura deny-by-default. A gated coluna marca tools que só se activam
         com <code style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>
           AGENT_ALLOW_CODE_EXEC=true
-        </code> no ambiente do backend. Em Wave 5 cada chamber recebe a sua
-        allowlist: Insight e Core zero tools; Terminal o conjunto completo;
-        Surface apenas o handler mock; Archive um subset de retrieval.
+        </code> no ambiente do backend. Cada chamber tem a sua allowlist:
+        Insight e Core sem tools; Terminal o conjunto completo; Surface apenas
+        o handler mock; Archive um subset de retrieval.
       </div>
 
       <div

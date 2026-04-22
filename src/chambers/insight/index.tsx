@@ -3,6 +3,7 @@ import { useSpine } from "../../spine/SpineContext";
 import { useRuberra, RouteEvent } from "../../hooks/useRuberra";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { Note } from "../../spine/types";
+import ChamberHead from "../../shell/ChamberHead";
 import ErrorPanel from "../../shell/ErrorPanel";
 import DormantPanel from "../../shell/DormantPanel";
 import EmptyState from "../../shell/EmptyState";
@@ -172,108 +173,62 @@ export default function Insight() {
     );
   }
 
-  return (
-    <div className="chamber-shell" data-chamber="insight">
-
-      {/* Head — chamber identity + live routing pill or last confidence. */}
-      <div
-        className="chamber-head"
-        style={{ display: "flex", alignItems: "baseline", gap: 12 }}
-      >
+  const rightSlot = (() => {
+    if (pending) {
+      return (
         <span
           style={{
             fontSize: 10,
-            letterSpacing: 3,
-            textTransform: "uppercase",
-            color: "var(--text-ghost)",
+            color: "var(--cc-info)",
             fontFamily: "var(--mono)",
+            letterSpacing: 2,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
           }}
         >
-          {copy.labKicker}
+          <span
+            className="breathe"
+            style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-info)" }}
+          />
+          {live.routePath ? live.routePath.toUpperCase() : "ANALISANDO"}
         </span>
-        <span style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)" }}>
-          {copy.labTagline}
+      );
+    }
+    if (live.routePath && lastConfidence) {
+      const refused = !!lastVerdict?.refused;
+      const chipColor = refused
+        ? "var(--cc-err)"
+        : lastConfidence === "high"
+        ? "var(--cc-ok)"
+        : lastConfidence === "low"
+        ? "var(--cc-warn)"
+        : "var(--text-ghost)";
+      return (
+        <span
+          style={{
+            fontSize: 10,
+            color: chipColor,
+            fontFamily: "var(--mono)",
+            letterSpacing: 1,
+          }}
+        >
+          {live.routePath.toUpperCase()} · {refused ? "recusado" : lastConfidence}
         </span>
-        {backend.mode === "mock" && (
-          <span
-            data-backend-mode="mock"
-            title="Backend em modo simulado — respostas são canned, não Anthropic real"
-            style={{
-              fontSize: "var(--t-micro)",
-              letterSpacing: "var(--track-label)",
-              color: "var(--cc-warn)",
-              fontFamily: "var(--mono)",
-              textTransform: "uppercase",
-              padding: "2px 8px",
-              border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-              borderRadius: "var(--radius-pill)",
-            }}
-          >
-            mock
-          </span>
-        )}
-        {principles.length > 0 && (
-          <span
-            data-principles-in-context
-            title={`${principles.length} princípio${principles.length !== 1 ? "s" : ""} em vigor`}
-            style={{
-              fontSize: "var(--t-micro)",
-              letterSpacing: "var(--track-label)",
-              color: "var(--accent)",
-              fontFamily: "var(--mono)",
-              textTransform: "uppercase",
-              padding: "2px 8px",
-              border: "1px solid color-mix(in oklab, var(--accent) 32%, transparent)",
-              borderRadius: "var(--radius-pill)",
-            }}
-          >
-            sob § {principles.length}
-          </span>
-        )}
-        {pending && (
-          <span
-            style={{
-              marginLeft: "auto",
-              fontSize: 10,
-              color: "var(--cc-info)",
-              fontFamily: "var(--mono)",
-              letterSpacing: 2,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <span
-              className="breathe"
-              style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-info)" }}
-            />
-            {live.routePath ? live.routePath.toUpperCase() : "ANALISANDO"}
-          </span>
-        )}
-        {!pending && live.routePath && lastConfidence && (() => {
-          const refused = !!lastVerdict?.refused;
-          const chipColor = refused
-            ? "var(--cc-err)"
-            : lastConfidence === "high"
-            ? "var(--cc-ok)"
-            : lastConfidence === "low"
-            ? "var(--cc-warn)"
-            : "var(--text-ghost)";
-          return (
-            <span
-              style={{
-                marginLeft: "auto",
-                fontSize: 10,
-                color: chipColor,
-                fontFamily: "var(--mono)",
-                letterSpacing: 1,
-              }}
-            >
-              {live.routePath.toUpperCase()} · {refused ? "recusado" : lastConfidence}
-            </span>
-          );
-        })()}
-      </div>
+      );
+    }
+    return null;
+  })();
+
+  return (
+    <div className="chamber-shell" data-chamber="insight">
+      <ChamberHead
+        kicker={copy.labKicker}
+        tagline={copy.labTagline}
+        mock={backend.mode === "mock"}
+        principlesCount={principles.length}
+        right={rightSlot}
+      />
 
       {/* Body — thread, live indicator, errors. */}
       <div

@@ -1,16 +1,18 @@
 import { useState } from "react";
+import ChamberHead from "../../shell/ChamberHead";
 import Policies from "./Policies";
 import Routing from "./Routing";
 import Permissions from "./Permissions";
 import Orchestration from "./Orchestration";
 import System from "./System";
 
-// Wave-4 Core chamber — strict tab structure:
+// Core chamber — strict tab structure:
 //   Policies · Routing · Permissions · Orchestration · System
 //
 // No junk drawer. Each tab carries one governance responsibility and
-// nothing more. Wave 5 opens editability for Routing / Permissions /
-// Orchestration; Wave 7 rewires keyboard + mission-pill continuity.
+// nothing more. Routing / Permissions / Orchestration are read-only
+// mirrors of the backend profiles today; editability opens when Core
+// exposes a writeable governance surface.
 
 type Tab = "policies" | "routing" | "permissions" | "orchestration" | "system";
 
@@ -28,25 +30,7 @@ export default function Core() {
 
   return (
     <div className="chamber-shell" data-chamber="core">
-      <div
-        className="chamber-head"
-        style={{ display: "flex", alignItems: "baseline", gap: 12 }}
-      >
-        <span
-          style={{
-            fontSize: 10,
-            letterSpacing: 3,
-            textTransform: "uppercase",
-            color: "var(--text-ghost)",
-            fontFamily: "var(--mono)",
-          }}
-        >
-          — CORE
-        </span>
-        <span style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)" }}>
-          {current.sub}
-        </span>
-      </div>
+      <ChamberHead kicker="— CORE" tagline={current.sub} />
 
       <div
         role="tablist"
