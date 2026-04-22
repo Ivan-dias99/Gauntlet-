@@ -45,9 +45,18 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
     }
     document.addEventListener("mousedown", handleClick);
     document.addEventListener("keydown", handleKey);
+    // WAI-ARIA listbox: opening the panel moves focus to the first
+    // option so keyboard-only users can immediately navigate with
+    // Arrow/Home/End without an initial ArrowDown "warm-up" keystroke.
+    const raf = requestAnimationFrame(() => {
+      dropdownRef.current
+        ?.querySelector<HTMLButtonElement>(".dropdown-item")
+        ?.focus();
+    });
     return () => {
       document.removeEventListener("mousedown", handleClick);
       document.removeEventListener("keydown", handleKey);
+      cancelAnimationFrame(raf);
     };
   }, [open]);
 
@@ -208,9 +217,13 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                 role="listbox"
                 aria-label={copy.missions}
                 onKeyDown={(e) => {
-                  // Arrow-key listbox navigation. Fulfils the aria-haspopup=
-                  // "listbox" promise on the trigger button (T121).
-                  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+                  // Full WAI-ARIA listbox keyboard contract: Arrow wraps,
+                  // Home → first, End → last. Opening the panel already
+                  // focused the first item, so focusedIdx is 0 on first
+                  // key; the cold-focus (-1) branch remains for the rare
+                  // case where focus drifted outside the list.
+                  if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key))
+                    return;
                   e.preventDefault();
                   const items = Array.from(
                     dropdownRef.current?.querySelectorAll<HTMLButtonElement>(
@@ -221,13 +234,12 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                   const focusedIdx = items.indexOf(
                     document.activeElement as HTMLButtonElement,
                   );
-                  // Cold focus (trigger button still has focus → -1) must
-                  // wrap to the correct end: ArrowDown → first, ArrowUp →
-                  // last. The unified modulo was landing ArrowUp on
-                  // items.length - 2, which is the penultimate row, not
-                  // the last — a real WAI-ARIA listbox violation.
                   let nextIdx: number;
-                  if (focusedIdx < 0) {
+                  if (e.key === "Home") {
+                    nextIdx = 0;
+                  } else if (e.key === "End") {
+                    nextIdx = items.length - 1;
+                  } else if (focusedIdx < 0) {
                     nextIdx = e.key === "ArrowDown" ? 0 : items.length - 1;
                   } else if (e.key === "ArrowDown") {
                     nextIdx = (focusedIdx + 1) % items.length;

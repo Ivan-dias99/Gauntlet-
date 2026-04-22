@@ -3,8 +3,11 @@ Ruberra — Configuration
 All environment-driven settings. No hardcoded secrets.
 """
 
+import logging
 import os
 from pathlib import Path
+
+_cfg_log = logging.getLogger("ruberra.config")
 
 # ── API ─────────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -44,6 +47,24 @@ ALLOWED_ORIGINS: list[str] = [
 ]
 # Backwards compatibility — existing imports of ALLOWED_ORIGIN keep working.
 ALLOWED_ORIGIN: str = ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "http://localhost:5173"
+
+# Config sanity warning. A common misconfiguration: RUBERRA_ORIGIN gets set
+# to the backend's own URL (because the operator confused "where does
+# traffic come from" with "where am I deployed"). Check for the common
+# frontend-origin shapes and warn loudly if none are present — this does
+# not affect normal prod flow (the Vercel edge forwarder proxies server-
+# to-server and never triggers browser CORS) but it WILL break direct-
+# backend preview deploys and curl-from-dev workflows.
+_FRONTEND_HINTS = ("localhost", "127.0.0.1", "vercel.app", "netlify.app")
+if not any(
+    any(hint in o for hint in _FRONTEND_HINTS) for o in ALLOWED_ORIGINS
+):
+    _cfg_log.warning(
+        "RUBERRA_ORIGIN contains no recognisable frontend host "
+        "(%s). Direct-backend browser requests will fail CORS. "
+        "Normal Vercel-edge-proxied requests are unaffected.",
+        ALLOWED_ORIGINS,
+    )
 
 # ── Memory ──────────────────────────────────────────────────────────────────
 # Persistent state (failure memory, run log, spine snapshot) is written here.

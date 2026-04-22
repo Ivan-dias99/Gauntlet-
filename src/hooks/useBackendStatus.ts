@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
 
 // Honest surface for the two backend truths every chamber cares about:
@@ -9,16 +9,22 @@ import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
 // the body carries the real signal. A backend-unreachable throw collapses
 // to `{reachable:false}` so chambers can render their dormant state
 // without refetching on their own.
+//
+// Freshness policy:
+//   - Module-level cache shared across all subscribers (one round-trip
+//     per TTL window).
+//   - 60s TTL — if a consumer reads the hook after the window, a fresh
+//     fetch is kicked off.
+//   - `focus` + `online` browser events re-trigger a fetch on natural
+//     boundaries (tab return, network reconnect).
+//   No imperative refresh() API is exposed — if a future UI needs a
+//   manual refresh button, add it then, not before.
 
 export interface BackendStatus {
   reachable: boolean;
   mode: "mock" | "real" | null;
   persistenceDegraded: boolean;
   engine: "ready" | "not_initialized" | null;
-}
-
-export interface UseBackendStatus extends BackendStatus {
-  refresh: () => void;
 }
 
 const INITIAL: BackendStatus = {
@@ -88,7 +94,7 @@ function ensureFetch(force: boolean): void {
   });
 }
 
-export function useBackendStatus(): UseBackendStatus {
+export function useBackendStatus(): BackendStatus {
   const [status, setStatus] = useState<BackendStatus>(cached ?? INITIAL);
 
   useEffect(() => {
@@ -110,7 +116,5 @@ export function useBackendStatus(): UseBackendStatus {
     };
   }, []);
 
-  const refresh = useCallback(() => ensureFetch(true), []);
-
-  return { ...status, refresh };
+  return status;
 }
