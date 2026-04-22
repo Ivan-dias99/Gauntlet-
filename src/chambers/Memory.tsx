@@ -711,7 +711,7 @@ export default function Memory() {
                     fontSize: 11, color: "var(--text-secondary)",
                     background: "var(--bg-input)",
                     border: "1px solid var(--border-soft)",
-                    borderRadius: "var(--radius)",
+                    borderRadius: "var(--radius-control)",
                     padding: "10px 14px",
                   }}>
                     {origin && <MetaRow label="origem" value={origin} />}

@@ -965,14 +965,37 @@ textarea {
 /* ——— Creation exec panel (flagship) ———
    Flatten the AI output region to a single surface with two regions.
    Left-hairline color encodes run state (idle/running/done) without reshuffle. */
+/* Canon primitive — artifact frame. Inline deliverable surface per
+   "inline artifact law" (Lei 6): artifact first, scaffolding second,
+   metadata progressive reveal. Use for accepted deliverables rendered
+   within a mission thread. bg-surface on the chamber bg, hairline
+   border, panel radius, generous internal padding. Not yet adopted by
+   a specific consumer — canon primitive kept available so the next
+   artifact surface has a single canonical starting point. */
+.artifact-frame {
+  max-width: 820px;
+  margin: var(--space-3) 0;
+  padding: var(--space-4) var(--space-4);
+  background: var(--bg-surface);
+  border: var(--border-soft);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+.artifact-frame > :first-child { margin-top: 0; }
+.artifact-frame > :last-child  { margin-bottom: 0; }
+
+/* Canon primitive — terminal frame. Shared signature for execution/
+   deliverable surfaces whose left-hairline encodes run state. Inherited
+   by .xc-exec; any future terminal-class surface can opt in directly. */
+.terminal-frame,
 .xc-exec {
   max-width: 820px;
   margin-top: var(--space-1);
   margin-bottom: var(--space-4);
   overflow: hidden;
   padding: 0;
-  border-left: 2px solid var(--border-soft);
-  transition: border-color 0.25s var(--ease-swift);
+  border-left: 2px solid var(--border-color-soft);
+  transition: border-left-color var(--dur-slow) var(--ease-swift);
 }
 .xc-exec[data-state="running"] {
   border-left-color: var(--ember);
@@ -1534,12 +1557,18 @@ textarea {
    olive rule — structural signal, never decoration.
    Background climbs to surface-2 so the panel reads as a clearly
    tonal step above the chamber bg, even in daylight. */
+/* Canon primitive — hero panel. Shared signature for sovereign
+   institutional surfaces: a bordered bay with a 2px accent hairline on
+   the left, hairline-soft on the other sides, rounded to the panel
+   radius, margins respecting the 5-step gap. .doctrine-seal inherits
+   this identity and adds its four-zone internal composition. */
+.hero-panel,
 .doctrine-seal {
-  margin-bottom: 28px;
+  margin-bottom: var(--space-5);
   background: var(--bg-elevated);
-  border: 1px solid var(--border-color-soft);
+  border: var(--border-soft);
   border-left: 2px solid var(--accent);
-  border-radius: 4px;
+  border-radius: var(--radius-panel);
   overflow: hidden;
 }
 .doctrine-seal-head {
@@ -1697,12 +1726,15 @@ textarea {
   letter-spacing: 0.2em;
 }
 
-/* Article row — 96px 1fr auto institutional inscription unit.
-   Natural height lands in 88-104px with the 20px vertical padding. */
+/* Canon primitive — structured list row. Shared signature for
+   institutional inscription units: fixed grid, hairline below, vertical
+   padding from the space scale, top-align. .doctrine-article inherits
+   and specialises the 96px/1fr/auto column geometry + 20px padding. */
+.structured-list-row,
 .doctrine-article {
   display: grid;
   grid-template-columns: 96px 1fr auto;
-  gap: 0 28px;
+  gap: 0 var(--space-4);
   padding: 20px 0;
   border-bottom: 1px solid var(--border-color-soft);
   align-items: flex-start;

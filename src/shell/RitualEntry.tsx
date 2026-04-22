@@ -90,7 +90,7 @@ export default function RitualEntry({ onDone }: Props) {
               <button key={id} onClick={() => setChamber(id)} style={{
                 background: active ? "var(--bg-elevated)" : "var(--bg-surface)",
                 border: `1px solid ${active ? "var(--accent-dim)" : "var(--border-soft)"}`,
-                borderRadius: "var(--radius)",
+                borderRadius: "var(--radius-control)",
                 padding: "14px 18px",
                 cursor: "pointer", textAlign: "left",
                 boxShadow: active ? "var(--shadow-soft)" : "none",
@@ -123,7 +123,7 @@ export default function RitualEntry({ onDone }: Props) {
               textTransform: "uppercase", padding: "12px 36px",
               cursor: ready ? "pointer" : "default",
               fontFamily: "var(--sans)",
-              borderRadius: "var(--radius)", transition: "all 0.15s",
+              borderRadius: "var(--radius-control)", transition: "all 0.15s",
             }}
           >
             {copy.enter}

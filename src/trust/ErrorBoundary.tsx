@@ -64,7 +64,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 padding: "10px 24px",
                 cursor: "pointer",
                 fontFamily: "var(--mono)",
-                borderRadius: "var(--radius)",
+                borderRadius: "var(--radius-control)",
                 transition: "border-color 0.15s, color 0.15s",
               }}
               onMouseEnter={(e) => {
