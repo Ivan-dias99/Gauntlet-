@@ -1025,3 +1025,290 @@ textarea {
   border-color: color-mix(in oklab, var(--cc-warn) 35%, var(--border-subtle));
 }
 .spine-sync[data-sync-state="syncing"] .spine-sync-dot { animation: breathe 1.6s var(--ease-emph) infinite; }
+
+/* ——— Chamber shell primitives ———
+   Shared scaffolding for every chamber (Lab / Creation / Memory / School).
+   .chamber-shell  : full-height column root.
+   .chamber-head   : top strip — kicker row + border.
+   .chamber-body   : scrollable content area with horizontal breath.
+   data-pad="calm" : School's slightly taller vertical breath.
+   data-pad="dense": Memory's denser horizontal rhythm.
+   Authored so the mobile block below can tighten every chamber at once. */
+.chamber-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.chamber-head {
+  padding: 20px 40px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.chamber-body {
+  flex: 1;
+  overflow: auto;
+  padding: 24px clamp(20px, 5vw, 64px);
+}
+.chamber-body[data-pad="calm"] {
+  padding: calc(32px * var(--density, 1)) clamp(20px, 5vw, 64px);
+}
+.chamber-body[data-pad="dense"] {
+  padding: calc(24px * var(--density, 1)) calc(40px * var(--density, 1));
+}
+
+/* ——— Canon ribbon primitives ———
+   Main app header. Desktop-identical to the previous inline scaffold; exists
+   so the mobile block can tighten without fighting inline style specificity. */
+.canon-ribbon {
+  height: 56px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding-left: 32px;
+  padding-right: 24px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  z-index: 10;
+}
+.canon-ribbon-brand {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  margin-right: 48px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.canon-ribbon-brand-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ember);
+  display: inline-block;
+  box-shadow: var(--glow-ember-sm);
+}
+.canon-ribbon-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.canon-ribbon-tabs::-webkit-scrollbar { display: none; }
+.canon-ribbon-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* ——— Mobile density layer ———
+   One breakpoint. Rescales the spacing + display type scales so every class
+   using tokens tightens in unison, then layers targeted overrides onto the
+   shell + chamber + flagship primitives that still carry fixed-px padding.
+   Authored ≤640px: phones + narrow tablet portrait. */
+@media (max-width: 640px) {
+  :root {
+    /* Primary rhythm scale — shrinks the 24/32/48/64/96 desktop steps
+       to a denser 18/22/32/44/64 mobile cadence. --sp-1..4 left alone:
+       already tight (4/8/12/16), shrinking would cramp. */
+    --sp-5: 18px;
+    --sp-6: 22px;
+    --sp-7: 32px;
+    --sp-8: 44px;
+    --sp-9: 64px;
+    --sp-10: 84px;
+
+    /* Display type — hero-class sizes lose their desktop scale so they
+       don't devour small viewports. Body (--t-body: 14px) stays. */
+    --t-display: 26px;
+    --t-stat: 22px;
+    --t-serif: 17px;
+  }
+
+  /* Chamber shells — primary sparsity blocker on mobile was the fixed
+     desktop padding on every chamber root. All four now tighten at once. */
+  .chamber-head {
+    padding: 14px 16px 10px;
+  }
+  .chamber-body {
+    padding: 16px 14px;
+  }
+  .chamber-body[data-pad="calm"] {
+    padding: calc(20px * var(--density, 1)) 14px;
+  }
+  .chamber-body[data-pad="dense"] {
+    padding: calc(16px * var(--density, 1)) 14px;
+  }
+
+  /* Canon ribbon — brand/tabs/right cluster all tighten; horizontal padding
+     drops from 32/24 to 12/10 so the whole ribbon survives 375px portrait
+     without overflow. Brand margin collapses so the tab row doesn't push
+     off-screen. */
+  .canon-ribbon {
+    height: 52px;
+    padding-left: 12px;
+    padding-right: 10px;
+  }
+  .canon-ribbon-brand {
+    font-size: 17px;
+    margin-right: 12px;
+  }
+  .canon-ribbon-right {
+    gap: 8px;
+  }
+  .canon-ribbon-right .vbar { display: none; }
+  .canon-ribbon-right .btn-chip {
+    padding: 6px 9px;
+    letter-spacing: 0.1em;
+  }
+  .canon-ribbon-right .btn-icon {
+    width: 28px;
+    height: 28px;
+  }
+  .canon-ribbon-right .btn[data-variant="mission"] {
+    max-width: 160px;
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+  .canon-ribbon-right .spine-sync {
+    padding: 2px 6px;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  /* Flagship surface — full-elevation shadow reads as floating air on
+     mobile. Demote to the hairline system; the content still carries
+     the weight. */
+  .surface-flagship {
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Creation exec panel (flagship) — head/body/foot paddings trim so the
+     tool trace region keeps its proportions without eating the viewport. */
+  .xc-exec {
+    margin-bottom: var(--sp-4);
+  }
+  .xc-exec-head {
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .xc-exec-body {
+    padding: var(--sp-3) var(--sp-3);
+  }
+  .xc-exec-answer {
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  /* Dropdown panel — already bounded by min(360px, 100vw - 32px); shrink
+     the min + rows so it reads as a proper mobile menu, not a cramped
+     desktop dropdown. */
+  .dropdown-panel {
+    min-width: 220px;
+  }
+  .dropdown-item {
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .dropdown-item-title {
+    font-size: 12px;
+  }
+
+  /* Dormant + empty + error primitives — the 14px 18px / 560px-cap was
+     right for desktop breathing but leaves mobile looking rigid and
+     underauthored. */
+  [data-dormant-panel] {
+    padding: 11px 14px;
+    gap: 6px;
+    max-width: 100%;
+  }
+
+  /* Memory telemetry headline — its 20px italic serif is too grand at
+     narrow widths; pulls the whole Memory scan path too tall. */
+  .memory-telemetry-head {
+    font-size: 16px;
+    margin: 6px 0 12px;
+  }
+
+  /* Landing chamber columns — 32/24 padding on a 375px column is
+     empty-luxury; tighten so the vertical rhythm stacks densely. */
+  .vl-chamber {
+    padding: 20px 16px;
+  }
+  .vl-chamber-tag {
+    margin-bottom: 12px;
+  }
+
+  /* Vision landing mission rows — 18px vertical pad and 24px grid gap
+     were composed for wide screens; compress so a stack of four missions
+     reads as a list, not as four separate scroll screens. */
+  .visionMission {
+    grid-template-columns: 28px 1fr auto;
+    gap: 0 14px;
+    padding: 12px 0;
+  }
+  .visionMission:hover {
+    padding-left: 6px;
+  }
+  .visionMission .vmT {
+    font-size: 17px;
+  }
+
+  /* Pill-class controls — landing CTAs dominate the viewport at 16/28px
+     pad; drop to a phone-native size without losing the ceremonial font. */
+  .visionPrimary,
+  .visionGhost {
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    padding: 13px 20px;
+  }
+  .landingPill {
+    padding: 7px 14px;
+  }
+
+  /* Default .btn / .tab — tighten the interaction primitives that every
+     chamber inherits. */
+  .btn {
+    padding: 5px 11px;
+    font-size: 12px;
+  }
+  .tab {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+/* ——— Ultra-narrow safety (≤380px — iPhone SE class) ———
+   Second stepdown for the truly tight viewport: the ribbon must survive
+   even when the mission pill is present alongside the four chamber tabs. */
+@media (max-width: 380px) {
+  .canon-ribbon {
+    padding-left: 10px;
+    padding-right: 8px;
+  }
+  .canon-ribbon-brand {
+    margin-right: 8px;
+    font-size: 15px;
+  }
+  .canon-ribbon-right {
+    gap: 6px;
+  }
+  .canon-ribbon-right .btn[data-variant="mission"] {
+    max-width: 120px;
+  }
+  .chamber-head {
+    padding: 12px 12px 8px;
+  }
+  .chamber-body {
+    padding: 14px 12px;
+  }
+  .chamber-body[data-pad="calm"] {
+    padding: calc(16px * var(--density, 1)) 12px;
+  }
+  .chamber-body[data-pad="dense"] {
+    padding: calc(14px * var(--density, 1)) 12px;
+  }
+}

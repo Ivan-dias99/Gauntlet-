@@ -55,50 +55,19 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
   const themeLabel = theme === "dark" ? "●" : theme === "light" ? "○" : "◐";
 
   return (
-    <header
-      style={{
-        height: 56,
-        background: "var(--bg-surface)",
-        borderBottom: "1px solid var(--border-subtle)",
-        display: "flex",
-        alignItems: "center",
-        paddingLeft: 32,
-        paddingRight: 24,
-        flexShrink: 0,
-        boxShadow: "var(--shadow-sm)",
-        position: "relative",
-        zIndex: 10,
-      }}
-    >
+    <header className="canon-ribbon">
       <button
         onClick={onHome}
         disabled={!onHome}
         title={onHome ? copy.homeTitle : undefined}
-        className="btn-ghost"
-        style={{
-          fontFamily: "'Fraunces', Georgia, serif",
-          fontSize: 20,
-          fontWeight: 400,
-          letterSpacing: "-0.02em",
-          marginRight: 48,
-          cursor: onHome ? "pointer" : "default",
-        }}
+        className="btn-ghost canon-ribbon-brand"
+        style={{ cursor: onHome ? "pointer" : "default" }}
       >
         Ruberra
-        <span
-          aria-hidden
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            background: "var(--ember)",
-            display: "inline-block",
-            boxShadow: "var(--glow-ember-sm)",
-          }}
-        />
+        <span aria-hidden className="canon-ribbon-brand-dot" />
       </button>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <div className="canon-ribbon-tabs">
         {CHAMBERS.map((c) => (
           <button
             key={c}
@@ -111,7 +80,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
         ))}
       </div>
 
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
+      <div className="canon-ribbon-right">
         {backend.mode === "mock" && (
           <span
             data-shell-mode="mock"

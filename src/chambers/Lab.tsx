@@ -218,10 +218,10 @@ export default function Lab() {
   }
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
+    <div className="chamber-shell">
 
       {/* Header */}
-      <div style={{ padding: "20px 40px 16px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "baseline", gap: 12 }}>
+      <div className="chamber-head" style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
         <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
           {copy.labKicker}
         </span>
@@ -290,7 +290,7 @@ export default function Lab() {
       </div>
 
       {/* Message thread */}
-      <div style={{ flex: 1, overflow: "auto", padding: "24px clamp(20px, 5vw, 64px)", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="chamber-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
         {notes.length === 0 && !pending && !error && (
           activeMission ? (
