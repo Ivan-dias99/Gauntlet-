@@ -298,12 +298,9 @@ export default function Memory() {
   }
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
+    <div className="chamber-shell">
 
-      <div style={{
-        padding: "20px 40px 14px",
-        borderBottom: "1px solid var(--border-subtle)",
-      }}>
+      <div className="chamber-head">
         <div style={{
           display: "flex", alignItems: "baseline", gap: 12,
         }}>
@@ -400,11 +397,13 @@ export default function Memory() {
         )}
       </div>
 
-      <div style={{
-        flex: 1, overflow: "auto",
-        padding: "calc(24px * var(--density, 1)) calc(40px * var(--density, 1))",
-        fontFamily: layout === "timeline" ? "var(--sans)" : "var(--mono)",
-      }}>
+      <div
+        className="chamber-body"
+        data-pad="dense"
+        style={{
+          fontFamily: layout === "timeline" ? "var(--sans)" : "var(--mono)",
+        }}
+      >
 
         {err && (offline ? (
           <DormantPanel

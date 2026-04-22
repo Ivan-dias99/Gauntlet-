@@ -76,11 +76,10 @@ export default function School() {
   }
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
+    <div className="chamber-shell">
       <div
+        className="chamber-head"
         style={{
-          padding: "20px 40px 16px",
-          borderBottom: "1px solid var(--border-subtle)",
           display: "flex",
           alignItems: "baseline",
           gap: 12,
@@ -119,10 +118,7 @@ export default function School() {
         )}
       </div>
 
-      <div style={{
-        flex: 1, overflow: "auto",
-        padding: "calc(32px * var(--density, 1)) clamp(20px, 5vw, 64px)",
-      }}>
+      <div className="chamber-body" data-pad="calm">
 
         {/* Governance status panel */}
         {isGoverning && (

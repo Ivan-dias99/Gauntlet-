@@ -439,11 +439,10 @@ export default function Creation() {
     ((done !== null) || err !== null || activeTask?.state === "blocked" || staleRunning);
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
+    <div className="chamber-shell">
       <div
+        className="chamber-head"
         style={{
-          padding: "20px 40px 16px",
-          borderBottom: "1px solid var(--border-subtle)",
           display: "flex",
           flexDirection: "column",
           gap: 8,
@@ -598,11 +597,7 @@ export default function Creation() {
 
       <div
         ref={outRef}
-        style={{
-          flex: 1,
-          overflow: "auto",
-          padding: "24px clamp(20px, 5vw, 64px)",
-        }}
+        className="chamber-body"
       >
         {activeMission && (
           <WorkbenchCard
