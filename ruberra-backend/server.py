@@ -125,6 +125,24 @@ app.add_middleware(
 
 # ── Endpoints ───────────────────────────────────────────────────────────────
 
+def _error_envelope(kind: str, exc: BaseException) -> dict:
+    """Typed error body — `{error, reason, message}`. One shape across all endpoints."""
+    return {
+        "error": kind,
+        "reason": type(exc).__name__,
+        "message": str(exc),
+    }
+
+
+def _engine_unavailable_envelope() -> dict:
+    """Typed body for the pre-call readiness gate — same shape as /health/ready reasons."""
+    return {
+        "error": "engine_not_initialized",
+        "reason": "EngineNotInitialized",
+        "message": "Engine not initialized",
+    }
+
+
 def _collect_load_errors() -> list[dict]:
     """Per-store load errors as visible to /health and /diagnostics."""
     out: list[dict] = []
@@ -205,17 +223,14 @@ async def ask_ruberra(query: RuberraQuery):
     4. Return answer (high confidence) or refusal (low confidence)
     """
     if not engine:
-        raise HTTPException(status_code=503, detail="Engine not initialized")
-    
+        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
+
     try:
         response = await engine.process_query(query)
         return response
     except Exception as e:
         logger.error(f"Engine error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal engine error: {str(e)}",
-        )
+        raise HTTPException(status_code=500, detail=_error_envelope("engine_error", e))
 
 
 @app.post("/dev")
@@ -228,13 +243,13 @@ async def ask_ruberra_dev(query: RuberraQuery):
     response includes the final answer plus the full tool-call trace.
     """
     if not engine:
-        raise HTTPException(status_code=503, detail="Engine not initialized")
+        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
     try:
         agent_response = await engine.process_dev_query(query)
         return agent_response.to_dict()
     except Exception as e:
         logger.error(f"Agent error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Agent error: {e}")
+        raise HTTPException(status_code=500, detail=_error_envelope("agent_error", e))
 
 
 @app.post("/route/stream")
@@ -245,7 +260,7 @@ async def ask_ruberra_auto_stream(query: RuberraQuery):
     (``triad_done``, ``judge_done``, ...) and finally ``done``.
     """
     if not engine:
-        raise HTTPException(status_code=503, detail="Engine not initialized")
+        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
 
     async def event_source():
         try:
@@ -253,7 +268,7 @@ async def ask_ruberra_auto_stream(query: RuberraQuery):
                 yield f"data: {_json.dumps(event)}\n\n"
         except Exception as e:
             logger.error(f"Route stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('router_error', e)})}\n\n"
 
     return StreamingResponse(
         event_source(),
@@ -273,7 +288,7 @@ async def ask_ruberra_dev_stream(query: RuberraQuery):
     ``done`` (final). The run is recorded once ``done`` fires.
     """
     if not engine:
-        raise HTTPException(status_code=503, detail="Engine not initialized")
+        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
 
     async def event_source():
         try:
@@ -281,7 +296,7 @@ async def ask_ruberra_dev_stream(query: RuberraQuery):
                 yield f"data: {_json.dumps(event)}\n\n"
         except Exception as e:
             logger.error(f"Agent stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('agent_error', e)})}\n\n"
 
     return StreamingResponse(
         event_source(),
@@ -303,7 +318,7 @@ async def ask_ruberra_crew_stream(query: RuberraQuery):
     ``role_done`` per specialist, ``critic_verdict`` and finally ``done``.
     """
     if not engine:
-        raise HTTPException(status_code=503, detail="Engine not initialized")
+        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
 
     async def event_source():
         try:
@@ -311,7 +326,7 @@ async def ask_ruberra_crew_stream(query: RuberraQuery):
                 yield f"data: {_json.dumps(event)}\n\n"
         except Exception as e:
             logger.error(f"Crew stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('crew_error', e)})}\n\n"
 
     return StreamingResponse(
         event_source(),
@@ -330,12 +345,12 @@ async def ask_ruberra_auto(query: RuberraQuery):
     go through the triad + judge. Response shape is ``{route, result}``.
     """
     if not engine:
-        raise HTTPException(status_code=503, detail="Engine not initialized")
+        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
     try:
         return await engine.process_auto(query)
     except Exception as e:
         logger.error(f"Router error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Router error: {e}")
+        raise HTTPException(status_code=500, detail=_error_envelope("router_error", e))
 
 
 
@@ -348,21 +363,21 @@ class BatchQuery(BaseModel):
 async def ask_ruberra_batch(batch: BatchQuery):
     """Submit up to 5 questions in batch."""
     if not engine:
-        raise HTTPException(status_code=503, detail="Engine not initialized")
-    
+        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
+
     import asyncio
     results = await asyncio.gather(
         *[engine.process_query(q) for q in batch.questions],
         return_exceptions=True,
     )
-    
+
     responses = []
     for r in results:
         if isinstance(r, Exception):
-            responses.append({"error": str(r)})
+            responses.append(_error_envelope("engine_error", r))
         else:
             responses.append(r.model_dump())
-    
+
     return {"results": responses}
 
 
@@ -428,7 +443,14 @@ async def get_run(run_id: str):
     """Fetch a single run record by id."""
     record = await run_store.get(run_id)
     if not record:
-        raise HTTPException(status_code=404, detail="run not found")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "run_not_found",
+                "reason": "KeyError",
+                "message": f"run {run_id} not found",
+            },
+        )
     return record.model_dump()
 
 
@@ -451,10 +473,7 @@ async def put_spine(snapshot: SpineSnapshot):
         logger.error("Spine persist failed: %s", e, exc_info=True)
         raise HTTPException(
             status_code=503,
-            detail={
-                "error": "spine_persist_failed",
-                "reason": f"{type(e).__name__}: {e}",
-            },
+            detail=_error_envelope("spine_persist_failed", e),
         )
 
 
