@@ -42,6 +42,65 @@ export function isBackendUnreachable(err: unknown): err is BackendUnreachableErr
   return err instanceof BackendUnreachableError;
 }
 
+// Backend error envelope — every 4xx/5xx body from the Python backend has
+// been normalised (T076) to `{error, reason, message}`. FastAPI wraps that
+// under a top-level `detail` key, so the on-the-wire shape is:
+//   { "detail": { "error": "engine_error", "reason": "RuntimeError", "message": "..." } }
+// Stream error events carry the same three fields inline alongside
+// `type: "error"`. Callers that want typed failure handling should
+// discriminate on `error` rather than regex the message.
+export interface BackendErrorEnvelope {
+  error: string;
+  reason: string;
+  message: string;
+}
+
+function looksLikeEnvelope(x: unknown): x is BackendErrorEnvelope {
+  return (
+    typeof x === "object" &&
+    x !== null &&
+    typeof (x as Record<string, unknown>).error === "string" &&
+    typeof (x as Record<string, unknown>).reason === "string" &&
+    typeof (x as Record<string, unknown>).message === "string"
+  );
+}
+
+export async function parseBackendError(
+  res: Response,
+): Promise<BackendErrorEnvelope | null> {
+  const text = await res.clone().text();
+  if (!text) return null;
+  try {
+    const body = JSON.parse(text) as unknown;
+    // FastAPI HTTPException.detail wraps the dict we control
+    if (typeof body === "object" && body !== null && "detail" in body) {
+      const d = (body as { detail: unknown }).detail;
+      if (looksLikeEnvelope(d)) return d;
+    }
+    // Inline envelope (streams, /ask/batch per-item)
+    if (looksLikeEnvelope(body)) return body;
+  } catch {
+    // Non-JSON body — fall through
+  }
+  return null;
+}
+
+export class BackendError extends Error {
+  readonly kind = "backend_error" as const;
+  readonly status: number;
+  readonly envelope: BackendErrorEnvelope | null;
+  constructor(status: number, envelope: BackendErrorEnvelope | null, fallback: string) {
+    super(envelope ? `${envelope.error}: ${envelope.message}` : fallback);
+    this.name = "BackendError";
+    this.status = status;
+    this.envelope = envelope;
+  }
+}
+
+export function isBackendError(err: unknown): err is BackendError {
+  return err instanceof BackendError;
+}
+
 function unreachableFromResponse(res: Response): BackendUnreachableError | null {
   if (res.headers.get(UNREACHABLE_HEADER) === UNREACHABLE_VALUE) {
     return new BackendUnreachableError(`edge:${res.status}`);

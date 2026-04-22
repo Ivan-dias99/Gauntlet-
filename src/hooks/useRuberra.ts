@@ -1,5 +1,11 @@
 import { useState, useCallback } from "react";
-import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
+import {
+  ruberraFetch,
+  isBackendUnreachable,
+  parseBackendError,
+  BackendError,
+  type BackendErrorEnvelope,
+} from "../lib/ruberraApi";
 
 // Client for the Python backend (ruberra-backend/) via the /api/ruberra
 // proxy.
@@ -37,7 +43,7 @@ export type AgentEvent =
       terminated_early: boolean;
       termination_reason: string | null;
     }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; error?: string; reason?: string };
 
 export type CrewRole = "planner" | "researcher" | "coder" | "critic";
 
@@ -81,7 +87,7 @@ export type CrewEvent =
       processing_time_ms: number;
       accepted: boolean;
     }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; error?: string; reason?: string };
 
 export type RouteEvent =
   | { type: "route"; path: "agent" | "triad" }
@@ -111,18 +117,20 @@ export type RouteEvent =
   | { type: "assistant_text"; text: string; iteration: number }
   | { type: "tool_use"; id: string; name: string; input: unknown; iteration: number }
   | { type: "tool_result"; id: string; ok: boolean; preview: string; iteration: number }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; error?: string; reason?: string };
 
 type Route = "route" | "dev" | "ask";
 
 export function useRuberra() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorEnvelope, setErrorEnvelope] = useState<BackendErrorEnvelope | null>(null);
   const [unreachable, setUnreachable] = useState(false);
 
   const call = useCallback(async (route: Route, body: RuberraQueryBody) => {
     setPending(true);
     setError(null);
+    setErrorEnvelope(null);
     setUnreachable(false);
     try {
       const res = await ruberraFetch(route, {
@@ -131,8 +139,12 @@ export function useRuberra() {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`ruberra ${route} ${res.status}: ${text.slice(0, 200)}`);
+        const envelope = await parseBackendError(res);
+        throw new BackendError(
+          res.status,
+          envelope,
+          `ruberra ${route} ${res.status}`,
+        );
       }
       return await res.json();
     } catch (e) {
@@ -140,6 +152,9 @@ export function useRuberra() {
         setUnreachable(true);
         setError(e.message);
         throw e;
+      }
+      if (e instanceof BackendError) {
+        setErrorEnvelope(e.envelope);
       }
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
@@ -157,6 +172,7 @@ export function useRuberra() {
   ) => {
     setPending(true);
     setError(null);
+    setErrorEnvelope(null);
     setUnreachable(false);
     try {
       const res = await ruberraFetch(path, {
@@ -166,8 +182,8 @@ export function useRuberra() {
         signal,
       });
       if (!res.ok || !res.body) {
-        const text = res.body ? await res.text() : "";
-        throw new Error(`ruberra ${path} ${res.status}: ${text.slice(0, 200)}`);
+        const envelope = res.body ? await parseBackendError(res) : null;
+        throw new BackendError(res.status, envelope, `ruberra ${path} ${res.status}`);
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -198,6 +214,17 @@ export function useRuberra() {
         onEvent({ type: "error", message: e.message } as E);
         return;
       }
+      if (e instanceof BackendError) {
+        setErrorEnvelope(e.envelope);
+        setError(e.message);
+        onEvent({
+          type: "error",
+          message: e.message,
+          error: e.envelope?.error,
+          reason: e.envelope?.reason,
+        } as E);
+        return;
+      }
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
       onEvent({ type: "error", message: msg } as E);
@@ -224,5 +251,14 @@ export function useRuberra() {
     [openStream],
   );
 
-  return { call, streamDev, streamRoute, streamCrew, pending, error, unreachable };
+  return {
+    call,
+    streamDev,
+    streamRoute,
+    streamCrew,
+    pending,
+    error,
+    errorEnvelope,
+    unreachable,
+  };
 }
