@@ -1,4 +1,7 @@
-import { SpineState, Mission, Chamber, Note, Task, TaskState, TaskSource, LogEvent, Principle, Artifact } from "./types";
+import {
+  SpineState, Mission, Chamber, Note, Task, TaskState, TaskSource,
+  LogEvent, Principle, Artifact, normalizeChamberKey,
+} from "./types";
 
 // Wave-0 rename: signal:spine:v1 is canonical. ruberra:spine:v1 is still
 // read as a silent legacy fallback so existing users keep their missions,
@@ -83,8 +86,11 @@ export function normalizeMission(m: unknown): Mission | null {
   return {
     id: r.id,
     title: r.title,
-    chamber: (["Lab", "Creation", "Memory", "School"].includes(r.chamber as string)
-      ? r.chamber : "Lab") as Mission["chamber"],
+    // Wave-1 silent migration: "Lab" → "insight", "Creation" → "terminal",
+    // "Memory" → "archive", "School" → "core". Unknown / malformed values
+    // collapse to "insight" (the old normalizer collapsed to "Lab", which
+    // is exactly what "insight" replaces).
+    chamber: normalizeChamberKey(r.chamber),
     status: r.status === "closed" ? "closed" : "active",
     createdAt: typeof r.createdAt === "number" ? r.createdAt : Date.now(),
     notes: Array.isArray(r.notes) ? r.notes.flatMap((n: unknown) => {

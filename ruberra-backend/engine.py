@@ -349,13 +349,34 @@ class RuberraEngine:
                 ),
             ))
 
-    async def process_auto(self, query: RuberraQuery):
+    # ── Routing helper (Wave 1) ────────────────────────────────────────────
+
+    @staticmethod
+    def _auto_route_agent(query: RuberraQuery) -> bool:
         """
-        Auto-router: dev-intent queries go through the agent loop; everything
-        else goes through the conservative triad + judge pipeline.
+        Wave-1 router. When the query carries an explicit ``chamber`` key,
+        the chamber profile's ``dispatch`` decides (triad vs agent). When
+        ``chamber`` is absent, fall back to the legacy ``is_dev_intent``
+        heuristic so pre-Wave-1 clients behave exactly as before.
+
+        The SSE envelope is intentionally unchanged — only the decision
+        function is chamber-aware. Wave 5 extends the envelope with typed
+        chamber fields and profile-driven prompts / tool allowlists.
         """
         from agent import AgentOrchestrator
-        if AgentOrchestrator.is_dev_intent(query.question):
+        from chambers.profiles import get_profile
+        profile = get_profile(query.chamber)
+        if profile is not None:
+            return profile.dispatch == "agent"
+        return AgentOrchestrator.is_dev_intent(query.question)
+
+    async def process_auto(self, query: RuberraQuery):
+        """
+        Auto-router: if the query carries a chamber, profile decides;
+        otherwise dev-intent queries go through the agent loop and the
+        rest through the conservative triad + judge pipeline.
+        """
+        if self._auto_route_agent(query):
             result = await self.process_dev_query(query)
             return {"route": "agent", "result": result.to_dict()}
         result = await self.process_query(query)
@@ -366,8 +387,7 @@ class RuberraEngine:
     ) -> AsyncIterator[dict[str, Any]]:
         """Auto-router streaming variant. Emits a ``route`` event first, then
         streams agent or triad events under a unified envelope."""
-        from agent import AgentOrchestrator
-        if AgentOrchestrator.is_dev_intent(query.question):
+        if self._auto_route_agent(query):
             yield {"type": "route", "path": "agent"}
             async for event in self.process_dev_query_streaming(query):
                 yield event

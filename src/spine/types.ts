@@ -1,4 +1,36 @@
-export type Chamber = "Lab" | "Creation" | "Memory" | "School";
+// Wave-1 unified chamber taxonomy (frontend + backend).
+// Five canonical keys. Legacy values "Lab" | "Creation" | "Memory" |
+// "School" are silently normalized at the store / snapshot read boundary
+// (see normalizeChamberKey below and store.ts). Writes always emit the
+// new keys. Surface has no visual tab in Wave 1 (CanonRibbon excludes it)
+// and gets its real composition in Wave 3.
+export type Chamber = "insight" | "surface" | "terminal" | "archive" | "core";
+
+// Legacy chamber names persisted before Wave 1. Kept as a type so the
+// read-path normalizer can discriminate without stringly-typed checks.
+export type LegacyChamber = "Lab" | "Creation" | "Memory" | "School";
+
+const LEGACY_TO_NEW: Record<LegacyChamber, Chamber> = {
+  Lab: "insight",
+  Creation: "terminal",
+  Memory: "archive",
+  School: "core",
+};
+
+const VALID_NEW_CHAMBERS: ReadonlySet<Chamber> = new Set([
+  "insight", "surface", "terminal", "archive", "core",
+]);
+
+// Accept any input (unknown / string / legacy / new) and return a valid
+// Chamber. Unknown / malformed values collapse to "insight" — the old
+// normalizer did the same with "Lab", which is what "insight" replaces.
+export function normalizeChamberKey(raw: unknown): Chamber {
+  if (typeof raw !== "string") return "insight";
+  if (VALID_NEW_CHAMBERS.has(raw as Chamber)) return raw as Chamber;
+  const legacy = LEGACY_TO_NEW[raw as LegacyChamber];
+  return legacy ?? "insight";
+}
+
 export type MissionStatus = "active" | "closed";
 export type TaskState = "open" | "running" | "done" | "blocked";
 export type TaskSource = "manual" | "lab" | "crew" | "other";

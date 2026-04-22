@@ -147,7 +147,7 @@ export default function TweaksPanel({ open, onClose, chamber }: Props) {
         onChange={(v) => set("lang", v)}
       />
 
-      {chamber === "Creation" && (
+      {chamber === "terminal" && (
         <Segmented
           label="Creation layout"
           value={values.creationLayout}
@@ -158,7 +158,7 @@ export default function TweaksPanel({ open, onClose, chamber }: Props) {
           onChange={(v) => set("creationLayout", v)}
         />
       )}
-      {chamber === "Memory" && (
+      {chamber === "archive" && (
         <Segmented
           label="Memory layout"
           value={values.memoryLayout}
@@ -169,7 +169,7 @@ export default function TweaksPanel({ open, onClose, chamber }: Props) {
           onChange={(v) => set("memoryLayout", v)}
         />
       )}
-      {chamber === "School" && (
+      {chamber === "core" && (
         <Segmented
           label="School layout"
           value={values.schoolLayout}

@@ -103,8 +103,13 @@ export default function Lab() {
     // Wave-8 compatibility window so any listener wired to either key
     // keeps firing. Shell.tsx listens to both; tests or external listeners
     // written against the old name are not silently broken.
-    window.dispatchEvent(new CustomEvent("signal:chamber", { detail: "Creation" }));
-    window.dispatchEvent(new CustomEvent("ruberra:chamber", { detail: "Creation" }));
+    //
+    // Detail value flipped to the Wave-1 canonical key "terminal". The
+    // legacy event dispatch keeps the new detail value — Shell's listener
+    // normalizes through the Chamber type either way, and no external
+    // listener in this repo reads the detail expecting the old string.
+    window.dispatchEvent(new CustomEvent("signal:chamber", { detail: "terminal" }));
+    window.dispatchEvent(new CustomEvent("ruberra:chamber", { detail: "terminal" }));
   }
 
   // Refs capture streaming metadata without stale closure issues

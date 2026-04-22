@@ -13,6 +13,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from chambers.profiles import ChamberKey
+
 
 # ── Enums ───────────────────────────────────────────────────────────────────
 
@@ -50,6 +52,16 @@ class RuberraQuery(BaseModel):
         None,
         max_length=64,
         description="User-defined doctrine principles appended to the system prompt",
+    )
+    # Wave-1 addition — optional canonical chamber key. When present the
+    # auto-router dispatches by chamber profile instead of is_dev_intent.
+    # Kept optional so pre-Wave-1 clients keep working unchanged; becomes
+    # mandatory in Wave 5 once profile behavior diverges.
+    chamber: Optional[ChamberKey] = Field(
+        None,
+        description="Optional chamber key (insight|surface|terminal|archive|core). "
+                    "When set, auto-routing uses the chamber profile; otherwise "
+                    "falls back to the is_dev_intent heuristic.",
     )
 
 

@@ -10,12 +10,19 @@ import Creation from "../chambers/Creation";
 import Memory from "../chambers/Memory";
 import School from "../chambers/School";
 
+// Wave-1: internal keys flipped to the canonical five. Visual labels
+// still come from copy.chambers[key].label (preserved for Wave 6). The
+// underlying chamber components (Lab, Creation, Memory, School) are
+// decomposed / renamed in Wave 4 — not in this wave. Surface has no
+// rendered chamber yet (W3); falling through to Insight keeps the shell
+// stable if a migrated snapshot ever carries it before the stub lands.
 function renderChamber(c: Chamber) {
   switch (c) {
-    case "Lab":      return <Lab />;
-    case "Creation": return <Creation />;
-    case "Memory":   return <Memory />;
-    case "School":   return <School />;
+    case "insight":  return <Lab />;
+    case "terminal": return <Creation />;
+    case "archive":  return <Memory />;
+    case "core":     return <School />;
+    case "surface":  return <Lab />;
   }
 }
 
@@ -39,7 +46,7 @@ function readLanded(): boolean {
 
 export default function Shell() {
   const { state, activeMission } = useSpine();
-  const [activeTab, setActiveTab] = useState<Chamber>(activeMission?.chamber ?? "Lab");
+  const [activeTab, setActiveTab] = useState<Chamber>(activeMission?.chamber ?? "insight");
   const [showRitual, setShowRitual] = useState(false);
   const [landed, setLanded] = useState<boolean>(() => readLanded());
   const [tweaksOpen, setTweaksOpen] = useState(false);

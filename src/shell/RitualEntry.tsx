@@ -3,7 +3,9 @@ import { Chamber } from "../spine/types";
 import { useSpine } from "../spine/SpineContext";
 import { useCopy } from "../i18n/copy";
 
-const ORDER: Chamber[] = ["Lab", "Creation", "Memory", "School"];
+// Wave-1 key flip. Order mirrors the ribbon (no Surface tab in ritual
+// creation for now — Surface is introduced as first-class in Wave 3).
+const ORDER: Chamber[] = ["insight", "terminal", "archive", "core"];
 
 interface Props {
   onDone?: () => void;

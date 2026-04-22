@@ -6,7 +6,11 @@ import { useSpine } from "../spine/SpineContext";
 import { useBackendStatus } from "../hooks/useBackendStatus";
 import { useCopy } from "../i18n/copy";
 
-export const CHAMBERS: Chamber[] = ["Lab", "Creation", "Memory", "School"];
+// Wave-1: internal keys flip to canonical taxonomy. Surface is not in
+// the visual ribbon until Wave 2 (which adds the 5-tab surface slot
+// alongside the shell demolition). Display labels still come from
+// copy.chambers[c].label and have not moved.
+export const CHAMBERS: Chamber[] = ["insight", "terminal", "archive", "core"];
 
 function formatAgo(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
