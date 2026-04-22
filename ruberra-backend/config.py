@@ -34,7 +34,7 @@ TRIAD_COUNT: int = 3
 
 # ── Server ──────────────────────────────────────────────────────────────────
 SERVER_HOST: str = os.environ.get("RUBERRA_HOST", "127.0.0.1")
-SERVER_PORT: int = int(os.environ.get("RUBERRA_PORT", "3002"))
+SERVER_PORT: int = int(os.environ.get("PORT") or os.environ.get("RUBERRA_PORT") or "8080")
 
 # RUBERRA_ORIGIN accepts a single origin or a comma-separated list, so one
 # backend can serve production, preview deploys, and local dev at once.
