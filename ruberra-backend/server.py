@@ -111,15 +111,72 @@ app.add_middleware(
 
 # ── Endpoints ───────────────────────────────────────────────────────────────
 
+def _collect_load_errors() -> list[dict]:
+    """Per-store load errors as visible to /health and /diagnostics."""
+    out: list[dict] = []
+    for name, store_attr in (
+        ("spine", spine_store._last_load_error),
+        ("runs", run_store._last_load_error),
+        ("memory", failure_memory._last_load_error),
+    ):
+        if store_attr:
+            out.append({"store": name, "error": store_attr})
+    return out
+
+
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """
+    Liveness probe. Always returns 200 as long as the HTTP layer is up —
+    Railway / Vercel need a stable yes/no to keep routing traffic, and
+    flipping this to 5xx on a degraded engine would trigger a
+    crash-restart loop that never resolves.
+
+    The body carries the real signal: engine readiness, run mode
+    (mock vs real), and whether any store booted on a quarantined
+    sidecar. Callers that need a hard yes/no for degraded state must
+    use `/health/ready`.
+    """
     return {
         "status": "operational",
         "system": "Ruberra V1",
         "doctrine": "active",
         "engine": "ready" if engine else "not_initialized",
+        "mode": "mock" if RUBERRA_MOCK else "real",
+        "persistence_degraded": bool(_collect_load_errors()),
     }
+
+
+@app.get("/health/ready")
+async def health_ready():
+    """
+    Readiness probe. Returns 503 if the system is degraded in any way
+    that would make its answers untrustworthy — engine uninitialised,
+    running in mock mode, or a store booted on a quarantined file.
+
+    Never flipped to the Railway healthcheck path: `/health` keeps the
+    deploy alive; `/health/ready` is the honest yes/no for clients and
+    operators.
+    """
+    load_errors = _collect_load_errors()
+    reasons: list[str] = []
+    if not engine:
+        reasons.append("engine_not_initialized")
+    if RUBERRA_MOCK:
+        reasons.append("mock_mode")
+    if load_errors:
+        reasons.append("persistence_degraded")
+
+    body = {
+        "ready": not reasons,
+        "reasons": reasons,
+        "engine": "ready" if engine else "not_initialized",
+        "mode": "mock" if RUBERRA_MOCK else "real",
+        "load_errors": load_errors,
+    }
+    if reasons:
+        raise HTTPException(status_code=503, detail=body)
+    return body
 
 
 @app.post("/ask", response_model=RuberraResponse)
