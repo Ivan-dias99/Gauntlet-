@@ -3,6 +3,7 @@ import { Chamber } from "../spine/types";
 import { formatPulse } from "../spine/pulse";
 import { useTheme } from "../theme/ThemeContext";
 import { useSpine } from "../spine/SpineContext";
+import { useBackendStatus } from "../hooks/useBackendStatus";
 import { useCopy } from "../i18n/copy";
 
 export const CHAMBERS: Chamber[] = ["Lab", "Creation", "Memory", "School"];
@@ -29,17 +30,25 @@ interface Props {
 export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks }: Props) {
   const { theme, toggle } = useTheme();
   const { state, activeMission, switchMission, syncState, syncError, hydratedFromBackend } = useSpine();
+  const backend = useBackendStatus();
   const copy = useCopy();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    function handle(e: MouseEvent) {
+    function handleClick(e: MouseEvent) {
       if (!dropdownRef.current?.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
   }, [open]);
 
   const missions = state.missions;
@@ -95,6 +104,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
             key={c}
             onClick={() => onSelect(c)}
             className={active === c ? "tab tab-active" : "tab"}
+            aria-current={active === c ? "page" : undefined}
           >
             {copy.chambers[c].label}
           </button>
@@ -102,6 +112,24 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
       </div>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
+        {backend.mode === "mock" && (
+          <span
+            data-shell-mode="mock"
+            title="Backend em modo simulado — toda a inteligência é canned"
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 9,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              color: "var(--cc-warn)",
+              padding: "2px 8px",
+              borderRadius: 999,
+              border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+            }}
+          >
+            mock
+          </span>
+        )}
         <span
           className="spine-sync"
           data-sync-state={syncState}
@@ -135,6 +163,8 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
               className="btn"
               data-variant="mission"
               title={copy.switchMission}
+              aria-haspopup="listbox"
+              aria-expanded={open}
             >
               {activeMission ? (() => {
                 const openTasks = activeMission.tasks.filter(

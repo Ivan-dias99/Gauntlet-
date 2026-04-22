@@ -745,11 +745,15 @@ textarea {
   top: calc(100% + var(--sp-2));
   right: 0;
   min-width: 260px;
+  /* Narrow-viewport guard: never widen past the viewport, never grow
+     taller than 70% of it. Scrolls inside if the mission list is long. */
+  max-width: min(360px, calc(100vw - 32px));
+  max-height: 70vh;
+  overflow-y: auto;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   box-shadow: var(--shadow-md);
-  overflow: hidden;
   z-index: 100;
 }
 .dropdown-header {
