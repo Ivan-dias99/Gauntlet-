@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useMemo } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRuberra, AgentEvent, CrewEvent, CrewRole, CrewPlanStep } from "../hooks/useRuberra";
+import { useBackendStatus } from "../hooks/useBackendStatus";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import { Artifact, Task, TaskState } from "../spine/types";
@@ -75,6 +76,7 @@ export default function Creation() {
     acceptArtifact, principles, logDoctrineApplied,
   } = useSpine();
   const { streamDev, streamCrew, pending, unreachable } = useRuberra();
+  const backend = useBackendStatus();
   const { values } = useTweaks();
   const copy = useCopy();
   const layout = values.creationLayout;
@@ -158,9 +160,22 @@ export default function Creation() {
         ]);
         break;
       case "tool_result":
-        setLiveTools((prev) =>
-          prev.map((t) => (t.id === ev.id ? { ...t, ok: ev.ok, preview: ev.preview } : t)),
-        );
+        setLiveTools((prev) => {
+          const hit = prev.findIndex((t) => t.id === ev.id);
+          // Frame reordering on the SSE wire is rare but possible. If the
+          // result arrived before its tool_use frame, a plain map() would
+          // silently swallow it — honesty-law violation. Insert a
+          // placeholder row instead so the user sees the orphan.
+          if (hit < 0) {
+            return [
+              ...prev,
+              { id: ev.id, name: "?", iteration: ev.iteration, ok: ev.ok, preview: ev.preview, role },
+            ];
+          }
+          const next = prev.slice();
+          next[hit] = { ...next[hit], ok: ev.ok, preview: ev.preview };
+          return next;
+        });
         break;
       case "done":
         setDone({
@@ -172,10 +187,18 @@ export default function Creation() {
           termination_reason: ev.termination_reason,
         });
         break;
-      case "error":
-        setErr(ev.message);
+      case "error": {
+        // Prefer the typed backend envelope fields (T076) over the raw
+        // message when available — "engine_error · triad timed out" tells
+        // the user more than "triad timed out" alone, and shields the UI
+        // from interpreting an exception string as a reason.
+        const tagged = ev.error
+          ? `${ev.error}${ev.reason ? ` · ${ev.reason}` : ""} — ${ev.message}`
+          : ev.message;
+        setErr(tagged);
         if (activeTaskIdRef.current) setTaskState(activeTaskIdRef.current, "blocked");
         break;
+      }
     }
   }
 
@@ -226,10 +249,18 @@ export default function Creation() {
         });
         setCrew((prev) => ({ ...prev, rolesRun: ev.roles_run, refinements: ev.refinements }));
         break;
-      case "error":
-        setErr(ev.message);
+      case "error": {
+        // Prefer the typed backend envelope fields (T076) over the raw
+        // message when available — "engine_error · triad timed out" tells
+        // the user more than "triad timed out" alone, and shields the UI
+        // from interpreting an exception string as a reason.
+        const tagged = ev.error
+          ? `${ev.error}${ev.reason ? ` · ${ev.reason}` : ""} — ${ev.message}`
+          : ev.message;
+        setErr(tagged);
         if (activeTaskIdRef.current) setTaskState(activeTaskIdRef.current, "blocked");
         break;
+      }
     }
   }
 
@@ -262,11 +293,23 @@ export default function Creation() {
     const ac = new AbortController();
     abortRef.current = ac;
 
+    // Backend caps: question 10000, context 5000, principles 64 (models.py
+    // RuberraQuery). Clamp before send so a valid user action never produces
+    // a silent 422 the chamber can't distinguish from an engine error.
+    const AGENT_PREFIX = "Task declared: ";
+    const questionBudget =
+      mode === "crew" ? 10000 : 10000 - AGENT_PREFIX.length;
+    const clampedV = v.length > questionBudget ? v.slice(0, questionBudget) : v;
+    const clampedPrinciples =
+      principles.length > 64
+        ? principles.slice(-64).map((p) => p.text)
+        : principles.map((p) => p.text);
+
     const body = {
-      question: mode === "crew" ? v : `Task declared: ${v}`,
+      question: mode === "crew" ? clampedV : `${AGENT_PREFIX}${clampedV}`,
       context: activeMission?.title,
       mission_id: activeMission?.id,
-      principles: principles.length ? principles.map((p) => p.text) : undefined,
+      principles: clampedPrinciples.length ? clampedPrinciples : undefined,
     };
 
     if (mode === "crew") {
@@ -422,6 +465,25 @@ export default function Creation() {
         <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
           {copy.creationTagline}
         </span>
+        {backend.mode === "mock" && (
+          <span
+            data-backend-mode="mock"
+            title="Backend em modo simulado — execuções são canned, não agentes reais"
+            style={{
+              fontSize: 9,
+              letterSpacing: 1.5,
+              color: "var(--cc-warn)",
+              fontFamily: "var(--mono)",
+              textTransform: "uppercase",
+              padding: "2px 7px",
+              border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+              borderRadius: 4,
+              lineHeight: 1.4,
+            }}
+          >
+            mock
+          </span>
+        )}
         {principles.length > 0 && (
           <span
             data-principles-in-context
@@ -769,7 +831,15 @@ export default function Creation() {
                   data-has-tools={liveTools.length > 0 ? "true" : undefined}
                 >
                   <span style={{ color: "var(--cc-prompt)" }}>⏺ </span>
-                  {done ? done.answer : liveText}
+                  {done
+                    ? (done.answer.trim()
+                        ? done.answer
+                        : (
+                          <span style={{ color: "var(--text-ghost)", fontStyle: "italic" }}>
+                            — sem resposta gerada —
+                          </span>
+                        ))
+                    : liveText}
                   {pending && <span className="cc-cursor working" />}
                 </div>
               )}
@@ -806,7 +876,6 @@ export default function Creation() {
 
         {err && (unreachable ? (
           <DormantPanel
-            title={copy.creationErrorTitle}
             detail={copy.dormantCreation}
             style={{ marginTop: 20, maxWidth: 820 }}
           />

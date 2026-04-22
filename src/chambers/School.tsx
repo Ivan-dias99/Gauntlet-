@@ -3,6 +3,7 @@ import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import EmptyState from "../shell/EmptyState";
+import DormantPanel from "../shell/DormantPanel";
 
 function toRoman(n: number): string {
   if (n <= 0) return "";
@@ -39,7 +40,7 @@ function normalizeForDedup(s: string): string {
 }
 
 export default function School() {
-  const { principles, addPrinciple, activeMission } = useSpine();
+  const { principles, addPrinciple, activeMission, syncState, hydratedFromBackend, syncError } = useSpine();
   const { values } = useTweaks();
   const copy = useCopy();
   const [input, setInput] = useState("");
@@ -155,6 +156,51 @@ export default function School() {
                   última inscrição <span style={{ color: "var(--text-muted)" }}>{relativeTime(lastInscribedAt, nowMs)}</span>
                 </span>
               )}
+              {/* Persistence honesty: the doctrine exists in browser state the
+                  moment a principle is inscribed, but the user must see whether
+                  the snapshot has actually reached the backend. */}
+              <span
+                data-doctrine-sync={syncState}
+                style={{
+                  color:
+                    syncState === "synced"
+                      ? "var(--cc-ok)"
+                      : syncState === "syncing"
+                      ? "var(--cc-info)"
+                      : "var(--cc-warn)",
+                }}
+              >
+                {syncState === "synced"
+                  ? "sincronizado"
+                  : syncState === "syncing"
+                  ? "a sincronizar…"
+                  : "local — backend não confirmou"}
+              </span>
+              {/* Load-truth: distinguish "doctrine confirmed by backend at boot"
+                  from "doctrine never reached the backend in this session". */}
+              {hydratedFromBackend === false && (
+                <span
+                  data-doctrine-load="local-only"
+                  style={{ color: "var(--cc-warn)" }}
+                >
+                  carregada da cache — backend não respondeu
+                </span>
+              )}
+              {/* Typed sync-error surface (T088). When the last push failed,
+                  show the backend's own reason rather than the opaque
+                  "unsynced" pill. */}
+              {syncError && (
+                <span
+                  data-doctrine-sync-error={syncError.kind}
+                  title={syncError.message}
+                  style={{ color: "var(--cc-warn)" }}
+                >
+                  motivo:{" "}
+                  {syncError.kind === "unreachable"
+                    ? "backend inacessível"
+                    : syncError.envelope?.error ?? "erro do backend"}
+                </span>
+              )}
             </div>
             {activeMission && (
               <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--border-subtle)", fontSize: 10, color: lastApplied ? "var(--cc-ok)" : "var(--text-ghost)", fontFamily: "var(--mono)", letterSpacing: 1, display: "flex", alignItems: "center", gap: 8 }}>
@@ -175,13 +221,24 @@ export default function School() {
         )}
 
         {principles.length === 0 && (
-          <EmptyState
-            glyph="§"
-            kicker={copy.schoolEmptyKicker}
-            body={copy.schoolEmpty}
-            hint={copy.schoolEmptyHint}
-            style={{ marginTop: "10vh" }}
-          />
+          // If hydration never reached the backend, the empty state could be
+          // an honest void OR a backend-down false-empty. Distinguish so the
+          // user doesn't waste time wondering why their inscribed doctrine is
+          // missing.
+          hydratedFromBackend === false ? (
+            <DormantPanel
+              detail="doutrina por carregar — backend não respondeu na hidratação. O que aparecer abaixo veio só da cache local."
+              style={{ marginTop: "10vh", marginLeft: "auto", marginRight: "auto" }}
+            />
+          ) : (
+            <EmptyState
+              glyph="§"
+              kicker={copy.schoolEmptyKicker}
+              body={copy.schoolEmpty}
+              hint={copy.schoolEmptyHint}
+              style={{ marginTop: "10vh" }}
+            />
+          )
         )}
 
         {layout === "tablets" ? (

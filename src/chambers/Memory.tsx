@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import ErrorPanel from "../shell/ErrorPanel";
 import DormantPanel from "../shell/DormantPanel";
-import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
+import EmptyState from "../shell/EmptyState";
+import {
+  ruberraFetch,
+  isBackendUnreachable,
+  parseBackendError,
+  BackendError,
+} from "../lib/ruberraApi";
+import { useBackendStatus } from "../hooks/useBackendStatus";
 import type { Artifact, Chamber } from "../spine/types";
 
 interface RunRecord {
@@ -52,12 +59,14 @@ const ROUTE_COLOR: Record<string, string> = {
 
 // Memory is a timeline of what happened; telling the user *where* each thing
 // happened turns a flat run list into governance story.
-const ROUTE_ORIGIN: Record<string, Chamber> = {
-  agent: "Lab",
-  dev:   "Creation",
+//
+// Backend reality (engine.py): only three values are ever written —
+// "agent", "crew", "triad". `agent` is ambiguous (Lab auto-router OR
+// Creation /dev) so we deliberately omit it instead of half-lying.
+// `crew` is Creation-only; `triad` is Lab-only.
+const ROUTE_ORIGIN: Partial<Record<string, Chamber>> = {
   crew:  "Creation",
-  triad: "School",
-  ask:   "Lab",
+  triad: "Lab",
 };
 
 function originFor(route: string): Chamber | null {
@@ -174,6 +183,7 @@ export default function Memory() {
   const { activeMission, principles } = useSpine();
   const { values } = useTweaks();
   const copy = useCopy();
+  const backend = useBackendStatus();
   const layout = values.memoryLayout;
   const missionArtifact = activeMission?.lastArtifact ?? null;
   const doctrineCount = principles.length;
@@ -209,45 +219,83 @@ export default function Memory() {
     byRoute: serverStats.by_route,
   } : fallbackStats;
 
+  // Pulled into a callback so the retry button can re-run it without waiting
+  // on a mission switch. The AbortController is owned by the caller so the
+  // useEffect cleanup can cancel in-flight work.
+  const loadMissionTelemetry = useCallback((missionId: string, signal: AbortSignal) => {
+    setRuns(null);
+    setServerStats(null);
+    setErr(null);
+    setOffline(false);
+    const mid = encodeURIComponent(missionId);
+    // Two independent fetches. A failed /runs/stats call must NOT prevent
+    // the run list from rendering — the chamber computes a fallback stats
+    // block from the run records (computeStats). allSettled keeps both
+    // surfaces honest.
+    return Promise.allSettled([
+      ruberraFetch(`/runs?mission_id=${mid}&limit=100`, { signal })
+        .then(async (r) => {
+          if (!r.ok) {
+            const env = await parseBackendError(r);
+            throw new BackendError(r.status, env, `runs ${r.status}`);
+          }
+          return (await r.json()) as RunsResponse;
+        }),
+      ruberraFetch(`/runs/stats?mission_id=${mid}`, { signal })
+        .then(async (r) => {
+          if (!r.ok) {
+            const env = await parseBackendError(r);
+            throw new BackendError(r.status, env, `stats ${r.status}`);
+          }
+          return (await r.json()) as ServerStats;
+        }),
+    ]).then(([runsRes, statsRes]) => {
+      // Prioritise reachability: if either rejected with unreachable, surface
+      // that single dormant state rather than a partial render.
+      const failures = [runsRes, statsRes].flatMap((r) =>
+        r.status === "rejected" ? [r.reason] : [],
+      );
+      const aborted = failures.some(
+        (e) => e instanceof DOMException && e.name === "AbortError",
+      );
+      if (aborted) return;
+      const unreachableHit = failures.find(isBackendUnreachable);
+      if (unreachableHit) {
+        setOffline(true);
+        setErr(unreachableHit.message);
+        return;
+      }
+
+      if (runsRes.status === "fulfilled") {
+        setRuns(runsRes.value.records);
+      } else {
+        const e = runsRes.reason as Error;
+        setErr(e instanceof Error ? e.message : String(e));
+      }
+      // Stats can fail silently — fallbackStats covers the visual.
+      // Surface only if there's no other error and we have no runs yet.
+      if (statsRes.status === "fulfilled") {
+        setServerStats(statsRes.value);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (!activeMission?.id) {
       setRuns([]);
       setServerStats(null);
       return;
     }
-    setRuns(null);
-    setServerStats(null);
-    setErr(null);
-    setOffline(false);
     const ac = new AbortController();
-    const mid = encodeURIComponent(activeMission.id);
-    Promise.all([
-      ruberraFetch(`/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
-        .then(async (r) => {
-          if (!r.ok) throw new Error(`runs ${r.status}`);
-          return (await r.json()) as RunsResponse;
-        }),
-      ruberraFetch(`/runs/stats?mission_id=${mid}`, { signal: ac.signal })
-        .then(async (r) => {
-          if (!r.ok) throw new Error(`stats ${r.status}`);
-          return (await r.json()) as ServerStats;
-        }),
-    ])
-      .then(([runsData, statsData]) => {
-        setRuns(runsData.records);
-        setServerStats(statsData);
-      })
-      .catch((e) => {
-        if (e.name === "AbortError") return;
-        if (isBackendUnreachable(e)) {
-          setOffline(true);
-          setErr(e.message);
-          return;
-        }
-        setErr(e.message ?? String(e));
-      });
+    loadMissionTelemetry(activeMission.id, ac.signal);
     return () => ac.abort();
-  }, [activeMission?.id]);
+  }, [activeMission?.id, loadMissionTelemetry]);
+
+  function retry() {
+    if (!activeMission?.id) return;
+    const ac = new AbortController();
+    loadMissionTelemetry(activeMission.id, ac.signal);
+  }
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
@@ -265,6 +313,25 @@ export default function Memory() {
           <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
             {copy.memorySubtitle}
           </span>
+          {backend.mode === "mock" && (
+            <span
+              data-backend-mode="mock"
+              title="Backend em modo simulado — runs registadas durante mock são canned"
+              style={{
+                fontSize: 9,
+                letterSpacing: 1.5,
+                color: "var(--cc-warn)",
+                fontFamily: "var(--mono)",
+                textTransform: "uppercase",
+                padding: "2px 7px",
+                border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+                borderRadius: 4,
+                lineHeight: 1.4,
+              }}
+            >
+              mock
+            </span>
+          )}
           {stats.total > 0 && (
             <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
               {renderRouteBreakdown(stats.byRoute)}
@@ -341,8 +408,27 @@ export default function Memory() {
 
         {err && (offline ? (
           <DormantPanel
-            title={copy.memoryTelemetryTitle}
             detail={copy.dormantMemory}
+            action={
+              <button
+                onClick={retry}
+                data-memory-retry
+                style={{
+                  background: "none",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-secondary)",
+                  fontFamily: "var(--mono)",
+                  fontSize: 10,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  padding: "4px 12px",
+                  borderRadius: 999,
+                  cursor: "pointer",
+                }}
+              >
+                tentar novamente
+              </button>
+            }
           />
         ) : (
           <ErrorPanel
@@ -353,13 +439,39 @@ export default function Memory() {
         ))}
 
         {runs === null && !err && (
-          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>{copy.memoryLoading}</div>
+          <div
+            data-memory-loading
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+              letterSpacing: 1.5,
+              color: "var(--text-ghost)",
+            }}
+          >
+            <span
+              className="breathe"
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "var(--cc-info)",
+                boxShadow: "0 0 0 3px color-mix(in oklab, var(--cc-info) 22%, transparent)",
+              }}
+            />
+            <span>{copy.memoryLoading}</span>
+          </div>
         )}
 
         {runs && runs.length === 0 && !err && (
-          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>
-            {copy.memoryEmpty}
-          </div>
+          <EmptyState
+            glyph="◈"
+            kicker={copy.memoryTagline}
+            body={copy.memoryEmpty}
+            style={{ marginTop: "10vh" }}
+          />
         )}
 
         {layout === "timeline" && runs && runs.length > 0 && (
@@ -648,6 +760,26 @@ export default function Memory() {
             );
           })}
         </div>
+        )}
+
+        {/* Honest cap notice. The fetch caps at 100; the user must see when the
+            list is at the wall so they don't assume they're seeing everything. */}
+        {runs && runs.length === 100 && (
+          <div
+            data-runs-cap-notice
+            style={{
+              marginTop: 16,
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              color: "var(--text-ghost)",
+              opacity: 0.85,
+              textAlign: "center",
+            }}
+          >
+            — mostrando as 100 entradas mais recentes —
+          </div>
         )}
       </div>
     </div>

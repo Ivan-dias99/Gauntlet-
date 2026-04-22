@@ -16,6 +16,7 @@ from typing import Optional
 
 from config import FAILURE_MEMORY_FILE, MAX_FAILURE_ENTRIES, FAILURE_CONTEXT_WINDOW, MEMORY_DIR
 from models import FailureRecord, FailureMemory, RefusalReason
+from persistence import atomic_write_text, quarantine_corrupt_file
 
 logger = logging.getLogger("ruberra.memory")
 
@@ -35,6 +36,12 @@ class FailureMemoryStore:
         self._lock = asyncio.Lock()
         self._memory = FailureMemory()
         self._loaded = False
+        # Disk-write failures are surfaced through diagnostics; the engine
+        # must not crash because failure memory could not be persisted.
+        self._last_save_error: str | None = None
+        # Load-path errors use the same channel. Corrupt files are moved
+        # aside so the next record_failure() does not overwrite evidence.
+        self._last_load_error: str | None = None
     
     async def _ensure_loaded(self) -> None:
         """Lazy-load from disk on first access."""
@@ -48,29 +55,35 @@ class FailureMemoryStore:
     
     async def _load_from_disk(self) -> None:
         """Load failure memory from JSON file."""
+        if not FAILURE_MEMORY_FILE.exists():
+            logger.info("No failure memory file found — starting fresh")
+            return
         try:
-            if FAILURE_MEMORY_FILE.exists():
-                raw = FAILURE_MEMORY_FILE.read_text(encoding="utf-8")
-                data = json.loads(raw)
-                self._memory = FailureMemory(**data)
-                logger.info(
-                    f"Loaded {len(self._memory.records)} failure records from disk"
-                )
-            else:
-                logger.info("No failure memory file found — starting fresh")
+            raw = FAILURE_MEMORY_FILE.read_text(encoding="utf-8")
+            data = json.loads(raw)
+            self._memory = FailureMemory(**data)
+            logger.info(
+                f"Loaded {len(self._memory.records)} failure records from disk"
+            )
         except Exception as e:
-            logger.error(f"Failed to load failure memory: {e}")
+            sidecar = quarantine_corrupt_file(FAILURE_MEMORY_FILE)
+            detail = f"{type(e).__name__}: {e}"
+            if sidecar is not None:
+                detail += f" (quarantined to {sidecar.name})"
+            self._last_load_error = detail
+            logger.error(f"Failed to load failure memory: {detail}")
             self._memory = FailureMemory()
     
     async def _save_to_disk(self) -> None:
-        """Persist failure memory to JSON file."""
+        """Persist failure memory to JSON file. Logs + surfaces errors."""
         try:
-            MEMORY_DIR.mkdir(parents=True, exist_ok=True)
-            FAILURE_MEMORY_FILE.write_text(
+            atomic_write_text(
+                FAILURE_MEMORY_FILE,
                 self._memory.model_dump_json(indent=2),
-                encoding="utf-8",
             )
+            self._last_save_error = None
         except Exception as e:
+            self._last_save_error = f"{type(e).__name__}: {e}"
             logger.error(f"Failed to save failure memory: {e}")
     
     @staticmethod

@@ -17,6 +17,7 @@ from typing import Optional
 
 from config import MEMORY_DIR
 from models import RunRecord, RunsLog
+from persistence import atomic_write_text, quarantine_corrupt_file
 
 logger = logging.getLogger("ruberra.runs")
 
@@ -31,6 +32,12 @@ class RunStore:
         self._lock = asyncio.Lock()
         self._log = RunsLog()
         self._loaded = False
+        # Disk-write failures are surfaced through diagnostics rather than
+        # raised — a broken run log must not crash a user query mid-stream.
+        self._last_save_error: str | None = None
+        # Load-path errors are surfaced the same way. Corrupt files are
+        # quarantined so record() does not overwrite the evidence.
+        self._last_load_error: str | None = None
 
     async def _ensure_loaded(self) -> None:
         if self._loaded:
@@ -42,23 +49,24 @@ class RunStore:
             self._loaded = True
 
     async def _load(self) -> None:
+        if not RUNS_FILE.exists():
+            logger.info("No run log file found — starting fresh")
+            return
         try:
-            if RUNS_FILE.exists():
-                raw = RUNS_FILE.read_text(encoding="utf-8")
-                self._log = RunsLog(**json.loads(raw))
-                logger.info("Loaded %d run records from disk", len(self._log.records))
-            else:
-                logger.info("No run log file found — starting fresh")
+            raw = RUNS_FILE.read_text(encoding="utf-8")
+            self._log = RunsLog(**json.loads(raw))
+            logger.info("Loaded %d run records from disk", len(self._log.records))
         except Exception as e:
-            logger.error("Failed to load run log: %s", e)
+            sidecar = quarantine_corrupt_file(RUNS_FILE)
+            detail = f"{type(e).__name__}: {e}"
+            if sidecar is not None:
+                detail += f" (quarantined to {sidecar.name})"
+            self._last_load_error = detail
+            logger.error("Failed to load run log: %s", detail)
             self._log = RunsLog()
 
-    async def _save(self) -> None:
-        try:
-            MEMORY_DIR.mkdir(parents=True, exist_ok=True)
-            RUNS_FILE.write_text(self._log.model_dump_json(indent=2), encoding="utf-8")
-        except Exception as e:
-            logger.error("Failed to save run log: %s", e)
+    def _write_log(self) -> None:
+        atomic_write_text(RUNS_FILE, self._log.model_dump_json(indent=2))
 
     async def record(self, run: RunRecord) -> RunRecord:
         await self._ensure_loaded()
@@ -67,7 +75,12 @@ class RunStore:
             if len(self._log.records) > MAX_RUNS:
                 self._log.records = self._log.records[-MAX_RUNS:]
             self._log.last_updated = datetime.now(timezone.utc).isoformat()
-            await self._save()
+            try:
+                self._write_log()
+                self._last_save_error = None
+            except Exception as e:
+                self._last_save_error = f"{type(e).__name__}: {e}"
+                logger.error("Failed to save run log: %s", e)
         return run
 
     async def list(

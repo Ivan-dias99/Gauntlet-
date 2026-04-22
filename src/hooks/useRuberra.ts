@@ -1,5 +1,11 @@
 import { useState, useCallback } from "react";
-import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
+import {
+  ruberraFetch,
+  isBackendUnreachable,
+  parseBackendError,
+  BackendError,
+  type BackendErrorEnvelope,
+} from "../lib/ruberraApi";
 
 // Client for the Python backend (ruberra-backend/) via the /api/ruberra
 // proxy.
@@ -37,7 +43,7 @@ export type AgentEvent =
       terminated_early: boolean;
       termination_reason: string | null;
     }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; error?: string; reason?: string };
 
 export type CrewRole = "planner" | "researcher" | "coder" | "critic";
 
@@ -81,7 +87,7 @@ export type CrewEvent =
       processing_time_ms: number;
       accepted: boolean;
     }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; error?: string; reason?: string };
 
 export type RouteEvent =
   | { type: "route"; path: "agent" | "triad" }
@@ -111,18 +117,20 @@ export type RouteEvent =
   | { type: "assistant_text"; text: string; iteration: number }
   | { type: "tool_use"; id: string; name: string; input: unknown; iteration: number }
   | { type: "tool_result"; id: string; ok: boolean; preview: string; iteration: number }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; error?: string; reason?: string };
 
 type Route = "route" | "dev" | "ask";
 
 export function useRuberra() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorEnvelope, setErrorEnvelope] = useState<BackendErrorEnvelope | null>(null);
   const [unreachable, setUnreachable] = useState(false);
 
   const call = useCallback(async (route: Route, body: RuberraQueryBody) => {
     setPending(true);
     setError(null);
+    setErrorEnvelope(null);
     setUnreachable(false);
     try {
       const res = await ruberraFetch(route, {
@@ -131,8 +139,12 @@ export function useRuberra() {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`ruberra ${route} ${res.status}: ${text.slice(0, 200)}`);
+        const envelope = await parseBackendError(res);
+        throw new BackendError(
+          res.status,
+          envelope,
+          `ruberra ${route} ${res.status}`,
+        );
       }
       return await res.json();
     } catch (e) {
@@ -140,6 +152,9 @@ export function useRuberra() {
         setUnreachable(true);
         setError(e.message);
         throw e;
+      }
+      if (e instanceof BackendError) {
+        setErrorEnvelope(e.envelope);
       }
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
@@ -157,6 +172,7 @@ export function useRuberra() {
   ) => {
     setPending(true);
     setError(null);
+    setErrorEnvelope(null);
     setUnreachable(false);
     try {
       const res = await ruberraFetch(path, {
@@ -166,12 +182,17 @@ export function useRuberra() {
         signal,
       });
       if (!res.ok || !res.body) {
-        const text = res.body ? await res.text() : "";
-        throw new Error(`ruberra ${path} ${res.status}: ${text.slice(0, 200)}`);
+        const envelope = res.body ? await parseBackendError(res) : null;
+        throw new BackendError(res.status, envelope, `ruberra ${path} ${res.status}`);
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      // Track whether the stream produced a terminal event (done|error). If
+      // the read loop exits without one, the connection died mid-stream
+      // (proxy timeout, network drop, upstream crash) — the chamber must
+      // be told instead of silently going idle.
+      let sawTerminal = false;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -184,11 +205,52 @@ export function useRuberra() {
           const payload = line.slice(5).trim();
           if (!payload) continue;
           try {
-            onEvent(JSON.parse(payload) as E);
+            const parsed = JSON.parse(payload) as E;
+            const t = (parsed as { type?: string } | null)?.type;
+            if (t === "done" || t === "error") sawTerminal = true;
+            // Backend-emitted error frames (T063/T076 contract) carry
+            // `{type:"error", message, error?, reason?}`. Promote them
+            // to the hook's error state so every chamber's existing
+            // ErrorPanel gate fires instead of showing a one-frame
+            // label and silently going idle.
+            if (
+              parsed !== null &&
+              typeof parsed === "object" &&
+              (parsed as { type?: string }).type === "error"
+            ) {
+              const ef = parsed as {
+                message?: string;
+                error?: string;
+                reason?: string;
+              };
+              const msg = ef.message ?? "stream error";
+              setError(msg);
+              if (ef.error && ef.reason) {
+                setErrorEnvelope({
+                  error: ef.error,
+                  reason: ef.reason,
+                  message: msg,
+                });
+              }
+            }
+            onEvent(parsed);
           } catch {
             // malformed frame — skip
           }
         }
+      }
+      if (!sawTerminal) {
+        // Stream closed cleanly without firing done/error. Almost always a
+        // proxy/upstream timeout that severed the connection mid-event.
+        // Surface honestly instead of letting the chamber go quiet.
+        const msg = "stream interrompida sem conclusão";
+        setError(msg);
+        onEvent({
+          type: "error",
+          message: msg,
+          error: "stream_truncated",
+          reason: "NoTerminalEvent",
+        } as E);
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
@@ -196,6 +258,17 @@ export function useRuberra() {
         setUnreachable(true);
         setError(e.message);
         onEvent({ type: "error", message: e.message } as E);
+        return;
+      }
+      if (e instanceof BackendError) {
+        setErrorEnvelope(e.envelope);
+        setError(e.message);
+        onEvent({
+          type: "error",
+          message: e.message,
+          error: e.envelope?.error,
+          reason: e.envelope?.reason,
+        } as E);
         return;
       }
       const msg = e instanceof Error ? e.message : String(e);
@@ -224,5 +297,14 @@ export function useRuberra() {
     [openStream],
   );
 
-  return { call, streamDev, streamRoute, streamCrew, pending, error, unreachable };
+  return {
+    call,
+    streamDev,
+    streamRoute,
+    streamCrew,
+    pending,
+    error,
+    errorEnvelope,
+    unreachable,
+  };
 }

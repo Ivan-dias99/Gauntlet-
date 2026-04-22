@@ -20,7 +20,7 @@ src/                         React frontend (Vite, TypeScript)
   trust/                     ErrorBoundary
   i18n/                      copy.ts
 
-api/ruberra/[...path].ts     Vercel edge catchall — forwards /api/ruberra/* to RUBERRA_BACKEND_URL
+api/ruberra.ts               Vercel edge forwarder — forwards /api/ruberra/* to RUBERRA_BACKEND_URL (flat + explicit rewrite in vercel.json)
 vite.config.ts               dev proxy: /api/ruberra/* → http://127.0.0.1:3002/*
 vercel.json                  SPA catch-all (non-API routes → index.html)
 
@@ -100,8 +100,9 @@ mutation (debounced 500 ms). On mount, the remote snapshot wins if its
 
 ## Deploy
 
-- **Frontend** → Vercel. `api/ruberra/[...path].ts` runs at the edge and
-  forwards all `/api/ruberra/*` requests to `RUBERRA_BACKEND_URL`.
+- **Frontend** → Vercel. `api/ruberra.ts` runs at the edge and forwards
+  all `/api/ruberra/*` requests to `RUBERRA_BACKEND_URL` via the explicit
+  rewrite in `vercel.json` (`/api/ruberra/:match* → /api/ruberra`).
 - **Backend** → any host that runs FastAPI (Fly, Railway, Render, a VM).
   Set `RUBERRA_BACKEND_URL` in the Vercel project env to its public URL.
 
