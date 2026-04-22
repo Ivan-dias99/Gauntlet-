@@ -1,22 +1,23 @@
 """
-Signal chamber profiles — Wave 1 scaffolding.
+Signal chamber profiles — Wave 5 populated.
 
-Shape intentionally minimal. Every optional field (system_prompt,
-primary_model, allowed_tools, temperature, max_tokens) is None/empty
-in Wave 1 so engine.py and agent.py keep using their current global
-defaults. The only field that actually carries semantics today is
-``dispatch``, consulted by the auto-router when a query arrives with
-an explicit ``chamber`` field.
+Each profile now carries a chamber-specific system prompt (pulled from
+its sibling chambers/<key>.py module), a dispatch decision, a
+temperature, and an explicit allowed-tools set.
 
-Dispatch mapping rationale (Wave 1 only — revisable in Wave 5):
-    insight  → triad   (reasoning / evidence pressure = today's /ask pipeline)
-    surface  → agent   (design workstation — agent loop, tools mock in Wave 3)
-    terminal → agent   (code / tool-use = today's /dev pipeline)
-    archive  → triad   (retrieval summarization defaults to conservative triad)
-    core     → triad   (governance questions default to conservative triad)
+Semantics of allowed_tools:
+    None        → no filter (all registered tools visible to the agent)
+    ()          → ZERO tools (triad-only chambers, surface mock, or
+                   explicit disablement)
+    ("a", "b")  → the intersection of this set with the current ToolRegistry
 
-``crew`` is not auto-routable in Wave 1 — it stays behind the explicit
-/crew/stream endpoint as today. Reserved for Wave 5+.
+engine.py and agent.py read the profile: when system_prompt is set, it
+replaces the global SYSTEM_PROMPT / AGENT_SYSTEM_PROMPT base; when
+temperature is set, it overrides the global TRIAD_TEMPERATURE /
+AGENT_TEMPERATURE; when allowed_tools is not None, the agent's
+anthropic_schema() is filtered. Absent profile ⇒ legacy behavior
+(global prompts + all tools) — the Wave-0 → Wave-8 compat window
+depends on this fallback.
 """
 
 from __future__ import annotations
@@ -24,6 +25,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from typing import Literal, Optional
+
+from chambers import insight as _insight
+from chambers import terminal as _terminal
+from chambers import archive as _archive
+from chambers import core as _core
 
 
 class ChamberKey(str, Enum):
@@ -35,38 +41,63 @@ class ChamberKey(str, Enum):
     CORE = "core"
 
 
-Dispatch = Literal["agent", "triad"]
+Dispatch = Literal["agent", "triad", "surface_mock"]
 
 
 @dataclass(frozen=True)
 class ChamberProfile:
     key: ChamberKey
     dispatch: Dispatch
-    # Wave-5 slots. Kept None/empty in Wave 1 — engine.py and agent.py
-    # fall back to the current globals when any slot is absent.
     system_prompt: Optional[str] = None
     primary_model: Optional[str] = None
-    allowed_tools: tuple[str, ...] = ()
+    # None = no filter; () = zero tools; (...) = explicit allowlist.
+    allowed_tools: Optional[tuple[str, ...]] = None
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
 
 
 PROFILES: dict[ChamberKey, ChamberProfile] = {
-    ChamberKey.INSIGHT:  ChamberProfile(key=ChamberKey.INSIGHT,  dispatch="triad"),
-    ChamberKey.SURFACE:  ChamberProfile(key=ChamberKey.SURFACE,  dispatch="agent"),
-    ChamberKey.TERMINAL: ChamberProfile(key=ChamberKey.TERMINAL, dispatch="agent"),
-    ChamberKey.ARCHIVE:  ChamberProfile(key=ChamberKey.ARCHIVE,  dispatch="triad"),
-    ChamberKey.CORE:     ChamberProfile(key=ChamberKey.CORE,     dispatch="triad"),
+    ChamberKey.INSIGHT: ChamberProfile(
+        key=ChamberKey.INSIGHT,
+        dispatch="triad",
+        system_prompt=_insight.SYSTEM_PROMPT,
+        temperature=_insight.TEMPERATURE,
+        allowed_tools=_insight.ALLOWED_TOOLS,
+    ),
+    ChamberKey.SURFACE: ChamberProfile(
+        key=ChamberKey.SURFACE,
+        # Surface still dispatches to the mock handler in Wave 5. The real
+        # provider swap happens when the design generator is wired.
+        dispatch="surface_mock",
+        system_prompt=None,  # mock doesn't consume a prompt
+        allowed_tools=(),
+    ),
+    ChamberKey.TERMINAL: ChamberProfile(
+        key=ChamberKey.TERMINAL,
+        dispatch="agent",
+        system_prompt=_terminal.SYSTEM_PROMPT,
+        temperature=_terminal.TEMPERATURE,
+        allowed_tools=_terminal.ALLOWED_TOOLS,
+    ),
+    ChamberKey.ARCHIVE: ChamberProfile(
+        key=ChamberKey.ARCHIVE,
+        dispatch="triad",
+        system_prompt=_archive.SYSTEM_PROMPT,
+        temperature=_archive.TEMPERATURE,
+        allowed_tools=_archive.ALLOWED_TOOLS,
+    ),
+    ChamberKey.CORE: ChamberProfile(
+        key=ChamberKey.CORE,
+        dispatch="triad",
+        system_prompt=_core.SYSTEM_PROMPT,
+        temperature=_core.TEMPERATURE,
+        allowed_tools=_core.ALLOWED_TOOLS,
+    ),
 }
 
 
 def get_profile(key: "ChamberKey | str | None") -> Optional[ChamberProfile]:
-    """Return the profile for a chamber key, or None for unknown/absent.
-
-    Accepts a string to allow callers to pass the raw ``RuberraQuery.chamber``
-    value without coercing first. Unknown strings collapse to None — the
-    engine then falls back to ``is_dev_intent`` heuristic routing.
-    """
+    """Return the profile for a chamber key, or None for unknown/absent."""
     if key is None:
         return None
     if isinstance(key, str):

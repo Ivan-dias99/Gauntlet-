@@ -187,6 +187,9 @@ export default function Lab() {
         context: clampedContext || undefined,
         mission_id: targetMissionId,
         principles: clampedPrinciples.length ? clampedPrinciples : undefined,
+        // Wave-5: always carry the chamber key. Backend profile decides
+        // dispatch (triad for insight) and applies the chamber prompt.
+        chamber: "insight",
       },
       (ev: RouteEvent) => {
         if (ev.type === "route") capturedPath = ev.path;

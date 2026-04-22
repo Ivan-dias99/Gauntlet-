@@ -171,6 +171,12 @@ class AgentOrchestrator:
     ) -> AsyncIterator[dict[str, Any]]:
         """Execute the agent loop, yielding coarse-grained progress events.
 
+        Wave-5: when the query carries a ``chamber`` key whose profile
+        specifies an ``allowed_tools`` allowlist, the agent's anthropic
+        schema is filtered to that subset for this run — honoring the
+        per-chamber tool policy. Absent profile / None allowlist keeps
+        the legacy behavior (all registered tools visible).
+
         Event shapes:
           {"type": "start"}
           {"type": "iteration", "n": int}
@@ -180,6 +186,23 @@ class AgentOrchestrator:
           {"type": "done", ...full AgentResponse dict...}
         """
         started = time.monotonic()
+
+        # Wave-5: profile-aware prompt + tool filter. When no chamber is
+        # attached we fall back to the orchestrator's default prompt and
+        # the unfiltered schema — unchanged from earlier waves.
+        from chambers.profiles import get_profile
+        profile = get_profile(query.chamber)
+        effective_system_prompt = (
+            profile.system_prompt
+            if profile and profile.system_prompt
+            else self._system_prompt
+        )
+        full_schema = self._registry.anthropic_schema()
+        if profile is not None and profile.allowed_tools is not None:
+            allowed = set(profile.allowed_tools)
+            effective_schema = [t for t in full_schema if t["name"] in allowed]
+        else:
+            effective_schema = full_schema
 
         messages: list[dict[str, Any]] = [
             {"role": "user", "content": self._user_prompt(query)},
@@ -212,8 +235,8 @@ class AgentOrchestrator:
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
                 temperature=self._temperature,
-                system=self._system_prompt + build_principles_context(query.principles),
-                tools=self._registry.anthropic_schema(),
+                system=effective_system_prompt + build_principles_context(query.principles),
+                tools=effective_schema,
                 messages=messages,
             )
             total_in += response.usage.input_tokens

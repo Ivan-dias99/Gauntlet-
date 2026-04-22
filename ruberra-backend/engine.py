@@ -349,19 +349,17 @@ class RuberraEngine:
                 ),
             ))
 
-    # ── Routing helper (Wave 1) ────────────────────────────────────────────
+    # ── Routing helper (Wave 1, populated in Wave 5) ───────────────────────
 
     @staticmethod
     def _auto_route_agent(query: RuberraQuery) -> bool:
         """
-        Wave-1 router. When the query carries an explicit ``chamber`` key,
-        the chamber profile's ``dispatch`` decides (triad vs agent). When
-        ``chamber`` is absent, fall back to the legacy ``is_dev_intent``
-        heuristic so pre-Wave-1 clients behave exactly as before.
-
-        The SSE envelope is intentionally unchanged — only the decision
-        function is chamber-aware. Wave 5 extends the envelope with typed
-        chamber fields and profile-driven prompts / tool allowlists.
+        Decide whether the auto-router dispatches to the agent loop. When
+        the query carries an explicit ``chamber`` key, the chamber
+        profile's ``dispatch`` decides; when absent, falls back to the
+        legacy ``is_dev_intent`` heuristic so pre-Wave-1 clients behave
+        exactly as before. The surface_mock dispatch is handled out of
+        this function — see process_auto_streaming's surface fork.
         """
         from agent import AgentOrchestrator
         from chambers.profiles import get_profile
@@ -445,9 +443,21 @@ class RuberraEngine:
             )
 
         # ── Step 2: system prompt ───────────────────────────────────────────
-        system_prompt = SYSTEM_PROMPT
+        # Wave-5: chamber profile overrides the global SYSTEM_PROMPT when
+        # a chamber is attached to the query. Failure context + force_cautious
+        # caution + principles append the same way on top of whichever base
+        # was selected. Pre-Wave-1 clients (no chamber) continue to use
+        # SYSTEM_PROMPT verbatim.
+        from chambers.profiles import get_profile
+        _profile = get_profile(query.chamber)
+        base_prompt = (
+            _profile.system_prompt
+            if _profile and _profile.system_prompt
+            else SYSTEM_PROMPT
+        )
+        system_prompt = base_prompt
         if matching_failures or query.force_cautious:
-            system_prompt = SYSTEM_PROMPT + build_failure_context(matching_failures)
+            system_prompt = base_prompt + build_failure_context(matching_failures)
             if query.force_cautious:
                 system_prompt += (
                     "\n\n## ⚠️ FORCED CAUTION MODE\n"
@@ -456,6 +466,9 @@ class RuberraEngine:
                     "Prefer refusal over any risk of error."
                 )
         system_prompt += build_principles_context(query.principles)
+        # Note: profile.temperature is exposed via Core → Routing but not
+        # yet applied to triad calls. Wave 7 threads it through
+        # _single_triad_call so the override is honored end-to-end.
 
         # ── Step 3: parallel triad with per-completion events ───────────────
         yield {

@@ -310,6 +310,9 @@ export default function Creation() {
       context: activeMission?.title,
       mission_id: activeMission?.id,
       principles: clampedPrinciples.length ? clampedPrinciples : undefined,
+      // Wave-5: always carry the chamber key. Backend agent loop filters
+      // its tool schema to the Terminal chamber's allowlist.
+      chamber: "terminal" as const,
     };
 
     if (mode === "crew") {
