@@ -1316,11 +1316,14 @@ textarea {
 /* ——— School doctrine primitives ———
    Constitutional surfaces for the School chamber. Upright legal type,
    not literary italic. Declarative composition, not dashboard card.
-   Three zones per seal: institutional header, declaration line,
-   consequence counters — each separated by a hairline. Articles read
-   as a sober register with a mono "ARTIGO" kicker + upright serif
-   numeral. Consequence is surfaced from real substrate:
-   `doctrine_applied` events in mission logs, never fabricated. */
+   Four zones per seal: institutional header, declaration line,
+   invocation counters, optional status row — each separated by a
+   hairline. Articles read as a sober register with a mono "ARTIGO"
+   kicker + upright serif numeral. Invocation data is surfaced from
+   real substrate (`doctrine_applied` events in mission logs) — never
+   labelled "consequence" because the substrate does not carry
+   per-principle causal effects, only whether the doctrine was
+   invoked. */
 
 /* Seal — the constitutional declaration that frames the register. */
 .doctrine-seal {

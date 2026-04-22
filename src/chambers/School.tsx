@@ -50,11 +50,13 @@ export default function School() {
   const isGoverning = principles.length > 0;
   const lastApplied = activeMission?.events.find((e) => e.type === "doctrine_applied") ?? null;
 
-  // Consequence substrate — every `doctrine_applied` event is Lab or
-  // Creation firing a real query with principles attached. We can count
-  // those across all missions, not just the active one, and derive
-  // coverage: "governed N of M missions". No fabricated per-principle
-  // tracking — the substrate doesn't carry it, so we don't show it.
+  // Invocation substrate — every `doctrine_applied` event is Lab or
+  // Creation firing with principles attached. We count them across all
+  // missions to derive two honest metrics: total invocations and
+  // mission coverage ("governed N of M missions"). The substrate does
+  // not carry per-principle causal effects, so we do not claim
+  // "consequence"; we report "invocation" — what the substrate actually
+  // proves.
   const totalMissions = state.missions.length;
   let totalApplications = 0;
   let missionsGoverned = 0;
@@ -133,7 +135,7 @@ export default function School() {
       <div className="chamber-body" data-pad="calm">
 
         {/* Constitutional seal — declarative institutional header, a
-            declaration line, a row of consequence counters pulled from
+            declaration line, a row of invocation counters pulled from
             real `doctrine_applied` events, and a status row. No italic,
             no stat-card composition, no fabricated per-principle data. */}
         {isGoverning && (
@@ -155,12 +157,12 @@ export default function School() {
             <div className="doctrine-seal-declaration">
               {principles.length === 1 ? (
                 <>
-                  <strong>Um princípio</strong> sob vigor. Vincula cada query de Lab e Creation
+                  <strong>Um princípio</strong> sob vigor. Vincula cada invocação de Lab e Creation
                   {activeMission ? " e governa esta missão." : "."}
                 </>
               ) : (
                 <>
-                  <strong>{principles.length} princípios</strong> sob vigor. Vinculam cada query de Lab e Creation
+                  <strong>{principles.length} princípios</strong> sob vigor. Vinculam cada invocação de Lab e Creation
                   {activeMission ? " e governam esta missão." : "."}
                 </>
               )}
@@ -175,7 +177,7 @@ export default function School() {
                   {totalApplications}
                 </span>
                 <span className="doctrine-seal-counter-label">
-                  {totalApplications === 1 ? "aplicação" : "aplicações"}
+                  {totalApplications === 1 ? "invocação" : "invocações"}
                 </span>
               </span>
               <span className="doctrine-seal-counter">
@@ -195,13 +197,13 @@ export default function School() {
                     {new Date(lastApplied.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                   <span className="doctrine-seal-counter-label">
-                    última aplicação
+                    última invocação
                   </span>
                 </span>
               ) : (
                 <span className="doctrine-seal-counter-null">
                   {activeMission
-                    ? "ainda não aplicada nesta missão"
+                    ? "ainda não invocada nesta missão"
                     : "aguarda missão activa"}
                 </span>
               )}
