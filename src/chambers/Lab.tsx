@@ -7,6 +7,7 @@ import ErrorPanel from "../shell/ErrorPanel";
 import DormantPanel from "../shell/DormantPanel";
 import EmptyState from "../shell/EmptyState";
 import { useCopy } from "../i18n/copy";
+import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
 
 interface TriadResult {
   answer?: string | null;
@@ -78,6 +79,11 @@ export default function Lab() {
   const copy = useCopy();
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
+  // Backend-side /runs count for the active mission. If the spine push
+  // failed before this exchange persisted, the AI note may be missing
+  // from the thread but the run IS in /runs on the backend. We surface
+  // the discrepancy instead of silently swallowing a lost message.
+  const [serverRunCount, setServerRunCount] = useState<number | null>(null);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
@@ -118,6 +124,31 @@ export default function Lab() {
   useEffect(() => {
     if (!pending) inputRef.current?.focus();
   }, [pending]);
+
+  // Reconciliation probe: on mission change, ask the backend how many
+  // runs it has for this mission. If it exceeds our local AI-note count,
+  // a previous session's spine push failed mid-exchange and the user is
+  // seeing fewer exchanges than actually happened. Surface the gap.
+  useEffect(() => {
+    if (!activeMission?.id) {
+      setServerRunCount(null);
+      return;
+    }
+    const ac = new AbortController();
+    const mid = encodeURIComponent(activeMission.id);
+    ruberraFetch(`/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
+      .then(async (r) => {
+        if (!r.ok) return;
+        const body = (await r.json()) as { count?: number };
+        setServerRunCount(typeof body.count === "number" ? body.count : null);
+      })
+      .catch((e) => {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (isBackendUnreachable(e)) return;
+        // non-fatal — the Lab thread remains functional without it
+      });
+    return () => ac.abort();
+  }, [activeMission?.id]);
 
   async function submit() {
     const v = input.trim();
@@ -247,6 +278,46 @@ export default function Lab() {
             mock
           </span>
         )}
+        {(() => {
+          // Lab-thread vs /runs reconciliation. If the backend's run log has
+          // more entries than the AI notes we're rendering locally, a prior
+          // spine push dropped answers. Surface a clickable chip to Memory
+          // so the user can recover the lost exchanges from the run archive.
+          const localAI = (activeMission?.notes ?? []).filter(
+            (n) => n.role === "ai",
+          ).length;
+          const gap =
+            serverRunCount !== null && serverRunCount > localAI
+              ? serverRunCount - localAI
+              : 0;
+          if (gap <= 0) return null;
+          return (
+            <button
+              data-lab-runs-gap={gap}
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent("ruberra:chamber", { detail: "Memory" }),
+                )
+              }
+              title="o arquivo do backend tem mais execuções do que o fio local — clicar para ver"
+              style={{
+                background: "none",
+                fontFamily: "var(--mono)",
+                fontSize: 9,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+                color: "var(--cc-warn)",
+                padding: "2px 7px",
+                border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+                borderRadius: 4,
+                cursor: "pointer",
+                lineHeight: 1.4,
+              }}
+            >
+              +{gap} no arquivo
+            </button>
+          );
+        })()}
         {principles.length > 0 && (
           <span
             data-principles-in-context

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
@@ -184,6 +184,9 @@ export default function Memory() {
   const { values } = useTweaks();
   const copy = useCopy();
   const backend = useBackendStatus();
+  // Retry/mission-switch share a single in-flight slot. A new request
+  // always aborts the previous one so rapid clicks don't race on setState.
+  const inflightRef = useRef<AbortController | null>(null);
   const layout = values.memoryLayout;
   const missionArtifact = activeMission?.lastArtifact ?? null;
   const doctrineCount = principles.length;
@@ -286,14 +289,18 @@ export default function Memory() {
       setServerStats(null);
       return;
     }
+    inflightRef.current?.abort();
     const ac = new AbortController();
+    inflightRef.current = ac;
     loadMissionTelemetry(activeMission.id, ac.signal);
     return () => ac.abort();
   }, [activeMission?.id, loadMissionTelemetry]);
 
   function retry() {
     if (!activeMission?.id) return;
+    inflightRef.current?.abort();
     const ac = new AbortController();
+    inflightRef.current = ac;
     loadMissionTelemetry(activeMission.id, ac.signal);
   }
 
@@ -368,8 +375,24 @@ export default function Memory() {
 
         {stats.total > 0 && (
           <div style={{ maxWidth: 820, marginTop: 20 }}>
-            <div className="t-kicker" data-tone="ghost">
-              {copy.memoryTelemetryKicker}
+            <div
+              className="t-kicker"
+              data-tone="ghost"
+              style={{ display: "flex", alignItems: "baseline", gap: 8 }}
+            >
+              <span>{copy.memoryTelemetryKicker}</span>
+              {/* Honest provenance: if /runs/stats failed we fall back to
+                  computing stats locally from the last 100 runs only.
+                  The server would compute from up to 2000. Show the user
+                  they're seeing a subset, not the full record. */}
+              {serverStats === null && (
+                <span
+                  data-stats-source="local"
+                  style={{ color: "var(--cc-warn)" }}
+                >
+                  · local
+                </span>
+              )}
             </div>
             <h3 className="memory-telemetry-head">
               {copy.memoryTelemetryTitle}

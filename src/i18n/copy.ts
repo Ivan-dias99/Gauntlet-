@@ -91,6 +91,7 @@ export interface Copy {
   severityWarn: string;
   severityInfo: string;
   dismiss: string;
+  emptyValue: string;
   memoryEmpty: string;
   memoryCount: (n: number) => string;
   schoolTagline: string;
@@ -248,6 +249,7 @@ const PT: Copy = {
   severityWarn: "— AVISO",
   severityInfo: "— INFO",
   dismiss: "dispensar",
+  emptyValue: "—",
   memoryEmpty: "— log vazio —",
   memoryCount: (n) => `${n} evento${n === 1 ? "" : "s"}`,
   schoolTagline: "— DOUTRINA SOBERANA",
@@ -394,6 +396,7 @@ const EN: Copy = {
   severityWarn: "— WARNING",
   severityInfo: "— INFO",
   dismiss: "dismiss",
+  emptyValue: "—",
   memoryEmpty: "— empty log —",
   memoryCount: (n) => `${n} event${n === 1 ? "" : "s"}`,
   schoolTagline: "— SOVEREIGN DOCTRINE",

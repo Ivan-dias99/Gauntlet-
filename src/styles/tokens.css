@@ -293,7 +293,10 @@ textarea {
   }
 }
 .breathe {
-  animation: breathe 3.2s ease-in-out infinite;
+  /* 3.3s (not 3.2s) so the ambient mission-pulse breathe never locks
+     into a clean 2:1 ratio with the 1.6s spine-sync breathe — the
+     two dots phase-shift over time instead of pulsing in unison. */
+  animation: breathe 3.3s ease-in-out infinite;
 }
 
 /* ——— Scan shimmer (thinking / streaming bar) ——— */

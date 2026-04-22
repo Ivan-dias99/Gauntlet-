@@ -203,7 +203,31 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
             </button>
 
             {open && (
-              <div className="fadeIn dropdown-panel">
+              <div
+                className="fadeIn dropdown-panel"
+                role="listbox"
+                aria-label={copy.missions}
+                onKeyDown={(e) => {
+                  // Arrow-key listbox navigation. Fulfils the aria-haspopup=
+                  // "listbox" promise on the trigger button (T121).
+                  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+                  e.preventDefault();
+                  const items = Array.from(
+                    dropdownRef.current?.querySelectorAll<HTMLButtonElement>(
+                      ".dropdown-item",
+                    ) ?? [],
+                  );
+                  if (items.length === 0) return;
+                  const focusedIdx = items.indexOf(
+                    document.activeElement as HTMLButtonElement,
+                  );
+                  const nextIdx =
+                    e.key === "ArrowDown"
+                      ? (focusedIdx + 1) % items.length
+                      : (focusedIdx - 1 + items.length) % items.length;
+                  items[nextIdx]?.focus();
+                }}
+              >
                 <div className="dropdown-header">{copy.missions}</div>
                 {missions.map((m) => {
                   const isActive = m.id === state.activeMissionId;
@@ -215,6 +239,8 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
                         setOpen(false);
                       }}
                       className="dropdown-item"
+                      role="option"
+                      aria-selected={isActive}
                       data-active={isActive ? "true" : undefined}
                     >
                       <div className="dropdown-item-title">{m.title}</div>

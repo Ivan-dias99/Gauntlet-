@@ -84,6 +84,11 @@ export default function Creation() {
   const [inputFocused, setInputFocused] = useState(false);
   const [lastTask, setLastTask] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  // Typed envelope error kind (from T076 backend contract). null when no
+  // error OR when the error carried no typed fields. Used to pick
+  // ErrorPanel severity: transient warns (engine_not_initialized,
+  // mock_mode) render as "warn"; everything else stays "critical".
+  const [errKind, setErrKind] = useState<string | null>(null);
   const [iteration, setIteration] = useState(0);
   const [liveTools, setLiveTools] = useState<LiveTool[]>([]);
   const [liveText, setLiveText] = useState("");
@@ -196,6 +201,7 @@ export default function Creation() {
           ? `${ev.error}${ev.reason ? ` · ${ev.reason}` : ""} — ${ev.message}`
           : ev.message;
         setErr(tagged);
+        setErrKind(ev.error ?? null);
         if (activeTaskIdRef.current) setTaskState(activeTaskIdRef.current, "blocked");
         break;
       }
@@ -258,6 +264,7 @@ export default function Creation() {
           ? `${ev.error}${ev.reason ? ` · ${ev.reason}` : ""} — ${ev.message}`
           : ev.message;
         setErr(tagged);
+        setErrKind(ev.error ?? null);
         if (activeTaskIdRef.current) setTaskState(activeTaskIdRef.current, "blocked");
         break;
       }
@@ -281,6 +288,7 @@ export default function Creation() {
     setInput("");
     setLastTask(v);
     setErr(null);
+    setErrKind(null);
     setIteration(0);
     setLiveTools([]);
     setLiveText("");
@@ -377,6 +385,7 @@ export default function Creation() {
     setResumedFromSpine(true);
     setDone(null);
     setErr(null);
+    setErrKind(null);
     setLiveTools([]);
     setLiveText("");
     setAccepted(false);
@@ -407,6 +416,7 @@ export default function Creation() {
     setResumedFromSpine(true);
     setDone(null);
     setErr(null);
+    setErrKind(null);
     setLiveTools([]);
     setLiveText("");
     setAccepted(false);
@@ -881,7 +891,13 @@ export default function Creation() {
           />
         ) : (
           <ErrorPanel
-            severity="critical"
+            severity={
+              errKind === "engine_not_initialized" ||
+              errKind === "mock_mode" ||
+              errKind === "stream_truncated"
+                ? "warn"
+                : "critical"
+            }
             title={copy.creationErrorTitle}
             message={err}
             style={{ marginTop: 20, maxWidth: 820 }}
@@ -926,6 +942,7 @@ export default function Creation() {
                 termination_reason: null,
               });
               setErr(null);
+    setErrKind(null);
               setLiveTools([]);
               setLiveText("");
               setAccepted(true);
@@ -1789,7 +1806,7 @@ function ArtifactLedger({
           {visible.map((a, i) => {
             const preview = a.answer
               ? (a.answer.length > 120 ? a.answer.slice(0, 120) + "…" : a.answer)
-              : "—";
+              : copy.emptyValue;
             const clickable = Boolean(a.taskId);
             const hovered = hoverId === a.id;
             const tier = Math.min(i, 2);
