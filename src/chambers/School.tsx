@@ -51,12 +51,10 @@ export default function School() {
   const lastApplied = activeMission?.events.find((e) => e.type === "doctrine_applied") ?? null;
 
   // Invocation substrate — every `doctrine_applied` event is Lab or
-  // Creation firing with principles attached. We count them across all
-  // missions to derive two honest metrics: total invocations and
-  // mission coverage ("governed N of M missions"). The substrate does
-  // not carry per-principle causal effects, so we do not claim
-  // "consequence"; we report "invocation" — what the substrate actually
-  // proves.
+  // Creation firing with principles attached. We aggregate across all
+  // missions for two honest metrics (total invocations + mission
+  // coverage). Per-principle causal effects are not tracked, so we
+  // never claim "consequence" — only "invocation".
   const totalMissions = state.missions.length;
   let totalApplications = 0;
   let missionsGoverned = 0;
@@ -68,14 +66,11 @@ export default function School() {
     }
   }
 
-  // Tick so relative timestamps refresh periodically without a heavy timer.
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
-
-  const lastInscribedAt = principles.length > 0 ? principles[0].createdAt : null;
 
   const trimmed = input.trim();
   const isDuplicate = !!trimmed && principles.some(
@@ -83,6 +78,8 @@ export default function School() {
   );
   const isTooLong = trimmed.length > PRINCIPLE_MAX_LEN;
   const charsLeft = PRINCIPLE_MAX_LEN - trimmed.length;
+  const showCount = trimmed.length > 0 && charsLeft <= 60;
+  const countTone = charsLeft < 0 ? "err" : charsLeft <= 20 ? "warn" : undefined;
 
   function submit() {
     if (!trimmed) { setRejection("empty"); return; }
@@ -93,65 +90,47 @@ export default function School() {
     setRejection(null);
   }
 
+  const showStatus =
+    syncState !== "synced" || hydratedFromBackend === false || !!syncError;
+
   return (
-    <div className="chamber-shell">
-      <div
-        className="chamber-head"
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          gap: 12,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 10,
-            letterSpacing: 3,
-            textTransform: "uppercase",
-            color: "var(--text-ghost)",
-            fontFamily: "var(--mono)",
-          }}
-        >
-          {copy.schoolTagline}
-        </span>
-        <span style={{
-          fontSize: 12,
-          color: "var(--text-muted)",
-        }}>
-          {copy.schoolSubtitle}
-        </span>
-        {principles.length > 0 && (
-          <span className="chamber-head-crest" aria-hidden>
-            <span className="chamber-head-crest-num">
-              {toRoman(principles.length)}
-            </span>
-            <span className="chamber-head-crest-kicker">
-              {principles.length === 1 ? "artigo" : "artigos"}
-            </span>
-          </span>
-        )}
+    <div className="chamber-shell" data-chamber="school">
+      {/* Doctrine strap — constitutional opening line, legible, never ghosted. */}
+      <div className="chamber-head">
+        <div className="doctrine-strap">
+          <span className="doctrine-strap-brand">{copy.schoolTagline}</span>
+          <span className="doctrine-strap-line">{copy.schoolSubtitle}</span>
+        </div>
       </div>
 
       <div className="chamber-body" data-pad="calm">
 
-        {/* Constitutional seal — declarative institutional header, a
-            declaration line, a row of invocation counters pulled from
-            real `doctrine_applied` events, and a status row. No italic,
-            no stat-card composition, no fabricated per-principle data. */}
+        {/* Mission panel — four-zone institutional surface: head (mono
+            kicker + serif mission + right-aligned crest), declaration,
+            metrics rail, optional status. Carries doctrine's current
+            reach and the honest invocation data from real substrate. */}
         {isGoverning && (
           <div className="fadeIn doctrine-seal">
-            <div className="doctrine-seal-title">
-              <span className="doctrine-seal-title-kicker">doutrina</span>
-              <span aria-hidden className="doctrine-seal-title-sep">·</span>
+            <div className="doctrine-seal-head">
+              <span className="doctrine-seal-head-kicker">doutrina</span>
+              <span aria-hidden className="doctrine-seal-head-sep">·</span>
               {activeMission ? (
-                <span className="doctrine-seal-title-mission">
+                <span className="doctrine-seal-head-mission">
                   missão {activeMission.title}
                 </span>
               ) : (
-                <span className="doctrine-seal-title-null">
+                <span className="doctrine-seal-head-null">
                   sem missão activa
                 </span>
               )}
+              <span className="doctrine-seal-head-crest" aria-hidden>
+                <span className="doctrine-seal-head-crest-num">
+                  {toRoman(principles.length)}
+                </span>
+                <span className="doctrine-seal-head-crest-unit">
+                  {principles.length === 1 ? "artigo" : "artigos"}
+                </span>
+              </span>
             </div>
 
             <div className="doctrine-seal-declaration">
@@ -168,40 +147,40 @@ export default function School() {
               )}
             </div>
 
-            <div className="doctrine-seal-counters">
-              <span className="doctrine-seal-counter">
+            <div className="doctrine-seal-metrics">
+              <span className="doctrine-seal-metric">
                 <span
-                  className="doctrine-seal-counter-value"
+                  className="doctrine-seal-metric-value"
                   data-tone={totalApplications > 0 ? "accent" : "dim"}
                 >
                   {totalApplications}
                 </span>
-                <span className="doctrine-seal-counter-label">
+                <span className="doctrine-seal-metric-label">
                   {totalApplications === 1 ? "invocação" : "invocações"}
                 </span>
               </span>
-              <span className="doctrine-seal-counter">
+              <span className="doctrine-seal-metric">
                 <span
-                  className="doctrine-seal-counter-value"
+                  className="doctrine-seal-metric-value"
                   data-tone={missionsGoverned > 0 ? undefined : "dim"}
                 >
                   {missionsGoverned}
                 </span>
-                <span className="doctrine-seal-counter-label">
+                <span className="doctrine-seal-metric-label">
                   de {totalMissions} missões governadas
                 </span>
               </span>
               {lastApplied ? (
-                <span className="doctrine-seal-counter">
-                  <span className="doctrine-seal-counter-value">
+                <span className="doctrine-seal-metric">
+                  <span className="doctrine-seal-metric-value">
                     {new Date(lastApplied.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
-                  <span className="doctrine-seal-counter-label">
+                  <span className="doctrine-seal-metric-label">
                     última invocação
                   </span>
                 </span>
               ) : (
-                <span className="doctrine-seal-counter-null">
+                <span className="doctrine-seal-metric-null">
                   {activeMission
                     ? "ainda não invocada nesta missão"
                     : "aguarda missão activa"}
@@ -209,11 +188,10 @@ export default function School() {
               )}
             </div>
 
-            {(syncState !== "synced" || hydratedFromBackend === false || syncError) && (
+            {showStatus && (
               <div className="doctrine-seal-status">
                 <span
                   className="doctrine-seal-status-item"
-                  data-doctrine-sync={syncState}
                   data-state={
                     syncState === "synced" ? "ok" :
                     syncState === "syncing" ? "info" : "warn"
@@ -228,7 +206,6 @@ export default function School() {
                 {hydratedFromBackend === false && (
                   <span
                     className="doctrine-seal-status-item"
-                    data-doctrine-load="local-only"
                     data-state="warn"
                   >
                     carregada da cache — backend não respondeu
@@ -237,7 +214,6 @@ export default function School() {
                 {syncError && (
                   <span
                     className="doctrine-seal-status-item"
-                    data-doctrine-sync-error={syncError.kind}
                     data-state="warn"
                     title={syncError.message}
                   >
@@ -253,10 +229,6 @@ export default function School() {
         )}
 
         {principles.length === 0 && (
-          // If hydration never reached the backend, the empty state could be
-          // an honest void OR a backend-down false-empty. Distinguish so the
-          // user doesn't waste time wondering why their inscribed doctrine is
-          // missing.
           hydratedFromBackend === false ? (
             <DormantPanel
               detail="doutrina por carregar — backend não respondeu na hidratação. O que aparecer abaixo veio só da cache local."
@@ -274,23 +246,20 @@ export default function School() {
         )}
 
         {principles.length > 0 && (
-          <div className="doctrine-preamble">
-            <span className="doctrine-preamble-heavy">registo constitucional</span>
-            <span>
-              {principles.length === 1
-                ? "1 artigo"
-                : `${principles.length} artigos`}
+          <div className="doctrine-register-heading">
+            <span>registo constitucional</span>
+            <span className="doctrine-register-heading-count">
+              {principles.length === 1 ? "1 artigo" : `${principles.length} artigos`}
             </span>
-            <span className="doctrine-preamble-order">
+            <span className="doctrine-register-heading-order">
               por ordem de inscrição
             </span>
           </div>
         )}
 
-        {/* Constitutional ordering: the register reads ascending. Article I
-            is the first inscribed; Article N is the most recent. Source
-            state stores principles newest-first, so we reverse once for
-            display. */}
+        {/* Constitutional ordering: article I is the first inscribed;
+            article N is the most recent. Source state stores newest-
+            first, so we reverse once for display. */}
         {layout === "tablets" ? (
           <div
             style={{
@@ -336,9 +305,9 @@ export default function School() {
                   </div>
                   <div className="doctrine-article-body">
                     <span className="doctrine-article-text">{p.text}</span>
-                    <span className="doctrine-article-meta">
-                      inscrita {relativeTime(p.createdAt, nowMs)}
-                    </span>
+                  </div>
+                  <div className="doctrine-article-aside">
+                    inscrita {relativeTime(p.createdAt, nowMs)}
                   </div>
                 </div>
               );
@@ -347,58 +316,32 @@ export default function School() {
         )}
       </div>
 
+      {/* Composer — ceremonial inscription surface. Not a glass pill.
+          A bordered bay whose left accent activates on focus. */}
       <div
-        data-architect-input="principio"
-        data-architect-input-state={inputFocused ? "focused" : "idle"}
-        style={{ margin: "0 clamp(20px, 5vw, 64px) 18px" }}
+        className="doctrine-composer"
+        data-focused={inputFocused ? "true" : undefined}
       >
-        <div
-          data-architect-voice
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: 9,
-            letterSpacing: 2,
-            textTransform: "uppercase",
-            color: inputFocused ? "var(--accent)" : "var(--text-ghost)",
-            marginBottom: 8,
-            paddingLeft: 4,
-            transition: "color 0.15s",
-          }}
-        >
-          {copy.schoolInputVoice}
+        <div className="doctrine-composer-label">
+          <span>{copy.schoolInputVoice}</span>
         </div>
         {rejection !== null && (
           <div
-            className="fadeIn"
+            className="fadeIn doctrine-composer-rejection"
             data-testid="school-rejection"
-            style={{
-              marginBottom: 8,
-              fontSize: 11,
-              color: "var(--cc-warn)",
-              fontFamily: "var(--mono)",
-              letterSpacing: 1,
-              paddingLeft: 4,
-            }}
           >
             {rejection === "duplicate" && "✗ princípio já inscrito — normalizar antes de repetir."}
             {rejection === "tooLong" && `✗ princípio excede ${PRINCIPLE_MAX_LEN} caracteres.`}
             {rejection === "empty" && "✗ nada para inscrever."}
           </div>
         )}
-        <div
-          className="glass"
-          style={{
-            borderRadius: 14,
-            padding: "12px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <span style={{ color: "var(--accent-dim)", fontSize: 14 }}>›</span>
+        <div className="doctrine-composer-row">
+          <span aria-hidden className="doctrine-composer-lead">§</span>
           <input
             autoFocus
             value={input}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             onChange={(e) => {
               setInput(e.target.value);
               if (rejection !== null) setRejection(null);
@@ -409,23 +352,13 @@ export default function School() {
             }}
             maxLength={PRINCIPLE_MAX_LEN * 2}
             placeholder={copy.schoolPlaceholder}
-            style={{
-              flex: 1,
-              fontSize: 14,
-              color: "var(--text-primary)",
-              fontFamily: "var(--sans)",
-              padding: "6px 0",
-            }}
+            className="doctrine-composer-input"
           />
-          {trimmed.length > 0 && charsLeft <= 60 && (
+          {showCount && (
             <span
               data-testid="school-charcount"
-              style={{
-                fontSize: 10,
-                fontFamily: "var(--mono)",
-                color: charsLeft < 0 ? "var(--cc-err)" : charsLeft <= 20 ? "var(--cc-warn)" : "var(--text-ghost)",
-                letterSpacing: 1,
-              }}
+              className="doctrine-composer-count"
+              data-tone={countTone}
             >
               {charsLeft}
             </span>

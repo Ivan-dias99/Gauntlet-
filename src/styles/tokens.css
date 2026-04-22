@@ -1,6 +1,33 @@
 /* Ruberra design tokens — unified palette (warm ink + bone + ember pulse).
    Three themes share one hue system. Extracted from Ruberra.html 2026-04-18. */
 
+/* ——— School chamber palette ———
+   School is dark-first regardless of theme. The constitutional chamber
+   asserts its own tonal identity: near-black backdrop, olive + warm
+   accents used with discipline, narrow-ramp text hierarchy. These
+   tokens are applied only inside .chamber-shell[data-chamber="school"]
+   so the rest of the app keeps its warm-ink defaults. */
+:root {
+  --school-bg-absolute: #08090C;
+  --school-bg-chamber:  #0B0E13;
+  --school-surface-1:   #10141A;
+  --school-surface-2:   #131821;
+  --school-surface-3:   #171C23;
+
+  --school-line-soft:   rgba(226, 220, 204, 0.07);
+  --school-line-mid:    rgba(226, 220, 204, 0.12);
+  --school-line-strong: rgba(226, 220, 204, 0.18);
+
+  --school-text-primary:   #E7E1D4;
+  --school-text-secondary: rgba(231, 225, 212, 0.72);
+  --school-text-tertiary:  rgba(231, 225, 212, 0.46);
+  --school-text-micro:     rgba(231, 225, 212, 0.34);
+
+  --school-accent-olive: #C7D58B;
+  --school-accent-warm:  #B89B79;
+  --school-accent-dim:   rgba(199, 213, 139, 0.20);
+}
+
 /* ——— DARK — deep ink (default) ——— */
 :root,
 [data-theme="dark"] {
@@ -702,29 +729,43 @@ textarea {
   background: color-mix(in oklab, var(--cc-ok) 12%, transparent);
 }
 
+/* Chamber navigation tab — sovereign band treatment. No pill background,
+   no border-radius. Active state is a 2px bottom accent (underline) so the
+   ribbon reads as one continuous instrumentation band, not a row of pills. */
 .tab {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid transparent;
+  padding: 6px 12px 8px;
+  border: 0;
   background: none;
   color: var(--text-muted);
-  font-family: var(--sans);
-  font-size: 13px;
-  letter-spacing: 0.3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: background 0.18s, color 0.18s, border-color 0.18s;
+  transition: color 0.18s;
+}
+.tab::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.2s var(--ease-emph);
 }
 .tab:hover {
   color: var(--text-secondary);
 }
 .tab-active {
-  background: var(--bg);
   color: var(--text-primary);
-  border-color: var(--border-subtle);
-  font-weight: 500;
+}
+.tab-active::after {
+  background: var(--accent);
 }
 
 .vbar {
@@ -1057,30 +1098,32 @@ textarea {
 }
 
 /* ——— Canon ribbon primitives ———
-   Main app header. Desktop-identical to the previous inline scaffold; exists
-   so the mobile block can tighten without fighting inline style specificity. */
+   Sovereign instrumentation band. 48px tall, no drop shadow, one
+   continuous strip with hairline bottom. Tabs are underline-active, not
+   pill-active. The right cluster carries sync, mission, and controls
+   separated by subtle vbars so the whole rail reads as integrated. */
 .canon-ribbon {
-  height: 56px;
+  height: 48px;
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  padding-left: 32px;
-  padding-right: 24px;
+  padding-left: 24px;
+  padding-right: 18px;
   flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
   position: relative;
   z-index: 10;
 }
 .canon-ribbon-brand {
   font-family: "Fraunces", Georgia, serif;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 400;
-  letter-spacing: -0.02em;
-  margin-right: 48px;
+  letter-spacing: -0.015em;
+  margin-right: 28px;
   display: inline-flex;
   align-items: baseline;
-  gap: var(--sp-2);
+  gap: 6px;
+  color: var(--text-primary);
 }
 .canon-ribbon-brand-dot {
   width: 6px;
@@ -1092,17 +1135,74 @@ textarea {
 }
 .canon-ribbon-tabs {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  align-items: stretch;
+  align-self: stretch;
+  gap: 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
 .canon-ribbon-tabs::-webkit-scrollbar { display: none; }
+.canon-ribbon-tabs .tab {
+  align-self: stretch;
+  padding: 0 16px;
+  height: 100%;
+}
+.canon-ribbon-tabs .tab::after {
+  left: 16px;
+  right: 16px;
+}
 .canon-ribbon-right {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
+}
+.canon-ribbon-right .vbar {
+  height: 18px;
+  background: var(--border);
+  margin: 0 2px;
+}
+/* Right-cluster chips inside the ribbon read as inline instrument labels,
+   not pill buttons: no border, tight padding, mono microcaps. */
+.canon-ribbon-right .btn-chip {
+  border: 0;
+  padding: 4px 6px;
+  letter-spacing: 0.18em;
+}
+.canon-ribbon-right .btn-chip:hover {
+  color: var(--accent);
+  border-color: transparent;
+  background: transparent;
+}
+.canon-ribbon-right .btn-icon {
+  border: 0;
+  width: 26px;
+  height: 26px;
+  color: var(--text-muted);
+}
+.canon-ribbon-right .btn-icon:hover {
+  border: 0;
+  color: var(--accent);
+}
+.canon-ribbon-right .btn[data-variant="mission"] {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+.canon-ribbon-right .spine-sync {
+  border: 0;
+  padding: 0 2px;
+}
+.canon-ribbon-right [data-shell-mode="mock"] {
+  border-radius: 0;
+  border-top: 0;
+  border-bottom: 0;
+  border-right: 0;
+  padding: 0 8px;
 }
 
 /* ——— Mobile density layer ———
@@ -1144,40 +1244,47 @@ textarea {
     padding: calc(16px * var(--density, 1)) 14px;
   }
 
-  /* Canon ribbon — brand/tabs/right cluster all tighten; horizontal padding
-     drops from 32/24 to 12/10 so the whole ribbon survives 375px portrait
-     without overflow. Brand margin collapses so the tab row doesn't push
-     off-screen. */
+  /* Canon ribbon — sovereign band shrinks horizontally; brand margin
+     collapses so the underline tabs don't push off-screen. */
   .canon-ribbon {
-    height: 52px;
-    padding-left: 12px;
-    padding-right: 10px;
+    height: 44px;
+    padding-left: 14px;
+    padding-right: 12px;
   }
   .canon-ribbon-brand {
-    font-size: 17px;
-    margin-right: 12px;
+    font-size: 15px;
+    margin-right: 16px;
+  }
+  .canon-ribbon-tabs .tab {
+    padding: 0 10px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+  .canon-ribbon-tabs .tab::after {
+    left: 10px;
+    right: 10px;
   }
   .canon-ribbon-right {
     gap: 8px;
   }
   .canon-ribbon-right .vbar { display: none; }
   .canon-ribbon-right .btn-chip {
-    padding: 6px 9px;
-    letter-spacing: 0.1em;
+    padding: 4px 6px;
+    letter-spacing: 0.14em;
   }
   .canon-ribbon-right .btn-icon {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
   }
   .canon-ribbon-right .btn[data-variant="mission"] {
-    max-width: 160px;
-    font-size: 11px;
-    padding: 5px 10px;
+    max-width: 150px;
+    font-size: 10.5px;
+    padding: 3px 8px;
   }
   .canon-ribbon-right .spine-sync {
-    padding: 2px 6px;
+    padding: 0 2px;
     font-size: 9px;
-    letter-spacing: 1px;
+    letter-spacing: 0.1em;
   }
 
   /* Flagship surface — full-elevation shadow reads as floating air on
@@ -1313,359 +1420,615 @@ textarea {
   }
 }
 
-/* ——— School doctrine primitives ———
-   Constitutional surfaces for the School chamber. Upright legal type,
-   not literary italic. Declarative composition, not dashboard card.
-   Four zones per seal: institutional header, declaration line,
-   invocation counters, optional status row — each separated by a
-   hairline. Articles read as a sober register with a mono "ARTIGO"
-   kicker + upright serif numeral. Invocation data is surfaced from
-   real substrate (`doctrine_applied` events in mission logs) — never
-   labelled "consequence" because the substrate does not carry
-   per-principle causal effects, only whether the doctrine was
-   invoked. */
-
-/* Seal — the constitutional declaration that frames the register. */
-.doctrine-seal {
-  margin-bottom: var(--sp-6);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--r-md);
-  overflow: hidden;
+/* ——— School chamber scope ———
+   School is dark-first regardless of theme. Base tokens are overridden
+   inside this chamber so every primitive below resolves against the
+   school palette. The chamber paints its own background and text color
+   so the surface never bleeds a different theme's warmth through. */
+.chamber-shell[data-chamber="school"] {
+  --bg: var(--school-bg-chamber);
+  --bg-surface: var(--school-surface-1);
+  --bg-sunken: var(--school-bg-absolute);
+  --bg-elevated: var(--school-surface-2);
+  --bg-input: var(--school-surface-2);
+  --border: var(--school-line-strong);
+  --border-subtle: var(--school-line-soft);
+  --text-primary: var(--school-text-primary);
+  --text-secondary: var(--school-text-secondary);
+  --text-muted: var(--school-text-tertiary);
+  --text-ghost: var(--school-text-micro);
+  --accent: var(--school-accent-olive);
+  --accent-dim: var(--school-accent-warm);
+  --accent-glow: var(--school-accent-dim);
+  background: var(--school-bg-chamber);
+  color: var(--school-text-primary);
 }
-.doctrine-seal-title {
+.chamber-shell[data-chamber="school"] .chamber-head {
+  background: var(--school-bg-chamber);
+  border-bottom-color: var(--school-line-mid);
+  padding: 18px 40px 10px;
+}
+/* Tighten the body rhythm specifically for School so the strap-to-panel
+   gap lands in the spec'd 18-22px band and the register-to-composer gap
+   lands in the 18-24px band. Overrides the shared calm pad only here. */
+.chamber-shell[data-chamber="school"] .chamber-body[data-pad="calm"] {
+  padding-top: 10px;
+  padding-bottom: 8px;
+}
+
+/* ——— School doctrine primitives ———
+   Constitutional surfaces. Upright legal type, institutional composition,
+   disciplined accent use. The mission panel sits on the chamber background,
+   the register carries the visual body, the composer is an inscription
+   surface — not a form input. */
+
+/* Doctrine strap — the constitutional opening line at the top of the
+   chamber. Replaces the old ghost subtitle with legible microcaps brand +
+   serif legenda reading close to text-secondary weight. */
+.doctrine-strap {
   display: flex;
   align-items: baseline;
+  gap: 16px;
   flex-wrap: wrap;
-  gap: var(--sp-2) var(--sp-3);
-  padding: var(--sp-4) var(--sp-5);
-  border-bottom: 1px solid var(--border-subtle);
 }
-.doctrine-seal-title-kicker {
+.doctrine-strap-brand {
   font-family: var(--mono);
   font-size: 10px;
-  letter-spacing: var(--track-kicker);
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--school-accent-olive);
 }
-.doctrine-seal-title-sep {
-  color: var(--border);
+.doctrine-strap-line {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--school-text-secondary);
+  letter-spacing: -0.005em;
+}
+
+/* Mission panel — four-zone institutional surface. Natural height
+   160-190px when populated (header ~48 + declaration ~48 + metrics ~44
+   + optional status ~36 + borders). Left accent is a disciplined 2px
+   olive rule — structural signal, never decoration. */
+.doctrine-seal {
+  margin-bottom: 28px;
+  background: var(--school-surface-1);
+  border: 1px solid var(--school-line-soft);
+  border-left: 2px solid var(--school-accent-olive);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.doctrine-seal-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 16px 22px 14px;
+  border-bottom: 1px solid var(--school-line-soft);
+}
+.doctrine-seal-head-kicker {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--school-accent-olive);
+}
+.doctrine-seal-head-sep {
   font-family: var(--mono);
   font-size: 10px;
+  color: var(--school-line-strong);
 }
-.doctrine-seal-title-mission {
+.doctrine-seal-head-mission {
   font-family: var(--serif);
-  font-size: 17px;
-  line-height: 1.3;
-  color: var(--text-primary);
-  letter-spacing: var(--track-tight);
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--school-text-primary);
+  letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
 }
-.doctrine-seal-title-null {
+.doctrine-seal-head-null {
   font-family: var(--mono);
   font-size: 10px;
-  letter-spacing: var(--track-meta);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--text-ghost);
+  color: var(--school-text-tertiary);
+}
+.doctrine-seal-head-crest {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.doctrine-seal-head-crest-num {
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--school-accent-olive);
+  letter-spacing: -0.01em;
+}
+.doctrine-seal-head-crest-unit {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--school-text-tertiary);
 }
 .doctrine-seal-declaration {
-  padding: var(--sp-4) var(--sp-5);
+  padding: 14px 22px;
   font-family: var(--serif);
-  font-size: 16px;
+  font-size: 15.5px;
   line-height: 1.55;
-  color: var(--text-primary);
-  letter-spacing: var(--track-tight);
-  border-bottom: 1px solid var(--border-subtle);
+  color: var(--school-text-primary);
+  letter-spacing: -0.005em;
+  border-bottom: 1px solid var(--school-line-soft);
 }
 .doctrine-seal-declaration strong {
   font-weight: 500;
-  color: var(--accent);
+  color: var(--school-accent-olive);
 }
-.doctrine-seal-counters {
+.doctrine-seal-metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 0;
-  padding: var(--sp-3) var(--sp-5);
+  padding: 12px 22px;
   font-family: var(--mono);
   font-size: 10px;
-  letter-spacing: var(--track-meta);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--school-text-tertiary);
 }
-.doctrine-seal-counter {
+.doctrine-seal-metric {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
-  padding-right: var(--sp-4);
+  gap: 10px;
+  padding: 0 20px 0 0;
 }
-.doctrine-seal-counter + .doctrine-seal-counter {
-  border-left: 1px solid var(--border-subtle);
-  padding-left: var(--sp-4);
+.doctrine-seal-metric + .doctrine-seal-metric {
+  border-left: 1px solid var(--school-line-soft);
+  padding-left: 20px;
 }
-.doctrine-seal-counter-value {
+.doctrine-seal-metric-value {
   font-family: var(--serif);
-  font-size: 17px;
-  color: var(--text-primary);
+  font-size: 18px;
   line-height: 1;
-  font-weight: 400;
+  color: var(--school-text-primary);
   letter-spacing: -0.01em;
+  font-weight: 400;
 }
-.doctrine-seal-counter-value[data-tone="dim"] {
-  color: var(--text-ghost);
+.doctrine-seal-metric-value[data-tone="dim"]    { color: var(--school-text-tertiary); }
+.doctrine-seal-metric-value[data-tone="accent"] { color: var(--school-accent-olive); }
+.doctrine-seal-metric-label {
+  color: var(--school-text-tertiary);
+  font-size: 9px;
+  letter-spacing: 0.2em;
 }
-.doctrine-seal-counter-value[data-tone="accent"] {
-  color: var(--accent);
-}
-.doctrine-seal-counter-label {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.doctrine-seal-counter-null {
+.doctrine-seal-metric-null {
   font-family: var(--mono);
   font-size: 10px;
-  color: var(--text-ghost);
-  letter-spacing: var(--track-meta);
-  padding: 2px 0;
+  color: var(--school-text-tertiary);
+  letter-spacing: 0.16em;
+  padding-left: 20px;
+  border-left: 1px solid var(--school-line-soft);
 }
 .doctrine-seal-status {
-  padding: var(--sp-3) var(--sp-5);
-  border-top: 1px solid var(--border-subtle);
+  padding: 10px 22px 12px;
+  border-top: 1px solid var(--school-line-soft);
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-3) var(--sp-4);
+  gap: 14px;
   font-family: var(--mono);
   font-size: 10px;
-  letter-spacing: var(--track-meta);
-  color: var(--text-ghost);
+  letter-spacing: 0.14em;
+  color: var(--school-text-tertiary);
 }
 .doctrine-seal-status-item[data-state="ok"]   { color: var(--cc-ok); }
 .doctrine-seal-status-item[data-state="info"] { color: var(--cc-info); }
 .doctrine-seal-status-item[data-state="warn"] { color: var(--cc-warn); }
 
-/* Preamble — strip that marks the registry before the articles. */
-.doctrine-preamble {
+/* Register heading — single line that marks the article list as a
+   constitutional register, not a feed. */
+.doctrine-register-heading {
   display: flex;
   align-items: baseline;
-  gap: var(--sp-3);
-  padding-bottom: var(--sp-3);
-  margin-bottom: var(--sp-3);
-  border-bottom: 1px solid var(--border-subtle);
+  gap: 14px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--school-line-mid);
   font-family: var(--mono);
   font-size: 9px;
-  letter-spacing: var(--track-kicker);
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--school-text-secondary);
 }
-.doctrine-preamble-heavy {
-  color: var(--accent-dim);
+.doctrine-register-heading-count {
+  color: var(--school-text-tertiary);
+  letter-spacing: 0.2em;
 }
-.doctrine-preamble-order {
+.doctrine-register-heading-order {
   margin-left: auto;
-  color: var(--text-ghost);
-  letter-spacing: var(--track-meta);
-  font-size: 9px;
+  color: var(--school-text-micro);
+  letter-spacing: 0.2em;
 }
 
-/* Article row — register entry in the list layout. Upright serif numeral,
-   mono "ARTIGO" kicker, hairline between each row plus a closing rule
-   after the last so the registry actually closes. */
+/* Article row — 96px 1fr auto institutional inscription unit.
+   Natural height lands in 88-104px with the 20px vertical padding. */
 .doctrine-article {
   display: grid;
-  grid-template-columns: 104px 1fr;
-  gap: 0 var(--sp-5);
-  padding: 22px 0;
-  border-bottom: 1px solid var(--border-subtle);
+  grid-template-columns: 96px 1fr auto;
+  gap: 0 28px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--school-line-soft);
   align-items: flex-start;
 }
 .doctrine-article-gutter {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 6px;
-  padding-top: 3px;
+  padding-top: 2px;
 }
 .doctrine-article-kicker {
   font-family: var(--mono);
   font-size: 9px;
-  letter-spacing: var(--track-kicker);
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: var(--accent-dim);
+  color: var(--school-text-micro);
 }
 .doctrine-article-num {
   font-family: var(--serif);
-  font-size: 24px;
+  font-size: 32px;
   font-weight: 400;
   line-height: 1;
-  color: var(--accent);
-  letter-spacing: -0.01em;
+  color: var(--school-accent-olive);
+  letter-spacing: -0.02em;
 }
 .doctrine-article-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
+  padding-top: 4px;
 }
 .doctrine-article-text {
   font-family: var(--serif);
   font-size: 17px;
   font-weight: 400;
-  line-height: 1.7;
-  color: var(--text-primary);
-  letter-spacing: var(--track-tight);
+  line-height: 1.55;
+  color: var(--school-text-primary);
+  letter-spacing: -0.005em;
 }
 .doctrine-article-meta {
   font-family: var(--mono);
   font-size: 9px;
-  letter-spacing: var(--track-kicker);
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--text-ghost);
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-3);
+  color: var(--school-text-micro);
+}
+.doctrine-article-aside {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--school-text-tertiary);
+  white-space: nowrap;
+  padding-top: 8px;
 }
 
-/* Tablet card — upright mirror of the article row in grid form. */
+/* Tablet card — grid variant of the register. */
 .doctrine-tablet {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-left: 2px solid color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
-  border-radius: var(--r-md);
-  padding: var(--sp-5) var(--sp-5);
+  background: var(--school-surface-1);
+  border: 1px solid var(--school-line-soft);
+  border-left: 2px solid var(--school-accent-warm);
+  border-radius: 4px;
+  padding: 20px 22px;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: 12px;
 }
 .doctrine-tablet-head {
   display: flex;
   align-items: baseline;
-  gap: var(--sp-2);
+  gap: 10px;
 }
 .doctrine-tablet-kicker {
   font-family: var(--mono);
   font-size: 9px;
-  letter-spacing: var(--track-kicker);
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: var(--accent-dim);
+  color: var(--school-text-micro);
 }
 .doctrine-tablet-num {
   font-family: var(--serif);
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1;
-  color: var(--accent);
+  color: var(--school-accent-olive);
   letter-spacing: -0.01em;
 }
 .doctrine-tablet-text {
   font-family: var(--serif);
   font-size: 16px;
-  line-height: 1.65;
-  color: var(--text-primary);
-  letter-spacing: var(--track-tight);
+  line-height: 1.55;
+  color: var(--school-text-primary);
+  letter-spacing: -0.005em;
 }
 
-/* Chamber head crest — serif-upright count on the head strip. */
-.chamber-head-crest {
-  margin-left: auto;
-  display: inline-flex;
+/* Composer — constitutional inscription surface. Not glass, not a pill.
+   A bordered bay with a transparent left accent that activates on focus. */
+.doctrine-composer {
+  margin: 18px clamp(20px, 5vw, 64px) 22px;
+  background: var(--school-surface-1);
+  border: 1px solid var(--school-line-soft);
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  padding: 16px 22px;
+  transition: border-left-color 0.25s var(--ease-emph),
+              background 0.25s var(--ease-emph);
+}
+.doctrine-composer[data-focused="true"] {
+  border-left-color: var(--school-accent-olive);
+  background: var(--school-surface-2);
+}
+.doctrine-composer-label {
+  display: flex;
   align-items: baseline;
-  gap: var(--sp-2);
-}
-.chamber-head-crest-num {
-  font-family: var(--serif);
-  font-size: 22px;
-  line-height: 1;
-  color: var(--accent);
-  letter-spacing: -0.01em;
-}
-.chamber-head-crest-kicker {
+  gap: 14px;
   font-family: var(--mono);
   font-size: 9px;
-  letter-spacing: var(--track-kicker);
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: var(--accent-dim);
+  color: var(--school-text-tertiary);
+  margin-bottom: 10px;
+  transition: color 0.2s var(--ease-emph);
 }
+.doctrine-composer[data-focused="true"] .doctrine-composer-label {
+  color: var(--school-accent-olive);
+}
+.doctrine-composer-rejection {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--cc-warn);
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
+.doctrine-composer-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.doctrine-composer-lead {
+  font-family: var(--serif);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--school-accent-olive);
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.doctrine-composer-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--school-text-primary);
+  letter-spacing: -0.005em;
+  padding: 4px 0;
+  min-width: 0;
+}
+.doctrine-composer-input::placeholder {
+  color: var(--school-text-tertiary);
+  font-style: normal;
+}
+.doctrine-composer-count {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--school-text-tertiary);
+  flex-shrink: 0;
+}
+.doctrine-composer-count[data-tone="warn"] { color: var(--cc-warn); }
+.doctrine-composer-count[data-tone="err"]  { color: var(--cc-err); }
 
-/* Inscription affordance. Idle state is transparent so only an active
-   draft pulls weight — ratification is an act, not an ambient signal. */
+/* Ratify CTA — idle transparent, olive outline, square-corner institutional.
+   Hover engages a warm accent tint; warn state flips to cc-warn. */
 .doctrine-ratify {
   font-family: var(--mono);
   font-size: 10px;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-  padding: 8px 18px;
-  border-radius: 999px;
+  padding: 9px 18px;
+  border-radius: 2px;
   background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--accent-dim);
+  color: var(--school-accent-olive);
+  border: 1px solid var(--school-accent-warm);
   cursor: pointer;
-  transition: background 0.2s var(--ease-swift), border-color 0.2s, color 0.2s;
+  transition: background 0.2s var(--ease-swift),
+              border-color 0.2s,
+              color 0.2s;
+  flex-shrink: 0;
 }
 .doctrine-ratify:hover:not(:disabled) {
-  background: var(--accent-glow);
-  border-color: var(--accent);
+  background: var(--school-accent-dim);
+  border-color: var(--school-accent-olive);
 }
 .doctrine-ratify[data-warn="true"] {
   color: var(--cc-warn);
   border-color: var(--cc-warn);
+  background: transparent;
 }
 .doctrine-ratify:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* Mobile — doctrine primitives respect the ≤640 density layer. */
+/* Empty-state rendering inside the school scope stays structurally the
+   same but reads against the school palette via the token overrides;
+   nudge the dormant panel so its left rule matches the olive discipline. */
+.chamber-shell[data-chamber="school"] [data-dormant-panel] {
+  background: var(--school-surface-1);
+  border-color: var(--school-line-soft);
+  border-left-color: var(--school-text-micro);
+}
+
+/* Canon ribbon adopts the school palette when School is the active
+   chamber so the top rail and the chamber body read as one continuous
+   institution rather than a warm-theme ribbon sitting atop a cold
+   sovereign page. */
+[data-active-chamber="School"] .canon-ribbon {
+  background: var(--school-bg-chamber);
+  border-bottom-color: var(--school-line-mid);
+  color: var(--school-text-primary);
+}
+[data-active-chamber="School"] .canon-ribbon-brand {
+  color: var(--school-text-primary);
+}
+[data-active-chamber="School"] .canon-ribbon-brand-dot {
+  background: var(--school-accent-olive);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--school-accent-olive) 40%, transparent);
+}
+[data-active-chamber="School"] .canon-ribbon .tab {
+  color: var(--school-text-tertiary);
+}
+[data-active-chamber="School"] .canon-ribbon .tab:hover {
+  color: var(--school-text-secondary);
+}
+[data-active-chamber="School"] .canon-ribbon .tab-active {
+  color: var(--school-text-primary);
+}
+[data-active-chamber="School"] .canon-ribbon .tab-active::after {
+  background: var(--school-accent-olive);
+}
+[data-active-chamber="School"] .canon-ribbon-right .vbar {
+  background: var(--school-line-mid);
+}
+[data-active-chamber="School"] .canon-ribbon-right .btn-chip {
+  color: var(--school-text-tertiary);
+}
+[data-active-chamber="School"] .canon-ribbon-right .btn-chip:hover {
+  color: var(--school-accent-olive);
+}
+[data-active-chamber="School"] .canon-ribbon-right .btn-icon {
+  color: var(--school-text-tertiary);
+}
+[data-active-chamber="School"] .canon-ribbon-right .btn-icon:hover {
+  color: var(--school-accent-olive);
+}
+[data-active-chamber="School"] .canon-ribbon-right .btn[data-variant="mission"] {
+  border-color: var(--school-line-strong);
+  color: var(--school-text-secondary);
+}
+[data-active-chamber="School"] .canon-ribbon-right .btn[data-variant="mission"]:hover {
+  color: var(--school-accent-olive);
+  border-color: var(--school-accent-warm);
+  background: transparent;
+}
+[data-active-chamber="School"] .canon-ribbon-right .mission-pill-dot {
+  background: var(--school-text-micro);
+}
+[data-active-chamber="School"] .canon-ribbon-right .mission-pill-dot[data-state="live"] {
+  background: var(--school-accent-olive);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--school-accent-olive) 45%, transparent);
+}
+[data-active-chamber="School"] .canon-ribbon-right .spine-sync[data-sync-state="synced"] {
+  color: var(--school-text-tertiary);
+}
+[data-active-chamber="School"] .canon-ribbon-right .spine-sync[data-sync-state="syncing"] {
+  color: var(--school-text-secondary);
+}
+[data-active-chamber="School"] main {
+  background: var(--school-bg-chamber);
+}
+
+/* ——— Mobile — School doctrine ——— */
 @media (max-width: 640px) {
-  .doctrine-seal {
-    margin-bottom: var(--sp-5);
+  .chamber-shell[data-chamber="school"] .chamber-head {
+    padding: 14px 16px 10px;
   }
-  .doctrine-seal-title,
+  .doctrine-strap {
+    gap: 10px;
+  }
+  .doctrine-strap-line {
+    font-size: 12.5px;
+  }
+  .doctrine-seal {
+    margin-bottom: 22px;
+  }
+  .doctrine-seal-head,
   .doctrine-seal-declaration,
-  .doctrine-seal-counters,
+  .doctrine-seal-metrics,
   .doctrine-seal-status {
-    padding-left: var(--sp-4);
-    padding-right: var(--sp-4);
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .doctrine-seal-head {
+    padding-top: 14px;
+    padding-bottom: 12px;
+  }
+  .doctrine-seal-head-mission {
+    font-size: 18px;
+  }
+  .doctrine-seal-head-crest-num {
+    font-size: 18px;
   }
   .doctrine-seal-declaration {
     font-size: 14.5px;
+    padding-top: 12px;
+    padding-bottom: 12px;
   }
-  .doctrine-seal-counters {
-    padding-top: var(--sp-2);
-    padding-bottom: var(--sp-2);
+  .doctrine-seal-metrics {
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
-  .doctrine-seal-counter {
-    padding-right: var(--sp-3);
+  .doctrine-seal-metric {
+    padding-right: 14px;
   }
-  .doctrine-seal-counter + .doctrine-seal-counter {
-    padding-left: var(--sp-3);
+  .doctrine-seal-metric + .doctrine-seal-metric {
+    padding-left: 14px;
   }
-  .doctrine-seal-counter-value {
-    font-size: 15px;
+  .doctrine-seal-metric-value {
+    font-size: 16px;
+  }
+  .doctrine-seal-metric-null {
+    padding-left: 14px;
+  }
+  .doctrine-register-heading {
+    gap: 10px;
   }
   .doctrine-article {
     grid-template-columns: 72px 1fr;
-    gap: 0 var(--sp-3);
-    padding: 18px 0;
+    gap: 4px 16px;
+    padding: 16px 0;
+  }
+  .doctrine-article-aside {
+    grid-column: 2;
+    padding-top: 0;
   }
   .doctrine-article-num {
-    font-size: 20px;
+    font-size: 26px;
   }
   .doctrine-article-text {
-    font-size: 15px;
-    line-height: 1.6;
+    font-size: 15.5px;
+    line-height: 1.55;
   }
   .doctrine-tablet {
-    padding: var(--sp-4) var(--sp-4);
+    padding: 16px 18px;
   }
-  .doctrine-tablet-num {
-    font-size: 18px;
+  .doctrine-composer {
+    margin: 14px 14px 18px;
+    padding: 14px 16px;
   }
-  .doctrine-tablet-text {
-    font-size: 14.5px;
+  .doctrine-composer-label {
+    gap: 10px;
   }
-  .chamber-head-crest-num {
+  .doctrine-composer-input {
+    font-size: 15px;
+  }
+  .doctrine-composer-lead {
     font-size: 18px;
   }
 }
