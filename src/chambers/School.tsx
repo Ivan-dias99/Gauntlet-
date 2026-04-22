@@ -123,7 +123,7 @@ export default function School() {
             metrics rail, optional status. Carries doctrine's current
             reach and the honest invocation data from real substrate. */}
         {isGoverning && (
-          <div className="fadeIn hero-panel doctrine-seal">
+          <div className="fadeIn hero-panel">
             <div className="doctrine-seal-head">
               <span className="doctrine-seal-head-kicker">doutrina</span>
               <span aria-hidden className="doctrine-seal-head-sep">·</span>
@@ -307,7 +307,7 @@ export default function School() {
               return (
                 <div
                   key={p.id}
-                  className="fadeUp structured-list-row doctrine-article"
+                  className="fadeUp structured-list-row"
                   style={{ animationDelay: `${i * 35}ms` }}
                 >
                   <div className="doctrine-article-gutter">

@@ -111,11 +111,11 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "14px 22px",
+          padding: "16px 24px",
           borderRadius: 999,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <span
             className="breathe"
             style={{
@@ -139,7 +139,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
             R · U · B · E · I · R · A
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <span
             style={{
               fontFamily: "var(--mono)",
@@ -253,7 +253,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               marginTop: 64,
               display: "flex",
               alignItems: "center",
-              gap: 14,
+              gap: 16,
               flexWrap: "wrap",
             }}
           >
@@ -315,7 +315,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               letterSpacing: ".4em",
               color: "var(--text-muted)",
               textTransform: "uppercase",
-              marginBottom: 18,
+              marginBottom: 16,
             }}
           >
             {copy.fourChambersKicker}
@@ -443,7 +443,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                     fontSize: 10,
                     letterSpacing: ".3em",
                     color: "var(--text-ghost)",
-                    marginBottom: 10,
+                    marginBottom: 12,
                   }}
                 >
                   {String(i + 1).padStart(2, "0")}
@@ -488,7 +488,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                   letterSpacing: ".4em",
                   color: "var(--text-muted)",
                   textTransform: "uppercase",
-                  marginBottom: 18,
+                  marginBottom: 16,
                 }}
               >
                 {copy.activeMissions}
@@ -529,7 +529,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", gap: 14 }}>
+            <div style={{ display: "flex", gap: 16 }}>
               <button onClick={onNewMission} className="visionGhost">
                 {copy.newMissionLong}
               </button>

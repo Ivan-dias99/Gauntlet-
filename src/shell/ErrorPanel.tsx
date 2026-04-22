@@ -40,7 +40,7 @@ export default function ErrorPanel({ severity, title, message, onDismiss, style 
         alignSelf: "flex-start",
         display: "flex",
         flexDirection: "column",
-        gap: 6,
+        gap: 8,
         ...style,
       }}
     >

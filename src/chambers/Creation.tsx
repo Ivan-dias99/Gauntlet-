@@ -540,7 +540,7 @@ export default function Creation() {
           }}
         >
           {pending && (
-            <span style={{ color: "var(--cc-info)", display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ color: "var(--cc-info)", display: "flex", alignItems: "center", gap: 8 }}>
               <span
                 className="breathe"
                 style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-info)" }}
@@ -562,7 +562,7 @@ export default function Creation() {
         </div>
         {/* Row 2: active mission + current objective (condensed breadcrumb) */}
         {activeMission && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--mono)", fontSize: 11 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, fontFamily: "var(--mono)", fontSize: 11 }}>
             <span style={{ fontSize: 9, letterSpacing: 2, color: "var(--text-ghost)", textTransform: "uppercase" }}>missão</span>
             <span style={{ color: "var(--text-secondary)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {activeMission.title}
@@ -623,7 +623,7 @@ export default function Creation() {
             <span className="cc-cursor" />
             <div
               style={{
-                marginTop: 18,
+                marginTop: 16,
                 fontFamily: "'Fraunces', Georgia, serif",
                 fontStyle: "italic",
                 fontSize: 18,
@@ -639,7 +639,7 @@ export default function Creation() {
 
         {tasks.length > 0 && layout === "kanban" && (
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20,
+            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 24,
             maxWidth: 820,
           }}>
             <div>
@@ -690,7 +690,7 @@ export default function Creation() {
         )}
 
         {tasks.length > 0 && layout === "terminal" && (
-          <div style={{ maxWidth: 820, marginBottom: 20 }}>
+          <div style={{ maxWidth: 820, marginBottom: 24 }}>
             {pendingTasks.map((t) => (
               <TaskRow
                 key={t.id} task={t} copy={copy}
@@ -757,11 +757,11 @@ export default function Creation() {
 
         {(pending || liveTools.length > 0 || liveText || done) && (
           <section
-            className="toolRise terminal-frame xc-exec"
+            className="toolRise terminal-frame"
             data-state={pending ? "running" : done ? "done" : "idle"}
           >
             <header className="xc-exec-head">
-              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                 <span className="t-kicker">exec</span>
                 <span style={{
                   fontFamily: "var(--mono)",
@@ -861,14 +861,14 @@ export default function Creation() {
         {err && (unreachable ? (
           <DormantPanel
             detail={copy.dormantCreation}
-            style={{ marginTop: 20, maxWidth: 820 }}
+            style={{ marginTop: 24, maxWidth: 820 }}
           />
         ) : (
           <ErrorPanel
             severity="critical"
             title={copy.creationErrorTitle}
             message={err}
-            style={{ marginTop: 20, maxWidth: 820 }}
+            style={{ marginTop: 24, maxWidth: 820 }}
           />
         ))}
 
@@ -951,7 +951,7 @@ export default function Creation() {
           fontFamily: "var(--mono)",
           display: "grid",
           gridTemplateColumns: "auto auto 1fr auto auto",
-          gap: 10,
+          gap: 12,
           alignItems: "center",
         }}
       >
@@ -1031,12 +1031,12 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
       className="toolRise"
       style={{
         maxWidth: 820,
-        marginBottom: 14,
+        marginBottom: 16,
         background: "var(--bg-elevated)",
         border: "1px solid var(--border-color-soft)",
         borderLeft: "2px solid var(--accent-dim)",
         borderRadius: "var(--radius-control)",
-        padding: "14px 18px",
+        padding: "16px 16px",
         fontFamily: "var(--mono)",
       }}
     >
@@ -1045,8 +1045,8 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
         letterSpacing: 2,
         textTransform: "uppercase",
         color: "var(--text-ghost)",
-        marginBottom: 10,
-        display: "flex", alignItems: "center", gap: 10,
+        marginBottom: 12,
+        display: "flex", alignItems: "center", gap: 12,
       }}>
         <span style={{ color: "var(--accent)" }}>crew</span>
         {crew.refinements > 0 && (
@@ -1072,7 +1072,7 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
       )}
 
       {crew.steps.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
           {crew.steps.map((s, i) => {
             const ran = crew.rolesRun.includes(s.role);
             const active = crew.currentRole === s.role;
@@ -1081,7 +1081,7 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
               <div key={i} style={{
                 display: "grid",
                 gridTemplateColumns: "14px 90px 1fr",
-                gap: 10,
+                gap: 12,
                 alignItems: "baseline",
                 fontSize: 11,
                 opacity: ran || active ? 1 : 0.55,
@@ -1099,7 +1099,7 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
 
       {crew.verdict && (
         <div style={{
-          marginTop: 10,
+          marginTop: 12,
           paddingTop: 10,
           borderTop: "1px dashed var(--border-color-soft)",
           fontSize: 11,
@@ -1269,7 +1269,7 @@ function KanbanCard({
           : `1px solid var(--border-color-soft)`,
         borderRadius: "var(--radius-control)",
         padding: 14,
-        marginBottom: 10,
+        marginBottom: 12,
         cursor: "pointer",
         opacity: isDone ? 0.55 : isBlocked ? 0.75 : 1,
         transition: "transform .25s var(--ease-swift), border-color .2s, opacity .2s",
@@ -1323,7 +1323,7 @@ function KanbanCard({
         <span title={new Date(task.lastUpdateAt).toLocaleString()} style={{ color: stale ? "var(--cc-warn)" : undefined }}>
           {relTime(task.lastUpdateAt, lang)}
         </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {active && (
             <span style={{ color: "var(--accent)", letterSpacing: 2 }}>◉ {copy.onBench}</span>
           )}
@@ -1359,7 +1359,7 @@ function TaskRow({
       style={{
         display: "flex",
         alignItems: "flex-start",
-        gap: 14,
+        gap: 16,
         padding: "11px 0 11px 12px",
         borderBottom: "1px solid var(--border-color-soft)",
         borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent",
@@ -1483,7 +1483,7 @@ function WorkbenchCard({
       }}
     >
       <div style={{
-        display: "flex", alignItems: "center", gap: 10, marginBottom: 8,
+        display: "flex", alignItems: "center", gap: 12, marginBottom: 8,
         fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-ghost)",
       }}>
         <span>{copy.workbench}</span>
@@ -1511,7 +1511,7 @@ function WorkbenchCard({
           }}>
             {task.title}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <StateChip state={task.state} copy={copy} />
             <span style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase" }}>
               {sourceLabel(task.source, copy)}
@@ -1558,7 +1558,7 @@ function WorkbenchCard({
       )}
       <div style={{
         marginTop: "var(--space-2)", paddingTop: "var(--space-2)", borderTop: "1px solid var(--border-color-soft)",
-        display: "flex", gap: 14, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
+        display: "flex", gap: 16, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
         color: "var(--text-ghost)",
         alignItems: "center", flexWrap: "wrap",
       }}>
@@ -1575,7 +1575,7 @@ function WorkbenchCard({
         {bottleneck && (
           <span style={{
             marginLeft: "auto", color: "var(--cc-warn)", letterSpacing: 1.5,
-            display: "flex", alignItems: "center", gap: 6,
+            display: "flex", alignItems: "center", gap: 8,
           }}>
             <span>⚠</span>
             <span>{lang === "en" ? "bottleneck" : "gargalo"}: {bottleneck}</span>
@@ -1623,7 +1623,7 @@ function NextStepBar({
       style={{
         marginTop: 8,
         maxWidth: 820,
-        display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap",
+        display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap",
         fontFamily: "var(--mono)",
       }}
     >
@@ -1811,7 +1811,7 @@ function ArtifactLedger({
                 }}
               >
                 <div style={{
-                  display: "flex", alignItems: "center", gap: 10,
+                  display: "flex", alignItems: "center", gap: 12,
                   fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
                   color: "var(--cc-ok)", marginBottom: 6,
                 }}>

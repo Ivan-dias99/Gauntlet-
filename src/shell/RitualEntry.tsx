@@ -56,7 +56,7 @@ export default function RitualEntry({ onDone }: Props) {
               letterSpacing: 2,
               textTransform: "uppercase",
               color: inputFocused ? "var(--accent)" : "var(--text-ghost)",
-              marginBottom: 10,
+              marginBottom: 12,
               transition: "color 0.15s",
             }}
           >
@@ -91,7 +91,7 @@ export default function RitualEntry({ onDone }: Props) {
                 background: active ? "var(--bg-elevated)" : "var(--bg-surface)",
                 border: `1px solid ${active ? "var(--accent-dim)" : "var(--border-soft)"}`,
                 borderRadius: "var(--radius-control)",
-                padding: "14px 18px",
+                padding: "16px 16px",
                 cursor: "pointer", textAlign: "left",
                 boxShadow: active ? "var(--shadow-soft)" : "none",
                 transition: "all 0.12s",
@@ -111,7 +111,7 @@ export default function RitualEntry({ onDone }: Props) {
           })}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <button
             onClick={commit}
             disabled={!ready}

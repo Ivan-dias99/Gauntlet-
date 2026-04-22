@@ -469,7 +469,7 @@ export default function Memory() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 10,
+              gap: 12,
               fontFamily: "var(--mono)",
               fontSize: 11,
               letterSpacing: 1.5,
@@ -512,7 +512,7 @@ export default function Memory() {
                   style={{
                     position: "relative",
                     marginTop: gi === 0 ? 0 : 24,
-                    marginBottom: 14,
+                    marginBottom: 16,
                     display: "flex", alignItems: "center", gap: 12,
                   }}
                 >
@@ -707,12 +707,12 @@ export default function Memory() {
 
                 {isOpen && (
                   <div style={{
-                    marginTop: 10, marginLeft: 74,
+                    marginTop: 12, marginLeft: 74,
                     fontSize: 11, color: "var(--text-secondary)",
                     background: "var(--bg-input)",
                     border: "1px solid var(--border-color-soft)",
                     borderRadius: "var(--radius-control)",
-                    padding: "10px 14px",
+                    padding: "12px 16px",
                   }}>
                     {origin && <MetaRow label="origem" value={origin} />}
                     {linkedArtifact && (
@@ -765,7 +765,7 @@ export default function Memory() {
                       </div>
                     )}
                     <div style={{
-                      marginTop: 10, padding: "8px 0 0",
+                      marginTop: 12, padding: "8px 0 0",
                       borderTop: "1px solid var(--border-color-soft)",
                       fontSize: 11,
                       color: r.answer ? "var(--text-secondary)" : "var(--text-ghost)",
@@ -816,7 +816,7 @@ function GovernanceChip({ label, value }: { label: string; value: string }) {
     <span style={{
       display: "inline-flex",
       alignItems: "baseline",
-      gap: 6,
+      gap: 8,
       padding: "3px 9px",
       border: "1px solid var(--border-color-soft)",
       borderRadius: 999,

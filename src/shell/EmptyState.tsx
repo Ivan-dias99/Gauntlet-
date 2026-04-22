@@ -43,7 +43,7 @@ export default function EmptyState({
             fontFamily: "'Fraunces', Georgia, serif",
             fontSize: 52,
             color: "var(--text-ghost)",
-            marginBottom: 22,
+            marginBottom: 24,
             opacity: 0.55,
             userSelect: "none",
             lineHeight: 1,
@@ -84,7 +84,7 @@ export default function EmptyState({
         <div
           data-empty-hint
           style={{
-            marginTop: 20,
+            marginTop: 24,
             fontFamily: "var(--mono)",
             fontSize: 10,
             letterSpacing: 1.5,

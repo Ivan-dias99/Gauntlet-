@@ -290,7 +290,7 @@ export default function Lab() {
       </div>
 
       {/* Message thread */}
-      <div className="chamber-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="chamber-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
         {notes.length === 0 && !pending && !error && (
           activeMission ? (
@@ -325,7 +325,7 @@ export default function Lab() {
         ))}
 
         {pending && (
-          <div className="toolRise" style={{ alignSelf: "flex-start", maxWidth: 520, minWidth: 260, display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--bg-input)", border: "1px dashed var(--border-color-mid)", borderRadius: "var(--radius-control)", fontFamily: "var(--mono)", fontSize: 11, color: "var(--cc-dim)", letterSpacing: ".04em" }}>
+          <div className="toolRise" style={{ alignSelf: "flex-start", maxWidth: 520, minWidth: 260, display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "var(--bg-input)", border: "1px dashed var(--border-color-mid)", borderRadius: "var(--radius-control)", fontFamily: "var(--mono)", fontSize: 11, color: "var(--cc-dim)", letterSpacing: ".04em" }}>
             <span className="breathe" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--cc-info)", boxShadow: "0 0 0 4px color-mix(in oklab, var(--cc-info) 22%, transparent)" }} />
             <span>{live.lastEventLabel}</span>
             <div className="scanbar" style={{ flex: 1, height: 2, background: "var(--border-soft)", borderRadius: 2 }} />
@@ -480,7 +480,7 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
       )}
 
       {/* Provenance trail: route · stages · outcome */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: routeColor }}>
           {verdict.routePath}
         </span>
@@ -613,7 +613,7 @@ function LabTurnRow({
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 6,
+        gap: 8,
         padding: "10px 16px 12px",
         background: isAI ? "var(--bg-input)" : "transparent",
         borderLeft: `2px solid ${borderColor}`,
@@ -662,7 +662,7 @@ function LabTurnRow({
           borderTop: "1px dashed var(--border-color-soft)",
           display: "flex",
           alignItems: "center",
-          gap: 14,
+          gap: 16,
           fontFamily: "var(--mono)",
           fontSize: 10,
           letterSpacing: 1.3,
