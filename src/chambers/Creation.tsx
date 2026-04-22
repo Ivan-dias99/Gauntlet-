@@ -868,7 +868,6 @@ export default function Creation() {
 
         {err && (unreachable ? (
           <DormantPanel
-            title={copy.creationErrorTitle}
             detail={copy.dormantCreation}
             style={{ marginTop: 20, maxWidth: 820 }}
           />

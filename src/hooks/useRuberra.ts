@@ -188,6 +188,11 @@ export function useRuberra() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      // Track whether the stream produced a terminal event (done|error). If
+      // the read loop exits without one, the connection died mid-stream
+      // (proxy timeout, network drop, upstream crash) — the chamber must
+      // be told instead of silently going idle.
+      let sawTerminal = false;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -201,6 +206,8 @@ export function useRuberra() {
           if (!payload) continue;
           try {
             const parsed = JSON.parse(payload) as E;
+            const t = (parsed as { type?: string } | null)?.type;
+            if (t === "done" || t === "error") sawTerminal = true;
             // Backend-emitted error frames (T063/T076 contract) carry
             // `{type:"error", message, error?, reason?}`. Promote them
             // to the hook's error state so every chamber's existing
@@ -231,6 +238,19 @@ export function useRuberra() {
             // malformed frame — skip
           }
         }
+      }
+      if (!sawTerminal) {
+        // Stream closed cleanly without firing done/error. Almost always a
+        // proxy/upstream timeout that severed the connection mid-event.
+        // Surface honestly instead of letting the chamber go quiet.
+        const msg = "stream interrompida sem conclusão";
+        setError(msg);
+        onEvent({
+          type: "error",
+          message: msg,
+          error: "stream_truncated",
+          reason: "NoTerminalEvent",
+        } as E);
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;

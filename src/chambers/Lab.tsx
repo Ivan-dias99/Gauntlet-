@@ -73,7 +73,7 @@ const EMPTY_LIVE: LiveState = {
 
 export default function Lab() {
   const { activeMission, addNote, addNoteToMission, addTask, principles, logDoctrineApplied } = useSpine();
-  const { streamRoute, pending, error, unreachable } = useRuberra();
+  const { streamRoute, pending, error, unreachable, errorEnvelope } = useRuberra();
   const backend = useBackendStatus();
   const copy = useCopy();
   const [input, setInput] = useState("");
@@ -333,9 +333,21 @@ export default function Lab() {
         )}
 
         {error && !pending && (unreachable ? (
-          <DormantPanel title={copy.labErrorTitle} detail={copy.dormantLab} />
+          <DormantPanel detail={copy.dormantLab} />
         ) : (
-          <ErrorPanel severity="critical" title={copy.labErrorTitle} message={error} />
+          // Severity hierarchy: a typed engine_not_initialized / mock_mode is
+          // a transient warning, not a critical failure. Critical is reserved
+          // for engine_error and unknown shapes that surprise the chamber.
+          <ErrorPanel
+            severity={
+              errorEnvelope?.error === "engine_not_initialized" ||
+              errorEnvelope?.error === "mock_mode"
+                ? "warn"
+                : "critical"
+            }
+            title={copy.labErrorTitle}
+            message={error}
+          />
         ))}
 
         <div ref={bottomRef} />

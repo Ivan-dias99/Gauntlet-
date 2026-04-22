@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import ErrorPanel from "../shell/ErrorPanel";
 import DormantPanel from "../shell/DormantPanel";
+import EmptyState from "../shell/EmptyState";
 import {
   ruberraFetch,
   isBackendUnreachable,
@@ -216,24 +217,21 @@ export default function Memory() {
     byRoute: serverStats.by_route,
   } : fallbackStats;
 
-  useEffect(() => {
-    if (!activeMission?.id) {
-      setRuns([]);
-      setServerStats(null);
-      return;
-    }
+  // Pulled into a callback so the retry button can re-run it without waiting
+  // on a mission switch. The AbortController is owned by the caller so the
+  // useEffect cleanup can cancel in-flight work.
+  const loadMissionTelemetry = useCallback((missionId: string, signal: AbortSignal) => {
     setRuns(null);
     setServerStats(null);
     setErr(null);
     setOffline(false);
-    const ac = new AbortController();
-    const mid = encodeURIComponent(activeMission.id);
+    const mid = encodeURIComponent(missionId);
     // Two independent fetches. A failed /runs/stats call must NOT prevent
     // the run list from rendering — the chamber computes a fallback stats
     // block from the run records (computeStats). allSettled keeps both
     // surfaces honest.
-    Promise.allSettled([
-      ruberraFetch(`/runs?mission_id=${mid}&limit=100`, { signal: ac.signal })
+    return Promise.allSettled([
+      ruberraFetch(`/runs?mission_id=${mid}&limit=100`, { signal })
         .then(async (r) => {
           if (!r.ok) {
             const env = await parseBackendError(r);
@@ -241,7 +239,7 @@ export default function Memory() {
           }
           return (await r.json()) as RunsResponse;
         }),
-      ruberraFetch(`/runs/stats?mission_id=${mid}`, { signal: ac.signal })
+      ruberraFetch(`/runs/stats?mission_id=${mid}`, { signal })
         .then(async (r) => {
           if (!r.ok) {
             const env = await parseBackendError(r);
@@ -278,8 +276,24 @@ export default function Memory() {
         setServerStats(statsRes.value);
       }
     });
+  }, []);
+
+  useEffect(() => {
+    if (!activeMission?.id) {
+      setRuns([]);
+      setServerStats(null);
+      return;
+    }
+    const ac = new AbortController();
+    loadMissionTelemetry(activeMission.id, ac.signal);
     return () => ac.abort();
-  }, [activeMission?.id]);
+  }, [activeMission?.id, loadMissionTelemetry]);
+
+  function retry() {
+    if (!activeMission?.id) return;
+    const ac = new AbortController();
+    loadMissionTelemetry(activeMission.id, ac.signal);
+  }
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
@@ -392,8 +406,27 @@ export default function Memory() {
 
         {err && (offline ? (
           <DormantPanel
-            title={copy.memoryTelemetryTitle}
             detail={copy.dormantMemory}
+            action={
+              <button
+                onClick={retry}
+                data-memory-retry
+                style={{
+                  background: "none",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-secondary)",
+                  fontFamily: "var(--mono)",
+                  fontSize: 10,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  padding: "4px 12px",
+                  borderRadius: 999,
+                  cursor: "pointer",
+                }}
+              >
+                tentar novamente
+              </button>
+            }
           />
         ) : (
           <ErrorPanel
@@ -404,13 +437,39 @@ export default function Memory() {
         ))}
 
         {runs === null && !err && (
-          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>{copy.memoryLoading}</div>
+          <div
+            data-memory-loading
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+              letterSpacing: 1.5,
+              color: "var(--text-ghost)",
+            }}
+          >
+            <span
+              className="breathe"
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "var(--cc-info)",
+                boxShadow: "0 0 0 3px color-mix(in oklab, var(--cc-info) 22%, transparent)",
+              }}
+            />
+            <span>{copy.memoryLoading}</span>
+          </div>
         )}
 
         {runs && runs.length === 0 && !err && (
-          <div style={{ fontSize: 12, color: "var(--text-ghost)" }}>
-            {copy.memoryEmpty}
-          </div>
+          <EmptyState
+            glyph="◈"
+            kicker={copy.memoryTagline}
+            body={copy.memoryEmpty}
+            style={{ marginTop: "10vh" }}
+          />
         )}
 
         {layout === "timeline" && runs && runs.length > 0 && (

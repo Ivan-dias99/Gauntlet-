@@ -3,6 +3,7 @@ import { useSpine } from "../spine/SpineContext";
 import { useTweaks } from "../tweaks/TweaksContext";
 import { useCopy } from "../i18n/copy";
 import EmptyState from "../shell/EmptyState";
+import DormantPanel from "../shell/DormantPanel";
 
 function toRoman(n: number): string {
   if (n <= 0) return "";
@@ -220,13 +221,24 @@ export default function School() {
         )}
 
         {principles.length === 0 && (
-          <EmptyState
-            glyph="§"
-            kicker={copy.schoolEmptyKicker}
-            body={copy.schoolEmpty}
-            hint={copy.schoolEmptyHint}
-            style={{ marginTop: "10vh" }}
-          />
+          // If hydration never reached the backend, the empty state could be
+          // an honest void OR a backend-down false-empty. Distinguish so the
+          // user doesn't waste time wondering why their inscribed doctrine is
+          // missing.
+          hydratedFromBackend === false ? (
+            <DormantPanel
+              detail="doutrina por carregar — backend não respondeu na hidratação. O que aparecer abaixo veio só da cache local."
+              style={{ marginTop: "10vh", marginLeft: "auto", marginRight: "auto" }}
+            />
+          ) : (
+            <EmptyState
+              glyph="§"
+              kicker={copy.schoolEmptyKicker}
+              body={copy.schoolEmpty}
+              hint={copy.schoolEmptyHint}
+              style={{ marginTop: "10vh" }}
+            />
+          )
         )}
 
         {layout === "tablets" ? (
