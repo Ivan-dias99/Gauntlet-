@@ -79,11 +79,18 @@ const Ctx = createContext<TweaksCtx>({
   reset: () => {},
 });
 
-const STORAGE_KEY = "ruberra:tweaks";
+// Wave-0 rename: signal:tweaks is canonical; ruberra:tweaks is read as a
+// silent legacy fallback so existing users keep their theme / density /
+// layout preferences across the rename. Writes always target the new key;
+// the legacy key is left in place until Wave 8.
+const STORAGE_KEY = "signal:tweaks";
+const LEGACY_STORAGE_KEY = "ruberra:tweaks";
 
 function load(): Tweaks {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw =
+      localStorage.getItem(STORAGE_KEY) ??
+      localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return DEFAULTS;
     const parsed = JSON.parse(raw) as Partial<Tweaks>;
     return { ...DEFAULTS, ...parsed };

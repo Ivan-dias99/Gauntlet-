@@ -64,7 +64,7 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
         className="btn-ghost canon-ribbon-brand"
         style={{ cursor: onHome ? "pointer" : "default" }}
       >
-        Ruberra
+        Signal
         <span aria-hidden className="canon-ribbon-brand-dot" />
       </button>
 

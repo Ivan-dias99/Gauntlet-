@@ -19,8 +19,22 @@ function renderChamber(c: Chamber) {
   }
 }
 
+// Wave-0 rename: signal:landed is canonical; ruberra:landed is still read
+// as a silent legacy fallback so a returning user does not get the ritual
+// flow again after an upgrade. Writes always target the new key; the
+// legacy key is left in place until Wave 8.
+const LANDED_KEY = "signal:landed";
+const LEGACY_LANDED_KEY = "ruberra:landed";
+
 function readLanded(): boolean {
-  try { return localStorage.getItem("ruberra:landed") === "1"; } catch { return false; }
+  try {
+    const v =
+      localStorage.getItem(LANDED_KEY) ??
+      localStorage.getItem(LEGACY_LANDED_KEY);
+    return v === "1";
+  } catch {
+    return false;
+  }
 }
 
 export default function Shell() {
@@ -35,19 +49,25 @@ export default function Shell() {
   }, [activeMission?.id]);
 
   // Cross-chamber handoff — chambers can request a chamber switch by
-  // dispatching `ruberra:chamber` with a Chamber detail (e.g. Lab promoting
-  // an analysis into a Creation task).
+  // dispatching `signal:chamber` with a Chamber detail (e.g. Lab promoting
+  // an analysis into a Creation task). The legacy `ruberra:chamber` event
+  // is still accepted during the Wave-0 → Wave-8 compatibility window so
+  // call sites can migrate gradually.
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<Chamber>;
       if (ce.detail) setActiveTab(ce.detail);
     };
+    window.addEventListener("signal:chamber", handler);
     window.addEventListener("ruberra:chamber", handler);
-    return () => window.removeEventListener("ruberra:chamber", handler);
+    return () => {
+      window.removeEventListener("signal:chamber", handler);
+      window.removeEventListener("ruberra:chamber", handler);
+    };
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem("ruberra:landed", landed ? "1" : "0"); } catch {}
+    try { localStorage.setItem(LANDED_KEY, landed ? "1" : "0"); } catch {}
   }, [landed]);
 
   if (showRitual) {

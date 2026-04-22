@@ -1,6 +1,11 @@
 import { SpineState, Mission, Chamber, Note, Task, TaskState, TaskSource, LogEvent, Principle, Artifact } from "./types";
 
-const KEY = "ruberra:spine:v1";
+// Wave-0 rename: signal:spine:v1 is canonical. ruberra:spine:v1 is still
+// read as a silent legacy fallback so existing users keep their missions,
+// tasks, notes, artifacts and principles across the rename. Writes always
+// target the new key; the legacy key is left in place until Wave 8.
+const KEY = "signal:spine:v1";
+const LEGACY_KEY = "ruberra:spine:v1";
 const ARTIFACT_LEDGER_CAP = 12;
 
 function uid(): string {
@@ -159,7 +164,9 @@ export function normalizePrinciples(raw: unknown): Principle[] {
 
 export function loadState(): SpineState {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw =
+      localStorage.getItem(KEY) ??
+      localStorage.getItem(LEGACY_KEY);
     if (!raw) return EMPTY;
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return EMPTY;

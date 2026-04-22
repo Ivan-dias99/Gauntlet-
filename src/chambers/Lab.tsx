@@ -99,6 +99,11 @@ export default function Lab() {
     const title = raw.length > 120 ? raw.slice(0, 117).trimEnd() + "…" : raw;
     addTask(title, "lab");
     setPromoteId(null);
+    // Dispatch both the new and the legacy event name during the Wave-0 →
+    // Wave-8 compatibility window so any listener wired to either key
+    // keeps firing. Shell.tsx listens to both; tests or external listeners
+    // written against the old name are not silently broken.
+    window.dispatchEvent(new CustomEvent("signal:chamber", { detail: "Creation" }));
     window.dispatchEvent(new CustomEvent("ruberra:chamber", { detail: "Creation" }));
   }
 

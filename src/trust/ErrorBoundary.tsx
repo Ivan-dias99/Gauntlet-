@@ -12,7 +12,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[ruberra]", error, info.componentStack);
+    console.error("[signal]", error, info.componentStack);
   }
 
   render() {
