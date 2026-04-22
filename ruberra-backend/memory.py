@@ -16,6 +16,7 @@ from typing import Optional
 
 from config import FAILURE_MEMORY_FILE, MAX_FAILURE_ENTRIES, FAILURE_CONTEXT_WINDOW, MEMORY_DIR
 from models import FailureRecord, FailureMemory, RefusalReason
+from persistence import atomic_write_text
 
 logger = logging.getLogger("ruberra.memory")
 
@@ -35,6 +36,9 @@ class FailureMemoryStore:
         self._lock = asyncio.Lock()
         self._memory = FailureMemory()
         self._loaded = False
+        # Disk-write failures are surfaced through diagnostics; the engine
+        # must not crash because failure memory could not be persisted.
+        self._last_save_error: str | None = None
     
     async def _ensure_loaded(self) -> None:
         """Lazy-load from disk on first access."""
@@ -63,14 +67,15 @@ class FailureMemoryStore:
             self._memory = FailureMemory()
     
     async def _save_to_disk(self) -> None:
-        """Persist failure memory to JSON file."""
+        """Persist failure memory to JSON file. Logs + surfaces errors."""
         try:
-            MEMORY_DIR.mkdir(parents=True, exist_ok=True)
-            FAILURE_MEMORY_FILE.write_text(
+            atomic_write_text(
+                FAILURE_MEMORY_FILE,
                 self._memory.model_dump_json(indent=2),
-                encoding="utf-8",
             )
+            self._last_save_error = None
         except Exception as e:
+            self._last_save_error = f"{type(e).__name__}: {e}"
             logger.error(f"Failed to save failure memory: {e}")
     
     @staticmethod

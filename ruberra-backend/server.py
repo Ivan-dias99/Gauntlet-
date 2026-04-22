@@ -372,7 +372,19 @@ async def get_spine():
 @app.post("/spine", response_model=SpineSnapshot)
 async def put_spine(snapshot: SpineSnapshot):
     """Replace the full mission workspace snapshot. Full-state sync."""
-    return await spine_store.put(snapshot)
+    try:
+        return await spine_store.put(snapshot)
+    except OSError as e:
+        # Disk full, permission denied, read-only volume, missing mount…
+        # Never claim the spine was saved when the filesystem said no.
+        logger.error("Spine persist failed: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "spine_persist_failed",
+                "reason": f"{type(e).__name__}: {e}",
+            },
+        )
 
 
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
@@ -381,9 +393,9 @@ async def put_spine(snapshot: SpineSnapshot):
 async def diagnostics():
     """Full system diagnostics."""
     from config import MODEL_ID, TRIAD_TEMPERATURE, JUDGE_TEMPERATURE, TRIAD_COUNT
-    
+
     mem_stats = await failure_memory.get_stats()
-    
+
     return {
         "system": "Ruberra V1",
         "model": MODEL_ID,
@@ -392,5 +404,10 @@ async def diagnostics():
         "triad_count": TRIAD_COUNT,
         "engine_status": "ready" if engine else "not_initialized",
         "failure_memory": mem_stats,
+        "persistence": {
+            "spine_last_save_error": spine_store._last_save_error,
+            "runs_last_save_error": run_store._last_save_error,
+            "memory_last_save_error": failure_memory._last_save_error,
+        },
         "doctrine": "Conservative Intelligence — prefer refusal over error",
     }

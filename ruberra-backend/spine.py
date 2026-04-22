@@ -17,6 +17,7 @@ from pathlib import Path
 
 from config import MEMORY_DIR
 from models import SpineSnapshot
+from persistence import atomic_write_text
 
 logger = logging.getLogger("ruberra.spine")
 
@@ -30,6 +31,9 @@ class SpineStore:
         self._lock = asyncio.Lock()
         self._snapshot = SpineSnapshot()
         self._loaded = False
+        # Honest surface for disk-write failures. put() raises, but for
+        # diagnostics / health checks we keep the last error message.
+        self._last_save_error: str | None = None
 
     async def _ensure_loaded(self) -> None:
         if self._loaded:
@@ -56,26 +60,31 @@ class SpineStore:
             logger.error("Failed to load spine: %s", e)
             self._snapshot = SpineSnapshot()
 
-    async def _save(self) -> None:
-        try:
-            MEMORY_DIR.mkdir(parents=True, exist_ok=True)
-            SPINE_FILE.write_text(
-                self._snapshot.model_dump_json(indent=2),
-                encoding="utf-8",
-            )
-        except Exception as e:
-            logger.error("Failed to save spine: %s", e)
+    def _write_snapshot(self, snapshot: SpineSnapshot) -> None:
+        # Blocking I/O kept sync; called under the asyncio lock, so no
+        # concurrent writer. atomic_write_text propagates on failure.
+        atomic_write_text(SPINE_FILE, snapshot.model_dump_json(indent=2))
 
     async def get(self) -> SpineSnapshot:
         await self._ensure_loaded()
         return self._snapshot
 
     async def put(self, snapshot: SpineSnapshot) -> SpineSnapshot:
+        # Disk first, memory second. If the write fails the in-memory
+        # snapshot stays consistent with disk and the caller sees the
+        # raised exception — the API must not claim a persisted state
+        # it cannot back up on the filesystem.
         await self._ensure_loaded()
         async with self._lock:
             snapshot.last_updated = datetime.now(timezone.utc).isoformat()
+            try:
+                self._write_snapshot(snapshot)
+            except Exception as e:
+                self._last_save_error = f"{type(e).__name__}: {e}"
+                logger.error("Failed to save spine: %s", e)
+                raise
+            self._last_save_error = None
             self._snapshot = snapshot
-            await self._save()
         return self._snapshot
 
 
