@@ -1,5 +1,5 @@
 """
-Ruberra Dev — Tool Layer
+Signal Dev — Tool Layer
 
 Defines the ``Tool`` contract, a ``ToolRegistry`` for dispatch, and a set of
 eight production-grade tools that the agent orchestrator can invoke.
@@ -340,7 +340,7 @@ class WebSearchTool(Tool):
             resp = await client.get(
                 "https://api.duckduckgo.com/",
                 params={"q": query, "format": "json", "no_html": 1, "skip_disambig": 1},
-                headers={"User-Agent": "Ruberra-Dev/1.0"},
+                headers={"User-Agent": "Signal-Dev/1.0"},
             )
         resp.raise_for_status()
         data = resp.json()
@@ -632,7 +632,7 @@ class FetchUrlTool(Tool):
         async with httpx.AsyncClient(
             timeout=HTTP_TIMEOUT_S,
             follow_redirects=False,
-            headers={"User-Agent": "Ruberra-Dev/1.0"},
+            headers={"User-Agent": "Signal-Dev/1.0"},
         ) as client:
             for _ in range(MAX_REDIRECT_HOPS + 1):
                 try:

@@ -1,13 +1,13 @@
 """
-Ruberra — Mock Anthropic Client
+Signal — Mock Anthropic Client
 Zero-network stand-in for ``AsyncAnthropic`` used when
-``RUBERRA_MOCK=1``. Emits deterministic canned responses so the full
+``SIGNAL_MOCK=1``. Emits deterministic canned responses so the full
 pipeline (triad → judge, agent loop) can be exercised end-to-end without
 an API key.
 
 Detection rules:
   * ``tools`` present  →  agent loop → single text block, no tool calls
-  * system starts with ``"You are the Ruberra Judge"``  →  JSON verdict
+  * system starts with ``"You are the Signal Judge"``  →  JSON verdict
   * otherwise  →  triad call → identical canned answer (HIGH consensus)
 """
 
@@ -75,20 +75,20 @@ class _MockMessages:
     ) -> _Response:
         head = system.lstrip()
         # Crew: structured roles (no tools)
-        if head.startswith("You are the Ruberra Planner"):
+        if head.startswith("You are the Signal Planner"):
             return _Response(
                 content=[_Block(type="text", text=json.dumps(MOCK_PLAN))],
             )
-        if head.startswith("You are the Ruberra Critic"):
+        if head.startswith("You are the Signal Critic"):
             return _Response(
                 content=[_Block(type="text", text=json.dumps(MOCK_CRITIC_VERDICT))],
             )
         # Crew: execution roles (with tools) — detect by system prompt
-        if tools and head.startswith("You are the Ruberra Researcher"):
+        if tools and head.startswith("You are the Signal Researcher"):
             return _Response(
                 content=[_Block(type="text", text=MOCK_RESEARCHER_ANSWER)],
             )
-        if tools and head.startswith("You are the Ruberra Coder"):
+        if tools and head.startswith("You are the Signal Coder"):
             return _Response(
                 content=[_Block(type="text", text=MOCK_CODER_ANSWER)],
             )
@@ -98,7 +98,7 @@ class _MockMessages:
                 content=[_Block(type="text", text=MOCK_AGENT_ANSWER)],
             )
         # Judge path
-        if head.startswith("You are the Ruberra Judge"):
+        if head.startswith("You are the Signal Judge"):
             verdict = json.dumps({
                 "confidence": "high",
                 "should_refuse": False,

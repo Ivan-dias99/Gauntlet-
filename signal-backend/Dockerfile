@@ -14,13 +14,18 @@ COPY . .
 # Persistent state directory. In production this path MUST be a mounted
 # volume (Railway volume, Fly volume, etc.) — otherwise every restart
 # wipes failure memory, run log, and spine snapshot.
-ENV RUBERRA_DATA_DIR=/data
+#
+# Env precedence: SIGNAL_DATA_DIR is canonical; RUBERRA_DATA_DIR is still
+# readable via config.py's env compatibility helper so mid-migration
+# deploys keep finding the existing volume path.
+ENV SIGNAL_DATA_DIR=/data
 RUN mkdir -p /data
 
 EXPOSE 8080
 
 # Railway, Fly, Heroku et al inject $PORT. Fall back to 8080 for local runs.
-ENV RUBERRA_HOST=0.0.0.0 \
+# SIGNAL_HOST is canonical; RUBERRA_HOST stays readable for compat.
+ENV SIGNAL_HOST=0.0.0.0 \
     PORT=8080
 
 CMD python -c "import os, uvicorn; uvicorn.run('server:app', host='0.0.0.0', port=int(os.environ.get('PORT', '8080')))"

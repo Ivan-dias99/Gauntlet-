@@ -1,10 +1,10 @@
 """
-Ruberra Dev — Agent Orchestrator
+Signal Dev — Agent Orchestrator
 
 Routes a query along one of two paths:
 
   * Dev intent detected  →  agentic loop with tool use
-  * Everything else      →  existing ``RuberraEngine.process_query`` (triad + judge)
+  * Everything else      →  existing ``SignalEngine.process_query`` (triad + judge)
 
 The agent loop is a faithful implementation of Claude's native tool-use contract:
 the model emits ``tool_use`` blocks, we execute them locally, append ``tool_result``
@@ -32,7 +32,7 @@ from anthropic import AsyncAnthropic
 from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, RUBERRA_MOCK
 from mock_client import MockAsyncAnthropic
 from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
-from models import RuberraQuery
+from models import SignalQuery
 from tools import ToolRegistry, ToolResult
 
 logger = logging.getLogger("signal.agent")
@@ -145,7 +145,7 @@ class AgentOrchestrator:
 
     # ── Agent Loop ─────────────────────────────────────────────────────────
 
-    async def run(self, query: RuberraQuery) -> AgentResponse:
+    async def run(self, query: SignalQuery) -> AgentResponse:
         """Non-streaming wrapper around ``run_streaming`` — collects the final
         ``done`` event and builds an AgentResponse."""
         final: Optional[dict[str, Any]] = None
@@ -167,7 +167,7 @@ class AgentOrchestrator:
         )
 
     async def run_streaming(
-        self, query: RuberraQuery
+        self, query: SignalQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """Execute the agent loop, yielding coarse-grained progress events.
 
@@ -351,7 +351,7 @@ class AgentOrchestrator:
     # ── Helpers ────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _user_prompt(query: RuberraQuery) -> str:
+    def _user_prompt(query: SignalQuery) -> str:
         if query.context:
             return f"Context:\n{query.context}\n\nTask:\n{query.question}"
         return query.question

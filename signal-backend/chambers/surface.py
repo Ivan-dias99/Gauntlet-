@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 from chambers.profiles import ChamberKey
 
 
-# ── Input brief (carried alongside RuberraQuery.surface) ────────────────────
+# ── Input brief (carried alongside SignalQuery.surface) ────────────────────
 
 Mode = Literal["prototype", "slide_deck", "from_template", "other"]
 Fidelity = Literal["wireframe", "hi-fi"]

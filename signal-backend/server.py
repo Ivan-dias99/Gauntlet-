@@ -37,8 +37,8 @@ from config import (
     SERVER_HOST,
     SERVER_PORT,
 )
-from models import RuberraQuery, RuberraResponse, SpineSnapshot
-from engine import RuberraEngine
+from models import SignalQuery, SignalResponse, SpineSnapshot
+from engine import SignalEngine
 from memory import failure_memory
 from runs import run_store
 from spine import spine_store
@@ -58,7 +58,7 @@ logger = logging.getLogger("signal.server")
 
 # ── App Lifecycle ───────────────────────────────────────────────────────────
 
-engine: RuberraEngine | None = None
+engine: SignalEngine | None = None
 
 
 @asynccontextmanager
@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
         )
         sys.exit(1)
 
-    engine = RuberraEngine()
+    engine = SignalEngine()
     logger.info(
         "═══════════════════════════════════════════════════════════\n"
         "  Signal — sovereign AI workspace\n"
@@ -214,10 +214,10 @@ async def health_ready():
     return body
 
 
-@app.post("/ask", response_model=RuberraResponse)
-async def ask_ruberra(query: RuberraQuery):
+@app.post("/ask", response_model=SignalResponse)
+async def ask_ruberra(query: SignalQuery):
     """
-    Submit a question to Ruberra.
+    Submit a question to Signal.
     
     The system will:
     1. Check failure memory for prior failures on similar questions
@@ -237,7 +237,7 @@ async def ask_ruberra(query: RuberraQuery):
 
 
 @app.post("/dev")
-async def ask_ruberra_dev(query: RuberraQuery):
+async def ask_ruberra_dev(query: SignalQuery):
     """
     Force the agent (tool-use) pipeline.
 
@@ -256,7 +256,7 @@ async def ask_ruberra_dev(query: RuberraQuery):
 
 
 @app.post("/route/stream")
-async def ask_ruberra_auto_stream(query: RuberraQuery):
+async def ask_ruberra_auto_stream(query: SignalQuery):
     """
     Streaming variant of ``/route``. Emits the ``route`` decision first, then
     either agent events (``tool_use``, ``tool_result``, ...) or triad events
@@ -284,7 +284,7 @@ async def ask_ruberra_auto_stream(query: RuberraQuery):
 
 
 @app.post("/dev/stream")
-async def ask_ruberra_dev_stream(query: RuberraQuery):
+async def ask_ruberra_dev_stream(query: SignalQuery):
     """
     Streaming variant of ``/dev``. Emits one SSE event per agent step:
     ``start``, ``iteration``, ``assistant_text``, ``tool_use``, ``tool_result``,
@@ -312,7 +312,7 @@ async def ask_ruberra_dev_stream(query: RuberraQuery):
 
 
 @app.post("/crew/stream")
-async def ask_ruberra_crew_stream(query: RuberraQuery):
+async def ask_ruberra_crew_stream(query: SignalQuery):
     """
     Streaming multi-agent pipeline: planner → (researcher) → coder → critic,
     with one automatic refinement round if the critic rejects.
@@ -342,7 +342,7 @@ async def ask_ruberra_crew_stream(query: RuberraQuery):
 
 
 @app.post("/route")
-async def ask_ruberra_auto(query: RuberraQuery):
+async def ask_ruberra_auto(query: SignalQuery):
     """
     Auto-router: dev-intent questions go through the agent loop; the rest
     go through the triad + judge. Response shape is ``{route, result}``.
@@ -359,7 +359,7 @@ async def ask_ruberra_auto(query: RuberraQuery):
 
 class BatchQuery(BaseModel):
     """Multiple questions in one request."""
-    questions: list[RuberraQuery] = Field(..., max_length=5)
+    questions: list[SignalQuery] = Field(..., max_length=5)
 
 
 @app.post("/ask/batch")
@@ -505,7 +505,7 @@ async def diagnostics():
     }
 
     return {
-        "system": "Ruberra V1",
+        "system": "Signal",
         "model": MODEL_ID,
         "triad_temperature": TRIAD_TEMPERATURE,
         "judge_temperature": JUDGE_TEMPERATURE,

@@ -1,5 +1,5 @@
 """
-Ruberra — Self-Consistency Engine
+Signal — Self-Consistency Engine
 The core brain. Fires 3 parallel calls to Claude Sonnet,
 then routes the responses through the Judge for a binary verdict.
 Binary confidence: HIGH (all 3 agree) or LOW (refuse).
@@ -37,8 +37,8 @@ from doctrine import (
 from models import (
     ConfidenceLevel,
     RefusalReason,
-    RuberraQuery,
-    RuberraResponse,
+    SignalQuery,
+    SignalResponse,
     TriadResponse,
     JudgeVerdict,
     RunRecord,
@@ -73,7 +73,7 @@ def _get_crew() -> "CrewOrchestrator":  # type: ignore[name-defined]
 
 
 
-class RuberraEngine:
+class SignalEngine:
     """
     The sovereign intelligence engine.
     
@@ -100,7 +100,7 @@ class RuberraEngine:
             if not ANTHROPIC_API_KEY:
                 raise RuntimeError(
                     "ANTHROPIC_API_KEY not set. "
-                    "Export it in your environment before starting Ruberra."
+                    "Export it in your environment before starting Signal."
                 )
             self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         logger.info(f"Engine initialized. Model: {MODEL_ID}, Triad count: {TRIAD_COUNT}")
@@ -268,7 +268,7 @@ class RuberraEngine:
     
     # ── Dev / Agent Path ────────────────────────────────────────────────────
 
-    async def process_dev_query(self, query: RuberraQuery):
+    async def process_dev_query(self, query: SignalQuery):
         """
         Route a query through the agent loop (tool use) instead of the triad.
         Returns the raw ``AgentResponse`` — callers serialize it.
@@ -293,7 +293,7 @@ class RuberraEngine:
         return result
 
     async def process_dev_query_streaming(
-        self, query: RuberraQuery
+        self, query: SignalQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """Streaming variant of ``process_dev_query`` — yields agent events
         and records the completed run on ``done``."""
@@ -321,7 +321,7 @@ class RuberraEngine:
             ))
 
     async def process_crew_query_streaming(
-        self, query: RuberraQuery
+        self, query: SignalQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """Multi-agent crew: planner → (researcher) → coder → critic.
 
@@ -357,7 +357,7 @@ class RuberraEngine:
     # ── Routing helper (Wave 1, populated in Wave 5) ───────────────────────
 
     @staticmethod
-    def _auto_route_agent(query: RuberraQuery) -> bool:
+    def _auto_route_agent(query: SignalQuery) -> bool:
         """
         Decide whether the auto-router dispatches to the agent loop. When
         the query carries an explicit ``chamber`` key, the chamber
@@ -373,7 +373,7 @@ class RuberraEngine:
             return profile.dispatch == "agent"
         return AgentOrchestrator.is_dev_intent(query.question)
 
-    async def process_auto(self, query: RuberraQuery):
+    async def process_auto(self, query: SignalQuery):
         """
         Auto-router: if the query carries a chamber, profile decides;
         otherwise dev-intent queries go through the agent loop and the
@@ -386,7 +386,7 @@ class RuberraEngine:
         return {"route": "triad", "result": result.model_dump()}
 
     async def process_auto_streaming(
-        self, query: RuberraQuery
+        self, query: SignalQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """Auto-router streaming variant. Emits a ``route`` event first, then
         streams agent, triad or surface-mock events under a unified envelope.
@@ -437,24 +437,24 @@ class RuberraEngine:
 
     # ── Main Pipeline ───────────────────────────────────────────────────────
 
-    async def process_query(self, query: RuberraQuery) -> RuberraResponse:
+    async def process_query(self, query: SignalQuery) -> SignalResponse:
         """Non-streaming wrapper — collects the final event and rebuilds
-        the ``RuberraResponse`` model."""
+        the ``SignalResponse`` model."""
         final: Optional[dict[str, Any]] = None
         async for event in self.process_query_streaming(query):
             if event["type"] == "done":
                 final = event
         if not final:
             raise RuntimeError("triad stream ended without a done event")
-        return RuberraResponse.model_validate(final["result"])
+        return SignalResponse.model_validate(final["result"])
 
     async def process_query_streaming(
-        self, query: RuberraQuery
+        self, query: SignalQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """
-        The complete Ruberra pipeline, emitting events at each checkpoint:
+        The complete Signal pipeline, emitting events at each checkpoint:
         ``start``, ``triad_start``, ``triad_done`` (per call), ``judge_start``,
-        ``judge_done``, ``done`` (full RuberraResponse dict).
+        ``judge_done``, ``done`` (full SignalResponse dict).
         """
         start_time = time.monotonic()
         yield {"type": "start"}
@@ -534,10 +534,10 @@ class RuberraEngine:
         failed_calls = [r for r in triad_responses if r.stop_reason == "error"]
         if len(failed_calls) >= 2:
             elapsed = int((time.monotonic() - start_time) * 1000)
-            response = RuberraResponse(
+            response = SignalResponse(
                 refused=True,
                 refusal_message=(
-                    "⚠️ **Ruberra — Falha de Sistema**\n\n"
+                    "⚠️ **Signal — Falha de Sistema**\n\n"
                     f"{len(failed_calls)} de {TRIAD_COUNT} chamadas internas falharam. "
                     "Impossível avaliar consistência. Resposta recusada por segurança."
                 ),
@@ -577,7 +577,7 @@ class RuberraEngine:
                 answer = build_cautious_answer_wrapper(
                     answer=answer, prior_failure=True,
                 )
-            response = RuberraResponse(
+            response = SignalResponse(
                 answer=answer,
                 refused=False,
                 confidence=ConfidenceLevel.HIGH,
@@ -611,14 +611,14 @@ class RuberraEngine:
                 triad_divergence_summary="; ".join(verdict.divergence_points[:3]),
                 judge_reasoning=verdict.reasoning[:500],
             )
-            response = RuberraResponse(
+            response = SignalResponse(
                 refused=True,
                 refusal_message=refusal_msg,
                 refusal_reason=refusal_reason,
                 confidence=ConfidenceLevel.LOW,
                 confidence_explanation=(
                     "As 3 análises internas produziram respostas inconsistentes. "
-                    "Ruberra recusa-se a responder para proteger a integridade do sistema."
+                    "Signal recusa-se a responder para proteger a integridade do sistema."
                 ),
                 triad_agreement=triad_summary,
                 judge_reasoning=verdict.reasoning,
@@ -635,7 +635,7 @@ class RuberraEngine:
         await self._log_triad_run(query, response)
         yield {"type": "done", "result": response.model_dump()}
 
-    async def _log_triad_run(self, query: RuberraQuery, response: RuberraResponse) -> None:
+    async def _log_triad_run(self, query: SignalQuery, response: SignalResponse) -> None:
         await run_store.record(RunRecord(
             route="triad",
             mission_id=query.mission_id,

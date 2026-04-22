@@ -1,5 +1,5 @@
 """
-Ruberra — Spine Store
+Signal — Spine Store
 JSON-backed persistence for the mission workspace (missions, notes, tasks,
 events, principles, active selection).
 

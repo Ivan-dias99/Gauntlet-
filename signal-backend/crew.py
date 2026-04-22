@@ -1,5 +1,5 @@
 """
-Ruberra Crew — Multi-Agent Orchestrator
+Signal Crew — Multi-Agent Orchestrator
 
 Coordinates four specialized sub-agents against a single task:
 
@@ -50,7 +50,7 @@ from doctrine import (
     build_principles_context,
 )
 from mock_client import MockAsyncAnthropic
-from models import RuberraQuery
+from models import SignalQuery
 from tools import ToolRegistry
 
 logger = logging.getLogger("signal.crew")
@@ -123,7 +123,7 @@ class CrewOrchestrator:
     # ── Public API ─────────────────────────────────────────────────────────
 
     async def run_streaming(
-        self, query: RuberraQuery
+        self, query: SignalQuery
     ) -> AsyncIterator[dict[str, Any]]:
         started = time.monotonic()
         total_in = 0
@@ -338,7 +338,7 @@ class CrewOrchestrator:
     ) -> AsyncIterator[dict[str, Any]]:
         """Run an agent role. Wrap each inner event as ``role_event_raw`` so
         the caller can choose to re-emit or consume (e.g. capture `done`)."""
-        sub_query = RuberraQuery(question=goal, context=context)
+        sub_query = SignalQuery(question=goal, context=context)
         async for inner in role.run_streaming(sub_query):
             yield {"type": "role_event_raw", "event": inner}
 
@@ -367,7 +367,7 @@ class CrewOrchestrator:
         return text, usage
 
     @staticmethod
-    def _planner_input(query: RuberraQuery) -> str:
+    def _planner_input(query: SignalQuery) -> str:
         parts = [f"TASK: {query.question}"]
         if query.context:
             parts.append(f"CONTEXT: {query.context}")
@@ -375,7 +375,7 @@ class CrewOrchestrator:
 
     @staticmethod
     def _coder_input(
-        query: RuberraQuery, goal: str, findings: Optional[str]
+        query: SignalQuery, goal: str, findings: Optional[str]
     ) -> str:
         parts = [f"ORIGINAL TASK: {query.question}"]
         if query.context:
@@ -387,7 +387,7 @@ class CrewOrchestrator:
 
     @staticmethod
     def _critic_input(
-        query: RuberraQuery,
+        query: SignalQuery,
         plan: dict,
         findings: Optional[str],
         coder_output: str,
@@ -403,7 +403,7 @@ class CrewOrchestrator:
 
     @staticmethod
     def _refine_input(
-        query: RuberraQuery, previous: str, issues: list[str],
+        query: SignalQuery, previous: str, issues: list[str],
     ) -> str:
         issue_block = "\n".join(f"- {i}" for i in issues) or "(no specific issues)"
         return (

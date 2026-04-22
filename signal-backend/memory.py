@@ -1,6 +1,6 @@
 """
-Ruberra V1 — Failure Memory System
-Persistent memory of questions where Ruberra failed to achieve consistency.
+Signal — Failure Memory System
+Persistent memory of questions where Signal failed to achieve consistency.
 The system learns from its own failures and becomes more cautious on repeat topics.
 """
 
