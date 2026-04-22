@@ -1365,14 +1365,6 @@ textarea {
     letter-spacing: 0.1em;
   }
 
-  /* Flagship surface — full-elevation shadow reads as floating air on
-     mobile. Demote to the hairline system; the content still carries
-     the weight. */
-  .surface-flagship {
-    border-radius: var(--radius-control);
-    box-shadow: var(--shadow-soft);
-  }
-
   /* Creation exec panel (flagship) — head/body/foot paddings trim so the
      tool trace region keeps its proportions without eating the viewport. */
   .xc-exec {
