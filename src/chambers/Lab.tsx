@@ -222,7 +222,7 @@ export default function Lab() {
 
       {/* Header */}
       <div className="chamber-head" style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-        <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
+        <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
           {copy.labKicker}
         </span>
         <span style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)" }}>
@@ -267,7 +267,7 @@ export default function Lab() {
           </span>
         )}
         {pending && (
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--cc-info)", fontFamily: "var(--mono)", letterSpacing: 2, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--cc-info)", fontFamily: "var(--mono)", letterSpacing: 2, display: "flex", alignItems: "center", gap: 8 }}>
             <span className="breathe" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-info)" }} />
             {live.routePath ? live.routePath.toUpperCase() : "ANALISANDO"}
           </span>
@@ -282,7 +282,7 @@ export default function Lab() {
             ? "var(--cc-warn)"
             : "var(--text-ghost)";
           return (
-            <span style={{ marginLeft: "auto", fontSize: 10, color: chipColor, fontFamily: "var(--mono)", letterSpacing: 1 }}>
+            <span style={{ marginLeft: "auto", fontSize: 11, color: chipColor, fontFamily: "var(--mono)", letterSpacing: 1 }}>
               {live.routePath.toUpperCase()} · {refused ? "recusado" : lastConfidence}
             </span>
           );
@@ -379,7 +379,7 @@ export default function Lab() {
         >
           {copy.labInputVoice}
         </div>
-        <div className="glass" style={{ borderRadius: "var(--radius-control)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
+        <div className="glass" style={{ borderRadius: "var(--radius-control)", minHeight: 56, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
         <span
           className={pending ? "breathe" : ""}
           style={{ width: 8, height: 8, borderRadius: "50%", background: pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)", boxShadow: `0 0 0 4px color-mix(in oklab, ${pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)"} 22%, transparent)`, flexShrink: 0 }}
@@ -401,14 +401,14 @@ export default function Lab() {
           disabled={pending || !activeMission}
           style={{ flex: 1, fontSize: 14, color: "var(--text-primary)", fontFamily: "var(--sans)", opacity: pending || !activeMission ? 0.55 : 1, padding: "6px 0", cursor: !activeMission ? "not-allowed" : undefined }}
         />
-        <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-ghost)", letterSpacing: ".2em", textTransform: "uppercase" }}>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-ghost)", letterSpacing: ".2em", textTransform: "uppercase" }}>
           {input.length > 0 ? `${input.length}` : ""}
         </span>
         {input.trim() && !pending && activeMission && (
           <button
             onClick={submit}
             className="fadeIn"
-            style={{ background: "none", border: "1px solid var(--accent-dim)", color: "var(--accent)", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", padding: "7px 14px", borderRadius: 999, fontFamily: "var(--mono)", transition: "all .2s var(--ease-swift)", cursor: "pointer" }}
+            style={{ background: "none", border: "1px solid var(--accent-dim)", color: "var(--accent)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", padding: "8px 16px", borderRadius: 999, fontFamily: "var(--mono)", transition: "all .2s var(--ease-swift)", cursor: "pointer" }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-glow)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
@@ -481,29 +481,29 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
 
       {/* Provenance trail: route · stages · outcome */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: routeColor }}>
+        <span style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: routeColor }}>
           {verdict.routePath}
         </span>
         {!isAgent && verdict.confidence && (
-          <span style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: confidenceColor }}>
+          <span style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: confidenceColor }}>
             {verdict.confidence}
           </span>
         )}
         {isAgent && (
-          <span style={{ fontSize: 10, color: "var(--text-ghost)" }}>
+          <span style={{ fontSize: 11, color: "var(--text-ghost)" }}>
             {verdict.agentIter} iter · {verdict.agentToolCount} tools
           </span>
         )}
         {verdict.divergenceCount > 0 && (
-          <span style={{ fontSize: 10, color: "var(--cc-warn)", letterSpacing: 1 }}>
+          <span style={{ fontSize: 11, color: "var(--cc-warn)", letterSpacing: 1 }}>
             ⊘ {verdict.divergenceCount} divergência{verdict.divergenceCount !== 1 ? "s" : ""}
           </span>
         )}
         {verdict.priorFailure && (
-          <span style={{ fontSize: 10, color: "var(--cc-warn)" }}>⚠ falha prévia</span>
+          <span style={{ fontSize: 11, color: "var(--cc-warn)" }}>⚠ falha prévia</span>
         )}
         {isRefused && (
-          <span style={{ fontSize: 10, letterSpacing: 2, color: "var(--cc-err)", textTransform: "uppercase", marginLeft: "auto" }}>
+          <span style={{ fontSize: 11, letterSpacing: 2, color: "var(--cc-err)", textTransform: "uppercase", marginLeft: "auto" }}>
             recusado
           </span>
         )}
@@ -523,7 +523,7 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
                 onClick={() => setReasoningExpanded((v) => !v)}
                 style={{
                   marginLeft: 8, background: "none", border: "none", padding: 0,
-                  color: "var(--accent)", fontFamily: "var(--mono)", fontSize: 10,
+                  color: "var(--accent)", fontFamily: "var(--mono)", fontSize: 11,
                   letterSpacing: 1, textTransform: "uppercase", cursor: "pointer",
                 }}
               >
@@ -551,7 +551,7 @@ function VerdictPanel({ verdict }: { verdict: VerdictState }) {
           ? "→ confiança baixa · exige evidência · fractura a questão"
           : "→ falha prévia registada · muda o ângulo · evita a mesma premissa";
         return (
-          <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-ghost)", letterSpacing: 0.5 }}>
+          <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-ghost)", letterSpacing: 0.5 }}>
             {hint}
           </div>
         );
@@ -614,7 +614,7 @@ function LabTurnRow({
         display: "flex",
         flexDirection: "column",
         gap: 8,
-        padding: "10px 16px 12px",
+        padding: "12px 16px 12px",
         background: isAI ? "var(--bg-input)" : "transparent",
         borderLeft: `2px solid ${borderColor}`,
         borderRadius: "0 10px 10px 0",
@@ -640,7 +640,7 @@ function LabTurnRow({
             background: "none",
             border: "none",
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: 11,
             letterSpacing: 1.5,
             textTransform: "uppercase",
             color: "var(--text-ghost)",
@@ -664,7 +664,7 @@ function LabTurnRow({
           alignItems: "center",
           gap: 16,
           fontFamily: "var(--mono)",
-          fontSize: 10,
+          fontSize: 11,
           letterSpacing: 1.3,
           textTransform: "uppercase",
         }}>

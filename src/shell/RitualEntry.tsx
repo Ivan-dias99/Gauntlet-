@@ -35,10 +35,10 @@ export default function RitualEntry({ onDone }: Props) {
       <div style={{ width: "100%", maxWidth: 540, padding: "0 40px" }}>
 
         <div style={{
-          fontSize: 10, letterSpacing: 3,
+          fontSize: 11, letterSpacing: 3,
           color: "var(--text-ghost)", textTransform: "uppercase",
           fontFamily: "var(--mono)",
-          marginBottom: 52,
+          marginBottom: 48,
         }}>
           {copy.ritualTag}
         </div>
@@ -74,7 +74,7 @@ export default function RitualEntry({ onDone }: Props) {
               width: "100%", background: "none",
               border: "none",
               borderBottom: `1px solid ${inputFocused ? "var(--accent-dim)" : "var(--border)"}`,
-              outline: "none", fontSize: 26, color: "var(--text-primary)",
+              outline: "none", fontSize: 28, color: "var(--text-primary)",
               padding: "6px 0 20px",
               fontFamily: "var(--sans)", letterSpacing: "-0.5px",
               transition: "border-color 0.15s",
@@ -103,7 +103,7 @@ export default function RitualEntry({ onDone }: Props) {
                 }}>
                   {c.label}
                 </div>
-                <div style={{ fontSize: 10, color: "var(--text-ghost)", letterSpacing: 0.3 }}>
+                <div style={{ fontSize: 11, color: "var(--text-ghost)", letterSpacing: 0.3 }}>
                   {c.sub}
                 </div>
               </button>
@@ -120,7 +120,7 @@ export default function RitualEntry({ onDone }: Props) {
               border: `1px solid ${ready ? "var(--accent)" : "var(--border)"}`,
               color: ready ? "var(--accent)" : "var(--text-ghost)",
               fontSize: 11, letterSpacing: 2.5,
-              textTransform: "uppercase", padding: "12px 36px",
+              textTransform: "uppercase", padding: "12px 32px",
               cursor: ready ? "pointer" : "default",
               fontFamily: "var(--sans)",
               borderRadius: "var(--radius-control)", transition: "all 0.15s",
@@ -132,7 +132,7 @@ export default function RitualEntry({ onDone }: Props) {
           {onDone && (
             <button onClick={onDone} style={{
               background: "none", border: "none",
-              color: "var(--text-ghost)", fontSize: 12,
+              color: "var(--text-ghost)", fontSize: 11,
               cursor: "pointer",
             }}>
               {copy.cancel}

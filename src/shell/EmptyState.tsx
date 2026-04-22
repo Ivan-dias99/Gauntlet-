@@ -57,7 +57,7 @@ export default function EmptyState({
           data-empty-kicker
           style={{
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: 11,
             letterSpacing: ".4em",
             color: TONE_KICKER[tone],
             textTransform: "uppercase",
@@ -72,7 +72,7 @@ export default function EmptyState({
         style={{
           fontFamily: "'Fraunces', Georgia, serif",
           fontStyle: "italic",
-          fontSize: 22,
+          fontSize: 20,
           lineHeight: 1.4,
           color: "var(--text-muted)",
           letterSpacing: "-0.005em",
@@ -86,7 +86,7 @@ export default function EmptyState({
           style={{
             marginTop: 24,
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: 11,
             letterSpacing: 1.5,
             color: "var(--text-ghost)",
           }}

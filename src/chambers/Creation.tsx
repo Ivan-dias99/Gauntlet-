@@ -452,7 +452,7 @@ export default function Creation() {
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
         <span
           style={{
-            fontSize: 10,
+            fontSize: 11,
             letterSpacing: 3,
             textTransform: "uppercase",
             color: "var(--text-ghost)",
@@ -534,7 +534,7 @@ export default function Creation() {
             alignItems: "center",
             gap: 16,
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: 11,
             letterSpacing: 1.5,
             textTransform: "uppercase",
           }}
@@ -576,7 +576,7 @@ export default function Creation() {
               </>
             )}
             {openTasks.length === 0 && blockedTasks.length === 0 && doneTasks.length > 0 && (
-              <span style={{ color: "var(--cc-ok)", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>
+              <span style={{ color: "var(--cc-ok)", fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase" }}>
                 · {copy.actionAllDone}
               </span>
             )}
@@ -626,7 +626,7 @@ export default function Creation() {
                 marginTop: 16,
                 fontFamily: "'Fraunces', Georgia, serif",
                 fontStyle: "italic",
-                fontSize: 18,
+                fontSize: 20,
                 color: "var(--text-muted)",
               }}
             >
@@ -828,7 +828,7 @@ export default function Creation() {
                 </div>
               )}
               {done?.terminated_early && (
-                <div style={{ fontSize: 10, color: "var(--cc-warn)", marginTop: 8, fontFamily: "var(--mono)" }}>
+                <div style={{ fontSize: 11, color: "var(--cc-warn)", marginTop: 8, fontFamily: "var(--mono)" }}>
                   terminado cedo: {done.termination_reason}
                 </div>
               )}
@@ -843,12 +843,12 @@ export default function Creation() {
                       >
                         {copy.acceptArtifact}
                       </button>
-                      <span style={{ fontSize: 10, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
+                      <span style={{ fontSize: 11, color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
                         {copy.acceptHint}
                       </span>
                     </>
                   ) : (
-                    <span style={{ fontSize: 10, color: "var(--cc-ok)", fontFamily: "var(--mono)", letterSpacing: 1.5 }}>
+                    <span style={{ fontSize: 11, color: "var(--cc-ok)", fontFamily: "var(--mono)", letterSpacing: 1.5 }}>
                       {copy.artifactSealed}
                     </span>
                   )}
@@ -947,6 +947,7 @@ export default function Creation() {
         className="glass"
         style={{
           borderRadius: "var(--radius-control)",
+          minHeight: 56,
           padding: "12px 16px",
           fontFamily: "var(--mono)",
           display: "grid",
@@ -955,8 +956,8 @@ export default function Creation() {
           alignItems: "center",
         }}
       >
-        <span style={{ color: "var(--cc-ok)", fontSize: 12 }}>ruberra</span>
-        <span style={{ color: "var(--cc-dim)", fontSize: 12 }}>
+        <span style={{ color: "var(--cc-ok)", fontSize: 11 }}>ruberra</span>
+        <span style={{ color: "var(--cc-dim)", fontSize: 11 }}>
           @{pending ? "exec" : "ready"}
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -983,7 +984,7 @@ export default function Creation() {
         </span>
         <span
           style={{
-            fontSize: 10,
+            fontSize: 11,
             color: "var(--text-ghost)",
             letterSpacing: ".2em",
             textTransform: "uppercase",
@@ -999,10 +1000,10 @@ export default function Creation() {
               background: "none",
               border: "1px solid var(--cc-ok)",
               color: "var(--cc-ok)",
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: 2,
               textTransform: "uppercase",
-              padding: "7px 14px",
+              padding: "8px 16px",
               borderRadius: 999,
               fontFamily: "var(--mono)",
               transition: "all .2s var(--ease-swift)",
@@ -1041,7 +1042,7 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
       }}
     >
       <div style={{
-        fontSize: 10,
+        fontSize: 11,
         letterSpacing: 2,
         textTransform: "uppercase",
         color: "var(--text-ghost)",
@@ -1109,7 +1110,7 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
             color: crew.verdict.accept ? "var(--cc-ok)" : "var(--cc-err)",
             letterSpacing: 2,
             textTransform: "uppercase",
-            fontSize: 10,
+            fontSize: 11,
             marginBottom: 6,
           }}>
             <span>{crew.verdict.accept ? "✓ critic accepted" : "✗ critic rejected"}</span>
@@ -1126,7 +1127,7 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
               margin: "8px 0 0 0",
               padding: "0 0 0 16px",
               color: "var(--cc-warn)",
-              fontSize: 10,
+              fontSize: 11,
               lineHeight: 1.6,
             }}>
               {crew.verdict.issues.map((iss, i) => (
@@ -1157,7 +1158,7 @@ function ToolLine({ name, input, phase }: { name: string; input?: unknown; phase
         alignItems: "center",
         padding: "6px 0",
         fontFamily: "var(--mono)",
-        fontSize: 12,
+        fontSize: 11,
       }}
     >
       <span style={{ color, transition: "color .2s" }}>{dot}</span>
@@ -1175,7 +1176,7 @@ function ToolLine({ name, input, phase }: { name: string; input?: unknown; phase
       <span
         style={{
           color,
-          fontSize: 10,
+          fontSize: 11,
           letterSpacing: ".2em",
           textTransform: "uppercase",
         }}
@@ -1298,7 +1299,7 @@ function KanbanCard({
           <span
             title={`task id · ${task.id}`}
             style={{
-              marginLeft: 8, fontSize: 10, color: "var(--text-ghost)",
+              marginLeft: 8, fontSize: 11, color: "var(--text-ghost)",
               fontFamily: "var(--mono)", letterSpacing: 1, fontWeight: 400,
             }}
           >
@@ -1500,7 +1501,7 @@ function WorkbenchCard({
       {task ? (
         <>
           <div style={{
-            fontSize: 17,
+            fontSize: 14,
             fontFamily: "var(--sans)",
             fontWeight: task.state === "done" ? 400 : 500,
             color: task.state === "done" ? "var(--text-muted)" : "var(--text-primary)",
@@ -1518,7 +1519,7 @@ function WorkbenchCard({
             </span>
             <span
               title={new Date(task.lastUpdateAt).toLocaleString()}
-              style={{ fontSize: 10, color: stale ? "var(--cc-warn)" : "var(--text-ghost)" }}
+              style={{ fontSize: 11, color: stale ? "var(--cc-warn)" : "var(--text-ghost)" }}
             >
               · {relTime(task.lastUpdateAt, lang)}
             </span>
@@ -1528,12 +1529,12 @@ function WorkbenchCard({
               </span>
             )}
             {task.artifactId && (
-              <span style={{ fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
+              <span style={{ fontSize: 11, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
                 {copy.artifactChip}
               </span>
             )}
             {pending && (
-              <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--cc-info)" }}>
+              <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--cc-info)" }}>
                 ● iter {iteration} · {elapsed.toFixed(1)}s
               </span>
             )}
@@ -1543,7 +1544,7 @@ function WorkbenchCard({
                 style={{
                   marginLeft: "auto", background: "none", border: "1px solid var(--cc-warn)",
                   color: "var(--cc-warn)", fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
-                  padding: "3px 10px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer",
+                  padding: "4px 12px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer",
                 }}
               >
                 {copy.actionUnblock}
@@ -1552,7 +1553,7 @@ function WorkbenchCard({
           </div>
         </>
       ) : (
-        <div style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "var(--sans)" }}>
+        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--sans)" }}>
           {copy.noActiveTask}
         </div>
       )}
@@ -1612,7 +1613,7 @@ function NextStepBar({
   }
   if (buttons.length === 0) {
     return (
-      <div style={{ marginTop: 8, maxWidth: 820, fontFamily: "var(--mono)", fontSize: 10, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
+      <div style={{ marginTop: 8, maxWidth: 820, fontFamily: "var(--mono)", fontSize: 11, color: "var(--cc-ok)", letterSpacing: 1.5, textTransform: "uppercase" }}>
         {copy.actionAllDone}
       </div>
     );
@@ -1638,10 +1639,10 @@ function NextStepBar({
             background: "none",
             border: `1px solid ${b.color}`,
             color: b.color,
-            fontSize: 10,
+            fontSize: 11,
             letterSpacing: 2,
             textTransform: "uppercase",
-            padding: "6px 12px",
+            padding: "8px 12px",
             borderRadius: 999,
             fontFamily: "var(--mono)",
             cursor: "pointer",
@@ -1709,7 +1710,7 @@ function ArtifactLedger({
 
   return (
     <div style={{
-      marginTop: 28,
+      marginTop: 32,
       paddingTop: 18,
       borderTop: "1px dashed var(--border-color-soft)",
       maxWidth: 820,
@@ -1742,7 +1743,7 @@ function ArtifactLedger({
             style={{
               marginLeft: "auto", background: "none", border: "1px solid var(--border-color-soft)",
               color: "var(--text-ghost)", fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
-              padding: "3px 10px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer",
+              padding: "4px 12px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer",
               transition: "color .15s, border-color .15s",
             }}
             onMouseEnter={(e) => {

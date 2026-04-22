@@ -143,7 +143,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
           <span
             style={{
               fontFamily: "var(--mono)",
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: "0.24em",
               color: "var(--text-muted)",
               textTransform: "uppercase",
@@ -233,7 +233,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
           <p
             className="visionSub"
             style={{
-              marginTop: 56,
+              marginTop: 48,
               maxWidth: 680,
               fontFamily: "'Fraunces', Georgia, serif",
               fontSize: "clamp(22px, 1.8vw, 30px)",
@@ -272,7 +272,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               style={{
                 marginLeft: 8,
                 fontFamily: "var(--mono)",
-                fontSize: 10,
+                fontSize: 11,
                 letterSpacing: ".24em",
                 color: "var(--text-muted)",
                 textTransform: "uppercase",
@@ -289,7 +289,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               right: "4vw",
               bottom: "8vh",
               fontFamily: "var(--mono)",
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: ".4em",
               color: "var(--text-ghost)",
               textTransform: "uppercase",
@@ -311,7 +311,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
           <div
             style={{
               fontFamily: "var(--mono)",
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: ".4em",
               color: "var(--text-muted)",
               textTransform: "uppercase",
@@ -354,7 +354,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                     display: "flex",
                     alignItems: "baseline",
                     justifyContent: "space-between",
-                    marginBottom: 28,
+                    marginBottom: 32,
                   }}
                 >
                   <span className="t-kicker" data-tone="ghost">
@@ -375,7 +375,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                 <h3
                   className="t-serif"
                   style={{
-                    fontSize: 26,
+                    fontSize: 28,
                     fontWeight: 400,
                     lineHeight: 1.1,
                     margin: "0 0 6px",
@@ -388,7 +388,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                   style={{
                     fontFamily: "var(--serif)",
                     fontStyle: "italic",
-                    fontSize: 15,
+                    fontSize: 14,
                     lineHeight: 1.55,
                     color: "var(--text-secondary)",
                     margin: 0,
@@ -412,11 +412,11 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
           <div
             style={{
               fontFamily: "var(--mono)",
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: ".4em",
               color: "var(--text-muted)",
               textTransform: "uppercase",
-              marginBottom: 40,
+              marginBottom: 48,
             }}
           >
             {copy.manifesto}
@@ -440,7 +440,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                 <div
                   style={{
                     fontFamily: "var(--mono)",
-                    fontSize: 10,
+                    fontSize: 11,
                     letterSpacing: ".3em",
                     color: "var(--text-ghost)",
                     marginBottom: 12,
@@ -484,7 +484,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               <div
                 style={{
                   fontFamily: "var(--mono)",
-                  fontSize: 10,
+                  fontSize: 11,
                   letterSpacing: ".4em",
                   color: "var(--text-muted)",
                   textTransform: "uppercase",
@@ -498,7 +498,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
                   style={{
                     fontFamily: "'Fraunces', serif",
                     fontStyle: "italic",
-                    fontSize: 26,
+                    fontSize: 28,
                     color: "var(--text-muted)",
                   }}
                 >
@@ -551,7 +551,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
               justifyContent: "space-between",
               alignItems: "center",
               fontFamily: "var(--mono)",
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: ".3em",
               color: "var(--text-ghost)",
               textTransform: "uppercase",

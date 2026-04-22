@@ -304,7 +304,7 @@ export default function Memory() {
         <div style={{
           display: "flex", alignItems: "baseline", gap: 12,
         }}>
-          <span style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
+          <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-ghost)", fontFamily: "var(--mono)" }}>
             {copy.memoryTagline}
           </span>
           <span style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)" }}>
@@ -346,7 +346,7 @@ export default function Memory() {
             flexWrap: "wrap",
             gap: 8,
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: 11,
             letterSpacing: 1.2,
             textTransform: "uppercase",
             color: "var(--text-ghost)",
@@ -443,7 +443,7 @@ export default function Memory() {
                   border: "1px solid var(--border)",
                   color: "var(--text-secondary)",
                   fontFamily: "var(--mono)",
-                  fontSize: 10,
+                  fontSize: 11,
                   letterSpacing: 1.5,
                   textTransform: "uppercase",
                   padding: "4px 12px",
@@ -519,7 +519,7 @@ export default function Memory() {
                   <span style={{
                     position: "absolute", left: -120, top: -6, width: 92, textAlign: "right",
                     fontFamily: "var(--serif)",
-                    fontSize: 18, fontWeight: 400,
+                    fontSize: 20, fontWeight: 400,
                     letterSpacing: "-0.01em",
                     color: "var(--text-secondary)",
                   }}>{g.label.charAt(0) + g.label.slice(1).toLowerCase()}</span>
@@ -599,7 +599,7 @@ export default function Memory() {
                           style={{
                             position: "absolute",
                             right: -18, top: 6,
-                            fontSize: 10,
+                            fontSize: 11,
                             color: isRefused ? "var(--cc-err)" : "var(--accent)",
                             fontFamily: "var(--mono)",
                             opacity: 0.9,
@@ -618,7 +618,7 @@ export default function Memory() {
                         {isRefused ? "✗ " : ""}{r.question}
                       </div>
                       <div style={{
-                        fontSize: 10, color: "var(--text-ghost)",
+                        fontSize: 11, color: "var(--text-ghost)",
                         fontFamily: "var(--mono)", marginTop: 2,
                         opacity: isRoutine ? 0.75 : 1,
                       }}>
@@ -686,7 +686,7 @@ export default function Memory() {
                     )}
                   </span>
                   <span style={{
-                    fontSize: 12,
+                    fontSize: 11,
                     color: r.refused ? "var(--terminal-warn)" : "var(--text-secondary)",
                     lineHeight: 1.5,
                     overflow: "hidden",
@@ -695,7 +695,7 @@ export default function Memory() {
                   }}>
                     {r.question}
                   </span>
-                  <span style={{ fontSize: 10, color: "var(--text-ghost)", whiteSpace: "nowrap", display: "inline-flex", alignItems: "baseline", gap: 8 }}>
+                  <span style={{ fontSize: 11, color: "var(--text-ghost)", whiteSpace: "nowrap", display: "inline-flex", alignItems: "baseline", gap: 8 }}>
                     {renderOutcomeChip(r)}
                     <span>
                       {new Date(r.timestamp).toLocaleTimeString([], {
@@ -741,7 +741,7 @@ export default function Memory() {
                     {r.tool_calls.length > 0 && (
                       <div style={{ marginTop: 8 }}>
                         {r.tool_calls.map((tc, i) => (
-                          <div key={i} style={{ fontSize: 10, color: "var(--text-ghost)" }}>
+                          <div key={i} style={{ fontSize: 11, color: "var(--text-ghost)" }}>
                             <span style={{ color: tc.ok ? "var(--cc-ok)" : "var(--cc-err)" }}>
                               {tc.ok ? "✓" : "✗"}
                             </span>
@@ -795,7 +795,7 @@ export default function Memory() {
             style={{
               marginTop: 16,
               fontFamily: "var(--mono)",
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: 1.2,
               textTransform: "uppercase",
               color: "var(--text-ghost)",
@@ -817,7 +817,7 @@ function GovernanceChip({ label, value }: { label: string; value: string }) {
       display: "inline-flex",
       alignItems: "baseline",
       gap: 8,
-      padding: "3px 9px",
+      padding: "4px 8px",
       border: "1px solid var(--border-color-soft)",
       borderRadius: 999,
       background: "var(--bg-input)",
@@ -833,7 +833,7 @@ function GovernanceChip({ label, value }: { label: string; value: string }) {
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", fontSize: 10 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", fontSize: 11 }}>
       <span style={{ color: "var(--text-ghost)", letterSpacing: 1, textTransform: "uppercase" }}>{label}</span>
       <span style={{ color: "var(--text-muted)" }}>{value}</span>
     </div>

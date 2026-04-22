@@ -84,7 +84,7 @@ export default function ErrorPanel({ severity, title, message, onDismiss, style 
       <div
         data-error-message
         style={{
-          fontSize: 12,
+          fontSize: 11,
           color: "var(--text-secondary)",
           whiteSpace: "pre-wrap",
           lineHeight: 1.55,
