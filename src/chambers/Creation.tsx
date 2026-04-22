@@ -757,7 +757,7 @@ export default function Creation() {
 
         {(pending || liveTools.length > 0 || liveText || done) && (
           <section
-            className="toolRise xc-exec"
+            className="toolRise terminal-frame xc-exec"
             data-state={pending ? "running" : done ? "done" : "idle"}
           >
             <header className="xc-exec-head">
@@ -946,7 +946,7 @@ export default function Creation() {
       <div
         className="glass"
         style={{
-          borderRadius: 14,
+          borderRadius: "var(--radius-control)",
           padding: "12px 16px",
           fontFamily: "var(--mono)",
           display: "grid",
@@ -1033,9 +1033,9 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
         maxWidth: 820,
         marginBottom: 14,
         background: "var(--bg-elevated)",
-        border: "1px solid var(--border-soft)",
+        border: "1px solid var(--border-color-soft)",
         borderLeft: "2px solid var(--accent-dim)",
-        borderRadius: 14,
+        borderRadius: "var(--radius-control)",
         padding: "14px 18px",
         fontFamily: "var(--mono)",
       }}
@@ -1101,7 +1101,7 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
         <div style={{
           marginTop: 10,
           paddingTop: 10,
-          borderTop: "1px dashed var(--border-soft)",
+          borderTop: "1px dashed var(--border-color-soft)",
           fontSize: 11,
         }}>
           <div style={{
@@ -1263,11 +1263,11 @@ function KanbanCard({
         background: active
           ? "color-mix(in oklab, var(--accent-glow) 55%, var(--bg-elevated))"
           : "var(--bg-elevated)",
-        border: "1px solid var(--border-soft)",
+        border: "1px solid var(--border-color-soft)",
         borderLeft: active
           ? "3px solid var(--accent)"
-          : `1px solid var(--border-soft)`,
-        borderRadius: 12,
+          : `1px solid var(--border-color-soft)`,
+        borderRadius: "var(--radius-control)",
         padding: 14,
         marginBottom: 10,
         cursor: "pointer",
@@ -1361,7 +1361,7 @@ function TaskRow({
         alignItems: "flex-start",
         gap: 14,
         padding: "11px 0 11px 12px",
-        borderBottom: "1px solid var(--border-soft)",
+        borderBottom: "1px solid var(--border-color-soft)",
         borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent",
         background: active
           ? "color-mix(in oklab, var(--accent-glow) 40%, transparent)"
@@ -1557,7 +1557,7 @@ function WorkbenchCard({
         </div>
       )}
       <div style={{
-        marginTop: "var(--space-2)", paddingTop: "var(--space-2)", borderTop: "1px solid var(--border-soft)",
+        marginTop: "var(--space-2)", paddingTop: "var(--space-2)", borderTop: "1px solid var(--border-color-soft)",
         display: "flex", gap: 14, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
         color: "var(--text-ghost)",
         alignItems: "center", flexWrap: "wrap",
@@ -1711,7 +1711,7 @@ function ArtifactLedger({
     <div style={{
       marginTop: 28,
       paddingTop: 18,
-      borderTop: "1px dashed var(--border-soft)",
+      borderTop: "1px dashed var(--border-color-soft)",
       maxWidth: 820,
     }}>
       <div style={{
@@ -1740,7 +1740,7 @@ function ArtifactLedger({
           <button
             onClick={() => setExpanded(v => !v)}
             style={{
-              marginLeft: "auto", background: "none", border: "1px solid var(--border-soft)",
+              marginLeft: "auto", background: "none", border: "1px solid var(--border-color-soft)",
               color: "var(--text-ghost)", fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
               padding: "3px 10px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer",
               transition: "color .15s, border-color .15s",
@@ -1799,16 +1799,15 @@ function ArtifactLedger({
                 onClick={clickable ? () => onSelectArtifact(a) : undefined}
                 onMouseEnter={clickable ? () => setHoverId(a.id) : undefined}
                 onMouseLeave={clickable ? () => setHoverId(null) : undefined}
-                className="fadeIn"
+                className="fadeIn artifact-frame"
                 style={{
                   background: bg,
-                  border: "1px solid var(--border-soft)",
                   borderLeft,
-                  borderRadius: 12,
-                  padding: "10px 14px",
+                  padding: "var(--space-2) var(--space-3)",
+                  margin: 0,
                   fontFamily: "var(--mono)",
                   cursor: clickable ? "pointer" : "default",
-                  transition: "background .18s var(--ease-swift), border-color .18s",
+                  transition: "background var(--dur-fast) var(--ease-swift), border-color var(--dur-fast) var(--ease-swift)",
                 }}
               >
                 <div style={{

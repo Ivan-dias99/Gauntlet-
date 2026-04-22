@@ -653,7 +653,7 @@ export default function Memory() {
             const linkedArtifact = linkArtifact(r, missionArtifact);
             return (
               <div key={r.id} style={{
-                borderBottom: "1px solid var(--border-soft)",
+                borderBottom: "1px solid var(--border-color-soft)",
                 padding: "10px 0",
                 borderLeft: r.refused ? "2px solid var(--cc-err)" : "2px solid transparent",
                 paddingLeft: r.refused ? 10 : 0,
@@ -710,7 +710,7 @@ export default function Memory() {
                     marginTop: 10, marginLeft: 74,
                     fontSize: 11, color: "var(--text-secondary)",
                     background: "var(--bg-input)",
-                    border: "1px solid var(--border-soft)",
+                    border: "1px solid var(--border-color-soft)",
                     borderRadius: "var(--radius-control)",
                     padding: "10px 14px",
                   }}>
@@ -751,7 +751,7 @@ export default function Memory() {
                       </div>
                     )}
                     {(r.judge_reasoning || r.refused) && (
-                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-soft)" }}>
+                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-color-soft)" }}>
                         <div style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--text-ghost)", textTransform: "uppercase", marginBottom: 4, fontFamily: "var(--mono)" }}>judge</div>
                         {r.judge_reasoning ? (
                           <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.55, fontFamily: "var(--sans)", whiteSpace: "pre-wrap" }}>
@@ -766,7 +766,7 @@ export default function Memory() {
                     )}
                     <div style={{
                       marginTop: 10, padding: "8px 0 0",
-                      borderTop: "1px solid var(--border-soft)",
+                      borderTop: "1px solid var(--border-color-soft)",
                       fontSize: 11,
                       color: r.answer ? "var(--text-secondary)" : "var(--text-ghost)",
                       fontStyle: r.answer ? "normal" : "italic",
@@ -818,7 +818,7 @@ function GovernanceChip({ label, value }: { label: string; value: string }) {
       alignItems: "baseline",
       gap: 6,
       padding: "3px 9px",
-      border: "1px solid var(--border-soft)",
+      border: "1px solid var(--border-color-soft)",
       borderRadius: 999,
       background: "var(--bg-input)",
       color: "var(--text-ghost)",

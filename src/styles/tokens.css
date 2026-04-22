@@ -521,7 +521,7 @@ textarea {
   gap: 0 24px;
   align-items: baseline;
   padding: 18px 0;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
   background: transparent;
   border-left: 0;
   border-right: 0;
@@ -898,7 +898,7 @@ textarea {
   letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--text-ghost);
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
 }
 .dropdown-item {
   display: block;
@@ -906,7 +906,7 @@ textarea {
   text-align: left;
   background: none;
   border: 0;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
   padding: var(--space-1) var(--space-3);
   cursor: pointer;
   transition: background 0.18s;
@@ -1009,7 +1009,7 @@ textarea {
   justify-content: space-between;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
 }
 .xc-exec-body {
   padding: var(--space-3) var(--space-4);
@@ -1018,7 +1018,7 @@ textarea {
 .xc-exec-foot {
   margin-top: var(--space-2);
   padding-top: var(--space-1);
-  border-top: 1px dashed var(--border-soft);
+  border-top: 1px dashed var(--border-color-soft);
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -1032,7 +1032,7 @@ textarea {
   word-break: break-word;
 }
 .xc-exec-answer[data-has-tools="true"] {
-  border-top: 1px dashed var(--border-soft);
+  border-top: 1px dashed var(--border-color-soft);
   padding-top: var(--space-2);
 }
 .xc-pill {
@@ -1110,7 +1110,7 @@ textarea {
    ErrorPanel on purpose — dormant is ambient, error is actionable. */
 [data-dormant-panel] {
   background: var(--bg-input);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-left: 2px solid var(--text-ghost);
   border-radius: 12px;
   padding: 14px 18px;
@@ -1151,7 +1151,7 @@ textarea {
   color: var(--text-ghost);
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   background: transparent;
   transition: color 0.2s var(--ease-swift), border-color 0.2s var(--ease-swift);
 }
@@ -1186,7 +1186,7 @@ textarea {
 }
 .chamber-head {
   padding: 20px 40px 16px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
 }
 .chamber-body {
   flex: 1;
@@ -1837,6 +1837,7 @@ textarea {
    to declare that inscription is now an active act. */
 .doctrine-composer {
   margin: 14px clamp(20px, 5vw, 64px) 22px;
+  min-height: 56px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color-soft);
   border-left: 2px solid transparent;

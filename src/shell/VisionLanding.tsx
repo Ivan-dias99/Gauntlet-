@@ -339,8 +339,8 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
             style={{
               display: "grid",
               gridTemplateColumns: `repeat(${copy.chamberDeck.length}, 1fr)`,
-              borderTop: "1px solid var(--border-soft)",
-              borderBottom: "1px solid var(--border-soft)",
+              borderTop: "1px solid var(--border-color-soft)",
+              borderBottom: "1px solid var(--border-color-soft)",
             }}
           >
             {copy.chamberDeck.map((c) => (
@@ -406,7 +406,7 @@ export default function VisionLanding({ onEnter, onNewMission }: Props) {
         <section
           style={{
             padding: "clamp(80px, 12vh, 160px) clamp(32px, 4vw, 72px)",
-            borderTop: "1px solid var(--border-soft)",
+            borderTop: "1px solid var(--border-color-soft)",
           }}
         >
           <div

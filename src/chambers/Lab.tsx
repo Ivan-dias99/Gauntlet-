@@ -325,7 +325,7 @@ export default function Lab() {
         ))}
 
         {pending && (
-          <div className="toolRise" style={{ alignSelf: "flex-start", maxWidth: 520, minWidth: 260, display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--bg-input)", border: "1px dashed var(--border)", borderRadius: 12, fontFamily: "var(--mono)", fontSize: 11, color: "var(--cc-dim)", letterSpacing: ".04em" }}>
+          <div className="toolRise" style={{ alignSelf: "flex-start", maxWidth: 520, minWidth: 260, display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--bg-input)", border: "1px dashed var(--border-color-mid)", borderRadius: "var(--radius-control)", fontFamily: "var(--mono)", fontSize: 11, color: "var(--cc-dim)", letterSpacing: ".04em" }}>
             <span className="breathe" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--cc-info)", boxShadow: "0 0 0 4px color-mix(in oklab, var(--cc-info) 22%, transparent)" }} />
             <span>{live.lastEventLabel}</span>
             <div className="scanbar" style={{ flex: 1, height: 2, background: "var(--border-soft)", borderRadius: 2 }} />
@@ -379,7 +379,7 @@ export default function Lab() {
         >
           {copy.labInputVoice}
         </div>
-        <div className="glass" style={{ borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
+        <div className="glass" style={{ borderRadius: "var(--radius-control)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: activeMission ? 1 : 0.7 }}>
         <span
           className={pending ? "breathe" : ""}
           style={{ width: 8, height: 8, borderRadius: "50%", background: pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)", boxShadow: `0 0 0 4px color-mix(in oklab, ${pending ? "var(--cc-info)" : activeMission ? "var(--cc-prompt)" : "var(--border)"} 22%, transparent)`, flexShrink: 0 }}
@@ -659,7 +659,7 @@ function LabTurnRow({
         <div style={{
           marginTop: 6,
           paddingTop: 8,
-          borderTop: "1px dashed var(--border-soft)",
+          borderTop: "1px dashed var(--border-color-soft)",
           display: "flex",
           alignItems: "center",
           gap: 14,
