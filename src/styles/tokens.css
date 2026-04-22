@@ -1445,7 +1445,7 @@ textarea {
 }
 .chamber-shell[data-chamber="school"] .chamber-head {
   background: var(--school-bg-chamber);
-  border-bottom-color: var(--school-line-mid);
+  border-bottom: 0;
   padding: 18px 40px 10px;
 }
 /* Tighten the body rhythm specifically for School so the strap-to-panel
