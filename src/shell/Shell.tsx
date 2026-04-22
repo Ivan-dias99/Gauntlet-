@@ -86,7 +86,6 @@ export default function Shell() {
 
   return (
     <div
-      data-active-chamber={activeTab}
       style={{
         height: "100vh",
         display: "flex",

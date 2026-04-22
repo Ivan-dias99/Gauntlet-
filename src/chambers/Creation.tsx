@@ -507,7 +507,7 @@ export default function Creation() {
           aria-label="Execution mode"
           style={{
             display: "flex",
-            border: "1px solid var(--border-subtle)",
+            border: "1px solid var(--border-soft)",
             borderRadius: 999,
             overflow: "hidden",
             marginLeft: 12,
@@ -580,7 +580,7 @@ export default function Creation() {
             </span>
             {currentObjective && (
               <>
-                <span style={{ color: "var(--border-subtle)", fontSize: 13 }}>›</span>
+                <span style={{ color: "var(--border-soft)", fontSize: 13 }}>›</span>
                 <span style={{ color: "var(--accent)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {currentObjective}
                 </span>
@@ -1044,7 +1044,7 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
         maxWidth: 820,
         marginBottom: 14,
         background: "var(--bg-elevated)",
-        border: "1px solid var(--border-subtle)",
+        border: "1px solid var(--border-soft)",
         borderLeft: "2px solid var(--accent-dim)",
         borderRadius: 14,
         padding: "14px 18px",
@@ -1113,7 +1113,7 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
         <div style={{
           marginTop: 10,
           paddingTop: 10,
-          borderTop: "1px dashed var(--border-subtle)",
+          borderTop: "1px dashed var(--border-soft)",
           fontSize: 11,
         }}>
           <div style={{
@@ -1275,16 +1275,16 @@ function KanbanCard({
         background: active
           ? "color-mix(in oklab, var(--accent-glow) 55%, var(--bg-elevated))"
           : "var(--bg-elevated)",
-        border: "1px solid var(--border-subtle)",
+        border: "1px solid var(--border-soft)",
         borderLeft: active
           ? "3px solid var(--accent)"
-          : `1px solid var(--border-subtle)`,
+          : `1px solid var(--border-soft)`,
         borderRadius: 12,
         padding: 14,
         marginBottom: 10,
         cursor: "pointer",
         opacity: isDone ? 0.55 : isBlocked ? 0.75 : 1,
-        transition: "transform .25s var(--ease-emph), border-color .2s, opacity .2s",
+        transition: "transform .25s var(--ease-swift), border-color .2s, opacity .2s",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-2px)";
@@ -1292,7 +1292,7 @@ function KanbanCard({
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "";
-        if (!active) e.currentTarget.style.borderColor = "var(--border-subtle)";
+        if (!active) e.currentTarget.style.borderColor = "var(--border-soft)";
       }}
     >
       <div
@@ -1373,7 +1373,7 @@ function TaskRow({
         alignItems: "flex-start",
         gap: 14,
         padding: "11px 0 11px 12px",
-        borderBottom: "1px solid var(--border-subtle)",
+        borderBottom: "1px solid var(--border-soft)",
         borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent",
         background: active
           ? "color-mix(in oklab, var(--accent-glow) 40%, transparent)"
@@ -1381,7 +1381,7 @@ function TaskRow({
         cursor: "pointer",
         fontFamily: "var(--mono)",
         opacity: isDone ? 0.55 : isBlocked ? 0.75 : 1,
-        transition: "padding-left .28s var(--ease-emph), opacity .2s",
+        transition: "padding-left .28s var(--ease-swift), opacity .2s",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.paddingLeft = active ? "16px" : "18px";
@@ -1486,11 +1486,11 @@ function WorkbenchCard({
       className="fadeIn surface-flagship"
       style={{
         maxWidth: 820,
-        marginBottom: "var(--sp-4)",
-        borderLeft: `2px solid ${task ? STATE_COLOR[task.state] : "var(--border-subtle)"}`,
-        padding: "var(--sp-5) var(--sp-5)",
+        marginBottom: "var(--space-3)",
+        borderLeft: `2px solid ${task ? STATE_COLOR[task.state] : "var(--border-soft)"}`,
+        padding: "var(--space-4) var(--space-4)",
         fontFamily: "var(--mono)",
-        boxShadow: isLive ? "var(--shadow-md)" : "var(--shadow-sm)",
+        boxShadow: isLive ? "var(--shadow-panel)" : "var(--shadow-soft)",
         transition: "box-shadow .3s var(--ease-swift), border-color .2s",
       }}
     >
@@ -1499,7 +1499,7 @@ function WorkbenchCard({
         fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-ghost)",
       }}>
         <span>{copy.workbench}</span>
-        <span style={{ color: "var(--border-subtle)" }}>/</span>
+        <span style={{ color: "var(--border-soft)" }}>/</span>
         <span style={{ color: "var(--text-secondary)", letterSpacing: 1, textTransform: "none", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {missionTitle}
         </span>
@@ -1569,7 +1569,7 @@ function WorkbenchCard({
         </div>
       )}
       <div style={{
-        marginTop: "var(--sp-3)", paddingTop: "var(--sp-3)", borderTop: "1px solid var(--border-subtle)",
+        marginTop: "var(--space-2)", paddingTop: "var(--space-2)", borderTop: "1px solid var(--border-soft)",
         display: "flex", gap: 14, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
         color: "var(--text-ghost)",
         alignItems: "center", flexWrap: "wrap",
@@ -1723,7 +1723,7 @@ function ArtifactLedger({
     <div style={{
       marginTop: 28,
       paddingTop: 18,
-      borderTop: "1px dashed var(--border-subtle)",
+      borderTop: "1px dashed var(--border-soft)",
       maxWidth: 820,
     }}>
       <div style={{
@@ -1752,7 +1752,7 @@ function ArtifactLedger({
           <button
             onClick={() => setExpanded(v => !v)}
             style={{
-              marginLeft: "auto", background: "none", border: "1px solid var(--border-subtle)",
+              marginLeft: "auto", background: "none", border: "1px solid var(--border-soft)",
               color: "var(--text-ghost)", fontSize: 9, letterSpacing: 2, textTransform: "uppercase",
               padding: "3px 10px", borderRadius: 999, fontFamily: "var(--mono)", cursor: "pointer",
               transition: "color .15s, border-color .15s",
@@ -1763,7 +1763,7 @@ function ArtifactLedger({
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.color = "var(--text-ghost)";
-              e.currentTarget.style.borderColor = "var(--border-subtle)";
+              e.currentTarget.style.borderColor = "var(--border-soft)";
             }}
           >
             {expanded
@@ -1814,7 +1814,7 @@ function ArtifactLedger({
                 className="fadeIn"
                 style={{
                   background: bg,
-                  border: "1px solid var(--border-subtle)",
+                  border: "1px solid var(--border-soft)",
                   borderLeft,
                   borderRadius: 12,
                   padding: "10px 14px",

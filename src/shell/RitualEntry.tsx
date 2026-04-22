@@ -89,11 +89,11 @@ export default function RitualEntry({ onDone }: Props) {
             return (
               <button key={id} onClick={() => setChamber(id)} style={{
                 background: active ? "var(--bg-elevated)" : "var(--bg-surface)",
-                border: `1px solid ${active ? "var(--accent-dim)" : "var(--border-subtle)"}`,
+                border: `1px solid ${active ? "var(--accent-dim)" : "var(--border-soft)"}`,
                 borderRadius: "var(--radius)",
                 padding: "14px 18px",
                 cursor: "pointer", textAlign: "left",
-                boxShadow: active ? "var(--shadow-sm)" : "none",
+                boxShadow: active ? "var(--shadow-soft)" : "none",
                 transition: "all 0.12s",
               }}>
                 <div style={{

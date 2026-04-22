@@ -42,7 +42,7 @@ export default function TweaksPanel({ open, onClose, chamber }: Props) {
         border: "1px solid var(--border)",
         borderRadius: "var(--radius)",
         padding: 16,
-        boxShadow: "var(--shadow-md)",
+        boxShadow: "var(--shadow-panel)",
         fontFamily: "var(--sans)",
       }}
     >
@@ -151,7 +151,7 @@ export default function TweaksPanel({ open, onClose, chamber }: Props) {
         ))}
       </Row>
 
-      <div style={{ height: 1, background: "var(--border-subtle)", margin: "10px 0 12px" }} />
+      <div style={{ height: 1, background: "var(--border-soft)", margin: "10px 0 12px" }} />
 
       <Row label={`${chamber} layout`}>
         {chamber === "Lab" && <Chip active onClick={() => {}}>chat</Chip>}
