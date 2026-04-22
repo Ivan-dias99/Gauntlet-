@@ -1,4 +1,9 @@
-import { ruberraFetch, isBackendUnreachable } from "../lib/ruberraApi";
+import {
+  ruberraFetch,
+  isBackendUnreachable,
+  parseBackendError,
+  BackendError,
+} from "../lib/ruberraApi";
 import { SpineState, Mission } from "./types";
 import { normalizeMission, normalizePrinciples } from "./store";
 
@@ -57,7 +62,8 @@ export async function pushSpine(state: SpineState, signal?: AbortSignal): Promis
     signal,
   });
   if (!res.ok) {
-    throw new Error(`spine push ${res.status}`);
+    const env = await parseBackendError(res);
+    throw new BackendError(res.status, env, `spine push ${res.status}`);
   }
   return true;
 }

@@ -39,7 +39,7 @@ function normalizeForDedup(s: string): string {
 }
 
 export default function School() {
-  const { principles, addPrinciple, activeMission } = useSpine();
+  const { principles, addPrinciple, activeMission, syncState, hydratedFromBackend, syncError } = useSpine();
   const { values } = useTweaks();
   const copy = useCopy();
   const [input, setInput] = useState("");
@@ -153,6 +153,51 @@ export default function School() {
               {lastInscribedAt !== null && (
                 <span>
                   última inscrição <span style={{ color: "var(--text-muted)" }}>{relativeTime(lastInscribedAt, nowMs)}</span>
+                </span>
+              )}
+              {/* Persistence honesty: the doctrine exists in browser state the
+                  moment a principle is inscribed, but the user must see whether
+                  the snapshot has actually reached the backend. */}
+              <span
+                data-doctrine-sync={syncState}
+                style={{
+                  color:
+                    syncState === "synced"
+                      ? "var(--cc-ok)"
+                      : syncState === "syncing"
+                      ? "var(--cc-info)"
+                      : "var(--cc-warn)",
+                }}
+              >
+                {syncState === "synced"
+                  ? "sincronizado"
+                  : syncState === "syncing"
+                  ? "a sincronizar…"
+                  : "local — backend não confirmou"}
+              </span>
+              {/* Load-truth: distinguish "doctrine confirmed by backend at boot"
+                  from "doctrine never reached the backend in this session". */}
+              {hydratedFromBackend === false && (
+                <span
+                  data-doctrine-load="local-only"
+                  style={{ color: "var(--cc-warn)" }}
+                >
+                  carregada da cache — backend não respondeu
+                </span>
+              )}
+              {/* Typed sync-error surface (T088). When the last push failed,
+                  show the backend's own reason rather than the opaque
+                  "unsynced" pill. */}
+              {syncError && (
+                <span
+                  data-doctrine-sync-error={syncError.kind}
+                  title={syncError.message}
+                  style={{ color: "var(--cc-warn)" }}
+                >
+                  motivo:{" "}
+                  {syncError.kind === "unreachable"
+                    ? "backend inacessível"
+                    : syncError.envelope?.error ?? "erro do backend"}
                 </span>
               )}
             </div>

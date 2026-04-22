@@ -28,7 +28,7 @@ interface Props {
 
 export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks }: Props) {
   const { theme, toggle } = useTheme();
-  const { state, activeMission, switchMission, syncState } = useSpine();
+  const { state, activeMission, switchMission, syncState, syncError, hydratedFromBackend } = useSpine();
   const copy = useCopy();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -105,7 +105,21 @@ export default function CanonRibbon({ active, onSelect, onNew, onHome, onTweaks 
         <span
           className="spine-sync"
           data-sync-state={syncState}
-          title={copy.spineSyncTitle(syncState)}
+          title={(() => {
+            const base = copy.spineSyncTitle(syncState);
+            const parts = [base];
+            if (hydratedFromBackend === false) {
+              parts.push("backend não respondeu na hidratação");
+            }
+            if (syncError) {
+              parts.push(
+                syncError.kind === "unreachable"
+                  ? "último push: backend inacessível"
+                  : `último push: ${syncError.envelope?.error ?? "erro do backend"}`,
+              );
+            }
+            return parts.join(" · ");
+          })()}
           aria-live="polite"
         >
           <span aria-hidden className="spine-sync-dot" />

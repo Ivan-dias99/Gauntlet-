@@ -200,7 +200,33 @@ export function useRuberra() {
           const payload = line.slice(5).trim();
           if (!payload) continue;
           try {
-            onEvent(JSON.parse(payload) as E);
+            const parsed = JSON.parse(payload) as E;
+            // Backend-emitted error frames (T063/T076 contract) carry
+            // `{type:"error", message, error?, reason?}`. Promote them
+            // to the hook's error state so every chamber's existing
+            // ErrorPanel gate fires instead of showing a one-frame
+            // label and silently going idle.
+            if (
+              parsed !== null &&
+              typeof parsed === "object" &&
+              (parsed as { type?: string }).type === "error"
+            ) {
+              const ef = parsed as {
+                message?: string;
+                error?: string;
+                reason?: string;
+              };
+              const msg = ef.message ?? "stream error";
+              setError(msg);
+              if (ef.error && ef.reason) {
+                setErrorEnvelope({
+                  error: ef.error,
+                  reason: ef.reason,
+                  message: msg,
+                });
+              }
+            }
+            onEvent(parsed);
           } catch {
             // malformed frame — skip
           }

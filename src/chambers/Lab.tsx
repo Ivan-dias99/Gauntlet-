@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { useRuberra, RouteEvent } from "../hooks/useRuberra";
+import { useBackendStatus } from "../hooks/useBackendStatus";
 import { Note } from "../spine/types";
 import ErrorPanel from "../shell/ErrorPanel";
 import DormantPanel from "../shell/DormantPanel";
@@ -73,6 +74,7 @@ const EMPTY_LIVE: LiveState = {
 export default function Lab() {
   const { activeMission, addNote, addNoteToMission, addTask, principles, logDoctrineApplied } = useSpine();
   const { streamRoute, pending, error, unreachable } = useRuberra();
+  const backend = useBackendStatus();
   const copy = useCopy();
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
@@ -138,6 +140,18 @@ export default function Lab() {
       .map((n) => `${n.role === "ai" ? "AI" : "User"}: ${n.text}`)
       .reverse()
       .join("\n");
+    // Backend caps `context` at 5000 chars (RuberraQuery in models.py). Truncate
+    // at the char boundary so a long-running mission never generates a silent
+    // 422 the user cannot see.
+    const clampedContext =
+      priorNotes.length > 5000 ? priorNotes.slice(-5000) : priorNotes;
+    // Backend caps `principles` at 64 entries. A School user may have more;
+    // keep the newest ones — those are the ones the user most recently chose
+    // to enforce.
+    const clampedPrinciples =
+      principles.length > 64
+        ? principles.slice(-64).map((p) => p.text)
+        : principles.map((p) => p.text);
 
     abortRef.current?.abort();
     const ac = new AbortController();
@@ -148,9 +162,9 @@ export default function Lab() {
     await streamRoute(
       {
         question: v,
-        context: priorNotes || undefined,
+        context: clampedContext || undefined,
         mission_id: targetMissionId,
-        principles: principles.length ? principles.map((p) => p.text) : undefined,
+        principles: clampedPrinciples.length ? clampedPrinciples : undefined,
       },
       (ev: RouteEvent) => {
         if (ev.type === "route") capturedPath = ev.path;
@@ -214,6 +228,25 @@ export default function Lab() {
         <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
           {copy.labTagline}
         </span>
+        {backend.mode === "mock" && (
+          <span
+            data-backend-mode="mock"
+            title="Backend em modo simulado — respostas são canned, não Anthropic real"
+            style={{
+              fontSize: 9,
+              letterSpacing: 1.5,
+              color: "var(--cc-warn)",
+              fontFamily: "var(--mono)",
+              textTransform: "uppercase",
+              padding: "2px 7px",
+              border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+              borderRadius: 4,
+              lineHeight: 1.4,
+            }}
+          >
+            mock
+          </span>
+        )}
         {principles.length > 0 && (
           <span
             data-principles-in-context

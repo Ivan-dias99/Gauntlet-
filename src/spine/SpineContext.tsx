@@ -14,6 +14,11 @@ import {
   acceptArtifact as acceptArtifactFn,
 } from "./store";
 import { fetchSpine, pushSpine } from "./client";
+import {
+  isBackendUnreachable,
+  isBackendError,
+  type BackendErrorEnvelope,
+} from "../lib/ruberraApi";
 
 export type SpineSyncState = "synced" | "syncing" | "unsynced";
 
@@ -32,6 +37,16 @@ interface SpineCtx {
   activeMission: Mission | null;
   principles: Principle[];
   syncState: SpineSyncState;
+  // Whether the initial /spine fetch came back with a parseable body. Null
+  // while in flight; true once the backend responded (regardless of which
+  // side won the updatedAt race); false if the fetch failed or was aborted
+  // before responding. Chambers like School use this to tell the user
+  // whether the doctrine they see has any backend confirmation at all.
+  hydratedFromBackend: boolean | null;
+  // Last sync-push failure detail. Cleared on the next successful push.
+  // `kind` distinguishes a network/edge unreachable from a typed backend
+  // error so the UI can show the right copy without regex-ing strings.
+  syncError: { kind: "unreachable" | "backend"; envelope: BackendErrorEnvelope | null; message: string } | null;
   createMission: (title: string, chamber: Chamber) => void;
   switchMission: (id: string) => void;
   addNote: (text: string, role?: "user" | "ai") => void;
@@ -52,6 +67,8 @@ const Ctx = createContext<SpineCtx | null>(null);
 export function SpineProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SpineState>(() => loadState());
   const [syncState, setSyncState] = useState<SpineSyncState>("synced");
+  const [syncError, setSyncError] = useState<SpineCtx["syncError"]>(null);
+  const [hydratedFromBackend, setHydratedFromBackend] = useState<boolean | null>(null);
   const hasHydrated = useRef(false);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -66,6 +83,11 @@ export function SpineProvider({ children }: { children: ReactNode }) {
           const remoteNewer = (remote.updatedAt ?? 0) > (prev.updatedAt ?? 0);
           return remoteNewer ? remote : prev;
         });
+        setHydratedFromBackend(true);
+      } else if (!ac.signal.aborted) {
+        // null with no abort means the fetch failed (unreachable, non-OK,
+        // or other) — surface that the user is on local-only state.
+        setHydratedFromBackend(false);
       }
       hasHydrated.current = true;
     });
@@ -83,11 +105,36 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       try {
         await pushSpine(state);
         setSyncState("synced");
-      } catch {
-        // Any failure — unreachable edge, network flake, upstream 5xx —
-        // means the server does not have the latest snapshot. Single
-        // honest bucket; Phase B will split offline vs error when the
-        // UI is ready to differentiate them.
+        setSyncError(null);
+        // A successful push proves the backend is reachable — promote
+        // `hydratedFromBackend` so chambers stop showing the
+        // "carregada da cache" warning. The mount-time false was honest
+        // for that moment; it's not honest after we have proof of life.
+        setHydratedFromBackend((prev) => (prev === false ? true : prev));
+      } catch (err) {
+        // Capture the typed reason so the UI can distinguish unreachable
+        // edge from a backend-side rejection (e.g. spine_persist_failed
+        // when the volume is read-only) instead of showing one opaque
+        // "unsynced" pill that hides the cause.
+        if (isBackendUnreachable(err)) {
+          setSyncError({
+            kind: "unreachable",
+            envelope: null,
+            message: err.message,
+          });
+        } else if (isBackendError(err)) {
+          setSyncError({
+            kind: "backend",
+            envelope: err.envelope,
+            message: err.message,
+          });
+        } else {
+          setSyncError({
+            kind: "backend",
+            envelope: null,
+            message: err instanceof Error ? err.message : String(err),
+          });
+        }
         setSyncState("unsynced");
       }
     }, 500);
@@ -105,6 +152,8 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       activeMission,
       principles: state.principles,
       syncState,
+      hydratedFromBackend,
+      syncError,
       createMission: (t, c) => dispatch(s => mkMission(s, t, c)),
       switchMission: (id) => dispatch(s => switchFn(s, id)),
       addNote: (text, role) => dispatch(s => addNoteFn(s, text, role)),
