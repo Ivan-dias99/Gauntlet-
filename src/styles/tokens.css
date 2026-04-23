@@ -5364,3 +5364,359 @@ textarea {
     inset 0 0 0 1px color-mix(in oklab, var(--chamber-dna, var(--ember)) 22%, transparent),
     inset 0 1px 0  color-mix(in oklab, #fff 18%, transparent);
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TERMINAL LEFT SPINE — operational rail
+   Floating vertical slab, paper-native. Dual-edge + contact/mid/ambient
+   shadow stack (same grammar as the workbench strip). The green
+   atmospheric field passes beneath it; the rail itself stays warm ivory.
+   Green remains semantic: active item · backend live · status dots.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Split layout. The chamber-shell stays flex-column (ContextStrip on
+   top); below it, a flex-row splits rail + main column. The inner
+   chamber-body and the composer stay inside term-main so the composer
+   centres within the remaining space, not the full chamber width. */
+.term-split {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  gap: 0;
+}
+.term-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ——— The slab ———
+   Warm ivory floating panel. Margin creates the gap to the ContextStrip
+   above and the breathing room on the left edge. Internal padding is
+   calm; typography carries the operational read. */
+.term-spine {
+  flex-shrink: 0;
+  width: 236px;
+  margin: var(--space-3) 0 var(--space-3) var(--space-4);
+  padding: 14px 14px 12px;
+  border-radius: 20px;
+  background: var(--bg-surface);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 15%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  position: relative;
+  z-index: 2;
+  /* dual-edge + shadow stack — same material rules as the workbench strip */
+  box-shadow:
+    0 1px 0  color-mix(in oklab, #fff 65%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #000 4%, transparent) inset,
+    0 1px 2px  color-mix(in oklab, var(--text-primary)  5%, transparent),
+    0 5px 12px -5px  color-mix(in oklab, var(--text-primary)  9%, transparent),
+    0 20px 40px -16px color-mix(in oklab, var(--text-primary) 11%, transparent);
+}
+[data-theme="dark"] .term-spine,
+[data-theme="sepia"] .term-spine {
+  background: color-mix(in oklab, var(--bg-surface) 88%, var(--bg-elevated));
+  border-color: color-mix(in oklab, var(--text-primary) 15%, transparent);
+  box-shadow:
+    0 1px 0  color-mix(in oklab, #fff 7%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #000 24%, transparent) inset,
+    0 1px 3px  color-mix(in oklab, #000 36%, transparent),
+    0 6px 16px -6px  color-mix(in oklab, #000 52%, transparent),
+    0 24px 48px -18px color-mix(in oklab, #000 64%, transparent);
+}
+
+/* ——— Identity header ——— */
+.term-spine-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px 10px;
+  border-bottom: 1px solid var(--border-color-soft);
+}
+.term-spine-brand-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--chamber-dna, var(--ember));
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 10%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 30%, transparent) inset,
+    0 1px 1px color-mix(in oklab, var(--text-primary) 5%, transparent);
+  flex-shrink: 0;
+}
+.term-spine-brand-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.term-spine-brand-name {
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.term-spine-brand-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+  opacity: 0.6;
+}
+.term-spine-brand-chamber {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.term-spine-brand-version {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--text-ghost);
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+  flex-shrink: 0;
+}
+
+/* ——— Groups ——— */
+.term-spine-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.term-spine-group-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 0 4px;
+  opacity: 0.85;
+}
+.term-spine-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* ——— Item row ———
+   Grid: icon · label · optional count. Calm by default, hover lifts the
+   surface subtly, active carries the sage semantic dot and tint. */
+.term-spine-item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-family: var(--sans);
+  font-size: 13px;
+  letter-spacing: -0.003em;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-swift),
+    color var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift);
+}
+.term-spine-item:hover {
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 24%, transparent);
+}
+[data-theme="dark"] .term-spine-item:hover,
+[data-theme="sepia"] .term-spine-item:hover {
+  background: color-mix(in oklab, #fff 5%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 4%, transparent);
+}
+.term-spine-item-icon {
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  opacity: 0.85;
+  transition: color var(--dur-fast), opacity var(--dur-fast);
+}
+.term-spine-item:hover .term-spine-item-icon { opacity: 1; }
+.term-spine-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.term-spine-item-count {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-ghost);
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Active chamber — restrained sage semantic read. A leading dot before
+   the icon slot, faint cc-ok tint on the row. Never shouts. */
+.term-spine-item[data-active="true"] {
+  background: color-mix(in oklab, var(--cc-ok) 8%, transparent);
+  color: var(--text-primary);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, #fff 30%, transparent),
+    inset 2px 0 0 var(--cc-ok);
+}
+[data-theme="dark"] .term-spine-item[data-active="true"],
+[data-theme="sepia"] .term-spine-item[data-active="true"] {
+  background: color-mix(in oklab, var(--cc-ok) 10%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, #fff 6%, transparent),
+    inset 2px 0 0 var(--cc-ok);
+}
+.term-spine-item[data-active="true"] .term-spine-item-icon {
+  color: var(--cc-ok);
+  opacity: 1;
+}
+.term-spine-item[data-active="true"] .term-spine-item-count {
+  color: var(--cc-ok);
+  background: color-mix(in oklab, var(--cc-ok) 10%, transparent);
+}
+
+/* Dim variant — workspace items that have no data yet. Calm but not dead. */
+.term-spine-item[data-dim="true"] {
+  color: var(--text-muted);
+  cursor: default;
+}
+.term-spine-item[data-dim="true"] .term-spine-item-icon { opacity: 0.55; }
+.term-spine-item[data-dim="true"]:hover {
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+/* ——— Status block ——— */
+.term-spine-status {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.term-spine-status-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.term-spine-status-row[data-mute="true"] {
+  opacity: 0.55;
+}
+.term-spine-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--text-ghost) 18%, transparent);
+  justify-self: center;
+}
+.term-spine-status-row[data-tone="ok"] .term-spine-status-dot {
+  background: var(--cc-ok);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 22%, transparent);
+}
+.term-spine-status-row[data-tone="warn"] .term-spine-status-dot {
+  background: var(--cc-warn);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-warn) 22%, transparent);
+}
+.term-spine-status-label {
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.term-spine-status-value {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.term-spine-status-row[data-tone="ok"] .term-spine-status-value {
+  color: var(--cc-ok);
+}
+
+/* ——— Responsive ———
+   ≤ 1080px : rail collapses to a slim icon-only spine (56px wide).
+              Labels, counts, group labels, brand text, status values hide.
+   ≤ 680px  : rail hides entirely so the composer keeps its breath. */
+@media (max-width: 1080px) {
+  .term-spine {
+    width: 56px;
+    padding: 10px 6px;
+    gap: 10px;
+    margin-left: var(--space-2);
+  }
+  .term-spine-brand { justify-content: center; padding: 2px 0 8px; }
+  .term-spine-brand-text,
+  .term-spine-brand-version { display: none; }
+  .term-spine-group-label { display: none; }
+  .term-spine-item {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 8px 4px;
+    gap: 0;
+  }
+  .term-spine-item[data-active="true"] {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, #fff 30%, transparent),
+      inset 2px 0 0 var(--cc-ok);
+  }
+  .term-spine-item-label,
+  .term-spine-item-count { display: none; }
+  .term-spine-item-icon { width: 20px; height: 20px; }
+  .term-spine-status-row {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 4px 0;
+  }
+  .term-spine-status-label,
+  .term-spine-status-value { display: none; }
+}
+@media (max-width: 680px) {
+  .term-spine { display: none; }
+}

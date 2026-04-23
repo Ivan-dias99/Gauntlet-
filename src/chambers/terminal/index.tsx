@@ -15,6 +15,7 @@ import WorkbenchStrip from "./WorkbenchStrip";
 import OutputCanvas from "./OutputCanvas";
 import NextStepBar from "./NextStepBar";
 import ExecutionComposer from "./ExecutionComposer";
+import TerminalSpine from "./TerminalSpine";
 
 // Terminal — execution environment. State, effects, submit, accept,
 // task state transitions and SSE event reduction stay here; every
@@ -394,90 +395,107 @@ export default function Terminal() {
 
   return (
     <div className="chamber-shell" data-chamber="terminal">
-      <ContextStrip
-        copy={copy}
-        backendMode={backend.mode}
-        principlesCount={principles.length}
-        pending={pending}
-        elapsed={elapsed}
-        exitCode={exitCode}
-        taskCount={tasks.length}
-        doneCount={doneTasks.length}
-        activeMissionTitle={activeMission?.title ?? null}
-        currentObjective={currentObjective}
-        allDone={allDone}
-        allDoneLabel={copy.actionAllDone}
-      />
-
-      <div className="chamber-body" style={{ paddingTop: 0 }}>
-        <WorkbenchStrip
+      <div className="term-split">
+        <TerminalSpine
           copy={copy}
+          activeChamber="terminal"
+          backendMode={backend.mode}
           missionTitle={activeMission?.title ?? null}
-          activeTask={activeTask}
+          taskCount={tasks.length}
+          doneCount={doneTasks.length}
+          artifactsCount={allArtifacts.length}
+          notesCount={activeMission?.notes?.length ?? 0}
+          principlesCount={principles.length}
+          mode={mode}
         />
 
-        {unreachable && err ? (
-          <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)" }}>
-            <DormantPanel detail={copy.dormantCreation} />
-          </div>
-        ) : (
-          <OutputCanvas
+        <div className="term-main">
+          <ContextStrip
             copy={copy}
-            mission={activeMission}
-            activeTask={activeTask}
-            lastTask={lastTask}
+            backendMode={backend.mode}
+            principlesCount={principles.length}
             pending={pending}
-            iteration={iteration}
             elapsed={elapsed}
-            liveText={liveText}
-            liveTools={liveTools}
-            done={done}
-            accepted={accepted}
-            err={err}
-            crew={crew}
-            mode={mode}
-            artifacts={allArtifacts}
-            onAccept={accept}
-            onReplayArtifact={replayArtifact}
-            canAccept={Boolean(activeMission)}
+            exitCode={exitCode}
+            taskCount={tasks.length}
+            doneCount={doneTasks.length}
+            activeMissionTitle={activeMission?.title ?? null}
+            currentObjective={currentObjective}
+            allDone={allDone}
+            allDoneLabel={copy.actionAllDone}
           />
-        )}
 
-        {showNextStep && (
-          <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4) var(--space-5)" }}>
-            <NextStepBar
-              hasNextOpen={nextOpenTask !== null}
-              canRefine={Boolean(activeTask?.title || lastTask) && activeTask?.state !== "done"}
-              isBlocked={activeTask?.state === "blocked"}
-              canBlock={
-                activeTask !== null &&
-                (activeTask.state === "open" || activeTask.state === "running")
-              }
+          <div className="chamber-body" style={{ paddingTop: 0 }}>
+            <WorkbenchStrip
               copy={copy}
-              onNext={handleNextTask}
-              onRefine={handleRefine}
-              onBlock={handleBlock}
-              onReopen={handleReopen}
+              missionTitle={activeMission?.title ?? null}
+              activeTask={activeTask}
             />
-          </div>
-        )}
-      </div>
 
-      <ExecutionComposer
-        copy={copy}
-        value={input}
-        onChange={setInput}
-        onSubmit={submit}
-        pending={pending}
-        missionTitle={activeMission?.title ?? null}
-        mode={mode}
-        onModeChange={setMode}
-        recentTasks={tasks.slice(0, 8)}
-        onPickTask={(title) => setInput(title)}
-        principlesCount={principles.length}
-        priorTurns={activeMission?.notes?.length ?? 0}
-        mockMode={backend.mode === "mock"}
-      />
+            {unreachable && err ? (
+              <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)" }}>
+                <DormantPanel detail={copy.dormantCreation} />
+              </div>
+            ) : (
+              <OutputCanvas
+                copy={copy}
+                mission={activeMission}
+                activeTask={activeTask}
+                lastTask={lastTask}
+                pending={pending}
+                iteration={iteration}
+                elapsed={elapsed}
+                liveText={liveText}
+                liveTools={liveTools}
+                done={done}
+                accepted={accepted}
+                err={err}
+                crew={crew}
+                mode={mode}
+                artifacts={allArtifacts}
+                onAccept={accept}
+                onReplayArtifact={replayArtifact}
+                canAccept={Boolean(activeMission)}
+              />
+            )}
+
+            {showNextStep && (
+              <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4) var(--space-5)" }}>
+                <NextStepBar
+                  hasNextOpen={nextOpenTask !== null}
+                  canRefine={Boolean(activeTask?.title || lastTask) && activeTask?.state !== "done"}
+                  isBlocked={activeTask?.state === "blocked"}
+                  canBlock={
+                    activeTask !== null &&
+                    (activeTask.state === "open" || activeTask.state === "running")
+                  }
+                  copy={copy}
+                  onNext={handleNextTask}
+                  onRefine={handleRefine}
+                  onBlock={handleBlock}
+                  onReopen={handleReopen}
+                />
+              </div>
+            )}
+          </div>
+
+          <ExecutionComposer
+            copy={copy}
+            value={input}
+            onChange={setInput}
+            onSubmit={submit}
+            pending={pending}
+            missionTitle={activeMission?.title ?? null}
+            mode={mode}
+            onModeChange={setMode}
+            recentTasks={tasks.slice(0, 8)}
+            onPickTask={(title) => setInput(title)}
+            principlesCount={principles.length}
+            priorTurns={activeMission?.notes?.length ?? 0}
+            mockMode={backend.mode === "mock"}
+          />
+        </div>
+      </div>
     </div>
   );
 }
