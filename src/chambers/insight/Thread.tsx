@@ -65,45 +65,49 @@ function TurnRow({
   const isWarning = isAI && note.text.startsWith("⚠ Esta pergunta");
   const canPromote = isAI && !isRefusal && !isWarning;
 
-  const { label, borderColor, labelColor, dotColor } = (() => {
+  const { label, borderColor, labelColor, dotColor, background } = (() => {
     if (!isAI) return {
       label: copy.labTurnAsk,
       borderColor: "var(--cc-prompt)",
       labelColor: "var(--text-muted)",
       dotColor: "var(--cc-prompt)",
+      background: "transparent",
     };
     if (isRefusal) return {
       label: copy.labTurnRefuse,
       borderColor: "var(--cc-err)",
       labelColor: "var(--cc-err)",
       dotColor: "var(--cc-err)",
+      background: "color-mix(in oklab, var(--cc-err) 5%, var(--bg-input))",
     };
     if (isWarning) return {
       label: copy.labTurnWarn,
       borderColor: "var(--cc-warn)",
       labelColor: "var(--cc-warn)",
       dotColor: "var(--cc-warn)",
+      background: "color-mix(in oklab, var(--cc-warn) 5%, var(--bg-input))",
     };
     return {
       label: copy.labTurnAnswer,
       borderColor: "color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 70%, transparent)",
       labelColor: "var(--text-ghost)",
       dotColor: "var(--chamber-dna, var(--ember))",
+      background: "var(--bg-input)",
     };
   })();
 
   return (
     <div
       className="fadeUp"
+      data-insight-turn={isAI ? (isRefusal ? "refusal" : isWarning ? "warn" : "answer") : "ask"}
       style={{
         display: "flex",
         flexDirection: "column",
         gap: 6,
-        padding: "10px 16px 12px",
-        background: isAI ? "var(--bg-input)" : "transparent",
+        padding: "var(--space-2) var(--space-3) calc(var(--space-2) + 2px)",
+        background,
         borderLeft: `2px solid ${borderColor}`,
         borderRadius: "0 var(--radius-control) var(--radius-control) 0",
-        opacity: isRefusal ? 0.92 : 1,
         maxWidth: 780,
       }}
     >
@@ -149,20 +153,29 @@ function TurnRow({
           data-insight-promote
           style={{
             alignSelf: "flex-end",
-            background: "none",
-            border: "none",
+            background: "transparent",
+            border: "1px dashed color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 45%, var(--border-soft))",
             fontFamily: "var(--mono)",
             fontSize: 10,
             letterSpacing: "var(--track-meta)",
             textTransform: "uppercase",
-            color: "var(--text-ghost)",
-            padding: 0,
-            marginTop: 2,
+            color: "var(--text-muted)",
+            padding: "4px 10px",
+            marginTop: 4,
+            borderRadius: "var(--radius-pill)",
             cursor: "pointer",
-            transition: "color .16s var(--ease-swift)",
+            transition: "color .16s var(--ease-swift), border-color .16s var(--ease-swift), background .16s var(--ease-swift)",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-ghost)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "var(--chamber-dna, var(--accent))";
+            e.currentTarget.style.borderColor = "color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, transparent)";
+            e.currentTarget.style.background = "color-mix(in oklab, var(--chamber-dna, var(--accent)) 8%, transparent)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--text-muted)";
+            e.currentTarget.style.borderColor = "color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 45%, var(--border-soft))";
+            e.currentTarget.style.background = "transparent";
+          }}
         >
           → terminal
         </button>

@@ -102,7 +102,7 @@ export default function Insight() {
     capturedTriad.current = { priorFailure: false };
     capturedAgent.current = { iter: 0, toolCount: 0 };
 
-    // Context + principles clamps — RuberraQuery caps at 5000 / 64.
+    // Context + principles clamps — SignalQuery caps at 5000 / 64.
     const priorNotes = (activeMission?.notes ?? [])
       .slice(0, 8)
       .map((n) => `${n.role === "ai" ? "AI" : "User"}: ${n.text}`)
@@ -178,10 +178,11 @@ export default function Insight() {
       return (
         <span
           style={{
-            fontSize: 10,
+            fontSize: "var(--t-micro)",
             color: "var(--cc-info)",
             fontFamily: "var(--mono)",
-            letterSpacing: 2,
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
             display: "flex",
             alignItems: "center",
             gap: 8,
@@ -191,7 +192,7 @@ export default function Insight() {
             className="breathe"
             style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-info)" }}
           />
-          {live.routePath ? live.routePath.toUpperCase() : "ANALISANDO"}
+          {live.routePath ? live.routePath : "analisando"}
         </span>
       );
     }
@@ -207,18 +208,21 @@ export default function Insight() {
       return (
         <span
           style={{
-            fontSize: 10,
+            fontSize: "var(--t-micro)",
             color: chipColor,
             fontFamily: "var(--mono)",
-            letterSpacing: 1,
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
           }}
         >
-          {live.routePath.toUpperCase()} · {refused ? "recusado" : lastConfidence}
+          {live.routePath} · {refused ? "recusado" : lastConfidence}
         </span>
       );
     }
     return null;
   })();
+
+  const isEmpty = notes.length === 0 && !pending && !error;
 
   return (
     <div className="chamber-shell" data-chamber="insight">
@@ -230,86 +234,96 @@ export default function Insight() {
         right={rightSlot}
       />
 
-      {/* Body — thread, live indicator, errors. */}
+      {/* Body — thread, live indicator, verdict. Scrollable. */}
       <div
         className="chamber-body"
-        style={{ display: "flex", flexDirection: "column", gap: 14 }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-3)",
+          ...(isEmpty ? { justifyContent: "center", alignItems: "center" } : null),
+        }}
       >
-        {notes.length === 0 && !pending && !error && (
+        {isEmpty ? (
           <EmptyState
             glyph="※"
             kicker={activeMission ? copy.labEmptyActiveKicker : copy.labEmptyNoMissionKicker}
             body={activeMission ? copy.labEmpty : copy.labEmptyNoMissionBody}
             hint={activeMission ? copy.labEmptyActiveHint : copy.labEmptyNoMissionHint}
-            style={{ marginTop: "12vh" }}
           />
-        )}
-
-        <Thread
-          notes={notes}
-          promoteId={promoteId}
-          onPromoteRequest={(id) => setPromoteId(id)}
-          onPromoteConfirm={confirmPromote}
-          onPromoteCancel={() => setPromoteId(null)}
-        />
-
-        {pending && (
-          <div
-            className="toolRise"
-            style={{
-              alignSelf: "flex-start",
-              maxWidth: 520,
-              minWidth: 260,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "10px 14px",
-              background: "var(--bg-input)",
-              border: "1px dashed var(--border)",
-              borderRadius: "var(--radius-control)",
-              fontFamily: "var(--mono)",
-              fontSize: 11,
-              color: "var(--cc-dim)",
-              letterSpacing: ".04em",
-            }}
-          >
-            <span
-              className="breathe"
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "var(--cc-info)",
-                boxShadow: "0 0 0 4px color-mix(in oklab, var(--cc-info) 22%, transparent)",
-              }}
-            />
-            <span>{live.lastEventLabel}</span>
-            <div
-              className="scanbar"
-              style={{ flex: 1, height: 2, background: "var(--border-soft)", borderRadius: 2 }}
-            />
-          </div>
-        )}
-
-        {error && !pending && (unreachable ? (
-          <DormantPanel detail={copy.dormantLab} />
         ) : (
-          <ErrorPanel
-            severity={
-              errorEnvelope?.error === "engine_not_initialized" ||
-              errorEnvelope?.error === "mock_mode"
-                ? "warn"
-                : "critical"
-            }
-            title={copy.labErrorTitle}
-            message={error}
-          />
-        ))}
+          <>
+            <Thread
+              notes={notes}
+              promoteId={promoteId}
+              onPromoteRequest={(id) => setPromoteId(id)}
+              onPromoteConfirm={confirmPromote}
+              onPromoteCancel={() => setPromoteId(null)}
+            />
+
+            {pending && (
+              <div
+                data-insight-live
+                className="toolRise"
+                style={{
+                  alignSelf: "stretch",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 12px",
+                  background: "var(--bg-input)",
+                  border: "1px dashed color-mix(in oklab, var(--cc-info) 30%, var(--border-soft))",
+                  borderRadius: "var(--radius-control)",
+                  fontFamily: "var(--mono)",
+                  fontSize: "var(--t-micro)",
+                  letterSpacing: "var(--track-meta)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <span
+                  className="breathe"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: "var(--cc-info)",
+                    boxShadow: "0 0 0 3px color-mix(in oklab, var(--cc-info) 22%, transparent)",
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {live.lastEventLabel}
+                </span>
+              </div>
+            )}
+
+            {lastVerdict && !pending && <VerdictBadge verdict={lastVerdict} />}
+          </>
+        )}
 
         <div ref={bottomRef} />
       </div>
 
-      {lastVerdict && !pending && <VerdictBadge verdict={lastVerdict} />}
+      {/* Error / dormant — anchored above the composer, consistent
+          location across all chambers' failure surfaces. */}
+      {error && !pending && (
+        <div style={{ padding: "0 clamp(20px, 5vw, 64px) var(--space-2)" }}>
+          {unreachable ? (
+            <DormantPanel detail={copy.dormantLab} />
+          ) : (
+            <ErrorPanel
+              severity={
+                errorEnvelope?.error === "engine_not_initialized" ||
+                errorEnvelope?.error === "mock_mode"
+                  ? "warn"
+                  : "critical"
+              }
+              title={copy.labErrorTitle}
+              message={error}
+            />
+          )}
+        </div>
+      )}
 
       <Composer
         value={input}

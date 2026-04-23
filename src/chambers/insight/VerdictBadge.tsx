@@ -53,83 +53,40 @@ export default function VerdictBadge({ verdict }: Props) {
     <div
       className="fadeUp"
       data-insight-verdict
+      data-refused={isRefused ? "true" : undefined}
       style={{
-        margin: "0 clamp(20px, 5vw, 64px) 8px",
-        background: "var(--bg-elevated)",
+        background: "var(--bg-surface)",
         border: "var(--border-soft)",
         borderLeft: `2px solid ${leftAccent}`,
-        borderRadius: "var(--radius-control)",
-        padding: "10px 14px 12px",
-        fontFamily: "var(--mono)",
+        borderRadius: "var(--radius-panel)",
+        padding: "var(--space-3)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--space-2)",
       }}
     >
       <div
         style={{
-          fontSize: 9.5,
-          letterSpacing: "var(--track-meta)",
-          textTransform: "uppercase",
-          color: kickerColor,
-          marginBottom: 4,
+          display: "flex",
+          alignItems: "baseline",
+          gap: "var(--space-2)",
+          fontFamily: "var(--mono)",
         }}
       >
-        — VEREDICTO
-      </div>
-
-      {verdict.question && (
-        <div
-          style={{
-            fontSize: "var(--t-body-sec)",
-            color: "var(--text-muted)",
-            fontFamily: "var(--sans)",
-            fontStyle: "italic",
-            marginBottom: 8,
-            lineHeight: 1.45,
-          }}
-        >
-          sobre: «{shortQ}»
-        </div>
-      )}
-
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span
           style={{
-            fontSize: 10,
-            letterSpacing: "var(--track-meta)",
+            fontSize: "var(--t-micro)",
+            letterSpacing: "var(--track-label)",
             textTransform: "uppercase",
-            color: routeColor,
+            color: kickerColor,
           }}
         >
-          {verdict.routePath}
+          — veredicto
         </span>
-        {!isAgent && verdict.confidence && (
-          <span
-            style={{
-              fontSize: 10,
-              letterSpacing: "var(--track-meta)",
-              textTransform: "uppercase",
-              color: confidenceColor,
-            }}
-          >
-            {verdict.confidence}
-          </span>
-        )}
-        {isAgent && (
-          <span style={{ fontSize: 10, color: "var(--text-ghost)" }}>
-            {verdict.agentIter} iter · {verdict.agentToolCount} tools
-          </span>
-        )}
-        {verdict.divergenceCount > 0 && (
-          <span style={{ fontSize: 10, color: "var(--cc-warn)", letterSpacing: 1 }}>
-            ⊘ {verdict.divergenceCount} divergência{verdict.divergenceCount !== 1 ? "s" : ""}
-          </span>
-        )}
-        {verdict.priorFailure && (
-          <span style={{ fontSize: 10, color: "var(--cc-warn)" }}>⚠ falha prévia</span>
-        )}
         {isRefused && (
           <span
             style={{
-              fontSize: 10,
+              fontSize: "var(--t-micro)",
               letterSpacing: "var(--track-meta)",
               color: "var(--cc-err)",
               textTransform: "uppercase",
@@ -141,6 +98,62 @@ export default function VerdictBadge({ verdict }: Props) {
         )}
       </div>
 
+      {verdict.question && (
+        <div
+          style={{
+            fontSize: "var(--t-body-sec)",
+            color: "var(--text-muted)",
+            fontFamily: "var(--sans)",
+            fontStyle: "italic",
+            lineHeight: 1.45,
+          }}
+        >
+          sobre: «{shortQ}»
+        </div>
+      )}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "90px 1fr",
+          rowGap: 4,
+          columnGap: 10,
+          alignItems: "baseline",
+        }}
+      >
+        <MetaLabel>rota</MetaLabel>
+        <MetaValue color={routeColor}>{verdict.routePath}</MetaValue>
+
+        {!isAgent && verdict.confidence && (
+          <>
+            <MetaLabel>confiança</MetaLabel>
+            <MetaValue color={confidenceColor}>{verdict.confidence}</MetaValue>
+          </>
+        )}
+        {isAgent && (
+          <>
+            <MetaLabel>execução</MetaLabel>
+            <MetaValue>
+              {verdict.agentIter} iter · {verdict.agentToolCount} tools
+            </MetaValue>
+          </>
+        )}
+        {verdict.divergenceCount > 0 && (
+          <>
+            <MetaLabel>divergência</MetaLabel>
+            <MetaValue color="var(--cc-warn)">
+              ⊘ {verdict.divergenceCount}
+            </MetaValue>
+          </>
+        )}
+        {verdict.priorFailure && (
+          <>
+            <MetaLabel>histórico</MetaLabel>
+            <MetaValue color="var(--cc-warn)">⚠ falha prévia</MetaValue>
+          </>
+        )}
+      </div>
+
       {verdict.reasoning && (() => {
         const overflows = verdict.reasoning.length > 200;
         const displayed = !overflows || reasoningExpanded
@@ -149,11 +162,12 @@ export default function VerdictBadge({ verdict }: Props) {
         return (
           <div
             style={{
-              marginTop: 5,
               fontSize: "var(--t-body-sec)",
-              color: "var(--text-muted)",
-              lineHeight: 1.5,
+              color: "var(--text-secondary)",
+              lineHeight: 1.55,
               fontFamily: "var(--sans)",
+              paddingTop: "var(--space-1)",
+              borderTop: "1px dashed var(--border-soft)",
             }}
           >
             {displayed}
@@ -167,8 +181,8 @@ export default function VerdictBadge({ verdict }: Props) {
                   padding: 0,
                   color: "var(--accent)",
                   fontFamily: "var(--mono)",
-                  fontSize: 10,
-                  letterSpacing: "var(--track-meta)",
+                  fontSize: "var(--t-micro)",
+                  letterSpacing: "var(--track-label)",
                   textTransform: "uppercase",
                   cursor: "pointer",
                 }}
@@ -183,15 +197,47 @@ export default function VerdictBadge({ verdict }: Props) {
       {hasPressureSignal && hint && (
         <div
           style={{
-            marginTop: 6,
-            fontSize: 10,
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-micro)",
             color: "var(--text-ghost)",
             letterSpacing: 0.5,
+            lineHeight: 1.5,
           }}
         >
           {hint}
         </div>
       )}
     </div>
+  );
+}
+
+function MetaLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        fontFamily: "var(--mono)",
+        fontSize: "var(--t-micro)",
+        letterSpacing: "var(--track-label)",
+        textTransform: "uppercase",
+        color: "var(--text-ghost)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function MetaValue({ children, color }: { children: React.ReactNode; color?: string }) {
+  return (
+    <span
+      style={{
+        fontFamily: "var(--mono)",
+        fontSize: "var(--t-body-sec)",
+        letterSpacing: "var(--track-meta)",
+        color: color ?? "var(--text-secondary)",
+      }}
+    >
+      {children}
+    </span>
   );
 }
