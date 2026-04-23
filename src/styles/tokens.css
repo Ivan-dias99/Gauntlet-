@@ -2123,7 +2123,6 @@ textarea {
 .command-bay[data-focused="true"] {
   border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 45%, var(--border-color-mid));
   background: var(--bg-elevated);
-  box-shadow: var(--shadow-panel);
 }
 .command-bay[data-disabled="true"] {
   opacity: 0.7;
@@ -2436,7 +2435,6 @@ textarea {
   background: var(--bg-surface);
   border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2446,9 +2444,9 @@ textarea {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  padding: 14px var(--space-4);
   border-bottom: 1px solid var(--border-color-soft);
-  background: color-mix(in oklab, var(--bg-elevated) 60%, var(--bg-surface));
+  background: transparent;
   flex-wrap: wrap;
 }
 .conversation-body {
@@ -2462,6 +2460,161 @@ textarea {
   border-bottom: 0;
 }
 
+/* ——— Insight rail (light, continuous column) ———
+   Replaces the older 4-panel stack. One quiet surface, three sections,
+   separated by hairline dashed rules. Sections with no content hide
+   themselves — the rail never inflates with empty boxes. */
+.insight-rail {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-panel);
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0;
+  min-width: 0;
+}
+.insight-rail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 16px var(--space-4);
+  border-bottom: 1px dashed var(--border-color-soft);
+  min-width: 0;
+}
+.insight-rail-section:last-child { border-bottom: 0; }
+.insight-rail-section[data-empty="true"] { display: none; }
+
+.insight-rail-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.insight-rail-mission {
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+  font-weight: 400;
+  word-break: break-word;
+}
+.insight-rail-mission-null {
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.5;
+}
+.insight-rail-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.insight-rail-line > .sep {
+  color: var(--text-ghost);
+  opacity: 0.6;
+}
+.insight-rail-live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px var(--space-4);
+  border-bottom: 1px dashed var(--border-color-soft);
+  background: color-mix(in oklab, var(--cc-info) 5%, transparent);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--cc-info);
+  text-transform: uppercase;
+}
+.insight-rail-live-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  letter-spacing: var(--track-meta);
+  text-transform: none;
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+}
+.insight-rail-principle {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  padding: 2px 0;
+}
+.insight-rail-principle-glyph {
+  font-family: var(--serif);
+  color: var(--chamber-dna, var(--accent));
+  line-height: 1;
+  user-select: none;
+}
+.insight-rail-trail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.insight-rail-trail-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 10px;
+  align-items: baseline;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  padding: 4px 0;
+  border-bottom: 1px dashed color-mix(in oklab, var(--border-color-soft) 60%, transparent);
+}
+.insight-rail-trail-row:last-child { border-bottom: 0; }
+.insight-rail-trail-q {
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  color: var(--text-muted);
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+.insight-rail-abort {
+  align-self: flex-end;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--cc-err);
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--cc-err) 38%, transparent);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-swift),
+              border-color var(--dur-fast) var(--ease-swift);
+}
+.insight-rail-abort:hover {
+  background: color-mix(in oklab, var(--cc-err) 10%, transparent);
+  border-color: color-mix(in oklab, var(--cc-err) 60%, transparent);
+}
+
 /* ——— Turn row (new composition) ———
    Every turn in the conversation paper uses this. Gutter on the left
    carries role glyph + time; body carries label + text; action rail on
@@ -2470,9 +2623,9 @@ textarea {
    column aligns across turns. */
 .turn-row {
   display: grid;
-  grid-template-columns: 72px 1fr auto;
+  grid-template-columns: 64px 1fr auto;
   gap: 0 var(--space-3);
-  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-3);
+  padding: 18px var(--space-4) 18px var(--space-3);
   background: transparent;
   border-left: 3px solid transparent;
   transition: background var(--dur-fast) var(--ease-swift);
@@ -2558,10 +2711,13 @@ textarea {
 }
 .turn-row[data-turn="answer"] .turn-row-text {
   font-family: var(--serif);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 15.5px;
+  line-height: 1.65;
   letter-spacing: -0.003em;
   color: var(--text-primary);
+}
+.turn-row[data-turn="answer"] .turn-row-label {
+  color: var(--text-ghost);
 }
 .turn-row-actions {
   display: flex;

@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 
-// Insight composer — command-bay primitive variant "ask". Auto-grows the
-// textarea so the thread above keeps its reading width. Chamber-DNA
-// cascades through the shared .command-bay rule; no local tint logic.
+// Insight composer — calm inscription surface, not a form. Built on the
+// shared .command-bay primitive: voice kicker + textarea + minimal
+// action row. No shadow lift on focus (the rail's live band carries the
+// working pulse); the composer just tints its border with chamber-DNA
+// and stays quiet.
+//
+// Enter submits; Shift+Enter inserts a newline. Auto-grow bounded so
+// the thread above stays visible even with long prompts.
 
 interface Props {
   value: string;
@@ -66,16 +71,20 @@ export default function Composer({
           onClick={onSubmit}
           disabled={!canSubmit}
           className="btn-chip"
-          data-variant="sans"
+          data-variant={canSubmit ? "ok" : "sans"}
           style={{ opacity: canSubmit ? 1 : 0.45 }}
         >
           {pending ? "a processar…" : "perguntar ↵"}
         </button>
-        <span className="command-bay-hint">
-          enter envia · shift+enter nova linha
-        </span>
+        {focused && !pending && (
+          <span
+            className="command-bay-hint"
+            style={{ marginLeft: "auto" }}
+          >
+            ⇧↵ nova linha
+          </span>
+        )}
       </div>
-      {pending && <div className="thinking-strip" aria-hidden />}
     </div>
   );
 }

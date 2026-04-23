@@ -2,18 +2,18 @@ import type { Mission, Principle } from "../../spine/types";
 import type { VerdictState, LiveState } from "./helpers";
 import { useCopy } from "../../i18n/copy";
 
-// Insight rail — right-side operational context for the active
-// conversation. Four panels, always mounted so the rail holds weight
-// parity with Surface's exploration rail and Archive's run detail:
+// Insight rail — single continuous support column, not a stack of
+// heavy cards. Three sections separated by dashed hairlines:
 //
-//   1. Mission identity         · who we are talking to, how long, how deep
-//   2. Chamber status           · live routing / confidence / iter / tools,
-//                                 with stop-inflight affordance while running
-//   3. Principles in force      · doctrine this chamber carries, clipped
-//   4. Verdict trail            · last few outcomes in this session
+//   · mission        — title + compressed meta (opened · turns · doctrine)
+//   · principles     — § list, clipped
+//   · trail          — recent verdicts as flat rows
 //
-// Built on the shared .panel, .meta-grid, .status-dot and .state-pill
-// primitives so geometry and semantic color match every other chamber.
+// A live band appears above the sections only while a call is in
+// flight, carrying the abort affordance. Sections with no content hide
+// themselves — the rail never inflates with empty boxes. The only
+// shadow authority lives on the conversation column in the main
+// region; the rail stays quiet.
 
 interface Props {
   mission: Mission | null;
@@ -31,151 +31,212 @@ export default function InsightRail({
   lastConfidence, lastVerdictRefused, onAbort,
 }: Props) {
   const copy = useCopy();
+  const hasPrinciples = principles.length > 0;
+  const hasTrail = trail.length > 0;
+
   return (
-    <div
-      data-insight-rail
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-3)",
-      }}
-    >
-      <MissionCard
+    <div className="insight-rail" data-insight-rail>
+      {pending && (
+        <LiveBand live={live} onAbort={onAbort} copy={copy} />
+      )}
+
+      <MissionSection
         mission={mission}
         principlesCount={principles.length}
-        copy={copy}
-      />
-      <ChamberStatusCard
-        live={live}
         pending={pending}
         lastConfidence={lastConfidence}
         lastVerdictRefused={lastVerdictRefused}
-        onAbort={onAbort}
         copy={copy}
       />
-      <PrinciplesPanel principles={principles} copy={copy} />
-      <VerdictTrailPanel trail={trail} copy={copy} />
+
+      <section
+        className="insight-rail-section"
+        data-empty={hasPrinciples ? undefined : "true"}
+        data-insight-section="principles"
+      >
+        <span className="insight-rail-kicker">
+          {copy.labRailPrinciplesKicker.replace("— ", "")}
+          <span className="sep" style={{ color: "var(--text-ghost)" }}>·</span>
+          <span style={{ color: "var(--text-muted)" }}>{principles.length}</span>
+        </span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {principles.slice(-6).map((p) => (
+            <div key={p.id} className="insight-rail-principle">
+              <span className="insight-rail-principle-glyph" aria-hidden>§</span>
+              <span>{clamp(p.text, 96)}</span>
+            </div>
+          ))}
+          {principles.length > 6 && (
+            <span
+              className="insight-rail-kicker"
+              style={{ color: "var(--text-ghost)", paddingTop: 2 }}
+            >
+              {copy.labRailPrinciplesMore(principles.length - 6)}
+            </span>
+          )}
+        </div>
+      </section>
+
+      <section
+        className="insight-rail-section"
+        data-empty={hasTrail ? undefined : "true"}
+        data-insight-section="trail"
+      >
+        <span className="insight-rail-kicker">
+          {copy.labRailTrailKicker.replace("— ", "")}
+          {hasTrail && (
+            <>
+              <span className="sep" style={{ color: "var(--text-ghost)" }}>·</span>
+              <span style={{ color: "var(--text-muted)" }}>{trail.length}</span>
+            </>
+          )}
+        </span>
+        <div className="insight-rail-trail">
+          {trail.slice().reverse().slice(0, 5).map((v, i) => {
+            const routeTone =
+              v.refused ? "err" :
+              v.routePath === "agent" ? "warn" : "accent";
+            const confTone =
+              v.refused ? "err" :
+              v.confidence === "high" ? "ok" :
+              v.confidence === "low" ? "warn" : "muted";
+            const routeLabel = v.routePath === "agent"
+              ? copy.labRailStatusRouteAgent
+              : copy.labRailStatusRouteTriad;
+            return (
+              <div key={i} className="insight-rail-trail-row">
+                <span className="kicker" data-tone={routeTone}>
+                  {v.refused ? "✗ " : ""}{routeLabel}
+                </span>
+                <span className="kicker" data-tone={confTone}>
+                  {v.refused ? copy.labRailTrailRefused : (v.confidence ?? copy.labRailStatusNone)}
+                </span>
+                <span className="insight-rail-trail-q" title={v.question}>
+                  {clamp(v.question, 54)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }
 
-// ——— Mission card ———
+// ——— Mission section ———
+//
+// Mission title as the anchor; compressed one-line meta below (opened ·
+// turns · doctrine · confidence). When there is no mission we collapse
+// to a single calm line — the rail never shouts the absence.
 
-function MissionCard({
-  mission, principlesCount, copy,
+function MissionSection({
+  mission, principlesCount, pending, lastConfidence, lastVerdictRefused, copy,
 }: {
   mission: Mission | null;
   principlesCount: number;
+  pending: boolean;
+  lastConfidence: string | null;
+  lastVerdictRefused: boolean;
   copy: ReturnType<typeof useCopy>;
 }) {
   if (!mission) {
     return (
-      <RailPanel kicker={copy.labRailMissionKicker}>
-        <div
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-body-sec)",
-            letterSpacing: "var(--track-meta)",
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-          }}
-        >
+      <section className="insight-rail-section" data-insight-section="mission">
+        <span className="insight-rail-kicker">
+          {copy.labRailMissionKicker.replace("— ", "")}
+        </span>
+        <span className="insight-rail-mission-null">
           {copy.labRailNoMission}
-        </div>
-      </RailPanel>
+        </span>
+      </section>
     );
   }
 
   const noteCount = mission.notes?.length ?? 0;
   const ago = relativeTime(mission.createdAt, copy);
+  const confLabel =
+    pending ? null :
+    lastVerdictRefused ? copy.labRailTrailRefused :
+    lastConfidence ?? null;
+  const confTone: "err" | "ok" | "warn" | "muted" =
+    lastVerdictRefused ? "err" :
+    lastConfidence === "high" ? "ok" :
+    lastConfidence === "low" ? "warn" : "muted";
 
   return (
-    <RailPanel kicker={copy.labRailMissionKicker}>
-      <div
-        style={{
-          fontFamily: "var(--serif)",
-          fontSize: "var(--t-section)",
-          color: "var(--text-primary)",
-          lineHeight: 1.3,
-          letterSpacing: "-0.005em",
-        }}
-      >
-        {mission.title}
+    <section className="insight-rail-section" data-insight-section="mission">
+      <div className="insight-rail-kicker">
+        {copy.labRailMissionKicker.replace("— ", "")}
       </div>
-      <div className="meta-grid">
-        <span className="meta-label">{copy.labRailMetaOpened}</span>
-        <span className="meta-value">{ago}</span>
-        <span className="meta-label">{copy.labRailMetaTurns}</span>
-        <span className="meta-value">{noteCount}</span>
+      <div className="insight-rail-mission">{mission.title}</div>
+      <div className="insight-rail-line">
+        <span>
+          <span style={{ color: "var(--text-ghost)" }}>
+            {copy.labRailMetaOpened}
+          </span>{" "}
+          {ago}
+        </span>
+        <span className="sep">·</span>
+        <span>
+          <span style={{ color: "var(--text-ghost)" }}>
+            {copy.labRailMetaTurns}
+          </span>{" "}
+          {noteCount}
+        </span>
         {principlesCount > 0 && (
           <>
-            <span className="meta-label">{copy.labRailMetaDoctrine}</span>
-            <span className="meta-value" data-tone="accent">
-              {principlesCount}{" "}
-              {principlesCount === 1 ? copy.labRailPrincipleSingular : copy.labRailPrinciplePlural}
+            <span className="sep">·</span>
+            <span>
+              <span style={{ color: "var(--text-ghost)" }}>
+                {copy.labRailMetaDoctrine}
+              </span>{" "}
+              <span style={{ color: "var(--chamber-dna, var(--accent))" }}>
+                {principlesCount}
+              </span>
+            </span>
+          </>
+        )}
+        {confLabel && (
+          <>
+            <span className="sep">·</span>
+            <span
+              className="state-pill"
+              data-tone={confTone}
+              style={{ paddingTop: 0, paddingBottom: 0 }}
+            >
+              <span className="state-pill-dot" />
+              {confLabel}
             </span>
           </>
         )}
       </div>
-    </RailPanel>
+    </section>
   );
 }
 
-// ——— Chamber status card (live operational context) ———
+// ——— Live band ———
+//
+// Only renders while a call is in flight. Carries: pulsing dot, the
+// current stage label, and an abort chip. Sits above every other
+// rail section so the eye catches it first.
 
-function ChamberStatusCard({
-  live, pending, lastConfidence, lastVerdictRefused, onAbort, copy,
+function LiveBand({
+  live, onAbort, copy,
 }: {
   live: LiveState;
-  pending: boolean;
-  lastConfidence: string | null;
-  lastVerdictRefused: boolean;
   onAbort: () => void;
   copy: ReturnType<typeof useCopy>;
 }) {
-  type Tone = "info" | "err" | "ok" | "warn" | "accent" | "muted" | "ghost";
-
-  const panelTone: Tone = pending
-    ? "info"
-    : lastVerdictRefused
-    ? "err"
-    : lastConfidence === "high"
-    ? "ok"
-    : lastConfidence === "low"
-    ? "warn"
-    : "accent";
-
-  const routeLabel = live.routePath === "triad"
-    ? copy.labRailStatusRouteTriad
-    : live.routePath === "agent"
+  const routeLabel = live.routePath === "agent"
     ? copy.labRailStatusRouteAgent
-    : copy.labRailStatusNone;
-
-  const confidenceLabel = pending
-    ? live.judgeConfidence ?? copy.labRailStatusNone
-    : lastVerdictRefused
-    ? copy.labRailTrailRefused
-    : lastConfidence ?? copy.labRailStatusNone;
-
-  const confidenceTone: Tone = pending
-    ? (live.judgeConfidence === "high" ? "ok"
-       : live.judgeConfidence === "low" ? "warn"
-       : "muted")
-    : lastVerdictRefused
-    ? "err"
-    : lastConfidence === "high"
-    ? "ok"
-    : lastConfidence === "low"
-    ? "warn"
-    : "muted";
-
-  const routeTone: Tone =
-    live.routePath === "agent" ? "warn" :
-    live.routePath === "triad" ? "accent" : "muted";
+    : live.routePath === "triad"
+    ? copy.labRailStatusRouteTriad
+    : null;
 
   const stage = (() => {
-    if (!pending) return null;
-    if (live.routePath === "agent") return null;
+    if (live.routePath === "agent") {
+      return `iter ${live.agentIter} · ${live.agentToolCount} tools`;
+    }
     if (live.triadTotal > 0 && live.triadCompleted < live.triadTotal) {
       return `${live.triadCompleted}/${live.triadTotal}`;
     }
@@ -184,258 +245,42 @@ function ChamberStatusCard({
     return null;
   })();
 
-  const lastLine = pending
-    ? live.lastEventLabel
-    : live.lastEventLabel && live.lastEventLabel !== "a rotear..."
-    ? live.lastEventLabel
-    : copy.labRailStatusAwaiting;
-
   return (
-    <RailPanel kicker={copy.labRailStatusKicker}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span
-          className="status-dot"
-          data-tone={panelTone}
-          data-pulse={pending ? "true" : undefined}
-        />
-        <span className="kicker" data-tone={pending ? panelTone : "ghost"}>
-          {pending ? copy.labRailStatusRunning : copy.labRailStatusIdle}
-        </span>
-      </div>
-
-      <div className="meta-grid">
-        <span className="meta-label">{copy.labRailStatusRoute}</span>
-        <span className="meta-value" data-tone={routeTone}>{routeLabel}</span>
-
-        {stage && (
-          <>
-            <span className="meta-label">{copy.labRailStatusStage}</span>
-            <span className="meta-value">{stage}</span>
-          </>
-        )}
-
-        {(live.routePath === "agent" && pending) && (
-          <>
-            <span className="meta-label">{copy.labRailStatusIter}</span>
-            <span className="meta-value">{live.agentIter}</span>
-            <span className="meta-label">{copy.labRailStatusTools}</span>
-            <span className="meta-value">{live.agentToolCount}</span>
-          </>
-        )}
-
-        <span className="meta-label">{copy.labRailStatusConfidence}</span>
-        <span className="meta-value" data-tone={confidenceTone}>{confidenceLabel}</span>
-      </div>
-
-      {pending && (
+    <div className="insight-rail-live">
+      <span
+        className="status-dot"
+        data-tone="info"
+        data-pulse="true"
+        aria-hidden
+      />
+      <span>{copy.labRailStatusRunning}</span>
+      {routeLabel && (
         <>
-          <div
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: "var(--t-micro)",
-              letterSpacing: "var(--track-meta)",
-              color: "var(--text-muted)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-            title={lastLine}
-          >
-            {lastLine}
-          </div>
-          <div className="thinking-strip" aria-hidden />
-          <button
-            onClick={onAbort}
-            data-insight-abort
-            title={copy.labRailStatusStop}
-            className="btn-chip"
-            style={{
-              alignSelf: "flex-end",
-              color: "var(--cc-err)",
-              borderColor: "color-mix(in oklab, var(--cc-err) 38%, transparent)",
-            }}
-          >
-            {copy.labRailStatusStop}
-          </button>
+          <span style={{ opacity: 0.5 }}>·</span>
+          <span>{routeLabel}</span>
         </>
       )}
-    </RailPanel>
-  );
-}
-
-// ——— Principles panel ———
-
-function PrinciplesPanel({
-  principles, copy,
-}: {
-  principles: Principle[];
-  copy: ReturnType<typeof useCopy>;
-}) {
-  if (principles.length === 0) {
-    return (
-      <RailPanel kicker={copy.labRailPrinciplesKicker}>
-        <div
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-body-sec)",
-            letterSpacing: "var(--track-meta)",
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-          }}
-        >
-          {copy.labRailPrinciplesEmpty}
-        </div>
-      </RailPanel>
-    );
-  }
-
-  return (
-    <RailPanel kicker={copy.labRailPrinciplesKicker}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-        {principles.slice(-8).map((p) => (
-          <div
-            key={p.id}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "16px 1fr",
-              gap: 8,
-              alignItems: "baseline",
-            }}
-          >
-            <span
-              aria-hidden
-              style={{
-                fontFamily: "var(--serif)",
-                fontSize: "var(--t-body-sec)",
-                color: "var(--chamber-dna, var(--accent))",
-                lineHeight: 1,
-                userSelect: "none",
-              }}
-            >
-              §
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body-sec)",
-                color: "var(--text-secondary)",
-                lineHeight: 1.5,
-              }}
-            >
-              {clamp(p.text, 90)}
-            </span>
-          </div>
-        ))}
-        {principles.length > 8 && (
-          <div className="kicker" data-tone="ghost" style={{ paddingTop: "var(--space-1)" }}>
-            {copy.labRailPrinciplesMore(principles.length - 8)}
-          </div>
-        )}
-      </div>
-    </RailPanel>
-  );
-}
-
-// ——— Verdict trail panel ———
-
-function VerdictTrailPanel({
-  trail, copy,
-}: {
-  trail: VerdictState[];
-  copy: ReturnType<typeof useCopy>;
-}) {
-  if (trail.length === 0) {
-    return (
-      <RailPanel kicker={copy.labRailTrailKicker}>
-        <div
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-body-sec)",
-            letterSpacing: "var(--track-meta)",
-            color: "var(--text-muted)",
-            lineHeight: 1.5,
-          }}
-        >
-          {copy.labRailTrailEmpty}
-        </div>
-      </RailPanel>
-    );
-  }
-
-  const shown = trail.slice().reverse().slice(0, 6);
-
-  return (
-    <RailPanel kicker={copy.labRailTrailKicker}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-        {shown.map((v, i) => {
-          const refused = v.refused;
-          const confTone =
-            refused ? "err" :
-            v.confidence === "high" ? "ok" :
-            v.confidence === "low" ? "warn" : "muted";
-          const routeTone =
-            refused ? "err" :
-            v.routePath === "agent" ? "warn" : "accent";
-          const routeLabel = v.routePath === "agent"
-            ? copy.labRailStatusRouteAgent
-            : copy.labRailStatusRouteTriad;
-          return (
-            <div
-              key={i}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "auto auto 1fr",
-                gap: 10,
-                alignItems: "baseline",
-                paddingBottom: "var(--space-1)",
-                borderBottom: i === shown.length - 1 ? "none" : "1px dashed var(--border-color-soft)",
-              }}
-            >
-              <span className="kicker" data-tone={routeTone}>
-                {refused ? "✗ " : ""}{routeLabel}
-              </span>
-              <span className="kicker" data-tone={confTone}>
-                {refused ? copy.labRailTrailRefused : (v.confidence ?? copy.labRailStatusNone)}
-              </span>
-              <span
-                style={{
-                  fontFamily: "var(--sans)",
-                  fontSize: "var(--t-body-sec)",
-                  color: "var(--text-muted)",
-                  fontStyle: "italic",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  lineHeight: 1.3,
-                }}
-                title={v.question}
-              >
-                {clamp(v.question, 48)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </RailPanel>
-  );
-}
-
-// ——— Layout primitive ———
-
-type RailTone = "ok" | "warn" | "err" | "info" | "accent" | "muted" | "ghost";
-
-function RailPanel({
-  kicker, tone, children,
-}: {
-  kicker: string;
-  tone?: RailTone;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="panel" data-tone={tone}>
-      <span className="kicker">{kicker}</span>
-      {children}
-    </section>
+      {stage && (
+        <>
+          <span style={{ opacity: 0.5 }}>·</span>
+          <span>{stage}</span>
+        </>
+      )}
+      <span
+        className="insight-rail-live-label"
+        title={live.lastEventLabel}
+      >
+        {live.lastEventLabel}
+      </span>
+      <button
+        onClick={onAbort}
+        className="insight-rail-abort"
+        title={copy.labRailStatusStop}
+        data-insight-abort
+      >
+        {copy.labRailStatusStop}
+      </button>
+    </div>
   );
 }
 

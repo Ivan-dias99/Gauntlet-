@@ -22,23 +22,24 @@ export default function Thread({
   const copy = useCopy();
   if (notes.length === 0) return null;
 
-  const asks = notes.filter((n) => n.role === "user").length;
-  const answers = notes.length - asks;
+  const turnCount = notes.length;
 
   return (
     <div className="conversation" data-insight-thread>
       <div className="conversation-head">
-        <span className="status-dot" data-tone="accent" />
-        <span className="kicker">— sessão</span>
+        <span className="kicker" data-tone="ghost">
+          sessão
+        </span>
         <span
           style={{
             fontFamily: "var(--mono)",
-            fontSize: "var(--t-meta)",
+            fontSize: "var(--t-micro)",
             color: "var(--text-muted)",
             letterSpacing: "var(--track-meta)",
+            marginLeft: "auto",
           }}
         >
-          {asks} {asks === 1 ? copy.labTurnAsk : copy.labTurnAsk + "s"} · {answers} {answers === 1 ? copy.labTurnAnswer : copy.labTurnAnswer + "s"}
+          {turnCount} {turnCount === 1 ? "turno" : "turnos"}
         </span>
       </div>
       <div className="conversation-body">

@@ -196,20 +196,11 @@ export default function Insight() {
     );
   }
 
-  // Mission identity lives in the rail; the head never repeats it.
-  // A minimal live-pulse lands on the head only while a call is in
-  // flight so the chamber reads "working" even when the eye is fixed
-  // on the conversation column.
-  const rightSlot = pending ? (
-    <span
-      className="kicker"
-      data-tone="info"
-      style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-    >
-      <span className="status-dot" data-tone="info" data-pulse="true" />
-      {copy.labRailStatusRunning}
-    </span>
-  ) : null;
+  // Mission identity + live state both live in the rail now. The
+  // chamber-head stays minimal: kicker + tagline + mock + principles
+  // count (already provided by ChamberHead). No right-slot — the rail
+  // is the single narrator.
+  const rightSlot = null;
 
   const isEmpty = notes.length === 0 && !pending && !error;
 
@@ -235,25 +226,46 @@ export default function Insight() {
           <div
             data-insight-thread-empty
             style={{
+              flex: 1,
+              minHeight: 240,
               display: "flex",
               flexDirection: "column",
-              gap: 8,
-              padding: "var(--space-2) 0 var(--space-3)",
-              borderBottom: "1px dashed var(--border-color-soft)",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 14,
+              padding: "clamp(48px, 10vh, 120px) var(--space-4)",
+              textAlign: "center",
+              maxWidth: 640,
+              marginInline: "auto",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="status-dot" data-tone="accent" />
-              <span className="kicker">{copy.labThreadEmptyKicker}</span>
-            </div>
+            <span
+              aria-hidden
+              style={{
+                fontFamily: "var(--serif)",
+                fontSize: 48,
+                lineHeight: 1,
+                color: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, var(--text-ghost))",
+                userSelect: "none",
+              }}
+            >
+              ※
+            </span>
+            <span
+              className="kicker"
+              data-tone="ghost"
+              style={{ letterSpacing: "var(--track-kicker)" }}
+            >
+              {copy.labThreadEmptyKicker}
+            </span>
             <span
               style={{
                 fontFamily: "var(--serif)",
                 fontSize: "var(--t-section)",
-                lineHeight: 1.3,
+                fontStyle: "italic",
+                lineHeight: 1.4,
                 color: "var(--text-secondary)",
                 letterSpacing: "-0.005em",
-                maxWidth: 560,
               }}
             >
               {activeMission ? copy.labThreadEmptyActiveBody : copy.labThreadEmptyIdleBody}
