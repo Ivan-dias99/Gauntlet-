@@ -4539,6 +4539,7 @@ textarea {
 .chamber-shell[data-chamber="terminal"] {
   position: relative;
   isolation: isolate;
+  background: color-mix(in oklab, var(--cc-ok) 14%, var(--bg));
 }
 /* Cinematic sage haze — envelopes the whole chamber like cloud cover.
    5 layers: top highlight · left lateral · right lateral · bottom
