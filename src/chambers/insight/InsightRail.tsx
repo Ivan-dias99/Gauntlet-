@@ -191,7 +191,7 @@ function ChamberStatusCard({
     : copy.labRailStatusAwaiting;
 
   return (
-    <RailPanel kicker={copy.labRailStatusKicker} tone={panelTone}>
+    <RailPanel kicker={copy.labRailStatusKicker}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span
           className="status-dot"
@@ -225,23 +225,39 @@ function ChamberStatusCard({
 
         <span className="meta-label">{copy.labRailStatusConfidence}</span>
         <span className="meta-value" data-tone={confidenceTone}>{confidenceLabel}</span>
-
-        <span className="meta-label">{copy.labRailStatusLast}</span>
-        <span className="meta-value" title={lastLine}>{lastLine}</span>
       </div>
 
-      {pending && <div className="thinking-strip" aria-hidden />}
-
       {pending && (
-        <button
-          onClick={onAbort}
-          data-insight-abort
-          title={copy.labRailStatusStop}
-          className="btn-chip"
-          style={{ alignSelf: "flex-end", color: "var(--cc-err)", borderColor: "color-mix(in oklab, var(--cc-err) 38%, transparent)" }}
-        >
-          {copy.labRailStatusStop}
-        </button>
+        <>
+          <div
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: "var(--t-micro)",
+              letterSpacing: "var(--track-meta)",
+              color: "var(--text-muted)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={lastLine}
+          >
+            {lastLine}
+          </div>
+          <div className="thinking-strip" aria-hidden />
+          <button
+            onClick={onAbort}
+            data-insight-abort
+            title={copy.labRailStatusStop}
+            className="btn-chip"
+            style={{
+              alignSelf: "flex-end",
+              color: "var(--cc-err)",
+              borderColor: "color-mix(in oklab, var(--cc-err) 38%, transparent)",
+            }}
+          >
+            {copy.labRailStatusStop}
+          </button>
+        </>
       )}
     </RailPanel>
   );

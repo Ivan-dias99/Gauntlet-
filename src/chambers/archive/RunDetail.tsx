@@ -58,9 +58,16 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
     run.route === "agent" ? "warn" :
     run.route === "triad" ? "accent" : "muted";
 
+  const toneBorder =
+    run.refused ? "var(--cc-err)" :
+    run.terminated_early ? "var(--cc-warn)" :
+    run.route === "agent" ? "var(--cc-warn)" :
+    "color-mix(in oklab, var(--chamber-dna, var(--text-muted)) 70%, transparent)";
+
   return (
     <div
       data-archive-detail
+      data-tone={run.refused ? "err" : run.terminated_early ? "warn" : undefined}
       style={{
         flex: 1,
         minHeight: 0,
@@ -70,6 +77,7 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
         borderRadius: "var(--radius-panel)",
         background: "var(--bg-surface)",
         overflow: "hidden",
+        boxShadow: "var(--shadow-soft)",
       }}
     >
       <div
@@ -81,7 +89,7 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
           padding: "var(--space-3) var(--space-4)",
           borderBottom: "1px solid var(--border-color-soft)",
           background: "var(--bg-elevated)",
-          borderLeft: "2px solid color-mix(in oklab, var(--chamber-dna, var(--text-muted)) 70%, transparent)",
+          borderLeft: `2px solid ${toneBorder}`,
         }}
       >
         <span className="state-pill" data-tone={routeTone}>

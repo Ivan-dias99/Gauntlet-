@@ -1,7 +1,10 @@
 // Core · Orchestration — read-only display of the four pipelines the
 // engine operates today, with the budgets that keep them honest.
-// Values mirror signal-backend/agent.py and engine.py constants. Every
-// panel flows through the shared .panel + .diagnostic-row primitives.
+// Built on the shared .core-page frame + primary-rank panels so the
+// tab reads with the same composition discipline as Routing /
+// Permissions / System / Policies. Long mono labels (e.g.
+// MAX_AGENT_ITERATIONS) sit in a dedicated wider key column so they
+// never wrap across lines.
 
 interface Row { label: string; value: string; }
 
@@ -17,20 +20,20 @@ const TRIAD: Row[] = [
   { label: "TRIAD_COUNT",        value: "3 parallel calls" },
   { label: "TRIAD_TEMPERATURE",  value: "0.15" },
   { label: "JUDGE_TEMPERATURE",  value: "0.05 (implacable)" },
-  { label: "Confidence tiers",   value: "HIGH (3 concordam) · LOW (qualquer diferença → refusal)" },
-  { label: "Failure memory",     value: "Persistent; matches fingerprint; reforça caução" },
+  { label: "Confidence tiers",   value: "HIGH: 3 concordam · LOW: qualquer diferença → refusal" },
+  { label: "Failure memory",     value: "Persistent · matches fingerprint · reforça caução" },
 ];
 
 const CREW: Row[] = [
   { label: "Plan",        value: "planner → (researcher) → coder → critic" },
   { label: "Refinement",  value: "1 round automático se critic rejeita" },
-  { label: "Streaming",   value: "crew_start · plan · role_start/role_event/role_done · critic_verdict · done" },
+  { label: "Streaming",   value: "crew_start · plan · role_start/event/done · critic_verdict · done" },
 ];
 
 const SURFACE: Row[] = [
-  { label: "Dispatch",         value: "Mock handler — process_surface_mock_streaming" },
-  { label: "Output contract",  value: "SurfacePlan { screens, components, design_system_binding, fidelity, mode, notes, mock }" },
-  { label: "Run recording",    value: "Registado em /runs com route=\"surface\", termination_reason=\"surface_mock\" enquanto o mock é a fonte." },
+  { label: "Dispatch",        value: "Mock handler — process_surface_mock_streaming" },
+  { label: "Output contract", value: "SurfacePlan { screens, components, design_system_binding, fidelity, mode, notes, mock }" },
+  { label: "Run recording",   value: "Registado em /runs com route=surface, termination_reason=surface_mock enquanto o mock é a fonte." },
 ];
 
 export default function Orchestration() {
@@ -46,8 +49,8 @@ export default function Orchestration() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-          gap: "var(--space-3)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))",
+          gap: "var(--space-4)",
         }}
       >
         <Panel title="Agent loop"              sub="Terminal"                 rows={AGENT} />
@@ -67,15 +70,14 @@ function Panel({ title, sub, rows }: { title: string; sub: string; rows: Row[] }
         <span className="panel-sub">{sub}</span>
       </div>
       <div>
-        {rows.map((r) => (
-          <div key={r.label} className="diagnostic-row">
+        {rows.map((r, i) => (
+          <div
+            key={r.label}
+            className="diagnostic-row"
+            style={{ borderBottom: i === rows.length - 1 ? 0 : undefined }}
+          >
             <span className="diagnostic-row-key">{r.label}</span>
-            <span
-              className="diagnostic-row-value"
-              style={{ fontFamily: "var(--sans)", lineHeight: 1.5 }}
-            >
-              {r.value}
-            </span>
+            <span className="diagnostic-row-value">{r.value}</span>
           </div>
         ))}
       </div>

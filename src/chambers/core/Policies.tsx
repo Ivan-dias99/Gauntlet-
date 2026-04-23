@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import { useCopy } from "../../i18n/copy";
-import EmptyState from "../../shell/EmptyState";
 import DormantPanel from "../../shell/DormantPanel";
+
+// Core · Policies — constitutional register of principles in force.
+// Rendered inside the shared .core-page frame so the tab reads with
+// the same composition discipline as Routing / Permissions / System /
+// Orchestration. Institutional typography (serif articles, § gutter,
+// doctrine composer) is preserved; the surrounding chrome is the
+// generic page scaffold.
 
 function toRoman(n: number): string {
   if (n <= 0) return "";
@@ -38,8 +44,11 @@ function normalizeForDedup(s: string): string {
   return s.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
 }
 
-export default function School() {
-  const { state, principles, addPrinciple, activeMission, syncState, hydratedFromBackend, syncError } = useSpine();
+export default function Policies() {
+  const {
+    state, principles, addPrinciple, activeMission,
+    syncState, hydratedFromBackend, syncError,
+  } = useSpine();
   const copy = useCopy();
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
@@ -47,11 +56,6 @@ export default function School() {
   const isGoverning = principles.length > 0;
   const lastApplied = activeMission?.events.find((e) => e.type === "doctrine_applied") ?? null;
 
-  // Invocation substrate — every `doctrine_applied` event is Lab or
-  // Creation firing with principles attached. We aggregate across all
-  // missions for two honest metrics (total invocations + mission
-  // coverage). Per-principle causal effects are not tracked, so we
-  // never claim "consequence" — only "invocation".
   const totalMissions = state.missions.length;
   let totalApplications = 0;
   let missionsGoverned = 0;
@@ -69,9 +73,6 @@ export default function School() {
     return () => clearInterval(id);
   }, []);
 
-  // Composer auto-grow — the inscription surface is a textarea so a
-  // principle can span multiple lines. Height tracks content between
-  // the CSS min-height (~one line) and max-height (~four lines).
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
     const el = inputRef.current;
@@ -96,7 +97,6 @@ export default function School() {
     addPrinciple(trimmed);
     setInput("");
     setRejection(null);
-    // Keep the inscription surface ready for the next article.
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
@@ -104,222 +104,224 @@ export default function School() {
     syncState !== "synced" || hydratedFromBackend === false || !!syncError;
 
   return (
-    <div className="chamber-shell" data-chamber="school">
-      {/* Doctrine strap — constitutional opening line, legible, never ghosted. */}
-      <div className="chamber-head">
-        <div className="doctrine-strap">
-          <span className="doctrine-strap-brand">{copy.schoolTagline}</span>
-          <span className="doctrine-strap-line">{copy.schoolSubtitle}</span>
-        </div>
+    <div className="core-page" data-chamber="school">
+      <div className="core-page-intro">
+        <span className="core-page-intro-title">Policies</span>
+        <span className="core-page-intro-sub">
+          Princípios constitucionais que vinculam cada invocação em qualquer chamber.
+          Inscrição explícita, sem revogação silenciosa.
+        </span>
       </div>
 
-      <div className="chamber-body" data-pad="calm">
-
-        {/* Mission panel — four-zone institutional surface: head (mono
-            kicker + serif mission + right-aligned crest), declaration,
-            metrics rail, optional status. Carries doctrine's current
-            reach and the honest invocation data from real substrate. */}
-        {isGoverning && (
-          <div className="fadeIn doctrine-seal">
-            <div className="doctrine-seal-head">
-              <span className="doctrine-seal-head-kicker">doutrina</span>
-              <span aria-hidden className="doctrine-seal-head-sep">·</span>
-              {activeMission ? (
-                <span className="doctrine-seal-head-mission">
-                  missão {activeMission.title}
-                </span>
-              ) : (
-                <span className="doctrine-seal-head-null">
-                  sem missão activa
-                </span>
-              )}
-              <span className="doctrine-seal-head-crest" aria-hidden>
-                <span className="doctrine-seal-head-crest-num">
-                  {toRoman(principles.length)}
-                </span>
-                <span className="doctrine-seal-head-crest-unit">
-                  {principles.length === 1 ? "artigo" : "artigos"}
-                </span>
+      {isGoverning && (
+        <section
+          className="fadeIn panel"
+          data-rank="primary"
+          style={{ maxWidth: 860, marginInline: "auto", width: "100%" }}
+        >
+          <div className="panel-head">
+            <span className="panel-title">
+              {activeMission
+                ? <>missão <em style={{ fontStyle: "normal", color: "var(--text-secondary)" }}>{activeMission.title}</em></>
+                : <>doutrina em vigor</>}
+            </span>
+            <span className="panel-sub">
+              <span style={{ color: "var(--accent)", marginRight: 6 }}>
+                {toRoman(principles.length)}
               </span>
-            </div>
+              {principles.length === 1 ? "artigo" : "artigos"}
+            </span>
+          </div>
 
-            <div className="doctrine-seal-declaration">
-              {principles.length === 1 ? (
-                <>
-                  <strong>Um princípio</strong> sob vigor. Vincula cada invocação, em qualquer chamber
-                  {activeMission ? " e governa esta missão." : "."}
-                </>
-              ) : (
-                <>
-                  <strong>{principles.length} princípios</strong> sob vigor. Vinculam cada invocação, em qualquer chamber
-                  {activeMission ? " e governam esta missão." : "."}
-                </>
-              )}
-            </div>
-
-            <div className="doctrine-seal-metrics">
-              <span className="doctrine-seal-metric">
-                <span
-                  className="doctrine-seal-metric-value"
-                  data-tone={totalApplications > 0 ? "accent" : "dim"}
-                >
-                  {totalApplications}
-                </span>
-                <span className="doctrine-seal-metric-label">
-                  {totalApplications === 1 ? "invocação" : "invocações"}
-                </span>
-              </span>
-              <span className="doctrine-seal-metric">
-                <span
-                  className="doctrine-seal-metric-value"
-                  data-tone={missionsGoverned > 0 ? undefined : "dim"}
-                >
-                  {missionsGoverned}
-                </span>
-                <span className="doctrine-seal-metric-label">
-                  de {totalMissions} missões governadas
-                </span>
-              </span>
-              {lastApplied ? (
-                <span className="doctrine-seal-metric">
-                  <span className="doctrine-seal-metric-value">
-                    {new Date(lastApplied.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  <span className="doctrine-seal-metric-label">
-                    última invocação
-                  </span>
-                </span>
-              ) : (
-                <span className="doctrine-seal-metric-null">
-                  {activeMission
-                    ? "ainda não invocada nesta missão"
-                    : "aguarda missão activa"}
-                </span>
-              )}
-            </div>
-
-            {showStatus && (
-              <div className="doctrine-seal-status">
-                <span
-                  className="doctrine-seal-status-item"
-                  data-state={
-                    syncState === "synced" ? "ok" :
-                    syncState === "syncing" ? "info" : "warn"
-                  }
-                >
-                  {syncState === "synced"
-                    ? "sincronizado"
-                    : syncState === "syncing"
-                    ? "a sincronizar…"
-                    : "local — backend não confirmou"}
-                </span>
-                {hydratedFromBackend === false && (
-                  <span
-                    className="doctrine-seal-status-item"
-                    data-state="warn"
-                  >
-                    carregada da cache — backend não respondeu
-                  </span>
-                )}
-                {syncError && (
-                  <span
-                    className="doctrine-seal-status-item"
-                    data-state="warn"
-                    title={syncError.message}
-                  >
-                    motivo:{" "}
-                    {syncError.kind === "unreachable"
-                      ? "backend inacessível"
-                      : syncError.envelope?.error ?? "erro do backend"}
-                  </span>
-                )}
-              </div>
+          <div
+            style={{
+              fontFamily: "var(--serif)",
+              fontSize: 15.5,
+              lineHeight: 1.55,
+              color: "var(--text-primary)",
+              letterSpacing: "-0.005em",
+            }}
+          >
+            {principles.length === 1 ? (
+              <>
+                <strong style={{ fontWeight: 500, color: "var(--accent)" }}>Um princípio</strong> sob vigor.
+                Vincula cada invocação, em qualquer chamber
+                {activeMission ? " e governa esta missão." : "."}
+              </>
+            ) : (
+              <>
+                <strong style={{ fontWeight: 500, color: "var(--accent)" }}>{principles.length} princípios</strong> sob vigor.
+                Vinculam cada invocação, em qualquer chamber
+                {activeMission ? " e governam esta missão." : "."}
+              </>
             )}
           </div>
-        )}
 
-        {principles.length === 0 && (
-          hydratedFromBackend === false ? (
-            <DormantPanel
-              detail="doutrina por carregar — backend não respondeu na hidratação. O que aparecer abaixo veio só da cache local."
-              style={{ marginTop: "10vh", marginLeft: "auto", marginRight: "auto" }}
-            />
-          ) : (
-            <EmptyState
-              glyph="§"
-              kicker={copy.schoolEmptyKicker}
-              body={copy.schoolEmpty}
-              hint={copy.schoolEmptyHint}
-              style={{ marginTop: "10vh" }}
-            />
-          )
-        )}
-
-        {principles.length > 0 && (
-          <div className="doctrine-register-heading">
-            <span>registo constitucional</span>
-            <span className="doctrine-register-heading-count">
-              {principles.length === 1 ? "1 artigo" : `${principles.length} artigos`}
-            </span>
-            <span className="doctrine-register-heading-order">
-              por ordem de inscrição
-            </span>
-          </div>
-        )}
-
-        {/* Constitutional ordering: article I is the first inscribed;
-            article N is the most recent. Source state stores newest-
-            first, so we reverse once for display. The tablet-grid
-            variant was dropped when the tweak that toggled it went
-            away — the article-list variant is the operational view. */}
-        <div style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
-          {[...principles].reverse().map((p, i) => {
-            const articleNumber = i + 1;
-            return (
-              <div
-                key={p.id}
-                className="fadeUp doctrine-article"
-                style={{ animationDelay: `${i * 35}ms` }}
-              >
-                <div className="doctrine-article-gutter">
-                  <span className="doctrine-article-kicker">artigo</span>
-                  <span className="doctrine-article-num" data-article-roman>
-                    {toRoman(articleNumber)}
-                  </span>
-                </div>
-                <div className="doctrine-article-body">
-                  <span className="doctrine-article-text">{p.text}</span>
-                </div>
-                <div className="doctrine-article-aside">
-                  inscrita {relativeTime(p.createdAt, nowMs)}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Composer — ceremonial inscription surface. Not a glass pill.
-          A bordered bay whose left accent activates on focus. */}
-      <div
-        className="doctrine-composer"
-        data-focused={inputFocused ? "true" : undefined}
-      >
-        <div className="doctrine-composer-label">
-          <span>{copy.schoolInputVoice}</span>
-        </div>
-        {rejection !== null && (
           <div
-            className="fadeIn doctrine-composer-rejection"
-            data-testid="school-rejection"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: "var(--space-3)",
+              paddingTop: "var(--space-2)",
+              borderTop: "1px solid var(--border-color-soft)",
+            }}
           >
-            {rejection === "duplicate" && "✗ princípio já inscrito — normalizar antes de repetir."}
-            {rejection === "tooLong" && `✗ princípio excede ${PRINCIPLE_MAX_LEN} caracteres.`}
-            {rejection === "empty" && "✗ nada para inscrever."}
+            <Metric
+              value={totalApplications}
+              label={totalApplications === 1 ? "invocação" : "invocações"}
+              tone={totalApplications > 0 ? "accent" : "muted"}
+            />
+            <Metric
+              value={`${missionsGoverned} de ${totalMissions}`}
+              label="missões governadas"
+              tone={missionsGoverned > 0 ? undefined : "muted"}
+            />
+            {lastApplied ? (
+              <Metric
+                value={new Date(lastApplied.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                label="última invocação"
+              />
+            ) : (
+              <Metric
+                value="—"
+                label={activeMission ? "aguarda invocação" : "sem missão activa"}
+                tone="muted"
+              />
+            )}
           </div>
-        )}
-        <div className="doctrine-composer-row">
-          <span aria-hidden className="doctrine-composer-lead">§</span>
+
+          {showStatus && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "var(--space-2)",
+                paddingTop: "var(--space-2)",
+                borderTop: "1px solid var(--border-color-soft)",
+              }}
+            >
+              <span
+                className="state-pill"
+                data-tone={
+                  syncState === "synced" ? "ok" :
+                  syncState === "syncing" ? "info" : "warn"
+                }
+              >
+                <span className="state-pill-dot" />
+                {syncState === "synced"
+                  ? "sincronizado"
+                  : syncState === "syncing"
+                  ? "a sincronizar…"
+                  : "local — backend não confirmou"}
+              </span>
+              {hydratedFromBackend === false && (
+                <span className="state-pill" data-tone="warn">
+                  <span className="state-pill-dot" />
+                  cache local
+                </span>
+              )}
+              {syncError && (
+                <span
+                  className="state-pill"
+                  data-tone="warn"
+                  title={syncError.message}
+                >
+                  <span className="state-pill-dot" />
+                  {syncError.kind === "unreachable"
+                    ? "backend inacessível"
+                    : syncError.envelope?.error ?? "erro do backend"}
+                </span>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {principles.length === 0 && (
+        hydratedFromBackend === false ? (
+          <DormantPanel
+            detail="doutrina por carregar — backend não respondeu na hidratação. O que aparecer abaixo veio só da cache local."
+            style={{ marginInline: "auto" }}
+          />
+        ) : (
+          <div className="core-empty" data-chamber="school">
+            <span className="core-empty-glyph" aria-hidden>§</span>
+            <span className="core-empty-kicker">{copy.schoolEmptyKicker}</span>
+            <span className="core-empty-body">{copy.schoolEmpty}</span>
+            <span className="core-empty-hint">{copy.schoolEmptyHint}</span>
+          </div>
+        )
+      )}
+
+      {principles.length > 0 && (
+        <section
+          className="panel"
+          data-rank="primary"
+          style={{ maxWidth: 860, marginInline: "auto", width: "100%" }}
+        >
+          <div className="panel-head">
+            <span className="panel-title">registo constitucional</span>
+            <span className="panel-sub">
+              por ordem de inscrição · {principles.length}
+            </span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {[...principles].reverse().map((p, i) => {
+              const articleNumber = i + 1;
+              return (
+                <div
+                  key={p.id}
+                  className="fadeUp doctrine-article"
+                  style={{ animationDelay: `${i * 35}ms` }}
+                >
+                  <div className="doctrine-article-gutter">
+                    <span className="doctrine-article-kicker">artigo</span>
+                    <span className="doctrine-article-num" data-article-roman>
+                      {toRoman(articleNumber)}
+                    </span>
+                  </div>
+                  <div className="doctrine-article-body">
+                    <span className="doctrine-article-text">{p.text}</span>
+                  </div>
+                  <div className="doctrine-article-aside">
+                    inscrita {relativeTime(p.createdAt, nowMs)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <section
+        className="command-bay"
+        data-focused={inputFocused ? "true" : undefined}
+        style={{ maxWidth: 860, marginInline: "auto", width: "100%" }}
+      >
+        <div className="command-bay-voice">
+          <span className="status-dot" data-tone={inputFocused ? "accent" : "ghost"} />
+          <span>{copy.schoolInputVoice}</span>
+          {rejection !== null && (
+            <span
+              className="kicker"
+              data-tone="warn"
+              data-testid="school-rejection"
+              style={{ marginLeft: "auto" }}
+            >
+              {rejection === "duplicate" && "✗ já inscrito"}
+              {rejection === "tooLong" && `✗ excede ${PRINCIPLE_MAX_LEN} caracteres`}
+              {rejection === "empty" && "✗ nada para inscrever"}
+            </span>
+          )}
+        </div>
+        <div className="command-bay-row">
+          <span
+            aria-hidden
+            className="command-bay-prompt"
+            style={{ color: "var(--accent)", fontSize: 18, fontFamily: "var(--serif)" }}
+          >
+            §
+          </span>
           <textarea
             ref={inputRef}
             autoFocus
@@ -332,7 +334,6 @@ export default function School() {
               if (rejection !== null) setRejection(null);
             }}
             onKeyDown={(e) => {
-              // Enter ratifies; Shift+Enter / Cmd+Enter break line.
               if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
                 e.preventDefault();
                 submit();
@@ -343,33 +344,69 @@ export default function School() {
             }}
             maxLength={PRINCIPLE_MAX_LEN * 2}
             placeholder={copy.schoolPlaceholder}
-            className="doctrine-composer-input"
+            className="command-bay-input"
+            style={{ fontFamily: "var(--serif)", fontSize: 15.5 }}
           />
-          {(showCount || trimmed.length > 0) && (
-            <div className="doctrine-composer-actions">
-              {showCount && (
-                <span
-                  data-testid="school-charcount"
-                  className="doctrine-composer-count"
-                  data-tone={countTone}
-                >
-                  {charsLeft}
-                </span>
-              )}
-              {trimmed.length > 0 && (
-                <button
-                  onClick={submit}
-                  disabled={isTooLong}
-                  className="fadeIn doctrine-ratify"
-                  data-warn={isDuplicate || isTooLong ? "true" : undefined}
-                >
-                  {copy.schoolInscribe}
-                </button>
-              )}
-            </div>
-          )}
         </div>
-      </div>
+        <div className="command-bay-actions">
+          <button
+            onClick={submit}
+            disabled={isTooLong || trimmed.length === 0}
+            className="btn-chip"
+            data-variant={isDuplicate || isTooLong ? undefined : "ok"}
+            style={{ opacity: trimmed.length === 0 ? 0.45 : 1 }}
+          >
+            {copy.schoolInscribe}
+          </button>
+          {showCount && (
+            <span
+              data-testid="school-charcount"
+              className="kicker"
+              data-tone={countTone}
+            >
+              {charsLeft}
+            </span>
+          )}
+          <span className="command-bay-hint" style={{ marginLeft: "auto" }}>
+            enter ratifica · shift+enter nova linha
+          </span>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Metric({
+  value, label, tone,
+}: {
+  value: string | number;
+  label: string;
+  tone?: "accent" | "muted";
+}) {
+  const valueColor =
+    tone === "accent" ? "var(--accent)" :
+    tone === "muted"  ? "var(--text-muted)" : "var(--text-primary)";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <span
+        style={{
+          fontFamily: "var(--serif)",
+          fontSize: 22,
+          lineHeight: 1,
+          color: valueColor,
+          letterSpacing: "-0.01em",
+          fontWeight: 400,
+        }}
+      >
+        {value}
+      </span>
+      <span
+        className="kicker"
+        data-tone="ghost"
+        style={{ letterSpacing: "var(--track-meta)" }}
+      >
+        {label}
+      </span>
     </div>
   );
 }

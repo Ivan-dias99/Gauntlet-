@@ -145,8 +145,8 @@
   --terminal-warn: #8a6a20;
 
   --shadow-soft:  0 1px 2px rgba(60, 40, 20, 0.05), 0 0 0 1px rgba(60, 40, 20, 0.04);
-  --shadow-panel: 0 2px 6px rgba(60, 40, 20, 0.06), 0 14px 32px rgba(60, 40, 20, 0.10);
-  --shadow-float: 0 6px 14px rgba(60, 40, 20, 0.09), 0 28px 60px rgba(60, 40, 20, 0.14);
+  --shadow-panel: 0 2px 6px rgba(60, 40, 20, 0.06), 0 14px 32px rgba(60, 40, 20, 0.08);
+  --shadow-float: 0 6px 14px rgba(60, 40, 20, 0.08), 0 28px 60px rgba(60, 40, 20, 0.12);
 
   --cc-fg: #262118;
   --cc-dim: #8a8070;
@@ -194,9 +194,9 @@
   --terminal-ok: #7aa050;
   --terminal-warn: #e8b050;
 
-  --shadow-soft:  0 1px 2px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.06);
-  --shadow-panel: 0 3px 6px rgba(0, 0, 0, 0.32), 0 14px 34px rgba(0, 0, 0, 0.38);
-  --shadow-float: 0 6px 14px rgba(0, 0, 0, 0.45), 0 28px 60px rgba(0, 0, 0, 0.50);
+  --shadow-soft:  0 1px 2px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --shadow-panel: 0 3px 6px rgba(0, 0, 0, 0.18), 0 14px 34px rgba(0, 0, 0, 0.22);
+  --shadow-float: 0 6px 14px rgba(0, 0, 0, 0.28), 0 28px 60px rgba(0, 0, 0, 0.34);
 
   --cc-fg: #f4e6cc;
   --cc-dim: #8a7058;
@@ -2121,24 +2121,9 @@ textarea {
   position: relative;
 }
 .command-bay[data-focused="true"] {
-  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, var(--border-color-mid));
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 45%, var(--border-color-mid));
   background: var(--bg-elevated);
   box-shadow: var(--shadow-panel);
-}
-.command-bay::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: transparent;
-  border-top-left-radius: var(--radius-panel);
-  border-top-right-radius: var(--radius-panel);
-  transition: background var(--dur-fast) var(--ease-swift);
-}
-.command-bay[data-focused="true"]::before {
-  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, transparent);
 }
 .command-bay[data-disabled="true"] {
   opacity: 0.7;
@@ -2833,11 +2818,74 @@ textarea {
    shadow + elevated bg), instead of looking flat against the page. */
 .panel[data-rank="primary"] {
   background: var(--bg-elevated);
-  box-shadow: var(--shadow-panel);
-  border-color: var(--border-color-mid);
+  box-shadow: var(--shadow-soft);
+  border-color: var(--border-color-soft);
+  padding: var(--space-4);
+  gap: var(--space-3);
 }
 .panel[data-rank="primary"] .panel-title {
   font-size: var(--t-section);
+}
+
+/* ——— Core page empty state ——— */
+.core-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: clamp(48px, 10vh, 120px) var(--space-4);
+  text-align: center;
+  max-width: 560px;
+  margin-inline: auto;
+}
+.core-empty-glyph {
+  font-family: var(--serif);
+  font-size: 56px;
+  line-height: 1;
+  color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 60%, var(--text-ghost));
+  user-select: none;
+}
+.core-empty-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.core-empty-body {
+  font-family: var(--serif);
+  font-size: var(--t-section);
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  letter-spacing: -0.005em;
+}
+.core-empty-hint {
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+}
+
+/* Diagnostic row — widen key column so long mono labels like
+   MAX_AGENT_ITERATIONS do not wrap inside the grid. */
+.panel[data-rank="primary"] .diagnostic-row {
+  grid-template-columns: minmax(170px, 210px) 1fr;
+  padding: 8px 0;
+}
+.panel[data-rank="primary"] .diagnostic-row .diagnostic-row-key {
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+  text-transform: none;
+  font-family: var(--mono);
+}
+.panel[data-rank="primary"] .diagnostic-row .diagnostic-row-value {
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  line-height: var(--lh-body-sec);
+  color: var(--text-primary);
 }
 
 /* ——— Theme depth — elevation pyramid ———

@@ -196,41 +196,29 @@ export default function Insight() {
     );
   }
 
-  // Head right slot — mission scope only. Route, confidence, pending
-  // pulse and refusal state were moved into the rail's chamber-status
-  // card so the chamber never repeats the same signal twice. Mirrors
-  // Archive's head slot exactly: "missão · {title}" when a mission is
-  // active, nothing otherwise.
-  const rightSlot = activeMission ? (
+  // Mission identity lives in the rail; the head never repeats it.
+  // A minimal live-pulse lands on the head only while a call is in
+  // flight so the chamber reads "working" even when the eye is fixed
+  // on the conversation column.
+  const rightSlot = pending ? (
     <span
-      style={{
-        fontSize: "var(--t-micro)",
-        color: "var(--text-ghost)",
-        fontFamily: "var(--mono)",
-        letterSpacing: "var(--track-label)",
-        textTransform: "uppercase",
-      }}
+      className="kicker"
+      data-tone="info"
+      style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
     >
-      {copy.labRailMissionKicker.replace("— ", "")} ·{" "}
-      {activeMission.title.length > 48
-        ? activeMission.title.slice(0, 45).trimEnd() + "…"
-        : activeMission.title}
+      <span className="status-dot" data-tone="info" data-pulse="true" />
+      {copy.labRailStatusRunning}
     </span>
   ) : null;
 
   const isEmpty = notes.length === 0 && !pending && !error;
 
-  // Left column — the conversation region. Thread / verdict reasoning
-  // scroll in the upper flex:1 area; error/dormant and the composer
-  // are pinned at the bottom so they never get buried by a long
-  // transcript.
-  //
-  // Empty state is deliberately non-hero: no central glyph, no
-  // italic serif poster, no "NO ACTIVE MISSION" monument. A compact
-  // strip at the top of the region names the state and moves on —
-  // operational grammar, not onboarding. Live streaming pressure
-  // lives in the rail's chamber-status card, not competing inline.
-  const leftColumn = (
+  // Main conversation column — thread / verdict reasoning scroll in
+  // the flex:1 area; error/dormant and the composer are pinned at the
+  // bottom so they never get buried by a long transcript. Live
+  // streaming pressure lives in the rail's chamber-status card; the
+  // thread does not re-announce it.
+  const mainColumn = (
     <>
       <div
         data-insight-stream
@@ -333,8 +321,7 @@ export default function Insight() {
         right={rightSlot}
       />
       <InsightLayout
-        left={leftColumn}
-        right={
+        rail={
           <InsightRail
             mission={activeMission}
             principles={principles}
@@ -346,6 +333,7 @@ export default function Insight() {
             onAbort={() => abortRef.current?.abort()}
           />
         }
+        main={mainColumn}
       />
     </div>
   );
