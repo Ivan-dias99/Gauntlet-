@@ -36,37 +36,18 @@ const KIND_TONE: Record<ToolEntry["kind"], "info" | "warn" | "accent" | "ok"> = 
 
 export default function Permissions() {
   return (
-    <div
-      style={{
-        padding: "var(--space-4)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-3)",
-        maxWidth: 1100,
-      }}
-    >
-      <section className="panel">
-        <div className="panel-head">
-          <span className="panel-title">Tool allowlist</span>
-          <span className="panel-sub">deny-by-default</span>
-        </div>
-        <div
-          style={{
-            fontFamily: "var(--sans)",
-            fontSize: "var(--t-body-sec)",
-            color: "var(--text-muted)",
-            lineHeight: "var(--lh-body)",
-          }}
-        >
-          A gated coluna marca tools que só se activam com{" "}
+    <div className="core-page">
+      <div className="core-page-intro">
+        <span className="core-page-intro-title">Permissions</span>
+        <span className="core-page-intro-sub">
+          Deny-by-default. A coluna gated marca tools que só se activam com{" "}
           <code style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>
             AGENT_ALLOW_CODE_EXEC=true
-          </code>{" "}
-          no ambiente do backend. Cada chamber tem a sua allowlist:
-          Insight e Core sem tools; Terminal o conjunto completo; Surface apenas
-          o handler mock; Archive um subset de retrieval.
-        </div>
-      </section>
+          </code>
+          . Cada chamber tem allowlist própria — Insight e Core sem tools,
+          Terminal completo, Surface só o handler mock, Archive subset de retrieval.
+        </span>
+      </div>
 
       <div
         style={{
@@ -76,7 +57,7 @@ export default function Permissions() {
         }}
       >
         {TOOLS.map((t) => (
-          <section key={t.name} className="panel">
+          <section key={t.name} className="panel" data-rank="primary">
             <div className="panel-head">
               <code
                 style={{

@@ -30,30 +30,18 @@ const DISPATCH_TONE: Record<string, "info" | "warn" | "accent" | "muted"> = {
 
 export default function Routing() {
   return (
-    <div
-      style={{
-        padding: "var(--space-4)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-3)",
-        maxWidth: 900,
-      }}
-    >
-      <section className="panel">
+    <div className="core-page">
+      <div className="core-page-intro">
+        <span className="core-page-intro-title">Routing</span>
+        <span className="core-page-intro-sub">
+          Perfis de chamber. O router decide por chamber.dispatch quando
+          query.chamber está presente; cai em is_dev_intent quando ausente.
+        </span>
+      </div>
+      <section className="panel" data-rank="primary">
         <div className="panel-head">
           <span className="panel-title">Chamber profiles</span>
           <span className="panel-sub">Dispatch</span>
-        </div>
-        <div
-          style={{
-            fontFamily: "var(--sans)",
-            fontSize: "var(--t-body-sec)",
-            color: "var(--text-muted)",
-            lineHeight: "var(--lh-body)",
-          }}
-        >
-          Router decide por chamber.dispatch quando query.chamber está presente;
-          cai em is_dev_intent quando ausente.
         </div>
         <div>
           {PROFILES.map((p) => (

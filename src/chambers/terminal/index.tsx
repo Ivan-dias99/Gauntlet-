@@ -410,6 +410,73 @@ export default function Terminal() {
 
       <div className="chamber-body">
         {activeMission && (
+          <div className="run-header fadeIn">
+            <span
+              className="run-header-phase"
+              data-live={pending ? "true" : undefined}
+            >
+              <span
+                className="status-dot"
+                data-tone={pending ? "info" : done ? "ok" : err ? "err" : "muted"}
+                data-pulse={pending ? "true" : undefined}
+              />
+              {pending ? "a correr" : done ? "concluído" : err ? "bloqueado" : "em repouso"}
+            </span>
+            <span className="run-header-divider" />
+            <span className="run-header-metric">
+              <span className="run-header-metric-label">missão</span>
+              <span
+                className="run-header-metric-value"
+                style={{
+                  maxWidth: 220,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  display: "inline-block",
+                }}
+                title={activeMission.title}
+              >
+                {activeMission.title}
+              </span>
+            </span>
+            <span className="run-header-divider" />
+            <span className="run-header-metric">
+              <span className="run-header-metric-label">mode</span>
+              <span className="run-header-metric-value">{mode}</span>
+            </span>
+            <span className="run-header-divider" />
+            <span className="run-header-metric">
+              <span className="run-header-metric-label">tasks</span>
+              <span
+                className="run-header-metric-value"
+                data-tone={blockedTasks.length > 0 ? "err" : runningTasks.length > 0 ? "info" : "muted"}
+              >
+                {doneTasks.length}/{tasks.length}
+                {blockedTasks.length > 0 && ` · ${blockedTasks.length} blk`}
+              </span>
+            </span>
+            {pending && (
+              <>
+                <span className="run-header-divider" />
+                <span className="run-header-metric">
+                  <span className="run-header-metric-label">elapsed</span>
+                  <span className="run-header-metric-value" data-tone="info">
+                    {elapsed.toFixed(1)}s
+                  </span>
+                </span>
+                <span className="run-header-metric">
+                  <span className="run-header-metric-label">iter</span>
+                  <span className="run-header-metric-value" data-tone="info">
+                    {iteration}
+                  </span>
+                </span>
+              </>
+            )}
+            {pending && <div className="thinking-strip" style={{ flexBasis: "100%" }} aria-hidden />}
+          </div>
+        )}
+
+        {activeMission && (
           <WorkbenchCard
             missionTitle={activeMission.title}
             task={activeTask}
@@ -429,33 +496,45 @@ export default function Terminal() {
         )}
 
         {tasks.length === 0 && liveTools.length === 0 && !liveText && !pending && !err && (
-          <div
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: 13,
-              color: "var(--cc-dim)",
-              marginTop: 16,
-            }}
+          <section
+            className="exec-shell fadeIn"
+            data-state="idle"
+            style={{ marginTop: "var(--space-2)" }}
           >
-            <span style={{ color: "var(--cc-ok)" }}>signal@local</span>
-            <span style={{ color: "var(--cc-dim)" }}>:</span>
-            <span style={{ color: "var(--cc-path)" }}>~/mission</span>
-            <span style={{ color: "var(--cc-dim)" }}>$</span>
-            <span className="cc-cursor" />
-            <div
-              style={{
-                marginTop: 18,
-                fontFamily: "'Fraunces', Georgia, serif",
-                fontStyle: "italic",
-                fontSize: 18,
-                color: "var(--text-muted)",
-              }}
-            >
-              {values.lang === "en"
-                ? "Declare a task. It becomes a command. The command has consequence."
-                : "Declare uma tarefa. Ela vira comando. O comando tem consequência."}
+            <header className="exec-shell-bar">
+              <span className="exec-shell-dots" aria-hidden><span /><span /><span /></span>
+              <span className="exec-shell-title">
+                <strong>signal</strong>
+                <span style={{ color: "var(--text-muted)" }}> · </span>
+                <span style={{ color: "var(--cc-path)" }}>~/mission</span>
+              </span>
+              <span className="exec-shell-phase">ready</span>
+            </header>
+            <div className="exec-shell-body" style={{ minHeight: 120 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+                <span style={{ color: "var(--cc-ok)" }}>signal@local</span>
+                <span style={{ color: "var(--cc-dim)" }}>:</span>
+                <span style={{ color: "var(--cc-path)" }}>~/mission</span>
+                <span style={{ color: "var(--cc-dim)" }}>$</span>
+                <span className="cc-cursor" />
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--serif)",
+                  fontStyle: "italic",
+                  fontSize: "var(--t-section)",
+                  lineHeight: 1.45,
+                  color: "var(--text-secondary)",
+                  letterSpacing: "-0.005em",
+                  maxWidth: 620,
+                }}
+              >
+                {values.lang === "en"
+                  ? "Declare a task. It becomes a command. The command has consequence."
+                  : "Declare uma tarefa. Ela vira comando. O comando tem consequência."}
+              </div>
             </div>
-          </div>
+          </section>
         )}
 
         <TaskList

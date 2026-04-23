@@ -62,7 +62,10 @@ export default function Core() {
         })}
       </div>
 
-      <div className="chamber-body" style={{ minHeight: 0 }}>
+      <div
+        className="chamber-body"
+        style={{ minHeight: 0, padding: 0 }}
+      >
         {tab === "policies" && <Policies />}
         {tab === "routing" && <Routing />}
         {tab === "permissions" && <Permissions />}

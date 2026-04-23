@@ -91,9 +91,9 @@
   --terminal-ok: #7aa070;
   --terminal-warn: #d8b058;
 
-  --shadow-soft:  0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.06);
-  --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.10);
+  --shadow-soft:  0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-panel: 0 2px 4px rgba(0, 0, 0, 0.30), 0 10px 28px rgba(0, 0, 0, 0.35);
+  --shadow-float: 0 4px 10px rgba(0, 0, 0, 0.40), 0 22px 50px rgba(0, 0, 0, 0.45);
 
   /* Claude Code terminal hues */
   --cc-fg: #e8e0d2;
@@ -144,9 +144,9 @@
   --terminal-ok: #3a6a3a;
   --terminal-warn: #8a6a20;
 
-  --shadow-soft:  0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.06);
-  --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.10);
+  --shadow-soft:  0 1px 2px rgba(60, 40, 20, 0.05), 0 0 0 1px rgba(60, 40, 20, 0.04);
+  --shadow-panel: 0 2px 6px rgba(60, 40, 20, 0.06), 0 14px 32px rgba(60, 40, 20, 0.10);
+  --shadow-float: 0 6px 14px rgba(60, 40, 20, 0.09), 0 28px 60px rgba(60, 40, 20, 0.14);
 
   --cc-fg: #262118;
   --cc-dim: #8a8070;
@@ -194,9 +194,9 @@
   --terminal-ok: #7aa050;
   --terminal-warn: #e8b050;
 
-  --shadow-soft:  0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.14);
+  --shadow-soft:  0 1px 2px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-panel: 0 3px 6px rgba(0, 0, 0, 0.32), 0 14px 34px rgba(0, 0, 0, 0.38);
+  --shadow-float: 0 6px 14px rgba(0, 0, 0, 0.45), 0 28px 60px rgba(0, 0, 0, 0.50);
 
   --cc-fg: #f4e6cc;
   --cc-dim: #8a7058;
@@ -2115,11 +2115,30 @@ textarea {
   flex-direction: column;
   gap: var(--space-2);
   transition: border-color var(--dur-fast) var(--ease-swift),
-              background var(--dur-fast) var(--ease-swift);
+              background var(--dur-fast) var(--ease-swift),
+              box-shadow var(--dur-normal) var(--ease-swift);
+  box-shadow: var(--shadow-soft);
+  position: relative;
 }
 .command-bay[data-focused="true"] {
   border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, var(--border-color-mid));
   background: var(--bg-elevated);
+  box-shadow: var(--shadow-panel);
+}
+.command-bay::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  border-top-left-radius: var(--radius-panel);
+  border-top-right-radius: var(--radius-panel);
+  transition: background var(--dur-fast) var(--ease-swift);
+}
+.command-bay[data-focused="true"]::before {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, transparent);
 }
 .command-bay[data-disabled="true"] {
   opacity: 0.7;
@@ -2417,3 +2436,424 @@ textarea {
 .t-stat[data-tone="ok"]   { color: var(--cc-ok); }
 .t-stat[data-tone="err"]  { color: var(--cc-err); }
 .t-stat[data-tone="info"] { color: var(--cc-info); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   PHASE-1 LANE 2 — visible structural elevation
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ——— Conversation paper ———
+   A single elevated surface that wraps every turn in a session, so the
+   Insight main region reads as a real document rather than a loose
+   stream. The paper carries its own padding, the turns inside it sit
+   close together with divider hairlines between them — no individual
+   cards floating. */
+.conversation {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-width: 920px;
+}
+.conversation-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-color-soft);
+  background: color-mix(in oklab, var(--bg-elevated) 60%, var(--bg-surface));
+  flex-wrap: wrap;
+}
+.conversation-body {
+  display: flex;
+  flex-direction: column;
+}
+.conversation-body > .turn-row {
+  border-bottom: 1px solid var(--border-color-soft);
+}
+.conversation-body > .turn-row:last-child {
+  border-bottom: 0;
+}
+
+/* ——— Turn row (new composition) ———
+   Every turn in the conversation paper uses this. Gutter on the left
+   carries role glyph + time; body carries label + text; action rail on
+   the right holds promote affordances. Role controls background tint
+   and glyph color. Left gutter is fixed 72px on desktop so the reading
+   column aligns across turns. */
+.turn-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 0 var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-3);
+  background: transparent;
+  border-left: 3px solid transparent;
+  transition: background var(--dur-fast) var(--ease-swift);
+  align-items: start;
+  min-width: 0;
+}
+.turn-row:hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 2%, transparent);
+}
+.turn-row[data-turn="answer"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 4%, transparent);
+  border-left-color: color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 70%, transparent);
+}
+.turn-row[data-turn="warn"] {
+  background: color-mix(in oklab, var(--cc-warn) 5%, transparent);
+  border-left-color: var(--cc-warn);
+}
+.turn-row[data-turn="refuse"] {
+  background: color-mix(in oklab, var(--cc-err) 5%, transparent);
+  border-left-color: var(--cc-err);
+}
+.turn-row[data-turn="ask"] {
+  border-left-color: color-mix(in oklab, var(--cc-prompt) 55%, transparent);
+}
+.turn-row-gutter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-top: 2px;
+  font-family: var(--mono);
+}
+.turn-row-glyph {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--turn-glyph-color, var(--text-muted));
+  background: var(--turn-glyph-bg, color-mix(in oklab, var(--turn-glyph-color, var(--text-muted)) 12%, transparent));
+  border: 1px solid color-mix(in oklab, var(--turn-glyph-color, var(--text-muted)) 35%, transparent);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.turn-row[data-turn="ask"]    { --turn-glyph-color: var(--cc-prompt); }
+.turn-row[data-turn="answer"] { --turn-glyph-color: var(--chamber-dna, var(--accent)); }
+.turn-row[data-turn="warn"]   { --turn-glyph-color: var(--cc-warn); }
+.turn-row[data-turn="refuse"] { --turn-glyph-color: var(--cc-err); }
+.turn-row-time {
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--text-ghost);
+  font-family: var(--mono);
+}
+.turn-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.turn-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--turn-glyph-color, var(--text-ghost));
+}
+.turn-row-text {
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 62ch;
+}
+.turn-row[data-turn="answer"] .turn-row-text {
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.003em;
+  color: var(--text-primary);
+}
+.turn-row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  padding-top: 4px;
+}
+.turn-row-actions[data-empty="true"] { display: none; }
+
+/* Narrow view — collapse gutter, flow label/time inline. */
+@media (max-width: 720px) {
+  .turn-row {
+    grid-template-columns: 40px 1fr;
+    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-2);
+  }
+  .turn-row-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    padding-top: 8px;
+    align-items: center;
+  }
+}
+
+/* ——— Run header strip (Terminal) ———
+   A sticky instrumentation band that sits above the Terminal workbench.
+   Carries run phase, elapsed timer, task counter, mode toggle. Reads
+   as an IDE-style status bar rather than floating pills. */
+.run-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-soft);
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-meta);
+  flex-wrap: wrap;
+  max-width: 860px;
+  margin-bottom: var(--space-3);
+}
+.run-header-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.run-header-phase[data-live="true"] {
+  color: var(--cc-info);
+}
+.run-header-phase[data-live="true"] .status-dot {
+  --tone: var(--cc-info);
+}
+.run-header-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-color-soft);
+}
+.run-header-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--text-secondary);
+}
+.run-header-metric-label {
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.run-header-metric-value {
+  font-family: var(--mono);
+  font-size: var(--t-body-sec);
+  color: var(--text-primary);
+}
+.run-header-metric-value[data-tone] { color: var(--tone); }
+
+/* ——— Exec shell (Terminal output surface) ———
+   Fully-styled IDE-feel card. Top bar reads as a window tab with
+   traffic lights + path; body is the mono output region. */
+.exec-shell {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  max-width: 860px;
+  margin-bottom: var(--space-3);
+}
+.exec-shell[data-state="running"] {
+  box-shadow: var(--shadow-panel);
+  border-color: color-mix(in oklab, var(--cc-info) 35%, var(--border-color-soft));
+}
+.exec-shell[data-state="done"] {
+  border-color: color-mix(in oklab, var(--cc-ok) 30%, var(--border-color-soft));
+}
+.exec-shell-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px var(--space-3);
+  background: color-mix(in oklab, var(--bg-elevated) 70%, var(--bg-surface));
+  border-bottom: 1px solid var(--border-color-soft);
+  font-family: var(--mono);
+}
+.exec-shell-dots {
+  display: inline-flex;
+  gap: 5px;
+  margin-right: var(--space-2);
+}
+.exec-shell-dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+  opacity: 0.55;
+}
+.exec-shell-dots span:nth-child(1) { background: var(--cc-err); opacity: 0.85; }
+.exec-shell-dots span:nth-child(2) { background: var(--cc-warn); opacity: 0.85; }
+.exec-shell-dots span:nth-child(3) { background: var(--cc-ok); opacity: 0.85; }
+.exec-shell[data-state="running"] .exec-shell-dots span:nth-child(1) {
+  animation: breathe 1.2s var(--ease-swift) infinite;
+}
+.exec-shell-title {
+  font-size: var(--t-body-sec);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.exec-shell-title strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.exec-shell-phase {
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.exec-shell-body {
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-sunken);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--cc-fg);
+  min-height: 60px;
+}
+.exec-shell-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px var(--space-4);
+  border-top: 1px solid var(--border-color-soft);
+  background: color-mix(in oklab, var(--bg-elevated) 50%, var(--bg-surface));
+  flex-wrap: wrap;
+}
+
+/* ——— Tool call row (execution stream) ———
+   The one geometry for tool-use visualization. Reads as a structured
+   log line: phase dot, tool name, args preview, status tag. */
+.tool-call {
+  display: grid;
+  grid-template-columns: 18px 110px 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 7px 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  border-bottom: 1px dashed color-mix(in oklab, var(--border-color-soft) 60%, transparent);
+}
+.tool-call:last-child { border-bottom: 0; }
+.tool-call[data-phase="running"] { color: var(--cc-info); }
+.tool-call[data-phase="ok"]      { color: var(--cc-ok); }
+.tool-call[data-phase="err"]     { color: var(--cc-err); }
+.tool-call-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.tool-call[data-phase="running"] .tool-call-dot {
+  animation: breathe 1.1s var(--ease-swift) infinite;
+}
+.tool-call-name {
+  color: var(--cc-tool);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool-call-args {
+  color: var(--cc-path);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.8;
+}
+.tool-call-status {
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+/* ——— Page frame (Core) ———
+   Shared page scaffold for Core's tab bodies: padding, max-width and
+   stacked sections. All five tabs opt into it so the register is
+   consistent. */
+.core-page {
+  padding: var(--space-4) clamp(var(--space-3), 4vw, var(--space-6));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.core-page-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-color-soft);
+}
+.core-page-intro-title {
+  font-family: var(--serif);
+  font-size: var(--t-chamber);
+  line-height: 1.15;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
+  font-weight: 400;
+}
+.core-page-intro-sub {
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  color: var(--text-muted);
+  line-height: var(--lh-body);
+  max-width: 68ch;
+}
+
+/* ——— Panel elevated variant — shared premium feel ———
+   Panels inside Core pages pull this for a real felt elevation (mid
+   shadow + elevated bg), instead of looking flat against the page. */
+.panel[data-rank="primary"] {
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-panel);
+  border-color: var(--border-color-mid);
+}
+.panel[data-rank="primary"] .panel-title {
+  font-size: var(--t-section);
+}
+
+/* ——— Theme depth — elevation pyramid ———
+   Ensure the three themes read with a real elevation gradient
+   sunken < bg < surface < elevated. These reinforce contrast when
+   panels stack inside pages. */
+[data-theme="light"] .panel {
+  background: var(--bg-elevated);
+  border-color: var(--border-color-soft);
+}
+[data-theme="light"] .conversation {
+  background: var(--bg-elevated);
+}
+[data-theme="sepia"] .panel {
+  background: color-mix(in oklab, var(--bg-elevated) 92%, var(--bg-surface));
+}
+[data-theme="sepia"] .conversation {
+  background: color-mix(in oklab, var(--bg-elevated) 94%, var(--bg-surface));
+}

@@ -55,15 +55,21 @@ export default function System() {
   }, []);
 
   return (
-    <div
-      style={{
-        padding: "var(--space-4)",
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-        gap: "var(--space-3)",
-        maxWidth: 1100,
-      }}
-    >
+    <div className="core-page">
+      <div className="core-page-intro">
+        <span className="core-page-intro-title">System</span>
+        <span className="core-page-intro-sub">
+          Aparência, idioma, diagnósticos em tempo real e acções destrutivas.
+          Tudo o que controla como Signal se apresenta e como comunica.
+        </span>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gap: "var(--space-3)",
+        }}
+      >
       {/* Appearance */}
       <Section title="Appearance">
         <Label>Theme</Label>
@@ -173,13 +179,14 @@ export default function System() {
           </div>
         )}
       </Section>
+      </div>
     </div>
   );
 }
 
 function Section({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
-    <section className="panel">
+    <section className="panel" data-rank="primary">
       <div className="panel-head">
         <span className="panel-title">{title}</span>
         {sub && <span className="panel-sub">{sub}</span>}

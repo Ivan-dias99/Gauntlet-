@@ -1,11 +1,12 @@
 import type { Note } from "../../spine/types";
 import { useCopy } from "../../i18n/copy";
 
-// Insight thread — conversation column. Every turn passes through the
-// canonical .turn primitive (tokens.css) so ask/answer/warn/refuse
-// always render with the same geometry and semantic color across the
-// product. Role, tone and action grammar is declared in data attributes;
-// no local style decisions here.
+// Insight thread — one conversation paper, many turn rows. The paper
+// carries its own elevation + header so the main region finally reads
+// as a document, not a loose stream. Each row lives inside the paper
+// with a 72px gutter (role glyph + time) + body (label + text) +
+// optional action column. Answers shift to the serif register for
+// gravity; asks stay sans for speed.
 
 interface Props {
   notes: Note[];
@@ -19,26 +20,40 @@ export default function Thread({
   notes, promoteId, onPromoteRequest, onPromoteConfirm, onPromoteCancel,
 }: Props) {
   const copy = useCopy();
+  if (notes.length === 0) return null;
+
+  const asks = notes.filter((n) => n.role === "user").length;
+  const answers = notes.length - asks;
+
   return (
-    <div
-      data-insight-thread
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-3)",
-      }}
-    >
-      {notes.map((n) => (
-        <TurnRow
-          key={n.id}
-          note={n}
-          copy={copy}
-          promoting={promoteId === n.id}
-          onPromoteRequest={() => onPromoteRequest(n.id)}
-          onPromoteConfirm={() => onPromoteConfirm(n)}
-          onPromoteCancel={onPromoteCancel}
-        />
-      ))}
+    <div className="conversation" data-insight-thread>
+      <div className="conversation-head">
+        <span className="status-dot" data-tone="accent" />
+        <span className="kicker">— sessão</span>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-meta)",
+            color: "var(--text-muted)",
+            letterSpacing: "var(--track-meta)",
+          }}
+        >
+          {asks} {asks === 1 ? copy.labTurnAsk : copy.labTurnAsk + "s"} · {answers} {answers === 1 ? copy.labTurnAnswer : copy.labTurnAnswer + "s"}
+        </span>
+      </div>
+      <div className="conversation-body">
+        {notes.map((n) => (
+          <TurnRow
+            key={n.id}
+            note={n}
+            copy={copy}
+            promoting={promoteId === n.id}
+            onPromoteRequest={() => onPromoteRequest(n.id)}
+            onPromoteConfirm={() => onPromoteConfirm(n)}
+            onPromoteCancel={onPromoteCancel}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -72,30 +87,58 @@ function TurnRow({
     kind === "refuse" ? copy.labTurnRefuse :
     kind === "warn"   ? copy.labTurnWarn :
                         copy.labTurnAnswer;
-  const dotTone =
-    kind === "ask"    ? "prompt" :
-    kind === "refuse" ? "err" :
-    kind === "warn"   ? "warn" :
-                        "accent";
+  const glyph =
+    kind === "ask"    ? "?" :
+    kind === "refuse" ? "✗" :
+    kind === "warn"   ? "⚠" :
+                        "§";
 
   return (
-    <div
-      className="fadeUp turn"
-      data-insight-turn={kind}
-      data-turn={kind}
-    >
-      <div className="turn-head">
-        <span className="status-dot" data-tone={dotTone} />
-        <span className="kicker">{label}</span>
-        <span className="turn-time">
+    <div className="fadeUp turn-row" data-insight-turn={kind} data-turn={kind}>
+      <div className="turn-row-gutter">
+        <span className="turn-row-glyph" aria-hidden>{glyph}</span>
+        <span className="turn-row-time">
           {new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
       </div>
 
-      <div className="turn-body">{note.text}</div>
+      <div className="turn-row-main">
+        <span className="turn-row-label">{label}</span>
+        <div className="turn-row-text">{note.text}</div>
+        {canPromote && promoting && (
+          <div
+            data-insight-promote-confirm
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-2)",
+              flexWrap: "wrap",
+              paddingTop: 6,
+              borderTop: "1px dashed var(--border-color-soft)",
+              marginTop: 2,
+            }}
+          >
+            <span className="kicker">— transferir para terminal</span>
+            <button
+              onClick={onPromoteConfirm}
+              className="btn-chip"
+              data-variant="ok"
+              style={{ marginLeft: "auto" }}
+            >
+              confirmar ↵
+            </button>
+            <button onClick={onPromoteCancel} className="btn-chip">
+              cancelar esc
+            </button>
+          </div>
+        )}
+      </div>
 
-      {canPromote && !promoting && (
-        <div className="turn-actions" data-empty="true" style={{ justifyContent: "flex-end" }}>
+      <div
+        className="turn-row-actions"
+        data-empty={canPromote && !promoting ? undefined : "true"}
+      >
+        {canPromote && !promoting && (
           <button
             onClick={onPromoteRequest}
             data-insight-promote
@@ -104,25 +147,8 @@ function TurnRow({
           >
             → terminal
           </button>
-        </div>
-      )}
-
-      {canPromote && promoting && (
-        <div className="turn-actions" data-insight-promote-confirm>
-          <span className="kicker">— transferir para terminal</span>
-          <button
-            onClick={onPromoteConfirm}
-            className="btn-chip"
-            data-variant="ok"
-            style={{ marginLeft: "auto" }}
-          >
-            confirmar ↵
-          </button>
-          <button onClick={onPromoteCancel} className="btn-chip">
-            cancelar esc
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

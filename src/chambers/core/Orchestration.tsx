@@ -35,26 +35,33 @@ const SURFACE: Row[] = [
 
 export default function Orchestration() {
   return (
-    <div
-      style={{
-        padding: "var(--space-4)",
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-        gap: "var(--space-3)",
-        maxWidth: 1100,
-      }}
-    >
-      <Panel title="Agent loop"              sub="Terminal"                 rows={AGENT} />
-      <Panel title="Self-consistency triad"  sub="Insight · Archive · Core" rows={TRIAD} />
-      <Panel title="Crew pipeline"           sub="Terminal opt-in"          rows={CREW} />
-      <Panel title="Surface (mock)"          sub="Design workstation"       rows={SURFACE} />
+    <div className="core-page">
+      <div className="core-page-intro">
+        <span className="core-page-intro-title">Orchestration</span>
+        <span className="core-page-intro-sub">
+          Quatro pipelines com budgets que mantêm cada rota honesta.
+          Valores espelham o backend — agent.py e engine.py.
+        </span>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gap: "var(--space-3)",
+        }}
+      >
+        <Panel title="Agent loop"              sub="Terminal"                 rows={AGENT} />
+        <Panel title="Self-consistency triad"  sub="Insight · Archive · Core" rows={TRIAD} />
+        <Panel title="Crew pipeline"           sub="Terminal opt-in"          rows={CREW} />
+        <Panel title="Surface (mock)"          sub="Design workstation"       rows={SURFACE} />
+      </div>
     </div>
   );
 }
 
 function Panel({ title, sub, rows }: { title: string; sub: string; rows: Row[] }) {
   return (
-    <section className="panel">
+    <section className="panel" data-rank="primary">
       <div className="panel-head">
         <span className="panel-title">{title}</span>
         <span className="panel-sub">{sub}</span>
