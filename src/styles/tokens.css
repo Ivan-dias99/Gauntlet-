@@ -5059,3 +5059,308 @@ textarea {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TERMINAL — HARD REFINEMENT PASS
+   Optics · materiality · plane hierarchy. No layout changes.
+   Target: optically precise, materially elevated, gravitationally convincing.
+   Six dimensions: edge definition · composer authority · shadow stack ·
+   atmospheric field · typographic micro-contrast · plane separation.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ——— 1. EDGE DEFINITION — dual-edge on key frames ———
+   Outer border bumped to 15%. Dual-edge via inset shadow: top highlight
+   reads the upper rim; bottom shadow reads material thickness.
+   Shadow: contact (touching) · mid (lift) · ambient (presence). */
+.term-workbench-strip {
+  border-color: color-mix(in oklab, var(--text-primary) 15%, transparent);
+  box-shadow:
+    0 1px 0  color-mix(in oklab, #fff 65%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #000 4%, transparent) inset,
+    0 1px 2px  color-mix(in oklab, var(--text-primary)  5%, transparent),
+    0 5px 12px -5px  color-mix(in oklab, var(--text-primary)  9%, transparent),
+    0 20px 40px -16px color-mix(in oklab, var(--text-primary) 11%, transparent);
+}
+[data-theme="dark"] .term-workbench-strip,
+[data-theme="sepia"] .term-workbench-strip {
+  border-color: color-mix(in oklab, var(--text-primary) 15%, transparent);
+  box-shadow:
+    0 1px 0  color-mix(in oklab, #fff 7%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #000 24%, transparent) inset,
+    0 1px 3px  color-mix(in oklab, #000 36%, transparent),
+    0 6px 16px -6px  color-mix(in oklab, #000 52%, transparent),
+    0 24px 48px -18px color-mix(in oklab, #000 64%, transparent);
+}
+
+/* ——— 2. COMPOSER AUTHORITY — floating hero tool object ———
+   Outer shell radius opened to 24px (inner deck 20px → 4px mat all-round).
+   Background gradient: angled 155° so the lighter band sits at the lower
+   left, naturally lifting the eye toward the chrome.
+   Shadow pyramid: contact (opacity 6%) · mid (opacity 12%) · ambient (opacity 16%). */
+.term-command {
+  border-radius: 24px;
+  background: linear-gradient(
+    155deg,
+    color-mix(in oklab, var(--text-primary) 5%, transparent) 0%,
+    color-mix(in oklab, var(--text-primary) 2%, transparent) 55%,
+    color-mix(in oklab, var(--text-primary) 4%, transparent) 100%
+  );
+  box-shadow:
+    0 1px 2px   color-mix(in oklab, var(--text-primary)  6%, transparent),
+    0 8px 20px -8px  color-mix(in oklab, var(--text-primary) 12%, transparent),
+    0 36px 72px -28px color-mix(in oklab, var(--text-primary) 16%, transparent);
+}
+/* Focused state: ring outline + chamber-DNA mid shadow. */
+.term-command[data-focused="true"] {
+  box-shadow:
+    0 1px 2px   color-mix(in oklab, var(--text-primary)  7%, transparent),
+    0 0 0 1px   color-mix(in oklab, var(--chamber-dna, var(--ember)) 24%, transparent),
+    0 8px 24px -8px  color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent),
+    0 36px 72px -24px color-mix(in oklab, var(--text-primary) 18%, transparent);
+}
+/* Dark / sepia: shadows built from absolute black for maximal depth. */
+[data-theme="dark"] .term-command,
+[data-theme="sepia"] .term-command {
+  box-shadow:
+    0 1px 3px   color-mix(in oklab, #000 38%, transparent),
+    0 8px 22px -8px  color-mix(in oklab, #000 56%, transparent),
+    0 40px 80px -28px color-mix(in oklab, #000 70%, transparent);
+}
+[data-theme="dark"] .term-command[data-focused="true"],
+[data-theme="sepia"] .term-command[data-focused="true"] {
+  box-shadow:
+    0 1px 3px   color-mix(in oklab, #000 40%, transparent),
+    0 0 0 1px   color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent),
+    0 8px 28px -8px  color-mix(in oklab, var(--chamber-dna, var(--ember)) 22%, transparent),
+    0 40px 80px -24px color-mix(in oklab, #000 65%, transparent);
+}
+
+/* ——— 3. COMPOSER DECK — sharper plane separation ———
+   Chrome / body / workspace are three distinct micro-planes inside the
+   deck. Chrome gets a stronger bottom border (mid not soft) and a
+   dual inset to read as a real window title bar. Workspace hairline
+   strengthened from 4% to 8% (12% in dark) so the strip reads as a
+   deliberate division, not a leftover crease. */
+.term-command-deck {
+  border-radius: 20px;
+  border-color: color-mix(in oklab, var(--text-primary) 13%, transparent);
+  box-shadow:
+    0 1px 0  color-mix(in oklab, #fff 42%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #000 5%, transparent) inset;
+}
+.term-command[data-focused="true"] .term-command-deck {
+  border-color: color-mix(in oklab,
+    var(--chamber-dna, var(--ember)) 30%,
+    color-mix(in oklab, var(--text-primary) 13%, transparent));
+}
+[data-theme="dark"] .term-command-deck,
+[data-theme="sepia"] .term-command-deck {
+  border-color: color-mix(in oklab, var(--text-primary) 16%, transparent);
+  box-shadow:
+    0 1px 0  color-mix(in oklab, #fff 8%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #000 26%, transparent) inset;
+}
+.term-command-chrome {
+  border-bottom: 1px solid var(--border-color-mid);
+  background: color-mix(in oklab, var(--bg-surface) 72%, var(--bg-elevated));
+  box-shadow:
+    inset 0  1px 0 color-mix(in oklab, #fff 32%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+[data-theme="dark"] .term-command-chrome,
+[data-theme="sepia"] .term-command-chrome {
+  background: color-mix(in oklab, var(--bg-surface) 82%, var(--bg-elevated));
+  box-shadow:
+    inset 0  1px 0 color-mix(in oklab, #fff 4%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, #000 32%, transparent);
+}
+.term-command-workspace::before {
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+}
+[data-theme="dark"] .term-command-workspace::before,
+[data-theme="sepia"] .term-command-workspace::before {
+  background: color-mix(in oklab, #000 36%, transparent);
+}
+
+/* ——— 4. GREEN ATMOSPHERIC FIELD — spatial, volumetric, restrained ———
+   Rewrite of the cinematic haze. The field is anchored high (top-center
+   apex) with asymmetric side laterals and a floor well that grounds the
+   atmosphere. Five layers (::before) + three concentrated blobs (::after
+   blurred at 52px). The blurred layer inset is tightened from -40px to
+   -20px so the field stays inside the chamber, not bleeding beyond it.
+   Light theme: full amplitude. Dark/sepia: lower percentages, same shape. */
+.chamber-shell[data-chamber="terminal"]::before {
+  background:
+    radial-gradient(
+      ellipse 82% 52% at 50% 0%,
+      color-mix(in oklab, var(--cc-ok) 19%, transparent) 0%,
+      transparent 66%
+    ),
+    radial-gradient(
+      ellipse 52% 68% at -4% 36%,
+      color-mix(in oklab, var(--cc-ok) 13%, transparent) 0%,
+      transparent 56%
+    ),
+    radial-gradient(
+      ellipse 52% 68% at 104% 56%,
+      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
+      transparent 56%
+    ),
+    radial-gradient(
+      ellipse 104% 56% at 50% 114%,
+      color-mix(in oklab, var(--cc-ok) 15%, transparent) 0%,
+      transparent 64%
+    ),
+    radial-gradient(
+      ellipse 130% 88% at 50% 50%,
+      color-mix(in oklab, var(--cc-ok)  4%, transparent) 0%,
+      transparent 78%
+    );
+}
+.chamber-shell[data-chamber="terminal"]::after {
+  inset: -20px;
+  filter: blur(52px);
+  opacity: 1;
+  background:
+    radial-gradient(
+      circle 260px at 22% 20%,
+      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
+      transparent 66%
+    ),
+    radial-gradient(
+      circle 280px at 76% 82%,
+      color-mix(in oklab, var(--cc-ok)  9%, transparent) 0%,
+      transparent 66%
+    ),
+    radial-gradient(
+      circle 230px at 50% 96%,
+      color-mix(in oklab, var(--cc-ok)  8%, transparent) 0%,
+      transparent 62%
+    );
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::before {
+  background:
+    radial-gradient(
+      ellipse 82% 52% at 50% 0%,
+      color-mix(in oklab, var(--cc-ok) 14%, transparent) 0%,
+      transparent 66%
+    ),
+    radial-gradient(
+      ellipse 52% 68% at -4% 36%,
+      color-mix(in oklab, var(--cc-ok)  9%, transparent) 0%,
+      transparent 56%
+    ),
+    radial-gradient(
+      ellipse 52% 68% at 104% 56%,
+      color-mix(in oklab, var(--cc-ok)  8%, transparent) 0%,
+      transparent 56%
+    ),
+    radial-gradient(
+      ellipse 104% 56% at 50% 114%,
+      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
+      transparent 64%
+    );
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::after,
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::after {
+  opacity: 0.55;
+}
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::before {
+  background:
+    radial-gradient(
+      ellipse 82% 52% at 50% 0%,
+      color-mix(in oklab, var(--cc-ok) 10%, transparent) 0%,
+      transparent 66%
+    ),
+    radial-gradient(
+      ellipse 52% 68% at -4% 36%,
+      color-mix(in oklab, var(--cc-ok)  7%, transparent) 0%,
+      transparent 56%
+    ),
+    radial-gradient(
+      ellipse 52% 68% at 104% 56%,
+      color-mix(in oklab, var(--cc-ok)  6%, transparent) 0%,
+      transparent 56%
+    ),
+    radial-gradient(
+      ellipse 104% 56% at 50% 114%,
+      color-mix(in oklab, var(--cc-ok)  8%, transparent) 0%,
+      transparent 64%
+    );
+}
+
+/* ——— 5. TYPOGRAPHIC MICRO-CONTRAST ———
+   Three families, sharper separation. Serif display title: weight 300
+   (more editorial, optically lighter). Mono task title: weight 600
+   (commanding authority). Lead: slightly smaller with more air. Section
+   labels: 9.5px at 0.26em spacing + weight 500 (editorial smallcaps
+   feel). Kicker: wider tracking for airy attribution. Log action verbs:
+   weight 600 vs. path weight 400 — decisive hierarchy. */
+.term-output-title {
+  font-size: 38px;
+  letter-spacing: -0.03em;
+  font-weight: 300;
+}
+.term-output-title-mono {
+  font-size: 20px;
+  letter-spacing: -0.014em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.term-output-lead {
+  font-size: 15px;
+  line-height: 1.72;
+  letter-spacing: -0.003em;
+}
+.term-output-section-label {
+  font-size: 9.5px;
+  letter-spacing: 0.26em;
+  font-weight: 500;
+}
+.term-output-section-label::after {
+  opacity: 0.36;
+}
+.term-output-kicker {
+  font-size: 9.5px;
+  letter-spacing: 0.3em;
+}
+/* Log actions: weight 600 vs. path/meta at 400 for decisive hierarchy. */
+.term-output-log-row[data-variant="file"] .term-output-log-action,
+.term-output-log-row[data-variant="todo"] .term-output-log-action {
+  font-weight: 600;
+  letter-spacing: -0.004em;
+}
+.term-output-log-row[data-variant="file"] .term-output-log-path {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* ——— 6. SEND BUTTON — full levitation stack ———
+   Three-layer: contact (touches glow surface) · mid (lift halo) ·
+   ambient (diffuse presence). Hover amplifies mid and ambient only
+   so the sphere feels like it rises without exploding. */
+.term-command-send {
+  box-shadow:
+    0 1px 0  color-mix(in oklab, #fff 38%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #000 16%, transparent) inset,
+    0 1px 3px   color-mix(in oklab, var(--chamber-dna, var(--ember)) 22%, transparent),
+    0 5px 12px -3px  color-mix(in oklab, var(--chamber-dna, var(--ember)) 36%, transparent),
+    0 14px 28px -8px color-mix(in oklab, var(--chamber-dna, var(--ember)) 24%, transparent);
+}
+.term-command-send:hover:not(:disabled) {
+  box-shadow:
+    0 1px 0  color-mix(in oklab, #fff 44%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #000 18%, transparent) inset,
+    0 2px 5px   color-mix(in oklab, var(--chamber-dna, var(--ember)) 26%, transparent),
+    0 8px 20px -4px  color-mix(in oklab, var(--chamber-dna, var(--ember)) 48%, transparent),
+    0 20px 40px -10px color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent);
+}
+
+/* ——— 7. WORKBENCH ACTION HOVER — crisper affordance read ——— */
+.term-workbench-action:hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 9%, transparent);
+  color: var(--chamber-dna, var(--ember));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--chamber-dna, var(--ember)) 22%, transparent),
+    inset 0 1px 0  color-mix(in oklab, #fff 18%, transparent);
+}
