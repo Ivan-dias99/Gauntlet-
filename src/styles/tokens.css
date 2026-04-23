@@ -5739,102 +5739,99 @@ textarea {
    Objects: .term-spine · .term-workbench-strip · .term-command
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ——— Shared material tokens — light theme base ——— */
+/* ——— Shared material tokens — light theme base ———
+   IMPORTANT: bg-surface and bg are both warm creams in light theme. Mixing
+   them never produces a visible green. The plane bg must be mixed DIRECTLY
+   with cc-ok so the sage tint reads on the surface. ~10% direct cc-ok gives
+   a clearly tinted ivory that still feels paper, not painted.              */
 .chamber-shell[data-chamber="terminal"] {
-  --term-plane-bg:
-    color-mix(in oklab,
-      var(--bg-surface) 88%,
-      color-mix(in oklab, var(--cc-ok) 14%, var(--bg))
-    );
-  --term-plane-border:      color-mix(in oklab, var(--text-primary) 13%, transparent);
-  --term-plane-highlight:   color-mix(in oklab, #fff 60%, transparent);
-  --term-plane-shadow-foot: color-mix(in oklab, #000 3%, transparent);
-  --term-plane-shadow-0:    color-mix(in oklab, var(--text-primary)  5%, transparent);
-  --term-plane-shadow-1:    color-mix(in oklab, var(--text-primary) 10%, transparent);
-  --term-plane-shadow-2:    color-mix(in oklab, var(--text-primary) 13%, transparent);
+  --term-plane-bg:          color-mix(in oklab, var(--bg-surface) 90%, var(--cc-ok));
+  --term-plane-bg-hero:     color-mix(in oklab, var(--bg-surface) 94%, var(--cc-ok));
+  --term-plane-border:      color-mix(in oklab, var(--text-primary) 16%, transparent);
+  --term-plane-border-warm: color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, var(--text-primary) 12%, transparent));
+  --term-plane-highlight:   color-mix(in oklab, #fff 70%, transparent);
+  --term-plane-shadow-foot: color-mix(in oklab, var(--text-primary) 5%, transparent);
+  --term-plane-shadow-0:    color-mix(in oklab, var(--text-primary)  7%, transparent);
+  --term-plane-shadow-1:    color-mix(in oklab, var(--text-primary) 12%, transparent);
+  --term-plane-shadow-2:    color-mix(in oklab, var(--text-primary) 16%, transparent);
   --term-plane-radius:      20px;
 }
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"],
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"] {
-  --term-plane-bg:
-    color-mix(in oklab,
-      var(--bg-surface) 92%,
-      color-mix(in oklab, var(--cc-ok) 8%, var(--bg))
-    );
-  --term-plane-border:      color-mix(in oklab, var(--text-primary) 16%, transparent);
-  --term-plane-highlight:   color-mix(in oklab, #fff  7%, transparent);
-  --term-plane-shadow-foot: color-mix(in oklab, #000 20%, transparent);
-  --term-plane-shadow-0:    color-mix(in oklab, #000 34%, transparent);
-  --term-plane-shadow-1:    color-mix(in oklab, #000 50%, transparent);
-  --term-plane-shadow-2:    color-mix(in oklab, #000 62%, transparent);
+  --term-plane-bg:          color-mix(in oklab, var(--bg-surface) 92%, var(--cc-ok));
+  --term-plane-bg-hero:     color-mix(in oklab, var(--bg-surface) 95%, var(--cc-ok));
+  --term-plane-border:      color-mix(in oklab, var(--text-primary) 18%, transparent);
+  --term-plane-border-warm: color-mix(in oklab, var(--cc-ok) 28%, color-mix(in oklab, var(--text-primary) 14%, transparent));
+  --term-plane-highlight:   color-mix(in oklab, #fff  8%, transparent);
+  --term-plane-shadow-foot: color-mix(in oklab, #000 22%, transparent);
+  --term-plane-shadow-0:    color-mix(in oklab, #000 36%, transparent);
+  --term-plane-shadow-1:    color-mix(in oklab, #000 52%, transparent);
+  --term-plane-shadow-2:    color-mix(in oklab, #000 64%, transparent);
 }
 
-/* ——— LEFT SPINE — atmospheric tint, shared material ———
-   Replace the flat bg-surface with the tinted plane token so the spine
-   no longer reads as a white block that's been dropped onto the green field.
-   Radius, outline, and shadow stack adopt the shared grammar.            */
+/* ——— LEFT SPINE — sage-tinted ivory, shared material ———
+   Surface = bg-surface 90% + cc-ok 10% — clearly tinted, not white.
+   Border and shadows inherit the shared plane grammar.                    */
 .term-spine {
   background: var(--term-plane-bg, var(--bg-surface));
-  border-color: var(--term-plane-border, color-mix(in oklab, var(--text-primary) 13%, transparent));
+  border-color: var(--term-plane-border, color-mix(in oklab, var(--text-primary) 16%, transparent));
   box-shadow:
-    0  1px 0 var(--term-plane-highlight, color-mix(in oklab, #fff 60%, transparent)) inset,
-    0 -1px 0 var(--term-plane-shadow-foot, color-mix(in oklab, #000 3%, transparent)) inset,
-    0  1px 2px  var(--term-plane-shadow-0, color-mix(in oklab, var(--text-primary)  5%, transparent)),
-    0  5px 14px -5px  var(--term-plane-shadow-1, color-mix(in oklab, var(--text-primary) 10%, transparent)),
-    0 22px 44px -16px var(--term-plane-shadow-2, color-mix(in oklab, var(--text-primary) 13%, transparent));
+    0  1px 0 var(--term-plane-highlight, color-mix(in oklab, #fff 70%, transparent)) inset,
+    0 -1px 0 var(--term-plane-shadow-foot, color-mix(in oklab, var(--text-primary) 5%, transparent)) inset,
+    0  1px 2px  var(--term-plane-shadow-0, color-mix(in oklab, var(--text-primary)  7%, transparent)),
+    0  5px 14px -5px  var(--term-plane-shadow-1, color-mix(in oklab, var(--text-primary) 12%, transparent)),
+    0 22px 44px -16px var(--term-plane-shadow-2, color-mix(in oklab, var(--text-primary) 16%, transparent));
 }
 
-/* ——— WORKBENCH STRIP — radius family + material token ———
-   Bump border-radius from 14px → 18px to close the gap with the spine
-   (20px) and the composer outer shell (24px). All three now share the
-   same radius family (24 → 20 → 18), reading as a coherent set.
-   Surface adopts the plane token for the same subtle atmospheric tint.  */
+/* ——— WORKBENCH STRIP — radius locked to the family ———
+   Bump border-radius 14px → 20px so it matches the spine exactly. The
+   composer's outer shell is 24px, the inner deck is 20px, the spine is
+   20px, the strip is 20px. One radius family across all framed objects.
+   Surface picks up sage tint from --term-plane-bg.                         */
 .term-workbench-strip {
-  border-radius: 18px;
+  border-radius: 20px;
   background: var(--term-plane-bg, var(--bg-surface));
-  border-color: var(--term-plane-border, color-mix(in oklab, var(--text-primary) 13%, transparent));
+  border-color: var(--term-plane-border, color-mix(in oklab, var(--text-primary) 16%, transparent));
   box-shadow:
-    0  1px 0 var(--term-plane-highlight, color-mix(in oklab, #fff 60%, transparent)) inset,
-    0 -1px 0 var(--term-plane-shadow-foot, color-mix(in oklab, #000 3%, transparent)) inset,
-    0  1px 2px  var(--term-plane-shadow-0, color-mix(in oklab, var(--text-primary)  5%, transparent)),
-    0  5px 12px -5px  var(--term-plane-shadow-1, color-mix(in oklab, var(--text-primary) 10%, transparent)),
-    0 20px 40px -16px var(--term-plane-shadow-2, color-mix(in oklab, var(--text-primary) 13%, transparent));
+    0  1px 0 var(--term-plane-highlight, color-mix(in oklab, #fff 70%, transparent)) inset,
+    0 -1px 0 var(--term-plane-shadow-foot, color-mix(in oklab, var(--text-primary) 5%, transparent)) inset,
+    0  1px 2px  var(--term-plane-shadow-0, color-mix(in oklab, var(--text-primary)  7%, transparent)),
+    0  5px 14px -5px  var(--term-plane-shadow-1, color-mix(in oklab, var(--text-primary) 12%, transparent)),
+    0 22px 44px -16px var(--term-plane-shadow-2, color-mix(in oklab, var(--text-primary) 16%, transparent));
   z-index: 2;
   position: relative;
 }
 
-/* ——— COMPOSER — adopt the plane token for tinted surface ———
-   Composer already has the correct radius and shadow pyramid from the
-   hard-refinement pass. This touch only aligns the surface tint so all
-   three plane objects have the same atmospheric relationship.             */
+/* ——— COMPOSER — hero plane, slightly less tint, more substance ———
+   Hero plane uses --term-plane-bg-hero (94% surface + 6% cc-ok), a touch
+   lighter than spine/strip so the composer reads as the brightest object
+   in the room. Same gradient angle as the previous pass for lift.          */
 .term-command {
   background: linear-gradient(
     155deg,
-    color-mix(in oklab, var(--term-plane-bg, var(--bg-surface)) 96%, transparent) 0%,
-    var(--term-plane-bg, var(--bg-surface)) 55%,
-    color-mix(in oklab, var(--term-plane-bg, var(--bg-surface)) 97%, transparent) 100%
+    color-mix(in oklab, var(--term-plane-bg-hero, var(--bg-surface)) 97%, transparent) 0%,
+    var(--term-plane-bg-hero, var(--bg-surface)) 55%,
+    color-mix(in oklab, var(--term-plane-bg-hero, var(--bg-surface)) 98%, transparent) 100%
   );
   z-index: 2;
   position: relative;
 }
 
-/* ——— ACTIVE ROW — restrained precision, not a pill ———
-   Background tint halved (8% → 4%). The left inset indicator thickened
-   from 2px → 3px so it carries the full semantic weight without needing
-   the heavy fill. Icon snaps to cc-ok; label lifts to primary.           */
+/* ——— ACTIVE ROW — no pill at all, indicator carries the read ———
+   Background fill removed entirely. The left inset indicator thickens
+   to 3px and the row gains a faint cc-ok glow only along its left edge
+   (radial-gradient inset shadow). Label/icon shift to full primary +
+   cc-ok. Reads instantly as active without any pill silhouette.           */
 .term-spine-item[data-active="true"] {
-  background: color-mix(in oklab, var(--cc-ok) 4%, transparent);
+  background: transparent;
   color: var(--text-primary);
-  box-shadow:
-    inset 0  1px 0 color-mix(in oklab, #fff 22%, transparent),
-    inset 3px 0 0 var(--cc-ok);
+  font-weight: 500;
+  box-shadow: inset 3px 0 0 var(--cc-ok);
 }
 [data-theme="dark"] .term-spine-item[data-active="true"],
 [data-theme="sepia"] .term-spine-item[data-active="true"] {
-  background: color-mix(in oklab, var(--cc-ok) 7%, transparent);
-  box-shadow:
-    inset 0  1px 0 color-mix(in oklab, #fff 4%, transparent),
-    inset 3px 0 0 var(--cc-ok);
+  background: transparent;
+  box-shadow: inset 3px 0 0 var(--cc-ok);
 }
 
 /* ——— CONTENT CONTRAST — stronger differential ———
