@@ -25,7 +25,7 @@ export default function Thread({
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 14,
+        gap: "var(--space-3)",
       }}
     >
       {notes.map((n) => (
@@ -115,20 +115,20 @@ function TurnRow({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          gap: "var(--space-2)",
           fontFamily: "var(--mono)",
-          fontSize: 9.5,
-          letterSpacing: "var(--track-meta)",
+          fontSize: "var(--t-micro)",
+          letterSpacing: "var(--track-label)",
           textTransform: "uppercase",
         }}
       >
-        <span style={{ width: 5, height: 5, borderRadius: "50%", background: dotColor }} />
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
         <span style={{ color: labelColor }}>{label}</span>
         <span
           style={{
             color: "var(--text-ghost)",
             marginLeft: "auto",
-            letterSpacing: 0.5,
+            letterSpacing: "var(--track-meta)",
           }}
         >
           {new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -156,12 +156,12 @@ function TurnRow({
             background: "transparent",
             border: "1px dashed color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 45%, var(--border-soft))",
             fontFamily: "var(--mono)",
-            fontSize: 10,
-            letterSpacing: "var(--track-meta)",
+            fontSize: "var(--t-micro)",
+            letterSpacing: "var(--track-label)",
             textTransform: "uppercase",
             color: "var(--text-muted)",
             padding: "4px 10px",
-            marginTop: 4,
+            marginTop: "var(--space-1)",
             borderRadius: "var(--radius-pill)",
             cursor: "pointer",
             transition: "color .16s var(--ease-swift), border-color .16s var(--ease-swift), background .16s var(--ease-swift)",
@@ -182,50 +182,41 @@ function TurnRow({
       )}
       {canPromote && promoting && (
         <div
+          data-insight-promote-confirm
           style={{
-            marginTop: 6,
-            paddingTop: 8,
+            marginTop: "var(--space-1)",
+            paddingTop: "var(--space-2)",
             borderTop: "1px dashed var(--border-soft)",
             display: "flex",
             alignItems: "center",
-            gap: 14,
-            fontFamily: "var(--mono)",
-            fontSize: 10,
-            letterSpacing: "var(--track-meta)",
-            textTransform: "uppercase",
+            gap: "var(--space-2)",
+            flexWrap: "wrap",
           }}
         >
-          <span style={{ color: "var(--text-muted)" }}>— transferir para terminal</span>
-          <button
-            onClick={onPromoteConfirm}
+          <span
             style={{
-              marginLeft: "auto",
-              background: "none",
-              border: "none",
-              color: "var(--cc-ok)",
-              font: "inherit",
-              letterSpacing: "inherit",
-              textTransform: "inherit",
-              padding: 0,
-              cursor: "pointer",
+              fontFamily: "var(--mono)",
+              fontSize: "var(--t-micro)",
+              letterSpacing: "var(--track-label)",
+              textTransform: "uppercase",
+              color: "var(--text-ghost)",
             }}
           >
-            ↵ confirmar
+            — transferir para terminal
+          </span>
+          <button
+            onClick={onPromoteConfirm}
+            className="btn-chip"
+            data-variant="ok"
+            style={{ marginLeft: "auto" }}
+          >
+            confirmar ↵
           </button>
           <button
             onClick={onPromoteCancel}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-ghost)",
-              font: "inherit",
-              letterSpacing: "inherit",
-              textTransform: "inherit",
-              padding: 0,
-              cursor: "pointer",
-            }}
+            className="btn-chip"
           >
-            esc cancelar
+            cancelar esc
           </button>
         </div>
       )}

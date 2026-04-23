@@ -36,6 +36,13 @@ export default function Composer({
 
   const canSubmit = value.trim().length > 0 && !pending;
 
+  // Panel border tint: chamber-DNA on focus, soft otherwise. Keeps the
+  // composer reactive to focus without relying on the textarea's own
+  // outline (which we suppress for visual calm).
+  const panelBorder = focused
+    ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, var(--border))"
+    : "var(--border-soft)";
+
   return (
     <div
       data-insight-composer
@@ -43,12 +50,13 @@ export default function Composer({
       style={{
         margin: "0 clamp(20px, 5vw, 64px) var(--space-3)",
         background: "var(--bg-surface)",
-        border: "var(--border-soft)",
+        border: panelBorder,
         borderRadius: "var(--radius-panel)",
         padding: "var(--space-3)",
         display: "flex",
         flexDirection: "column",
         gap: "var(--space-2)",
+        transition: "border-color .15s var(--ease-swift)",
       }}
     >
       <div
@@ -64,78 +72,38 @@ export default function Composer({
       >
         {voiceLabel}
       </div>
-      <div
-        style={{
-          borderRadius: "var(--radius-control)",
-          border: "var(--border-mid)",
-          background: "var(--bg-input)",
-          padding: "10px 14px",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 12,
+      <textarea
+        ref={inputRef}
+        autoFocus
+        rows={1}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            if (!pending) onSubmit();
+          }
         }}
-      >
-        <span
-          className={pending ? "breathe" : ""}
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: pending
-              ? "var(--cc-info)"
-              : "color-mix(in oklab, var(--chamber-dna, var(--cc-prompt)) 80%, transparent)",
-            boxShadow: `0 0 0 4px color-mix(in oklab, ${pending ? "var(--cc-info)" : "var(--chamber-dna, var(--cc-prompt))"} 22%, transparent)`,
-            flexShrink: 0,
-            marginTop: 10,
-          }}
-        />
-        <textarea
-          ref={inputRef}
-          autoFocus
-          rows={1}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              if (!pending) onSubmit();
-            }
-          }}
-          placeholder={placeholder}
-          disabled={pending}
-          style={{
-            flex: 1,
-            fontSize: "var(--t-body)",
-            color: "var(--text-primary)",
-            fontFamily: "var(--sans)",
-            lineHeight: "var(--lh-body)",
-            opacity: pending ? 0.55 : 1,
-            padding: "6px 0",
-            minHeight: 24,
-            maxHeight: 180,
-            resize: "none",
-            background: "transparent",
-            border: "none",
-            outline: "none",
-          }}
-        />
-        {value.length > 0 && (
-          <span
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: "var(--t-micro)",
-              color: "var(--text-ghost)",
-              letterSpacing: "var(--track-meta)",
-              marginTop: 10,
-              flexShrink: 0,
-            }}
-          >
-            {value.length}
-          </span>
-        )}
-      </div>
+        placeholder={placeholder}
+        disabled={pending}
+        style={{
+          width: "100%",
+          fontSize: "var(--t-body)",
+          color: "var(--text-primary)",
+          fontFamily: "var(--sans)",
+          lineHeight: "var(--lh-body)",
+          opacity: pending ? 0.55 : 1,
+          padding: "6px 0",
+          minHeight: 28,
+          maxHeight: 180,
+          resize: "none",
+          background: "transparent",
+          border: "none",
+          outline: "none",
+        }}
+      />
       <div
         style={{
           display: "flex",
