@@ -262,11 +262,13 @@ export default function Insight() {
 
   return (
     <div className="chamber-shell" data-chamber="insight">
+      {/* Principles count lives in the context strip below — the head
+          does not duplicate it. Mock flag stays because it's chamber-
+          agnostic and readers expect it where the chamber identity is. */}
       <ChamberHead
         kicker={copy.labKicker}
         tagline={copy.labTagline}
         mock={backend.mode === "mock"}
-        principlesCount={principles.length}
       />
       <InsightLayout strip={strip} scroll={scroll} floor={floor} />
     </div>

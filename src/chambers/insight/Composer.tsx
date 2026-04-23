@@ -114,9 +114,12 @@ export default function Composer({
           <span className="insight-composer-glyph">≡</span>
         </button>
 
-        <span className="insight-composer-hint">
-          {pending ? "a processar…" : focused ? "↵ enviar · ⇧↵ nova linha" : voiceLabel}
-        </span>
+        {(pending || focused) && (
+          <span className="insight-composer-hint">
+            {pending ? "a processar…" : "↵ enviar · ⇧↵ nova linha"}
+          </span>
+        )}
+        {!pending && !focused && <span style={{ flex: 1 }} aria-hidden />}
 
         <button
           type="button"

@@ -143,8 +143,8 @@ function TurnRow({
           <button
             onClick={onPromoteRequest}
             data-insight-promote
-            className="btn-chip"
-            data-variant="sans"
+            className="turn-row-promote"
+            title="passar esta resposta para uma tarefa no Terminal"
           >
             → terminal
           </button>
