@@ -9,12 +9,11 @@ interface Props {
   onSelectArtifact: (a: Artifact) => void;
 }
 
-const COLLAPSED_LIMIT = 5;
+const COLLAPSED_LIMIT = 4;
 
-// ArtifactLedger — the mission's sealed archive. Built on the shared
-// .panel + .ledger-row grammar: kicker at the top, ledger rows below,
-// optional expand chip. Left-hairline on each row encodes clickability
-// via --tone (ok for clickable, ghost for non-clickable).
+// Mission archive — demoted from a panel to a quiet chamber foot.
+// Hairline above, ghost rows, expand-on-click to see all. Never
+// competes with the command surface or the exec canvas above.
 export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact }: Props) {
   const [expanded, setExpanded] = useState(false);
   const total = artifacts.length;
@@ -38,46 +37,31 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
     return en ? `${d}d ago` : `há ${d}d`;
   };
 
-  const replayLabel = lang === "en" ? "↺ replay" : "↺ retomar";
-  const interruptedLabel = lang === "en" ? "cut short" : "terminação antecipada";
-
   return (
-    <section
-      className="panel"
-      style={{ marginTop: "var(--space-4)", maxWidth: 860 }}
-    >
-      <div className="panel-head">
-        <span className="status-dot" data-tone="ok" />
-        <span className="kicker">{copy.recentArtifacts}</span>
-        {artifacts.length > 0 && (
-          <span className="kicker" data-tone="ghost">· {artifacts.length}</span>
+    <section className="term-ledger-foot">
+      <div className="term-ledger-foot-head">
+        <span className="kicker" data-tone="ghost">{copy.recentArtifacts}</span>
+        {total > 0 && (
+          <span className="kicker" data-tone="muted">· {total}</span>
         )}
         {termEarly > 0 && (
-          <span
-            className="kicker"
-            data-tone="warn"
-            title={lang === "en"
-              ? `${termEarly} terminated early`
-              : `${termEarly} terminação${termEarly === 1 ? "" : "ões"} antecipada${termEarly === 1 ? "" : "s"}`}
-          >
-            · ⚠ {termEarly}
-          </span>
+          <span className="kicker" data-tone="warn">· ⚠ {termEarly}</span>
         )}
         {hasMore && (
           <button
             onClick={() => setExpanded((v) => !v)}
             className="btn-chip"
-            style={{ marginLeft: "auto" }}
+            style={{ marginLeft: "auto", padding: "2px 8px" }}
           >
             {expanded
-              ? (lang === "en" ? "↑ collapse" : "↑ recolher")
-              : (lang === "en" ? `↓ show all (${total})` : `↓ ver todos (${total})`)}
+              ? (lang === "en" ? "collapse" : "recolher")
+              : (lang === "en" ? `show all (${total})` : `ver todos (${total})`)}
           </button>
         )}
       </div>
 
       {total === 0 ? (
-        <div
+        <span
           className="kicker"
           data-tone="ghost"
           style={{
@@ -89,79 +73,40 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
           }}
         >
           {copy.artifactEmpty}
-        </div>
+        </span>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        <div>
           {visible.map((a) => {
-            const preview = a.answer
-              ? (a.answer.length > 140 ? a.answer.slice(0, 140) + "…" : a.answer)
-              : "—";
             const clickable = Boolean(a.taskId);
-
             return (
               <div
                 key={a.id}
+                className="term-ledger-foot-row fadeIn"
+                data-clickable={clickable ? "true" : "false"}
                 onClick={clickable ? () => onSelectArtifact(a) : undefined}
-                className="fadeIn ledger-row"
-                data-tone={a.terminatedEarly ? "warn" : "ok"}
-                style={{
-                  fontFamily: "var(--mono)",
-                  cursor: clickable ? "pointer" : "default",
-                  flexDirection: "column",
-                  alignItems: "stretch",
-                }}
               >
-                <div
+                <span
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "var(--space-2)",
-                    marginBottom: 4,
+                    color: a.terminatedEarly ? "var(--cc-warn)" : "var(--cc-ok)",
+                    fontSize: 11,
+                    lineHeight: 1,
                   }}
+                  aria-hidden
                 >
-                  <span className="status-dot" data-tone={a.terminatedEarly ? "warn" : "ok"} />
-                  <span className="kicker" data-tone={a.terminatedEarly ? "warn" : "ok"}>
-                    {a.terminatedEarly ? interruptedLabel : "selado"}
-                  </span>
-                  <span className="kicker" data-tone="ghost">
-                    · {fmtRel(a.acceptedAt)}
-                  </span>
-                  {clickable && (
-                    <span
-                      className="kicker"
-                      data-tone="ghost"
-                      style={{ marginLeft: "auto" }}
-                    >
-                      {replayLabel}
-                    </span>
-                  )}
-                </div>
-                <div
-                  style={{
-                    fontSize: "var(--t-body)",
-                    fontFamily: "var(--sans)",
-                    color: "var(--text-primary)",
-                    fontWeight: 500,
-                    lineHeight: 1.4,
-                    marginBottom: 4,
-                    letterSpacing: "-0.005em",
-                  }}
-                >
+                  ◆
+                </span>
+                <span className="term-ledger-foot-title" title={a.taskTitle}>
                   {a.taskTitle}
-                </div>
-                <div
-                  style={{
-                    fontSize: "var(--t-body-sec)",
-                    color: a.terminatedEarly && !a.answer
-                      ? "var(--cc-warn)"
-                      : "var(--text-muted)",
-                    fontFamily: "var(--mono)",
-                    lineHeight: 1.5,
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {preview}
-                </div>
+                </span>
+                <span className="term-ledger-foot-meta">
+                  {fmtRel(a.acceptedAt)}
+                  {a.terminatedEarly && (
+                    <span style={{ color: "var(--cc-warn)" }}> · parcial</span>
+                  )}
+                  {clickable && (
+                    <span style={{ opacity: 0.55 }}> · {lang === "en" ? "↺" : "↺"}</span>
+                  )}
+                </span>
               </div>
             );
           })}

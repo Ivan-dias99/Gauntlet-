@@ -37,9 +37,10 @@ export function WorkbenchCard({
   missionTitle, task, resumed, copy, lang, pending, iteration, elapsed,
   openCount, runningCount, doneCount, blockedCount, staleCount, onReopen,
 }: WorkbenchProps) {
-  const isLive = pending || (task !== null && task.state === "running");
+  // Slim bench bar — replaces the fat .workbench card. One compact row
+  // with hairlines above and below; no panel surface. The heavy lifting
+  // has moved to the ContextStrip head + term-command input below.
   const stale = task ? isStaleRunning(task) : false;
-  const tone = task ? STATE_TONE[task.state] : "ghost";
   const bottleneckBits: string[] = [];
   if (blockedCount > 0) {
     bottleneckBits.push(
@@ -57,120 +58,101 @@ export function WorkbenchCard({
   }
   const bottleneck = bottleneckBits.length > 0 ? bottleneckBits.join(" · ") : null;
 
-  return (
-    <div
-      className="fadeIn workbench"
-      data-tone={tone}
-      data-live={isLive ? "true" : undefined}
-      style={{ marginBottom: "var(--space-3)" }}
-    >
-      <div className="workbench-head">
-        <span className="kicker">{copy.workbench}</span>
-        <span className="kicker" data-tone="ghost">/</span>
-        <span
-          style={{
-            fontFamily: "var(--sans)",
-            fontSize: "var(--t-body-sec)",
-            color: "var(--text-secondary)",
-            maxWidth: 260,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {missionTitle}
-        </span>
-        {resumed && task && (
-          <span className="kicker" data-tone="info" style={{ marginLeft: "auto" }}>
-            ↺ {copy.resumeHint}
-          </span>
-        )}
-      </div>
+  // Silence unused-prop lint noise while preserving the call signature.
+  void missionTitle;
 
-      {task ? (
+  if (!task) {
+    return (
+      <div className="fadeIn term-bench" data-empty="true">
+        <span className="kicker">{copy.workbench}</span>
+        <span className="term-bench-empty">{copy.noActiveTask}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fadeIn term-bench">
+      <span className="kicker" data-tone="ghost">{copy.workbench}</span>
+      <span
+        className="status-dot"
+        data-tone={STATE_TONE[task.state]}
+        data-pulse={pending || task.state === "running" ? "true" : undefined}
+      />
+      <span
+        className="term-bench-title"
+        data-done={task.state === "done" ? "true" : undefined}
+        title={task.title}
+      >
+        {task.title}
+      </span>
+
+      <StatePill state={task.state} copy={copy} />
+
+      <span className="term-bench-sep">·</span>
+      <span
+        className="kicker"
+        data-tone={stale ? "warn" : "ghost"}
+        title={new Date(task.lastUpdateAt).toLocaleString()}
+      >
+        {relTime(task.lastUpdateAt, lang)}
+      </span>
+
+      {pending && (
         <>
-          <div
-            className="workbench-body"
-            data-done={task.state === "done" ? "true" : undefined}
-          >
-            {task.title}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <StatePill state={task.state} copy={copy} />
-            <span className="kicker" data-tone="ghost">
-              {sourceLabel(task.source, copy)}
-            </span>
-            <span
-              title={new Date(task.lastUpdateAt).toLocaleString()}
-              className="kicker"
-              data-tone={stale ? "warn" : "ghost"}
-            >
-              · {relTime(task.lastUpdateAt, lang)}
-            </span>
-            {stale && (
-              <span className="kicker" data-tone="warn">
-                ⚠ {lang === "en" ? "stalled" : "parada"}
-              </span>
-            )}
-            {task.artifactId && (
-              <span className="state-pill" data-tone="ok">
-                <span className="state-pill-dot" />
-                {copy.artifactChip}
-              </span>
-            )}
-            {pending && (
-              <span className="kicker" data-tone="info" style={{ marginLeft: "auto" }}>
-                ● iter {iteration} · {elapsed.toFixed(1)}s
-              </span>
-            )}
-            {task.state === "blocked" && !pending && (
-              <button
-                onClick={onReopen}
-                className="btn-chip"
-                style={{ marginLeft: "auto", color: "var(--cc-warn)", borderColor: "color-mix(in oklab, var(--cc-warn) 40%, transparent)" }}
-              >
-                {copy.actionUnblock}
-              </button>
-            )}
-          </div>
+          <span className="term-bench-sep">·</span>
+          <span className="term-bench-counter">
+            <span className="term-bench-counter-label">iter</span>
+            <span className="term-bench-counter-value" data-tone="info">{iteration}</span>
+          </span>
+          <span className="term-bench-counter">
+            <span className="term-bench-counter-label">t</span>
+            <span className="term-bench-counter-value" data-tone="info">{elapsed.toFixed(1)}s</span>
+          </span>
         </>
-      ) : (
-        <div
-          style={{
-            fontSize: "var(--t-body-sec)",
-            color: "var(--text-muted)",
-            fontStyle: "italic",
-            fontFamily: "var(--sans)",
-          }}
-        >
-          {copy.noActiveTask}
-        </div>
       )}
 
-      <div className="workbench-foot">
-        <span>{copy.taskStateOpen}: {openCount}</span>
-        <span style={{ color: runningCount > 0 ? "var(--cc-info)" : undefined }}>
-          {copy.taskStateRunning}: {runningCount}
+      <span className="term-bench-counter" style={{ marginLeft: "auto" }}>
+        <span className="term-bench-counter-label">tasks</span>
+        <span
+          className="term-bench-counter-value"
+          data-tone={
+            blockedCount > 0 ? "err" :
+            runningCount > 0 ? "info" :
+            doneCount > 0 ? "ok" : undefined
+          }
+        >
+          {doneCount}/{openCount + runningCount + doneCount + blockedCount}
         </span>
-        <span style={{ color: doneCount > 0 ? "var(--cc-ok)" : undefined }}>
-          {copy.taskStateDone}: {doneCount}
-        </span>
-        <span style={{ color: blockedCount > 0 ? "var(--cc-err)" : undefined }}>
-          {copy.taskStateBlocked}: {blockedCount}
-        </span>
-        {bottleneck && (
-          <span
-            className="kicker"
-            data-tone="warn"
-            style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <span>⚠</span>
-            <span>{lang === "en" ? "bottleneck" : "gargalo"}: {bottleneck}</span>
-          </span>
-        )}
-      </div>
+      </span>
 
-      {isLive && <div className="thinking-strip" aria-hidden />}
+      {bottleneck && (
+        <span
+          className="kicker"
+          data-tone="warn"
+          title={`⚠ ${bottleneck}`}
+        >
+          ⚠ {bottleneck}
+        </span>
+      )}
+
+      {task.state === "blocked" && !pending && (
+        <button
+          onClick={onReopen}
+          className="btn-chip"
+          style={{
+            color: "var(--cc-warn)",
+            borderColor: "color-mix(in oklab, var(--cc-warn) 40%, transparent)",
+          }}
+        >
+          {copy.actionUnblock}
+        </button>
+      )}
+
+      {resumed && (
+        <span className="kicker" data-tone="info" style={{ marginLeft: "auto" }}>
+          ↺ {copy.resumeHint}
+        </span>
+      )}
     </div>
   );
 }

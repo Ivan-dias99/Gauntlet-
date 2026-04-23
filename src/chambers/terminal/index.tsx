@@ -428,46 +428,25 @@ export default function Terminal() {
           />
         )}
 
-        {tasks.length === 0 && liveTools.length === 0 && !liveText && !pending && !err && (
-          <section
-            className="exec-shell fadeIn"
-            data-state="idle"
-            style={{ marginTop: "var(--space-2)" }}
+        {tasks.length === 0 && liveTools.length === 0 && !liveText && !pending && !err && activeMission && (
+          <div
+            className="fadeIn"
+            style={{
+              maxWidth: 860,
+              margin: "0 auto var(--space-2)",
+              padding: "var(--space-4) 2px",
+              fontFamily: "var(--serif)",
+              fontStyle: "italic",
+              fontSize: "var(--t-section)",
+              lineHeight: 1.45,
+              color: "var(--text-muted)",
+              letterSpacing: "-0.005em",
+            }}
           >
-            <header className="exec-shell-bar">
-              <span className="exec-shell-dots" aria-hidden><span /><span /><span /></span>
-              <span className="exec-shell-title">
-                <strong>signal</strong>
-                <span style={{ color: "var(--text-muted)" }}> · </span>
-                <span style={{ color: "var(--cc-path)" }}>~/mission</span>
-              </span>
-              <span className="exec-shell-phase">ready</span>
-            </header>
-            <div className="exec-shell-body" style={{ minHeight: 120 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-                <span style={{ color: "var(--cc-ok)" }}>signal@local</span>
-                <span style={{ color: "var(--cc-dim)" }}>:</span>
-                <span style={{ color: "var(--cc-path)" }}>~/mission</span>
-                <span style={{ color: "var(--cc-dim)" }}>$</span>
-                <span className="cc-cursor" />
-              </div>
-              <div
-                style={{
-                  fontFamily: "var(--serif)",
-                  fontStyle: "italic",
-                  fontSize: "var(--t-section)",
-                  lineHeight: 1.45,
-                  color: "var(--text-secondary)",
-                  letterSpacing: "-0.005em",
-                  maxWidth: 620,
-                }}
-              >
-                {values.lang === "en"
-                  ? "Declare a task. It becomes a command. The command has consequence."
-                  : "Declare uma tarefa. Ela vira comando. O comando tem consequência."}
-              </div>
-            </div>
-          </section>
+            {values.lang === "en"
+              ? "Declare a task. It becomes a command. The command has consequence."
+              : "Declare uma tarefa. Ela vira comando. O comando tem consequência."}
+          </div>
         )}
 
         <TaskList
@@ -542,6 +521,7 @@ export default function Terminal() {
         onChange={setInput}
         onSubmit={submit}
         pending={pending}
+        missionTitle={activeMission?.title ?? null}
       />
     </div>
   );
