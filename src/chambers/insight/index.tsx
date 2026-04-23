@@ -44,13 +44,19 @@ export default function Insight() {
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Esc closes any pending handoff confirm.
+  // Esc closes a pending handoff confirm; during a streaming call it
+  // aborts the in-flight request. Promote-confirm wins when both are
+  // open simultaneously — it is the more recent user intent.
   useEffect(() => {
-    if (!promoteId) return;
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setPromoteId(null); };
+    if (!promoteId && !pending) return;
+    const h = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (promoteId) { setPromoteId(null); return; }
+      if (pending) abortRef.current?.abort();
+    };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [promoteId]);
+  }, [promoteId, pending]);
 
   // Scroll to bottom on new activity.
   useEffect(() => {
@@ -219,6 +225,26 @@ export default function Insight() {
         </span>
       );
     }
+    // Calm state — name the active mission so the chamber identifies
+    // its scope, mirroring Archive's head right-slot grammar.
+    if (activeMission) {
+      const title = activeMission.title.length > 48
+        ? activeMission.title.slice(0, 45).trimEnd() + "…"
+        : activeMission.title;
+      return (
+        <span
+          style={{
+            fontSize: "var(--t-micro)",
+            color: "var(--text-ghost)",
+            fontFamily: "var(--mono)",
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+          }}
+        >
+          missão · {title}
+        </span>
+      );
+    }
     return null;
   })();
 
@@ -294,6 +320,35 @@ export default function Insight() {
                 <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {live.lastEventLabel}
                 </span>
+                <button
+                  onClick={() => abortRef.current?.abort()}
+                  data-insight-abort
+                  title="Parar — Esc"
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: "var(--t-micro)",
+                    letterSpacing: "var(--track-label)",
+                    textTransform: "uppercase",
+                    color: "var(--cc-err)",
+                    background: "transparent",
+                    border: "1px solid color-mix(in oklab, var(--cc-err) 38%, transparent)",
+                    borderRadius: "var(--radius-pill)",
+                    padding: "3px 10px",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    transition: "background .15s var(--ease-swift), border-color .15s var(--ease-swift)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "color-mix(in oklab, var(--cc-err) 10%, transparent)";
+                    e.currentTarget.style.borderColor = "color-mix(in oklab, var(--cc-err) 60%, transparent)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.borderColor = "color-mix(in oklab, var(--cc-err) 38%, transparent)";
+                  }}
+                >
+                  parar esc
+                </button>
               </div>
             )}
 

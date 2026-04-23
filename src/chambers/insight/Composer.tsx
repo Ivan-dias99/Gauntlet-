@@ -118,7 +118,7 @@ export default function Composer({
           data-variant="sans"
           style={{ opacity: canSubmit ? 1 : 0.45 }}
         >
-          {pending ? "a processar…" : "enviar ↵"}
+          {pending ? "a processar…" : "perguntar ↵"}
         </button>
         <span
           style={{
