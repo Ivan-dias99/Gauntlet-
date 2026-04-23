@@ -395,8 +395,6 @@ export default function Terminal() {
         copy={copy}
         backendMode={backend.mode}
         principlesCount={principles.length}
-        mode={mode}
-        onModeChange={setMode}
         pending={pending}
         elapsed={elapsed}
         exitCode={exitCode}
@@ -522,6 +520,13 @@ export default function Terminal() {
         onSubmit={submit}
         pending={pending}
         missionTitle={activeMission?.title ?? null}
+        mode={mode}
+        onModeChange={setMode}
+        recentTasks={tasks.slice(0, 8)}
+        onPickTask={(title) => setInput(title)}
+        principlesCount={principles.length}
+        priorTurns={activeMission?.notes?.length ?? 0}
+        mockMode={backend.mode === "mock"}
       />
     </div>
   );

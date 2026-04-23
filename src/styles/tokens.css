@@ -3581,3 +3581,209 @@ textarea {
 /* Hide the old Terminal .run-header if it ever reappears from a
    stale build. Defensive — not expected. */
 .run-header { display: none; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TERMINAL TOOLS — affordances + workspace bar (Claude-Code-class)
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Affordance toolbar inside the term-command chrome (between phase
+   pill and the body). Compact icon buttons; no text. Each has a
+   flyout below with honest enumeration of what Terminal really
+   carries. */
+.term-command-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: var(--space-2);
+}
+.term-tool {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-swift),
+              background var(--dur-fast) var(--ease-swift),
+              border-color var(--dur-fast) var(--ease-swift);
+  padding: 0;
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1;
+  position: relative;
+}
+.term-tool:hover {
+  color: var(--chamber-dna, var(--ember));
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, transparent);
+}
+.term-tool[data-active="true"] {
+  color: var(--chamber-dna, var(--ember));
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 12%, transparent);
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, transparent);
+}
+.term-tool[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+/* Workspace bar — bottom of the term-command. Shows project /
+   branch / backend mode / chamber profile. Always visible: matches
+   the workspace row Claude Code carries beneath its prompt. */
+.term-command-workspace {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px var(--space-3);
+  background: color-mix(in oklab, var(--bg-sunken) 60%, var(--bg-elevated));
+  border-top: 1px solid var(--border-color-soft);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--text-ghost);
+  flex-wrap: wrap;
+}
+.term-ws-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color-soft);
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+}
+.term-ws-chip-glyph {
+  font-size: 11px;
+  opacity: 0.85;
+  color: var(--chamber-dna, var(--ember));
+}
+.term-ws-chip[data-tone="warn"] {
+  color: var(--cc-warn);
+  border-color: color-mix(in oklab, var(--cc-warn) 30%, transparent);
+}
+.term-ws-chip[data-tone="ok"] {
+  color: var(--cc-ok);
+  border-color: color-mix(in oklab, var(--cc-ok) 30%, transparent);
+}
+.term-ws-spacer { flex: 1; min-width: 8px; }
+.term-ws-mode {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  overflow: hidden;
+  height: 22px;
+}
+.term-ws-mode-opt {
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.term-ws-mode-opt[data-active="true"] {
+  background: var(--chamber-dna, var(--ember));
+  color: var(--bg);
+}
+.term-ws-mode-opt:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* Flyout above the term-command (anchored to the affordance row).
+   Premium popover, matches the Insight flyout DNA but tuned for the
+   terminal voice. */
+.term-flyout {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 260px;
+  max-width: 360px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color-mid);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-panel);
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 30;
+}
+.term-flyout-head {
+  padding: 6px 14px 8px;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  border-bottom: 1px solid var(--border-color-soft);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.term-flyout-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--dur-fast), color var(--dur-fast);
+  width: 100%;
+}
+.term-flyout-item:hover:not([disabled]) {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, transparent);
+  color: var(--text-primary);
+}
+.term-flyout-item[disabled] { color: var(--text-ghost); cursor: not-allowed; }
+.term-flyout-item-glyph {
+  color: var(--chamber-dna, var(--ember));
+  font-family: var(--mono);
+  font-size: 13px;
+  width: 18px;
+  display: inline-flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.term-flyout-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.term-flyout-item-title {
+  color: inherit;
+  font-size: var(--t-body-sec);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.term-flyout-item-meta {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--text-ghost);
+}
+.term-flyout-item-kicker {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  flex-shrink: 0;
+}

@@ -1,24 +1,21 @@
 import ChamberHead from "../../shell/ChamberHead";
-import type { Copy, RunMode } from "./helpers";
+import type { Copy } from "./helpers";
 
-// Terminal chamber head. Uses the shared ChamberHead primitive so the
-// grammar (kicker · tagline · mock · principles · inline control ·
-// right slot · optional row-2) is identical to every other chamber;
-// Terminal-specific extras (mode toggle, elapsed timer, exit-code pill,
-// task counter, mission breadcrumb) are slotted in through named props.
+// Terminal chamber head — minimal. Mode toggle moved into the
+// ExecutionComposer workspace bar (Claude-Code-class), so the head
+// stays calm: kicker · tagline · mock · principles · live timer.
+// Status (running / exit / counters) lives in the run-canvas header
+// + workbench bench bar; this strip just narrates identity.
 
 interface Props {
   copy: Copy;
   backendMode: "mock" | "real" | null;
   principlesCount: number;
-  mode: RunMode;
-  onModeChange: (m: RunMode) => void;
   pending: boolean;
   elapsed: number;
   exitCode: number | null;
   taskCount: number;
   doneCount: number;
-
   activeMissionTitle: string | null;
   currentObjective: string;
   allDone: boolean;
@@ -27,37 +24,9 @@ interface Props {
 
 export default function ContextStrip({
   copy, backendMode, principlesCount,
-  mode, onModeChange, pending, elapsed, exitCode, taskCount, doneCount,
+  pending, elapsed, exitCode, taskCount, doneCount,
   activeMissionTitle, currentObjective, allDone, allDoneLabel,
 }: Props) {
-  const modeToggle = (
-    <div
-      role="tablist"
-      aria-label="Execution mode"
-      className="segmented"
-      style={{ marginLeft: 12, height: 28 }}
-    >
-      {(["agent", "crew"] as const).map((m) => (
-        <button
-          key={m}
-          role="tab"
-          aria-selected={mode === m}
-          data-active={mode === m ? "true" : undefined}
-          disabled={pending}
-          onClick={() => onModeChange(m)}
-          className="segmented-opt"
-          style={{
-            minWidth: 60,
-            opacity: pending && mode !== m ? 0.4 : 1,
-            cursor: pending ? "not-allowed" : "pointer",
-          }}
-        >
-          {m}
-        </button>
-      ))}
-    </div>
-  );
-
   const statusCluster = (
     <>
       {pending && (
@@ -177,7 +146,6 @@ export default function ContextStrip({
       tagline={copy.creationTagline}
       mock={backendMode === "mock"}
       principlesCount={principlesCount}
-      inline={modeToggle}
       right={statusCluster}
       below={breadcrumb}
     />
