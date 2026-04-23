@@ -122,9 +122,11 @@ function BriefState({
   const done = mission.tasks?.filter((t) => t.state === "done").length ?? 0;
   const total = mission.tasks?.length ?? 0;
   const pending = total - done;
+  const hasArtifacts = artifacts.length > 0;
 
   return (
     <div className="term-output">
+      {hasArtifacts && <AIExecutionKicker />}
       <div className="term-output-head">
         <h1 className="term-output-title-mono">
           {copy.termBriefKicker}:{" "}
@@ -132,6 +134,9 @@ function BriefState({
         </h1>
       </div>
       <p className="term-output-lead">{copy.termBriefLead}</p>
+
+      {hasArtifacts && <OrnamentalDivider />}
+
       {total > 0 && (
         <section className="term-output-section">
           <span className="term-output-section-label">{copy.workbench}</span>
@@ -148,6 +153,30 @@ function BriefState({
         </section>
       )}
       <PreviousArtifacts copy={copy} artifacts={artifacts} onReplay={onReplay} />
+    </div>
+  );
+}
+
+// ——— AI execution kicker ———
+// Small sage kicker above the canvas title when there is output to
+// attribute to the AI. Never appears in the empty ReadyState.
+function AIExecutionKicker() {
+  return (
+    <div className="term-output-kicker">
+      <span className="term-output-kicker-glyph" aria-hidden>
+        <IconSparkle />
+      </span>
+      <span>AI execução</span>
+    </div>
+  );
+}
+
+// ——— Ornamental hairline divider ———
+// Editorial break between the lead paragraph and subsequent sections.
+function OrnamentalDivider() {
+  return (
+    <div className="term-output-divider" aria-hidden>
+      <span className="term-output-divider-glyph">+</span>
     </div>
   );
 }
@@ -171,6 +200,7 @@ function PendingState({
 
   return (
     <div className="term-output">
+      <AIExecutionKicker />
       <div className="term-output-head">
         <h1 className="term-output-title-mono">{title}</h1>
         <span className="term-output-pill" data-tone="info">
@@ -178,6 +208,7 @@ function PendingState({
           {copy.taskStateRunning} · iter {iteration} · {elapsed.toFixed(1)}s
         </span>
       </div>
+      <OrnamentalDivider />
 
       {mode === "crew" && crew.steps.length > 0 && (
         <section className="term-output-section">
@@ -281,6 +312,7 @@ function DoneState({
 
   return (
     <div className="term-output">
+      <AIExecutionKicker />
       <div className="term-output-head">
         <h1 className="term-output-title-mono">{title}</h1>
         <span className="term-output-pill" data-tone={pillTone}>
@@ -290,6 +322,8 @@ function DoneState({
       </div>
 
       {leadFromAnswer && <p className="term-output-lead">{leadFromAnswer}</p>}
+
+      <OrnamentalDivider />
 
       {crew.steps.length > 0 && (
         <section className="term-output-section">
@@ -475,29 +509,131 @@ function PreviousArtifacts({
 }
 
 // ——— Log row ———
+// Chooses a layout variant based on the tool kind:
+//   · read_file / list_directory → file variant (icon + action + path + count)
+//   · anything else              → todo variant (icon + one-line action)
+// Both keep the same grid framework so rows align cleanly.
 function LogRow({
-  time, name, input, phase, preview,
+  name, input, phase, preview,
 }: {
-  time: string;
+  time: string; // accepted for backward compat; rendered as count when relevant
   name: string;
   input?: unknown;
   phase: ToolPhase;
   preview?: string;
 }) {
-  const argStr = input ? JSON.stringify(input).slice(0, 60) : "";
-  const metaStr = preview ? (preview.length > 32 ? preview.slice(0, 29).trimEnd() + "…" : preview) : "";
-  const statusLabel = phase === "running" ? "run" : phase === "ok" ? "ok" : "err";
+  const inputObj = (input && typeof input === "object") ? (input as Record<string, unknown>) : {};
+  const rawPath = typeof inputObj.path === "string" ? inputObj.path
+                : typeof inputObj.file === "string" ? inputObj.file
+                : typeof inputObj.file_path === "string" ? inputObj.file_path
+                : null;
+  const isFileOp = Boolean(rawPath);
+
+  // Line count: prefer explicit line count preview, else fall back to
+  // string length indicator. Display-only.
+  const countLabel = (() => {
+    if (!preview) return null;
+    const match = /(\d+)\s*(lines?|linhas?)/i.exec(preview);
+    if (match) return `${match[1]} linhas`;
+    if (preview.length > 0) return null;
+    return null;
+  })();
+
+  if (isFileOp && rawPath) {
+    const displayName = humanizeToolName(name);
+    return (
+      <div className="term-output-log-row" data-variant="file" data-phase={phase}>
+        <span className="term-output-log-icon" aria-hidden><IconFile /></span>
+        <span className="term-output-log-action">{displayName}</span>
+        <span className="term-output-log-path" title={rawPath}>{rawPath}</span>
+        <span className="term-output-log-count">
+          {countLabel ?? (phase === "ok" ? "✓" : phase === "err" ? "✕" : "…")}
+        </span>
+      </div>
+    );
+  }
+
+  // Fallback — compact todo-style row
+  const displayName = humanizeToolName(name);
+  const childLines = extractChildLines(inputObj);
   return (
-    <div className="term-output-log-row" data-phase={phase}>
-      <span className="term-output-log-time">{time}</span>
-      <span className="term-output-log-cmd">
-        {name}
-        {argStr && <span style={{ color: "var(--text-muted)", opacity: 0.7 }}> {argStr}</span>}
-      </span>
-      <span className="term-output-log-sep">|</span>
-      <span className="term-output-log-dur">{metaStr || "—"}</span>
-      <span className="term-output-log-status">{statusLabel}</span>
-    </div>
+    <>
+      <div className="term-output-log-row" data-variant="todo" data-phase={phase}>
+        <span className="term-output-log-icon" aria-hidden><IconCheck /></span>
+        <span className="term-output-log-action">{displayName}</span>
+      </div>
+      {childLines.length > 0 && (
+        <ul className="term-output-log-children">
+          {childLines.map((ln, i) => <li key={i}>{ln}</li>)}
+        </ul>
+      )}
+    </>
+  );
+}
+
+// Humanize tool_use names into editorial verbs.
+function humanizeToolName(name: string): string {
+  const map: Record<string, string> = {
+    read_file: "Read",
+    list_directory: "List",
+    run_command: "Run",
+    execute_python: "Execute",
+    web_fetch: "Fetch",
+    web_search: "Search",
+    git: "Git",
+    update_todos: "Update Todos",
+  };
+  return map[name] ?? name;
+}
+
+function extractChildLines(input: Record<string, unknown>): string[] {
+  const raw = input.todos ?? input.items ?? input.steps;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((x) => typeof x === "string" ? x : (x as { title?: string; text?: string }).title ?? (x as { text?: string }).text ?? "")
+    .filter(Boolean)
+    .slice(0, 4);
+}
+
+// ——— Inline SVG icon set (canvas) ———
+// Same family as WorkbenchStrip/Composer: viewBox 24, stroke 1.75,
+// currentColor. Ensures a single iconographic language inside Terminal.
+const SVG_PROPS = {
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.75,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+};
+function IconFile() {
+  return (
+    <svg width={16} height={16} {...SVG_PROPS}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+    </svg>
+  );
+}
+function IconCheck() {
+  return (
+    <svg width={16} height={16} {...SVG_PROPS}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+function IconSparkle() {
+  return (
+    <svg width={14} height={14} {...SVG_PROPS}>
+      <path d="M12 3v4" />
+      <path d="M12 17v4" />
+      <path d="M3 12h4" />
+      <path d="M17 12h4" />
+      <path d="m5.5 5.5 2.8 2.8" />
+      <path d="m15.7 15.7 2.8 2.8" />
+      <path d="m18.5 5.5-2.8 2.8" />
+      <path d="m8.3 15.7-2.8 2.8" />
+    </svg>
   );
 }
 

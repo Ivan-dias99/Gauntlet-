@@ -128,6 +128,9 @@ export default function ExecutionComposer({
               <IconTools />
             </button>
           </div>
+          <span className="term-command-phase" aria-live="polite">
+            {pending ? "exec" : "pronto"}
+          </span>
         </div>
 
         <div className="term-command-body">

@@ -4545,8 +4545,18 @@ textarea {
   inset: 0;
   background:
     radial-gradient(
+      ellipse 65% 50% at 50% -5%,
+      color-mix(in oklab, var(--cc-ok) 4.5%, transparent) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 120% 80% at 50% 60%,
+      color-mix(in oklab, var(--cc-ok) 2.5%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
       ellipse 80% 55% at 50% 0%,
-      color-mix(in oklab, var(--text-primary) 2.5%, transparent) 0%,
+      color-mix(in oklab, var(--text-primary) 2%, transparent) 0%,
       transparent 65%
     );
   pointer-events: none;
@@ -4556,9 +4566,14 @@ textarea {
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::before {
   background:
     radial-gradient(
-      ellipse 80% 55% at 50% 0%,
-      color-mix(in oklab, #fff 4%, transparent) 0%,
-      transparent 70%
+      ellipse 65% 50% at 50% -5%,
+      color-mix(in oklab, var(--cc-ok) 5%, transparent) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 120% 80% at 50% 60%,
+      color-mix(in oklab, #fff 2.5%, transparent) 0%,
+      transparent 72%
     );
 }
 .chamber-shell[data-chamber="terminal"] > * {
@@ -4776,4 +4791,192 @@ textarea {
 [data-theme="sepia"] .term-output-pill {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 5%, transparent) inset;
+}
+
+/* ——— AI execution kicker (canvas) ———
+   Small sage kicker above the canvas title when a run has produced
+   output. Reads as "AI did this". Reinforces the productive tint
+   without painting the whole surface. */
+.term-output-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--cc-ok);
+  line-height: 1;
+  padding: 2px 0;
+  margin: 0;
+}
+.term-output-kicker-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--cc-ok);
+  opacity: 0.9;
+}
+
+/* ——— Ornamental hairline divider with central glyph ———
+   Editorial break between the canvas lead and subsequent sections.
+   Hairline on both sides of a small mono glyph. Very calm. */
+.term-output-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+  color: var(--text-ghost);
+  opacity: 0.8;
+}
+.term-output-divider::before,
+.term-output-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+.term-output-divider-glyph {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1;
+  color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 55%, var(--text-ghost));
+  user-select: none;
+}
+
+/* ——— Log row refactor — file-icon style ———
+   When a log entry represents a file op (Read, Update), the layout is:
+     [icon 16] [action mono] [path mono muted truncated] [count right]
+   This replaces the abstract "time | cmd | sep | dur | status" grid
+   for entries produced by file tools. The old grid is kept as
+   fallback via data-variant="legacy". */
+.term-output-log-row[data-variant="file"] {
+  grid-template-columns: 18px auto 1fr auto;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 0;
+}
+.term-output-log-row[data-variant="file"] .term-output-log-icon {
+  color: var(--cc-ok);
+  opacity: 0.85;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.term-output-log-row[data-variant="file"] .term-output-log-action {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  letter-spacing: -0.002em;
+  font-weight: 500;
+}
+.term-output-log-row[data-variant="file"] .term-output-log-path {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  letter-spacing: -0.002em;
+}
+.term-output-log-row[data-variant="file"] .term-output-log-count {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-ghost);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Todo-style rows for update-todos, written-file etc. A thin nested
+   indent with bullet glyph. */
+.term-output-log-row[data-variant="todo"] {
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  padding: 3px 0;
+  border-bottom: 0;
+}
+.term-output-log-row[data-variant="todo"] .term-output-log-action {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.term-output-log-children {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0 4px 42px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.term-output-log-children li {
+  list-style: none;
+  padding-left: 14px;
+  position: relative;
+}
+.term-output-log-children li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--cc-ok);
+  opacity: 0.6;
+  top: 0;
+}
+
+.term-output-log-footer {
+  padding-top: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-meta);
+  color: var(--text-ghost);
+}
+
+/* PRONTO pill — restored on composer chrome with sage tone to
+   encode "composer is ready to receive input". Distinct from
+   BACKEND live in the workspace bar (which encodes "the backend is
+   reachable"). Same family, two honest signals. */
+.term-command-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--cc-ok);
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in oklab, var(--cc-ok) 26%, transparent);
+  background: color-mix(in oklab, var(--cc-ok) 6%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 25%, transparent) inset;
+}
+.term-command-phase::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.8;
+}
+.term-command[data-state="pending"] .term-command-phase {
+  color: var(--cc-info);
+  border-color: color-mix(in oklab, var(--cc-info) 28%, transparent);
+  background: color-mix(in oklab, var(--cc-info) 6%, transparent);
+}
+.term-command[data-state="pending"] .term-command-phase::before {
+  animation: breathe 1.4s var(--ease-swift) infinite;
+  opacity: 1;
+}
+[data-theme="dark"] .term-command-phase,
+[data-theme="sepia"] .term-command-phase {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
 }
