@@ -29,7 +29,7 @@ interface Props {
   mockMode: boolean;
 }
 
-type Flyout = null | "context" | "recent" | "mode" | "tools";
+type Flyout = null | "context" | "recent" | "tools";
 
 // Tools the Terminal chamber actually carries server-side. Mirrors the
 // allowlist exposed in Core/Permissions. Read-only — this is a window
@@ -101,9 +101,11 @@ export default function ExecutionComposer({
               className="term-tool"
               data-active={flyout === "context" ? "true" : undefined}
               onClick={() => setFlyout(flyout === "context" ? null : "context")}
-              title="contexto · sinais que viajam · media em breve"
+              title="contexto · sinais que viajam com cada tarefa"
               aria-label="contexto"
-            >+</button>
+            >
+              <IconPlus />
+            </button>
             <button
               type="button"
               className="term-tool"
@@ -112,15 +114,9 @@ export default function ExecutionComposer({
               disabled={recentTasks.length === 0}
               title="recentes · últimas tarefas desta missão"
               aria-label="recentes"
-            >&gt;</button>
-            <button
-              type="button"
-              className="term-tool"
-              data-active={flyout === "mode" ? "true" : undefined}
-              onClick={() => setFlyout(flyout === "mode" ? null : "mode")}
-              title="mode · agent ou crew"
-              aria-label="mode"
-            >⚙</button>
+            >
+              <IconClock />
+            </button>
             <button
               type="button"
               className="term-tool"
@@ -128,11 +124,10 @@ export default function ExecutionComposer({
               onClick={() => setFlyout(flyout === "tools" ? null : "tools")}
               title="tools · allowlist desta câmara"
               aria-label="tools"
-            >⚒</button>
+            >
+              <IconTools />
+            </button>
           </div>
-          <span className="term-command-phase">
-            {pending ? "exec" : "ready"}
-          </span>
         </div>
 
         <div className="term-command-body">
@@ -169,7 +164,11 @@ export default function ExecutionComposer({
             title={pending ? "a executar" : "executar"}
             aria-label={pending ? "a executar" : "executar"}
           >
-            {pending ? "…" : "↵"}
+            {pending ? (
+              <span style={{ fontSize: 14, lineHeight: 1 }}>…</span>
+            ) : (
+              <IconSend />
+            )}
           </button>
         </div>
 
@@ -271,13 +270,6 @@ export default function ExecutionComposer({
           <RecentFlyout
             tasks={recentTasks}
             onPick={(t) => { onPickTask(t); setFlyout(null); }}
-          />
-        )}
-        {flyout === "mode" && (
-          <ModeFlyout
-            mode={mode}
-            onModeChange={(m) => { onModeChange(m); setFlyout(null); }}
-            disabled={pending}
           />
         )}
         {flyout === "tools" && <ToolsFlyout />}
@@ -389,45 +381,6 @@ function RecentFlyout({
   );
 }
 
-function ModeFlyout({
-  mode, onModeChange, disabled,
-}: {
-  mode: RunMode;
-  onModeChange: (m: RunMode) => void;
-  disabled: boolean;
-}) {
-  return (
-    <div className="term-flyout" role="menu">
-      <div className="term-flyout-head">
-        <span>execution mode</span>
-      </div>
-      <button
-        className="term-flyout-item"
-        onClick={() => onModeChange("agent")}
-        disabled={disabled}
-      >
-        <span className="term-flyout-item-glyph">▸</span>
-        <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">agent</span>
-          <span className="term-flyout-item-meta">loop iterativo + tools</span>
-        </span>
-        {mode === "agent" && <span className="term-flyout-item-kicker">ativo</span>}
-      </button>
-      <button
-        className="term-flyout-item"
-        onClick={() => onModeChange("crew")}
-        disabled={disabled}
-      >
-        <span className="term-flyout-item-glyph">◆</span>
-        <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">crew</span>
-          <span className="term-flyout-item-meta">planner → coder → critic</span>
-        </span>
-        {mode === "crew" && <span className="term-flyout-item-kicker">ativo</span>}
-      </button>
-    </div>
-  );
-}
 
 function ToolsFlyout() {
   return (
@@ -450,3 +403,69 @@ function ToolsFlyout() {
     </div>
   );
 }
+
+// ——— Unified SVG icon set (composer) ———
+// Same viewbox, same stroke width as the WorkbenchStrip icons so the
+// Terminal chamber speaks one iconographic language.
+
+const SVG_PROPS = {
+  width: 14,
+  height: 14,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.75,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+};
+
+function IconPlus() {
+  return (
+    <svg {...SVG_PROPS}>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+function IconClock() {
+  return (
+    <svg {...SVG_PROPS}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+function IconTools() {
+  return (
+    <svg {...SVG_PROPS}>
+      <path d="M14.7 6.3a4 4 0 1 0 5.3 5.3L22 10a8 8 0 0 1-10.5 10.5l-8-8A8 8 0 0 1 14 2l-1.7 1.7a4 4 0 0 0 2.4 2.6" />
+    </svg>
+  );
+}
+function IconSend() {
+  return (
+    <svg
+      width={13} height={13} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth={2.25}
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden
+    >
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
+    </svg>
+  );
+}
+function IconDot() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 6, height: 6, borderRadius: "50%",
+        background: "currentColor",
+        display: "inline-block",
+      }}
+    />
+  );
+}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _iconsExport = { IconPlus, IconClock, IconTools, IconSend, IconDot };

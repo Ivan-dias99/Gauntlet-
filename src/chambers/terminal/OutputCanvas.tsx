@@ -11,15 +11,10 @@ import {
 } from "./helpers";
 
 // Editorial output canvas. Zero wrapper cards. Content flows onto the
-// chamber body as a typographic column (max 780px) with serif display
+// chamber body as a typographic column (max 820px) with serif display
 // titles, sans body, mono micro section labels, mono execution rows.
-// Five states:
-//   · no-mission  — quiet invitation (composer carries it)
-//   · brief       — MISSION BRIEF when a mission is active but idle
-//   · pending     — live streaming with execution log + live text
-//   · done        — full editorial (title · LIVE pill · lead · plan ·
-//                   execution log · result with View/Accept link)
-//   · error       — editorial error rendering (same grammar, err pill)
+// Five states: ready · brief · pending · done · error.
+// Every string flows through the copy catalog so i18n stays clean.
 
 interface Props {
   copy: Copy;
@@ -47,15 +42,13 @@ export default function OutputCanvas({
   liveText, liveTools, done, accepted, err, crew, mode,
   artifacts, onAccept, onReplayArtifact, canAccept,
 }: Props) {
-  // Route to the correct editorial state.
   if (err) {
-    return <ErrorState message={err} activeTaskTitle={activeTask?.title ?? lastTask} />;
+    return <ErrorState copy={copy} message={err} activeTaskTitle={activeTask?.title ?? lastTask} />;
   }
-
   if (pending) {
     return (
       <PendingState
-        mission={mission}
+        copy={copy}
         activeTask={activeTask}
         lastTask={lastTask}
         iteration={iteration}
@@ -67,12 +60,10 @@ export default function OutputCanvas({
       />
     );
   }
-
   if (done) {
     return (
       <DoneState
         copy={copy}
-        mission={mission}
         activeTask={activeTask}
         lastTask={lastTask}
         done={done}
@@ -84,60 +75,66 @@ export default function OutputCanvas({
       />
     );
   }
-
   if (!mission) {
-    return <ReadyState mission={null} artifacts={artifacts} onReplay={onReplayArtifact} />;
+    return <ReadyState copy={copy} artifacts={artifacts} onReplay={onReplayArtifact} />;
   }
-
-  return <BriefState mission={mission} artifacts={artifacts} onReplay={onReplayArtifact} />;
+  return <BriefState copy={copy} mission={mission} artifacts={artifacts} onReplay={onReplayArtifact} />;
 }
 
 // ——— Ready (no mission) ———
+// Densified: serif title + lead + three quick-tip rows + recent artifacts.
+// No big empty space between Ready and the composer.
 function ReadyState({
-  mission, artifacts, onReplay,
+  copy, artifacts, onReplay,
 }: {
-  mission: Mission | null;
+  copy: Copy;
   artifacts: Artifact[];
   onReplay: (a: Artifact) => void;
 }) {
   return (
     <div className="term-output">
       <div className="term-output-head">
-        <h1 className="term-output-title">Ready.</h1>
+        <h1 className="term-output-title">{copy.termReadyTitle}</h1>
       </div>
-      <p className="term-output-lead">
-        Declare a task below. It becomes a command. The command has consequence.
-      </p>
-      <PreviousArtifacts artifacts={artifacts} onReplay={onReplay} />
+      <p className="term-output-lead">{copy.termReadyLead}</p>
+      <section className="term-output-section">
+        <span className="term-output-section-label">{copy.nextStep}</span>
+        <ul className="term-output-list">
+          <li>{copy.termReadyTipDeclare}</li>
+          <li>{copy.termReadyTipMission}</li>
+          <li>{copy.termReadyTipDoctrine}</li>
+        </ul>
+      </section>
+      <PreviousArtifacts copy={copy} artifacts={artifacts} onReplay={onReplay} />
     </div>
   );
 }
 
 // ——— Brief (mission active, no task yet) ———
 function BriefState({
-  mission, artifacts, onReplay,
+  copy, mission, artifacts, onReplay,
 }: {
+  copy: Copy;
   mission: Mission;
   artifacts: Artifact[];
   onReplay: (a: Artifact) => void;
 }) {
   const done = mission.tasks?.filter((t) => t.state === "done").length ?? 0;
   const total = mission.tasks?.length ?? 0;
+  const pending = total - done;
 
   return (
     <div className="term-output">
       <div className="term-output-head">
         <h1 className="term-output-title-mono">
-          Mission brief: <span style={{ color: "var(--chamber-dna, var(--ember))" }}>{mission.title}</span>
+          {copy.termBriefKicker}:{" "}
+          <span style={{ color: "var(--chamber-dna, var(--ember))" }}>{mission.title}</span>
         </h1>
       </div>
-      <p className="term-output-lead">
-        Workspace ready. Declare a task to begin. Every task that runs here is
-        persisted as an artifact of this mission.
-      </p>
+      <p className="term-output-lead">{copy.termBriefLead}</p>
       {total > 0 && (
         <section className="term-output-section">
-          <span className="term-output-section-label">tasks</span>
+          <span className="term-output-section-label">{copy.workbench}</span>
           <div
             style={{
               fontFamily: "var(--mono)",
@@ -146,21 +143,21 @@ function BriefState({
               lineHeight: 1.7,
             }}
           >
-            {done} concluídas · {total - done} pendentes · {total} total
+            {copy.termBriefTasks(done, pending, total)}
           </div>
         </section>
       )}
-      <PreviousArtifacts artifacts={artifacts} onReplay={onReplay} />
+      <PreviousArtifacts copy={copy} artifacts={artifacts} onReplay={onReplay} />
     </div>
   );
 }
 
 // ——— Pending (streaming) ———
 function PendingState({
-  mission, activeTask, lastTask, iteration, elapsed,
+  copy, activeTask, lastTask, iteration, elapsed,
   liveText, liveTools, crew, mode,
 }: {
-  mission: Mission | null;
+  copy: Copy;
   activeTask: Task | null;
   lastTask: string;
   iteration: number;
@@ -170,8 +167,7 @@ function PendingState({
   crew: CrewState;
   mode: RunMode;
 }) {
-  const title = activeTask?.title || lastTask || "Executing";
-  void mission;
+  const title = activeTask?.title || lastTask || copy.termPendingTitleFallback;
 
   return (
     <div className="term-output">
@@ -179,13 +175,13 @@ function PendingState({
         <h1 className="term-output-title-mono">{title}</h1>
         <span className="term-output-pill" data-tone="info">
           <span className="term-output-pill-glyph">●</span>
-          running · iter {iteration} · {elapsed.toFixed(1)}s
+          {copy.taskStateRunning} · iter {iteration} · {elapsed.toFixed(1)}s
         </span>
       </div>
 
       {mode === "crew" && crew.steps.length > 0 && (
         <section className="term-output-section">
-          <span className="term-output-section-label">plan</span>
+          <span className="term-output-section-label">{copy.termSectionPlan}</span>
           <ul className="term-output-list">
             {crew.steps.map((s, i) => (
               <li
@@ -194,7 +190,14 @@ function PendingState({
                   opacity: crew.rolesRun.includes(s.role) || crew.currentRole === s.role ? 1 : 0.55,
                 }}
               >
-                <span style={{ color: ROLE_COLOR[s.role], fontFamily: "var(--mono)", fontSize: "var(--t-micro)", letterSpacing: "0.04em" }}>
+                <span
+                  style={{
+                    color: ROLE_COLOR[s.role],
+                    fontFamily: "var(--mono)",
+                    fontSize: "var(--t-micro)",
+                    letterSpacing: "0.04em",
+                  }}
+                >
                   {s.role}
                 </span>{" "}
                 — {s.goal}
@@ -206,7 +209,7 @@ function PendingState({
 
       {liveTools.length > 0 && (
         <section className="term-output-section">
-          <span className="term-output-section-label">execution log</span>
+          <span className="term-output-section-label">{copy.termSectionExecLog}</span>
           <div className="term-output-log">
             {liveTools.map((tc) => (
               <LogRow
@@ -224,7 +227,7 @@ function PendingState({
 
       {liveText && (
         <section className="term-output-section">
-          <span className="term-output-section-label">streaming</span>
+          <span className="term-output-section-label">{copy.termSectionStreaming}</span>
           <div
             style={{
               fontFamily: "var(--mono)",
@@ -246,11 +249,10 @@ function PendingState({
 
 // ——— Done ———
 function DoneState({
-  copy, mission, activeTask, lastTask, done, liveTools, crew,
+  copy, activeTask, lastTask, done, liveTools, crew,
   accepted, canAccept, onAccept,
 }: {
   copy: Copy;
-  mission: Mission | null;
   activeTask: Task | null;
   lastTask: string;
   done: DoneSummary;
@@ -260,7 +262,7 @@ function DoneState({
   canAccept: boolean;
   onAccept: () => void;
 }) {
-  const title = activeTask?.title || lastTask || "Task complete";
+  const title = activeTask?.title || lastTask || copy.termDoneTitleFallback;
   const leadFromAnswer = (() => {
     const trimmed = done.answer.trim();
     if (!trimmed) return null;
@@ -275,8 +277,7 @@ function DoneState({
   })();
 
   const pillTone = done.terminated_early ? "warn" : "ok";
-  const pillLabel = done.terminated_early ? "partial" : "live";
-  void mission;
+  const pillLabel = done.terminated_early ? copy.termPartialPill : copy.termLivePill;
 
   return (
     <div className="term-output">
@@ -288,17 +289,22 @@ function DoneState({
         </span>
       </div>
 
-      {leadFromAnswer && (
-        <p className="term-output-lead">{leadFromAnswer}</p>
-      )}
+      {leadFromAnswer && <p className="term-output-lead">{leadFromAnswer}</p>}
 
       {crew.steps.length > 0 && (
         <section className="term-output-section">
-          <span className="term-output-section-label">plan</span>
+          <span className="term-output-section-label">{copy.termSectionPlan}</span>
           <ul className="term-output-list">
             {crew.steps.map((s, i) => (
               <li key={i}>
-                <span style={{ color: ROLE_COLOR[s.role], fontFamily: "var(--mono)", fontSize: "var(--t-micro)", letterSpacing: "0.04em" }}>
+                <span
+                  style={{
+                    color: ROLE_COLOR[s.role],
+                    fontFamily: "var(--mono)",
+                    fontSize: "var(--t-micro)",
+                    letterSpacing: "0.04em",
+                  }}
+                >
                   {s.role}
                 </span>{" "}
                 — {s.goal}
@@ -310,7 +316,7 @@ function DoneState({
 
       {liveTools.length > 0 && (
         <section className="term-output-section">
-          <span className="term-output-section-label">execution log</span>
+          <span className="term-output-section-label">{copy.termSectionExecLog}</span>
           <div className="term-output-log">
             {liveTools.map((tc, i) => (
               <LogRow
@@ -331,7 +337,7 @@ function DoneState({
                 color: "var(--text-ghost)",
               }}
             >
-              exit 0 · {done.iterations} iter · {done.tool_count} tools · {done.processing_time_ms}ms
+              {copy.termRunSummary(done.iterations, done.tool_count, done.processing_time_ms)}
             </div>
           </div>
         </section>
@@ -339,7 +345,7 @@ function DoneState({
 
       {remainingAnswer && (
         <section className="term-output-section">
-          <span className="term-output-section-label">notes</span>
+          <span className="term-output-section-label">{copy.termSectionNotes}</span>
           <div
             style={{
               fontFamily: "var(--sans)",
@@ -356,14 +362,14 @@ function DoneState({
       )}
 
       <section className="term-output-section">
-        <span className="term-output-section-label">result</span>
+        <span className="term-output-section-label">{copy.termSectionResult}</span>
         <div className="term-output-result">
           <div className="term-output-result-body">
             {done.terminated_early
-              ? <>Partial result — run terminated early{done.termination_reason ? `: ${done.termination_reason}` : ""}.</>
+              ? copy.termResultPartial(done.termination_reason)
               : accepted
-              ? <>Result sealed. Artifact persisted on mission.</>
-              : <>Result ready. Seal to persist as mission artifact.</>}
+              ? copy.termResultSealed
+              : copy.termResultReady}
           </div>
           {canAccept && !accepted && (
             <button className="term-output-result-link" onClick={onAccept}>
@@ -383,25 +389,26 @@ function DoneState({
 
 // ——— Error ———
 function ErrorState({
-  message, activeTaskTitle,
+  copy, message, activeTaskTitle,
 }: {
+  copy: Copy;
   message: string;
   activeTaskTitle: string;
 }) {
   return (
     <div className="term-output">
       <div className="term-output-head">
-        <h1 className="term-output-title-mono">{activeTaskTitle || "Error"}</h1>
+        <h1 className="term-output-title-mono">
+          {activeTaskTitle || copy.termErrorTitleFallback}
+        </h1>
         <span className="term-output-pill" data-tone="warn">
           <span className="term-output-pill-glyph">⚠</span>
-          error
+          {copy.termErrorPill}
         </span>
       </div>
-      <p className="term-output-lead">
-        The run did not complete. The chamber is ready to retry.
-      </p>
+      <p className="term-output-lead">{copy.termErrorLead}</p>
       <section className="term-output-section">
-        <span className="term-output-section-label">message</span>
+        <span className="term-output-section-label">{copy.termSectionMessage}</span>
         <div
           style={{
             fontFamily: "var(--mono)",
@@ -420,11 +427,10 @@ function ErrorState({
 }
 
 // ——— Previous artifacts footer ———
-// Quiet list below the output when there is no active task/run. Keeps
-// archive access without stacking another panel.
 function PreviousArtifacts({
-  artifacts, onReplay,
+  copy, artifacts, onReplay,
 }: {
+  copy: Copy;
   artifacts: Artifact[];
   onReplay: (a: Artifact) => void;
 }) {
@@ -432,7 +438,7 @@ function PreviousArtifacts({
   const shown = artifacts.slice(0, 4);
   return (
     <section className="term-output-section">
-      <span className="term-output-section-label">recent artifacts</span>
+      <span className="term-output-section-label">{copy.termSectionRecent}</span>
       <div className="term-output-log">
         {shown.map((a) => {
           const preview = a.answer
@@ -458,7 +464,7 @@ function PreviousArtifacts({
               <span className="term-output-log-sep">|</span>
               <span className="term-output-log-meta">{preview}</span>
               <span className="term-output-log-status">
-                {a.terminatedEarly ? "partial" : "sealed"}
+                {a.terminatedEarly ? copy.termArtifactPartial : copy.termArtifactSealedShort}
               </span>
             </button>
           );
@@ -497,14 +503,10 @@ function LogRow({
 
 // ——— helpers ———
 function fmtLiveTime(iter: number, elapsed: number, total: number): string {
-  // Live frame timestamp synthesized from the iteration index so the
-  // log reads like a real per-row time instead of the same elapsed
-  // repeated. This is display-only; the real timestamps are server-side.
   const base = Math.max(0, elapsed - (total - iter) * 0.3);
   return `+${base.toFixed(1)}s`;
 }
 function fmtIndexTime(i: number, totalMs: number): string {
-  // On done, distribute the total processing time evenly across rows.
   const seconds = (totalMs / 1000) * ((i + 1) / Math.max(1, totalMs > 0 ? 4 : 1));
   return `+${seconds.toFixed(1)}s`;
 }

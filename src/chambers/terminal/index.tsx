@@ -417,7 +417,7 @@ export default function Terminal() {
         />
 
         {unreachable && err ? (
-          <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 var(--space-4)" }}>
+          <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)" }}>
             <DormantPanel detail={copy.dormantCreation} />
           </div>
         ) : (
@@ -444,7 +444,7 @@ export default function Terminal() {
         )}
 
         {showNextStep && (
-          <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 var(--space-4) var(--space-5)" }}>
+          <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4) var(--space-5)" }}>
             <NextStepBar
               hasNextOpen={nextOpenTask !== null}
               canRefine={Boolean(activeTask?.title || lastTask) && activeTask?.state !== "done"}

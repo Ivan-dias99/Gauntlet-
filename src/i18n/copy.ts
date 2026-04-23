@@ -115,6 +115,44 @@ export interface Copy {
   artifactTooltip: string;
   refinePrefix: string;
 
+  // Terminal editorial surface (workbench strip + output canvas)
+  termStripLabel: string;              // "WORKBENCH" / "BANCADA"
+  termStripMissionLabel: string;       // "mission" / "missão"
+  termStripMissionNull: string;        // "no mission" / "sem missão"
+  termStripContext: string;            // "context" / "contexto"
+  termStripDocs: string;               // "docs" / "docs"
+  termStripStatusRunning: string;
+  termStripStatusBlocked: string;
+  termStripStatusDone: string;
+  termReadyTitle: string;              // "Ready."
+  termReadyLead: string;               // "Declara uma tarefa abaixo..."
+  termReadyTipDeclare: string;
+  termReadyTipMission: string;
+  termReadyTipDoctrine: string;
+  termBriefKicker: string;             // "Mission brief:" / "Resumo da missão:"
+  termBriefLead: string;
+  termBriefTasks: (done: number, pending: number, total: number) => string;
+  termPendingTitleFallback: string;    // "Executing"
+  termDoneTitleFallback: string;       // "Task complete"
+  termLivePill: string;
+  termPartialPill: string;
+  termErrorPill: string;
+  termErrorTitleFallback: string;
+  termErrorLead: string;
+  termSectionPlan: string;
+  termSectionExecLog: string;
+  termSectionStreaming: string;
+  termSectionNotes: string;
+  termSectionResult: string;
+  termSectionMessage: string;
+  termSectionRecent: string;
+  termResultPartial: (reason: string | null) => string;
+  termResultSealed: string;
+  termResultReady: string;
+  termRunSummary: (iter: number, tools: number, ms: number) => string;
+  termArtifactPartial: string;
+  termArtifactSealedShort: string;
+
   // Archive
   memoryLoading: string;
   memoryErrorTitle: string;
@@ -256,6 +294,48 @@ const PT: Copy = {
   artifactTooltip: "selado",
   refinePrefix: "refinar: ",
 
+  termStripLabel: "Bancada",
+  termStripMissionLabel: "missão",
+  termStripMissionNull: "sem missão",
+  termStripContext: "contexto",
+  termStripDocs: "docs",
+  termStripStatusRunning: "Tarefa em execução — a transmitir.",
+  termStripStatusBlocked: "Tarefa bloqueada — reabre ou avança.",
+  termStripStatusDone: "Tarefa concluída — resultado selado.",
+  termReadyTitle: "Pronto.",
+  termReadyLead: "Declara uma tarefa abaixo. Ela vira comando. O comando tem consequência.",
+  termReadyTipDeclare: "declarar tarefa · enter",
+  termReadyTipMission: "abrir missão · topo da barra",
+  termReadyTipDoctrine: "doutrina · Core › Policies",
+  termBriefKicker: "Resumo da missão",
+  termBriefLead: "Workspace pronto. Declara uma tarefa para começar. Cada tarefa executada aqui é persistida como artefacto desta missão.",
+  termBriefTasks: (done, pending, total) =>
+    `${done} concluídas · ${pending} pendentes · ${total} no total`,
+  termPendingTitleFallback: "Em execução",
+  termDoneTitleFallback: "Tarefa concluída",
+  termLivePill: "em directo",
+  termPartialPill: "parcial",
+  termErrorPill: "erro",
+  termErrorTitleFallback: "Erro",
+  termErrorLead: "A execução não concluiu. A câmara está pronta para repetir.",
+  termSectionPlan: "plano",
+  termSectionExecLog: "log de execução",
+  termSectionStreaming: "transmissão",
+  termSectionNotes: "notas",
+  termSectionResult: "resultado",
+  termSectionMessage: "mensagem",
+  termSectionRecent: "artefactos recentes",
+  termResultPartial: (reason) =>
+    reason
+      ? `Resultado parcial — execução terminada cedo: ${reason}.`
+      : "Resultado parcial — execução terminada cedo.",
+  termResultSealed: "Resultado selado. Artefacto persistido na missão.",
+  termResultReady: "Resultado pronto. Sela para persistir como artefacto da missão.",
+  termRunSummary: (iter, tools, ms) =>
+    `exit 0 · ${iter} iter · ${tools} tools · ${ms}ms`,
+  termArtifactPartial: "parcial",
+  termArtifactSealedShort: "selado",
+
   memoryLoading: "— a carregar —",
   memoryErrorTitle: "backend",
   memoryErrorPrefix: "falha do backend:",
@@ -393,6 +473,48 @@ const EN: Copy = {
   artifactChip: "◆ sealed",
   artifactTooltip: "sealed",
   refinePrefix: "refine: ",
+
+  termStripLabel: "Workbench",
+  termStripMissionLabel: "mission",
+  termStripMissionNull: "no mission",
+  termStripContext: "context",
+  termStripDocs: "docs",
+  termStripStatusRunning: "Task running — streaming execution.",
+  termStripStatusBlocked: "Task blocked — reopen or advance.",
+  termStripStatusDone: "Task complete — result sealed.",
+  termReadyTitle: "Ready.",
+  termReadyLead: "Declare a task below. It becomes a command. The command has consequence.",
+  termReadyTipDeclare: "declare task · enter",
+  termReadyTipMission: "open mission · top bar",
+  termReadyTipDoctrine: "doctrine · Core › Policies",
+  termBriefKicker: "Mission brief",
+  termBriefLead: "Workspace ready. Declare a task to begin. Every task that runs here is persisted as an artifact of this mission.",
+  termBriefTasks: (done, pending, total) =>
+    `${done} done · ${pending} pending · ${total} total`,
+  termPendingTitleFallback: "Executing",
+  termDoneTitleFallback: "Task complete",
+  termLivePill: "live",
+  termPartialPill: "partial",
+  termErrorPill: "error",
+  termErrorTitleFallback: "Error",
+  termErrorLead: "The run did not complete. The chamber is ready to retry.",
+  termSectionPlan: "plan",
+  termSectionExecLog: "execution log",
+  termSectionStreaming: "streaming",
+  termSectionNotes: "notes",
+  termSectionResult: "result",
+  termSectionMessage: "message",
+  termSectionRecent: "recent artifacts",
+  termResultPartial: (reason) =>
+    reason
+      ? `Partial result — run terminated early: ${reason}.`
+      : "Partial result — run terminated early.",
+  termResultSealed: "Result sealed. Artifact persisted on mission.",
+  termResultReady: "Result ready. Seal to persist as mission artifact.",
+  termRunSummary: (iter, tools, ms) =>
+    `exit 0 · ${iter} iter · ${tools} tools · ${ms}ms`,
+  termArtifactPartial: "partial",
+  termArtifactSealedShort: "sealed",
 
   memoryLoading: "— loading —",
   memoryErrorTitle: "backend",
