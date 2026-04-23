@@ -1,8 +1,11 @@
 import type { Note } from "../../spine/types";
+import { useCopy } from "../../i18n/copy";
 
 // Insight thread — reversed notes list + turn primitive with handoff
 // action. Conversation-first; no forced split. Chamber-DNA cascades
-// from the parent chamber-shell via [data-chamber].
+// from the parent chamber-shell via [data-chamber]. Turn labels read
+// calm (pergunta · resposta · aviso · recusa) — the forensic kickers
+// (PRESSÃO / ANÁLISE / RECUSADO) of the Ruberra era are gone.
 
 interface Props {
   notes: Note[];
@@ -15,6 +18,7 @@ interface Props {
 export default function Thread({
   notes, promoteId, onPromoteRequest, onPromoteConfirm, onPromoteCancel,
 }: Props) {
+  const copy = useCopy();
   return (
     <div
       data-insight-thread
@@ -28,6 +32,7 @@ export default function Thread({
         <TurnRow
           key={n.id}
           note={n}
+          copy={copy}
           promoting={promoteId === n.id}
           onPromoteRequest={() => onPromoteRequest(n.id)}
           onPromoteConfirm={() => onPromoteConfirm(n)}
@@ -40,6 +45,7 @@ export default function Thread({
 
 interface TurnProps {
   note: Note;
+  copy: ReturnType<typeof useCopy>;
   promoting: boolean;
   onPromoteRequest: () => void;
   onPromoteConfirm: () => void;
@@ -47,39 +53,39 @@ interface TurnProps {
 }
 
 function TurnRow({
-  note, promoting, onPromoteRequest, onPromoteConfirm, onPromoteCancel,
+  note, copy, promoting, onPromoteRequest, onPromoteConfirm, onPromoteCancel,
 }: TurnProps) {
   const isAI = note.role === "ai";
-  // Heuristic refusal detection — the Rubera refusal format starts with
+  // Heuristic refusal detection — the Signal refusal format starts with
   // a specific sentence so a non-blocking ✗ label can render.
   const isRefusal = isAI && (
     note.text.startsWith("Não sei responder") ||
-    note.text.startsWith("⚠️ **Ruberra")
+    note.text.startsWith("⚠️ **Signal")
   );
   const isWarning = isAI && note.text.startsWith("⚠ Esta pergunta");
   const canPromote = isAI && !isRefusal && !isWarning;
 
   const { label, borderColor, labelColor, dotColor } = (() => {
     if (!isAI) return {
-      label: "PRESSÃO",
+      label: copy.labTurnAsk,
       borderColor: "var(--cc-prompt)",
       labelColor: "var(--text-muted)",
       dotColor: "var(--cc-prompt)",
     };
     if (isRefusal) return {
-      label: "RECUSADO",
+      label: copy.labTurnRefuse,
       borderColor: "var(--cc-err)",
       labelColor: "var(--cc-err)",
       dotColor: "var(--cc-err)",
     };
     if (isWarning) return {
-      label: "AVISO",
+      label: copy.labTurnWarn,
       borderColor: "var(--cc-warn)",
       labelColor: "var(--cc-warn)",
       dotColor: "var(--cc-warn)",
     };
     return {
-      label: "ANÁLISE",
+      label: copy.labTurnAnswer,
       borderColor: "color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 70%, transparent)",
       labelColor: "var(--text-ghost)",
       dotColor: "var(--chamber-dna, var(--ember))",

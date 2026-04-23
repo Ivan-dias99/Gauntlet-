@@ -1,4 +1,4 @@
-/* Ruberra design tokens — 9.9 canon lock.
+/* Signal design tokens — canon lock.
    One organism, one token system, one visual authority. Themes differ in
    palette only; structure (radius, spacing, type scale, motion, border
    grammar) is invariant across themes. Do not reintroduce chamber-local
@@ -998,11 +998,6 @@ textarea {
   margin: var(--space-1) 0 18px;
 }
 
-/* (Landing chamber DNA CSS removed in Wave 6 — .vl-chamber belonged to
-   VisionLanding's chamber deck, which was deleted in Wave 2. The
-   chamber-DNA concept survives as the --ch-* token pack added at the
-   bottom of this file.) */
-
 /* ——— Dormant panel ———
    Calm degraded-state primitive for chambers whose backend is unreachable.
    Neutral hue (ghost), no red, no urgency. Visual weight sits below
@@ -1338,21 +1333,6 @@ textarea {
   .memory-telemetry-head {
     font-size: 16px;
     margin: 6px 0 12px;
-  }
-
-  /* (Mobile VisionLanding overrides removed in Wave 6 alongside the
-     main landing block — classes no longer exist.) */
-
-  /* Pill-class controls — landing CTAs dominate the viewport at 16/28px
-     pad; drop to a phone-native size without losing the ceremonial font. */
-  .visionPrimary,
-  .visionGhost {
-    font-size: 10px;
-    letter-spacing: 0.22em;
-    padding: 13px 20px;
-  }
-  .landingPill {
-    padding: 7px 14px;
   }
 
   /* Default .btn / .tab — tighten the interaction primitives that every

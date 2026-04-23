@@ -86,7 +86,7 @@ export default function ChamberHead({
         {principlesCount !== undefined && principlesCount > 0 && (
           <span
             data-principles-in-context
-            title={`${principlesCount} princípio${principlesCount !== 1 ? "s" : ""} da doutrina presente nesta câmara`}
+            title={`${principlesCount} princípio${principlesCount !== 1 ? "s" : ""} activo${principlesCount !== 1 ? "s" : ""} nesta câmara`}
             style={{
               fontSize: "var(--t-micro)",
               letterSpacing: "var(--track-label)",
@@ -99,7 +99,7 @@ export default function ChamberHead({
               lineHeight: 1.4,
             }}
           >
-            sob § {principlesCount}
+            {principlesCount} {principlesCount === 1 ? "princípio" : "princípios"}
           </span>
         )}
 
