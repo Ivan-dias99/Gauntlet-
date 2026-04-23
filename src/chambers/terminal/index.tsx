@@ -2,10 +2,8 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import { useSignal, AgentEvent, CrewEvent, type CrewRole } from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
-import { useTweaks } from "../../tweaks/TweaksContext";
 import { useCopy } from "../../i18n/copy";
 import type { Artifact } from "../../spine/types";
-import ErrorPanel from "../../shell/ErrorPanel";
 import DormantPanel from "../../shell/DormantPanel";
 import {
   EMPTY_CREW, isStaleRunning,
@@ -13,17 +11,23 @@ import {
   type Task,
 } from "./helpers";
 import ContextStrip from "./ContextStrip";
-import { WorkbenchCard, TaskList } from "./TaskBench";
-import RunCanvas from "./RunCanvas";
+import WorkbenchStrip from "./WorkbenchStrip";
+import OutputCanvas from "./OutputCanvas";
 import NextStepBar from "./NextStepBar";
-import ArtifactLedger from "./ArtifactLedger";
 import ExecutionComposer from "./ExecutionComposer";
 
 // Terminal — execution environment. State, effects, submit, accept,
 // task state transitions and SSE event reduction stay here; every
 // visual concern lives in a primitive under ./*. The chamber shell
 // carries data-chamber="terminal" so every descendant resolves
-// --chamber-dna from the tokens.css chamber-DNA pack (Wave 6).
+// --chamber-dna from the tokens.css chamber-DNA pack.
+//
+// Layout (editorial):
+//   · ChamberHead (identity)
+//   · WorkbenchStrip (thin paper row — workbench · mission · status · actions)
+//   · OutputCanvas (editorial column — brief / pending / done / error)
+//   · NextStepBar (only when the run has landed and there is a next step)
+//   · ExecutionComposer (floating command dock at the bottom)
 
 export default function Terminal() {
   const {
@@ -32,7 +36,6 @@ export default function Terminal() {
   } = useSpine();
   const { streamDev, streamCrew, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
-  const { values } = useTweaks();
   const copy = useCopy();
 
   const [input, setInput] = useState("");
@@ -406,110 +409,57 @@ export default function Terminal() {
         allDoneLabel={copy.actionAllDone}
       />
 
-      <div className="chamber-body">
-        {activeMission && (
-          <WorkbenchCard
-            missionTitle={activeMission.title}
-            task={activeTask}
-            resumed={resumedFromSpine && !pending && !done && !err}
+      <div className="chamber-body" style={{ paddingTop: 0 }}>
+        <WorkbenchStrip
+          copy={copy}
+          missionTitle={activeMission?.title ?? null}
+          activeTask={activeTask}
+        />
+
+        {unreachable && err ? (
+          <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 var(--space-4)" }}>
+            <DormantPanel detail={copy.dormantCreation} />
+          </div>
+        ) : (
+          <OutputCanvas
             copy={copy}
-            lang={values.lang}
+            mission={activeMission}
+            activeTask={activeTask}
+            lastTask={lastTask}
             pending={pending}
             iteration={iteration}
             elapsed={elapsed}
-            openCount={openTasks.length}
-            runningCount={runningTasks.length}
-            doneCount={doneTasks.length}
-            blockedCount={blockedTasks.length}
-            staleCount={staleRunningTasks.length}
-            onReopen={handleReopen}
+            liveText={liveText}
+            liveTools={liveTools}
+            done={done}
+            accepted={accepted}
+            err={err}
+            crew={crew}
+            mode={mode}
+            artifacts={allArtifacts}
+            onAccept={accept}
+            onReplayArtifact={replayArtifact}
+            canAccept={Boolean(activeMission)}
           />
         )}
-
-        {tasks.length === 0 && liveTools.length === 0 && !liveText && !pending && !err && activeMission && (
-          <div
-            className="fadeIn"
-            style={{
-              maxWidth: 860,
-              margin: "0 auto var(--space-2)",
-              padding: "var(--space-4) 2px",
-              fontFamily: "var(--serif)",
-              fontStyle: "italic",
-              fontSize: "var(--t-section)",
-              lineHeight: 1.45,
-              color: "var(--text-muted)",
-              letterSpacing: "-0.005em",
-            }}
-          >
-            {values.lang === "en"
-              ? "Declare a task. It becomes a command. The command has consequence."
-              : "Declare uma tarefa. Ela vira comando. O comando tem consequência."}
-          </div>
-        )}
-
-        <TaskList
-          tasks={tasks}
-          activeTaskId={activeTaskId}
-          duplicateTitles={duplicateTitles}
-          copy={copy}
-          onSelect={selectTaskFromQueue}
-        />
-
-        <RunCanvas
-          copy={copy}
-          mode={mode}
-          pending={pending}
-          iteration={iteration}
-          elapsed={elapsed}
-          liveText={liveText}
-          liveTools={liveTools}
-          done={done}
-          accepted={accepted}
-          crew={crew}
-          activeTaskTitle={activeTask?.title ?? null}
-          lastTask={lastTask}
-          canAccept={Boolean(activeMission)}
-          onAccept={accept}
-        />
-
-        {err && (unreachable ? (
-          <DormantPanel
-            detail={copy.dormantCreation}
-            style={{ marginTop: 20, maxWidth: 820 }}
-          />
-        ) : (
-          <ErrorPanel
-            severity="critical"
-            title={copy.creationErrorTitle}
-            message={err}
-            style={{ marginTop: 20, maxWidth: 820 }}
-          />
-        ))}
 
         {showNextStep && (
-          <NextStepBar
-            hasNextOpen={nextOpenTask !== null}
-            canRefine={Boolean(activeTask?.title || lastTask) && activeTask?.state !== "done"}
-            isBlocked={activeTask?.state === "blocked"}
-            canBlock={
-              activeTask !== null &&
-              (activeTask.state === "open" || activeTask.state === "running")
-            }
-            copy={copy}
-            onNext={handleNextTask}
-            onRefine={handleRefine}
-            onBlock={handleBlock}
-            onReopen={handleReopen}
-          />
-        )}
-
-        {activeMission && (
-          <ArtifactLedger
-            artifacts={allArtifacts}
-            copy={copy}
-            lang={values.lang}
-            onSelectArtifact={replayArtifact}
-          />
+          <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 var(--space-4) var(--space-5)" }}>
+            <NextStepBar
+              hasNextOpen={nextOpenTask !== null}
+              canRefine={Boolean(activeTask?.title || lastTask) && activeTask?.state !== "done"}
+              isBlocked={activeTask?.state === "blocked"}
+              canBlock={
+                activeTask !== null &&
+                (activeTask.state === "open" || activeTask.state === "running")
+              }
+              copy={copy}
+              onNext={handleNextTask}
+              onRefine={handleRefine}
+              onBlock={handleBlock}
+              onReopen={handleReopen}
+            />
+          </div>
         )}
       </div>
 

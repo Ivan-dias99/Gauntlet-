@@ -4153,3 +4153,357 @@ textarea {
   color: var(--text-ghost);
   flex-shrink: 0;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TERMINAL EDITORIAL LAYOUT — strip · canvas · composer
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ——— Workbench strip ———
+   Thin rounded paper-like strip under the chamber head. Carries
+   workbench icon · WORKBENCH label · mission dropdown · italic
+   status · right-side utility actions (CONTEXT / DOCS). Subtle and
+   quiet — never the loudest thing on the page. */
+.term-workbench-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px 10px 10px;
+  max-width: 1200px;
+  margin: var(--space-2) auto var(--space-5);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 7%, transparent);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  min-height: 44px;
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--text-primary) 3%, transparent);
+}
+.term-workbench-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.term-workbench-label {
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.term-workbench-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+.term-workbench-mission {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.term-workbench-mission:hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 6%, transparent);
+  color: var(--text-secondary);
+}
+.term-workbench-mission-label {
+  color: var(--text-ghost);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.term-workbench-mission-value {
+  color: var(--text-secondary);
+  font-family: var(--mono);
+}
+.term-workbench-mission-caret {
+  opacity: 0.5;
+  font-size: 9px;
+}
+.term-workbench-status {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  font-style: italic;
+  color: var(--text-muted);
+  letter-spacing: 0;
+  text-transform: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+.term-workbench-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.term-workbench-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.term-workbench-action:hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 6%, transparent);
+  color: var(--chamber-dna, var(--ember));
+}
+.term-workbench-action-glyph {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+/* ——— Editorial output canvas ———
+   No card, no wrapper. The chamber body itself is the output surface.
+   The output column sits on an editorial max-width with generous
+   vertical rhythm between sections. Typography carries the entire
+   hierarchy: serif display title · sans body · mono micro section
+   labels · mono execution logs. */
+.term-output {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+.term-output-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.term-output-title {
+  font-family: var(--serif);
+  font-size: 32px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-weight: 400;
+  margin: 0;
+}
+.term-output-title-mono {
+  font-family: var(--mono);
+  font-size: 18px;
+  letter-spacing: 0;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.term-output-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--cc-ok) 8%, transparent);
+  border: 1px solid color-mix(in oklab, var(--cc-ok) 24%, transparent);
+  color: var(--cc-ok);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.term-output-pill[data-tone="info"] {
+  background: color-mix(in oklab, var(--cc-info) 8%, transparent);
+  border-color: color-mix(in oklab, var(--cc-info) 24%, transparent);
+  color: var(--cc-info);
+}
+.term-output-pill[data-tone="warn"] {
+  background: color-mix(in oklab, var(--cc-warn) 8%, transparent);
+  border-color: color-mix(in oklab, var(--cc-warn) 24%, transparent);
+  color: var(--cc-warn);
+}
+.term-output-pill-glyph { opacity: 0.85; }
+.term-output-lead {
+  font-family: var(--sans);
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  letter-spacing: -0.005em;
+  max-width: 68ch;
+}
+.term-output-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.term-output-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.term-output-section-label::after {
+  content: "—";
+  color: var(--text-ghost);
+  opacity: 0.6;
+}
+.term-output-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.term-output-list li {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+.term-output-list li::before {
+  content: "•";
+  color: var(--cc-ok);
+  opacity: 0.75;
+  font-size: 12px;
+  line-height: 1;
+}
+.term-output-log {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+.term-output-log-row {
+  display: grid;
+  grid-template-columns: 78px 1fr auto auto auto;
+  gap: 14px;
+  align-items: baseline;
+  padding: 3px 0;
+}
+.term-output-log-row[data-phase="ok"]  .term-output-log-status { color: var(--cc-ok); }
+.term-output-log-row[data-phase="err"] .term-output-log-status { color: var(--cc-err); }
+.term-output-log-row[data-phase="running"] .term-output-log-status { color: var(--cc-info); }
+.term-output-log-time { color: var(--text-ghost); }
+.term-output-log-cmd { color: var(--text-primary); }
+.term-output-log-dur,
+.term-output-log-meta { color: var(--text-muted); }
+.term-output-log-status {
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.term-output-log-sep {
+  color: var(--text-ghost);
+  opacity: 0.4;
+  user-select: none;
+  padding: 0 4px;
+}
+.term-output-result {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.term-output-result::before {
+  content: "•";
+  color: var(--chamber-dna, var(--ember));
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.term-output-result-body {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+}
+.term-output-result-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--chamber-dna, var(--ember));
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-meta);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 5px;
+  transition: background var(--dur-fast);
+}
+.term-output-result-link:hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, transparent);
+}
+.term-output-result-link[disabled] {
+  color: var(--text-ghost);
+  cursor: default;
+}
+.term-output-result-link[disabled]:hover { background: transparent; }
+
+/* Narrow — strip wraps naturally; output column collapses padding. */
+@media (max-width: 720px) {
+  .term-workbench-strip {
+    margin: var(--space-2) 0 var(--space-4);
+    padding: 10px 12px;
+  }
+  .term-workbench-status {
+    flex: 1 1 100%;
+    order: 99;
+    padding-top: 4px;
+  }
+  .term-output {
+    padding: var(--space-2) var(--space-3) var(--space-5);
+    gap: 22px;
+  }
+  .term-output-title { font-size: 26px; }
+  .term-output-log-row {
+    grid-template-columns: 68px 1fr auto;
+    gap: 10px;
+  }
+  .term-output-log-dur,
+  .term-output-log-meta,
+  .term-output-log-sep { display: none; }
+}
