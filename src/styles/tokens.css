@@ -2460,10 +2460,365 @@ textarea {
   border-bottom: 0;
 }
 
-/* ——— Insight rail (light, continuous column) ———
-   Replaces the older 4-panel stack. One quiet surface, three sections,
-   separated by hairline dashed rules. Sections with no content hide
-   themselves — the rail never inflates with empty boxes. */
+/* ——— Insight central column (Phase-1 closure) ———
+   Insight now runs as a single centered column, not a rail + main
+   split. A thin context strip sits under the chamber head, the
+   conversation dominates the middle, and the flagship composer anchors
+   the bottom. */
+.insight-center {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  align-items: center;
+  padding: 0 clamp(16px, 4vw, 48px) 0;
+}
+.insight-center-scroll {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 780px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) 0 var(--space-3);
+}
+.insight-center-floor {
+  width: 100%;
+  max-width: 780px;
+  padding-bottom: clamp(14px, 3vh, 28px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ——— Insight context strip (horizontal, below the head) ———
+   One-line, calm. Replaces the 4-card rail. Inline meta reads left to
+   right: mission title · turns · doctrine · live pulse (only when a
+   call is in flight). No border, no card — just a hairline-bottom
+   strip that integrates with the chamber head. */
+.insight-strip {
+  width: 100%;
+  max-width: 780px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 2px 12px;
+  border-bottom: 1px solid var(--border-color-soft);
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+  min-height: 36px;
+}
+.insight-strip-mission {
+  font-family: var(--serif);
+  font-size: var(--t-body);
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 48%;
+  min-width: 0;
+}
+.insight-strip-null {
+  font-family: var(--serif);
+  font-size: var(--t-body);
+  font-style: italic;
+  color: var(--text-muted);
+  letter-spacing: -0.005em;
+}
+.insight-strip-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.insight-strip-meta-label {
+  color: var(--text-ghost);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  font-size: var(--t-micro);
+}
+.insight-strip-meta-value {
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+}
+.insight-strip-sep {
+  color: var(--text-ghost);
+  opacity: 0.55;
+  user-select: none;
+}
+.insight-strip-live {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cc-info);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.insight-strip-live-label {
+  color: var(--text-muted);
+  text-transform: none;
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-meta);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.insight-strip-abort {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--cc-err);
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--cc-err) 38%, transparent);
+  border-radius: var(--radius-pill);
+  padding: 2px 10px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-swift),
+              border-color var(--dur-fast) var(--ease-swift);
+}
+.insight-strip-abort:hover {
+  background: color-mix(in oklab, var(--cc-err) 10%, transparent);
+  border-color: color-mix(in oklab, var(--cc-err) 60%, transparent);
+}
+
+/* ——— Insight flagship composer ———
+   Central anchor of the chamber. A premium input shell with three
+   icon-level affordances (attach · tools · send) on the action rail.
+   One strong border, one large body, no duplicated explanation. */
+.insight-composer {
+  position: relative;
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color-mid);
+  border-radius: 22px;
+  padding: 14px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition: border-color var(--dur-fast) var(--ease-swift),
+              box-shadow var(--dur-normal) var(--ease-swift);
+  box-shadow: 0 2px 10px color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+.insight-composer[data-focused="true"] {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 50%, var(--border-color-strong));
+  box-shadow: 0 4px 18px color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, transparent);
+}
+.insight-composer[data-disabled="true"] {
+  opacity: 0.78;
+}
+.insight-composer-input {
+  width: 100%;
+  min-height: 48px;
+  max-height: 240px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  letter-spacing: -0.002em;
+  padding: 4px 2px 2px;
+  display: block;
+}
+.insight-composer-input::placeholder {
+  color: var(--text-muted);
+}
+.insight-composer-rail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-color-soft);
+}
+.insight-composer-rail[data-borderless="true"] { border-top: 0; padding-top: 0; }
+.insight-composer-affordance {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-swift),
+              background var(--dur-fast) var(--ease-swift),
+              border-color var(--dur-fast) var(--ease-swift);
+  padding: 0;
+  flex-shrink: 0;
+}
+.insight-composer-affordance:hover {
+  color: var(--chamber-dna, var(--accent));
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 8%, transparent);
+}
+.insight-composer-affordance[disabled] {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.insight-composer-affordance[data-active="true"] {
+  color: var(--chamber-dna, var(--accent));
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 10%, transparent);
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 28%, transparent);
+}
+.insight-composer-glyph {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1;
+}
+.insight-composer-hint {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  white-space: nowrap;
+}
+.insight-composer-send {
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--chamber-dna, var(--accent));
+  color: var(--bg);
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity var(--dur-fast) var(--ease-swift),
+              transform var(--dur-fast) var(--ease-swift),
+              background var(--dur-fast) var(--ease-swift);
+  flex-shrink: 0;
+}
+.insight-composer-send:hover {
+  transform: translateY(-1px);
+}
+.insight-composer-send:disabled {
+  background: var(--text-ghost);
+  cursor: not-allowed;
+  transform: none;
+}
+.insight-composer-send[data-state="pending"] {
+  background: var(--cc-info);
+}
+.insight-composer-send-glyph {
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 500;
+}
+
+/* Flyout above the composer when attach/tools menu opens. */
+.insight-composer-flyout {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 12px;
+  min-width: 220px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color-mid);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-panel);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+}
+.insight-composer-flyout-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--radius-control) - 4px);
+  color: var(--text-secondary);
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease-swift),
+              color var(--dur-fast) var(--ease-swift);
+}
+.insight-composer-flyout-item:hover:not([disabled]) {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 8%, transparent);
+  color: var(--text-primary);
+}
+.insight-composer-flyout-item[disabled] {
+  color: var(--text-ghost);
+  cursor: not-allowed;
+}
+.insight-composer-flyout-item-glyph {
+  color: var(--chamber-dna, var(--accent));
+  font-family: var(--mono);
+  font-size: 14px;
+  width: 18px;
+  display: inline-flex;
+  justify-content: center;
+}
+.insight-composer-flyout-item-kicker {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+
+/* Empty ready cue (below strip, above composer). Small, not poster. */
+.insight-ready {
+  width: 100%;
+  max-width: 780px;
+  padding: clamp(24px, 6vh, 48px) 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.insight-ready-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 60%, var(--text-ghost));
+}
+.insight-ready-body {
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  max-width: 560px;
+}
+.insight-ready-sub {
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  line-height: 1.55;
+  color: var(--text-muted);
+  max-width: 520px;
+}
 .insight-rail {
   background: var(--bg-surface);
   border: 1px solid var(--border-color-soft);

@@ -11,7 +11,7 @@ import Thread from "./Thread";
 import Composer from "./Composer";
 import VerdictBadge from "./VerdictBadge";
 import InsightLayout from "./InsightLayout";
-import InsightRail from "./InsightRail";
+import ContextStrip from "./InsightRail";
 import {
   EMPTY_LIVE,
   extractAnswer,
@@ -22,16 +22,12 @@ import {
   type VerdictState,
 } from "./helpers";
 
-// Insight — conversation-first, two-region chamber. Left column is the
-// thread / verdict reasoning / composer. Right column is the
-// InsightRail: mission identity · chamber status (live routing &
-// pressure) · principles in force · verdict trail. Live streaming
-// pressure lives in the rail, not inside the thread, so the two
-// regions never compete for the same voice. Proportions and breath
-// come from InsightLayout; chamber-DNA cascades from
-// data-chamber="insight". The chamber now holds weight parity with
-// Surface and Archive as a real operational workstation, not an
-// empty-state-first onboarding shell.
+// Insight — central conversation chamber. Single column, 780px reading
+// width. A thin context strip sits under the chamber head, the
+// conversation occupies the middle, the flagship composer anchors the
+// bottom. No lateral rail, no stacked support cards: Insight now
+// behaves as the chamber for talking to the main intelligence of
+// Signal, not as a dashboard with side furniture.
 
 export default function Insight() {
   const {
@@ -46,9 +42,6 @@ export default function Insight() {
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
-  // Verdict trail — retained across turns within the same mission so
-  // the rail can show the last handful of outcomes. Reset on mission
-  // switch so the rail never leaks state from another conversation.
   const [verdictTrail, setVerdictTrail] = useState<VerdictState[]>([]);
   const [promoteId, setPromoteId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -72,7 +65,6 @@ export default function Insight() {
     return () => window.removeEventListener("keydown", h);
   }, [promoteId, pending]);
 
-  // Scroll to bottom on new activity.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeMission?.notes.length, pending, live.lastEventLabel]);
@@ -90,7 +82,6 @@ export default function Insight() {
     window.dispatchEvent(new CustomEvent("ruberra:chamber", { detail: "terminal" }));
   }
 
-  // Refs capture streaming metadata without stale-closure issues.
   const capturedJudge = useRef<{
     confidence: string; shouldRefuse: boolean; reasoning: string; divergenceCount: number;
   } | null>(null);
@@ -103,9 +94,6 @@ export default function Insight() {
     const v = input.trim();
     if (!v || pending) return;
 
-    // First-send creates mission implicitly (Wave-2). createMission returns
-    // the new id synchronously so we can thread mission_id into the request
-    // without waiting for setState to expose activeMission.id.
     let targetMissionId = activeMission?.id;
     if (!targetMissionId) {
       const title = v.length > 64 ? v.slice(0, 61).trimEnd() + "…" : v;
@@ -122,7 +110,6 @@ export default function Insight() {
     capturedTriad.current = { priorFailure: false };
     capturedAgent.current = { iter: 0, toolCount: 0 };
 
-    // Context + principles clamps — SignalQuery caps at 5000 / 64.
     const priorNotes = (activeMission?.notes ?? [])
       .slice(0, 8)
       .map((n) => `${n.role === "ai" ? "AI" : "User"}: ${n.text}`)
@@ -188,7 +175,6 @@ export default function Insight() {
             question: v,
           };
           setLastVerdict(verdict);
-          // Retain up to 12 most-recent verdicts for the rail trail.
           setVerdictTrail((prev) => [...prev, verdict].slice(-12));
         }
       },
@@ -196,98 +182,46 @@ export default function Insight() {
     );
   }
 
-  // Mission identity + live state both live in the rail now. The
-  // chamber-head stays minimal: kicker + tagline + mock + principles
-  // count (already provided by ChamberHead). No right-slot — the rail
-  // is the single narrator.
-  const rightSlot = null;
-
   const isEmpty = notes.length === 0 && !pending && !error;
+  const priorTurnsInContext = Math.min(activeMission?.notes?.length ?? 0, 8);
 
-  // Main conversation column — thread / verdict reasoning scroll in
-  // the flex:1 area; error/dormant and the composer are pinned at the
-  // bottom so they never get buried by a long transcript. Live
-  // streaming pressure lives in the rail's chamber-status card; the
-  // thread does not re-announce it.
-  const mainColumn = (
+  const strip = (
+    <ContextStrip
+      mission={activeMission}
+      principles={principles}
+      trail={verdictTrail}
+      live={live}
+      pending={pending}
+      lastConfidence={lastConfidence}
+      lastVerdictRefused={!!lastVerdict?.refused}
+      onAbort={() => abortRef.current?.abort()}
+    />
+  );
+
+  // Scrolling content: the ready cue (when empty) or the thread +
+  // verdict badge. Nothing else lives here. Error/dormant and the
+  // composer land on the floor below so they stay pinned.
+  const scroll = isEmpty ? (
+    <ReadyCue
+      activeMission={!!activeMission}
+      copy={copy}
+    />
+  ) : (
     <>
-      <div
-        data-insight-stream
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflow: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--space-3)",
-        }}
-      >
-        {isEmpty ? (
-          <div
-            data-insight-thread-empty
-            style={{
-              flex: 1,
-              minHeight: 240,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 14,
-              padding: "clamp(48px, 10vh, 120px) var(--space-4)",
-              textAlign: "center",
-              maxWidth: 640,
-              marginInline: "auto",
-            }}
-          >
-            <span
-              aria-hidden
-              style={{
-                fontFamily: "var(--serif)",
-                fontSize: 48,
-                lineHeight: 1,
-                color: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, var(--text-ghost))",
-                userSelect: "none",
-              }}
-            >
-              ※
-            </span>
-            <span
-              className="kicker"
-              data-tone="ghost"
-              style={{ letterSpacing: "var(--track-kicker)" }}
-            >
-              {copy.labThreadEmptyKicker}
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--serif)",
-                fontSize: "var(--t-section)",
-                fontStyle: "italic",
-                lineHeight: 1.4,
-                color: "var(--text-secondary)",
-                letterSpacing: "-0.005em",
-              }}
-            >
-              {activeMission ? copy.labThreadEmptyActiveBody : copy.labThreadEmptyIdleBody}
-            </span>
-          </div>
-        ) : (
-          <>
-            <Thread
-              notes={notes}
-              promoteId={promoteId}
-              onPromoteRequest={(id) => setPromoteId(id)}
-              onPromoteConfirm={confirmPromote}
-              onPromoteCancel={() => setPromoteId(null)}
-            />
+      <Thread
+        notes={notes}
+        promoteId={promoteId}
+        onPromoteRequest={(id) => setPromoteId(id)}
+        onPromoteConfirm={confirmPromote}
+        onPromoteCancel={() => setPromoteId(null)}
+      />
+      {lastVerdict && !pending && <VerdictBadge verdict={lastVerdict} />}
+      <div ref={bottomRef} />
+    </>
+  );
 
-            {lastVerdict && !pending && <VerdictBadge verdict={lastVerdict} />}
-          </>
-        )}
-
-        <div ref={bottomRef} />
-      </div>
-
+  const floor = (
+    <>
       {error && !pending && (
         <div data-insight-failure-slot>
           {unreachable ? (
@@ -306,7 +240,6 @@ export default function Insight() {
           )}
         </div>
       )}
-
       <Composer
         value={input}
         onChange={setInput}
@@ -319,6 +252,10 @@ export default function Insight() {
           !activeMission ? copy.labPlaceholderNoMission :
           copy.labPlaceholder
         }
+        principlesCount={principles.length}
+        priorTurns={priorTurnsInContext}
+        mockMode={backend.mode === "mock"}
+        routeHint={lastVerdict?.routePath}
       />
     </>
   );
@@ -330,23 +267,31 @@ export default function Insight() {
         tagline={copy.labTagline}
         mock={backend.mode === "mock"}
         principlesCount={principles.length}
-        right={rightSlot}
       />
-      <InsightLayout
-        rail={
-          <InsightRail
-            mission={activeMission}
-            principles={principles}
-            trail={verdictTrail}
-            live={live}
-            pending={pending}
-            lastConfidence={lastConfidence}
-            lastVerdictRefused={!!lastVerdict?.refused}
-            onAbort={() => abortRef.current?.abort()}
-          />
-        }
-        main={mainColumn}
-      />
+      <InsightLayout strip={strip} scroll={scroll} floor={floor} />
+    </div>
+  );
+}
+
+// ——— Ready cue ———
+//
+// One calm invitation when the session is empty. The composer itself
+// is the loud anchor; this cue only sets the tone.
+
+function ReadyCue({
+  activeMission, copy,
+}: {
+  activeMission: boolean;
+  copy: ReturnType<typeof useCopy>;
+}) {
+  return (
+    <div className="insight-ready" data-insight-ready>
+      <span className="insight-ready-kicker">
+        {copy.labThreadEmptyKicker}
+      </span>
+      <span className="insight-ready-body">
+        {activeMission ? copy.labThreadEmptyActiveBody : copy.labThreadEmptyIdleBody}
+      </span>
     </div>
   );
 }
