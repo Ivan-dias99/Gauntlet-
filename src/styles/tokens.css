@@ -3248,9 +3248,11 @@ textarea {
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ——— Canonical terminal command surface ———
-   The ExecutionComposer becomes the only terminal-chrome piece in the
-   chamber. Traffic-lights + shell prompt live here. The old
-   decorative .exec-shell block at the top of the body is gone. */
+   One unified shell — not 3 stacked slabs. Chrome + body + workspace
+   share a single background with internal spacing rhythm; the old
+   hard horizontal borders are retired so the composer reads as one
+   premium instrument. Subtle inner highlights (hairline top + soft
+   inset) carry material depth without compartmentalizing. */
 .term-command {
   position: relative;
   width: 100%;
@@ -3258,11 +3260,212 @@ textarea {
   margin: 0 auto;
   background: var(--bg-elevated);
   border: 1px solid var(--border-color-mid);
-  border-radius: var(--radius-panel);
+  border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 2px 10px color-mix(in oklab, var(--text-primary) 5%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
+    0 0 0 1px color-mix(in oklab, var(--text-primary) 1%, transparent),
+    0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent),
+    0 12px 32px -12px color-mix(in oklab, var(--text-primary) 18%, transparent);
   transition: border-color var(--dur-fast) var(--ease-swift),
               box-shadow var(--dur-normal) var(--ease-swift);
+}
+.term-command[data-focused="true"] {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 36%, var(--border-color-strong));
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset,
+    0 0 0 1px color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent),
+    0 2px 4px color-mix(in oklab, var(--text-primary) 6%, transparent),
+    0 18px 48px -14px color-mix(in oklab, var(--chamber-dna, var(--ember)) 20%, transparent);
+}
+/* Productive live tint — very low opacity gradient across the whole
+   shell (not just the body). Reads as a quiet hum of "work is alive"
+   across the full surface when focused or pending. */
+.term-command[data-focused="true"],
+.term-command[data-state="pending"] {
+  background:
+    linear-gradient(180deg,
+      color-mix(in oklab, var(--cc-ok) 2.5%, transparent) 0%,
+      transparent 40%),
+    var(--bg-elevated);
+}
+/* Chrome — no background, no bottom border. Just a thin underline
+   hairline achieved by inset shadow so it reads as a crease, not a
+   seam. Internal padding does the spacing work. */
+.term-command-chrome {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px 9px;
+  background: transparent;
+  font-family: var(--mono);
+  position: relative;
+}
+.term-command-chrome::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 0;
+  height: 1px;
+  background: color-mix(in oklab, var(--text-primary) 5%, transparent);
+  pointer-events: none;
+}
+.term-command-dots {
+  display: inline-flex;
+  gap: 6px;
+  margin-right: 4px;
+}
+.term-command-dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  opacity: 0.92;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, #000 18%, transparent),
+    inset 0 1px 0 color-mix(in oklab, #fff 24%, transparent);
+}
+.term-command-dots span:nth-child(1) { background: var(--cc-err); }
+.term-command-dots span:nth-child(2) { background: var(--cc-warn); }
+.term-command-dots span:nth-child(3) { background: var(--cc-ok); }
+.term-command[data-state="pending"] .term-command-dots span:nth-child(1) {
+  animation: breathe 1.3s var(--ease-swift) infinite;
+}
+.term-command-path {
+  font-size: var(--t-body-sec);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  letter-spacing: -0.002em;
+}
+.term-command-path strong {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.term-command-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.term-command-phase::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+}
+.term-command[data-focused="true"] .term-command-phase {
+  color: var(--cc-ok);
+}
+.term-command[data-focused="true"] .term-command-phase::before { opacity: 1; }
+.term-command[data-state="pending"] .term-command-phase { color: var(--cc-info); }
+.term-command[data-state="pending"] .term-command-phase::before {
+  opacity: 1;
+  animation: breathe 1.4s var(--ease-swift) infinite;
+}
+/* Body — the primary surface. Same bg as the shell (no separate
+   slab). Typography is the dominant signal: prompt + input both
+   live here, everything else is subordinate. */
+.term-command-body {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 16px 16px;
+  font-family: var(--mono);
+  background: transparent;
+}
+.term-command-prompt {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  white-space: nowrap;
+  opacity: 0.88;
+}
+.term-command-prompt-user { color: var(--cc-ok); }
+.term-command-prompt-sep  { color: var(--text-ghost); }
+.term-command-prompt-path { color: var(--cc-path); }
+.term-command-prompt-caret { color: var(--chamber-dna, var(--cc-prompt)); }
+.term-command-input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--cc-fg);
+  padding: 2px 0;
+  min-width: 0;
+  letter-spacing: -0.002em;
+  caret-color: var(--chamber-dna, var(--ember));
+}
+.term-command-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  letter-spacing: 0;
+  opacity: 0.82;
+}
+.term-command-send {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--chamber-dna, var(--ember));
+  color: var(--bg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  transition: opacity var(--dur-fast) var(--ease-swift),
+              transform var(--dur-fast) var(--ease-swift),
+              background var(--dur-fast) var(--ease-swift),
+              box-shadow var(--dur-fast) var(--ease-swift);
+  flex-shrink: 0;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 20%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #000 14%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--chamber-dna, var(--ember)) 30%, transparent),
+    0 4px 10px -2px color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, transparent);
+}
+.term-command-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 24%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #000 16%, transparent) inset,
+    0 2px 4px color-mix(in oklab, var(--chamber-dna, var(--ember)) 38%, transparent),
+    0 8px 18px -3px color-mix(in oklab, var(--chamber-dna, var(--ember)) 40%, transparent);
+}
+.term-command-send:active:not(:disabled) { transform: translateY(0); }
+.term-command-send:disabled {
+  background: color-mix(in oklab, var(--text-ghost) 70%, var(--bg-elevated));
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.85;
+}
+.term-command-send[data-state="pending"] {
+  background: var(--cc-info);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 20%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--cc-info) 35%, transparent);
 }
 .term-command[data-focused="true"] {
   border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 45%, var(--border-color-strong));
@@ -3664,92 +3867,109 @@ textarea {
 .term-command-tools {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  margin-left: var(--space-2);
+  gap: 1px;
+  margin-left: 6px;
 }
 .term-tool {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-muted);
+  border: 0;
+  color: var(--text-ghost);
   cursor: pointer;
   transition: color var(--dur-fast) var(--ease-swift),
-              background var(--dur-fast) var(--ease-swift),
-              border-color var(--dur-fast) var(--ease-swift);
+              background var(--dur-fast) var(--ease-swift);
   padding: 0;
   flex-shrink: 0;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1;
   position: relative;
 }
 .term-tool:hover {
   color: var(--chamber-dna, var(--ember));
-  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, transparent);
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 7%, transparent);
 }
 .term-tool[data-active="true"] {
   color: var(--chamber-dna, var(--ember));
-  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 12%, transparent);
-  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, transparent);
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 10%, transparent);
 }
 .term-tool[disabled] { opacity: 0.4; cursor: not-allowed; }
 
-/* Workspace bar — bottom of the term-command. Three intentional
-   groups: identity (câmara + missão) · state (backend + doutrina) ·
-   mode (agent/crew toggle). Groups are visually separated by a
-   hairline "·" divider so the chips read as one coherent family with
-   clear micro-hierarchy, not a random pile. */
+/* Workspace row — same surface as the rest of the composer. No
+   separate slab, no top border, no darker bg. Just a hairline crease
+   (inset ::before) and spacing. Chips read as telemetry born from
+   the shell, not appended after. */
 .term-command-workspace {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px var(--space-3) 10px;
-  background: color-mix(in oklab, var(--bg-sunken) 55%, var(--bg-elevated));
-  border-top: 1px solid var(--border-color-soft);
+  gap: 8px;
+  padding: 9px 14px 11px;
+  background: transparent;
+  border-top: 0;
   font-family: var(--mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-meta);
   color: var(--text-ghost);
   flex-wrap: wrap;
+  position: relative;
+}
+.term-command-workspace::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+  pointer-events: none;
 }
 .term-ws-group {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
   flex-wrap: wrap;
 }
 .term-ws-divider {
-  width: 1px;
-  height: 14px;
-  background: var(--border-color-soft);
+  display: inline-block;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+  opacity: 0.45;
+  margin: 0 6px;
   flex-shrink: 0;
-  opacity: 0.8;
 }
+/* Chips — borderless, padding-only. Integrated telemetry, not
+   attached pills. Hover introduces a subtle chamber-DNA tint so the
+   user still feels they are interactive. */
 .term-ws-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-elevated);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: transparent;
   color: var(--text-muted);
-  border: 1px solid var(--border-color-soft);
+  border: 0;
   white-space: nowrap;
   font-family: var(--mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-meta);
   min-width: 0;
-  transition: border-color var(--dur-fast), color var(--dur-fast);
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.term-ws-chip:hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 5%, transparent);
+  color: var(--text-secondary);
 }
 .term-ws-chip[data-role="primary"] {
   color: var(--text-secondary);
-  border-color: var(--border-color-mid);
 }
 .term-ws-chip-label {
   color: var(--text-ghost);
@@ -3801,12 +4021,12 @@ textarea {
 .term-ws-mode {
   display: inline-flex;
   align-items: stretch;
-  border: 1px solid var(--border-color-soft);
+  border: 0;
   border-radius: var(--radius-pill);
-  background: var(--bg-elevated);
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
   overflow: hidden;
-  height: 24px;
-  padding: 1px;
+  height: 22px;
+  padding: 2px;
 }
 .term-ws-mode-opt {
   background: transparent;
