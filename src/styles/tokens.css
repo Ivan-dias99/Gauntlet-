@@ -167,11 +167,11 @@
 
 /* ——— SEPIA — midnight archive ——— */
 [data-theme="sepia"] {
-  --bg: #1a140f;
-  --bg-surface: #221a13;
-  --bg-sunken: #120d09;
-  --bg-elevated: #2a2018;
-  --bg-input: #181107;
+  --bg: #15100b;
+  --bg-surface: #1e1710;
+  --bg-sunken: #0d0905;
+  --bg-elevated: #2b2117;
+  --bg-input: #181207;
 
   --border-color-soft:   color-mix(in oklab, #f4e6cc 10%, transparent);
   --border-color-mid:    color-mix(in oklab, #f4e6cc 16%, transparent);
@@ -2819,156 +2819,6 @@ textarea {
   color: var(--text-muted);
   max-width: 520px;
 }
-.insight-rail {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color-soft);
-  border-radius: var(--radius-panel);
-  display: flex;
-  flex-direction: column;
-  padding: 2px 0;
-  min-width: 0;
-}
-.insight-rail-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: 16px var(--space-4);
-  border-bottom: 1px dashed var(--border-color-soft);
-  min-width: 0;
-}
-.insight-rail-section:last-child { border-bottom: 0; }
-.insight-rail-section[data-empty="true"] { display: none; }
-
-.insight-rail-kicker {
-  font-family: var(--mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--text-ghost);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.insight-rail-mission {
-  font-family: var(--serif);
-  font-size: 16px;
-  line-height: 1.35;
-  color: var(--text-primary);
-  letter-spacing: -0.005em;
-  font-weight: 400;
-  word-break: break-word;
-}
-.insight-rail-mission-null {
-  font-family: var(--sans);
-  font-size: var(--t-body-sec);
-  color: var(--text-muted);
-  font-style: italic;
-  line-height: 1.5;
-}
-.insight-rail-line {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  font-family: var(--mono);
-  font-size: var(--t-meta);
-  letter-spacing: var(--track-meta);
-  color: var(--text-muted);
-  flex-wrap: wrap;
-}
-.insight-rail-line > .sep {
-  color: var(--text-ghost);
-  opacity: 0.6;
-}
-.insight-rail-live {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px var(--space-4);
-  border-bottom: 1px dashed var(--border-color-soft);
-  background: color-mix(in oklab, var(--cc-info) 5%, transparent);
-  font-family: var(--mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-meta);
-  color: var(--cc-info);
-  text-transform: uppercase;
-}
-.insight-rail-live-label {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-secondary);
-  letter-spacing: var(--track-meta);
-  text-transform: none;
-  font-family: var(--mono);
-  font-size: var(--t-meta);
-}
-.insight-rail-principle {
-  display: grid;
-  grid-template-columns: 14px 1fr;
-  gap: 8px;
-  align-items: baseline;
-  font-family: var(--sans);
-  font-size: var(--t-body-sec);
-  color: var(--text-secondary);
-  line-height: 1.5;
-  padding: 2px 0;
-}
-.insight-rail-principle-glyph {
-  font-family: var(--serif);
-  color: var(--chamber-dna, var(--accent));
-  line-height: 1;
-  user-select: none;
-}
-.insight-rail-trail {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.insight-rail-trail-row {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  gap: 10px;
-  align-items: baseline;
-  font-family: var(--mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  padding: 4px 0;
-  border-bottom: 1px dashed color-mix(in oklab, var(--border-color-soft) 60%, transparent);
-}
-.insight-rail-trail-row:last-child { border-bottom: 0; }
-.insight-rail-trail-q {
-  font-family: var(--sans);
-  font-size: var(--t-body-sec);
-  color: var(--text-muted);
-  font-style: italic;
-  letter-spacing: 0;
-  text-transform: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.35;
-}
-.insight-rail-abort {
-  align-self: flex-end;
-  font-family: var(--mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--cc-err);
-  background: transparent;
-  border: 1px solid color-mix(in oklab, var(--cc-err) 38%, transparent);
-  border-radius: var(--radius-pill);
-  padding: 3px 10px;
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-swift),
-              border-color var(--dur-fast) var(--ease-swift);
-}
-.insight-rail-abort:hover {
-  background: color-mix(in oklab, var(--cc-err) 10%, transparent);
-  border-color: color-mix(in oklab, var(--cc-err) 60%, transparent);
-}
 
 /* ——— Turn row (new composition) ———
    Every turn in the conversation paper uses this. Gutter on the left
@@ -3415,4 +3265,134 @@ textarea {
 }
 [data-theme="sepia"] .conversation {
   background: color-mix(in oklab, var(--bg-elevated) 94%, var(--bg-surface));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PRODUCTION CLOSURE — cross-chamber consistency + hero prep
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Unified hover law — every "click to toggle" affordance across the
+   product lands on the same tint + border behavior. Keeps chambers
+   from inventing local hover tones. */
+.btn-chip:hover,
+.insight-composer-affordance:hover,
+.ledger-row:hover {
+  color: var(--chamber-dna, var(--accent));
+}
+
+/* Row-safety for Routing-style grids: when the viewport shrinks below
+   720px, diagnostic-rows that declared inline column grids fall back
+   to a single column so nothing overflows. */
+@media (max-width: 720px) {
+  .diagnostic-row {
+    grid-template-columns: 1fr !important;
+    padding: 8px 0;
+  }
+  .diagnostic-row-key {
+    padding-bottom: 2px;
+  }
+}
+
+/* Sepia elevation pyramid — make the theme's depth readable. Panels
+   and conversation already opt into bg-elevated; ensure the page bg
+   stays visibly lower than the surface + elevated steps. */
+[data-theme="sepia"] .chamber-shell { background: var(--bg); }
+
+/* Dark: tighten panel contrast against bg for flagship read. */
+[data-theme="dark"] .panel[data-rank="primary"] {
+  background: color-mix(in oklab, var(--bg-elevated) 96%, var(--bg-surface));
+}
+
+/* ——— Hero primitives (front door prep) ———
+   Not mounted by any chamber yet. Ship the primitives so a hero
+   landing can be wired later without another tokens pass. */
+.hero {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(48px, 10vh, 140px) clamp(20px, 5vw, 64px);
+  gap: var(--space-5);
+  text-align: center;
+  max-width: 960px;
+  margin-inline: auto;
+}
+.hero-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 60%, var(--text-muted));
+}
+.hero-title {
+  font-family: var(--serif);
+  font-size: clamp(32px, 5vw, 56px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-weight: 400;
+  max-width: 18ch;
+}
+.hero-sub {
+  font-family: var(--sans);
+  font-size: clamp(15px, 1.6vw, 18px);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  max-width: 58ch;
+}
+.hero-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+.hero-doors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+  width: 100%;
+  margin-top: var(--space-5);
+}
+.hero-door {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: var(--space-4);
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-swift),
+              background var(--dur-fast) var(--ease-swift),
+              transform var(--dur-fast) var(--ease-swift);
+}
+.hero-door:hover {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 40%, var(--border-color-mid));
+  background: var(--bg-elevated);
+  transform: translateY(-1px);
+}
+.hero-door-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.hero-door-title {
+  font-family: var(--serif);
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+}
+.hero-door-body {
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  color: var(--text-muted);
+  line-height: 1.5;
 }
