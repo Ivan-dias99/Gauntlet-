@@ -14,10 +14,10 @@ interface Props {
   onReopen: () => void;
 }
 
-// NextStepBar — inline cluster of operational actions after a run lands.
-// Each button is a .btn-chip; tone flows via data-variant tokens on the
-// shared chip primitive so the bar reads as the same vocabulary as
-// every other chip in the product.
+// NextStepBar — inline actions after a run lands. Renders on the same
+// canvas rhythm as RunCanvas so the eye doesn't jump to a separate
+// block. Uses the .term-canvas-foot geometry (hairline above, chips
+// inline) already defined in tokens.css.
 export default function NextStepBar({
   hasNextOpen, canRefine, canBlock, isBlocked, copy,
   onNext, onRefine, onBlock, onReopen,
@@ -33,25 +33,31 @@ export default function NextStepBar({
 
   if (buttons.length === 0) {
     return (
-      <div className="kicker" data-tone="ok" style={{ marginTop: "var(--space-2)", maxWidth: 860 }}>
-        {copy.actionAllDone}
+      <div
+        className="term-canvas-foot"
+        style={{
+          maxWidth: 860,
+          margin: "0 auto",
+          borderTop: "1px dashed var(--border-color-soft)",
+          paddingTop: 10,
+        }}
+      >
+        <span className="kicker" data-tone="ok">{copy.actionAllDone}</span>
       </div>
     );
   }
 
   return (
     <div
-      className="fadeIn"
+      className="fadeIn term-canvas-foot"
       style={{
-        marginTop: "var(--space-2)",
         maxWidth: 860,
-        display: "flex",
-        gap: "var(--space-2)",
-        alignItems: "center",
-        flexWrap: "wrap",
+        margin: "0 auto",
+        borderTop: "1px dashed var(--border-color-soft)",
+        paddingTop: 10,
       }}
     >
-      <span className="kicker">{copy.nextStep}</span>
+      <span className="kicker" data-tone="ghost">{copy.nextStep}</span>
       {buttons.map((b, i) => {
         const color =
           b.tone === "accent" ? "var(--chamber-dna, var(--accent))" :

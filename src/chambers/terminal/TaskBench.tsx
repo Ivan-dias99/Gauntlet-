@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   STATE_COLOR, STATE_GLYPH, isStaleRunning, relTime, sourceLabel, stateLabel,
   type Copy, type Task, type TaskState,
@@ -166,15 +167,24 @@ interface ListProps {
 }
 
 export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect }: ListProps) {
-  const pending = tasks.filter((t) => t.state !== "done" && t.state !== "blocked");
+  const open = tasks.filter((t) => t.state !== "done" && t.state !== "blocked");
   const blocked = tasks.filter((t) => t.state === "blocked");
   const done = tasks.filter((t) => t.state === "done");
+
+  // Auto-collapse law: when there is active work (open/running tasks),
+  // the eye must stay on what matters. Done and blocked sections start
+  // collapsed behind a ghost chip; user expands if needed. When there
+  // are no open tasks, both sections expand (the user has nothing else
+  // to do anyway).
+  const activeWork = open.length > 0;
+  const [showDone, setShowDone] = useState(!activeWork);
+  const [showBlocked, setShowBlocked] = useState(!activeWork);
 
   if (tasks.length === 0) return null;
 
   return (
     <div style={{ maxWidth: 860, marginBottom: "var(--space-4)" }}>
-      {pending.map((t) => (
+      {open.map((t) => (
         <TaskRow
           key={t.id}
           task={t}
@@ -185,14 +195,21 @@ export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect 
         />
       ))}
 
-      {done.length > 0 && pending.length > 0 && (
+      {done.length > 0 && open.length > 0 && (
         <div style={{ borderTop: "1px solid var(--border-color-soft)", margin: "var(--space-3) 0", opacity: 0.6 }} />
       )}
 
       {blocked.length > 0 && (
         <>
-          <SectionLabel tone="err">✕ {copy.blockedSection} · {blocked.length}</SectionLabel>
-          {blocked.map((t) => (
+          <CollapseHeader
+            tone="err"
+            glyph="✕"
+            label={copy.blockedSection}
+            count={blocked.length}
+            expanded={showBlocked}
+            onToggle={() => setShowBlocked((v) => !v)}
+          />
+          {showBlocked && blocked.map((t) => (
             <TaskRow
               key={t.id}
               task={t}
@@ -206,8 +223,15 @@ export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect 
 
       {done.length > 0 && (
         <>
-          <SectionLabel tone="ok">✓ {copy.doneSection} · {done.length}</SectionLabel>
-          {done.map((t) => (
+          <CollapseHeader
+            tone="ok"
+            glyph="✓"
+            label={copy.doneSection}
+            count={done.length}
+            expanded={showDone}
+            onToggle={() => setShowDone((v) => !v)}
+          />
+          {showDone && done.map((t) => (
             <TaskRow
               key={t.id}
               task={t}
@@ -223,15 +247,39 @@ export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect 
   );
 }
 
-function SectionLabel({ tone, children }: { tone: "ok" | "err"; children: React.ReactNode }) {
+function CollapseHeader({
+  tone, glyph, label, count, expanded, onToggle,
+}: {
+  tone: "ok" | "err";
+  glyph: string;
+  label: string;
+  count: number;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <div
+    <button
+      onClick={onToggle}
       className="kicker"
       data-tone={tone}
-      style={{ margin: "var(--space-3) 0 var(--space-1)" }}
+      style={{
+        background: "transparent",
+        border: 0,
+        padding: "var(--space-2) 0 var(--space-1)",
+        margin: "var(--space-3) 0 0",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        width: "100%",
+        textAlign: "left",
+      }}
+      aria-expanded={expanded}
     >
-      {children}
-    </div>
+      <span style={{ opacity: 0.8 }}>{expanded ? "▾" : "▸"}</span>
+      <span>{glyph} {label}</span>
+      <span data-tone="ghost" style={{ color: "var(--text-ghost)" }}>· {count}</span>
+    </button>
   );
 }
 

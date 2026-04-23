@@ -902,88 +902,6 @@ textarea {
   flex-shrink: 0;
 }
 
-/* ——— Creation exec panel (flagship) ———
-   Flatten the AI output region to a single surface with two regions.
-   Left-hairline color encodes run state (idle/running/done) without reshuffle. */
-.xc-exec {
-  max-width: 820px;
-  margin-top: var(--space-1);
-  margin-bottom: var(--space-4);
-  overflow: hidden;
-  padding: 0;
-  border-left: 2px solid var(--border-soft);
-  transition: border-color 0.25s var(--ease-swift);
-}
-.xc-exec[data-state="running"] {
-  border-left-color: var(--ember);
-}
-.xc-exec[data-state="done"] {
-  border-left-color: var(--cc-ok);
-}
-.xc-exec-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border-bottom: 1px solid var(--border-soft);
-}
-.xc-exec-body {
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-sunken);
-}
-.xc-exec-foot {
-  margin-top: var(--space-2);
-  padding-top: var(--space-1);
-  border-top: 1px dashed var(--border-soft);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.xc-exec-answer {
-  font-family: var(--mono);
-  font-size: 12.5px;
-  color: var(--cc-fg);
-  line-height: 1.75;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.xc-exec-answer[data-has-tools="true"] {
-  border-top: 1px dashed var(--border-soft);
-  padding-top: var(--space-2);
-}
-.xc-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--text-primary) 12%, transparent);
-  color: var(--text-muted);
-  background: color-mix(in oklab, var(--text-primary) 3%, transparent);
-}
-.xc-pill-running {
-  color: var(--ember);
-  border-color: color-mix(in oklab, var(--ember) 30%, transparent);
-  background: color-mix(in oklab, var(--ember) 8%, transparent);
-}
-.xc-pill-ok {
-  color: var(--cc-ok);
-  border-color: color-mix(in oklab, var(--cc-ok) 30%, transparent);
-  background: color-mix(in oklab, var(--cc-ok) 8%, transparent);
-}
-.xc-pill-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: currentColor;
-}
-
 /* ——— Memory telemetry head ———
    Purpose-built: serif italic headline for the Memory chamber telemetry
    region. Owns its own size/weight/spacing — does not extend .t-serif. */
@@ -1260,22 +1178,6 @@ textarea {
   .surface-flagship {
     border-radius: var(--radius-control);
     box-shadow: var(--shadow-soft);
-  }
-
-  /* Creation exec panel (flagship) — head/body/foot paddings trim so the
-     tool trace region keeps its proportions without eating the viewport. */
-  .xc-exec {
-    margin-bottom: var(--space-3);
-  }
-  .xc-exec-head {
-    padding: var(--space-1) var(--space-2);
-  }
-  .xc-exec-body {
-    padding: var(--space-2) var(--space-2);
-  }
-  .xc-exec-answer {
-    font-size: 12px;
-    line-height: 1.65;
   }
 
   /* Dropdown panel — already bounded by min(360px, 100vw - 32px); shrink
@@ -3006,91 +2908,6 @@ textarea {
 }
 .run-header-metric-value[data-tone] { color: var(--tone); }
 
-/* ——— Exec shell (Terminal output surface) ———
-   Fully-styled IDE-feel card. Top bar reads as a window tab with
-   traffic lights + path; body is the mono output region. */
-.exec-shell {
-  background: var(--bg-sunken);
-  border: 1px solid var(--border-color-soft);
-  border-radius: var(--radius-panel);
-  overflow: hidden;
-  box-shadow: var(--shadow-soft);
-  display: flex;
-  flex-direction: column;
-  max-width: 860px;
-  margin-bottom: var(--space-3);
-}
-.exec-shell[data-state="running"] {
-  box-shadow: var(--shadow-panel);
-  border-color: color-mix(in oklab, var(--cc-info) 35%, var(--border-color-soft));
-}
-.exec-shell[data-state="done"] {
-  border-color: color-mix(in oklab, var(--cc-ok) 30%, var(--border-color-soft));
-}
-.exec-shell-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 10px var(--space-3);
-  background: color-mix(in oklab, var(--bg-elevated) 70%, var(--bg-surface));
-  border-bottom: 1px solid var(--border-color-soft);
-  font-family: var(--mono);
-}
-.exec-shell-dots {
-  display: inline-flex;
-  gap: 5px;
-  margin-right: var(--space-2);
-}
-.exec-shell-dots span {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--text-ghost);
-  opacity: 0.55;
-}
-.exec-shell-dots span:nth-child(1) { background: var(--cc-err); opacity: 0.85; }
-.exec-shell-dots span:nth-child(2) { background: var(--cc-warn); opacity: 0.85; }
-.exec-shell-dots span:nth-child(3) { background: var(--cc-ok); opacity: 0.85; }
-.exec-shell[data-state="running"] .exec-shell-dots span:nth-child(1) {
-  animation: breathe 1.2s var(--ease-swift) infinite;
-}
-.exec-shell-title {
-  font-size: var(--t-body-sec);
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
-.exec-shell-title strong {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-.exec-shell-phase {
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--text-ghost);
-}
-.exec-shell-body {
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-sunken);
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.65;
-  color: var(--cc-fg);
-  min-height: 60px;
-}
-.exec-shell-foot {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 10px var(--space-4);
-  border-top: 1px solid var(--border-color-soft);
-  background: color-mix(in oklab, var(--bg-elevated) 50%, var(--bg-surface));
-  flex-wrap: wrap;
-}
 
 /* ——— Tool call row (execution stream) ———
    The one geometry for tool-use visualization. Reads as a structured
