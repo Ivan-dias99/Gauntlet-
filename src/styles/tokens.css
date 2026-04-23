@@ -5740,13 +5740,19 @@ textarea {
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ——— Shared material tokens — light theme base ———
-   IMPORTANT: bg-surface and bg are both warm creams in light theme. Mixing
-   them never produces a visible green. The plane bg must be mixed DIRECTLY
-   with cc-ok so the sage tint reads on the surface. ~10% direct cc-ok gives
-   a clearly tinted ivory that still feels paper, not painted.              */
+   The plane surfaces must live in the same color family as the chamber
+   floor (which is `cc-ok 14% + bg`). Mixing bg-surface with cc-ok in
+   oklab preserves lightness so much that the tint becomes invisible —
+   the math we need is the same recipe the chamber uses, with lower
+   cc-ok percentages so the planes read LIGHTER than the floor.
+
+   Hierarchy:
+     chamber floor   = cc-ok 14% + bg  (richest sage)
+     spine / strip   = cc-ok  9% + bg  (light sage panel)
+     composer hero   = cc-ok  5% + bg  (cleanest sage paper)                */
 .chamber-shell[data-chamber="terminal"] {
-  --term-plane-bg:          color-mix(in oklab, var(--bg-surface) 90%, var(--cc-ok));
-  --term-plane-bg-hero:     color-mix(in oklab, var(--bg-surface) 94%, var(--cc-ok));
+  --term-plane-bg:          color-mix(in oklab, var(--cc-ok)  9%, var(--bg));
+  --term-plane-bg-hero:     color-mix(in oklab, var(--cc-ok)  5%, var(--bg));
   --term-plane-border:      color-mix(in oklab, var(--text-primary) 16%, transparent);
   --term-plane-border-warm: color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, var(--text-primary) 12%, transparent));
   --term-plane-highlight:   color-mix(in oklab, #fff 70%, transparent);
@@ -5758,8 +5764,8 @@ textarea {
 }
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"],
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"] {
-  --term-plane-bg:          color-mix(in oklab, var(--bg-surface) 92%, var(--cc-ok));
-  --term-plane-bg-hero:     color-mix(in oklab, var(--bg-surface) 95%, var(--cc-ok));
+  --term-plane-bg:          color-mix(in oklab, var(--cc-ok) 14%, var(--bg-surface));
+  --term-plane-bg-hero:     color-mix(in oklab, var(--cc-ok)  8%, var(--bg-surface));
   --term-plane-border:      color-mix(in oklab, var(--text-primary) 18%, transparent);
   --term-plane-border-warm: color-mix(in oklab, var(--cc-ok) 28%, color-mix(in oklab, var(--text-primary) 14%, transparent));
   --term-plane-highlight:   color-mix(in oklab, #fff  8%, transparent);
@@ -5769,10 +5775,13 @@ textarea {
   --term-plane-shadow-2:    color-mix(in oklab, #000 64%, transparent);
 }
 
-/* ——— LEFT SPINE — sage-tinted ivory, shared material ———
-   Surface = bg-surface 90% + cc-ok 10% — clearly tinted, not white.
-   Border and shadows inherit the shared plane grammar.                    */
-.term-spine {
+/* ——— LEFT SPINE — light sage panel, shared material ———
+   Surface in the same color family as the chamber floor (cc-ok mixed
+   with bg) but lighter, so it reads as a panel risen from the chamber,
+   not a white block dropped on top. Border + shadows lift it.
+   Selector boosted via .chamber-shell[data-chamber="terminal"] to win
+   the cascade over the older .term-spine rule at line 5398.                */
+.chamber-shell[data-chamber="terminal"] .term-spine {
   background: var(--term-plane-bg, var(--bg-surface));
   border-color: var(--term-plane-border, color-mix(in oklab, var(--text-primary) 16%, transparent));
   box-shadow:
@@ -5784,11 +5793,10 @@ textarea {
 }
 
 /* ——— WORKBENCH STRIP — radius locked to the family ———
-   Bump border-radius 14px → 20px so it matches the spine exactly. The
-   composer's outer shell is 24px, the inner deck is 20px, the spine is
-   20px, the strip is 20px. One radius family across all framed objects.
-   Surface picks up sage tint from --term-plane-bg.                         */
-.term-workbench-strip {
+   Border-radius 14 → 20px so it matches the spine exactly. The composer
+   shell is 24px, inner deck 20px, spine 20px, strip 20px — one family.
+   Surface picks up sage tint from --term-plane-bg via boosted selector.    */
+.chamber-shell[data-chamber="terminal"] .term-workbench-strip {
   border-radius: 20px;
   background: var(--term-plane-bg, var(--bg-surface));
   border-color: var(--term-plane-border, color-mix(in oklab, var(--text-primary) 16%, transparent));
@@ -5802,11 +5810,11 @@ textarea {
   position: relative;
 }
 
-/* ——— COMPOSER — hero plane, slightly less tint, more substance ———
-   Hero plane uses --term-plane-bg-hero (94% surface + 6% cc-ok), a touch
-   lighter than spine/strip so the composer reads as the brightest object
-   in the room. Same gradient angle as the previous pass for lift.          */
-.term-command {
+/* ——— COMPOSER — hero plane, lightest sage, more substance ———
+   --term-plane-bg-hero (cc-ok 5% + bg) is a touch lighter than the spine
+   so the composer reads as the brightest object in the chamber while
+   still living in the same color family. Boosted selector to win cascade. */
+.chamber-shell[data-chamber="terminal"] .term-command {
   background: linear-gradient(
     155deg,
     color-mix(in oklab, var(--term-plane-bg-hero, var(--bg-surface)) 97%, transparent) 0%,
