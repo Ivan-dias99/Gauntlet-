@@ -48,7 +48,6 @@ export default function Composer({
       data-insight-composer
       data-focused={focused ? "true" : undefined}
       style={{
-        margin: "0 clamp(20px, 5vw, 64px) var(--space-3)",
         background: "var(--bg-surface)",
         border: panelBorder,
         borderRadius: "var(--radius-panel)",

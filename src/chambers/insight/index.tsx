@@ -11,6 +11,8 @@ import { useCopy } from "../../i18n/copy";
 import Thread from "./Thread";
 import Composer from "./Composer";
 import VerdictBadge from "./VerdictBadge";
+import InsightLayout from "./InsightLayout";
+import InsightRail from "./InsightRail";
 import {
   EMPTY_LIVE,
   extractAnswer,
@@ -21,11 +23,11 @@ import {
   type VerdictState,
 } from "./helpers";
 
-// Insight — conversation-first. Chamber head + empty state or Thread +
-// live streaming indicator + verdict badge + composer. Primitives are
-// extracted (Thread, Composer, VerdictBadge, helpers); this aggregator
-// wires state, submit, handoff, and streaming reduction. Chamber-DNA
-// cascades from data-chamber="insight" on the shell.
+// Insight — conversation-first, structurally split. Left column carries
+// the thread / live indicator / verdict reasoning / composer. Right
+// column carries the InsightRail (mission identity · principles in
+// vigor · verdict trail). Proportions and breath come from
+// InsightLayout; chamber-DNA cascades from data-chamber="insight".
 
 export default function Insight() {
   const {
@@ -40,9 +42,17 @@ export default function Insight() {
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
+  // Verdict trail — retained across turns within the same mission so
+  // the rail can show the last handful of outcomes. Reset on mission
+  // switch so the rail never leaks state from another conversation.
+  const [verdictTrail, setVerdictTrail] = useState<VerdictState[]>([]);
   const [promoteId, setPromoteId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVerdictTrail([]);
+  }, [activeMission?.id]);
 
   // Esc closes a pending handoff confirm; during a streaming call it
   // aborts the in-flight request. Promote-confirm wins when both are
@@ -162,7 +172,7 @@ export default function Insight() {
           const conf = r.confidence;
           if (conf) setLastConfidence(conf);
 
-          setLastVerdict({
+          const verdict: VerdictState = {
             routePath: path,
             confidence: capturedJudge.current?.confidence ?? conf ?? null,
             refused,
@@ -172,7 +182,10 @@ export default function Insight() {
             agentIter: capturedAgent.current.iter,
             agentToolCount: capturedAgent.current.toolCount,
             question: v,
-          });
+          };
+          setLastVerdict(verdict);
+          // Retain up to 12 most-recent verdicts for the rail trail.
+          setVerdictTrail((prev) => [...prev, verdict].slice(-12));
         }
       },
       ac.signal,
@@ -250,20 +263,18 @@ export default function Insight() {
 
   const isEmpty = notes.length === 0 && !pending && !error;
 
-  return (
-    <div className="chamber-shell" data-chamber="insight">
-      <ChamberHead
-        kicker={copy.labKicker}
-        tagline={copy.labTagline}
-        mock={backend.mode === "mock"}
-        principlesCount={principles.length}
-        right={rightSlot}
-      />
-
-      {/* Body — thread, live indicator, verdict. Scrollable. */}
+  // Left column — the conversation region. Thread / streaming /
+  // verdict-reasoning scroll in the upper flex:1 area; error/dormant
+  // and the composer are pinned at the bottom so they never get
+  // buried by a long transcript.
+  const leftColumn = (
+    <>
       <div
-        className="chamber-body"
+        data-insight-stream
         style={{
+          flex: 1,
+          minHeight: 0,
+          overflow: "auto",
           display: "flex",
           flexDirection: "column",
           gap: "var(--space-3)",
@@ -359,10 +370,8 @@ export default function Insight() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Error / dormant — anchored above the composer, consistent
-          location across all chambers' failure surfaces. */}
       {error && !pending && (
-        <div style={{ padding: "0 clamp(20px, 5vw, 64px) var(--space-2)" }}>
+        <div data-insight-failure-slot>
           {unreachable ? (
             <DormantPanel detail={copy.dormantLab} />
           ) : (
@@ -391,6 +400,28 @@ export default function Insight() {
           lastVerdict?.refused ? copy.labPlaceholderRefused :
           !activeMission ? copy.labPlaceholderNoMission :
           copy.labPlaceholder
+        }
+      />
+    </>
+  );
+
+  return (
+    <div className="chamber-shell" data-chamber="insight">
+      <ChamberHead
+        kicker={copy.labKicker}
+        tagline={copy.labTagline}
+        mock={backend.mode === "mock"}
+        principlesCount={principles.length}
+        right={rightSlot}
+      />
+      <InsightLayout
+        left={leftColumn}
+        right={
+          <InsightRail
+            mission={activeMission}
+            principles={principles}
+            trail={verdictTrail}
+          />
         }
       />
     </div>
