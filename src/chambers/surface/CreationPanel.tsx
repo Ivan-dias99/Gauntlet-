@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { SurfaceBriefPayload } from "../../hooks/useRuberra";
+import type { SurfaceBriefPayload } from "../../hooks/useSignal";
 
 // Wave-3 left-side creation panel. Four controls:
 //   - ModeSelector (prototype / slide deck / from template / other)

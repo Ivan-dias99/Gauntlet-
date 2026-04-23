@@ -22,14 +22,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ruberra-backend
+        working-directory: signal-backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: ruberra-backend/requirements.txt
+          cache-dependency-path: signal-backend/requirements.txt
       - run: pip install -r requirements.txt
       # Syntax + import check without starting the server or hitting Anthropic.
       - run: python -m compileall -q .
@@ -38,7 +38,16 @@ jobs:
         run: |
           python -c "
           import importlib
-          for mod in ('config','models','doctrine','memory','tools','agent','engine','server','main'):
+          mods = (
+              # core runtime
+              'config','models','doctrine','memory','tools',
+              'agent','engine','server','main',
+              # chamber profiles + per-chamber prompt modules (Wave 1/5)
+              'chambers','chambers.profiles',
+              'chambers.insight','chambers.surface','chambers.terminal',
+              'chambers.archive','chambers.core',
+          )
+          for mod in mods:
               importlib.import_module(mod)
-          print('all modules import cleanly')
+          print(f'all {len(mods)} modules import cleanly')
           "

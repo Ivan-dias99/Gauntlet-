@@ -8,22 +8,37 @@ interface Props {
   style?: CSSProperties;
 }
 
-// DormantPanel is the calm degraded-state primitive for chambers whose
-// backend is unreachable. Not an error — the archive still exists, the
-// shell still works; only the live pipeline is quiet. Tone is neutral.
-//
-// Trigger source: isBackendUnreachable(err) from src/lib/ruberraApi. This
-// component NEVER tries to classify the error itself. Callers decide.
+// Dormant is a sibling of ErrorPanel on the shared .error-card primitive.
+// Severity "dormant" reads ghost-toned — not red, not warn — because the
+// archive still exists and the shell still works; only the live pipeline
+// is quiet. The data-dormant-* attributes are retained for any caller
+// that was keying selectors off them.
 export default function DormantPanel({ title, detail, action, style }: Props) {
   const copy = useCopy();
   return (
-    <div data-dormant-panel style={style}>
-      <div data-dormant-kicker>
-        {copy.dormantKicker}
-        {title ? ` · ${title}` : ""}
+    <div
+      data-dormant-panel
+      data-error-panel
+      className="error-card"
+      data-severity="dormant"
+      style={style}
+    >
+      <div className="error-card-head">
+        <span data-dormant-kicker className="kicker">
+          {copy.dormantKicker}
+          {title ? ` · ${title}` : ""}
+        </span>
       </div>
-      <div data-dormant-body>{detail}</div>
-      {action && <div data-dormant-action>{action}</div>}
+      {detail && (
+        <div data-dormant-body className="error-card-body">
+          {detail}
+        </div>
+      )}
+      {action && (
+        <div data-dormant-action className="error-card-actions">
+          {action}
+        </div>
+      )}
     </div>
   );
 }

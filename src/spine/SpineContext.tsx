@@ -19,7 +19,7 @@ import {
   isBackendUnreachable,
   isBackendError,
   type BackendErrorEnvelope,
-} from "../lib/ruberraApi";
+} from "../lib/signalApi";
 
 export type SpineSyncState = "synced" | "syncing" | "unsynced";
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SurfacePlanPayload } from "../../hooks/useRuberra";
+import type { SurfacePlanPayload } from "../../hooks/useSignal";
 
 // Wave-3 right-side exploration rail. Five tabs: Examples, Templates,
 // Recent, Search, Library. Data is canned in W3 — real catalog comes
@@ -176,7 +176,7 @@ export default function ExplorationRail({ plan, mock }: Props) {
         {tab === "recent" && (
           <EmptyBlock
             title="Sem histórico ainda"
-            body="Os planos gerados aparecem aqui quando o ledger de artefactos tiver a ligação ao Arquivo (Wave 4)."
+            body="Os planos aceites nesta missão vão aparecer aqui. Para ver runs de Surface de todas as missões, vai ao Arquivo."
           />
         )}
         {tab === "search" && (
@@ -196,15 +196,15 @@ export default function ExplorationRail({ plan, mock }: Props) {
               }}
             />
             <EmptyBlock
-              title="Pesquisa federada chega em Wave 5"
-              body="A pesquisa local nos decks acima chega antes; a pesquisa federada sobre conectores chega com os conectores."
+              title="Pesquisa federada em breve"
+              body="A pesquisa local nos decks (examples, templates, library) chega primeiro. A pesquisa federada sobre conectores chega quando o Arquivo expor os conectores."
             />
           </div>
         )}
         {tab === "library" && (
           <EmptyBlock
             title="Library de design systems"
-            body="Na Wave 4 Core → Routing expõe e edita a lista; os DSes ficam visíveis aqui por chamber."
+            body="Core → Routing lista os design systems disponíveis para cada chamber. Quando a edição estiver aberta, os DSes passam a ser visíveis aqui também."
           />
         )}
       </div>

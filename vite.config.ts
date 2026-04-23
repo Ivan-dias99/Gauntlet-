@@ -12,8 +12,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      // Bridge to the Python backend (ruberra-backend/, renamed to
-      // signal-backend/ in Wave 8).
+      // Bridge to the Python backend (signal-backend/).
       //
       // The UI calls apiUrl(path) from src/lib/signalApi. By default that
       // resolves to /api/signal/* and hits the first proxy below. The

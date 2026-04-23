@@ -1,9 +1,9 @@
 import {
-  ruberraFetch,
+  signalFetch,
   isBackendUnreachable,
   parseBackendError,
   BackendError,
-} from "../lib/ruberraApi";
+} from "../lib/signalApi";
 import { SpineState, Mission } from "./types";
 import { normalizeMission, normalizePrinciples } from "./store";
 
@@ -17,7 +17,7 @@ const PATH = "/spine";
 // fixed, older persisted snapshots on a mounted volume may still be skinny.
 export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | null> {
   try {
-    const res = await ruberraFetch(PATH, { signal });
+    const res = await signalFetch(PATH, { signal });
     if (!res.ok) return null;
     const raw = (await res.json()) as {
       missions?: unknown;
@@ -50,7 +50,7 @@ export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | nul
 // caller (SpineContext) can surface a sync-state indicator instead of
 // swallowing silent data-loss risk. Non-unreachable HTTP failures also throw.
 export async function pushSpine(state: SpineState, signal?: AbortSignal): Promise<boolean> {
-  const res = await ruberraFetch(PATH, {
+  const res = await signalFetch(PATH, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

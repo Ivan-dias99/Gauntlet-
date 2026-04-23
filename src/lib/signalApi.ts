@@ -10,8 +10,8 @@
 //                            the Vercel edge forwarder in prod).
 //
 // Backend-unreachable is a first-class state — NOT a regex on error text.
-// The edge forwarder (api/signal.ts and its legacy alias api/ruberra.ts)
-// signals it with:
+// The edge forwarder (api/signal.ts and its legacy alias api/ruberra.ts,
+// both forwarding to the signal-backend/ Python service) signals it with:
 //   status: 503
 //   header: x-signal-backend: unreachable   (and, during the compat window,
 //           x-ruberra-backend: unreachable emitted alongside)

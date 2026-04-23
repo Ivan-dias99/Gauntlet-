@@ -1,129 +1,189 @@
-# Ruberra
+# Signal
 
-Two-process system: a React/Vite frontend (the **face**) and a FastAPI
-Python backend (the **brain**). The face renders the chambers; the brain
-runs the triad+judge pipeline, the agent loop, the crew orchestrator,
-the tool registry, and the failure memory.
+Sovereign AI workspace over external models. Two processes: a React/Vite
+frontend (the **shell**) and a FastAPI Python backend (the **brain**).
+The shell renders the five chambers; the brain runs the self-consistency
+triad + judge, the agent loop, the crew orchestrator, the tool registry,
+the failure memory, and the chamber profiles that decide how each
+chamber dispatches a query.
+
+## Chambers
+
+| Chamber  | Role                                                     | Dispatch       |
+|----------|----------------------------------------------------------|----------------|
+| Insight  | Evidence pressure · direction · thesis refinement        | triad + judge  |
+| Surface  | Design workstation · mode × fidelity × design system     | surface mock¹  |
+| Terminal | Code · execution · tool use · patches                    | agent loop     |
+| Archive  | Retrieval · provenance · run ledger · artifact lineage   | triad (read)   |
+| Core     | Policies · Routing · Permissions · Orchestration · System | triad (read)  |
+
+¹ Surface ships mock-first backend in the current wave — the UI
+explicitly labels the mock so nothing pretends to generate. The
+chamber shell is real; the provider swap comes with the Wave-8b
+compat-window closure and the first real Surface generator.
 
 ## Layout
 
 ```
-src/                         React frontend (Vite, TypeScript)
-  main.tsx                   entry
-  App.tsx                    ErrorBoundary → TweaksProvider → SpineProvider → Shell
-  shell/                     Shell, CanonRibbon, RitualEntry, TweaksPanel, VisionLanding
-  chambers/                  Lab, Creation, Memory, School
-  hooks/useRuberra.ts        SSE client — all backend calls route through here
-  spine/                     Workspace state (SpineContext, store, client, types)
-  tweaks/                    Theme / UI preferences (localStorage only)
-  theme/                     ThemeContext (thin wrapper over TweaksContext)
-  trust/                     ErrorBoundary
-  i18n/                      copy.ts
+src/                          React frontend (Vite, TypeScript)
+  main.tsx                    entry
+  App.tsx                     ErrorBoundary → TweaksProvider → SpineProvider → Shell
+  shell/                      Shell, CanonRibbon, DormantPanel, EmptyState, ErrorPanel
+  chambers/
+    insight/                  Insight — evidence pressure
+    surface/                  Surface — design workstation (layout + creation panel + exploration rail)
+    terminal/                 Terminal — code + tool-use agent loop
+    archive/                  Archive — run ledger + artifact lineage
+    core/                     Core — Policies · Routing · Permissions · Orchestration · System
+  hooks/useRuberra.ts         SSE client — every backend call routes through here
+  spine/                      Workspace state (SpineContext, store, client, types)
+  lib/signalApi.ts            canonical edge client (ruberraApi.ts kept as compat shim)
+  tweaks/                     Theme / UI preferences (localStorage)
+  trust/                      ErrorBoundary
+  i18n/                       copy.ts
+  styles/tokens.css           the design canon — radius / spacing / type / motion / chamber-DNA
 
-api/ruberra.ts               Vercel edge forwarder — forwards /api/ruberra/* to RUBERRA_BACKEND_URL (flat + explicit rewrite in vercel.json)
-vite.config.ts               dev proxy: /api/ruberra/* → http://127.0.0.1:3002/*
-vercel.json                  SPA catch-all (non-API routes → index.html)
+api/signal.ts                 Vercel edge forwarder — canonical /api/signal/*
+api/ruberra.ts                Vercel edge forwarder — legacy /api/ruberra/* (compat alias)
+api/_forwarder.ts             shared forwarder helper (dual unreachable header)
+vite.config.ts                dev proxy: /api/signal/* (+ legacy /api/ruberra/*)
+vercel.json                   SPA catch-all + both /api/* rewrites
 
-ruberra-backend/             FastAPI — the brain
-  server.py                  all HTTP endpoints
-  engine.py                  triad (3× parallel) + judge pipeline
-  agent.py                   agent loop: tool-use + anti-loop guard
-  crew.py                    multi-agent: planner → researcher → coder → critic
-  tools.py                   8 tools: web_search, execute_python, read_file,
-                             list_directory, git, run_command, fetch_url, package_info
-  memory.py                  persistent failure memory (JSON on disk)
-  doctrine.py                system / judge / agent / crew prompts
-  models.py                  Pydantic contracts
-  spine.py                   workspace snapshot store
-  runs.py                    append-only run log
-  config.py                  env-driven settings
-  main.py                    uvicorn entry point
+signal-backend/               FastAPI — the brain
+  server.py                   HTTP endpoints (/health, /route, /dev, /crew, /spine, /runs, /diagnostics, …)
+  engine.py                   triad + judge pipeline + auto-router + Surface-mock fork
+  agent.py                    agent loop (tool-use, anti-loop fingerprint, per-chamber tool allowlist)
+  crew.py                     multi-agent: planner → researcher → coder → critic
+  tools.py                    8 hardened tools (SSRF defence, deny-by-default command policy, GitTool)
+  chambers/                   chamber profiles + per-chamber prompts
+    profiles.py               ChamberKey enum, ChamberProfile dataclass, five populated profiles
+    insight.py · surface.py · terminal.py · archive.py · core.py
+  memory.py                   persistent failure memory (JSON on disk)
+  doctrine.py                 prompt assembly helpers (build_judge_input, build_refusal_message, …)
+  models.py                   Pydantic contracts (RuberraQuery, RuberraResponse, SpineSnapshot, …)
+  spine.py                    workspace snapshot store
+  runs.py                     append-only run log (agent / triad / crew / surface)
+  config.py                   env-driven settings
+  main.py                     uvicorn entry
 ```
 
 ## Runtime path
 
 ```
-Browser → /api/ruberra/{route}
-  dev:  vite proxy            → http://127.0.0.1:3002/{route}
-  prod: Vercel edge function  → RUBERRA_BACKEND_URL/{route}
-                              → FastAPI (server.py)
-                              → engine / agent / crew
-                              → Anthropic API (server-side only)
+Browser → /api/signal/{route}   (canonical)
+       → /api/ruberra/{route}   (legacy alias, routes identically)
+  dev:  vite proxy              → http://127.0.0.1:3002/{route}
+  prod: Vercel edge function    → $SIGNAL_BACKEND_URL/{route}
+                                → FastAPI (server.py)
+                                → engine / agent / crew / chambers.surface
+                                → Anthropic API (server-side only)
 ```
 
-No frontend-to-Anthropic calls. All AI routes through the backend.
+No frontend-to-Anthropic calls. Every AI route traverses the backend.
 
 ## Chambers → backend
 
-| Chamber  | Endpoint                    | Pipeline                          |
-|----------|-----------------------------|-----------------------------------|
-| Lab      | `POST /route/stream`        | auto-router: triad+judge or agent |
-| Creation | `POST /dev/stream`          | agent loop (tool-use)             |
-| Creation | `POST /crew/stream`         | multi-agent crew                  |
-| Memory   | `GET /runs`, `GET /runs/stats` | run log + aggregate stats      |
-| School   | `POST /spine` (via SpineContext) | workspace sync                |
+| Chamber  | Endpoint                  | Notes                                 |
+|----------|---------------------------|---------------------------------------|
+| Insight  | `POST /route/stream`      | `chamber:"insight"` → triad           |
+| Surface  | `POST /route/stream`      | `chamber:"surface"` → mock handler    |
+| Terminal | `POST /dev/stream`        | agent loop + tool allowlist           |
+| Terminal | `POST /crew/stream`       | planner → researcher → coder → critic |
+| Archive  | `GET /runs`, `/runs/stats`| run log + aggregate stats             |
+| Core     | `GET /diagnostics`        | read-only system snapshot             |
+| (all)    | `GET/POST /spine`         | workspace sync (debounced 500ms)      |
 
-## Run (local)
+## Run locally
 
 ```bash
 # Terminal 1 — brain
-cd ruberra-backend
+cd signal-backend
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...
-python main.py                        # http://127.0.0.1:3002
+export ANTHROPIC_API_KEY=sk-ant-...   # or RUBERRA_MOCK=1 for canned pipeline
+python main.py                         # http://127.0.0.1:3002
 
-# Terminal 2 — face
+# Terminal 2 — shell
 npm install
-npm run dev                           # http://localhost:5173
+npm run dev                            # http://localhost:5173
 ```
 
-`npm run dev` proxies `/api/ruberra/*` to `http://127.0.0.1:3002/*`.
+Agent `run_command` and `execute_python` are gated by
+`RUBERRA_ALLOW_CODE_EXEC` (default `false`). Set to `true` to allow
+`pip`, `npm`, `npx`, `node`, and arbitrary Python execution inside the
+Terminal agent loop. See `.env.example`.
 
-Agent `run_command` and `execute_python` are gated by `RUBERRA_ALLOW_CODE_EXEC`
-(default `false`). Set it to `true` to allow `pip`, `npm`, `npx`, `node` and
-arbitrary Python execution inside the agent loop. See `.env.example`.
+Keyboard: `Alt + 1..5` switches chambers (insight · surface · terminal
+· archive · core). Ignored when focus is in an input/textarea.
 
 ## State model
 
 **Backend owns:**
-- Failure memory (`ruberra-backend/data/failure_memory.json`)
-- Run log (`ruberra-backend/data/runs.json`)
-- Workspace snapshot (`ruberra-backend/data/spine.json`) — missions, notes, tasks, principles
+- Failure memory (`signal-backend/data/failure_memory.json`)
+- Run log (`signal-backend/data/runs.json`) — agent · crew · triad · surface
+- Workspace snapshot (`signal-backend/data/spine.json`) — missions,
+  notes, tasks, principles, artifacts
 
 **Frontend local-only:**
-- Theme, tweaks, density, accent (localStorage)
+- Theme, density, accent, language (`signal:tweaks` localStorage;
+  `ruberra:tweaks` read as silent legacy fallback)
+- Mission spine (`signal:spine:v1`; `ruberra:spine:v1` legacy fallback)
 - Optimistic UI state for in-flight mutations
 
-The SpineContext syncs the workspace snapshot to the backend on every
-mutation (debounced 500 ms). On mount, the remote snapshot wins if its
-`updatedAt` timestamp is newer than the local copy — multi-device safe.
+The `SpineContext` syncs the workspace snapshot to the backend on every
+mutation (debounced 500ms). On mount, the remote snapshot wins if its
+`updatedAt` is newer than the local copy — multi-device safe.
 
 ## Deploy
 
-- **Frontend** → Vercel. `api/ruberra.ts` runs at the edge and forwards
-  all `/api/ruberra/*` requests to `RUBERRA_BACKEND_URL` via the explicit
-  rewrite in `vercel.json` (`/api/ruberra/:match* → /api/ruberra`).
-- **Backend** → any host that runs FastAPI (Fly, Railway, Render, a VM).
-  Set `RUBERRA_BACKEND_URL` in the Vercel project env to its public URL.
+- **Frontend** → Vercel. `api/signal.ts` runs at the edge and forwards
+  all `/api/signal/*` requests to `$SIGNAL_BACKEND_URL` via the explicit
+  rewrite in `vercel.json`. `api/ruberra.ts` is kept as a legacy alias
+  during the Wave-0 → Wave-8 compatibility window.
+- **Backend** → any host that runs FastAPI (Railway, Fly, Render, a VM).
+  Set `SIGNAL_BACKEND_URL` (preferred) or legacy `RUBERRA_BACKEND_URL`
+  in the Vercel project env to the backend's public URL.
+
+The Vercel edge forwarder emits **both** `x-signal-backend: unreachable`
+and `x-ruberra-backend: unreachable` on 503, so clients against either
+contract keep working during the compat window.
 
 ## Backend endpoints
 
 ```
-GET  /health
-POST /ask                 triad + judge (non-streaming)
-POST /route               auto-router (non-streaming)
-POST /route/stream        auto-router (SSE)
-POST /dev                 agent loop (non-streaming)
-POST /dev/stream          agent loop (SSE)
-POST /crew/stream         multi-agent crew (SSE)
-POST /ask/batch           batch up to 5 questions
-GET  /runs                run log (filterable by mission_id)
-GET  /runs/stats          aggregate stats
-GET  /runs/{id}           single run
-GET  /memory/stats        failure memory stats
-GET  /memory/failures     recent failure records
-POST /memory/clear        clear failure memory (confirm=true)
-GET  /spine               workspace snapshot
-POST /spine               replace workspace snapshot
-GET  /diagnostics         full system diagnostics
+GET  /health                    liveness (always 200; body carries signal)
+GET  /health/ready              honest yes/no (503 when degraded)
+GET  /diagnostics               full system diagnostics
+POST /ask                       triad + judge (non-streaming)
+POST /ask/batch                 up to 5 queries at once
+POST /route                     auto-router (non-streaming)
+POST /route/stream              auto-router (SSE) — handles Surface mock fork
+POST /dev                       agent loop (non-streaming)
+POST /dev/stream                agent loop (SSE)
+POST /crew/stream               multi-agent crew (SSE)
+GET  /runs                      run log (filterable by mission_id)
+GET  /runs/stats                aggregate stats
+GET  /runs/{id}                 single run
+GET  /memory/stats              failure memory stats
+GET  /memory/failures           recent failure records
+POST /memory/clear              clear failure memory (confirm=true)
+GET  /spine                     workspace snapshot
+POST /spine                     replace workspace snapshot
 ```
+
+## Compat window
+
+The Wave-0 → Wave-8 migration keeps every old contract alive in parallel
+with the canonical one:
+
+- `/api/ruberra/*` still routes alongside `/api/signal/*`
+- `x-ruberra-backend: unreachable` still fires alongside `x-signal-backend`
+- `RUBERRA_BACKEND_URL`, `VITE_RUBERRA_API_BASE` still read as env fallbacks
+- `ruberra:spine:v1`, `ruberra:tweaks`, `ruberra:landed` storage keys
+  still read as silent legacy fallbacks on boot
+- `ruberra:chamber` DOM event still listened + dispatched alongside
+  `signal:chamber`
+- `src/lib/ruberraApi.ts` still re-exports the canonical surface under
+  the legacy names (`ruberraFetch`, `RUBERRA_API_BASE`)
+
+These shims are removed in Wave 8b once a deployed smoke confirms
+parity of the canonical surfaces under real traffic.

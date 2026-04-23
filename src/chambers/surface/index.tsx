@@ -1,19 +1,21 @@
 import { useRef, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import {
-  useRuberra,
+  useSignal,
   type SurfaceBriefPayload,
   type SurfaceEvent,
   type SurfacePlanPayload,
-} from "../../hooks/useRuberra";
+} from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
+import ChamberHead from "../../shell/ChamberHead";
+import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
 import CreationPanel from "./CreationPanel";
 import ExplorationRail from "./ExplorationRail";
 
-// Wave-3 Surface chamber — design workstation.
+// Surface chamber — design workstation.
 //
-// Real shell, mock backend. The mock flag is surfaced in the UI on TWO
+// Real shell, mock backend. The mock flag is surfaced in the UI on two
 // places: the creation panel banner and the plan-preview badge. No
 // silent pretend-AI.
 
@@ -25,7 +27,7 @@ const DEFAULT_BRIEF: SurfaceBriefPayload = {
 
 export default function Surface() {
   const { activeMission, createMission, addNoteToMission } = useSpine();
-  const { streamSurface, pending } = useRuberra();
+  const { streamSurface, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
 
   const [brief, setBrief] = useState<SurfaceBriefPayload>(DEFAULT_BRIEF);
@@ -96,55 +98,46 @@ export default function Surface() {
   const mockBannerVisible = backend.mode === "mock" || planIsMock;
 
   return (
-    <SurfaceLayout
-      left={
-        <>
-          <div
-            className="chamber-head"
-            style={{ display: "flex", alignItems: "baseline", gap: 12, paddingLeft: 2 }}
-          >
-            <span
-              style={{
-                fontSize: 10,
-                letterSpacing: 3,
-                textTransform: "uppercase",
-                color: "var(--text-ghost)",
-                fontFamily: "var(--mono)",
-              }}
-            >
-              — SURFACE
-            </span>
-            <span style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)" }}>
-              Design workstation · wave 3
-            </span>
-          </div>
-          <CreationPanel
-            brief={brief}
-            onBriefChange={patchBrief}
-            prompt={prompt}
-            onPromptChange={setPrompt}
-            onSubmit={submit}
-            pending={pending}
-            mockBanner={mockBannerVisible}
-          />
-          {err && (
-            <div
-              data-surface-error
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: "var(--t-meta)",
-                color: "var(--cc-err)",
-                padding: "6px 10px",
-                border: "1px solid color-mix(in oklab, var(--cc-err) 36%, transparent)",
-                borderRadius: "var(--radius-control)",
-              }}
-            >
-              {err}
-            </div>
-          )}
-        </>
-      }
-      right={<ExplorationRail plan={plan} mock={planIsMock} />}
-    />
+    <div className="chamber-shell" data-chamber="surface" style={{ height: "100%" }}>
+      <SurfaceLayout
+        left={
+          <>
+            <ChamberHead
+              kicker="— SURFACE"
+              tagline="Workstation de design · modo · fidelidade · design system"
+              mock={mockBannerVisible}
+            />
+            <CreationPanel
+              brief={brief}
+              onBriefChange={patchBrief}
+              prompt={prompt}
+              onPromptChange={setPrompt}
+              onSubmit={submit}
+              pending={pending}
+              mockBanner={mockBannerVisible}
+            />
+            {unreachable && (
+              <DormantPanel detail="Backend de Surface inacessível. Os modos, a fidelidade e o design system ficam guardados localmente; a geração do plano fica suspensa até o backend voltar." />
+            )}
+            {err && !unreachable && (
+              <div
+                data-surface-error
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: "var(--t-meta)",
+                  color: "var(--cc-err)",
+                  padding: "6px 10px",
+                  border: "1px solid color-mix(in oklab, var(--cc-err) 36%, transparent)",
+                  borderRadius: "var(--radius-control)",
+                }}
+              >
+                {err}
+              </div>
+            )}
+          </>
+        }
+        right={<ExplorationRail plan={plan} mock={planIsMock} />}
+      />
+    </div>
   );
 }

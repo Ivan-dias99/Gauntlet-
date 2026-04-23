@@ -7,11 +7,6 @@ export type Density = "compact" | "comfortable" | "spacious";
 export type AccentKey = "bone" | "ember" | "ox" | "moss" | "gold" | "iris";
 export type Lang = "pt" | "en";
 
-export type LabLayout = "chat";
-export type CreationLayout = "terminal" | "kanban";
-export type MemoryLayout = "log" | "timeline";
-export type SchoolLayout = "numbered" | "tablets";
-
 export interface Tweaks {
   theme: Theme;
   mono: Mono;
@@ -19,10 +14,6 @@ export interface Tweaks {
   density: Density;
   accent: AccentKey;
   lang: Lang;
-  labLayout: LabLayout;
-  creationLayout: CreationLayout;
-  memoryLayout: MemoryLayout;
-  schoolLayout: SchoolLayout;
 }
 
 const DEFAULTS: Tweaks = {
@@ -32,10 +23,6 @@ const DEFAULTS: Tweaks = {
   density: "comfortable",
   accent: "bone",
   lang: "pt",
-  labLayout: "chat",
-  creationLayout: "terminal",
-  memoryLayout: "log",
-  schoolLayout: "numbered",
 };
 
 interface AccentTriple {
