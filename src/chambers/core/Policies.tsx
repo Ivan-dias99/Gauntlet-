@@ -146,12 +146,12 @@ export default function School() {
             <div className="doctrine-seal-declaration">
               {principles.length === 1 ? (
                 <>
-                  <strong>Um princípio</strong> sob vigor. Vincula cada invocação de Lab e Creation
+                  <strong>Um princípio</strong> sob vigor. Vincula cada invocação, em qualquer chamber
                   {activeMission ? " e governa esta missão." : "."}
                 </>
               ) : (
                 <>
-                  <strong>{principles.length} princípios</strong> sob vigor. Vinculam cada invocação de Lab e Creation
+                  <strong>{principles.length} princípios</strong> sob vigor. Vinculam cada invocação, em qualquer chamber
                   {activeMission ? " e governam esta missão." : "."}
                 </>
               )}
