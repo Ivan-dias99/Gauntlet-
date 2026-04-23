@@ -3248,79 +3248,84 @@ textarea {
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ——— Canonical terminal command surface ———
-   One unified material shell. Zero internal slabs. The composer reads
-   as a single premium instrument that slightly lifts from the page,
-   with real contact + ambient shadow layering, a rim highlight, and
-   a radial breathing glow only while work is alive. */
+   Outer shell + inner deck pattern. The outer .term-command is a
+   matted frame (transparent with padded breath); the inner
+   .term-command-deck is the real solid surface. This "frame within
+   frame" reads as premium enterprise materiality — not a single slab
+   trying to earn presence with loud shadows. Two layers of discipline
+   beat five layers of effect. */
 .term-command {
   position: relative;
   width: 100%;
-  max-width: 860px;
+  max-width: 880px;
   margin: 0 auto;
-  background: var(--bg-elevated);
-  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
-  border-radius: 18px;
-  overflow: hidden;
-  /* Floating presence — 4-stop shadow: rim light · near contact ·
-     mid ambient · far ambient. Calibrated so the composer lifts
-     visibly from the page without any single shadow reading loud. */
+  padding: 4px;
+  border-radius: 22px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--text-primary) 2.5%, transparent) 0%,
+    color-mix(in oklab, var(--text-primary) 1%, transparent) 100%
+  );
   box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset,
-    0 0 0 1px color-mix(in oklab, var(--text-primary) 1.5%, transparent),
-    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent),
-    0 8px 16px -8px color-mix(in oklab, var(--text-primary) 10%, transparent),
-    0 24px 48px -16px color-mix(in oklab, var(--text-primary) 16%, transparent);
-  transition: border-color var(--dur-fast) var(--ease-swift),
-              box-shadow var(--dur-normal) var(--ease-swift),
-              transform var(--dur-normal) var(--ease-swift);
+    0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent),
+    0 18px 40px -16px color-mix(in oklab, var(--text-primary) 12%, transparent);
+  transition: box-shadow var(--dur-normal) var(--ease-swift);
 }
 .term-command[data-focused="true"] {
-  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 34%, var(--border-color-strong));
   box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 8%, transparent) inset,
-    0 0 0 1px color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent),
-    0 2px 4px color-mix(in oklab, var(--text-primary) 6%, transparent),
-    0 12px 24px -10px color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent),
-    0 32px 56px -18px color-mix(in oklab, var(--text-primary) 20%, transparent);
-  transform: translateY(-0.5px);
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent),
+    0 8px 20px -8px color-mix(in oklab, var(--chamber-dna, var(--ember)) 10%, transparent),
+    0 28px 56px -18px color-mix(in oklab, var(--text-primary) 16%, transparent);
 }
-/* Breathing productive glow — a radial gradient that sits behind the
-   shell content only while work is alive. Calm positive energy; no
-   green wash. Positioned at the top center so it reads as light
-   falling from above the instrument. */
-.term-command::before {
+/* Inner deck — the real solid surface. Hairline border, radius
+   tighter than the outer so the matted space is always visible.
+   Overflow hidden keeps chrome/body/workspace clipped into one
+   coherent material block. */
+.term-command-deck {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 17px;
+  overflow: hidden;
+}
+.term-command[data-focused="true"] .term-command-deck {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 24%, color-mix(in oklab, var(--text-primary) 10%, transparent));
+}
+/* Productive tint — lives inside the deck, at the very top, as a
+   thin gradient that fades to transparent by 40% of the height.
+   Reads as "work is alive" without green wash. Only visible when
+   focused or pending. */
+.term-command-deck::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    ellipse 60% 80% at 50% -10%,
-    color-mix(in oklab, var(--cc-ok) 4%, transparent) 0%,
-    transparent 70%
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--cc-ok) 5%, transparent) 0%,
+    transparent 45%
   );
   opacity: 0;
   transition: opacity var(--dur-slow) var(--ease-swift);
   pointer-events: none;
-  z-index: 0;
 }
-.term-command[data-focused="true"]::before { opacity: 1; }
-.term-command[data-state="pending"]::before {
+.term-command[data-focused="true"] .term-command-deck::before { opacity: 1; }
+.term-command[data-state="pending"] .term-command-deck::before {
   opacity: 1;
-  background: radial-gradient(
-    ellipse 60% 80% at 50% -10%,
-    color-mix(in oklab, var(--cc-info) 5%, transparent) 0%,
-    transparent 70%
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--cc-info) 6%, transparent) 0%,
+    transparent 45%
   );
 }
-.term-command > * { position: relative; z-index: 1; }
+.term-command-deck > * { position: relative; z-index: 1; }
 
-/* Chrome — seamless top region. No bg, no hard border. Subtle crease
-   achieved with a 1px inset below traffic lights, at very low opacity
-   so it reads as paper fold, not seam. */
+/* Chrome — seamless top of the deck. No bg, no border, no pseudo
+   crease. Pure padding rhythm separates chrome from body. */
 .term-command-chrome {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px 10px;
+  padding: 13px 18px 11px;
   background: transparent;
   font-family: var(--mono);
 }
@@ -3330,12 +3335,12 @@ textarea {
   margin-right: 6px;
 }
 .term-command-dots span {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   opacity: 0.85;
   box-shadow:
-    inset 0 0 0 1px color-mix(in oklab, #000 14%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, #000 15%, transparent),
     inset 0 1px 0 color-mix(in oklab, #fff 22%, transparent);
 }
 .term-command-dots span:nth-child(1) { background: var(--cc-err); }
@@ -3353,12 +3358,10 @@ textarea {
   flex: 1;
   min-width: 0;
   letter-spacing: -0.002em;
-  opacity: 0.85;
 }
 .term-command-path strong {
   color: var(--text-secondary);
   font-weight: 500;
-  opacity: 1;
 }
 .term-command-phase {
   display: inline-flex;
@@ -3390,15 +3393,14 @@ textarea {
   animation: breathe 1.4s var(--ease-swift) infinite;
 }
 
-/* Input body — the visual center of the instrument. Dominates by
-   typography density and generous vertical breath; subordinates
-   everything else in the shell. */
+/* Body — the gravity center. Generous vertical breath; typography
+   dominates. Prompt is kept legible (0.82) instead of ghosted. */
 .term-command-body {
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 14px;
   align-items: center;
-  padding: 20px 18px 18px;
+  padding: 18px 18px 16px;
   font-family: var(--mono);
   background: transparent;
 }
@@ -3409,7 +3411,7 @@ textarea {
   font-family: var(--mono);
   font-size: 13px;
   white-space: nowrap;
-  opacity: 0.72;
+  opacity: 0.82;
 }
 .term-command-prompt-user { color: var(--cc-ok); }
 .term-command-prompt-sep  { color: var(--text-ghost); }
@@ -3421,30 +3423,28 @@ textarea {
   border: 0;
   outline: 0;
   font-family: var(--mono);
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.55;
   color: var(--cc-fg);
   padding: 2px 0;
   min-width: 0;
-  letter-spacing: -0.003em;
+  letter-spacing: -0.002em;
   caret-color: var(--chamber-dna, var(--ember));
 }
 .term-command-input::placeholder {
   color: var(--text-muted);
   font-style: italic;
   letter-spacing: 0;
-  opacity: 0.75;
+  opacity: 0.78;
 }
+/* Send — solid fill, single directional glow. No invalid gradient,
+   no half-pixel lift. Hover intensifies the glow only. */
 .term-command-send {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   border: 0;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--chamber-dna, var(--ember)) 110%, #fff 8%),
-    var(--chamber-dna, var(--ember))
-  );
+  background: var(--chamber-dna, var(--ember));
   color: var(--bg);
   cursor: pointer;
   display: inline-flex;
@@ -3453,41 +3453,34 @@ textarea {
   font-family: var(--sans);
   font-size: 14px;
   font-weight: 500;
-  transition: opacity var(--dur-fast) var(--ease-swift),
-              transform var(--dur-fast) var(--ease-swift),
+  transition: transform var(--dur-fast) var(--ease-swift),
               background var(--dur-fast) var(--ease-swift),
               box-shadow var(--dur-fast) var(--ease-swift);
   flex-shrink: 0;
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 22%, transparent) inset,
     0 -1px 0 color-mix(in oklab, #000 12%, transparent) inset,
-    0 1px 2px color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent),
-    0 4px 12px -2px color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, transparent);
+    0 4px 12px -2px color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent);
 }
 .term-command-send:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 26%, transparent) inset,
     0 -1px 0 color-mix(in oklab, #000 14%, transparent) inset,
-    0 2px 4px color-mix(in oklab, var(--chamber-dna, var(--ember)) 40%, transparent),
-    0 10px 22px -4px color-mix(in oklab, var(--chamber-dna, var(--ember)) 42%, transparent);
+    0 8px 18px -3px color-mix(in oklab, var(--chamber-dna, var(--ember)) 42%, transparent);
 }
 .term-command-send:active:not(:disabled) { transform: translateY(0); }
 .term-command-send:disabled {
-  background: color-mix(in oklab, var(--text-ghost) 60%, var(--bg-elevated));
+  background: color-mix(in oklab, var(--text-ghost) 65%, var(--bg-elevated));
   cursor: not-allowed;
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
+  box-shadow: 0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
   opacity: 0.9;
 }
 .term-command-send[data-state="pending"] {
-  background: linear-gradient(180deg,
-    color-mix(in oklab, var(--cc-info) 105%, #fff 6%),
-    var(--cc-info)
-  );
+  background: var(--cc-info);
   box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 22%, transparent) inset,
-    0 1px 2px color-mix(in oklab, var(--cc-info) 35%, transparent);
+    0 1px 0 color-mix(in oklab, #fff 20%, transparent) inset,
+    0 4px 12px -2px color-mix(in oklab, var(--cc-info) 32%, transparent);
 }
 .term-command[data-focused="true"] {
   border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 45%, var(--border-color-strong));

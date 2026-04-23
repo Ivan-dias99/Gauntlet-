@@ -85,6 +85,7 @@ export default function ExecutionComposer({
         data-focused={focused ? "true" : undefined}
         data-state={pending ? "pending" : undefined}
       >
+      <div className="term-command-deck">
         <div className="term-command-chrome">
           <span className="term-command-dots" aria-hidden>
             <span /><span /><span />
@@ -256,6 +257,7 @@ export default function ExecutionComposer({
         </div>
 
         {pending && <div className="thinking-strip" aria-hidden />}
+      </div>
 
         {flyout === "context" && (
           <ContextFlyout
