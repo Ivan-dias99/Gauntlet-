@@ -5720,3 +5720,188 @@ textarea {
 @media (max-width: 680px) {
   .term-spine { display: none; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   TERMINAL — MATERIAL LOCK PASS
+   Cohesion: spine + workbench strip + composer share one material DNA.
+   No layout changes. No new geometry. Only surface, edge, shadow, and
+   content contrast refinements that make the three planes feel related.
+
+   Shared token vocabulary registered on the terminal chamber:
+     --term-plane-bg          warm surface with atmospheric tint bleed
+     --term-plane-border      unified outline opacity
+     --term-plane-highlight   top-edge inner light
+     --term-plane-shadow-0    contact layer
+     --term-plane-shadow-1    mid lift
+     --term-plane-shadow-2    ambient presence
+
+   Objects: .term-spine · .term-workbench-strip · .term-command
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ——— Shared material tokens — light theme base ——— */
+.chamber-shell[data-chamber="terminal"] {
+  --term-plane-bg:
+    color-mix(in oklab,
+      var(--bg-surface) 88%,
+      color-mix(in oklab, var(--cc-ok) 14%, var(--bg))
+    );
+  --term-plane-border:      color-mix(in oklab, var(--text-primary) 13%, transparent);
+  --term-plane-highlight:   color-mix(in oklab, #fff 60%, transparent);
+  --term-plane-shadow-foot: color-mix(in oklab, #000 3%, transparent);
+  --term-plane-shadow-0:    color-mix(in oklab, var(--text-primary)  5%, transparent);
+  --term-plane-shadow-1:    color-mix(in oklab, var(--text-primary) 10%, transparent);
+  --term-plane-shadow-2:    color-mix(in oklab, var(--text-primary) 13%, transparent);
+  --term-plane-radius:      20px;
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"],
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] {
+  --term-plane-bg:
+    color-mix(in oklab,
+      var(--bg-surface) 92%,
+      color-mix(in oklab, var(--cc-ok) 8%, var(--bg))
+    );
+  --term-plane-border:      color-mix(in oklab, var(--text-primary) 16%, transparent);
+  --term-plane-highlight:   color-mix(in oklab, #fff  7%, transparent);
+  --term-plane-shadow-foot: color-mix(in oklab, #000 20%, transparent);
+  --term-plane-shadow-0:    color-mix(in oklab, #000 34%, transparent);
+  --term-plane-shadow-1:    color-mix(in oklab, #000 50%, transparent);
+  --term-plane-shadow-2:    color-mix(in oklab, #000 62%, transparent);
+}
+
+/* ——— LEFT SPINE — atmospheric tint, shared material ———
+   Replace the flat bg-surface with the tinted plane token so the spine
+   no longer reads as a white block that's been dropped onto the green field.
+   Radius, outline, and shadow stack adopt the shared grammar.            */
+.term-spine {
+  background: var(--term-plane-bg, var(--bg-surface));
+  border-color: var(--term-plane-border, color-mix(in oklab, var(--text-primary) 13%, transparent));
+  box-shadow:
+    0  1px 0 var(--term-plane-highlight, color-mix(in oklab, #fff 60%, transparent)) inset,
+    0 -1px 0 var(--term-plane-shadow-foot, color-mix(in oklab, #000 3%, transparent)) inset,
+    0  1px 2px  var(--term-plane-shadow-0, color-mix(in oklab, var(--text-primary)  5%, transparent)),
+    0  5px 14px -5px  var(--term-plane-shadow-1, color-mix(in oklab, var(--text-primary) 10%, transparent)),
+    0 22px 44px -16px var(--term-plane-shadow-2, color-mix(in oklab, var(--text-primary) 13%, transparent));
+}
+
+/* ——— WORKBENCH STRIP — radius family + material token ———
+   Bump border-radius from 14px → 18px to close the gap with the spine
+   (20px) and the composer outer shell (24px). All three now share the
+   same radius family (24 → 20 → 18), reading as a coherent set.
+   Surface adopts the plane token for the same subtle atmospheric tint.  */
+.term-workbench-strip {
+  border-radius: 18px;
+  background: var(--term-plane-bg, var(--bg-surface));
+  border-color: var(--term-plane-border, color-mix(in oklab, var(--text-primary) 13%, transparent));
+  box-shadow:
+    0  1px 0 var(--term-plane-highlight, color-mix(in oklab, #fff 60%, transparent)) inset,
+    0 -1px 0 var(--term-plane-shadow-foot, color-mix(in oklab, #000 3%, transparent)) inset,
+    0  1px 2px  var(--term-plane-shadow-0, color-mix(in oklab, var(--text-primary)  5%, transparent)),
+    0  5px 12px -5px  var(--term-plane-shadow-1, color-mix(in oklab, var(--text-primary) 10%, transparent)),
+    0 20px 40px -16px var(--term-plane-shadow-2, color-mix(in oklab, var(--text-primary) 13%, transparent));
+  z-index: 2;
+  position: relative;
+}
+
+/* ——— COMPOSER — adopt the plane token for tinted surface ———
+   Composer already has the correct radius and shadow pyramid from the
+   hard-refinement pass. This touch only aligns the surface tint so all
+   three plane objects have the same atmospheric relationship.             */
+.term-command {
+  background: linear-gradient(
+    155deg,
+    color-mix(in oklab, var(--term-plane-bg, var(--bg-surface)) 96%, transparent) 0%,
+    var(--term-plane-bg, var(--bg-surface)) 55%,
+    color-mix(in oklab, var(--term-plane-bg, var(--bg-surface)) 97%, transparent) 100%
+  );
+  z-index: 2;
+  position: relative;
+}
+
+/* ——— ACTIVE ROW — restrained precision, not a pill ———
+   Background tint halved (8% → 4%). The left inset indicator thickened
+   from 2px → 3px so it carries the full semantic weight without needing
+   the heavy fill. Icon snaps to cc-ok; label lifts to primary.           */
+.term-spine-item[data-active="true"] {
+  background: color-mix(in oklab, var(--cc-ok) 4%, transparent);
+  color: var(--text-primary);
+  box-shadow:
+    inset 0  1px 0 color-mix(in oklab, #fff 22%, transparent),
+    inset 3px 0 0 var(--cc-ok);
+}
+[data-theme="dark"] .term-spine-item[data-active="true"],
+[data-theme="sepia"] .term-spine-item[data-active="true"] {
+  background: color-mix(in oklab, var(--cc-ok) 7%, transparent);
+  box-shadow:
+    inset 0  1px 0 color-mix(in oklab, #fff 4%, transparent),
+    inset 3px 0 0 var(--cc-ok);
+}
+
+/* ——— CONTENT CONTRAST — stronger differential ———
+   Inactive labels step up from text-secondary to a higher alpha so they
+   read instantly. Active and hover already cover primary. Counts are now
+   styled as precise monospcae chips, not vague badges.                   */
+.term-spine-item {
+  color: color-mix(in oklab, var(--text-primary) 68%, transparent);
+}
+.term-spine-item:hover {
+  color: var(--text-primary);
+}
+.term-spine-item-count {
+  font-variant-numeric: tabular-nums lining-nums;
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: color-mix(in oklab, var(--text-primary) 55%, transparent);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 7%, transparent);
+}
+.term-spine-item[data-active="true"] .term-spine-item-count {
+  background: color-mix(in oklab, var(--cc-ok) 12%, transparent);
+  color: var(--cc-ok);
+  border-color: color-mix(in oklab, var(--cc-ok) 20%, transparent);
+}
+.term-spine-item-icon {
+  opacity: 0.72;
+}
+
+/* ——— STATUS BLOCK — tighter, inline, integrated ———
+   Less table. Reduce dot to 5px, tighten row padding and gap, drop the
+   font slightly. The entire block reads as a compact instrument cluster,
+   not a form with labels and values in separate columns.                  */
+.term-spine-status {
+  gap: 1px;
+  padding-top: 8px;
+}
+.term-spine-status-row {
+  gap: 6px;
+  padding: 2px 4px;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+.term-spine-status-dot {
+  width: 5px;
+  height: 5px;
+  box-shadow: none;
+}
+.term-spine-status-row[data-tone="ok"] .term-spine-status-dot {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 20%, transparent);
+}
+.term-spine-status-label {
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  color: color-mix(in oklab, var(--text-primary) 30%, transparent);
+}
+.term-spine-status-value {
+  font-size: 10px;
+  color: color-mix(in oklab, var(--text-primary) 60%, transparent);
+}
+.term-spine-status-row[data-tone="ok"] .term-spine-status-value {
+  color: var(--cc-ok);
+}
+
+/* ——— ATMOSPHERIC FIELD — behind all planes, not flooding through ———
+   Ensure all three plane objects have z-index above the ::before/::after
+   atmospheric layers. The chamber-shell already has isolation:isolate and
+   the layers use default z-index (auto). The z-index: 2 on the planes
+   guarantees the green haze stays under the material surfaces.            */
+.term-spine {
+  z-index: 2;
+}
