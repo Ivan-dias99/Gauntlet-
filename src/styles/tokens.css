@@ -4538,42 +4538,120 @@ textarea {
    flat slab". Intensity tuned per theme. */
 .chamber-shell[data-chamber="terminal"] {
   position: relative;
+  isolation: isolate;
 }
+/* Cinematic sage haze — envelopes the whole chamber like cloud cover.
+   5 layers: top highlight · left lateral · right lateral · bottom
+   wash · soft ambient. Second blurred pseudo adds the esfumaçado
+   softness so the green reads atmospheric, not flat. */
 .chamber-shell[data-chamber="terminal"]::before {
   content: "";
   position: absolute;
   inset: 0;
   background:
     radial-gradient(
-      ellipse 65% 50% at 50% -5%,
-      color-mix(in oklab, var(--cc-ok) 4.5%, transparent) 0%,
-      transparent 62%
+      ellipse 70% 45% at 50% -2%,
+      color-mix(in oklab, var(--cc-ok) 14%, transparent) 0%,
+      transparent 58%
     ),
     radial-gradient(
-      ellipse 120% 80% at 50% 60%,
-      color-mix(in oklab, var(--cc-ok) 2.5%, transparent) 0%,
-      transparent 70%
+      ellipse 55% 70% at -8% 42%,
+      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
+      transparent 50%
     ),
     radial-gradient(
-      ellipse 80% 55% at 50% 0%,
-      color-mix(in oklab, var(--text-primary) 2%, transparent) 0%,
-      transparent 65%
+      ellipse 55% 70% at 108% 58%,
+      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 110% 60% at 50% 108%,
+      color-mix(in oklab, var(--cc-ok) 12%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 120% 80% at 50% 50%,
+      color-mix(in oklab, var(--cc-ok) 3%, transparent) 0%,
+      transparent 80%
     );
   pointer-events: none;
   z-index: 0;
 }
-[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::before,
+/* Blurred esfumaçado layer — soft circular blooms that blend the
+   radial edges. Sits above ::before, below the content. */
+.chamber-shell[data-chamber="terminal"]::after {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  background:
+    radial-gradient(
+      circle 320px at 18% 28%,
+      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      circle 340px at 82% 72%,
+      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      circle 280px at 50% 100%,
+      color-mix(in oklab, var(--cc-ok) 7%, transparent) 0%,
+      transparent 55%
+    );
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.9;
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::before {
+  background:
+    radial-gradient(
+      ellipse 70% 45% at 50% -2%,
+      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 55% 70% at -8% 42%,
+      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 55% 70% at 108% 58%,
+      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 110% 60% at 50% 108%,
+      color-mix(in oklab, var(--cc-ok) 9%, transparent) 0%,
+      transparent 60%
+    );
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::after,
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::after {
+  opacity: 0.55;
+}
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::before {
   background:
     radial-gradient(
-      ellipse 65% 50% at 50% -5%,
-      color-mix(in oklab, var(--cc-ok) 5%, transparent) 0%,
-      transparent 62%
+      ellipse 70% 45% at 50% -2%,
+      color-mix(in oklab, var(--cc-ok) 9%, transparent) 0%,
+      transparent 58%
     ),
     radial-gradient(
-      ellipse 120% 80% at 50% 60%,
-      color-mix(in oklab, #fff 2.5%, transparent) 0%,
-      transparent 72%
+      ellipse 55% 70% at -8% 42%,
+      color-mix(in oklab, var(--cc-ok) 6%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 55% 70% at 108% 58%,
+      color-mix(in oklab, var(--cc-ok) 6%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 110% 60% at 50% 108%,
+      color-mix(in oklab, var(--cc-ok) 7%, transparent) 0%,
+      transparent 60%
     );
 }
 .chamber-shell[data-chamber="terminal"] > * {
