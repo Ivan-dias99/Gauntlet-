@@ -1,8 +1,7 @@
 // Core · Permissions — read-only view over the tool allowlist and the
-// code-execution gate. Mirrors signal-backend/tools.py. Per-chamber
-// allowlists are already enforced on the backend (Insight and Core
-// receive no tools; Terminal carries the full set; Surface only
-// reaches the mock handler; Archive keeps a retrieval subset).
+// code-execution gate. Mirrors signal-backend/tools.py. Each tool lives
+// on a shared .panel card so the permissions register reads with the
+// same composition grammar as Routing / Orchestration / System.
 
 interface ToolEntry {
   name: string;
@@ -28,11 +27,11 @@ const TOOLS: ToolEntry[] = [
     note: "External search API." },
 ];
 
-const KIND_TINT: Record<ToolEntry["kind"], string> = {
-  filesystem: "var(--cc-info)",
-  command:    "var(--cc-warn)",
-  vcs:        "var(--accent)",
-  network:    "var(--terminal-ok)",
+const KIND_TONE: Record<ToolEntry["kind"], "info" | "warn" | "accent" | "ok"> = {
+  filesystem: "info",
+  command:    "warn",
+  vcs:        "accent",
+  network:    "ok",
 };
 
 export default function Permissions() {
@@ -43,34 +42,31 @@ export default function Permissions() {
         display: "flex",
         flexDirection: "column",
         gap: "var(--space-3)",
-        maxWidth: 900,
+        maxWidth: 1100,
       }}
     >
-      <div
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: "var(--t-micro)",
-          letterSpacing: "var(--track-label)",
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-        }}
-      >
-        — Tool allowlist
-      </div>
-      <div
-        style={{
-          fontSize: "var(--t-body-sec)",
-          color: "var(--text-muted)",
-          lineHeight: "var(--lh-body)",
-        }}
-      >
-        Postura deny-by-default. A gated coluna marca tools que só se activam
-        com <code style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>
-          AGENT_ALLOW_CODE_EXEC=true
-        </code> no ambiente do backend. Cada chamber tem a sua allowlist:
-        Insight e Core sem tools; Terminal o conjunto completo; Surface apenas
-        o handler mock; Archive um subset de retrieval.
-      </div>
+      <section className="panel">
+        <div className="panel-head">
+          <span className="panel-title">Tool allowlist</span>
+          <span className="panel-sub">deny-by-default</span>
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--sans)",
+            fontSize: "var(--t-body-sec)",
+            color: "var(--text-muted)",
+            lineHeight: "var(--lh-body)",
+          }}
+        >
+          A gated coluna marca tools que só se activam com{" "}
+          <code style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>
+            AGENT_ALLOW_CODE_EXEC=true
+          </code>{" "}
+          no ambiente do backend. Cada chamber tem a sua allowlist:
+          Insight e Core sem tools; Terminal o conjunto completo; Surface apenas
+          o handler mock; Archive um subset de retrieval.
+        </div>
+      </section>
 
       <div
         style={{
@@ -80,62 +76,42 @@ export default function Permissions() {
         }}
       >
         {TOOLS.map((t) => (
-          <div
-            key={t.name}
-            style={{
-              border: "var(--border-soft)",
-              borderRadius: "var(--radius-control)",
-              padding: "var(--space-3)",
-              background: "var(--bg-surface)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <section key={t.name} className="panel">
+            <div className="panel-head">
               <code
                 style={{
                   fontFamily: "var(--mono)",
-                  fontSize: 13,
+                  fontSize: "var(--t-body)",
                   color: "var(--text-primary)",
                 }}
               >
                 {t.name}
               </code>
               <span
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: 10,
-                  letterSpacing: "var(--track-meta)",
-                  textTransform: "uppercase",
-                  color: KIND_TINT[t.kind],
-                  marginLeft: "auto",
-                }}
+                className="kicker"
+                data-tone={KIND_TONE[t.kind]}
+                style={{ marginLeft: "auto" }}
               >
                 {t.kind}
               </span>
               {t.gated && (
-                <span
-                  data-gated
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 10,
-                    letterSpacing: "var(--track-meta)",
-                    textTransform: "uppercase",
-                    color: "var(--cc-warn)",
-                    padding: "1px 6px",
-                    border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-                    borderRadius: 999,
-                  }}
-                >
+                <span data-gated className="state-pill" data-tone="warn">
+                  <span className="state-pill-dot" />
                   gated
                 </span>
               )}
             </div>
-            <div style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)", lineHeight: "var(--lh-body)" }}>
+            <div
+              style={{
+                fontFamily: "var(--sans)",
+                fontSize: "var(--t-body-sec)",
+                color: "var(--text-muted)",
+                lineHeight: "var(--lh-body-sec)",
+              }}
+            >
               {t.note}
             </div>
-          </div>
+          </section>
         ))}
       </div>
     </div>

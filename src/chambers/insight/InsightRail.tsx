@@ -12,10 +12,8 @@ import { useCopy } from "../../i18n/copy";
 //   3. Principles in force      · doctrine this chamber carries, clipped
 //   4. Verdict trail            · last few outcomes in this session
 //
-// Each panel resolves its own empty-state inside — the rail never
-// disappears, never becomes a placeholder gallery, never repeats the
-// "no mission" voice that the composer already carries. Copy is read
-// from the catalog (PT / EN) so the chamber speaks one voice.
+// Built on the shared .panel, .meta-grid, .status-dot and .state-pill
+// primitives so geometry and semantic color match every other chamber.
 
 interface Props {
   mission: Mission | null;
@@ -72,7 +70,7 @@ function MissionCard({
 }) {
   if (!mission) {
     return (
-      <Panel kicker={copy.labRailMissionKicker}>
+      <RailPanel kicker={copy.labRailMissionKicker}>
         <div
           style={{
             fontFamily: "var(--mono)",
@@ -84,7 +82,7 @@ function MissionCard({
         >
           {copy.labRailNoMission}
         </div>
-      </Panel>
+      </RailPanel>
     );
   }
 
@@ -92,44 +90,38 @@ function MissionCard({
   const ago = relativeTime(mission.createdAt, copy);
 
   return (
-    <Panel kicker={copy.labRailMissionKicker}>
+    <RailPanel kicker={copy.labRailMissionKicker}>
       <div
         style={{
           fontFamily: "var(--serif)",
-          fontSize: "var(--t-body)",
+          fontSize: "var(--t-section)",
           color: "var(--text-primary)",
-          lineHeight: 1.4,
+          lineHeight: 1.3,
+          letterSpacing: "-0.005em",
         }}
       >
         {mission.title}
       </div>
-      <MetaGrid>
-        <MetaLabel>{copy.labRailMetaOpened}</MetaLabel>
-        <MetaValue>{ago}</MetaValue>
-        <MetaLabel>{copy.labRailMetaTurns}</MetaLabel>
-        <MetaValue>{noteCount}</MetaValue>
+      <div className="meta-grid">
+        <span className="meta-label">{copy.labRailMetaOpened}</span>
+        <span className="meta-value">{ago}</span>
+        <span className="meta-label">{copy.labRailMetaTurns}</span>
+        <span className="meta-value">{noteCount}</span>
         {principlesCount > 0 && (
           <>
-            <MetaLabel>{copy.labRailMetaDoctrine}</MetaLabel>
-            <MetaValue color="var(--chamber-dna, var(--accent))">
+            <span className="meta-label">{copy.labRailMetaDoctrine}</span>
+            <span className="meta-value" data-tone="accent">
               {principlesCount}{" "}
               {principlesCount === 1 ? copy.labRailPrincipleSingular : copy.labRailPrinciplePlural}
-            </MetaValue>
+            </span>
           </>
         )}
-      </MetaGrid>
-    </Panel>
+      </div>
+    </RailPanel>
   );
 }
 
 // ——— Chamber status card (live operational context) ———
-//
-// Two modes. While pending: live routing, stage, iter/tools, last event
-// label, and an inline stop affordance (replaces the former
-// thread-region live strip so the rail now owns pressure). At rest:
-// last route / confidence / "em repouso" — tells the user the chamber
-// is ready but not firing. In both modes the panel is mounted so the
-// rail holds weight parity with Surface's exploration rail.
 
 function ChamberStatusCard({
   live, pending, lastConfidence, lastVerdictRefused, onAbort, copy,
@@ -141,15 +133,17 @@ function ChamberStatusCard({
   onAbort: () => void;
   copy: ReturnType<typeof useCopy>;
 }) {
-  const accent = pending
-    ? "var(--cc-info)"
+  type Tone = "info" | "err" | "ok" | "warn" | "accent" | "muted" | "ghost";
+
+  const panelTone: Tone = pending
+    ? "info"
     : lastVerdictRefused
-    ? "var(--cc-err)"
+    ? "err"
     : lastConfidence === "high"
-    ? "var(--cc-ok)"
+    ? "ok"
     : lastConfidence === "low"
-    ? "var(--cc-warn)"
-    : "color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 70%, transparent)";
+    ? "warn"
+    : "accent";
 
   const routeLabel = live.routePath === "triad"
     ? copy.labRailStatusRouteTriad
@@ -163,21 +157,25 @@ function ChamberStatusCard({
     ? copy.labRailTrailRefused
     : lastConfidence ?? copy.labRailStatusNone;
 
-  const confidenceColor = pending
-    ? (live.judgeConfidence === "high" ? "var(--cc-ok)"
-       : live.judgeConfidence === "low" ? "var(--cc-warn)"
-       : "var(--text-muted)")
+  const confidenceTone: Tone = pending
+    ? (live.judgeConfidence === "high" ? "ok"
+       : live.judgeConfidence === "low" ? "warn"
+       : "muted")
     : lastVerdictRefused
-    ? "var(--cc-err)"
+    ? "err"
     : lastConfidence === "high"
-    ? "var(--cc-ok)"
+    ? "ok"
     : lastConfidence === "low"
-    ? "var(--cc-warn)"
-    : "var(--text-muted)";
+    ? "warn"
+    : "muted";
+
+  const routeTone: Tone =
+    live.routePath === "agent" ? "warn" :
+    live.routePath === "triad" ? "accent" : "muted";
 
   const stage = (() => {
     if (!pending) return null;
-    if (live.routePath === "agent") return null; // use iter/tools instead
+    if (live.routePath === "agent") return null;
     if (live.triadTotal > 0 && live.triadCompleted < live.triadTotal) {
       return `${live.triadCompleted}/${live.triadTotal}`;
     }
@@ -193,125 +191,59 @@ function ChamberStatusCard({
     : copy.labRailStatusAwaiting;
 
   return (
-    <Panel kicker={copy.labRailStatusKicker} accent={accent}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 2,
-        }}
-      >
+    <RailPanel kicker={copy.labRailStatusKicker} tone={panelTone}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span
-          className={pending ? "breathe" : undefined}
-          aria-hidden
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            background: accent,
-            flexShrink: 0,
-            boxShadow: pending
-              ? `0 0 0 3px color-mix(in oklab, ${accent} 22%, transparent)`
-              : "none",
-          }}
+          className="status-dot"
+          data-tone={panelTone}
+          data-pulse={pending ? "true" : undefined}
         />
-        <span
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-micro)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-            color: pending ? accent : "var(--text-muted)",
-          }}
-        >
+        <span className="kicker" data-tone={pending ? panelTone : "ghost"}>
           {pending ? copy.labRailStatusRunning : copy.labRailStatusIdle}
         </span>
       </div>
 
-      <MetaGrid>
-        <MetaLabel>{copy.labRailStatusRoute}</MetaLabel>
-        <MetaValue
-          color={
-            live.routePath === "agent"
-              ? "var(--cc-warn)"
-              : live.routePath === "triad"
-              ? "var(--chamber-dna, var(--accent))"
-              : "var(--text-muted)"
-          }
-        >
-          {routeLabel}
-        </MetaValue>
+      <div className="meta-grid">
+        <span className="meta-label">{copy.labRailStatusRoute}</span>
+        <span className="meta-value" data-tone={routeTone}>{routeLabel}</span>
 
         {stage && (
           <>
-            <MetaLabel>{copy.labRailStatusStage}</MetaLabel>
-            <MetaValue>{stage}</MetaValue>
+            <span className="meta-label">{copy.labRailStatusStage}</span>
+            <span className="meta-value">{stage}</span>
           </>
         )}
 
         {(live.routePath === "agent" && pending) && (
           <>
-            <MetaLabel>{copy.labRailStatusIter}</MetaLabel>
-            <MetaValue>{live.agentIter}</MetaValue>
-            <MetaLabel>{copy.labRailStatusTools}</MetaLabel>
-            <MetaValue>{live.agentToolCount}</MetaValue>
+            <span className="meta-label">{copy.labRailStatusIter}</span>
+            <span className="meta-value">{live.agentIter}</span>
+            <span className="meta-label">{copy.labRailStatusTools}</span>
+            <span className="meta-value">{live.agentToolCount}</span>
           </>
         )}
 
-        <MetaLabel>{copy.labRailStatusConfidence}</MetaLabel>
-        <MetaValue color={confidenceColor}>{confidenceLabel}</MetaValue>
+        <span className="meta-label">{copy.labRailStatusConfidence}</span>
+        <span className="meta-value" data-tone={confidenceTone}>{confidenceLabel}</span>
 
-        <MetaLabel>{copy.labRailStatusLast}</MetaLabel>
-        <MetaValue>
-          <span
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              display: "inline-block",
-              maxWidth: "100%",
-            }}
-            title={lastLine}
-          >
-            {lastLine}
-          </span>
-        </MetaValue>
-      </MetaGrid>
+        <span className="meta-label">{copy.labRailStatusLast}</span>
+        <span className="meta-value" title={lastLine}>{lastLine}</span>
+      </div>
+
+      {pending && <div className="thinking-strip" aria-hidden />}
 
       {pending && (
         <button
           onClick={onAbort}
           data-insight-abort
           title={copy.labRailStatusStop}
-          style={{
-            alignSelf: "flex-end",
-            marginTop: "var(--space-1)",
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-micro)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-            color: "var(--cc-err)",
-            background: "transparent",
-            border: "1px solid color-mix(in oklab, var(--cc-err) 38%, transparent)",
-            borderRadius: "var(--radius-pill)",
-            padding: "3px 10px",
-            cursor: "pointer",
-            transition: "background .15s var(--ease-swift), border-color .15s var(--ease-swift)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "color-mix(in oklab, var(--cc-err) 10%, transparent)";
-            e.currentTarget.style.borderColor = "color-mix(in oklab, var(--cc-err) 60%, transparent)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.borderColor = "color-mix(in oklab, var(--cc-err) 38%, transparent)";
-          }}
+          className="btn-chip"
+          style={{ alignSelf: "flex-end", color: "var(--cc-err)", borderColor: "color-mix(in oklab, var(--cc-err) 38%, transparent)" }}
         >
           {copy.labRailStatusStop}
         </button>
       )}
-    </Panel>
+    </RailPanel>
   );
 }
 
@@ -325,7 +257,7 @@ function PrinciplesPanel({
 }) {
   if (principles.length === 0) {
     return (
-      <Panel kicker={copy.labRailPrinciplesKicker}>
+      <RailPanel kicker={copy.labRailPrinciplesKicker}>
         <div
           style={{
             fontFamily: "var(--mono)",
@@ -337,12 +269,12 @@ function PrinciplesPanel({
         >
           {copy.labRailPrinciplesEmpty}
         </div>
-      </Panel>
+      </RailPanel>
     );
   }
 
   return (
-    <Panel kicker={copy.labRailPrinciplesKicker}>
+    <RailPanel kicker={copy.labRailPrinciplesKicker}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
         {principles.slice(-8).map((p) => (
           <div
@@ -357,7 +289,7 @@ function PrinciplesPanel({
             <span
               aria-hidden
               style={{
-                fontFamily: "'Fraunces', Georgia, serif",
+                fontFamily: "var(--serif)",
                 fontSize: "var(--t-body-sec)",
                 color: "var(--chamber-dna, var(--accent))",
                 lineHeight: 1,
@@ -379,21 +311,12 @@ function PrinciplesPanel({
           </div>
         ))}
         {principles.length > 8 && (
-          <div
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: "var(--t-micro)",
-              letterSpacing: "var(--track-label)",
-              textTransform: "uppercase",
-              color: "var(--text-ghost)",
-              paddingTop: "var(--space-1)",
-            }}
-          >
+          <div className="kicker" data-tone="ghost" style={{ paddingTop: "var(--space-1)" }}>
             {copy.labRailPrinciplesMore(principles.length - 8)}
           </div>
         )}
       </div>
-    </Panel>
+    </RailPanel>
   );
 }
 
@@ -407,7 +330,7 @@ function VerdictTrailPanel({
 }) {
   if (trail.length === 0) {
     return (
-      <Panel kicker={copy.labRailTrailKicker}>
+      <RailPanel kicker={copy.labRailTrailKicker}>
         <div
           style={{
             fontFamily: "var(--mono)",
@@ -419,29 +342,24 @@ function VerdictTrailPanel({
         >
           {copy.labRailTrailEmpty}
         </div>
-      </Panel>
+      </RailPanel>
     );
   }
 
   const shown = trail.slice().reverse().slice(0, 6);
 
   return (
-    <Panel kicker={copy.labRailTrailKicker}>
+    <RailPanel kicker={copy.labRailTrailKicker}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
         {shown.map((v, i) => {
           const refused = v.refused;
-          const confColor = refused
-            ? "var(--cc-err)"
-            : v.confidence === "high"
-            ? "var(--cc-ok)"
-            : v.confidence === "low"
-            ? "var(--cc-warn)"
-            : "var(--text-muted)";
-          const routeColor = refused
-            ? "var(--cc-err)"
-            : v.routePath === "agent"
-            ? "var(--cc-warn)"
-            : "var(--chamber-dna, var(--accent))";
+          const confTone =
+            refused ? "err" :
+            v.confidence === "high" ? "ok" :
+            v.confidence === "low" ? "warn" : "muted";
+          const routeTone =
+            refused ? "err" :
+            v.routePath === "agent" ? "warn" : "accent";
           const routeLabel = v.routePath === "agent"
             ? copy.labRailStatusRouteAgent
             : copy.labRailStatusRouteTriad;
@@ -453,30 +371,22 @@ function VerdictTrailPanel({
                 gridTemplateColumns: "auto auto 1fr",
                 gap: 10,
                 alignItems: "baseline",
-                fontFamily: "var(--mono)",
-                fontSize: "var(--t-micro)",
-                letterSpacing: "var(--track-label)",
-                textTransform: "uppercase",
                 paddingBottom: "var(--space-1)",
-                borderBottom: i === shown.length - 1
-                  ? "none"
-                  : "1px dashed var(--border-soft)",
+                borderBottom: i === shown.length - 1 ? "none" : "1px dashed var(--border-color-soft)",
               }}
             >
-              <span style={{ color: routeColor }}>
+              <span className="kicker" data-tone={routeTone}>
                 {refused ? "✗ " : ""}{routeLabel}
               </span>
-              <span style={{ color: confColor }}>
+              <span className="kicker" data-tone={confTone}>
                 {refused ? copy.labRailTrailRefused : (v.confidence ?? copy.labRailStatusNone)}
               </span>
               <span
                 style={{
                   fontFamily: "var(--sans)",
-                  textTransform: "none",
                   fontSize: "var(--t-body-sec)",
                   color: "var(--text-muted)",
                   fontStyle: "italic",
-                  letterSpacing: 0,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
@@ -490,95 +400,26 @@ function VerdictTrailPanel({
           );
         })}
       </div>
-    </Panel>
+    </RailPanel>
   );
 }
 
-// ——— Layout primitives ———
+// ——— Layout primitive ———
 
-function Panel({
-  kicker, accent, children,
+type RailTone = "ok" | "warn" | "err" | "info" | "accent" | "muted" | "ghost";
+
+function RailPanel({
+  kicker, tone, children,
 }: {
   kicker: string;
-  accent?: string;
+  tone?: RailTone;
   children: React.ReactNode;
 }) {
   return (
-    <section
-      style={{
-        background: "var(--bg-surface)",
-        border: "var(--border-soft)",
-        borderLeft: accent ? `2px solid ${accent}` : undefined,
-        borderRadius: "var(--radius-panel)",
-        padding: "var(--space-3)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-2)",
-      }}
-    >
-      <span
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: "var(--t-micro)",
-          letterSpacing: "var(--track-label)",
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-        }}
-      >
-        {kicker}
-      </span>
+    <section className="panel" data-tone={tone}>
+      <span className="kicker">{kicker}</span>
       {children}
     </section>
-  );
-}
-
-function MetaGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "auto 1fr",
-        rowGap: 4,
-        columnGap: 10,
-        alignItems: "baseline",
-        minWidth: 0,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function MetaLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      style={{
-        fontFamily: "var(--mono)",
-        fontSize: "var(--t-micro)",
-        letterSpacing: "var(--track-label)",
-        textTransform: "uppercase",
-        color: "var(--text-ghost)",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function MetaValue({ children, color }: { children: React.ReactNode; color?: string }) {
-  return (
-    <span
-      style={{
-        fontFamily: "var(--mono)",
-        fontSize: "var(--t-body-sec)",
-        letterSpacing: "var(--track-meta)",
-        color: color ?? "var(--text-secondary)",
-        minWidth: 0,
-        overflow: "hidden",
-      }}
-    >
-      {children}
-    </span>
   );
 }
 

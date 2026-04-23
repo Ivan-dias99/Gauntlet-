@@ -1,8 +1,7 @@
 // Core · Orchestration — read-only display of the four pipelines the
 // engine operates today, with the budgets that keep them honest.
-// Values mirror signal-backend/agent.py and engine.py constants. When
-// Core opens a writeable governance surface these rows become editable
-// per-chamber profile slots.
+// Values mirror signal-backend/agent.py and engine.py constants. Every
+// panel flows through the shared .panel + .diagnostic-row primitives.
 
 interface Row { label: string; value: string; }
 
@@ -55,57 +54,21 @@ export default function Orchestration() {
 
 function Panel({ title, sub, rows }: { title: string; sub: string; rows: Row[] }) {
   return (
-    <section
-      style={{
-        border: "var(--border-soft)",
-        borderRadius: "var(--radius-panel)",
-        padding: "var(--space-3)",
-        background: "var(--bg-surface)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-2)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <span style={{ fontFamily: "var(--serif)", fontSize: 18, color: "var(--text-primary)" }}>
-          {title}
-        </span>
-        <span
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: 10,
-            letterSpacing: "var(--track-meta)",
-            textTransform: "uppercase",
-            color: "var(--text-ghost)",
-            marginLeft: "auto",
-          }}
-        >
-          {sub}
-        </span>
+    <section className="panel">
+      <div className="panel-head">
+        <span className="panel-title">{title}</span>
+        <span className="panel-sub">{sub}</span>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div>
         {rows.map((r) => (
-          <div
-            key={r.label}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(180px, 220px) 1fr",
-              gap: 10,
-              alignItems: "baseline",
-              fontSize: "var(--t-body-sec)",
-            }}
-          >
-            <code
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 11,
-                letterSpacing: "var(--track-meta)",
-                color: "var(--text-muted)",
-              }}
+          <div key={r.label} className="diagnostic-row">
+            <span className="diagnostic-row-key">{r.label}</span>
+            <span
+              className="diagnostic-row-value"
+              style={{ fontFamily: "var(--sans)", lineHeight: 1.5 }}
             >
-              {r.label}
-            </code>
-            <span style={{ color: "var(--text-primary)" }}>{r.value}</span>
+              {r.value}
+            </span>
           </div>
         ))}
       </div>

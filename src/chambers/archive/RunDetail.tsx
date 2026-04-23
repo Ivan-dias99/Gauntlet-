@@ -1,11 +1,12 @@
 import type { Artifact } from "../../spine/types";
 import type { RunRecord } from "./helpers";
-import { ROUTE_COLOR, originFor, linkArtifact } from "./helpers";
+import { originFor, linkArtifact } from "./helpers";
 
 // Right-pane detail view for the selected run. Shows provenance first
 // (chamber-of-origin, linked artifact, doctrine in effect at query
-// time), then the envelope metadata, then the answer. Empty state when
-// no run selected — the chamber reads as retrieval-first.
+// time), then the envelope metadata, then the answer. The section
+// primitives pull from the shared .panel + .meta-grid grammar so the
+// detail pane reads as part of the same organism as every other panel.
 
 interface Props {
   run: RunRecord | null;
@@ -24,26 +25,24 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          border: "var(--border-soft)",
+          border: "1px solid var(--border-color-soft)",
           borderRadius: "var(--radius-panel)",
           background: "var(--bg-surface)",
           padding: "var(--space-4)",
         }}
       >
-        <div style={{ maxWidth: 420, textAlign: "center", color: "var(--text-muted)" }}>
-          <div
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: "var(--t-micro)",
-              letterSpacing: "var(--track-label)",
-              textTransform: "uppercase",
-              color: "var(--text-ghost)",
-              marginBottom: 10,
-            }}
-          >
+        <div style={{ maxWidth: 420, textAlign: "center" }}>
+          <div className="kicker" style={{ marginBottom: 10 }}>
             — Proveniência
           </div>
-          <div style={{ fontFamily: "var(--serif)", fontSize: 18, lineHeight: 1.45 }}>
+          <div
+            style={{
+              fontFamily: "var(--serif)",
+              fontSize: "var(--t-section)",
+              lineHeight: 1.45,
+              color: "var(--text-muted)",
+            }}
+          >
             Seleciona uma entrada do ledger para ver a origem, o artefacto ligado,
             e a cadeia que a produziu.
           </div>
@@ -54,7 +53,10 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
 
   const origin = originFor(run.route);
   const linked = linkArtifact(run, missionArtifact);
-  const routeColor = run.refused ? "var(--cc-err)" : ROUTE_COLOR[run.route] ?? "var(--text-muted)";
+  const routeTone: "err" | "info" | "warn" | "accent" | "muted" =
+    run.refused ? "err" :
+    run.route === "agent" ? "warn" :
+    run.route === "triad" ? "accent" : "muted";
 
   return (
     <div
@@ -64,50 +66,39 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
         minHeight: 0,
         display: "flex",
         flexDirection: "column",
-        border: "var(--border-soft)",
+        border: "1px solid var(--border-color-soft)",
         borderRadius: "var(--radius-panel)",
         background: "var(--bg-surface)",
         overflow: "hidden",
       }}
     >
-      {/* Header */}
       <div
         data-chamber={origin ?? undefined}
         style={{
           display: "flex",
-          alignItems: "baseline",
+          alignItems: "center",
           gap: 10,
-          padding: "var(--space-3)",
-          borderBottom: "var(--border-soft)",
+          padding: "var(--space-3) var(--space-4)",
+          borderBottom: "1px solid var(--border-color-soft)",
           background: "var(--bg-elevated)",
           borderLeft: "2px solid color-mix(in oklab, var(--chamber-dna, var(--text-muted)) 70%, transparent)",
         }}
       >
-        <span
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-micro)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-            color: routeColor,
-          }}
-        >
+        <span className="state-pill" data-tone={routeTone}>
+          <span className="state-pill-dot" />
           {run.refused ? "✗ " : ""}{run.route}
         </span>
         {origin && (
-          <span
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: "var(--t-micro)",
-              letterSpacing: "var(--track-meta)",
-              color: "var(--text-ghost)",
-              textTransform: "uppercase",
-            }}
-          >
-            · {origin}
-          </span>
+          <span className="kicker" data-tone="ghost">· {origin}</span>
         )}
-        <span style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)" }}>
+        <span
+          style={{
+            marginLeft: "auto",
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-meta)",
+            color: "var(--text-muted)",
+          }}
+        >
           {new Date(run.timestamp).toLocaleString([], {
             hour: "2-digit", minute: "2-digit", second: "2-digit",
             day: "2-digit", month: "2-digit",
@@ -115,77 +106,112 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
         </span>
       </div>
 
-      {/* Body */}
-      <div style={{ flex: 1, overflow: "auto", padding: "var(--space-3)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-
-        {/* Question */}
+      <div
+        style={{
+          flex: 1,
+          overflow: "auto",
+          padding: "var(--space-3) var(--space-4)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-3)",
+        }}
+      >
         <Section title="Pergunta">
-          <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-primary)", lineHeight: 1.5 }}>
+          <div
+            style={{
+              fontFamily: "var(--serif)",
+              fontSize: "var(--t-section)",
+              color: "var(--text-primary)",
+              lineHeight: 1.45,
+              letterSpacing: "-0.005em",
+            }}
+          >
             {run.question}
           </div>
         </Section>
 
-        {/* Provenance */}
         <Section title="Proveniência">
-          <Meta k="origem" v={origin ?? "(ambígua)"} />
-          {linked && (
-            <Meta
-              k="artefacto"
-              v={`${linked.taskTitle}${linked.terminatedEarly ? " (parcial)" : ""}`}
-            />
-          )}
-          {doctrineCount > 0 && (
-            <Meta
-              k="doutrina"
-              v={`${doctrineCount} princípio${doctrineCount === 1 ? "" : "s"} em vigor`}
-            />
-          )}
+          <div className="meta-grid">
+            <span className="meta-label">origem</span>
+            <span className="meta-value">{origin ?? "(ambígua)"}</span>
+            {linked && (
+              <>
+                <span className="meta-label">artefacto</span>
+                <span className="meta-value" data-wrap="true">
+                  {linked.taskTitle}
+                  {linked.terminatedEarly ? " (parcial)" : ""}
+                </span>
+              </>
+            )}
+            {doctrineCount > 0 && (
+              <>
+                <span className="meta-label">doutrina</span>
+                <span className="meta-value">
+                  {doctrineCount} princípio{doctrineCount === 1 ? "" : "s"} em vigor
+                </span>
+              </>
+            )}
+          </div>
           {!linked && !origin && doctrineCount === 0 && (
-            <div
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                color: "var(--text-ghost)",
-                fontStyle: "italic",
-              }}
+            <span
+              className="kicker"
+              data-tone="ghost"
+              style={{ fontStyle: "italic" }}
             >
               — sem cadeia registada —
-            </div>
+            </span>
           )}
         </Section>
 
-        {/* Envelope */}
         <Section title="Envelope">
-          <Meta k="confidence" v={run.confidence ?? "—"} />
-          <Meta k="iterations" v={run.iterations?.toString() ?? "—"} />
-          <Meta k="tools" v={`${run.tool_calls.length}`} />
-          <Meta k="tokens" v={`${run.input_tokens} in · ${run.output_tokens} out`} />
-          <Meta k="latency" v={`${run.processing_time_ms} ms`} />
-          {run.terminated_early && (
-            <Meta k="terminated" v={run.termination_reason ?? "early"} tone="warn" />
-          )}
+          <div className="meta-grid">
+            <span className="meta-label">confidence</span>
+            <span className="meta-value">{run.confidence ?? "—"}</span>
+            <span className="meta-label">iterations</span>
+            <span className="meta-value">{run.iterations?.toString() ?? "—"}</span>
+            <span className="meta-label">tools</span>
+            <span className="meta-value">{run.tool_calls.length}</span>
+            <span className="meta-label">tokens</span>
+            <span className="meta-value">{run.input_tokens} in · {run.output_tokens} out</span>
+            <span className="meta-label">latency</span>
+            <span className="meta-value">{run.processing_time_ms} ms</span>
+            {run.terminated_early && (
+              <>
+                <span className="meta-label">terminated</span>
+                <span className="meta-value" data-tone="warn">
+                  {run.termination_reason ?? "early"}
+                </span>
+              </>
+            )}
+          </div>
         </Section>
 
         {run.tool_calls.length > 0 && (
           <Section title="Tool calls">
-            {run.tool_calls.map((tc, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "16px 1fr",
-                  gap: 6,
-                  fontFamily: "var(--mono)",
-                  fontSize: 11,
-                  color: "var(--text-muted)",
-                }}
-              >
-                <span style={{ color: tc.ok ? "var(--cc-ok)" : "var(--cc-err)" }}>
-                  {tc.ok ? "✓" : "✗"}
-                </span>
-                <span>{tc.name}</span>
-              </div>
-            ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {run.tool_calls.map((tc, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "16px 1fr",
+                    gap: 6,
+                    fontFamily: "var(--mono)",
+                    fontSize: "var(--t-body-sec)",
+                    color: "var(--text-muted)",
+                    alignItems: "baseline",
+                  }}
+                >
+                  <span
+                    style={{ color: tc.ok ? "var(--cc-ok)" : "var(--cc-err)" }}
+                    aria-hidden
+                  >
+                    {tc.ok ? "✓" : "✗"}
+                  </span>
+                  <span>{tc.name}</span>
+                </div>
+              ))}
+            </div>
           </Section>
         )}
 
@@ -206,21 +232,17 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
                   : run.judge_reasoning}
               </div>
             ) : (
-              <div
-                style={{
-                  fontFamily: "var(--sans)",
-                  fontSize: "var(--t-body-sec)",
-                  color: "var(--text-ghost)",
-                  fontStyle: "italic",
-                }}
+              <span
+                className="kicker"
+                data-tone="ghost"
+                style={{ fontStyle: "italic" }}
               >
                 — sem motivo registado —
-              </div>
+              </span>
             )}
           </Section>
         )}
 
-        {/* Answer */}
         <Section title="Resposta">
           <div
             style={{
@@ -247,17 +269,7 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <span
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: "var(--t-micro)",
-          letterSpacing: "var(--track-label)",
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-        }}
-      >
-        — {title}
-      </span>
+      <span className="kicker">— {title}</span>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {children}
       </div>
@@ -265,30 +277,3 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Meta({ k, v, tone }: { k: string; v: string; tone?: "warn" }) {
-  const color = tone === "warn" ? "var(--cc-warn)" : "var(--text-secondary)";
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "90px 1fr",
-        gap: 10,
-        alignItems: "baseline",
-        fontSize: "var(--t-body-sec)",
-      }}
-    >
-      <span
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: 10,
-          letterSpacing: "var(--track-meta)",
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-        }}
-      >
-        {k}
-      </span>
-      <span style={{ color, fontFamily: "var(--mono)", fontSize: 11 }}>{v}</span>
-    </div>
-  );
-}

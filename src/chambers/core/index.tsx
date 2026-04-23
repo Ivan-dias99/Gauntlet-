@@ -9,10 +9,12 @@ import System from "./System";
 // Core chamber — strict tab structure:
 //   Policies · Routing · Permissions · Orchestration · System
 //
-// No junk drawer. Each tab carries one governance responsibility and
-// nothing more. Routing / Permissions / Orchestration are read-only
-// mirrors of the backend profiles today; editability opens when Core
-// exposes a writeable governance surface.
+// Tab row flows through the shared .tab-sub-band + .tab-sub primitives
+// so Core's instrumentation band reads as a continuous strip with
+// underline-active grammar, matching the shell's canon ribbon one notch
+// down. Each tab body owns one governance responsibility; Routing /
+// Permissions / Orchestration remain read-only mirrors until Core gains
+// a writeable governance surface.
 
 type Tab = "policies" | "routing" | "permissions" | "orchestration" | "system";
 
@@ -34,12 +36,9 @@ export default function Core() {
 
       <div
         role="tablist"
+        aria-label="Core tabs"
+        className="tab-sub-band"
         style={{
-          display: "flex",
-          gap: 2,
-          padding: "var(--space-2) var(--space-3)",
-          borderBottom: "var(--border-soft)",
-          background: "var(--bg)",
           position: "sticky",
           top: 0,
           zIndex: 1,
@@ -55,17 +54,7 @@ export default function Core() {
               onClick={() => setTab(t.key)}
               data-core-tab={t.key}
               data-active={active ? "true" : undefined}
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body-sec)",
-                padding: "6px 12px",
-                background: active ? "var(--bg-elevated)" : "transparent",
-                color: active ? "var(--text-primary)" : "var(--text-muted)",
-                border: active ? "var(--border-soft)" : "1px solid transparent",
-                borderRadius: "var(--radius-control)",
-                cursor: "pointer",
-                transition: "background var(--dur-fast) var(--ease-swift), color var(--dur-fast) var(--ease-swift)",
-              }}
+              className="tab-sub"
             >
               {t.label}
             </button>

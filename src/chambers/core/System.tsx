@@ -3,10 +3,9 @@ import { useTweaks, ACCENT_SWATCHES, type Theme, type Density, type Lang, type A
 import { useSpine } from "../../spine/SpineContext";
 import { signalFetch, isBackendUnreachable } from "../../lib/signalApi";
 
-// Wave-4 System tab — absorbs the old TweaksPanel controls (theme,
-// density, lang, accent) and adds a diagnostics snapshot fetched from
-// the backend. Reset-spine stays a destructive action behind an
-// explicit confirm. No other controls — Core must not become a drawer.
+// System tab — theme/density/lang/accent + backend diagnostics snapshot
+// + destructive actions. Built on the shared .panel + .diagnostic-row
+// primitives so every tab in Core reads with the same maturity level.
 
 interface Diagnostics {
   system: string;
@@ -112,28 +111,38 @@ export default function System() {
 
       {/* Diagnostics */}
       <Section title="Diagnostics" sub="/diagnostics snapshot">
-        {loadingDiag && <Muted>a ler…</Muted>}
-        {diagErr && <Muted tone="err">{diagErr}</Muted>}
+        {loadingDiag && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="status-dot" data-tone="info" data-pulse="true" />
+            <span className="kicker" data-tone="ghost">a ler…</span>
+          </div>
+        )}
+        {diagErr && (
+          <span className="state-pill" data-tone="err">
+            <span className="state-pill-dot" />
+            {diagErr}
+          </span>
+        )}
         {diag && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "var(--t-body-sec)" }}>
-            <Row k="mode" v={diag.boot.mode} tone={diag.boot.mode === "mock" ? "warn" : "ok"} />
-            <Row k="engine" v={diag.engine_status} tone={diag.engine_status === "ready" ? "ok" : "warn"} />
-            <Row k="model" v={diag.model} />
-            <Row k="triad" v={`${diag.triad_count} × ${diag.triad_temperature}`} />
-            <Row k="judge T°" v={String(diag.judge_temperature)} />
-            <Row k="API key" v={diag.boot.anthropic_api_key_present ? "present" : "missing"}
-                 tone={diag.boot.anthropic_api_key_present ? "ok" : "warn"} />
-            <Row k="uptime" v={`${diag.boot.uptime_seconds}s`} />
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <DiagRow k="mode" v={diag.boot.mode} tone={diag.boot.mode === "mock" ? "warn" : "ok"} />
+            <DiagRow k="engine" v={diag.engine_status} tone={diag.engine_status === "ready" ? "ok" : "warn"} />
+            <DiagRow k="model" v={diag.model} />
+            <DiagRow k="triad" v={`${diag.triad_count} × ${diag.triad_temperature}`} />
+            <DiagRow k="judge T°" v={String(diag.judge_temperature)} />
+            <DiagRow
+              k="API key"
+              v={diag.boot.anthropic_api_key_present ? "present" : "missing"}
+              tone={diag.boot.anthropic_api_key_present ? "ok" : "warn"}
+            />
+            <DiagRow k="uptime" v={`${diag.boot.uptime_seconds}s`} />
           </div>
         )}
       </Section>
 
       {/* Destructive */}
       <Section title="Reset" sub="destrutivo">
-        <button
-          onClick={() => reset()}
-          style={buttonStyle("var(--text-muted)")}
-        >
+        <button onClick={() => reset()} style={buttonStyle("var(--text-muted)")}>
           Repor aparência
         </button>
         <div style={{ height: 6 }} />
@@ -145,8 +154,8 @@ export default function System() {
             Repor spine…
           </button>
         ) : (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontFamily: "var(--mono)", fontSize: "var(--t-meta)", color: "var(--cc-err)" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <span className="kicker" data-tone="err">
               apaga missões, princípios, tarefas
             </span>
             <button
@@ -155,7 +164,10 @@ export default function System() {
             >
               confirmar
             </button>
-            <button onClick={() => setConfirmReset(false)} style={buttonStyle("var(--text-muted)")}>
+            <button
+              onClick={() => setConfirmReset(false)}
+              style={buttonStyle("var(--text-muted)")}
+            >
               cancelar
             </button>
           </div>
@@ -167,35 +179,10 @@ export default function System() {
 
 function Section({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
-    <section
-      style={{
-        border: "var(--border-soft)",
-        borderRadius: "var(--radius-panel)",
-        padding: "var(--space-3)",
-        background: "var(--bg-surface)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-2)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <span style={{ fontFamily: "var(--serif)", fontSize: 18, color: "var(--text-primary)" }}>
-          {title}
-        </span>
-        {sub && (
-          <span
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: 10,
-              letterSpacing: "var(--track-meta)",
-              textTransform: "uppercase",
-              color: "var(--text-ghost)",
-              marginLeft: "auto",
-            }}
-          >
-            {sub}
-          </span>
-        )}
+    <section className="panel">
+      <div className="panel-head">
+        <span className="panel-title">{title}</span>
+        {sub && <span className="panel-sub">{sub}</span>}
       </div>
       {children}
     </section>
@@ -203,44 +190,14 @@ function Section({ title, sub, children }: { title: string; sub?: string; childr
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      style={{
-        fontFamily: "var(--mono)",
-        fontSize: "var(--t-micro)",
-        letterSpacing: "var(--track-label)",
-        textTransform: "uppercase",
-        color: "var(--text-ghost)",
-      }}
-    >
-      {children}
-    </span>
-  );
+  return <span className="kicker">{children}</span>;
 }
 
-function Muted({ children, tone }: { children: React.ReactNode; tone?: "err" }) {
+function DiagRow({ k, v, tone }: { k: string; v: string; tone?: "ok" | "warn" }) {
   return (
-    <span
-      style={{
-        fontSize: "var(--t-body-sec)",
-        color: tone === "err" ? "var(--cc-err)" : "var(--text-muted)",
-        fontFamily: "var(--mono)",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function Row({ k, v, tone }: { k: string; v: string; tone?: "ok" | "warn" }) {
-  const color =
-    tone === "ok" ? "var(--terminal-ok)" :
-    tone === "warn" ? "var(--cc-warn)" :
-    "var(--text-primary)";
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(70px, 90px) 1fr", gap: 10, alignItems: "baseline" }}>
-      <code style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-muted)" }}>{k}</code>
-      <span style={{ color }}>{v}</span>
+    <div className="diagnostic-row">
+      <span className="diagnostic-row-key">{k}</span>
+      <span className="diagnostic-row-value" data-tone={tone}>{v}</span>
     </div>
   );
 }

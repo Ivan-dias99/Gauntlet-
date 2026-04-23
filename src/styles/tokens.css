@@ -64,14 +64,14 @@
 /* ——— DARK — deep ink (default) ——— */
 :root,
 [data-theme="dark"] {
-  --bg: #0e0c0a;
-  --bg-surface: #16130f;
-  --bg-sunken: #0a0908;
-  --bg-elevated: #1f1b16;
-  --bg-input: #12100d;
+  --bg: #0d0b09;
+  --bg-surface: #151210;
+  --bg-sunken: #09080a;
+  --bg-elevated: #1e1a15;
+  --bg-input: #111010;
 
-  --border-color-soft:   color-mix(in oklab, #f3ede2 10%, transparent);
-  --border-color-mid:    color-mix(in oklab, #f3ede2 16%, transparent);
+  --border-color-soft:   color-mix(in oklab, #f3ede2 9%, transparent);
+  --border-color-mid:    color-mix(in oklab, #f3ede2 15%, transparent);
   --border-color-strong: color-mix(in oklab, #f3ede2 24%, transparent);
   --border-soft:   1px solid var(--border-color-soft);
   --border-mid:    1px solid var(--border-color-mid);
@@ -117,29 +117,29 @@
 
 /* ——— LIGHT — Vision cream ——— */
 [data-theme="light"] {
-  --bg: #f8f5f0;
-  --bg-surface: #fffdf8;
-  --bg-sunken: #efeadf;
+  --bg: #f6f2ea;
+  --bg-surface: #fdfbf5;
+  --bg-sunken: #ece6d8;
   --bg-elevated: #ffffff;
-  --bg-input: #f2eee6;
+  --bg-input: #f0ebe0;
 
-  --border-color-soft:   color-mix(in oklab, #1b1915 10%, transparent);
-  --border-color-mid:    color-mix(in oklab, #1b1915 16%, transparent);
-  --border-color-strong: color-mix(in oklab, #1b1915 24%, transparent);
+  --border-color-soft:   color-mix(in oklab, #1b1915 8%, transparent);
+  --border-color-mid:    color-mix(in oklab, #1b1915 14%, transparent);
+  --border-color-strong: color-mix(in oklab, #1b1915 22%, transparent);
   --border-soft:   1px solid var(--border-color-soft);
   --border-mid:    1px solid var(--border-color-mid);
   --border-strong: 1px solid var(--border-color-strong);
   --border: var(--border-color-mid);
 
-  --text-primary: #1b1915;
+  --text-primary: #1a1712;
   --text-secondary: #5a5248;
-  --text-muted: #9a8f7e;
-  --text-ghost: #c4bdb0;
+  --text-muted: #958a78;
+  --text-ghost: #c0b8ab;
 
-  --accent: #7a5a3a;
-  --accent-dim: #b8a890;
-  --accent-glow: rgba(122, 90, 58, 0.07);
-  --ember: #c47a5a;
+  --accent: #7a5730;
+  --accent-dim: #b0a08a;
+  --accent-glow: rgba(122, 87, 48, 0.07);
+  --ember: #b86a4a;
 
   --terminal-ok: #3a6a3a;
   --terminal-warn: #8a6a20;
@@ -148,9 +148,9 @@
   --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.06);
   --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.10);
 
-  --cc-fg: #2a2620;
+  --cc-fg: #262118;
   --cc-dim: #8a8070;
-  --cc-prompt: #7a5a3a;
+  --cc-prompt: #7a5730;
   --cc-ok: #3a6a3a;
   --cc-err: #a8322a;
   --cc-warn: #8a6a20;
@@ -167,11 +167,11 @@
 
 /* ——— SEPIA — midnight archive ——— */
 [data-theme="sepia"] {
-  --bg: #1b1410;
-  --bg-surface: #241b14;
-  --bg-sunken: #140e0a;
-  --bg-elevated: #2d2219;
-  --bg-input: #1a120d;
+  --bg: #1a140f;
+  --bg-surface: #221a13;
+  --bg-sunken: #120d09;
+  --bg-elevated: #2a2018;
+  --bg-input: #181107;
 
   --border-color-soft:   color-mix(in oklab, #f4e6cc 10%, transparent);
   --border-color-mid:    color-mix(in oklab, #f4e6cc 16%, transparent);
@@ -998,37 +998,9 @@ textarea {
   margin: var(--space-1) 0 18px;
 }
 
-/* ——— Dormant panel ———
-   Calm degraded-state primitive for chambers whose backend is unreachable.
-   Neutral hue (ghost), no red, no urgency. Visual weight sits below
-   ErrorPanel on purpose — dormant is ambient, error is actionable. */
-[data-dormant-panel] {
-  background: var(--bg-input);
-  border: 1px solid var(--border-soft);
-  border-left: 2px solid var(--text-ghost);
-  border-radius: 12px;
-  padding: 14px 18px;
-  font-family: var(--mono);
-  max-width: 560px;
-  align-self: flex-start;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-[data-dormant-kicker] {
-  font-size: 9px;
-  color: var(--text-ghost);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-[data-dormant-body] {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.55;
-}
-[data-dormant-action] {
-  margin-top: 2px;
-}
+/* Dormant + error panels now flow through the shared .error-card
+   primitive at the bottom of this file. The old [data-dormant-panel]
+   block was retired during Phase-1 consolidation. */
 
 /* ——— Spine sync indicator ———
    Minimal pill that reports whether the mission spine is in sync with the
@@ -1319,11 +1291,10 @@ textarea {
     font-size: 12px;
   }
 
-  /* Dormant + empty + error primitives — the 14px 18px / 560px-cap was
-     right for desktop breathing but leaves mobile looking rigid and
-     underauthored. */
-  [data-dormant-panel] {
-    padding: 11px 14px;
+  /* Error + dormant primitives share .error-card; tighten its mobile
+     rhythm so it never looks rigid at narrow widths. */
+  .error-card {
+    padding: var(--space-2) var(--space-3);
     gap: 6px;
     max-width: 100%;
   }
@@ -1910,3 +1881,539 @@ textarea {
     font-size: 18px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIGNAL OPERATIONAL GRAMMAR — Phase-1 consolidation
+   One system, one set of primitives. Every chamber pulls from here.
+   Nothing below this block is optional grammar.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ——— Semantic tone resolver ———
+   --tone resolves from data-tone on any primitive. Unknown tones fall
+   back to ghost. This is the one mapping layer between semantic state
+   and color token. */
+[data-tone="ok"]     { --tone: var(--cc-ok); }
+[data-tone="warn"]   { --tone: var(--cc-warn); }
+[data-tone="err"]    { --tone: var(--cc-err); }
+[data-tone="info"]   { --tone: var(--cc-info); }
+[data-tone="accent"] { --tone: var(--chamber-dna, var(--accent)); }
+[data-tone="prompt"] { --tone: var(--cc-prompt); }
+[data-tone="ghost"]  { --tone: var(--text-ghost); }
+[data-tone="muted"]  { --tone: var(--text-muted); }
+
+/* ——— Panel primitive ———
+   The single chamber sub-surface. Every right-rail card, RunDetail
+   section, Core section and Terminal RunCanvas block flows through
+   this. Composition: kicker (optional, top) + body + optional meta. */
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-panel);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.panel[data-elev="high"] {
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-panel);
+}
+.panel[data-elev="sunken"] {
+  background: var(--bg-sunken);
+}
+.panel[data-accent] {
+  border-left: 2px solid var(--tone, color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 70%, transparent));
+}
+.panel[data-tone]:where([data-tone="ok"], [data-tone="warn"], [data-tone="err"], [data-tone="info"]) {
+  border-left: 2px solid var(--tone);
+}
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.panel-head > .panel-title {
+  font-family: var(--serif);
+  font-size: var(--t-section);
+  line-height: 1.3;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+  font-weight: 400;
+}
+.panel-head > .panel-sub {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+
+/* ——— Kicker primitive ———
+   The one authority on uppercase microcaps labels. Every kicker the
+   product renders (rail label, section header, thread turn label)
+   passes through this. */
+.kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  line-height: 1.4;
+}
+.kicker[data-tone] { color: var(--tone); }
+.kicker-em {
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-meta);
+  color: var(--text-secondary);
+}
+
+/* ——— Meta grid / row ———
+   Every label·value pair in a panel uses this grid. No per-chamber
+   grid-template-columns with magic pixels. */
+.meta-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--space-2);
+  row-gap: 4px;
+  align-items: baseline;
+  min-width: 0;
+}
+.meta-label {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.meta-value {
+  font-family: var(--mono);
+  font-size: var(--t-body-sec);
+  letter-spacing: var(--track-meta);
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meta-value[data-tone] { color: var(--tone); }
+.meta-value[data-wrap="true"] { white-space: normal; overflow: visible; }
+
+/* ——— Status dot ———
+   One pulsing dot, tone-aware. Replaces the three different inline dots
+   each chamber was minting for its live pulses. */
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--tone, var(--text-ghost));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tone, transparent) 18%, transparent);
+}
+.status-dot[data-pulse="true"] {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+/* ——— State pill ———
+   The one micro-caps pill that encodes state across the product. It is
+   not a button — for clickable pills keep .btn-chip. */
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  color: var(--tone, var(--text-muted));
+  border: 1px solid color-mix(in oklab, var(--tone, var(--text-muted)) 34%, transparent);
+  background: color-mix(in oklab, var(--tone, transparent) 7%, transparent);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.state-pill[data-variant="ghost"] {
+  background: transparent;
+  color: var(--text-ghost);
+  border-color: var(--border-color-soft);
+}
+.state-pill-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ——— Turn primitive ———
+   Canonical geometry for a conversation turn. Tone flows from
+   data-turn="ask|answer|warn|refuse". Replaces the inline turn markup
+   that Insight's Thread was carrying. Read: calm gravity, one hairline
+   top rule as separator, a tonal left band to encode role. */
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-soft);
+  border-left: 2px solid var(--turn-accent, var(--border-color-mid));
+  border-radius: var(--radius-control);
+  max-width: 860px;
+  min-width: 0;
+}
+.turn[data-turn="ask"]     { --turn-accent: var(--cc-prompt); background: var(--bg-surface); }
+.turn[data-turn="answer"]  { --turn-accent: color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 70%, transparent); background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 3%, var(--bg-surface)); }
+.turn[data-turn="warn"]    { --turn-accent: var(--cc-warn); background: color-mix(in oklab, var(--cc-warn) 5%, var(--bg-surface)); }
+.turn[data-turn="refuse"]  { --turn-accent: var(--cc-err);  background: color-mix(in oklab, var(--cc-err) 5%, var(--bg-surface)); }
+.turn-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.turn-head .kicker { color: var(--turn-accent); }
+.turn-head .turn-time {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--text-ghost);
+}
+.turn-body {
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.turn-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: var(--space-1);
+  border-top: 1px dashed var(--border-color-soft);
+  margin-top: 2px;
+}
+.turn-actions[data-empty="true"] { border-top: 0; padding-top: 0; margin-top: 0; }
+
+/* ——— Command bay ———
+   The one canonical voice-input surface. Variants differentiate the
+   chamber personality without breaking geometry. */
+.command-bay {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-panel);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition: border-color var(--dur-fast) var(--ease-swift),
+              background var(--dur-fast) var(--ease-swift);
+}
+.command-bay[data-focused="true"] {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, var(--border-color-mid));
+  background: var(--bg-elevated);
+}
+.command-bay[data-disabled="true"] {
+  opacity: 0.7;
+}
+.command-bay-voice {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  transition: color var(--dur-fast) var(--ease-swift);
+}
+.command-bay[data-focused="true"] .command-bay-voice {
+  color: var(--chamber-dna, var(--accent));
+}
+.command-bay-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.command-bay-prompt {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--chamber-dna, var(--cc-prompt));
+  padding-top: 6px;
+}
+.command-bay-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+  padding: 6px 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  resize: none;
+  min-height: 28px;
+  max-height: 200px;
+  display: block;
+  width: 100%;
+}
+.command-bay-input::placeholder {
+  color: var(--text-muted);
+}
+.command-bay-input[data-voice="exec"] {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.command-bay-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.command-bay-hint {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ——— Workbench card (Terminal) ———
+   Elevated single card that represents the current work target. Left
+   hairline accent encodes task state via --tone. */
+.workbench {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color-soft);
+  border-left: 2px solid var(--tone, var(--border-color-mid));
+  border-radius: var(--radius-panel);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-soft);
+  max-width: 860px;
+  transition: box-shadow .25s var(--ease-swift), border-left-color .2s;
+}
+.workbench[data-live="true"] {
+  box-shadow: var(--shadow-panel);
+}
+.workbench-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.workbench-body {
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+}
+.workbench-body[data-done="true"] {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  font-weight: 400;
+}
+.workbench-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-color-soft);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+
+/* ——— Tab sub-band ———
+   Sovereign sub-navigation strip for Core. Reads as one continuous band
+   with underline-active tabs — same grammar as the canon ribbon, scaled
+   down one notch. */
+.tab-sub-band {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border-color-soft);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-sub-band::-webkit-scrollbar { display: none; }
+.tab-sub {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 12px 14px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-swift);
+}
+.tab-sub::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -1px;
+  height: 2px;
+  background: transparent;
+  transition: background var(--dur-fast) var(--ease-swift);
+}
+.tab-sub:hover { color: var(--text-secondary); }
+.tab-sub[data-active="true"] { color: var(--text-primary); }
+.tab-sub[data-active="true"]::after { background: var(--chamber-dna, var(--accent)); }
+
+/* ——— Diagnostic row ———
+   The one geometry for k/v diagnostic readouts. */
+.diagnostic-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 110px) 1fr;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: 4px 0;
+  font-family: var(--mono);
+  font-size: var(--t-body-sec);
+  border-bottom: 1px solid var(--border-color-soft);
+}
+.diagnostic-row:last-child { border-bottom: 0; }
+.diagnostic-row-key {
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.diagnostic-row-value {
+  color: var(--text-primary);
+}
+.diagnostic-row-value[data-tone] { color: var(--tone); }
+
+/* ——— Error card ———
+   One surface for failure / warning / info / dormant states. Severity
+   resolves the accent color and kicker tone. Never shouts — authoritative,
+   not loud. */
+.error-card {
+  --tone: var(--text-ghost);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-color-soft);
+  border-left: 2px solid var(--tone);
+  border-radius: var(--radius-control);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--sans);
+  max-width: 720px;
+}
+.error-card[data-severity="critical"] { --tone: var(--cc-err); }
+.error-card[data-severity="warn"]     { --tone: var(--cc-warn); }
+.error-card[data-severity="info"]     { --tone: var(--cc-info); }
+.error-card[data-severity="dormant"]  { --tone: var(--text-ghost); }
+.error-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+.error-card-head .kicker { color: var(--tone); }
+.error-card-body {
+  font-family: var(--mono);
+  font-size: var(--t-body-sec);
+  line-height: var(--lh-body-sec);
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.error-card-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding-top: 2px;
+}
+.error-card-dismiss {
+  background: none;
+  border: 0;
+  color: var(--text-ghost);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+.error-card-dismiss:hover { color: var(--tone); }
+
+/* ——— Ledger row ———
+   The one row geometry for retrieval ledgers (ArtifactLedger, RunList).
+   Tone can encode route / severity. */
+.ledger-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-color-soft);
+  border-left: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-swift),
+              border-left-color var(--dur-fast) var(--ease-swift);
+  min-width: 0;
+}
+.ledger-row:hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 4%, transparent);
+  border-left-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 40%, transparent);
+}
+.ledger-row[data-active="true"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 8%, transparent);
+  border-left-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 85%, transparent);
+}
+.ledger-row[data-tone] { border-left-color: color-mix(in oklab, var(--tone) 60%, transparent); }
+
+/* ——— Thinking strip ———
+   Structural live-work indicator. A single-line pulse bar that lives at
+   the bottom of a panel header or command bay while the system
+   processes. No theatre — structural, informational. */
+.thinking-strip {
+  position: relative;
+  height: 2px;
+  width: 100%;
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 12%, transparent);
+  overflow: hidden;
+  border-radius: 1px;
+}
+.thinking-strip::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 35%;
+  background: color-mix(in oklab, var(--chamber-dna, var(--cc-info)) 70%, transparent);
+  animation: scanShimmer 1.4s var(--ease-swift) infinite;
+}
+
+/* ——— Runtime tone overrides for legacy tokens ———
+   These alias tokens were minted before --tone existed. Keep them alive
+   for callers not yet migrated, but they now read the same source. */
+.t-stat[data-tone="ok"]   { color: var(--cc-ok); }
+.t-stat[data-tone="err"]  { color: var(--cc-err); }
+.t-stat[data-tone="info"] { color: var(--cc-info); }

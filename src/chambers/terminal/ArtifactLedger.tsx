@@ -11,8 +11,11 @@ interface Props {
 
 const COLLAPSED_LIMIT = 5;
 
+// ArtifactLedger — the mission's sealed archive. Built on the shared
+// .panel + .ledger-row grammar: kicker at the top, ledger rows below,
+// optional expand chip. Left-hairline on each row encodes clickability
+// via --tone (ok for clickable, ghost for non-clickable).
 export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact }: Props) {
-  const [hoverId, setHoverId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const total = artifacts.length;
   const hasMore = total > COLLAPSED_LIMIT;
@@ -39,38 +42,23 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
   const interruptedLabel = lang === "en" ? "cut short" : "terminação antecipada";
 
   return (
-    <div
-      style={{
-        marginTop: 28,
-        paddingTop: 18,
-        borderTop: "1px dashed var(--border-soft)",
-        maxWidth: 820,
-      }}
+    <section
+      className="panel"
+      style={{ marginTop: "var(--space-4)", maxWidth: 860 }}
     >
-      <div
-        style={{
-          fontSize: 9,
-          letterSpacing: 2.5,
-          color: "var(--text-muted)",
-          fontFamily: "var(--mono)",
-          textTransform: "uppercase",
-          marginBottom: 12,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <span style={{ color: "var(--cc-ok)", opacity: 0.7 }}>◆</span>
-        <span>{copy.recentArtifacts}</span>
+      <div className="panel-head">
+        <span className="status-dot" data-tone="ok" />
+        <span className="kicker">{copy.recentArtifacts}</span>
         {artifacts.length > 0 && (
-          <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>· {artifacts.length}</span>
+          <span className="kicker" data-tone="ghost">· {artifacts.length}</span>
         )}
         {termEarly > 0 && (
           <span
+            className="kicker"
+            data-tone="warn"
             title={lang === "en"
               ? `${termEarly} terminated early`
               : `${termEarly} terminação${termEarly === 1 ? "" : "ões"} antecipada${termEarly === 1 ? "" : "s"}`}
-            style={{ color: "var(--cc-warn)", letterSpacing: 1 }}
           >
             · ⚠ {termEarly}
           </span>
@@ -78,28 +66,8 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
         {hasMore && (
           <button
             onClick={() => setExpanded((v) => !v)}
-            style={{
-              marginLeft: "auto",
-              background: "none",
-              border: "1px solid var(--border-soft)",
-              color: "var(--text-ghost)",
-              fontSize: 9,
-              letterSpacing: 2,
-              textTransform: "uppercase",
-              padding: "3px 10px",
-              borderRadius: "var(--radius-pill)",
-              fontFamily: "var(--mono)",
-              cursor: "pointer",
-              transition: "color .15s, border-color .15s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--accent)";
-              e.currentTarget.style.borderColor = "var(--accent-dim)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-ghost)";
-              e.currentTarget.style.borderColor = "var(--border-soft)";
-            }}
+            className="btn-chip"
+            style={{ marginLeft: "auto" }}
           >
             {expanded
               ? (lang === "en" ? "↑ collapse" : "↑ recolher")
@@ -110,84 +78,59 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
 
       {total === 0 ? (
         <div
+          className="kicker"
+          data-tone="ghost"
           style={{
-            fontSize: 11,
-            color: "var(--text-ghost)",
             fontStyle: "italic",
             fontFamily: "var(--sans)",
+            textTransform: "none",
+            letterSpacing: 0,
+            fontSize: "var(--t-body-sec)",
           }}
         >
           {copy.artifactEmpty}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {visible.map((a, i) => {
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {visible.map((a) => {
             const preview = a.answer
-              ? (a.answer.length > 120 ? a.answer.slice(0, 120) + "…" : a.answer)
+              ? (a.answer.length > 140 ? a.answer.slice(0, 140) + "…" : a.answer)
               : "—";
             const clickable = Boolean(a.taskId);
-            const hovered = hoverId === a.id;
-            const tier = Math.min(i, 2);
-            const baseBg = [
-              "color-mix(in oklab, var(--cc-ok) 10%, var(--bg-elevated))",
-              "color-mix(in oklab, var(--cc-ok) 5%, var(--bg-elevated))",
-              "var(--bg-elevated)",
-            ][tier];
-            const baseBorderLeft = [
-              "3px solid var(--cc-ok)",
-              "2px solid var(--cc-ok)",
-              "2px solid color-mix(in oklab, var(--cc-ok) 45%, transparent)",
-            ][tier];
-            const bg = clickable && hovered
-              ? "color-mix(in oklab, var(--cc-ok) 16%, var(--bg-elevated))"
-              : baseBg;
-            const borderLeft = clickable && hovered ? "3px solid var(--cc-ok)" : baseBorderLeft;
 
             return (
               <div
                 key={a.id}
                 onClick={clickable ? () => onSelectArtifact(a) : undefined}
-                onMouseEnter={clickable ? () => setHoverId(a.id) : undefined}
-                onMouseLeave={clickable ? () => setHoverId(null) : undefined}
-                className="fadeIn"
+                className="fadeIn ledger-row"
+                data-tone={a.terminatedEarly ? "warn" : "ok"}
                 style={{
-                  background: bg,
-                  border: "1px solid var(--border-soft)",
-                  borderLeft,
-                  borderRadius: "var(--radius-panel)",
-                  padding: "10px 14px",
                   fontFamily: "var(--mono)",
                   cursor: clickable ? "pointer" : "default",
-                  transition: "background .18s var(--ease-swift), border-color .18s",
+                  flexDirection: "column",
+                  alignItems: "stretch",
                 }}
               >
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 10,
-                    fontSize: 9,
-                    letterSpacing: 2,
-                    textTransform: "uppercase",
-                    color: "var(--cc-ok)",
-                    marginBottom: 6,
+                    gap: "var(--space-2)",
+                    marginBottom: 4,
                   }}
                 >
-                  <span>◆</span>
-                  <span style={{ color: "var(--text-ghost)", letterSpacing: 1 }}>
-                    {fmtRel(a.acceptedAt)}
+                  <span className="status-dot" data-tone={a.terminatedEarly ? "warn" : "ok"} />
+                  <span className="kicker" data-tone={a.terminatedEarly ? "warn" : "ok"}>
+                    {a.terminatedEarly ? interruptedLabel : "selado"}
                   </span>
-                  {a.terminatedEarly && (
-                    <span style={{ color: "var(--cc-warn)" }}>· {interruptedLabel}</span>
-                  )}
+                  <span className="kicker" data-tone="ghost">
+                    · {fmtRel(a.acceptedAt)}
+                  </span>
                   {clickable && (
                     <span
-                      style={{
-                        marginLeft: "auto",
-                        color: hovered ? "var(--cc-ok)" : "var(--text-ghost)",
-                        letterSpacing: "var(--track-meta)",
-                        transition: "color .18s var(--ease-swift)",
-                      }}
+                      className="kicker"
+                      data-tone="ghost"
+                      style={{ marginLeft: "auto" }}
                     >
                       {replayLabel}
                     </span>
@@ -195,10 +138,10 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
                 </div>
                 <div
                   style={{
-                    fontSize: 13.5,
+                    fontSize: "var(--t-body)",
                     fontFamily: "var(--sans)",
-                    color: ["var(--text-primary)", "var(--text-secondary)", "var(--text-muted)"][tier],
-                    fontWeight: tier === 0 ? 500 : 400,
+                    color: "var(--text-primary)",
+                    fontWeight: 500,
                     lineHeight: 1.4,
                     marginBottom: 4,
                     letterSpacing: "-0.005em",
@@ -208,10 +151,10 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
                 </div>
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: "var(--t-body-sec)",
                     color: a.terminatedEarly && !a.answer
                       ? "var(--cc-warn)"
-                      : ["var(--text-muted)", "var(--text-muted)", "var(--text-ghost)"][tier],
+                      : "var(--text-muted)",
                     fontFamily: "var(--mono)",
                     lineHeight: 1.5,
                     whiteSpace: "pre-wrap",
@@ -224,6 +167,6 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
           })}
         </div>
       )}
-    </div>
+    </section>
   );
 }

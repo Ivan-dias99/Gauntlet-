@@ -1,11 +1,11 @@
 import type { Note } from "../../spine/types";
 import { useCopy } from "../../i18n/copy";
 
-// Insight thread — reversed notes list + turn primitive with handoff
-// action. Conversation-first; no forced split. Chamber-DNA cascades
-// from the parent chamber-shell via [data-chamber]. Turn labels read
-// calm (pergunta · resposta · aviso · recusa) — the forensic kickers
-// (PRESSÃO / ANÁLISE / RECUSADO) of the Ruberra era are gone.
+// Insight thread — conversation column. Every turn passes through the
+// canonical .turn primitive (tokens.css) so ask/answer/warn/refuse
+// always render with the same geometry and semantic color across the
+// product. Role, tone and action grammar is declared in data attributes;
+// no local style decisions here.
 
 interface Props {
   notes: Note[];
@@ -52,12 +52,12 @@ interface TurnProps {
   onPromoteCancel: () => void;
 }
 
+type TurnKind = "ask" | "answer" | "warn" | "refuse";
+
 function TurnRow({
   note, copy, promoting, onPromoteRequest, onPromoteConfirm, onPromoteCancel,
 }: TurnProps) {
   const isAI = note.role === "ai";
-  // Heuristic refusal detection — the Signal refusal format starts with
-  // a specific sentence so a non-blocking ✗ label can render.
   const isRefusal = isAI && (
     note.text.startsWith("Não sei responder") ||
     note.text.startsWith("⚠️ **Signal")
@@ -65,145 +65,51 @@ function TurnRow({
   const isWarning = isAI && note.text.startsWith("⚠ Esta pergunta");
   const canPromote = isAI && !isRefusal && !isWarning;
 
-  const { label, borderColor, labelColor, dotColor, background } = (() => {
-    if (!isAI) return {
-      label: copy.labTurnAsk,
-      borderColor: "var(--cc-prompt)",
-      labelColor: "var(--text-muted)",
-      dotColor: "var(--cc-prompt)",
-      background: "transparent",
-    };
-    if (isRefusal) return {
-      label: copy.labTurnRefuse,
-      borderColor: "var(--cc-err)",
-      labelColor: "var(--cc-err)",
-      dotColor: "var(--cc-err)",
-      background: "color-mix(in oklab, var(--cc-err) 5%, var(--bg-input))",
-    };
-    if (isWarning) return {
-      label: copy.labTurnWarn,
-      borderColor: "var(--cc-warn)",
-      labelColor: "var(--cc-warn)",
-      dotColor: "var(--cc-warn)",
-      background: "color-mix(in oklab, var(--cc-warn) 5%, var(--bg-input))",
-    };
-    return {
-      label: copy.labTurnAnswer,
-      borderColor: "color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 70%, transparent)",
-      labelColor: "var(--text-ghost)",
-      dotColor: "var(--chamber-dna, var(--ember))",
-      background: "var(--bg-input)",
-    };
-  })();
+  const kind: TurnKind =
+    !isAI ? "ask" : isRefusal ? "refuse" : isWarning ? "warn" : "answer";
+  const label =
+    kind === "ask"    ? copy.labTurnAsk :
+    kind === "refuse" ? copy.labTurnRefuse :
+    kind === "warn"   ? copy.labTurnWarn :
+                        copy.labTurnAnswer;
+  const dotTone =
+    kind === "ask"    ? "prompt" :
+    kind === "refuse" ? "err" :
+    kind === "warn"   ? "warn" :
+                        "accent";
 
   return (
     <div
-      className="fadeUp"
-      data-insight-turn={isAI ? (isRefusal ? "refusal" : isWarning ? "warn" : "answer") : "ask"}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        padding: "var(--space-2) var(--space-3) calc(var(--space-2) + 2px)",
-        background,
-        borderLeft: `2px solid ${borderColor}`,
-        borderRadius: "0 var(--radius-control) var(--radius-control) 0",
-        maxWidth: 780,
-      }}
+      className="fadeUp turn"
+      data-insight-turn={kind}
+      data-turn={kind}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-2)",
-          fontFamily: "var(--mono)",
-          fontSize: "var(--t-micro)",
-          letterSpacing: "var(--track-label)",
-          textTransform: "uppercase",
-        }}
-      >
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-        <span style={{ color: labelColor }}>{label}</span>
-        <span
-          style={{
-            color: "var(--text-ghost)",
-            marginLeft: "auto",
-            letterSpacing: "var(--track-meta)",
-          }}
-        >
+      <div className="turn-head">
+        <span className="status-dot" data-tone={dotTone} />
+        <span className="kicker">{label}</span>
+        <span className="turn-time">
           {new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
       </div>
 
-      <div
-        style={{
-          fontFamily: "var(--sans)",
-          fontSize: "var(--t-body)",
-          color: "var(--text-primary)",
-          lineHeight: "var(--lh-body)",
-          whiteSpace: "pre-wrap",
-        }}
-      >
-        {note.text}
-      </div>
+      <div className="turn-body">{note.text}</div>
 
       {canPromote && !promoting && (
-        <button
-          onClick={onPromoteRequest}
-          data-insight-promote
-          style={{
-            alignSelf: "flex-end",
-            background: "transparent",
-            border: "1px dashed color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 45%, var(--border-soft))",
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-micro)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-            color: "var(--text-muted)",
-            padding: "4px 10px",
-            marginTop: "var(--space-1)",
-            borderRadius: "var(--radius-pill)",
-            cursor: "pointer",
-            transition: "color .16s var(--ease-swift), border-color .16s var(--ease-swift), background .16s var(--ease-swift)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--chamber-dna, var(--accent))";
-            e.currentTarget.style.borderColor = "color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, transparent)";
-            e.currentTarget.style.background = "color-mix(in oklab, var(--chamber-dna, var(--accent)) 8%, transparent)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--text-muted)";
-            e.currentTarget.style.borderColor = "color-mix(in oklab, var(--chamber-dna, var(--accent-dim)) 45%, var(--border-soft))";
-            e.currentTarget.style.background = "transparent";
-          }}
-        >
-          → terminal
-        </button>
-      )}
-      {canPromote && promoting && (
-        <div
-          data-insight-promote-confirm
-          style={{
-            marginTop: "var(--space-1)",
-            paddingTop: "var(--space-2)",
-            borderTop: "1px dashed var(--border-soft)",
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--space-2)",
-            flexWrap: "wrap",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: "var(--t-micro)",
-              letterSpacing: "var(--track-label)",
-              textTransform: "uppercase",
-              color: "var(--text-ghost)",
-            }}
+        <div className="turn-actions" data-empty="true" style={{ justifyContent: "flex-end" }}>
+          <button
+            onClick={onPromoteRequest}
+            data-insight-promote
+            className="btn-chip"
+            data-variant="sans"
           >
-            — transferir para terminal
-          </span>
+            → terminal
+          </button>
+        </div>
+      )}
+
+      {canPromote && promoting && (
+        <div className="turn-actions" data-insight-promote-confirm>
+          <span className="kicker">— transferir para terminal</span>
           <button
             onClick={onPromoteConfirm}
             className="btn-chip"
@@ -212,10 +118,7 @@ function TurnRow({
           >
             confirmar ↵
           </button>
-          <button
-            onClick={onPromoteCancel}
-            className="btn-chip"
-          >
+          <button onClick={onPromoteCancel} className="btn-chip">
             cancelar esc
           </button>
         </div>

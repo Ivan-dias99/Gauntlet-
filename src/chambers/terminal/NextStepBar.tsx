@@ -1,5 +1,7 @@
 import type { Copy } from "./helpers";
 
+type Tone = "accent" | "info" | "warn" | "err";
+
 interface Props {
   hasNextOpen: boolean;
   canRefine: boolean;
@@ -12,32 +14,26 @@ interface Props {
   onReopen: () => void;
 }
 
+// NextStepBar — inline cluster of operational actions after a run lands.
+// Each button is a .btn-chip; tone flows via data-variant tokens on the
+// shared chip primitive so the bar reads as the same vocabulary as
+// every other chip in the product.
 export default function NextStepBar({
   hasNextOpen, canRefine, canBlock, isBlocked, copy,
   onNext, onRefine, onBlock, onReopen,
 }: Props) {
-  const buttons: Array<{ label: string; onClick: () => void; color: string }> = [];
-  if (hasNextOpen) buttons.push({ label: copy.actionNextTask, onClick: onNext, color: "var(--chamber-dna, var(--accent))" });
-  if (canRefine) buttons.push({ label: copy.actionRefine, onClick: onRefine, color: "var(--cc-info)" });
+  const buttons: Array<{ label: string; onClick: () => void; tone: Tone }> = [];
+  if (hasNextOpen) buttons.push({ label: copy.actionNextTask, onClick: onNext, tone: "accent" });
+  if (canRefine) buttons.push({ label: copy.actionRefine, onClick: onRefine, tone: "info" });
   if (isBlocked) {
-    buttons.push({ label: copy.actionUnblock, onClick: onReopen, color: "var(--cc-warn)" });
+    buttons.push({ label: copy.actionUnblock, onClick: onReopen, tone: "warn" });
   } else if (canBlock) {
-    buttons.push({ label: copy.actionBlock, onClick: onBlock, color: "var(--cc-err)" });
+    buttons.push({ label: copy.actionBlock, onClick: onBlock, tone: "err" });
   }
 
   if (buttons.length === 0) {
     return (
-      <div
-        style={{
-          marginTop: 8,
-          maxWidth: 820,
-          fontFamily: "var(--mono)",
-          fontSize: 10,
-          color: "var(--cc-ok)",
-          letterSpacing: "var(--track-meta)",
-          textTransform: "uppercase",
-        }}
-      >
+      <div className="kicker" data-tone="ok" style={{ marginTop: "var(--space-2)", maxWidth: 860 }}>
         {copy.actionAllDone}
       </div>
     );
@@ -47,50 +43,34 @@ export default function NextStepBar({
     <div
       className="fadeIn"
       style={{
-        marginTop: 8,
-        maxWidth: 820,
+        marginTop: "var(--space-2)",
+        maxWidth: 860,
         display: "flex",
-        gap: 10,
+        gap: "var(--space-2)",
         alignItems: "center",
         flexWrap: "wrap",
-        fontFamily: "var(--mono)",
       }}
     >
-      <span
-        style={{
-          fontSize: 9,
-          letterSpacing: 2,
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-        }}
-      >
-        {copy.nextStep}
-      </span>
-      {buttons.map((b, i) => (
-        <button
-          key={i}
-          onClick={b.onClick}
-          style={{
-            background: "none",
-            border: `1px solid ${b.color}`,
-            color: b.color,
-            fontSize: 10,
-            letterSpacing: 2,
-            textTransform: "uppercase",
-            padding: "6px 12px",
-            borderRadius: "var(--radius-pill)",
-            fontFamily: "var(--mono)",
-            cursor: "pointer",
-            transition: "background .15s var(--ease-swift)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = `color-mix(in oklab, ${b.color} 10%, transparent)`;
-          }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-        >
-          {b.label}
-        </button>
-      ))}
+      <span className="kicker">{copy.nextStep}</span>
+      {buttons.map((b, i) => {
+        const color =
+          b.tone === "accent" ? "var(--chamber-dna, var(--accent))" :
+          b.tone === "info" ? "var(--cc-info)" :
+          b.tone === "warn" ? "var(--cc-warn)" : "var(--cc-err)";
+        return (
+          <button
+            key={i}
+            onClick={b.onClick}
+            className="btn-chip"
+            style={{
+              color,
+              borderColor: `color-mix(in oklab, ${color} 40%, transparent)`,
+            }}
+          >
+            {b.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

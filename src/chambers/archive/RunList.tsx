@@ -225,29 +225,13 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
 }
 
 function renderOutcomeChip(r: RunRecord) {
-  if (r.refused) {
-    return <Chip color="var(--cc-err)">recusado</Chip>;
-  }
-  if (r.terminated_early) {
-    return <Chip color="var(--cc-warn)">parcial</Chip>;
-  }
-  if (r.confidence === "high") return <Chip color="var(--cc-ok)">high</Chip>;
-  if (r.confidence === "low")  return <Chip color="var(--cc-warn)">low</Chip>;
+  if (r.refused) return <Chip tone="err">recusado</Chip>;
+  if (r.terminated_early) return <Chip tone="warn">parcial</Chip>;
+  if (r.confidence === "high") return <Chip tone="ok">high</Chip>;
+  if (r.confidence === "low")  return <Chip tone="warn">low</Chip>;
   return null;
 }
 
-function Chip({ color, children }: { color: string; children: React.ReactNode }) {
-  return (
-    <span
-      style={{
-        color,
-        fontFamily: "var(--mono)",
-        fontSize: 9,
-        letterSpacing: "var(--track-meta)",
-        textTransform: "uppercase",
-      }}
-    >
-      {children}
-    </span>
-  );
+function Chip({ tone, children }: { tone: "ok" | "warn" | "err"; children: React.ReactNode }) {
+  return <span className="kicker" data-tone={tone}>{children}</span>;
 }

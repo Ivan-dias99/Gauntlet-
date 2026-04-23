@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
-// Insight composer — multi-line pressure input with submit chip.
-// Stays anchored at the bottom of the chamber; calm gravity, no verdict
-// theatre here. Enter submits; Shift+Enter inserts a newline. Auto-grow
-// bounded so the thread above stays visible even with long prompts.
+// Insight composer — command-bay primitive variant "ask". Auto-grows the
+// textarea so the thread above keeps its reading width. Chamber-DNA
+// cascades through the shared .command-bay rule; no local tint logic.
 
 interface Props {
   value: string;
@@ -24,52 +23,25 @@ export default function Composer({
     if (!pending) inputRef.current?.focus();
   }, [pending]);
 
-  // Auto-grow the textarea within reasonable bounds — same pattern as
-  // Surface's CreationPanel. Caps at 180px so the thread above stays
-  // visible even with long prompts.
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [value]);
 
   const canSubmit = value.trim().length > 0 && !pending;
 
-  // Panel border tint: chamber-DNA on focus, soft otherwise. Keeps the
-  // composer reactive to focus without relying on the textarea's own
-  // outline (which we suppress for visual calm).
-  const panelBorder = focused
-    ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, var(--border))"
-    : "var(--border-soft)";
-
   return (
     <div
       data-insight-composer
+      className="command-bay"
       data-focused={focused ? "true" : undefined}
-      style={{
-        background: "var(--bg-surface)",
-        border: panelBorder,
-        borderRadius: "var(--radius-panel)",
-        padding: "var(--space-3)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-2)",
-        transition: "border-color .15s var(--ease-swift)",
-      }}
+      data-disabled={pending ? "true" : undefined}
     >
-      <div
-        data-insight-voice
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: "var(--t-micro)",
-          letterSpacing: "var(--track-label)",
-          textTransform: "uppercase",
-          color: focused ? "var(--chamber-dna, var(--accent))" : "var(--text-ghost)",
-          transition: "color .15s var(--ease-swift)",
-        }}
-      >
-        {voiceLabel}
+      <div className="command-bay-voice">
+        <span className="status-dot" data-tone={focused ? "accent" : "ghost"} />
+        <span>{voiceLabel}</span>
       </div>
       <textarea
         ref={inputRef}
@@ -87,29 +59,9 @@ export default function Composer({
         }}
         placeholder={placeholder}
         disabled={pending}
-        style={{
-          width: "100%",
-          fontSize: "var(--t-body)",
-          color: "var(--text-primary)",
-          fontFamily: "var(--sans)",
-          lineHeight: "var(--lh-body)",
-          opacity: pending ? 0.55 : 1,
-          padding: "6px 0",
-          minHeight: 28,
-          maxHeight: 180,
-          resize: "none",
-          background: "transparent",
-          border: "none",
-          outline: "none",
-        }}
+        className="command-bay-input"
       />
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-2)",
-        }}
-      >
+      <div className="command-bay-actions">
         <button
           onClick={onSubmit}
           disabled={!canSubmit}
@@ -119,18 +71,11 @@ export default function Composer({
         >
           {pending ? "a processar…" : "perguntar ↵"}
         </button>
-        <span
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-micro)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-            color: "var(--text-muted)",
-          }}
-        >
+        <span className="command-bay-hint">
           enter envia · shift+enter nova linha
         </span>
       </div>
+      {pending && <div className="thinking-strip" aria-hidden />}
     </div>
   );
 }

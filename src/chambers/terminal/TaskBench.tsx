@@ -5,8 +5,16 @@ import {
 
 // Task bench — WorkbenchCard (the current work target) + task list
 // (pending / done / blocked). Pure renderer: props in, callbacks out.
-// The kanban variant was dropped when TweaksPanel went away in Wave 2;
-// this is the operational view and the only one we ship.
+// Geometry flows through the canonical .workbench, .state-pill,
+// .kicker and .ledger-row primitives so Terminal reads as part of the
+// same organism as Insight / Surface / Archive.
+
+const STATE_TONE: Record<TaskState, "info" | "ok" | "err" | "ghost"> = {
+  open: "ghost",
+  running: "info",
+  done: "ok",
+  blocked: "err",
+};
 
 interface WorkbenchProps {
   missionTitle: string;
@@ -31,6 +39,7 @@ export function WorkbenchCard({
 }: WorkbenchProps) {
   const isLive = pending || (task !== null && task.state === "running");
   const stale = task ? isStaleRunning(task) : false;
+  const tone = task ? STATE_TONE[task.state] : "ghost";
   const bottleneckBits: string[] = [];
   if (blockedCount > 0) {
     bottleneckBits.push(
@@ -47,38 +56,22 @@ export function WorkbenchCard({
     );
   }
   const bottleneck = bottleneckBits.length > 0 ? bottleneckBits.join(" · ") : null;
+
   return (
     <div
-      className="fadeIn surface-flagship"
-      style={{
-        maxWidth: 820,
-        marginBottom: "var(--space-3)",
-        borderLeft: `2px solid ${task ? STATE_COLOR[task.state] : "var(--border-soft)"}`,
-        padding: "var(--space-4) var(--space-4)",
-        fontFamily: "var(--mono)",
-        boxShadow: isLive ? "var(--shadow-panel)" : "var(--shadow-soft)",
-        transition: "box-shadow .3s var(--ease-swift), border-color .2s",
-      }}
+      className="fadeIn workbench"
+      data-tone={tone}
+      data-live={isLive ? "true" : undefined}
+      style={{ marginBottom: "var(--space-3)" }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          marginBottom: 8,
-          fontSize: 9,
-          letterSpacing: "var(--track-meta)",
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-        }}
-      >
-        <span>{copy.workbench}</span>
-        <span style={{ color: "var(--border-soft)" }}>/</span>
+      <div className="workbench-head">
+        <span className="kicker">{copy.workbench}</span>
+        <span className="kicker" data-tone="ghost">/</span>
         <span
           style={{
+            fontFamily: "var(--sans)",
+            fontSize: "var(--t-body-sec)",
             color: "var(--text-secondary)",
-            letterSpacing: 1,
-            textTransform: "none",
             maxWidth: 260,
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -88,7 +81,7 @@ export function WorkbenchCard({
           {missionTitle}
         </span>
         {resumed && task && (
-          <span style={{ marginLeft: "auto", color: "var(--cc-info)", letterSpacing: "var(--track-meta)" }}>
+          <span className="kicker" data-tone="info" style={{ marginLeft: "auto" }}>
             ↺ {copy.resumeHint}
           </span>
         )}
@@ -97,61 +90,44 @@ export function WorkbenchCard({
       {task ? (
         <>
           <div
-            style={{
-              fontSize: 17,
-              fontFamily: "var(--sans)",
-              fontWeight: task.state === "done" ? 400 : 500,
-              color: task.state === "done" ? "var(--text-muted)" : "var(--text-primary)",
-              lineHeight: 1.4,
-              marginBottom: 12,
-              letterSpacing: "-0.005em",
-              textDecoration: task.state === "done" ? "line-through" : "none",
-            }}
+            className="workbench-body"
+            data-done={task.state === "done" ? "true" : undefined}
           >
             {task.title}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <StateChip state={task.state} copy={copy} />
-            <span style={{ fontSize: 9, letterSpacing: "var(--track-meta)", color: "var(--text-ghost)", textTransform: "uppercase" }}>
+            <StatePill state={task.state} copy={copy} />
+            <span className="kicker" data-tone="ghost">
               {sourceLabel(task.source, copy)}
             </span>
             <span
               title={new Date(task.lastUpdateAt).toLocaleString()}
-              style={{ fontSize: 10, color: stale ? "var(--cc-warn)" : "var(--text-ghost)" }}
+              className="kicker"
+              data-tone={stale ? "warn" : "ghost"}
             >
               · {relTime(task.lastUpdateAt, lang)}
             </span>
             {stale && (
-              <span style={{ fontSize: 9, letterSpacing: "var(--track-meta)", color: "var(--cc-warn)", textTransform: "uppercase" }}>
+              <span className="kicker" data-tone="warn">
                 ⚠ {lang === "en" ? "stalled" : "parada"}
               </span>
             )}
             {task.artifactId && (
-              <span style={{ fontSize: 10, color: "var(--cc-ok)", letterSpacing: "var(--track-meta)", textTransform: "uppercase" }}>
+              <span className="state-pill" data-tone="ok">
+                <span className="state-pill-dot" />
                 {copy.artifactChip}
               </span>
             )}
             {pending && (
-              <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--cc-info)" }}>
+              <span className="kicker" data-tone="info" style={{ marginLeft: "auto" }}>
                 ● iter {iteration} · {elapsed.toFixed(1)}s
               </span>
             )}
             {task.state === "blocked" && !pending && (
               <button
                 onClick={onReopen}
-                style={{
-                  marginLeft: "auto",
-                  background: "none",
-                  border: "1px solid var(--cc-warn)",
-                  color: "var(--cc-warn)",
-                  fontSize: 9,
-                  letterSpacing: "var(--track-meta)",
-                  textTransform: "uppercase",
-                  padding: "3px 10px",
-                  borderRadius: "var(--radius-pill)",
-                  fontFamily: "var(--mono)",
-                  cursor: "pointer",
-                }}
+                className="btn-chip"
+                style={{ marginLeft: "auto", color: "var(--cc-warn)", borderColor: "color-mix(in oklab, var(--cc-warn) 40%, transparent)" }}
               >
                 {copy.actionUnblock}
               </button>
@@ -159,26 +135,19 @@ export function WorkbenchCard({
           </div>
         </>
       ) : (
-        <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", fontFamily: "var(--sans)" }}>
+        <div
+          style={{
+            fontSize: "var(--t-body-sec)",
+            color: "var(--text-muted)",
+            fontStyle: "italic",
+            fontFamily: "var(--sans)",
+          }}
+        >
           {copy.noActiveTask}
         </div>
       )}
 
-      <div
-        style={{
-          marginTop: "var(--space-2)",
-          paddingTop: "var(--space-2)",
-          borderTop: "1px solid var(--border-soft)",
-          display: "flex",
-          gap: 14,
-          fontSize: 9,
-          letterSpacing: "var(--track-meta)",
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="workbench-foot">
         <span>{copy.taskStateOpen}: {openCount}</span>
         <span style={{ color: runningCount > 0 ? "var(--cc-info)" : undefined }}>
           {copy.taskStateRunning}: {runningCount}
@@ -191,20 +160,17 @@ export function WorkbenchCard({
         </span>
         {bottleneck && (
           <span
-            style={{
-              marginLeft: "auto",
-              color: "var(--cc-warn)",
-              letterSpacing: "var(--track-meta)",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
+            className="kicker"
+            data-tone="warn"
+            style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}
           >
             <span>⚠</span>
             <span>{lang === "en" ? "bottleneck" : "gargalo"}: {bottleneck}</span>
           </span>
         )}
       </div>
+
+      {isLive && <div className="thinking-strip" aria-hidden />}
     </div>
   );
 }
@@ -225,7 +191,7 @@ export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect 
   if (tasks.length === 0) return null;
 
   return (
-    <div style={{ maxWidth: 820, marginBottom: 20 }}>
+    <div style={{ maxWidth: 860, marginBottom: "var(--space-4)" }}>
       {pending.map((t) => (
         <TaskRow
           key={t.id}
@@ -238,12 +204,12 @@ export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect 
       ))}
 
       {done.length > 0 && pending.length > 0 && (
-        <div style={{ borderTop: "1px solid var(--border)", margin: "14px 0", opacity: 0.4 }} />
+        <div style={{ borderTop: "1px solid var(--border-color-soft)", margin: "var(--space-3) 0", opacity: 0.6 }} />
       )}
 
       {blocked.length > 0 && (
         <>
-          <SectionLabel color="var(--cc-err)">✕ {copy.blockedSection} · {blocked.length}</SectionLabel>
+          <SectionLabel tone="err">✕ {copy.blockedSection} · {blocked.length}</SectionLabel>
           {blocked.map((t) => (
             <TaskRow
               key={t.id}
@@ -258,7 +224,7 @@ export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect 
 
       {done.length > 0 && (
         <>
-          <SectionLabel color="var(--cc-ok)">✓ {copy.doneSection} · {done.length}</SectionLabel>
+          <SectionLabel tone="ok">✓ {copy.doneSection} · {done.length}</SectionLabel>
           {done.map((t) => (
             <TaskRow
               key={t.id}
@@ -275,18 +241,12 @@ export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect 
   );
 }
 
-function SectionLabel({ color, children }: { color: string; children: React.ReactNode }) {
+function SectionLabel({ tone, children }: { tone: "ok" | "err"; children: React.ReactNode }) {
   return (
     <div
-      style={{
-        fontSize: 9,
-        letterSpacing: "var(--track-meta)",
-        color,
-        fontFamily: "var(--mono)",
-        margin: "14px 0 6px",
-        textTransform: "uppercase",
-        opacity: 0.7,
-      }}
+      className="kicker"
+      data-tone={tone}
+      style={{ margin: "var(--space-3) 0 var(--space-1)" }}
     >
       {children}
     </div>
@@ -303,65 +263,47 @@ interface RowProps {
 
 function TaskRow({ task, onSelect, copy, active = false, duplicate = false }: RowProps) {
   const isDone = task.state === "done";
-  const isBlocked = task.state === "blocked";
+  const tone = STATE_TONE[task.state];
   return (
     <div
       onClick={onSelect}
-      className="fadeUp"
+      className="fadeUp ledger-row"
       aria-current={active ? "true" : undefined}
+      data-active={active ? "true" : undefined}
+      data-tone={tone}
       style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 14,
-        padding: "11px 0 11px 12px",
-        borderBottom: "1px solid var(--border-soft)",
-        borderLeft: active
-          ? "2px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 85%, transparent)"
-          : "2px solid transparent",
-        background: active
-          ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 8%, transparent)"
-          : "transparent",
-        cursor: "pointer",
         fontFamily: "var(--mono)",
-        opacity: isDone ? 0.55 : isBlocked ? 0.75 : 1,
-        transition: "padding-left .28s var(--ease-swift), opacity .2s",
+        opacity: isDone ? 0.6 : task.state === "blocked" ? 0.8 : 1,
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.paddingLeft = active ? "16px" : "18px"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.paddingLeft = "12px"; }}
     >
-      <span style={{ fontSize: 13, color: STATE_COLOR[task.state], width: 14, marginTop: 1 }}>
+      <span style={{ color: STATE_COLOR[task.state], width: 14, marginTop: 1, flexShrink: 0 }}>
         {STATE_GLYPH[task.state]}
       </span>
       <span
         style={{
           flex: 1,
-          fontSize: 13,
-          color: isDone ? "var(--cc-dim)" : "var(--cc-fg)",
+          fontSize: "var(--t-body-sec)",
+          color: isDone ? "var(--text-muted)" : "var(--text-primary)",
           textDecoration: isDone ? "line-through" : "none",
           lineHeight: 1.55,
           fontWeight: active ? 500 : 400,
+          minWidth: 0,
         }}
       >
         {task.title}
         {duplicate && (
           <span
             title={`task id · ${task.id}`}
-            style={{ marginLeft: 8, fontSize: 11, color: "var(--text-ghost)", letterSpacing: 1 }}
+            className="kicker"
+            data-tone="ghost"
+            style={{ marginLeft: 8 }}
           >
             #{task.id.slice(0, 4)}
           </span>
         )}
       </span>
       {active && (
-        <span
-          style={{
-            fontSize: 9,
-            letterSpacing: "var(--track-meta)",
-            color: "var(--chamber-dna, var(--accent))",
-            textTransform: "uppercase",
-            marginTop: 3,
-          }}
-        >
+        <span className="kicker" data-tone="accent" style={{ marginTop: 3 }}>
           ◉ {copy.onBench}
         </span>
       )}
@@ -369,38 +311,21 @@ function TaskRow({ task, onSelect, copy, active = false, duplicate = false }: Ro
         <span title={copy.artifactTooltip} style={{ color: "var(--cc-ok)", fontSize: 11, marginTop: 2 }}>◆</span>
       )}
       {task.source !== "manual" && (
-        <span
-          style={{
-            fontSize: 9,
-            letterSpacing: "var(--track-meta)",
-            color: "var(--accent-dim)",
-            textTransform: "uppercase",
-            marginTop: 3,
-          }}
-        >
+        <span className="kicker" data-tone="muted" style={{ marginTop: 3 }}>
           {sourceLabel(task.source, copy)}
         </span>
       )}
-      {!active && <StateChip state={task.state} copy={copy} />}
+      {!active && <StatePill state={task.state} copy={copy} />}
     </div>
   );
 }
 
-function StateChip({ state, copy }: { state: TaskState; copy: Copy }) {
+function StatePill({ state, copy }: { state: TaskState; copy: Copy }) {
   return (
     <span
       title={stateLabel(state, copy)}
-      style={{
-        fontSize: 9,
-        letterSpacing: "var(--track-meta)",
-        textTransform: "uppercase",
-        color: STATE_COLOR[state],
-        border: `1px solid ${STATE_COLOR[state]}`,
-        padding: "1px 6px",
-        borderRadius: "var(--radius-pill)",
-        fontFamily: "var(--mono)",
-        whiteSpace: "nowrap",
-      }}
+      className="state-pill"
+      data-tone={STATE_TONE[state]}
     >
       {STATE_GLYPH[state]} {stateLabel(state, copy)}
     </span>

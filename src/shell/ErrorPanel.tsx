@@ -1,4 +1,4 @@
-import { CSSProperties } from "react";
+import { CSSProperties, ReactNode } from "react";
 import { useCopy } from "../i18n/copy";
 
 export type ErrorSeverity = "critical" | "warn" | "info";
@@ -8,18 +8,17 @@ interface Props {
   title?: string;
   message: string;
   onDismiss?: () => void;
+  action?: ReactNode;
   style?: CSSProperties;
 }
 
-const SEVERITY_TOKEN: Record<ErrorSeverity, string> = {
-  critical: "var(--cc-err)",
-  warn: "var(--cc-warn)",
-  info: "var(--cc-info)",
-};
-
-export default function ErrorPanel({ severity, title, message, onDismiss, style }: Props) {
+// The shared error-card primitive renders severity via data-severity and
+// --tone. No inline color decisions here — the canon owns the treatment
+// so error, warn and info read as the same family across every chamber.
+export default function ErrorPanel({
+  severity, title, message, onDismiss, action, style,
+}: Props) {
   const copy = useCopy();
-  const accent = SEVERITY_TOKEN[severity];
   const severityKicker =
     severity === "critical" ? copy.severityCritical :
     severity === "warn" ? copy.severityWarn :
@@ -28,70 +27,29 @@ export default function ErrorPanel({ severity, title, message, onDismiss, style 
     <div
       data-error-panel
       data-error-severity={severity}
-      className="toolRise"
-      style={{
-        background: "var(--bg-input)",
-        border: "1px solid var(--border-soft)",
-        borderLeft: `2px solid ${accent}`,
-        borderRadius: 12,
-        padding: "12px 16px",
-        fontFamily: "var(--mono)",
-        maxWidth: 720,
-        alignSelf: "flex-start",
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        ...style,
-      }}
+      className="error-card toolRise"
+      data-severity={severity}
+      style={style}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <span
-          data-error-kicker
-          style={{
-            fontSize: 9,
-            color: accent,
-            letterSpacing: 2,
-            textTransform: "uppercase",
-          }}
-        >
+      <div className="error-card-head">
+        <span data-error-kicker className="kicker">
           {severityKicker}{title ? ` · ${title}` : ""}
         </span>
         {onDismiss && (
           <button
             onClick={onDismiss}
             title={copy.dismiss}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-ghost)",
-              fontSize: 11,
-              cursor: "pointer",
-              padding: 0,
-              lineHeight: 1,
-            }}
+            className="error-card-dismiss"
+            aria-label={copy.dismiss}
           >
             ✕
           </button>
         )}
       </div>
-      <div
-        data-error-message
-        style={{
-          fontSize: 12,
-          color: "var(--text-secondary)",
-          whiteSpace: "pre-wrap",
-          lineHeight: 1.55,
-        }}
-      >
+      <div data-error-message className="error-card-body">
         {message}
       </div>
+      {action && <div className="error-card-actions">{action}</div>}
     </div>
   );
 }

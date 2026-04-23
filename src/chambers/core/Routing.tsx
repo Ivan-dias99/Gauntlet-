@@ -1,10 +1,6 @@
 // Core · Routing — read-only mirror of signal-backend/chambers/profiles.py.
-//
-// Hardcoded values are kept in sync with profiles.py. Editability moves
-// here when Core opens a writeable governance surface (the /chambers
-// endpoint plus a typed patch flow); until then this table is the
-// single place a governor can inspect what each chamber does with an
-// incoming query.
+// Migrated to the shared .panel primitive so the table reads as a
+// structured document rather than a raw grid.
 
 const PROFILES: Array<{
   key: string;
@@ -26,6 +22,12 @@ const PROFILES: Array<{
     purpose: "Governance. Respostas sobre regras caem na triad." },
 ];
 
+const DISPATCH_TONE: Record<string, "info" | "warn" | "accent" | "muted"> = {
+  triad: "accent",
+  agent: "warn",
+  mock: "info",
+};
+
 export default function Routing() {
   return (
     <div
@@ -37,115 +39,78 @@ export default function Routing() {
         maxWidth: 900,
       }}
     >
-      <Heading kicker="— Chamber profiles" sub="Router decide por chamber.dispatch quando query.chamber está presente; cai em is_dev_intent quando ausente." />
-      <table style={{ borderCollapse: "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <Th>Chamber</Th><Th>Dispatch</Th><Th>Propósito</Th>
-          </tr>
-        </thead>
-        <tbody>
+      <section className="panel">
+        <div className="panel-head">
+          <span className="panel-title">Chamber profiles</span>
+          <span className="panel-sub">Dispatch</span>
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--sans)",
+            fontSize: "var(--t-body-sec)",
+            color: "var(--text-muted)",
+            lineHeight: "var(--lh-body)",
+          }}
+        >
+          Router decide por chamber.dispatch quando query.chamber está presente;
+          cai em is_dev_intent quando ausente.
+        </div>
+        <div>
           {PROFILES.map((p) => (
-            <tr key={p.key}>
-              <Td>
-                <span style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-primary)" }}>
-                  {p.label}
-                </span>
+            <div
+              key={p.key}
+              className="diagnostic-row"
+              style={{
+                gridTemplateColumns: "minmax(120px, 140px) minmax(90px, 110px) 1fr",
+                padding: "var(--space-2) 0",
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 <span
                   style={{
-                    display: "block",
-                    fontFamily: "var(--mono)",
-                    fontSize: 10,
-                    color: "var(--text-ghost)",
-                    textTransform: "uppercase",
-                    letterSpacing: "var(--track-meta)",
+                    fontFamily: "var(--serif)",
+                    fontSize: "var(--t-body)",
+                    color: "var(--text-primary)",
+                    letterSpacing: "-0.005em",
                   }}
                 >
-                  {p.key}
+                  {p.label}
                 </span>
-              </Td>
-              <Td>
-                <code
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 12,
-                    color: "var(--accent)",
-                    background: "var(--bg-sunken)",
-                    padding: "2px 6px",
-                    borderRadius: 4,
-                  }}
-                >
-                  {p.dispatch}
-                </code>
-              </Td>
-              <Td style={{ color: "var(--text-muted)" }}>
+                <span className="kicker" data-tone="ghost">{p.key}</span>
+              </div>
+              <span
+                className="state-pill"
+                data-tone={DISPATCH_TONE[p.dispatch] ?? "muted"}
+              >
+                <span className="state-pill-dot" />
+                {p.dispatch}
+              </span>
+              <div
+                style={{
+                  fontFamily: "var(--sans)",
+                  fontSize: "var(--t-body-sec)",
+                  color: "var(--text-secondary)",
+                  lineHeight: "var(--lh-body-sec)",
+                }}
+              >
                 {p.purpose}
                 {p.note && (
-                  <div style={{ marginTop: 4, color: "var(--text-ghost)", fontSize: 11, fontStyle: "italic" }}>
+                  <div
+                    style={{
+                      marginTop: 4,
+                      color: "var(--text-ghost)",
+                      fontSize: "var(--t-meta)",
+                      fontStyle: "italic",
+                    }}
+                  >
                     {p.note}
                   </div>
                 )}
-              </Td>
-            </tr>
+              </div>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </section>
     </div>
-  );
-}
-
-function Heading({ kicker, sub }: { kicker: string; sub: string }) {
-  return (
-    <>
-      <div
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: "var(--t-micro)",
-          letterSpacing: "var(--track-label)",
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-        }}
-      >
-        {kicker}
-      </div>
-      <div style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)", lineHeight: "var(--lh-body)" }}>
-        {sub}
-      </div>
-    </>
-  );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th
-      style={{
-        textAlign: "left",
-        fontFamily: "var(--mono)",
-        fontSize: "var(--t-micro)",
-        letterSpacing: "var(--track-label)",
-        textTransform: "uppercase",
-        color: "var(--text-ghost)",
-        padding: "8px 12px",
-        borderBottom: "var(--border-soft)",
-      }}
-    >
-      {children}
-    </th>
-  );
-}
-
-function Td({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <td
-      style={{
-        padding: "10px 12px",
-        borderBottom: "var(--border-soft)",
-        fontSize: "var(--t-body-sec)",
-        verticalAlign: "top",
-        ...style,
-      }}
-    >
-      {children}
-    </td>
   );
 }

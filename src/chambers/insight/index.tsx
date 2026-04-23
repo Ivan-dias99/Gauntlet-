@@ -249,27 +249,23 @@ export default function Insight() {
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: 4,
-              padding: "var(--space-2) 0",
+              gap: 8,
+              padding: "var(--space-2) 0 var(--space-3)",
+              borderBottom: "1px dashed var(--border-color-soft)",
             }}
           >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span className="status-dot" data-tone="accent" />
+              <span className="kicker">{copy.labThreadEmptyKicker}</span>
+            </div>
             <span
               style={{
-                fontFamily: "var(--mono)",
-                fontSize: "var(--t-micro)",
-                letterSpacing: "var(--track-label)",
-                textTransform: "uppercase",
-                color: "var(--text-ghost)",
-              }}
-            >
-              {copy.labThreadEmptyKicker}
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body-sec)",
-                color: "var(--text-muted)",
-                lineHeight: 1.5,
+                fontFamily: "var(--serif)",
+                fontSize: "var(--t-section)",
+                lineHeight: 1.3,
+                color: "var(--text-secondary)",
+                letterSpacing: "-0.005em",
+                maxWidth: 560,
               }}
             >
               {activeMission ? copy.labThreadEmptyActiveBody : copy.labThreadEmptyIdleBody}

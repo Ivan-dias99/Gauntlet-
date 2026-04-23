@@ -2,7 +2,8 @@ import { ROLE_COLOR, type Copy, type CrewState, type DoneSummary, type LiveTool,
 
 // RunCanvas — the exec panel (assistant text + tool stream + accept
 // action) and the Crew plan/verdict panel. Pure renderer: state in,
-// callbacks out.
+// callbacks out. Both panels pull from the shared .panel primitive so
+// their geometry matches every other panel in the product.
 
 interface Props {
   copy: Copy;
@@ -42,11 +43,11 @@ export default function RunCanvas({
         >
           <header className="xc-exec-head">
             <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-              <span className="t-kicker">exec</span>
+              <span className="kicker">exec</span>
               <span
                 style={{
                   fontFamily: "var(--mono)",
-                  fontSize: 11,
+                  fontSize: "var(--t-meta)",
                   color: "var(--text-muted)",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -61,13 +62,13 @@ export default function RunCanvas({
               </span>
             </div>
             {pending && (
-              <span className="xc-pill xc-pill-running">
-                <span aria-hidden className="xc-pill-dot breathe" />
+              <span className="state-pill" data-tone="warn">
+                <span className="state-pill-dot breathe" />
                 running · iter {iteration} · {elapsed.toFixed(1)}s
               </span>
             )}
             {!pending && done && (
-              <span className="xc-pill xc-pill-ok">
+              <span className="state-pill" data-tone="ok">
                 {(() => {
                   const hasTelemetry =
                     done.iterations > 0 || done.tool_count > 0 || done.processing_time_ms > 0;
@@ -112,7 +113,11 @@ export default function RunCanvas({
             )}
 
             {done?.terminated_early && (
-              <div style={{ fontSize: 10, color: "var(--cc-warn)", marginTop: 8, fontFamily: "var(--mono)" }}>
+              <div
+                className="kicker"
+                data-tone="warn"
+                style={{ marginTop: 8, letterSpacing: "var(--track-meta)" }}
+              >
                 terminado cedo: {done.termination_reason}
               </div>
             )}
@@ -124,25 +129,13 @@ export default function RunCanvas({
                     <button onClick={onAccept} className="btn-chip" data-variant="ok">
                       {copy.acceptArtifact}
                     </button>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: "var(--text-ghost)",
-                        fontFamily: "var(--mono)",
-                      }}
-                    >
+                    <span className="kicker" data-tone="ghost">
                       {copy.acceptHint}
                     </span>
                   </>
                 ) : (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      color: "var(--cc-ok)",
-                      fontFamily: "var(--mono)",
-                      letterSpacing: "var(--track-meta)",
-                    }}
-                  >
+                  <span className="state-pill" data-tone="ok">
+                    <span className="state-pill-dot" />
                     {copy.artifactSealed}
                   </span>
                 )}
@@ -156,6 +149,7 @@ export default function RunCanvas({
 }
 
 function ToolLine({ name, input, phase }: { name: string; input?: unknown; phase: ToolPhase }) {
+  const tone = phase === "running" ? "info" : phase === "ok" ? "ok" : "err";
   const color =
     phase === "running" ? "var(--cc-info)" : phase === "ok" ? "var(--cc-ok)" : "var(--cc-err)";
   const dot = phase === "running" ? "◐" : phase === "ok" ? "●" : "✕";
@@ -170,7 +164,7 @@ function ToolLine({ name, input, phase }: { name: string; input?: unknown; phase
         alignItems: "center",
         padding: "6px 0",
         fontFamily: "var(--mono)",
-        fontSize: 12,
+        fontSize: "var(--t-body-sec)",
       }}
     >
       <span style={{ color, transition: "color .2s" }}>{dot}</span>
@@ -185,14 +179,7 @@ function ToolLine({ name, input, phase }: { name: string; input?: unknown; phase
       >
         {inputStr}
       </span>
-      <span
-        style={{
-          color,
-          fontSize: 10,
-          letterSpacing: "var(--track-meta)",
-          textTransform: "uppercase",
-        }}
-      >
+      <span className="kicker" data-tone={tone}>
         {phase === "running" ? "…" : phase === "ok" ? "ok" : "err"}
       </span>
     </div>
@@ -202,45 +189,27 @@ function ToolLine({ name, input, phase }: { name: string; input?: unknown; phase
 function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
   return (
     <div
-      className="toolRise"
-      style={{
-        maxWidth: 820,
-        marginBottom: 14,
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border-soft)",
-        borderLeft: "2px solid var(--accent-dim)",
-        borderRadius: "var(--radius-panel)",
-        padding: "14px 18px",
-        fontFamily: "var(--mono)",
-      }}
+      className="toolRise panel"
+      data-tone="accent"
+      style={{ maxWidth: 860, marginBottom: "var(--space-3)" }}
     >
-      <div
-        style={{
-          fontSize: 10,
-          letterSpacing: 2,
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-          marginBottom: 10,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
-        <span style={{ color: "var(--accent)" }}>crew</span>
+      <div className="panel-head" style={{ gap: 10 }}>
+        <span className="kicker" data-tone="accent">crew</span>
         {crew.refinements > 0 && (
-          <span style={{ color: "var(--cc-warn)" }}>refine ×{crew.refinements}</span>
+          <span className="kicker" data-tone="warn">refine ×{crew.refinements}</span>
         )}
         {crew.currentRole && pending && (
-          <span style={{ color: ROLE_COLOR[crew.currentRole] }}>▶ {crew.currentRole}</span>
+          <span className="kicker" style={{ color: ROLE_COLOR[crew.currentRole] }}>
+            ▶ {crew.currentRole}
+          </span>
         )}
       </div>
 
       {crew.analysis && (
         <div
           style={{
-            fontSize: 11,
+            fontSize: "var(--t-body-sec)",
             color: "var(--text-muted)",
-            marginBottom: 12,
             lineHeight: 1.5,
             fontFamily: "var(--sans)",
             fontStyle: "italic",
@@ -251,7 +220,7 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
       )}
 
       {crew.steps.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {crew.steps.map((s, i) => {
             const ran = crew.rolesRun.includes(s.role);
             const active = crew.currentRole === s.role;
@@ -264,13 +233,15 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
                   gridTemplateColumns: "14px 90px 1fr",
                   gap: 10,
                   alignItems: "baseline",
-                  fontSize: 11,
+                  fontSize: "var(--t-body-sec)",
                   opacity: ran || active ? 1 : 0.55,
                 }}
               >
                 <span style={{ color }}>{active ? "◐" : ran ? "●" : "○"}</span>
-                <span style={{ color, letterSpacing: ".04em" }}>{s.role}</span>
-                <span style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                <span style={{ color, letterSpacing: ".04em", fontFamily: "var(--mono)" }}>
+                  {s.role}
+                </span>
+                <span style={{ color: "var(--text-secondary)", lineHeight: 1.5, fontFamily: "var(--sans)" }}>
                   {s.goal}
                 </span>
               </div>
@@ -282,31 +253,26 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
       {crew.verdict && (
         <div
           style={{
-            marginTop: 10,
             paddingTop: 10,
-            borderTop: "1px dashed var(--border-soft)",
-            fontSize: 11,
+            borderTop: "1px dashed var(--border-color-soft)",
+            fontSize: "var(--t-body-sec)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              color: crew.verdict.accept ? "var(--cc-ok)" : "var(--cc-err)",
-              letterSpacing: 2,
-              textTransform: "uppercase",
-              fontSize: 10,
-              marginBottom: 6,
-            }}
+          <span
+            className="state-pill"
+            data-tone={crew.verdict.accept ? "ok" : "err"}
           >
-            <span>{crew.verdict.accept ? "✓ critic accepted" : "✗ critic rejected"}</span>
-          </div>
+            <span className="state-pill-dot" />
+            {crew.verdict.accept ? "✓ critic accepted" : "✗ critic rejected"}
+          </span>
           <div
             style={{
               color: "var(--text-muted)",
               fontFamily: "var(--sans)",
-              lineHeight: 1.5,
+              lineHeight: 1.55,
             }}
           >
             {crew.verdict.summary}
@@ -314,10 +280,10 @@ function CrewCard({ crew, pending }: { crew: CrewState; pending: boolean }) {
           {crew.verdict.issues.length > 0 && (
             <ul
               style={{
-                margin: "8px 0 0 0",
+                margin: "4px 0 0 0",
                 padding: "0 0 0 16px",
                 color: "var(--cc-warn)",
-                fontSize: 10,
+                fontSize: "var(--t-meta)",
                 lineHeight: 1.6,
               }}
             >
