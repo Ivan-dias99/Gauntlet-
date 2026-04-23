@@ -6,7 +6,6 @@ import { Note } from "../../spine/types";
 import ChamberHead from "../../shell/ChamberHead";
 import ErrorPanel from "../../shell/ErrorPanel";
 import DormantPanel from "../../shell/DormantPanel";
-import EmptyState from "../../shell/EmptyState";
 import { useCopy } from "../../i18n/copy";
 import Thread from "./Thread";
 import Composer from "./Composer";
@@ -23,11 +22,16 @@ import {
   type VerdictState,
 } from "./helpers";
 
-// Insight — conversation-first, structurally split. Left column carries
-// the thread / live indicator / verdict reasoning / composer. Right
-// column carries the InsightRail (mission identity · principles in
-// vigor · verdict trail). Proportions and breath come from
-// InsightLayout; chamber-DNA cascades from data-chamber="insight".
+// Insight — conversation-first, two-region chamber. Left column is the
+// thread / verdict reasoning / composer. Right column is the
+// InsightRail: mission identity · chamber status (live routing &
+// pressure) · principles in force · verdict trail. Live streaming
+// pressure lives in the rail, not inside the thread, so the two
+// regions never compete for the same voice. Proportions and breath
+// come from InsightLayout; chamber-DNA cascades from
+// data-chamber="insight". The chamber now holds weight parity with
+// Surface and Archive as a real operational workstation, not an
+// empty-state-first onboarding shell.
 
 export default function Insight() {
   const {
@@ -192,81 +196,40 @@ export default function Insight() {
     );
   }
 
-  const rightSlot = (() => {
-    if (pending) {
-      return (
-        <span
-          style={{
-            fontSize: "var(--t-micro)",
-            color: "var(--cc-info)",
-            fontFamily: "var(--mono)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <span
-            className="breathe"
-            style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-info)" }}
-          />
-          {live.routePath ? live.routePath : "analisando"}
-        </span>
-      );
-    }
-    if (live.routePath && lastConfidence) {
-      const refused = !!lastVerdict?.refused;
-      const chipColor = refused
-        ? "var(--cc-err)"
-        : lastConfidence === "high"
-        ? "var(--cc-ok)"
-        : lastConfidence === "low"
-        ? "var(--cc-warn)"
-        : "var(--text-ghost)";
-      return (
-        <span
-          style={{
-            fontSize: "var(--t-micro)",
-            color: chipColor,
-            fontFamily: "var(--mono)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-          }}
-        >
-          {live.routePath} · {refused ? "recusado" : lastConfidence}
-        </span>
-      );
-    }
-    // Calm state — name the active mission so the chamber identifies
-    // its scope, mirroring Archive's head right-slot grammar.
-    if (activeMission) {
-      const title = activeMission.title.length > 48
+  // Head right slot — mission scope only. Route, confidence, pending
+  // pulse and refusal state were moved into the rail's chamber-status
+  // card so the chamber never repeats the same signal twice. Mirrors
+  // Archive's head slot exactly: "missão · {title}" when a mission is
+  // active, nothing otherwise.
+  const rightSlot = activeMission ? (
+    <span
+      style={{
+        fontSize: "var(--t-micro)",
+        color: "var(--text-ghost)",
+        fontFamily: "var(--mono)",
+        letterSpacing: "var(--track-label)",
+        textTransform: "uppercase",
+      }}
+    >
+      {copy.labRailMissionKicker.replace("— ", "")} ·{" "}
+      {activeMission.title.length > 48
         ? activeMission.title.slice(0, 45).trimEnd() + "…"
-        : activeMission.title;
-      return (
-        <span
-          style={{
-            fontSize: "var(--t-micro)",
-            color: "var(--text-ghost)",
-            fontFamily: "var(--mono)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-          }}
-        >
-          missão · {title}
-        </span>
-      );
-    }
-    return null;
-  })();
+        : activeMission.title}
+    </span>
+  ) : null;
 
   const isEmpty = notes.length === 0 && !pending && !error;
 
-  // Left column — the conversation region. Thread / streaming /
-  // verdict-reasoning scroll in the upper flex:1 area; error/dormant
-  // and the composer are pinned at the bottom so they never get
-  // buried by a long transcript.
+  // Left column — the conversation region. Thread / verdict reasoning
+  // scroll in the upper flex:1 area; error/dormant and the composer
+  // are pinned at the bottom so they never get buried by a long
+  // transcript.
+  //
+  // Empty state is deliberately non-hero: no central glyph, no
+  // italic serif poster, no "NO ACTIVE MISSION" monument. A compact
+  // strip at the top of the region names the state and moves on —
+  // operational grammar, not onboarding. Live streaming pressure
+  // lives in the rail's chamber-status card, not competing inline.
   const leftColumn = (
     <>
       <div
@@ -278,16 +241,40 @@ export default function Insight() {
           display: "flex",
           flexDirection: "column",
           gap: "var(--space-3)",
-          ...(isEmpty ? { justifyContent: "center", alignItems: "center" } : null),
         }}
       >
         {isEmpty ? (
-          <EmptyState
-            glyph="※"
-            kicker={activeMission ? copy.labEmptyActiveKicker : copy.labEmptyNoMissionKicker}
-            body={activeMission ? copy.labEmpty : copy.labEmptyNoMissionBody}
-            hint={activeMission ? copy.labEmptyActiveHint : copy.labEmptyNoMissionHint}
-          />
+          <div
+            data-insight-thread-empty
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              padding: "var(--space-2) 0",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: "var(--t-micro)",
+                letterSpacing: "var(--track-label)",
+                textTransform: "uppercase",
+                color: "var(--text-ghost)",
+              }}
+            >
+              {copy.labThreadEmptyKicker}
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--sans)",
+                fontSize: "var(--t-body-sec)",
+                color: "var(--text-muted)",
+                lineHeight: 1.5,
+              }}
+            >
+              {activeMission ? copy.labThreadEmptyActiveBody : copy.labThreadEmptyIdleBody}
+            </span>
+          </div>
         ) : (
           <>
             <Thread
@@ -297,71 +284,6 @@ export default function Insight() {
               onPromoteConfirm={confirmPromote}
               onPromoteCancel={() => setPromoteId(null)}
             />
-
-            {pending && (
-              <div
-                data-insight-live
-                className="toolRise"
-                style={{
-                  alignSelf: "stretch",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 12px",
-                  background: "var(--bg-input)",
-                  border: "1px dashed color-mix(in oklab, var(--cc-info) 30%, var(--border-soft))",
-                  borderRadius: "var(--radius-control)",
-                  fontFamily: "var(--mono)",
-                  fontSize: "var(--t-micro)",
-                  letterSpacing: "var(--track-meta)",
-                  color: "var(--text-muted)",
-                }}
-              >
-                <span
-                  className="breathe"
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background: "var(--cc-info)",
-                    boxShadow: "0 0 0 3px color-mix(in oklab, var(--cc-info) 22%, transparent)",
-                    flexShrink: 0,
-                  }}
-                />
-                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {live.lastEventLabel}
-                </span>
-                <button
-                  onClick={() => abortRef.current?.abort()}
-                  data-insight-abort
-                  title="Parar — Esc"
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: "var(--t-micro)",
-                    letterSpacing: "var(--track-label)",
-                    textTransform: "uppercase",
-                    color: "var(--cc-err)",
-                    background: "transparent",
-                    border: "1px solid color-mix(in oklab, var(--cc-err) 38%, transparent)",
-                    borderRadius: "var(--radius-pill)",
-                    padding: "3px 10px",
-                    cursor: "pointer",
-                    flexShrink: 0,
-                    transition: "background .15s var(--ease-swift), border-color .15s var(--ease-swift)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "color-mix(in oklab, var(--cc-err) 10%, transparent)";
-                    e.currentTarget.style.borderColor = "color-mix(in oklab, var(--cc-err) 60%, transparent)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.borderColor = "color-mix(in oklab, var(--cc-err) 38%, transparent)";
-                  }}
-                >
-                  parar esc
-                </button>
-              </div>
-            )}
 
             {lastVerdict && !pending && <VerdictBadge verdict={lastVerdict} />}
           </>
@@ -421,6 +343,11 @@ export default function Insight() {
             mission={activeMission}
             principles={principles}
             trail={verdictTrail}
+            live={live}
+            pending={pending}
+            lastConfidence={lastConfidence}
+            lastVerdictRefused={!!lastVerdict?.refused}
+            onAbort={() => abortRef.current?.abort()}
           />
         }
       />

@@ -23,12 +23,6 @@ export interface Copy {
   labTagline: string;
   labInputVoice: string;
   labErrorTitle: string;
-  labEmpty: string;
-  labEmptyActiveKicker: string;
-  labEmptyActiveHint: string;
-  labEmptyNoMissionKicker: string;
-  labEmptyNoMissionBody: string;
-  labEmptyNoMissionHint: string;
   labPlaceholder: string;
   labPlaceholderNoMission: string;
   labPlaceholderPending: string;
@@ -37,6 +31,51 @@ export interface Copy {
   labTurnAnswer: string;    // AI turn label
   labTurnWarn: string;      // AI warning turn
   labTurnRefuse: string;    // AI refusal turn
+
+  // Insight thread empty — non-hero, operational. Compact strip at the
+  // top of the thread region, no glyph, no italic serif, no centering.
+  labThreadEmptyKicker: string;
+  labThreadEmptyIdleBody: string;        // no mission yet
+  labThreadEmptyActiveBody: string;      // mission active, no exchanges
+
+  // Insight right rail — mission · chamber status · principles · trail.
+  // Every string the rail can render lives here so language stays one
+  // coherent voice across the chamber.
+  labRailMissionKicker: string;
+  labRailNoMission: string;              // calm one-liner inside mission card
+  labRailMetaOpened: string;
+  labRailMetaTurns: string;
+  labRailMetaDoctrine: string;
+  labRailPrincipleSingular: string;
+  labRailPrinciplePlural: string;
+
+  labRailStatusKicker: string;
+  labRailStatusRoute: string;
+  labRailStatusStage: string;
+  labRailStatusConfidence: string;
+  labRailStatusIter: string;
+  labRailStatusTools: string;
+  labRailStatusLast: string;
+  labRailStatusIdle: string;
+  labRailStatusRunning: string;
+  labRailStatusStop: string;
+  labRailStatusNone: string;             // "—"
+  labRailStatusAwaiting: string;         // rendered when no activity yet
+  labRailStatusRouteTriad: string;
+  labRailStatusRouteAgent: string;
+
+  labRailPrinciplesKicker: string;
+  labRailPrinciplesEmpty: string;
+  labRailPrinciplesMore: (n: number) => string;
+
+  labRailTrailKicker: string;
+  labRailTrailEmpty: string;
+  labRailTrailRefused: string;
+
+  labRailTimeNow: string;
+  labRailTimeMinutes: (n: number) => string;
+  labRailTimeHours: (n: number) => string;
+  labRailTimeDays: (n: number) => string;
 
   // Terminal — execution chamber
   creationKicker: string;
@@ -132,20 +171,54 @@ const PT: Copy = {
   labTagline: "Análise · evidência · direção",
   labInputVoice: "— pergunta",
   labErrorTitle: "erro",
-  labEmpty: "Sem perguntas ainda. Escreve a primeira.",
-  labEmptyActiveKicker: "— sem entrada",
-  labEmptyActiveHint: "uma pergunta basta",
-  labEmptyNoMissionKicker: "— sem missão activa",
-  labEmptyNoMissionBody: "Escreve uma pergunta — a missão cria-se automaticamente.",
-  labEmptyNoMissionHint: "o primeiro envio cria a missão",
   labPlaceholder: "Pergunta…",
-  labPlaceholderNoMission: "Pergunta para criar a missão…",
+  labPlaceholderNoMission: "Pergunta para começar…",
   labPlaceholderPending: "A processar…",
   labPlaceholderRefused: "Reformula com mais contexto.",
   labTurnAsk: "pergunta",
   labTurnAnswer: "resposta",
   labTurnWarn: "aviso",
   labTurnRefuse: "recusa",
+
+  labThreadEmptyKicker: "— pronto",
+  labThreadEmptyIdleBody: "primeira pergunta abre a missão.",
+  labThreadEmptyActiveBody: "próxima pergunta continua a missão.",
+
+  labRailMissionKicker: "— missão",
+  labRailNoMission: "sem missão · aguarda primeira pergunta",
+  labRailMetaOpened: "aberta",
+  labRailMetaTurns: "turnos",
+  labRailMetaDoctrine: "doutrina",
+  labRailPrincipleSingular: "princípio",
+  labRailPrinciplePlural: "princípios",
+
+  labRailStatusKicker: "— estado",
+  labRailStatusRoute: "rota",
+  labRailStatusStage: "fase",
+  labRailStatusConfidence: "confiança",
+  labRailStatusIter: "iter",
+  labRailStatusTools: "tools",
+  labRailStatusLast: "última",
+  labRailStatusIdle: "em repouso",
+  labRailStatusRunning: "a correr",
+  labRailStatusStop: "parar esc",
+  labRailStatusNone: "—",
+  labRailStatusAwaiting: "a aguardar pergunta",
+  labRailStatusRouteTriad: "triad",
+  labRailStatusRouteAgent: "agent",
+
+  labRailPrinciplesKicker: "— em vigor",
+  labRailPrinciplesEmpty: "sem princípios activos neste domínio",
+  labRailPrinciplesMore: (n) => `+ ${n} mais`,
+
+  labRailTrailKicker: "— trilha",
+  labRailTrailEmpty: "trilha vazia · primeiro veredicto ainda por chegar",
+  labRailTrailRefused: "recusado",
+
+  labRailTimeNow: "agora",
+  labRailTimeMinutes: (n) => `há ${n}m`,
+  labRailTimeHours: (n) => `há ${n}h`,
+  labRailTimeDays: (n) => `há ${n}d`,
 
   creationKicker: "— TERMINAL",
   creationTagline: "Código · execução · ferramentas",
@@ -236,20 +309,54 @@ const EN: Copy = {
   labTagline: "Analysis · evidence · direction",
   labInputVoice: "— question",
   labErrorTitle: "error",
-  labEmpty: "No questions yet. Type the first.",
-  labEmptyActiveKicker: "— no entry",
-  labEmptyActiveHint: "one question is enough",
-  labEmptyNoMissionKicker: "— no active mission",
-  labEmptyNoMissionBody: "Type a question — the mission is created automatically.",
-  labEmptyNoMissionHint: "the first send starts the mission",
   labPlaceholder: "Question…",
-  labPlaceholderNoMission: "Question to start a mission…",
+  labPlaceholderNoMission: "Question to begin…",
   labPlaceholderPending: "Processing…",
   labPlaceholderRefused: "Reformulate with more context.",
   labTurnAsk: "question",
   labTurnAnswer: "answer",
   labTurnWarn: "warning",
   labTurnRefuse: "refusal",
+
+  labThreadEmptyKicker: "— ready",
+  labThreadEmptyIdleBody: "first question opens the mission.",
+  labThreadEmptyActiveBody: "next question continues the mission.",
+
+  labRailMissionKicker: "— mission",
+  labRailNoMission: "no mission · awaiting first question",
+  labRailMetaOpened: "opened",
+  labRailMetaTurns: "turns",
+  labRailMetaDoctrine: "doctrine",
+  labRailPrincipleSingular: "principle",
+  labRailPrinciplePlural: "principles",
+
+  labRailStatusKicker: "— status",
+  labRailStatusRoute: "route",
+  labRailStatusStage: "stage",
+  labRailStatusConfidence: "confidence",
+  labRailStatusIter: "iter",
+  labRailStatusTools: "tools",
+  labRailStatusLast: "last",
+  labRailStatusIdle: "at rest",
+  labRailStatusRunning: "running",
+  labRailStatusStop: "stop esc",
+  labRailStatusNone: "—",
+  labRailStatusAwaiting: "awaiting question",
+  labRailStatusRouteTriad: "triad",
+  labRailStatusRouteAgent: "agent",
+
+  labRailPrinciplesKicker: "— in force",
+  labRailPrinciplesEmpty: "no principles active in this domain",
+  labRailPrinciplesMore: (n) => `+ ${n} more`,
+
+  labRailTrailKicker: "— trail",
+  labRailTrailEmpty: "trail empty · first verdict not yet in",
+  labRailTrailRefused: "refused",
+
+  labRailTimeNow: "now",
+  labRailTimeMinutes: (n) => `${n}m ago`,
+  labRailTimeHours: (n) => `${n}h ago`,
+  labRailTimeDays: (n) => `${n}d ago`,
 
   creationKicker: "— TERMINAL",
   creationTagline: "Code · execution · tools",
