@@ -100,7 +100,7 @@ export default function ExecutionComposer({
               className="term-tool"
               data-active={flyout === "context" ? "true" : undefined}
               onClick={() => setFlyout(flyout === "context" ? null : "context")}
-              title="contexto · sinais que viajam com cada tarefa"
+              title="contexto · sinais que viajam · media em breve"
               aria-label="contexto"
             >+</button>
             <button
@@ -172,34 +172,73 @@ export default function ExecutionComposer({
           </button>
         </div>
 
-        {/* Workspace bar — project · branch · backend · doctrine · mode */}
+        {/* Workspace bar — three deliberate groups:
+            · identity  (câmara · missão)
+            · state     (backend · doutrina)
+            · mode      (agent / crew toggle)
+            Separated by hairline dividers so the chips read as one
+            coherent family, not a random cluster. */}
         <div className="term-command-workspace">
-          <span className="term-ws-chip" title="câmara activa">
-            <span className="term-ws-chip-glyph">›_</span>
-            terminal
-          </span>
-          <span className="term-ws-chip" title="missão actual">
-            <span className="term-ws-chip-glyph">◆</span>
-            {missionTitle
-              ? missionTitle.length > 28 ? missionTitle.slice(0, 25).trimEnd() + "…" : missionTitle
-              : "sem missão"}
-          </span>
-          <span
-            className="term-ws-chip"
-            data-tone={mockMode ? "warn" : "ok"}
-            title={mockMode ? "backend em modo simulado" : "backend ligado"}
-          >
-            <span className="term-ws-chip-glyph">●</span>
-            {mockMode ? "mock" : "live"}
-          </span>
-          {principlesCount > 0 && (
-            <span className="term-ws-chip" title="doutrina activa nesta sessão">
-              <span className="term-ws-chip-glyph">§</span>
-              {principlesCount}
+          <div className="term-ws-group" aria-label="identidade">
+            <span
+              className="term-ws-chip"
+              title="câmara ativa"
+            >
+              <span className="term-ws-chip-glyph" aria-hidden>›_</span>
+              <span className="term-ws-chip-label">câmara</span>
+              <span className="term-ws-chip-value">terminal</span>
             </span>
-          )}
+            <span
+              className="term-ws-chip"
+              data-role="primary"
+              title="missão atual"
+            >
+              <span className="term-ws-chip-glyph" aria-hidden>◆</span>
+              <span className="term-ws-chip-label">missão</span>
+              <span className="term-ws-chip-value">
+                {missionTitle
+                  ? missionTitle.length > 32 ? missionTitle.slice(0, 29).trimEnd() + "…" : missionTitle
+                  : "sem missão"}
+              </span>
+            </span>
+          </div>
+
+          <span className="term-ws-divider" aria-hidden />
+
+          <div className="term-ws-group" aria-label="estado">
+            <span
+              className="term-ws-chip"
+              data-tone={mockMode ? "warn" : "ok"}
+              title={mockMode ? "backend em modo simulado — respostas canned" : "backend ligado — execução real"}
+            >
+              <span className="term-ws-chip-glyph" aria-hidden>●</span>
+              <span className="term-ws-chip-label">backend</span>
+              <span className="term-ws-chip-value">
+                {mockMode ? "mock" : "live"}
+              </span>
+            </span>
+            {principlesCount > 0 && (
+              <span
+                className="term-ws-chip"
+                title="princípios em vigor que viajam com cada tarefa"
+              >
+                <span className="term-ws-chip-glyph" aria-hidden>§</span>
+                <span className="term-ws-chip-label">doutrina</span>
+                <span className="term-ws-chip-value">
+                  {principlesCount} {principlesCount === 1 ? "princípio" : "princípios"}
+                </span>
+              </span>
+            )}
+          </div>
+
           <span className="term-ws-spacer" />
-          <div className="term-ws-mode" role="tablist" aria-label="execution mode">
+
+          <div
+            className="term-ws-mode"
+            role="tablist"
+            aria-label="execution mode"
+            title="agent: loop iterativo · crew: planner → coder → critic"
+          >
             {(["agent", "crew"] as const).map((m) => (
               <button
                 key={m}
@@ -208,6 +247,7 @@ export default function ExecutionComposer({
                 data-active={mode === m ? "true" : undefined}
                 disabled={pending}
                 onClick={() => onModeChange(m)}
+                aria-selected={mode === m}
               >
                 {m}
               </button>
@@ -286,6 +326,20 @@ function ContextFlyout({
           <span className="term-flyout-item-title">dispatch</span>
         </span>
         <span className="term-flyout-item-kicker">{mode}</span>
+      </button>
+      {/* Honest media slot — the affordance is visually present; the
+          wire to the backend is not yet ready. No fake upload flow. */}
+      <button
+        className="term-flyout-item"
+        disabled
+        title="upload de ficheiros e capturas — ligação ao backend pendente"
+      >
+        <span className="term-flyout-item-glyph">◈</span>
+        <span className="term-flyout-item-body">
+          <span className="term-flyout-item-title">media · ficheiros · capturas</span>
+          <span className="term-flyout-item-meta">em breve</span>
+        </span>
+        <span className="term-flyout-item-kicker">—</span>
       </button>
     </div>
   );

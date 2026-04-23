@@ -3266,26 +3266,47 @@ textarea {
 }
 .term-command[data-focused="true"] {
   border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 45%, var(--border-color-strong));
-  box-shadow: 0 4px 18px color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 12%, transparent) inset,
+    0 6px 22px color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent);
+}
+/* Subtle productive tint — reads "live / connected" without a green
+   wash. Layered into the body background with very low opacity so it
+   registers peripherally but never dominates. Applies only when
+   focused or pending, i.e. when work is actually alive. */
+.term-command[data-focused="true"] .term-command-body,
+.term-command[data-state="pending"] .term-command-body {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--cc-ok) 3%, transparent),
+      transparent 60%
+    ),
+    var(--bg-input);
 }
 .term-command-chrome {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: 10px var(--space-3);
+  gap: 10px;
+  padding: 10px var(--space-3) 10px 14px;
   border-bottom: 1px solid var(--border-color-soft);
-  background: color-mix(in oklab, var(--bg-surface) 60%, var(--bg-elevated));
+  background: color-mix(in oklab, var(--bg-surface) 55%, var(--bg-elevated));
   font-family: var(--mono);
+  /* Tonal inset — a hairline highlight below the traffic lights so the
+     chrome reads as a real window bar, not a flat stripe. */
+  box-shadow: inset 0 -1px 0 color-mix(in oklab, var(--text-primary) 3%, transparent);
 }
 .term-command-dots {
   display: inline-flex;
-  gap: 5px;
+  gap: 6px;
+  margin-right: 4px;
 }
 .term-command-dots span {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  opacity: 0.85;
+  opacity: 0.9;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, #000 22%, transparent);
 }
 .term-command-dots span:nth-child(1) { background: var(--cc-err); }
 .term-command-dots span:nth-child(2) { background: var(--cc-warn); }
@@ -3301,30 +3322,60 @@ textarea {
   white-space: nowrap;
   flex: 1;
   min-width: 0;
+  letter-spacing: -0.002em;
 }
 .term-command-path strong {
   color: var(--text-primary);
   font-weight: 500;
 }
 .term-command-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--text-ghost);
   flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-color-soft);
+  background: var(--bg-surface);
+  transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
 }
+.term-command-phase::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}
+.term-command[data-focused="true"] .term-command-phase {
+  color: var(--cc-ok);
+  border-color: color-mix(in oklab, var(--cc-ok) 32%, var(--border-color-soft));
+  background: color-mix(in oklab, var(--cc-ok) 6%, var(--bg-surface));
+}
+.term-command[data-focused="true"] .term-command-phase::before { opacity: 1; }
 .term-command[data-state="pending"] .term-command-phase {
   color: var(--cc-info);
+  border-color: color-mix(in oklab, var(--cc-info) 32%, var(--border-color-soft));
+  background: color-mix(in oklab, var(--cc-info) 6%, var(--bg-surface));
+}
+.term-command[data-state="pending"] .term-command-phase::before {
+  opacity: 1;
+  animation: breathe 1.4s var(--ease-swift) infinite;
 }
 .term-command-body {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  padding: 14px var(--space-3);
+  padding: 16px var(--space-4);
   font-family: var(--mono);
   background: var(--bg-input);
+  transition: background var(--dur-normal) var(--ease-swift);
 }
 .term-command-prompt {
   display: inline-flex;
@@ -3349,13 +3400,17 @@ textarea {
   color: var(--cc-fg);
   padding: 4px 0;
   min-width: 0;
+  letter-spacing: -0.002em;
+  caret-color: var(--chamber-dna, var(--ember));
 }
 .term-command-input::placeholder {
   color: var(--text-muted);
+  font-style: italic;
+  letter-spacing: 0;
 }
 .term-command-send {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 0;
   background: var(--chamber-dna, var(--ember));
@@ -3369,15 +3424,31 @@ textarea {
   font-weight: 500;
   transition: opacity var(--dur-fast) var(--ease-swift),
               transform var(--dur-fast) var(--ease-swift),
-              background var(--dur-fast) var(--ease-swift);
+              background var(--dur-fast) var(--ease-swift),
+              box-shadow var(--dur-fast) var(--ease-swift);
   flex-shrink: 0;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 18%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--chamber-dna, var(--ember)) 35%, transparent);
 }
-.term-command-send:hover:not(:disabled) { transform: translateY(-1px); }
+.term-command-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 22%, transparent) inset,
+    0 4px 12px color-mix(in oklab, var(--chamber-dna, var(--ember)) 45%, transparent);
+}
+.term-command-send:active:not(:disabled) { transform: translateY(0); }
 .term-command-send:disabled {
   background: var(--text-ghost);
   cursor: not-allowed;
+  box-shadow: none;
 }
-.term-command-send[data-state="pending"] { background: var(--cc-info); }
+.term-command-send[data-state="pending"] {
+  background: var(--cc-info);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 18%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--cc-info) 40%, transparent);
+}
 
 /* ——— Slim bench bar ———
    Replaces the fat .workbench card. One compact row: state dot,
@@ -3628,15 +3699,17 @@ textarea {
 }
 .term-tool[disabled] { opacity: 0.4; cursor: not-allowed; }
 
-/* Workspace bar — bottom of the term-command. Shows project /
-   branch / backend mode / chamber profile. Always visible: matches
-   the workspace row Claude Code carries beneath its prompt. */
+/* Workspace bar — bottom of the term-command. Three intentional
+   groups: identity (câmara + missão) · state (backend + doutrina) ·
+   mode (agent/crew toggle). Groups are visually separated by a
+   hairline "·" divider so the chips read as one coherent family with
+   clear micro-hierarchy, not a random pile. */
 .term-command-workspace {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px var(--space-3);
-  background: color-mix(in oklab, var(--bg-sunken) 60%, var(--bg-elevated));
+  gap: 10px;
+  padding: 9px var(--space-3) 10px;
+  background: color-mix(in oklab, var(--bg-sunken) 55%, var(--bg-elevated));
   border-top: 1px solid var(--border-color-soft);
   font-family: var(--mono);
   font-size: var(--t-micro);
@@ -3644,11 +3717,25 @@ textarea {
   color: var(--text-ghost);
   flex-wrap: wrap;
 }
+.term-ws-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.term-ws-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border-color-soft);
+  flex-shrink: 0;
+  opacity: 0.8;
+}
 .term-ws-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
+  gap: 6px;
+  padding: 3px 9px;
   border-radius: var(--radius-pill);
   background: var(--bg-elevated);
   color: var(--text-muted);
@@ -3657,20 +3744,59 @@ textarea {
   font-family: var(--mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-meta);
+  min-width: 0;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.term-ws-chip[data-role="primary"] {
+  color: var(--text-secondary);
+  border-color: var(--border-color-mid);
+}
+.term-ws-chip-label {
+  color: var(--text-ghost);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  font-size: 9px;
+}
+.term-ws-chip-value {
+  color: inherit;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.term-ws-chip[data-role="primary"] .term-ws-chip-value {
+  color: var(--text-primary);
 }
 .term-ws-chip-glyph {
   font-size: 11px;
-  opacity: 0.85;
+  opacity: 0.9;
   color: var(--chamber-dna, var(--ember));
+  flex-shrink: 0;
+  line-height: 1;
 }
 .term-ws-chip[data-tone="warn"] {
   color: var(--cc-warn);
   border-color: color-mix(in oklab, var(--cc-warn) 30%, transparent);
 }
+.term-ws-chip[data-tone="warn"] .term-ws-chip-glyph { color: var(--cc-warn); }
 .term-ws-chip[data-tone="ok"] {
   color: var(--cc-ok);
   border-color: color-mix(in oklab, var(--cc-ok) 30%, transparent);
 }
+.term-ws-chip[data-tone="ok"] .term-ws-chip-glyph { color: var(--cc-ok); }
+.term-ws-chip[data-tone="ok"] .term-ws-chip-glyph::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 22%, transparent);
+  animation: breathe 2.8s ease-in-out infinite;
+  vertical-align: middle;
+}
+.term-ws-chip[data-tone="ok"] .term-ws-chip-glyph > * { display: none; }
 .term-ws-spacer { flex: 1; min-width: 8px; }
 .term-ws-mode {
   display: inline-flex;
@@ -3679,7 +3805,8 @@ textarea {
   border-radius: var(--radius-pill);
   background: var(--bg-elevated);
   overflow: hidden;
-  height: 22px;
+  height: 24px;
+  padding: 1px;
 }
 .term-ws-mode-opt {
   background: transparent;
@@ -3689,9 +3816,13 @@ textarea {
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  padding: 0 10px;
+  padding: 0 11px;
   cursor: pointer;
+  border-radius: calc(var(--radius-pill) - 1px);
   transition: color var(--dur-fast), background var(--dur-fast);
+}
+.term-ws-mode-opt:hover:not(:disabled):not([data-active="true"]) {
+  color: var(--text-secondary);
 }
 .term-ws-mode-opt[data-active="true"] {
   background: var(--chamber-dna, var(--ember));
