@@ -139,6 +139,8 @@ export interface Copy {
   termErrorPill: string;
   termErrorTitleFallback: string;
   termErrorLead: string;
+  termErrorExitMeta: string;
+  termErrorNextInspect: string;
   termSectionPlan: string;
   termSectionExecLog: string;
   termSectionStreaming: string;
@@ -318,6 +320,8 @@ const PT: Copy = {
   termErrorPill: "erro",
   termErrorTitleFallback: "Erro",
   termErrorLead: "A execução não concluiu. A câmara está pronta para repetir.",
+  termErrorExitMeta: "exit 1 · execução interrompida",
+  termErrorNextInspect: "verificar mensagem acima",
   termSectionPlan: "plano",
   termSectionExecLog: "log de execução",
   termSectionStreaming: "transmissão",
@@ -498,6 +502,8 @@ const EN: Copy = {
   termErrorPill: "error",
   termErrorTitleFallback: "Error",
   termErrorLead: "The run did not complete. The chamber is ready to retry.",
+  termErrorExitMeta: "exit 1 · run halted",
+  termErrorNextInspect: "inspect message above",
   termSectionPlan: "plan",
   termSectionExecLog: "execution log",
   termSectionStreaming: "streaming",

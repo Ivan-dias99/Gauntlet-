@@ -422,6 +422,12 @@ function DoneState({
 }
 
 // ——— Error ———
+// Editorial rhythm matches Brief/Pending/Done: kicker · head · lead ·
+// mono exit-meta in cc-err (the red anchor that gives the cream theme
+// alarm-weight without reshading the dark pill) · divider · message ·
+// next-step hints. The pill keeps data-tone="warn" so the dark theme
+// retains its amber glyph; the red exit-meta line is the signal that
+// proves the light palette under failure tension.
 function ErrorState({
   copy, message, activeTaskTitle,
 }: {
@@ -441,6 +447,21 @@ function ErrorState({
         </span>
       </div>
       <p className="term-output-lead">{copy.termErrorLead}</p>
+      <div
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: "var(--t-micro)",
+          letterSpacing: "var(--track-meta)",
+          color: "var(--cc-err)",
+          textTransform: "uppercase",
+          marginTop: 2,
+        }}
+      >
+        {copy.termErrorExitMeta}
+      </div>
+
+      <OrnamentalDivider />
+
       <section className="term-output-section">
         <span className="term-output-section-label">{copy.termSectionMessage}</span>
         <div
@@ -455,6 +476,14 @@ function ErrorState({
         >
           {message}
         </div>
+      </section>
+
+      <section className="term-output-section">
+        <span className="term-output-section-label">{copy.nextStep}</span>
+        <ul className="term-output-list">
+          <li>{copy.termErrorNextInspect}</li>
+          <li>{copy.termReadyTipDeclare}</li>
+        </ul>
       </section>
     </div>
   );
