@@ -6712,3 +6712,74 @@ textarea {
     0 18px 44px  -8px color-mix(in oklab, var(--cc-ok) 34%, transparent),
     0 52px 100px -28px var(--term-plane-shadow-2);
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   TERMINAL LIGHT — GRAVITATIONAL ELEVATION PASS
+   Panels: bg-elevated (#fff) on cream floor (#f4f0e8) — maximum contrast.
+   Shadows: pure black basis (10→16→24→12% across 4 layers) so the
+   pyramid reads on a light surface the same way dark's 50/68/84% reads
+   on a dark one. The floating weight is in the ambient + deep layers.
+   ══════════════════════════════════════════════════════════════════════ */
+.chamber-shell[data-chamber="terminal"] {
+  background: var(--bg);
+  --term-plane-bg:          color-mix(in oklab, var(--cc-ok) 5%, var(--bg-elevated));
+  --term-plane-bg-hero:     var(--bg-elevated);
+  --term-plane-border:      color-mix(in oklab, var(--cc-ok) 24%, color-mix(in oklab, #000 18%, transparent));
+  --term-plane-highlight:   color-mix(in oklab, #fff 92%, transparent);
+  --term-plane-shadow-foot: color-mix(in oklab, #000  8%, transparent);
+  --term-plane-shadow-0:    color-mix(in oklab, #000 10%, transparent);
+  --term-plane-shadow-1:    color-mix(in oklab, #000 16%, transparent);
+  --term-plane-shadow-2:    color-mix(in oklab, #000 24%, transparent);
+}
+
+/* — Spine: white panel on cream, 4-layer pyramid, green internal bloom — */
+.chamber-shell[data-chamber="terminal"] .term-spine {
+  background: var(--term-plane-bg);
+  border-color: var(--term-plane-border);
+  box-shadow:
+    0  1px 0   var(--term-plane-highlight) inset,
+    0 -1px 0   var(--term-plane-shadow-foot) inset,
+    0 52px 80px -30px color-mix(in oklab, var(--cc-ok) 22%, transparent) inset,
+    0  1px  3px            var(--term-plane-shadow-0),
+    0  8px 20px  -4px      var(--term-plane-shadow-1),
+    0 28px 56px -16px      var(--term-plane-shadow-2),
+    0 56px 112px -36px     color-mix(in oklab, #000 10%, transparent);
+}
+
+/* — Workbench: same family, shallower pyramid (secondary plane) — */
+.chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: var(--term-plane-bg);
+  border-color: var(--term-plane-border);
+  box-shadow:
+    0  1px 0   var(--term-plane-highlight) inset,
+    0 -1px 0   var(--term-plane-shadow-foot) inset,
+    0 32px 56px -22px color-mix(in oklab, var(--cc-ok) 12%, transparent) inset,
+    0  1px  3px        var(--term-plane-shadow-0),
+    0  6px 16px  -4px  var(--term-plane-shadow-1),
+    0 24px 48px -14px  var(--term-plane-shadow-2),
+    0 48px 96px -30px  color-mix(in oklab, #000  8%, transparent);
+}
+
+/* — Composer: hero frame, deepest pyramid, clean white deck — */
+.chamber-shell[data-chamber="terminal"] .term-command {
+  box-shadow:
+    0  0  0 1px color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, #000 16%, transparent)),
+    0  2px  6px              var(--term-plane-shadow-0),
+    0 14px 36px  -8px        var(--term-plane-shadow-1),
+    0 40px 80px -24px        var(--term-plane-shadow-2),
+    0 64px 120px -40px       color-mix(in oklab, #000 10%, transparent);
+}
+.chamber-shell[data-chamber="terminal"] .term-command-deck {
+  background: var(--bg-elevated);
+  border-color: color-mix(in oklab, var(--cc-ok) 24%, color-mix(in oklab, #000 12%, transparent));
+}
+.chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] {
+  transform: translateY(-3px);
+  box-shadow:
+    0  0  0 1.5px color-mix(in oklab, var(--cc-ok) 38%, transparent),
+    0  2px  6px              var(--term-plane-shadow-0),
+    0 16px 40px  -8px        color-mix(in oklab, var(--cc-ok) 22%, transparent),
+    0 44px 88px -24px        var(--term-plane-shadow-2),
+    0 72px 128px -44px       color-mix(in oklab, #000  8%, transparent);
+}
