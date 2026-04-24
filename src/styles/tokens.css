@@ -7352,3 +7352,72 @@ textarea {
     0 18px 40px -12px     color-mix(in oklab, #000 16%, transparent),
     0 40px 80px -28px     color-mix(in oklab, #000 20%, transparent);
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TERMINAL DARK — SURGICAL DEFINITION PASS
+   Object hierarchy law: composer > workbench > rail > canvas.
+   Each tier's shadow pyramid must clearly outrank the tier below.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Canvas: tighter vignette — focused atmospheric centre, denser edges. */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] {
+  background: radial-gradient(
+    ellipse 86% 64% at 50% 18%,
+    var(--signal-canvas-bg)                                   0%,
+    color-mix(in oklab, #000 18%, var(--signal-canvas-bg))  100%
+  );
+}
+
+/* Rail: crisper inner ring (28%), deeper bloom + 6-10pt shadow lift. */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine {
+  box-shadow:
+    inset 2px 0 0   color-mix(in oklab, var(--cc-ok) 28%, transparent),
+    0  0  0  1px    color-mix(in oklab, var(--cc-ok) 28%, transparent) inset,
+    0  2px 0        color-mix(in oklab, #fff 16%, transparent) inset,
+    0 -1px 0        color-mix(in oklab, #000 24%, transparent) inset,
+    0 80px 140px -40px color-mix(in oklab, var(--cc-ok) 30%, transparent) inset,
+    0  1px  3px          color-mix(in oklab, #000 68%, transparent),
+    0  8px 22px  -4px    color-mix(in oklab, #000 86%, transparent),
+    0 30px 60px -18px    color-mix(in oklab, #000 96%, transparent),
+    0 64px 120px -36px   color-mix(in oklab, #000 82%, transparent);
+}
+
+/* Composer idle: dominant ring (36%), 5-layer pyramid — beats rail/workbench. */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-command {
+  box-shadow:
+    0  0  0  1px   color-mix(in oklab, var(--cc-ok) 36%, color-mix(in oklab, var(--text-primary) 20%, transparent)),
+    0  2px  8px          color-mix(in oklab, #000 72%, transparent),
+    0 14px 40px  -6px    color-mix(in oklab, #000 90%, transparent),
+    0 36px 80px -18px    color-mix(in oklab, #000 96%, transparent),
+    0 72px 140px -36px   color-mix(in oklab, #000 86%, transparent);
+}
+
+/* Composer focused: 4px lift, vivid ring (56%), green bloom at two layers. */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] {
+  transform: translateY(-4px);
+  box-shadow:
+    0  0  0  1.5px color-mix(in oklab, var(--cc-ok) 56%, transparent),
+    0  2px  8px          color-mix(in oklab, #000 72%, transparent),
+    0 14px 40px  -6px    color-mix(in oklab, var(--cc-ok) 44%, transparent),
+    0 36px 80px -18px    color-mix(in oklab, var(--cc-ok) 28%, transparent),
+    0 72px 140px -36px   color-mix(in oklab, #000 86%, transparent);
+}
+
+/* Active row: richer fill, sharper ring, slightly wider glow radius. */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
+  background: color-mix(in oklab, var(--cc-ok) 14%, var(--bg-surface));
+  box-shadow:
+    inset 3px 0 0   var(--cc-ok),
+    0 0 0 1px       color-mix(in oklab, var(--cc-ok) 26%, transparent) inset,
+    0 2px 10px -2px color-mix(in oklab, var(--cc-ok) 18%, transparent);
+}
+
+/* Active label: crown glow lifted from 25% to 32% for clear authority. */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] .term-spine-item-label {
+  text-shadow: 0 0 14px color-mix(in oklab, var(--cc-ok) 32%, transparent);
+}
+
+/* Status ok-value: 64% blend reads clearly above text-secondary floor. */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-status-row[data-tone="ok"] .term-spine-status-value {
+  color: color-mix(in oklab, var(--cc-ok) 64%, var(--text-primary));
+}
