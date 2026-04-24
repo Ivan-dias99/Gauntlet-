@@ -6783,3 +6783,139 @@ textarea {
     0 44px 88px -24px        var(--term-plane-shadow-2),
     0 72px 128px -44px       color-mix(in oklab, #000  8%, transparent);
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIGNAL MATERIAL SYSTEM — Canon v2
+   One grammar, three moods. Tokens carry the theme delta; rules are
+   written once. Dark = cinematic command ink. Light = cream paper with
+   green backlit surfaces. Sepia = warm archival depth.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ——— Token layer — Dark (default) ———————————————————————————————— */
+:root,
+[data-theme="dark"] {
+  --signal-canvas-bg:                color-mix(in oklab, var(--cc-ok) 14%, var(--bg));
+  --signal-component-bg:             color-mix(in oklab, var(--cc-ok) 12%, var(--bg-surface));
+  --signal-component-bg-active:      color-mix(in oklab, var(--cc-ok) 20%, var(--bg-surface));
+  --signal-component-border:         color-mix(in oklab, var(--cc-ok) 28%, color-mix(in oklab, var(--text-primary) 16%, transparent));
+  --signal-component-border-strong:  color-mix(in oklab, var(--cc-ok) 44%, color-mix(in oklab, var(--text-primary) 22%, transparent));
+  --signal-component-highlight:      color-mix(in oklab, #fff 10%, transparent);
+  --signal-component-inner-glow:     color-mix(in oklab, var(--cc-ok) 18%, transparent);
+  --signal-component-shadow-near:    color-mix(in oklab, #000 50%, transparent);
+  --signal-component-shadow-far:     color-mix(in oklab, #000 68%, transparent);
+  --signal-component-shadow-gravity: color-mix(in oklab, #000 84%, transparent);
+}
+
+/* ——— Light — cream floor, green INSIDE elevated objects —————————— */
+[data-theme="light"] {
+  --signal-canvas-bg:                var(--bg);
+  --signal-component-bg:             color-mix(in oklab, var(--cc-ok)  5%, var(--bg-elevated));
+  --signal-component-bg-active:      color-mix(in oklab, var(--cc-ok) 14%, var(--bg-elevated));
+  --signal-component-border:         color-mix(in oklab, var(--cc-ok) 26%, color-mix(in oklab, #000 17%, transparent));
+  --signal-component-border-strong:  color-mix(in oklab, var(--cc-ok) 40%, color-mix(in oklab, #000 24%, transparent));
+  --signal-component-highlight:      color-mix(in oklab, #fff 92%, transparent);
+  --signal-component-inner-glow:     color-mix(in oklab, var(--cc-ok) 22%, transparent);
+  --signal-component-shadow-near:    color-mix(in oklab, #000 10%, transparent);
+  --signal-component-shadow-far:     color-mix(in oklab, #000 17%, transparent);
+  --signal-component-shadow-gravity: color-mix(in oklab, #000 26%, transparent);
+}
+
+/* ——— Sepia — warm archival, olive atmosphere, amber-cream borders — */
+[data-theme="sepia"] {
+  --signal-canvas-bg:                color-mix(in oklab, var(--cc-ok) 10%, var(--bg));
+  --signal-component-bg:             color-mix(in oklab, var(--cc-ok)  9%, var(--bg-surface));
+  --signal-component-bg-active:      color-mix(in oklab, var(--cc-ok) 16%, var(--bg-surface));
+  --signal-component-border:         color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, var(--text-primary) 18%, transparent));
+  --signal-component-border-strong:  color-mix(in oklab, var(--cc-ok) 34%, color-mix(in oklab, var(--text-primary) 26%, transparent));
+  --signal-component-highlight:      color-mix(in oklab, var(--text-primary)  9%, transparent);
+  --signal-component-inner-glow:     color-mix(in oklab, var(--cc-ok) 14%, transparent);
+  --signal-component-shadow-near:    color-mix(in oklab, #000 44%, transparent);
+  --signal-component-shadow-far:     color-mix(in oklab, #000 60%, transparent);
+  --signal-component-shadow-gravity: color-mix(in oklab, #000 76%, transparent);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TERMINAL — Signal Material Applied
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* — Shell canvas — */
+.chamber-shell[data-chamber="terminal"] {
+  background: var(--signal-canvas-bg);
+}
+
+/* Light: hazes go dark — green stays inside objects, not behind the page */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"]::before,
+[data-theme="light"] .chamber-shell[data-chamber="terminal"]::after {
+  opacity: 0;
+}
+
+/* Dark: full cinematic haze */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::before  { opacity: 1;    }
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::after   { opacity: 0.55; }
+
+/* Sepia: warmer, more restrained than dark */
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::before { opacity: 0.72; }
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::after  { opacity: 0.38; }
+
+/* — Shared panel grammar — spine + workbench share identical rules —
+   One shadow macro: highlight rim · bottom groove · inner green bloom ·
+   4-layer outer pyramid (contact / mid / ambient / deep levitation).
+   Tokens carry the theme delta — no per-theme component overrides.   */
+.chamber-shell[data-chamber="terminal"] .term-spine,
+.chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  border-color: var(--signal-component-border);
+  box-shadow:
+    0  1px 0   var(--signal-component-highlight) inset,
+    0 -1px 0   color-mix(in oklab, #000  8%, transparent) inset,
+    0 52px 80px -28px var(--signal-component-inner-glow) inset,
+    0  1px  3px           var(--signal-component-shadow-near),
+    0  8px 22px  -4px     var(--signal-component-shadow-far),
+    0 30px 60px -18px     var(--signal-component-shadow-gravity),
+    0 64px 120px -36px    color-mix(in oklab, #000  8%, transparent);
+}
+
+.chamber-shell[data-chamber="terminal"] .term-spine {
+  background: var(--signal-component-bg);
+}
+.chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: var(--signal-component-bg);
+}
+
+/* Active rail row — stronger signal against the sage panel */
+.chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
+  background: var(--signal-component-bg-active);
+}
+
+/* — Composer outer frame — */
+.chamber-shell[data-chamber="terminal"] .term-command {
+  box-shadow:
+    0  0  0  1px var(--signal-component-border),
+    0  2px  6px  var(--signal-component-shadow-near),
+    0 14px 36px  -8px var(--signal-component-shadow-far),
+    0 48px 96px -28px var(--signal-component-shadow-gravity),
+    0 80px 140px -44px color-mix(in oklab, #000  8%, transparent);
+}
+
+/* — Composer inner deck — backlit green wakes up on focus — */
+.chamber-shell[data-chamber="terminal"] .term-command-deck {
+  background: var(--signal-component-bg);
+  border-color: var(--signal-component-border);
+}
+.chamber-shell[data-chamber="terminal"] .term-command-deck::before {
+  opacity: 0.5;
+}
+.chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] .term-command-deck::before {
+  opacity: 1;
+}
+
+/* — Composer focused state — levitation + emphasis ring — */
+.chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] {
+  transform: translateY(-3px);
+  box-shadow:
+    0  0  0  1.5px var(--signal-component-border-strong),
+    0  2px  6px    var(--signal-component-shadow-near),
+    0 16px 40px  -8px color-mix(in oklab, var(--cc-ok) 24%, transparent),
+    0 52px 100px -28px var(--signal-component-shadow-gravity),
+    0 88px 150px -48px color-mix(in oklab, #000  8%, transparent);
+}
