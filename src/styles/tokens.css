@@ -6924,19 +6924,9 @@ textarea {
     0 64px 120px -36px    color-mix(in oklab, var(--signal-component-shadow-near) 45%, transparent);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   SIGNAL MATERIAL v3 — RAIL + WORKBENCH PREMIUM PARITY PASS
-   Rail and workbench must belong to the same material family as Composer.
-   Strategy:
-     1. Directional gradient backgrounds — material depth without double-frame
-     2. Inner contour ring (0 0 0 1px inset) — simulates structural frame border
-     3. 2px bright top rim — amplified catch-light
-     4. Deep backlit bloom — 80px/140px vs the prior 52px/80px
-     5. Theme-scoped pyramids (0-4-0) — per-theme shadow amplification
-   Composer remains the ceiling. Rail/workbench read as the same family.
-   ═══════════════════════════════════════════════════════════════════════ */
-
-/* — Gradient backgrounds: directional material depth — */
+/* Rail + workbench — shared material grammar with the composer.
+   Inner contour ring + bright top rim + backlit bloom + 4-layer outer
+   pyramid. Per-theme shadow amplification below (0-4-0 specificity).    */
 
 .chamber-shell[data-chamber="terminal"] .term-spine {
   background: linear-gradient(
@@ -6991,12 +6981,9 @@ textarea {
   background: var(--signal-component-bg);
 }
 
-/* — Light premium: Surface/Archive precision + Terminal authority —
-   Double-border grammar absorbed from Archive filter containers.
-   Pure white interior, thin warm grey outer hairline, subtle inner inset
-   line (the "double-border" effect), restrained layered drop shadow.    */
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine,
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: var(--signal-component-bg);
   border-color: color-mix(in oklab, #000 10%, transparent);
   box-shadow:
     0  0  0  1px   color-mix(in oklab, #000  4%, transparent) inset,
@@ -7005,11 +6992,6 @@ textarea {
     0  4px 12px  -2px     color-mix(in oklab, #000  9%, transparent),
     0 14px 32px -10px     color-mix(in oklab, #000 13%, transparent),
     0 32px 64px -24px     color-mix(in oklab, #000 15%, transparent);
-}
-
-[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine,
-[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
-  background: var(--signal-component-bg);
 }
 
 /* — Sepia: warm amber inner ring, deep warm pyramid — */
@@ -7040,12 +7022,6 @@ textarea {
     0 2px 8px -2px color-mix(in oklab, var(--cc-ok) 20%, transparent);
 }
 
-[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
-  background: color-mix(in oklab, var(--cc-ok) 12%, var(--bg-elevated));
-  box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--cc-ok) 32%, transparent) inset,
-    0 2px 6px -2px color-mix(in oklab, #000 12%, transparent);
-}
 
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
   background: color-mix(in oklab, var(--cc-ok) 18%, var(--bg-surface));
@@ -7054,15 +7030,10 @@ textarea {
     0 2px 8px -2px color-mix(in oklab, var(--cc-ok) 16%, transparent);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   SIGNAL v4 — CONVERGENCE PASS (calibrated)
-   Dark variant-1 is canonical: darker, calmer, restrained green atmosphere.
-   Green is SEMANTIC (live/active/status), not atmospheric on panels.
-   Composer remains the only object with dominant green presence.
-   ═══════════════════════════════════════════════════════════════════════ */
+/* Dark chamber — green is semantic (live/active/status), never panel fill.
+   Composer is the only object with dominant green presence.             */
 
-/* — Atmospheric depth — volumetric falloff, center lighter, edges darker —
-   Not decorative gradient. Spatial depth cue only.                         */
+/* Atmospheric depth — volumetric falloff, center lighter, edges darker. */
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"] {
   background: radial-gradient(
     ellipse 88% 68% at 50% 22%,
@@ -7155,20 +7126,10 @@ textarea {
   border-color: color-mix(in oklab, var(--cc-ok) 44%, color-mix(in oklab, var(--text-primary) 30%, transparent));
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   SIGNAL v5 — ULTRA-DEFINITION POLISH PASS
-   Target: Apple Vision Pro level hyper-contrast. Everything that the
-   green atmospheric field was obscuring pulls forward.
-     • text lifts to near-white premium brilliance
-     • icons gain life but stay one notch below text (so text leads)
-     • buttons gain tactile edge discipline
-     • active/important elements gain a subtle highlight glow
-   Hierarchy preserved: primary leads secondary, secondary leads muted.
-   Tokens carried the first wave (#faf6ed / #cabfab / #8c8070 / #5a5244).
-   This block handles the targeted Terminal-chamber overrides.
-   ═══════════════════════════════════════════════════════════════════════ */
+/* Dark Terminal chamber — text and icon contrast against the green
+   atmospheric field. Icons sit ~0.08 opacity below text so text leads. */
 
-/* — Sidebar nav items: color lift from muted → secondary, icons alive — */
+/* Sidebar nav items */
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item {
   color: var(--text-secondary);
 }
@@ -7264,20 +7225,10 @@ textarea {
   text-shadow: 0 0 10px color-mix(in oklab, var(--chamber-dna, var(--ember)) 30%, transparent);
 }
 
+/* Light Terminal chamber — structural text/icon tokens.
+   Mirror of the dark-mode block above, adjusted for light physics.     */
 
-
-/* ═══════════════════════════════════════════════════════════════════════
-   SIGNAL v5 — WHITE MODE REMASTER (ultra-definition parity with Dark)
-   Translates the dark sovereign terminal into an illuminated ivory canvas.
-   Same architecture, same hierarchy, same impact — different light physics.
-     • interior fills are cream-white (signal-component-bg, no green flood)
-     • green appears at the edges as aura + as semantic active/status
-     • charcoal text tiers with stepped brilliance
-     • active items carry a restrained green halo
-   Structurally identical to dark v5 block. Translated for light physics.
-   ═══════════════════════════════════════════════════════════════════════ */
-
-/* — Sidebar nav items: secondary charcoal with icon life — */
+/* Sidebar nav items */
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item {
   color: var(--text-secondary);
 }
@@ -7293,16 +7244,6 @@ textarea {
 }
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-dim="true"] .term-spine-item-icon {
   opacity: 0.62;
-}
-
-/* — Active Terminal row: crown glow — green halo even in white mode — */
-[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] .term-spine-item-label {
-  color: var(--cc-ok);
-  text-shadow: 0 0 10px color-mix(in oklab, var(--cc-ok) 22%, transparent);
-}
-[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] .term-spine-item-icon {
-  color: var(--cc-ok);
-  opacity: 1;
 }
 
 /* — Sidebar brand — */
@@ -7392,18 +7333,8 @@ textarea {
   text-shadow: 0 0 10px color-mix(in oklab, var(--chamber-dna, var(--ember)) 26%, transparent);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   SIGNAL v5.1 — LIGHT PREMIUM FINISHING PASS
-   Fixes: light mode wasn't carrying dark's premium weight.
-     • text darkened for hyper-definition (primary → near-black)
-     • shadow pyramid deepened (composer via tokens, spine/wb explicit)
-     • radial atmospheric vignette adds chamber enclosure
-     • composer gets its own stronger pyramid — stays dominant object
-   ═══════════════════════════════════════════════════════════════════════ */
-
-/* — Composer in light: canon pill + Surface/Archive double-border grammar —
-   Outer hairline + inner inset line + heavier drop shadow so composer
-   remains the dominant instrument even under identical frame language.  */
+/* Light composer — stronger shadow than spine/workbench so it stays
+   the dominant instrument even under the same frame grammar.           */
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-command {
   box-shadow:
     0  0  0  1px   color-mix(in oklab, #000 12%, transparent),
