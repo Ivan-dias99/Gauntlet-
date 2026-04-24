@@ -3072,16 +3072,22 @@ textarea {
    panels stack inside pages. */
 [data-theme="light"] .panel {
   background: var(--bg-elevated);
-  border-color: var(--border-color-soft);
+  /* crisper edge than --border-color-soft (8%) so white-on-cream
+     panels read as contained surfaces, not floating rectangles.
+     No shadow, no glow — just stronger proportion. */
+  border-color: var(--border-color-mid);
 }
 [data-theme="light"] .conversation {
   background: var(--bg-elevated);
+  border-color: var(--border-color-mid);
 }
 [data-theme="sepia"] .panel {
   background: color-mix(in oklab, var(--bg-elevated) 92%, var(--bg-surface));
+  border-color: var(--border-color-mid);
 }
 [data-theme="sepia"] .conversation {
   background: color-mix(in oklab, var(--bg-elevated) 94%, var(--bg-surface));
+  border-color: var(--border-color-mid);
 }
 
 /* ══════════════════════════════════════════════════════════════════════

@@ -241,12 +241,17 @@ export default function Policies() {
             style={{ marginInline: "auto" }}
           />
         ) : (
-          <div className="core-empty" data-chamber="school">
+          <section
+            className="core-empty panel"
+            data-chamber="school"
+            data-accent
+            style={{ maxWidth: 560, marginInline: "auto", width: "100%" }}
+          >
             <span className="core-empty-glyph" aria-hidden>§</span>
             <span className="core-empty-kicker">{copy.schoolEmptyKicker}</span>
             <span className="core-empty-body">{copy.schoolEmpty}</span>
             <span className="core-empty-hint">{copy.schoolEmptyHint}</span>
-          </div>
+          </section>
         )
       )}
 
