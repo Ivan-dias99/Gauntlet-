@@ -141,15 +141,44 @@ function PlanPreview({ plan, mock }: { plan: SurfacePlanPayload; mock: boolean }
           ))}
         </ul>
       )}
+
+      <div
+        data-surface-plan-status
+        style={{
+          marginTop: 4,
+          paddingTop: 10,
+          borderTop: "1px dashed var(--border-color-soft)",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 10,
+          alignItems: "baseline",
+          fontFamily: "var(--mono)",
+          fontSize: "var(--t-micro)",
+          letterSpacing: "var(--track-label)",
+          textTransform: "uppercase",
+          color: "var(--text-ghost)",
+        }}
+      >
+        <span>
+          {plan.screens.length} {plan.screens.length === 1 ? "ecrã" : "ecrãs"}
+          {" · "}
+          {plan.components.length} {plan.components.length === 1 ? "componente" : "componentes"}
+        </span>
+        <span style={{ marginLeft: "auto", color: mock ? "var(--cc-warn)" : "var(--cc-ok)" }}>
+          {mock
+            ? "contrato mock · nenhum provider foi chamado"
+            : "contrato gerado por provider real"}
+        </span>
+      </div>
     </div>
   );
 }
 
 function EmptyPlanState({ pending }: { pending: boolean }) {
-  const title = pending ? "a gerar plano…" : "sem plano ainda";
+  const title = pending ? "a gerar plano…" : "Sem contrato visual";
   const body = pending
     ? "O backend está a responder ao brief. O plano aparece aqui assim que chegar."
-    : "Escreve o brief à esquerda e carrega em Gerar plano. O plano gerado aparece aqui — ecrãs, componentes, notas.";
+    : "Define intenção, fidelidade e design system, depois gera o contrato visual. O plano aparece aqui — ecrãs, componentes, notas.";
   return (
     <div
       style={{
@@ -167,7 +196,7 @@ function EmptyPlanState({ pending }: { pending: boolean }) {
           gap: 8,
           textAlign: "center",
           color: "var(--text-muted)",
-          maxWidth: 360,
+          maxWidth: 380,
         }}
       >
         <div
