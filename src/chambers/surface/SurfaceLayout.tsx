@@ -17,7 +17,7 @@ export default function SurfaceLayout({ left, right }: Props) {
       data-chamber="surface"
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(320px, 440px) 1fr",
+        gridTemplateColumns: "minmax(360px, 480px) 1fr",
         gap: "var(--space-4)",
         padding: "var(--space-4)",
         height: "100%",

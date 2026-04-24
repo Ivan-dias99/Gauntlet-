@@ -182,40 +182,40 @@ export default function ExecutionComposer({
             Separated by hairline dividers so the chips read as one
             coherent family, not a random cluster. */}
         <div className="term-command-workspace">
-          <div className="term-ws-group" aria-label="identidade">
+          <div className="term-ws-group" aria-label={copy.termWsChamberTitle}>
             <span
               className="term-ws-chip"
-              title="câmara ativa"
+              title={copy.termWsChamberTitle}
             >
               <span className="term-ws-chip-glyph" aria-hidden>›_</span>
-              <span className="term-ws-chip-label">câmara</span>
+              <span className="term-ws-chip-label">{copy.termWsChamberLabel}</span>
               <span className="term-ws-chip-value">terminal</span>
             </span>
             <span
               className="term-ws-chip"
               data-role="primary"
-              title="missão atual"
+              title={copy.termWsMissionTitle}
             >
               <span className="term-ws-chip-glyph" aria-hidden>◆</span>
-              <span className="term-ws-chip-label">missão</span>
+              <span className="term-ws-chip-label">{copy.termStripMissionLabel}</span>
               <span className="term-ws-chip-value">
                 {missionTitle
                   ? missionTitle.length > 32 ? missionTitle.slice(0, 29).trimEnd() + "…" : missionTitle
-                  : "sem missão"}
+                  : copy.termStripMissionNull}
               </span>
             </span>
           </div>
 
           <span className="term-ws-divider" aria-hidden />
 
-          <div className="term-ws-group" aria-label="estado">
+          <div className="term-ws-group" aria-label={copy.termWsBackendLabel}>
             <span
               className="term-ws-chip"
               data-tone={mockMode ? "warn" : "ok"}
-              title={mockMode ? "backend em modo simulado — respostas canned" : "backend ligado — execução real"}
+              title={mockMode ? copy.termWsBackendMockTitle : copy.termWsBackendLiveTitle}
             >
               <span className="term-ws-chip-glyph" aria-hidden>●</span>
-              <span className="term-ws-chip-label">backend</span>
+              <span className="term-ws-chip-label">{copy.termWsBackendLabel}</span>
               <span className="term-ws-chip-value">
                 {mockMode ? "mock" : "live"}
               </span>
@@ -223,12 +223,12 @@ export default function ExecutionComposer({
             {principlesCount > 0 && (
               <span
                 className="term-ws-chip"
-                title="princípios em vigor que viajam com cada tarefa"
+                title={copy.termWsDoctrineTitle}
               >
                 <span className="term-ws-chip-glyph" aria-hidden>§</span>
-                <span className="term-ws-chip-label">doutrina</span>
+                <span className="term-ws-chip-label">{copy.termWsDoctrineLabel}</span>
                 <span className="term-ws-chip-value">
-                  {principlesCount} {principlesCount === 1 ? "princípio" : "princípios"}
+                  {principlesCount} {principlesCount === 1 ? copy.labRailPrincipleSingular : copy.labRailPrinciplePlural}
                 </span>
               </span>
             )}
