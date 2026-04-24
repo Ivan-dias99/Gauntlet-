@@ -6570,3 +6570,145 @@ textarea {
       transparent 60%
     );
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   TERMINAL — GREEN AS OPERATIONAL LIFE, NOT BACKGROUND COLOR
+   Light: cream base untouched; green is pressed INTO elevated surfaces.
+   Dark: cinematic green chamber floor is correct — keep; add deeper gravity.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ——— Light: shell returns to clean cream paper ————————————————————— */
+.chamber-shell[data-chamber="terminal"] {
+  background: var(--bg);
+  --term-plane-bg:          color-mix(in oklab, var(--cc-ok)  8%, var(--bg-surface));
+  --term-plane-bg-hero:     color-mix(in oklab, var(--cc-ok)  4%, var(--bg-elevated));
+  --term-plane-border:      color-mix(in oklab, var(--cc-ok) 28%, color-mix(in oklab, var(--text-primary) 16%, transparent));
+  --term-plane-highlight:   color-mix(in oklab, #fff 84%, transparent);
+  --term-plane-shadow-foot: color-mix(in oklab, var(--text-primary)  7%, transparent);
+  --term-plane-shadow-0:    color-mix(in oklab, var(--text-primary)  9%, transparent);
+  --term-plane-shadow-1:    color-mix(in oklab, var(--text-primary) 15%, transparent);
+  --term-plane-shadow-2:    color-mix(in oklab, var(--text-primary) 22%, transparent);
+}
+.chamber-shell[data-chamber="terminal"]::before,
+.chamber-shell[data-chamber="terminal"]::after {
+  opacity: 0;
+}
+
+/* ——— Light: sage panel — green inside spine, strip, composer ——————— */
+.chamber-shell[data-chamber="terminal"] .term-spine {
+  background: var(--term-plane-bg);
+  border-color: var(--term-plane-border);
+  box-shadow:
+    0  1px 0   var(--term-plane-highlight) inset,
+    0 -1px 0   var(--term-plane-shadow-foot) inset,
+    0 48px 80px -28px color-mix(in oklab, var(--cc-ok) 20%, transparent) inset,
+    0  1px 3px var(--term-plane-shadow-0),
+    0  8px 24px  -6px var(--term-plane-shadow-1),
+    0 32px 72px -20px var(--term-plane-shadow-2);
+}
+.chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: var(--term-plane-bg);
+  border-color: var(--term-plane-border);
+  box-shadow:
+    0  1px 0   var(--term-plane-highlight) inset,
+    0 -1px 0   var(--term-plane-shadow-foot) inset,
+    0 32px 56px -20px color-mix(in oklab, var(--cc-ok) 12%, transparent) inset,
+    0  1px 3px var(--term-plane-shadow-0),
+    0  6px 18px  -6px var(--term-plane-shadow-1),
+    0 28px 56px -18px var(--term-plane-shadow-2);
+}
+
+/* ——— Light: composer outer ring goes green-warm on cream ———————————— */
+.chamber-shell[data-chamber="terminal"] .term-command {
+  box-shadow:
+    0  0  0 1px color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, var(--text-primary) 12%, transparent)),
+    0  1px 4px   var(--term-plane-shadow-0),
+    0 12px 32px  -8px var(--term-plane-shadow-1),
+    0 44px 88px -24px var(--term-plane-shadow-2);
+}
+.chamber-shell[data-chamber="terminal"] .term-command-deck {
+  border-color: color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, var(--text-primary) 10%, transparent));
+}
+.chamber-shell[data-chamber="terminal"] .term-command-deck::before {
+  opacity: 0.5;
+}
+.chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] .term-command-deck::before {
+  opacity: 1;
+}
+.chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] {
+  transform: translateY(-3px);
+  box-shadow:
+    0  0  0 1.5px color-mix(in oklab, var(--cc-ok) 36%, transparent),
+    0  1px 4px   var(--term-plane-shadow-0),
+    0 16px 40px  -8px color-mix(in oklab, var(--cc-ok) 22%, transparent),
+    0 48px 92px -24px var(--term-plane-shadow-2);
+}
+
+/* Active row reads stronger against the sage panel */
+.chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
+  background: color-mix(in oklab, var(--cc-ok) 14%, transparent);
+}
+
+/* ——— Dark/sepia: restore cinematic floor + hazes ——————————————————— */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"],
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] {
+  background: color-mix(in oklab, var(--cc-ok) 14%, var(--bg));
+  --term-plane-bg:          color-mix(in oklab, var(--cc-ok) 12%, var(--bg-surface));
+  --term-plane-bg-hero:     color-mix(in oklab, var(--cc-ok)  7%, var(--bg-surface));
+  --term-plane-border:      color-mix(in oklab, var(--cc-ok) 28%, color-mix(in oklab, var(--text-primary) 20%, transparent));
+  --term-plane-highlight:   color-mix(in oklab, #fff 10%, transparent);
+  --term-plane-shadow-foot: color-mix(in oklab, #000 30%, transparent);
+  --term-plane-shadow-0:    color-mix(in oklab, #000 50%, transparent);
+  --term-plane-shadow-1:    color-mix(in oklab, #000 68%, transparent);
+  --term-plane-shadow-2:    color-mix(in oklab, #000 84%, transparent);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::before,
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::before {
+  opacity: 1;
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::after,
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::after {
+  opacity: 0.55;
+}
+
+/* ——— Dark: deeper gravitational pull on spine, strip, composer ———— */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine,
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-spine {
+  background: var(--term-plane-bg);
+  border-color: var(--term-plane-border);
+  box-shadow:
+    0  1px 0   var(--term-plane-highlight) inset,
+    0 -1px 0   var(--term-plane-shadow-foot) inset,
+    0  1px 4px var(--term-plane-shadow-0),
+    0 10px 28px  -8px var(--term-plane-shadow-1),
+    0 40px 88px -24px var(--term-plane-shadow-2);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip,
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: var(--term-plane-bg);
+  border-color: var(--term-plane-border);
+  box-shadow:
+    0  1px 0   var(--term-plane-highlight) inset,
+    0 -1px 0   var(--term-plane-shadow-foot) inset,
+    0  1px 4px var(--term-plane-shadow-0),
+    0  8px 22px  -6px var(--term-plane-shadow-1),
+    0 36px 72px -20px var(--term-plane-shadow-2);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-command,
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-command {
+  box-shadow:
+    0  0  0 1px color-mix(in oklab, var(--cc-ok) 20%, color-mix(in oklab, var(--text-primary) 18%, transparent)),
+    0  1px 6px   var(--term-plane-shadow-0),
+    0 14px 40px  -8px var(--term-plane-shadow-1),
+    0 52px 100px -28px var(--term-plane-shadow-2);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"],
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] {
+  transform: translateY(-3px);
+  box-shadow:
+    0  0  0 1.5px color-mix(in oklab, var(--cc-ok) 44%, transparent),
+    0  1px 6px   var(--term-plane-shadow-0),
+    0 18px 44px  -8px color-mix(in oklab, var(--cc-ok) 34%, transparent),
+    0 52px 100px -28px var(--term-plane-shadow-2);
+}
