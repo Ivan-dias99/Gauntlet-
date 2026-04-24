@@ -6088,3 +6088,384 @@ textarea {
 .term-next-step-bar {
   animation: term-fadein 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIGNAL — SYSTEM-WIDE MATERIAL GRAMMAR
+   Terminal is the locked benchmark. This block propagates its material
+   grammar (opaque paper + 22% borders + dual-edge inner + gravitational
+   shadow pyramid + expo-out spring easing) across every other chamber
+   without redesigning layout.
+
+   Cross-chamber tokens registered at :root:
+     --sig-plane-border       crisp outline (22% text)
+     --sig-plane-border-soft  secondary outline (15%)
+     --sig-plane-highlight    top-edge inner rim (84% white)
+     --sig-plane-shadow-0..2  3-layer gravitational pyramid
+     --sig-shadow-pyramid     full pyramid (for hero surfaces)
+     --sig-shadow-pyramid-soft  shallower variant (for secondary planes)
+     --sig-spring             expo-out (snap fast, settle gentle)
+     --sig-snap               quick color/bg swap
+     --sig-bounce             optional overshoot
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --sig-plane-border:      color-mix(in oklab, var(--text-primary) 22%, transparent);
+  --sig-plane-border-soft: color-mix(in oklab, var(--text-primary) 15%, transparent);
+  --sig-plane-highlight:   color-mix(in oklab, #fff 84%, transparent);
+  --sig-plane-shadow-foot: color-mix(in oklab, var(--text-primary)  7%, transparent);
+  --sig-plane-shadow-0:    color-mix(in oklab, var(--text-primary)  9%, transparent);
+  --sig-plane-shadow-1:    color-mix(in oklab, var(--text-primary) 15%, transparent);
+  --sig-plane-shadow-2:    color-mix(in oklab, var(--text-primary) 22%, transparent);
+
+  --sig-shadow-pyramid:
+    0 1px 0   var(--sig-plane-highlight) inset,
+    0 -1px 0  var(--sig-plane-shadow-foot) inset,
+    0 1px 3px var(--sig-plane-shadow-0),
+    0 8px 24px  -6px var(--sig-plane-shadow-1),
+    0 32px 72px -20px var(--sig-plane-shadow-2);
+
+  --sig-shadow-pyramid-soft:
+    0 1px 0   var(--sig-plane-highlight) inset,
+    0 -1px 0  var(--sig-plane-shadow-foot) inset,
+    0 1px 2px var(--sig-plane-shadow-0),
+    0 5px 14px  -5px var(--sig-plane-shadow-1),
+    0 22px 44px -16px var(--sig-plane-shadow-2);
+
+  --sig-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --sig-snap:   cubic-bezier(0.25, 0.1, 0.25, 1);
+  --sig-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+[data-theme="dark"], [data-theme="sepia"] {
+  --sig-plane-highlight:   color-mix(in oklab, #fff  9%, transparent);
+  --sig-plane-shadow-foot: color-mix(in oklab, #000 24%, transparent);
+  --sig-plane-shadow-0:    color-mix(in oklab, #000 40%, transparent);
+  --sig-plane-shadow-1:    color-mix(in oklab, #000 58%, transparent);
+  --sig-plane-shadow-2:    color-mix(in oklab, #000 70%, transparent);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   INSIGHT — ChatGPT-clear analytical flow inside Signal material
+   Elevate the conversation paper, the composer hero, the flyout, and
+   the turn-row glyphs. Add spring interactions on promote/send/affordance.
+   No layout changes. No new sections.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* — Conversation paper: gravitational elevation — */
+.chamber-shell[data-chamber="insight"] .conversation {
+  border-color: var(--sig-plane-border-soft);
+  box-shadow: var(--sig-shadow-pyramid-soft);
+}
+
+/* — Insight composer: hero plane with focus lift — */
+.chamber-shell[data-chamber="insight"] .insight-composer {
+  border-color: var(--sig-plane-border);
+  box-shadow: var(--sig-shadow-pyramid);
+  transition:
+    box-shadow 220ms var(--sig-spring),
+    transform  220ms var(--sig-spring),
+    border-color 140ms var(--sig-snap);
+}
+.chamber-shell[data-chamber="insight"] .insight-composer[data-focused="true"] {
+  transform: translateY(-3px);
+  box-shadow:
+    0 1px 3px  var(--sig-plane-shadow-0),
+    0 0 0 1px  color-mix(in oklab, var(--chamber-dna, var(--cc-ok)) 30%, transparent),
+    0 14px 36px  -8px color-mix(in oklab, var(--chamber-dna, var(--cc-ok)) 18%, transparent),
+    0 44px 88px -20px var(--sig-plane-shadow-2);
+}
+[data-theme="dark"]  .chamber-shell[data-chamber="insight"] .insight-composer[data-focused="true"],
+[data-theme="sepia"] .chamber-shell[data-chamber="insight"] .insight-composer[data-focused="true"] {
+  box-shadow:
+    0 1px 4px  var(--sig-plane-shadow-0),
+    0 0 0 1px  color-mix(in oklab, var(--chamber-dna, var(--cc-ok)) 38%, transparent),
+    0 16px 40px  -8px color-mix(in oklab, var(--chamber-dna, var(--cc-ok)) 28%, transparent),
+    0 48px 96px -20px var(--sig-plane-shadow-2);
+}
+
+/* — Insight composer flyout (history panel): same paper DNA — */
+.chamber-shell[data-chamber="insight"] .insight-composer-flyout {
+  border-color: var(--sig-plane-border);
+  box-shadow: var(--sig-shadow-pyramid);
+}
+
+/* — Turn-row glyph: crisp material chip — */
+.chamber-shell[data-chamber="insight"] .turn-row-glyph {
+  border-color: color-mix(in oklab, var(--turn-glyph-color, var(--accent)) 28%, transparent);
+  box-shadow:
+    inset 0  1px 0 color-mix(in oklab, #fff 32%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+
+/* — Spring interactions — */
+.chamber-shell[data-chamber="insight"] .turn-row-promote {
+  transition:
+    background   140ms var(--sig-snap),
+    color        140ms var(--sig-snap),
+    border-color 140ms var(--sig-snap),
+    transform    200ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="insight"] .turn-row-promote:hover {
+  transform: translateX(2px);
+}
+.chamber-shell[data-chamber="insight"] .turn-row-promote:active {
+  transform: translateX(1px) scale(0.98);
+  transition-duration: 60ms;
+}
+
+.chamber-shell[data-chamber="insight"] .insight-composer-send {
+  transition:
+    background 140ms var(--sig-snap),
+    color      140ms var(--sig-snap),
+    transform  180ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="insight"] .insight-composer-send:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.04);
+}
+.chamber-shell[data-chamber="insight"] .insight-composer-send:active:not(:disabled) {
+  transform: scale(0.94);
+  transition-duration: 60ms;
+}
+
+.chamber-shell[data-chamber="insight"] .insight-composer-affordance {
+  transition:
+    background 140ms var(--sig-snap),
+    color      140ms var(--sig-snap),
+    transform  200ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="insight"] .insight-composer-affordance:hover {
+  transform: scale(1.08);
+}
+.chamber-shell[data-chamber="insight"] .insight-composer-affordance:active {
+  transform: scale(0.92);
+  transition-duration: 60ms;
+}
+
+/* — Insight strip: keep hairline but lift the live-pulse contrast — */
+.chamber-shell[data-chamber="insight"] .insight-strip-meta-label {
+  color: color-mix(in oklab, var(--text-primary) 40%, transparent);
+}
+.chamber-shell[data-chamber="insight"] .insight-strip-meta-value {
+  color: color-mix(in oklab, var(--text-primary) 75%, transparent);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CORE — Constitutional spine of Signal
+   Elevate primary panels, center content, upgrade command-bay focus,
+   enliven diagnostic rows and segmented controls with spring interactions.
+   Priority tabs worst→best per audit: System, Orchestration, Permissions,
+   Routing, Policies.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* — Primary panels: hero paper with inner highlights + pyramid — */
+.chamber-shell[data-chamber="core"] .panel[data-rank="primary"] {
+  background: var(--bg-elevated);
+  border-color: var(--sig-plane-border);
+  box-shadow: var(--sig-shadow-pyramid-soft);
+}
+
+/* — Command bay: focus lift + green ring — */
+.chamber-shell[data-chamber="core"] .command-bay {
+  border-color: var(--sig-plane-border);
+  box-shadow: var(--sig-shadow-pyramid-soft);
+  transition:
+    box-shadow 220ms var(--sig-spring),
+    transform  220ms var(--sig-spring),
+    border-color 140ms var(--sig-snap),
+    background-color 140ms var(--sig-snap);
+}
+.chamber-shell[data-chamber="core"] .command-bay[data-focused="true"] {
+  transform: translateY(-3px);
+  box-shadow:
+    0 1px 3px  var(--sig-plane-shadow-0),
+    0 0 0 1px  color-mix(in oklab, var(--chamber-dna, var(--cc-ok)) 30%, transparent),
+    0 14px 36px  -8px color-mix(in oklab, var(--chamber-dna, var(--cc-ok)) 18%, transparent),
+    0 44px 88px -20px var(--sig-plane-shadow-2);
+}
+
+/* — Diagnostic rows: hover tint, readable keys — */
+.chamber-shell[data-chamber="core"] .diagnostic-row {
+  transition: background 140ms var(--sig-snap);
+  padding-block: 6px;
+}
+.chamber-shell[data-chamber="core"] .diagnostic-row:hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 4%, transparent);
+}
+.chamber-shell[data-chamber="core"] .diagnostic-row-key {
+  color: color-mix(in oklab, var(--text-primary) 48%, transparent);
+}
+.chamber-shell[data-chamber="core"] .diagnostic-row-value {
+  color: var(--text-primary);
+}
+
+/* — Segmented control (Appearance / density / etc): spring press — */
+.chamber-shell[data-chamber="core"] .segmented {
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent);
+}
+.chamber-shell[data-chamber="core"] .segmented-opt {
+  transition:
+    background 140ms var(--sig-snap),
+    color      140ms var(--sig-snap),
+    transform  180ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="core"] .segmented-opt:hover:not([data-active="true"]) {
+  transform: translateY(-1px);
+}
+.chamber-shell[data-chamber="core"] .segmented-opt:active {
+  transform: scale(0.96);
+  transition-duration: 60ms;
+}
+
+/* — Core tab band: emphasize active underline, spring hover — */
+.chamber-shell[data-chamber="core"] .tab-sub {
+  transition:
+    color 140ms var(--sig-snap),
+    transform 180ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="core"] .tab-sub:hover {
+  transform: translateY(-1px);
+}
+
+/* — Core page intro: stronger hairline + serif polish — */
+.chamber-shell[data-chamber="core"] .core-page-intro {
+  border-bottom-color: var(--sig-plane-border-soft);
+}
+
+/* — Core empty state: more breathing, refined — */
+.chamber-shell[data-chamber="core"] .core-empty {
+  opacity: 0.9;
+}
+
+/* — Generic button polish inside Core panels (spring press) — */
+.chamber-shell[data-chamber="core"] .panel[data-rank="primary"] button {
+  transition:
+    background 140ms var(--sig-snap),
+    color      140ms var(--sig-snap),
+    border-color 140ms var(--sig-snap),
+    transform  180ms var(--sig-spring),
+    box-shadow 180ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="core"] .panel[data-rank="primary"] button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.chamber-shell[data-chamber="core"] .panel[data-rank="primary"] button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 60ms;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SURFACE — Light harmonization only (quality anchor, preserve layout)
+   Inline styles on panels stay as-is; we only add gravitational shadow
+   on the two region wrappers and spring animations on chips/buttons.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* — Region panels gain pyramid shadow without fighting inline borders — */
+.chamber-shell[data-chamber="surface"] [data-surface-region="creation"] > div,
+.chamber-shell[data-chamber="surface"] [data-surface-region="exploration"] > div {
+  box-shadow: var(--sig-shadow-pyramid-soft);
+  transition: box-shadow 220ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="surface"] [data-surface-plan-preview] {
+  box-shadow:
+    0 1px 2px var(--sig-plane-shadow-0),
+    0 5px 14px -5px var(--sig-plane-shadow-1);
+}
+
+/* — Chips, buttons, segmented controls gain spring press — */
+.chamber-shell[data-chamber="surface"] .btn-chip,
+.chamber-shell[data-chamber="surface"] .segmented-opt {
+  transition:
+    color        140ms var(--sig-snap),
+    background   140ms var(--sig-snap),
+    border-color 140ms var(--sig-snap),
+    transform    180ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="surface"] .btn-chip:hover:not(:disabled),
+.chamber-shell[data-chamber="surface"] .segmented-opt:hover:not([data-active="true"]) {
+  transform: translateY(-1px);
+}
+.chamber-shell[data-chamber="surface"] .btn-chip:active:not(:disabled),
+.chamber-shell[data-chamber="surface"] .segmented-opt:active {
+  transform: scale(0.97);
+  transition-duration: 60ms;
+}
+
+/* — Surface submit button: send-like affordance — */
+.chamber-shell[data-chamber="surface"] [data-surface-submit] {
+  transition:
+    background 140ms var(--sig-snap),
+    color      140ms var(--sig-snap),
+    transform  180ms var(--sig-spring),
+    box-shadow 180ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="surface"] [data-surface-submit]:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.02);
+}
+.chamber-shell[data-chamber="surface"] [data-surface-submit]:active:not(:disabled) {
+  transform: scale(0.95);
+  transition-duration: 60ms;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ARCHIVE — Light harmonization only (quality anchor, preserve layout)
+   Same pattern: additive shadow + spring interactions. Ledger rows
+   gain subtle lift on active. Route filter chips get kinetic response.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* — Region panels: gravitational shadow — */
+.chamber-shell[data-chamber="archive"] [data-archive-region="ledger"] > div,
+.chamber-shell[data-chamber="archive"] [data-archive-stats],
+.chamber-shell[data-chamber="archive"] [data-archive-detail],
+.chamber-shell[data-chamber="archive"] [data-archive-empty] {
+  box-shadow: var(--sig-shadow-pyramid-soft);
+  transition: box-shadow 220ms var(--sig-spring);
+}
+
+/* — Ledger row: tactile active lift + spring — */
+.chamber-shell[data-chamber="archive"] .ledger-row {
+  transition:
+    background 140ms var(--sig-snap),
+    border-left-color 140ms var(--sig-snap),
+    box-shadow 180ms var(--sig-spring),
+    transform  180ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="archive"] .ledger-row:hover {
+  transform: translateX(1px);
+}
+.chamber-shell[data-chamber="archive"] .ledger-row[data-active="true"] {
+  box-shadow:
+    inset 0 1px 0 var(--sig-plane-highlight),
+    0 1px 2px var(--sig-plane-shadow-0);
+}
+
+/* — Route filter chips: spring press — */
+.chamber-shell[data-chamber="archive"] [data-archive-region="ledger"] button {
+  transition:
+    background   140ms var(--sig-snap),
+    color        140ms var(--sig-snap),
+    border-color 140ms var(--sig-snap),
+    transform    180ms var(--sig-spring);
+}
+.chamber-shell[data-chamber="archive"] [data-archive-region="ledger"] button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.chamber-shell[data-chamber="archive"] [data-archive-region="ledger"] button:active:not(:disabled) {
+  transform: scale(0.96);
+  transition-duration: 60ms;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   GLOBAL — Chamber-shell fade-in entrance
+   Each chamber slides up + fades when mounted. Keeps the system feeling
+   alive without adding decoration.
+   ══════════════════════════════════════════════════════════════════════ */
+@keyframes sig-chamber-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+.chamber-shell[data-chamber="insight"],
+.chamber-shell[data-chamber="core"],
+.chamber-shell[data-chamber="surface"],
+.chamber-shell[data-chamber="archive"] {
+  animation: sig-chamber-in 260ms var(--sig-spring) both;
+}
