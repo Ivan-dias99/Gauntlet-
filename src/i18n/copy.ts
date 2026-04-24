@@ -191,6 +191,22 @@ export interface Copy {
   // Mission-pill telemetry
   missionLastArtifact: (time: string) => string;
   missionNoArtifacts: string;
+
+  // Terminal workspace chips (bottom strip of the composer).
+  // Until Wave-3 these lived as hardcoded PT literals in
+  // ExecutionComposer, leaking Portuguese into EN sessions.
+  termWsChamberLabel: string;
+  termWsChamberTitle: string;
+  termWsMissionTitle: string;
+  termWsBackendLabel: string;
+  termWsBackendLiveTitle: string;
+  termWsBackendMockTitle: string;
+  termWsDoctrineLabel: string;
+  termWsDoctrineTitle: string;
+
+  // ChamberHead shared pills.
+  chamberHeadMockTitle: string;
+  chamberHeadPrinciplesTitle: (n: number) => string;
 }
 
 const PT: Copy = {
@@ -372,6 +388,19 @@ const PT: Copy = {
 
   missionLastArtifact: (time) => `último artefacto há ${time}`,
   missionNoArtifacts: "ainda sem artefactos",
+
+  termWsChamberLabel:     "câmara",
+  termWsChamberTitle:     "câmara ativa",
+  termWsMissionTitle:     "missão atual",
+  termWsBackendLabel:     "backend",
+  termWsBackendLiveTitle: "backend ligado — execução real",
+  termWsBackendMockTitle: "backend em modo simulado — respostas canned",
+  termWsDoctrineLabel:    "doutrina",
+  termWsDoctrineTitle:    "princípios em vigor que viajam com cada tarefa",
+
+  chamberHeadMockTitle:        "Backend em modo simulado — respostas são canned, não geração real",
+  chamberHeadPrinciplesTitle: (n) =>
+    `${n} ${n === 1 ? "princípio activo" : "princípios activos"} nesta câmara`,
 };
 
 const EN: Copy = {
@@ -551,6 +580,19 @@ const EN: Copy = {
 
   missionLastArtifact: (time) => `last artifact ${time} ago`,
   missionNoArtifacts: "no artifacts yet",
+
+  termWsChamberLabel:     "chamber",
+  termWsChamberTitle:     "active chamber",
+  termWsMissionTitle:     "current mission",
+  termWsBackendLabel:     "backend",
+  termWsBackendLiveTitle: "backend live — real execution",
+  termWsBackendMockTitle: "backend in mock mode — canned responses",
+  termWsDoctrineLabel:    "doctrine",
+  termWsDoctrineTitle:    "principles in force that travel with every task",
+
+  chamberHeadMockTitle:        "Backend in mock mode — responses are canned, not real generation",
+  chamberHeadPrinciplesTitle: (n) =>
+    `${n} ${n === 1 ? "principle active" : "principles active"} in this chamber`,
 };
 
 const DICT: Record<Lang, Copy> = { pt: PT, en: EN };

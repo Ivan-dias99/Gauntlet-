@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useCopy } from "../i18n/copy";
 
 // Shared chamber head primitive. Every chamber uses it, so the
 // structural grammar (kicker · tagline · status pills · right slot ·
@@ -32,6 +33,7 @@ interface Props {
 export default function ChamberHead({
   kicker, tagline, mock, principlesCount, right, below, inline,
 }: Props) {
+  const copy = useCopy();
   return (
     <div
       className="chamber-head"
@@ -66,7 +68,7 @@ export default function ChamberHead({
         {mock && (
           <span
             data-backend-mode="mock"
-            title="Backend em modo simulado — respostas são canned, não geração real"
+            title={copy.chamberHeadMockTitle}
             style={{
               fontSize: "var(--t-micro)",
               letterSpacing: "var(--track-label)",
@@ -86,7 +88,7 @@ export default function ChamberHead({
         {principlesCount !== undefined && principlesCount > 0 && (
           <span
             data-principles-in-context
-            title={`${principlesCount} princípio${principlesCount !== 1 ? "s" : ""} activo${principlesCount !== 1 ? "s" : ""} nesta câmara`}
+            title={copy.chamberHeadPrinciplesTitle(principlesCount)}
             style={{
               fontSize: "var(--t-micro)",
               letterSpacing: "var(--track-label)",
@@ -99,7 +101,7 @@ export default function ChamberHead({
               lineHeight: 1.4,
             }}
           >
-            {principlesCount} {principlesCount === 1 ? "princípio" : "princípios"}
+            {principlesCount} {principlesCount === 1 ? copy.labRailPrincipleSingular : copy.labRailPrinciplePlural}
           </span>
         )}
 
