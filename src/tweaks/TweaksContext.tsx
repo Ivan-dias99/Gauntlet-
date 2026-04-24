@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-export type Theme = "dark" | "light" | "sepia";
+export type Theme = "dark" | "light";
 export type Mono = "jetbrains" | "ibm";
 export type Sans = "inter" | "plex" | "system";
 export type Density = "compact" | "comfortable" | "spacious";
@@ -25,18 +25,18 @@ const DEFAULTS: Tweaks = {
   lang: "pt",
 };
 
-interface AccentTriple {
-  dark: string; light: string; sepia: string;
-  dim_dark: string; dim_light: string; dim_sepia: string;
+interface AccentPair {
+  dark: string; light: string;
+  dim_dark: string; dim_light: string;
 }
 
-const ACCENTS: Record<AccentKey, AccentTriple> = {
-  bone:  { dark: "#e8c49a", light: "#7a5a3a", sepia: "#e8a860", dim_dark: "#8a7355", dim_light: "#b8a890", dim_sepia: "#8a6030" },
-  ember: { dark: "#d48860", light: "#a24820", sepia: "#e88860", dim_dark: "#8a5038", dim_light: "#c08a6a", dim_sepia: "#8a5030" },
-  ox:    { dark: "#c45040", light: "#8a2818", sepia: "#d85040", dim_dark: "#7a3028", dim_light: "#b07060", dim_sepia: "#8a3020" },
-  moss:  { dark: "#9ab080", light: "#506830", sepia: "#a0b070", dim_dark: "#60704a", dim_light: "#98a888", dim_sepia: "#607040" },
-  gold:  { dark: "#e8c060", light: "#8a6818", sepia: "#f0c060", dim_dark: "#8a6a30", dim_light: "#b59858", dim_sepia: "#8a6020" },
-  iris:  { dark: "#a0afd0", light: "#3a4c70", sepia: "#a0b0d0", dim_dark: "#60708c", dim_light: "#8a9ac0", dim_sepia: "#506080" },
+const ACCENTS: Record<AccentKey, AccentPair> = {
+  bone:  { dark: "#e8c49a", light: "#7a5a3a", dim_dark: "#8a7355", dim_light: "#b8a890" },
+  ember: { dark: "#d48860", light: "#a24820", dim_dark: "#8a5038", dim_light: "#c08a6a" },
+  ox:    { dark: "#c45040", light: "#8a2818", dim_dark: "#7a3028", dim_light: "#b07060" },
+  moss:  { dark: "#9ab080", light: "#506830", dim_dark: "#60704a", dim_light: "#98a888" },
+  gold:  { dark: "#e8c060", light: "#8a6818", dim_dark: "#8a6a30", dim_light: "#b59858" },
+  iris:  { dark: "#a0afd0", light: "#3a4c70", dim_dark: "#60708c", dim_light: "#8a9ac0" },
 };
 
 const DENS: Record<Density, number> = { compact: 0.88, comfortable: 1, spacious: 1.14 };
@@ -80,7 +80,12 @@ function load(): Tweaks {
       localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return DEFAULTS;
     const parsed = JSON.parse(raw) as Partial<Tweaks>;
-    return { ...DEFAULTS, ...parsed };
+    const merged = { ...DEFAULTS, ...parsed };
+    // Coerce legacy persisted themes (e.g. "sepia") to the binary set.
+    if (merged.theme !== "dark" && merged.theme !== "light") {
+      merged.theme = DEFAULTS.theme;
+    }
+    return merged;
   } catch {
     return DEFAULTS;
   }
@@ -93,7 +98,7 @@ function apply(v: Tweaks) {
 
   const a = ACCENTS[v.accent] ?? ACCENTS.bone;
   const bucket = v.theme;
-  const dimKey = ("dim_" + bucket) as "dim_dark" | "dim_light" | "dim_sepia";
+  const dimKey = ("dim_" + bucket) as "dim_dark" | "dim_light";
   const accent = a[bucket];
   root.style.setProperty("--accent", accent);
   root.style.setProperty("--accent-dim", a[dimKey]);
@@ -127,7 +132,7 @@ export function TweaksProvider({ children }: { children: ReactNode }) {
   const cycleTheme = () =>
     setValues((prev) => ({
       ...prev,
-      theme: prev.theme === "dark" ? "light" : prev.theme === "light" ? "sepia" : "dark",
+      theme: prev.theme === "dark" ? "light" : "dark",
     }));
 
   const reset = () => {

@@ -75,7 +75,7 @@ export default function System() {
         <Label>Theme</Label>
         <Segmented<Theme>
           value={values.theme}
-          options={[["dark","Dark"],["light","Light"],["sepia","Sepia"]]}
+          options={[["dark","Dark"],["light","Light"]]}
           onChange={(v) => set("theme", v)}
         />
         <Label>Density</Label>
