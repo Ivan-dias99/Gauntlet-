@@ -4,11 +4,17 @@ import { useCopy } from "../../i18n/copy";
 import DormantPanel from "../../shell/DormantPanel";
 
 // Core · Policies — constitutional register of principles in force.
-// Rendered inside the shared .core-page frame so the tab reads with
-// the same composition discipline as Routing / Permissions / System /
-// Orchestration. Institutional typography (serif articles, § gutter,
-// doctrine composer) is preserved; the surrounding chrome is the
-// generic page scaffold.
+//
+// Editorial hierarchy, modeled on Terminal's canvas + composer split.
+// There is no wrapping "panel" slab here: the register is a
+// typographic list with hairlines between articles, flowing on the
+// chamber surface like a printed register. The composer is a thin,
+// anchored instrument sharing the same material family as Terminal's
+// ExecutionComposer.
+//
+// The chamber head + CoreInstrument strip above this tab already
+// carry identity (name, tagline, em-vigor count, last invocation,
+// sync). This page does not duplicate those.
 
 function toRoman(n: number): string {
   if (n <= 0) return "";
@@ -65,7 +71,7 @@ export default function Policies() {
     const el = inputRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
   }, [input]);
 
   const trimmed = input.trim();
@@ -89,26 +95,12 @@ export default function Policies() {
 
   const showStatus =
     syncState !== "synced" || hydratedFromBackend === false || !!syncError;
+  const canSubmit = trimmed.length > 0 && !isTooLong;
 
   return (
-    <div className="core-page" data-chamber="school">
-      <div className="core-page-intro">
-        <span className="core-page-intro-title">Policies</span>
-        <span className="core-page-intro-sub">{copy.schoolIntroSub}</span>
-      </div>
-
+    <div className="core-policies" data-chamber="school">
       {showStatus && (
-        <div
-          className="fadeIn"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "var(--space-2)",
-            maxWidth: 860,
-            marginInline: "auto",
-            width: "100%",
-          }}
-        >
+        <div className="core-policies-alerts fadeIn">
           {hydratedFromBackend === false && (
             <span className="state-pill" data-tone="warn">
               <span className="state-pill-dot" />
@@ -130,18 +122,16 @@ export default function Policies() {
         </div>
       )}
 
-      {principles.length === 0 && (
+      {principles.length === 0 ? (
         hydratedFromBackend === false ? (
           <DormantPanel
             detail="doutrina por carregar — backend não respondeu na hidratação. O que aparecer abaixo veio só da cache local."
-            style={{ marginInline: "auto" }}
+            style={{ marginInline: "auto", maxWidth: 560 }}
           />
         ) : (
           <section
-            className="core-empty panel"
+            className="core-empty"
             data-chamber="school"
-            data-accent
-            style={{ maxWidth: 560, marginInline: "auto", width: "100%" }}
           >
             <span className="core-empty-glyph" aria-hidden>§</span>
             <span className="core-empty-kicker">{copy.schoolEmptyKicker}</span>
@@ -149,27 +139,21 @@ export default function Policies() {
             <span className="core-empty-hint">{copy.schoolEmptyHint}</span>
           </section>
         )
-      )}
-
-      {principles.length > 0 && (
-        <section
-          className="panel"
-          data-rank="primary"
-          style={{ maxWidth: 860, marginInline: "auto", width: "100%" }}
-        >
-          <div className="panel-head">
-            <span className="panel-title">registo constitucional</span>
-            <span className="panel-sub">
-              por ordem de inscrição · {principles.length}
+      ) : (
+        <section className="core-register" aria-label="registo constitucional">
+          <header className="core-register-head">
+            <span className="core-register-kicker">— registo constitucional</span>
+            <span className="core-register-count">
+              ordem de inscrição · {principles.length}
             </span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          </header>
+          <ol className="core-register-list">
             {[...principles].reverse().map((p, i) => {
-              const articleNumber = i + 1;
+              const articleNumber = principles.length - i;
               return (
-                <div
+                <li
                   key={p.id}
-                  className="fadeUp doctrine-article"
+                  className="doctrine-article fadeUp"
                   style={{ animationDelay: `${i * 35}ms` }}
                 >
                   <div className="doctrine-article-gutter">
@@ -178,48 +162,23 @@ export default function Policies() {
                       {toRoman(articleNumber)}
                     </span>
                   </div>
-                  <div className="doctrine-article-body">
-                    <span className="doctrine-article-text">{p.text}</span>
-                  </div>
-                  <div className="doctrine-article-aside">
+                  <p className="doctrine-article-text">{p.text}</p>
+                  <time className="doctrine-article-aside">
                     inscrita {relativeTime(p.createdAt, nowMs)}
-                  </div>
-                </div>
+                  </time>
+                </li>
               );
             })}
-          </div>
+          </ol>
         </section>
       )}
 
       <section
-        className="command-bay"
+        className="core-composer"
         data-focused={inputFocused ? "true" : undefined}
-        style={{ maxWidth: 860, marginInline: "auto", width: "100%" }}
       >
-        <div className="command-bay-voice">
-          <span className="status-dot" data-tone={inputFocused ? "accent" : "ghost"} />
-          <span>{copy.schoolInputVoice}</span>
-          {rejection !== null && (
-            <span
-              className="kicker"
-              data-tone="warn"
-              data-testid="school-rejection"
-              style={{ marginLeft: "auto" }}
-            >
-              {rejection === "duplicate" && "✗ já inscrito"}
-              {rejection === "tooLong" && `✗ excede ${PRINCIPLE_MAX_LEN} caracteres`}
-              {rejection === "empty" && "✗ nada para inscrever"}
-            </span>
-          )}
-        </div>
-        <div className="command-bay-row">
-          <span
-            aria-hidden
-            className="command-bay-prompt"
-            style={{ color: "var(--accent)", fontSize: 18, fontFamily: "var(--serif)" }}
-          >
-            §
-          </span>
+        <div className="core-composer-row">
+          <span className="core-composer-glyph" aria-hidden>§</span>
           <textarea
             ref={inputRef}
             autoFocus
@@ -242,30 +201,42 @@ export default function Policies() {
             }}
             maxLength={PRINCIPLE_MAX_LEN * 2}
             placeholder={copy.schoolPlaceholder}
-            className="command-bay-input"
-            style={{ fontFamily: "var(--serif)", fontSize: 15.5 }}
+            className="core-composer-input"
+            aria-label={copy.schoolInputVoice}
           />
-        </div>
-        <div className="command-bay-actions">
           <button
+            type="button"
             onClick={submit}
-            disabled={isTooLong || trimmed.length === 0}
-            className="btn-chip"
-            data-variant={isDuplicate || isTooLong ? undefined : "ok"}
-            style={{ opacity: trimmed.length === 0 ? 0.45 : 1 }}
+            disabled={!canSubmit}
+            className="core-composer-send"
+            aria-label={copy.schoolInscribe}
           >
             {copy.schoolInscribe}
           </button>
+        </div>
+        <div className="core-composer-meta">
+          <span className="core-composer-voice">{copy.schoolInputVoice}</span>
+          {rejection !== null && (
+            <span
+              className="core-composer-rejection"
+              data-testid="school-rejection"
+            >
+              {rejection === "duplicate" && "✗ já inscrito"}
+              {rejection === "tooLong" && `✗ excede ${PRINCIPLE_MAX_LEN} caracteres`}
+              {rejection === "empty" && "✗ nada para inscrever"}
+            </span>
+          )}
           {showCount && (
             <span
               data-testid="school-charcount"
-              className="kicker"
+              className="core-composer-count"
               data-tone={countTone}
             >
               {charsLeft}
             </span>
           )}
-          <span className="command-bay-hint" style={{ marginLeft: "auto" }}>
+          <span className="core-composer-spacer" />
+          <span className="core-composer-hint">
             {copy.schoolComposerHint}
           </span>
         </div>
@@ -273,4 +244,3 @@ export default function Policies() {
     </div>
   );
 }
-

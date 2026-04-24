@@ -1461,6 +1461,8 @@ textarea {
   line-height: 1.55;
   color: var(--text-primary);
   letter-spacing: -0.005em;
+  margin: 0;
+  padding-top: 6px;
 }
 .doctrine-article-meta {
   font-family: var(--mono);
@@ -2949,6 +2951,210 @@ textarea {
   font-family: var(--mono);
   font-size: inherit;
   letter-spacing: 0;
+}
+
+/* ——— Core · Policies editorial layout ———
+   The Policies tab abandons the generic .core-page frame. It reads as
+   a constitutional register: hairline-separated articles flowing on
+   the chamber surface (no wrapping slab), anchored by a thin composer
+   at the bottom sharing the Terminal composer material family. */
+.core-policies {
+  padding: var(--space-4) clamp(var(--space-3), 4vw, var(--space-6)) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+}
+.core-policies-alerts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.core-register {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.core-register-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color-soft);
+}
+.core-register-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.core-register-count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.core-register-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Last article drops its hairline so the register ends cleanly. */
+.core-register-list > .doctrine-article:last-child {
+  border-bottom: 0;
+}
+
+/* ——— Core composer ———
+   Thin anchored instrument sharing the Terminal composer grammar:
+   14px radius, bg-surface (softer than pure white bg-elevated), same
+   border softness, same restrained shadow. One command row + one
+   meta rail. */
+.core-composer {
+  position: relative;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 12%, transparent);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent),
+    0 8px 20px -12px color-mix(in oklab, var(--text-primary) 8%, transparent);
+  transition:
+    border-color var(--dur-normal) var(--ease-swift),
+    box-shadow var(--dur-normal) var(--ease-swift);
+}
+[data-theme="dark"] .core-composer {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 5%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 20%, transparent),
+    0 10px 22px -12px color-mix(in oklab, #000 40%, transparent);
+}
+.core-composer[data-focused="true"] {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 34%, var(--border-color-mid));
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 42%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 6%, transparent),
+    0 10px 24px -12px color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, transparent);
+}
+.core-composer-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px 10px;
+}
+.core-composer-glyph {
+  font-family: var(--serif);
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--chamber-dna, var(--accent));
+  user-select: none;
+  padding-top: 2px;
+}
+.core-composer-input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-family: var(--serif);
+  font-size: 15.5px;
+  line-height: 1.55;
+  letter-spacing: -0.003em;
+  color: var(--text-primary);
+  resize: none;
+  min-height: 24px;
+  max-height: 140px;
+  padding: 3px 0;
+}
+.core-composer-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.78;
+}
+.core-composer-send {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--chamber-dna, var(--accent));
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 40%, transparent);
+  border-radius: var(--radius-pill);
+  padding: 7px 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--dur-fast) var(--ease-swift),
+    color var(--dur-fast) var(--ease-swift),
+    border-color var(--dur-fast) var(--ease-swift);
+}
+.core-composer-send:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 10%, transparent);
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 60%, transparent);
+}
+.core-composer-send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.core-composer-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px 10px;
+  border-top: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--text-ghost);
+  min-height: 24px;
+}
+.core-composer-voice {
+  color: var(--text-muted);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  font-size: 9px;
+}
+.core-composer[data-focused="true"] .core-composer-voice {
+  color: var(--chamber-dna, var(--accent));
+}
+.core-composer-rejection {
+  color: var(--cc-warn);
+  font-size: 9px;
+  letter-spacing: var(--track-meta);
+}
+.core-composer-count {
+  font-variant-numeric: tabular-nums;
+}
+.core-composer-count[data-tone="warn"] { color: var(--cc-warn); }
+.core-composer-count[data-tone="err"] { color: var(--cc-err); }
+.core-composer-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+.core-composer-hint {
+  font-size: 9px;
+  color: var(--text-ghost);
+  letter-spacing: var(--track-meta);
+}
+
+/* ——— Core panel softening ———
+   Pure white (.panel default bg-elevated in light) felt aggressive on
+   the cream page. Core uses a warmer paper tone so panels feel like
+   printed register stock, not hospital sheets. */
+[data-chamber="core"] .panel,
+[data-chamber="school"] .panel {
+  background: var(--bg-surface);
+}
+[data-theme="light"] [data-chamber="core"] .panel,
+[data-theme="light"] [data-chamber="school"] .panel {
+  background: color-mix(in oklab, var(--bg-surface) 85%, var(--bg-elevated));
 }
 
 /* ——— Core instrumentation strip ———
