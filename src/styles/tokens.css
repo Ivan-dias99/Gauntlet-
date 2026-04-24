@@ -7089,14 +7089,10 @@ textarea {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   SIGNAL v4 — CONVERGENCE PASS
-   Extracts the best from all four variant faces and consolidates:
-     face-1  clean section hierarchy, minimal operational brevity
-     face-2  Portuguese authority — LOCKED, this is Signal's language
-     face-3  richer workbench operational density
-     face-4  precise telemetry segmentation
-   Dark is the trunk. Rail + workbench are chamber organs.
-   Every frame intentional. Nothing pasted. Nothing generic.
+   SIGNAL v4 — CONVERGENCE PASS (calibrated)
+   Dark variant-1 is canonical: darker, calmer, restrained green atmosphere.
+   Green is SEMANTIC (live/active/status), not atmospheric on panels.
+   Composer remains the only object with dominant green presence.
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* — Atmospheric depth — volumetric falloff, center lighter, edges darker —
@@ -7116,13 +7112,12 @@ textarea {
   );
 }
 
-/* — Rail left-edge stripe: operational indicator on the physical left edge —
-   Thin inset stripe at x=2px = a 2px green accent on the rail's left border.
-   Signals "this surface is live". Workbench is horizontal — no left stripe.  */
+/* — Rail: subtle left-edge presence indicator, calm contour ring —
+   22% left stripe = a trace of green, not a glow. Reads as "live" only. */
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine {
   box-shadow:
-    inset 2px 0 0 color-mix(in oklab, var(--cc-ok) 58%, transparent),
-    0  0  0  1px  color-mix(in oklab, var(--cc-ok) 40%, transparent) inset,
+    inset 2px 0 0 color-mix(in oklab, var(--cc-ok) 22%, transparent),
+    0  0  0  1px  color-mix(in oklab, var(--cc-ok) 22%, transparent) inset,
     0  2px 0      color-mix(in oklab, #fff 14%, transparent) inset,
     0 -1px 0      color-mix(in oklab, #000 20%, transparent) inset,
     0 80px 140px -40px color-mix(in oklab, var(--cc-ok) 24%, transparent) inset,
@@ -7132,15 +7127,15 @@ textarea {
     0 64px 120px -36px color-mix(in oklab, #000 80%, transparent);
 }
 
-/* — Active row authority: left accent stripe + background + semantic color —
-   The base style had inset 2px 0 0 cc-ok — v3 removed it. Restore + amplify. */
+/* — Active row: left stripe restored, cream text, restrained tint —
+   Green stays semantic at the stripe only. Row stays paper-dark.          */
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
-  background: color-mix(in oklab, var(--cc-ok) 22%, var(--bg-surface));
-  color: color-mix(in oklab, var(--cc-ok) 55%, var(--text-primary));
+  background: color-mix(in oklab, var(--cc-ok) 12%, var(--bg-surface));
+  color: var(--text-primary);
   box-shadow:
     inset 3px 0 0   var(--cc-ok),
-    0 0 0 1px       color-mix(in oklab, var(--cc-ok) 38%, transparent) inset,
-    0 2px 8px -2px  color-mix(in oklab, var(--cc-ok) 20%, transparent);
+    0 0 0 1px       color-mix(in oklab, var(--cc-ok) 20%, transparent) inset,
+    0 2px 8px -2px  color-mix(in oklab, var(--cc-ok) 12%, transparent);
 }
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
   color: var(--cc-ok);
@@ -7150,20 +7145,17 @@ textarea {
     0 2px 6px -2px  color-mix(in oklab, #000 12%, transparent);
 }
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
-  color: color-mix(in oklab, var(--cc-ok) 52%, var(--text-primary));
+  color: var(--text-primary);
   box-shadow:
     inset 3px 0 0   var(--cc-ok),
-    0 0 0 1px       color-mix(in oklab, var(--cc-ok) 34%, transparent) inset,
-    0 2px 8px -2px  color-mix(in oklab, var(--cc-ok) 16%, transparent);
+    0 0 0 1px       color-mix(in oklab, var(--cc-ok) 20%, transparent) inset,
+    0 2px 8px -2px  color-mix(in oklab, var(--cc-ok) 12%, transparent);
 }
 
-/* — Section group labels: operational category, not faded footnote — */
+/* — Section group labels: visible without green mass — just less faded — */
 .chamber-shell[data-chamber="terminal"] .term-spine-group-label {
-  color: color-mix(in oklab, var(--cc-ok) 26%, var(--text-muted));
+  color: var(--text-muted);
   opacity: 1;
-}
-[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-group-label {
-  color: color-mix(in oklab, var(--cc-ok) 32%, var(--text-secondary));
 }
 
 /* — Structural group dividers: architectural, not decorative — */
@@ -7176,20 +7168,15 @@ textarea {
 /* — Brand header divider: green-tinted in dark/sepia — */
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-brand,
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-spine-brand {
-  border-bottom-color: color-mix(in oklab, var(--cc-ok) 18%, color-mix(in oklab, var(--text-primary) 12%, transparent));
+  border-bottom-color: color-mix(in oklab, var(--cc-ok) 14%, color-mix(in oklab, var(--text-primary) 12%, transparent));
 }
 
-/* — Status block separator: green-tinted top border in dark — */
+/* — Status block separator: very subtle, not green — */
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-status {
-  border-top-color: color-mix(in oklab, var(--cc-ok) 16%, color-mix(in oklab, var(--text-primary) 10%, transparent));
+  border-top-color: color-mix(in oklab, var(--text-primary) 12%, transparent);
 }
 
-/* — Workbench: green-tinted labels and icons — operational, not caption — */
-[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-label {
-  color: color-mix(in oklab, var(--cc-ok) 18%, var(--text-secondary));
-}
-[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-icon {
-  background: color-mix(in oklab, var(--cc-ok) 10%, color-mix(in oklab, var(--text-primary) 6%, transparent));
-  border-color: color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, var(--text-primary) 8%, transparent));
-  color: color-mix(in oklab, var(--cc-ok) 35%, var(--text-secondary));
+/* — Workbench: 10% crisper edge definition only — no extra green — */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  border-color: color-mix(in oklab, var(--cc-ok) 44%, color-mix(in oklab, var(--text-primary) 30%, transparent));
 }
