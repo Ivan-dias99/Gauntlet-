@@ -46,26 +46,13 @@ function normalizeForDedup(s: string): string {
 
 export default function Policies() {
   const {
-    state, principles, addPrinciple, activeMission,
+    principles, addPrinciple,
     syncState, hydratedFromBackend, syncError,
   } = useSpine();
   const copy = useCopy();
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
   const [rejection, setRejection] = useState<null | "duplicate" | "empty" | "tooLong">(null);
-  const isGoverning = principles.length > 0;
-  const lastApplied = activeMission?.events.find((e) => e.type === "doctrine_applied") ?? null;
-
-  const totalMissions = state.missions.length;
-  let totalApplications = 0;
-  let missionsGoverned = 0;
-  for (const m of state.missions) {
-    const applied = m.events.filter((e) => e.type === "doctrine_applied").length;
-    if (applied > 0) {
-      missionsGoverned += 1;
-      totalApplications += applied;
-    }
-  }
 
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -110,128 +97,37 @@ export default function Policies() {
         <span className="core-page-intro-sub">{copy.schoolIntroSub}</span>
       </div>
 
-      {isGoverning && (
-        <section
-          className="fadeIn panel"
-          data-rank="primary"
-          style={{ maxWidth: 860, marginInline: "auto", width: "100%" }}
+      {showStatus && (
+        <div
+          className="fadeIn"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "var(--space-2)",
+            maxWidth: 860,
+            marginInline: "auto",
+            width: "100%",
+          }}
         >
-          <div className="panel-head">
-            <span className="panel-title">
-              {activeMission
-                ? <>missão <em style={{ fontStyle: "normal", color: "var(--text-secondary)" }}>{activeMission.title}</em></>
-                : <>doutrina em vigor</>}
+          {hydratedFromBackend === false && (
+            <span className="state-pill" data-tone="warn">
+              <span className="state-pill-dot" />
+              cache local
             </span>
-            <span className="panel-sub">
-              <span style={{ color: "var(--accent)", marginRight: 6 }}>
-                {toRoman(principles.length)}
-              </span>
-              {principles.length === 1 ? "artigo" : "artigos"}
-            </span>
-          </div>
-
-          <div
-            style={{
-              fontFamily: "var(--serif)",
-              fontSize: 15.5,
-              lineHeight: 1.55,
-              color: "var(--text-primary)",
-              letterSpacing: "-0.005em",
-            }}
-          >
-            {principles.length === 1 ? (
-              <>
-                <strong style={{ fontWeight: 500, color: "var(--accent)" }}>Um princípio</strong> sob vigor.
-                Vincula cada invocação, em qualquer chamber
-                {activeMission ? " e governa esta missão." : "."}
-              </>
-            ) : (
-              <>
-                <strong style={{ fontWeight: 500, color: "var(--accent)" }}>{principles.length} princípios</strong> sob vigor.
-                Vinculam cada invocação, em qualquer chamber
-                {activeMission ? " e governam esta missão." : "."}
-              </>
-            )}
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-              gap: "var(--space-3)",
-              paddingTop: "var(--space-2)",
-              borderTop: "1px solid var(--border-color-soft)",
-            }}
-          >
-            <Metric
-              value={totalApplications}
-              label={totalApplications === 1 ? "invocação" : "invocações"}
-              tone={totalApplications > 0 ? "accent" : "muted"}
-            />
-            <Metric
-              value={`${missionsGoverned} de ${totalMissions}`}
-              label="missões governadas"
-              tone={missionsGoverned > 0 ? undefined : "muted"}
-            />
-            {lastApplied ? (
-              <Metric
-                value={new Date(lastApplied.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                label="última invocação"
-              />
-            ) : (
-              <Metric
-                value="—"
-                label={activeMission ? "aguarda invocação" : "sem missão activa"}
-                tone="muted"
-              />
-            )}
-          </div>
-
-          {showStatus && (
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "var(--space-2)",
-                paddingTop: "var(--space-2)",
-                borderTop: "1px solid var(--border-color-soft)",
-              }}
-            >
-              <span
-                className="state-pill"
-                data-tone={
-                  syncState === "synced" ? "ok" :
-                  syncState === "syncing" ? "info" : "warn"
-                }
-              >
-                <span className="state-pill-dot" />
-                {syncState === "synced"
-                  ? "sincronizado"
-                  : syncState === "syncing"
-                  ? "a sincronizar…"
-                  : "local — backend não confirmou"}
-              </span>
-              {hydratedFromBackend === false && (
-                <span className="state-pill" data-tone="warn">
-                  <span className="state-pill-dot" />
-                  cache local
-                </span>
-              )}
-              {syncError && (
-                <span
-                  className="state-pill"
-                  data-tone="warn"
-                  title={syncError.message}
-                >
-                  <span className="state-pill-dot" />
-                  {syncError.kind === "unreachable"
-                    ? "backend inacessível"
-                    : syncError.envelope?.error ?? "erro do backend"}
-                </span>
-              )}
-            </div>
           )}
-        </section>
+          {syncError && (
+            <span
+              className="state-pill"
+              data-tone="warn"
+              title={syncError.message}
+            >
+              <span className="state-pill-dot" />
+              {syncError.kind === "unreachable"
+                ? "backend inacessível"
+                : syncError.envelope?.error ?? "erro do backend"}
+            </span>
+          )}
+        </div>
       )}
 
       {principles.length === 0 && (
@@ -378,37 +274,3 @@ export default function Policies() {
   );
 }
 
-function Metric({
-  value, label, tone,
-}: {
-  value: string | number;
-  label: string;
-  tone?: "accent" | "muted";
-}) {
-  const valueColor =
-    tone === "accent" ? "var(--accent)" :
-    tone === "muted"  ? "var(--text-muted)" : "var(--text-primary)";
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <span
-        style={{
-          fontFamily: "var(--serif)",
-          fontSize: 22,
-          lineHeight: 1,
-          color: valueColor,
-          letterSpacing: "-0.01em",
-          fontWeight: 400,
-        }}
-      >
-        {value}
-      </span>
-      <span
-        className="kicker"
-        data-tone="ghost"
-        style={{ letterSpacing: "var(--track-meta)" }}
-      >
-        {label}
-      </span>
-    </div>
-  );
-}

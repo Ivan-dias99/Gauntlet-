@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ChamberHead from "../../shell/ChamberHead";
 import { useCopy } from "../../i18n/copy";
+import CoreInstrument from "./CoreInstrument";
 import Policies from "./Policies";
 import Routing from "./Routing";
 import Permissions from "./Permissions";
@@ -29,6 +30,8 @@ export default function Core() {
   return (
     <div className="chamber-shell" data-chamber="core">
       <ChamberHead kicker="— CORE" tagline={current.sub} />
+
+      <CoreInstrument />
 
       <div
         role="tablist"

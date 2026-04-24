@@ -2918,28 +2918,150 @@ textarea {
   max-width: 1100px;
   margin: 0 auto;
 }
+/* Page intro — instrumental, not literary. Mono kicker + mono sub.
+   Identity (CORE · DOUTRINA · metrics) lives in the CoreInstrument
+   strip above; this intro just names the current tab. */
 .core-page-intro {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--border-color-soft);
 }
 .core-page-intro-title {
-  font-family: var(--serif);
-  font-size: var(--t-chamber);
-  line-height: 1.15;
+  font-family: var(--mono);
+  font-size: var(--t-body);
+  line-height: 1.2;
   color: var(--text-primary);
-  letter-spacing: -0.015em;
-  font-weight: 400;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  font-weight: 500;
 }
 .core-page-intro-sub {
-  font-family: var(--sans);
-  font-size: var(--t-body-sec);
+  font-family: var(--mono);
+  font-size: var(--t-meta);
   color: var(--text-muted);
-  line-height: var(--lh-body);
-  max-width: 68ch;
+  line-height: 1.55;
+  letter-spacing: var(--track-meta);
+  max-width: 78ch;
 }
+.core-page-intro-sub code {
+  font-family: var(--mono);
+  font-size: inherit;
+  letter-spacing: 0;
+}
+
+/* ——— Core instrumentation strip ———
+   Sits between the chamber head and the tab band. Same material
+   grammar as Terminal's WorkbenchStrip (bg-surface, 14px radius,
+   hairline border, inset highlight). Chamber DNA (§, --ch-core =
+   green) resolves via the [data-chamber="core"] cascade. */
+.core-instrument {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  max-width: 1100px;
+  margin: var(--space-2) auto 0;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 11%, transparent);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  min-height: 44px;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+[data-theme="dark"] .core-instrument {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 18%, transparent);
+}
+.core-instrument-glyph {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--chamber-dna, var(--terminal-ok)) 12%, transparent);
+  color: var(--chamber-dna, var(--terminal-ok));
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.core-instrument-label {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.core-instrument-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+  opacity: 0.45;
+  flex-shrink: 0;
+}
+.core-instrument-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.core-instrument-field-label {
+  color: var(--text-ghost);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  font-size: 9px;
+}
+.core-instrument-field-value {
+  color: var(--text-primary);
+  font-size: var(--t-micro);
+}
+.core-instrument-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+.core-instrument-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 10%, transparent);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.core-instrument-sync-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cc-ok);
+}
+.core-instrument-sync[data-sync-state="syncing"] .core-instrument-sync-dot {
+  background: var(--cc-info);
+  animation: breathe 1.4s var(--ease-swift) infinite;
+}
+.core-instrument-sync[data-sync-state="syncing"] { color: var(--cc-info); }
+.core-instrument-sync[data-sync-state="local"] .core-instrument-sync-dot {
+  background: var(--cc-warn);
+}
+.core-instrument-sync[data-sync-state="local"] { color: var(--cc-warn); }
 
 /* ——— Panel elevated variant — shared premium feel ———
    Panels inside Core pages pull this for a real felt elevation (mid
