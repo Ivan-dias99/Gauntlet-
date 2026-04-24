@@ -11,7 +11,7 @@ import ChamberHead from "../../shell/ChamberHead";
 import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
 import CreationPanel from "./CreationPanel";
-import ExplorationRail from "./ExplorationRail";
+import PlanPreviewPane from "./PlanPreviewPane";
 
 // Surface chamber — design workstation.
 //
@@ -136,7 +136,7 @@ export default function Surface() {
             )}
           </>
         }
-        right={<ExplorationRail plan={plan} mock={planIsMock} />}
+        right={<PlanPreviewPane plan={plan} mock={planIsMock} pending={pending} />}
       />
     </div>
   );
