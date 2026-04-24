@@ -24,7 +24,12 @@ import type { Chamber } from "../spine/types";
 // No chamber-DNA ring on the hull; sage accents live inside, on the
 // active chamber row, and on the footer semantic dots.
 
-export const CHAMBERS: Chamber[] = ["insight", "surface", "terminal", "archive", "core"];
+// Sidebar CHAMBERS order — Terminal first, by design. The sidebar is
+// the operational dock of the chamber, not the ribbon; the reference
+// layout surfaces the execution field at the top of the list because
+// that's the chamber the user lives in. Other chambers keep their
+// canonical order below.
+export const CHAMBERS: Chamber[] = ["terminal", "insight", "surface", "archive", "core"];
 
 const CHAMBER_GLYPH: Record<Chamber, string> = {
   insight:  "◉",
@@ -115,8 +120,8 @@ function BrandHeader() {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 10,
-        padding: "16px 16px 14px",
+        gap: 8,
+        padding: "12px 14px 10px",
         borderBottom: "var(--border-soft)",
       }}
     >
@@ -126,31 +131,31 @@ function BrandHeader() {
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 32,
-          height: 32,
-          borderRadius: 8,
+          width: 26,
+          height: 26,
+          borderRadius: 7,
           background: "var(--bg-elevated)",
           border: "var(--border-soft)",
           boxShadow: "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 5%, transparent)",
           fontFamily: "var(--serif)",
-          fontSize: 15,
+          fontSize: 13,
           color: "var(--accent)",
           lineHeight: 1,
         }}
       >
         ◉
       </span>
-      <span style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+      <span style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1, minWidth: 0 }}>
         <span
           style={{
             fontFamily: "var(--serif)",
-            fontSize: 17,
+            fontSize: 15,
             color: "var(--text-primary)",
             lineHeight: 1.1,
             letterSpacing: "-0.01em",
             display: "flex",
             alignItems: "baseline",
-            gap: 6,
+            gap: 5,
           }}
         >
           Signal
@@ -158,11 +163,11 @@ function BrandHeader() {
             aria-hidden
             style={{
               display: "inline-block",
-              width: 5,
-              height: 5,
+              width: 4,
+              height: 4,
               borderRadius: 999,
               background: "var(--ember)",
-              transform: "translateY(-3px)",
+              transform: "translateY(-2px)",
             }}
           />
         </span>
@@ -173,6 +178,7 @@ function BrandHeader() {
             letterSpacing: "var(--track-label)",
             textTransform: "uppercase",
             color: "var(--text-ghost)",
+            lineHeight: 1.1,
           }}
         >
           terminal
@@ -183,14 +189,15 @@ function BrandHeader() {
         title="Signal development wave"
         style={{
           fontFamily: "var(--mono)",
-          fontSize: 9,
-          letterSpacing: "var(--track-label)",
+          fontSize: 8,
+          letterSpacing: "0.15em",
           textTransform: "uppercase",
-          color: "var(--text-muted)",
-          padding: "2px 8px",
+          color: "var(--text-ghost)",
+          padding: "1px 6px",
           borderRadius: 999,
           border: "var(--border-soft)",
-          background: "var(--bg-elevated)",
+          background: "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
+          lineHeight: 1.4,
         }}
       >
         W8
@@ -201,7 +208,7 @@ function BrandHeader() {
 
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "14px 8px 4px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 1, padding: "10px 6px 2px" }}>
       <span
         style={{
           fontFamily: "var(--mono)",
@@ -209,7 +216,7 @@ function Section({ label, children }: { label: string; children: ReactNode }) {
           letterSpacing: "var(--track-label)",
           textTransform: "uppercase",
           color: "var(--text-ghost)",
-          padding: "0 10px 6px",
+          padding: "0 10px 4px",
         }}
       >
         {label}
@@ -238,10 +245,10 @@ function ChamberRow({
       style={{
         position: "relative",
         display: "grid",
-        gridTemplateColumns: "20px 1fr auto",
+        gridTemplateColumns: "18px 1fr auto",
         alignItems: "center",
-        gap: 12,
-        padding: "7px 12px 7px 14px",
+        gap: 10,
+        padding: "5px 10px 5px 12px",
         background: active
           ? "color-mix(in oklab, var(--cc-ok) 6%, var(--bg-elevated))"
           : "transparent",
@@ -275,8 +282,8 @@ function ChamberRow({
           style={{
             position: "absolute",
             left: 3,
-            top: 7,
-            bottom: 7,
+            top: 5,
+            bottom: 5,
             width: 2,
             borderRadius: 2,
             background: "color-mix(in oklab, var(--cc-ok) 72%, transparent)",
@@ -288,13 +295,13 @@ function ChamberRow({
         aria-hidden
         style={{
           fontFamily: "var(--mono)",
-          fontSize: 11,
+          fontSize: 10,
           color: active ? "var(--cc-ok)" : "var(--text-ghost)",
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 20,
-          height: 20,
+          width: 18,
+          height: 18,
         }}
       >
         {glyph}
@@ -349,10 +356,10 @@ function WorkspaceRow({
       title={hint}
       style={{
         display: "grid",
-        gridTemplateColumns: "20px 1fr auto",
+        gridTemplateColumns: "18px 1fr auto",
         alignItems: "center",
-        gap: 12,
-        padding: "6px 12px 6px 14px",
+        gap: 10,
+        padding: "4px 10px 4px 12px",
         color: "var(--text-muted)",
       }}
     >
@@ -360,13 +367,13 @@ function WorkspaceRow({
         aria-hidden
         style={{
           fontFamily: "var(--mono)",
-          fontSize: 11,
+          fontSize: 10,
           color: "var(--text-ghost)",
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 20,
-          height: 20,
+          width: 18,
+          height: 18,
         }}
       >
         {glyph}
@@ -417,7 +424,7 @@ function Footer({
         display: "flex",
         flexDirection: "column",
         gap: 2,
-        padding: "10px 14px 12px",
+        padding: "8px 12px 10px",
         borderTop: "var(--border-soft)",
         background: "color-mix(in oklab, var(--text-primary) 2%, var(--bg-surface))",
       }}
