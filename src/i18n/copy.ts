@@ -183,6 +183,15 @@ export interface Copy {
   schoolEmptyHint: string;
   schoolPlaceholder: string;
   schoolInscribe: string;
+  schoolComposerHint: string;
+  schoolIntroSub: string;
+
+  // Core tab subs
+  coreTabPolicies: string;
+  coreTabRouting: string;
+  coreTabPermissions: string;
+  coreTabOrchestration: string;
+  coreTabSystem: string;
 
   // Critical error boundary
   errorBoundaryKicker: string;
@@ -360,12 +369,20 @@ const PT: Copy = {
   // Core / Policies — institutional register preserved.
   schoolTagline: "— POLICIES",
   schoolSubtitle: "princípios que vinculam cada chamber",
-  schoolInputVoice: "novo princípio",
-  schoolEmpty: "Sem princípios. Adiciona o primeiro.",
-  schoolEmptyKicker: "Sem princípios",
-  schoolEmptyHint: "escreve o primeiro em baixo",
-  schoolPlaceholder: "Redigir o próximo princípio…",
-  schoolInscribe: "Adicionar",
+  schoolInputVoice: "nova lei",
+  schoolEmpty: "Este sistema ainda não tem memória constitucional.",
+  schoolEmptyKicker: "Sem doutrina ratificada",
+  schoolEmptyHint: "Ratifica a primeira lei operativa.",
+  schoolPlaceholder: "Redigir a próxima lei…",
+  schoolInscribe: "Ratificar",
+  schoolComposerHint: "enter ratifica · shift+enter nova linha",
+  schoolIntroSub: "Princípios constitucionais que vinculam cada invocação em qualquer chamber. Inscrição explícita, sem revogação silenciosa.",
+
+  coreTabPolicies: "Princípios constitucionais",
+  coreTabRouting: "Perfis de chamber",
+  coreTabPermissions: "Allowlist de tools",
+  coreTabOrchestration: "Budgets · crew · triad",
+  coreTabSystem: "Tema · densidade · idioma · diagnóstico",
 
   errorBoundaryKicker: "— crítico · erro interno",
   errorBoundaryRetry: "tentar novamente",
@@ -539,12 +556,20 @@ const EN: Copy = {
 
   schoolTagline: "— POLICIES",
   schoolSubtitle: "principles that bind every chamber",
-  schoolInputVoice: "new principle",
-  schoolEmpty: "No principles. Add the first.",
-  schoolEmptyKicker: "No principles",
-  schoolEmptyHint: "write the first one below",
-  schoolPlaceholder: "Draft the next principle…",
-  schoolInscribe: "Add",
+  schoolInputVoice: "new law",
+  schoolEmpty: "This system has no constitutional memory yet.",
+  schoolEmptyKicker: "No doctrine ratified",
+  schoolEmptyHint: "Ratify the first operating law.",
+  schoolPlaceholder: "Draft the next law…",
+  schoolInscribe: "Ratify",
+  schoolComposerHint: "enter ratifies · shift+enter new line",
+  schoolIntroSub: "Constitutional principles that bind every invocation in every chamber. Explicit inscription, no silent revocation.",
+
+  coreTabPolicies: "Constitutional principles",
+  coreTabRouting: "Chamber profiles",
+  coreTabPermissions: "Tool allowlist",
+  coreTabOrchestration: "Budgets · crew · triad",
+  coreTabSystem: "Theme · density · language · diagnostics",
 
   errorBoundaryKicker: "— critical · internal error",
   errorBoundaryRetry: "try again",

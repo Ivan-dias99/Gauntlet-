@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ChamberHead from "../../shell/ChamberHead";
+import { useCopy } from "../../i18n/copy";
 import Policies from "./Policies";
 import Routing from "./Routing";
 import Permissions from "./Permissions";
@@ -8,25 +9,20 @@ import System from "./System";
 
 // Core chamber — strict tab structure:
 //   Policies · Routing · Permissions · Orchestration · System
-//
-// Tab row flows through the shared .tab-sub-band + .tab-sub primitives
-// so Core's instrumentation band reads as a continuous strip with
-// underline-active grammar, matching the shell's canon ribbon one notch
-// down. Each tab body owns one governance responsibility; Routing /
-// Permissions / Orchestration remain read-only mirrors until Core gains
-// a writeable governance surface.
+// Each tab sub comes from the i18n copy catalog so the tagline
+// switches language with the rest of the shell.
 
 type Tab = "policies" | "routing" | "permissions" | "orchestration" | "system";
 
-const TABS: Array<{ key: Tab; label: string; sub: string }> = [
-  { key: "policies",      label: "Policies",      sub: "Princípios constitucionais" },
-  { key: "routing",       label: "Routing",       sub: "Perfis de chamber" },
-  { key: "permissions",   label: "Permissions",   sub: "Allowlist de tools" },
-  { key: "orchestration", label: "Orchestration", sub: "Budgets · crew · triad" },
-  { key: "system",        label: "System",        sub: "Theme · density · lang · diagnostics" },
-];
-
 export default function Core() {
+  const copy = useCopy();
+  const TABS: Array<{ key: Tab; label: string; sub: string }> = [
+    { key: "policies",      label: "Policies",      sub: copy.coreTabPolicies },
+    { key: "routing",       label: "Routing",       sub: copy.coreTabRouting },
+    { key: "permissions",   label: "Permissions",   sub: copy.coreTabPermissions },
+    { key: "orchestration", label: "Orchestration", sub: copy.coreTabOrchestration },
+    { key: "system",        label: "System",        sub: copy.coreTabSystem },
+  ];
   const [tab, setTab] = useState<Tab>("policies");
   const current = TABS.find((t) => t.key === tab) ?? TABS[0];
 

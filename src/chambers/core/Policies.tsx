@@ -107,10 +107,7 @@ export default function Policies() {
     <div className="core-page" data-chamber="school">
       <div className="core-page-intro">
         <span className="core-page-intro-title">Policies</span>
-        <span className="core-page-intro-sub">
-          Princípios constitucionais que vinculam cada invocação em qualquer chamber.
-          Inscrição explícita, sem revogação silenciosa.
-        </span>
+        <span className="core-page-intro-sub">{copy.schoolIntroSub}</span>
       </div>
 
       {isGoverning && (
@@ -368,7 +365,7 @@ export default function Policies() {
             </span>
           )}
           <span className="command-bay-hint" style={{ marginLeft: "auto" }}>
-            enter ratifica · shift+enter nova linha
+            {copy.schoolComposerHint}
           </span>
         </div>
       </section>
