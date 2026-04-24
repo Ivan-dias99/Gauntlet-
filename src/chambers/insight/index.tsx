@@ -11,7 +11,7 @@ import Thread from "./Thread";
 import Composer from "./Composer";
 import VerdictBadge from "./VerdictBadge";
 import InsightLayout from "./InsightLayout";
-import ContextStrip from "./InsightRail";
+import ContextStrip from "./ContextStrip";
 import {
   EMPTY_LIVE,
   extractAnswer,

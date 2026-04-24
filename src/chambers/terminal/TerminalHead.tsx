@@ -22,7 +22,7 @@ interface Props {
   allDoneLabel: string;
 }
 
-export default function ContextStrip({
+export default function TerminalHead({
   copy, backendMode, principlesCount,
   pending, elapsed, exitCode, taskCount, doneCount,
   activeMissionTitle, currentObjective, allDone, allDoneLabel,

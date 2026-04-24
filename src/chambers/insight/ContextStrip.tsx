@@ -3,13 +3,10 @@ import type { VerdictState, LiveState } from "./helpers";
 import { useCopy } from "../../i18n/copy";
 
 // Insight context strip — a thin, single-line horizontal band that
-// replaces the old side rail. It lives directly under the chamber
-// head and carries the only operational narration Insight needs:
-// mission title, turn count, doctrine count, and a live pulse (only
-// while a call is in flight) that owns the abort affordance.
-//
-// The file is named InsightRail for compatibility with existing
-// imports — the component export is ContextStrip now.
+// lives directly under the chamber head and carries the only
+// operational narration Insight needs: mission title, turn count,
+// doctrine count, and a live pulse (only while a call is in flight)
+// that owns the abort affordance.
 
 interface Props {
   mission: Mission | null;

@@ -10,7 +10,7 @@ import {
   type RunMode, type LiveTool, type DoneSummary, type CrewState,
   type Task,
 } from "./helpers";
-import ContextStrip from "./ContextStrip";
+import TerminalHead from "./TerminalHead";
 import WorkbenchStrip from "./WorkbenchStrip";
 import OutputCanvas from "./OutputCanvas";
 import NextStepBar from "./NextStepBar";
@@ -394,7 +394,7 @@ export default function Terminal() {
 
   return (
     <div className="chamber-shell" data-chamber="terminal">
-      <ContextStrip
+      <TerminalHead
         copy={copy}
         backendMode={backend.mode}
         principlesCount={principles.length}

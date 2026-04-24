@@ -3,7 +3,7 @@ import type { VerdictState } from "./helpers";
 
 // Verdict badge — compact verdict summary after each query. Built on
 // the canonical .panel + .meta-grid primitives so its geometry matches
-// the InsightRail cards and every other panel across chambers. Accent
+// the Insight cards and every other panel across chambers. Accent
 // resolves from verdict outcome via data-tone.
 
 interface Props {
