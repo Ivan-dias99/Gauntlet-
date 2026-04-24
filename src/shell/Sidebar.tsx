@@ -59,21 +59,26 @@ export default function Sidebar({ active, onSelect }: Props) {
       data-signal-sidebar
       aria-label="Signal sidebar"
       style={{
+        position: "relative",
         display: "flex",
         flexDirection: "column",
         width: 272,
         minWidth: 272,
-        height: "100%",
+        height: "calc(100% - 2 * var(--space-3))",
         margin: "var(--space-3)",
         padding: 0,
-        background: "var(--bg-surface)",
-        border: "var(--border-mid)",
+        background: "var(--signal-component-bg)",
+        border: "1px solid var(--signal-component-border)",
         borderRadius: "var(--radius-panel)",
         boxShadow: [
-          "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 5%, transparent)",
-          "var(--shadow-panel)",
+          "0 1px 0 var(--signal-component-highlight) inset",
+          "0 0 0 1px var(--signal-component-inner-glow) inset",
+          "0 2px 8px var(--signal-component-shadow-near)",
+          "0 14px 40px -6px color-mix(in oklab, var(--cc-ok) 14%, var(--signal-component-shadow-far))",
+          "0 36px 80px -18px var(--signal-component-shadow-gravity)",
         ].join(", "),
         overflow: "hidden",
+        zIndex: 1,
       }}
     >
       <BrandHeader />
@@ -425,8 +430,8 @@ function Footer({
         flexDirection: "column",
         gap: 2,
         padding: "8px 12px 10px",
-        borderTop: "var(--border-soft)",
-        background: "color-mix(in oklab, var(--text-primary) 2%, var(--bg-surface))",
+        borderTop: "1px solid color-mix(in oklab, var(--cc-ok) 14%, transparent)",
+        background: "color-mix(in oklab, var(--text-primary) 2%, var(--signal-component-bg))",
       }}
     >
       <FooterLine label="backend" value={backendLabel} tone={backendOk ? "ok" : "warn"} />

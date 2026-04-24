@@ -399,9 +399,13 @@ export default function Terminal() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", minWidth: 0, minHeight: 0 }}>
+    <div
+      className="chamber-shell"
+      data-chamber="terminal"
+      style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", minWidth: 0, minHeight: 0 }}
+    >
     <Sidebar active="terminal" onSelect={selectChamber} />
-    <div className="chamber-shell" data-chamber="terminal" style={{ flex: 1, minWidth: 0, overflow: "auto" }}>
+    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "auto" }}>
       <ContextStrip
         copy={copy}
         backendMode={backend.mode}
