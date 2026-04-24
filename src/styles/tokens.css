@@ -131,10 +131,10 @@
   --border-strong: 1px solid var(--border-color-strong);
   --border: var(--border-color-mid);
 
-  --text-primary: #0a0906;
-  --text-secondary: #3a3126;
-  --text-muted: #776c58;
-  --text-ghost: #ada290;
+  --text-primary: #15100c;
+  --text-secondary: #5a5248;
+  --text-muted: #8a7f6c;
+  --text-ghost: #b8ae9a;
 
   --accent: #7a5730;
   --accent-dim: #b0a08a;
@@ -6819,9 +6819,9 @@ textarea {
   --signal-component-border-strong:  color-mix(in oklab, var(--cc-ok) 40%, color-mix(in oklab, #000 24%, transparent));
   --signal-component-highlight:      color-mix(in oklab, #fff 92%, transparent);
   --signal-component-inner-glow:     color-mix(in oklab, var(--cc-ok) 22%, transparent);
-  --signal-component-shadow-near:    color-mix(in oklab, #000 16%, transparent);
-  --signal-component-shadow-far:     color-mix(in oklab, #000 26%, transparent);
-  --signal-component-shadow-gravity: color-mix(in oklab, #000 40%, transparent);
+  --signal-component-shadow-near:    color-mix(in oklab, #000  8%, transparent);
+  --signal-component-shadow-far:     color-mix(in oklab, #000 14%, transparent);
+  --signal-component-shadow-gravity: color-mix(in oklab, #000 22%, transparent);
 }
 
 /* ——— Sepia — warm archival, olive atmosphere, amber-cream borders — */
@@ -6991,25 +6991,18 @@ textarea {
   background: var(--signal-component-bg);
 }
 
-/* — Light premium: SEG backlit fabric lightbox instruments —
-   Pure white interiors. Green appears as light escaping at the edge
-   (inner bleed) and as a layered outer halo (backlit diffusion).
-   Composer remains dominant via its own stronger halo.                  */
+/* — Light premium: clean editorial panels — competitor-cloned restraint —
+   Pure white interior, thin warm grey border, soft layered drop shadow.
+   No green halos, no SEG fabric effect. Quiet, premium, Apple-grade.    */
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine,
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
-  border-color: color-mix(in oklab, var(--cc-ok) 34%, color-mix(in oklab, #000 30%, transparent));
+  border-color: color-mix(in oklab, #000 8%, transparent);
   box-shadow:
-    0  0  0  1px   color-mix(in oklab, var(--cc-ok) 18%, color-mix(in oklab, #fff 82%, transparent)) inset,
-    0  1px 0       color-mix(in oklab, #fff 100%, transparent) inset,
-    0 -1px 0       color-mix(in oklab, #000 10%, transparent) inset,
-    0  0  0    2px color-mix(in oklab, var(--cc-ok) 10%, transparent),
-    0  0 22px  3px color-mix(in oklab, var(--cc-ok) 24%, transparent),
-    0  0 52px  8px color-mix(in oklab, var(--cc-ok) 18%, transparent),
-    0  0 96px 16px color-mix(in oklab, var(--cc-ok) 12%, transparent),
-    0  1px  3px           color-mix(in oklab, #000 20%, transparent),
-    0  8px 22px  -4px     color-mix(in oklab, #000 30%, transparent),
-    0 30px 60px -18px     color-mix(in oklab, #000 42%, transparent),
-    0 64px 120px -36px    color-mix(in oklab, #000 28%, transparent);
+    0  1px 0   color-mix(in oklab, #fff 100%, transparent) inset,
+    0  1px  2px           color-mix(in oklab, #000  5%, transparent),
+    0  4px 12px  -2px     color-mix(in oklab, #000  8%, transparent),
+    0 14px 32px -10px     color-mix(in oklab, #000 12%, transparent),
+    0 32px 64px -24px     color-mix(in oklab, #000 14%, transparent);
 }
 
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine,
@@ -7109,12 +7102,16 @@ textarea {
     0 2px 8px -2px  color-mix(in oklab, var(--cc-ok) 12%, transparent);
 }
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
-  background: color-mix(in oklab, var(--cc-ok) 5%, var(--bg-elevated));
-  color: var(--cc-ok);
-  box-shadow:
-    inset 3px 0 0   var(--cc-ok),
-    0 0 0 1px       color-mix(in oklab, var(--cc-ok) 26%, transparent) inset,
-    0 2px 6px -2px  color-mix(in oklab, #000 12%, transparent);
+  background: color-mix(in oklab, var(--cc-ok) 16%, var(--bg-elevated));
+  color: var(--text-primary);
+  box-shadow: none;
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] .term-spine-item-label {
+  color: var(--text-primary);
+  text-shadow: none;
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] .term-spine-item-icon {
+  color: var(--text-primary);
 }
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
   color: var(--text-primary);
@@ -7395,30 +7392,22 @@ textarea {
      • composer gets its own stronger pyramid — stays dominant object
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* — Composer in light: strongest backlit instrument — hero object —
-   Matches the SEG fabric lightbox effect: bright white deck, green edge
-   light bleed, layered diffuse green halo, deep gravitational base.     */
+/* — Composer in light: clean editorial pill, softer drop shadow — canon —
+   Same shadow language as spine/workbench but slightly heavier so it
+   remains the dominant instrument. No green halo. Quiet confidence.     */
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-command {
   box-shadow:
-    0  0  0  1px   color-mix(in oklab, var(--cc-ok) 38%, color-mix(in oklab, #000 34%, transparent)),
-    0  0  0   3px  color-mix(in oklab, var(--cc-ok) 12%, transparent),
-    0  0 28px  4px color-mix(in oklab, var(--cc-ok) 28%, transparent),
-    0  0 64px 10px color-mix(in oklab, var(--cc-ok) 22%, transparent),
-    0  0 110px 22px color-mix(in oklab, var(--cc-ok) 14%, transparent),
-    0  1px  3px           color-mix(in oklab, #000 24%, transparent),
-    0  8px 22px  -4px     color-mix(in oklab, #000 34%, transparent),
-    0 30px 60px -18px     color-mix(in oklab, #000 48%, transparent),
-    0 64px 120px -36px    color-mix(in oklab, #000 34%, transparent);
+    0  0  0  1px   color-mix(in oklab, #000 10%, transparent),
+    0  1px  3px           color-mix(in oklab, #000  7%, transparent),
+    0  6px 16px  -2px     color-mix(in oklab, #000 11%, transparent),
+    0 18px 40px -12px     color-mix(in oklab, #000 15%, transparent),
+    0 40px 80px -28px     color-mix(in oklab, #000 18%, transparent);
 }
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] {
   box-shadow:
-    0  0  0  1.5px color-mix(in oklab, var(--cc-ok) 48%, color-mix(in oklab, #000 36%, transparent)),
-    0  0  0   4px  color-mix(in oklab, var(--cc-ok) 16%, transparent),
-    0  0 32px  6px color-mix(in oklab, var(--cc-ok) 36%, transparent),
-    0  0 72px 14px color-mix(in oklab, var(--cc-ok) 26%, transparent),
-    0  0 120px 26px color-mix(in oklab, var(--cc-ok) 16%, transparent),
-    0  1px  3px           color-mix(in oklab, #000 24%, transparent),
-    0  8px 22px  -4px     color-mix(in oklab, var(--cc-ok) 34%, transparent),
-    0 30px 60px -18px     color-mix(in oklab, #000 50%, transparent),
-    0 64px 120px -36px    color-mix(in oklab, #000 36%, transparent);
+    0  0  0  1.5px color-mix(in oklab, var(--cc-ok) 36%, color-mix(in oklab, #000 14%, transparent)),
+    0  1px  3px           color-mix(in oklab, #000  8%, transparent),
+    0  6px 16px  -2px     color-mix(in oklab, var(--cc-ok) 18%, transparent),
+    0 18px 40px -12px     color-mix(in oklab, #000 16%, transparent),
+    0 40px 80px -28px     color-mix(in oklab, #000 20%, transparent);
 }
