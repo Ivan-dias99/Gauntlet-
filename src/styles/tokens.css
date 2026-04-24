@@ -4608,28 +4608,53 @@ textarea {
   background:
     radial-gradient(
       ellipse 70% 45% at 50% -2%,
-      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
+      color-mix(in oklab, var(--cc-ok) 18%, transparent) 0%,
       transparent 58%
     ),
     radial-gradient(
       ellipse 55% 70% at -8% 42%,
-      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
+      color-mix(in oklab, var(--cc-ok) 14%, transparent) 0%,
       transparent 50%
     ),
     radial-gradient(
       ellipse 55% 70% at 108% 58%,
-      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
+      color-mix(in oklab, var(--cc-ok) 14%, transparent) 0%,
       transparent 50%
     ),
     radial-gradient(
       ellipse 110% 60% at 50% 108%,
-      color-mix(in oklab, var(--cc-ok) 9%, transparent) 0%,
+      color-mix(in oklab, var(--cc-ok) 16%, transparent) 0%,
       transparent 60%
+    ),
+    radial-gradient(
+      ellipse 120% 80% at 50% 50%,
+      color-mix(in oklab, var(--cc-ok) 5%, transparent) 0%,
+      transparent 80%
     );
 }
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"]::after,
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::after {
-  opacity: 0.55;
+  opacity: 0.82;
+}
+/* Light / ivory — precision mode. The sovereign green curtain is a
+   dark-mode signature; on ivory it must not wash the whole page.
+   Keep only a faint upper whisper so the chamber still reads as
+   "Terminal" without painting the ivory green. */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"]::before {
+  background:
+    radial-gradient(
+      ellipse 60% 30% at 50% -4%,
+      color-mix(in oklab, var(--cc-ok) 6%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 120% 60% at 50% 110%,
+      color-mix(in oklab, var(--cc-ok) 3%, transparent) 0%,
+      transparent 70%
+    );
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"]::after {
+  opacity: 0.35;
 }
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::before {
   background:
@@ -4672,7 +4697,9 @@ textarea {
 [data-theme="sepia"] .term-workbench-strip {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 5%, transparent) inset,
+    0 0 0 1px color-mix(in oklab, var(--cc-ok) 14%, transparent),
     0 1px 2px color-mix(in oklab, #000 20%, transparent),
+    0 10px 22px -12px color-mix(in oklab, var(--cc-ok) 22%, transparent),
     0 10px 22px -12px color-mix(in oklab, #000 40%, transparent);
 }
 
@@ -4764,7 +4791,10 @@ textarea {
 }
 
 /* Outer shell — slightly stronger rim for edge definition, and a
-   finer radius relationship (22 outer / 18 inner = 4px mat). */
+   finer radius relationship (22 outer / 18 inner = 4px mat). In dark
+   and sepia the shell earns a faint sage edge aura so the composer
+   reads as the sovereign instrument of the green command room. Light
+   mode stays neutral — the ivory precision is its own identity. */
 .term-command {
   border-radius: 22px;
   padding: 4px;
@@ -4775,6 +4805,12 @@ textarea {
       color-mix(in oklab, var(--text-primary) 1%, transparent) 60%,
       color-mix(in oklab, var(--text-primary) 2%, transparent) 100%
     );
+}
+[data-theme="dark"] .term-command,
+[data-theme="sepia"] .term-command {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--cc-ok) 14%, transparent),
+    0 16px 36px -18px color-mix(in oklab, var(--cc-ok) 22%, transparent);
 }
 
 /* Composer workspace chips — stronger microcontrast for labels,

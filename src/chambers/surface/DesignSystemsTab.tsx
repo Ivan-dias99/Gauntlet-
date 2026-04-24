@@ -63,7 +63,7 @@ export default function DesignSystemsTab() {
           color: "var(--text-ghost)",
         }}
       >
-        o sistema marcado <span style={{ color: "var(--chamber-dna, var(--accent))" }}>default</span> é aplicado automaticamente a cada nova surface.
+        o sistema marcado <span style={{ color: "var(--cc-ok)" }}>default</span> é aplicado automaticamente a cada nova surface.
       </p>
     </div>
   );
@@ -220,7 +220,7 @@ function Row({ row, last }: { row: SystemRow; last: boolean }) {
         padding: row.isDefault ? "14px 16px 14px 18px" : "13px 16px",
         borderBottom: last ? "none" : "var(--border-soft)",
         background: row.isDefault
-          ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 4%, var(--bg-elevated))"
+          ? "color-mix(in oklab, var(--cc-ok) 3%, var(--bg-elevated))"
           : hover
             ? "var(--bg-elevated)"
             : "transparent",
@@ -239,9 +239,9 @@ function Row({ row, last }: { row: SystemRow; last: boolean }) {
           width: 2,
           borderRadius: 2,
           background: row.isDefault
-            ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 72%, transparent)"
+            ? "color-mix(in oklab, var(--cc-ok) 72%, transparent)"
             : hover
-              ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 42%, transparent)"
+              ? "color-mix(in oklab, var(--cc-ok) 42%, transparent)"
               : "transparent",
           transition: "background var(--dur-fast) var(--ease-swift)",
         }}
@@ -265,11 +265,11 @@ function Row({ row, last }: { row: SystemRow; last: boolean }) {
                 fontSize: 10,
                 letterSpacing: "var(--track-label)",
                 textTransform: "uppercase",
-                color: "var(--chamber-dna, var(--accent))",
+                color: "var(--cc-ok)",
                 padding: "1px 8px",
                 borderRadius: 999,
-                border: "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 46%, transparent)",
-                background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 10%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--cc-ok) 44%, transparent)",
+                background: "color-mix(in oklab, var(--cc-ok) 9%, transparent)",
               }}
             >
               default

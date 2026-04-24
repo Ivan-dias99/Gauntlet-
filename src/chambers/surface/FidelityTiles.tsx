@@ -66,15 +66,18 @@ function Tile({
         gap: 8,
         padding: 10,
         background: active ? "var(--bg-elevated)" : "var(--bg-surface)",
+        // Selected state = sage, not copper. Sage encodes "active / ready /
+        // selected" in the Signal semantic grammar; copper is reserved for
+        // action moments (Generate, mission). Single thin ring beats triple
+        // bloom for Apple-level precision.
         border: active
-          ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 62%, var(--border-color-mid))"
+          ? "1px solid color-mix(in oklab, var(--cc-ok) 54%, var(--border-color-mid))"
           : "var(--border-soft)",
         borderRadius: "var(--radius-control)",
         boxShadow: active
           ? [
               "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 6%, transparent)",
-              "0 0 0 3px color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, transparent)",
-              "0 6px 18px color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, transparent)",
+              "0 0 0 2px color-mix(in oklab, var(--cc-ok) 16%, transparent)",
             ].join(", ")
           : "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 3%, transparent)",
         cursor: "pointer",
@@ -98,7 +101,7 @@ function Tile({
             fontSize: 9,
             letterSpacing: "var(--track-label)",
             textTransform: "uppercase",
-            color: "var(--chamber-dna, var(--accent))",
+            color: "var(--cc-ok)",
           }}
         >
           <span
@@ -107,8 +110,8 @@ function Tile({
               width: 6,
               height: 6,
               borderRadius: 999,
-              background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 72%, transparent)",
-              boxShadow: "0 0 0 3px color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, transparent)",
+              background: "color-mix(in oklab, var(--cc-ok) 80%, transparent)",
+              boxShadow: "0 0 0 3px color-mix(in oklab, var(--cc-ok) 16%, transparent)",
             }}
           />
           activo
@@ -122,7 +125,7 @@ function Tile({
           justifyContent: "center",
           height: 74,
           background: active
-            ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 5%, var(--bg-input))"
+            ? "color-mix(in oklab, var(--cc-ok) 4%, var(--bg-input))"
             : "var(--bg-input)",
           border: "var(--border-soft)",
           borderRadius: "calc(var(--radius-control) - 4px)",

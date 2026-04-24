@@ -85,12 +85,12 @@ export default function CreationPanel({
         border: "var(--border-mid)",
         borderRadius: "var(--radius-panel)",
         background: "var(--bg-surface)",
-        // Layered gravity: inner top highlight + outer DNA ring + main shadow.
-        // Together they give the Terminal-grade object authority without
-        // adding visual noise.
+        // Apple-grade object frame: precise border + inner top highlight
+        // + canonical shadow-panel. No outer coloured ring — Surface is
+        // the design workstation, not the execution field; the sage
+        // semantic lives inside on active states, not on the hull.
         boxShadow: [
           "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 5%, transparent)",
-          "0 0 0 1px color-mix(in oklab, var(--chamber-dna, var(--accent)) 10%, transparent)",
           "var(--shadow-panel)",
         ].join(", "),
       }}
@@ -274,16 +274,18 @@ export default function CreationPanel({
             borderRadius: "var(--radius-control)",
             background: "var(--bg-input)",
             border: briefFocus
-              ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 46%, var(--border-color-mid))"
+              ? "1px solid color-mix(in oklab, var(--cc-ok) 42%, var(--border-color-mid))"
               : "var(--border-mid)",
             boxShadow: briefFocus
-              ? "0 0 0 3px color-mix(in oklab, var(--chamber-dna, var(--accent)) 10%, transparent)"
+              ? "0 0 0 2px color-mix(in oklab, var(--cc-ok) 12%, transparent)"
               : "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 3%, transparent)",
             transition:
               "border-color var(--dur-fast) var(--ease-swift), box-shadow var(--dur-fast) var(--ease-swift)",
           }}
         >
-          {/* DNA indent rail — a calm visual anchor on the left edge */}
+          {/* Readiness indent rail — a calm semantic anchor on the left
+              edge. Sage fills in when the brief carries content; before
+              that it's a quiet ghost hairline. */}
           <span
             aria-hidden
             style={{
@@ -294,7 +296,7 @@ export default function CreationPanel({
               width: 2,
               borderRadius: 2,
               background: briefReady
-                ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 55%, transparent)"
+                ? "color-mix(in oklab, var(--cc-ok) 58%, transparent)"
                 : "color-mix(in oklab, var(--text-ghost) 28%, transparent)",
               transition: "background var(--dur-fast) var(--ease-swift)",
             }}
@@ -373,11 +375,15 @@ export default function CreationPanel({
               : "var(--border-soft)",
             borderRadius: "var(--radius-control)",
             cursor: canSubmit ? "pointer" : "not-allowed",
+            // Copper action emphasis is correct for Generate, but the
+            // stack is tightened — inner highlight + single 2px ring +
+            // a small copper drop — so the button reads deliberate, not
+            // inflated.
             boxShadow: canSubmit
               ? [
                   "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 6%, transparent)",
-                  "0 0 0 3px color-mix(in oklab, var(--chamber-dna, var(--accent)) 10%, transparent)",
-                  "0 6px 18px color-mix(in oklab, var(--chamber-dna, var(--accent)) 18%, transparent)",
+                  "0 0 0 2px color-mix(in oklab, var(--chamber-dna, var(--accent)) 10%, transparent)",
+                  "0 4px 12px -4px color-mix(in oklab, var(--chamber-dna, var(--accent)) 20%, transparent)",
                 ].join(", ")
               : "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 3%, transparent)",
             transition:
@@ -555,12 +561,12 @@ function Segmented<V extends string>({ value, options, onChange }: SegmentedProp
               background: active ? "var(--bg-elevated)" : "transparent",
               color: active ? "var(--text-primary)" : "var(--text-muted)",
               border: active
-                ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 36%, var(--border-color-soft))"
+                ? "1px solid color-mix(in oklab, var(--cc-ok) 30%, var(--border-color-soft))"
                 : "1px solid transparent",
               borderRadius: "calc(var(--radius-control) - 3px)",
               cursor: "pointer",
               boxShadow: active
-                ? "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 6%, transparent), 0 1px 3px color-mix(in oklab, var(--chamber-dna, var(--accent)) 12%, transparent)"
+                ? "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 6%, transparent)"
                 : "none",
               transition:
                 "background var(--dur-fast) var(--ease-swift), color var(--dur-fast) var(--ease-swift), border-color var(--dur-fast) var(--ease-swift), box-shadow var(--dur-fast) var(--ease-swift)",
@@ -576,7 +582,7 @@ function Segmented<V extends string>({ value, options, onChange }: SegmentedProp
                   bottom: 2,
                   height: 2,
                   borderRadius: 2,
-                  background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 50%, transparent)",
+                  background: "color-mix(in oklab, var(--cc-ok) 58%, transparent)",
                 }}
               />
             )}

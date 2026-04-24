@@ -76,9 +76,11 @@ export default function ExplorationRail({ plan, mock, jumpNonce, jumpTo }: Props
         border: "var(--border-mid)",
         borderRadius: "var(--radius-panel)",
         background: "var(--bg-surface)",
+        // Apple-precision frame — border + inner top highlight +
+        // shadow-panel only. No coloured outer ring; sage lives inside
+        // on active states, not on the hull of the workstation.
         boxShadow: [
           "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 5%, transparent)",
-          "0 0 0 1px color-mix(in oklab, var(--chamber-dna, var(--accent)) 10%, transparent)",
           "var(--shadow-panel)",
         ].join(", "),
         height: "100%",
@@ -134,8 +136,8 @@ export default function ExplorationRail({ plan, mock, jumpNonce, jumpTo }: Props
                     bottom: 2,
                     height: 2,
                     borderRadius: 2,
-                    background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 70%, transparent)",
-                    boxShadow: "0 0 10px color-mix(in oklab, var(--chamber-dna, var(--accent)) 44%, transparent)",
+                    background: "color-mix(in oklab, var(--cc-ok) 72%, transparent)",
+                    boxShadow: "0 0 10px color-mix(in oklab, var(--cc-ok) 38%, transparent)",
                   }}
                 />
               )}
@@ -318,16 +320,16 @@ function Card({ item }: { item: ExampleCard }) {
         gap: 10,
         padding: 14,
         border: hover
-          ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 30%, var(--border-color-soft))"
+          ? "1px solid color-mix(in oklab, var(--cc-ok) 28%, var(--border-color-soft))"
           : "var(--border-soft)",
         borderRadius: "var(--radius-control)",
         background: hover ? "var(--bg-elevated)" : "var(--bg-surface)",
+        // Card hover: precise sage border shift + quiet inner highlight.
+        // No coloured drop shadow — Apple precision prefers restraint
+        // over bloom; hover reads as a deliberate select signal, not
+        // a spotlight.
         boxShadow: hover
-          ? [
-              "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 5%, transparent)",
-              "0 1px 0 color-mix(in oklab, var(--chamber-dna, var(--accent)) 8%, transparent)",
-              "0 8px 22px color-mix(in oklab, var(--chamber-dna, var(--accent)) 10%, transparent)",
-            ].join(", ")
+          ? "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 5%, transparent)"
           : "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 3%, transparent)",
         transition:
           "border-color var(--dur-fast) var(--ease-swift), background var(--dur-fast) var(--ease-swift), box-shadow var(--dur-med) var(--ease-swift)",
@@ -344,7 +346,7 @@ function Card({ item }: { item: ExampleCard }) {
           width: 2,
           borderRadius: 2,
           background: hover
-            ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 62%, transparent)"
+            ? "color-mix(in oklab, var(--cc-ok) 62%, transparent)"
             : "transparent",
           transition: "background var(--dur-fast) var(--ease-swift)",
         }}
@@ -402,7 +404,7 @@ function Card({ item }: { item: ExampleCard }) {
               height: 5,
               borderRadius: 999,
               background: item.kind === "hi-fi"
-                ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 70%, transparent)"
+                ? "color-mix(in oklab, var(--cc-ok) 72%, transparent)"
                 : "color-mix(in oklab, var(--text-ghost) 60%, transparent)",
             }}
           />
@@ -492,11 +494,11 @@ function SearchField({ value, onChange }: { value: string; onChange: (v: string)
         padding: "10px 12px",
         background: "var(--bg-input)",
         border: focus
-          ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 46%, var(--border-color-mid))"
+          ? "1px solid color-mix(in oklab, var(--cc-ok) 42%, var(--border-color-mid))"
           : "var(--border-mid)",
         borderRadius: "var(--radius-control)",
         boxShadow: focus
-          ? "0 0 0 3px color-mix(in oklab, var(--chamber-dna, var(--accent)) 10%, transparent)"
+          ? "0 0 0 2px color-mix(in oklab, var(--cc-ok) 12%, transparent)"
           : "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 3%, transparent)",
         transition:
           "border-color var(--dur-fast) var(--ease-swift), box-shadow var(--dur-fast) var(--ease-swift)",
@@ -513,9 +515,9 @@ function SearchField({ value, onChange }: { value: string; onChange: (v: string)
           borderRadius: 999,
           fontFamily: "var(--mono)",
           fontSize: 12,
-          color: focus ? "var(--chamber-dna, var(--accent))" : "var(--text-ghost)",
+          color: focus ? "var(--cc-ok)" : "var(--text-ghost)",
           background: focus
-            ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, transparent)"
+            ? "color-mix(in oklab, var(--cc-ok) 14%, transparent)"
             : "transparent",
         }}
       >
