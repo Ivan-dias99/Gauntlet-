@@ -12,6 +12,7 @@ import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
 import CreationPanel from "./CreationPanel";
 import ExplorationRail from "./ExplorationRail";
+import { type ContextItem, type ContextKind, defaultItemLabel } from "./ContextIntake";
 
 // Surface chamber — design workstation.
 //
@@ -35,10 +36,39 @@ export default function Surface() {
   const [plan, setPlan] = useState<SurfacePlanPayload | null>(null);
   const [planIsMock, setPlanIsMock] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
+  // Context intake. Session-only in W3; the connector layer (Wave 5)
+  // will project real uploads / repo links / figma files into the same
+  // shape without touching this component.
+  const [contextItems, setContextItems] = useState<ContextItem[]>([]);
+  // Rail jump — "ver todos" on the DS row pivots the right rail to
+  // the Design Systems tab. Implemented as a monotonic nonce so each
+  // click re-fires the useEffect on the rail (otherwise setting the
+  // same target twice is a no-op). The rail reads target + nonce; user
+  // tab picks aren't touched.
+  const [railJumpNonce, setRailJumpNonce] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   const patchBrief = (p: Partial<SurfaceBriefPayload>) =>
     setBrief((b) => ({ ...b, ...p }));
+
+  const attachContext = (kind: ContextKind) => {
+    setContextItems((prev) => [
+      ...prev,
+      {
+        id: `${kind}-${Date.now().toString(36)}-${prev.length}`,
+        kind,
+        label: defaultItemLabel(kind),
+      },
+    ]);
+  };
+
+  const detachContext = (id: string) => {
+    setContextItems((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  const openSystems = () => {
+    setRailJumpNonce((n) => n + 1);
+  };
 
   async function submit() {
     const v = prompt.trim();
@@ -115,6 +145,10 @@ export default function Surface() {
               onSubmit={submit}
               pending={pending}
               mockBanner={mockBannerVisible}
+              contextItems={contextItems}
+              onAttachContext={attachContext}
+              onDetachContext={detachContext}
+              onOpenSystems={openSystems}
             />
             {unreachable && (
               <DormantPanel detail="Backend de Surface inacessível. Os modos, a fidelidade e o design system ficam guardados localmente; a geração do plano fica suspensa até o backend voltar." />
@@ -136,7 +170,7 @@ export default function Surface() {
             )}
           </>
         }
-        right={<ExplorationRail plan={plan} mock={planIsMock} />}
+        right={<ExplorationRail plan={plan} mock={planIsMock} jumpNonce={railJumpNonce} jumpTo="systems" />}
       />
     </div>
   );

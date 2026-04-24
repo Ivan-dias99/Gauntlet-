@@ -1,11 +1,22 @@
 import { useEffect, useRef } from "react";
 import type { SurfaceBriefPayload } from "../../hooks/useSignal";
+import ContextIntake, { type ContextItem, type ContextKind } from "./ContextIntake";
+import FidelityTiles from "./FidelityTiles";
 
-// Wave-3 left-side creation panel. Four controls:
-//   - ModeSelector (prototype / slide deck / from template / other)
-//   - FidelitySelector (wireframe / hi-fi)
-//   - DesignSystemPicker (list of canned DSes; optional in W3, mandatory in W5)
-//   - Brief textarea + submit
+// Wave-3 left-side intake console. The chamber's creation field.
+// Sections, top-to-bottom:
+//   · mock banner (when backend is mock or plan was canned)
+//   · Modo          — segmented, 4 options
+//   · Fidelidade    — visual tiles with inline SVG thumbs
+//   · Design system — active system row + "ver todos"
+//   · Contexto      — intake rows (screenshot / codebase / figma / ref /
+//                     asset / skill) and attached chips
+//   · Brief         — purpose / users / constraints
+//   · Gerar plano   — full-width primary, with ⌘/Ctrl + Enter hint
+//
+// Material discipline: every sub-surface uses --bg-surface /
+// --bg-elevated / --bg-input from the active chamber DNA so white /
+// sepia / dark flow without local colour decisions.
 
 export const MODES: Array<{ key: SurfaceBriefPayload["mode"]; label: string }> = [
   { key: "prototype",     label: "Protótipo" },
@@ -14,20 +25,15 @@ export const MODES: Array<{ key: SurfaceBriefPayload["mode"]; label: string }> =
   { key: "other",         label: "Outro" },
 ];
 
-export const FIDELITIES: Array<{ key: SurfaceBriefPayload["fidelity"]; label: string }> = [
-  { key: "wireframe", label: "Wireframe" },
-  { key: "hi-fi",     label: "Alta fidelidade" },
-];
-
 // Canned design systems. Real catalogue comes from Core (Wave 4) / the
 // archive connector layer. Kept small and uncontroversial in W3.
 export const DESIGN_SYSTEMS = [
   "Signal Canon",
   "Claude Design",
+  "Archive Primitives",
+  "Terminal Chrome",
   "Material You",
   "Tailwind UI",
-  "Shadcn UI",
-  "Radix Primitives",
   "—",
 ] as const;
 
@@ -39,14 +45,18 @@ interface Props {
   onSubmit: () => void;
   pending: boolean;
   mockBanner?: boolean;
+  contextItems: ContextItem[];
+  onAttachContext: (kind: ContextKind) => void;
+  onDetachContext: (id: string) => void;
+  onOpenSystems: () => void;
 }
 
 export default function CreationPanel({
   brief, onBriefChange, prompt, onPromptChange, onSubmit, pending, mockBanner,
+  contextItems, onAttachContext, onDetachContext, onOpenSystems,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Auto-grow textarea within reasonable bounds (same pattern as School).
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -55,17 +65,21 @@ export default function CreationPanel({
   }, [prompt]);
 
   const canSubmit = prompt.trim().length > 0 && !pending;
+  const ctxCount = contextItems.length;
+  const readySignal = prompt.trim().length > 0 || ctxCount > 0;
 
   return (
     <div
+      data-surface-console
       style={{
         display: "flex",
         flexDirection: "column",
         gap: "var(--space-3)",
-        padding: "var(--space-3)",
-        border: "var(--border-soft)",
+        padding: "var(--space-4)",
+        border: "var(--border-mid)",
         borderRadius: "var(--radius-panel)",
         background: "var(--bg-surface)",
+        boxShadow: "var(--shadow-panel)",
       }}
     >
       {mockBanner && (
@@ -88,50 +102,119 @@ export default function CreationPanel({
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Label>Modo</Label>
+      <Section label="Modo">
         <Segmented
           value={brief.mode}
           options={MODES}
           onChange={(v) => onBriefChange({ mode: v })}
         />
-      </div>
+      </Section>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Label>Fidelidade</Label>
-        <Segmented
+      <Section label="Fidelidade">
+        <FidelityTiles
           value={brief.fidelity}
-          options={FIDELITIES}
           onChange={(v) => onBriefChange({ fidelity: v })}
         />
-      </div>
+      </Section>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Label>Design system</Label>
-        <select
-          value={brief.design_system ?? "—"}
-          onChange={(e) => {
-            const v = e.target.value;
-            onBriefChange({ design_system: v === "—" ? null : v });
-          }}
+      <Section
+        label="Design system"
+        right={
+          <button
+            type="button"
+            onClick={onOpenSystems}
+            data-surface-open-systems
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              letterSpacing: "var(--track-label)",
+              textTransform: "uppercase",
+              color: "var(--text-muted)",
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+            }}
+          >
+            → ver todos
+          </button>
+        }
+      >
+        <div
           style={{
-            fontFamily: "var(--sans)",
-            fontSize: "var(--t-body-sec)",
+            display: "grid",
+            gridTemplateColumns: "28px 1fr auto",
+            alignItems: "center",
+            gap: 10,
             padding: "8px 10px",
-            background: "var(--bg-input)",
-            color: "var(--text-primary)",
-            border: "var(--border-mid)",
+            background: "var(--bg-elevated)",
+            border: "var(--border-soft)",
             borderRadius: "var(--radius-control)",
           }}
         >
-          {DESIGN_SYSTEMS.map((ds) => (
-            <option key={ds} value={ds}>{ds === "—" ? "— sem design system" : ds}</option>
-          ))}
-        </select>
-      </div>
+          <span
+            aria-hidden
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 24,
+              height: 24,
+              borderRadius: 6,
+              fontFamily: "var(--mono)",
+              fontSize: 12,
+              color: "var(--chamber-dna, var(--accent))",
+              background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, var(--bg-input))",
+              border: "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 30%, transparent)",
+            }}
+          >
+            ◐
+          </span>
+          <select
+            value={brief.design_system ?? "—"}
+            onChange={(e) => {
+              const v = e.target.value;
+              onBriefChange({ design_system: v === "—" ? null : v });
+            }}
+            style={{
+              fontFamily: "var(--sans)",
+              fontSize: "var(--t-body-sec)",
+              padding: "4px 0",
+              background: "transparent",
+              color: "var(--text-primary)",
+              border: "none",
+              outline: "none",
+              appearance: "none",
+              cursor: "pointer",
+            }}
+          >
+            {DESIGN_SYSTEMS.map((ds) => (
+              <option key={ds} value={ds}>
+                {ds === "—" ? "— sem design system" : ds}
+              </option>
+            ))}
+          </select>
+          <span
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              letterSpacing: "var(--track-label)",
+              textTransform: "uppercase",
+              color: brief.design_system ? "var(--chamber-dna, var(--accent))" : "var(--text-ghost)",
+            }}
+          >
+            {brief.design_system ? "activo" : "nenhum"}
+          </span>
+        </div>
+      </Section>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Label>Brief</Label>
+      <ContextIntake
+        items={contextItems}
+        onAttach={onAttachContext}
+        onDetach={onDetachContext}
+      />
+
+      <Section label="Brief">
         <textarea
           ref={textareaRef}
           rows={3}
@@ -143,46 +226,108 @@ export default function CreationPanel({
               if (canSubmit) onSubmit();
             }
           }}
-          placeholder="Descreve a superfície — propósito, utilizador, restrições…"
+          placeholder="Propósito · utilizadores · restrições · resultado desejado…"
           style={{
             fontFamily: "var(--sans)",
             fontSize: "var(--t-body)",
             lineHeight: "var(--lh-body)",
             padding: "10px 12px",
-            minHeight: 72,
+            minHeight: 88,
             maxHeight: 240,
             resize: "none",
             background: "var(--bg-input)",
             color: "var(--text-primary)",
             border: "var(--border-mid)",
             borderRadius: "var(--radius-control)",
+            width: "100%",
+            boxSizing: "border-box",
           }}
         />
-      </div>
+      </Section>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          paddingTop: 4,
+        }}
+      >
         <button
           onClick={onSubmit}
           disabled={!canSubmit}
           data-surface-submit
-          className="btn-chip"
-          data-variant="sans"
-          style={{ opacity: canSubmit ? 1 : 0.5 }}
-        >
-          {pending ? "a gerar…" : "Gerar plano"}
-        </button>
-        <span
+          data-ready={readySignal || undefined}
           style={{
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-micro)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-            color: "var(--text-muted)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            width: "100%",
+            padding: "12px 14px",
+            fontFamily: "var(--sans)",
+            fontSize: "var(--t-body)",
+            fontWeight: 500,
+            color: canSubmit ? "#fff" : "var(--text-muted)",
+            background: canSubmit
+              ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 92%, transparent)"
+              : "var(--bg-elevated)",
+            border: canSubmit
+              ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 72%, transparent)"
+              : "var(--border-soft)",
+            borderRadius: "var(--radius-control)",
+            cursor: canSubmit ? "pointer" : "not-allowed",
+            boxShadow: canSubmit
+              ? "0 1px 0 color-mix(in oklab, #000 14%, transparent), 0 8px 24px color-mix(in oklab, var(--chamber-dna, var(--accent)) 22%, transparent)"
+              : "none",
+            transition:
+              "background var(--dur-fast) var(--ease-swift), border-color var(--dur-fast) var(--ease-swift), box-shadow var(--dur-fast) var(--ease-swift)",
           }}
         >
-          ⌘/Ctrl + Enter
-        </span>
+          <span aria-hidden style={{ fontFamily: "var(--mono)", fontSize: 12 }}>▷</span>
+          {pending ? "a gerar…" : "Gerar surface"}
+        </button>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+            color: "var(--text-ghost)",
+          }}
+        >
+          <span>
+            {ctxCount > 0
+              ? `${ctxCount} em contexto · brief ${prompt.trim() ? "ok" : "por escrever"}`
+              : prompt.trim()
+                ? "brief ok · sem contexto anexado"
+                : "adiciona contexto ou escreve brief"}
+          </span>
+          <span>⌘/Ctrl + Enter</span>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Section({
+  label, right, children,
+}: {
+  label: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+        <Label>{label}</Label>
+        {right}
+      </div>
+      {children}
     </div>
   );
 }
@@ -216,9 +361,9 @@ function Segmented<V extends string>({ value, options, onChange }: SegmentedProp
       style={{
         display: "grid",
         gridTemplateColumns: `repeat(${options.length}, 1fr)`,
-        border: "var(--border-mid)",
+        border: "var(--border-soft)",
         borderRadius: "var(--radius-control)",
-        padding: 2,
+        padding: 3,
         background: "var(--bg-input)",
       }}
     >
@@ -233,13 +378,16 @@ function Segmented<V extends string>({ value, options, onChange }: SegmentedProp
             style={{
               fontFamily: "var(--sans)",
               fontSize: "var(--t-body-sec)",
-              padding: "6px 8px",
+              padding: "7px 8px",
               background: active ? "var(--bg-elevated)" : "transparent",
               color: active ? "var(--text-primary)" : "var(--text-muted)",
-              border: active ? "var(--border-soft)" : "1px solid transparent",
-              borderRadius: "calc(var(--radius-control) - 2px)",
+              border: active
+                ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 28%, var(--border-color-soft))"
+                : "1px solid transparent",
+              borderRadius: "calc(var(--radius-control) - 3px)",
               cursor: "pointer",
-              transition: "background var(--dur-fast) var(--ease-swift), color var(--dur-fast) var(--ease-swift)",
+              transition:
+                "background var(--dur-fast) var(--ease-swift), color var(--dur-fast) var(--ease-swift), border-color var(--dur-fast) var(--ease-swift)",
             }}
           >
             {o.label}
