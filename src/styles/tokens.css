@@ -6919,3 +6919,171 @@ textarea {
     0 30px 60px -18px     var(--signal-component-shadow-gravity),
     0 64px 120px -36px    color-mix(in oklab, var(--signal-component-shadow-near) 45%, transparent);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SIGNAL MATERIAL v3 — RAIL + WORKBENCH PREMIUM PARITY PASS
+   Rail and workbench must belong to the same material family as Composer.
+   Strategy:
+     1. Directional gradient backgrounds — material depth without double-frame
+     2. Inner contour ring (0 0 0 1px inset) — simulates structural frame border
+     3. 2px bright top rim — amplified catch-light
+     4. Deep backlit bloom — 80px/140px vs the prior 52px/80px
+     5. Theme-scoped pyramids (0-4-0) — per-theme shadow amplification
+   Composer remains the ceiling. Rail/workbench read as the same family.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* — Gradient backgrounds: directional material depth — */
+
+.chamber-shell[data-chamber="terminal"] .term-spine {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--signal-component-highlight) 22%, var(--signal-component-bg))  0%,
+    var(--signal-component-bg)                                                              32%,
+    color-mix(in oklab, #000 7%, var(--signal-component-bg))                              100%
+  );
+}
+
+.chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--signal-component-highlight) 18%, var(--signal-component-bg))  0%,
+    var(--signal-component-bg)                                                              55%,
+    color-mix(in oklab, #000 9%, var(--signal-component-bg))                              100%
+  );
+}
+
+/* — Upgraded shadow macro: inner ring + 2px rim + deep bloom + strong pyramid — */
+.chamber-shell[data-chamber="terminal"] .term-spine,
+.chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  border-color: var(--signal-component-border-strong);
+  box-shadow:
+    0  0  0  1px var(--signal-component-border) inset,
+    0  2px 0   var(--signal-component-highlight) inset,
+    0 -1px 0   color-mix(in oklab, #000 10%, transparent) inset,
+    0 80px 140px -40px var(--signal-component-inner-glow) inset,
+    0  1px  3px           var(--signal-component-shadow-near),
+    0  8px 22px  -4px     var(--signal-component-shadow-far),
+    0 30px 60px -18px     var(--signal-component-shadow-gravity),
+    0 64px 120px -36px    color-mix(in oklab, #000 12%, transparent);
+}
+
+/* — Dark: maximum cinema — vivid green inner ring, deep pyramid — */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine,
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  border-color: var(--signal-component-border-strong);
+  box-shadow:
+    0  0  0  1px color-mix(in oklab, var(--cc-ok) 40%, transparent) inset,
+    0  2px 0   color-mix(in oklab, #fff 14%, transparent) inset,
+    0 -1px 0   color-mix(in oklab, #000 20%, transparent) inset,
+    0 80px 140px -40px color-mix(in oklab, var(--cc-ok) 24%, transparent) inset,
+    0  1px  3px           color-mix(in oklab, #000 62%, transparent),
+    0  8px 22px  -4px     color-mix(in oklab, #000 82%, transparent),
+    0 30px 60px -18px     color-mix(in oklab, #000 94%, transparent),
+    0 64px 120px -36px    color-mix(in oklab, #000 80%, transparent);
+}
+
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--cc-ok) 18%, var(--bg-surface))  0%,
+    color-mix(in oklab, var(--cc-ok) 14%, var(--bg-surface)) 40%,
+    color-mix(in oklab, var(--cc-ok) 10%, var(--bg))         100%
+  );
+}
+
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--cc-ok) 16%, var(--bg-surface))  0%,
+    color-mix(in oklab, var(--cc-ok) 12%, var(--bg-surface)) 60%,
+    color-mix(in oklab, var(--cc-ok)  8%, var(--bg))         100%
+  );
+}
+
+/* — Light: white-frame definition, crisp pyramid — */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine,
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  border-color: color-mix(in oklab, var(--cc-ok) 34%, color-mix(in oklab, #000 22%, transparent));
+  box-shadow:
+    0  0  0  1px color-mix(in oklab, var(--cc-ok) 12%, color-mix(in oklab, #fff 82%, transparent)) inset,
+    0  2px 0   color-mix(in oklab, #fff 98%, transparent) inset,
+    0 -1px 0   color-mix(in oklab, #000  9%, transparent) inset,
+    0 80px 140px -40px color-mix(in oklab, var(--cc-ok) 30%, transparent) inset,
+    0  1px  3px           color-mix(in oklab, #000 14%, transparent),
+    0  8px 22px  -4px     color-mix(in oklab, #000 22%, transparent),
+    0 30px 60px -18px     color-mix(in oklab, #000 32%, transparent),
+    0 64px 120px -36px    color-mix(in oklab, #000 16%, transparent);
+}
+
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, #fff  100%, transparent)                0%,
+    color-mix(in oklab, var(--cc-ok)  6%, var(--bg-elevated))  30%,
+    color-mix(in oklab, var(--cc-ok)  5%, var(--bg-elevated)) 100%
+  );
+}
+
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, #fff  100%, transparent)                0%,
+    color-mix(in oklab, var(--cc-ok)  6%, var(--bg-elevated))  40%,
+    color-mix(in oklab, var(--cc-ok)  5%, var(--bg-elevated)) 100%
+  );
+}
+
+/* — Sepia: warm amber inner ring, deep warm pyramid — */
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-spine,
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  border-color: var(--signal-component-border-strong);
+  box-shadow:
+    0  0  0  1px color-mix(in oklab, var(--cc-ok) 32%, transparent) inset,
+    0  2px 0   color-mix(in oklab, var(--text-primary) 12%, transparent) inset,
+    0 -1px 0   color-mix(in oklab, #000 16%, transparent) inset,
+    0 80px 140px -40px color-mix(in oklab, var(--cc-ok) 20%, transparent) inset,
+    0  1px  3px           color-mix(in oklab, #000 58%, transparent),
+    0  8px 22px  -4px     color-mix(in oklab, #000 74%, transparent),
+    0 30px 60px -18px     color-mix(in oklab, #000 88%, transparent),
+    0 64px 120px -36px    color-mix(in oklab, #000 74%, transparent);
+}
+
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-spine {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--cc-ok) 14%, var(--bg-surface))  0%,
+    color-mix(in oklab, var(--cc-ok) 10%, var(--bg-surface)) 40%,
+    color-mix(in oklab, var(--cc-ok)  7%, var(--bg))         100%
+  );
+}
+
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--cc-ok) 13%, var(--bg-surface))  0%,
+    color-mix(in oklab, var(--cc-ok)  9%, var(--bg-surface)) 60%,
+    color-mix(in oklab, var(--cc-ok)  6%, var(--bg))         100%
+  );
+}
+
+/* — Active spine item — premium state indicator — */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
+  background: color-mix(in oklab, var(--cc-ok) 24%, var(--bg-surface));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--cc-ok) 44%, transparent) inset,
+    0 2px 8px -2px color-mix(in oklab, var(--cc-ok) 20%, transparent);
+}
+
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
+  background: color-mix(in oklab, var(--cc-ok) 12%, var(--bg-elevated));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--cc-ok) 32%, transparent) inset,
+    0 2px 6px -2px color-mix(in oklab, #000 12%, transparent);
+}
+
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
+  background: color-mix(in oklab, var(--cc-ok) 18%, var(--bg-surface));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--cc-ok) 38%, transparent) inset,
+    0 2px 8px -2px color-mix(in oklab, var(--cc-ok) 16%, transparent);
+}
