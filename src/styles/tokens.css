@@ -6812,7 +6812,7 @@ textarea {
 
 /* ——— Light — cream floor, green INSIDE elevated objects —————————— */
 [data-theme="light"] {
-  --signal-canvas-bg:                color-mix(in oklab, var(--cc-ok) 16%, var(--bg));
+  --signal-canvas-bg:                var(--bg);
   --signal-component-bg:             var(--bg-elevated);
   --signal-component-bg-active:      color-mix(in oklab, var(--cc-ok)  6%, var(--bg-elevated));
   --signal-component-border:         color-mix(in oklab, var(--cc-ok) 26%, color-mix(in oklab, #000 17%, transparent));
@@ -6847,9 +6847,12 @@ textarea {
   background: var(--signal-canvas-bg);
 }
 
-/* Light: green atmospheric haze behind components, components go pure white */
-[data-theme="light"] .chamber-shell[data-chamber="terminal"]::before { opacity: 0.55; }
-[data-theme="light"] .chamber-shell[data-chamber="terminal"]::after  { opacity: 0.32; }
+/* Light: no haze behind the page. Green belongs to the components, not the
+   canvas. Components carry their own backlit aura — see v5.2 halo block.   */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"]::before,
+[data-theme="light"] .chamber-shell[data-chamber="terminal"]::after {
+  opacity: 0;
+}
 
 /* Dark: full cinematic haze */
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"]::before  { opacity: 1;    }
@@ -6988,18 +6991,21 @@ textarea {
   background: var(--signal-component-bg);
 }
 
-/* — Light premium: pure white interiors levitating in a green chamber —
-   Composer-parity, hyper-definition edges, gravitational shadow stack.
-   Green is outer aura only. Interior surfaces remain pure white.        */
+/* — Light premium: SEG backlit fabric lightbox instruments —
+   Pure white interiors. Green appears as light escaping at the edge
+   (inner bleed) and as a layered outer halo (backlit diffusion).
+   Composer remains dominant via its own stronger halo.                  */
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine,
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
-  border-color: color-mix(in oklab, var(--cc-ok) 28%, color-mix(in oklab, #000 30%, transparent));
+  border-color: color-mix(in oklab, var(--cc-ok) 34%, color-mix(in oklab, #000 30%, transparent));
   box-shadow:
-    0  0  0  1px   color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, #000 18%, transparent)) inset,
+    0  0  0  1px   color-mix(in oklab, var(--cc-ok) 18%, color-mix(in oklab, #fff 82%, transparent)) inset,
     0  1px 0       color-mix(in oklab, #fff 100%, transparent) inset,
     0 -1px 0       color-mix(in oklab, #000 10%, transparent) inset,
-    0  0  0    2px color-mix(in oklab, var(--cc-ok) 12%, transparent),
-    0  0 28px  4px color-mix(in oklab, var(--cc-ok) 22%, transparent),
+    0  0  0    2px color-mix(in oklab, var(--cc-ok) 10%, transparent),
+    0  0 22px  3px color-mix(in oklab, var(--cc-ok) 24%, transparent),
+    0  0 52px  8px color-mix(in oklab, var(--cc-ok) 18%, transparent),
+    0  0 96px 16px color-mix(in oklab, var(--cc-ok) 12%, transparent),
     0  1px  3px           color-mix(in oklab, #000 20%, transparent),
     0  8px 22px  -4px     color-mix(in oklab, #000 30%, transparent),
     0 30px 60px -18px     color-mix(in oklab, #000 42%, transparent),
@@ -7389,30 +7395,30 @@ textarea {
      • composer gets its own stronger pyramid — stays dominant object
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* — Atmospheric vignette on the light chamber — enclosed feel — */
-[data-theme="light"] .chamber-shell[data-chamber="terminal"] {
-  background: radial-gradient(
-    ellipse 90% 72% at 50% 24%,
-    var(--signal-canvas-bg)                                   0%,
-    color-mix(in oklab, #000 8%, var(--signal-canvas-bg))   100%
-  );
-}
-
-/* — Composer in light: strongest shadow pyramid — hero object —
-   Goes one notch beyond spine/workbench so the composer stays dominant. */
+/* — Composer in light: strongest backlit instrument — hero object —
+   Matches the SEG fabric lightbox effect: bright white deck, green edge
+   light bleed, layered diffuse green halo, deep gravitational base.     */
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-command {
   box-shadow:
-    0  0  0  1px   color-mix(in oklab, var(--cc-ok) 32%, color-mix(in oklab, #000 28%, transparent)),
-    0  1px  3px           color-mix(in oklab, #000 22%, transparent),
-    0  8px 22px  -4px     color-mix(in oklab, #000 32%, transparent),
-    0 30px 60px -18px     color-mix(in oklab, #000 46%, transparent),
-    0 64px 120px -36px    color-mix(in oklab, #000 32%, transparent);
+    0  0  0  1px   color-mix(in oklab, var(--cc-ok) 38%, color-mix(in oklab, #000 34%, transparent)),
+    0  0  0   3px  color-mix(in oklab, var(--cc-ok) 12%, transparent),
+    0  0 28px  4px color-mix(in oklab, var(--cc-ok) 28%, transparent),
+    0  0 64px 10px color-mix(in oklab, var(--cc-ok) 22%, transparent),
+    0  0 110px 22px color-mix(in oklab, var(--cc-ok) 14%, transparent),
+    0  1px  3px           color-mix(in oklab, #000 24%, transparent),
+    0  8px 22px  -4px     color-mix(in oklab, #000 34%, transparent),
+    0 30px 60px -18px     color-mix(in oklab, #000 48%, transparent),
+    0 64px 120px -36px    color-mix(in oklab, #000 34%, transparent);
 }
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] {
   box-shadow:
-    0  0  0  1.5px color-mix(in oklab, var(--cc-ok) 42%, color-mix(in oklab, #000 32%, transparent)),
-    0  1px  3px           color-mix(in oklab, #000 22%, transparent),
-    0  8px 22px  -4px     color-mix(in oklab, var(--cc-ok) 32%, transparent),
-    0 30px 60px -18px     color-mix(in oklab, #000 48%, transparent),
-    0 64px 120px -36px    color-mix(in oklab, #000 34%, transparent);
+    0  0  0  1.5px color-mix(in oklab, var(--cc-ok) 48%, color-mix(in oklab, #000 36%, transparent)),
+    0  0  0   4px  color-mix(in oklab, var(--cc-ok) 16%, transparent),
+    0  0 32px  6px color-mix(in oklab, var(--cc-ok) 36%, transparent),
+    0  0 72px 14px color-mix(in oklab, var(--cc-ok) 26%, transparent),
+    0  0 120px 26px color-mix(in oklab, var(--cc-ok) 16%, transparent),
+    0  1px  3px           color-mix(in oklab, #000 24%, transparent),
+    0  8px 22px  -4px     color-mix(in oklab, var(--cc-ok) 34%, transparent),
+    0 30px 60px -18px     color-mix(in oklab, #000 50%, transparent),
+    0 64px 120px -36px    color-mix(in oklab, #000 36%, transparent);
 }
