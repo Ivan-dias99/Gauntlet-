@@ -131,10 +131,10 @@
   --border-strong: 1px solid var(--border-color-strong);
   --border: var(--border-color-mid);
 
-  --text-primary: #1a1712;
-  --text-secondary: #5a5248;
-  --text-muted: #958a78;
-  --text-ghost: #c0b8ab;
+  --text-primary: #0a0906;
+  --text-secondary: #3a3126;
+  --text-muted: #776c58;
+  --text-ghost: #ada290;
 
   --accent: #7a5730;
   --accent-dim: #b0a08a;
@@ -6819,9 +6819,9 @@ textarea {
   --signal-component-border-strong:  color-mix(in oklab, var(--cc-ok) 40%, color-mix(in oklab, #000 24%, transparent));
   --signal-component-highlight:      color-mix(in oklab, #fff 92%, transparent);
   --signal-component-inner-glow:     color-mix(in oklab, var(--cc-ok) 22%, transparent);
-  --signal-component-shadow-near:    color-mix(in oklab, #000 10%, transparent);
-  --signal-component-shadow-far:     color-mix(in oklab, #000 17%, transparent);
-  --signal-component-shadow-gravity: color-mix(in oklab, #000 26%, transparent);
+  --signal-component-shadow-near:    color-mix(in oklab, #000 16%, transparent);
+  --signal-component-shadow-far:     color-mix(in oklab, #000 26%, transparent);
+  --signal-component-shadow-gravity: color-mix(in oklab, #000 40%, transparent);
 }
 
 /* ——— Sepia — warm archival, olive atmosphere, amber-cream borders — */
@@ -6988,22 +6988,22 @@ textarea {
   background: var(--signal-component-bg);
 }
 
-/* — Light: warm ivory command canvas — green as outer aura only, never fill —
-   Composer-parity material: interior is cream-white (signal-component-bg),
-   green lives at the edge as subtle aura + left rail stripe only.         */
+/* — Light premium: pure white interiors levitating in a green chamber —
+   Composer-parity, hyper-definition edges, gravitational shadow stack.
+   Green is outer aura only. Interior surfaces remain pure white.        */
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine,
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
-  border-color: color-mix(in oklab, var(--cc-ok) 30%, color-mix(in oklab, #000 22%, transparent));
+  border-color: color-mix(in oklab, var(--cc-ok) 28%, color-mix(in oklab, #000 30%, transparent));
   box-shadow:
-    0  0  0  1px color-mix(in oklab, var(--cc-ok) 18%, color-mix(in oklab, #000 12%, transparent)) inset,
-    0  2px 0   color-mix(in oklab, #fff 98%, transparent) inset,
-    0 -1px 0   color-mix(in oklab, #000  8%, transparent) inset,
-    0  0  0    2px color-mix(in oklab, var(--cc-ok)  8%, transparent),
-    0  0 20px  2px color-mix(in oklab, var(--cc-ok) 16%, transparent),
-    0  1px  3px           color-mix(in oklab, #000 14%, transparent),
-    0  8px 22px  -4px     color-mix(in oklab, #000 22%, transparent),
-    0 30px 60px -18px     color-mix(in oklab, #000 32%, transparent),
-    0 64px 120px -36px    color-mix(in oklab, #000 18%, transparent);
+    0  0  0  1px   color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, #000 18%, transparent)) inset,
+    0  1px 0       color-mix(in oklab, #fff 100%, transparent) inset,
+    0 -1px 0       color-mix(in oklab, #000 10%, transparent) inset,
+    0  0  0    2px color-mix(in oklab, var(--cc-ok) 12%, transparent),
+    0  0 28px  4px color-mix(in oklab, var(--cc-ok) 22%, transparent),
+    0  1px  3px           color-mix(in oklab, #000 20%, transparent),
+    0  8px 22px  -4px     color-mix(in oklab, #000 30%, transparent),
+    0 30px 60px -18px     color-mix(in oklab, #000 42%, transparent),
+    0 64px 120px -36px    color-mix(in oklab, #000 28%, transparent);
 }
 
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine,
@@ -7378,4 +7378,41 @@ textarea {
 [data-theme="light"] .canon-ribbon .tab-active {
   color: var(--text-primary);
   text-shadow: 0 0 10px color-mix(in oklab, var(--chamber-dna, var(--ember)) 26%, transparent);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SIGNAL v5.1 — LIGHT PREMIUM FINISHING PASS
+   Fixes: light mode wasn't carrying dark's premium weight.
+     • text darkened for hyper-definition (primary → near-black)
+     • shadow pyramid deepened (composer via tokens, spine/wb explicit)
+     • radial atmospheric vignette adds chamber enclosure
+     • composer gets its own stronger pyramid — stays dominant object
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* — Atmospheric vignette on the light chamber — enclosed feel — */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] {
+  background: radial-gradient(
+    ellipse 90% 72% at 50% 24%,
+    var(--signal-canvas-bg)                                   0%,
+    color-mix(in oklab, #000 8%, var(--signal-canvas-bg))   100%
+  );
+}
+
+/* — Composer in light: strongest shadow pyramid — hero object —
+   Goes one notch beyond spine/workbench so the composer stays dominant. */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-command {
+  box-shadow:
+    0  0  0  1px   color-mix(in oklab, var(--cc-ok) 32%, color-mix(in oklab, #000 28%, transparent)),
+    0  1px  3px           color-mix(in oklab, #000 22%, transparent),
+    0  8px 22px  -4px     color-mix(in oklab, #000 32%, transparent),
+    0 30px 60px -18px     color-mix(in oklab, #000 46%, transparent),
+    0 64px 120px -36px    color-mix(in oklab, #000 32%, transparent);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] {
+  box-shadow:
+    0  0  0  1.5px color-mix(in oklab, var(--cc-ok) 42%, color-mix(in oklab, #000 32%, transparent)),
+    0  1px  3px           color-mix(in oklab, #000 22%, transparent),
+    0  8px 22px  -4px     color-mix(in oklab, var(--cc-ok) 32%, transparent),
+    0 30px 60px -18px     color-mix(in oklab, #000 48%, transparent),
+    0 64px 120px -36px    color-mix(in oklab, #000 34%, transparent);
 }
