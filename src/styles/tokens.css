@@ -78,10 +78,10 @@
   --border-strong: 1px solid var(--border-color-strong);
   --border: var(--border-color-mid); /* legacy alias for raw color usage */
 
-  --text-primary: #f3ede2;
-  --text-secondary: #a89a84;
-  --text-muted: #6b5f50;
-  --text-ghost: #3a342c;
+  --text-primary: #faf6ed;
+  --text-secondary: #cabfab;
+  --text-muted: #8c8070;
+  --text-ghost: #5a5244;
 
   --accent: #e8c49a;
   --accent-dim: #8a7355;
@@ -7156,5 +7156,114 @@ textarea {
 /* — Workbench: 10% crisper edge definition only — no extra green — */
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
   border-color: color-mix(in oklab, var(--cc-ok) 44%, color-mix(in oklab, var(--text-primary) 30%, transparent));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SIGNAL v5 — ULTRA-DEFINITION POLISH PASS
+   Target: Apple Vision Pro level hyper-contrast. Everything that the
+   green atmospheric field was obscuring pulls forward.
+     • text lifts to near-white premium brilliance
+     • icons gain life but stay one notch below text (so text leads)
+     • buttons gain tactile edge discipline
+     • active/important elements gain a subtle highlight glow
+   Hierarchy preserved: primary leads secondary, secondary leads muted.
+   Tokens carried the first wave (#faf6ed / #cabfab / #8c8070 / #5a5244).
+   This block handles the targeted Terminal-chamber overrides.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* — Sidebar nav items: color lift from muted → secondary, icons alive — */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item {
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item-icon {
+  color: var(--text-secondary);
+  opacity: 0.92;
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item:hover {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item:hover .term-spine-item-icon {
+  opacity: 1;
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-dim="true"] .term-spine-item-icon {
+  opacity: 0.70;
+}
+
+/* — Active Terminal row: crown glow — important things get extra brilliance — */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] .term-spine-item-label {
+  color: var(--text-primary);
+  text-shadow: 0 0 12px color-mix(in oklab, var(--cc-ok) 25%, transparent);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] .term-spine-item-icon {
+  color: var(--cc-ok);
+  opacity: 1;
+}
+
+/* — Sidebar brand: Signal wordmark sharpens, chamber tag lifts — */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-brand-name {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-brand-chamber {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-brand-version {
+  color: var(--text-muted);
+}
+
+/* — Status block bottom: BACKEND/MODE/MISSÃO/DOUTRINA readable telemetry — */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-status-label {
+  color: var(--text-muted);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-status-value {
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine-status-row[data-tone="ok"] .term-spine-status-value {
+  color: color-mix(in oklab, var(--cc-ok) 55%, var(--text-primary));
+}
+
+/* — Workbench labels sharpen to near-white authority — */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-label {
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-icon {
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--text-primary) 5%, transparent);
+  border-color: color-mix(in oklab, var(--text-primary) 14%, transparent);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-mission-label {
+  color: var(--text-muted);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-mission-value {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-mission-caret {
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-action {
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-action:hover {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-action-glyph {
+  opacity: 0.88;
+}
+
+/* — Body reading field: Mission brief title + paragraph text — crisp — */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] p {
+  color: var(--text-secondary);
+}
+
+/* — Canon ribbon (top nav): inactive tabs lift; active carries glow — */
+[data-theme="dark"] .canon-ribbon .tab {
+  color: var(--text-muted);
+}
+[data-theme="dark"] .canon-ribbon .tab:hover {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .canon-ribbon .tab-active {
+  color: var(--text-primary);
+  text-shadow: 0 0 10px color-mix(in oklab, var(--chamber-dna, var(--ember)) 30%, transparent);
 }
 
