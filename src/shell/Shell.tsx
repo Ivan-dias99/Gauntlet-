@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import CanonRibbon from "./CanonRibbon";
+import Sidebar from "./Sidebar";
 import { useSpine } from "../spine/SpineContext";
 import { Chamber } from "../spine/types";
 import Insight from "../chambers/insight";
@@ -87,9 +88,16 @@ export default function Shell() {
       }}
     >
       <CanonRibbon active={activeTab} onSelect={setActiveTab} />
-      <main style={{ flex: 1, overflow: "auto" }}>
-        {renderChamber(activeTab)}
-      </main>
+      {/* Sidebar + chamber body share the remaining height. The sidebar
+          is a flex child (not fixed) so its card-margin sits honestly
+          inside the shell; chamber main takes every remaining pixel
+          and keeps its own scroll. */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "row", minHeight: 0, overflow: "hidden" }}>
+        <Sidebar active={activeTab} onSelect={setActiveTab} />
+        <main style={{ flex: 1, minWidth: 0, overflow: "auto" }}>
+          {renderChamber(activeTab)}
+        </main>
+      </div>
     </div>
   );
 }
