@@ -122,11 +122,9 @@ function BriefState({
   const done = mission.tasks?.filter((t) => t.state === "done").length ?? 0;
   const total = mission.tasks?.length ?? 0;
   const pending = total - done;
-  const hasArtifacts = artifacts.length > 0;
 
   return (
     <div className="term-output">
-      {hasArtifacts && <AIExecutionKicker />}
       <div className="term-output-head">
         <h1 className="term-output-title-mono">
           {copy.termBriefKicker}:{" "}
@@ -134,8 +132,6 @@ function BriefState({
         </h1>
       </div>
       <p className="term-output-lead">{copy.termBriefLead}</p>
-
-      {hasArtifacts && <OrnamentalDivider />}
 
       {total > 0 && (
         <section className="term-output-section">
@@ -153,30 +149,6 @@ function BriefState({
         </section>
       )}
       <PreviousArtifacts copy={copy} artifacts={artifacts} onReplay={onReplay} />
-    </div>
-  );
-}
-
-// ——— AI execution kicker ———
-// Small sage kicker above the canvas title when there is output to
-// attribute to the AI. Never appears in the empty ReadyState.
-function AIExecutionKicker() {
-  return (
-    <div className="term-output-kicker">
-      <span className="term-output-kicker-glyph" aria-hidden>
-        <IconSparkle />
-      </span>
-      <span>AI execução</span>
-    </div>
-  );
-}
-
-// ——— Ornamental hairline divider ———
-// Editorial break between the lead paragraph and subsequent sections.
-function OrnamentalDivider() {
-  return (
-    <div className="term-output-divider" aria-hidden>
-      <span className="term-output-divider-glyph">+</span>
     </div>
   );
 }
@@ -200,7 +172,6 @@ function PendingState({
 
   return (
     <div className="term-output">
-      <AIExecutionKicker />
       <div className="term-output-head">
         <h1 className="term-output-title-mono">{title}</h1>
         <span className="term-output-pill" data-tone="info">
@@ -208,7 +179,6 @@ function PendingState({
           {copy.taskStateRunning} · iter {iteration} · {elapsed.toFixed(1)}s
         </span>
       </div>
-      <OrnamentalDivider />
 
       {mode === "crew" && crew.steps.length > 0 && (
         <section className="term-output-section">
@@ -245,7 +215,6 @@ function PendingState({
             {liveTools.map((tc) => (
               <LogRow
                 key={tc.id}
-                time={fmtLiveTime(tc.iteration, elapsed, liveTools.length)}
                 name={tc.name}
                 input={tc.input}
                 phase={tc.ok === undefined ? "running" : tc.ok ? "ok" : "err"}
@@ -312,7 +281,6 @@ function DoneState({
 
   return (
     <div className="term-output">
-      <AIExecutionKicker />
       <div className="term-output-head">
         <h1 className="term-output-title-mono">{title}</h1>
         <span className="term-output-pill" data-tone={pillTone}>
@@ -322,8 +290,6 @@ function DoneState({
       </div>
 
       {leadFromAnswer && <p className="term-output-lead">{leadFromAnswer}</p>}
-
-      <OrnamentalDivider />
 
       {crew.steps.length > 0 && (
         <section className="term-output-section">
@@ -352,10 +318,9 @@ function DoneState({
         <section className="term-output-section">
           <span className="term-output-section-label">{copy.termSectionExecLog}</span>
           <div className="term-output-log">
-            {liveTools.map((tc, i) => (
+            {liveTools.map((tc) => (
               <LogRow
                 key={tc.id}
-                time={fmtIndexTime(i, done.processing_time_ms)}
                 name={tc.name}
                 input={tc.input}
                 phase={tc.ok === undefined ? "running" : tc.ok ? "ok" : "err"}
@@ -516,7 +481,6 @@ function PreviousArtifacts({
 function LogRow({
   name, input, phase, preview,
 }: {
-  time: string; // accepted for backward compat; rendered as count when relevant
   name: string;
   input?: unknown;
   phase: ToolPhase;
@@ -622,30 +586,7 @@ function IconCheck() {
     </svg>
   );
 }
-function IconSparkle() {
-  return (
-    <svg width={14} height={14} {...SVG_PROPS}>
-      <path d="M12 3v4" />
-      <path d="M12 17v4" />
-      <path d="M3 12h4" />
-      <path d="M17 12h4" />
-      <path d="m5.5 5.5 2.8 2.8" />
-      <path d="m15.7 15.7 2.8 2.8" />
-      <path d="m18.5 5.5-2.8 2.8" />
-      <path d="m8.3 15.7-2.8 2.8" />
-    </svg>
-  );
-}
-
 // ——— helpers ———
-function fmtLiveTime(iter: number, elapsed: number, total: number): string {
-  const base = Math.max(0, elapsed - (total - iter) * 0.3);
-  return `+${base.toFixed(1)}s`;
-}
-function fmtIndexTime(i: number, totalMs: number): string {
-  const seconds = (totalMs / 1000) * ((i + 1) / Math.max(1, totalMs > 0 ? 4 : 1));
-  return `+${seconds.toFixed(1)}s`;
-}
 function fmtRelShort(ts: number): string {
   const diff = Date.now() - ts;
   if (diff < 60_000) return "now";

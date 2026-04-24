@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { Copy, RunMode, Task } from "./helpers";
 
-// Terminal command surface — Claude-Code-class composer.
-// Chrome bar carries traffic-lights + path + phase + four affordances:
+// Terminal command surface.
+// Chrome row carries the mission path + phase + three affordances:
 //   (+) context  — flyout listing real signals: doctrine, mission turns, mock/live, profile
 //   (>) recents  — last 5 tasks of the active mission (click to populate input)
-//   (⚙) mode     — agent / crew toggle (moved out of the chamber head)
 //   (⚒) tools    — the chamber's tool allowlist (read-only mirror of Routing/Permissions)
-// Body row carries the real signal@local:~/mission$ prompt + input + send.
-// Workspace bar at the bottom shows project · branch · backend · profile.
+// Body row is the input + send.
+// Workspace bar at the bottom groups identity · state · mode.
 //
-// All flyouts are honest enumerations of state Terminal already has.
-// No fake features.
+// All flyouts enumerate state Terminal already has. No decoration, no
+// fake features.
 
 interface Props {
   copy: Copy;
@@ -87,9 +86,6 @@ export default function ExecutionComposer({
       >
       <div className="term-command-deck">
         <div className="term-command-chrome">
-          <span className="term-command-dots" aria-hidden>
-            <span /><span /><span />
-          </span>
           <span className="term-command-path">
             <strong>signal</strong>
             <span style={{ color: "var(--text-muted)" }}> · </span>
@@ -134,12 +130,6 @@ export default function ExecutionComposer({
         </div>
 
         <div className="term-command-body">
-          <span className="term-command-prompt" aria-hidden>
-            <span className="term-command-prompt-user">signal@local</span>
-            <span className="term-command-prompt-sep">:</span>
-            <span className="term-command-prompt-path">~/mission</span>
-            <span className="term-command-prompt-sep">$</span>
-          </span>
           <input
             ref={inputRef}
             autoFocus
@@ -324,20 +314,6 @@ function ContextFlyout({
         </span>
         <span className="term-flyout-item-kicker">{mode}</span>
       </button>
-      {/* Honest media slot — the affordance is visually present; the
-          wire to the backend is not yet ready. No fake upload flow. */}
-      <button
-        className="term-flyout-item"
-        disabled
-        title="upload de ficheiros e capturas — ligação ao backend pendente"
-      >
-        <span className="term-flyout-item-glyph">◈</span>
-        <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">media · ficheiros · capturas</span>
-          <span className="term-flyout-item-meta">em breve</span>
-        </span>
-        <span className="term-flyout-item-kicker">—</span>
-      </button>
     </div>
   );
 }
@@ -458,17 +434,3 @@ function IconSend() {
     </svg>
   );
 }
-function IconDot() {
-  return (
-    <span
-      aria-hidden
-      style={{
-        width: 6, height: 6, borderRadius: "50%",
-        background: "currentColor",
-        display: "inline-block",
-      }}
-    />
-  );
-}
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _iconsExport = { IconPlus, IconClock, IconTools, IconSend, IconDot };
