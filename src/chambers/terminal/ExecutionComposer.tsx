@@ -263,6 +263,7 @@ export default function ExecutionComposer({
 
         {flyout === "context" && (
           <ContextFlyout
+            copy={copy}
             principlesCount={principlesCount}
             priorTurns={priorTurns}
             mockMode={mockMode}
@@ -271,11 +272,12 @@ export default function ExecutionComposer({
         )}
         {flyout === "recent" && (
           <RecentFlyout
+            copy={copy}
             tasks={recentTasks}
             onPick={(t) => { onPickTask(t); setFlyout(null); }}
           />
         )}
-        {flyout === "tools" && <ToolsFlyout />}
+        {flyout === "tools" && <ToolsFlyout copy={copy} />}
       </div>
     </div>
   );
@@ -284,8 +286,9 @@ export default function ExecutionComposer({
 // ——— Flyouts ———
 
 function ContextFlyout({
-  principlesCount, priorTurns, mockMode, mode,
+  copy, principlesCount, priorTurns, mockMode, mode,
 }: {
+  copy: Copy;
   principlesCount: number;
   priorTurns: number;
   mockMode: boolean;
@@ -294,33 +297,33 @@ function ContextFlyout({
   return (
     <div className="term-flyout" role="menu">
       <div className="term-flyout-head">
-        <span>contexto da próxima invocação</span>
+        <span>{copy.termFlyoutContextHead}</span>
       </div>
       <button className="term-flyout-item" disabled>
         <span className="term-flyout-item-glyph">§</span>
         <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">doutrina viaja com a tarefa</span>
+          <span className="term-flyout-item-title">{copy.termFlyoutDoctrineTitle}</span>
         </span>
         <span className="term-flyout-item-kicker">{principlesCount}</span>
       </button>
       <button className="term-flyout-item" disabled>
         <span className="term-flyout-item-glyph">⋯</span>
         <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">turnos no contexto</span>
+          <span className="term-flyout-item-title">{copy.termFlyoutTurnsTitle}</span>
         </span>
         <span className="term-flyout-item-kicker">{Math.min(priorTurns, 8)}</span>
       </button>
       <button className="term-flyout-item" disabled>
         <span className="term-flyout-item-glyph">●</span>
         <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">backend</span>
+          <span className="term-flyout-item-title">{copy.termFlyoutBackendTitle}</span>
         </span>
         <span className="term-flyout-item-kicker">{mockMode ? "mock" : "live"}</span>
       </button>
       <button className="term-flyout-item" disabled>
         <span className="term-flyout-item-glyph">⚙</span>
         <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">dispatch</span>
+          <span className="term-flyout-item-title">{copy.termFlyoutDispatchTitle}</span>
         </span>
         <span className="term-flyout-item-kicker">{mode}</span>
       </button>
@@ -329,12 +332,12 @@ function ContextFlyout({
       <button
         className="term-flyout-item"
         disabled
-        title="upload de ficheiros e capturas — ligação ao backend pendente"
+        title={copy.termFlyoutMediaUploadTitle}
       >
         <span className="term-flyout-item-glyph">◈</span>
         <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">media · ficheiros · capturas</span>
-          <span className="term-flyout-item-meta">em breve</span>
+          <span className="term-flyout-item-title">{copy.termFlyoutMediaTitle}</span>
+          <span className="term-flyout-item-meta">{copy.termFlyoutMediaMeta}</span>
         </span>
         <span className="term-flyout-item-kicker">—</span>
       </button>
@@ -343,8 +346,9 @@ function ContextFlyout({
 }
 
 function RecentFlyout({
-  tasks, onPick,
+  copy, tasks, onPick,
 }: {
+  copy: Copy;
   tasks: Task[];
   onPick: (title: string) => void;
 }) {
@@ -352,7 +356,7 @@ function RecentFlyout({
   return (
     <div className="term-flyout" role="menu">
       <div className="term-flyout-head">
-        <span>tarefas recentes</span>
+        <span>{copy.termFlyoutRecentHead}</span>
         <span style={{ marginLeft: "auto", color: "var(--text-ghost)" }}>
           {tasks.length}
         </span>
@@ -361,7 +365,7 @@ function RecentFlyout({
         <button className="term-flyout-item" disabled>
           <span className="term-flyout-item-glyph">—</span>
           <span className="term-flyout-item-body">
-            <span className="term-flyout-item-title">sem tarefas registadas</span>
+            <span className="term-flyout-item-title">{copy.termFlyoutRecentEmpty}</span>
           </span>
         </button>
       ) : (
@@ -385,11 +389,11 @@ function RecentFlyout({
 }
 
 
-function ToolsFlyout() {
+function ToolsFlyout({ copy }: { copy: Copy }) {
   return (
     <div className="term-flyout" role="menu">
       <div className="term-flyout-head">
-        <span>tools allowlist · terminal</span>
+        <span>{copy.termFlyoutToolsHead}</span>
       </div>
       {TERMINAL_TOOLS.map((t) => (
         <button key={t.name} className="term-flyout-item" disabled>

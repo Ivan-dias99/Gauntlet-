@@ -204,6 +204,21 @@ export interface Copy {
   termWsDoctrineLabel: string;
   termWsDoctrineTitle: string;
 
+  // Composer context flyout — strings used to live hardcoded in
+  // ExecutionComposer (fae5999 follow-up); now routed through copy so
+  // the flyout flips language with the rest of the chamber.
+  termFlyoutContextHead: string;
+  termFlyoutDoctrineTitle: string;
+  termFlyoutTurnsTitle: string;
+  termFlyoutBackendTitle: string;
+  termFlyoutDispatchTitle: string;
+  termFlyoutMediaTitle: string;
+  termFlyoutMediaMeta: string;
+  termFlyoutMediaUploadTitle: string;
+  termFlyoutRecentHead: string;
+  termFlyoutRecentEmpty: string;
+  termFlyoutToolsHead: string;
+
   // ChamberHead shared pills.
   chamberHeadMockTitle: string;
   chamberHeadPrinciplesTitle: (n: number) => string;
@@ -398,6 +413,18 @@ const PT: Copy = {
   termWsDoctrineLabel:    "doutrina",
   termWsDoctrineTitle:    "princípios em vigor que viajam com cada tarefa",
 
+  termFlyoutContextHead:       "contexto da próxima invocação",
+  termFlyoutDoctrineTitle:     "doutrina viaja com a tarefa",
+  termFlyoutTurnsTitle:        "turnos no contexto",
+  termFlyoutBackendTitle:      "backend",
+  termFlyoutDispatchTitle:     "dispatch",
+  termFlyoutMediaTitle:        "media · ficheiros · capturas",
+  termFlyoutMediaMeta:         "em breve",
+  termFlyoutMediaUploadTitle:  "upload de ficheiros e capturas — ligação ao backend pendente",
+  termFlyoutRecentHead:        "tarefas recentes",
+  termFlyoutRecentEmpty:       "sem tarefas registadas",
+  termFlyoutToolsHead:         "tools allowlist · terminal",
+
   chamberHeadMockTitle:        "Backend em modo simulado — respostas são canned, não geração real",
   chamberHeadPrinciplesTitle: (n) =>
     `${n} ${n === 1 ? "princípio activo" : "princípios activos"} nesta câmara`,
@@ -589,6 +616,18 @@ const EN: Copy = {
   termWsBackendMockTitle: "backend in mock mode — canned responses",
   termWsDoctrineLabel:    "doctrine",
   termWsDoctrineTitle:    "principles in force that travel with every task",
+
+  termFlyoutContextHead:       "next invocation context",
+  termFlyoutDoctrineTitle:     "doctrine travels with the task",
+  termFlyoutTurnsTitle:        "turns in context",
+  termFlyoutBackendTitle:      "backend",
+  termFlyoutDispatchTitle:     "dispatch",
+  termFlyoutMediaTitle:        "media · files · captures",
+  termFlyoutMediaMeta:         "coming soon",
+  termFlyoutMediaUploadTitle:  "upload files and captures — backend link pending",
+  termFlyoutRecentHead:        "recent tasks",
+  termFlyoutRecentEmpty:       "no tasks recorded",
+  termFlyoutToolsHead:         "tools allowlist · terminal",
 
   chamberHeadMockTitle:        "Backend in mock mode — responses are canned, not real generation",
   chamberHeadPrinciplesTitle: (n) =>
