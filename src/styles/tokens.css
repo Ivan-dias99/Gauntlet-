@@ -6990,37 +6990,27 @@ textarea {
   background: var(--signal-component-bg);
 }
 
-/* — Light: white-frame definition, crisp pyramid — */
+/* — Light: warm ivory command canvas — green as outer aura only, never fill —
+   Composer-parity material: interior is cream-white (signal-component-bg),
+   green lives at the edge as subtle aura + left rail stripe only.         */
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine,
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
-  border-color: color-mix(in oklab, var(--cc-ok) 34%, color-mix(in oklab, #000 22%, transparent));
+  border-color: color-mix(in oklab, var(--cc-ok) 30%, color-mix(in oklab, #000 22%, transparent));
   box-shadow:
-    0  0  0  1px color-mix(in oklab, var(--cc-ok) 12%, color-mix(in oklab, #fff 82%, transparent)) inset,
+    0  0  0  1px color-mix(in oklab, var(--cc-ok) 18%, color-mix(in oklab, #000 12%, transparent)) inset,
     0  2px 0   color-mix(in oklab, #fff 98%, transparent) inset,
-    0 -1px 0   color-mix(in oklab, #000  9%, transparent) inset,
-    0 80px 140px -40px color-mix(in oklab, var(--cc-ok) 30%, transparent) inset,
+    0 -1px 0   color-mix(in oklab, #000  8%, transparent) inset,
+    0  0  0    2px color-mix(in oklab, var(--cc-ok)  8%, transparent),
+    0  0 20px  2px color-mix(in oklab, var(--cc-ok) 16%, transparent),
     0  1px  3px           color-mix(in oklab, #000 14%, transparent),
     0  8px 22px  -4px     color-mix(in oklab, #000 22%, transparent),
     0 30px 60px -18px     color-mix(in oklab, #000 32%, transparent),
-    0 64px 120px -36px    color-mix(in oklab, #000 16%, transparent);
+    0 64px 120px -36px    color-mix(in oklab, #000 18%, transparent);
 }
 
-[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine {
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, #fff  100%, transparent)                0%,
-    color-mix(in oklab, var(--cc-ok)  6%, var(--bg-elevated))  30%,
-    color-mix(in oklab, var(--cc-ok)  5%, var(--bg-elevated)) 100%
-  );
-}
-
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine,
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, #fff  100%, transparent)                0%,
-    color-mix(in oklab, var(--cc-ok)  6%, var(--bg-elevated))  40%,
-    color-mix(in oklab, var(--cc-ok)  5%, var(--bg-elevated)) 100%
-  );
+  background: var(--signal-component-bg);
 }
 
 /* — Sepia: warm amber inner ring, deep warm pyramid — */
@@ -7115,10 +7105,11 @@ textarea {
     0 2px 8px -2px  color-mix(in oklab, var(--cc-ok) 12%, transparent);
 }
 [data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
+  background: color-mix(in oklab, var(--cc-ok) 5%, var(--bg-elevated));
   color: var(--cc-ok);
   box-shadow:
     inset 3px 0 0   var(--cc-ok),
-    0 0 0 1px       color-mix(in oklab, var(--cc-ok) 28%, transparent) inset,
+    0 0 0 1px       color-mix(in oklab, var(--cc-ok) 26%, transparent) inset,
     0 2px 6px -2px  color-mix(in oklab, #000 12%, transparent);
 }
 [data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] {
@@ -7267,3 +7258,126 @@ textarea {
   text-shadow: 0 0 10px color-mix(in oklab, var(--chamber-dna, var(--ember)) 30%, transparent);
 }
 
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SIGNAL v5 — WHITE MODE REMASTER (ultra-definition parity with Dark)
+   Translates the dark sovereign terminal into an illuminated ivory canvas.
+   Same architecture, same hierarchy, same impact — different light physics.
+     • interior fills are cream-white (signal-component-bg, no green flood)
+     • green appears at the edges as aura + as semantic active/status
+     • charcoal text tiers with stepped brilliance
+     • active items carry a restrained green halo
+   Structurally identical to dark v5 block. Translated for light physics.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* — Sidebar nav items: secondary charcoal with icon life — */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item {
+  color: var(--text-secondary);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item-icon {
+  color: var(--text-secondary);
+  opacity: 0.92;
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item:hover {
+  color: var(--text-primary);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item:hover .term-spine-item-icon {
+  opacity: 1;
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-dim="true"] .term-spine-item-icon {
+  opacity: 0.62;
+}
+
+/* — Active Terminal row: crown glow — green halo even in white mode — */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] .term-spine-item-label {
+  color: var(--cc-ok);
+  text-shadow: 0 0 10px color-mix(in oklab, var(--cc-ok) 22%, transparent);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-item[data-active="true"] .term-spine-item-icon {
+  color: var(--cc-ok);
+  opacity: 1;
+}
+
+/* — Sidebar brand — */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-brand-name {
+  color: var(--text-primary);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-brand-chamber {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-brand-version {
+  color: var(--text-muted);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-brand {
+  border-bottom-color: color-mix(in oklab, var(--cc-ok) 14%, color-mix(in oklab, #000 10%, transparent));
+}
+
+/* — Status telemetry — */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-status {
+  border-top-color: color-mix(in oklab, #000 10%, transparent);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-status-label {
+  color: var(--text-muted);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-status-value {
+  color: var(--text-secondary);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-status-row[data-tone="ok"] .term-spine-status-value {
+  color: var(--cc-ok);
+}
+
+/* — Section group labels: visible operational category — */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-group-label {
+  color: var(--text-muted);
+  opacity: 1;
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-spine-group + .term-spine-group {
+  border-top-color: color-mix(in oklab, #000 8%, transparent);
+}
+
+/* — Workbench internals: sharp charcoal, no green fill — */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-label {
+  color: var(--text-secondary);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-icon {
+  color: var(--text-secondary);
+  background: color-mix(in oklab, #000 4%, transparent);
+  border-color: color-mix(in oklab, #000 10%, transparent);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-mission-label {
+  color: var(--text-muted);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-mission-value {
+  color: var(--text-primary);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-mission-caret {
+  color: var(--text-secondary);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-action {
+  color: var(--text-secondary);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-action:hover {
+  color: var(--text-primary);
+}
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-action-glyph {
+  opacity: 0.88;
+}
+
+/* — Body reading field — */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] p {
+  color: var(--text-secondary);
+}
+
+/* — Canon ribbon active tab in light: ember halo — */
+[data-theme="light"] .canon-ribbon .tab {
+  color: var(--text-muted);
+}
+[data-theme="light"] .canon-ribbon .tab:hover {
+  color: var(--text-primary);
+}
+[data-theme="light"] .canon-ribbon .tab-active {
+  color: var(--text-primary);
+  text-shadow: 0 0 10px color-mix(in oklab, var(--chamber-dna, var(--ember)) 26%, transparent);
+}
