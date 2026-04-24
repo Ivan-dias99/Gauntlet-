@@ -21,15 +21,15 @@ export const STALE_RUNNING_MS = 120_000;
 
 // Short, operational relative-time string. The goal is "is this fresh
 // or rotting?" at a glance — not a precise timestamp.
-export function relTime(ms: number, lang: "pt" | "en"): string {
+export function relTime(ms: number): string {
   const diff = Math.max(0, Date.now() - ms);
-  if (diff < 45_000) return lang === "en" ? "just now" : "agora";
+  if (diff < 45_000) return "agora";
   const min = Math.round(diff / 60_000);
-  if (min < 60) return lang === "en" ? `${min}m ago` : `há ${min}m`;
+  if (min < 60) return `há ${min}m`;
   const hr = Math.round(min / 60);
-  if (hr < 24) return lang === "en" ? `${hr}h ago` : `há ${hr}h`;
+  if (hr < 24) return `há ${hr}h`;
   const d = Math.round(hr / 24);
-  return lang === "en" ? `${d}d ago` : `há ${d}d`;
+  return `há ${d}d`;
 }
 
 export function isStaleRunning(task: Task): boolean {

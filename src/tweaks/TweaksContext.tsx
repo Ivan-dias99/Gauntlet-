@@ -5,7 +5,7 @@ export type Mono = "jetbrains" | "ibm";
 export type Sans = "inter" | "plex" | "system";
 export type Density = "compact" | "comfortable" | "spacious";
 export type AccentKey = "bone" | "ember" | "ox" | "moss" | "gold" | "iris";
-export type Lang = "pt" | "en";
+export type Lang = "pt";
 
 export interface Tweaks {
   theme: Theme;
@@ -105,7 +105,7 @@ function apply(v: Tweaks) {
     v.sans === "plex" ? "sans-plex" : v.sans === "system" ? "sans-sys" : "",
   ].filter(Boolean).join(" ");
 
-  document.documentElement.lang = v.lang === "en" ? "en" : "pt-BR";
+  document.documentElement.lang = "pt-BR";
 
   setTimeout(() => root.classList.remove("theme-transitioning"), 300);
 }

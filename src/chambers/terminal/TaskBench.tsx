@@ -22,7 +22,6 @@ interface WorkbenchProps {
   task: Task | null;
   resumed: boolean;
   copy: Copy;
-  lang: "pt" | "en";
   pending: boolean;
   iteration: number;
   elapsed: number;
@@ -35,7 +34,7 @@ interface WorkbenchProps {
 }
 
 export function WorkbenchCard({
-  missionTitle, task, resumed, copy, lang, pending, iteration, elapsed,
+  missionTitle, task, resumed, copy, pending, iteration, elapsed,
   openCount, runningCount, doneCount, blockedCount, staleCount, onReopen,
 }: WorkbenchProps) {
   // Slim bench bar — replaces the fat .workbench card. One compact row
@@ -45,16 +44,12 @@ export function WorkbenchCard({
   const bottleneckBits: string[] = [];
   if (blockedCount > 0) {
     bottleneckBits.push(
-      lang === "en"
-        ? `${blockedCount} blocked`
-        : `${blockedCount} bloqueada${blockedCount === 1 ? "" : "s"}`,
+      `${blockedCount} bloqueada${blockedCount === 1 ? "" : "s"}`,
     );
   }
   if (staleCount > 0) {
     bottleneckBits.push(
-      lang === "en"
-        ? `${staleCount} stale`
-        : `${staleCount} parada${staleCount === 1 ? "" : "s"}`,
+      `${staleCount} parada${staleCount === 1 ? "" : "s"}`,
     );
   }
   const bottleneck = bottleneckBits.length > 0 ? bottleneckBits.join(" · ") : null;
@@ -95,7 +90,7 @@ export function WorkbenchCard({
         data-tone={stale ? "warn" : "ghost"}
         title={new Date(task.lastUpdateAt).toLocaleString()}
       >
-        {relTime(task.lastUpdateAt, lang)}
+        {relTime(task.lastUpdateAt)}
       </span>
 
       {pending && (

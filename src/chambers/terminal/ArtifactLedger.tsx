@@ -5,7 +5,6 @@ import type { Copy } from "./helpers";
 interface Props {
   artifacts: Artifact[];
   copy: Copy;
-  lang: string;
   onSelectArtifact: (a: Artifact) => void;
 }
 
@@ -14,7 +13,7 @@ const COLLAPSED_LIMIT = 4;
 // Mission archive — demoted from a panel to a quiet chamber foot.
 // Hairline above, ghost rows, expand-on-click to see all. Never
 // competes with the command surface or the exec canvas above.
-export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact }: Props) {
+export default function ArtifactLedger({ artifacts, copy, onSelectArtifact }: Props) {
   const [expanded, setExpanded] = useState(false);
   const total = artifacts.length;
   const hasMore = total > COLLAPSED_LIMIT;
@@ -23,18 +22,17 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
 
   const fmtRel = (then: number) => {
     const diff = Date.now() - then;
-    const en = lang === "en";
-    if (diff < 60_000) return en ? "now" : "agora";
+    if (diff < 60_000) return "agora";
     if (diff < 3_600_000) {
       const m = Math.max(1, Math.round(diff / 60_000));
-      return en ? `${m}m ago` : `há ${m}m`;
+      return `há ${m}m`;
     }
     if (diff < 86_400_000) {
       const h = Math.round(diff / 3_600_000);
-      return en ? `${h}h ago` : `há ${h}h`;
+      return `há ${h}h`;
     }
     const d = Math.round(diff / 86_400_000);
-    return en ? `${d}d ago` : `há ${d}d`;
+    return `há ${d}d`;
   };
 
   return (
@@ -53,9 +51,7 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
             className="btn-chip"
             style={{ marginLeft: "auto", padding: "2px 8px" }}
           >
-            {expanded
-              ? (lang === "en" ? "collapse" : "recolher")
-              : (lang === "en" ? `show all (${total})` : `ver todos (${total})`)}
+            {expanded ? "recolher" : `ver todos (${total})`}
           </button>
         )}
       </div>
@@ -104,7 +100,7 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
                     <span style={{ color: "var(--cc-warn)" }}> · parcial</span>
                   )}
                   {clickable && (
-                    <span style={{ opacity: 0.55 }}> · {lang === "en" ? "↺" : "↺"}</span>
+                    <span style={{ opacity: 0.55 }}> · ↺</span>
                   )}
                 </span>
               </div>

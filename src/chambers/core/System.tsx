@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useTweaks, ACCENT_SWATCHES, type Theme, type Density, type Lang, type AccentKey } from "../../tweaks/TweaksContext";
+import { useTweaks, ACCENT_SWATCHES, type Theme, type Density, type AccentKey } from "../../tweaks/TweaksContext";
 import { useSpine } from "../../spine/SpineContext";
 import { signalFetch, isBackendUnreachable } from "../../lib/signalApi";
 
@@ -104,15 +104,6 @@ export default function System() {
             );
           })}
         </div>
-      </Section>
-
-      {/* Language */}
-      <Section title="Language">
-        <Segmented<Lang>
-          value={values.lang}
-          options={[["pt","Português"],["en","English"]]}
-          onChange={(v) => set("lang", v)}
-        />
       </Section>
 
       {/* Diagnostics */}
