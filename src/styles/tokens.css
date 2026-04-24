@@ -1805,8 +1805,8 @@ textarea {
 
 /* ——— Panel primitive ———
    The single chamber sub-surface. Every right-rail card, RunDetail
-   section, Core section and Terminal RunCanvas block flows through
-   this. Composition: kicker (optional, top) + body + optional meta. */
+   section and Core section flows through this.
+   Composition: kicker (optional, top) + body + optional meta. */
 .panel {
   background: var(--bg-surface);
   border: 1px solid var(--border-color-soft);
@@ -2268,7 +2268,7 @@ textarea {
 .error-card-dismiss:hover { color: var(--tone); }
 
 /* ——— Ledger row ———
-   The one row geometry for retrieval ledgers (ArtifactLedger, RunList).
+   The one row geometry for retrieval ledgers (RunList).
    Tone can encode route / severity. */
 .ledger-row {
   display: flex;
@@ -3812,8 +3812,8 @@ textarea {
 }
 
 /* ——— Ledger foot ———
-   ArtifactLedger gets demoted to a quiet footer band with hairline
-   above. No panel background, no shadow. Ghost rows expand on click. */
+   Quiet footer band with hairline above. No panel background,
+   no shadow. Ghost rows expand on click. */
 .term-ledger-foot {
   width: 100%;
   max-width: 820px;

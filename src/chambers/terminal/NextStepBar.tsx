@@ -14,10 +14,9 @@ interface Props {
   onReopen: () => void;
 }
 
-// NextStepBar — inline actions after a run lands. Renders on the same
-// canvas rhythm as RunCanvas so the eye doesn't jump to a separate
-// block. Uses the .term-canvas-foot geometry (hairline above, chips
-// inline) already defined in tokens.css.
+// NextStepBar — inline actions after a run lands. Uses the
+// .term-canvas-foot geometry (hairline above, chips inline) already
+// defined in tokens.css.
 export default function NextStepBar({
   hasNextOpen, canRefine, canBlock, isBlocked, copy,
   onNext, onRefine, onBlock, onReopen,

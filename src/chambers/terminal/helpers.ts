@@ -2,14 +2,8 @@ import type { Task, TaskState } from "../../spine/types";
 import type { CrewPlanStep, CrewRole } from "../../hooks/useSignal";
 
 // Shared types + pure helpers for the Terminal chamber. The aggregator
-// (index.tsx) is still the home of state, effects, submit flow and
-// streaming reduction — this module only houses the pure pieces. A
-// deeper primitive extraction (SessionRail / RunCanvas / ContextStrip /
-// ExecutionComposer / CrewModePanel) is deferred: the chamber is ~1870
-// lines with stateful event handlers that are expensive to bisect
-// without interactive UI tests. Landing the cascade-ready
-// data-chamber="terminal" on the shell is the minimum-viable
-// chamber-DNA payoff we can take safely today.
+// (index.tsx) is the home of state, effects, submit flow and streaming
+// reduction — this module only houses the pure pieces.
 
 export type RunMode = "agent" | "crew";
 
