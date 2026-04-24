@@ -6792,12 +6792,15 @@ textarea {
    green backlit surfaces. Sepia = warm archival depth.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ——— Token layer — Dark (default) ———————————————————————————————— */
+/* ——— Token layer — Dark (default) ————————————————————————————————
+   Interior fills are pure charcoal (var(--bg-surface)), no green mix.
+   Green lives OUTSIDE the containers: canvas atmosphere, border rim,
+   inner glow, shadow bloom, active semantic accent. Never inside.     */
 :root,
 [data-theme="dark"] {
   --signal-canvas-bg:                color-mix(in oklab, var(--cc-ok) 14%, var(--bg));
-  --signal-component-bg:             color-mix(in oklab, var(--cc-ok) 12%, var(--bg-surface));
-  --signal-component-bg-active:      color-mix(in oklab, var(--cc-ok) 20%, var(--bg-surface));
+  --signal-component-bg:             var(--bg-surface);
+  --signal-component-bg-active:      color-mix(in oklab, var(--cc-ok) 14%, var(--bg-surface));
   --signal-component-border:         color-mix(in oklab, var(--cc-ok) 28%, color-mix(in oklab, var(--text-primary) 16%, transparent));
   --signal-component-border-strong:  color-mix(in oklab, var(--cc-ok) 44%, color-mix(in oklab, var(--text-primary) 22%, transparent));
   --signal-component-highlight:      color-mix(in oklab, #fff 10%, transparent);
@@ -6824,8 +6827,8 @@ textarea {
 /* ——— Sepia — warm archival, olive atmosphere, amber-cream borders — */
 [data-theme="sepia"] {
   --signal-canvas-bg:                color-mix(in oklab, var(--cc-ok) 10%, var(--bg));
-  --signal-component-bg:             color-mix(in oklab, var(--cc-ok)  9%, var(--bg-surface));
-  --signal-component-bg-active:      color-mix(in oklab, var(--cc-ok) 16%, var(--bg-surface));
+  --signal-component-bg:             var(--bg-surface);
+  --signal-component-bg-active:      color-mix(in oklab, var(--cc-ok) 12%, var(--bg-surface));
   --signal-component-border:         color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, var(--text-primary) 18%, transparent));
   --signal-component-border-strong:  color-mix(in oklab, var(--cc-ok) 34%, color-mix(in oklab, var(--text-primary) 26%, transparent));
   --signal-component-highlight:      color-mix(in oklab, var(--text-primary)  9%, transparent);
