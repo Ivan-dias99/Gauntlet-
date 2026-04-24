@@ -6887,14 +6887,14 @@ textarea {
   background: var(--signal-component-bg-active);
 }
 
-/* — Composer outer frame — */
+/* — Composer outer frame — same pyramid geometry as shared panels — */
 .chamber-shell[data-chamber="terminal"] .term-command {
   box-shadow:
     0  0  0  1px var(--signal-component-border),
-    0  2px  6px  var(--signal-component-shadow-near),
-    0 14px 36px  -8px var(--signal-component-shadow-far),
-    0 48px 96px -28px var(--signal-component-shadow-gravity),
-    0 80px 140px -44px color-mix(in oklab, #000  8%, transparent);
+    0  1px  3px           var(--signal-component-shadow-near),
+    0  8px 22px  -4px     var(--signal-component-shadow-far),
+    0 30px 60px -18px     var(--signal-component-shadow-gravity),
+    0 64px 120px -36px    color-mix(in oklab, var(--signal-component-shadow-near) 45%, transparent);
 }
 
 /* — Composer inner deck — backlit green wakes up on focus — */
@@ -6909,13 +6909,13 @@ textarea {
   opacity: 1;
 }
 
-/* — Composer focused state — levitation + emphasis ring — */
+/* — Composer focused — 3px lift + emphasis ring + green mid bloom — */
 .chamber-shell[data-chamber="terminal"] .term-command[data-focused="true"] {
   transform: translateY(-3px);
   box-shadow:
     0  0  0  1.5px var(--signal-component-border-strong),
-    0  2px  6px    var(--signal-component-shadow-near),
-    0 16px 40px  -8px color-mix(in oklab, var(--cc-ok) 24%, transparent),
-    0 52px 100px -28px var(--signal-component-shadow-gravity),
-    0 88px 150px -48px color-mix(in oklab, #000  8%, transparent);
+    0  1px  3px           var(--signal-component-shadow-near),
+    0  8px 22px  -4px     color-mix(in oklab, var(--cc-ok) 24%, transparent),
+    0 30px 60px -18px     var(--signal-component-shadow-gravity),
+    0 64px 120px -36px    color-mix(in oklab, var(--signal-component-shadow-near) 45%, transparent);
 }
