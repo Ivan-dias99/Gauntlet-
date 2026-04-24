@@ -4528,140 +4528,13 @@ textarea {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   TERMINAL FINAL POLISH — atmospheric depth · levitation · clarity
-   Only acabamento. Zero structural change.
+   TERMINAL STATE-AWARE POLISH
+   State-tied material only. No moodboard chrome.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* Atmospheric page background for the Terminal chamber — a very
-   subtle radial gradient at the top of the chamber body so the
-   composer and strip read as "suspended in air", not "glued to a
-   flat slab". Intensity tuned per theme. */
-.chamber-shell[data-chamber="terminal"] {
-  position: relative;
-  isolation: isolate;
-}
-/* Cinematic sage haze — envelopes the whole chamber like cloud cover.
-   5 layers: top highlight · left lateral · right lateral · bottom
-   wash · soft ambient. Second blurred pseudo adds the esfumaçado
-   softness so the green reads atmospheric, not flat. */
-.chamber-shell[data-chamber="terminal"]::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(
-      ellipse 70% 45% at 50% -2%,
-      color-mix(in oklab, var(--cc-ok) 14%, transparent) 0%,
-      transparent 58%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at -8% 42%,
-      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at 108% 58%,
-      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 110% 60% at 50% 108%,
-      color-mix(in oklab, var(--cc-ok) 12%, transparent) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse 120% 80% at 50% 50%,
-      color-mix(in oklab, var(--cc-ok) 3%, transparent) 0%,
-      transparent 80%
-    );
-  pointer-events: none;
-  z-index: 0;
-}
-/* Blurred esfumaçado layer — soft circular blooms that blend the
-   radial edges. Sits above ::before, below the content. */
-.chamber-shell[data-chamber="terminal"]::after {
-  content: "";
-  position: absolute;
-  inset: -40px;
-  background:
-    radial-gradient(
-      circle 320px at 18% 28%,
-      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      circle 340px at 82% 72%,
-      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      circle 280px at 50% 100%,
-      color-mix(in oklab, var(--cc-ok) 7%, transparent) 0%,
-      transparent 55%
-    );
-  filter: blur(40px);
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.9;
-}
-[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::before {
-  background:
-    radial-gradient(
-      ellipse 70% 45% at 50% -2%,
-      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
-      transparent 58%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at -8% 42%,
-      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at 108% 58%,
-      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 110% 60% at 50% 108%,
-      color-mix(in oklab, var(--cc-ok) 9%, transparent) 0%,
-      transparent 60%
-    );
-}
-[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::after,
-[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::after {
-  opacity: 0.55;
-}
-[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::before {
-  background:
-    radial-gradient(
-      ellipse 70% 45% at 50% -2%,
-      color-mix(in oklab, var(--cc-ok) 9%, transparent) 0%,
-      transparent 58%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at -8% 42%,
-      color-mix(in oklab, var(--cc-ok) 6%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at 108% 58%,
-      color-mix(in oklab, var(--cc-ok) 6%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 110% 60% at 50% 108%,
-      color-mix(in oklab, var(--cc-ok) 7%, transparent) 0%,
-      transparent 60%
-    );
-}
-.chamber-shell[data-chamber="terminal"] > * {
-  position: relative;
-  z-index: 1;
-}
-
-/* Strip levitation — shadow pyramid matching the composer family
-   plus a crisp inset highlight so the edge reads sharp in light,
-   and a soft inner ambient in dark/sepia. */
+/* Workbench strip — shadow pyramid matching the composer family plus
+   a crisp inset highlight so the edge reads sharp in light, and a
+   softer inner highlight in dark/sepia. */
 .term-workbench-strip {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 55%, transparent) inset,
@@ -4869,59 +4742,6 @@ textarea {
 [data-theme="sepia"] .term-output-pill {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 5%, transparent) inset;
-}
-
-/* ——— AI execution kicker (canvas) ———
-   Small sage kicker above the canvas title when a run has produced
-   output. Reads as "AI did this". Reinforces the productive tint
-   without painting the whole surface. */
-.term-output-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--cc-ok);
-  line-height: 1;
-  padding: 2px 0;
-  margin: 0;
-}
-.term-output-kicker-glyph {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  color: var(--cc-ok);
-  opacity: 0.9;
-}
-
-/* ——— Ornamental hairline divider with central glyph ———
-   Editorial break between the canvas lead and subsequent sections.
-   Hairline on both sides of a small mono glyph. Very calm. */
-.term-output-divider {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 8px 0;
-  color: var(--text-ghost);
-  opacity: 0.8;
-}
-.term-output-divider::before,
-.term-output-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
-}
-.term-output-divider-glyph {
-  font-family: var(--serif);
-  font-size: 14px;
-  line-height: 1;
-  color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 55%, var(--text-ghost));
-  user-select: none;
 }
 
 /* ——— Log row refactor — file-icon style ———
