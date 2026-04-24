@@ -1785,12 +1785,12 @@ textarea {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   SIGNAL OPERATIONAL GRAMMAR — Phase-1 consolidation
+   SIGNAL OPERATIONAL GRAMMAR ��� Phase-1 consolidation
    One system, one set of primitives. Every chamber pulls from here.
    Nothing below this block is optional grammar.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ——— Semantic tone resolver ———
+/* ——— Semantic tone resolver ��——
    --tone resolves from data-tone on any primitive. Unknown tones fall
    back to ghost. This is the one mapping layer between semantic state
    and color token. */
@@ -2849,7 +2849,7 @@ textarea {
   }
 }
 
-/* ——— Run header strip (Terminal) ———
+/* ——�� Run header strip (Terminal) ———
    A sticky instrumentation band that sits above the Terminal workbench.
    Carries run phase, elapsed timer, task counter, mode toggle. Reads
    as an IDE-style status bar rather than floating pills. */
@@ -3873,7 +3873,7 @@ textarea {
 
 /* ══════════════════════════════════════════════════════════════════════
    TERMINAL TOOLS — affordances + workspace bar (Claude-Code-class)
-   ══════════════════════════════════════════════════════════════════════ */
+   ═══════════════���══════════════════════════════════════════════════════ */
 
 /* Affordance toolbar inside the term-command chrome (between phase
    pill and the body). Compact icon buttons; no text. Each has a
@@ -5057,4 +5057,211 @@ textarea {
 [data-theme="sepia"] .term-command-phase {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   WHITE MODE — FINAL MATERIAL AUTHORITY PASS
+   ══════════════════════════════════════════════════════════════════════
+   Dark Mode carries the full Signal DNA (semantic green signal, inner
+   rings, backlit blooms, component chrome tint). White Mode had the
+   layout but lost the material. This block restores the same organism
+   to Light: warm ivory background · illuminated cream instruments ·
+   restrained green aura/rim on elevated objects only · green never
+   floods the wallpaper. The composer, workbench strip, and ribbon now
+   float with the same frame discipline and shadow law as Dark.
+   Changes are additive — no layout rewrite, no architecture shift. */
+
+[data-theme="light"] body {
+  background:
+    radial-gradient(
+      ellipse 90% 64% at 50% 18%,
+      color-mix(in oklab, #ffffff 55%, var(--bg)) 0%,
+      var(--bg) 58%,
+      color-mix(in oklab, #000 4%, var(--bg)) 100%
+    );
+}
+
+/* Canon ribbon — sovereign band. Faint bottom rim + hairline shadow so
+   the strip reads as a real instrument rail, not a page header. */
+[data-theme="light"] .canon-ribbon {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, #ffffff 40%, var(--bg-surface)) 0%,
+      var(--bg-surface) 100%
+    );
+  border-bottom: 1px solid color-mix(in oklab, #1b1915 12%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 60%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #3a2a18 6%, transparent),
+    0 6px 18px -12px color-mix(in oklab, #3a2a18 12%, transparent);
+}
+
+/* Active tab underline in Terminal chamber — chamber-DNA resolves to
+   ember in the canon, but the Terminal chamber is the one place where
+   the canonical green is the sovereign signal. Keep ember for non-
+   terminal chambers; in Terminal, route the active accent to cc-ok so
+   light + dark read the same mode-of-operation cue. */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] + * .tab-active::after,
+[data-theme="light"] .canon-ribbon-tabs .tab-active::after {
+  background: color-mix(in oklab, var(--accent) 70%, color-mix(in oklab, var(--cc-ok) 30%, transparent));
+  box-shadow: 0 0 8px color-mix(in oklab, var(--cc-ok) 22%, transparent);
+}
+
+/* Workbench strip — the weakest instrument in white. Reinforce with:
+   · precise outer contour (warm grey + faint green edge)
+   · 1px inner highlight (top rim of the paper)
+   · controlled two-layer lower shadow (architectural, not floaty)
+   · restrained cc-ok rim aura OUTSIDE the frame only (drop shadow
+     glow, not a green fill). */
+[data-theme="light"] .term-workbench-strip {
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      color-mix(in oklab, #ffffff 72%, var(--bg-surface)) 100%
+    );
+  border: 1px solid color-mix(in oklab, #1b1915 14%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #ffffff 80%, transparent) inset,
+    0 0 0 1px color-mix(in oklab, var(--cc-ok) 8%, transparent),
+    0 1px 2px color-mix(in oklab, #3a2a18 7%, transparent),
+    0 8px 22px -12px color-mix(in oklab, #3a2a18 14%, transparent),
+    0 0 22px -8px color-mix(in oklab, var(--cc-ok) 14%, transparent);
+}
+
+/* Workbench command icon (the >_ glyph) — carry the semantic green
+   tint so the chip reads as "terminal command lives here", matching
+   the dark build's chrome DNA. */
+[data-theme="light"] .term-workbench-icon {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--cc-ok) 9%, #ffffff) 0%,
+      color-mix(in oklab, var(--cc-ok) 5%, var(--bg-surface)) 100%
+    );
+  border: 1px solid color-mix(in oklab, var(--cc-ok) 22%, color-mix(in oklab, #1b1915 10%, transparent));
+  color: color-mix(in oklab, var(--cc-ok) 62%, var(--text-secondary));
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #ffffff 70%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--cc-ok) 14%, transparent);
+}
+
+/* WORKBENCH + mission labels — subtle sage tint so the microcap reads
+   as part of the signal DNA, not neutral chrome text. */
+[data-theme="light"] .term-workbench-label {
+  color: color-mix(in oklab, var(--cc-ok) 22%, var(--text-secondary));
+}
+[data-theme="light"] .term-workbench-mission-label {
+  color: color-mix(in oklab, var(--cc-ok) 18%, var(--text-muted));
+}
+
+/* Workbench actions (CONTEXTO / DOCS) hover — route hover to cc-ok in
+   Terminal so the strip speaks one pigment language. */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"] .term-workbench-action:hover {
+  background: color-mix(in oklab, var(--cc-ok) 10%, transparent);
+  color: color-mix(in oklab, var(--cc-ok) 70%, var(--text-primary));
+}
+
+/* Composer outer shell — frame discipline. Sharper rim + restrained
+   cc-ok outer aura. Interior stays ivory, never green flood. */
+[data-theme="light"] .term-command {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, #1b1915 4%, transparent) 0%,
+      color-mix(in oklab, #1b1915 1.5%, transparent) 55%,
+      color-mix(in oklab, var(--cc-ok) 3%, transparent) 100%
+    );
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--cc-ok) 10%, transparent),
+    0 2px 4px color-mix(in oklab, #3a2a18 6%, transparent),
+    0 12px 28px -14px color-mix(in oklab, #3a2a18 16%, transparent),
+    0 24px 56px -26px color-mix(in oklab, var(--cc-ok) 14%, transparent);
+}
+[data-theme="light"] .term-command[data-focused="true"] {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--cc-ok) 32%, transparent),
+    0 2px 4px color-mix(in oklab, #3a2a18 7%, transparent),
+    0 8px 18px -8px color-mix(in oklab, var(--cc-ok) 22%, transparent),
+    0 32px 64px -24px color-mix(in oklab, #3a2a18 20%, transparent);
+}
+
+/* Inner deck — precision border so the header / command field /
+   footer separations read as engineered, not web-form casual. */
+[data-theme="light"] .term-command-deck {
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      color-mix(in oklab, #ffffff 88%, var(--bg-surface)) 100%
+    );
+  border: 1px solid color-mix(in oklab, #1b1915 15%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #ffffff 85%, transparent) inset,
+    0 -1px 0 color-mix(in oklab, #1b1915 5%, transparent) inset;
+}
+[data-theme="light"] .term-command[data-focused="true"] .term-command-deck {
+  border-color: color-mix(in oklab, var(--cc-ok) 42%, color-mix(in oklab, #1b1915 14%, transparent));
+}
+
+/* Chrome rim — a single hairline under the traffic lights so the
+   header reads as its own instrument band, not a flat top. */
+[data-theme="light"] .term-command-chrome {
+  border-bottom: 1px solid color-mix(in oklab, #1b1915 6%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, #ffffff 90%, var(--bg-surface)) 0%,
+      #ffffff 100%
+    );
+}
+
+/* Traffic-light dots — in Light the inset #000 15% ring blurred
+   against the cream deck. Stronger ring + brighter top highlight so
+   the dots read tactile against warm ivory. */
+[data-theme="light"] .term-command-dots span {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, #1b1915 22%, transparent),
+    inset 0 1px 0 color-mix(in oklab, #ffffff 55%, transparent),
+    0 1px 2px color-mix(in oklab, #3a2a18 10%, transparent);
+}
+
+/* PRONTO pill — dimensional rim in Light. Canon keeps cc-ok as the
+   signal; we add a subtle outer glow so the pill floats the same way
+   it does in Dark. */
+[data-theme="light"] .term-command-phase {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #ffffff 80%, transparent) inset,
+    0 0 0 1px color-mix(in oklab, var(--cc-ok) 14%, transparent),
+    0 2px 6px -2px color-mix(in oklab, var(--cc-ok) 22%, transparent);
+}
+
+/* Typography confidence — in Light the body/meta copy drifts pale.
+   Lift microcontrast without turning the page marketing-dramatic. */
+[data-theme="light"] .term-output-head h1,
+[data-theme="light"] .term-output > h1 {
+  color: color-mix(in oklab, #000000 8%, var(--text-primary));
+}
+[data-theme="light"] .term-workbench-status {
+  color: color-mix(in oklab, #1b1915 30%, var(--text-muted));
+  opacity: 1;
+}
+
+/* Ribbon brand dot — Dark reads as a visible ember pulse; Light
+   should match. Strengthen the glow ring so the brand mark carries
+   the same weight in either theme. */
+[data-theme="light"] .canon-ribbon-brand-dot {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--ember) 28%, transparent),
+    0 0 8px color-mix(in oklab, var(--ember) 35%, transparent);
+}
+
+/* Spine sync "SINCRONIZADO" indicator — ghosted in Light, clear in
+   Dark. Pull it up to a confident ghost-green to match the dark read. */
+[data-theme="light"] .canon-ribbon-right .spine-sync[data-sync-state="synced"] {
+  color: color-mix(in oklab, var(--cc-ok) 32%, var(--text-muted));
+}
+[data-theme="light"] .spine-sync-dot {
+  box-shadow: 0 0 6px color-mix(in oklab, var(--cc-ok) 30%, transparent);
 }
