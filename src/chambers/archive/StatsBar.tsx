@@ -1,10 +1,11 @@
 import type { Stats } from "./helpers";
 import { formatTokens } from "./helpers";
 
-// Compact five-cell stats row. Lives at the top of the ledger column in
-// the new split layout — no separate telemetry slab, no dedicated section
-// header. The chamber head carries the chamber identity; this row just
-// quantifies it.
+// Compact stats row over the ledger column. Any metric that is zero
+// across every recorded run is rendered as "—" rather than a fake
+// ceiling: surface_mock runs never record latency/tokens/tools, and
+// "0ms" / "0 tokens" would read as "infinitely fast" instead of
+// "never measured".
 
 interface Props {
   stats: Stats;
@@ -12,6 +13,12 @@ interface Props {
 
 export default function StatsBar({ stats }: Props) {
   if (stats.total === 0) return null;
+
+  const hasLatency = stats.avgLatencyMs > 0;
+  const totalTokens = stats.totalInput + stats.totalOutput;
+  const hasTokens = totalTokens > 0;
+  const hasTools = stats.toolCalls > 0;
+
   return (
     <div
       data-archive-stats
@@ -32,21 +39,36 @@ export default function StatsBar({ stats }: Props) {
         sub={`${stats.refused}/${stats.total}`}
         tone={stats.refusalRate >= 0.5 ? "warn" : undefined}
       />
-      <Cell label="latency" value={`${stats.avgLatencyMs}ms`} />
-      <Cell
-        label="tokens"
-        value={formatTokens(stats.totalInput + stats.totalOutput)}
-        sub={`${formatTokens(stats.totalInput)} in`}
-      />
-      <Cell label="tools" value={`${stats.toolCalls}`} />
+      {hasLatency ? (
+        <Cell label="latency" value={`${stats.avgLatencyMs}ms`} />
+      ) : (
+        <Cell label="latency" value="—" muted />
+      )}
+      {hasTokens ? (
+        <Cell
+          label="tokens"
+          value={formatTokens(totalTokens)}
+          sub={`${formatTokens(stats.totalInput)} in`}
+        />
+      ) : (
+        <Cell label="tokens" value="—" muted />
+      )}
+      {hasTools ? (
+        <Cell label="tools" value={`${stats.toolCalls}`} />
+      ) : (
+        <Cell label="tools" value="—" muted />
+      )}
     </div>
   );
 }
 
 function Cell({
-  label, value, sub, tone,
-}: { label: string; value: string; sub?: string; tone?: "warn" }) {
-  const color = tone === "warn" ? "var(--cc-warn)" : "var(--text-primary)";
+  label, value, sub, tone, muted,
+}: { label: string; value: string; sub?: string; tone?: "warn"; muted?: boolean }) {
+  const color =
+    tone === "warn" ? "var(--cc-warn)" :
+    muted ? "var(--text-ghost)" :
+    "var(--text-primary)";
   return (
     <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
       <span

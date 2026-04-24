@@ -172,26 +172,7 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
         </Section>
 
         <Section title="Envelope">
-          <div className="meta-grid">
-            <span className="meta-label">confidence</span>
-            <span className="meta-value">{run.confidence ?? "—"}</span>
-            <span className="meta-label">iterations</span>
-            <span className="meta-value">{run.iterations?.toString() ?? "—"}</span>
-            <span className="meta-label">tools</span>
-            <span className="meta-value">{run.tool_calls.length}</span>
-            <span className="meta-label">tokens</span>
-            <span className="meta-value">{run.input_tokens} in · {run.output_tokens} out</span>
-            <span className="meta-label">latency</span>
-            <span className="meta-value">{run.processing_time_ms} ms</span>
-            {run.terminated_early && (
-              <>
-                <span className="meta-label">terminated</span>
-                <span className="meta-value" data-tone="warn">
-                  {run.termination_reason ?? "early"}
-                </span>
-              </>
-            )}
-          </div>
+          <EnvelopeGrid run={run} />
         </Section>
 
         {run.tool_calls.length > 0 && (
@@ -282,6 +263,64 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         {children}
       </div>
     </section>
+  );
+}
+
+// Envelope grid: render only rows with real values. If the whole
+// envelope would be empty (e.g. surface_mock with no tokens, no tools,
+// no iterations), collapse it to a single "não registado" stub so the
+// absence reads honestly instead of as five "—" placeholders.
+function EnvelopeGrid({ run }: { run: RunRecord }) {
+  const rows: Array<{ label: string; value: React.ReactNode; tone?: "warn" }> = [];
+  if (run.confidence) {
+    rows.push({ label: "confidence", value: run.confidence });
+  }
+  if (typeof run.iterations === "number" && run.iterations > 0) {
+    rows.push({ label: "iterations", value: String(run.iterations) });
+  }
+  if (run.tool_calls.length > 0) {
+    rows.push({ label: "tools", value: String(run.tool_calls.length) });
+  }
+  if (run.input_tokens > 0 || run.output_tokens > 0) {
+    rows.push({
+      label: "tokens",
+      value: `${run.input_tokens} in · ${run.output_tokens} out`,
+    });
+  }
+  if (run.processing_time_ms > 0) {
+    rows.push({ label: "latency", value: `${run.processing_time_ms} ms` });
+  }
+  if (run.terminated_early) {
+    rows.push({
+      label: "terminated",
+      value: run.termination_reason ?? "early",
+      tone: "warn",
+    });
+  }
+
+  if (rows.length === 0) {
+    return (
+      <span
+        className="kicker"
+        data-tone="ghost"
+        style={{ fontStyle: "italic" }}
+      >
+        — envelope não registado —
+      </span>
+    );
+  }
+
+  return (
+    <div className="meta-grid">
+      {rows.map((r) => (
+        <span key={r.label} style={{ display: "contents" }}>
+          <span className="meta-label">{r.label}</span>
+          <span className="meta-value" data-tone={r.tone}>
+            {r.value}
+          </span>
+        </span>
+      ))}
+    </div>
   );
 }
 
