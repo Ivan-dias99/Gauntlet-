@@ -6812,9 +6812,9 @@ textarea {
 
 /* ——— Light — cream floor, green INSIDE elevated objects —————————— */
 [data-theme="light"] {
-  --signal-canvas-bg:                var(--bg);
-  --signal-component-bg:             color-mix(in oklab, var(--cc-ok)  5%, var(--bg-elevated));
-  --signal-component-bg-active:      color-mix(in oklab, var(--cc-ok) 14%, var(--bg-elevated));
+  --signal-canvas-bg:                color-mix(in oklab, var(--cc-ok) 16%, var(--bg));
+  --signal-component-bg:             var(--bg-elevated);
+  --signal-component-bg-active:      color-mix(in oklab, var(--cc-ok)  6%, var(--bg-elevated));
   --signal-component-border:         color-mix(in oklab, var(--cc-ok) 26%, color-mix(in oklab, #000 17%, transparent));
   --signal-component-border-strong:  color-mix(in oklab, var(--cc-ok) 40%, color-mix(in oklab, #000 24%, transparent));
   --signal-component-highlight:      color-mix(in oklab, #fff 92%, transparent);
@@ -6847,11 +6847,9 @@ textarea {
   background: var(--signal-canvas-bg);
 }
 
-/* Light: hazes go dark — green stays inside objects, not behind the page */
-[data-theme="light"] .chamber-shell[data-chamber="terminal"]::before,
-[data-theme="light"] .chamber-shell[data-chamber="terminal"]::after {
-  opacity: 0;
-}
+/* Light: green atmospheric haze behind components, components go pure white */
+[data-theme="light"] .chamber-shell[data-chamber="terminal"]::before { opacity: 0.55; }
+[data-theme="light"] .chamber-shell[data-chamber="terminal"]::after  { opacity: 0.32; }
 
 /* Dark: full cinematic haze */
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"]::before  { opacity: 1;    }
