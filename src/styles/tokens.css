@@ -3202,7 +3202,6 @@ textarea {
   border: 1px solid color-mix(in oklab, var(--text-primary) 12%, transparent);
   border-radius: 14px;
   background: var(--bg-elevated);
-  overflow: hidden;
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 42%, transparent) inset,
     0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent),
@@ -3360,6 +3359,13 @@ textarea {
   letter-spacing: var(--track-meta);
   color: var(--text-ghost);
   min-height: 28px;
+  border-radius: 0 0 13px 13px;
+}
+
+/* Thinking strip follows the rounded bottom corners so the progress
+   bar does not spill past the composer border when pending. */
+.term-command > .thinking-strip {
+  border-radius: 0 0 13px 13px;
 }
 
 /* Chips — borderless, minimal padding. Telemetry born from the shell,
