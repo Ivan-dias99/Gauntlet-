@@ -3189,374 +3189,106 @@ textarea {
    TERMINAL PRODUCTION — one command surface, output on canvas
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ——— Canonical terminal command surface ———
-   Outer shell + inner deck pattern. The outer .term-command is a
-   matted frame (transparent with padded breath); the inner
-   .term-command-deck is the real solid surface. This "frame within
-   frame" reads as premium enterprise materiality — not a single slab
-   trying to earn presence with loud shadows. Two layers of discipline
-   beat five layers of effect. */
+/* ——— Composer material ———
+   The composer is the workbench's stronger sibling: same border
+   softness, same radius family (14px), same restrained shadow, same
+   binary tokens. One integrated command bar + one compact state rail.
+   No 3-band stack, no faux terminal chrome, no atmospheric glow. */
 .term-command {
   position: relative;
   width: 100%;
   max-width: 820px;
   margin: 0 auto;
-  padding: 4px;
-  border-radius: 22px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--text-primary) 2.5%, transparent) 0%,
-    color-mix(in oklab, var(--text-primary) 1%, transparent) 100%
-  );
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--text-primary) 3%, transparent),
-    0 20px 44px -22px color-mix(in oklab, var(--text-primary) 8%, transparent);
-  transition: box-shadow var(--dur-normal) var(--ease-swift);
-}
-.term-command[data-focused="true"] {
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent),
-    0 6px 16px -8px color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, transparent),
-    0 28px 60px -24px color-mix(in oklab, var(--text-primary) 12%, transparent);
-}
-/* Inner deck — the real solid surface. Hairline border, radius
-   tighter than the outer so the matted space is always visible.
-   Overflow hidden keeps chrome/body/workspace clipped into one
-   coherent material block. */
-.term-command-deck {
-  position: relative;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 12%, transparent);
+  border-radius: 14px;
   background: var(--bg-elevated);
-  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
-  border-radius: 17px;
   overflow: hidden;
-}
-.term-command[data-focused="true"] .term-command-deck {
-  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 24%, color-mix(in oklab, var(--text-primary) 10%, transparent));
-}
-/* Productive tint — lives inside the deck, at the very top, as a
-   thin gradient that fades to transparent by 40% of the height.
-   Reads as "work is alive" without green wash. Only visible when
-   focused or pending. */
-.term-command-deck::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--cc-ok) 5%, transparent) 0%,
-    transparent 45%
-  );
-  opacity: 0;
-  transition: opacity var(--dur-slow) var(--ease-swift);
-  pointer-events: none;
-}
-.term-command[data-focused="true"] .term-command-deck::before { opacity: 1; }
-.term-command[data-state="pending"] .term-command-deck::before {
-  opacity: 1;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--cc-info) 6%, transparent) 0%,
-    transparent 45%
-  );
-}
-.term-command-deck > * { position: relative; z-index: 1; }
-
-/* Chrome — seamless top of the deck. No bg, no border, no pseudo
-   crease. Pure padding rhythm separates chrome from body. */
-.term-command-chrome {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 13px 18px 11px;
-  background: transparent;
-  font-family: var(--mono);
-}
-.term-command-dots {
-  display: inline-flex;
-  gap: 6px;
-  margin-right: 6px;
-}
-.term-command-dots span {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  opacity: 0.85;
   box-shadow:
-    inset 0 0 0 1px color-mix(in oklab, #000 15%, transparent),
-    inset 0 1px 0 color-mix(in oklab, #fff 22%, transparent);
+    0 1px 0 color-mix(in oklab, #fff 42%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent),
+    0 8px 20px -12px color-mix(in oklab, var(--text-primary) 8%, transparent);
+  transition:
+    border-color var(--dur-normal) var(--ease-swift),
+    box-shadow var(--dur-normal) var(--ease-swift);
 }
-.term-command-dots span:nth-child(1) { background: var(--cc-err); }
-.term-command-dots span:nth-child(2) { background: var(--cc-warn); }
-.term-command-dots span:nth-child(3) { background: var(--cc-ok); }
-.term-command[data-state="pending"] .term-command-dots span:nth-child(1) {
-  animation: breathe 1.3s var(--ease-swift) infinite;
+[data-theme="dark"] .term-command {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 5%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 20%, transparent),
+    0 10px 22px -12px color-mix(in oklab, #000 40%, transparent);
 }
+
+/* Focused — subtle border lift toward chamber DNA. No glow wash. */
+.term-command[data-focused="true"] {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, var(--border-color-mid));
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 42%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 6%, transparent),
+    0 10px 24px -12px color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent);
+}
+[data-theme="dark"] .term-command[data-focused="true"] {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 38%, var(--border-color-mid));
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 22%, transparent),
+    0 12px 26px -12px color-mix(in oklab, var(--chamber-dna, var(--ember)) 22%, transparent);
+}
+
+/* Pending — border tint; progress strip animates at the bottom. */
+.term-command[data-state="pending"] {
+  border-color: color-mix(in oklab, var(--cc-info) 28%, var(--border-color-mid));
+}
+
+/* ——— Command bar ———
+   One row: path · input · tools · send. Workbench rhythm, composer
+   weight. No internal dividers, no faux shell slab. */
+.term-command-bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px 10px 16px;
+  min-height: 52px;
+}
+
 .term-command-path {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  font-family: var(--mono);
   font-size: var(--t-body-sec);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
-  min-width: 0;
+  max-width: 220px;
   letter-spacing: -0.002em;
+  flex-shrink: 0;
 }
 .term-command-path strong {
   color: var(--text-secondary);
   font-weight: 500;
 }
-.term-command-phase {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: var(--track-kicker);
-  text-transform: uppercase;
+.term-command-path-sep {
   color: var(--text-ghost);
-  flex-shrink: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
+  padding: 0 2px;
 }
-.term-command-phase::before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.5;
-}
-.term-command[data-focused="true"] .term-command-phase { color: var(--cc-ok); }
-.term-command[data-focused="true"] .term-command-phase::before { opacity: 1; }
-.term-command[data-state="pending"] .term-command-phase { color: var(--cc-info); }
-.term-command[data-state="pending"] .term-command-phase::before {
-  opacity: 1;
-  animation: breathe 1.4s var(--ease-swift) infinite;
-}
-
-/* Body — the gravity center. Generous vertical breath; typography
-   dominates. Prompt is kept legible (0.82) instead of ghosted. */
-.term-command-body {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 14px;
-  align-items: center;
-  padding: 18px 18px 16px;
-  font-family: var(--mono);
-  background: transparent;
-}
-.term-command-prompt {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  font-family: var(--mono);
-  font-size: 13px;
-  white-space: nowrap;
-  opacity: 0.82;
-}
-.term-command-prompt-user { color: var(--cc-ok); }
-.term-command-prompt-sep  { color: var(--text-ghost); }
-.term-command-prompt-path { color: var(--cc-path); }
-.term-command-prompt-caret { color: var(--chamber-dna, var(--cc-prompt)); }
-.term-command-input {
-  width: 100%;
-  background: transparent;
-  border: 0;
-  outline: 0;
-  font-family: var(--mono);
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--cc-fg);
-  padding: 2px 0;
-  min-width: 0;
-  letter-spacing: -0.002em;
-  caret-color: var(--chamber-dna, var(--ember));
-}
-.term-command-input::placeholder {
-  color: var(--text-muted);
-  font-style: italic;
-  letter-spacing: 0;
-  opacity: 0.78;
-}
-/* Send — solid fill, single directional glow. No invalid gradient,
-   no half-pixel lift. Hover intensifies the glow only. */
-.term-command-send {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 0;
-  background: var(--chamber-dna, var(--ember));
-  color: var(--bg);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--sans);
-  font-size: 14px;
-  font-weight: 500;
-  transition: transform var(--dur-fast) var(--ease-swift),
-              background var(--dur-fast) var(--ease-swift),
-              box-shadow var(--dur-fast) var(--ease-swift);
-  flex-shrink: 0;
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 22%, transparent) inset,
-    0 -1px 0 color-mix(in oklab, #000 12%, transparent) inset,
-    0 4px 12px -2px color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent);
-}
-.term-command-send:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 26%, transparent) inset,
-    0 -1px 0 color-mix(in oklab, #000 14%, transparent) inset,
-    0 8px 18px -3px color-mix(in oklab, var(--chamber-dna, var(--ember)) 42%, transparent);
-}
-.term-command-send:active:not(:disabled) { transform: translateY(0); }
-.term-command-send:disabled {
-  background: color-mix(in oklab, var(--text-ghost) 65%, var(--bg-elevated));
-  cursor: not-allowed;
-  box-shadow: 0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
-  opacity: 0.9;
-}
-.term-command-send[data-state="pending"] {
-  background: var(--cc-info);
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 20%, transparent) inset,
-    0 4px 12px -2px color-mix(in oklab, var(--cc-info) 32%, transparent);
-}
-.term-command[data-focused="true"] {
-  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 45%, var(--border-color-strong));
-  box-shadow:
-    0 1px 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 12%, transparent) inset,
-    0 6px 22px color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent);
-}
-/* Subtle productive tint — reads "live / connected" without a green
-   wash. Layered into the body background with very low opacity so it
-   registers peripherally but never dominates. Applies only when
-   focused or pending, i.e. when work is actually alive. */
-.term-command[data-focused="true"] .term-command-body,
-.term-command[data-state="pending"] .term-command-body {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--cc-ok) 3%, transparent),
-      transparent 60%
-    ),
-    var(--bg-input);
-}
-.term-command-chrome {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px var(--space-3) 10px 14px;
-  border-bottom: 1px solid var(--border-color-soft);
-  background: color-mix(in oklab, var(--bg-surface) 55%, var(--bg-elevated));
-  font-family: var(--mono);
-  /* Tonal inset — a hairline highlight below the traffic lights so the
-     chrome reads as a real window bar, not a flat stripe. */
-  box-shadow: inset 0 -1px 0 color-mix(in oklab, var(--text-primary) 3%, transparent);
-}
-.term-command-dots {
-  display: inline-flex;
-  gap: 6px;
-  margin-right: 4px;
-}
-.term-command-dots span {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  opacity: 0.9;
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, #000 22%, transparent);
-}
-.term-command-dots span:nth-child(1) { background: var(--cc-err); }
-.term-command-dots span:nth-child(2) { background: var(--cc-warn); }
-.term-command-dots span:nth-child(3) { background: var(--cc-ok); }
-.term-command[data-state="pending"] .term-command-dots span:nth-child(1) {
-  animation: breathe 1.3s var(--ease-swift) infinite;
-}
-.term-command-path {
-  font-size: var(--t-body-sec);
-  color: var(--text-muted);
+.term-command-path-mission {
+  color: var(--cc-path);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
   min-width: 0;
-  letter-spacing: -0.002em;
 }
-.term-command-path strong {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-.term-command-phase {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--text-ghost);
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-color-soft);
-  background: var(--bg-surface);
-  transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
-}
-.term-command-phase::before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.55;
-}
-.term-command[data-focused="true"] .term-command-phase {
-  color: var(--cc-ok);
-  border-color: color-mix(in oklab, var(--cc-ok) 32%, var(--border-color-soft));
-  background: color-mix(in oklab, var(--cc-ok) 6%, var(--bg-surface));
-}
-.term-command[data-focused="true"] .term-command-phase::before { opacity: 1; }
-.term-command[data-state="pending"] .term-command-phase {
-  color: var(--cc-info);
-  border-color: color-mix(in oklab, var(--cc-info) 32%, var(--border-color-soft));
-  background: color-mix(in oklab, var(--cc-info) 6%, var(--bg-surface));
-}
-.term-command[data-state="pending"] .term-command-phase::before {
-  opacity: 1;
-  animation: breathe 1.4s var(--ease-swift) infinite;
-}
-.term-command-body {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 12px;
-  align-items: center;
-  padding: 16px var(--space-4);
-  font-family: var(--mono);
-  background: var(--bg-input);
-  transition: background var(--dur-normal) var(--ease-swift);
-}
-.term-command-prompt {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  font-family: var(--mono);
-  font-size: 13px;
-  white-space: nowrap;
-}
-.term-command-prompt-user { color: var(--cc-ok); }
-.term-command-prompt-sep  { color: var(--text-ghost); }
-.term-command-prompt-path { color: var(--cc-path); }
-.term-command-prompt-caret { color: var(--chamber-dna, var(--cc-prompt)); }
+
 .term-command-input {
   width: 100%;
   background: transparent;
   border: 0;
   outline: 0;
   font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--cc-fg);
   padding: 4px 0;
   min-width: 0;
@@ -3566,11 +3298,25 @@ textarea {
 .term-command-input::placeholder {
   color: var(--text-muted);
   font-style: italic;
-  letter-spacing: 0;
+  opacity: 0.72;
 }
+.term-command-input:disabled {
+  cursor: not-allowed;
+}
+
+.term-command-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+/* ——— Send button ———
+   Attached to the command bar. Solid fill (chamber DNA), no floating
+   shadow cluster. Hover intensifies contrast only. */
 .term-command-send {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: 0;
   background: var(--chamber-dna, var(--ember));
@@ -3579,338 +3325,51 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--sans);
-  font-size: 15px;
-  font-weight: 500;
-  transition: opacity var(--dur-fast) var(--ease-swift),
-              transform var(--dur-fast) var(--ease-swift),
-              background var(--dur-fast) var(--ease-swift),
-              box-shadow var(--dur-fast) var(--ease-swift);
   flex-shrink: 0;
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 18%, transparent) inset,
-    0 1px 2px color-mix(in oklab, var(--chamber-dna, var(--ember)) 35%, transparent);
+  transition:
+    background var(--dur-fast) var(--ease-swift),
+    transform var(--dur-fast) var(--ease-swift);
 }
 .term-command-send:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 22%, transparent) inset,
-    0 4px 12px color-mix(in oklab, var(--chamber-dna, var(--ember)) 45%, transparent);
+  filter: brightness(1.06);
 }
-.term-command-send:active:not(:disabled) { transform: translateY(0); }
+.term-command-send:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
 .term-command-send:disabled {
-  background: var(--text-ghost);
+  background: color-mix(in oklab, var(--text-ghost) 55%, var(--bg-elevated));
+  color: var(--bg);
   cursor: not-allowed;
-  box-shadow: none;
 }
 .term-command-send[data-state="pending"] {
   background: var(--cc-info);
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 18%, transparent) inset,
-    0 1px 2px color-mix(in oklab, var(--cc-info) 40%, transparent);
 }
 
-/* ——— Slim bench bar ———
-   Replaces the fat .workbench card. One compact row: state dot,
-   active task title (serif), state pill, quick counters. */
-.term-bench {
-  width: 100%;
-  max-width: 820px;
-  margin: 0 auto var(--space-3);
+/* ——— State rail ———
+   One compressed line under the bar: backend · doctrine · mode.
+   Identity (chamber + mission) lives in WorkbenchStrip above; no
+   duplication here. */
+.term-command-rail {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 10px 14px;
-  background: transparent;
-  border-top: 1px solid var(--border-color-soft);
-  border-bottom: 1px solid var(--border-color-soft);
-  flex-wrap: wrap;
-  font-family: var(--mono);
-  font-size: var(--t-meta);
-  color: var(--text-muted);
-  position: relative;
-}
-.term-bench-title {
-  font-family: var(--sans);
-  font-size: var(--t-body);
-  color: var(--text-primary);
-  letter-spacing: -0.005em;
-  max-width: 48%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-  flex: 1;
-}
-.term-bench-title[data-done="true"] {
-  text-decoration: line-through;
-  color: var(--text-muted);
-}
-.term-bench-counter {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  color: var(--text-muted);
-  font-size: var(--t-meta);
-}
-.term-bench-counter-label {
-  color: var(--text-ghost);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  font-size: var(--t-micro);
-}
-.term-bench-counter-value[data-tone="info"] { color: var(--cc-info); }
-.term-bench-counter-value[data-tone="ok"]   { color: var(--cc-ok); }
-.term-bench-counter-value[data-tone="err"]  { color: var(--cc-err); }
-.term-bench-sep {
-  color: var(--text-ghost);
-  opacity: 0.5;
-  user-select: none;
-}
-.term-bench-empty {
-  font-style: italic;
-  color: var(--text-muted);
-  font-family: var(--sans);
-  font-size: var(--t-body-sec);
-}
-
-/* ——— Canvas output ———
-   Tool calls and answer print directly onto the chamber canvas. Only a
-   thin left rail keeps them visually anchored. No big wrapper box. */
-.term-canvas {
-  width: 100%;
-  max-width: 820px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3) 0 var(--space-4);
-}
-.term-canvas-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding-bottom: 6px;
-  border-bottom: 1px dashed var(--border-color-soft);
-  font-family: var(--mono);
-}
-.term-canvas-header-state {
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--text-ghost);
-  display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-.term-canvas-header-state[data-tone="info"] { color: var(--cc-info); }
-.term-canvas-header-state[data-tone="ok"]   { color: var(--cc-ok); }
-.term-canvas-header-state[data-tone="err"]  { color: var(--cc-err); }
-.term-canvas-header-target {
-  font-family: var(--mono);
-  font-size: var(--t-meta);
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
-.term-canvas-header-meta {
+  padding: 6px 12px 8px;
+  border-top: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
   font-family: var(--mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-meta);
   color: var(--text-ghost);
-}
-.term-canvas-tools {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  border-left: 1px solid color-mix(in oklab, var(--chamber-dna, var(--ember)) 30%, var(--border-color-soft));
-  padding: 2px 0 2px var(--space-3);
-}
-.term-canvas-answer {
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--cc-fg);
-  white-space: pre-wrap;
-  word-break: break-word;
-  padding-left: var(--space-3);
-  border-left: 1px solid color-mix(in oklab, var(--chamber-dna, var(--ember)) 30%, var(--border-color-soft));
-}
-.term-canvas-answer-prompt {
-  color: var(--cc-prompt);
-  margin-right: 6px;
-}
-.term-canvas-foot {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding-top: 8px;
-  margin-top: 2px;
-  border-top: 1px dashed var(--border-color-soft);
-  flex-wrap: wrap;
+  min-height: 28px;
 }
 
-/* ——— Ledger foot ———
-   Quiet footer band with hairline above. No panel background,
-   no shadow. Ghost rows expand on click. */
-.term-ledger-foot {
-  width: 100%;
-  max-width: 820px;
-  margin: var(--space-4) auto 0;
-  padding-top: var(--space-3);
-  border-top: 1px dashed var(--border-color-soft);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.term-ledger-foot-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--mono);
-}
-.term-ledger-foot-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: var(--space-2);
-  align-items: baseline;
-  padding: 6px 0;
-  border-bottom: 1px dashed color-mix(in oklab, var(--border-color-soft) 60%, transparent);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-swift);
-}
-.term-ledger-foot-row:last-child { border-bottom: 0; }
-.term-ledger-foot-row:hover {
-  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 4%, transparent);
-}
-.term-ledger-foot-row[data-clickable="false"] {
-  cursor: default;
-}
-.term-ledger-foot-row[data-clickable="false"]:hover {
-  background: transparent;
-}
-.term-ledger-foot-title {
-  font-family: var(--sans);
-  font-size: var(--t-body-sec);
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-.term-ledger-foot-meta {
-  font-family: var(--mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-meta);
-  color: var(--text-ghost);
-  white-space: nowrap;
-}
-
-/* Hide the old Terminal .run-header if it ever reappears from a
-   stale build. Defensive — not expected. */
-.run-header { display: none; }
-
-/* ══════════════════════════════════════════════════════════════════════
-   TERMINAL TOOLS — affordances + workspace bar (Claude-Code-class)
-   ══════════════════════════════════════════════════════════════════════ */
-
-/* Affordance toolbar inside the term-command chrome (between phase
-   pill and the body). Compact icon buttons; no text. Each has a
-   flyout below with honest enumeration of what Terminal really
-   carries. */
-.term-command-tools {
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-  margin-left: 6px;
-}
-.term-tool {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 0;
-  color: var(--text-ghost);
-  cursor: pointer;
-  transition: color var(--dur-fast) var(--ease-swift),
-              background var(--dur-fast) var(--ease-swift);
-  padding: 0;
-  flex-shrink: 0;
-  font-family: var(--mono);
-  font-size: 12.5px;
-  line-height: 1;
-  position: relative;
-}
-.term-tool:hover {
-  color: var(--chamber-dna, var(--ember));
-  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 7%, transparent);
-}
-.term-tool[data-active="true"] {
-  color: var(--chamber-dna, var(--ember));
-  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 10%, transparent);
-}
-.term-tool[disabled] { opacity: 0.4; cursor: not-allowed; }
-
-/* Workspace row — same surface as the rest of the composer. No
-   separate slab, no top border, no darker bg. Just a hairline crease
-   (inset ::before) and spacing. Chips read as telemetry born from
-   the shell, not appended after. */
-.term-command-workspace {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 14px 11px;
-  background: transparent;
-  border-top: 0;
-  font-family: var(--mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-meta);
-  color: var(--text-ghost);
-  flex-wrap: wrap;
-  position: relative;
-}
-.term-command-workspace::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 14px;
-  right: 14px;
-  height: 1px;
-  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
-  pointer-events: none;
-}
-.term-ws-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-.term-ws-divider {
-  display: inline-block;
-  width: 2px;
-  height: 2px;
-  border-radius: 50%;
-  background: var(--text-ghost);
-  opacity: 0.45;
-  margin: 0 6px;
-  flex-shrink: 0;
-}
-/* Chips — borderless, padding-only. Integrated telemetry, not
-   attached pills. Hover introduces a subtle chamber-DNA tint so the
-   user still feels they are interactive. */
+/* Chips — borderless, minimal padding. Telemetry born from the shell,
+   not attached pills. */
 .term-ws-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 8px;
-  border-radius: 6px;
+  padding: 2px 6px;
+  border-radius: 5px;
   background: transparent;
   color: var(--text-muted);
   border: 0;
@@ -3918,49 +3377,25 @@ textarea {
   font-family: var(--mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-meta);
-  min-width: 0;
   transition: color var(--dur-fast), background var(--dur-fast);
 }
-.term-ws-chip:hover {
-  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 5%, transparent);
-  color: var(--text-secondary);
-}
-.term-ws-chip[data-role="primary"] {
-  color: var(--text-secondary);
-}
-.term-ws-chip-label {
-  color: var(--text-ghost);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  font-size: 9px;
-}
-.term-ws-chip-value {
-  color: inherit;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-.term-ws-chip[data-role="primary"] .term-ws-chip-value {
-  color: var(--text-primary);
-}
 .term-ws-chip-glyph {
-  font-size: 11px;
+  font-size: 10px;
   opacity: 0.9;
   color: var(--chamber-dna, var(--ember));
   flex-shrink: 0;
   line-height: 1;
 }
-.term-ws-chip[data-tone="warn"] {
-  color: var(--cc-warn);
-  border-color: color-mix(in oklab, var(--cc-warn) 30%, transparent);
+.term-ws-chip-value {
+  color: inherit;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.term-ws-chip[data-tone="warn"] { color: var(--cc-warn); }
 .term-ws-chip[data-tone="warn"] .term-ws-chip-glyph { color: var(--cc-warn); }
-.term-ws-chip[data-tone="ok"] {
-  color: var(--cc-ok);
-  border-color: color-mix(in oklab, var(--cc-ok) 30%, transparent);
-}
+.term-ws-chip[data-tone="ok"]   { color: var(--cc-ok); }
 .term-ws-chip[data-tone="ok"] .term-ws-chip-glyph { color: var(--cc-ok); }
 .term-ws-chip[data-tone="ok"] .term-ws-chip-glyph::before {
   content: "";
@@ -3969,20 +3404,20 @@ textarea {
   height: 6px;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 22%, transparent);
-  animation: breathe 2.8s ease-in-out infinite;
   vertical-align: middle;
 }
 .term-ws-chip[data-tone="ok"] .term-ws-chip-glyph > * { display: none; }
+
 .term-ws-spacer { flex: 1; min-width: 8px; }
+
+/* Mode toggle — compressed pill inside the rail. */
 .term-ws-mode {
   display: inline-flex;
   align-items: stretch;
-  border: 0;
   border-radius: var(--radius-pill);
   background: color-mix(in oklab, var(--text-primary) 4%, transparent);
   overflow: hidden;
-  height: 22px;
+  height: 20px;
   padding: 2px;
 }
 .term-ws-mode-opt {
@@ -3990,10 +3425,10 @@ textarea {
   border: 0;
   color: var(--text-muted);
   font-family: var(--mono);
-  font-size: var(--t-micro);
+  font-size: 9px;
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  padding: 0 11px;
+  padding: 0 9px;
   cursor: pointer;
   border-radius: calc(var(--radius-pill) - 1px);
   transition: color var(--dur-fast), background var(--dur-fast);
@@ -4006,6 +3441,35 @@ textarea {
   color: var(--bg);
 }
 .term-ws-mode-opt:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* ——— Tool affordance buttons ———
+   Compact icon triggers for the context/recent/tools flyouts. */
+.term-tool {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: var(--text-ghost);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift);
+  padding: 0;
+  flex-shrink: 0;
+}
+.term-tool:hover {
+  color: var(--chamber-dna, var(--ember));
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 7%, transparent);
+}
+.term-tool[data-active="true"] {
+  color: var(--chamber-dna, var(--ember));
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 10%, transparent);
+}
+.term-tool[disabled] { opacity: 0.4; cursor: not-allowed; }
 
 /* Flyout above the term-command (anchored to the affordance row).
    Premium popover, matches the Insight flyout DNA but tuned for the
@@ -4562,81 +4026,6 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
-/* Composer deck — inner highlight refinement for a crisper rim
-   without adding weight. Inner deck radius tuned. */
-.term-command-deck {
-  border-radius: 18px;
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 28%, transparent) inset;
-}
-[data-theme="dark"] .term-command-deck {
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
-}
-
-/* Outer shell — slightly stronger rim for edge definition, and a
-   finer radius relationship (22 outer / 18 inner = 4px mat). */
-.term-command {
-  border-radius: 22px;
-  padding: 4px;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--text-primary) 3%, transparent) 0%,
-      color-mix(in oklab, var(--text-primary) 1%, transparent) 60%,
-      color-mix(in oklab, var(--text-primary) 2%, transparent) 100%
-    );
-}
-
-/* Composer workspace chips — stronger microcontrast for labels,
-   better vertical baseline alignment. */
-.term-ws-chip {
-  padding: 4px 9px;
-}
-.term-ws-chip-label {
-  font-size: 9px;
-  letter-spacing: var(--track-kicker);
-  opacity: 0.85;
-}
-.term-ws-chip-value {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-}
-
-/* Tool affordances — crisper hit area + refined glyph presentation. */
-.term-tool {
-  width: 28px;
-  height: 28px;
-}
-.term-tool svg {
-  opacity: 0.85;
-  transition: opacity var(--dur-fast) var(--ease-swift);
-}
-.term-tool:hover svg,
-.term-tool[data-active="true"] svg {
-  opacity: 1;
-}
-
-/* Send button — add a crisp top rim highlight in light mode so the
-   circle reads dimensional without a gradient. */
-.term-command-send {
-  width: 34px;
-  height: 34px;
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 32%, transparent) inset,
-    0 -1px 0 color-mix(in oklab, #000 14%, transparent) inset,
-    0 2px 4px -1px color-mix(in oklab, var(--chamber-dna, var(--ember)) 22%, transparent),
-    0 6px 14px -3px color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, transparent);
-}
-.term-command-send:hover:not(:disabled) {
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 38%, transparent) inset,
-    0 -1px 0 color-mix(in oklab, #000 16%, transparent) inset,
-    0 2px 6px -1px color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent),
-    0 10px 22px -4px color-mix(in oklab, var(--chamber-dna, var(--ember)) 40%, transparent);
-}
-
 /* Vertical rhythm — the chamber body has room to breathe between
    strip, canvas and composer. Bottom padding absorbs the composer
    so the canvas never hits the composer shadow. */
@@ -4772,45 +4161,3 @@ textarea {
   color: var(--text-ghost);
 }
 
-/* PRONTO pill — restored on composer chrome with sage tone to
-   encode "composer is ready to receive input". Distinct from
-   BACKEND live in the workspace bar (which encodes "the backend is
-   reachable"). Same family, two honest signals. */
-.term-command-phase {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: var(--track-kicker);
-  text-transform: uppercase;
-  color: var(--cc-ok);
-  flex-shrink: 0;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  border: 1px solid color-mix(in oklab, var(--cc-ok) 26%, transparent);
-  background: color-mix(in oklab, var(--cc-ok) 6%, transparent);
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 25%, transparent) inset;
-}
-.term-command-phase::before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.8;
-}
-.term-command[data-state="pending"] .term-command-phase {
-  color: var(--cc-info);
-  border-color: color-mix(in oklab, var(--cc-info) 28%, transparent);
-  background: color-mix(in oklab, var(--cc-info) 6%, transparent);
-}
-.term-command[data-state="pending"] .term-command-phase::before {
-  animation: breathe 1.4s var(--ease-swift) infinite;
-  opacity: 1;
-}
-[data-theme="dark"] .term-command-phase {
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
-}

@@ -2,15 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import type { Copy, RunMode, Task } from "./helpers";
 
 // Terminal command surface.
-// Chrome row carries the mission path + phase + three affordances:
-//   (+) context  — flyout listing real signals: doctrine, mission turns, mock/live, profile
-//   (>) recents  — last 5 tasks of the active mission (click to populate input)
-//   (⚒) tools    — the chamber's tool allowlist (read-only mirror of Routing/Permissions)
-// Body row is the input + send.
-// Workspace bar at the bottom groups identity · state · mode.
 //
-// All flyouts enumerate state Terminal already has. No decoration, no
-// fake features.
+// One integrated command bar: path · input · tools · send.
+// One compact state rail below: backend · doctrine · mode.
+//
+// Identity (chamber + mission) lives in the WorkbenchStrip above, so
+// this component does not duplicate it. Flyouts enumerate real state.
 
 interface Props {
   copy: Copy;
@@ -31,8 +28,7 @@ interface Props {
 type Flyout = null | "context" | "recent" | "tools";
 
 // Tools the Terminal chamber actually carries server-side. Mirrors the
-// allowlist exposed in Core/Permissions. Read-only — this is a window
-// into the backend posture, not a toggle.
+// allowlist exposed in Core/Permissions.
 const TERMINAL_TOOLS: Array<{ name: string; kind: string; gated?: boolean }> = [
   { name: "read_file",      kind: "fs" },
   { name: "list_directory", kind: "fs" },
@@ -70,7 +66,7 @@ export default function ExecutionComposer({
 
   const canSubmit = value.trim().length > 0 && !pending;
   const pathLabel = missionTitle
-    ? missionTitle.length > 36 ? missionTitle.slice(0, 33).trimEnd() + "…" : missionTitle
+    ? missionTitle.length > 28 ? missionTitle.slice(0, 25).trimEnd() + "…" : missionTitle
     : "~/mission";
 
   return (
@@ -85,13 +81,32 @@ export default function ExecutionComposer({
         data-focused={focused ? "true" : undefined}
         data-state={pending ? "pending" : undefined}
       >
-      <div className="term-command-deck">
-        <div className="term-command-chrome">
-          <span className="term-command-path">
+        <div className="term-command-bar">
+          <span className="term-command-path" aria-hidden>
             <strong>signal</strong>
-            <span style={{ color: "var(--text-muted)" }}> · </span>
-            <span style={{ color: "var(--cc-path)" }}>{pathLabel}</span>
+            <span className="term-command-path-sep"> · </span>
+            <span className="term-command-path-mission">{pathLabel}</span>
           </span>
+
+          <input
+            ref={inputRef}
+            autoFocus
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) onSubmit();
+              if (e.key === "Escape") setFlyout(null);
+            }}
+            placeholder={pending ? copy.creationRunning : copy.creationPlaceholder}
+            disabled={pending}
+            className="term-command-input"
+            spellCheck={false}
+            autoComplete="off"
+            aria-label={copy.creationInputVoice}
+          />
+
           <div className="term-command-tools">
             <button
               type="button"
@@ -125,30 +140,7 @@ export default function ExecutionComposer({
               <IconTools />
             </button>
           </div>
-          <span className="term-command-phase" aria-live="polite">
-            {pending ? "exec" : "pronto"}
-          </span>
-        </div>
 
-        <div className="term-command-body">
-          <input
-            ref={inputRef}
-            autoFocus
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) onSubmit();
-              if (e.key === "Escape") setFlyout(null);
-            }}
-            placeholder={pending ? copy.creationRunning : copy.creationPlaceholder}
-            disabled={pending}
-            className="term-command-input"
-            spellCheck={false}
-            autoComplete="off"
-            aria-label={copy.creationInputVoice}
-          />
           <button
             type="button"
             className="term-command-send"
@@ -159,71 +151,40 @@ export default function ExecutionComposer({
             aria-label={pending ? "a executar" : "executar"}
           >
             {pending ? (
-              <span style={{ fontSize: 14, lineHeight: 1 }}>…</span>
+              <span style={{ fontSize: 12, lineHeight: 1 }}>…</span>
             ) : (
               <IconSend />
             )}
           </button>
         </div>
 
-        {/* Workspace bar — three deliberate groups:
-            · identity  (câmara · missão)
-            · state     (backend · doutrina)
-            · mode      (agent / crew toggle)
-            Separated by hairline dividers so the chips read as one
-            coherent family, not a random cluster. */}
-        <div className="term-command-workspace">
-          <div className="term-ws-group" aria-label="identidade">
-            <span
-              className="term-ws-chip"
-              title="câmara ativa"
-            >
-              <span className="term-ws-chip-glyph" aria-hidden>›_</span>
-              <span className="term-ws-chip-label">câmara</span>
-              <span className="term-ws-chip-value">terminal</span>
+        {/* Compressed state rail — backend · doctrine · mode only.
+            Chamber + mission already appear in the WorkbenchStrip above. */}
+        <div className="term-command-rail">
+          <span
+            className="term-ws-chip"
+            data-tone={mockMode ? "warn" : "ok"}
+            title={mockMode
+              ? "backend em modo simulado — respostas canned"
+              : "backend ligado — execução real"}
+          >
+            <span className="term-ws-chip-glyph" aria-hidden>●</span>
+            <span className="term-ws-chip-value">
+              {mockMode ? "mock" : "live"}
             </span>
-            <span
-              className="term-ws-chip"
-              data-role="primary"
-              title="missão atual"
-            >
-              <span className="term-ws-chip-glyph" aria-hidden>◆</span>
-              <span className="term-ws-chip-label">missão</span>
-              <span className="term-ws-chip-value">
-                {missionTitle
-                  ? missionTitle.length > 32 ? missionTitle.slice(0, 29).trimEnd() + "…" : missionTitle
-                  : "sem missão"}
-              </span>
-            </span>
-          </div>
+          </span>
 
-          <span className="term-ws-divider" aria-hidden />
-
-          <div className="term-ws-group" aria-label="estado">
+          {principlesCount > 0 && (
             <span
               className="term-ws-chip"
-              data-tone={mockMode ? "warn" : "ok"}
-              title={mockMode ? "backend em modo simulado — respostas canned" : "backend ligado — execução real"}
+              title="princípios em vigor que viajam com cada tarefa"
             >
-              <span className="term-ws-chip-glyph" aria-hidden>●</span>
-              <span className="term-ws-chip-label">backend</span>
+              <span className="term-ws-chip-glyph" aria-hidden>§</span>
               <span className="term-ws-chip-value">
-                {mockMode ? "mock" : "live"}
+                {principlesCount} {principlesCount === 1 ? "princípio" : "princípios"}
               </span>
             </span>
-            {principlesCount > 0 && (
-              <span
-                className="term-ws-chip"
-                title="princípios em vigor que viajam com cada tarefa"
-              >
-                <span className="term-ws-chip-glyph" aria-hidden>§</span>
-                <span className="term-ws-chip-label">doutrina</span>
-                <span className="term-ws-chip-value">
-                  {principlesCount} {principlesCount === 1 ? "princípio" : "princípios"}
-                </span>
-              </span>
-            )}
-          </div>
+          )}
 
           <span className="term-ws-spacer" />
 
@@ -250,7 +211,6 @@ export default function ExecutionComposer({
         </div>
 
         {pending && <div className="thinking-strip" aria-hidden />}
-      </div>
 
         {flyout === "context" && (
           <ContextFlyout
@@ -426,7 +386,7 @@ function IconTools() {
 function IconSend() {
   return (
     <svg
-      width={13} height={13} viewBox="0 0 24 24" fill="none"
+      width={12} height={12} viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth={2.25}
       strokeLinecap="round" strokeLinejoin="round" aria-hidden
     >
