@@ -1,6 +1,7 @@
-// Core · Routing — read-only mirror of signal-backend/chambers/profiles.py.
-// Migrated to the shared .panel primitive so the table reads as a
-// structured document rather than a raw grid.
+// Core · Routing — static reference mirroring
+// signal-backend/chambers/profiles.py. Hardcoded here; not fetched
+// from a runtime diagnostics endpoint. The source path is surfaced in
+// the intro so the user can verify against the truth file.
 
 const PROFILES: Array<{
   key: string;
@@ -36,6 +37,10 @@ export default function Routing() {
         <span className="core-page-intro-sub">
           Perfis de chamber. O router decide por chamber.dispatch quando
           query.chamber está presente; cai em is_dev_intent quando ausente.
+          {" "}
+          <span style={{ color: "var(--text-ghost)" }}>
+            Referência estática · fonte: <code style={{ fontFamily: "var(--mono)" }}>signal-backend/chambers/profiles.py</code>.
+          </span>
         </span>
       </div>
       <section className="panel" data-rank="primary">

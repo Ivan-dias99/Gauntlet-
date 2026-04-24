@@ -41,6 +41,7 @@ const TERMINAL_TOOLS: Array<{ name: string; kind: string; gated?: boolean }> = [
   { name: "git",            kind: "vcs" },
   { name: "web_fetch",      kind: "net" },
   { name: "web_search",     kind: "net" },
+  { name: "package_info",   kind: "net" },
 ];
 
 export default function ExecutionComposer({

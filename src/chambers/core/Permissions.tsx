@@ -1,6 +1,7 @@
-// Core · Permissions — read-only view over the tool allowlist and the
-// code-execution gate. Mirrors signal-backend/tools.py. Each tool lives
-// on a shared .panel card so the permissions register reads with the
+// Core · Permissions — static reference over the tool allowlist and
+// the code-execution gate. Hardcoded from signal-backend/tools.py;
+// not fetched from a runtime diagnostics endpoint. Each tool lives on
+// a shared .panel card so the permissions register reads with the
 // same composition grammar as Routing / Orchestration / System.
 
 interface ToolEntry {
@@ -25,6 +26,8 @@ const TOOLS: ToolEntry[] = [
     note: "Re-valida cada redirect hop. IPs privados / reservados / loopback / metadata bloqueados (SSRF defence)." },
   { name: "web_search",      kind: "network",    gated: false,
     note: "External search API." },
+  { name: "package_info",    kind: "network",    gated: false,
+    note: "Package / runtime metadata lookup (npm registry + PyPI JSON). Não executa comandos — é apenas consulta HTTP de versão, licença e homepage." },
 ];
 
 const KIND_TONE: Record<ToolEntry["kind"], "info" | "warn" | "accent" | "ok"> = {
@@ -46,6 +49,10 @@ export default function Permissions() {
           </code>
           . Cada chamber tem allowlist própria — Insight e Core sem tools,
           Terminal completo, Surface só o handler mock, Archive subset de retrieval.
+          {" "}
+          <span style={{ color: "var(--text-ghost)" }}>
+            Referência estática · fonte: <code style={{ fontFamily: "var(--mono)" }}>signal-backend/tools.py</code>.
+          </span>
         </span>
       </div>
 

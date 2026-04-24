@@ -1,10 +1,9 @@
-// Core · Orchestration — read-only display of the four pipelines the
+// Core · Orchestration — static reference of the four pipelines the
 // engine operates today, with the budgets that keep them honest.
-// Built on the shared .core-page frame + primary-rank panels so the
-// tab reads with the same composition discipline as Routing /
-// Permissions / System / Policies. Long mono labels (e.g.
-// MAX_AGENT_ITERATIONS) sit in a dedicated wider key column so they
-// never wrap across lines.
+// Values are hardcoded from signal-backend/agent.py and engine.py;
+// they are not fetched from a runtime diagnostics endpoint. Long mono
+// labels (e.g. MAX_AGENT_ITERATIONS) sit in a dedicated wider key
+// column so they never wrap across lines.
 
 interface Row { label: string; value: string; }
 
@@ -43,7 +42,12 @@ export default function Orchestration() {
         <span className="core-page-intro-title">Orchestration</span>
         <span className="core-page-intro-sub">
           Quatro pipelines com budgets que mantêm cada rota honesta.
-          Valores espelham o backend — agent.py e engine.py.
+          {" "}
+          <span style={{ color: "var(--text-ghost)" }}>
+            Referência estática · fonte: <code style={{ fontFamily: "var(--mono)" }}>signal-backend/agent.py</code>,
+            {" "}
+            <code style={{ fontFamily: "var(--mono)" }}>engine.py</code>.
+          </span>
         </span>
       </div>
       <div
