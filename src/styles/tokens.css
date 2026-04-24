@@ -7180,3 +7180,17 @@ textarea {
 [data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
   border-color: color-mix(in oklab, var(--cc-ok) 44%, color-mix(in oklab, var(--text-primary) 30%, transparent));
 }
+
+/* — Composer-parity background: same flat dark material as the composer deck —
+   v3 gradients used 16-18% cc-ok top → lighter/greener than the composer's
+   inner deck (12% cc-ok + bg-surface = --signal-component-bg). Replace the
+   gradient with the exact same token the composer interior uses. Elevation
+   is carried by the shadow pyramid — not background lightness.              */
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-spine,
+[data-theme="dark"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: var(--signal-component-bg);
+}
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-spine,
+[data-theme="sepia"] .chamber-shell[data-chamber="terminal"] .term-workbench-strip {
+  background: var(--signal-component-bg);
+}
