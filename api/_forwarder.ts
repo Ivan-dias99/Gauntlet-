@@ -14,6 +14,12 @@
 //   SIGNAL_BACKEND_URL   (preferred)
 //   RUBERRA_BACKEND_URL  (legacy, honored during compat)
 
+// Scoped declaration of `process.env` for the Vercel edge runtime so
+// this file typechecks without pulling @types/node into the whole
+// project. The frontend tsconfig (tsconfig.json) intentionally does
+// not include "node" in lib/types to keep the browser bundle honest.
+declare const process: { env: Record<string, string | undefined> };
+
 const NEW_HEADER = "x-signal-backend";
 const LEGACY_HEADER = "x-ruberra-backend";
 const UNREACHABLE_VALUE = "unreachable";
