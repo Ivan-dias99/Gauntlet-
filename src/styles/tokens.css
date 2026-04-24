@@ -967,6 +967,7 @@ textarea {
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  contain: layout paint;
 }
 .chamber-head {
   padding: 20px 40px 16px;
@@ -6470,38 +6471,22 @@ textarea {
   animation: sig-chamber-in 260ms var(--sig-spring) both;
 }
 
-
 /* ══════════════════════════════════════════════════════════════════════
-   SURFACE — Amber/orange atmospheric field
-   Mirrors Terminal's green cinematic haze, but in warm amber/ember tone.
-   The --ember token (#c47a5a light / #b86a4a dark / #e88860 sepia)
-   radiates behind opaque planes — region panels stay clean paper.
-
-   Architecture identical to Terminal:
-     · shell background: ember tinted at 14%
-     · ::before  — 5-layer elliptical gradients, no blur (gradients feather naturally)
-     · ::after   — 3 circular blobs, blur 52px for the esfumaçado bloom
-     · > *       — z-index: 1 so planes float above the haze layers
-   Planes keep their existing opaque backgrounds — the orange is AIR.
+   SURFACE — Studio-lit workspace field (amber/ember)
+   Personality contrast with Terminal: Terminal envelopes in cloud cover;
+   Surface reads as a lit design desk — warm ceiling wash + corner pops,
+   no centre vignette, no bottom cloud. The orange is light, not fog.
+   Planes stay opaque clean paper; ember radiates behind them as air.
    ══════════════════════════════════════════════════════════════════════ */
-
-/* ——— Shell floor — warm amber tint on the raw background ——————————— */
 .chamber-shell[data-chamber="surface"] {
   position: relative;
   isolation: isolate;
-  background: color-mix(in oklab, var(--ember) 14%, var(--bg));
+  background: color-mix(in oklab, var(--ember) 12%, var(--bg));
 }
-
-/* ——— Lift all direct children above the atmospheric pseudo-layers ——— */
 .chamber-shell[data-chamber="surface"] > * {
   position: relative;
   z-index: 1;
 }
-
-/* ——— ::before — cinematic elliptical haze, 5 layers ——————————————
-   Distribution: strong top-right (afternoon light), left lateral,
-   bottom anchor, bottom-right corner bloom, soft ambient centre.
-   No blur — ellipses naturally feather at their stops. */
 .chamber-shell[data-chamber="surface"]::before {
   content: "";
   position: absolute;
@@ -6509,112 +6494,79 @@ textarea {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(
-      ellipse 75% 52% at 72% -4%,
-      color-mix(in oklab, var(--ember) 18%, transparent) 0%,
-      transparent 60%
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ember) 9%, transparent) 0%,
+      transparent 38%
     ),
     radial-gradient(
-      ellipse 48% 72% at -6% 40%,
-      color-mix(in oklab, var(--ember) 11%, transparent) 0%,
-      transparent 54%
-    ),
-    radial-gradient(
-      ellipse 60% 48% at 108% 70%,
-      color-mix(in oklab, var(--ember) 12%, transparent) 0%,
-      transparent 56%
-    ),
-    radial-gradient(
-      ellipse 110% 58% at 50% 112%,
-      color-mix(in oklab, var(--ember) 14%, transparent) 0%,
+      ellipse 44% 38% at 92% 4%,
+      color-mix(in oklab, var(--ember) 22%, transparent) 0%,
       transparent 62%
     ),
     radial-gradient(
-      ellipse 130% 90% at 50% 50%,
-      color-mix(in oklab, var(--ember)  4%, transparent) 0%,
-      transparent 80%
+      ellipse 42% 42% at 6% 94%,
+      color-mix(in oklab, var(--ember) 14%, transparent) 0%,
+      transparent 60%
     );
 }
-
-/* ——— ::after — esfumaçado circular blooms, blurred ——————————————
-   Three warm pools: top-right (concentrated warmth), bottom-left
-   counter-bloom, bottom-centre anchor. blur(52px) dissolves edges. */
 .chamber-shell[data-chamber="surface"]::after {
   content: "";
   position: absolute;
-  inset: -20px;
+  inset: -16px;
   z-index: 0;
   pointer-events: none;
-  filter: blur(52px);
+  filter: blur(28px);
   opacity: 0.9;
   background:
     radial-gradient(
-      circle 300px at 80% 12%,
-      color-mix(in oklab, var(--ember) 11%, transparent) 0%,
+      circle 220px at 90% 8%,
+      color-mix(in oklab, var(--ember) 15%, transparent) 0%,
+      transparent 66%
+    ),
+    radial-gradient(
+      circle 180px at 8% 92%,
+      color-mix(in oklab, var(--ember) 10%, transparent) 0%,
       transparent 64%
-    ),
-    radial-gradient(
-      circle 260px at 14% 82%,
-      color-mix(in oklab, var(--ember)  9%, transparent) 0%,
-      transparent 62%
-    ),
-    radial-gradient(
-      circle 220px at 50% 98%,
-      color-mix(in oklab, var(--ember)  8%, transparent) 0%,
-      transparent 60%
     );
 }
-
-/* ——— Dark theme — pull amplitudes down to stay readable on dark bg — */
 [data-theme="dark"] .chamber-shell[data-chamber="surface"]::before {
   background:
-    radial-gradient(
-      ellipse 75% 52% at 72% -4%,
-      color-mix(in oklab, var(--ember) 13%, transparent) 0%,
-      transparent 60%
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ember) 6%, transparent) 0%,
+      transparent 38%
     ),
     radial-gradient(
-      ellipse 48% 72% at -6% 40%,
-      color-mix(in oklab, var(--ember)  8%, transparent) 0%,
-      transparent 54%
-    ),
-    radial-gradient(
-      ellipse 60% 48% at 108% 70%,
-      color-mix(in oklab, var(--ember)  8%, transparent) 0%,
-      transparent 56%
-    ),
-    radial-gradient(
-      ellipse 110% 58% at 50% 112%,
-      color-mix(in oklab, var(--ember) 10%, transparent) 0%,
+      ellipse 44% 38% at 92% 4%,
+      color-mix(in oklab, var(--ember) 15%, transparent) 0%,
       transparent 62%
+    ),
+    radial-gradient(
+      ellipse 42% 42% at 6% 94%,
+      color-mix(in oklab, var(--ember) 9%, transparent) 0%,
+      transparent 60%
     );
 }
 [data-theme="dark"] .chamber-shell[data-chamber="surface"]::after,
 [data-theme="sepia"] .chamber-shell[data-chamber="surface"]::after {
   opacity: 0.55;
 }
-
-/* ——— Sepia theme — already warm, soften ember so it doesn't clash — */
 [data-theme="sepia"] .chamber-shell[data-chamber="surface"]::before {
   background:
-    radial-gradient(
-      ellipse 75% 52% at 72% -4%,
-      color-mix(in oklab, var(--ember)  9%, transparent) 0%,
-      transparent 60%
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ember) 5%, transparent) 0%,
+      transparent 38%
     ),
     radial-gradient(
-      ellipse 48% 72% at -6% 40%,
-      color-mix(in oklab, var(--ember)  6%, transparent) 0%,
-      transparent 54%
-    ),
-    radial-gradient(
-      ellipse 60% 48% at 108% 70%,
-      color-mix(in oklab, var(--ember)  6%, transparent) 0%,
-      transparent 56%
-    ),
-    radial-gradient(
-      ellipse 110% 58% at 50% 112%,
-      color-mix(in oklab, var(--ember)  7%, transparent) 0%,
+      ellipse 44% 38% at 92% 4%,
+      color-mix(in oklab, var(--ember) 11%, transparent) 0%,
       transparent 62%
+    ),
+    radial-gradient(
+      ellipse 42% 42% at 6% 94%,
+      color-mix(in oklab, var(--ember) 7%, transparent) 0%,
+      transparent 60%
     );
 }
