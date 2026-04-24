@@ -2,7 +2,8 @@ import type { SurfaceBriefPayload } from "../../hooks/useSignal";
 
 // Two fidelity tiles — wireframe / hi-fi. The thumbs are inline SVG
 // strokes so there's no image asset to ship and the geometry scales
-// with the chamber DNA. Active tile gets a chamber-DNA ring; idle
+// with the chamber DNA. Active tile earns a decisive material shift:
+// outer ring + inner highlight + a status dot in the corner. Idle
 // tiles rest on the standard soft border.
 
 type Fidelity = SurfaceBriefPayload["fidelity"];
@@ -20,7 +21,7 @@ export default function FidelityTiles({ value, onChange }: Props) {
       style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
-        gap: 8,
+        gap: 10,
       }}
     >
       <Tile
@@ -29,7 +30,7 @@ export default function FidelityTiles({ value, onChange }: Props) {
         active={value === "wireframe"}
         onClick={() => onChange("wireframe")}
       >
-        <WireframeThumb />
+        <WireframeThumb active={value === "wireframe"} />
       </Tile>
       <Tile
         label="Alta fidelidade"
@@ -37,7 +38,7 @@ export default function FidelityTiles({ value, onChange }: Props) {
         active={value === "hi-fi"}
         onClick={() => onChange("hi-fi")}
       >
-        <HiFiThumb />
+        <HiFiThumb active={value === "hi-fi"} />
       </Tile>
     </div>
   );
@@ -59,36 +60,75 @@ function Tile({
       aria-checked={active}
       onClick={onClick}
       style={{
+        position: "relative",
         display: "flex",
         flexDirection: "column",
-        gap: 6,
-        padding: 8,
+        gap: 8,
+        padding: 10,
         background: active ? "var(--bg-elevated)" : "var(--bg-surface)",
         border: active
-          ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 58%, var(--border-color-mid))"
+          ? "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 62%, var(--border-color-mid))"
           : "var(--border-soft)",
         borderRadius: "var(--radius-control)",
         boxShadow: active
-          ? "0 0 0 1px color-mix(in oklab, var(--chamber-dna, var(--accent)) 28%, transparent) inset"
-          : "none",
+          ? [
+              "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 6%, transparent)",
+              "0 0 0 3px color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, transparent)",
+              "0 6px 18px color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, transparent)",
+            ].join(", ")
+          : "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 3%, transparent)",
         cursor: "pointer",
         textAlign: "left",
         transition:
-          "background var(--dur-fast) var(--ease-swift), border-color var(--dur-fast) var(--ease-swift), box-shadow var(--dur-fast) var(--ease-swift)",
+          "background var(--dur-fast) var(--ease-swift), border-color var(--dur-fast) var(--ease-swift), box-shadow var(--dur-med) var(--ease-swift)",
       }}
     >
+      {/* Corner status dot — only on active. A small semantic beacon. */}
+      {active && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontFamily: "var(--mono)",
+            fontSize: 9,
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+            color: "var(--chamber-dna, var(--accent))",
+          }}
+        >
+          <span
+            style={{
+              display: "inline-block",
+              width: 6,
+              height: 6,
+              borderRadius: 999,
+              background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 72%, transparent)",
+              boxShadow: "0 0 0 3px color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, transparent)",
+            }}
+          />
+          activo
+        </span>
+      )}
       <span
         aria-hidden
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          height: 68,
+          height: 74,
           background: active
-            ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 6%, var(--bg-input))"
+            ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 5%, var(--bg-input))"
             : "var(--bg-input)",
           border: "var(--border-soft)",
           borderRadius: "calc(var(--radius-control) - 4px)",
+          boxShadow: active
+            ? "inset 0 1px 0 color-mix(in oklab, var(--text-primary) 6%, transparent)"
+            : "none",
         }}
       >
         {children}
@@ -98,6 +138,7 @@ function Tile({
           style={{
             fontFamily: "var(--serif)",
             fontSize: "var(--t-body-sec)",
+            fontWeight: active ? 500 : 400,
             color: active ? "var(--text-primary)" : "var(--text-muted)",
           }}
         >
@@ -108,7 +149,7 @@ function Tile({
             fontFamily: "var(--mono)",
             fontSize: 10,
             letterSpacing: "var(--track-label)",
-            color: "var(--text-ghost)",
+            color: active ? "var(--text-muted)" : "var(--text-ghost)",
           }}
         >
           {sub}
@@ -118,31 +159,39 @@ function Tile({
   );
 }
 
-function WireframeThumb() {
+function WireframeThumb({ active }: { active: boolean }) {
   // Flat rectangles + dashed line — a "skeleton" reading at first glance.
-  const line = "color-mix(in oklab, var(--text-muted) 55%, transparent)";
+  const line = active
+    ? "color-mix(in oklab, var(--text-primary) 54%, transparent)"
+    : "color-mix(in oklab, var(--text-muted) 50%, transparent)";
   return (
-    <svg width="84" height="48" viewBox="0 0 84 48" fill="none" aria-hidden>
+    <svg width="92" height="52" viewBox="0 0 92 52" fill="none" aria-hidden>
       <rect x="4"  y="6"  width="30" height="6"  rx="1" stroke={line} strokeWidth="1" />
-      <rect x="4"  y="16" width="46" height="4"  rx="1" stroke={line} strokeWidth="1" />
-      <rect x="4"  y="24" width="32" height="20" rx="1" stroke={line} strokeWidth="1" strokeDasharray="2 2" />
-      <rect x="40" y="24" width="40" height="20" rx="1" stroke={line} strokeWidth="1" strokeDasharray="2 2" />
+      <rect x="4"  y="16" width="50" height="4"  rx="1" stroke={line} strokeWidth="1" />
+      <rect x="4"  y="26" width="34" height="22" rx="1" stroke={line} strokeWidth="1" strokeDasharray="2 2" />
+      <rect x="42" y="26" width="44" height="22" rx="1" stroke={line} strokeWidth="1" strokeDasharray="2 2" />
     </svg>
   );
 }
 
-function HiFiThumb() {
+function HiFiThumb({ active }: { active: boolean }) {
   // Filled blocks, one accent bar — the "material" reading.
-  const fillSoft   = "color-mix(in oklab, var(--text-primary) 14%, transparent)";
-  const fillStrong = "color-mix(in oklab, var(--text-primary) 28%, transparent)";
-  const accent     = "color-mix(in oklab, var(--chamber-dna, var(--accent)) 70%, transparent)";
+  const fillSoft = active
+    ? "color-mix(in oklab, var(--text-primary) 16%, transparent)"
+    : "color-mix(in oklab, var(--text-primary) 12%, transparent)";
+  const fillStrong = active
+    ? "color-mix(in oklab, var(--text-primary) 32%, transparent)"
+    : "color-mix(in oklab, var(--text-primary) 24%, transparent)";
+  const accent = active
+    ? "color-mix(in oklab, var(--chamber-dna, var(--accent)) 78%, transparent)"
+    : "color-mix(in oklab, var(--chamber-dna, var(--accent)) 56%, transparent)";
   return (
-    <svg width="84" height="48" viewBox="0 0 84 48" fill="none" aria-hidden>
-      <rect x="4"  y="6"  width="76" height="6"  rx="2" fill={fillSoft} />
-      <rect x="4"  y="16" width="30" height="4"  rx="2" fill={fillStrong} />
-      <rect x="4"  y="24" width="30" height="20" rx="2" fill={fillSoft} />
-      <rect x="38" y="24" width="42" height="10" rx="2" fill={fillStrong} />
-      <rect x="38" y="36" width="20" height="6"  rx="2" fill={accent} />
+    <svg width="92" height="52" viewBox="0 0 92 52" fill="none" aria-hidden>
+      <rect x="4"  y="6"  width="84" height="6"  rx="2" fill={fillSoft} />
+      <rect x="4"  y="16" width="34" height="4"  rx="2" fill={fillStrong} />
+      <rect x="4"  y="26" width="34" height="22" rx="2" fill={fillSoft} />
+      <rect x="42" y="26" width="46" height="12" rx="2" fill={fillStrong} />
+      <rect x="42" y="40" width="24" height="6"  rx="2" fill={accent} />
     </svg>
   );
 }

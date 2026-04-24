@@ -1,9 +1,19 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 
 // Wave-3 Surface context intake. Six intake rows the user can attach
 // before asking for a plan: screenshot, codebase, figma file, reference
 // project, asset upload, skill / design-system binding. Attached items
 // sit as removable chips below the intake list.
+//
+// Each kind carries a fixed semantic colour — not a chamber-DNA
+// borrowing, a real functional palette:
+//
+//   screenshot → cc-info  (muted blue · visual / reference signal)
+//   codebase   → ember    (warm rose · import / source signal)
+//   figma      → cc-err   (muted red-rose · origin / frame signal)
+//   reference  → accent   (copper · continuity signal)
+//   asset      → accent-dim (warm graphite · material pack signal)
+//   skill/DS   → terminal-ok (sage · capability / canon signal)
 //
 // The intake itself is a shell — no real upload, no SSE. Stubs are
 // generated locally so the whole creation flow can be demoed offline
@@ -29,20 +39,27 @@ interface IntakeAction {
   label: string;
   sub: string;
   glyph: string;
-  dna: string; // color-mix anchor
+  tone: string; // CSS token expression; resolves per theme
 }
 
-// Glyphs stay monospace-safe — no icon font, nothing to download. The
-// anchor colours resolve through color-mix over the chamber DNA so the
-// intake inherits the palette when it lands on Sepia / Dark.
+// Semantic tones — only tokens, no hex. Every mode inherits the
+// correct translation because these variables are defined per theme
+// in tokens.css.
 const INTAKE: IntakeAction[] = [
-  { kind: "screenshot", label: "Adicionar screenshot", sub: "capturar estado · UI · referência visual",       glyph: "▦", dna: "var(--ch-insight, var(--accent))" },
-  { kind: "codebase",   label: "Anexar codebase",      sub: "pasta frontend · design system · repositório",    glyph: "❘❘",dna: "var(--ch-terminal, var(--accent))" },
-  { kind: "figma",      label: "Arrastar ficheiro Figma",sub: "frames · componentes · referência de origem",   glyph: "◇", dna: "var(--ch-archive, var(--accent))" },
-  { kind: "reference",  label: "Referenciar projeto",  sub: "outra surface · missão anterior · padrão a seguir", glyph: "↻", dna: "var(--ch-surface, var(--accent))" },
-  { kind: "asset",      label: "Carregar assets",      sub: "imagens · ícones · tipografia · texturas",         glyph: "◎", dna: "var(--ch-core, var(--accent))" },
-  { kind: "skill",      label: "Skills · design system",sub: "animar · protótipo · deck · wireframe · DS",      glyph: "✦", dna: "var(--ch-surface, var(--accent))" },
+  { kind: "screenshot", label: "Adicionar screenshot",   sub: "captura · UI · referência visual",                glyph: "▦", tone: "var(--cc-info)" },
+  { kind: "codebase",   label: "Anexar codebase",        sub: "pasta frontend · design system · repositório",    glyph: "❘❘",tone: "var(--ember)" },
+  { kind: "figma",      label: "Arrastar ficheiro Figma", sub: "frames · componentes · origem visual",            glyph: "◇", tone: "var(--cc-err)" },
+  { kind: "reference",  label: "Referenciar projeto",    sub: "outra surface · missão anterior · padrão a seguir", glyph: "↻", tone: "var(--accent)" },
+  { kind: "asset",      label: "Carregar assets",        sub: "imagens · ícones · tipografia · texturas",         glyph: "◎", tone: "var(--accent-dim)" },
+  { kind: "skill",      label: "Skills · design system", sub: "animar · protótipo · deck · wireframe · DS",       glyph: "✦", tone: "var(--terminal-ok)" },
 ];
+
+// Kind → tone lookup for chip rendering, so attached chips inherit
+// the same semantic palette as the row that created them.
+const TONE_BY_KIND: Record<ContextKind, string> = INTAKE.reduce((a, r) => {
+  a[r.kind] = r.tone;
+  return a;
+}, {} as Record<ContextKind, string>);
 
 interface Props {
   items: ContextItem[];
@@ -61,7 +78,7 @@ export default function ContextIntake({ items, onAttach, onDetach }: Props) {
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: 6,
+          gap: 4,
         }}
       >
         {INTAKE.map((row) => (
@@ -76,7 +93,8 @@ export default function ContextIntake({ items, onAttach, onDetach }: Props) {
             display: "flex",
             flexWrap: "wrap",
             gap: 6,
-            paddingTop: 4,
+            paddingTop: 6,
+            borderTop: "var(--border-soft)",
           }}
         >
           {items.map((it) => (
@@ -89,57 +107,79 @@ export default function ContextIntake({ items, onAttach, onDetach }: Props) {
 }
 
 function IntakeRow({ row, onClick }: { row: IntakeAction; onClick: () => void }) {
+  const [hover, setHover] = useState(false);
+
+  const bg = hover ? "var(--bg-elevated)" : "var(--bg-surface)";
+  const borderColor = hover
+    ? `color-mix(in oklab, ${row.tone} 36%, var(--border-color-soft))`
+    : "var(--border-color-soft)";
+
   return (
     <button
       type="button"
       onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       data-intake-kind={row.kind}
       style={{
+        position: "relative",
         display: "grid",
-        gridTemplateColumns: "28px 1fr auto",
+        gridTemplateColumns: "30px 1fr auto",
         alignItems: "center",
-        gap: 10,
-        padding: "8px 10px",
-        background: "var(--bg-surface)",
-        border: "var(--border-soft)",
+        gap: 12,
+        padding: "9px 12px 9px 14px",
+        background: bg,
+        border: `1px solid ${borderColor}`,
         borderRadius: "var(--radius-control)",
         cursor: "pointer",
         textAlign: "left",
         color: "var(--text-primary)",
         transition:
-          "background var(--dur-fast) var(--ease-swift), border-color var(--dur-fast) var(--ease-swift), transform var(--dur-fast) var(--ease-swift)",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-elevated)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-surface)";
+          "background var(--dur-fast) var(--ease-swift), border-color var(--dur-fast) var(--ease-swift)",
       }}
     >
+      {/* Left accent rail — appears on hover only, semantic tone */}
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: 6,
+          bottom: 6,
+          left: 4,
+          width: 2,
+          borderRadius: 2,
+          background: hover
+            ? `color-mix(in oklab, ${row.tone} 72%, transparent)`
+            : "transparent",
+          transition: "background var(--dur-fast) var(--ease-swift)",
+        }}
+      />
       <span
         aria-hidden
         style={{
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 24,
-          height: 24,
-          borderRadius: 999,
+          width: 26,
+          height: 26,
+          borderRadius: 7,
           fontFamily: "var(--mono)",
           fontSize: 11,
-          color: `color-mix(in oklab, ${row.dna} 90%, var(--text-primary))`,
-          background: `color-mix(in oklab, ${row.dna} 14%, var(--bg-elevated))`,
-          border: `1px solid color-mix(in oklab, ${row.dna} 34%, transparent)`,
+          color: `color-mix(in oklab, ${row.tone} 82%, var(--text-primary))`,
+          background: `color-mix(in oklab, ${row.tone} 12%, var(--bg-input))`,
+          border: `1px solid color-mix(in oklab, ${row.tone} 36%, transparent)`,
+          boxShadow: `inset 0 1px 0 color-mix(in oklab, ${row.tone} 16%, transparent)`,
         }}
       >
         {row.glyph}
       </span>
-      <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+      <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
         <span
           style={{
             fontFamily: "var(--sans)",
             fontSize: "var(--t-body-sec)",
             color: "var(--text-primary)",
+            lineHeight: 1.3,
           }}
         >
           {row.label}
@@ -149,7 +189,7 @@ function IntakeRow({ row, onClick }: { row: IntakeAction; onClick: () => void })
             fontFamily: "var(--mono)",
             fontSize: 10,
             letterSpacing: "var(--track-label)",
-            color: "var(--text-ghost)",
+            color: "var(--text-muted)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -161,10 +201,18 @@ function IntakeRow({ row, onClick }: { row: IntakeAction; onClick: () => void })
       <span
         aria-hidden
         style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 20,
+          height: 20,
           fontFamily: "var(--mono)",
-          fontSize: "var(--t-micro)",
-          color: "var(--text-ghost)",
-          letterSpacing: "var(--track-label)",
+          fontSize: 12,
+          color: hover
+            ? `color-mix(in oklab, ${row.tone} 80%, var(--text-primary))`
+            : "var(--text-ghost)",
+          borderRadius: 999,
+          transition: "color var(--dur-fast) var(--ease-swift)",
         }}
       >
         +
@@ -174,24 +222,35 @@ function IntakeRow({ row, onClick }: { row: IntakeAction; onClick: () => void })
 }
 
 function AttachedChip({ item, onRemove }: { item: ContextItem; onRemove: () => void }) {
+  const tone = TONE_BY_KIND[item.kind];
   const chipStyle: CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     gap: 6,
-    padding: "3px 4px 3px 8px",
+    padding: "3px 4px 3px 9px",
     fontFamily: "var(--mono)",
     fontSize: 10,
     letterSpacing: "var(--track-label)",
     textTransform: "uppercase",
     color: "var(--text-primary)",
-    background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 8%, var(--bg-elevated))",
-    border: "1px solid color-mix(in oklab, var(--chamber-dna, var(--accent)) 28%, var(--border-color-soft))",
+    background: `color-mix(in oklab, ${tone} 8%, var(--bg-elevated))`,
+    border: `1px solid color-mix(in oklab, ${tone} 32%, var(--border-color-soft))`,
     borderRadius: 999,
     lineHeight: 1.4,
   };
   return (
     <span style={chipStyle}>
-      <span style={{ color: "var(--text-ghost)" }}>{KIND_ABBR[item.kind]}</span>
+      <span
+        aria-hidden
+        style={{
+          display: "inline-block",
+          width: 5,
+          height: 5,
+          borderRadius: 999,
+          background: `color-mix(in oklab, ${tone} 80%, transparent)`,
+        }}
+      />
+      <span style={{ color: "var(--text-muted)" }}>{KIND_ABBR[item.kind]}</span>
       <span>{item.label}</span>
       <button
         type="button"
@@ -258,3 +317,4 @@ export function defaultItemLabel(kind: ContextKind): string {
     case "skill":      return "skill · por atribuir";
   }
 }
+
