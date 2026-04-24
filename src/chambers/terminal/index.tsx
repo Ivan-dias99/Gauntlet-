@@ -15,6 +15,8 @@ import WorkbenchStrip from "./WorkbenchStrip";
 import OutputCanvas from "./OutputCanvas";
 import NextStepBar from "./NextStepBar";
 import ExecutionComposer from "./ExecutionComposer";
+import Sidebar from "../../shell/Sidebar";
+import type { Chamber } from "../../spine/types";
 
 // Terminal — execution environment. State, effects, submit, accept,
 // task state transitions and SSE event reduction stay here; every
@@ -392,8 +394,14 @@ export default function Terminal() {
 
   // ── Render ─────────────────────────────────────────────────────────
 
+  const selectChamber = (c: Chamber) => {
+    window.dispatchEvent(new CustomEvent<Chamber>("signal:chamber", { detail: c }));
+  };
+
   return (
-    <div className="chamber-shell" data-chamber="terminal">
+    <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", minWidth: 0, minHeight: 0 }}>
+    <Sidebar active="terminal" onSelect={selectChamber} />
+    <div className="chamber-shell" data-chamber="terminal" style={{ flex: 1, minWidth: 0, overflow: "auto" }}>
       <ContextStrip
         copy={copy}
         backendMode={backend.mode}
@@ -478,6 +486,7 @@ export default function Terminal() {
         priorTurns={activeMission?.notes?.length ?? 0}
         mockMode={backend.mode === "mock"}
       />
+    </div>
     </div>
   );
 }
