@@ -1,34 +1,44 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SurfaceBriefPayload } from "../../hooks/useSignal";
+import { useCopy } from "../../i18n/copy";
 
-// Wave-3 left-side creation panel. Four controls:
-//   - ModeSelector (prototype / slide deck / from template / other)
-//   - FidelitySelector (wireframe / hi-fi)
-//   - DesignSystemPicker (list of canned DSes; optional in W3, mandatory in W5)
-//   - Brief textarea + submit
+// Surface studio panel — Archive-style structural hierarchy.
+//
+// The cockpit pill grammar (.term-command + traffic-lights + glyph id
+// row) was retired here: the Workbench above already declares the
+// chamber's identity, and the cockpit is a form, not a command bar.
+// Form structure mirrors the Archive's RunList container — clean
+// bordered panel, sections separated by hairlines, label above
+// control, generous internal padding.
+//
+// Workflow order (intent before configuration):
+//   1. Brief         — what to build
+//   2. Output        — shape (prototype / deck / template / other)
+//   3. Fidelity      — wireframe / hi-fi
+//   4. Design system — pick or none
+//   5. CTA           — "Formar contrato visual" (full-width, labelled)
+//
+// Visual references attach is anchored to the brief section. Handoff
+// sits beside the CTA. Mock banner declares posture at the very top.
+// Doctrine preserved: the plan generator is mock until the provider
+// lands; mock declaration is permanent.
 
-export const MODES: Array<{ key: SurfaceBriefPayload["mode"]; label: string }> = [
-  { key: "prototype",     label: "Protótipo" },
-  { key: "slide_deck",    label: "Slide deck" },
-  { key: "from_template", label: "A partir de template" },
-  { key: "other",         label: "Outro" },
+export const MODE_KEYS: Array<SurfaceBriefPayload["mode"]> = [
+  "prototype", "slide_deck", "from_template", "other",
+];
+export const FIDELITY_KEYS: Array<SurfaceBriefPayload["fidelity"]> = [
+  "wireframe", "hi-fi",
 ];
 
-export const FIDELITIES: Array<{ key: SurfaceBriefPayload["fidelity"]; label: string }> = [
-  { key: "wireframe", label: "Wireframe" },
-  { key: "hi-fi",     label: "Alta fidelidade" },
-];
-
-// Canned design systems. Real catalogue comes from Core (Wave 4) / the
-// archive connector layer. Kept small and uncontroversial in W3.
-export const DESIGN_SYSTEMS = [
+// Canned design systems — picker lives here. Real catalogue lands
+// when Core/Routing exposes /design-systems.
+const DESIGN_SYSTEMS = [
   "Signal Canon",
   "Claude Design",
   "Material You",
   "Tailwind UI",
   "Shadcn UI",
   "Radix Primitives",
-  "—",
 ] as const;
 
 interface Props {
@@ -38,214 +48,279 @@ interface Props {
   onPromptChange: (v: string) => void;
   onSubmit: () => void;
   pending: boolean;
+  /** When true, mock declaration appears at the top of the panel. */
   mockBanner?: boolean;
+  principlesCount?: number;
+  hasPlan?: boolean;
 }
 
 export default function CreationPanel({
   brief, onBriefChange, prompt, onPromptChange, onSubmit, pending, mockBanner,
+  principlesCount = 0, hasPlan = false,
 }: Props) {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const copy = useCopy();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [flyout, setFlyout] = useState<null | "refs" | "handoff">(null);
 
-  // Auto-grow textarea within reasonable bounds (same pattern as School).
+  // Click-outside dismisses any open flyout.
   useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
-  }, [prompt]);
+    if (!flyout) return;
+    function onDoc(e: MouseEvent) {
+      const el = panelRef.current;
+      if (el && !el.contains(e.target as Node)) setFlyout(null);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [flyout]);
 
   const canSubmit = prompt.trim().length > 0 && !pending;
 
+  const modeLabels: Record<SurfaceBriefPayload["mode"], string> = {
+    prototype:     copy.surfaceModePrototype,
+    slide_deck:    copy.surfaceModeSlideDeck,
+    from_template: copy.surfaceModeFromTemplate,
+    other:         copy.surfaceModeOther,
+  };
+  const fidelityLabels: Record<SurfaceBriefPayload["fidelity"], string> = {
+    wireframe: copy.surfaceFidelityWireframe,
+    "hi-fi":   copy.surfaceFidelityHiFi,
+  };
+
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-3)",
-        padding: "var(--space-3)",
-        border: "var(--border-soft)",
-        borderRadius: "var(--radius-panel)",
-        background: "var(--bg-surface)",
-      }}
-    >
+    <div ref={panelRef} className="surface-cockpit" data-state={pending ? "pending" : undefined}>
+      {/* Mock banner — top declaration when backend is in mock mode. */}
       {mockBanner && (
-        <div
-          data-surface-mock-banner
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-micro)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-            color: "var(--cc-warn)",
-            padding: "6px 10px",
-            border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-            borderRadius: "var(--radius-control)",
-            background: "color-mix(in oklab, var(--cc-warn) 6%, transparent)",
-            lineHeight: 1.4,
-          }}
-        >
-          mock · nenhum provider foi chamado · plano canned
+        <div className="surface-cockpit-banner" data-surface-mock-banner>
+          <span className="surface-mock-banner-dot" aria-hidden />
+          <span>{copy.surfaceStudioMockBanner}</span>
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Label>Modo</Label>
-        <Segmented
-          value={brief.mode}
-          options={MODES}
-          onChange={(v) => onBriefChange({ mode: v })}
-        />
-      </div>
+      {/* Section 1 — Brief. Label above textarea, refs paperclip
+          anchored to the textarea's right edge. */}
+      <section className="surface-cockpit-section">
+        <span className="surface-cockpit-label">{copy.surfaceStudioBriefLabel}</span>
+        <div className="surface-cockpit-brief">
+          <textarea
+            rows={4}
+            value={prompt}
+            onChange={(e) => onPromptChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                if (canSubmit) onSubmit();
+              }
+            }}
+            placeholder={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioBriefPlaceholder}
+            className="surface-cockpit-brief-input"
+            spellCheck={false}
+            aria-label={copy.surfaceStudioBriefLabel}
+          />
+          <button
+            type="button"
+            className="term-tool surface-cockpit-refs"
+            data-wired="false"
+            data-active={flyout === "refs" ? "true" : undefined}
+            onClick={() => setFlyout(flyout === "refs" ? null : "refs")}
+            title={copy.surfaceComposerRefsLabel}
+            aria-label="visual references"
+          >
+            <IconRefs />
+          </button>
+        </div>
+        {flyout === "refs" && (
+          <NotWiredPopover
+            title={copy.surfaceComposerRefsLabel}
+            body={copy.surfaceComposerRefsBody}
+            contract={copy.surfaceComposerRefsContract}
+          />
+        )}
+      </section>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Label>Fidelidade</Label>
-        <Segmented
-          value={brief.fidelity}
-          options={FIDELITIES}
-          onChange={(v) => onBriefChange({ fidelity: v })}
-        />
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Label>Design system</Label>
-        <select
-          value={brief.design_system ?? "—"}
-          onChange={(e) => {
-            const v = e.target.value;
-            onBriefChange({ design_system: v === "—" ? null : v });
-          }}
-          style={{
-            fontFamily: "var(--sans)",
-            fontSize: "var(--t-body-sec)",
-            padding: "8px 10px",
-            background: "var(--bg-input)",
-            color: "var(--text-primary)",
-            border: "var(--border-mid)",
-            borderRadius: "var(--radius-control)",
-          }}
-        >
-          {DESIGN_SYSTEMS.map((ds) => (
-            <option key={ds} value={ds}>{ds === "—" ? "— sem design system" : ds}</option>
+      {/* Section 2 — Output mode. */}
+      <section className="surface-cockpit-section">
+        <span className="surface-cockpit-label">{copy.surfaceComposerOutputModeLabel}</span>
+        <div className="surface-segmented" role="tablist" aria-label="output mode">
+          {MODE_KEYS.map((key) => (
+            <button
+              key={key}
+              role="tab"
+              className="surface-segmented-opt"
+              data-active={brief.mode === key ? "true" : undefined}
+              aria-selected={brief.mode === key}
+              onClick={() => onBriefChange({ mode: key })}
+            >
+              {modeLabels[key]}
+            </button>
           ))}
-        </select>
-      </div>
+        </div>
+      </section>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Label>Brief</Label>
-        <textarea
-          ref={textareaRef}
-          rows={3}
-          value={prompt}
-          onChange={(e) => onPromptChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              if (canSubmit) onSubmit();
-            }
-          }}
-          placeholder="Descreve a superfície — propósito, utilizador, restrições…"
-          style={{
-            fontFamily: "var(--sans)",
-            fontSize: "var(--t-body)",
-            lineHeight: "var(--lh-body)",
-            padding: "10px 12px",
-            minHeight: 72,
-            maxHeight: 240,
-            resize: "none",
-            background: "var(--bg-input)",
-            color: "var(--text-primary)",
-            border: "var(--border-mid)",
-            borderRadius: "var(--radius-control)",
-          }}
-        />
-      </div>
+      {/* Section 3 — Fidelity. */}
+      <section className="surface-cockpit-section">
+        <span className="surface-cockpit-label">{copy.surfaceStudioFidelityLabel}</span>
+        <div className="surface-segmented" role="tablist" aria-label="fidelity">
+          {FIDELITY_KEYS.map((key) => (
+            <button
+              key={key}
+              role="tab"
+              className="surface-segmented-opt"
+              data-active={brief.fidelity === key ? "true" : undefined}
+              aria-selected={brief.fidelity === key}
+              onClick={() => onBriefChange({ fidelity: key })}
+            >
+              {fidelityLabels[key]}
+            </button>
+          ))}
+        </div>
+      </section>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          data-surface-submit
-          className="btn-chip"
-          data-variant="sans"
-          style={{ opacity: canSubmit ? 1 : 0.5 }}
-        >
-          {pending ? "a gerar…" : "Gerar plano"}
-        </button>
-        <span
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-micro)",
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-            color: "var(--text-muted)",
-          }}
-        >
-          ⌘/Ctrl + Enter
+      {/* Section 4 — Design system. */}
+      <section className="surface-cockpit-section">
+        <span className="surface-cockpit-label">{copy.surfaceStudioDsLabel}</span>
+        <span className="surface-ds-chip">
+          <span
+            className="surface-ds-chip-value"
+            data-empty={brief.design_system ? undefined : "true"}
+          >
+            {brief.design_system ?? copy.surfaceStudioDsEmpty}
+          </span>
+          <span className="surface-ds-chip-caret" aria-hidden>▾</span>
+          <select
+            className="surface-ds-native"
+            value={brief.design_system ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              onBriefChange({ design_system: v === "" ? null : v });
+            }}
+            aria-label={copy.surfaceStudioDsLabel}
+          >
+            <option value="">{copy.surfaceStudioDsEmpty}</option>
+            {DESIGN_SYSTEMS.map((ds) => (
+              <option key={ds} value={ds}>{ds}</option>
+            ))}
+          </select>
         </span>
-      </div>
+      </section>
+
+      {/* Section 5 — Footer with primary CTA + Handoff secondary +
+          principles + ⌘+Enter hint. */}
+      <footer className="surface-cockpit-footer">
+        <div className="surface-cta-row">
+          <button
+            type="button"
+            className="surface-cta-primary"
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            title={pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
+            aria-label={pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
+          >
+            <span className="surface-cta-glyph" aria-hidden>
+              {pending ? <span style={{ fontSize: 13, lineHeight: 1 }}>…</span> : <IconSend />}
+            </span>
+            <span className="surface-cta-label">
+              {pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
+            </span>
+            <span className="surface-cta-hint" aria-hidden>{copy.surfaceCtaFormHint}</span>
+          </button>
+          <button
+            type="button"
+            className="term-tool"
+            data-wired="false"
+            data-active={flyout === "handoff" ? "true" : undefined}
+            onClick={() => setFlyout(flyout === "handoff" ? null : "handoff")}
+            disabled={!hasPlan}
+            title={copy.surfaceComposerHandoffLabel}
+            aria-label="handoff"
+          >
+            <IconHandoff />
+          </button>
+        </div>
+        {flyout === "handoff" && (
+          <NotWiredPopover
+            title={copy.surfaceComposerHandoffLabel}
+            body={copy.surfaceComposerHandoffBody}
+            contract={copy.surfaceComposerHandoffContract}
+          />
+        )}
+        {principlesCount > 0 && (
+          <span className="surface-cockpit-doctrine" title="princípios em vigor">
+            <span className="surface-cockpit-doctrine-glyph" aria-hidden>§</span>
+            <span>{principlesCount}</span>
+          </span>
+        )}
+      </footer>
+
+      {pending && <div className="thinking-strip" aria-hidden />}
     </div>
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+// ——— Icons ———
+
+const SVG_PROPS = {
+  width: 14,
+  height: 14,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.75,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+};
+
+function IconSend() {
   return (
-    <span
-      style={{
-        fontFamily: "var(--mono)",
-        fontSize: "var(--t-micro)",
-        letterSpacing: "var(--track-label)",
-        textTransform: "uppercase",
-        color: "var(--text-ghost)",
-      }}
+    <svg
+      width={13} height={13} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth={2.25}
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden
     >
-      {children}
-    </span>
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
+    </svg>
+  );
+}
+function IconRefs() {
+  return (
+    <svg {...SVG_PROPS}>
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+function IconHandoff() {
+  return (
+    <svg {...SVG_PROPS}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
   );
 }
 
-interface SegmentedProps<V extends string> {
-  value: V;
-  options: Array<{ key: V; label: string }>;
-  onChange: (v: V) => void;
-}
-
-function Segmented<V extends string>({ value, options, onChange }: SegmentedProps<V>) {
+function NotWiredPopover({
+  title, body, contract,
+}: {
+  title: string;
+  body: string;
+  contract: string;
+}) {
   return (
     <div
-      role="tablist"
-      style={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${options.length}, 1fr)`,
-        border: "var(--border-mid)",
-        borderRadius: "var(--radius-control)",
-        padding: 2,
-        background: "var(--bg-input)",
-      }}
+      className="term-flyout"
+      data-tone="not-wired"
+      role="menu"
+      style={{ marginTop: 8 }}
     >
-      {options.map((o) => {
-        const active = o.key === value;
-        return (
-          <button
-            key={o.key}
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(o.key)}
-            style={{
-              fontFamily: "var(--sans)",
-              fontSize: "var(--t-body-sec)",
-              padding: "6px 8px",
-              background: active ? "var(--bg-elevated)" : "transparent",
-              color: active ? "var(--text-primary)" : "var(--text-muted)",
-              border: active ? "var(--border-soft)" : "1px solid transparent",
-              borderRadius: "calc(var(--radius-control) - 2px)",
-              cursor: "pointer",
-              transition: "background var(--dur-fast) var(--ease-swift), color var(--dur-fast) var(--ease-swift)",
-            }}
-          >
-            {o.label}
-          </button>
-        );
-      })}
+      <div className="term-flyout-head"><span>{title}</span></div>
+      <div className="term-flyout-body">
+        <p className="term-flyout-prose">{body}</p>
+        <p className="term-flyout-contract" aria-label="backend contract">
+          <span className="term-flyout-contract-label">contract</span>
+          <code>{contract}</code>
+        </p>
+      </div>
     </div>
   );
 }

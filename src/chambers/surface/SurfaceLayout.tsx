@@ -17,10 +17,16 @@ export default function SurfaceLayout({ left, right }: Props) {
       data-chamber="surface"
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(320px, 440px) 1fr",
+        // Hierarchy by occupation: canvas (right) is primary —
+        // contract preview / plan / files / wireframes; cockpit (left)
+        // is medium — formation form. Workbench pill above is third
+        // (lens-only thin strip). Wide-screen split favours the canvas
+        // ~60/40 with a 360px sidebar floor so segmented labels still
+        // breathe.
+        gridTemplateColumns: "minmax(380px, 30%) minmax(0, 1fr)",
         gap: "var(--space-4)",
-        padding: "var(--space-4)",
-        height: "100%",
+        padding: "0 var(--space-4) var(--space-4)",
+        flex: 1,
         minHeight: 0,
       }}
     >
