@@ -119,6 +119,7 @@ export default function Surface() {
           plan={plan}
           promptDraft={prompt}
           pending={pending}
+          missionTitle={activeMission?.title ?? null}
         />
         <SurfaceLayout
           left={

@@ -4046,16 +4046,13 @@ textarea {
 .surface-cockpit {
   display: flex;
   flex-direction: column;
-  /* Medium hierarchy — recedes against the canvas. Border opacity
-     drops 11% → 9% so the cockpit reads as the supporting form,
-     not as the primary surface. Same recipe otherwise. */
-  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 11%, transparent);
   border-radius: 14px;
   background: var(--bg-surface);
   overflow: hidden;
   box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 36%, transparent) inset,
-    0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent);
+    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
 }
 [data-theme="dark"] .surface-cockpit,
 [data-theme="sepia"] .surface-cockpit {
@@ -4556,24 +4553,10 @@ textarea {
    · States) and nothing else. STUDIO label, mission caret and italic
    status were retired in this rebirth so the workbench no longer
    duplicates what the canon ribbon and ChamberHead already declare. */
-.surface-workbench {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  flex-wrap: wrap;
-  padding: 4px 8px;
-  margin: var(--space-2) auto var(--space-3);
-  max-width: calc(100% - var(--space-4) * 2);
-  width: fit-content;
-  /* Third hierarchy — almost invisible at rest. Border at 5% opacity
-     barely registers; the pill is felt, not seen, until a lens
-     activates. Lens chips themselves carry the visible weight. */
-  border: 1px solid color-mix(in oklab, var(--text-primary) 5%, transparent);
-  border-radius: 9px;
-  background: transparent;
-  font-family: var(--mono);
-  position: relative;
-}
+/* .surface-workbench retired — Surface workbench now uses the full
+   .term-workbench-strip recipe (Photo 2 grammar with glyph + STUDIO
+   label + MISSION caret + italic status + lenses). One visual family
+   shared with Terminal's WorkbenchStrip. */
 .surface-workbench-flyout-anchor {
   position: absolute;
   top: calc(100% + 6px);
@@ -5551,14 +5534,14 @@ textarea {
 .term-wb-lens {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 6px;
-  border: 1px solid color-mix(in oklab, var(--text-primary) 3%, transparent);
-  border-radius: 4px;
-  background: transparent;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  border-radius: 5px;
+  background: var(--bg-elevated);
   color: var(--text-muted);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: var(--track-meta);
   cursor: pointer;
   transition:
@@ -5594,9 +5577,9 @@ textarea {
   flex-shrink: 0;
 }
 .term-wb-lens-icon svg {
-  width: 10px;
-  height: 10px;
-  stroke-width: 1.7;
+  width: 11px;
+  height: 11px;
+  stroke-width: 1.75;
 }
 .term-wb-lens-label {
   text-transform: uppercase;
