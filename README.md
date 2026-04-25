@@ -7,6 +7,28 @@ triad + judge, the agent loop, the crew orchestrator, the tool registry,
 the failure memory, and the chamber profiles that decide how each
 chamber dispatches a query.
 
+## Norte
+
+Four pillars. Everything else is consequence.
+
+1. **Don't be wrong.** Refusal is the default; an answer is the
+   exception. Insight runs three analyses; if any of them diverges,
+   the judge returns `low` and the user sees `DEFAULT_REFUSAL` instead
+   of fluent invention. Errar com confiança é o pior estado.
+2. **Sovereignty over external models.** The backend owns the
+   contract, the memory and the ledger. The provider (Anthropic) is
+   a swappable engine. Zero frontend-to-Anthropic calls — every AI
+   route traverses the brain.
+3. **Five chambers, five cognitive modes.** Insight (triad + judge),
+   Surface (design workstation, mock-first by design), Terminal
+   (agent loop with tool allowlist), Archive (sealed-runs ledger),
+   Core (policies that bind every chamber). Five ways of thinking
+   about the same problem — not five decorative tabs.
+4. **Memory of failure.** `failure_memory.json` remembers questions
+   that failed; `runs.json` is an append-only ledger of every
+   execution; the agent loop carries an anti-loop fingerprint. The
+   system does not retry blindly.
+
 ## Chambers
 
 | Chamber  | Role                                                     | Dispatch       |
