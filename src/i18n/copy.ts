@@ -172,6 +172,25 @@ export interface Copy {
   surfaceContractFieldDs: string;
   surfaceExamplesKicker: string;
   surfaceExamplesHint: string;
+  // Canvas view router — four top-level tabs that switch the right
+  // column between brief · plan · files · wireframes. Files and
+  // wireframes are honest "not wired" until the design backend lands;
+  // the empty states declare the contracts pending.
+  surfaceCanvasTabBrief: string;
+  surfaceCanvasTabPlan: string;
+  surfaceCanvasTabFiles: string;
+  surfaceCanvasTabWireframes: string;
+  surfacePlanEmptyKicker: string;
+  surfacePlanEmptyBody: string;
+  surfaceFilesEmptyKicker: string;
+  surfaceFilesEmptyBody: string;
+  surfaceFilesEmptyContract: string;
+  surfaceFilesPagesLabel: string;
+  surfaceFilesComponentsLabel: string;
+  surfaceFilesUploadsLabel: string;
+  surfaceWireframesEmptyKicker: string;
+  surfaceWireframesEmptyBody: string;
+  surfaceWireframesEmptyContract: string;
   // Surface Workbench lenses — five tools at the top of the chamber
   // that narrate the visual territory: contract · design system ·
   // layout/grid · component inventory · state matrix. Each carries
@@ -448,6 +467,21 @@ const PT: Copy = {
   surfaceContractFieldDs: "design system · pick um existente ou declara none",
   surfaceExamplesKicker: "— atalhos",
   surfaceExamplesHint: "pontos de partida canned. Substitui-se quando Core/Routing expor o catálogo real.",
+  surfaceCanvasTabBrief: "brief",
+  surfaceCanvasTabPlan: "plan",
+  surfaceCanvasTabFiles: "files",
+  surfaceCanvasTabWireframes: "wireframes",
+  surfacePlanEmptyKicker: "— plano por gerar",
+  surfacePlanEmptyBody: "Forma o contrato à esquerda e gera. O plano aparece aqui — screens, componentes, notas.",
+  surfaceFilesEmptyKicker: "— files & components · não ligado",
+  surfaceFilesEmptyBody: "Pages, componentes e uploads — todo o material que o plano produz e que a Workbench inspecciona. O backend de ficheiros ainda não existe; Signal não inventa ficheiros que ninguém escreveu.",
+  surfaceFilesEmptyContract: "espera por: POST /surface/files/upload · GET /surface/files/{mission} · GET /surface/files/{mission}/components",
+  surfaceFilesPagesLabel: "pages",
+  surfaceFilesComponentsLabel: "components",
+  surfaceFilesUploadsLabel: "uploads",
+  surfaceWireframesEmptyKicker: "— wireframes · sketchbook · não ligado",
+  surfaceWireframesEmptyBody: "Modo de ideação manual — esboços, anotações, direções rápidas antes do plano. O backend de wireframes ainda não existe; Signal não pinta sketchbook que não foi guardado.",
+  surfaceWireframesEmptyContract: "espera por: POST /surface/wireframes/{mission} · GET /surface/wireframes/{mission}",
   surfaceWbContractLabel: "contract",
   surfaceWbContractBody: "Estado do contrato visual — idle / draft / valid / sealed. Reflete o brief actual e o plano gerado. Wired ao estado local da câmara.",
   surfaceWbContractContract: "wired · lê brief + plan do estado local Surface",
@@ -722,6 +756,21 @@ const EN: Copy = {
   surfaceContractFieldDs: "design system · pick one or declare none",
   surfaceExamplesKicker: "— shortcuts",
   surfaceExamplesHint: "canned starting points. Replaced when Core/Routing exposes the real catalogue.",
+  surfaceCanvasTabBrief: "brief",
+  surfaceCanvasTabPlan: "plan",
+  surfaceCanvasTabFiles: "files",
+  surfaceCanvasTabWireframes: "wireframes",
+  surfacePlanEmptyKicker: "— plan not generated yet",
+  surfacePlanEmptyBody: "Form the contract on the left and generate. The plan lands here — screens, components, notes.",
+  surfaceFilesEmptyKicker: "— files & components · not wired",
+  surfaceFilesEmptyBody: "Pages, components and uploads — the material the plan produces and the Workbench inspects. The files backend does not exist yet; Signal does not fabricate files no one wrote.",
+  surfaceFilesEmptyContract: "awaiting: POST /surface/files/upload · GET /surface/files/{mission} · GET /surface/files/{mission}/components",
+  surfaceFilesPagesLabel: "pages",
+  surfaceFilesComponentsLabel: "components",
+  surfaceFilesUploadsLabel: "uploads",
+  surfaceWireframesEmptyKicker: "— wireframes · sketchbook · not wired",
+  surfaceWireframesEmptyBody: "Manual ideation — sketches, annotations, fast directions before the plan. The wireframes backend does not exist yet; Signal does not paint a sketchbook nobody saved.",
+  surfaceWireframesEmptyContract: "awaiting: POST /surface/wireframes/{mission} · GET /surface/wireframes/{mission}",
   surfaceWbContractLabel: "contract",
   surfaceWbContractBody: "Visual contract state — idle / draft / valid / sealed. Reflects the current brief and generated plan. Wired to the chamber's local state.",
   surfaceWbContractContract: "wired · reads brief + plan from local Surface state",

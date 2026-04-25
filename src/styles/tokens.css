@@ -4535,6 +4535,166 @@ textarea {
   color: var(--text-muted);
   letter-spacing: 0;
 }
+/* Canvas view tabs — top-level navigation between Brief / Plan /
+   Files / Wireframes. Mirrors Claude Design's file-tabs grammar.
+   Wired tabs read normal; not-wired tabs are dimmed with a corner
+   warn dot (still clickable so the user reads the contract pending,
+   no fake gating). */
+.surface-canvas-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-surface));
+  flex-shrink: 0;
+}
+.surface-canvas-tab {
+  position: relative;
+  padding: 11px 16px;
+  background: transparent;
+  border: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  cursor: pointer;
+  transition: color var(--dur-fast);
+}
+.surface-canvas-tab:hover { color: var(--text-secondary); }
+.surface-canvas-tab[data-active="true"] {
+  color: var(--chamber-dna, var(--accent));
+}
+.surface-canvas-tab[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--chamber-dna, var(--accent));
+  border-radius: 2px 2px 0 0;
+}
+.surface-canvas-tab[data-wired="false"] {
+  color: color-mix(in oklab, var(--text-ghost) 70%, transparent);
+}
+.surface-canvas-tab[data-wired="false"]:hover {
+  color: var(--text-muted);
+}
+.surface-canvas-tab[data-wired="false"]::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cc-warn);
+  opacity: 0.5;
+}
+.surface-canvas-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* Empty states for not-wired views (Files, Wireframes) and the
+   plan-not-yet-generated view. Honest body + backend contract block
+   below — same grammar as the .term-flyout-contract pattern used by
+   the Workbench lenses. */
+.surface-canvas-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  text-align: center;
+  padding: 36px 32px;
+}
+.surface-canvas-empty-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.surface-canvas-empty-body {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  letter-spacing: -0.005em;
+  max-width: 520px;
+}
+.surface-canvas-empty-contract {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: color-mix(in oklab, var(--text-primary) 3%, transparent);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  border-radius: 6px;
+  align-self: stretch;
+  max-width: 520px;
+  margin-inline: auto;
+}
+.surface-canvas-empty-contract-label {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.surface-canvas-empty-contract code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  white-space: normal;
+  line-height: 1.5;
+  background: transparent;
+  text-align: left;
+}
+
+/* Files-view stub sections — PAGES / COMPONENTS / UPLOADS each as a
+   labelled empty zone. Visual scaffold of the future file browser
+   without inventing entries. */
+.surface-files-stubs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 480px;
+  margin: 4px 0 0;
+}
+.surface-files-stub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 14px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--text-primary) 2%, transparent);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.surface-files-stub-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.surface-files-stub-state {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-ghost);
+}
+
 .surface-rail-tabs {
   display: flex;
   align-items: stretch;

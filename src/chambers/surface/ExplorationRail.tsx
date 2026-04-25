@@ -1,30 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SurfaceBriefPayload, SurfacePlanPayload } from "../../hooks/useSignal";
 import { useCopy } from "../../i18n/copy";
 
-// Surface exploration rail — five tabs: Examples, Templates, Recent,
-// Search, Library. Visual elevation: cockpit-grammar tabs (mono
-// uppercase, underline-active in chamber-DNA), cards with hover lift
-// and kind chip.
+// Surface canvas — view router with four top-level tabs:
+//   BRIEF · PLAN · FILES · WIREFRAMES
 //
-// Doctrine: examples / templates are canned in the current wave —
-// the tabs themselves carry the honesty (Recent reads from real
-// archive when wired; Search and Library state the contract). No
-// fake search results, no fake library catalogue.
+// BRIEF and PLAN are wired (read brief + plan from local state).
+// FILES and WIREFRAMES are honest "not wired" — empty states declare
+// the backend contracts pending. The view router replaces the older
+// gallery tab strip (Examples / Templates / Recent / Search / Library)
+// with the workstation grammar Claude Design uses, but each surface
+// is doctrinally honest: no fake files, no fake sketchbook, no fake
+// component browser.
+//
+// Auto-default behavior:
+//   · No plan → BRIEF (contract checklist)
+//   · Plan arrives → switch to PLAN once
+//   · User-driven nav after that
 
-type Tab = "examples" | "templates" | "recent" | "search" | "library";
-
-// Only Examples is wired (canned but visually honest as "examples
-// to scan"). Templates / Recent / Search / Library carry no real
-// backend; they sit dimmed-disabled so the gallery stops promising
-// catalogues that do not exist.
-const TABS: Array<{ key: Tab; label: string; wired: boolean }> = [
-  { key: "examples",  label: "Examples",  wired: true  },
-  { key: "templates", label: "Templates", wired: false },
-  { key: "recent",    label: "Recent",    wired: false },
-  { key: "search",    label: "Search",    wired: false },
-  { key: "library",   label: "Library",   wired: false },
-];
+type View = "brief" | "plan" | "files" | "wireframes";
 
 const EXAMPLES = [
   { title: "Operational dashboard",     kind: "hi-fi",     tag: "analytics" },
@@ -33,34 +27,83 @@ const EXAMPLES = [
   { title: "Archive search & lineage",  kind: "prototype", tag: "archive" },
 ];
 
-const TEMPLATES = [
-  { title: "Command centre",      kind: "hi-fi",     tag: "ops" },
-  { title: "Studio split",        kind: "wireframe", tag: "creation" },
-  { title: "Archive ledger",      kind: "hi-fi",     tag: "retrieval" },
-  { title: "Governance stack",    kind: "hi-fi",     tag: "policy" },
-  { title: "Slide deck — thesis", kind: "hi-fi",     tag: "narrative" },
-];
-
 interface Props {
   plan: SurfacePlanPayload | null;
   mock: boolean;
-  /** Current brief — drives the contract-blocked checklist when no
-      plan exists. The canvas reads brief state directly so the user
-      sees their cockpit edits land here in real time. */
   brief: SurfaceBriefPayload;
-  /** Brief textarea draft — counts toward the "intent declared" row
-      of the checklist. */
   promptDraft: string;
 }
 
 export default function ExplorationRail({ plan, mock, brief, promptDraft }: Props) {
   const copy = useCopy();
-  const [tab, setTab] = useState<Tab>("examples");
-  const [query, setQuery] = useState("");
+  const [view, setView] = useState<View>("brief");
+  const [planSeen, setPlanSeen] = useState(false);
 
-  // Contract-blocked checklist — each row reflects a real cockpit
-  // field. The canvas leads with this when no plan exists; Examples
-  // drop to a secondary accelerator strip below.
+  // Auto-switch to PLAN view the first time a plan arrives. After
+  // that the user owns navigation.
+  useEffect(() => {
+    if (plan && !planSeen) {
+      setView("plan");
+      setPlanSeen(true);
+    }
+    if (!plan && planSeen) {
+      setPlanSeen(false);
+    }
+  }, [plan, planSeen]);
+
+  const tabs: Array<{ key: View; label: string; wired: boolean }> = [
+    { key: "brief",      label: copy.surfaceCanvasTabBrief,      wired: true  },
+    { key: "plan",       label: copy.surfaceCanvasTabPlan,       wired: !!plan },
+    { key: "files",      label: copy.surfaceCanvasTabFiles,      wired: false },
+    { key: "wireframes", label: copy.surfaceCanvasTabWireframes, wired: false },
+  ];
+
+  return (
+    <div className="surface-rail-shell">
+      {/* View tab strip — top-level canvas navigation. Mirrors
+          Claude Design's file-tabs grammar (Design Files / Wireframes
+          / Terminal.html) but doctrinally honest: not-wired tabs are
+          dim with a warn dot, click still routes (so the user reads
+          the contract pending), no fake activation. */}
+      <div className="surface-canvas-tabs" role="tablist">
+        {tabs.map((t) => {
+          const active = t.key === view;
+          return (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={active}
+              data-active={active ? "true" : undefined}
+              data-wired={t.wired ? "true" : "false"}
+              onClick={() => setView(t.key)}
+              className="surface-canvas-tab"
+              title={t.wired ? t.label : `${t.label} · not wired`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="surface-canvas-view">
+        {view === "brief"      && <BriefView brief={brief} promptDraft={promptDraft} copy={copy} />}
+        {view === "plan"       && <PlanView plan={plan} mock={mock} copy={copy} />}
+        {view === "files"      && <FilesView copy={copy} />}
+        {view === "wireframes" && <WireframesView copy={copy} />}
+      </div>
+    </div>
+  );
+}
+
+// ——— Views ———
+
+function BriefView({
+  brief, promptDraft, copy,
+}: {
+  brief: SurfaceBriefPayload;
+  promptDraft: string;
+  copy: ReturnType<typeof useCopy>;
+}) {
   const checklist: Array<{ key: string; label: string; done: boolean }> = [
     { key: "intent",   label: copy.surfaceContractFieldIntent,   done: promptDraft.trim().length > 0 },
     { key: "output",   label: copy.surfaceContractFieldOutput,   done: !!brief.mode },
@@ -70,270 +113,219 @@ export default function ExplorationRail({ plan, mock, brief, promptDraft }: Prop
   const allChecked = checklist.every((row) => row.done);
 
   return (
-    <div className="surface-rail-shell">
-      {/* Hero — contract-blocked checklist when no plan exists; plan
-          preview replaces it when one arrives. The checklist leads
-          the canvas (intent + config), Examples drop to secondary
-          accelerator strip below the tab band. */}
-      {!plan && (
-        <div className="surface-rail-hero" data-state={allChecked ? "ready" : "blocked"}>
-          <span className="surface-rail-hero-kicker">
-            {allChecked ? copy.surfaceRailEmptyKicker : copy.surfaceContractBlockedKicker}
-          </span>
-          <p className="surface-rail-hero-body">
-            {allChecked ? copy.surfaceRailEmptyBody : copy.surfaceContractBlockedBody}
-          </p>
-          <ul className="surface-contract-checklist" aria-label="contract fields">
-            {checklist.map((row) => (
-              <li
-                key={row.key}
-                className="surface-contract-row"
-                data-done={row.done ? "true" : undefined}
-              >
-                <span className="surface-contract-box" aria-hidden>
-                  {row.done ? "✓" : ""}
-                </span>
-                <span className="surface-contract-label">{row.label}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Plan preview — replaces the hero when a plan has arrived. */}
-      {plan && (
-        <div
-          data-surface-plan-preview
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-            padding: "var(--space-3) var(--space-4)",
-            borderBottom: "1px solid color-mix(in oklab, var(--text-primary) 6%, transparent)",
-            background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 3%, var(--bg-elevated))",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: "var(--t-micro)",
-                letterSpacing: "var(--track-label)",
-                textTransform: "uppercase",
-                color: "var(--chamber-dna, var(--accent))",
-                fontWeight: 500,
-              }}
+    <>
+      <div className="surface-rail-hero" data-state={allChecked ? "ready" : "blocked"}>
+        <span className="surface-rail-hero-kicker">
+          {allChecked ? copy.surfaceRailEmptyKicker : copy.surfaceContractBlockedKicker}
+        </span>
+        <p className="surface-rail-hero-body">
+          {allChecked ? copy.surfaceRailEmptyBody : copy.surfaceContractBlockedBody}
+        </p>
+        <ul className="surface-contract-checklist" aria-label="contract fields">
+          {checklist.map((row) => (
+            <li
+              key={row.key}
+              className="surface-contract-row"
+              data-done={row.done ? "true" : undefined}
             >
-              — Plano gerado
-            </span>
-            {mock && (
-              <span
-                data-mock-badge
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: "var(--t-micro)",
-                  letterSpacing: "var(--track-label)",
-                  textTransform: "uppercase",
-                  color: "var(--cc-warn)",
-                  padding: "2px 8px",
-                  border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-                  borderRadius: 999,
-                }}
-              >
-                mock
+              <span className="surface-contract-box" aria-hidden>
+                {row.done ? "✓" : ""}
               </span>
-            )}
-            <span
-              style={{
-                marginLeft: "auto",
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                color: "var(--text-muted)",
-                letterSpacing: "var(--track-meta)",
-              }}
-            >
-              {plan.mode} · {plan.fidelity} · {plan.design_system_binding ?? "no DS"}
-            </span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
-            {plan.screens.map((s) => {
-              const componentCount = plan.components.filter((c) => c.screen === s.name).length;
-              return (
-                <div
-                  key={s.name}
-                  className="surface-rail-card"
-                  style={{ cursor: "default" }}
-                >
-                  <div className="surface-rail-card-title">{s.name}</div>
-                  <div
-                    style={{
-                      fontFamily: "var(--sans)",
-                      fontSize: "var(--t-body-sec)",
-                      color: "var(--text-muted)",
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    {s.purpose}
-                  </div>
-                  <div className="surface-rail-card-meta">
-                    <span className="surface-rail-card-kind">{componentCount} components</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {plan.notes.length > 0 && (
-            <ul
-              style={{
-                margin: 0,
-                paddingLeft: 16,
-                color: "var(--text-muted)",
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body-sec)",
-                lineHeight: 1.5,
-              }}
-            >
-              {plan.notes.map((n, i) => (
-                <li key={i}>{n}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {/* Examples kicker — secondary affordance when no plan exists.
-          The kicker explicitly de-emphasises the gallery so the
-          checklist above stays the protagonist. */}
-      {!plan && (
-        <div className="surface-rail-shortcut-kicker">
-          <span className="surface-rail-shortcut-label">{copy.surfaceExamplesKicker}</span>
-          <span className="surface-rail-shortcut-hint">{copy.surfaceExamplesHint}</span>
-        </div>
-      )}
-
-      {/* Tab bar — mono uppercase, underline-active in chamber-DNA. */}
-      <div className="surface-rail-tabs" role="tablist">
-        {TABS.map((t) => {
-          const active = t.key === tab;
-          return (
-            <button
-              key={t.key}
-              role="tab"
-              aria-selected={active}
-              data-active={active ? "true" : undefined}
-              data-wired={t.wired ? "true" : "false"}
-              onClick={() => t.wired && setTab(t.key)}
-              disabled={!t.wired}
-              className="surface-rail-tab"
-              title={t.wired ? t.label : `${t.label} · not wired`}
-            >
-              {t.label}
-            </button>
-          );
-        })}
+              <span className="surface-contract-label">{row.label}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      {/* Tab body */}
+      <div className="surface-rail-shortcut-kicker">
+        <span className="surface-rail-shortcut-label">{copy.surfaceExamplesKicker}</span>
+        <span className="surface-rail-shortcut-hint">{copy.surfaceExamplesHint}</span>
+      </div>
       <div className="surface-rail-body">
-        {tab === "examples" && <Grid items={EXAMPLES} />}
-        {tab === "templates" && <Grid items={TEMPLATES} />}
-        {tab === "recent" && (
-          <EmptyBlock
-            title="Sem histórico ainda"
-            body="Os planos aceites nesta missão vão aparecer aqui. Para ver runs de Surface de todas as missões, vai ao Archive."
-          />
-        )}
-        {tab === "search" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Procurar examples, templates, library…"
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body)",
-                padding: "10px 12px",
-                background: "var(--bg-input)",
-                color: "var(--text-primary)",
-                border: "1px solid color-mix(in oklab, var(--text-primary) 9%, transparent)",
-                borderRadius: 8,
-                outline: 0,
-              }}
-            />
-            <EmptyBlock
-              title="Pesquisa federada por ligar"
-              body="A pesquisa local nos decks (examples, templates, library) chega primeiro. A federada sobre conectores liga quando o Archive expor o registry."
-            />
-          </div>
-        )}
-        {tab === "library" && (
-          <EmptyBlock
-            title="Library de design systems"
-            body="Core → Routing lista os design systems disponíveis para cada chamber. Quando a edição estiver aberta, os DSes passam a ser visíveis aqui também."
-          />
-        )}
+        <div className="surface-rail-grid">
+          {EXAMPLES.map((it) => (
+            <button
+              key={it.title}
+              className="surface-rail-card"
+              type="button"
+              aria-label={`${it.title} · ${it.kind}`}
+            >
+              <div className="surface-rail-card-title">{it.title}</div>
+              <div className="surface-rail-card-meta">
+                <span className="surface-rail-card-kind" data-kind={it.kind}>{it.kind}</span>
+                <span className="surface-rail-card-tag">· {it.tag}</span>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
-function Grid({ items }: { items: Array<{ title: string; kind: string; tag: string }> }) {
-  return (
-    <div className="surface-rail-grid">
-      {items.map((it) => (
-        <button
-          key={it.title}
-          className="surface-rail-card"
-          type="button"
-          // Cards are visual placeholders today — wiring lands when the
-          // archive connector layer ships. No fake selection state.
-          aria-label={`${it.title} · ${it.kind}`}
-        >
-          <div className="surface-rail-card-title">{it.title}</div>
-          <div className="surface-rail-card-meta">
-            <span className="surface-rail-card-kind" data-kind={it.kind}>{it.kind}</span>
-            <span className="surface-rail-card-tag">· {it.tag}</span>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function EmptyBlock({ title, body }: { title: string; body: string }) {
+function PlanView({
+  plan, mock, copy,
+}: {
+  plan: SurfacePlanPayload | null;
+  mock: boolean;
+  copy: ReturnType<typeof useCopy>;
+}) {
+  if (!plan) {
+    return (
+      <div className="surface-canvas-empty">
+        <span className="surface-canvas-empty-kicker">{copy.surfacePlanEmptyKicker}</span>
+        <p className="surface-canvas-empty-body">{copy.surfacePlanEmptyBody}</p>
+      </div>
+    );
+  }
   return (
     <div
+      data-surface-plan-preview
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 10,
-        padding: "var(--space-4)",
-        textAlign: "center",
-        color: "var(--text-muted)",
+        gap: 12,
+        padding: "var(--space-3) var(--space-4)",
+        background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 3%, var(--bg-elevated))",
       }}
     >
-      <div
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: "var(--t-micro)",
-          letterSpacing: "var(--track-label)",
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-        }}
-      >
-        — {title}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-micro)",
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+            color: "var(--chamber-dna, var(--accent))",
+            fontWeight: 500,
+          }}
+        >
+          — Plano gerado
+        </span>
+        {mock && (
+          <span
+            data-mock-badge
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: "var(--t-micro)",
+              letterSpacing: "var(--track-label)",
+              textTransform: "uppercase",
+              color: "var(--cc-warn)",
+              padding: "2px 8px",
+              border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+              borderRadius: 999,
+            }}
+          >
+            mock
+          </span>
+        )}
+        <span
+          style={{
+            marginLeft: "auto",
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            color: "var(--text-muted)",
+            letterSpacing: "var(--track-meta)",
+          }}
+        >
+          {plan.mode} · {plan.fidelity} · {plan.design_system_binding ?? "no DS"}
+        </span>
       </div>
-      <div
-        style={{
-          fontFamily: "var(--serif)",
-          fontSize: "var(--t-body)",
-          lineHeight: 1.5,
-          color: "var(--text-secondary)",
-          letterSpacing: "-0.005em",
-        }}
-      >
-        {body}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+        {plan.screens.map((s) => {
+          const componentCount = plan.components.filter((c) => c.screen === s.name).length;
+          return (
+            <div
+              key={s.name}
+              className="surface-rail-card"
+              style={{ cursor: "default" }}
+            >
+              <div className="surface-rail-card-title">{s.name}</div>
+              <div
+                style={{
+                  fontFamily: "var(--sans)",
+                  fontSize: "var(--t-body-sec)",
+                  color: "var(--text-muted)",
+                  lineHeight: 1.45,
+                }}
+              >
+                {s.purpose}
+              </div>
+              <div className="surface-rail-card-meta">
+                <span className="surface-rail-card-kind">{componentCount} components</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
+      {plan.notes.length > 0 && (
+        <ul
+          style={{
+            margin: 0,
+            paddingLeft: 16,
+            color: "var(--text-muted)",
+            fontFamily: "var(--sans)",
+            fontSize: "var(--t-body-sec)",
+            lineHeight: 1.5,
+          }}
+        >
+          {plan.notes.map((n, i) => (
+            <li key={i}>{n}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function FilesView({
+  copy,
+}: {
+  copy: ReturnType<typeof useCopy>;
+}) {
+  return (
+    <div className="surface-canvas-empty">
+      <span className="surface-canvas-empty-kicker">{copy.surfaceFilesEmptyKicker}</span>
+      <p className="surface-canvas-empty-body">{copy.surfaceFilesEmptyBody}</p>
+      {/* Skeleton sections — visible scaffold of the future file
+          browser. PAGES / COMPONENTS / UPLOADS each show as a labelled
+          empty zone; the user sees the future shape without Signal
+          inventing fake entries. */}
+      <div className="surface-files-stubs">
+        <div className="surface-files-stub" aria-disabled="true">
+          <span className="surface-files-stub-label">{copy.surfaceFilesPagesLabel}</span>
+          <span className="surface-files-stub-state">—</span>
+        </div>
+        <div className="surface-files-stub" aria-disabled="true">
+          <span className="surface-files-stub-label">{copy.surfaceFilesComponentsLabel}</span>
+          <span className="surface-files-stub-state">—</span>
+        </div>
+        <div className="surface-files-stub" aria-disabled="true">
+          <span className="surface-files-stub-label">{copy.surfaceFilesUploadsLabel}</span>
+          <span className="surface-files-stub-state">—</span>
+        </div>
+      </div>
+      <p className="surface-canvas-empty-contract" aria-label="backend contract">
+        <span className="surface-canvas-empty-contract-label">contract</span>
+        <code>{copy.surfaceFilesEmptyContract}</code>
+      </p>
+    </div>
+  );
+}
+
+function WireframesView({
+  copy,
+}: {
+  copy: ReturnType<typeof useCopy>;
+}) {
+  return (
+    <div className="surface-canvas-empty">
+      <span className="surface-canvas-empty-kicker">{copy.surfaceWireframesEmptyKicker}</span>
+      <p className="surface-canvas-empty-body">{copy.surfaceWireframesEmptyBody}</p>
+      <p className="surface-canvas-empty-contract" aria-label="backend contract">
+        <span className="surface-canvas-empty-contract-label">contract</span>
+        <code>{copy.surfaceWireframesEmptyContract}</code>
+      </p>
     </div>
   );
 }
