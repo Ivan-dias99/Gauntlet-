@@ -47,14 +47,17 @@ export default function ExplorationRail({
     }
   }, [plan, planSeen]);
 
-  // Cut wave: Files and Wireframes tabs hidden until the backend
-  // actually exists. The view-body code stays in place (FilesView /
-  // WireframesView) for the future re-introduction; the router just
-  // doesn't surface them as choices today. Plan tab appears only
-  // when a plan has actually been generated.
+  // Tabs: brief always; plan + files appear when a plan exists. Files
+  // is now wired to derived mock artifacts from plan.screens until the
+  // real /surface/files backend lands. Wireframes still pending.
   const tabs: Array<{ key: View; label: string; wired: boolean }> = [
     { key: "brief", label: copy.surfaceCanvasTabBrief, wired: true },
-    ...(plan ? [{ key: "plan" as View, label: copy.surfaceCanvasTabPlan, wired: true }] : []),
+    ...(plan
+      ? ([
+          { key: "plan" as View, label: copy.surfaceCanvasTabPlan, wired: true },
+          { key: "files" as View, label: copy.surfaceCanvasTabFiles, wired: true },
+        ])
+      : []),
   ];
 
   return (
@@ -86,7 +89,7 @@ export default function ExplorationRail({
       <div className="surface-canvas-view">
         {view === "brief"      && <BriefView brief={brief} promptDraft={promptDraft} copy={copy} />}
         {view === "plan"       && <PlanView plan={plan} mock={mock} copy={copy} />}
-        {view === "files"      && <FilesView copy={copy} />}
+        {view === "files"      && <FilesView plan={plan} mock={mock} copy={copy} />}
         {view === "wireframes" && <WireframesView copy={copy} />}
       </div>
     </div>
@@ -276,39 +279,151 @@ function PlanView({
   );
 }
 
+// Mock diff payload — derived from plan.screens until the real
+// /surface/files backend lands. Each screen becomes one .tsx file with
+// a small synthetic diff that demonstrates the work the AI did. When
+// the real backend lights up, swap derivedFiles() for the wire payload.
+type DiffLine = { type: "add" | "del" | "context"; text: string };
+type FileDelta = {
+  path: string;
+  added: number;
+  removed: number;
+  status: "progress" | "unread" | "read" | "done";
+  lines: DiffLine[];
+};
+
+function derivedFiles(plan: SurfacePlanPayload): FileDelta[] {
+  return plan.screens.slice(0, 4).map((s, idx) => {
+    const slug = s.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 32) || `screen-${idx + 1}`;
+    const componentCount = plan.components.filter((c) => c.screen === s.name).length;
+    const status: FileDelta["status"] =
+      idx === 0 ? "done" : idx === 1 ? "unread" : "read";
+    return {
+      path: `src/screens/${slug}.tsx`,
+      added: 24 + componentCount * 6,
+      removed: 4 + idx,
+      status,
+      lines: [
+        { type: "context", text: `// ${s.name} — ${s.purpose.slice(0, 56)}` },
+        { type: "del",     text: `export default function ${slug}() { return null }` },
+        { type: "add",     text: `export default function ${slug}({ mission }: Props) {` },
+        { type: "add",     text: `  const fields = ${componentCount}` },
+        { type: "add",     text: `  return <Layout mission={mission}>{/* … */}</Layout>` },
+        { type: "add",     text: `}` },
+      ],
+    };
+  });
+}
+
 function FilesView({
-  copy,
+  plan, mock, copy,
 }: {
+  plan: SurfacePlanPayload | null;
+  mock: boolean;
   copy: ReturnType<typeof useCopy>;
 }) {
-  return (
-    <div className="surface-canvas-empty">
-      <span className="surface-canvas-empty-kicker">{copy.surfaceFilesEmptyKicker}</span>
-      <p className="surface-canvas-empty-body">{copy.surfaceFilesEmptyBody}</p>
-      {/* Skeleton sections — visible scaffold of the future file
-          browser. PAGES / COMPONENTS / UPLOADS each show as a labelled
-          empty zone; the user sees the future shape without Signal
-          inventing fake entries. */}
-      <div className="surface-files-stubs">
-        <div className="surface-files-stub" aria-disabled="true">
-          <span className="surface-files-stub-label">{copy.surfaceFilesPagesLabel}</span>
-          <span className="surface-files-stub-state">—</span>
-        </div>
-        <div className="surface-files-stub" aria-disabled="true">
-          <span className="surface-files-stub-label">{copy.surfaceFilesComponentsLabel}</span>
-          <span className="surface-files-stub-state">—</span>
-        </div>
-        <div className="surface-files-stub" aria-disabled="true">
-          <span className="surface-files-stub-label">{copy.surfaceFilesUploadsLabel}</span>
-          <span className="surface-files-stub-state">—</span>
-        </div>
+  if (!plan) {
+    return (
+      <div className="surface-canvas-empty">
+        <span className="surface-canvas-empty-kicker">{copy.surfaceFilesEmptyKicker}</span>
+        <p className="surface-canvas-empty-body">{copy.surfaceFilesEmptyBody}</p>
+        <p className="surface-canvas-empty-contract" aria-label="backend contract">
+          <span className="surface-canvas-empty-contract-label">contract</span>
+          <code>{copy.surfaceFilesEmptyContract}</code>
+        </p>
       </div>
-      <p className="surface-canvas-empty-contract" aria-label="backend contract">
-        <span className="surface-canvas-empty-contract-label">contract</span>
-        <code>{copy.surfaceFilesEmptyContract}</code>
-      </p>
+    );
+  }
+  const files = derivedFiles(plan);
+  const totalAdded = files.reduce((acc, f) => acc + f.added, 0);
+  const totalRemoved = files.reduce((acc, f) => acc + f.removed, 0);
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        padding: "var(--space-3) var(--space-4)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-micro)",
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+            color: "var(--text-muted)",
+            fontWeight: 500,
+          }}
+        >
+          — {files.length} files edited
+        </span>
+        <span className="diff-file-counts">
+          <span className="diff-count-add">+{totalAdded}</span>
+          <span className="diff-count-del">−{totalRemoved}</span>
+        </span>
+        {mock && (
+          <span
+            data-mock-badge
+            style={{
+              marginLeft: "auto",
+              fontFamily: "var(--mono)",
+              fontSize: "var(--t-micro)",
+              letterSpacing: "var(--track-label)",
+              textTransform: "uppercase",
+              color: "var(--cc-warn)",
+              padding: "2px 8px",
+              border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+              borderRadius: 999,
+            }}
+          >
+            mock
+          </span>
+        )}
+      </div>
+      <div className="diff-file-list">
+        {files.map((f) => (
+          <div key={f.path} className="diff-file">
+            <div className="diff-file-head">
+              <span className="diff-file-path">{f.path}</span>
+              <span className="diff-file-counts">
+                <span className="diff-count-add">+{f.added}</span>
+                <span className="diff-count-del">−{f.removed}</span>
+              </span>
+              <span className="status-chip" data-state={f.status}>
+                <span className="status-chip-glyph" aria-hidden />
+                {statusLabel(f.status)}
+              </span>
+            </div>
+            <div className="diff-body">
+              {f.lines.map((ln, i) => (
+                <div key={i} className="diff-line" data-type={ln.type}>
+                  <span className="diff-line-prefix">
+                    {ln.type === "add" ? "+" : ln.type === "del" ? "−" : " "}
+                  </span>
+                  <span>{ln.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
+}
+
+function statusLabel(s: FileDelta["status"]): string {
+  switch (s) {
+    case "progress": return "in progress";
+    case "unread":   return "unread";
+    case "read":     return "read";
+    case "done":     return "done";
+  }
 }
 
 function WireframesView({
