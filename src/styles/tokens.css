@@ -4556,26 +4556,20 @@ textarea {
 .surface-workbench {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
-  padding: 8px 14px;
+  padding: 5px 10px;
   margin: var(--space-2) auto var(--space-3);
   max-width: calc(100% - var(--space-4) * 2);
   width: fit-content;
-  border: 1px solid color-mix(in oklab, var(--text-primary) 11%, transparent);
-  border-radius: 12px;
-  background: var(--bg-surface);
+  /* Third in visual hierarchy — quieter than the cockpit and canvas.
+     Border opacity dropped, no inset highlight, shadow softened so
+     the pill reads as a thin instrument strip, not a competing slab. */
+  border: 1px solid color-mix(in oklab, var(--text-primary) 7%, transparent);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-surface));
   font-family: var(--mono);
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
-    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
   position: relative;
-}
-[data-theme="dark"] .surface-workbench,
-[data-theme="sepia"] .surface-workbench {
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
-    0 1px 2px color-mix(in oklab, #000 18%, transparent);
 }
 .surface-workbench-flyout-anchor {
   position: absolute;

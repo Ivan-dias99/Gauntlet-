@@ -17,15 +17,15 @@ export default function SurfaceLayout({ left, right }: Props) {
       data-chamber="surface"
       style={{
         display: "grid",
-        // Sidebar is the cockpit — it carries the brief, the controls,
-        // the doctrine state. Right is exploration. Asymmetry favours
-        // the cockpit: ~44 / 56 split on wide screens, with a 480px
-        // floor so segmented labels never truncate.
-        gridTemplateColumns: "minmax(480px, 44%) minmax(0, 1fr)",
+        // Hierarchy by occupation: canvas (right) is primary —
+        // contract preview / plan / files / wireframes; cockpit (left)
+        // is medium — formation form. Workbench pill above is third
+        // (lens-only thin strip). Wide-screen split favours the canvas
+        // ~60/40 with a 360px sidebar floor so segmented labels still
+        // breathe.
+        gridTemplateColumns: "minmax(360px, 40%) minmax(0, 1fr)",
         gap: "var(--space-4)",
         padding: "0 var(--space-4) var(--space-4)",
-        // Fill the remaining height inside chamber-body after the
-        // SurfaceWorkbench strip lays itself out at the top.
         flex: 1,
         minHeight: 0,
       }}
