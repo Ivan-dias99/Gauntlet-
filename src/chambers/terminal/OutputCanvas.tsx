@@ -82,8 +82,10 @@ export default function OutputCanvas({
 }
 
 // ——— Ready (no mission) ———
-// Densified: serif title + lead + three quick-tip rows + recent artifacts.
-// No big empty space between Ready and the composer.
+// Hero treatment: serif title + lead + three quick-tip rows live inside
+// a centred chamber-DNA-tinted card that vertically fills the column.
+// Mirrors Surface's right-rail hero pattern — the chamber's empty state
+// reads as a contract statement, not as text floating in space.
 function ReadyState({
   copy, artifacts, onReplay,
 }: {
@@ -92,25 +94,25 @@ function ReadyState({
   onReplay: (a: Artifact) => void;
 }) {
   return (
-    <div className="term-output">
-      <div className="term-output-head">
+    <div className="term-output" data-state="ready">
+      <div className="term-output-hero">
+        <span className="term-output-hero-kicker">— terminal · ready</span>
         <h1 className="term-output-title">{copy.termReadyTitle}</h1>
-      </div>
-      <p className="term-output-lead">{copy.termReadyLead}</p>
-      <section className="term-output-section">
-        <span className="term-output-section-label">{copy.nextStep}</span>
-        <ul className="term-output-list">
+        <p className="term-output-lead">{copy.termReadyLead}</p>
+        <ul className="term-output-hero-tips">
           <li>{copy.termReadyTipDeclare}</li>
           <li>{copy.termReadyTipMission}</li>
           <li>{copy.termReadyTipDoctrine}</li>
         </ul>
-      </section>
+      </div>
       <PreviousArtifacts copy={copy} artifacts={artifacts} onReplay={onReplay} />
     </div>
   );
 }
 
 // ——— Brief (mission active, no task yet) ———
+// Hero treatment matches ReadyState but keeps the mono brief grammar and
+// surfaces the workbench task-count chip inside the hero.
 function BriefState({
   copy, mission, artifacts, onReplay,
 }: {
@@ -125,33 +127,23 @@ function BriefState({
   const hasArtifacts = artifacts.length > 0;
 
   return (
-    <div className="term-output">
+    <div className="term-output" data-state="brief">
       {hasArtifacts && <AIExecutionKicker />}
-      <div className="term-output-head">
+      <div className="term-output-hero">
+        <span className="term-output-hero-kicker">— mission brief</span>
         <h1 className="term-output-title-mono">
           {copy.termBriefKicker}:{" "}
           <span style={{ color: "var(--chamber-dna, var(--ember))" }}>{mission.title}</span>
         </h1>
-      </div>
-      <p className="term-output-lead">{copy.termBriefLead}</p>
-
-      {hasArtifacts && <OrnamentalDivider />}
-
-      {total > 0 && (
-        <section className="term-output-section">
-          <span className="term-output-section-label">{copy.workbench}</span>
-          <div
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: "var(--t-body-sec)",
-              color: "var(--text-secondary)",
-              lineHeight: 1.7,
-            }}
-          >
+        <p className="term-output-lead">{copy.termBriefLead}</p>
+        {total > 0 && (
+          <span className="term-output-hero-tasks">
+            <span className="term-output-section-label">{copy.workbench}</span>
             {copy.termBriefTasks(done, pending, total)}
-          </div>
-        </section>
-      )}
+          </span>
+        )}
+      </div>
+      {hasArtifacts && <OrnamentalDivider />}
       <PreviousArtifacts copy={copy} artifacts={artifacts} onReplay={onReplay} />
     </div>
   );

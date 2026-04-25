@@ -5063,6 +5063,74 @@ textarea {
   gap: 28px;
   min-width: 0;
 }
+/* Hero injection — when the chamber is in its empty (ready) or brief
+   state, the editorial column fills the available height and centres
+   its content. The composer at the bottom no longer floats over a
+   void. Mirrors the Surface right-rail-hero pattern. */
+.term-output[data-state="brief"],
+.term-output[data-state="ready"] {
+  min-height: 100%;
+  justify-content: center;
+}
+.term-output-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 32px 36px;
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 2.5%, transparent);
+  border: 1px solid color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, color-mix(in oklab, var(--text-primary) 6%, transparent));
+  border-radius: 14px;
+  align-self: stretch;
+  max-width: 720px;
+}
+.term-output-hero-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--chamber-dna, var(--ember));
+  font-weight: 500;
+  opacity: 0.9;
+}
+.term-output-hero .term-output-title,
+.term-output-hero .term-output-title-mono {
+  margin: 0;
+}
+.term-output-hero-tips {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.term-output-hero-tips li {
+  font-family: var(--mono);
+  font-size: var(--t-body-sec);
+  letter-spacing: var(--track-meta);
+  color: var(--text-secondary);
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.5;
+}
+.term-output-hero-tips li::before {
+  content: "›";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--chamber-dna, var(--ember));
+  opacity: 0.7;
+}
+.term-output-hero-tasks {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: var(--t-body-sec);
+  color: var(--text-secondary);
+  letter-spacing: var(--track-meta);
+}
 .term-output-head {
   display: flex;
   align-items: baseline;
