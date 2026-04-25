@@ -87,6 +87,23 @@ export interface Copy {
   creationPlaceholder: string;
   creationRunning: string;
 
+  // Terminal composer affordances — chrome buttons + not-wired flyouts.
+  // Repo/branch/connectors carry honest "requires backend" copy because
+  // the backend contracts (GET /repo/status, GET /connectors, ...) do
+  // not exist yet. No fake data, no canned branch list.
+  termAffordContext: string;
+  termAffordRecent: string;
+  termAffordTools: string;
+  termAffordRepo: string;
+  termAffordBranch: string;
+  termAffordConnectors: string;
+  termRepoNotWiredTitle: string;
+  termRepoNotWiredBody: string;
+  termRepoNotWiredContract: string;
+  termConnectorsNotWiredTitle: string;
+  termConnectorsNotWiredBody: string;
+  termConnectorsNotWiredContract: string;
+
   // Shared workbench / task queue copy (used by Terminal)
   workbench: string;
   recentArtifacts: string;
@@ -274,6 +291,19 @@ const PT: Copy = {
   creationPlaceholder: "declarar próxima tarefa…",
   creationRunning: "a executar…",
 
+  termAffordContext: "contexto · sinais que viajam com cada tarefa",
+  termAffordRecent: "recentes · últimas tarefas desta missão",
+  termAffordTools: "tools · allowlist real desta câmara",
+  termAffordRepo: "repo · requer backend git",
+  termAffordBranch: "branch · requer repo status",
+  termAffordConnectors: "connectors · registry ainda não ligado",
+  termRepoNotWiredTitle: "repo · não ligado",
+  termRepoNotWiredBody: "Endpoint git do backend ainda não existe. Branch, dirty state, ahead/behind ficam por ligar — Signal não inventa branch.",
+  termRepoNotWiredContract: "espera por: GET /repo/status · GET /repo/branches · POST /repo/checkout",
+  termConnectorsNotWiredTitle: "connectors · não ligado",
+  termConnectorsNotWiredBody: "Registry de conectores externos ainda não existe. GitHub, Vercel, fontes de docs ficam por ligar — Signal não pinta integração que não tem.",
+  termConnectorsNotWiredContract: "espera por: GET /connectors · POST /connectors/{id}/connect",
+
   workbench: "bancada",
   recentArtifacts: "arquivo da missão",
   nextStep: "próximo",
@@ -459,6 +489,19 @@ const EN: Copy = {
   creationErrorTitle: "error",
   creationPlaceholder: "declare next task…",
   creationRunning: "running…",
+
+  termAffordContext: "context · signals travelling with each task",
+  termAffordRecent: "recent · latest tasks in this mission",
+  termAffordTools: "tools · real chamber allowlist",
+  termAffordRepo: "repo · requires git backend",
+  termAffordBranch: "branch · requires repo status",
+  termAffordConnectors: "connectors · registry not wired yet",
+  termRepoNotWiredTitle: "repo · not wired",
+  termRepoNotWiredBody: "Backend git endpoint does not exist yet. Branch, dirty state, ahead/behind await wiring — Signal does not invent a branch.",
+  termRepoNotWiredContract: "awaiting: GET /repo/status · GET /repo/branches · POST /repo/checkout",
+  termConnectorsNotWiredTitle: "connectors · not wired",
+  termConnectorsNotWiredBody: "External connector registry does not exist yet. GitHub, Vercel, docs sources await wiring — Signal does not paint integrations it has not earned.",
+  termConnectorsNotWiredContract: "awaiting: GET /connectors · POST /connectors/{id}/connect",
 
   workbench: "workbench",
   recentArtifacts: "mission archive",

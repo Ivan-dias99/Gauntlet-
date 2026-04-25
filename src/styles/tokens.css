@@ -3263,34 +3263,29 @@ textarea {
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ——— Canonical terminal command surface ———
-   Outer shell + inner deck pattern. The outer .term-command is a
-   matted frame (transparent with padded breath); the inner
-   .term-command-deck is the real solid surface. This "frame within
-   frame" reads as premium enterprise materiality — not a single slab
-   trying to earn presence with loud shadows. Two layers of discipline
-   beat five layers of effect. */
+   Single flat container. The frame-within-frame matted look has been
+   retired — Signal cockpit is dense, technical, IDE-class, not a
+   skeuomorphic terminal window. One solid surface, one hairline border,
+   one focus tone shift. Idle target ≈ 72px (bar 44 + rail 28). */
 .term-command {
   position: relative;
   width: 100%;
   max-width: 820px;
   margin: 0 auto;
-  padding: 4px;
-  border-radius: 22px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--text-primary) 2.5%, transparent) 0%,
-    color-mix(in oklab, var(--text-primary) 1%, transparent) 100%
-  );
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--text-primary) 3%, transparent),
-    0 20px 44px -22px color-mix(in oklab, var(--text-primary) 8%, transparent);
-  transition: box-shadow var(--dur-normal) var(--ease-swift);
+  background: var(--bg-elevated);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--text-primary) 3%, transparent);
+  transition:
+    border-color var(--dur-normal) var(--ease-swift),
+    box-shadow var(--dur-normal) var(--ease-swift);
 }
 .term-command[data-focused="true"] {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 24%, color-mix(in oklab, var(--text-primary) 12%, transparent));
   box-shadow:
     0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent),
-    0 6px 16px -8px color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, transparent),
-    0 28px 60px -24px color-mix(in oklab, var(--text-primary) 12%, transparent);
+    0 0 0 3px color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, transparent);
 }
 /* Inner deck — the real solid surface. Hairline border, radius
    tighter than the outer so the matted space is always visible.
@@ -3681,6 +3676,210 @@ textarea {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 18%, transparent) inset,
     0 1px 2px color-mix(in oklab, var(--cc-info) 40%, transparent);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   COMPOSER COCKPIT — two compact rows.
+   Bar:  path · input · [context recent tools repo* connectors*] · send
+   Rail: backend · doutrina · agent/crew toggle
+   * = honest "not wired" affordance — opens a flyout that names the
+       backend contract pending. No fake branch, no fake connector list.
+   ════════════════════════════════════════════════════════════════════ */
+
+.term-command-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  font-family: var(--mono);
+  background: var(--bg-input);
+  min-height: 44px;
+  position: relative;
+}
+.term-command[data-focused="true"] .term-command-bar {
+  background: color-mix(in oklab, var(--cc-ok) 1.5%, var(--bg-input));
+}
+.term-command[data-state="pending"] .term-command-bar {
+  background: color-mix(in oklab, var(--cc-info) 1.5%, var(--bg-input));
+}
+.term-command-path {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: -0.002em;
+  user-select: none;
+}
+.term-command-path strong {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.term-command-path-sep { color: var(--text-ghost); margin: 0 1px; }
+.term-command-path-tail { color: var(--cc-path); }
+
+/* Input dominates — it grows to take all leftover space, the rest of
+   the bar lives in flex-shrink:0 islands. */
+.term-command-bar > .term-command-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 4px 0;
+}
+
+.term-command-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Honest not-wired affordance — half-opacity icon, still clickable to
+   open the flyout that documents the missing backend contract. */
+.term-tool[data-wired="false"] {
+  opacity: 0.42;
+}
+.term-tool[data-wired="false"]:hover {
+  opacity: 0.7;
+}
+.term-tool[data-wired="false"][data-active="true"] {
+  opacity: 0.85;
+}
+/* Diagonal hairline through the corner — visual cue the affordance
+   exists but is not yet executable. Subtle, doesn't muddy the icon. */
+.term-tool[data-wired="false"]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cc-warn);
+  opacity: 0.5;
+}
+.term-tool { position: relative; }
+
+/* ——— State rail ——— */
+.term-command-rail {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 12px;
+  border-top: 1px solid color-mix(in oklab, var(--text-primary) 5%, transparent);
+  background: color-mix(in oklab, var(--bg-surface) 60%, var(--bg-elevated));
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-meta);
+  text-transform: lowercase;
+  min-height: 28px;
+  color: var(--text-muted);
+}
+.term-rail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.term-rail-chip[data-tone="warn"] { color: var(--cc-warn); }
+.term-rail-chip[data-tone="ok"]   { color: var(--cc-ok); }
+.term-rail-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+.term-command[data-state="pending"] .term-rail-chip[data-tone="ok"] .term-rail-dot,
+.term-command[data-state="pending"] .term-rail-chip[data-tone="warn"] .term-rail-dot {
+  animation: breathe 1.4s var(--ease-swift) infinite;
+}
+.term-rail-glyph {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--chamber-dna, var(--accent));
+}
+.term-rail-value {
+  color: inherit;
+  letter-spacing: var(--track-meta);
+}
+.term-rail-spacer { flex: 1; min-width: 8px; }
+
+/* Compact agent/crew toggle — pill segment, ember when active. */
+.term-rail-mode {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+.term-rail-mode-opt {
+  padding: 2px 9px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.term-rail-mode-opt:hover:not(:disabled):not([data-active="true"]) {
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+.term-rail-mode-opt[data-active="true"] {
+  background: var(--chamber-dna, var(--ember));
+  color: var(--bg);
+}
+.term-rail-mode-opt:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ——— Not-wired flyout body ——— */
+.term-flyout[data-tone="not-wired"] {
+  border-color: color-mix(in oklab, var(--cc-warn) 24%, var(--border-color-soft));
+}
+.term-flyout-body {
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.term-flyout-prose {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  letter-spacing: -0.002em;
+}
+.term-flyout-contract {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: color-mix(in oklab, var(--text-primary) 3%, transparent);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  border-radius: 6px;
+}
+.term-flyout-contract-label {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.term-flyout-contract code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  white-space: normal;
+  line-height: 1.5;
+  background: transparent;
 }
 
 /* ——— Slim bench bar ———
