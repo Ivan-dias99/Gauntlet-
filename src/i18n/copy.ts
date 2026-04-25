@@ -341,9 +341,9 @@ const PT: Copy = {
   memoryErrorPrefix: "falha do backend:",
 
   dormantKicker: "— dormente",
-  dormantLab: "insight em silêncio — nada é perdido; volta quando o backend regressar.",
-  dormantMemory: "telemetria em pausa — o arquivo permanece; só o pulso em directo está dormente.",
-  dormantCreation: "execução em pausa — a plataforma segue pronta; a ponte para o backend está silenciosa.",
+  dormantLab: "backend dormente — Insight recusa fingir. nada é perdido; o estado local persiste até a triad voltar.",
+  dormantMemory: "backend dormente — o ledger está local; o pulso em directo só regressa quando o brain responder.",
+  dormantCreation: "backend dormente — Terminal não inventa execução. a bancada segue pronta; a ponte está silenciosa.",
 
   spineSyncLabel: (s) =>
     s === "synced" ? "sincronizado" : s === "syncing" ? "a sincronizar" : "local",
@@ -521,9 +521,9 @@ const EN: Copy = {
   memoryErrorPrefix: "backend failure:",
 
   dormantKicker: "— dormant",
-  dormantLab: "insight quiet — nothing is lost; it resumes when the backend returns.",
-  dormantMemory: "telemetry paused — the archive remains; only the live pulse is dormant.",
-  dormantCreation: "execution paused — the workstation is ready; the bridge to the backend is quiet.",
+  dormantLab: "backend dormant — Insight refuses to fake. nothing is lost; local state persists until the triad returns.",
+  dormantMemory: "backend dormant — the ledger is local; the live pulse resumes only when the brain answers.",
+  dormantCreation: "backend dormant — Terminal does not invent execution. the workbench is ready; the bridge is quiet.",
 
   spineSyncLabel: (s) =>
     s === "synced" ? "synced" : s === "syncing" ? "syncing" : "local only",
