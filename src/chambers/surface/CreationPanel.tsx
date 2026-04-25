@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { SurfaceBriefPayload } from "../../hooks/useSignal";
 import { useCopy } from "../../i18n/copy";
 
@@ -59,12 +59,10 @@ export default function CreationPanel({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [focused, setFocused] = useState(false);
 
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(Math.max(el.scrollHeight, 96), 240)}px`;
-  }, [prompt]);
+  // Auto-grow is handled by flex:1 on the input row in [data-chamber=
+  // surface] context — the textarea fills the cockpit's remaining
+  // vertical space. Manual scrollHeight tracking conflicts with flex,
+  // so the JS auto-grow that lived here was retired.
 
   const canSubmit = prompt.trim().length > 0 && !pending;
   const missionLabel = missionTitle
@@ -219,9 +217,8 @@ export default function CreationPanel({
           spellCheck={false}
           aria-label={copy.surfaceStudioBriefLabel}
           style={{
-            minHeight: 96,
-            maxHeight: 240,
-            resize: "none",
+            // Vertical sizing handled by flex:1 in tokens.css; only
+            // typography lives inline here.
             fontFamily: "var(--sans)",
             fontSize: "var(--t-body)",
             lineHeight: "var(--lh-body)",

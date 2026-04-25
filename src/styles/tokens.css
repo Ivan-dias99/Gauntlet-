@@ -3285,13 +3285,41 @@ textarea {
     border-color var(--dur-normal) var(--ease-swift),
     box-shadow var(--dur-normal) var(--ease-swift);
 }
-/* Surface cockpit fills the sidebar — no centred max-width constraint
-   inside the design workstation. The composer (Terminal) keeps its
-   820px ceiling because it lives on a wider canvas; Surface lives on
-   the cockpit column itself. */
+/* Surface cockpit fills the sidebar — both width AND height. The
+   composer (Terminal) keeps its 820px ceiling because it lives on a
+   wider canvas; Surface lives on the cockpit column itself. The
+   cockpit takes the full sidebar height (flex: 1) and the brief
+   input row stretches to fill the remaining space after id row,
+   mock banner, controls and rail are laid out. This restores the
+   structural fill of the pre-cockpit Surface — surgical precision —
+   without losing the new visual grammar. */
 [data-chamber="surface"] .term-command {
   max-width: none;
   margin: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+[data-chamber="surface"] .term-command-input-row {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+  padding-bottom: 12px;
+}
+[data-chamber="surface"] .term-command-input-row > .term-command-input-prompt {
+  align-self: flex-start;
+  padding-top: 6px;
+}
+[data-chamber="surface"] .term-command-input-row > .term-command-input {
+  height: 100%;
+  min-height: 120px;
+  max-height: none !important;
+  resize: none;
+}
+[data-chamber="surface"] .term-command-input-row > .surface-generate {
+  align-self: flex-end;
+  margin-bottom: 0;
 }
 [data-theme="dark"] .term-command,
 [data-theme="sepia"] .term-command {
