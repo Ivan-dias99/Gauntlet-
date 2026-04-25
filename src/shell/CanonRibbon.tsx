@@ -72,8 +72,16 @@ export default function CanonRibbon({ active, onSelect }: Props) {
   return (
     <header className="canon-ribbon">
       <span className="canon-ribbon-brand" aria-label="Signal">
+        <span
+          aria-hidden
+          className="canon-ribbon-traffic"
+          title="signal status — refused · pending · ready"
+        >
+          <span className="canon-ribbon-traffic-dot" data-tone="err" />
+          <span className="canon-ribbon-traffic-dot" data-tone="warn" />
+          <span className="canon-ribbon-traffic-dot" data-tone="ok" />
+        </span>
         Signal
-        <span aria-hidden className="canon-ribbon-brand-dot" />
         <span aria-hidden className="canon-ribbon-doctrine">
           {copy.brandDoctrine}
         </span>
