@@ -11,7 +11,6 @@ import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
 import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
-import SurfaceWorkbench from "./SurfaceWorkbench";
 import CreationPanel from "./CreationPanel";
 import ExplorationRail from "./ExplorationRail";
 
@@ -107,15 +106,10 @@ export default function Surface() {
         tagline={copy.chambers.surface.sub}
         mock={mockBannerVisible}
       />
-      <div className="chamber-body" style={{ paddingTop: 0, display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-        <SurfaceWorkbench
-          brief={brief}
-          onBriefChange={patchBrief}
-          promptDraft={prompt}
-          plan={plan}
-          pending={pending}
-          missionTitle={activeMission?.title ?? null}
-        />
+      <div className="chamber-body" style={{ padding: 0 }}>
+        {/* Two vertical zones (ChamberHead + split). The orphan
+            Workbench pill is retired — its 5 lenses now live as a
+            chip cluster on the right side of the canvas tab bar. */}
         <SurfaceLayout
           left={
             <>
@@ -156,6 +150,8 @@ export default function Surface() {
               mock={planIsMock}
               brief={brief}
               promptDraft={prompt}
+              onBriefChange={patchBrief}
+              pending={pending}
             />
           }
         />

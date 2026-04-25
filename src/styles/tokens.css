@@ -4535,19 +4535,45 @@ textarea {
   color: var(--text-muted);
   letter-spacing: 0;
 }
-/* Canvas view tabs — top-level navigation between Brief / Plan /
-   Files / Wireframes. Mirrors Claude Design's file-tabs grammar.
-   Wired tabs read normal; not-wired tabs are dimmed with a corner
-   warn dot (still clickable so the user reads the contract pending,
-   no fake gating). */
+/* Canvas tab bar — view tabs on the LEFT, lens chips on the RIGHT.
+   Single horizontal row. The orphan SurfaceWorkbench pill bar above
+   the chamber-body is retired; its 5 lenses now sit inline here so
+   the chamber returns to two vertical zones (ChamberHead + split)
+   while keeping the territory state visible. */
 .surface-canvas-tabs {
   display: flex;
   align-items: stretch;
-  gap: 0;
+  justify-content: space-between;
+  gap: 12px;
   padding: 0 12px;
   border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
   background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-surface));
   flex-shrink: 0;
+  position: relative;
+}
+.surface-canvas-tabs-views {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-shrink: 0;
+}
+.surface-canvas-tabs-lenses {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  flex-shrink: 1;
+  min-width: 0;
+}
+/* Lens flyout anchor — opens below the tab bar, right-aligned so it
+   sits under the chip cluster instead of clipping out the viewport. */
+.surface-canvas-lens-flyout {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 12px;
+  width: min(420px, calc(100% - 24px));
+  z-index: 20;
 }
 .surface-canvas-tab {
   position: relative;

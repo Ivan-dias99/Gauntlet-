@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SurfaceBriefPayload, SurfacePlanPayload } from "../../hooks/useSignal";
 import { useCopy } from "../../i18n/copy";
 
@@ -17,8 +17,15 @@ import { useCopy } from "../../i18n/copy";
 //   · No plan → BRIEF (contract checklist)
 //   · Plan arrives → switch to PLAN once
 //   · User-driven nav after that
+//
+// The 5 lenses (Contract · DS · Layout · Components · States) live
+// inline with the view tabs as a chip cluster on the right side.
+// They were a separate top Workbench pill bar before; folding them
+// into the canvas tab bar restores Photo 1's two-zone vertical
+// (ChamberHead + split) without losing the territory state.
 
 type View = "brief" | "plan" | "files" | "wireframes";
+type Lens = null | "contract" | "ds" | "layout" | "components" | "states";
 
 const EXAMPLES = [
   { title: "Operational dashboard",     kind: "hi-fi",     tag: "analytics" },
@@ -32,12 +39,31 @@ interface Props {
   mock: boolean;
   brief: SurfaceBriefPayload;
   promptDraft: string;
+  /** Reserved — the lens chips are read-only mirrors today. */
+  onBriefChange?: (patch: Partial<SurfaceBriefPayload>) => void;
+  /** Reserved — drives Contract lens transitions (draft→pending→ready). */
+  pending?: boolean;
 }
 
-export default function ExplorationRail({ plan, mock, brief, promptDraft }: Props) {
+export default function ExplorationRail({
+  plan, mock, brief, promptDraft, pending = false,
+}: Props) {
   const copy = useCopy();
   const [view, setView] = useState<View>("brief");
   const [planSeen, setPlanSeen] = useState(false);
+  const [lens, setLens] = useState<Lens>(null);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+
+  // Click-outside dismisses any open lens flyout.
+  useEffect(() => {
+    if (!lens) return;
+    function onDoc(e: MouseEvent) {
+      const el = shellRef.current;
+      if (el && !el.contains(e.target as Node)) setLens(null);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [lens]);
 
   // Auto-switch to PLAN view the first time a plan arrives. After
   // that the user owns navigation.
@@ -58,32 +84,144 @@ export default function ExplorationRail({ plan, mock, brief, promptDraft }: Prop
     { key: "wireframes", label: copy.surfaceCanvasTabWireframes, wired: false },
   ];
 
+  // Lens values — derived from brief + plan + pending. Same posture
+  // the SurfaceWorkbench used to render before its pill bar was
+  // retired. Contract is wired (idle/draft/valid/sealed); DS and
+  // Components are wired when their underlying field has a value;
+  // Layout and States are honest "not wired" until the design backend
+  // exposes /design/layout and /design/states.
+  const contractState = (() => {
+    if (plan) return plan.mock === false ? "sealed" : "valid";
+    if (pending) return "draft";
+    if (promptDraft.trim().length > 0) return "draft";
+    return "idle";
+  })();
+  const contractValue = (() => {
+    switch (contractState) {
+      case "sealed": return copy.surfaceWbContractSealed;
+      case "valid":  return copy.surfaceWbContractValid;
+      case "draft":  return copy.surfaceWbContractDraft;
+      default:       return copy.surfaceWbContractIdle;
+    }
+  })();
+  const dsValue = brief.design_system ?? copy.surfaceWbValueIdle;
+  const componentsValue = plan ? `${plan.components.length}` : copy.surfaceWbValueIdle;
+
   return (
-    <div className="surface-rail-shell">
-      {/* View tab strip — top-level canvas navigation. Mirrors
-          Claude Design's file-tabs grammar (Design Files / Wireframes
-          / Terminal.html) but doctrinally honest: not-wired tabs are
-          dim with a warn dot, click still routes (so the user reads
-          the contract pending), no fake activation. */}
+    <div ref={shellRef} className="surface-rail-shell">
+      {/* Canvas tab bar — view tabs on the left, lens chips on the
+          right. Single horizontal row; the orphan Workbench pill is
+          gone. Two zones vertical (ChamberHead + split) restored. */}
       <div className="surface-canvas-tabs" role="tablist">
-        {tabs.map((t) => {
-          const active = t.key === view;
-          return (
-            <button
-              key={t.key}
-              role="tab"
-              aria-selected={active}
-              data-active={active ? "true" : undefined}
-              data-wired={t.wired ? "true" : "false"}
-              onClick={() => setView(t.key)}
-              className="surface-canvas-tab"
-              title={t.wired ? t.label : `${t.label} · not wired`}
-            >
-              {t.label}
-            </button>
-          );
-        })}
+        <div className="surface-canvas-tabs-views">
+          {tabs.map((t) => {
+            const active = t.key === view;
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={active}
+                data-active={active ? "true" : undefined}
+                data-wired={t.wired ? "true" : "false"}
+                onClick={() => setView(t.key)}
+                className="surface-canvas-tab"
+                title={t.wired ? t.label : `${t.label} · not wired`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="surface-canvas-tabs-lenses" role="toolbar" aria-label="lenses">
+          <CanvasLens
+            icon={<IconContract />}
+            label={copy.surfaceWbContractLabel}
+            value={contractValue}
+            active={lens === "contract"}
+            wired={true}
+            onClick={() => setLens(lens === "contract" ? null : "contract")}
+          />
+          <CanvasLens
+            icon={<IconDs />}
+            label={copy.surfaceWbDsLabel}
+            value={dsValue}
+            active={lens === "ds"}
+            wired={!!brief.design_system}
+            onClick={() => setLens(lens === "ds" ? null : "ds")}
+          />
+          <CanvasLens
+            icon={<IconLayout />}
+            label={copy.surfaceWbLayoutLabel}
+            value={copy.surfaceWbValueIdle}
+            active={lens === "layout"}
+            wired={false}
+            onClick={() => setLens(lens === "layout" ? null : "layout")}
+          />
+          <CanvasLens
+            icon={<IconComponents />}
+            label={copy.surfaceWbComponentsLabel}
+            value={componentsValue}
+            active={lens === "components"}
+            wired={!!plan}
+            onClick={() => setLens(lens === "components" ? null : "components")}
+          />
+          <CanvasLens
+            icon={<IconStates />}
+            label={copy.surfaceWbStatesLabel}
+            value={copy.surfaceWbValueIdle}
+            active={lens === "states"}
+            wired={false}
+            onClick={() => setLens(lens === "states" ? null : "states")}
+          />
+        </div>
       </div>
+
+      {lens && (
+        <div className="surface-canvas-lens-flyout">
+          {lens === "contract" && (
+            <LensFlyout
+              title={copy.surfaceWbContractLabel}
+              body={copy.surfaceWbContractBody}
+              contract={copy.surfaceWbContractContract}
+              wired={true}
+            />
+          )}
+          {lens === "ds" && (
+            <LensFlyout
+              title={copy.surfaceWbDsLabel}
+              body={brief.design_system
+                ? `${brief.design_system} · ${copy.surfaceWbDsBody}`
+                : copy.surfaceWbDsBody}
+              contract={copy.surfaceWbDsContract}
+              wired={!!brief.design_system}
+            />
+          )}
+          {lens === "layout" && (
+            <LensFlyout
+              title={copy.surfaceWbLayoutLabel}
+              body={copy.surfaceWbLayoutBody}
+              contract={copy.surfaceWbLayoutContract}
+              wired={false}
+            />
+          )}
+          {lens === "components" && (
+            <LensFlyout
+              title={copy.surfaceWbComponentsLabel}
+              body={copy.surfaceWbComponentsBody}
+              contract={copy.surfaceWbComponentsContract}
+              wired={!!plan}
+            />
+          )}
+          {lens === "states" && (
+            <LensFlyout
+              title={copy.surfaceWbStatesLabel}
+              body={copy.surfaceWbStatesBody}
+              contract={copy.surfaceWbStatesContract}
+              wired={false}
+            />
+          )}
+        </div>
+      )}
 
       <div className="surface-canvas-view">
         {view === "brief"      && <BriefView brief={brief} promptDraft={promptDraft} copy={copy} />}
@@ -327,5 +465,120 @@ function WireframesView({
         <code>{copy.surfaceWireframesEmptyContract}</code>
       </p>
     </div>
+  );
+}
+
+// ——— Lens chip + flyout (folded in from the retired SurfaceWorkbench) ———
+
+function CanvasLens({
+  icon, label, value, active, wired, onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  active: boolean;
+  wired: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="term-wb-lens"
+      data-active={active ? "true" : undefined}
+      data-wired={wired ? "true" : "false"}
+      onClick={onClick}
+      title={label}
+    >
+      <span className="term-wb-lens-icon" aria-hidden>{icon}</span>
+      <span className="term-wb-lens-label">{label}</span>
+      <span className="term-wb-lens-value">{value}</span>
+    </button>
+  );
+}
+
+function LensFlyout({
+  title, body, contract, wired,
+}: {
+  title: string;
+  body: string;
+  contract: string;
+  wired: boolean;
+}) {
+  return (
+    <div className="term-flyout" data-tone={wired ? undefined : "not-wired"} role="menu">
+      <div className="term-flyout-head">
+        <span>{title}{wired ? " · wired" : " · not wired"}</span>
+      </div>
+      <div className="term-flyout-body">
+        <p className="term-flyout-prose">{body}</p>
+        <p className="term-flyout-contract" aria-label="backend contract">
+          <span className="term-flyout-contract-label">{wired ? "source" : "contract"}</span>
+          <code>{contract}</code>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ——— Lens icon set (mirrors the retired SurfaceWorkbench) ———
+
+const LENS_SVG = {
+  width: 12,
+  height: 12,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.85,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+};
+
+function IconContract() {
+  return (
+    <svg {...LENS_SVG}>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <path d="M14 3v6h6" />
+      <circle cx="12" cy="15" r="2" />
+    </svg>
+  );
+}
+function IconDs() {
+  return (
+    <svg {...LENS_SVG}>
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <rect x="14" y="14" width="6" height="6" rx="1" />
+    </svg>
+  );
+}
+function IconLayout() {
+  return (
+    <svg {...LENS_SVG}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 3v18" />
+      <path d="M3 12h6" />
+    </svg>
+  );
+}
+function IconComponents() {
+  return (
+    <svg {...LENS_SVG}>
+      <rect x="3" y="3" width="14" height="14" rx="2" />
+      <rect x="7" y="7" width="14" height="14" rx="2" />
+    </svg>
+  );
+}
+function IconStates() {
+  return (
+    <svg {...LENS_SVG}>
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3v3" />
+      <path d="M12 18v3" />
+      <path d="M3 12h3" />
+      <path d="M18 12h3" />
+    </svg>
   );
 }
