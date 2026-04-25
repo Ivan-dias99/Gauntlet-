@@ -84,7 +84,7 @@ export default function WorkbenchStrip({
             title={copy.switchMission}
           >
             <span className="term-workbench-mission-label">
-              {copy.termStripMissionLabel}
+              {copy.wbMissionLabel}
             </span>
             <span className="term-workbench-mission-value">{missionLabel}</span>
             <span className="term-workbench-mission-caret" aria-hidden>
@@ -96,7 +96,7 @@ export default function WorkbenchStrip({
         <>
           <span className="term-workbench-sep" aria-hidden />
           <span className="term-workbench-mission-null">
-            {copy.termStripMissionNull}
+            {copy.wbMissionNull}
           </span>
         </>
       )}

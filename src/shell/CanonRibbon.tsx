@@ -182,7 +182,7 @@ export default function CanonRibbon({ active, onSelect }: Props) {
               })() : (
                 <>
                   <span aria-hidden className="mission-pill-dot" data-state="dormant" />
-                  <span className="mission-pill-title">nova thread</span>
+                  <span className="mission-pill-title">{copy.newThreadLabel}</span>
                   <span aria-hidden className="mission-pill-caret">▾</span>
                 </>
               )}
@@ -196,8 +196,8 @@ export default function CanonRibbon({ active, onSelect }: Props) {
                   data-new-thread
                   style={{ borderBottom: "1px solid var(--border-soft)" }}
                 >
-                  <div className="dropdown-item-title">+ nova thread</div>
-                  <div className="dropdown-item-meta">Insight · primeira pergunta cria missão</div>
+                  <div className="dropdown-item-title">+ {copy.newThreadLabel}</div>
+                  <div className="dropdown-item-meta">{copy.newThreadHint}</div>
                 </button>
                 <div className="dropdown-header">{copy.missions}</div>
                 {missions.map((m) => {

@@ -107,7 +107,7 @@ export default function SurfaceWorkbench({
             onClick={onMissionMenu}
             title={copy.switchMission}
           >
-            <span className="term-workbench-mission-label">mission</span>
+            <span className="term-workbench-mission-label">{copy.wbMissionLabel}</span>
             <span className="term-workbench-mission-value">{missionLabel}</span>
             <span className="term-workbench-mission-caret" aria-hidden>
               <IconCaret />
@@ -117,7 +117,7 @@ export default function SurfaceWorkbench({
       ) : (
         <>
           <span className="term-workbench-sep" aria-hidden />
-          <span className="term-workbench-mission-null">no mission</span>
+          <span className="term-workbench-mission-null">{copy.wbMissionNull}</span>
         </>
       )}
 

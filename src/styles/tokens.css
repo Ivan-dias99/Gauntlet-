@@ -3258,6 +3258,20 @@ textarea {
   background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 6%, transparent);
 }
 
+/* External widget guard — hides the Vercel toolbar / feedback
+   indicator that gets auto-injected on preview deploys. This is not
+   our chrome; it lives outside #root and reads as a floating black
+   debug button on the right edge, breaking the Signal silhouette.
+   Display:none on the known selectors keeps the chamber surface
+   clean. If we ever want a real Mission Inspector on the right, it
+   ships under our own class — not by reusing the toolbar slot. */
+[data-vercel-toolbar],
+[id^="__vercel-live-feedback"],
+[class*="vercel-toolbar"],
+[class*="vercel-live"] {
+  display: none !important;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    TERMINAL PRODUCTION — one command surface, output on canvas
    ══════════════════════════════════════════════════════════════════════ */

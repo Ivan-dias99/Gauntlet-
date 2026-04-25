@@ -21,6 +21,14 @@ export interface Copy {
   // Brand doctrine line — rendered next to "Signal" in CanonRibbon.
   // Calm mono register; states the epistemic north in five words.
   brandDoctrine: string;
+  // Workbench-strip family — small lowercase labels next to the
+  // mission caret. Locale-bound so Surface and Terminal don't leak
+  // English into a PT shell.
+  wbMissionLabel: string;
+  wbMissionNull: string;
+  // Mission switcher — "+ new thread" entry inside the dropdown.
+  newThreadLabel: string;
+  newThreadHint: string;
 
   // Insight — reasoning chamber
   labKicker: string;
@@ -323,6 +331,10 @@ const PT: Copy = {
   missions: "Missões",
 
   brandDoctrine: "recusar antes de adivinhar",
+  wbMissionLabel: "missão",
+  wbMissionNull: "sem missão",
+  newThreadLabel: "nova missão",
+  newThreadHint: "Insight · primeira pergunta cria missão",
 
   labKicker: "— INSIGHT",
   labInputVoice: "— pergunta",
@@ -583,6 +595,10 @@ const EN: Copy = {
   missions: "Missions",
 
   brandDoctrine: "refuse before guessing",
+  wbMissionLabel: "mission",
+  wbMissionNull: "no mission",
+  newThreadLabel: "new mission",
+  newThreadHint: "Insight · first question creates a mission",
 
   labKicker: "— INSIGHT",
   labInputVoice: "— question",

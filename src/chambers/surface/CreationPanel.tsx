@@ -122,7 +122,7 @@ export default function CreationPanel({
           <>
             <span className="term-command-id-sep" aria-hidden />
             <span className="term-command-id-mission">
-              <span className="term-command-id-mission-label">mission</span>
+              <span className="term-command-id-mission-label">{copy.wbMissionLabel}</span>
               <span className="term-command-id-mission-value">{missionLabel}</span>
               <span className="term-command-id-mission-caret" aria-hidden>
                 <IconCaret />
@@ -132,7 +132,7 @@ export default function CreationPanel({
         ) : (
           <>
             <span className="term-command-id-sep" aria-hidden />
-            <span className="term-command-id-mission-null">no mission</span>
+            <span className="term-command-id-mission-null">{copy.wbMissionNull}</span>
           </>
         )}
         <span className="term-command-id-sep" aria-hidden />
