@@ -42,6 +42,11 @@ export default function WorkbenchStrip({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [lens]);
 
+  // Compact territorial status — narrates the bench state in three
+  // tokens at most. The hero below carries the prose; the workbench
+  // here only counts. (Cut wave: drop the "no active task. declare
+  // the next." that the workbench, hero and composer all repeated.)
+  const pendingCount = tasks.filter((t) => t.state !== "done" && t.state !== "blocked").length;
   const statusText = (() => {
     if (activeTask) {
       if (activeTask.state === "running") return copy.termStripStatusRunning;
@@ -49,7 +54,10 @@ export default function WorkbenchStrip({
       if (activeTask.state === "done")    return copy.termStripStatusDone;
       return activeTask.title;
     }
-    return copy.noActiveTask;
+    if (pendingCount > 0) {
+      return `Idle · ${pendingCount} pending`;
+    }
+    return "Idle";
   })();
 
   const hasMission = !!missionTitle;
