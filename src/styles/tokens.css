@@ -3065,7 +3065,7 @@ textarea {
   font-family: var(--serif);
   font-size: 56px;
   line-height: 1;
-  color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 60%, var(--text-ghost));
+  color: var(--text-ghost);
   user-select: none;
 }
 .core-empty-kicker {
@@ -4609,7 +4609,7 @@ textarea {
 }
 .surface-canvas-tab:hover { color: var(--text-secondary); }
 .surface-canvas-tab[data-active="true"] {
-  color: var(--chamber-dna, var(--accent));
+  color: var(--text-primary);
 }
 .surface-canvas-tab[data-active="true"]::after {
   content: "";
@@ -4618,7 +4618,7 @@ textarea {
   right: 14px;
   bottom: -1px;
   height: 2px;
-  background: var(--chamber-dna, var(--accent));
+  background: var(--text-primary);
   border-radius: 2px 2px 0 0;
 }
 .surface-canvas-tab[data-wired="false"] {
@@ -6529,4 +6529,66 @@ textarea {
    discipline; é só um shade mais distinto entre página e container. */
 [data-theme="light"] {
   --bg: #f5f5f7;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   8K · liquid glass varnish
+   ═══════════════════════════════════════════════════════════════════════
+   Directive (2026-04-25): "envernizar o site todo por cima — verniz
+   liquid glass effect, 8K ultra-definição, mas só onde faz sentido,
+   sem cor, 3-color compliant."
+
+   O verniz é três camadas pures de luz:
+     1. inset 0 1px 0 #fff — aresta superior interna (specular highlight,
+        a "lip" de vidro);
+     2. background-image gradient top-down branco translúcido → 0 — uma
+        condensação suave que dá presença/density sem cor;
+     3. shadows refinadas — profundidade enterprise, não dramatic.
+
+   Aplicado APENAS aos containers que beneficiam do lift:
+     · .term-output-hero      (Terminal Mission brief card)
+     · .surface-rail-hero     (Surface Visual Contract Blocked)
+     · .insight-thread-shell  (Insight session card)
+     · .surface-rail-shell    (Surface right canvas panel)
+
+   Deliberadamente NÃO tocado (regra de ouro):
+     · .term-workbench-strip          (workbench, Insight é a referência)
+     · .term-command                  (Terminal & Surface composer)
+     · .insight-composer              (Insight composer)
+     · .doctrine-composer             (Core/Policies composer)
+     · texto, ícones, números, logo  (sua aura é o contraste, não verniz)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.term-output-hero,
+.surface-rail-hero,
+.insight-thread-shell,
+.surface-rail-shell {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0) 38%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 1px 2px rgba(0, 0, 0, 0.035),
+    0 14px 32px -10px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .term-output-hero,
+[data-theme="dark"] .surface-rail-hero,
+[data-theme="dark"] .insight-thread-shell,
+[data-theme="dark"] .surface-rail-shell,
+[data-theme="sepia"] .term-output-hero,
+[data-theme="sepia"] .surface-rail-hero,
+[data-theme="sepia"] .insight-thread-shell,
+[data-theme="sepia"] .surface-rail-shell {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.045) 0%,
+    rgba(255, 255, 255, 0) 38%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 1px 2px rgba(0, 0, 0, 0.40),
+    0 14px 32px -10px rgba(0, 0, 0, 0.45);
 }

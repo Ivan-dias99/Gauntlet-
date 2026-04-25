@@ -130,7 +130,7 @@ function BriefState({
         <span className="term-output-hero-kicker">— mission brief</span>
         <h1 className="term-output-title-mono">
           {copy.termBriefKicker}:{" "}
-          <span style={{ color: "var(--chamber-dna, var(--ember))" }}>{mission.title}</span>
+          <span style={{ color: "var(--text-primary)" }}>{mission.title}</span>
         </h1>
         <p className="term-output-lead">{copy.termBriefLead}</p>
         {total > 0 && (
