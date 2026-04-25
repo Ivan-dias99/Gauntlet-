@@ -32,8 +32,18 @@ export const FIDELITY_KEYS: Array<SurfaceBriefPayload["fidelity"]> = [
   "wireframe", "hi-fi",
 ];
 
-// Canned DESIGN_SYSTEMS catalogue moved to SurfaceWorkbench when the
-// DS pick became part of the DS Lens.
+// Canned design systems — the picker lives here in the cockpit
+// (formation), and the SurfaceWorkbench DS Lens above mirrors the
+// chosen value as status. Real catalogue lands when Core/Routing
+// exposes /design-systems.
+const DESIGN_SYSTEMS = [
+  "Signal Canon",
+  "Claude Design",
+  "Material You",
+  "Tailwind UI",
+  "Shadcn UI",
+  "Radix Primitives",
+] as const;
 
 interface Props {
   brief: SurfaceBriefPayload;
@@ -116,13 +126,67 @@ export default function CreationPanel({
         </span>
       )}
 
-      {/* Brief-shaping zone — three labelled rows. Each label is mono
-          uppercase ghost; each control is a single dense row that
-          carries the chamber-DNA accent on the active state. */}
+      {/* Brief input — first thing the cockpit asks. Intent before
+          configuration: the user declares what to build before being
+          interrogated about output / fidelity / design system. ◐ glyph
+          parallels the $ prompt of the Terminal composer. */}
+      <div className="term-command-input-row">
+        <span className="term-command-input-prompt" aria-hidden>◐</span>
+        <textarea
+          ref={textareaRef}
+          rows={3}
+          value={prompt}
+          onChange={(e) => onPromptChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              if (canSubmit) onSubmit();
+            }
+          }}
+          placeholder={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioBriefPlaceholder}
+          className="term-command-input"
+          spellCheck={false}
+          aria-label={copy.surfaceStudioBriefLabel}
+          style={{
+            // Vertical sizing handled by flex:1 in tokens.css; only
+            // typography lives inline here.
+            fontFamily: "var(--sans)",
+            fontSize: "var(--t-body)",
+            lineHeight: "var(--lh-body)",
+          }}
+        />
+        {/* Visual references attach lives inline with the brief —
+            attaching artifacts is the same act as writing intent. */}
+        <button
+          type="button"
+          className="term-tool surface-brief-refs"
+          data-wired="false"
+          data-active={flyout === "refs" ? "true" : undefined}
+          onClick={() => setFlyout(flyout === "refs" ? null : "refs")}
+          title={copy.surfaceComposerRefsLabel}
+          aria-label="visual references"
+        >
+          <IconRefs />
+        </button>
+      </div>
+
+      {flyout === "refs" && (
+        <NotWiredPopover
+          title={copy.surfaceComposerRefsLabel}
+          body={copy.surfaceComposerRefsBody}
+          contract={copy.surfaceComposerRefsContract}
+        />
+      )}
+
+      {/* Configuration zone — Output → Fidelity → Design System. After
+          intent is declared, the cockpit asks shape, fidelity, system.
+          Each row labelled, segmented or chip-picker. */}
       <div className="surface-controls">
         <div className="surface-controls-row">
           <span className="surface-controls-label">{copy.surfaceComposerOutputModeLabel}</span>
-          <div className="surface-segmented" role="tablist" aria-label="mode">
+          <div className="surface-segmented" role="tablist" aria-label="output mode">
             {MODE_KEYS.map((key) => (
               <button
                 key={key}
@@ -156,89 +220,71 @@ export default function CreationPanel({
           </div>
         </div>
 
-        {/* Design System row removed — DS pick now lives inside the
-            SurfaceWorkbench's DS Lens above. Single source of truth. */}
-      </div>
-
-      {/* Brief input row — dominant zone. ◐ glyph parallels the $
-          prompt of the Terminal composer; both inherit chamber-DNA. */}
-      <div className="term-command-input-row">
-        <span className="term-command-input-prompt" aria-hidden>◐</span>
-        <textarea
-          ref={textareaRef}
-          rows={3}
-          value={prompt}
-          onChange={(e) => onPromptChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              if (canSubmit) onSubmit();
-            }
-          }}
-          placeholder={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioBriefPlaceholder}
-          className="term-command-input"
-          spellCheck={false}
-          aria-label={copy.surfaceStudioBriefLabel}
-          style={{
-            // Vertical sizing handled by flex:1 in tokens.css; only
-            // typography lives inline here.
-            fontFamily: "var(--sans)",
-            fontSize: "var(--t-body)",
-            lineHeight: "var(--lh-body)",
-          }}
-        />
-        <div className="surface-composer-actions">
-          {/* Visual References Attach — honest "not wired". The flyout
-              names the upload endpoint pending. */}
-          <button
-            type="button"
-            className="term-tool"
-            data-wired="false"
-            data-active={flyout === "refs" ? "true" : undefined}
-            onClick={() => setFlyout(flyout === "refs" ? null : "refs")}
-            title={copy.surfaceComposerRefsLabel}
-            aria-label="visual references"
-          >
-            <IconRefs />
-          </button>
-          {/* Generate — live; runs the mock pipeline. */}
-          <button
-            type="button"
-            className="surface-generate"
-            onClick={onSubmit}
-            disabled={!canSubmit}
-            title={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioGenerate}
-            aria-label={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioGenerate}
-          >
-            {pending ? <span style={{ fontSize: 13, lineHeight: 1 }}>…</span> : <IconSend />}
-          </button>
-          {/* Handoff — honest "not wired" (preview / send to Terminal /
-              archive). Lights only when a plan exists, but the action
-              itself is gated on backend endpoints. */}
-          <button
-            type="button"
-            className="term-tool"
-            data-wired="false"
-            data-active={flyout === "handoff" ? "true" : undefined}
-            onClick={() => setFlyout(flyout === "handoff" ? null : "handoff")}
-            disabled={!hasPlan}
-            title={copy.surfaceComposerHandoffLabel}
-            aria-label="handoff"
-          >
-            <IconHandoff />
-          </button>
+        {/* Design System picker — native <select> behind a chip that
+            mirrors the Workbench DS Lens. The Lens shows the chosen
+            DS as a status; the cockpit picker forms the contract. */}
+        <div className="surface-controls-row">
+          <span className="surface-controls-label">{copy.surfaceStudioDsLabel}</span>
+          <span className="surface-ds-chip">
+            <span
+              className="surface-ds-chip-value"
+              data-empty={brief.design_system ? undefined : "true"}
+            >
+              {brief.design_system ?? copy.surfaceStudioDsEmpty}
+            </span>
+            <span className="surface-ds-chip-caret" aria-hidden>▾</span>
+            <select
+              className="surface-ds-native"
+              value={brief.design_system ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                onBriefChange({ design_system: v === "" ? null : v });
+              }}
+              aria-label={copy.surfaceStudioDsLabel}
+            >
+              <option value="">{copy.surfaceStudioDsEmpty}</option>
+              {DESIGN_SYSTEMS.map((ds) => (
+                <option key={ds} value={ds}>{ds}</option>
+              ))}
+            </select>
+          </span>
         </div>
       </div>
 
-      {flyout === "refs" && (
-        <NotWiredPopover
-          title={copy.surfaceComposerRefsLabel}
-          body={copy.surfaceComposerRefsBody}
-          contract={copy.surfaceComposerRefsContract}
-        />
-      )}
+      {/* Primary CTA — labelled, full-width, the central act of the
+          chamber. Handoff sits beside it as a secondary affordance
+          (disabled until a plan exists). */}
+      <div className="surface-cta-row">
+        <button
+          type="button"
+          className="surface-cta-primary"
+          onClick={onSubmit}
+          disabled={!canSubmit}
+          title={pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
+          aria-label={pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
+        >
+          <span className="surface-cta-glyph" aria-hidden>
+            {pending ? <span style={{ fontSize: 13, lineHeight: 1 }}>…</span> : <IconSend />}
+          </span>
+          <span className="surface-cta-label">
+            {pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
+          </span>
+          <span className="surface-cta-hint" aria-hidden>{copy.surfaceCtaFormHint}</span>
+        </button>
+        <button
+          type="button"
+          className="term-tool"
+          data-wired="false"
+          data-active={flyout === "handoff" ? "true" : undefined}
+          onClick={() => setFlyout(flyout === "handoff" ? null : "handoff")}
+          disabled={!hasPlan}
+          title={copy.surfaceComposerHandoffLabel}
+          aria-label="handoff"
+        >
+          <IconHandoff />
+        </button>
+      </div>
+
       {flyout === "handoff" && (
         <NotWiredPopover
           title={copy.surfaceComposerHandoffLabel}
@@ -247,9 +293,8 @@ export default function CreationPanel({
         />
       )}
 
-      {/* Rail — backend posture · doctrine count · ⌘+Enter hint. The
-          generate button moved up to the input row (parallels send
-          on Terminal); the rail stays informational. */}
+      {/* Rail — doctrine count · spacer · keyboard hint. The CTA
+          carries the generate action; the rail stays informational. */}
       <div className="term-command-rail">
         {principlesCount > 0 && (
           <span

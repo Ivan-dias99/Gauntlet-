@@ -202,6 +202,10 @@ export interface Copy {
   // | other); landing + component_spec land when the backend type
   // catches up.
   surfaceComposerOutputModeLabel: string;
+  // CTA copy — the cockpit's primary action. "Formar Contrato Visual"
+  // reads as a contract-forming verb (not a generic submit).
+  surfaceCtaForm: string;
+  surfaceCtaFormHint: string;
 
   // Shared workbench / task queue copy (used by Terminal)
   workbench: string;
@@ -450,7 +454,9 @@ const PT: Copy = {
   surfaceComposerHandoffLabel: "handoff · enviar para Terminal / arquivar (não ligado)",
   surfaceComposerHandoffBody: "Preview do contrato, export do spec, enviar plano para Terminal implementar, arquivar como artefacto. Endpoints de handoff ainda não existem.",
   surfaceComposerHandoffContract: "espera por: POST /surface/plan/{id}/handoff · POST /surface/plan/{id}/seal",
-  surfaceComposerOutputModeLabel: "output mode",
+  surfaceComposerOutputModeLabel: "output",
+  surfaceCtaForm: "Formar contrato visual",
+  surfaceCtaFormHint: "⌘/Ctrl + Enter",
   termWbRepoLabel: "repo",
   termWbRepoBody: "Lente do repositório — root, branch ativa, dirty state, remote, último commit. O backend git ainda não existe; Signal não inventa branch.",
   termWbRepoContract: "espera por: GET /repo/status · GET /repo/branches · POST /repo/checkout",
@@ -714,7 +720,9 @@ const EN: Copy = {
   surfaceComposerHandoffLabel: "handoff · send to Terminal / archive (not wired)",
   surfaceComposerHandoffBody: "Contract preview, spec export, hand the plan to Terminal for implementation, archive as artifact. Handoff endpoints do not exist yet.",
   surfaceComposerHandoffContract: "awaiting: POST /surface/plan/{id}/handoff · POST /surface/plan/{id}/seal",
-  surfaceComposerOutputModeLabel: "output mode",
+  surfaceComposerOutputModeLabel: "output",
+  surfaceCtaForm: "Form visual contract",
+  surfaceCtaFormHint: "⌘/Ctrl + Enter",
   termWbRepoLabel: "repo",
   termWbRepoBody: "Repository lens — root, active branch, dirty state, remote, last commit. The git backend does not exist yet; Signal does not invent a branch.",
   termWbRepoContract: "awaiting: GET /repo/status · GET /repo/branches · POST /repo/checkout",

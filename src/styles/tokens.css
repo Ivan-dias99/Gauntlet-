@@ -3310,26 +3310,22 @@ textarea {
 [data-chamber="surface"] .term-command {
   max-width: none;
   margin: 0;
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 [data-chamber="surface"] .term-command-input-row {
-  flex: 1;
-  min-height: 0;
   align-items: stretch;
-  padding-bottom: 12px;
+  padding: 8px 12px 4px 12px;
+  flex-shrink: 0;
 }
 [data-chamber="surface"] .term-command-input-row > .term-command-input-prompt {
   align-self: flex-start;
-  padding-top: 6px;
+  padding-top: 8px;
 }
 [data-chamber="surface"] .term-command-input-row > .term-command-input {
-  height: 100%;
-  min-height: 120px;
-  max-height: none !important;
-  resize: none;
+  min-height: 110px;
+  max-height: 240px;
+  resize: vertical;
   /* Brief reads as a discrete writing field — hairline tint + radius
      restore the surgical clarity of the pre-cockpit Surface. The bare
      transparent textarea worked for Terminal's single-line command
@@ -4191,15 +4187,79 @@ textarea {
   animation: breathe 2s var(--ease-swift) infinite;
 }
 
-/* Surface composer actions cluster — Refs · Generate · Handoff.
-   Refs and Handoff are honest "not wired" .term-tool buttons; the
-   live action is Generate (circular ember). The cluster sits at the
-   bottom-right of the input row inside [data-chamber="surface"]. */
-.surface-composer-actions {
+/* Brief refs button — paperclip lives inline with the textarea so
+   attaching references reads as part of writing intent. */
+.surface-brief-refs {
+  align-self: flex-end;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+/* Primary CTA row — the central act of the chamber lives in a
+   labelled, full-width button so the user sees what happens next.
+   Handoff sits beside it as a secondary affordance. */
+.surface-cta-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 0 14px 10px 14px;
+}
+.surface-cta-primary {
+  flex: 1;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  align-self: flex-end;
+  gap: 12px;
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--chamber-dna, var(--accent));
+  color: var(--bg);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 18%, transparent) inset,
+    0 2px 6px color-mix(in oklab, var(--chamber-dna, var(--accent)) 28%, transparent);
+}
+.surface-cta-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 22%, transparent) inset,
+    0 6px 18px color-mix(in oklab, var(--chamber-dna, var(--accent)) 42%, transparent);
+}
+.surface-cta-primary:active:not(:disabled) { transform: translateY(0); }
+.surface-cta-primary:disabled {
+  background: var(--text-ghost);
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.7;
+}
+.surface-cta-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.surface-cta-label {
+  flex: 1;
+  text-align: left;
+  letter-spacing: var(--track-label);
+}
+.surface-cta-hint {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-meta);
+  opacity: 0.7;
+  text-transform: none;
   flex-shrink: 0;
 }
 
