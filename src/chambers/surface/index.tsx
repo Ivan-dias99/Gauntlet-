@@ -150,7 +150,14 @@ export default function Surface() {
               )}
             </>
           }
-          right={<ExplorationRail plan={plan} mock={planIsMock} />}
+          right={
+            <ExplorationRail
+              plan={plan}
+              mock={planIsMock}
+              brief={brief}
+              promptDraft={prompt}
+            />
+          }
         />
       </div>
     </div>

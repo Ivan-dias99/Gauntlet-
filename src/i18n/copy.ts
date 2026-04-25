@@ -160,6 +160,18 @@ export interface Copy {
   // the pre-cockpit Surface.
   surfaceRailEmptyKicker: string;
   surfaceRailEmptyBody: string;
+  // Contract-blocked checklist — leads the canvas when no plan
+  // exists. Each row reflects a real piece of the brief that must be
+  // declared before the visual contract can validate. Examples drop
+  // to a secondary accelerator strip below the checklist.
+  surfaceContractBlockedKicker: string;
+  surfaceContractBlockedBody: string;
+  surfaceContractFieldIntent: string;
+  surfaceContractFieldOutput: string;
+  surfaceContractFieldFidelity: string;
+  surfaceContractFieldDs: string;
+  surfaceExamplesKicker: string;
+  surfaceExamplesHint: string;
   // Surface Workbench lenses — five tools at the top of the chamber
   // that narrate the visual territory: contract · design system ·
   // layout/grid · component inventory · state matrix. Each carries
@@ -428,6 +440,14 @@ const PT: Copy = {
   surfaceFidelityHiFi: "Alta fidelidade",
   surfaceRailEmptyKicker: "— sem contrato visual ainda",
   surfaceRailEmptyBody: "Define modo, fidelidade e design system, depois escreve o brief e gera o contrato visual. O plano aparece aqui — screens, componentes, notas.",
+  surfaceContractBlockedKicker: "— contrato visual bloqueado",
+  surfaceContractBlockedBody: "Forma o contrato à esquerda. Cada linha por completar mantém-no bloqueado.",
+  surfaceContractFieldIntent: "intenção · brief escrito",
+  surfaceContractFieldOutput: "output · prototype / deck / template / other",
+  surfaceContractFieldFidelity: "fidelidade · wireframe ou high-fidelity",
+  surfaceContractFieldDs: "design system · pick um existente ou declara none",
+  surfaceExamplesKicker: "— atalhos",
+  surfaceExamplesHint: "pontos de partida canned. Substitui-se quando Core/Routing expor o catálogo real.",
   surfaceWbContractLabel: "contract",
   surfaceWbContractBody: "Estado do contrato visual — idle / draft / valid / sealed. Reflete o brief actual e o plano gerado. Wired ao estado local da câmara.",
   surfaceWbContractContract: "wired · lê brief + plan do estado local Surface",
@@ -694,6 +714,14 @@ const EN: Copy = {
   surfaceFidelityHiFi: "Hi-fi",
   surfaceRailEmptyKicker: "— no visual contract yet",
   surfaceRailEmptyBody: "Set mode, fidelity and design system, then write the brief and generate the visual contract. The plan lands here — screens, components, notes.",
+  surfaceContractBlockedKicker: "— visual contract blocked",
+  surfaceContractBlockedBody: "Form the contract on the left. Each unchecked row keeps it blocked.",
+  surfaceContractFieldIntent: "intent · brief written",
+  surfaceContractFieldOutput: "output · prototype / deck / template / other",
+  surfaceContractFieldFidelity: "fidelity · wireframe or high-fidelity",
+  surfaceContractFieldDs: "design system · pick one or declare none",
+  surfaceExamplesKicker: "— shortcuts",
+  surfaceExamplesHint: "canned starting points. Replaced when Core/Routing exposes the real catalogue.",
   surfaceWbContractLabel: "contract",
   surfaceWbContractBody: "Visual contract state — idle / draft / valid / sealed. Reflects the current brief and generated plan. Wired to the chamber's local state.",
   surfaceWbContractContract: "wired · reads brief + plan from local Surface state",

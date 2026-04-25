@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SurfacePlanPayload } from "../../hooks/useSignal";
+import type { SurfaceBriefPayload, SurfacePlanPayload } from "../../hooks/useSignal";
 import { useCopy } from "../../i18n/copy";
 
 // Surface exploration rail — five tabs: Examples, Templates, Recent,
@@ -44,26 +44,59 @@ const TEMPLATES = [
 interface Props {
   plan: SurfacePlanPayload | null;
   mock: boolean;
+  /** Current brief — drives the contract-blocked checklist when no
+      plan exists. The canvas reads brief state directly so the user
+      sees their cockpit edits land here in real time. */
+  brief: SurfaceBriefPayload;
+  /** Brief textarea draft — counts toward the "intent declared" row
+      of the checklist. */
+  promptDraft: string;
 }
 
-export default function ExplorationRail({ plan, mock }: Props) {
+export default function ExplorationRail({ plan, mock, brief, promptDraft }: Props) {
   const copy = useCopy();
   const [tab, setTab] = useState<Tab>("examples");
   const [query, setQuery] = useState("");
 
+  // Contract-blocked checklist — each row reflects a real cockpit
+  // field. The canvas leads with this when no plan exists; Examples
+  // drop to a secondary accelerator strip below.
+  const checklist: Array<{ key: string; label: string; done: boolean }> = [
+    { key: "intent",   label: copy.surfaceContractFieldIntent,   done: promptDraft.trim().length > 0 },
+    { key: "output",   label: copy.surfaceContractFieldOutput,   done: !!brief.mode },
+    { key: "fidelity", label: copy.surfaceContractFieldFidelity, done: !!brief.fidelity },
+    { key: "ds",       label: copy.surfaceContractFieldDs,       done: !!brief.design_system },
+  ];
+  const allChecked = checklist.every((row) => row.done);
+
   return (
     <div className="surface-rail-shell">
-      {/* Hero empty state — when no plan is yet generated, the right
-          rail leads with this prose centred above the tab strip. The
-          old (pre-cockpit) Surface used the entire right column for
-          this hero; the cockpit-grammar version preserves it as a
-          banner and keeps the gallery tabs available below. When the
-          generator ships a plan, this hero is replaced by the plan
-          preview block. */}
+      {/* Hero — contract-blocked checklist when no plan exists; plan
+          preview replaces it when one arrives. The checklist leads
+          the canvas (intent + config), Examples drop to secondary
+          accelerator strip below the tab band. */}
       {!plan && (
-        <div className="surface-rail-hero">
-          <span className="surface-rail-hero-kicker">{copy.surfaceRailEmptyKicker}</span>
-          <p className="surface-rail-hero-body">{copy.surfaceRailEmptyBody}</p>
+        <div className="surface-rail-hero" data-state={allChecked ? "ready" : "blocked"}>
+          <span className="surface-rail-hero-kicker">
+            {allChecked ? copy.surfaceRailEmptyKicker : copy.surfaceContractBlockedKicker}
+          </span>
+          <p className="surface-rail-hero-body">
+            {allChecked ? copy.surfaceRailEmptyBody : copy.surfaceContractBlockedBody}
+          </p>
+          <ul className="surface-contract-checklist" aria-label="contract fields">
+            {checklist.map((row) => (
+              <li
+                key={row.key}
+                className="surface-contract-row"
+                data-done={row.done ? "true" : undefined}
+              >
+                <span className="surface-contract-box" aria-hidden>
+                  {row.done ? "✓" : ""}
+                </span>
+                <span className="surface-contract-label">{row.label}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -165,6 +198,16 @@ export default function ExplorationRail({ plan, mock }: Props) {
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {/* Examples kicker — secondary affordance when no plan exists.
+          The kicker explicitly de-emphasises the gallery so the
+          checklist above stays the protagonist. */}
+      {!plan && (
+        <div className="surface-rail-shortcut-kicker">
+          <span className="surface-rail-shortcut-label">{copy.surfaceExamplesKicker}</span>
+          <span className="surface-rail-shortcut-hint">{copy.surfaceExamplesHint}</span>
         </div>
       )}
 
