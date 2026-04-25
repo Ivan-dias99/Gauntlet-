@@ -3,6 +3,18 @@ import type { RunRecord } from "./helpers";
 import { originFor, linkArtifact } from "./helpers";
 import { useCopy } from "../../i18n/copy";
 
+// prettyQuestion — fallback when the run question is empty or reads
+// as gibberish. Mirrors RunList.prettyTitle so the detail pane never
+// shows demo residue when the list shows "—".
+function prettyQuestion(raw: string | null | undefined): string {
+  const v = (raw ?? "").trim();
+  if (!v) return "(sem pergunta registada)";
+  if (v.length <= 2) return "(sem pergunta registada)";
+  const letters = v.replace(/[^a-zA-ZÀ-ÿ]/g, "");
+  if (letters.length === 0) return "(sem pergunta registada)";
+  return v;
+}
+
 // Right-pane detail view for the selected run. Shows provenance first
 // (chamber-of-origin, linked artifact, doctrine in effect at query
 // time), then the envelope metadata, then the answer. The section
@@ -135,7 +147,7 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
               letterSpacing: "-0.005em",
             }}
           >
-            {run.question}
+            {prettyQuestion(run.question)}
           </div>
         </Section>
 

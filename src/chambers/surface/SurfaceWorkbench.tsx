@@ -203,14 +203,18 @@ function LensButton({
   wired: boolean;
   onClick: () => void;
 }) {
+  const handleClick = wired ? onClick : undefined;
+  const tooltip = wired ? label : `${label} · backend pending`;
   return (
     <button
       type="button"
       className="term-wb-lens"
       data-active={active ? "true" : undefined}
       data-wired={wired ? "true" : "false"}
-      onClick={onClick}
-      title={label}
+      onClick={handleClick}
+      disabled={!wired}
+      aria-disabled={!wired ? "true" : undefined}
+      title={tooltip}
     >
       <span className="term-wb-lens-icon" aria-hidden>{icon}</span>
       <span className="term-wb-lens-label">{label}</span>

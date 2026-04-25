@@ -3,6 +3,19 @@ import type { RunRecord } from "./helpers";
 import { ROUTE_COLOR, originFor, isLinked } from "./helpers";
 import { useCopy } from "../../i18n/copy";
 
+// prettyTitle — fallback when the run question is empty or reads as
+// gibberish. The cut wave forbade demo-residue strings from reaching
+// the ledger UI; if a real title isn't there, say so.
+function prettyTitle(raw: string | null | undefined): string {
+  const v = (raw ?? "").trim();
+  if (!v) return "—";
+  // Treat noise (≤ 2 chars, all-punctuation, or low-info) as untitled.
+  if (v.length <= 2) return "—";
+  const letters = v.replace(/[^a-zA-ZÀ-ÿ]/g, "");
+  if (letters.length === 0) return "—";
+  return v;
+}
+
 // Search + route-filter chips + scrollable run list. Clicking a row
 // promotes that run into the detail pane on the right. Keeps the
 // outcome chip inline so the list reads as ledger, not as chat log.
@@ -175,7 +188,7 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
                   whiteSpace: "nowrap",
                 }}
               >
-                {r.question}
+                {prettyTitle(r.question)}
               </span>
               <span
                 style={{

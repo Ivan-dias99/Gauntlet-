@@ -55,18 +55,24 @@ export default function ArchiveWorkbench({ stats, loading, hasMission }: Props) 
         ? copy.archiveWbStatusEmpty
         : copy.archiveWbStatusReady(stats.total);
 
-  // Lens values — all real; idle dash when no runs yet.
+  // Lens values — all real; idle dash when no runs yet. Tokens
+  // and Tools also dim when they're real-but-zero (the cut wave
+  // retired metrics that just print 0; the lens still occupies
+  // its slot but no longer pretends to be informative).
   const hasData = stats.total > 0;
+  const totalTokens = stats.totalInput + stats.totalOutput;
+  const tokensWired = hasData && totalTokens > 0;
+  const toolsWired = hasData && stats.toolCalls > 0;
   const refusedValue = hasData
     ? `${(stats.refusalRate * 100).toFixed(0)}%`
     : copy.archiveWbValueIdle;
   const latencyValue = hasData
     ? `${stats.avgLatencyMs}ms`
     : copy.archiveWbValueIdle;
-  const tokensValue = hasData
-    ? formatTokens(stats.totalInput + stats.totalOutput)
+  const tokensValue = tokensWired
+    ? formatTokens(totalTokens)
     : copy.archiveWbValueIdle;
-  const toolsValue = hasData
+  const toolsValue = toolsWired
     ? `${stats.toolCalls}`
     : copy.archiveWbValueIdle;
 
@@ -113,7 +119,7 @@ export default function ArchiveWorkbench({ stats, loading, hasMission }: Props) 
           label={copy.archiveWbTokensLabel}
           value={tokensValue}
           active={lens === "tokens"}
-          wired={hasData}
+          wired={tokensWired}
           onClick={() => setLens(lens === "tokens" ? null : "tokens")}
         />
         <LensButton
@@ -121,7 +127,7 @@ export default function ArchiveWorkbench({ stats, loading, hasMission }: Props) 
           label={copy.archiveWbToolsLabel}
           value={toolsValue}
           active={lens === "tools"}
-          wired={hasData}
+          wired={toolsWired}
           onClick={() => setLens(lens === "tools" ? null : "tools")}
         />
       </div>
@@ -152,6 +158,8 @@ function LensButton({
   tone?: "warn";
   onClick: () => void;
 }) {
+  const handleClick = wired ? onClick : undefined;
+  const tooltip = wired ? label : `${label} · empty`;
   return (
     <button
       type="button"
@@ -159,8 +167,10 @@ function LensButton({
       data-active={active ? "true" : undefined}
       data-wired={wired ? "true" : "false"}
       data-tone={tone}
-      onClick={onClick}
-      title={label}
+      onClick={handleClick}
+      disabled={!wired}
+      aria-disabled={!wired ? "true" : undefined}
+      title={tooltip}
     >
       <span className="term-wb-lens-icon" aria-hidden>{icon}</span>
       <span className="term-wb-lens-label">{label}</span>

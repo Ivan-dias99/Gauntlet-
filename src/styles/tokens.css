@@ -5584,17 +5584,19 @@ textarea {
   border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, var(--border-color-soft));
   color: var(--chamber-dna, var(--ember));
 }
-/* Not-wired lenses are honest — dimmed and visibly less active than
-   wired ones. They still open a flyout (educative), but the visual
-   does not promise action. */
+/* Not-wired lenses are honest — dimmed, non-clickable, no flyout.
+   The flyout-just-to-say-"not wired" pattern was retired in the cut
+   wave. The title tooltip carries the contract pending message; the
+   chip only signals that the territory exists in skeleton. */
 .term-wb-lens[data-wired="false"] {
-  opacity: 0.6;
+  opacity: 0.46;
+  cursor: default;
 }
 .term-wb-lens[data-wired="false"]:hover {
-  opacity: 0.85;
-}
-.term-wb-lens[data-wired="false"][data-active="true"] {
-  opacity: 1;
+  opacity: 0.6;
+  border-color: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: var(--text-muted);
+  background: transparent;
 }
 .term-wb-lens-icon {
   display: inline-flex;
