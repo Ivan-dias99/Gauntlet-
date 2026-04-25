@@ -103,6 +103,11 @@ export interface Copy {
   termConnectorsNotWiredTitle: string;
   termConnectorsNotWiredBody: string;
   termConnectorsNotWiredContract: string;
+  // Composer identity zone (workbench-strip family).
+  termComposerLabel: string;
+  termComposerPathRoot: string;
+  termComposerStatusIdle: string;
+  termComposerStatusPending: string;
 
   // Shared workbench / task queue copy (used by Terminal)
   workbench: string;
@@ -297,6 +302,10 @@ const PT: Copy = {
   termAffordRepo: "repo · requer backend git",
   termAffordBranch: "branch · requer repo status",
   termAffordConnectors: "connectors · registry ainda não ligado",
+  termComposerLabel: "TERMINAL",
+  termComposerPathRoot: "~/mission",
+  termComposerStatusIdle: "pronto · próxima tarefa torna-se comando",
+  termComposerStatusPending: "execução em curso · streaming",
   termRepoNotWiredTitle: "repo · não ligado",
   termRepoNotWiredBody: "Endpoint git do backend ainda não existe. Branch, dirty state, ahead/behind ficam por ligar — Signal não inventa branch.",
   termRepoNotWiredContract: "espera por: GET /repo/status · GET /repo/branches · POST /repo/checkout",
@@ -496,6 +505,10 @@ const EN: Copy = {
   termAffordRepo: "repo · requires git backend",
   termAffordBranch: "branch · requires repo status",
   termAffordConnectors: "connectors · registry not wired yet",
+  termComposerLabel: "TERMINAL",
+  termComposerPathRoot: "~/mission",
+  termComposerStatusIdle: "ready · next task becomes a command",
+  termComposerStatusPending: "running · streaming",
   termRepoNotWiredTitle: "repo · not wired",
   termRepoNotWiredBody: "Backend git endpoint does not exist yet. Branch, dirty state, ahead/behind await wiring — Signal does not invent a branch.",
   termRepoNotWiredContract: "awaiting: GET /repo/status · GET /repo/branches · POST /repo/checkout",

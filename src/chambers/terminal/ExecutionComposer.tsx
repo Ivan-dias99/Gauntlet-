@@ -1,19 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import type { Copy, RunMode, Task } from "./helpers";
 
-// Terminal command surface — Signal cockpit, two rows.
+// Terminal command surface — Signal cockpit.
 //
-// Row 1 (command bar):  path · input · [context recent tools repo* connectors*] · send
-// Row 2 (state rail):   backend · doutrina · agent/crew toggle
-//   * repo + connectors are honest affordances. The flyouts state the
-//     backend contract that has to land before they wire up. They never
-//     show fake branches, fake repos or fake "GitHub connected" badges.
+// Visual grammar inherited from WorkbenchStrip (the bar that lives
+// directly above): glyph block, mono label, mission with caret-down,
+// italic status, hairline pill, mono family. The composer is the
+// workbench's louder sibling — same family, but with an input dominant
+// and the cockpit's full action set.
 //
-// Doctrine carried by every flyout: only enumerate state Terminal
-// already has. No canned data. No fake features.
+// Identity row (top):  [glyph] LABEL · MISSION ▾ · italic status
+// Input row (middle):  $ [input dominant] [send]
+// State rail (bottom): [+ ⏱ ⚒ ⊟ ⌬]    ● live · § N · agent | crew
 //
-// Idle target height ≈ 72px (bar 44 + rail 28). Focused/pending only
-// shifts the border tone and lights the thinking strip; no layout reflow.
+// Only what is necessary and inevitable for building a backend lives
+// here: input, send, mission identity, real tools, real run mode,
+// real backend posture, real principles count. Repo, branch and
+// connectors are honest "not wired" affordances — the flyout names
+// the backend contract waiting to land. No fake branch, no fake
+// connector list, no plugin marketplace.
 
 interface Props {
   copy: Copy;
@@ -71,9 +76,9 @@ export default function ExecutionComposer({
   }, [flyout]);
 
   const canSubmit = value.trim().length > 0 && !pending;
-  const pathLabel = missionTitle
-    ? missionTitle.length > 28 ? missionTitle.slice(0, 25).trimEnd() + "…" : missionTitle
-    : "~/mission";
+  const missionLabel = missionTitle
+    ? missionTitle.length > 24 ? missionTitle.slice(0, 21).trimEnd() + "…" : missionTitle
+    : null;
 
   return (
     <div
@@ -87,14 +92,47 @@ export default function ExecutionComposer({
         data-focused={focused ? "true" : undefined}
         data-state={pending ? "pending" : undefined}
       >
-        {/* Row 1 — command bar. Single row, dense. */}
-        <div className="term-command-bar">
-          <span className="term-command-path" aria-hidden>
-            <strong>signal</strong>
-            <span className="term-command-path-sep"> · </span>
-            <span className="term-command-path-tail">{pathLabel}</span>
+        {/* Identity row — workbench-strip grammar transposed onto the
+            composer. Glyph block, label, mission with caret. Status
+            text is italic sans (same as workbench), narrating posture. */}
+        <div className="term-command-id">
+          <span className="term-command-glyph" aria-hidden>
+            <IconShell />
           </span>
+          <span className="term-command-id-label">{copy.termComposerLabel}</span>
+          {missionLabel ? (
+            <>
+              <span className="term-command-id-sep" aria-hidden />
+              <span className="term-command-id-mission">
+                <span className="term-command-id-mission-label">
+                  mission
+                </span>
+                <span className="term-command-id-mission-value">{missionLabel}</span>
+                <span className="term-command-id-mission-caret" aria-hidden>
+                  <IconCaret />
+                </span>
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="term-command-id-sep" aria-hidden />
+              <span className="term-command-id-mission-null">
+                {copy.termComposerPathRoot}
+              </span>
+            </>
+          )}
+          <span className="term-command-id-sep" aria-hidden />
+          <span className="term-command-id-status" title={pending ? copy.termComposerStatusPending : copy.termComposerStatusIdle}>
+            {pending ? copy.termComposerStatusPending : copy.termComposerStatusIdle}
+          </span>
+        </div>
 
+        {/* Input row — the single dominant zone. The `$` prompt glyph
+            is preserved as a small mono token (not the full
+            signal@local:~/mission$ cosplay) so the input still reads
+            as a command, not a chat textarea. */}
+        <div className="term-command-input-row">
+          <span className="term-command-input-prompt" aria-hidden>$</span>
           <input
             ref={inputRef}
             autoFocus
@@ -113,7 +151,28 @@ export default function ExecutionComposer({
             autoComplete="off"
             aria-label={copy.creationInputVoice}
           />
+          <button
+            type="button"
+            className="term-command-send"
+            data-state={pending ? "pending" : undefined}
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            title={pending ? "a executar" : "executar"}
+            aria-label={pending ? "a executar" : "executar"}
+          >
+            {pending ? (
+              <span style={{ fontSize: 13, lineHeight: 1 }}>…</span>
+            ) : (
+              <IconSend />
+            )}
+          </button>
+        </div>
 
+        {/* State rail — affordances on the left, posture chips and
+            execution-mode toggle on the right. Repo + connectors are
+            honest "not wired" buttons; the warn dot in their corner
+            tells the user before clicking. */}
+        <div className="term-command-rail">
           <div className="term-command-actions" role="toolbar" aria-label="composer affordances">
             <button
               type="button"
@@ -146,9 +205,6 @@ export default function ExecutionComposer({
             >
               <IconTools />
             </button>
-            {/* Honest "not wired" affordances — the flyout body documents
-                the backend contract Signal is waiting on. No fake branch,
-                no fake connector list. */}
             <button
               type="button"
               className="term-tool"
@@ -171,30 +227,10 @@ export default function ExecutionComposer({
             >
               <IconConnectors />
             </button>
-
-            <button
-              type="button"
-              className="term-command-send"
-              data-state={pending ? "pending" : undefined}
-              onClick={onSubmit}
-              disabled={!canSubmit}
-              title={pending ? "a executar" : "executar"}
-              aria-label={pending ? "a executar" : "executar"}
-            >
-              {pending ? (
-                <span style={{ fontSize: 13, lineHeight: 1 }}>…</span>
-              ) : (
-                <IconSend />
-              )}
-            </button>
           </div>
-        </div>
 
-        {/* Row 2 — state rail. Compact, single line. Backend mode +
-            doctrine count + execution mode (agent/crew). Repo/connector
-            state stays out of the rail until backend wires up — empty
-            slot is honest, fake "live · main" is a lie. */}
-        <div className="term-command-rail">
+          <span className="term-rail-spacer" />
+
           <span
             className="term-rail-chip"
             data-tone={mockMode ? "warn" : "ok"}
@@ -211,13 +247,9 @@ export default function ExecutionComposer({
               title="princípios em vigor que viajam com cada tarefa"
             >
               <span className="term-rail-glyph" aria-hidden>§</span>
-              <span className="term-rail-value">
-                {principlesCount} {principlesCount === 1 ? "princípio" : "princípios"}
-              </span>
+              <span className="term-rail-value">{principlesCount}</span>
             </span>
           )}
-
-          <span className="term-rail-spacer" />
 
           <div
             className="term-rail-mode"
@@ -442,6 +474,24 @@ const SVG_PROPS = {
   "aria-hidden": true,
 };
 
+// Shell glyph — sibling to WorkbenchStrip's IconTerminal. Same stroke
+// language, slightly bolder so the composer's identity reads from
+// further away than the workbench bar above it.
+function IconShell() {
+  return (
+    <svg {...SVG_PROPS} strokeWidth={2}>
+      <path d="m4 9 3 3-3 3" />
+      <path d="M10 15h10" />
+    </svg>
+  );
+}
+function IconCaret() {
+  return (
+    <svg {...SVG_PROPS} width={10} height={10}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
 function IconPlus() {
   return (
     <svg {...SVG_PROPS}>
