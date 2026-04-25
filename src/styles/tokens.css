@@ -4535,44 +4535,53 @@ textarea {
   color: var(--text-muted);
   letter-spacing: 0;
 }
-/* Canvas tab bar — view tabs on the LEFT, lens chips on the RIGHT.
-   Single horizontal row. The orphan SurfaceWorkbench pill bar above
-   the chamber-body is retired; its 5 lenses now sit inline here so
-   the chamber returns to two vertical zones (ChamberHead + split)
-   while keeping the territory state visible. */
+/* Canvas tab bar — view-router only (Brief / Plan / Files / Wireframes).
+   The 5 lens chips moved up to the SurfaceWorkbench pill above the
+   split, so this row carries one job: navigation. */
 .surface-canvas-tabs {
   display: flex;
   align-items: stretch;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 0;
   padding: 0 12px;
   border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
   background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-surface));
   flex-shrink: 0;
-  position: relative;
 }
-.surface-canvas-tabs-views {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  flex-shrink: 0;
-}
-.surface-canvas-tabs-lenses {
+
+/* SurfaceWorkbench thin pill — lens-only container above the split.
+   Carries the 5 territory lenses (Contract · DS · Layout · Components
+   · States) and nothing else. STUDIO label, mission caret and italic
+   status were retired in this rebirth so the workbench no longer
+   duplicates what the canon ribbon and ChamberHead already declare. */
+.surface-workbench {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-wrap: wrap;
-  padding: 6px 0;
-  flex-shrink: 1;
-  min-width: 0;
+  padding: 8px 14px;
+  margin: var(--space-2) auto var(--space-3);
+  max-width: calc(100% - var(--space-4) * 2);
+  width: fit-content;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 11%, transparent);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  font-family: var(--mono);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
+  position: relative;
 }
-/* Lens flyout anchor — opens below the tab bar, right-aligned so it
-   sits under the chip cluster instead of clipping out the viewport. */
-.surface-canvas-lens-flyout {
+[data-theme="dark"] .surface-workbench,
+[data-theme="sepia"] .surface-workbench {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 18%, transparent);
+}
+.surface-workbench-flyout-anchor {
   position: absolute;
   top: calc(100% + 6px);
-  right: 12px;
-  width: min(420px, calc(100% - 24px));
+  right: 0;
+  width: min(420px, calc(100vw - 48px));
   z-index: 20;
 }
 .surface-canvas-tab {

@@ -11,6 +11,7 @@ import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
 import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
+import SurfaceWorkbench from "./SurfaceWorkbench";
 import CreationPanel from "./CreationPanel";
 import ExplorationRail from "./ExplorationRail";
 
@@ -106,10 +107,19 @@ export default function Surface() {
         tagline={copy.chambers.surface.sub}
         mock={mockBannerVisible}
       />
-      <div className="chamber-body" style={{ padding: 0 }}>
-        {/* Two vertical zones (ChamberHead + split). The orphan
-            Workbench pill is retired — its 5 lenses now live as a
-            chip cluster on the right side of the canvas tab bar. */}
+      <div className="chamber-body" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
+        {/* Three vertical zones: ChamberHead → thin Workbench pill
+            (lens-only, no identity duplication) → split. The pill
+            here is a lens container ONLY — STUDIO label, mission
+            caret and italic status were retired so the chamber
+            doesn't repeat what the canon ribbon and ChamberHead
+            already say. */}
+        <SurfaceWorkbench
+          brief={brief}
+          plan={plan}
+          promptDraft={prompt}
+          pending={pending}
+        />
         <SurfaceLayout
           left={
             <>

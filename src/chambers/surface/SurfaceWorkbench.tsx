@@ -2,35 +2,40 @@ import { useEffect, useRef, useState } from "react";
 import type { SurfaceBriefPayload, SurfacePlanPayload } from "../../hooks/useSignal";
 import { useCopy } from "../../i18n/copy";
 
-// DESIGN_SYSTEMS catalogue lives in CreationPanel (the cockpit owns
-// formation). The Lens here only mirrors the chosen value.
-
-// Surface Workbench strip — five lenses on the visual territory.
+// Surface Workbench — lens-only pill above the split.
 //
-// Sibling of Terminal's WorkbenchStrip. Same hairline pill, same
-// glyph block + label + mission caret + italic status grammar. The
-// lenses live on the right cluster:
-//   [Contract] [DS] [Layout] [Components] [States]
+// Reborn from the retired identity-bar version (which duplicated
+// mission identity 3-4× per screen). This pass keeps only what was
+// honest: the 5 lenses on the visual territory. No glyph, no STUDIO
+// label, no mission caret, no italic status — those bits already
+// live on the canon ribbon (mission pill) and the chamber head
+// (chamber identity).
 //
-// Contract is wired (idle / draft / valid / sealed — derived from
-// brief + plan); Components is wired when a plan exists (counts
-// plan.components); the others are honest "not wired" until the
-// design backend lands. No fake tokens, no fake layout grid.
+// Why bring it back at all:
+//   · The lenses NEED a framed container to read as instruments,
+//     not as button decorations next to view tabs.
+//   · A thin pill above the split keeps Photo 1's two-column
+//     cockpit/canvas dimensions intact while restoring Photo 2's
+//     workbench presence.
+//
+// Lens posture (same as before):
+//   · Contract  (wired): idle / draft / valid / sealed
+//   · DS        (wired when picked): brief.design_system
+//   · Layout    (not wired): backend pending
+//   · Components(wired when plan): plan.components.length
+//   · States    (not wired): backend pending
 
 type Lens = null | "contract" | "ds" | "layout" | "components" | "states";
 
 interface Props {
   brief: SurfaceBriefPayload;
-  onBriefChange: (patch: Partial<SurfaceBriefPayload>) => void;
-  promptDraft: string;
   plan: SurfacePlanPayload | null;
+  promptDraft: string;
   pending: boolean;
-  missionTitle: string | null;
-  onMissionMenu?: () => void;
 }
 
 export default function SurfaceWorkbench({
-  brief, onBriefChange, promptDraft, plan, pending, missionTitle, onMissionMenu,
+  brief, plan, promptDraft, pending,
 }: Props) {
   const copy = useCopy();
   const [lens, setLens] = useState<Lens>(null);
@@ -46,14 +51,7 @@ export default function SurfaceWorkbench({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [lens]);
 
-  const hasMission = !!missionTitle;
-  const missionLabel = hasMission && missionTitle
-    ? missionTitle.length > 24 ? missionTitle.slice(0, 21).trimEnd() + "…" : missionTitle
-    : null;
-
-  // Contract state — derived from brief + plan. The idle / draft /
-  // valid / sealed labels are real, not faked: they mirror the brief
-  // input and whether a plan has been generated.
+  // Contract state derives from brief + plan + pending.
   const contractState = (() => {
     if (plan) return plan.mock === false ? "sealed" : "valid";
     if (pending) return "draft";
@@ -68,100 +66,54 @@ export default function SurfaceWorkbench({
       default:       return copy.surfaceWbContractIdle;
     }
   })();
-
   const dsValue = brief.design_system ?? copy.surfaceWbValueIdle;
-  const componentsValue = plan
-    ? `${plan.components.length}`
-    : copy.surfaceWbValueIdle;
-
-  const statusText = pending
-    ? copy.surfaceStudioStatusPending
-    : plan
-      ? copy.surfaceStudioStatusReady
-      : promptDraft.trim().length > 0
-        ? copy.surfaceStudioStatusBriefing
-        : copy.surfaceStudioStatusIdle;
+  const componentsValue = plan ? `${plan.components.length}` : copy.surfaceWbValueIdle;
 
   return (
-    <div ref={stripRef} className="term-workbench-strip" data-surface-workbench>
-      <span className="term-workbench-icon" aria-hidden>
-        <IconStudio />
-      </span>
-      <span className="term-workbench-label">{copy.surfaceStudioLabel}</span>
-
-      {hasMission ? (
-        <>
-          <span className="term-workbench-sep" aria-hidden />
-          <button
-            type="button"
-            className="term-workbench-mission"
-            onClick={onMissionMenu}
-            title={copy.switchMission}
-          >
-            <span className="term-workbench-mission-label">{copy.wbMissionLabel}</span>
-            <span className="term-workbench-mission-value">{missionLabel}</span>
-            <span className="term-workbench-mission-caret" aria-hidden>
-              <IconCaret />
-            </span>
-          </button>
-        </>
-      ) : (
-        <>
-          <span className="term-workbench-sep" aria-hidden />
-          <span className="term-workbench-mission-null">{copy.wbMissionNull}</span>
-        </>
-      )}
-
-      <span className="term-workbench-sep" aria-hidden />
-      <span className="term-workbench-status" title={statusText}>
-        {statusText}
-      </span>
-
-      <div className="term-workbench-lenses">
-        <LensButton
-          icon={<IconContract />}
-          label={copy.surfaceWbContractLabel}
-          value={contractValue}
-          active={lens === "contract"}
-          wired={true}
-          onClick={() => setLens(lens === "contract" ? null : "contract")}
-        />
-        <LensButton
-          icon={<IconDs />}
-          label={copy.surfaceWbDsLabel}
-          value={dsValue}
-          active={lens === "ds"}
-          wired={!!brief.design_system}
-          onClick={() => setLens(lens === "ds" ? null : "ds")}
-        />
-        <LensButton
-          icon={<IconLayout />}
-          label={copy.surfaceWbLayoutLabel}
-          value={copy.surfaceWbValueIdle}
-          active={lens === "layout"}
-          wired={false}
-          onClick={() => setLens(lens === "layout" ? null : "layout")}
-        />
-        <LensButton
-          icon={<IconComponents />}
-          label={copy.surfaceWbComponentsLabel}
-          value={componentsValue}
-          active={lens === "components"}
-          wired={!!plan}
-          onClick={() => setLens(lens === "components" ? null : "components")}
-        />
-        <LensButton
-          icon={<IconStates />}
-          label={copy.surfaceWbStatesLabel}
-          value={copy.surfaceWbValueIdle}
-          active={lens === "states"}
-          wired={false}
-          onClick={() => setLens(lens === "states" ? null : "states")}
-        />
-      </div>
+    <div ref={stripRef} className="surface-workbench" data-surface-workbench>
+      <LensButton
+        icon={<IconContract />}
+        label={copy.surfaceWbContractLabel}
+        value={contractValue}
+        active={lens === "contract"}
+        wired={true}
+        onClick={() => setLens(lens === "contract" ? null : "contract")}
+      />
+      <LensButton
+        icon={<IconDs />}
+        label={copy.surfaceWbDsLabel}
+        value={dsValue}
+        active={lens === "ds"}
+        wired={!!brief.design_system}
+        onClick={() => setLens(lens === "ds" ? null : "ds")}
+      />
+      <LensButton
+        icon={<IconLayout />}
+        label={copy.surfaceWbLayoutLabel}
+        value={copy.surfaceWbValueIdle}
+        active={lens === "layout"}
+        wired={false}
+        onClick={() => setLens(lens === "layout" ? null : "layout")}
+      />
+      <LensButton
+        icon={<IconComponents />}
+        label={copy.surfaceWbComponentsLabel}
+        value={componentsValue}
+        active={lens === "components"}
+        wired={!!plan}
+        onClick={() => setLens(lens === "components" ? null : "components")}
+      />
+      <LensButton
+        icon={<IconStates />}
+        label={copy.surfaceWbStatesLabel}
+        value={copy.surfaceWbValueIdle}
+        active={lens === "states"}
+        wired={false}
+        onClick={() => setLens(lens === "states" ? null : "states")}
+      />
 
       {lens && (
-        <div className="term-workbench-flyout-anchor">
+        <div className="surface-workbench-flyout-anchor">
           {lens === "contract" && (
             <LensFlyout
               title={copy.surfaceWbContractLabel}
@@ -210,7 +162,7 @@ export default function SurfaceWorkbench({
   );
 }
 
-// ——— Lens primitives (siblings of the Terminal Workbench's) ———
+// ——— Primitives ———
 
 function LensButton({
   icon, label, value, active, wired, onClick,
@@ -262,55 +214,32 @@ function LensFlyout({
   );
 }
 
-// DS picker moved back to the CreationPanel cockpit (formation belongs
-// to the cockpit; the Lens above just mirrors the chosen value as
-// territory). The DESIGN_SYSTEMS catalogue moved with it.
-
 // ——— Icons ———
 
-const SVG_PROPS = {
-  width: 14,
-  height: 14,
+const SVG = {
+  width: 12,
+  height: 12,
   viewBox: "0 0 24 24",
   fill: "none",
   stroke: "currentColor",
-  strokeWidth: 1.75,
+  strokeWidth: 1.85,
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
   "aria-hidden": true,
 };
 
-// Studio glyph (◐ as SVG) — same family as the composer's IconStudio.
-function IconStudio() {
-  return (
-    <svg {...SVG_PROPS} strokeWidth={2}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3v18" />
-      <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" opacity="0.85" />
-    </svg>
-  );
-}
-function IconCaret() {
-  return (
-    <svg {...SVG_PROPS} width={10} height={10}>
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-// Contract — document with a seal mark; reads as "agreement state".
 function IconContract() {
   return (
-    <svg {...SVG_PROPS}>
+    <svg {...SVG}>
       <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
       <path d="M14 3v6h6" />
       <circle cx="12" cy="15" r="2" />
     </svg>
   );
 }
-// DS — design tokens grid; nine small tiles in 3×3.
 function IconDs() {
   return (
-    <svg {...SVG_PROPS}>
+    <svg {...SVG}>
       <rect x="4" y="4" width="6" height="6" rx="1" />
       <rect x="14" y="4" width="6" height="6" rx="1" />
       <rect x="4" y="14" width="6" height="6" rx="1" />
@@ -318,29 +247,26 @@ function IconDs() {
     </svg>
   );
 }
-// Layout — frame with vertical/horizontal divisions; reads as "grid".
 function IconLayout() {
   return (
-    <svg {...SVG_PROPS}>
+    <svg {...SVG}>
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <path d="M9 3v18" />
       <path d="M3 12h6" />
     </svg>
   );
 }
-// Components — three nested rectangles; reads as "stacked atoms".
 function IconComponents() {
   return (
-    <svg {...SVG_PROPS}>
+    <svg {...SVG}>
       <rect x="3" y="3" width="14" height="14" rx="2" />
       <rect x="7" y="7" width="14" height="14" rx="2" />
     </svg>
   );
 }
-// States — circles cycle; reads as "phases".
 function IconStates() {
   return (
-    <svg {...SVG_PROPS}>
+    <svg {...SVG}>
       <circle cx="12" cy="12" r="3" />
       <circle cx="12" cy="12" r="9" />
       <path d="M12 3v3" />
