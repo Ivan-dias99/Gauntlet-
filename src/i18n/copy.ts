@@ -24,7 +24,6 @@ export interface Copy {
 
   // Insight — reasoning chamber
   labKicker: string;
-  labTagline: string;
   labInputVoice: string;
   labErrorTitle: string;
   labPlaceholder: string;
@@ -83,7 +82,6 @@ export interface Copy {
 
   // Terminal — execution chamber
   creationKicker: string;
-  creationTagline: string;
   creationInputVoice: string;
   creationErrorTitle: string;
   creationPlaceholder: string;
@@ -219,7 +217,6 @@ const PT: Copy = {
   brandDoctrine: "recusar antes de adivinhar",
 
   labKicker: "— INSIGHT",
-  labTagline: "Análise · evidência · direção",
   labInputVoice: "— pergunta",
   labErrorTitle: "erro",
   labPlaceholder: "Pergunta…",
@@ -272,7 +269,6 @@ const PT: Copy = {
   labRailTimeDays: (n) => `há ${n}d`,
 
   creationKicker: "— TERMINAL",
-  creationTagline: "Código · execução · ferramentas",
   creationInputVoice: "— comando",
   creationErrorTitle: "erro",
   creationPlaceholder: "declarar próxima tarefa…",
@@ -407,7 +403,6 @@ const EN: Copy = {
   brandDoctrine: "refuse before guessing",
 
   labKicker: "— INSIGHT",
-  labTagline: "Analysis · evidence · direction",
   labInputVoice: "— question",
   labErrorTitle: "error",
   labPlaceholder: "Question…",
@@ -460,7 +455,6 @@ const EN: Copy = {
   labRailTimeDays: (n) => `${n}d ago`,
 
   creationKicker: "— TERMINAL",
-  creationTagline: "Code · execution · tools",
   creationInputVoice: "— command",
   creationErrorTitle: "error",
   creationPlaceholder: "declare next task…",

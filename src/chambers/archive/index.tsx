@@ -147,7 +147,7 @@ export default function Archive() {
   const head = (
     <ChamberHead
       kicker="— ARCHIVE"
-      tagline="Retenção · proveniência · continuidade"
+      tagline={copy.chambers.archive.sub}
       mock={backend.mode === "mock"}
       right={activeMission ? (
         <span

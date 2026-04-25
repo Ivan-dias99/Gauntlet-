@@ -267,7 +267,7 @@ export default function Insight() {
           agnostic and readers expect it where the chamber identity is. */}
       <ChamberHead
         kicker={copy.labKicker}
-        tagline={copy.labTagline}
+        tagline={copy.chambers.insight.sub}
         mock={backend.mode === "mock"}
       />
       <InsightLayout strip={strip} scroll={scroll} floor={floor} />

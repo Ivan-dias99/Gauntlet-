@@ -106,7 +106,7 @@ export default function Surface() {
           <>
             <ChamberHead
               kicker="— SURFACE"
-              tagline="Workstation de design · modo · fidelidade · design system"
+              tagline={copy.chambers.surface.sub}
               mock={mockBannerVisible}
             />
             <CreationPanel

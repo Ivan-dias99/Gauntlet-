@@ -143,7 +143,7 @@ export default function ContextStrip({
   return (
     <ChamberHead
       kicker={copy.creationKicker}
-      tagline={copy.creationTagline}
+      tagline={copy.chambers.terminal.sub}
       mock={backendMode === "mock"}
       principlesCount={principlesCount}
       right={statusCluster}
