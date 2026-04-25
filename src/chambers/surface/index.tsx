@@ -127,7 +127,6 @@ export default function Surface() {
                 onSubmit={submit}
                 pending={pending}
                 mockBanner={mockBannerVisible}
-                missionTitle={activeMission?.title ?? null}
                 principlesCount={principles.length}
                 hasPlan={!!plan}
               />

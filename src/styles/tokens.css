@@ -4315,6 +4315,29 @@ textarea {
 .surface-rail-tab[data-active="true"] {
   color: var(--chamber-dna, var(--accent));
 }
+/* Not-wired tabs read as honest absence — dimmed, no hover pull,
+   cursor:not-allowed. They keep their place in the strip so the user
+   sees the future shape of the gallery, but Signal does not pretend
+   the catalogue is browsable. */
+.surface-rail-tab[data-wired="false"] {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.surface-rail-tab[data-wired="false"]:hover {
+  color: var(--text-ghost);
+}
+/* A small warn dot in the corner mirrors the lens treatment. */
+.surface-rail-tab[data-wired="false"]::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cc-warn);
+  opacity: 0.5;
+}
 .surface-rail-tab[data-active="true"]::after {
   content: "";
   position: absolute;

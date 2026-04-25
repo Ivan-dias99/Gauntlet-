@@ -14,12 +14,16 @@ import { useCopy } from "../../i18n/copy";
 
 type Tab = "examples" | "templates" | "recent" | "search" | "library";
 
-const TABS: Array<{ key: Tab; label: string }> = [
-  { key: "examples",  label: "Examples" },
-  { key: "templates", label: "Templates" },
-  { key: "recent",    label: "Recent" },
-  { key: "search",    label: "Search" },
-  { key: "library",   label: "Library" },
+// Only Examples is wired (canned but visually honest as "examples
+// to scan"). Templates / Recent / Search / Library carry no real
+// backend; they sit dimmed-disabled so the gallery stops promising
+// catalogues that do not exist.
+const TABS: Array<{ key: Tab; label: string; wired: boolean }> = [
+  { key: "examples",  label: "Examples",  wired: true  },
+  { key: "templates", label: "Templates", wired: false },
+  { key: "recent",    label: "Recent",    wired: false },
+  { key: "search",    label: "Search",    wired: false },
+  { key: "library",   label: "Library",   wired: false },
 ];
 
 const EXAMPLES = [
@@ -174,8 +178,11 @@ export default function ExplorationRail({ plan, mock }: Props) {
               role="tab"
               aria-selected={active}
               data-active={active ? "true" : undefined}
-              onClick={() => setTab(t.key)}
+              data-wired={t.wired ? "true" : "false"}
+              onClick={() => t.wired && setTab(t.key)}
+              disabled={!t.wired}
               className="surface-rail-tab"
+              title={t.wired ? t.label : `${t.label} · not wired`}
             >
               {t.label}
             </button>

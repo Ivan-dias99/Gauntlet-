@@ -44,14 +44,13 @@ interface Props {
   pending: boolean;
   /** When true, mock declaration appears in-rail (always when backend is mock). */
   mockBanner?: boolean;
-  missionTitle?: string | null;
   principlesCount?: number;
   hasPlan?: boolean;
 }
 
 export default function CreationPanel({
   brief, onBriefChange, prompt, onPromptChange, onSubmit, pending, mockBanner,
-  missionTitle, principlesCount = 0, hasPlan = false,
+  principlesCount = 0, hasPlan = false,
 }: Props) {
   const copy = useCopy();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -76,9 +75,6 @@ export default function CreationPanel({
   }, [flyout]);
 
   const canSubmit = prompt.trim().length > 0 && !pending;
-  const missionLabel = missionTitle
-    ? missionTitle.length > 22 ? missionTitle.slice(0, 19).trimEnd() + "…" : missionTitle
-    : null;
 
   const modeLabels: Record<SurfaceBriefPayload["mode"], string> = {
     prototype:     copy.surfaceModePrototype,
@@ -91,14 +87,6 @@ export default function CreationPanel({
     "hi-fi":   copy.surfaceFidelityHiFi,
   };
 
-  const status = pending
-    ? copy.surfaceStudioStatusPending
-    : hasPlan
-      ? copy.surfaceStudioStatusReady
-      : prompt.trim().length > 0
-        ? copy.surfaceStudioStatusBriefing
-        : copy.surfaceStudioStatusIdle;
-
   return (
     <div
       ref={composerRef}
@@ -106,34 +94,17 @@ export default function CreationPanel({
       data-focused={focused ? "true" : undefined}
       data-state={pending ? "pending" : undefined}
     >
-      {/* Identity row — STUDIO posture, sibling of TERMINAL on the
-          composer above. Traffic-light dots dropped (Surface is a
-          design workstation, not a macOS window cosplay). Glyph block
-          + label + caret carry the identity. */}
+      {/* Identity row — minimal. The SurfaceWorkbench above already
+          carries mission + italic status; the cockpit only states
+          its own role (STUDIO). Mission caret + status text dropped
+          here to stop tripling the same posture. Only the glyph and
+          label remain so the cockpit still reads as an addressable
+          surface. */}
       <div className="term-command-id">
         <span className="term-command-glyph" aria-hidden>
           <IconStudio />
         </span>
         <span className="term-command-id-label">{copy.surfaceStudioLabel}</span>
-        {missionLabel ? (
-          <>
-            <span className="term-command-id-sep" aria-hidden />
-            <span className="term-command-id-mission">
-              <span className="term-command-id-mission-label">{copy.wbMissionLabel}</span>
-              <span className="term-command-id-mission-value">{missionLabel}</span>
-              <span className="term-command-id-mission-caret" aria-hidden>
-                <IconCaret />
-              </span>
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="term-command-id-sep" aria-hidden />
-            <span className="term-command-id-mission-null">{copy.wbMissionNull}</span>
-          </>
-        )}
-        <span className="term-command-id-sep" aria-hidden />
-        <span className="term-command-id-status" title={status}>{status}</span>
       </div>
 
       {/* Mock banner — always-on declaration when backend is in mock
@@ -331,13 +302,6 @@ function IconStudio() {
       <circle cx="12" cy="12" r="9" />
       <path d="M12 3v18" />
       <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" opacity="0.85" />
-    </svg>
-  );
-}
-function IconCaret() {
-  return (
-    <svg {...SVG_PROPS} width={10} height={10}>
-      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }
