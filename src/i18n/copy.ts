@@ -109,6 +109,24 @@ export interface Copy {
   termComposerStatusIdle: string;
   termComposerStatusPending: string;
 
+  // Surface studio — cockpit identity for the design workstation.
+  // The chamber's plan generator is mock until the provider lands;
+  // status copy carries the honest posture.
+  surfaceStudioLabel: string;
+  surfaceStudioStatusIdle: string;
+  surfaceStudioStatusBriefing: string;
+  surfaceStudioStatusPending: string;
+  surfaceStudioStatusReady: string;
+  surfaceStudioModeLabel: string;
+  surfaceStudioFidelityLabel: string;
+  surfaceStudioDsLabel: string;
+  surfaceStudioDsEmpty: string;
+  surfaceStudioBriefLabel: string;
+  surfaceStudioBriefPlaceholder: string;
+  surfaceStudioGenerate: string;
+  surfaceStudioGenerating: string;
+  surfaceStudioMockBanner: string;
+
   // Shared workbench / task queue copy (used by Terminal)
   workbench: string;
   recentArtifacts: string;
@@ -306,6 +324,21 @@ const PT: Copy = {
   termComposerPathRoot: "~/mission",
   termComposerStatusIdle: "pronto · próxima tarefa torna-se comando",
   termComposerStatusPending: "execução em curso · streaming",
+
+  surfaceStudioLabel: "STUDIO",
+  surfaceStudioStatusIdle: "studio aberto · briefing por escrever",
+  surfaceStudioStatusBriefing: "briefing em curso · plano por gerar",
+  surfaceStudioStatusPending: "geração em curso · plano canned a chegar",
+  surfaceStudioStatusReady: "plano selado · screens prontos para revisão",
+  surfaceStudioModeLabel: "modo",
+  surfaceStudioFidelityLabel: "fidelidade",
+  surfaceStudioDsLabel: "design system",
+  surfaceStudioDsEmpty: "sem design system",
+  surfaceStudioBriefLabel: "brief",
+  surfaceStudioBriefPlaceholder: "Descreve a superfície — propósito, utilizador, restrições…",
+  surfaceStudioGenerate: "Gerar plano",
+  surfaceStudioGenerating: "a gerar…",
+  surfaceStudioMockBanner: "mock declarado · nenhum provider chamado · plano canned",
   termRepoNotWiredTitle: "repo · não ligado",
   termRepoNotWiredBody: "Endpoint git do backend ainda não existe. Branch, dirty state, ahead/behind ficam por ligar — Signal não inventa branch.",
   termRepoNotWiredContract: "espera por: GET /repo/status · GET /repo/branches · POST /repo/checkout",
@@ -509,6 +542,21 @@ const EN: Copy = {
   termComposerPathRoot: "~/mission",
   termComposerStatusIdle: "ready · next task becomes a command",
   termComposerStatusPending: "running · streaming",
+
+  surfaceStudioLabel: "STUDIO",
+  surfaceStudioStatusIdle: "studio open · brief not yet written",
+  surfaceStudioStatusBriefing: "briefing in progress · plan not yet generated",
+  surfaceStudioStatusPending: "generating · canned plan en route",
+  surfaceStudioStatusReady: "plan sealed · screens ready for review",
+  surfaceStudioModeLabel: "mode",
+  surfaceStudioFidelityLabel: "fidelity",
+  surfaceStudioDsLabel: "design system",
+  surfaceStudioDsEmpty: "no design system",
+  surfaceStudioBriefLabel: "brief",
+  surfaceStudioBriefPlaceholder: "Describe the surface — purpose, user, constraints…",
+  surfaceStudioGenerate: "Generate plan",
+  surfaceStudioGenerating: "generating…",
+  surfaceStudioMockBanner: "declared mock · no provider called · canned plan",
   termRepoNotWiredTitle: "repo · not wired",
   termRepoNotWiredBody: "Backend git endpoint does not exist yet. Branch, dirty state, ahead/behind await wiring — Signal does not invent a branch.",
   termRepoNotWiredContract: "awaiting: GET /repo/status · GET /repo/branches · POST /repo/checkout",

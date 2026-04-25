@@ -27,7 +27,7 @@ const DEFAULT_BRIEF: SurfaceBriefPayload = {
 };
 
 export default function Surface() {
-  const { activeMission, createMission, addNoteToMission } = useSpine();
+  const { activeMission, createMission, addNoteToMission, principles } = useSpine();
   const { streamSurface, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
   const copy = useCopy();
@@ -117,6 +117,9 @@ export default function Surface() {
               onSubmit={submit}
               pending={pending}
               mockBanner={mockBannerVisible}
+              missionTitle={activeMission?.title ?? null}
+              principlesCount={principles.length}
+              hasPlan={!!plan}
             />
             {unreachable && (
               <DormantPanel detail={copy.dormantSurface} />

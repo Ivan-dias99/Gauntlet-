@@ -3840,14 +3840,20 @@ textarea {
   font-family: var(--mono);
   font-size: 14px;
   font-weight: 500;
-  color: var(--cc-ok);
-  opacity: 0.7;
+  /* Chamber-DNA aware — Terminal stays on cc-ok via [data-chamber=
+     terminal] cascade; Surface inherits its own DNA (◐ glyph in
+     accent tone). The fallback keeps any non-chamber context safe. */
+  color: var(--chamber-dna, var(--cc-ok));
+  opacity: 0.65;
   flex-shrink: 0;
   user-select: none;
   line-height: 1;
+  transition: opacity var(--dur-fast);
+}
+[data-chamber="terminal"] .term-command-input-prompt {
+  color: var(--cc-ok);
 }
 .term-command[data-focused="true"] .term-command-input-prompt {
-  color: var(--chamber-dna, var(--cc-ok));
   opacity: 1;
 }
 .term-command-input-row > .term-command-input {
@@ -3959,6 +3965,311 @@ textarea {
   color: var(--bg);
 }
 .term-rail-mode-opt:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ════════════════════════════════════════════════════════════════════
+   SURFACE STUDIO — cockpit grammar applied to the design workstation.
+   Reuses the .term-command shell for outer pill, id row, input row and
+   rail. Adds .surface-controls for the brief-shaping zone (mode,
+   fidelity, design system) that lives between id row and brief input.
+   ════════════════════════════════════════════════════════════════════ */
+
+.surface-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 12px 8px 12px;
+  font-family: var(--mono);
+}
+.surface-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.surface-controls-label {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  flex-shrink: 0;
+  width: 78px;
+}
+/* Segmented selector — sibling of .term-rail-mode but bigger, denser,
+   so the brief-shaping selections feel like decisions, not toggles. */
+.surface-segmented {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  flex: 1;
+  min-width: 0;
+}
+.surface-segmented-opt {
+  flex: 1;
+  padding: 5px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: var(--track-meta);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.surface-segmented-opt:hover:not(:disabled):not([data-active="true"]) {
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+.surface-segmented-opt[data-active="true"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, var(--bg-elevated));
+  color: var(--chamber-dna, var(--accent));
+  font-weight: 500;
+}
+.surface-segmented-opt + .surface-segmented-opt {
+  border-left: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+/* Design-system chip — replaces the native <select>. Workbench-mission
+   button grammar (label + value + caret-down) so the DS picker reads
+   like an addressable identity, not a form field. */
+.surface-ds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
+  border-radius: 7px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-meta);
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+  position: relative;
+}
+.surface-ds-chip:hover {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 28%, color-mix(in oklab, var(--text-primary) 9%, transparent));
+  color: var(--text-secondary);
+}
+.surface-ds-chip-value {
+  flex: 1;
+  text-align: left;
+  color: var(--chamber-dna, var(--accent));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.surface-ds-chip-value[data-empty="true"] {
+  color: var(--text-ghost);
+  font-style: italic;
+}
+.surface-ds-chip-caret {
+  font-size: 9px;
+  opacity: 0.5;
+  display: inline-flex;
+}
+/* Native select hidden visually but kept for keyboard / accessibility.
+   The chip above is purely presentational — a click bubbles to the
+   select underneath via a wrapping label. */
+.surface-ds-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Mock banner — calmer than the v1 alarm. Reads as posture, not error. */
+.surface-mock-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 0 12px;
+  padding: 5px 10px;
+  background: color-mix(in oklab, var(--cc-warn) 5%, transparent);
+  border: 1px solid color-mix(in oklab, var(--cc-warn) 24%, transparent);
+  border-radius: 7px;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--cc-warn);
+  align-self: flex-start;
+}
+.surface-mock-banner-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: breathe 2s var(--ease-swift) infinite;
+}
+
+/* Generate button — circular ember (chamber-DNA), parallels the
+   Terminal send button. Visible promise that the brief will execute. */
+.surface-generate {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--chamber-dna, var(--accent));
+  color: var(--bg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 18%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--chamber-dna, var(--accent)) 35%, transparent);
+}
+.surface-generate:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 22%, transparent) inset,
+    0 4px 12px color-mix(in oklab, var(--chamber-dna, var(--accent)) 45%, transparent);
+}
+.surface-generate:disabled {
+  background: var(--text-ghost);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ──── ExplorationRail elevation ────
+   Tabs adopt the Core/Routing tab-sub grammar (mono uppercase,
+   underline-active in chamber-DNA). Cards get a hover lift, kind chip,
+   serif title with stronger weight. */
+
+.surface-rail-shell {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 11%, transparent);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+[data-theme="dark"] .surface-rail-shell,
+[data-theme="sepia"] .surface-rail-shell {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 18%, transparent);
+}
+.surface-rail-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-surface));
+  flex-shrink: 0;
+}
+.surface-rail-tab {
+  position: relative;
+  padding: 11px 14px;
+  background: transparent;
+  border: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  cursor: pointer;
+  transition: color var(--dur-fast);
+}
+.surface-rail-tab:hover { color: var(--text-secondary); }
+.surface-rail-tab[data-active="true"] {
+  color: var(--chamber-dna, var(--accent));
+}
+.surface-rail-tab[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--chamber-dna, var(--accent));
+  border-radius: 2px 2px 0 0;
+}
+.surface-rail-body {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-3);
+}
+.surface-rail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+.surface-rail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-swift),
+    border-color var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift);
+}
+.surface-rail-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 28%, color-mix(in oklab, var(--text-primary) 8%, transparent));
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--chamber-dna, var(--accent)) 12%, transparent),
+    0 6px 14px -4px color-mix(in oklab, var(--text-primary) 8%, transparent);
+}
+.surface-rail-card-title {
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+}
+.surface-rail-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.surface-rail-card-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 12%, transparent);
+  color: var(--chamber-dna, var(--accent));
+  font-weight: 500;
+}
+.surface-rail-card-kind[data-kind="wireframe"] {
+  background: color-mix(in oklab, var(--text-muted) 14%, transparent);
+  color: var(--text-secondary);
+}
+.surface-rail-card-tag {
+  color: var(--text-ghost);
+}
 
 /* ——— Not-wired flyout body ——— */
 .term-flyout[data-tone="not-wired"] {

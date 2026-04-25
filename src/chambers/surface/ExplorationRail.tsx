@@ -1,11 +1,15 @@
 import { useState } from "react";
 import type { SurfacePlanPayload } from "../../hooks/useSignal";
 
-// Wave-3 right-side exploration rail. Five tabs: Examples, Templates,
-// Recent, Search, Library. Data is canned in W3 — real catalog comes
-// from the archive connector layer in later waves. The point is that
-// the shell behaves like a real design workstation and not a
-// placeholder galllery.
+// Surface exploration rail — five tabs: Examples, Templates, Recent,
+// Search, Library. Visual elevation: cockpit-grammar tabs (mono
+// uppercase, underline-active in chamber-DNA), cards with hover lift
+// and kind chip.
+//
+// Doctrine: examples / templates are canned in the current wave —
+// the tabs themselves carry the honesty (Recent reads from real
+// archive when wired; Search and Library state the contract). No
+// fake search results, no fake library catalogue.
 
 type Tab = "examples" | "templates" | "recent" | "search" | "library";
 
@@ -18,18 +22,18 @@ const TABS: Array<{ key: Tab; label: string }> = [
 ];
 
 const EXAMPLES = [
-  { title: "Operational dashboard",   kind: "Hi-fi",      tag: "analytics" },
-  { title: "Onboarding flow — 3 steps",kind: "Prototype", tag: "activation" },
-  { title: "Governance settings pane", kind: "Hi-fi",     tag: "core" },
-  { title: "Archive search & lineage", kind: "Prototype", tag: "archive" },
+  { title: "Operational dashboard",     kind: "hi-fi",     tag: "analytics" },
+  { title: "Onboarding flow — 3 steps", kind: "prototype", tag: "activation" },
+  { title: "Governance settings pane",  kind: "hi-fi",     tag: "core" },
+  { title: "Archive search & lineage",  kind: "prototype", tag: "archive" },
 ];
 
 const TEMPLATES = [
-  { title: "Command centre",    kind: "hi-fi",    tag: "ops" },
-  { title: "Studio split",      kind: "wireframe",tag: "creation" },
-  { title: "Archive ledger",    kind: "hi-fi",    tag: "retrieval" },
-  { title: "Governance stack",  kind: "hi-fi",    tag: "policy" },
-  { title: "Slide deck — thesis", kind: "hi-fi",  tag: "narrative" },
+  { title: "Command centre",      kind: "hi-fi",     tag: "ops" },
+  { title: "Studio split",        kind: "wireframe", tag: "creation" },
+  { title: "Archive ledger",      kind: "hi-fi",     tag: "retrieval" },
+  { title: "Governance stack",    kind: "hi-fi",     tag: "policy" },
+  { title: "Slide deck — thesis", kind: "hi-fi",     tag: "narrative" },
 ];
 
 interface Props {
@@ -42,19 +46,8 @@ export default function ExplorationRail({ plan, mock }: Props) {
   const [query, setQuery] = useState("");
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        border: "var(--border-soft)",
-        borderRadius: "var(--radius-panel)",
-        background: "var(--bg-surface)",
-        height: "100%",
-        minHeight: 0,
-        overflow: "hidden",
-      }}
-    >
-      {/* Plan preview — sits above the rail when a mock plan has arrived. */}
+    <div className="surface-rail-shell">
+      {/* Plan preview — sits at the top when a plan has arrived. */}
       {plan && (
         <div
           data-surface-plan-preview
@@ -62,9 +55,9 @@ export default function ExplorationRail({ plan, mock }: Props) {
             display: "flex",
             flexDirection: "column",
             gap: 12,
-            padding: "var(--space-3)",
-            borderBottom: "var(--border-soft)",
-            background: "var(--bg-elevated)",
+            padding: "var(--space-3) var(--space-4)",
+            borderBottom: "1px solid color-mix(in oklab, var(--text-primary) 6%, transparent)",
+            background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 3%, var(--bg-elevated))",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -74,7 +67,8 @@ export default function ExplorationRail({ plan, mock }: Props) {
                 fontSize: "var(--t-micro)",
                 letterSpacing: "var(--track-label)",
                 textTransform: "uppercase",
-                color: "var(--text-ghost)",
+                color: "var(--chamber-dna, var(--accent))",
+                fontWeight: 500,
               }}
             >
               — Plano gerado
@@ -96,35 +90,56 @@ export default function ExplorationRail({ plan, mock }: Props) {
                 mock
               </span>
             )}
-            <span style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)" }}>
-              {plan.mode} · {plan.fidelity} · {plan.design_system_binding ?? "sem DS"}
+            <span
+              style={{
+                marginLeft: "auto",
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                color: "var(--text-muted)",
+                letterSpacing: "var(--track-meta)",
+              }}
+            >
+              {plan.mode} · {plan.fidelity} · {plan.design_system_binding ?? "no DS"}
             </span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
-            {plan.screens.map((s) => (
-              <div
-                key={s.name}
-                style={{
-                  padding: 10,
-                  border: "var(--border-soft)",
-                  borderRadius: "var(--radius-control)",
-                  background: "var(--bg-surface)",
-                }}
-              >
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-primary)" }}>
-                  {s.name}
+            {plan.screens.map((s) => {
+              const componentCount = plan.components.filter((c) => c.screen === s.name).length;
+              return (
+                <div
+                  key={s.name}
+                  className="surface-rail-card"
+                  style={{ cursor: "default" }}
+                >
+                  <div className="surface-rail-card-title">{s.name}</div>
+                  <div
+                    style={{
+                      fontFamily: "var(--sans)",
+                      fontSize: "var(--t-body-sec)",
+                      color: "var(--text-muted)",
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    {s.purpose}
+                  </div>
+                  <div className="surface-rail-card-meta">
+                    <span className="surface-rail-card-kind">{componentCount} components</span>
+                  </div>
                 </div>
-                <div style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)", marginTop: 4 }}>
-                  {s.purpose}
-                </div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-ghost)", marginTop: 6 }}>
-                  {plan.components.filter((c) => c.screen === s.name).length} componentes
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {plan.notes.length > 0 && (
-            <ul style={{ margin: 0, paddingLeft: 16, color: "var(--text-muted)", fontSize: "var(--t-body-sec)" }}>
+            <ul
+              style={{
+                margin: 0,
+                paddingLeft: 16,
+                color: "var(--text-muted)",
+                fontFamily: "var(--sans)",
+                fontSize: "var(--t-body-sec)",
+                lineHeight: 1.5,
+              }}
+            >
               {plan.notes.map((n, i) => (
                 <li key={i}>{n}</li>
               ))}
@@ -133,17 +148,8 @@ export default function ExplorationRail({ plan, mock }: Props) {
         </div>
       )}
 
-      {/* Tab bar */}
-      <div
-        role="tablist"
-        style={{
-          display: "flex",
-          gap: 2,
-          padding: "var(--space-2)",
-          borderBottom: "var(--border-soft)",
-          background: "var(--bg-surface)",
-        }}
-      >
+      {/* Tab bar — mono uppercase, underline-active in chamber-DNA. */}
+      <div className="surface-rail-tabs" role="tablist">
         {TABS.map((t) => {
           const active = t.key === tab;
           return (
@@ -151,17 +157,9 @@ export default function ExplorationRail({ plan, mock }: Props) {
               key={t.key}
               role="tab"
               aria-selected={active}
+              data-active={active ? "true" : undefined}
               onClick={() => setTab(t.key)}
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body-sec)",
-                padding: "6px 10px",
-                background: active ? "var(--bg-elevated)" : "transparent",
-                color: active ? "var(--text-primary)" : "var(--text-muted)",
-                border: active ? "var(--border-soft)" : "1px solid transparent",
-                borderRadius: "var(--radius-control)",
-                cursor: "pointer",
-              }}
+              className="surface-rail-tab"
             >
               {t.label}
             </button>
@@ -170,17 +168,17 @@ export default function ExplorationRail({ plan, mock }: Props) {
       </div>
 
       {/* Tab body */}
-      <div style={{ flex: 1, overflow: "auto", padding: "var(--space-3)" }}>
+      <div className="surface-rail-body">
         {tab === "examples" && <Grid items={EXAMPLES} />}
         {tab === "templates" && <Grid items={TEMPLATES} />}
         {tab === "recent" && (
           <EmptyBlock
             title="Sem histórico ainda"
-            body="Os planos aceites nesta missão vão aparecer aqui. Para ver runs de Surface de todas as missões, vai ao Arquivo."
+            body="Os planos aceites nesta missão vão aparecer aqui. Para ver runs de Surface de todas as missões, vai ao Archive."
           />
         )}
         {tab === "search" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -191,13 +189,14 @@ export default function ExplorationRail({ plan, mock }: Props) {
                 padding: "10px 12px",
                 background: "var(--bg-input)",
                 color: "var(--text-primary)",
-                border: "var(--border-mid)",
-                borderRadius: "var(--radius-control)",
+                border: "1px solid color-mix(in oklab, var(--text-primary) 9%, transparent)",
+                borderRadius: 8,
+                outline: 0,
               }}
             />
             <EmptyBlock
-              title="Pesquisa federada em breve"
-              body="A pesquisa local nos decks (examples, templates, library) chega primeiro. A pesquisa federada sobre conectores chega quando o Arquivo expor os conectores."
+              title="Pesquisa federada por ligar"
+              body="A pesquisa local nos decks (examples, templates, library) chega primeiro. A federada sobre conectores liga quando o Archive expor o registry."
             />
           </div>
         )}
@@ -214,41 +213,22 @@ export default function ExplorationRail({ plan, mock }: Props) {
 
 function Grid({ items }: { items: Array<{ title: string; kind: string; tag: string }> }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: 10,
-      }}
-    >
+    <div className="surface-rail-grid">
       {items.map((it) => (
-        <div
+        <button
           key={it.title}
-          style={{
-            padding: 12,
-            border: "var(--border-soft)",
-            borderRadius: "var(--radius-control)",
-            background: "var(--bg-surface)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-          }}
+          className="surface-rail-card"
+          type="button"
+          // Cards are visual placeholders today — wiring lands when the
+          // archive connector layer ships. No fake selection state.
+          aria-label={`${it.title} · ${it.kind}`}
         >
-          <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-primary)" }}>
-            {it.title}
+          <div className="surface-rail-card-title">{it.title}</div>
+          <div className="surface-rail-card-meta">
+            <span className="surface-rail-card-kind" data-kind={it.kind}>{it.kind}</span>
+            <span className="surface-rail-card-tag">· {it.tag}</span>
           </div>
-          <div
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: 10,
-              letterSpacing: "var(--track-meta)",
-              textTransform: "uppercase",
-              color: "var(--text-muted)",
-            }}
-          >
-            {it.kind} · {it.tag}
-          </div>
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -260,7 +240,7 @@ function EmptyBlock({ title, body }: { title: string; body: string }) {
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 8,
+        gap: 10,
         padding: "var(--space-4)",
         textAlign: "center",
         color: "var(--text-muted)",
@@ -277,7 +257,15 @@ function EmptyBlock({ title, body }: { title: string; body: string }) {
       >
         — {title}
       </div>
-      <div style={{ fontFamily: "var(--serif)", fontSize: "var(--t-body)", lineHeight: 1.45 }}>
+      <div
+        style={{
+          fontFamily: "var(--serif)",
+          fontSize: "var(--t-body)",
+          lineHeight: 1.5,
+          color: "var(--text-secondary)",
+          letterSpacing: "-0.005em",
+        }}
+      >
         {body}
       </div>
     </div>
