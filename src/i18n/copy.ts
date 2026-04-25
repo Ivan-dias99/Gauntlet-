@@ -195,12 +195,12 @@ export interface Copy {
 
 const PT: Copy = {
   chambers: {
-    insight:  { label: "Insight",  sub: "Análise · evidência · direção",     lead: "Insight · evidência · direção" },
-    surface:  { label: "Surface",  sub: "Design · estrutura · fidelidade",   lead: "Surface · workstation de design" },
-    terminal: { label: "Terminal", sub: "Código · execução · ferramentas",   lead: "Terminal · execução" },
-    archive:  { label: "Archive",  sub: "Retenção · proveniência · continuidade", lead: "Archive · runs · proveniência" },
+    insight:  { label: "Insight",  sub: "evidência · triad + juiz · recusa por defeito", lead: "Insight · três análises antes de uma resposta" },
+    surface:  { label: "Surface",  sub: "design · mock declarado · provider trocável",   lead: "Surface · workstation de design" },
+    terminal: { label: "Terminal", sub: "código · agent loop · tool allowlist",          lead: "Terminal · execução com consequência" },
+    archive:  { label: "Archive",  sub: "runs selados · proveniência · ledger",          lead: "Archive · cada execução fica registada" },
     // Core retains institutional register by design.
-    core:     { label: "Core",     sub: "Políticas · roteamento · orquestração", lead: "Core · governance" },
+    core:     { label: "Core",     sub: "políticas · roteamento · governance",           lead: "Core · princípios que vinculam cada chamber" },
   },
   switchMission: "Trocar missão",
   missions: "Missões",
@@ -376,11 +376,11 @@ const PT: Copy = {
 
 const EN: Copy = {
   chambers: {
-    insight:  { label: "Insight",  sub: "Analysis · evidence · direction",      lead: "Insight · evidence · direction" },
-    surface:  { label: "Surface",  sub: "Design · structure · fidelity",        lead: "Surface · design workstation" },
-    terminal: { label: "Terminal", sub: "Code · execution · tools",             lead: "Terminal · execution" },
-    archive:  { label: "Archive",  sub: "Retention · provenance · continuity",  lead: "Archive · runs · provenance" },
-    core:     { label: "Core",     sub: "Policies · routing · orchestration",   lead: "Core · governance" },
+    insight:  { label: "Insight",  sub: "evidence · triad + judge · refuse by default", lead: "Insight · three analyses before one answer" },
+    surface:  { label: "Surface",  sub: "design · declared mock · swappable provider",  lead: "Surface · design workstation" },
+    terminal: { label: "Terminal", sub: "code · agent loop · tool allowlist",           lead: "Terminal · execution with consequence" },
+    archive:  { label: "Archive",  sub: "sealed runs · provenance · ledger",            lead: "Archive · every run is logged" },
+    core:     { label: "Core",     sub: "policies · routing · governance",              lead: "Core · principles that bind every chamber" },
   },
   switchMission: "Switch mission",
   missions: "Missions",
