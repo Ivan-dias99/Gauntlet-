@@ -2757,15 +2757,15 @@ textarea {
   font-size: var(--t-micro);
   letter-spacing: var(--track-kicker);
   text-transform: uppercase;
-  color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 60%, var(--text-ghost));
+  color: var(--text-muted);
 }
 .insight-ready-body {
   font-family: var(--serif);
-  font-size: 22px;
-  line-height: 1.35;
-  letter-spacing: -0.015em;
+  font-size: 28px;
+  line-height: 1.3;
+  letter-spacing: -0.018em;
   color: var(--text-primary);
-  max-width: 560px;
+  max-width: 620px;
 }
 .insight-ready-sub {
   font-family: var(--sans);
@@ -4485,18 +4485,18 @@ textarea {
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--chamber-dna, var(--accent));
+  color: var(--text-muted);
   font-weight: 500;
-  opacity: 0.85;
+  opacity: 1;
 }
 .surface-rail-hero-body {
   margin: 0;
   font-family: "Fraunces", Georgia, serif;
-  font-size: 17px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-  letter-spacing: -0.005em;
-  max-width: 520px;
+  font-size: 19px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  letter-spacing: -0.012em;
+  max-width: 560px;
 }
 /* Contract-blocked checklist — each row reads as a contract clause
    the user must satisfy. Done rows light up in chamber-DNA; pending
@@ -5695,23 +5695,28 @@ textarea {
   max-width: 720px;
 }
 .term-output-hero .term-output-title {
-  font-size: 26px;
+  font-size: 32px;
+  letter-spacing: -0.012em;
 }
 .term-output-hero .term-output-lead {
-  font-size: 14px;
+  font-size: 15px;
 }
 .term-output-hero-kicker {
   font-family: var(--mono);
   font-size: var(--t-micro);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--chamber-dna, var(--ember));
+  color: var(--text-muted);
   font-weight: 500;
-  opacity: 0.9;
+  opacity: 1;
 }
 .term-output-hero .term-output-title,
 .term-output-hero .term-output-title-mono {
   margin: 0;
+}
+.term-output-hero .term-output-title-mono {
+  font-size: 24px;
+  letter-spacing: -0.005em;
 }
 .term-output-hero-tips {
   list-style: none;
