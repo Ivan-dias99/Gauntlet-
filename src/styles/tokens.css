@@ -6469,3 +6469,73 @@ textarea {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ELEVATION · hairline container borders
+   ═══════════════════════════════════════════════════════════════════════
+   Directive (2026-04-25): "borda finíssima e opaca de modo quase como
+   se não existisse, no limite de quase não a ver." Containers and
+   layouts get a near-invisible border. Geometry, radius, padding and
+   box-shadows stay — only the perimeter line whispers.
+
+   Deliberately NOT touched:
+     · .term-workbench-strip   — workbench in all chambers
+     · .term-command           — Terminal & Surface composer
+     · .insight-composer       — Insight composer
+     · .doctrine-composer      — Core / Policies composer
+   The Insight workbench is the elegance reference; nothing here
+   disturbs it because workbench chrome lives in the untouched class.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --border-color-hairline: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+[data-theme="dark"] {
+  --border-color-hairline: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+[data-theme="sepia"] {
+  --border-color-hairline: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+
+/* Container shells — Surface right rail, Insight thread, Terminal hero,
+   generic .panel, modals. Border-color drops to hairline; the existing
+   1px / radius / shadow stay intact so depth is preserved. */
+.surface-rail-shell,
+.surface-rail-card,
+.term-output-hero,
+.insight-thread-shell,
+.panel,
+.error-card,
+.dropdown-panel,
+.hero,
+.hero-door {
+  border-color: var(--border-color-hairline);
+}
+
+/* Hero kicker card inside Surface right rail — its bottom edge is a
+   layout divider before the canvas tab; same hairline. */
+.surface-rail-hero {
+  border-bottom-color: var(--border-color-hairline);
+}
+
+/* Layout dividers — chamber-head and canon-ribbon both define a
+   bottom rule that separates them from the chamber body. */
+.chamber-head,
+.canon-ribbon {
+  border-bottom-color: var(--border-color-hairline);
+}
+
+/* Inline-styled containers from Archive (RunList outer panel + its
+   internal section dividers) read border-color through the
+   --border-color-soft token. Lower its strength here — only the soft
+   variant — so layouts breathe while inputs/segmented controls (which
+   typically use --border-color-mid) keep their definition. */
+:root {
+  --border-color-soft: color-mix(in oklab, #f3ede2 5%, transparent);
+}
+[data-theme="dark"] {
+  --border-color-soft: color-mix(in oklab, #1b1915 4%, transparent);
+}
+[data-theme="sepia"] {
+  --border-color-soft: color-mix(in oklab, #f4e6cc 5%, transparent);
+}
