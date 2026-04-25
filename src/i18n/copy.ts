@@ -234,6 +234,24 @@ export interface Copy {
   coreWbSpineSyncing: string;
   coreWbSpineLocal: string;
   coreWbValueIdle: string;
+  // Archive Workbench lenses — 5 chips on the ledger telemetry.
+  // All wired (computed from the runs/stats endpoint or local
+  // fallback). Replaces the old StatsBar grid below the chamber head.
+  archiveWbLabel: string;
+  archiveWbStatusLoading: string;
+  archiveWbStatusEmpty: string;
+  archiveWbStatusReady: (n: number) => string;
+  archiveWbRunsLabel: string;
+  archiveWbRunsBody: string;
+  archiveWbRefusedLabel: string;
+  archiveWbRefusedBody: string;
+  archiveWbLatencyLabel: string;
+  archiveWbLatencyBody: string;
+  archiveWbTokensLabel: string;
+  archiveWbTokensBody: string;
+  archiveWbToolsLabel: string;
+  archiveWbToolsBody: string;
+  archiveWbValueIdle: string;
   // Surface Workbench lenses — five tools at the top of the chamber
   // that narrate the visual territory: contract · design system ·
   // layout/grid · component inventory · state matrix. Each carries
@@ -564,6 +582,21 @@ const PT: Copy = {
   coreWbSpineSyncing: "syncing",
   coreWbSpineLocal: "local",
   coreWbValueIdle: "—",
+  archiveWbLabel: "ARCHIVE",
+  archiveWbStatusLoading: "a carregar ledger desta missão…",
+  archiveWbStatusEmpty: "ledger vazio · sem runs nesta missão",
+  archiveWbStatusReady: (n) => `${n} run${n === 1 ? "" : "s"} sealed · proveniência disponível`,
+  archiveWbRunsLabel: "runs",
+  archiveWbRunsBody: "Total de runs registados no ledger desta missão. Inclui agent loops, triad runs, crew orchestrations e Surface mocks.",
+  archiveWbRefusedLabel: "refused",
+  archiveWbRefusedBody: "Percentagem de runs que terminaram em refusal. Inclui inconsistência triad, prior failure e judge low-confidence. Refusal é o default doutrinal.",
+  archiveWbLatencyLabel: "latency",
+  archiveWbLatencyBody: "Latência média end-to-end por run, em milissegundos. Mede a janela completa entre query e resultado.",
+  archiveWbTokensLabel: "tokens",
+  archiveWbTokensBody: "Tokens totais (input + output) consumidos por todos os runs desta missão. Mostra o custo real de evidência sob pressão.",
+  archiveWbToolsLabel: "tools",
+  archiveWbToolsBody: "Total de tool calls feitos pelos agent runs desta missão. Triad runs não contribuem (sem tool use).",
+  archiveWbValueIdle: "—",
   surfaceWbContractLabel: "contract",
   surfaceWbContractBody: "Estado do contrato visual — idle / draft / valid / sealed. Reflete o brief actual e o plano gerado. Wired ao estado local da câmara.",
   surfaceWbContractContract: "wired · lê brief + plan do estado local Surface",
@@ -892,6 +925,21 @@ const EN: Copy = {
   coreWbSpineSyncing: "syncing",
   coreWbSpineLocal: "local",
   coreWbValueIdle: "—",
+  archiveWbLabel: "ARCHIVE",
+  archiveWbStatusLoading: "loading mission ledger…",
+  archiveWbStatusEmpty: "empty ledger · no runs in this mission",
+  archiveWbStatusReady: (n) => `${n} run${n === 1 ? "" : "s"} sealed · provenance available`,
+  archiveWbRunsLabel: "runs",
+  archiveWbRunsBody: "Total runs in this mission's ledger. Includes agent loops, triad runs, crew orchestrations and Surface mocks.",
+  archiveWbRefusedLabel: "refused",
+  archiveWbRefusedBody: "Share of runs that ended in refusal. Includes triad inconsistency, prior failure and judge low-confidence. Refusal is the doctrinal default.",
+  archiveWbLatencyLabel: "latency",
+  archiveWbLatencyBody: "Average end-to-end latency per run, in milliseconds. Measures the full window between query and result.",
+  archiveWbTokensLabel: "tokens",
+  archiveWbTokensBody: "Total tokens (input + output) consumed by all runs in this mission. Surfaces the real cost of evidence under pressure.",
+  archiveWbToolsLabel: "tools",
+  archiveWbToolsBody: "Total tool calls made by agent runs in this mission. Triad runs do not contribute (no tool use).",
+  archiveWbValueIdle: "—",
   surfaceWbContractLabel: "contract",
   surfaceWbContractBody: "Visual contract state — idle / draft / valid / sealed. Reflects the current brief and generated plan. Wired to the chamber's local state.",
   surfaceWbContractContract: "wired · reads brief + plan from local Surface state",
