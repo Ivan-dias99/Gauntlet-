@@ -23,7 +23,7 @@ export default function SurfaceLayout({ left, right }: Props) {
         // (lens-only thin strip). Wide-screen split favours the canvas
         // ~60/40 with a 360px sidebar floor so segmented labels still
         // breathe.
-        gridTemplateColumns: "minmax(360px, 40%) minmax(0, 1fr)",
+        gridTemplateColumns: "minmax(340px, 38%) minmax(0, 1fr)",
         gap: "var(--space-4)",
         padding: "0 var(--space-4) var(--space-4)",
         flex: 1,

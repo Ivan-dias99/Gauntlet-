@@ -4046,13 +4046,16 @@ textarea {
 .surface-cockpit {
   display: flex;
   flex-direction: column;
-  border: 1px solid color-mix(in oklab, var(--text-primary) 11%, transparent);
+  /* Medium hierarchy — recedes against the canvas. Border opacity
+     drops 11% → 9% so the cockpit reads as the supporting form,
+     not as the primary surface. Same recipe otherwise. */
+  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
   border-radius: 14px;
   background: var(--bg-surface);
   overflow: hidden;
   box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
-    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
+    0 1px 0 color-mix(in oklab, #fff 36%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent);
 }
 [data-theme="dark"] .surface-cockpit,
 [data-theme="sepia"] .surface-cockpit {
@@ -4556,18 +4559,18 @@ textarea {
 .surface-workbench {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   flex-wrap: wrap;
-  padding: 5px 10px;
+  padding: 4px 8px;
   margin: var(--space-2) auto var(--space-3);
   max-width: calc(100% - var(--space-4) * 2);
   width: fit-content;
-  /* Third in visual hierarchy — quieter than the cockpit and canvas.
-     Border opacity dropped, no inset highlight, shadow softened so
-     the pill reads as a thin instrument strip, not a competing slab. */
-  border: 1px solid color-mix(in oklab, var(--text-primary) 7%, transparent);
-  border-radius: 10px;
-  background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-surface));
+  /* Third hierarchy — almost invisible at rest. Border at 5% opacity
+     barely registers; the pill is felt, not seen, until a lens
+     activates. Lens chips themselves carry the visible weight. */
+  border: 1px solid color-mix(in oklab, var(--text-primary) 5%, transparent);
+  border-radius: 9px;
+  background: transparent;
   font-family: var(--mono);
   position: relative;
 }
@@ -5548,14 +5551,14 @@ textarea {
 .term-wb-lens {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 7px;
-  border: 1px solid color-mix(in oklab, var(--text-primary) 4%, transparent);
-  border-radius: 5px;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 3%, transparent);
+  border-radius: 4px;
   background: transparent;
   color: var(--text-muted);
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 9px;
   letter-spacing: var(--track-meta);
   cursor: pointer;
   transition:
@@ -5591,9 +5594,9 @@ textarea {
   flex-shrink: 0;
 }
 .term-wb-lens-icon svg {
-  width: 11px;
-  height: 11px;
-  stroke-width: 1.75;
+  width: 10px;
+  height: 10px;
+  stroke-width: 1.7;
 }
 .term-wb-lens-label {
   text-transform: uppercase;
