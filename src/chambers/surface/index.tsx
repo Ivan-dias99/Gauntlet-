@@ -108,22 +108,23 @@ export default function Surface() {
         mock={mockBannerVisible}
       />
       <div className="chamber-body" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
-        {/* Three vertical zones: ChamberHead → thin Workbench pill
-            (lens-only, no identity duplication) → split. The pill
-            here is a lens container ONLY — STUDIO label, mission
-            caret and italic status were retired so the chamber
-            doesn't repeat what the canon ribbon and ChamberHead
-            already say. */}
-        <SurfaceWorkbench
-          brief={brief}
-          plan={plan}
-          promptDraft={prompt}
-          pending={pending}
-          missionTitle={activeMission?.title ?? null}
-        />
+        {/* Two vertical zones: ChamberHead → split. The Workbench pill
+            sits at the top of the LEFT column (above the cockpit
+            builder), so the right canvas can rise to the top of the
+            chamber-body and use the full vertical space — no full-width
+            strip stealing height from the output. The workbench keeps
+            all chrome / lens chips / mission caret intact; only its
+            spatial home moved. */}
         <SurfaceLayout
           left={
             <>
+              <SurfaceWorkbench
+                brief={brief}
+                plan={plan}
+                promptDraft={prompt}
+                pending={pending}
+                missionTitle={activeMission?.title ?? null}
+              />
               <CreationPanel
                 brief={brief}
                 onBriefChange={patchBrief}
