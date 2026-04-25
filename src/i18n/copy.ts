@@ -94,15 +94,6 @@ export interface Copy {
   termAffordContext: string;
   termAffordRecent: string;
   termAffordTools: string;
-  termAffordRepo: string;
-  termAffordBranch: string;
-  termAffordConnectors: string;
-  termRepoNotWiredTitle: string;
-  termRepoNotWiredBody: string;
-  termRepoNotWiredContract: string;
-  termConnectorsNotWiredTitle: string;
-  termConnectorsNotWiredBody: string;
-  termConnectorsNotWiredContract: string;
   // Terminal Workbench lenses — five tools above the composer that
   // narrate the execution territory: repo · diff · gates · deploy ·
   // queue. Each carries a label, a flyout body, and the backend
@@ -352,9 +343,6 @@ const PT: Copy = {
   termAffordContext: "contexto · sinais que viajam com cada tarefa",
   termAffordRecent: "recentes · últimas tarefas desta missão",
   termAffordTools: "tools · allowlist real desta câmara",
-  termAffordRepo: "repo · requer backend git",
-  termAffordBranch: "branch · requer repo status",
-  termAffordConnectors: "connectors · registry ainda não ligado",
   termComposerLabel: "TERMINAL",
   termComposerPathRoot: "~/mission",
   termComposerStatusIdle: "pronto · próxima tarefa torna-se comando",
@@ -382,12 +370,6 @@ const PT: Copy = {
   surfaceFidelityHiFi: "Alta fidelidade",
   surfaceRailEmptyKicker: "— sem contrato visual ainda",
   surfaceRailEmptyBody: "Define modo, fidelidade e design system, depois escreve o brief e gera o contrato visual. O plano aparece aqui — screens, componentes, notas.",
-  termRepoNotWiredTitle: "repo · não ligado",
-  termRepoNotWiredBody: "Endpoint git do backend ainda não existe. Branch, dirty state, ahead/behind ficam por ligar — Signal não inventa branch.",
-  termRepoNotWiredContract: "espera por: GET /repo/status · GET /repo/branches · POST /repo/checkout",
-  termConnectorsNotWiredTitle: "connectors · não ligado",
-  termConnectorsNotWiredBody: "Registry de conectores externos ainda não existe. GitHub, Vercel, fontes de docs ficam por ligar — Signal não pinta integração que não tem.",
-  termConnectorsNotWiredContract: "espera por: GET /connectors · POST /connectors/{id}/connect",
   termWbRepoLabel: "repo",
   termWbRepoBody: "Lente do repositório — root, branch ativa, dirty state, remote, último commit. O backend git ainda não existe; Signal não inventa branch.",
   termWbRepoContract: "espera por: GET /repo/status · GET /repo/branches · POST /repo/checkout",
@@ -594,9 +576,6 @@ const EN: Copy = {
   termAffordContext: "context · signals travelling with each task",
   termAffordRecent: "recent · latest tasks in this mission",
   termAffordTools: "tools · real chamber allowlist",
-  termAffordRepo: "repo · requires git backend",
-  termAffordBranch: "branch · requires repo status",
-  termAffordConnectors: "connectors · registry not wired yet",
   termComposerLabel: "TERMINAL",
   termComposerPathRoot: "~/mission",
   termComposerStatusIdle: "ready · next task becomes a command",
@@ -624,12 +603,6 @@ const EN: Copy = {
   surfaceFidelityHiFi: "Hi-fi",
   surfaceRailEmptyKicker: "— no visual contract yet",
   surfaceRailEmptyBody: "Set mode, fidelity and design system, then write the brief and generate the visual contract. The plan lands here — screens, components, notes.",
-  termRepoNotWiredTitle: "repo · not wired",
-  termRepoNotWiredBody: "Backend git endpoint does not exist yet. Branch, dirty state, ahead/behind await wiring — Signal does not invent a branch.",
-  termRepoNotWiredContract: "awaiting: GET /repo/status · GET /repo/branches · POST /repo/checkout",
-  termConnectorsNotWiredTitle: "connectors · not wired",
-  termConnectorsNotWiredBody: "External connector registry does not exist yet. GitHub, Vercel, docs sources await wiring — Signal does not paint integrations it has not earned.",
-  termConnectorsNotWiredContract: "awaiting: GET /connectors · POST /connectors/{id}/connect",
   termWbRepoLabel: "repo",
   termWbRepoBody: "Repository lens — root, active branch, dirty state, remote, last commit. The git backend does not exist yet; Signal does not invent a branch.",
   termWbRepoContract: "awaiting: GET /repo/status · GET /repo/branches · POST /repo/checkout",

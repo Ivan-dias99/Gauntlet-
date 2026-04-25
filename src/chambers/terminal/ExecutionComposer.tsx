@@ -11,14 +11,18 @@ import type { Copy, RunMode, Task } from "./helpers";
 //
 // Identity row (top):  [glyph] LABEL · MISSION ▾ · italic status
 // Input row (middle):  $ [input dominant] [send]
-// State rail (bottom): [+ ⏱ ⚒ ⊟ ⌬]    ● live · § N · agent | crew
+// State rail (bottom): [+ ⏱ ⚒]    ● live · § N · agent | crew
 //
-// Only what is necessary and inevitable for building a backend lives
-// here: input, send, mission identity, real tools, real run mode,
-// real backend posture, real principles count. Repo, branch and
-// connectors are honest "not wired" affordances — the flyout names
-// the backend contract waiting to land. No fake branch, no fake
-// connector list, no plugin marketplace.
+// Composer owns only the live affordances that drive the next
+// execution: Context, Recent, Tools, Mode, Send. The territory lenses
+// (Repo, Diff, Build Gates, Deploy, Run Queue) live on the
+// WorkbenchStrip above — they narrate the execution state, not the
+// next command. Connectors moved out entirely; the connector registry
+// belongs in Core/Routing when it lands. No tool is owned by both
+// surfaces.
+//
+// Doctrine: only enumerate state Terminal already has. No canned data,
+// no fake features.
 
 interface Props {
   copy: Copy;
@@ -36,7 +40,7 @@ interface Props {
   mockMode: boolean;
 }
 
-type Flyout = null | "context" | "recent" | "tools" | "repo" | "connectors";
+type Flyout = null | "context" | "recent" | "tools";
 
 // Tools the Terminal chamber actually carries server-side. Mirrors the
 // allowlist exposed in Core/Permissions. Read-only — this is a window
@@ -211,28 +215,11 @@ export default function ExecutionComposer({
             >
               <IconTools />
             </button>
-            <button
-              type="button"
-              className="term-tool"
-              data-wired="false"
-              data-active={flyout === "repo" ? "true" : undefined}
-              onClick={() => setFlyout(flyout === "repo" ? null : "repo")}
-              title={copy.termAffordRepo}
-              aria-label="repo"
-            >
-              <IconRepo />
-            </button>
-            <button
-              type="button"
-              className="term-tool"
-              data-wired="false"
-              data-active={flyout === "connectors" ? "true" : undefined}
-              onClick={() => setFlyout(flyout === "connectors" ? null : "connectors")}
-              title={copy.termAffordConnectors}
-              aria-label="connectors"
-            >
-              <IconConnectors />
-            </button>
+            {/* Repo + Connectors moved out: Repo lives on the
+                WorkbenchStrip above (Repo Lens); Connectors moves to
+                Core/Routing when the registry lands. The composer
+                only carries the live affordances that drive the next
+                command. */}
           </div>
 
           <span className="term-rail-spacer" />
@@ -296,20 +283,6 @@ export default function ExecutionComposer({
           />
         )}
         {flyout === "tools" && <ToolsFlyout />}
-        {flyout === "repo" && (
-          <NotWiredFlyout
-            title={copy.termRepoNotWiredTitle}
-            body={copy.termRepoNotWiredBody}
-            contract={copy.termRepoNotWiredContract}
-          />
-        )}
-        {flyout === "connectors" && (
-          <NotWiredFlyout
-            title={copy.termConnectorsNotWiredTitle}
-            body={copy.termConnectorsNotWiredBody}
-            contract={copy.termConnectorsNotWiredContract}
-          />
-        )}
       </div>
     </div>
   );
@@ -439,30 +412,10 @@ function ToolsFlyout() {
   );
 }
 
-// Honest "not wired" flyout — body says exactly what is missing and the
-// contract waits for. No canned list, no fake call-to-action.
-function NotWiredFlyout({
-  title, body, contract,
-}: {
-  title: string;
-  body: string;
-  contract: string;
-}) {
-  return (
-    <div className="term-flyout" role="menu" data-tone="not-wired">
-      <div className="term-flyout-head">
-        <span>{title}</span>
-      </div>
-      <div className="term-flyout-body">
-        <p className="term-flyout-prose">{body}</p>
-        <p className="term-flyout-contract" aria-label="backend contract">
-          <span className="term-flyout-contract-label">contract</span>
-          <code>{contract}</code>
-        </p>
-      </div>
-    </div>
-  );
-}
+// NotWiredFlyout (formerly used by Repo + Connectors composer
+// affordances) is now owned by WorkbenchStrip's LensFlyout. The
+// composer no longer carries any not-wired affordances — only live
+// state (Context, Recent, Tools, Mode, Send).
 
 // ——— Unified SVG icon set (composer) ———
 // Same viewbox, same stroke width as the WorkbenchStrip icons so the
@@ -518,29 +471,6 @@ function IconTools() {
   return (
     <svg {...SVG_PROPS}>
       <path d="M14.7 6.3a4 4 0 1 0 5.3 5.3L22 10a8 8 0 0 1-10.5 10.5l-8-8A8 8 0 0 1 14 2l-1.7 1.7a4 4 0 0 0 2.4 2.6" />
-    </svg>
-  );
-}
-// Repo — git-style branch fork. Two nodes connected by a curved
-// branch line. Reads as "version-controlled state".
-function IconRepo() {
-  return (
-    <svg {...SVG_PROPS}>
-      <circle cx="6" cy="6" r="2.5" />
-      <circle cx="6" cy="18" r="2.5" />
-      <circle cx="18" cy="12" r="2.5" />
-      <path d="M6 8.5v7" />
-      <path d="M8.5 6h3a4 4 0 0 1 4 4v0" />
-    </svg>
-  );
-}
-// Connectors — two link nodes joined by a chain. Reads as "external
-// integration", not a plug or a marketplace tile.
-function IconConnectors() {
-  return (
-    <svg {...SVG_PROPS}>
-      <path d="M9 13a4 4 0 0 1 0-5.66l2-2a4 4 0 0 1 5.66 5.66l-1 1" />
-      <path d="M15 11a4 4 0 0 1 0 5.66l-2 2a4 4 0 0 1-5.66-5.66l1-1" />
     </svg>
   );
 }
