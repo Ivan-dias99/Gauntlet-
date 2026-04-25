@@ -2,29 +2,27 @@ import { useEffect, useRef, useState } from "react";
 import type { SurfaceBriefPayload } from "../../hooks/useSignal";
 import { useCopy } from "../../i18n/copy";
 
-// Surface studio panel — cockpit grammar applied to the design
-// workstation. Reuses the .term-command pill (workbench-strip family)
-// for the outer shell, the id row, the input row and the rail.
+// Surface studio panel — Archive-style structural hierarchy.
 //
-// Composer scope (after the F4 separation):
-//   · Output Mode  (was "Mode" — renamed; values still pinned to
-//                   backend SurfaceBriefPayload literal)
-//   · Fidelity     (Wireframe / Hi-fi)
-//   · Brief Input  (multi-line, dominant)
-//   · Visual Refs  (honest "not wired")
-//   · Generate     (live; runs the mock pipeline)
-//   · Handoff      (honest "not wired" — preview / send to Terminal /
-//                   archive lands when the handoff endpoints exist)
+// The cockpit pill grammar (.term-command + traffic-lights + glyph id
+// row) was retired here: the Workbench above already declares the
+// chamber's identity, and the cockpit is a form, not a command bar.
+// Form structure mirrors the Archive's RunList container — clean
+// bordered panel, sections separated by hairlines, label above
+// control, generous internal padding.
 //
-// Design System moved out — it now lives on the Surface Workbench
-// (DS Lens) above. Single source of truth for the active DS pick.
+// Workflow order (intent before configuration):
+//   1. Brief         — what to build
+//   2. Output        — shape (prototype / deck / template / other)
+//   3. Fidelity      — wireframe / hi-fi
+//   4. Design system — pick or none
+//   5. CTA           — "Formar contrato visual" (full-width, labelled)
 //
-// Doctrine: the plan generator is mock until the provider lands. The
-// mock declaration is permanent inside the rail.
+// Visual references attach is anchored to the brief section. Handoff
+// sits beside the CTA. Mock banner declares posture at the very top.
+// Doctrine preserved: the plan generator is mock until the provider
+// lands; mock declaration is permanent.
 
-// Mode / fidelity catalogues are wired to copy.ts at render time so
-// labels respect the active locale (PT / EN). The keys themselves are
-// stable contract values that travel to the backend.
 export const MODE_KEYS: Array<SurfaceBriefPayload["mode"]> = [
   "prototype", "slide_deck", "from_template", "other",
 ];
@@ -32,10 +30,8 @@ export const FIDELITY_KEYS: Array<SurfaceBriefPayload["fidelity"]> = [
   "wireframe", "hi-fi",
 ];
 
-// Canned design systems — the picker lives here in the cockpit
-// (formation), and the SurfaceWorkbench DS Lens above mirrors the
-// chosen value as status. Real catalogue lands when Core/Routing
-// exposes /design-systems.
+// Canned design systems — picker lives here. Real catalogue lands
+// when Core/Routing exposes /design-systems.
 const DESIGN_SYSTEMS = [
   "Signal Canon",
   "Claude Design",
@@ -52,7 +48,7 @@ interface Props {
   onPromptChange: (v: string) => void;
   onSubmit: () => void;
   pending: boolean;
-  /** When true, mock declaration appears in-rail (always when backend is mock). */
+  /** When true, mock declaration appears at the top of the panel. */
   mockBanner?: boolean;
   principlesCount?: number;
   hasPlan?: boolean;
@@ -63,21 +59,14 @@ export default function CreationPanel({
   principlesCount = 0, hasPlan = false,
 }: Props) {
   const copy = useCopy();
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const composerRef = useRef<HTMLDivElement | null>(null);
-  const [focused, setFocused] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const [flyout, setFlyout] = useState<null | "refs" | "handoff">(null);
 
-  // Auto-grow is handled by flex:1 on the input row in [data-chamber=
-  // surface] context — the textarea fills the cockpit's remaining
-  // vertical space. Manual scrollHeight tracking conflicts with flex,
-  // so the JS auto-grow that lived here was retired.
-
-  // Click-outside dismisses any open flyout (Refs / Handoff).
+  // Click-outside dismisses any open flyout.
   useEffect(() => {
     if (!flyout) return;
     function onDoc(e: MouseEvent) {
-      const el = composerRef.current;
+      const el = panelRef.current;
       if (el && !el.contains(e.target as Node)) setFlyout(null);
     }
     document.addEventListener("mousedown", onDoc);
@@ -98,226 +87,169 @@ export default function CreationPanel({
   };
 
   return (
-    <div
-      ref={composerRef}
-      className="term-command"
-      data-focused={focused ? "true" : undefined}
-      data-state={pending ? "pending" : undefined}
-    >
-      {/* Identity row — minimal. The SurfaceWorkbench above already
-          carries mission + italic status; the cockpit only states
-          its own role (STUDIO). Mission caret + status text dropped
-          here to stop tripling the same posture. Only the glyph and
-          label remain so the cockpit still reads as an addressable
-          surface. */}
-      <div className="term-command-id">
-        <span className="term-command-glyph" aria-hidden>
-          <IconStudio />
-        </span>
-        <span className="term-command-id-label">{copy.surfaceStudioLabel}</span>
-      </div>
-
-      {/* Mock banner — always-on declaration when backend is in mock
-          mode. Honest, calm, one-line. */}
+    <div ref={panelRef} className="surface-cockpit" data-state={pending ? "pending" : undefined}>
+      {/* Mock banner — top declaration when backend is in mock mode. */}
       {mockBanner && (
-        <span className="surface-mock-banner" data-surface-mock-banner>
+        <div className="surface-cockpit-banner" data-surface-mock-banner>
           <span className="surface-mock-banner-dot" aria-hidden />
-          {copy.surfaceStudioMockBanner}
-        </span>
+          <span>{copy.surfaceStudioMockBanner}</span>
+        </div>
       )}
 
-      {/* Brief input — first thing the cockpit asks. Intent before
-          configuration: the user declares what to build before being
-          interrogated about output / fidelity / design system. ◐ glyph
-          parallels the $ prompt of the Terminal composer. */}
-      <div className="term-command-input-row">
-        <span className="term-command-input-prompt" aria-hidden>◐</span>
-        <textarea
-          ref={textareaRef}
-          rows={3}
-          value={prompt}
-          onChange={(e) => onPromptChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              if (canSubmit) onSubmit();
-            }
-          }}
-          placeholder={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioBriefPlaceholder}
-          className="term-command-input"
-          spellCheck={false}
-          aria-label={copy.surfaceStudioBriefLabel}
-          style={{
-            // Vertical sizing handled by flex:1 in tokens.css; only
-            // typography lives inline here.
-            fontFamily: "var(--sans)",
-            fontSize: "var(--t-body)",
-            lineHeight: "var(--lh-body)",
-          }}
-        />
-        {/* Visual references attach lives inline with the brief —
-            attaching artifacts is the same act as writing intent. */}
-        <button
-          type="button"
-          className="term-tool surface-brief-refs"
-          data-wired="false"
-          data-active={flyout === "refs" ? "true" : undefined}
-          onClick={() => setFlyout(flyout === "refs" ? null : "refs")}
-          title={copy.surfaceComposerRefsLabel}
-          aria-label="visual references"
-        >
-          <IconRefs />
-        </button>
-      </div>
-
-      {flyout === "refs" && (
-        <NotWiredPopover
-          title={copy.surfaceComposerRefsLabel}
-          body={copy.surfaceComposerRefsBody}
-          contract={copy.surfaceComposerRefsContract}
-        />
-      )}
-
-      {/* Configuration zone — Output → Fidelity → Design System. After
-          intent is declared, the cockpit asks shape, fidelity, system.
-          Each row labelled, segmented or chip-picker. */}
-      <div className="surface-controls">
-        <div className="surface-controls-row">
-          <span className="surface-controls-label">{copy.surfaceComposerOutputModeLabel}</span>
-          <div className="surface-segmented" role="tablist" aria-label="output mode">
-            {MODE_KEYS.map((key) => (
-              <button
-                key={key}
-                role="tab"
-                className="surface-segmented-opt"
-                data-active={brief.mode === key ? "true" : undefined}
-                aria-selected={brief.mode === key}
-                onClick={() => onBriefChange({ mode: key })}
-              >
-                {modeLabels[key]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="surface-controls-row">
-          <span className="surface-controls-label">{copy.surfaceStudioFidelityLabel}</span>
-          <div className="surface-segmented" role="tablist" aria-label="fidelity">
-            {FIDELITY_KEYS.map((key) => (
-              <button
-                key={key}
-                role="tab"
-                className="surface-segmented-opt"
-                data-active={brief.fidelity === key ? "true" : undefined}
-                aria-selected={brief.fidelity === key}
-                onClick={() => onBriefChange({ fidelity: key })}
-              >
-                {fidelityLabels[key]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Design System picker — native <select> behind a chip that
-            mirrors the Workbench DS Lens. The Lens shows the chosen
-            DS as a status; the cockpit picker forms the contract. */}
-        <div className="surface-controls-row">
-          <span className="surface-controls-label">{copy.surfaceStudioDsLabel}</span>
-          <span className="surface-ds-chip">
-            <span
-              className="surface-ds-chip-value"
-              data-empty={brief.design_system ? undefined : "true"}
-            >
-              {brief.design_system ?? copy.surfaceStudioDsEmpty}
-            </span>
-            <span className="surface-ds-chip-caret" aria-hidden>▾</span>
-            <select
-              className="surface-ds-native"
-              value={brief.design_system ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                onBriefChange({ design_system: v === "" ? null : v });
-              }}
-              aria-label={copy.surfaceStudioDsLabel}
-            >
-              <option value="">{copy.surfaceStudioDsEmpty}</option>
-              {DESIGN_SYSTEMS.map((ds) => (
-                <option key={ds} value={ds}>{ds}</option>
-              ))}
-            </select>
-          </span>
-        </div>
-      </div>
-
-      {/* Primary CTA — labelled, full-width, the central act of the
-          chamber. Handoff sits beside it as a secondary affordance
-          (disabled until a plan exists). */}
-      <div className="surface-cta-row">
-        <button
-          type="button"
-          className="surface-cta-primary"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          title={pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
-          aria-label={pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
-        >
-          <span className="surface-cta-glyph" aria-hidden>
-            {pending ? <span style={{ fontSize: 13, lineHeight: 1 }}>…</span> : <IconSend />}
-          </span>
-          <span className="surface-cta-label">
-            {pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
-          </span>
-          <span className="surface-cta-hint" aria-hidden>{copy.surfaceCtaFormHint}</span>
-        </button>
-        <button
-          type="button"
-          className="term-tool"
-          data-wired="false"
-          data-active={flyout === "handoff" ? "true" : undefined}
-          onClick={() => setFlyout(flyout === "handoff" ? null : "handoff")}
-          disabled={!hasPlan}
-          title={copy.surfaceComposerHandoffLabel}
-          aria-label="handoff"
-        >
-          <IconHandoff />
-        </button>
-      </div>
-
-      {flyout === "handoff" && (
-        <NotWiredPopover
-          title={copy.surfaceComposerHandoffLabel}
-          body={copy.surfaceComposerHandoffBody}
-          contract={copy.surfaceComposerHandoffContract}
-        />
-      )}
-
-      {/* Rail — doctrine count · spacer · keyboard hint. The CTA
-          carries the generate action; the rail stays informational. */}
-      <div className="term-command-rail">
-        {principlesCount > 0 && (
-          <span
-            className="term-rail-chip"
-            title="princípios em vigor que viajam com cada plano"
+      {/* Section 1 — Brief. Label above textarea, refs paperclip
+          anchored to the textarea's right edge. */}
+      <section className="surface-cockpit-section">
+        <span className="surface-cockpit-label">{copy.surfaceStudioBriefLabel}</span>
+        <div className="surface-cockpit-brief">
+          <textarea
+            rows={4}
+            value={prompt}
+            onChange={(e) => onPromptChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                if (canSubmit) onSubmit();
+              }
+            }}
+            placeholder={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioBriefPlaceholder}
+            className="surface-cockpit-brief-input"
+            spellCheck={false}
+            aria-label={copy.surfaceStudioBriefLabel}
+          />
+          <button
+            type="button"
+            className="term-tool surface-cockpit-refs"
+            data-wired="false"
+            data-active={flyout === "refs" ? "true" : undefined}
+            onClick={() => setFlyout(flyout === "refs" ? null : "refs")}
+            title={copy.surfaceComposerRefsLabel}
+            aria-label="visual references"
           >
-            <span className="term-rail-glyph" aria-hidden>§</span>
-            <span className="term-rail-value">{principlesCount}</span>
+            <IconRefs />
+          </button>
+        </div>
+        {flyout === "refs" && (
+          <NotWiredPopover
+            title={copy.surfaceComposerRefsLabel}
+            body={copy.surfaceComposerRefsBody}
+            contract={copy.surfaceComposerRefsContract}
+          />
+        )}
+      </section>
+
+      {/* Section 2 — Output mode. */}
+      <section className="surface-cockpit-section">
+        <span className="surface-cockpit-label">{copy.surfaceComposerOutputModeLabel}</span>
+        <div className="surface-segmented" role="tablist" aria-label="output mode">
+          {MODE_KEYS.map((key) => (
+            <button
+              key={key}
+              role="tab"
+              className="surface-segmented-opt"
+              data-active={brief.mode === key ? "true" : undefined}
+              aria-selected={brief.mode === key}
+              onClick={() => onBriefChange({ mode: key })}
+            >
+              {modeLabels[key]}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Section 3 — Fidelity. */}
+      <section className="surface-cockpit-section">
+        <span className="surface-cockpit-label">{copy.surfaceStudioFidelityLabel}</span>
+        <div className="surface-segmented" role="tablist" aria-label="fidelity">
+          {FIDELITY_KEYS.map((key) => (
+            <button
+              key={key}
+              role="tab"
+              className="surface-segmented-opt"
+              data-active={brief.fidelity === key ? "true" : undefined}
+              aria-selected={brief.fidelity === key}
+              onClick={() => onBriefChange({ fidelity: key })}
+            >
+              {fidelityLabels[key]}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Section 4 — Design system. */}
+      <section className="surface-cockpit-section">
+        <span className="surface-cockpit-label">{copy.surfaceStudioDsLabel}</span>
+        <span className="surface-ds-chip">
+          <span
+            className="surface-ds-chip-value"
+            data-empty={brief.design_system ? undefined : "true"}
+          >
+            {brief.design_system ?? copy.surfaceStudioDsEmpty}
+          </span>
+          <span className="surface-ds-chip-caret" aria-hidden>▾</span>
+          <select
+            className="surface-ds-native"
+            value={brief.design_system ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              onBriefChange({ design_system: v === "" ? null : v });
+            }}
+            aria-label={copy.surfaceStudioDsLabel}
+          >
+            <option value="">{copy.surfaceStudioDsEmpty}</option>
+            {DESIGN_SYSTEMS.map((ds) => (
+              <option key={ds} value={ds}>{ds}</option>
+            ))}
+          </select>
+        </span>
+      </section>
+
+      {/* Section 5 — Footer with primary CTA + Handoff secondary +
+          principles + ⌘+Enter hint. */}
+      <footer className="surface-cockpit-footer">
+        <div className="surface-cta-row">
+          <button
+            type="button"
+            className="surface-cta-primary"
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            title={pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
+            aria-label={pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
+          >
+            <span className="surface-cta-glyph" aria-hidden>
+              {pending ? <span style={{ fontSize: 13, lineHeight: 1 }}>…</span> : <IconSend />}
+            </span>
+            <span className="surface-cta-label">
+              {pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
+            </span>
+            <span className="surface-cta-hint" aria-hidden>{copy.surfaceCtaFormHint}</span>
+          </button>
+          <button
+            type="button"
+            className="term-tool"
+            data-wired="false"
+            data-active={flyout === "handoff" ? "true" : undefined}
+            onClick={() => setFlyout(flyout === "handoff" ? null : "handoff")}
+            disabled={!hasPlan}
+            title={copy.surfaceComposerHandoffLabel}
+            aria-label="handoff"
+          >
+            <IconHandoff />
+          </button>
+        </div>
+        {flyout === "handoff" && (
+          <NotWiredPopover
+            title={copy.surfaceComposerHandoffLabel}
+            body={copy.surfaceComposerHandoffBody}
+            contract={copy.surfaceComposerHandoffContract}
+          />
+        )}
+        {principlesCount > 0 && (
+          <span className="surface-cockpit-doctrine" title="princípios em vigor">
+            <span className="surface-cockpit-doctrine-glyph" aria-hidden>§</span>
+            <span>{principlesCount}</span>
           </span>
         )}
-        <span className="term-rail-spacer" />
-        <span
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: 9,
-            letterSpacing: "var(--track-label)",
-            textTransform: "uppercase",
-            color: "var(--text-ghost)",
-          }}
-        >
-          ⌘/Ctrl + Enter
-        </span>
-      </div>
+      </footer>
 
       {pending && <div className="thinking-strip" aria-hidden />}
     </div>
@@ -338,18 +270,6 @@ const SVG_PROPS = {
   "aria-hidden": true,
 };
 
-// Studio glyph — half-circle, mirroring the --ch-surface-glyph "◐" so
-// Surface's iconographic identity reads in two places: the prompt
-// prefix and the id glyph block.
-function IconStudio() {
-  return (
-    <svg {...SVG_PROPS} strokeWidth={2}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3v18" />
-      <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" opacity="0.85" />
-    </svg>
-  );
-}
 function IconSend() {
   return (
     <svg
@@ -362,7 +282,6 @@ function IconSend() {
     </svg>
   );
 }
-// Visual refs — paperclip; reads as "attach external material".
 function IconRefs() {
   return (
     <svg {...SVG_PROPS}>
@@ -370,7 +289,6 @@ function IconRefs() {
     </svg>
   );
 }
-// Handoff — arrow exiting a box; reads as "ship the contract out".
 function IconHandoff() {
   return (
     <svg {...SVG_PROPS}>
@@ -381,8 +299,6 @@ function IconHandoff() {
   );
 }
 
-// Honest "not wired" popover — body says exactly what is missing and
-// the contract pending. Anchored below the input row.
 function NotWiredPopover({
   title, body, contract,
 }: {
@@ -395,7 +311,7 @@ function NotWiredPopover({
       className="term-flyout"
       data-tone="not-wired"
       role="menu"
-      style={{ margin: "0 12px 8px" }}
+      style={{ marginTop: 8 }}
     >
       <div className="term-flyout-head"><span>{title}</span></div>
       <div className="term-flyout-body">

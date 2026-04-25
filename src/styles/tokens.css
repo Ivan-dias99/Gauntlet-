@@ -4037,6 +4037,116 @@ textarea {
    fidelity, design system) that lives between id row and brief input.
    ════════════════════════════════════════════════════════════════════ */
 
+/* ════════════════════════════════════════════════════════════════════
+   SURFACE COCKPIT — Archive-style structural panel.
+   Clean bordered card; sections separated by hairlines; label above
+   control; generous internal padding. Mirrors the .surface-rail-shell
+   container on the right (one visual family for both columns).
+   ════════════════════════════════════════════════════════════════════ */
+.surface-cockpit {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 11%, transparent);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+[data-theme="dark"] .surface-cockpit,
+[data-theme="sepia"] .surface-cockpit {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 18%, transparent);
+}
+.surface-cockpit-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  background: color-mix(in oklab, var(--cc-warn) 4%, transparent);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--cc-warn);
+}
+.surface-cockpit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+.surface-cockpit-section:last-of-type {
+  border-bottom: 0;
+}
+.surface-cockpit-label {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.surface-cockpit-brief {
+  position: relative;
+  display: block;
+}
+.surface-cockpit-brief-input {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  padding: 12px 44px 12px 14px;
+  background: color-mix(in oklab, var(--text-primary) 2.2%, var(--bg-input));
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 8px;
+  outline: 0;
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  letter-spacing: -0.002em;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.surface-cockpit-brief-input:focus {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 32%, color-mix(in oklab, var(--text-primary) 8%, transparent));
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 1.5%, var(--bg-input));
+}
+.surface-cockpit-brief-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.78;
+}
+.surface-cockpit-refs {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+}
+.surface-cockpit-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 14px 16px;
+  background: color-mix(in oklab, var(--text-primary) 1.5%, transparent);
+}
+.surface-cockpit-doctrine {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-meta);
+  text-transform: lowercase;
+  color: var(--text-muted);
+}
+.surface-cockpit-doctrine-glyph {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--chamber-dna, var(--accent));
+}
+
 .surface-controls {
   display: flex;
   flex-direction: column;
@@ -4065,15 +4175,15 @@ textarea {
    Labels wrap to two lines when needed (e.g. "A partir de template"
    on a narrow column). Never truncate; truncation lies. */
 .surface-segmented {
-  display: inline-flex;
+  display: flex;
   align-items: stretch;
   border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
   border-radius: 7px;
   overflow: hidden;
   background: var(--bg-elevated);
-  flex: 1;
+  width: 100%;
   min-width: 0;
-  min-height: 36px;
+  min-height: 38px;
 }
 .surface-segmented-opt {
   flex: 1;
@@ -4111,10 +4221,10 @@ textarea {
    button grammar (label + value + caret-down) so the DS picker reads
    like an addressable identity, not a form field. */
 .surface-ds-chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 9px 12px;
   border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
   border-radius: 7px;
   background: var(--bg-elevated);
@@ -4123,9 +4233,9 @@ textarea {
   font-size: 12px;
   letter-spacing: var(--track-meta);
   cursor: pointer;
-  flex: 1;
+  width: 100%;
   min-width: 0;
-  min-height: 36px;
+  min-height: 38px;
   transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
   position: relative;
 }
