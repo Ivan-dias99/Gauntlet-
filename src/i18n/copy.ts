@@ -219,8 +219,8 @@ const PT: Copy = {
   labTurnRefuse: "recusa",
 
   labThreadEmptyKicker: "— pronto",
-  labThreadEmptyIdleBody: "primeira pergunta abre a missão.",
-  labThreadEmptyActiveBody: "próxima pergunta continua a missão.",
+  labThreadEmptyIdleBody: "três análises antes de uma resposta · divergência vira recusa.",
+  labThreadEmptyActiveBody: "próxima pergunta continua a missão · mesma triad, mesmo juiz.",
 
   labRailMissionKicker: "— missão",
   labRailNoMission: "sem missão · aguarda primeira pergunta",
@@ -246,7 +246,7 @@ const PT: Copy = {
   labRailStatusRouteAgent: "agent",
 
   labRailPrinciplesKicker: "— em vigor",
-  labRailPrinciplesEmpty: "sem princípios activos neste domínio",
+  labRailPrinciplesEmpty: "sem princípios activos · inscreve em Core › Policies",
   labRailPrinciplesMore: (n) => `+ ${n} mais`,
 
   labRailTrailKicker: "— trilha",
@@ -399,8 +399,8 @@ const EN: Copy = {
   labTurnRefuse: "refusal",
 
   labThreadEmptyKicker: "— ready",
-  labThreadEmptyIdleBody: "first question opens the mission.",
-  labThreadEmptyActiveBody: "next question continues the mission.",
+  labThreadEmptyIdleBody: "three analyses before one answer · divergence becomes refusal.",
+  labThreadEmptyActiveBody: "next question continues the mission · same triad, same judge.",
 
   labRailMissionKicker: "— mission",
   labRailNoMission: "no mission · awaiting first question",
@@ -426,7 +426,7 @@ const EN: Copy = {
   labRailStatusRouteAgent: "agent",
 
   labRailPrinciplesKicker: "— in force",
-  labRailPrinciplesEmpty: "no principles active in this domain",
+  labRailPrinciplesEmpty: "no principles active · inscribe at Core › Policies",
   labRailPrinciplesMore: (n) => `+ ${n} more`,
 
   labRailTrailKicker: "— trail",
