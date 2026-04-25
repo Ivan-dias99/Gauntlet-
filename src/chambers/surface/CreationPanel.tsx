@@ -1,18 +1,26 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SurfaceBriefPayload } from "../../hooks/useSignal";
 import { useCopy } from "../../i18n/copy";
 
 // Surface studio panel — cockpit grammar applied to the design
 // workstation. Reuses the .term-command pill (workbench-strip family)
-// for the outer shell, the id row, the input row and the rail. The
-// brief-shaping zone (mode · fidelity · design system) lives in
-// .surface-controls between the id row and the brief textarea.
+// for the outer shell, the id row, the input row and the rail.
 //
-// Doctrine carried: the chamber's plan generator is mock until the
-// provider lands. The mock declaration is permanent inside the rail —
-// not a dismissible banner — so the user always sees the truth.
+// Composer scope (after the F4 separation):
+//   · Output Mode  (was "Mode" — renamed; values still pinned to
+//                   backend SurfaceBriefPayload literal)
+//   · Fidelity     (Wireframe / Hi-fi)
+//   · Brief Input  (multi-line, dominant)
+//   · Visual Refs  (honest "not wired")
+//   · Generate     (live; runs the mock pipeline)
+//   · Handoff      (honest "not wired" — preview / send to Terminal /
+//                   archive lands when the handoff endpoints exist)
 //
-// Idle target ~360px tall when no DS picked yet.
+// Design System moved out — it now lives on the Surface Workbench
+// (DS Lens) above. Single source of truth for the active DS pick.
+//
+// Doctrine: the plan generator is mock until the provider lands. The
+// mock declaration is permanent inside the rail.
 
 // Mode / fidelity catalogues are wired to copy.ts at render time so
 // labels respect the active locale (PT / EN). The keys themselves are
@@ -24,16 +32,8 @@ export const FIDELITY_KEYS: Array<SurfaceBriefPayload["fidelity"]> = [
   "wireframe", "hi-fi",
 ];
 
-// Canned design systems. Real catalogue comes from Core (Wave 4) / the
-// archive connector layer. Kept short, honest, declarable.
-export const DESIGN_SYSTEMS = [
-  "Signal Canon",
-  "Claude Design",
-  "Material You",
-  "Tailwind UI",
-  "Shadcn UI",
-  "Radix Primitives",
-] as const;
+// Canned DESIGN_SYSTEMS catalogue moved to SurfaceWorkbench when the
+// DS pick became part of the DS Lens.
 
 interface Props {
   brief: SurfaceBriefPayload;
@@ -55,12 +55,25 @@ export default function CreationPanel({
 }: Props) {
   const copy = useCopy();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
   const [focused, setFocused] = useState(false);
+  const [flyout, setFlyout] = useState<null | "refs" | "handoff">(null);
 
   // Auto-grow is handled by flex:1 on the input row in [data-chamber=
   // surface] context — the textarea fills the cockpit's remaining
   // vertical space. Manual scrollHeight tracking conflicts with flex,
   // so the JS auto-grow that lived here was retired.
+
+  // Click-outside dismisses any open flyout (Refs / Handoff).
+  useEffect(() => {
+    if (!flyout) return;
+    function onDoc(e: MouseEvent) {
+      const el = composerRef.current;
+      if (el && !el.contains(e.target as Node)) setFlyout(null);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [flyout]);
 
   const canSubmit = prompt.trim().length > 0 && !pending;
   const missionLabel = missionTitle
@@ -88,6 +101,7 @@ export default function CreationPanel({
 
   return (
     <div
+      ref={composerRef}
       className="term-command"
       data-focused={focused ? "true" : undefined}
       data-state={pending ? "pending" : undefined}
@@ -139,7 +153,7 @@ export default function CreationPanel({
           carries the chamber-DNA accent on the active state. */}
       <div className="surface-controls">
         <div className="surface-controls-row">
-          <span className="surface-controls-label">{copy.surfaceStudioModeLabel}</span>
+          <span className="surface-controls-label">{copy.surfaceComposerOutputModeLabel}</span>
           <div className="surface-segmented" role="tablist" aria-label="mode">
             {MODE_KEYS.map((key) => (
               <button
@@ -174,34 +188,8 @@ export default function CreationPanel({
           </div>
         </div>
 
-        <div className="surface-controls-row">
-          <span className="surface-controls-label">{copy.surfaceStudioDsLabel}</span>
-          <span className="surface-ds-chip">
-            <span
-              className="surface-ds-chip-value"
-              data-empty={brief.design_system ? undefined : "true"}
-            >
-              {brief.design_system ?? copy.surfaceStudioDsEmpty}
-            </span>
-            <span className="surface-ds-chip-caret" aria-hidden>
-              <IconCaret />
-            </span>
-            <select
-              className="surface-ds-native"
-              value={brief.design_system ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                onBriefChange({ design_system: v === "" ? null : v });
-              }}
-              aria-label={copy.surfaceStudioDsLabel}
-            >
-              <option value="">{copy.surfaceStudioDsEmpty}</option>
-              {DESIGN_SYSTEMS.map((ds) => (
-                <option key={ds} value={ds}>{ds}</option>
-              ))}
-            </select>
-          </span>
-        </div>
+        {/* Design System row removed — DS pick now lives inside the
+            SurfaceWorkbench's DS Lens above. Single source of truth. */}
       </div>
 
       {/* Brief input row — dominant zone. ◐ glyph parallels the $
@@ -233,17 +221,63 @@ export default function CreationPanel({
             lineHeight: "var(--lh-body)",
           }}
         />
-        <button
-          type="button"
-          className="surface-generate"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          title={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioGenerate}
-          aria-label={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioGenerate}
-        >
-          {pending ? <span style={{ fontSize: 13, lineHeight: 1 }}>…</span> : <IconSend />}
-        </button>
+        <div className="surface-composer-actions">
+          {/* Visual References Attach — honest "not wired". The flyout
+              names the upload endpoint pending. */}
+          <button
+            type="button"
+            className="term-tool"
+            data-wired="false"
+            data-active={flyout === "refs" ? "true" : undefined}
+            onClick={() => setFlyout(flyout === "refs" ? null : "refs")}
+            title={copy.surfaceComposerRefsLabel}
+            aria-label="visual references"
+          >
+            <IconRefs />
+          </button>
+          {/* Generate — live; runs the mock pipeline. */}
+          <button
+            type="button"
+            className="surface-generate"
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            title={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioGenerate}
+            aria-label={pending ? copy.surfaceStudioGenerating : copy.surfaceStudioGenerate}
+          >
+            {pending ? <span style={{ fontSize: 13, lineHeight: 1 }}>…</span> : <IconSend />}
+          </button>
+          {/* Handoff — honest "not wired" (preview / send to Terminal /
+              archive). Lights only when a plan exists, but the action
+              itself is gated on backend endpoints. */}
+          <button
+            type="button"
+            className="term-tool"
+            data-wired="false"
+            data-active={flyout === "handoff" ? "true" : undefined}
+            onClick={() => setFlyout(flyout === "handoff" ? null : "handoff")}
+            disabled={!hasPlan}
+            title={copy.surfaceComposerHandoffLabel}
+            aria-label="handoff"
+          >
+            <IconHandoff />
+          </button>
+        </div>
       </div>
+
+      {flyout === "refs" && (
+        <NotWiredPopover
+          title={copy.surfaceComposerRefsLabel}
+          body={copy.surfaceComposerRefsBody}
+          contract={copy.surfaceComposerRefsContract}
+        />
+      )}
+      {flyout === "handoff" && (
+        <NotWiredPopover
+          title={copy.surfaceComposerHandoffLabel}
+          body={copy.surfaceComposerHandoffBody}
+          contract={copy.surfaceComposerHandoffContract}
+        />
+      )}
 
       {/* Rail — backend posture · doctrine count · ⌘+Enter hint. The
           generate button moved up to the input row (parallels send
@@ -320,5 +354,51 @@ function IconSend() {
       <path d="M12 19V5" />
       <path d="m5 12 7-7 7 7" />
     </svg>
+  );
+}
+// Visual refs — paperclip; reads as "attach external material".
+function IconRefs() {
+  return (
+    <svg {...SVG_PROPS}>
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+// Handoff — arrow exiting a box; reads as "ship the contract out".
+function IconHandoff() {
+  return (
+    <svg {...SVG_PROPS}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
+  );
+}
+
+// Honest "not wired" popover — body says exactly what is missing and
+// the contract pending. Anchored below the input row.
+function NotWiredPopover({
+  title, body, contract,
+}: {
+  title: string;
+  body: string;
+  contract: string;
+}) {
+  return (
+    <div
+      className="term-flyout"
+      data-tone="not-wired"
+      role="menu"
+      style={{ margin: "0 12px 8px" }}
+    >
+      <div className="term-flyout-head"><span>{title}</span></div>
+      <div className="term-flyout-body">
+        <p className="term-flyout-prose">{body}</p>
+        <p className="term-flyout-contract" aria-label="backend contract">
+          <span className="term-flyout-contract-label">contract</span>
+          <code>{contract}</code>
+        </p>
+      </div>
+    </div>
   );
 }

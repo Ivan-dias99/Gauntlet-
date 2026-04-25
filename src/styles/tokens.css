@@ -3335,7 +3335,7 @@ textarea {
   font-style: italic;
   opacity: 0.78;
 }
-[data-chamber="surface"] .term-command-input-row > .surface-generate {
+[data-chamber="surface"] .term-command-input-row > .surface-composer-actions {
   align-self: flex-end;
   margin-bottom: 0;
 }
@@ -4175,6 +4175,18 @@ textarea {
   border-radius: 50%;
   background: currentColor;
   animation: breathe 2s var(--ease-swift) infinite;
+}
+
+/* Surface composer actions cluster — Refs · Generate · Handoff.
+   Refs and Handoff are honest "not wired" .term-tool buttons; the
+   live action is Generate (circular ember). The cluster sits at the
+   bottom-right of the input row inside [data-chamber="surface"]. */
+.surface-composer-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-end;
+  flex-shrink: 0;
 }
 
 /* Generate button — circular ember (chamber-DNA), parallels the

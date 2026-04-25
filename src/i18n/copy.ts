@@ -178,6 +178,22 @@ export interface Copy {
   surfaceWbStatesBody: string;
   surfaceWbStatesContract: string;
   surfaceWbValueIdle: string;
+  // Surface composer affordances — Visual References Attach +
+  // Preview / Handoff control. Both honest "not wired" until the
+  // upload + handoff endpoints land.
+  surfaceComposerRefsLabel: string;
+  surfaceComposerRefsBody: string;
+  surfaceComposerRefsContract: string;
+  surfaceComposerHandoffLabel: string;
+  surfaceComposerHandoffBody: string;
+  surfaceComposerHandoffContract: string;
+  // Output Mode label — replaces the old "Mode" label so the
+  // composer reads as "what shape does the visual contract take?"
+  // not "what category". Values still pinned to the backend's
+  // SurfaceBriefPayload literal (prototype | slide_deck | from_template
+  // | other); landing + component_spec land when the backend type
+  // catches up.
+  surfaceComposerOutputModeLabel: string;
 
   // Shared workbench / task queue copy (used by Terminal)
   workbench: string;
@@ -416,6 +432,13 @@ const PT: Copy = {
   surfaceWbStatesBody: "Matriz de estados — empty, loading, error, blocked, valid, stale, archived. Signal não pinta state que o backend de design não validou.",
   surfaceWbStatesContract: "espera por: GET /design/states · POST /design/states/validate",
   surfaceWbValueIdle: "—",
+  surfaceComposerRefsLabel: "refs · screenshots / mood / brand (não ligado)",
+  surfaceComposerRefsBody: "Anexar screenshots, referências visuais, brand guidelines, fragmentos de UI existente. Endpoint de upload de assets ainda não existe; Signal não inventa upload.",
+  surfaceComposerRefsContract: "espera por: POST /surface/refs/upload · GET /surface/refs/{mission}",
+  surfaceComposerHandoffLabel: "handoff · enviar para Terminal / arquivar (não ligado)",
+  surfaceComposerHandoffBody: "Preview do contrato, export do spec, enviar plano para Terminal implementar, arquivar como artefacto. Endpoints de handoff ainda não existem.",
+  surfaceComposerHandoffContract: "espera por: POST /surface/plan/{id}/handoff · POST /surface/plan/{id}/seal",
+  surfaceComposerOutputModeLabel: "output mode",
   termWbRepoLabel: "repo",
   termWbRepoBody: "Lente do repositório — root, branch ativa, dirty state, remote, último commit. O backend git ainda não existe; Signal não inventa branch.",
   termWbRepoContract: "espera por: GET /repo/status · GET /repo/branches · POST /repo/checkout",
@@ -669,6 +692,13 @@ const EN: Copy = {
   surfaceWbStatesBody: "State matrix — empty, loading, error, blocked, valid, stale, archived. Signal does not paint a state the design backend has not validated.",
   surfaceWbStatesContract: "awaiting: GET /design/states · POST /design/states/validate",
   surfaceWbValueIdle: "—",
+  surfaceComposerRefsLabel: "refs · screenshots / mood / brand (not wired)",
+  surfaceComposerRefsBody: "Attach screenshots, visual references, brand guidelines, fragments of existing UI. The asset upload endpoint does not exist yet; Signal does not fake an upload.",
+  surfaceComposerRefsContract: "awaiting: POST /surface/refs/upload · GET /surface/refs/{mission}",
+  surfaceComposerHandoffLabel: "handoff · send to Terminal / archive (not wired)",
+  surfaceComposerHandoffBody: "Contract preview, spec export, hand the plan to Terminal for implementation, archive as artifact. Handoff endpoints do not exist yet.",
+  surfaceComposerHandoffContract: "awaiting: POST /surface/plan/{id}/handoff · POST /surface/plan/{id}/seal",
+  surfaceComposerOutputModeLabel: "output mode",
   termWbRepoLabel: "repo",
   termWbRepoBody: "Repository lens — root, active branch, dirty state, remote, last commit. The git backend does not exist yet; Signal does not invent a branch.",
   termWbRepoContract: "awaiting: GET /repo/status · GET /repo/branches · POST /repo/checkout",

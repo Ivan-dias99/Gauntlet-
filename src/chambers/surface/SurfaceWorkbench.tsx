@@ -2,6 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import type { SurfaceBriefPayload, SurfacePlanPayload } from "../../hooks/useSignal";
 import { useCopy } from "../../i18n/copy";
 
+// Canned design systems — moved here from CreationPanel when the DS
+// pick became part of the DS Lens (single source of truth). The real
+// catalogue lands when Core/Routing exposes /design-systems.
+const DESIGN_SYSTEMS = [
+  "Signal Canon",
+  "Claude Design",
+  "Material You",
+  "Tailwind UI",
+  "Shadcn UI",
+  "Radix Primitives",
+] as const;
+
 // Surface Workbench strip — five lenses on the visual territory.
 //
 // Sibling of Terminal's WorkbenchStrip. Same hairline pill, same
@@ -18,6 +30,7 @@ type Lens = null | "contract" | "ds" | "layout" | "components" | "states";
 
 interface Props {
   brief: SurfaceBriefPayload;
+  onBriefChange: (patch: Partial<SurfaceBriefPayload>) => void;
   promptDraft: string;
   plan: SurfacePlanPayload | null;
   pending: boolean;
@@ -26,7 +39,7 @@ interface Props {
 }
 
 export default function SurfaceWorkbench({
-  brief, promptDraft, plan, pending, missionTitle, onMissionMenu,
+  brief, onBriefChange, promptDraft, plan, pending, missionTitle, onMissionMenu,
 }: Props) {
   const copy = useCopy();
   const [lens, setLens] = useState<Lens>(null);
@@ -167,11 +180,10 @@ export default function SurfaceWorkbench({
             />
           )}
           {lens === "ds" && (
-            <LensFlyout
-              title={copy.surfaceWbDsLabel}
-              body={copy.surfaceWbDsBody}
-              contract={copy.surfaceWbDsContract}
-              wired={!!brief.design_system}
+            <DsLensFlyout
+              brief={brief}
+              onBriefChange={onBriefChange}
+              copy={copy}
             />
           )}
           {lens === "layout" && (
@@ -250,6 +262,66 @@ function LensFlyout({
         <p className="term-flyout-contract" aria-label="backend contract">
           <span className="term-flyout-contract-label">{wired ? "source" : "contract"}</span>
           <code>{contract}</code>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// DS Lens flyout — special case. The DS pick used to live in the
+// CreationPanel; it now lives here so the Lens above is the single
+// source of truth for the active design system. The picker is the
+// canned six-DS list until Core/Routing exposes a real registry —
+// the body still names that contract.
+function DsLensFlyout({
+  brief, onBriefChange, copy,
+}: {
+  brief: SurfaceBriefPayload;
+  onBriefChange: (patch: Partial<SurfaceBriefPayload>) => void;
+  copy: ReturnType<typeof useCopy>;
+}) {
+  const wired = !!brief.design_system;
+  return (
+    <div className="term-flyout" data-tone={wired ? undefined : "not-wired"} role="menu">
+      <div className="term-flyout-head">
+        <span>{copy.surfaceWbDsLabel}{wired ? " · " + brief.design_system : " · " + copy.surfaceStudioDsEmpty}</span>
+      </div>
+      <div className="term-flyout-body">
+        <p className="term-flyout-prose">{copy.surfaceWbDsBody}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span
+            className="term-flyout-contract-label"
+            style={{ fontFamily: "var(--mono)", fontSize: "8.5px", letterSpacing: "var(--track-kicker)", textTransform: "uppercase", color: "var(--text-ghost)" }}
+          >
+            pick
+          </span>
+          <select
+            value={brief.design_system ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              onBriefChange({ design_system: v === "" ? null : v });
+            }}
+            aria-label={copy.surfaceWbDsLabel}
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 12,
+              padding: "8px 10px",
+              background: "var(--bg-elevated)",
+              color: "var(--text-primary)",
+              border: "1px solid color-mix(in oklab, var(--text-primary) 9%, transparent)",
+              borderRadius: 6,
+              outline: 0,
+            }}
+          >
+            <option value="">{copy.surfaceStudioDsEmpty}</option>
+            {DESIGN_SYSTEMS.map((ds) => (
+              <option key={ds} value={ds}>{ds}</option>
+            ))}
+          </select>
+        </div>
+        <p className="term-flyout-contract" aria-label="backend contract">
+          <span className="term-flyout-contract-label">contract</span>
+          <code>{copy.surfaceWbDsContract}</code>
         </p>
       </div>
     </div>

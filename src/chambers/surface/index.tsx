@@ -110,6 +110,7 @@ export default function Surface() {
       <div className="chamber-body" style={{ paddingTop: 0, display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
         <SurfaceWorkbench
           brief={brief}
+          onBriefChange={patchBrief}
           promptDraft={prompt}
           plan={plan}
           pending={pending}
