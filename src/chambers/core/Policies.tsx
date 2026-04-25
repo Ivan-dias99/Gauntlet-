@@ -240,7 +240,7 @@ export default function Policies() {
       {principles.length === 0 && (
         hydratedFromBackend === false ? (
           <DormantPanel
-            detail="doutrina por carregar — backend não respondeu na hidratação. O que aparecer abaixo veio só da cache local."
+            detail={copy.dormantCore}
             style={{ marginInline: "auto" }}
           />
         ) : (

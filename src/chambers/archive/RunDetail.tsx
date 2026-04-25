@@ -1,6 +1,7 @@
 import type { Artifact } from "../../spine/types";
 import type { RunRecord } from "./helpers";
 import { originFor, linkArtifact } from "./helpers";
+import { useCopy } from "../../i18n/copy";
 
 // Right-pane detail view for the selected run. Shows provenance first
 // (chamber-of-origin, linked artifact, doctrine in effect at query
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function RunDetail({ run, missionArtifact, doctrineCount }: Props) {
+  const copy = useCopy();
   if (!run) {
     return (
       <div
@@ -33,7 +35,7 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
       >
         <div style={{ maxWidth: 420, textAlign: "center" }}>
           <div className="kicker" style={{ marginBottom: 10 }}>
-            — Proveniência
+            {copy.archiveDetailEmptyKicker}
           </div>
           <div
             style={{
@@ -43,8 +45,7 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
               color: "var(--text-muted)",
             }}
           >
-            Seleciona uma entrada do ledger para ver a origem, o artefacto ligado,
-            e a cadeia que a produziu.
+            {copy.archiveDetailEmptyBody}
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   type SurfacePlanPayload,
 } from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
+import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
 import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
@@ -29,6 +30,7 @@ export default function Surface() {
   const { activeMission, createMission, addNoteToMission } = useSpine();
   const { streamSurface, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
+  const copy = useCopy();
 
   const [brief, setBrief] = useState<SurfaceBriefPayload>(DEFAULT_BRIEF);
   const [prompt, setPrompt] = useState("");
@@ -117,7 +119,7 @@ export default function Surface() {
               mockBanner={mockBannerVisible}
             />
             {unreachable && (
-              <DormantPanel detail="Backend de Surface inacessível. Os modos, a fidelidade e o design system ficam guardados localmente; a geração do plano fica suspensa até o backend voltar." />
+              <DormantPanel detail={copy.dormantSurface} />
             )}
             {err && !unreachable && (
               <div

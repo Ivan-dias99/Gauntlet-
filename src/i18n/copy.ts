@@ -167,6 +167,13 @@ export interface Copy {
   dormantLab: string;
   dormantMemory: string;
   dormantCreation: string;
+  dormantSurface: string;
+  dormantCore: string;
+
+  // Archive list / detail empty states
+  archiveListEmpty: string;
+  archiveDetailEmptyKicker: string;
+  archiveDetailEmptyBody: string;
 
   // Spine sync indicator
   spineSyncLabel: (state: "synced" | "syncing" | "unsynced") => string;
@@ -350,6 +357,12 @@ const PT: Copy = {
   dormantLab: "backend dormente — Insight recusa fingir. nada é perdido; o estado local persiste até a triad voltar.",
   dormantMemory: "backend dormente — o ledger está local; o pulso em directo só regressa quando o brain responder.",
   dormantCreation: "backend dormente — Terminal não inventa execução. a bancada segue pronta; a ponte está silenciosa.",
+  dormantSurface: "backend dormente — Surface não fabrica plano sem o brain. modo, fidelidade e design system ficam guardados localmente até a ponte voltar.",
+  dormantCore: "backend dormente — doutrina por carregar. o que aparece veio só da cache local; nenhum princípio novo é inscrito até a sincronização voltar.",
+
+  archiveListEmpty: "— sem entradas para este filtro —",
+  archiveDetailEmptyKicker: "— proveniência",
+  archiveDetailEmptyBody: "Selecciona uma entrada do ledger para ver a origem, o artefacto ligado, e a cadeia que a produziu.",
 
   spineSyncLabel: (s) =>
     s === "synced" ? "sincronizado" : s === "syncing" ? "a sincronizar" : "local",
@@ -532,6 +545,12 @@ const EN: Copy = {
   dormantLab: "backend dormant — Insight refuses to fake. nothing is lost; local state persists until the triad returns.",
   dormantMemory: "backend dormant — the ledger is local; the live pulse resumes only when the brain answers.",
   dormantCreation: "backend dormant — Terminal does not invent execution. the workbench is ready; the bridge is quiet.",
+  dormantSurface: "backend dormant — Surface will not fabricate a plan without the brain. mode, fidelity and design system stay held locally until the bridge returns.",
+  dormantCore: "backend dormant — doctrine not yet loaded. what appears below came from local cache only; no new principle is inscribed until sync resumes.",
+
+  archiveListEmpty: "— no entries for this filter —",
+  archiveDetailEmptyKicker: "— provenance",
+  archiveDetailEmptyBody: "Select a ledger entry to see its origin, the linked artifact, and the chain that produced it.",
 
   spineSyncLabel: (s) =>
     s === "synced" ? "synced" : s === "syncing" ? "syncing" : "local only",

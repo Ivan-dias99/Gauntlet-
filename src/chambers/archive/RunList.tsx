@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { RunRecord } from "./helpers";
 import { ROUTE_COLOR, originFor, isLinked } from "./helpers";
+import { useCopy } from "../../i18n/copy";
 
 // Search + route-filter chips + scrollable run list. Clicking a row
 // promotes that run into the detail pane on the right. Keeps the
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function RunList({ runs, selectedId, onSelect, activeTokens }: Props) {
+  const copy = useCopy();
   const [query, setQuery] = useState("");
   const [route, setRoute] = useState<string | null>(null);
 
@@ -119,7 +121,7 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
               textAlign: "center",
             }}
           >
-            — sem entradas para este filtro —
+            {copy.archiveListEmpty}
           </div>
         )}
         {filtered.map((r) => {
