@@ -3316,6 +3316,24 @@ textarea {
   min-height: 120px;
   max-height: none !important;
   resize: none;
+  /* Brief reads as a discrete writing field — hairline tint + radius
+     restore the surgical clarity of the pre-cockpit Surface. The bare
+     transparent textarea worked for Terminal's single-line command
+     surface; multi-line briefs need a frame. */
+  background: color-mix(in oklab, var(--text-primary) 2.2%, var(--bg-input));
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 8px;
+  padding: 12px 14px;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+[data-chamber="surface"] .term-command-input-row > .term-command-input:focus {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 32%, color-mix(in oklab, var(--text-primary) 8%, transparent));
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 1.5%, var(--bg-input));
+}
+[data-chamber="surface"] .term-command-input-row > .term-command-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.78;
 }
 [data-chamber="surface"] .term-command-input-row > .surface-generate {
   align-self: flex-end;
@@ -4215,6 +4233,35 @@ textarea {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
     0 1px 2px color-mix(in oklab, #000 18%, transparent);
+}
+.surface-rail-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 32px 28px;
+  text-align: center;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 2%, transparent);
+  flex-shrink: 0;
+}
+.surface-rail-hero-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--chamber-dna, var(--accent));
+  font-weight: 500;
+  opacity: 0.85;
+}
+.surface-rail-hero-body {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  letter-spacing: -0.005em;
+  max-width: 520px;
 }
 .surface-rail-tabs {
   display: flex;

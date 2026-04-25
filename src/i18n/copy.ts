@@ -126,6 +126,20 @@ export interface Copy {
   surfaceStudioGenerate: string;
   surfaceStudioGenerating: string;
   surfaceStudioMockBanner: string;
+  // Mode / fidelity option labels — locale-bound. Hardcoded in
+  // CreationPanel before; pulled here so EN ≠ PT mismatch stops.
+  surfaceModePrototype: string;
+  surfaceModeSlideDeck: string;
+  surfaceModeFromTemplate: string;
+  surfaceModeOther: string;
+  surfaceFidelityWireframe: string;
+  surfaceFidelityHiFi: string;
+  // Right-rail hero empty state — shown above the gallery tabs when
+  // no plan has been generated. Replaced by the plan preview on
+  // generate. Mirrors the elegant "— sem contrato visual" hero of
+  // the pre-cockpit Surface.
+  surfaceRailEmptyKicker: string;
+  surfaceRailEmptyBody: string;
 
   // Shared workbench / task queue copy (used by Terminal)
   workbench: string;
@@ -339,6 +353,14 @@ const PT: Copy = {
   surfaceStudioGenerate: "Gerar plano",
   surfaceStudioGenerating: "a gerar…",
   surfaceStudioMockBanner: "mock declarado · nenhum provider chamado · plano canned",
+  surfaceModePrototype: "Protótipo",
+  surfaceModeSlideDeck: "Slide deck",
+  surfaceModeFromTemplate: "A partir de template",
+  surfaceModeOther: "Outro",
+  surfaceFidelityWireframe: "Wireframe",
+  surfaceFidelityHiFi: "Alta fidelidade",
+  surfaceRailEmptyKicker: "— sem contrato visual ainda",
+  surfaceRailEmptyBody: "Define modo, fidelidade e design system, depois escreve o brief e gera o contrato visual. O plano aparece aqui — screens, componentes, notas.",
   termRepoNotWiredTitle: "repo · não ligado",
   termRepoNotWiredBody: "Endpoint git do backend ainda não existe. Branch, dirty state, ahead/behind ficam por ligar — Signal não inventa branch.",
   termRepoNotWiredContract: "espera por: GET /repo/status · GET /repo/branches · POST /repo/checkout",
@@ -557,6 +579,14 @@ const EN: Copy = {
   surfaceStudioGenerate: "Generate plan",
   surfaceStudioGenerating: "generating…",
   surfaceStudioMockBanner: "declared mock · no provider called · canned plan",
+  surfaceModePrototype: "Prototype",
+  surfaceModeSlideDeck: "Slide deck",
+  surfaceModeFromTemplate: "From template",
+  surfaceModeOther: "Other",
+  surfaceFidelityWireframe: "Wireframe",
+  surfaceFidelityHiFi: "Hi-fi",
+  surfaceRailEmptyKicker: "— no visual contract yet",
+  surfaceRailEmptyBody: "Set mode, fidelity and design system, then write the brief and generate the visual contract. The plan lands here — screens, components, notes.",
   termRepoNotWiredTitle: "repo · not wired",
   termRepoNotWiredBody: "Backend git endpoint does not exist yet. Branch, dirty state, ahead/behind await wiring — Signal does not invent a branch.",
   termRepoNotWiredContract: "awaiting: GET /repo/status · GET /repo/branches · POST /repo/checkout",

@@ -14,16 +14,14 @@ import { useCopy } from "../../i18n/copy";
 //
 // Idle target ~360px tall when no DS picked yet.
 
-export const MODES: Array<{ key: SurfaceBriefPayload["mode"]; label: string }> = [
-  { key: "prototype",     label: "Protótipo" },
-  { key: "slide_deck",    label: "Slide deck" },
-  { key: "from_template", label: "Template" },
-  { key: "other",         label: "Outro" },
+// Mode / fidelity catalogues are wired to copy.ts at render time so
+// labels respect the active locale (PT / EN). The keys themselves are
+// stable contract values that travel to the backend.
+export const MODE_KEYS: Array<SurfaceBriefPayload["mode"]> = [
+  "prototype", "slide_deck", "from_template", "other",
 ];
-
-export const FIDELITIES: Array<{ key: SurfaceBriefPayload["fidelity"]; label: string }> = [
-  { key: "wireframe", label: "Wireframe" },
-  { key: "hi-fi",     label: "Alta fidelidade" },
+export const FIDELITY_KEYS: Array<SurfaceBriefPayload["fidelity"]> = [
+  "wireframe", "hi-fi",
 ];
 
 // Canned design systems. Real catalogue comes from Core (Wave 4) / the
@@ -68,6 +66,17 @@ export default function CreationPanel({
   const missionLabel = missionTitle
     ? missionTitle.length > 22 ? missionTitle.slice(0, 19).trimEnd() + "…" : missionTitle
     : null;
+
+  const modeLabels: Record<SurfaceBriefPayload["mode"], string> = {
+    prototype:     copy.surfaceModePrototype,
+    slide_deck:    copy.surfaceModeSlideDeck,
+    from_template: copy.surfaceModeFromTemplate,
+    other:         copy.surfaceModeOther,
+  };
+  const fidelityLabels: Record<SurfaceBriefPayload["fidelity"], string> = {
+    wireframe: copy.surfaceFidelityWireframe,
+    "hi-fi":   copy.surfaceFidelityHiFi,
+  };
 
   const status = pending
     ? copy.surfaceStudioStatusPending
@@ -132,16 +141,16 @@ export default function CreationPanel({
         <div className="surface-controls-row">
           <span className="surface-controls-label">{copy.surfaceStudioModeLabel}</span>
           <div className="surface-segmented" role="tablist" aria-label="mode">
-            {MODES.map((m) => (
+            {MODE_KEYS.map((key) => (
               <button
-                key={m.key}
+                key={key}
                 role="tab"
                 className="surface-segmented-opt"
-                data-active={brief.mode === m.key ? "true" : undefined}
-                aria-selected={brief.mode === m.key}
-                onClick={() => onBriefChange({ mode: m.key })}
+                data-active={brief.mode === key ? "true" : undefined}
+                aria-selected={brief.mode === key}
+                onClick={() => onBriefChange({ mode: key })}
               >
-                {m.label}
+                {modeLabels[key]}
               </button>
             ))}
           </div>
@@ -150,16 +159,16 @@ export default function CreationPanel({
         <div className="surface-controls-row">
           <span className="surface-controls-label">{copy.surfaceStudioFidelityLabel}</span>
           <div className="surface-segmented" role="tablist" aria-label="fidelity">
-            {FIDELITIES.map((f) => (
+            {FIDELITY_KEYS.map((key) => (
               <button
-                key={f.key}
+                key={key}
                 role="tab"
                 className="surface-segmented-opt"
-                data-active={brief.fidelity === f.key ? "true" : undefined}
-                aria-selected={brief.fidelity === f.key}
-                onClick={() => onBriefChange({ fidelity: f.key })}
+                data-active={brief.fidelity === key ? "true" : undefined}
+                aria-selected={brief.fidelity === key}
+                onClick={() => onBriefChange({ fidelity: key })}
               >
-                {f.label}
+                {fidelityLabels[key]}
               </button>
             ))}
           </div>

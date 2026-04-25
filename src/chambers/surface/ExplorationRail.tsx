@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { SurfacePlanPayload } from "../../hooks/useSignal";
+import { useCopy } from "../../i18n/copy";
 
 // Surface exploration rail — five tabs: Examples, Templates, Recent,
 // Search, Library. Visual elevation: cockpit-grammar tabs (mono
@@ -42,12 +43,27 @@ interface Props {
 }
 
 export default function ExplorationRail({ plan, mock }: Props) {
+  const copy = useCopy();
   const [tab, setTab] = useState<Tab>("examples");
   const [query, setQuery] = useState("");
 
   return (
     <div className="surface-rail-shell">
-      {/* Plan preview — sits at the top when a plan has arrived. */}
+      {/* Hero empty state — when no plan is yet generated, the right
+          rail leads with this prose centred above the tab strip. The
+          old (pre-cockpit) Surface used the entire right column for
+          this hero; the cockpit-grammar version preserves it as a
+          banner and keeps the gallery tabs available below. When the
+          generator ships a plan, this hero is replaced by the plan
+          preview block. */}
+      {!plan && (
+        <div className="surface-rail-hero">
+          <span className="surface-rail-hero-kicker">{copy.surfaceRailEmptyKicker}</span>
+          <p className="surface-rail-hero-body">{copy.surfaceRailEmptyBody}</p>
+        </div>
+      )}
+
+      {/* Plan preview — replaces the hero when a plan has arrived. */}
       {plan && (
         <div
           data-surface-plan-preview
