@@ -97,15 +97,11 @@ export default function ExecutionComposer({
         data-state={pending ? "pending" : undefined}
       >
         {/* Identity row — workbench-strip grammar transposed onto the
-            composer. Traffic-light dots before the glyph block: terminal
-            vibe, requested explicitly. They are decorative — clicking
-            them does nothing, the dots are just identity, not window
-            controls. Glyph block, label, mission with caret. Status
-            text is italic sans (same as workbench), narrating posture. */}
+            composer. Traffic-light dots dropped: Signal does not need
+            macOS chrome to feel like a terminal. The glyph block + label
+            carry the identity; the dots were duplicating the workbench
+            bar's job. */}
         <div className="term-command-id">
-          <span className="term-command-dots" aria-hidden>
-            <span /><span /><span />
-          </span>
           <span className="term-command-glyph" aria-hidden>
             <IconShell />
           </span>

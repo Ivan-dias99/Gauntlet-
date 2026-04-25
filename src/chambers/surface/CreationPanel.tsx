@@ -107,13 +107,10 @@ export default function CreationPanel({
       data-state={pending ? "pending" : undefined}
     >
       {/* Identity row — STUDIO posture, sibling of TERMINAL on the
-          composer above. Same dots, glyph block, label, mission caret,
-          italic status. The chamber-DNA cascade colours the prompt
-          glyph and active selections in Surface accent. */}
+          composer above. Traffic-light dots dropped (Surface is a
+          design workstation, not a macOS window cosplay). Glyph block
+          + label + caret carry the identity. */}
       <div className="term-command-id">
-        <span className="term-command-dots" aria-hidden>
-          <span /><span /><span />
-        </span>
         <span className="term-command-glyph" aria-hidden>
           <IconStudio />
         </span>
