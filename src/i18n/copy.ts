@@ -18,6 +18,10 @@ export interface Copy {
   switchMission: string;
   missions: string;
 
+  // Brand doctrine line — rendered next to "Signal" in CanonRibbon.
+  // Calm mono register; states the epistemic north in five words.
+  brandDoctrine: string;
+
   // Insight — reasoning chamber
   labKicker: string;
   labTagline: string;
@@ -205,6 +209,8 @@ const PT: Copy = {
   switchMission: "Trocar missão",
   missions: "Missões",
 
+  brandDoctrine: "recusar antes de adivinhar",
+
   labKicker: "— INSIGHT",
   labTagline: "Análise · evidência · direção",
   labInputVoice: "— pergunta",
@@ -384,6 +390,8 @@ const EN: Copy = {
   },
   switchMission: "Switch mission",
   missions: "Missions",
+
+  brandDoctrine: "refuse before guessing",
 
   labKicker: "— INSIGHT",
   labTagline: "Analysis · evidence · direction",

@@ -74,6 +74,9 @@ export default function CanonRibbon({ active, onSelect }: Props) {
       <span className="canon-ribbon-brand" aria-label="Signal">
         Signal
         <span aria-hidden className="canon-ribbon-brand-dot" />
+        <span aria-hidden className="canon-ribbon-doctrine">
+          {copy.brandDoctrine}
+        </span>
       </span>
 
       <div className="canon-ribbon-tabs">

@@ -1020,6 +1020,18 @@ textarea {
   display: inline-block;
   box-shadow: var(--glow-ember-sm);
 }
+.canon-ribbon-doctrine {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: lowercase;
+  color: var(--text-ghost);
+  margin-left: 6px;
+  padding-left: 10px;
+  border-left: 1px solid var(--border-soft);
+  align-self: center;
+  white-space: nowrap;
+}
 .canon-ribbon-tabs {
   display: flex;
   align-items: stretch;
@@ -1140,6 +1152,9 @@ textarea {
     font-size: 15px;
     margin-right: 16px;
   }
+  /* Doctrine line is editorial, not load-bearing — first to fold when
+     the ribbon needs space for the chamber tabs. */
+  .canon-ribbon-doctrine { display: none; }
   .canon-ribbon-tabs .tab {
     padding: 0 10px;
     font-size: 10px;
