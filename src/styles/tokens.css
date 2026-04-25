@@ -4046,13 +4046,14 @@ textarea {
 .surface-cockpit {
   display: flex;
   flex-direction: column;
-  border: 1px solid color-mix(in oklab, var(--text-primary) 11%, transparent);
+  /* Medium hierarchy — canvas is primary, cockpit recedes subtly. */
+  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
   border-radius: 14px;
   background: var(--bg-surface);
   overflow: hidden;
   box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
-    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
+    0 1px 0 color-mix(in oklab, #fff 36%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent);
 }
 [data-theme="dark"] .surface-cockpit,
 [data-theme="sepia"] .surface-cockpit {
@@ -5388,7 +5389,8 @@ textarea {
   font-size: var(--t-micro);
   letter-spacing: var(--track-meta);
   color: var(--text-muted);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
   min-height: 44px;
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
