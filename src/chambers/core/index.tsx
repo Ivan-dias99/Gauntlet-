@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ChamberHead from "../../shell/ChamberHead";
+import CoreWorkbench from "./CoreWorkbench";
 import Policies from "./Policies";
 import Routing from "./Routing";
 import Permissions from "./Permissions";
@@ -33,6 +34,13 @@ export default function Core() {
   return (
     <div className="chamber-shell" data-chamber="core">
       <ChamberHead kicker="— CORE" tagline={current.sub} />
+
+      {/* Workbench pill — sibling family of Terminal/Surface/Insight.
+          Reads system telemetry as 5 lenses (Chambers · Tools ·
+          Doctrine · Backend · Spine). Sits between the chamber head
+          and the sub-tab band; the 5 sub-tabs below remain the
+          governance domain navigation. */}
+      <CoreWorkbench />
 
       <div
         role="tablist"

@@ -214,6 +214,26 @@ export interface Copy {
   insightWbDoctrineLabel: string;
   insightWbDoctrineBody: string;
   insightWbValueIdle: string;
+  // Core Workbench lenses — 5 chips on the governance territory.
+  // Read-only mirror of system state (Wave 5; editability lands Wave 7).
+  coreWbLabel: string;
+  coreWbStatusReadOnly: string;
+  coreWbChambersLabel: string;
+  coreWbChambersBody: string;
+  coreWbToolsLabel: string;
+  coreWbToolsBody: string;
+  coreWbDoctrineLabel: string;
+  coreWbDoctrineBody: string;
+  coreWbBackendLabel: string;
+  coreWbBackendBody: string;
+  coreWbBackendMock: string;
+  coreWbBackendLive: string;
+  coreWbSpineLabel: string;
+  coreWbSpineBody: string;
+  coreWbSpineSynced: string;
+  coreWbSpineSyncing: string;
+  coreWbSpineLocal: string;
+  coreWbValueIdle: string;
   // Surface Workbench lenses — five tools at the top of the chamber
   // that narrate the visual territory: contract · design system ·
   // layout/grid · component inventory · state matrix. Each carries
@@ -526,6 +546,24 @@ const PT: Copy = {
   insightWbDoctrineLabel: "doctrine",
   insightWbDoctrineBody: "Princípios em vigor que viajam com cada pergunta. Inscritos em Core › Policies; aplicados a todas as triad runs desta missão.",
   insightWbValueIdle: "—",
+  coreWbLabel: "CORE",
+  coreWbStatusReadOnly: "governance read-only · edição chega em Wave 7",
+  coreWbChambersLabel: "chambers",
+  coreWbChambersBody: "Câmaras registadas: Insight, Surface, Terminal, Archive, Core. Cinco modos cognitivos, cinco perfis em chambers/profiles.py.",
+  coreWbToolsLabel: "tools",
+  coreWbToolsBody: "Allowlist do Terminal (read_file, list_directory, run_command, execute_python, git, web_fetch, web_search). Outras chambers herdam tuple vazia — triad-only path.",
+  coreWbDoctrineLabel: "doctrine",
+  coreWbDoctrineBody: "Princípios em vigor inscritos em Policies. Viajam com cada query como build_principles_context. Editáveis localmente já hoje.",
+  coreWbBackendLabel: "backend",
+  coreWbBackendBody: "Modo do brain. mock = canned, sem chamadas Anthropic. live = real provider routing. Soberania total — frontend nunca chama o provider directamente.",
+  coreWbBackendMock: "mock",
+  coreWbBackendLive: "live",
+  coreWbSpineLabel: "spine",
+  coreWbSpineBody: "Estado da workspace snapshot. synced = backend tem o estado local. syncing = a empurrar. local = backend dormente; snapshot persiste local até regressar.",
+  coreWbSpineSynced: "synced",
+  coreWbSpineSyncing: "syncing",
+  coreWbSpineLocal: "local",
+  coreWbValueIdle: "—",
   surfaceWbContractLabel: "contract",
   surfaceWbContractBody: "Estado do contrato visual — idle / draft / valid / sealed. Reflete o brief actual e o plano gerado. Wired ao estado local da câmara.",
   surfaceWbContractContract: "wired · lê brief + plan do estado local Surface",
@@ -836,6 +874,24 @@ const EN: Copy = {
   insightWbDoctrineLabel: "doctrine",
   insightWbDoctrineBody: "Active principles travelling with each question. Inscribed in Core › Policies; applied to every triad run in this mission.",
   insightWbValueIdle: "—",
+  coreWbLabel: "CORE",
+  coreWbStatusReadOnly: "governance read-only · editing lands in Wave 7",
+  coreWbChambersLabel: "chambers",
+  coreWbChambersBody: "Registered chambers: Insight, Surface, Terminal, Archive, Core. Five cognitive modes, five profiles in chambers/profiles.py.",
+  coreWbToolsLabel: "tools",
+  coreWbToolsBody: "Terminal allowlist (read_file, list_directory, run_command, execute_python, git, web_fetch, web_search). Other chambers inherit an empty tuple — triad-only path.",
+  coreWbDoctrineLabel: "doctrine",
+  coreWbDoctrineBody: "Active principles inscribed in Policies. Travel with each query as build_principles_context. Editable locally today.",
+  coreWbBackendLabel: "backend",
+  coreWbBackendBody: "Brain mode. mock = canned, no Anthropic calls. live = real provider routing. Full sovereignty — frontend never calls the provider directly.",
+  coreWbBackendMock: "mock",
+  coreWbBackendLive: "live",
+  coreWbSpineLabel: "spine",
+  coreWbSpineBody: "Workspace snapshot state. synced = backend holds the local state. syncing = pushing. local = backend dormant; snapshot persists locally until it returns.",
+  coreWbSpineSynced: "synced",
+  coreWbSpineSyncing: "syncing",
+  coreWbSpineLocal: "local",
+  coreWbValueIdle: "—",
   surfaceWbContractLabel: "contract",
   surfaceWbContractBody: "Visual contract state — idle / draft / valid / sealed. Reflects the current brief and generated plan. Wired to the chamber's local state.",
   surfaceWbContractContract: "wired · reads brief + plan from local Surface state",
