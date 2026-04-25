@@ -2329,11 +2329,11 @@ textarea {
    processes. No theatre — structural, informational. */
 .thinking-strip {
   position: relative;
-  height: 2px;
+  height: 3px;
   width: 100%;
-  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 12%, transparent);
+  background: color-mix(in oklab, var(--cc-warn) 14%, transparent);
   overflow: hidden;
-  border-radius: 1px;
+  border-radius: 2px;
 }
 .thinking-strip::after {
   content: "";
@@ -2341,9 +2341,14 @@ textarea {
   top: 0;
   bottom: 0;
   left: 0;
-  width: 35%;
-  background: color-mix(in oklab, var(--chamber-dna, var(--cc-info)) 70%, transparent);
-  animation: scanShimmer 1.4s var(--ease-swift) infinite;
+  width: 38%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--cc-warn) 50%,
+    transparent 100%
+  );
+  animation: scanShimmer 1.6s var(--ease-swift) infinite;
 }
 
 /* ——— Runtime tone overrides for legacy tokens ———
@@ -2761,11 +2766,11 @@ textarea {
 }
 .insight-ready-body {
   font-family: var(--serif);
-  font-size: 28px;
-  line-height: 1.3;
-  letter-spacing: -0.018em;
+  font-size: 32px;
+  line-height: 1.25;
+  letter-spacing: -0.022em;
   color: var(--text-primary);
-  max-width: 620px;
+  max-width: 680px;
 }
 .insight-ready-sub {
   font-family: var(--sans);
@@ -5695,8 +5700,8 @@ textarea {
   max-width: 720px;
 }
 .term-output-hero .term-output-title {
-  font-size: 32px;
-  letter-spacing: -0.012em;
+  font-size: 36px;
+  letter-spacing: -0.018em;
 }
 .term-output-hero .term-output-lead {
   font-size: 15px;
@@ -6530,12 +6535,38 @@ textarea {
 }
 
 /* Plan canvas — o tint DNA 3% sobre bg-elevated era a única cor
-   de fundo que separava o canvas do resto; passa a neutro premium. */
+   de fundo que separava o canvas do resto; passa a momento curado:
+   material fotográfico premium para o "wow" quando o plano aterra.
+   Inset highlight branco + gradient suave + lift shadow. Continua
+   3-color compliant — pure white luz, no chamber tint. */
 [data-surface-plan-preview] {
-  background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-elevated)) !important;
+  background-color: var(--bg-surface) !important;
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.50) 0%,
+    rgba(255, 255, 255, 0) 32%
+  ) !important;
+  border: 1px solid var(--border-color-hairline);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 18px 40px -12px rgba(0, 0, 0, 0.10) !important;
 }
 [data-surface-plan-preview] > div > span:first-child {
   color: var(--text-primary) !important;
+}
+[data-theme="dark"] [data-surface-plan-preview],
+[data-theme="sepia"] [data-surface-plan-preview] {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.045) 0%,
+    rgba(255, 255, 255, 0) 32%
+  ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.42),
+    0 18px 40px -12px rgba(0, 0, 0, 0.55) !important;
 }
 
 /* Background depth — handled directly in the main [data-theme="light"]
