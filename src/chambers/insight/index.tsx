@@ -11,7 +11,7 @@ import Thread from "./Thread";
 import Composer from "./Composer";
 import VerdictBadge from "./VerdictBadge";
 import InsightLayout from "./InsightLayout";
-import ContextStrip from "./InsightRail";
+import InsightWorkbench from "./InsightWorkbench";
 import {
   EMPTY_LIVE,
   extractAnswer,
@@ -185,16 +185,13 @@ export default function Insight() {
   const isEmpty = notes.length === 0 && !pending && !error;
   const priorTurnsInContext = Math.min(activeMission?.notes?.length ?? 0, 8);
 
-  const strip = (
-    <ContextStrip
+  const workbench = (
+    <InsightWorkbench
       mission={activeMission}
       principles={principles}
-      trail={verdictTrail}
       live={live}
       pending={pending}
-      lastConfidence={lastConfidence}
-      lastVerdictRefused={!!lastVerdict?.refused}
-      onAbort={() => abortRef.current?.abort()}
+      lastVerdict={lastVerdict}
     />
   );
 
@@ -270,7 +267,7 @@ export default function Insight() {
         tagline={copy.chambers.insight.sub}
         mock={backend.mode === "mock"}
       />
-      <InsightLayout strip={strip} scroll={scroll} floor={floor} />
+      <InsightLayout workbench={workbench} scroll={scroll} floor={floor} />
     </div>
   );
 }

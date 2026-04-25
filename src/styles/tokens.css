@@ -2398,8 +2398,31 @@ textarea {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  padding: var(--space-3) 0;
+}
+/* Thread shell — wraps the conversation in a clean bordered pill,
+   sibling family of .surface-cockpit and .surface-rail-shell.
+   Insight stays single-column, but the conversation lives inside a
+   contained surface instead of floating loose in the center column. */
+.insight-thread-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-4) 0 var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 36%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+[data-theme="dark"] .insight-thread-shell,
+[data-theme="sepia"] .insight-thread-shell {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 18%, transparent);
 }
 .insight-center-floor {
   width: 100%;

@@ -191,6 +191,29 @@ export interface Copy {
   surfaceWireframesEmptyKicker: string;
   surfaceWireframesEmptyBody: string;
   surfaceWireframesEmptyContract: string;
+  // Insight Workbench lenses — 5 chips on the evidence territory.
+  // All wired (real-time, derived from local live + verdict state).
+  insightWbLabel: string;
+  insightWbStatusIdle: string;
+  insightWbStatusRunning: string;
+  insightWbStatusVerdict: string;
+  insightWbStatusRefused: string;
+  insightWbTriadLabel: string;
+  insightWbTriadBody: string;
+  insightWbJudgeLabel: string;
+  insightWbJudgeBody: string;
+  insightWbJudgeIdle: string;
+  insightWbJudgeHigh: string;
+  insightWbJudgeLow: string;
+  insightWbDivergenceLabel: string;
+  insightWbDivergenceBody: string;
+  insightWbMemoryLabel: string;
+  insightWbMemoryBody: string;
+  insightWbMemoryClean: string;
+  insightWbMemoryFailed: string;
+  insightWbDoctrineLabel: string;
+  insightWbDoctrineBody: string;
+  insightWbValueIdle: string;
   // Surface Workbench lenses — five tools at the top of the chamber
   // that narrate the visual territory: contract · design system ·
   // layout/grid · component inventory · state matrix. Each carries
@@ -482,6 +505,27 @@ const PT: Copy = {
   surfaceWireframesEmptyKicker: "— wireframes · sketchbook · não ligado",
   surfaceWireframesEmptyBody: "Modo de ideação manual — esboços, anotações, direções rápidas antes do plano. O backend de wireframes ainda não existe; Signal não pinta sketchbook que não foi guardado.",
   surfaceWireframesEmptyContract: "espera por: POST /surface/wireframes/{mission} · GET /surface/wireframes/{mission}",
+  insightWbLabel: "INSIGHT",
+  insightWbStatusIdle: "em repouso · pronto para a próxima pergunta",
+  insightWbStatusRunning: "três análises a correr · juiz a aguardar",
+  insightWbStatusVerdict: "veredicto pronunciado",
+  insightWbStatusRefused: "recusado · divergência ou falha prévia",
+  insightWbTriadLabel: "triad",
+  insightWbTriadBody: "Três análises paralelas. Lê o estado em tempo real (running x/3 ou done). Sem tool use — só evidência sob pressão.",
+  insightWbJudgeLabel: "judge",
+  insightWbJudgeBody: "Juiz das três respostas. high se concordam exactamente em factos e números; low se qualquer divergência. Recusa por defeito.",
+  insightWbJudgeIdle: "—",
+  insightWbJudgeHigh: "high",
+  insightWbJudgeLow: "low",
+  insightWbDivergenceLabel: "divergence",
+  insightWbDivergenceBody: "Pontos onde as três respostas discordaram. 0 quando o juiz devolve high; ≥1 quando recusa por inconsistência.",
+  insightWbMemoryLabel: "memory",
+  insightWbMemoryBody: "Failure memory · esta pergunta já causou problemas antes? Se sim, Signal recusa por princípio mesmo que as três respostas concordem.",
+  insightWbMemoryClean: "clean",
+  insightWbMemoryFailed: "failed",
+  insightWbDoctrineLabel: "doctrine",
+  insightWbDoctrineBody: "Princípios em vigor que viajam com cada pergunta. Inscritos em Core › Policies; aplicados a todas as triad runs desta missão.",
+  insightWbValueIdle: "—",
   surfaceWbContractLabel: "contract",
   surfaceWbContractBody: "Estado do contrato visual — idle / draft / valid / sealed. Reflete o brief actual e o plano gerado. Wired ao estado local da câmara.",
   surfaceWbContractContract: "wired · lê brief + plan do estado local Surface",
@@ -771,6 +815,27 @@ const EN: Copy = {
   surfaceWireframesEmptyKicker: "— wireframes · sketchbook · not wired",
   surfaceWireframesEmptyBody: "Manual ideation — sketches, annotations, fast directions before the plan. The wireframes backend does not exist yet; Signal does not paint a sketchbook nobody saved.",
   surfaceWireframesEmptyContract: "awaiting: POST /surface/wireframes/{mission} · GET /surface/wireframes/{mission}",
+  insightWbLabel: "INSIGHT",
+  insightWbStatusIdle: "at rest · ready for the next question",
+  insightWbStatusRunning: "three analyses running · judge pending",
+  insightWbStatusVerdict: "verdict pronounced",
+  insightWbStatusRefused: "refused · divergence or prior failure",
+  insightWbTriadLabel: "triad",
+  insightWbTriadBody: "Three parallel analyses. Reads live state (running x/3 or done). No tool use — only evidence under pressure.",
+  insightWbJudgeLabel: "judge",
+  insightWbJudgeBody: "Judge of the three answers. high if they agree exactly on facts and numbers; low on any divergence. Refuses by default.",
+  insightWbJudgeIdle: "—",
+  insightWbJudgeHigh: "high",
+  insightWbJudgeLow: "low",
+  insightWbDivergenceLabel: "divergence",
+  insightWbDivergenceBody: "Points where the three answers disagreed. 0 when the judge returns high; ≥1 when it refuses for inconsistency.",
+  insightWbMemoryLabel: "memory",
+  insightWbMemoryBody: "Failure memory · has this question caused problems before? If so, Signal refuses by principle even when the three answers agree.",
+  insightWbMemoryClean: "clean",
+  insightWbMemoryFailed: "failed",
+  insightWbDoctrineLabel: "doctrine",
+  insightWbDoctrineBody: "Active principles travelling with each question. Inscribed in Core › Policies; applied to every triad run in this mission.",
+  insightWbValueIdle: "—",
   surfaceWbContractLabel: "contract",
   surfaceWbContractBody: "Visual contract state — idle / draft / valid / sealed. Reflects the current brief and generated plan. Wired to the chamber's local state.",
   surfaceWbContractContract: "wired · reads brief + plan from local Surface state",
