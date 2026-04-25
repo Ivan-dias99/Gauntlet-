@@ -414,6 +414,7 @@ export default function Terminal() {
           copy={copy}
           missionTitle={activeMission?.title ?? null}
           activeTask={activeTask}
+          tasks={activeMission?.tasks ?? []}
         />
 
         {unreachable && err ? (

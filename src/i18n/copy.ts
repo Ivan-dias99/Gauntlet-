@@ -103,6 +103,27 @@ export interface Copy {
   termConnectorsNotWiredTitle: string;
   termConnectorsNotWiredBody: string;
   termConnectorsNotWiredContract: string;
+  // Terminal Workbench lenses — five tools above the composer that
+  // narrate the execution territory: repo · diff · gates · deploy ·
+  // queue. Each carries a label, a flyout body, and the backend
+  // contract pending wiring (Run Queue is partially wired — it reads
+  // mission.tasks).
+  termWbRepoLabel: string;
+  termWbRepoBody: string;
+  termWbRepoContract: string;
+  termWbDiffLabel: string;
+  termWbDiffBody: string;
+  termWbDiffContract: string;
+  termWbGatesLabel: string;
+  termWbGatesBody: string;
+  termWbGatesContract: string;
+  termWbDeployLabel: string;
+  termWbDeployBody: string;
+  termWbDeployContract: string;
+  termWbQueueLabel: string;
+  termWbQueueBody: string;
+  termWbQueueContract: string;
+  termWbValueIdle: string;
   // Composer identity zone (workbench-strip family).
   termComposerLabel: string;
   termComposerPathRoot: string;
@@ -367,6 +388,22 @@ const PT: Copy = {
   termConnectorsNotWiredTitle: "connectors · não ligado",
   termConnectorsNotWiredBody: "Registry de conectores externos ainda não existe. GitHub, Vercel, fontes de docs ficam por ligar — Signal não pinta integração que não tem.",
   termConnectorsNotWiredContract: "espera por: GET /connectors · POST /connectors/{id}/connect",
+  termWbRepoLabel: "repo",
+  termWbRepoBody: "Lente do repositório — root, branch ativa, dirty state, remote, último commit. O backend git ainda não existe; Signal não inventa branch.",
+  termWbRepoContract: "espera por: GET /repo/status · GET /repo/branches · POST /repo/checkout",
+  termWbDiffLabel: "diff",
+  termWbDiffBody: "Lente do diff atual — ficheiros alterados, additions/deletions, staged/unstaged, conflitos. Signal não fabrica diff sem repo real.",
+  termWbDiffContract: "espera por: GET /repo/diff · GET /repo/status",
+  termWbGatesLabel: "gates",
+  termWbGatesBody: "Build gates — typecheck, build, tests, lint, smoke, runtime health. Signal não declara verde sem o gate ter corrido.",
+  termWbGatesContract: "espera por: GET /build/status · POST /build/run",
+  termWbDeployLabel: "deploy",
+  termWbDeployBody: "Lente de deploy — Vercel preview/prod, URL ativo, commit SHA, env, logs. Signal não anuncia URL de deploy que não foi feito.",
+  termWbDeployContract: "espera por: GET /deploy/status · GET /deploy/{env}/logs",
+  termWbQueueLabel: "queue",
+  termWbQueueBody: "Run queue desta missão — tarefas activas, pendentes, bloqueadas, concluídas, falhadas. Lê do spine; conta o que está realmente lá.",
+  termWbQueueContract: "wired · lê activeMission.tasks no spine local",
+  termWbValueIdle: "—",
 
   workbench: "bancada",
   recentArtifacts: "arquivo da missão",
@@ -593,6 +630,22 @@ const EN: Copy = {
   termConnectorsNotWiredTitle: "connectors · not wired",
   termConnectorsNotWiredBody: "External connector registry does not exist yet. GitHub, Vercel, docs sources await wiring — Signal does not paint integrations it has not earned.",
   termConnectorsNotWiredContract: "awaiting: GET /connectors · POST /connectors/{id}/connect",
+  termWbRepoLabel: "repo",
+  termWbRepoBody: "Repository lens — root, active branch, dirty state, remote, last commit. The git backend does not exist yet; Signal does not invent a branch.",
+  termWbRepoContract: "awaiting: GET /repo/status · GET /repo/branches · POST /repo/checkout",
+  termWbDiffLabel: "diff",
+  termWbDiffBody: "Diff lens — files changed, additions/deletions, staged/unstaged, conflicts. Signal does not fabricate a diff without a real repo.",
+  termWbDiffContract: "awaiting: GET /repo/diff · GET /repo/status",
+  termWbGatesLabel: "gates",
+  termWbGatesBody: "Build gates — typecheck, build, tests, lint, smoke, runtime health. Signal does not declare green without the gate having run.",
+  termWbGatesContract: "awaiting: GET /build/status · POST /build/run",
+  termWbDeployLabel: "deploy",
+  termWbDeployBody: "Deploy lens — Vercel preview/prod, live URL, commit SHA, env, logs. Signal does not announce a deploy URL that has not been deployed.",
+  termWbDeployContract: "awaiting: GET /deploy/status · GET /deploy/{env}/logs",
+  termWbQueueLabel: "queue",
+  termWbQueueBody: "Mission run queue — active, pending, blocked, done and failed tasks. Reads from spine; counts what is actually there.",
+  termWbQueueContract: "wired · reads activeMission.tasks from the local spine",
+  termWbValueIdle: "—",
 
   workbench: "workbench",
   recentArtifacts: "mission archive",

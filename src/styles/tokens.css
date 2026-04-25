@@ -5048,6 +5048,93 @@ textarea {
   opacity: 0.8;
 }
 
+/* ──── Workbench lenses — Repo · Diff · Gates · Deploy · Queue ────
+   Five compact buttons on the right side of the workbench strip that
+   narrate the execution territory. Each carries an icon, a label and
+   a value chip; the not-wired lenses get a warn dot in the corner so
+   the un-wired status reads at a glance, before the click. */
+.term-workbench-lenses {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+  position: relative;
+}
+.term-wb-lens {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 7%, transparent);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-meta);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast),
+    border-color var(--dur-fast),
+    color var(--dur-fast);
+  position: relative;
+}
+.term-wb-lens:hover {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 24%, color-mix(in oklab, var(--text-primary) 7%, transparent));
+  color: var(--text-secondary);
+}
+.term-wb-lens[data-active="true"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, var(--bg-elevated));
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, var(--border-color-soft));
+  color: var(--chamber-dna, var(--ember));
+}
+.term-wb-lens-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.term-wb-lens-icon svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 1.85;
+}
+.term-wb-lens-label {
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  flex-shrink: 0;
+}
+.term-wb-lens-value {
+  color: var(--text-ghost);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.term-wb-lens[data-active="true"] .term-wb-lens-value,
+.term-wb-lens[data-wired="true"] .term-wb-lens-value {
+  color: inherit;
+}
+.term-wb-lens[data-wired="false"]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cc-warn);
+  opacity: 0.55;
+}
+/* Flyout anchor — positions the lens flyout below the workbench strip,
+   right-aligned so it doesn't overflow narrow viewports. */
+.term-workbench-flyout-anchor {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(420px, calc(100vw - 48px));
+  z-index: 20;
+}
+.term-workbench-strip { position: relative; }
+
 /* ——— Editorial output canvas ———
    No card, no wrapper. The chamber body itself is the output surface.
    The output column sits on an editorial max-width with generous
