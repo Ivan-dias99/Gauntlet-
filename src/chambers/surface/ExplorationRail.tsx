@@ -47,11 +47,14 @@ export default function ExplorationRail({
     }
   }, [plan, planSeen]);
 
+  // Cut wave: Files and Wireframes tabs hidden until the backend
+  // actually exists. The view-body code stays in place (FilesView /
+  // WireframesView) for the future re-introduction; the router just
+  // doesn't surface them as choices today. Plan tab appears only
+  // when a plan has actually been generated.
   const tabs: Array<{ key: View; label: string; wired: boolean }> = [
-    { key: "brief",      label: copy.surfaceCanvasTabBrief,      wired: true  },
-    { key: "plan",       label: copy.surfaceCanvasTabPlan,       wired: !!plan },
-    { key: "files",      label: copy.surfaceCanvasTabFiles,      wired: false },
-    { key: "wireframes", label: copy.surfaceCanvasTabWireframes, wired: false },
+    { key: "brief", label: copy.surfaceCanvasTabBrief, wired: true },
+    ...(plan ? [{ key: "plan" as View, label: copy.surfaceCanvasTabPlan, wired: true }] : []),
   ];
 
   return (
