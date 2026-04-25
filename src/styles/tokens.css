@@ -6462,3 +6462,71 @@ textarea {
   margin: 0;
   max-width: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LOCK-IN · 3-color discipline · semantic only on data
+   ═══════════════════════════════════════════════════════════════════════
+   Directive (2026-04-25): "o meu website só tem três cores — preto
+   premium, branco premium e cinza opaco premium. O resto são dados
+   importantes realçados por semântica."
+
+   Chamber-DNA tints continuavam a pintar chrome (hero cards, active
+   selectors, hover surfaces, focus glows). Neutralizar para a regra
+   das 3 cores. As cores semânticas (cc-ok / cc-err / cc-warn /
+   cc-info) ficam intactas — elas são para DADOS, não para UI.
+
+   Não tocado:
+     · workbench (.term-workbench-strip e descendentes)
+     · composer (.term-command, .insight-composer, .doctrine-composer)
+     · mission-pill-dot (semantic chamber identity, ponto pequeno)
+     · tab-sub::after underline color (active tab indicator)
+     · cc-* (status colors stay for data signals)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Hero cards — backgrounds passam de DNA-tinted para neutro premium.
+   Fica a mesma profundidade via opacidade; perde a aura colorida. */
+.term-output-hero {
+  background: color-mix(in oklab, var(--text-primary) 1.5%, transparent);
+  border-color: color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+.surface-rail-hero {
+  background: color-mix(in oklab, var(--text-primary) 1.5%, transparent);
+}
+
+/* Insight thread answer card — bg DNA-tinted neutralizado. */
+.turn[data-turn="answer"] {
+  background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-surface));
+}
+
+/* Active selector pills (Prototype / Slide deck / Hi-fi / AGENT / CREW
+   e similares) — não são DADOS, são SETTINGS. Trocam o tint DNA por
+   slate neutro. O selecionado lê com presença sem cor de família. */
+.surface-segmented-opt[data-active="true"] {
+  background: color-mix(in oklab, var(--text-primary) 8%, var(--bg-elevated));
+  color: var(--text-primary);
+}
+
+/* Surface shortcut cards — hover passa a neutro (cinza premium). */
+.surface-rail-card:hover {
+  border-color: color-mix(in oklab, var(--text-primary) 16%, transparent);
+  background: color-mix(in oklab, var(--text-primary) 2%, var(--bg-elevated));
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--text-primary) 6%, transparent),
+    0 6px 14px -4px color-mix(in oklab, var(--text-primary) 8%, transparent);
+}
+
+/* Plan canvas — o tint DNA 3% sobre bg-elevated era a única cor
+   de fundo que separava o canvas do resto; passa a neutro premium. */
+[data-surface-plan-preview] {
+  background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-elevated)) !important;
+}
+[data-surface-plan-preview] > div > span:first-child {
+  color: var(--text-primary) !important;
+}
+
+/* Background depth — bg ganha um pouco mais de presença para o
+   bg-surface (#ffffff) levitar com mais clareza. Continua a 3-color
+   discipline; é só um shade mais distinto entre página e container. */
+[data-theme="light"] {
+  --bg: #f5f5f7;
+}
