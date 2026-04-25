@@ -63,15 +63,16 @@
 
 /* ——— DARK — premium ink (default) ———
    Neutral cool blacks, no warm brown undertone. White-on-black
-   contrast for ultra-definition reads. Borders refined; shadows
-   tightened; depth carried by tone, not warmth. */
+   contrast for ultra-definition reads. Pure white text, deep ink
+   surfaces. Gray bridges only when necessary; semantic warmth lives
+   in cc-* (data signals), never in chrome. */
 :root,
 [data-theme="dark"] {
-  --bg: #0a0a0b;
+  --bg: #08080a;
   --bg-surface: #131316;
   --bg-sunken: #050507;
   --bg-elevated: #1c1c20;
-  --bg-input: #0f0f12;
+  --bg-input: #0e0e11;
 
   --border-color-soft:   color-mix(in oklab, #ffffff 7%, transparent);
   --border-color-mid:    color-mix(in oklab, #ffffff 13%, transparent);
@@ -81,12 +82,12 @@
   --border-strong: 1px solid var(--border-color-strong);
   --border: var(--border-color-mid); /* legacy alias for raw color usage */
 
-  --text-primary: #fafafa;
-  --text-secondary: #a8a8b0;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b8;
   --text-muted: #6a6a72;
   --text-ghost: #3a3a42;
 
-  --accent: #fafafa;
+  --accent: #ffffff;
   --accent-dim: #6a6a72;
   --accent-glow: rgba(255, 255, 255, 0.06);
   --ember: #d07a5a;
@@ -98,16 +99,18 @@
   --shadow-panel: 0 2px 4px rgba(0, 0, 0, 0.30), 0 10px 28px rgba(0, 0, 0, 0.35);
   --shadow-float: 0 4px 10px rgba(0, 0, 0, 0.40), 0 22px 50px rgba(0, 0, 0, 0.45);
 
-  /* Claude Code terminal hues */
-  --cc-fg: #fafafa;
+  /* cc-* — natural warmth on dark. Earth tones polished for AI
+     workstation, not neon. Forest, terracotta, honey, slate, plum,
+     teal — same family as light, brightness adjusted for contrast. */
+  --cc-fg: #ffffff;
   --cc-dim: #7a7a82;
-  --cc-prompt: #fafafa;
-  --cc-ok: #6aa882;
-  --cc-err: #d46a5a;
+  --cc-prompt: #ffffff;
+  --cc-ok: #7ab48a;
+  --cc-err: #d4785a;
   --cc-warn: #d8b058;
-  --cc-info: #8aa4c8;
-  --cc-tool: #c7a2d8;
-  --cc-path: #8ab0a4;
+  --cc-info: #98b0c8;
+  --cc-tool: #b8a2c8;
+  --cc-path: #8ab4a0;
   --cc-str: #d4a878;
   --cc-kw: #d48860;
 
@@ -120,14 +123,17 @@
 
 /* ——— LIGHT — premium white (Vision Pro / Cursor) ———
    Pure neutrals, no warm undertone. Ultra-definition reads:
-   near-black on premium white. Surfaces are real white, not cream.
-   Borders refined; shadows softened; depth carried by tone, not warmth. */
+   pure black on crystalline white. Surfaces are real white;
+   gray exists only to bridge black ↔ white, never to dominate.
+   Borders refined; shadows softened; depth carried by tone, not warmth.
+   Semantics (cc-*) carry warmth — natural earth tones, polished, not
+   cyberpunk. The shell is monochrome; data is where the colour lives. */
 [data-theme="light"] {
-  --bg: #fafafa;
+  --bg: #f7f7f9;
   --bg-surface: #ffffff;
-  --bg-sunken: #f1f1f3;
+  --bg-sunken: #ededf0;
   --bg-elevated: #ffffff;
-  --bg-input: #f7f7f8;
+  --bg-input: #f9f9fb;
 
   --border-color-soft:   color-mix(in oklab, #000000 5%, transparent);
   --border-color-mid:    color-mix(in oklab, #000000 10%, transparent);
@@ -137,38 +143,41 @@
   --border-strong: 1px solid var(--border-color-strong);
   --border: var(--border-color-mid);
 
-  --text-primary: #0a0a0b;
-  --text-secondary: #4a4a4f;
+  --text-primary: #000000;
+  --text-secondary: #3a3a3f;
   --text-muted: #8a8a90;
-  --text-ghost: #c2c2c8;
+  --text-ghost: #c8c8cd;
 
-  --accent: #1a1a1c;
+  --accent: #000000;
   --accent-dim: #8a8a90;
   --accent-glow: rgba(0, 0, 0, 0.04);
-  --ember: #c25a3a;
+  --ember: #b8542a;
 
-  --terminal-ok: #2a7048;
-  --terminal-warn: #b8842a;
+  --terminal-ok: #2a6a40;
+  --terminal-warn: #a8742a;
 
   --shadow-soft:  0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.03);
   --shadow-panel: 0 2px 6px rgba(0, 0, 0, 0.05), 0 14px 32px rgba(0, 0, 0, 0.07);
   --shadow-float: 0 6px 14px rgba(0, 0, 0, 0.08), 0 28px 60px rgba(0, 0, 0, 0.10);
 
-  --cc-fg: #0a0a0b;
+  /* cc-* — semantic data palette. Natural earth tones, polished,
+     warm-leaning. Forest, terracotta, honey, slate, plum, teal —
+     vibe code, not neon. */
+  --cc-fg: #000000;
   --cc-dim: #8a8a90;
-  --cc-prompt: #1a1a1c;
-  --cc-ok: #2a7048;
-  --cc-err: #b83a2a;
-  --cc-warn: #b8842a;
-  --cc-info: #2a5a90;
-  --cc-tool: #6a4a90;
-  --cc-path: #2a6a5a;
+  --cc-prompt: #000000;
+  --cc-ok: #2a6a40;
+  --cc-err: #a8482a;
+  --cc-warn: #a8742a;
+  --cc-info: #3a5a78;
+  --cc-tool: #6a5078;
+  --cc-path: #3a6a5a;
   --cc-str: #8a5a30;
-  --cc-kw: #a84820;
+  --cc-kw: #a85428;
 
-  --glass-bg: color-mix(in oklab, #ffffff 75%, transparent);
+  --glass-bg: color-mix(in oklab, #ffffff 80%, transparent);
   --glass-border: color-mix(in oklab, #000000 8%, transparent);
-  --glass-hl: color-mix(in oklab, #ffffff 50%, transparent);
+  --glass-hl: color-mix(in oklab, #ffffff 55%, transparent);
 }
 
 /* ——— SEPIA — midnight archive ——— */
@@ -4464,8 +4473,8 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 32px 32px 28px;
+  gap: 16px;
+  padding: 40px 40px 36px;
   text-align: center;
   border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
   background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 2%, transparent);
@@ -5677,8 +5686,8 @@ textarea {
 .term-output-hero {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 22px 26px;
+  gap: 14px;
+  padding: 32px 36px;
   background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 2.5%, transparent);
   border: 1px solid color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, color-mix(in oklab, var(--text-primary) 6%, transparent));
   border-radius: 14px;
@@ -6524,12 +6533,9 @@ textarea {
   color: var(--text-primary) !important;
 }
 
-/* Background depth — bg ganha um pouco mais de presença para o
-   bg-surface (#ffffff) levitar com mais clareza. Continua a 3-color
-   discipline; é só um shade mais distinto entre página e container. */
-[data-theme="light"] {
-  --bg: #f5f5f7;
-}
+/* Background depth — handled directly in the main [data-theme="light"]
+   block (--bg: #f7f7f9). Override removed to let the source of truth
+   live in one place; keeps the cascade clean. */
 
 /* ═══════════════════════════════════════════════════════════════════════
    8K · liquid glass varnish
@@ -6565,13 +6571,13 @@ textarea {
 .surface-rail-shell {
   background-image: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.55) 0%,
-    rgba(255, 255, 255, 0) 38%
+    rgba(255, 255, 255, 0.40) 0%,
+    rgba(255, 255, 255, 0) 28%
   );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    0 1px 2px rgba(0, 0, 0, 0.035),
-    0 14px 32px -10px rgba(0, 0, 0, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.030),
+    0 14px 32px -10px rgba(0, 0, 0, 0.055);
 }
 
 [data-theme="dark"] .term-output-hero,
@@ -6584,11 +6590,11 @@ textarea {
 [data-theme="sepia"] .surface-rail-shell {
   background-image: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.045) 0%,
-    rgba(255, 255, 255, 0) 38%
+    rgba(255, 255, 255, 0.035) 0%,
+    rgba(255, 255, 255, 0) 28%
   );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 1px 2px rgba(0, 0, 0, 0.40),
     0 14px 32px -10px rgba(0, 0, 0, 0.45);
 }
