@@ -23,8 +23,10 @@ export default function SurfaceLayout({ left, right }: Props) {
         // floor so segmented labels never truncate.
         gridTemplateColumns: "minmax(480px, 44%) minmax(0, 1fr)",
         gap: "var(--space-4)",
-        padding: "var(--space-4)",
-        height: "100%",
+        padding: "0 var(--space-4) var(--space-4)",
+        // Fill the remaining height inside chamber-body after the
+        // SurfaceWorkbench strip lays itself out at the top.
+        flex: 1,
         minHeight: 0,
       }}
     >

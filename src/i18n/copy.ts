@@ -152,6 +152,32 @@ export interface Copy {
   // the pre-cockpit Surface.
   surfaceRailEmptyKicker: string;
   surfaceRailEmptyBody: string;
+  // Surface Workbench lenses — five tools at the top of the chamber
+  // that narrate the visual territory: contract · design system ·
+  // layout/grid · component inventory · state matrix. Each carries
+  // a label, a flyout body and the backend contract pending.
+  // Contract value is wired (idle / draft / valid / sealed); the
+  // others are honest "not wired" until the design backend lands.
+  surfaceWbContractLabel: string;
+  surfaceWbContractBody: string;
+  surfaceWbContractContract: string;
+  surfaceWbContractIdle: string;
+  surfaceWbContractDraft: string;
+  surfaceWbContractValid: string;
+  surfaceWbContractSealed: string;
+  surfaceWbDsLabel: string;
+  surfaceWbDsBody: string;
+  surfaceWbDsContract: string;
+  surfaceWbLayoutLabel: string;
+  surfaceWbLayoutBody: string;
+  surfaceWbLayoutContract: string;
+  surfaceWbComponentsLabel: string;
+  surfaceWbComponentsBody: string;
+  surfaceWbComponentsContract: string;
+  surfaceWbStatesLabel: string;
+  surfaceWbStatesBody: string;
+  surfaceWbStatesContract: string;
+  surfaceWbValueIdle: string;
 
   // Shared workbench / task queue copy (used by Terminal)
   workbench: string;
@@ -370,6 +396,26 @@ const PT: Copy = {
   surfaceFidelityHiFi: "Alta fidelidade",
   surfaceRailEmptyKicker: "— sem contrato visual ainda",
   surfaceRailEmptyBody: "Define modo, fidelidade e design system, depois escreve o brief e gera o contrato visual. O plano aparece aqui — screens, componentes, notas.",
+  surfaceWbContractLabel: "contract",
+  surfaceWbContractBody: "Estado do contrato visual — idle / draft / valid / sealed. Reflete o brief actual e o plano gerado. Wired ao estado local da câmara.",
+  surfaceWbContractContract: "wired · lê brief + plan do estado local Surface",
+  surfaceWbContractIdle: "idle",
+  surfaceWbContractDraft: "draft",
+  surfaceWbContractValid: "valid",
+  surfaceWbContractSealed: "sealed",
+  surfaceWbDsLabel: "ds",
+  surfaceWbDsBody: "Lente do design system — tokens, typography, radius, colors, spacing. Vai ler do registry quando o Core/Routing expor os DSes; agora só conta o DS escolhido no brief.",
+  surfaceWbDsContract: "espera por: GET /design-systems · GET /design-systems/{id}/tokens",
+  surfaceWbLayoutLabel: "layout",
+  surfaceWbLayoutBody: "Lente de layout — grid, colunas, breakpoints, density, modo responsive. Signal não desenha grid sem o design backend dizer o que é válido.",
+  surfaceWbLayoutContract: "espera por: GET /design/layout · POST /design/layout/probe",
+  surfaceWbComponentsLabel: "components",
+  surfaceWbComponentsBody: "Inventário de componentes — cards, inputs, rails, buttons, panels e seus estados usados no plano. Lê do plano gerado; vazio quando ainda não há plano.",
+  surfaceWbComponentsContract: "wired · lê plan.components quando o plano aterrar",
+  surfaceWbStatesLabel: "states",
+  surfaceWbStatesBody: "Matriz de estados — empty, loading, error, blocked, valid, stale, archived. Signal não pinta state que o backend de design não validou.",
+  surfaceWbStatesContract: "espera por: GET /design/states · POST /design/states/validate",
+  surfaceWbValueIdle: "—",
   termWbRepoLabel: "repo",
   termWbRepoBody: "Lente do repositório — root, branch ativa, dirty state, remote, último commit. O backend git ainda não existe; Signal não inventa branch.",
   termWbRepoContract: "espera por: GET /repo/status · GET /repo/branches · POST /repo/checkout",
@@ -603,6 +649,26 @@ const EN: Copy = {
   surfaceFidelityHiFi: "Hi-fi",
   surfaceRailEmptyKicker: "— no visual contract yet",
   surfaceRailEmptyBody: "Set mode, fidelity and design system, then write the brief and generate the visual contract. The plan lands here — screens, components, notes.",
+  surfaceWbContractLabel: "contract",
+  surfaceWbContractBody: "Visual contract state — idle / draft / valid / sealed. Reflects the current brief and generated plan. Wired to the chamber's local state.",
+  surfaceWbContractContract: "wired · reads brief + plan from local Surface state",
+  surfaceWbContractIdle: "idle",
+  surfaceWbContractDraft: "draft",
+  surfaceWbContractValid: "valid",
+  surfaceWbContractSealed: "sealed",
+  surfaceWbDsLabel: "ds",
+  surfaceWbDsBody: "Design system lens — tokens, typography, radius, colors, spacing. Will read from the registry when Core/Routing exposes DSes; for now it only echoes the brief's DS pick.",
+  surfaceWbDsContract: "awaiting: GET /design-systems · GET /design-systems/{id}/tokens",
+  surfaceWbLayoutLabel: "layout",
+  surfaceWbLayoutBody: "Layout lens — grid, columns, breakpoints, density, responsive mode. Signal does not draw a grid without the design backend declaring what is valid.",
+  surfaceWbLayoutContract: "awaiting: GET /design/layout · POST /design/layout/probe",
+  surfaceWbComponentsLabel: "components",
+  surfaceWbComponentsBody: "Component inventory — cards, inputs, rails, buttons, panels and their used states across the plan. Reads from the generated plan; empty until a plan lands.",
+  surfaceWbComponentsContract: "wired · reads plan.components when a plan arrives",
+  surfaceWbStatesLabel: "states",
+  surfaceWbStatesBody: "State matrix — empty, loading, error, blocked, valid, stale, archived. Signal does not paint a state the design backend has not validated.",
+  surfaceWbStatesContract: "awaiting: GET /design/states · POST /design/states/validate",
+  surfaceWbValueIdle: "—",
   termWbRepoLabel: "repo",
   termWbRepoBody: "Repository lens — root, active branch, dirty state, remote, last commit. The git backend does not exist yet; Signal does not invent a branch.",
   termWbRepoContract: "awaiting: GET /repo/status · GET /repo/branches · POST /repo/checkout",

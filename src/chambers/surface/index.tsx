@@ -11,6 +11,7 @@ import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
 import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
+import SurfaceWorkbench from "./SurfaceWorkbench";
 import CreationPanel from "./CreationPanel";
 import ExplorationRail from "./ExplorationRail";
 
@@ -101,48 +102,57 @@ export default function Surface() {
 
   return (
     <div className="chamber-shell" data-chamber="surface" style={{ height: "100%" }}>
-      <SurfaceLayout
-        left={
-          <>
-            <ChamberHead
-              kicker="— SURFACE"
-              tagline={copy.chambers.surface.sub}
-              mock={mockBannerVisible}
-            />
-            <CreationPanel
-              brief={brief}
-              onBriefChange={patchBrief}
-              prompt={prompt}
-              onPromptChange={setPrompt}
-              onSubmit={submit}
-              pending={pending}
-              mockBanner={mockBannerVisible}
-              missionTitle={activeMission?.title ?? null}
-              principlesCount={principles.length}
-              hasPlan={!!plan}
-            />
-            {unreachable && (
-              <DormantPanel detail={copy.dormantSurface} />
-            )}
-            {err && !unreachable && (
-              <div
-                data-surface-error
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: "var(--t-meta)",
-                  color: "var(--cc-err)",
-                  padding: "6px 10px",
-                  border: "1px solid color-mix(in oklab, var(--cc-err) 36%, transparent)",
-                  borderRadius: "var(--radius-control)",
-                }}
-              >
-                {err}
-              </div>
-            )}
-          </>
-        }
-        right={<ExplorationRail plan={plan} mock={planIsMock} />}
+      <ChamberHead
+        kicker="— SURFACE"
+        tagline={copy.chambers.surface.sub}
+        mock={mockBannerVisible}
       />
+      <div className="chamber-body" style={{ paddingTop: 0, display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        <SurfaceWorkbench
+          brief={brief}
+          promptDraft={prompt}
+          plan={plan}
+          pending={pending}
+          missionTitle={activeMission?.title ?? null}
+        />
+        <SurfaceLayout
+          left={
+            <>
+              <CreationPanel
+                brief={brief}
+                onBriefChange={patchBrief}
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                onSubmit={submit}
+                pending={pending}
+                mockBanner={mockBannerVisible}
+                missionTitle={activeMission?.title ?? null}
+                principlesCount={principles.length}
+                hasPlan={!!plan}
+              />
+              {unreachable && (
+                <DormantPanel detail={copy.dormantSurface} />
+              )}
+              {err && !unreachable && (
+                <div
+                  data-surface-error
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: "var(--t-meta)",
+                    color: "var(--cc-err)",
+                    padding: "6px 10px",
+                    border: "1px solid color-mix(in oklab, var(--cc-err) 36%, transparent)",
+                    borderRadius: "var(--radius-control)",
+                  }}
+                >
+                  {err}
+                </div>
+              )}
+            </>
+          }
+          right={<ExplorationRail plan={plan} mock={planIsMock} />}
+        />
+      </div>
     </div>
   );
 }
