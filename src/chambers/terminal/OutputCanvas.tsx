@@ -82,10 +82,12 @@ export default function OutputCanvas({
 }
 
 // ——— Ready (no mission) ———
-// Hero treatment: serif title + lead + three quick-tip rows live inside
-// a centred chamber-DNA-tinted card that vertically fills the column.
-// Mirrors Surface's right-rail hero pattern — the chamber's empty state
-// reads as a contract statement, not as text floating in space.
+// Hero treatment: serif title + lead inside a centred chamber-DNA-tinted
+// card. The three quick-tip rows that used to live here were retired —
+// they duplicated affordances the composer below already declares
+// (declare task, mission caret, doctrine route). The hero now reads as
+// a single posture statement, leaving the composer as the only voice
+// for action. Mirrors Insight's READY hero discipline.
 function ReadyState({
   copy, artifacts, onReplay,
 }: {
@@ -99,11 +101,6 @@ function ReadyState({
         <span className="term-output-hero-kicker">— terminal · ready</span>
         <h1 className="term-output-title">{copy.termReadyTitle}</h1>
         <p className="term-output-lead">{copy.termReadyLead}</p>
-        <ul className="term-output-hero-tips">
-          <li>{copy.termReadyTipDeclare}</li>
-          <li>{copy.termReadyTipMission}</li>
-          <li>{copy.termReadyTipDoctrine}</li>
-        </ul>
       </div>
       <PreviousArtifacts copy={copy} artifacts={artifacts} onReplay={onReplay} />
     </div>
