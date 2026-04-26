@@ -500,6 +500,7 @@ export default function Terminal() {
         principlesCount={principles.length}
         priorTurns={activeMission?.notes?.length ?? 0}
         mockMode={backend.mode === "mock"}
+        unreachable={!backend.reachable}
         backendReachable={backend.reachable}
         backendReadiness={backend.readiness}
         backendReasons={backend.readinessReasons}

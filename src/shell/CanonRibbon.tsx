@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Chamber } from "../spine/types";
-import { formatPulse } from "../spine/pulse";
+import {
+  formatPulse,
+  lastActivityAt,
+  missionStatusBadge,
+  relativeFromNow,
+  type MissionStatusBadge,
+} from "../spine/pulse";
 import { useSpine } from "../spine/SpineContext";
 import { useBackendStatus } from "../hooks/useBackendStatus";
 import { useCopy } from "../i18n/copy";
@@ -208,34 +214,108 @@ export default function CanonRibbon({ active, onSelect }: Props) {
                   <div className="dropdown-item-meta">{copy.newThreadHint}</div>
                 </button>
                 <div className="dropdown-header">{copy.missions}</div>
-                {missions.map((m) => {
-                  const isActive = m.id === state.activeMissionId;
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => {
-                        switchMission(m.id);
-                        setOpen(false);
-                      }}
-                      className="dropdown-item"
-                      data-active={isActive ? "true" : undefined}
-                    >
-                      <div className="dropdown-item-title">{m.title}</div>
-                      <div className="dropdown-item-meta">
-                        {(() => {
-                          const pulse = formatPulse(m);
-                          const label = copy.chambers[m.chamber].label;
-                          return pulse ? `${label} · ${pulse}` : label;
-                        })()}
-                      </div>
-                    </button>
-                  );
-                })}
+                {[...missions]
+                  .sort((a, b) => lastActivityAt(b) - lastActivityAt(a))
+                  .map((m) => {
+                    const isActive = m.id === state.activeMissionId;
+                    const badge = missionStatusBadge(m);
+                    const pulse = formatPulse(m);
+                    const label = copy.chambers[m.chamber].label;
+                    const since = relativeFromNow(lastActivityAt(m));
+                    const lastArtifact = m.lastArtifact ?? m.artifacts[0] ?? null;
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => {
+                          switchMission(m.id);
+                          setOpen(false);
+                        }}
+                        className="dropdown-item"
+                        data-active={isActive ? "true" : undefined}
+                        data-mission-status={badge}
+                        title={
+                          lastArtifact
+                            ? `Último artifact: ${lastArtifact.taskTitle}`
+                            : "Sem artifacts gravados"
+                        }
+                      >
+                        <div
+                          className="dropdown-item-title"
+                          style={{ display: "flex", alignItems: "center", gap: 8 }}
+                        >
+                          <MissionStatusDot badge={badge} />
+                          <span
+                            style={{
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              minWidth: 0,
+                              flex: 1,
+                            }}
+                          >
+                            {m.title}
+                          </span>
+                        </div>
+                        <div className="dropdown-item-meta">
+                          {label}
+                          {pulse ? ` · ${pulse}` : ""}
+                          {` · ${since}`}
+                        </div>
+                        {lastArtifact && (
+                          <div
+                            className="dropdown-item-meta"
+                            style={{
+                              fontSize: 10,
+                              color: "var(--text-ghost)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            ⌬ {lastArtifact.taskTitle}
+                            {lastArtifact.terminatedEarly ? " (parcial)" : ""}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
               </div>
             )}
           </div>
         ) : null}
       </div>
     </header>
+  );
+}
+
+// Task 8 (Claude Code list) — coloured dot encoding mission lifecycle.
+// Pure-additive: only renders inside the mission dropdown items added
+// by this wave; the canonical mission pill chrome is untouched.
+const STATUS_COLOR: Record<MissionStatusBadge, string> = {
+  running: "var(--cc-warn)",
+  blocked: "var(--cc-err)",
+  idle:    "var(--text-secondary)",
+  closed:  "var(--text-ghost)",
+  fresh:   "var(--accent)",
+};
+
+function MissionStatusDot({ badge }: { badge: MissionStatusBadge }) {
+  return (
+    <span
+      aria-label={badge}
+      title={badge}
+      data-mission-dot={badge}
+      style={{
+        width: 8,
+        height: 8,
+        borderRadius: "50%",
+        background: STATUS_COLOR[badge],
+        flexShrink: 0,
+        boxShadow:
+          badge === "running"
+            ? `0 0 0 2px color-mix(in oklab, ${STATUS_COLOR[badge]} 30%, transparent)`
+            : undefined,
+      }}
+    />
   );
 }

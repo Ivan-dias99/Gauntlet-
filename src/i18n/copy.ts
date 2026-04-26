@@ -472,7 +472,7 @@ const PT: Copy = {
   labRailStatusRouteAgent: "agent",
 
   labRailPrinciplesKicker: "— em vigor",
-  labRailPrinciplesEmpty: "sem princípios activos · inscreve em Core › Policies",
+  labRailPrinciplesEmpty: "sem princípios do operador · System Doctrine continua activa · inscreve em Core › Policies",
   labRailPrinciplesMore: (n) => `+ ${n} mais`,
 
   labRailTrailKicker: "— trilha",
@@ -745,7 +745,7 @@ const PT: Copy = {
   schoolTagline: "— POLICIES",
   schoolSubtitle: "princípios que vinculam cada chamber",
   schoolInputVoice: "novo princípio",
-  schoolEmpty: "Sem princípios. Adiciona o primeiro.",
+  schoolEmpty: "Sem princípios do operador. Inscreve o primeiro. (System Doctrine continua activa.)",
   schoolEmptyKicker: "Sem princípios",
   schoolEmptyHint: "escreve o primeiro em baixo",
   schoolPlaceholder: "Redigir o próximo princípio…",
@@ -815,7 +815,7 @@ const EN: Copy = {
   labRailStatusRouteAgent: "agent",
 
   labRailPrinciplesKicker: "— in force",
-  labRailPrinciplesEmpty: "no principles active · inscribe at Core › Policies",
+  labRailPrinciplesEmpty: "no operator principles · System Doctrine remains active · inscribe at Core › Policies",
   labRailPrinciplesMore: (n) => `+ ${n} more`,
 
   labRailTrailKicker: "— trail",
@@ -1087,7 +1087,7 @@ const EN: Copy = {
   schoolTagline: "— POLICIES",
   schoolSubtitle: "principles that bind every chamber",
   schoolInputVoice: "new principle",
-  schoolEmpty: "No principles. Add the first.",
+  schoolEmpty: "No operator principles. Inscribe the first. (System Doctrine remains active.)",
   schoolEmptyKicker: "No principles",
   schoolEmptyHint: "write the first one below",
   schoolPlaceholder: "Draft the next principle…",

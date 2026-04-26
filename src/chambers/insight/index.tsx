@@ -6,6 +6,11 @@ import { Note } from "../../spine/types";
 import ChamberHead from "../../shell/ChamberHead";
 import ErrorPanel from "../../shell/ErrorPanel";
 import DormantPanel from "../../shell/DormantPanel";
+import {
+  validateMissionTitle,
+  explainMissionRejection,
+  type MissionRejectionReason,
+} from "../../spine/validation";
 import { useCopy } from "../../i18n/copy";
 import Thread from "./Thread";
 import Composer from "./Composer";
@@ -39,6 +44,7 @@ export default function Insight() {
   const copy = useCopy();
 
   const [input, setInput] = useState("");
+  const [missionRejection, setMissionRejection] = useState<MissionRejectionReason | null>(null);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
@@ -97,6 +103,12 @@ export default function Insight() {
     let targetMissionId = activeMission?.id;
     if (!targetMissionId) {
       const title = v.length > 64 ? v.slice(0, 61).trimEnd() + "…" : v;
+      const verdict = validateMissionTitle(title);
+      if (!verdict.ok) {
+        setMissionRejection(verdict.reason);
+        return;
+      }
+      setMissionRejection(null);
       targetMissionId = createMission(title, "insight");
     }
 
@@ -237,9 +249,50 @@ export default function Insight() {
           )}
         </div>
       )}
+      {missionRejection !== null && (
+        <div
+          role="alert"
+          aria-live="polite"
+          data-mission-rejection
+          style={{
+            margin: "0 auto var(--space-2)",
+            maxWidth: 780,
+            padding: "8px 12px",
+            border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+            borderRadius: 8,
+            color: "var(--cc-warn)",
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-body-sec)",
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 8,
+          }}
+        >
+          <span>missão não ratificada · {explainMissionRejection(missionRejection)}</span>
+          <button
+            type="button"
+            onClick={() => setMissionRejection(null)}
+            aria-label="dispensar aviso"
+            style={{
+              background: "none",
+              border: 0,
+              color: "inherit",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: 11,
+              opacity: 0.7,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <Composer
         value={input}
-        onChange={setInput}
+        onChange={(v) => {
+          if (missionRejection !== null) setMissionRejection(null);
+          setInput(v);
+        }}
         onSubmit={submit}
         pending={pending}
         voiceLabel={copy.labInputVoice}
@@ -252,7 +305,13 @@ export default function Insight() {
         principlesCount={principles.length}
         priorTurns={priorTurnsInContext}
         mockMode={backend.mode === "mock"}
+        unreachable={!backend.reachable}
         routeHint={lastVerdict?.routePath}
+        missionContext={
+          activeMission
+            ? { kind: "continue", title: activeMission.title }
+            : { kind: "new" }
+        }
       />
     </>
   );

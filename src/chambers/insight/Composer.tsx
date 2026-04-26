@@ -25,15 +25,33 @@ interface Props {
   principlesCount: number;
   priorTurns: number;
   mockMode: boolean;
+  // Honest readiness companion — when true the backend is unreachable.
+  // Drives the context flyout's backend chip into "unreachable" instead
+  // of lying "live". Optional so the canonical caller keeps compiling.
+  unreachable?: boolean;
   routeHint?: "triad" | "agent";
+  // Mission Composer semantics — "new" when first send will create a
+  // mission, "continue" with the active title otherwise. Drives the
+  // strip header and submit verb. Optional so the canonical caller
+  // path keeps compiling; defaults to "new" when omitted.
+  missionContext?:
+    | { kind: "new" }
+    | { kind: "continue"; title: string };
 }
 
 type Flyout = null | "context" | "route";
 
 export default function Composer({
   value, onChange, onSubmit, pending, placeholder,
-  voiceLabel, principlesCount, priorTurns, mockMode, routeHint,
+  voiceLabel, principlesCount, priorTurns, mockMode, unreachable, routeHint,
+  missionContext,
 }: Props) {
+  const ctx = missionContext ?? { kind: "new" as const };
+  const readinessLabel = mockMode
+    ? "mock"
+    : unreachable
+      ? "unreachable"
+      : "live";
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
   const [focused, setFocused] = useState(false);
@@ -67,11 +85,59 @@ export default function Composer({
     <div
       ref={shellRef}
       data-insight-composer
+      data-mission-kind={ctx.kind}
       className="insight-composer"
       data-focused={focused ? "true" : undefined}
       data-disabled={pending ? "true" : undefined}
       aria-label={voiceLabel}
     >
+      {/* Mission Strip — sits above the textarea so the operator always
+          knows whether the next send opens a mission or continues one.
+          Pure-additive: zero impact on the textarea / rail / flyouts
+          below; the canonical visual grammar is preserved. */}
+      <div
+        data-insight-mission-strip
+        data-state={ctx.kind}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "6px 14px",
+          borderBottom: "1px solid var(--border-color-soft)",
+          fontFamily: "var(--mono)",
+          fontSize: 10,
+          letterSpacing: "var(--track-label)",
+          textTransform: "uppercase",
+          color: "var(--text-ghost)",
+        }}
+      >
+        <span aria-hidden>◆</span>
+        <span>{ctx.kind === "new" ? "nova missão" : "missão activa"}</span>
+        {ctx.kind === "continue" && (
+          <span
+            style={{
+              color: "var(--text-secondary)",
+              textTransform: "none",
+              letterSpacing: 0,
+              fontFamily: "var(--serif)",
+              fontSize: "var(--t-body-sec)",
+              marginLeft: 4,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              maxWidth: "min(60ch, 70%)",
+            }}
+            title={ctx.title}
+          >
+            {ctx.title}
+          </span>
+        )}
+        <span style={{ flex: 1 }} aria-hidden />
+        <span style={{ opacity: 0.7 }}>
+          {ctx.kind === "new" ? "primeiro envio ratifica" : "envio adiciona turno"}
+        </span>
+      </div>
+
       <textarea
         ref={inputRef}
         autoFocus
@@ -138,7 +204,7 @@ export default function Composer({
         <ContextFlyout
           principlesCount={principlesCount}
           priorTurns={priorTurns}
-          mockMode={mockMode}
+          readinessLabel={readinessLabel}
           onDismiss={() => setFlyout(null)}
         />
       )}
@@ -161,11 +227,11 @@ export default function Composer({
 // about the triad + judge grammar; no fake "switch model" toggle.
 
 function ContextFlyout({
-  principlesCount, priorTurns, mockMode, onDismiss,
+  principlesCount, priorTurns, readinessLabel, onDismiss,
 }: {
   principlesCount: number;
   priorTurns: number;
-  mockMode: boolean;
+  readinessLabel: string;
   onDismiss: () => void;
 }) {
   return (
@@ -202,8 +268,15 @@ function ContextFlyout({
       >
         <span className="insight-composer-flyout-item-glyph">◉</span>
         <span>backend</span>
-        <span className="insight-composer-flyout-item-kicker">
-          {mockMode ? "mock" : "live"}
+        <span
+          className="insight-composer-flyout-item-kicker"
+          style={
+            readinessLabel === "live"
+              ? undefined
+              : { color: "var(--cc-warn)" }
+          }
+        >
+          {readinessLabel}
         </span>
       </button>
     </div>
