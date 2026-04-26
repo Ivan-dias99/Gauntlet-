@@ -14,18 +14,26 @@ export interface BackendStatus {
   reachable: boolean;
   mode: "mock" | "real" | null;
   persistenceDegraded: boolean;
+  persistenceEphemeral: boolean;
   engine: "ready" | "not_initialized" | null;
   readiness: "ready" | "degraded" | "unreachable";
   readinessReasons: string[];
+  // Populated when reachable === false. Names the forwarder failure mode:
+  // "backend_url_not_configured" (Vercel env missing), "network_error",
+  // "timeout", "upstream_fetch_failed", or the raw network message. Lets
+  // the chip render the actionable cause instead of "unreachable".
+  unreachableReason: string | null;
 }
 
 const INITIAL: BackendStatus = {
   reachable: true,
   mode: null,
   persistenceDegraded: false,
+  persistenceEphemeral: false,
   engine: null,
   readiness: "degraded",
   readinessReasons: [],
+  unreachableReason: null,
 };
 
 interface HealthBody {
@@ -33,6 +41,7 @@ interface HealthBody {
   engine?: "ready" | "not_initialized";
   mode?: "mock" | "real";
   persistence_degraded?: boolean;
+  persistence_ephemeral?: boolean;
 }
 
 export function useBackendStatus(): BackendStatus {
@@ -64,7 +73,12 @@ export function useBackendStatus(): BackendStatus {
           }
         } catch (readyErr) {
           if (isBackendUnreachable(readyErr)) {
-            setStatus({ ...INITIAL, reachable: false, readiness: "unreachable" });
+            setStatus({
+              ...INITIAL,
+              reachable: false,
+              readiness: "unreachable",
+              unreachableReason: readyErr.reason,
+            });
             return;
           }
         }
@@ -72,14 +86,21 @@ export function useBackendStatus(): BackendStatus {
           reachable: true,
           mode: body.mode ?? null,
           persistenceDegraded: !!body.persistence_degraded,
+          persistenceEphemeral: !!body.persistence_ephemeral,
           engine: body.engine ?? null,
           readiness,
           readinessReasons,
+          unreachableReason: null,
         });
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
         if (isBackendUnreachable(e)) {
-          setStatus({ ...INITIAL, reachable: false, readiness: "unreachable" });
+          setStatus({
+            ...INITIAL,
+            reachable: false,
+            readiness: "unreachable",
+            unreachableReason: e.reason,
+          });
           return;
         }
         setStatus({ ...INITIAL, reachable: true });

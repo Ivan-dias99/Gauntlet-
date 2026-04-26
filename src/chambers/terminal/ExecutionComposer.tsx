@@ -41,6 +41,12 @@ interface Props {
   backendReachable: boolean;
   backendReadiness: "ready" | "degraded" | "unreachable";
   backendReasons: string[];
+  // Names the forwarder failure mode when the backend is unreachable
+  // (e.g. "backend_url_not_configured" → operator forgot to set
+  // SIGNAL_BACKEND_URL on Vercel). Renders inside the chip so the fix
+  // is visible without opening DevTools.
+  backendUnreachableReason: string | null;
+  persistenceEphemeral: boolean;
   repoLabel?: string | null;
   branchLabel?: string | null;
   diffStats?: { files: number; added: number; removed: number } | null;
@@ -70,7 +76,8 @@ export default function ExecutionComposer({
   copy, value, onChange, onSubmit, pending, missionTitle,
   mode, onModeChange, recentTasks, onPickTask,
   principlesCount, priorTurns, mockMode, backendReachable,
-  backendReadiness, backendReasons, repoLabel, branchLabel, diffStats,
+  backendReadiness, backendReasons, backendUnreachableReason,
+  persistenceEphemeral, repoLabel, branchLabel, diffStats,
   gates, reviewState, reviewRisk, onAttachContext, hasArtifacts,
 }: Props) {
   const [focused, setFocused] = useState(false);
@@ -256,7 +263,9 @@ export default function ExecutionComposer({
             className="term-ws-chip"
             data-tone={!backendReachable ? "warn" : mockMode ? "warn" : backendReadiness === "ready" ? "ok" : "warn"}
             title={!backendReachable
-              ? "backend inacessível"
+              ? backendUnreachableReason === "backend_url_not_configured"
+                ? "Vercel env: defina SIGNAL_BACKEND_URL e faça redeploy"
+                : `backend inacessível: ${backendUnreachableReason ?? "motivo desconhecido"}`
               : mockMode
                 ? "backend em modo simulado — respostas canned"
                 : `backend ${backendReadiness}`}
@@ -264,7 +273,11 @@ export default function ExecutionComposer({
             <span className="term-ws-chip-glyph" aria-hidden>●</span>
             <span className="term-ws-chip-label">backend</span>
             <span className="term-ws-chip-value">
-              {!backendReachable ? "unreachable" : mockMode ? "mock" : backendReadiness}
+              {!backendReachable
+                ? backendUnreachableReason ?? "unreachable"
+                : mockMode
+                  ? "mock"
+                  : backendReadiness}
             </span>
           </span>
           <span className="term-ws-chip" title="repositório ligado">
@@ -338,6 +351,8 @@ export default function ExecutionComposer({
             mode={mode}
             backendReadiness={backendReadiness}
             backendReasons={backendReasons}
+            backendUnreachableReason={backendUnreachableReason}
+            persistenceEphemeral={persistenceEphemeral}
             onAttach={onAttachContext}
             hasArtifacts={hasArtifacts}
           />
@@ -357,7 +372,8 @@ export default function ExecutionComposer({
 // ——— Flyouts ———
 
 function ContextFlyout({
-  principlesCount, priorTurns, mockMode, mode, backendReadiness, backendReasons, onAttach, hasArtifacts,
+  principlesCount, priorTurns, mockMode, mode, backendReadiness, backendReasons,
+  backendUnreachableReason, persistenceEphemeral, onAttach, hasArtifacts,
 }: {
   principlesCount: number;
   priorTurns: number;
@@ -365,6 +381,8 @@ function ContextFlyout({
   mode: RunMode;
   backendReadiness: "ready" | "degraded" | "unreachable";
   backendReasons: string[];
+  backendUnreachableReason: string | null;
+  persistenceEphemeral: boolean;
   onAttach: (kind: "note" | "prior-run" | "artifact") => void;
   hasArtifacts: boolean;
 }) {
@@ -394,6 +412,19 @@ function ContextFlyout({
         </span>
         <span className="term-flyout-item-kicker">{mockMode ? "mock" : backendReadiness}</span>
       </button>
+      {backendUnreachableReason && (
+        <button className="term-flyout-item" disabled>
+          <span className="term-flyout-item-glyph">⚠</span>
+          <span className="term-flyout-item-body">
+            <span className="term-flyout-item-title">
+              {backendUnreachableReason === "backend_url_not_configured"
+                ? "Vercel: defina SIGNAL_BACKEND_URL"
+                : `unreachable: ${backendUnreachableReason}`}
+            </span>
+          </span>
+          <span className="term-flyout-item-kicker">edge</span>
+        </button>
+      )}
       {backendReasons.length > 0 && (
         <button className="term-flyout-item" disabled>
           <span className="term-flyout-item-glyph">!</span>
@@ -401,6 +432,15 @@ function ContextFlyout({
             <span className="term-flyout-item-title">readiness reasons</span>
           </span>
           <span className="term-flyout-item-kicker">{backendReasons.slice(0, 2).join(",")}</span>
+        </button>
+      )}
+      {persistenceEphemeral && (
+        <button className="term-flyout-item" disabled>
+          <span className="term-flyout-item-glyph">⚠</span>
+          <span className="term-flyout-item-body">
+            <span className="term-flyout-item-title">persistência ephemeral</span>
+          </span>
+          <span className="term-flyout-item-kicker">no volume</span>
         </button>
       )}
       <button className="term-flyout-item" disabled>

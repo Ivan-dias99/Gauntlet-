@@ -109,16 +109,29 @@ export function isBackendError(err: unknown): err is BackendError {
   return err instanceof BackendError;
 }
 
-function unreachableFromResponse(res: Response): BackendUnreachableError | null {
+async function unreachableFromResponse(res: Response): Promise<BackendUnreachableError | null> {
   // Accept the canonical header plus the legacy one emitted by the
   // forwarder during the Wave-0 → Wave-8 compatibility window.
-  if (
+  const headerHit =
     res.headers.get(UNREACHABLE_HEADER) === UNREACHABLE_VALUE ||
-    res.headers.get(LEGACY_UNREACHABLE_HEADER) === UNREACHABLE_VALUE
-  ) {
-    return new BackendUnreachableError(`edge:${res.status}`);
+    res.headers.get(LEGACY_UNREACHABLE_HEADER) === UNREACHABLE_VALUE;
+  if (!headerHit) return null;
+
+  // Forwarder body is `{ error: "backend_unreachable", reason: "<kind>" }`.
+  // The reason names the actual failure mode — "backend_url_not_configured",
+  // "network_error", "timeout", "upstream_fetch_failed" — so callers can
+  // surface it in the UI instead of an opaque "edge:503". Body is read from
+  // a clone so the caller's downstream parse path stays available.
+  let bodyReason: string | null = null;
+  try {
+    const body = (await res.clone().json()) as { reason?: unknown };
+    if (typeof body.reason === "string" && body.reason.length > 0) {
+      bodyReason = body.reason;
+    }
+  } catch {
+    // Non-JSON or empty body — fall back to the edge status.
   }
-  return null;
+  return new BackendUnreachableError(bodyReason ?? `edge:${res.status}`);
 }
 
 // Wraps fetch and throws BackendUnreachableError on:
@@ -139,7 +152,7 @@ export async function signalFetch(
       err instanceof Error ? err.message : String(err),
     );
   }
-  const unreachable = unreachableFromResponse(res);
+  const unreachable = await unreachableFromResponse(res);
   if (unreachable) throw unreachable;
   return res;
 }

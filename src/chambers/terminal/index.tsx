@@ -617,14 +617,10 @@ export default function Terminal() {
         backendReachable={backend.reachable}
         backendReadiness={backend.readiness}
         backendReasons={backend.readinessReasons}
-        repoLabel={
-          git.repo ?? (import.meta.env.VITE_SIGNAL_REPO as string | undefined) ?? null
-        }
-        branchLabel={
-          git.branch
-            ? `${git.branch}${git.dirty ? "*" : ""}`
-            : (import.meta.env.VITE_SIGNAL_BRANCH as string | undefined) ?? null
-        }
+        backendUnreachableReason={backend.unreachableReason}
+        persistenceEphemeral={backend.persistenceEphemeral}
+        repoLabel={(import.meta.env.VITE_SIGNAL_REPO as string | undefined) ?? null}
+        branchLabel={(import.meta.env.VITE_SIGNAL_BRANCH as string | undefined) ?? null}
         diffStats={diffStats}
         gates={gates}
         reviewState={reviewState}
