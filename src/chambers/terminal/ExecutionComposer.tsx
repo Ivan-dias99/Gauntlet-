@@ -252,40 +252,36 @@ export default function ExecutionComposer({
               <span className="term-rail-value">{principlesCount}</span>
             </span>
           )}
-              <span className="term-ws-chip-glyph" aria-hidden>●</span>
-              <span className="term-ws-chip-label">backend</span>
-              <span className="term-ws-chip-value">
-                {!backendReachable ? "unreachable" : mockMode ? "mock" : backendReadiness}
-              </span>
+          <span
+            className="term-ws-chip"
+            data-tone={!backendReachable ? "warn" : mockMode ? "warn" : backendReadiness === "ready" ? "ok" : "warn"}
+            title={!backendReachable
+              ? "backend inacessível"
+              : mockMode
+                ? "backend em modo simulado — respostas canned"
+                : `backend ${backendReadiness}`}
+          >
+            <span className="term-ws-chip-glyph" aria-hidden>●</span>
+            <span className="term-ws-chip-label">backend</span>
+            <span className="term-ws-chip-value">
+              {!backendReachable ? "unreachable" : mockMode ? "mock" : backendReadiness}
             </span>
-            <span className="term-ws-chip" title="repositório ligado">
-              <span className="term-ws-chip-glyph" aria-hidden>⌁</span>
-              <span className="term-ws-chip-label">repo</span>
-              <span className="term-ws-chip-value">{repoLabel ?? "unavailable"}</span>
-            </span>
-            <button
-              type="button"
-              className="term-ws-chip"
-              disabled
-              title={branchLabel ? "branch switch unavailable" : "branch unavailable"}
-            >
-              <span className="term-ws-chip-glyph" aria-hidden>⑂</span>
-              <span className="term-ws-chip-label">branch</span>
-              <span className="term-ws-chip-value">{branchLabel ?? "unavailable"}</span>
-            </button>
-            {principlesCount > 0 && (
-              <span
-                className="term-ws-chip"
-                title="princípios em vigor que viajam com cada tarefa"
-              >
-                <span className="term-ws-chip-glyph" aria-hidden>§</span>
-                <span className="term-ws-chip-label">doutrina</span>
-                <span className="term-ws-chip-value">
-                  {principlesCount} {principlesCount === 1 ? "princípio" : "princípios"}
-                </span>
-              </span>
-            )}
-          </div>
+          </span>
+          <span className="term-ws-chip" title="repositório ligado">
+            <span className="term-ws-chip-glyph" aria-hidden>⌁</span>
+            <span className="term-ws-chip-label">repo</span>
+            <span className="term-ws-chip-value">{repoLabel ?? "unavailable"}</span>
+          </span>
+          <button
+            type="button"
+            className="term-ws-chip"
+            disabled
+            title={branchLabel ? "branch switch unavailable" : "branch unavailable"}
+          >
+            <span className="term-ws-chip-glyph" aria-hidden>⑂</span>
+            <span className="term-ws-chip-label">branch</span>
+            <span className="term-ws-chip-value">{branchLabel ?? "unavailable"}</span>
+          </button>
 
           <span className="term-ws-spacer" />
 
@@ -414,12 +410,6 @@ function ContextFlyout({
         </span>
         <span className="term-flyout-item-kicker">{mode}</span>
       </button>
-      <button
-        className="term-flyout-item"
-        disabled
-        title="upload de ficheiros e capturas — ligação ao backend pendente"
-      >
-        <span className="term-flyout-item-glyph">◈</span>
       <button className="term-flyout-item" onClick={() => onAttach("note")}>
         <span className="term-flyout-item-glyph">＋</span>
         <span className="term-flyout-item-body">
