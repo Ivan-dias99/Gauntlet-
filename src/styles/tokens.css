@@ -7147,6 +7147,166 @@ textarea {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   Signal — Landing Polish Pack (Pass 1)
+   Operator-approved richer-marketing pass on the landing surface
+   only. Header gains a breathing brand pulse + sharper shadow.
+   Hero gains an atmospheric backdrop of drifting chamber-DNA orbs
+   and a staggered entrance. Each chamber slab earns a sigil tinted
+   in its own DNA. Doctrine quote gets an editorial ornament. No
+   canon-locked color tokens or copy strings touched; all motion
+   honors prefers-reduced-motion.
+   ───────────────────────────────────────────────────────────── */
+
+/* 1. Header — frosted with a subtle bottom shadow on scroll, and a
+      breathing dot anchored after the brand wordmark. */
+.landing-ribbon {
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--text-primary) 4%, transparent),
+              0 8px 24px -16px color-mix(in oklab, #000 18%, transparent);
+}
+.landing-brand-pulse {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: var(--cc-ok);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 22%, transparent);
+  vertical-align: middle;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .landing-brand-pulse {
+    animation: landingBrandBreathe 2.6s ease-in-out infinite;
+  }
+}
+@keyframes landingBrandBreathe {
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 22%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in oklab, var(--cc-ok) 12%, transparent); }
+}
+
+/* 2. Hero atmospheric backdrop — three soft drifting orbs in
+      chamber-DNA tints, blurred behind the title. Contained by the
+      hero so they never bleed into siblings. */
+.landing-hero {
+  position: relative;
+  isolation: isolate;
+}
+.landing-hero-atmosphere {
+  position: absolute;
+  inset: -40px -60px -40px -60px;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.landing-orb {
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  filter: blur(64px);
+  opacity: 0.45;
+}
+.landing-orb[data-orb="insight"] {
+  background: radial-gradient(circle, #b89060 0%, transparent 70%);
+  top: -80px;
+  left: -40px;
+}
+.landing-orb[data-orb="surface"] {
+  background: radial-gradient(circle, #6f8f6a 0%, transparent 70%);
+  top: 40px;
+  right: 5%;
+}
+.landing-orb[data-orb="core"] {
+  background: radial-gradient(circle, #7a8aa8 0%, transparent 70%);
+  bottom: -100px;
+  left: 30%;
+}
+[data-theme="dark"] .landing-orb { opacity: 0.32; filter: blur(80px); }
+@media (prefers-reduced-motion: no-preference) {
+  .landing-orb[data-orb="insight"] { animation: orbDriftA 22s ease-in-out infinite; }
+  .landing-orb[data-orb="surface"] { animation: orbDriftB 28s ease-in-out infinite; }
+  .landing-orb[data-orb="core"]    { animation: orbDriftC 34s ease-in-out infinite; }
+}
+@keyframes orbDriftA {
+  0%, 100% { transform: translate(0, 0)     scale(1); }
+  50%      { transform: translate(40px, 30px) scale(1.08); }
+}
+@keyframes orbDriftB {
+  0%, 100% { transform: translate(0, 0)      scale(1); }
+  50%      { transform: translate(-50px, 40px) scale(1.10); }
+}
+@keyframes orbDriftC {
+  0%, 100% { transform: translate(0, 0)     scale(1); }
+  50%      { transform: translate(30px, -40px) scale(1.06); }
+}
+
+/* 3. Staggered entrance — kicker, title, sub, CTA fade up in order. */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-stagger {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: landingStaggerIn 0.7s var(--ease-swift) forwards;
+  }
+  .landing-stagger[data-stagger="1"] { animation-delay: 0.05s; }
+  .landing-stagger[data-stagger="2"] { animation-delay: 0.18s; }
+  .landing-stagger[data-stagger="3"] { animation-delay: 0.34s; }
+  .landing-stagger[data-stagger="4"] { animation-delay: 0.50s; }
+}
+@keyframes landingStaggerIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 4. Chamber sigils — single-stroke SVG icon per slab, tinted via
+      chamber-DNA. The slab already has data-chamber so we resolve
+      the DNA color the same way the rest of the system does. */
+.landing-chamber-sigil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, transparent);
+  color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 95%, var(--text-primary));
+  transition:
+    background var(--dur-fast) var(--ease-swift),
+    transform var(--dur-fast) var(--ease-swift);
+}
+.landing-chamber-slab:hover .landing-chamber-sigil {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 16%, transparent);
+  transform: scale(1.05);
+}
+
+/* 5. Slab gains DNA-tinted hover border so each chamber declares
+      its own identity on contact, not just a generic lift. */
+.landing-chamber-slab {
+  border-color: color-mix(in oklab, var(--text-primary) 8%, transparent);
+}
+.landing-chamber-slab:hover {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, transparent);
+}
+
+/* 6. Doctrine ornament — single-stroke editorial flourish above the
+      italic quote. Sized small so the quote stays the protagonist. */
+.landing-doctrine-ornament {
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* 7. Reduced motion — kill the orbs, the breath, the stagger. The
+      static layout still reads cleanly without any of them. */
+@media (prefers-reduced-motion: reduce) {
+  .landing-orb,
+  .landing-brand-pulse,
+  .landing-stagger {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
    Signal — Interactions Pack (additive, post-canon)
    Adds press / hover / focus affordances and micro-motion to the
    existing primitives. Does not alter typography, color tokens, or
