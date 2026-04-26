@@ -456,36 +456,23 @@ export default function Terminal() {
             detail={backend.unreachableDetail}
           />
         )}
-        {/* Canon override (operator-approved): workbench strip + hero
-            ReadyState only render when there is an active mission. In
-            the empty/idle state the chamber is silent — the composer
-            below carries the only voice for action ("ready · próxima
-            tarefa torna-se comando" in its identity row). Mirrors the
-            single-card composer pattern Lovable produced for Signal,
-            adapted to Signal's chamber-DNA grammar. The hero copy
-            (termReadyTitle, termReadyBody) is preserved in copy.ts
-            and re-appears as soon as a mission is created. */}
-        {activeMission && (
-          <WorkbenchStrip
+        <WorkbenchStrip
+          copy={copy}
+          missionTitle={activeMission?.title ?? null}
+          activeTask={activeTask}
+          tasks={activeMission?.tasks ?? []}
+        />
+        <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)" }}>
+          <TaskList
+            tasks={tasks}
+            activeTaskId={activeTaskId}
+            duplicateTitles={duplicateTitles}
             copy={copy}
-            missionTitle={activeMission?.title ?? null}
-            activeTask={activeTask}
-            tasks={activeMission?.tasks ?? []}
+            onSelect={selectTaskFromQueue}
           />
-        )}
-        {activeMission && (
-          <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)" }}>
-            <TaskList
-              tasks={tasks}
-              activeTaskId={activeTaskId}
-              duplicateTitles={duplicateTitles}
-              copy={copy}
-              onSelect={selectTaskFromQueue}
-            />
-          </div>
-        )}
+        </div>
 
-        {activeMission && (unreachable && err ? (
+        {unreachable && err ? (
           <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)" }}>
             <DormantPanel detail={copy.dormantCreation} />
           </div>
@@ -510,7 +497,7 @@ export default function Terminal() {
             onReplayArtifact={replayArtifact}
             canAccept={Boolean(activeMission)}
           />
-        ))}
+        )}
 
         {showNextStep && (
           <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4) var(--space-5)" }}>
