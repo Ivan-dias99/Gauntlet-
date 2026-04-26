@@ -294,6 +294,7 @@ interface RowProps {
 function TaskRow({ task, onSelect, copy, active = false, duplicate = false }: RowProps) {
   const isDone = task.state === "done";
   const tone = STATE_TONE[task.state];
+  const displayState = task.state === "done" && task.artifactId ? "sealed" : stateLabel(task.state, copy);
   return (
     <div
       onClick={onSelect}
@@ -345,19 +346,19 @@ function TaskRow({ task, onSelect, copy, active = false, duplicate = false }: Ro
           {sourceLabel(task.source, copy)}
         </span>
       )}
-      {!active && <StatePill state={task.state} copy={copy} />}
+      {!active && <StatePill state={task.state} copy={copy} labelOverride={displayState} />}
     </div>
   );
 }
 
-function StatePill({ state, copy }: { state: TaskState; copy: Copy }) {
+function StatePill({ state, copy, labelOverride }: { state: TaskState; copy: Copy; labelOverride?: string }) {
   return (
     <span
-      title={stateLabel(state, copy)}
+      title={labelOverride ?? stateLabel(state, copy)}
       className="state-pill"
       data-tone={STATE_TONE[state]}
     >
-      {STATE_GLYPH[state]} {stateLabel(state, copy)}
+      {STATE_GLYPH[state]} {labelOverride ?? stateLabel(state, copy)}
     </span>
   );
 }
