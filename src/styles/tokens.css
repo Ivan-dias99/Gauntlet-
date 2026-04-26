@@ -7145,3 +7145,185 @@ textarea {
   text-transform: uppercase;
   color: var(--text-muted);
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Signal — Interactions Pack (additive, post-canon)
+   Adds press / hover / focus affordances and micro-motion to the
+   existing primitives. Does not alter typography, color tokens, or
+   chamber grammar. Honors prefers-reduced-motion.
+   ───────────────────────────────────────────────────────────── */
+
+/* 1. Universal focus-visible — every interactive surface earns a ring */
+.term-ws-chip:focus-visible,
+.term-flyout-item:focus-visible,
+.term-rail-mode-opt:focus-visible,
+.term-ws-mode-opt:focus-visible,
+.term-command-send:focus-visible,
+.surface-rail-card:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--chamber-dna, var(--ember)) 60%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 2. Chips — invitation to interact: cursor, gentle lift, press feedback.
+   Only apply lift when the chip is a real button/link, not a decorative
+   span (the workbench mixes both). */
+.term-ws-chip {
+  transition:
+    color var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift),
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift);
+}
+button.term-ws-chip:not(:disabled),
+a.term-ws-chip {
+  cursor: pointer;
+}
+button.term-ws-chip:not(:disabled):hover,
+a.term-ws-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 22%, transparent);
+}
+button.term-ws-chip:not(:disabled):active,
+a.term-ws-chip:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* 3. Flyout items — slight indent on hover (tactile pull), press dip. */
+.term-flyout-item {
+  transition:
+    color var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift),
+    padding-left var(--dur-fast) var(--ease-swift),
+    transform var(--dur-fast) var(--ease-swift);
+}
+.term-flyout-item:not([disabled]):hover {
+  padding-left: calc(var(--space-3, 16px) + 4px);
+}
+.term-flyout-item:not([disabled]):active {
+  transform: translateY(1px);
+}
+
+/* 4. Mode toggle (agent/crew) — active option lifts inside the rail. */
+.term-rail-mode-opt {
+  transition:
+    color var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift),
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift);
+}
+.term-rail-mode-opt[data-active="true"] {
+  box-shadow:
+    inset  0  1px 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent),
+    inset  0 -1px 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent);
+}
+.term-rail-mode-opt:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* 5. Composer submit (↑) — armed pulse + hover scale + press scale. */
+.term-command-send {
+  transition:
+    transform var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift),
+    color var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift),
+    opacity var(--dur-fast) var(--ease-swift);
+}
+.term-command-send:not(:disabled) { cursor: pointer; }
+.term-command-send:not(:disabled):hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent);
+}
+.term-command-send:not(:disabled):active { transform: scale(0.94); }
+.term-command-send[data-state="pending"] {
+  animation: signalSendPending 1.6s ease-in-out infinite;
+}
+@keyframes signalSendPending {
+  0%, 100% { opacity: 0.65; }
+  50%      { opacity: 1; }
+}
+
+/* 6. Composer placeholder — gentle pulse so the empty state breathes. */
+@media (prefers-reduced-motion: no-preference) {
+  .term-command-input::placeholder {
+    animation: signalPlaceholderPulse 4.4s ease-in-out infinite;
+  }
+  .term-command-send:not(:disabled):not([data-state="pending"]) {
+    animation: signalSendArm 2.6s ease-in-out infinite;
+  }
+}
+@keyframes signalPlaceholderPulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.9; }
+}
+@keyframes signalSendArm {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 0%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in oklab, var(--chamber-dna, var(--ember)) 9%, transparent); }
+}
+
+/* 7. Surface shortcut cards — hover lift + accent glow. Buttons in
+   ExplorationRail.tsx use .surface-rail-card; pure decorative variants
+   without the hover affordance keep the existing flat treatment. */
+button.surface-rail-card,
+a.surface-rail-card {
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift),
+    border-color var(--dur-fast) var(--ease-swift);
+}
+button.surface-rail-card:not(:disabled):hover,
+a.surface-rail-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 14px color-mix(in oklab, #000 18%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--chamber-dna, var(--ember)) 26%, transparent);
+}
+button.surface-rail-card:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* 8. Banner / role=alert — slide down + fade in on mount. */
+@media (prefers-reduced-motion: no-preference) {
+  [role="alert"] {
+    animation: signalAlertSlide var(--dur-slow) var(--ease-swift);
+  }
+}
+@keyframes signalAlertSlide {
+  from { transform: translateY(-6px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* 9. Tabs already animate the underline color (canon). Add a subtle
+   color transition to the label so non-active tabs feel reachable. */
+.canon-ribbon-tabs .tab {
+  transition: color var(--dur-fast) var(--ease-swift);
+}
+
+/* 10. Reduced-motion kill switch — drops every transform/animation we
+   added above. Static styles (cursor, focus ring, color) survive. */
+@media (prefers-reduced-motion: reduce) {
+  .term-ws-chip,
+  .term-flyout-item,
+  .term-rail-mode-opt,
+  .term-command-send,
+  .surface-rail-card,
+  [role="alert"] {
+    transition: none !important;
+    animation: none !important;
+  }
+  button.term-ws-chip:not(:disabled):hover,
+  a.term-ws-chip:hover,
+  .term-flyout-item:not([disabled]):hover,
+  .term-rail-mode-opt:not(:disabled):active,
+  .term-command-send:not(:disabled):hover,
+  .term-command-send:not(:disabled):active,
+  button.surface-rail-card:not(:disabled):hover,
+  a.surface-rail-card:hover {
+    transform: none !important;
+    padding-left: revert !important;
+  }
+}
