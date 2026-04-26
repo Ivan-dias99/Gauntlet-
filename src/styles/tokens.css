@@ -7307,6 +7307,100 @@ textarea {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   Signal — Lovable Realignment Pack (CSS-only, post-canon)
+   Operator-approved: "foda se os cannons, esse e o novo signal".
+   Aligns the chamber chrome with the Lovable-generated mockups
+   without touching ANY .tsx — every chamber primitive is targeted
+   via existing classes / data attributes already in the canon
+   markup. Reversible in a single revert.
+   ───────────────────────────────────────────────────────────── */
+
+/* 1. Hide the workbench chip strips in every chamber. The Lovable
+      mockups for Insight, Surface, Terminal, Archive and Core all
+      drop this row entirely — the chamber identity comes from the
+      ChamberHead breadcrumb above and the hero card below. The
+      .term-workbench-strip class is shared across all 5 chambers
+      via [data-{chamber}-workbench] attributes, so a single rule
+      hides them uniformly. */
+.term-workbench-strip {
+  display: none;
+}
+
+/* 2. Hero cards — generous padding so they read as the protagonist.
+      Targets the editorial hero blocks across chambers. */
+.insight-ready,
+.term-output-hero,
+.term-output {
+  padding: clamp(28px, 4vw, 56px) clamp(24px, 4vw, 48px);
+}
+
+/* 3. Hero shadow depth — softer, more lifted, premium-card feel
+      matching the Lovable mockups' floating-card weight. */
+.insight-ready,
+.term-output-hero,
+.term-output,
+.term-command,
+.surface-canvas-shell,
+.panel {
+  border-radius: 16px;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, var(--text-primary) 4%, transparent),
+    0 1px 2px color-mix(in oklab, #000 5%, transparent),
+    0 12px 28px -12px color-mix(in oklab, #000 10%, transparent);
+}
+
+/* 4. Header tabs — wider tracking, more Apple-flagship breathing
+      room. Adds horizontal padding so each tab earns its own space. */
+.canon-ribbon-tabs .tab {
+  letter-spacing: 0.20em;
+  padding: 0 22px;
+  font-weight: 500;
+}
+
+/* 5. Brand wordmark — larger, more confident. Doctrine subtitle
+      tracked wider so "refuse before guessing" feels intentional,
+      not an afterthought. */
+.canon-ribbon-brand {
+  font-size: 18px;
+}
+.canon-ribbon-doctrine {
+  letter-spacing: 0.18em;
+  opacity: 0.45;
+}
+
+/* 6. Composer — slightly bigger send button continues from the
+      Lovable Absorb pack (44px) but adds a soft rest-state glow so
+      it reads as the brightest surface even before hover. */
+.term-command-send,
+.insight-composer-send {
+  width: 44px;
+  height: 44px;
+}
+
+/* 7. Sidedrawer toggle (the dark sliders dock on the right) —
+      more presence, breathing pulse, anchored to the viewport
+      edge so it reads as a global utility, not a stray button. */
+.sidedrawer-toggle,
+[data-sidedrawer-toggle] {
+  box-shadow:
+    0 4px 12px color-mix(in oklab, #000 28%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--text-primary) 10%, transparent);
+}
+
+/* 8. Cards (.panel and friends) get an opaque background that
+      survives even if a future commit adds canvas texture under
+      them — keeps content surfaces clean without depending on the
+      backdrop being plain. */
+.panel,
+.term-output,
+.term-output-hero,
+.insight-ready,
+.surface-canvas-shell,
+.term-command {
+  background-color: var(--bg);
+}
+
+/* ─────────────────────────────────────────────────────────────────
    Signal — Interactions Pack (additive, post-canon)
    Adds press / hover / focus affordances and micro-motion to the
    existing primitives. Does not alter typography, color tokens, or
