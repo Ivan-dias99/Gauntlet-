@@ -30,6 +30,8 @@ import { TaskList } from "./TaskBench";
 //   · NextStepBar (only when the run has landed and there is a next step)
 //   · ExecutionComposer (floating command dock at the bottom)
 
+type GateState = "pass" | "fail" | "unavailable";
+
 export default function Terminal() {
   const {
     activeMission, addTask, setTaskState, addNoteToMission,
@@ -391,6 +393,27 @@ export default function Terminal() {
     }
     return null;
   }, [liveTools]);
+  const gates = useMemo<{ typecheck: GateState; build: GateState }>(() => {
+    const next: { typecheck: GateState; build: GateState } = {
+      typecheck: "unavailable",
+      build: "unavailable",
+    };
+
+    for (const tool of liveTools) {
+      const text = (tool.preview ?? "").toLowerCase();
+      if (!text) continue;
+
+      const failed = /\b(fail(?:ed)?|error|errored|nonzero)\b|exit code\s*[1-9]|✗/.test(text);
+      const passed = /\b(pass(?:ed)?|success|succeeded|clean|ok)\b|✓|built in\s+\d/.test(text);
+      const mentionsTypecheck = /\b(typecheck|tsc|typescript|noemit|ts-noemit)\b/.test(text);
+      const mentionsBuild = /\b(build|vite build|bundl|compiled|dist\/)\b|built in\s+\d/.test(text);
+
+      if (mentionsTypecheck) next.typecheck = failed ? "fail" : passed ? "pass" : next.typecheck;
+      if (mentionsBuild) next.build = failed ? "fail" : passed ? "pass" : next.build;
+    }
+
+    return next;
+  }, [liveTools]);
   const reviewState: "pass" | "needs-fix" | "blocked" =
     err ? "blocked" : done?.terminated_early ? "needs-fix" : done ? "pass" : "needs-fix";
   const reviewRisk: "low" | "medium" | "high" =
@@ -506,7 +529,7 @@ export default function Terminal() {
         repoLabel={(import.meta.env.VITE_SIGNAL_REPO as string | undefined) ?? null}
         branchLabel={(import.meta.env.VITE_SIGNAL_BRANCH as string | undefined) ?? null}
         diffStats={diffStats}
-        gates={{ typecheck: "pass", build: "pass" }}
+        gates={gates}
         reviewState={reviewState}
         reviewRisk={reviewRisk}
         onAttachContext={(kind) => {
