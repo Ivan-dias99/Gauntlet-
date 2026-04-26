@@ -476,7 +476,6 @@ export default function Terminal() {
         onPickTask={(title) => setInput(title)}
         principlesCount={principles.length}
         priorTurns={activeMission?.notes?.length ?? 0}
-        mockMode={backend.mode === "mock"}
         readiness={backend.readiness}
       />
     </div>

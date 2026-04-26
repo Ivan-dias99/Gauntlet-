@@ -28,7 +28,6 @@ interface Props {
   onPickTask: (title: string) => void;
   principlesCount: number;
   priorTurns: number;
-  mockMode: boolean;
   readiness: BackendReadiness;
 }
 
@@ -37,7 +36,7 @@ type Flyout = null | "context" | "recent" | "tools";
 export default function ExecutionComposer({
   copy, value, onChange, onSubmit, pending, missionTitle,
   mode, onModeChange, recentTasks, onPickTask,
-  principlesCount, priorTurns, mockMode, readiness,
+  principlesCount, priorTurns, readiness,
 }: Props) {
   const diagnostics = useDiagnostics();
   const terminalTools: SignalToolDescriptor[] | null =
@@ -278,7 +277,8 @@ export default function ExecutionComposer({
           <ContextFlyout
             principlesCount={principlesCount}
             priorTurns={priorTurns}
-            mockMode={mockMode}
+            readiness={readiness}
+            readinessLabel={readinessLabel[readiness]}
             mode={mode}
           />
         )}
@@ -302,11 +302,12 @@ export default function ExecutionComposer({
 // ——— Flyouts ———
 
 function ContextFlyout({
-  principlesCount, priorTurns, mockMode, mode,
+  principlesCount, priorTurns, readiness, readinessLabel, mode,
 }: {
   principlesCount: number;
   priorTurns: number;
-  mockMode: boolean;
+  readiness: BackendReadiness;
+  readinessLabel: string;
   mode: RunMode;
 }) {
   return (
@@ -333,7 +334,16 @@ function ContextFlyout({
         <span className="term-flyout-item-body">
           <span className="term-flyout-item-title">backend</span>
         </span>
-        <span className="term-flyout-item-kicker">{mockMode ? "mock" : "live"}</span>
+        <span
+          className="term-flyout-item-kicker"
+          style={
+            readiness === "ready_real"
+              ? undefined
+              : { color: "var(--cc-warn)" }
+          }
+        >
+          {readinessLabel}
+        </span>
       </button>
       <button className="term-flyout-item" disabled>
         <span className="term-flyout-item-glyph">⚙</span>

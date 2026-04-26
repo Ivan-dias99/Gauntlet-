@@ -23,7 +23,7 @@ ALLOWED_TOOLS: tuple[str, ...] = (
     "run_command",
     "execute_python",
     "git",
-    "web_fetch",
+    "fetch_url",
     "web_search",
     "package_info",
 )

@@ -45,3 +45,24 @@ def test_diagnostics_exposes_tools_registry(client):
     assert "web_fetch" not in names
     # System doctrine surfaced.
     assert any(d["id"] == "conservative_intelligence" for d in body["system_doctrine"])
+
+
+def test_terminal_chamber_has_every_tool(client):
+    """Terminal allowlist must list every tool by its real backend name.
+
+    Regression for the silent gap: chambers/terminal.py used to ship
+    `web_fetch` (phantom) and was missing `fetch_url` — so the agent
+    could not actually call the URL fetcher. The diagnostics-driven
+    UI surfaced this as `fetch_url chambers=[]`.
+    """
+    res = client.get("/diagnostics")
+    body = res.json()
+    by_name = {t["name"]: t for t in body["tools"]}
+    for tool in (
+        "read_file", "list_directory", "run_command", "execute_python",
+        "git", "fetch_url", "web_search", "package_info",
+    ):
+        assert "terminal" in by_name[tool]["chambers"], (
+            f"tool {tool!r} not allowed in terminal chamber — "
+            "chambers/terminal.py drift?"
+        )
