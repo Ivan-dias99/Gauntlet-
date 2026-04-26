@@ -27,6 +27,17 @@ interface Props {
   principlesCount: number;
   priorTurns: number;
   mockMode: boolean;
+  backendReachable: boolean;
+  backendReadiness: "ready" | "degraded" | "unreachable";
+  backendReasons: string[];
+  repoLabel?: string | null;
+  branchLabel?: string | null;
+  diffStats?: { files: number; added: number; removed: number } | null;
+  gates: { typecheck: "pass" | "fail" | "unavailable"; build: "pass" | "fail" | "unavailable" };
+  reviewState: "pass" | "needs-fix" | "blocked";
+  reviewRisk: "low" | "medium" | "high";
+  onAttachContext: (kind: "note" | "prior-run" | "artifact") => void;
+  hasArtifacts: boolean;
 }
 
 type Flyout = null | "context" | "recent" | "tools";
@@ -47,7 +58,9 @@ const TERMINAL_TOOLS: Array<{ name: string; kind: string; gated?: boolean }> = [
 export default function ExecutionComposer({
   copy, value, onChange, onSubmit, pending, missionTitle,
   mode, onModeChange, recentTasks, onPickTask,
-  principlesCount, priorTurns, mockMode,
+  principlesCount, priorTurns, mockMode, backendReachable,
+  backendReadiness, backendReasons, repoLabel, branchLabel, diffStats,
+  gates, reviewState, reviewRisk, onAttachContext, hasArtifacts,
 }: Props) {
   const [focused, setFocused] = useState(false);
   const [flyout, setFlyout] = useState<Flyout>(null);
@@ -217,9 +230,24 @@ export default function ExecutionComposer({
               <span className="term-ws-chip-glyph" aria-hidden>●</span>
               <span className="term-ws-chip-label">backend</span>
               <span className="term-ws-chip-value">
-                {mockMode ? "mock" : "live"}
+                {!backendReachable ? "unreachable" : mockMode ? "mock" : backendReadiness}
               </span>
             </span>
+            <span className="term-ws-chip" title="repositório ligado">
+              <span className="term-ws-chip-glyph" aria-hidden>⌁</span>
+              <span className="term-ws-chip-label">repo</span>
+              <span className="term-ws-chip-value">{repoLabel ?? "unavailable"}</span>
+            </span>
+            <button
+              type="button"
+              className="term-ws-chip"
+              disabled
+              title={branchLabel ? "branch switch unavailable" : "branch unavailable"}
+            >
+              <span className="term-ws-chip-glyph" aria-hidden>⑂</span>
+              <span className="term-ws-chip-label">branch</span>
+              <span className="term-ws-chip-value">{branchLabel ?? "unavailable"}</span>
+            </button>
             {principlesCount > 0 && (
               <span
                 className="term-ws-chip"
@@ -257,6 +285,27 @@ export default function ExecutionComposer({
             ))}
           </div>
         </div>
+        <div className="term-command-workspace" style={{ borderTop: "1px solid var(--border-soft)" }}>
+          <div className="term-ws-group" aria-label="review">
+            <span className="term-ws-chip">
+              <span className="term-ws-chip-glyph" aria-hidden>Δ</span>
+              <span className="term-ws-chip-label">diff</span>
+              <span className="term-ws-chip-value">
+                {diffStats ? `${diffStats.files} files · +${diffStats.added} · -${diffStats.removed}` : "unavailable"}
+              </span>
+            </span>
+            <span className="term-ws-chip">
+              <span className="term-ws-chip-glyph" aria-hidden>✓</span>
+              <span className="term-ws-chip-label">gates</span>
+              <span className="term-ws-chip-value">tc:{gates.typecheck} · build:{gates.build}</span>
+            </span>
+            <span className="term-ws-chip">
+              <span className="term-ws-chip-glyph" aria-hidden>⊜</span>
+              <span className="term-ws-chip-label">review</span>
+              <span className="term-ws-chip-value">{reviewState} · risk:{reviewRisk}</span>
+            </span>
+          </div>
+        </div>
 
         {pending && <div className="thinking-strip" aria-hidden />}
       </div>
@@ -267,6 +316,10 @@ export default function ExecutionComposer({
             priorTurns={priorTurns}
             mockMode={mockMode}
             mode={mode}
+            backendReadiness={backendReadiness}
+            backendReasons={backendReasons}
+            onAttach={onAttachContext}
+            hasArtifacts={hasArtifacts}
           />
         )}
         {flyout === "recent" && (
@@ -284,12 +337,16 @@ export default function ExecutionComposer({
 // ——— Flyouts ———
 
 function ContextFlyout({
-  principlesCount, priorTurns, mockMode, mode,
+  principlesCount, priorTurns, mockMode, mode, backendReadiness, backendReasons, onAttach, hasArtifacts,
 }: {
   principlesCount: number;
   priorTurns: number;
   mockMode: boolean;
   mode: RunMode;
+  backendReadiness: "ready" | "degraded" | "unreachable";
+  backendReasons: string[];
+  onAttach: (kind: "note" | "prior-run" | "artifact") => void;
+  hasArtifacts: boolean;
 }) {
   return (
     <div className="term-flyout" role="menu">
@@ -315,8 +372,17 @@ function ContextFlyout({
         <span className="term-flyout-item-body">
           <span className="term-flyout-item-title">backend</span>
         </span>
-        <span className="term-flyout-item-kicker">{mockMode ? "mock" : "live"}</span>
+        <span className="term-flyout-item-kicker">{mockMode ? "mock" : backendReadiness}</span>
       </button>
+      {backendReasons.length > 0 && (
+        <button className="term-flyout-item" disabled>
+          <span className="term-flyout-item-glyph">!</span>
+          <span className="term-flyout-item-body">
+            <span className="term-flyout-item-title">readiness reasons</span>
+          </span>
+          <span className="term-flyout-item-kicker">{backendReasons.slice(0, 2).join(",")}</span>
+        </button>
+      )}
       <button className="term-flyout-item" disabled>
         <span className="term-flyout-item-glyph">⚙</span>
         <span className="term-flyout-item-body">
@@ -324,19 +390,26 @@ function ContextFlyout({
         </span>
         <span className="term-flyout-item-kicker">{mode}</span>
       </button>
-      {/* Honest media slot — the affordance is visually present; the
-          wire to the backend is not yet ready. No fake upload flow. */}
-      <button
-        className="term-flyout-item"
-        disabled
-        title="upload de ficheiros e capturas — ligação ao backend pendente"
-      >
-        <span className="term-flyout-item-glyph">◈</span>
+      <button className="term-flyout-item" onClick={() => onAttach("note")}>
+        <span className="term-flyout-item-glyph">＋</span>
         <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">media · ficheiros · capturas</span>
-          <span className="term-flyout-item-meta">em breve</span>
+          <span className="term-flyout-item-title">+ context note</span>
         </span>
-        <span className="term-flyout-item-kicker">—</span>
+        <span className="term-flyout-item-kicker">attach</span>
+      </button>
+      <button className="term-flyout-item" onClick={() => onAttach("prior-run")}>
+        <span className="term-flyout-item-glyph">↺</span>
+        <span className="term-flyout-item-body">
+          <span className="term-flyout-item-title">+ prior run</span>
+        </span>
+        <span className="term-flyout-item-kicker">attach</span>
+      </button>
+      <button className="term-flyout-item" disabled={!hasArtifacts} onClick={() => onAttach("artifact")}>
+        <span className="term-flyout-item-glyph">◆</span>
+        <span className="term-flyout-item-body">
+          <span className="term-flyout-item-title">+ artifact</span>
+        </span>
+        <span className="term-flyout-item-kicker">{hasArtifacts ? "attach" : "unavailable"}</span>
       </button>
     </div>
   );

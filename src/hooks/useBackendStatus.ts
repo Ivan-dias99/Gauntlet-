@@ -15,6 +15,8 @@ export interface BackendStatus {
   mode: "mock" | "real" | null;
   persistenceDegraded: boolean;
   engine: "ready" | "not_initialized" | null;
+  readiness: "ready" | "degraded" | "unreachable";
+  readinessReasons: string[];
 }
 
 const INITIAL: BackendStatus = {
@@ -22,6 +24,8 @@ const INITIAL: BackendStatus = {
   mode: null,
   persistenceDegraded: false,
   engine: null,
+  readiness: "degraded",
+  readinessReasons: [],
 };
 
 interface HealthBody {
@@ -44,16 +48,38 @@ export function useBackendStatus(): BackendStatus {
           return;
         }
         const body = (await res.json()) as HealthBody;
+        let readiness: BackendStatus["readiness"] = "degraded";
+        let readinessReasons: string[] = [];
+        try {
+          const readyRes = await signalFetch("/health/ready", { signal: ac.signal });
+          if (readyRes.ok) {
+            readiness = "ready";
+          } else {
+            readiness = "degraded";
+            const raw = await readyRes.json() as {
+              detail?: { reasons?: string[] };
+              reasons?: string[];
+            };
+            readinessReasons = raw.detail?.reasons ?? raw.reasons ?? [];
+          }
+        } catch (readyErr) {
+          if (isBackendUnreachable(readyErr)) {
+            setStatus({ ...INITIAL, reachable: false, readiness: "unreachable" });
+            return;
+          }
+        }
         setStatus({
           reachable: true,
           mode: body.mode ?? null,
           persistenceDegraded: !!body.persistence_degraded,
           engine: body.engine ?? null,
+          readiness,
+          readinessReasons,
         });
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
         if (isBackendUnreachable(e)) {
-          setStatus({ ...INITIAL, reachable: false });
+          setStatus({ ...INITIAL, reachable: false, readiness: "unreachable" });
           return;
         }
         setStatus({ ...INITIAL, reachable: true });
