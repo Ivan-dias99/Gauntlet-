@@ -36,15 +36,6 @@ import { TaskList } from "./TaskBench";
 //   · NextStepBar (only when the run has landed and there is a next step)
 //   · ExecutionComposer (floating command dock at the bottom)
 
-// Initial state for the structured gate signals — reused on every
-// task transition so a switch to a different task never inherits the
-// previous run's gates/diff.
-const INITIAL_GATES: Record<GateName, GateState> = {
-  typecheck: "unavailable",
-  build: "unavailable",
-  test: "unavailable",
-};
-
 export default function Terminal() {
   const {
     activeMission, addTask, setTaskState, addNoteToMission,
@@ -431,18 +422,6 @@ export default function Terminal() {
   ) ?? null;
 
   const allArtifacts = activeMission?.artifacts ?? [];
-  // diffStats / gates come straight from the agent loop now (T085).
-  // The composer prop only carries the two that ExecutionComposer
-  // currently renders — the `test` gate is captured but not yet shown.
-  const diffStats = liveDiff;
-  const gates: { typecheck: GateState; build: GateState } = {
-    typecheck: liveGates.typecheck,
-    build: liveGates.build,
-  };
-  const reviewState: "pass" | "needs-fix" | "blocked" =
-    err ? "blocked" : done?.terminated_early ? "needs-fix" : done ? "pass" : "needs-fix";
-  const reviewRisk: "low" | "medium" | "high" =
-    err ? "high" : blockedTasks.length > 0 ? "medium" : "low";
 
   const staleRunning =
     activeTask?.state === "running" && !pending && done === null && err === null;
@@ -620,18 +599,11 @@ export default function Terminal() {
         principlesCount={principles.length}
         priorTurns={activeMission?.notes?.length ?? 0}
         mockMode={backend.mode === "mock"}
-        backendReachable={backend.reachable}
         backendReadiness={backend.readiness}
         backendReasons={backend.readinessReasons}
         backendUnreachableReason={backend.unreachableReason}
         backendUnreachableDetail={backend.unreachableDetail}
         persistenceEphemeral={backend.persistenceEphemeral}
-        repoLabel={(import.meta.env.VITE_SIGNAL_REPO as string | undefined) ?? null}
-        branchLabel={(import.meta.env.VITE_SIGNAL_BRANCH as string | undefined) ?? null}
-        diffStats={diffStats}
-        gates={gates}
-        reviewState={reviewState}
-        reviewRisk={reviewRisk}
         onAttachContext={(kind) => {
           if (!activeMission) return;
           if (kind === "note") {

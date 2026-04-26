@@ -38,25 +38,16 @@ interface Props {
   principlesCount: number;
   priorTurns: number;
   mockMode: boolean;
-  backendReachable: boolean;
+  // Workbench owns territorial telemetry (Repo, Diff, Gates, Deploy,
+  // Queue) and the BackendUnreachableBanner above carries the critical
+  // backend story when broken. The composer only forwards readiness
+  // detail into ContextFlyout for diagnostic deep-dive — it no longer
+  // renders inline chips for any of this.
   backendReadiness: "ready" | "degraded" | "unreachable";
   backendReasons: string[];
-  // Names the forwarder failure mode when the backend is unreachable
-  // (e.g. "backend_url_not_configured" → operator forgot to set
-  // SIGNAL_BACKEND_URL on Vercel). Renders inside the chip so the fix
-  // is visible without opening DevTools.
   backendUnreachableReason: string | null;
-  // Raw edge-runtime error text for the catch-all "upstream_fetch_failed"
-  // bucket — surfaced into the chip tooltip so operators see the literal
-  // cause without paging Vercel logs.
   backendUnreachableDetail: string | null;
   persistenceEphemeral: boolean;
-  repoLabel?: string | null;
-  branchLabel?: string | null;
-  diffStats?: { files: number; added: number; removed: number } | null;
-  gates: { typecheck: "pass" | "fail" | "unavailable"; build: "pass" | "fail" | "unavailable" };
-  reviewState: "pass" | "needs-fix" | "blocked";
-  reviewRisk: "low" | "medium" | "high";
   onAttachContext: (kind: "note" | "prior-run" | "artifact") => void;
   hasArtifacts: boolean;
 }
@@ -79,11 +70,10 @@ const TERMINAL_TOOLS: Array<{ name: string; kind: string; gated?: boolean }> = [
 export default function ExecutionComposer({
   copy, value, onChange, onSubmit, pending, missionTitle,
   mode, onModeChange, recentTasks, onPickTask,
-  principlesCount, priorTurns, mockMode, backendReachable,
+  principlesCount, priorTurns, mockMode,
   backendReadiness, backendReasons, backendUnreachableReason,
   backendUnreachableDetail, persistenceEphemeral,
-  repoLabel, branchLabel, diffStats,
-  gates, reviewState, reviewRisk, onAttachContext, hasArtifacts,
+  onAttachContext, hasArtifacts,
 }: Props) {
   const [focused, setFocused] = useState(false);
   const [flyout, setFlyout] = useState<Flyout>(null);
@@ -245,6 +235,9 @@ export default function ExecutionComposer({
 
           <span className="term-rail-spacer" />
 
+          {/* Live/mock dot — single tiny posture indicator. Detailed
+              backend state has migrated to the BackendUnreachableBanner
+              (above workbench) and the context flyout. */}
           <span
             className="term-rail-chip"
             data-tone={mockMode ? "warn" : "ok"}
@@ -264,46 +257,15 @@ export default function ExecutionComposer({
               <span className="term-rail-value">{principlesCount}</span>
             </span>
           )}
-          <span
-            className="term-ws-chip"
-            data-tone={!backendReachable ? "warn" : mockMode ? "warn" : backendReadiness === "ready" ? "ok" : "warn"}
-            title={!backendReachable
-              ? backendUnreachableReason === "backend_url_not_configured"
-                ? "Vercel env: defina SIGNAL_BACKEND_URL e faça redeploy"
-                : backendUnreachableDetail
-                  ? `backend inacessível [${backendUnreachableReason ?? "?"}]: ${backendUnreachableDetail}`
-                  : `backend inacessível: ${backendUnreachableReason ?? "motivo desconhecido"}`
-              : mockMode
-                ? "backend em modo simulado — respostas canned"
-                : `backend ${backendReadiness}`}
-          >
-            <span className="term-ws-chip-glyph" aria-hidden>●</span>
-            <span className="term-ws-chip-label">backend</span>
-            <span className="term-ws-chip-value">
-              {!backendReachable
-                ? backendUnreachableReason ?? "unreachable"
-                : mockMode
-                  ? "mock"
-                  : backendReadiness}
-            </span>
-          </span>
-          <span className="term-ws-chip" title="repositório ligado">
-            <span className="term-ws-chip-glyph" aria-hidden>⌁</span>
-            <span className="term-ws-chip-label">repo</span>
-            <span className="term-ws-chip-value">{repoLabel ?? "unavailable"}</span>
-          </span>
-          <button
-            type="button"
-            className="term-ws-chip"
-            disabled
-            title={branchLabel ? "branch switch unavailable" : "branch unavailable"}
-          >
-            <span className="term-ws-chip-glyph" aria-hidden>⑂</span>
-            <span className="term-ws-chip-label">branch</span>
-            <span className="term-ws-chip-value">{branchLabel ?? "unavailable"}</span>
-          </button>
 
           <span className="term-ws-spacer" />
+
+          {/* Repo / Diff / Gates / Branch / Review removed: workbench
+              owns territorial telemetry (Repo, Diff, Gates, Deploy,
+              Queue lenses). Composer only carries what drives the next
+              command. Honors the original WorkbenchStrip rule:
+              "Workbench narrates territory, Composer drives action.
+              No tool is owned by both surfaces." */}
 
           <div
             className="term-rail-mode"
@@ -324,27 +286,6 @@ export default function ExecutionComposer({
                 {m}
               </button>
             ))}
-          </div>
-        </div>
-        <div className="term-command-workspace" style={{ borderTop: "1px solid var(--border-soft)" }}>
-          <div className="term-ws-group" aria-label="review">
-            <span className="term-ws-chip">
-              <span className="term-ws-chip-glyph" aria-hidden>Δ</span>
-              <span className="term-ws-chip-label">diff</span>
-              <span className="term-ws-chip-value">
-                {diffStats ? `${diffStats.files} files · +${diffStats.added} · -${diffStats.removed}` : "unavailable"}
-              </span>
-            </span>
-            <span className="term-ws-chip">
-              <span className="term-ws-chip-glyph" aria-hidden>✓</span>
-              <span className="term-ws-chip-label">gates</span>
-              <span className="term-ws-chip-value">tc:{gates.typecheck} · build:{gates.build}</span>
-            </span>
-            <span className="term-ws-chip">
-              <span className="term-ws-chip-glyph" aria-hidden>⊜</span>
-              <span className="term-ws-chip-label">review</span>
-              <span className="term-ws-chip-value">{reviewState} · risk:{reviewRisk}</span>
-            </span>
           </div>
         </div>
 
