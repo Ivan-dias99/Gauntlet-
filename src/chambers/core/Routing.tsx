@@ -19,7 +19,7 @@ const PROFILES: Array<{
   { key: "archive",  label: "Archive",  dispatch: "triad",
     purpose: "Retrieval conservador. Summaries não inventam." },
   { key: "core",     label: "Core",     dispatch: "triad",
-    purpose: "Governance. Respostas sobre regras caem na triad." },
+    purpose: "Registry. Respostas sobre regras caem na triad." },
 ];
 
 const DISPATCH_TONE: Record<string, "info" | "warn" | "accent" | "muted"> = {

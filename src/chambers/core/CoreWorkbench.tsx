@@ -43,9 +43,16 @@ export default function CoreWorkbench() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [lens]);
 
-  const backendValue = backend.mode === "mock"
-    ? copy.coreWbBackendMock
-    : copy.coreWbBackendLive;
+  // Readiness-honest backend chip. When mode=mock the chip says "mock".
+  // Otherwise it surfaces the real readiness from /health/ready
+  // (ready · degraded · unreachable) instead of a single "live" label
+  // that lied when the brain was reachable but degraded.
+  const backendValue =
+    backend.mode === "mock"           ? copy.coreWbBackendMock         :
+    backend.readiness === "ready"     ? copy.coreWbBackendReady        :
+    backend.readiness === "degraded"  ? copy.coreWbBackendDegraded     :
+    backend.readiness === "unreachable" ? copy.coreWbBackendUnreachable :
+    copy.coreWbBackendLive;
   const spineValue =
     syncState === "synced"  ? copy.coreWbSpineSynced  :
     syncState === "syncing" ? copy.coreWbSpineSyncing :
@@ -94,7 +101,12 @@ export default function CoreWorkbench() {
           value={backendValue}
           active={lens === "backend"}
           wired={true}
-          tone={backend.mode === "mock" ? "warn" : "ok"}
+          tone={
+            backend.mode === "mock"        ? "warn" :
+            backend.readiness === "ready"  ? "ok"   :
+            backend.readiness === "degraded" ? "info" :
+            "warn"
+          }
           onClick={() => setLens(lens === "backend" ? null : "backend")}
         />
         <LensButton
@@ -164,7 +176,7 @@ function LensFlyout({
   return (
     <div className="term-flyout" role="menu">
       <div className="term-flyout-head">
-        <span>{title} · live</span>
+        <span>{title}</span>
       </div>
       <div className="term-flyout-body">
         <p className="term-flyout-prose">{body}</p>

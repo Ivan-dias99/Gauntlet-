@@ -306,6 +306,7 @@ export default function Insight() {
         priorTurns={priorTurnsInContext}
         mockMode={backend.mode === "mock"}
         unreachable={!backend.reachable}
+        readiness={backend.readiness}
         routeHint={lastVerdict?.routePath}
         missionContext={
           activeMission

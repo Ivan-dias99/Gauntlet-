@@ -25,15 +25,11 @@ type View =
   | "artboard"
   | "components"
   | "seal"
-  | "files"
-  | "wireframes";
+  | "files";
 
-const EXAMPLES = [
-  { title: "Operational dashboard",     kind: "hi-fi",     tag: "analytics" },
-  { title: "Onboarding flow — 3 steps", kind: "prototype", tag: "activation" },
-  { title: "Governance settings pane",  kind: "hi-fi",     tag: "core" },
-  { title: "Archive search & lineage",  kind: "prototype", tag: "archive" },
-];
+// Canned examples grid retired: Surface is a visual contract
+// workstation, not a template marketplace. The brief view now reads
+// only the operational checklist of the active brief.
 
 interface Props {
   plan: SurfacePlanPayload | null;
@@ -135,7 +131,6 @@ export default function ExplorationRail({
           />
         )}
         {view === "files"      && <FilesView plan={plan} mock={mock} copy={copy} />}
-        {view === "wireframes" && <WireframesView copy={copy} />}
       </div>
     </div>
   );
@@ -159,53 +154,28 @@ function BriefView({
   const allChecked = checklist.every((row) => row.done);
 
   return (
-    <>
-      <div className="surface-rail-hero" data-state={allChecked ? "ready" : "blocked"}>
-        <span className="surface-rail-hero-kicker">
-          {allChecked ? copy.surfaceRailEmptyKicker : copy.surfaceContractBlockedKicker}
-        </span>
-        <p className="surface-rail-hero-body">
-          {allChecked ? copy.surfaceRailEmptyBody : copy.surfaceContractBlockedBody}
-        </p>
-        <ul className="surface-contract-checklist" aria-label="contract fields">
-          {checklist.map((row) => (
-            <li
-              key={row.key}
-              className="surface-contract-row"
-              data-done={row.done ? "true" : undefined}
-            >
-              <span className="surface-contract-box" aria-hidden>
-                {row.done ? "✓" : ""}
-              </span>
-              <span className="surface-contract-label">{row.label}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="surface-rail-shortcut-kicker">
-        <span className="surface-rail-shortcut-label">{copy.surfaceExamplesKicker}</span>
-        <span className="surface-rail-shortcut-hint">{copy.surfaceExamplesHint}</span>
-      </div>
-      <div className="surface-rail-body">
-        <div className="surface-rail-grid">
-          {EXAMPLES.map((it) => (
-            <button
-              key={it.title}
-              className="surface-rail-card"
-              type="button"
-              aria-label={`${it.title} · ${it.kind}`}
-            >
-              <div className="surface-rail-card-title">{it.title}</div>
-              <div className="surface-rail-card-meta">
-                <span className="surface-rail-card-kind" data-kind={it.kind}>{it.kind}</span>
-                <span className="surface-rail-card-tag">· {it.tag}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </>
+    <div className="surface-rail-hero" data-state={allChecked ? "ready" : "blocked"}>
+      <span className="surface-rail-hero-kicker">
+        {allChecked ? copy.surfaceRailEmptyKicker : copy.surfaceContractBlockedKicker}
+      </span>
+      <p className="surface-rail-hero-body">
+        {allChecked ? copy.surfaceRailEmptyBody : copy.surfaceContractBlockedBody}
+      </p>
+      <ul className="surface-contract-checklist" aria-label="contract fields">
+        {checklist.map((row) => (
+          <li
+            key={row.key}
+            className="surface-contract-row"
+            data-done={row.done ? "true" : undefined}
+          >
+            <span className="surface-contract-box" aria-hidden>
+              {row.done ? "✓" : ""}
+            </span>
+            <span className="surface-contract-label">{row.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -471,22 +441,10 @@ function statusLabel(s: FileDelta["status"]): string {
   }
 }
 
-function WireframesView({
-  copy,
-}: {
-  copy: ReturnType<typeof useCopy>;
-}) {
-  return (
-    <div className="surface-canvas-empty">
-      <span className="surface-canvas-empty-kicker">{copy.surfaceWireframesEmptyKicker}</span>
-      <p className="surface-canvas-empty-body">{copy.surfaceWireframesEmptyBody}</p>
-      <p className="surface-canvas-empty-contract" aria-label="backend contract">
-        <span className="surface-canvas-empty-contract-label">contract</span>
-        <code>{copy.surfaceWireframesEmptyContract}</code>
-      </p>
-    </div>
-  );
-}
+// Wireframes view retired (it lived as dead code: the tab bar never
+// included it once the visual contract engine landed). The
+// surfaceWireframes* copy keys remain in the i18n table for the
+// canon SurfaceWorkbench lens that still references them.
 
 // (Lens chip + flyout + icons live in SurfaceWorkbench now — the
 // canvas tab bar carries view navigation only.)

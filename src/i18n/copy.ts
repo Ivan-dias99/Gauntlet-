@@ -228,6 +228,13 @@ export interface Copy {
   coreWbBackendBody: string;
   coreWbBackendMock: string;
   coreWbBackendLive: string;
+  // Readiness-honest backend chip — splits the old single "live" label
+  // into the three states /health/ready exposes. CoreWorkbench picks
+  // the right one based on backend.readiness so the chip stops lying
+  // when the brain is reachable but degraded.
+  coreWbBackendReady: string;
+  coreWbBackendDegraded: string;
+  coreWbBackendUnreachable: string;
   coreWbSpineLabel: string;
   coreWbSpineBody: string;
   coreWbSpineSynced: string;
@@ -421,7 +428,7 @@ const PT: Copy = {
     terminal: { label: "Terminal", sub: "código · agent loop · tool allowlist",          lead: "Terminal · execução com consequência" },
     archive:  { label: "Archive",  sub: "runs selados · proveniência · ledger",          lead: "Archive · cada execução fica registada" },
     // Core retains institutional register by design.
-    core:     { label: "Core",     sub: "políticas · roteamento · governance",           lead: "Core · princípios que vinculam cada chamber" },
+    core:     { label: "Core",     sub: "políticas · roteamento · registry",             lead: "Core · princípios que vinculam cada chamber" },
   },
   switchMission: "Trocar missão",
   missions: "Missões",
@@ -565,7 +572,7 @@ const PT: Copy = {
   insightWbDoctrineBody: "Princípios em vigor que viajam com cada pergunta. Inscritos em Core › Policies; aplicados a todas as triad runs desta missão.",
   insightWbValueIdle: "—",
   coreWbLabel: "CORE",
-  coreWbStatusReadOnly: "governance read-only · edição chega em Wave 7",
+  coreWbStatusReadOnly: "registry read-only · edição chega em Wave 7",
   coreWbChambersLabel: "chambers",
   coreWbChambersBody: "Câmaras registadas: Insight, Surface, Terminal, Archive, Core. Cinco modos cognitivos, cinco perfis em chambers/profiles.py.",
   coreWbToolsLabel: "tools",
@@ -573,9 +580,12 @@ const PT: Copy = {
   coreWbDoctrineLabel: "doctrine",
   coreWbDoctrineBody: "Princípios em vigor inscritos em Policies. Viajam com cada query como build_principles_context. Editáveis localmente já hoje.",
   coreWbBackendLabel: "backend",
-  coreWbBackendBody: "Modo do brain. mock = canned, sem chamadas Anthropic. live = real provider routing. Soberania total — frontend nunca chama o provider directamente.",
+  coreWbBackendBody: "Modo do brain. mock = canned, sem chamadas Anthropic. real = provider routing directo. Readiness vem de /health/ready (ready · degraded · unreachable). Soberania total — frontend nunca chama o provider directamente.",
   coreWbBackendMock: "mock",
-  coreWbBackendLive: "live",
+  coreWbBackendLive: "real",
+  coreWbBackendReady: "ready",
+  coreWbBackendDegraded: "degraded",
+  coreWbBackendUnreachable: "unreachable",
   coreWbSpineLabel: "spine",
   coreWbSpineBody: "Estado da workspace snapshot. synced = backend tem o estado local. syncing = a empurrar. local = backend dormente; snapshot persiste local até regressar.",
   coreWbSpineSynced: "synced",
@@ -746,7 +756,7 @@ const PT: Copy = {
   schoolSubtitle: "princípios que vinculam cada chamber",
   schoolInputVoice: "novo princípio",
   schoolEmpty: "Sem princípios do operador. Inscreve o primeiro. (System Doctrine continua activa.)",
-  schoolEmptyKicker: "Sem princípios",
+  schoolEmptyKicker: "Sem princípios do operador",
   schoolEmptyHint: "escreve o primeiro em baixo",
   schoolPlaceholder: "Redigir o próximo princípio…",
   schoolInscribe: "Adicionar",
@@ -764,7 +774,7 @@ const EN: Copy = {
     surface:  { label: "Surface",  sub: "design · declared mock · swappable provider",  lead: "Surface · design workstation" },
     terminal: { label: "Terminal", sub: "code · agent loop · tool allowlist",           lead: "Terminal · execution with consequence" },
     archive:  { label: "Archive",  sub: "sealed runs · provenance · ledger",            lead: "Archive · every run is logged" },
-    core:     { label: "Core",     sub: "policies · routing · governance",              lead: "Core · principles that bind every chamber" },
+    core:     { label: "Core",     sub: "policies · routing · registry",                lead: "Core · principles that bind every chamber" },
   },
   switchMission: "Switch mission",
   missions: "Missions",
@@ -908,7 +918,7 @@ const EN: Copy = {
   insightWbDoctrineBody: "Active principles travelling with each question. Inscribed in Core › Policies; applied to every triad run in this mission.",
   insightWbValueIdle: "—",
   coreWbLabel: "CORE",
-  coreWbStatusReadOnly: "governance read-only · editing lands in Wave 7",
+  coreWbStatusReadOnly: "registry read-only · editing lands in Wave 7",
   coreWbChambersLabel: "chambers",
   coreWbChambersBody: "Registered chambers: Insight, Surface, Terminal, Archive, Core. Five cognitive modes, five profiles in chambers/profiles.py.",
   coreWbToolsLabel: "tools",
@@ -916,9 +926,12 @@ const EN: Copy = {
   coreWbDoctrineLabel: "doctrine",
   coreWbDoctrineBody: "Active principles inscribed in Policies. Travel with each query as build_principles_context. Editable locally today.",
   coreWbBackendLabel: "backend",
-  coreWbBackendBody: "Brain mode. mock = canned, no Anthropic calls. live = real provider routing. Full sovereignty — frontend never calls the provider directly.",
+  coreWbBackendBody: "Brain mode. mock = canned, no Anthropic calls. real = direct provider routing. Readiness comes from /health/ready (ready · degraded · unreachable). Full sovereignty — frontend never calls the provider directly.",
   coreWbBackendMock: "mock",
-  coreWbBackendLive: "live",
+  coreWbBackendLive: "real",
+  coreWbBackendReady: "ready",
+  coreWbBackendDegraded: "degraded",
+  coreWbBackendUnreachable: "unreachable",
   coreWbSpineLabel: "spine",
   coreWbSpineBody: "Workspace snapshot state. synced = backend holds the local state. syncing = pushing. local = backend dormant; snapshot persists locally until it returns.",
   coreWbSpineSynced: "synced",
@@ -1088,7 +1101,7 @@ const EN: Copy = {
   schoolSubtitle: "principles that bind every chamber",
   schoolInputVoice: "new principle",
   schoolEmpty: "No operator principles. Inscribe the first. (System Doctrine remains active.)",
-  schoolEmptyKicker: "No principles",
+  schoolEmptyKicker: "No operator principles",
   schoolEmptyHint: "write the first one below",
   schoolPlaceholder: "Draft the next principle…",
   schoolInscribe: "Add",

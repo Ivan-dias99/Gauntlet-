@@ -29,6 +29,11 @@ interface Props {
   // Drives the context flyout's backend chip into "unreachable" instead
   // of lying "live". Optional so the canonical caller keeps compiling.
   unreachable?: boolean;
+  // Readiness-honest companion. When provided, the context flyout's
+  // backend chip surfaces "ready" / "degraded" / "unreachable" directly
+  // instead of collapsing reachable-but-degraded into a misleading
+  // "live". Optional so the canonical caller path keeps compiling.
+  readiness?: "ready" | "degraded" | "unreachable";
   routeHint?: "triad" | "agent";
   // Mission Composer semantics — "new" when first send will create a
   // mission, "continue" with the active title otherwise. Drives the
@@ -43,15 +48,21 @@ type Flyout = null | "context" | "route";
 
 export default function Composer({
   value, onChange, onSubmit, pending, placeholder,
-  voiceLabel, principlesCount, priorTurns, mockMode, unreachable, routeHint,
+  voiceLabel, principlesCount, priorTurns, mockMode, unreachable, readiness, routeHint,
   missionContext,
 }: Props) {
   const ctx = missionContext ?? { kind: "new" as const };
+  // Four honest states. mockMode wins (canned brain). Otherwise prefer
+  // the explicit readiness from /health/ready; fall back to the
+  // reachable boolean when readiness is not provided so the canonical
+  // caller path keeps working without a parent change.
   const readinessLabel = mockMode
     ? "mock"
-    : unreachable
-      ? "unreachable"
-      : "live";
+    : readiness
+      ? readiness
+      : unreachable
+        ? "unreachable"
+        : "ready";
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
   const [focused, setFocused] = useState(false);
@@ -271,7 +282,7 @@ function ContextFlyout({
         <span
           className="insight-composer-flyout-item-kicker"
           style={
-            readinessLabel === "live"
+            readinessLabel === "ready"
               ? undefined
               : { color: "var(--cc-warn)" }
           }
