@@ -40,10 +40,11 @@ export default function Orchestration() {
   return (
     <div className="core-page">
       <div className="core-page-intro">
-        <span className="core-page-intro-title">Orchestration</span>
+        <span className="core-page-intro-title">Orchestration · Registry Mode</span>
         <span className="core-page-intro-sub">
-          Quatro pipelines com budgets que mantêm cada rota honesta.
-          Valores espelham o backend — agent.py e engine.py.
+          Read-only registry of execution budgets. Quatro pipelines com
+          limites que mantêm cada rota honesta. Valores espelham o backend —
+          agent.py e engine.py.
         </span>
       </div>
       <div

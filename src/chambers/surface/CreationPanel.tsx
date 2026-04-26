@@ -175,32 +175,98 @@ export default function CreationPanel({
         </div>
       </section>
 
-      {/* Section 4 — Design system. */}
+      {/* Section 4 — Design system · explicit decision (Task 6).
+          The wire payload stays a string | null for canon backend
+          backwards-compat, but the UI demands the operator chooses
+          explicitly between three intentions:
+            · Signal Canon       → "Signal Canon"
+            · Custom <name>      → free-text DS name
+            · Sem DS declarado   → "none_declared" (explicit, not null)
+          Silent null is no longer reachable from the picker. */}
       <section className="surface-cockpit-section">
         <span className="surface-cockpit-label">{copy.surfaceStudioDsLabel}</span>
-        <span className="surface-ds-chip">
-          <span
-            className="surface-ds-chip-value"
-            data-empty={brief.design_system ? undefined : "true"}
-          >
-            {brief.design_system ?? copy.surfaceStudioDsEmpty}
-          </span>
-          <span className="surface-ds-chip-caret" aria-hidden>▾</span>
-          <select
-            className="surface-ds-native"
-            value={brief.design_system ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              onBriefChange({ design_system: v === "" ? null : v });
-            }}
-            aria-label={copy.surfaceStudioDsLabel}
-          >
-            <option value="">{copy.surfaceStudioDsEmpty}</option>
-            {DESIGN_SYSTEMS.map((ds) => (
-              <option key={ds} value={ds}>{ds}</option>
-            ))}
-          </select>
-        </span>
+        {(() => {
+          const currentDecision: "signal_canon" | "custom" | "none_declared" =
+            brief.design_system === "Signal Canon" ? "signal_canon"
+            : brief.design_system === "none_declared" ? "none_declared"
+            : brief.design_system ? "custom"
+            : "custom"; // null falls into custom-empty so the operator decides
+          const decisions: Array<{
+            key: "signal_canon" | "custom" | "none_declared";
+            label: string;
+          }> = [
+            { key: "signal_canon",  label: "Signal Canon" },
+            { key: "custom",        label: "Custom" },
+            { key: "none_declared", label: "Sem DS declarado" },
+          ];
+          return (
+            <>
+              <div
+                className="surface-segmented"
+                role="tablist"
+                aria-label="design system decision"
+              >
+                {decisions.map((d) => (
+                  <button
+                    key={d.key}
+                    role="tab"
+                    className="surface-segmented-opt"
+                    data-active={currentDecision === d.key ? "true" : undefined}
+                    aria-selected={currentDecision === d.key}
+                    onClick={() => {
+                      if (d.key === "signal_canon") {
+                        onBriefChange({ design_system: "Signal Canon" });
+                      } else if (d.key === "none_declared") {
+                        onBriefChange({ design_system: "none_declared" });
+                      } else {
+                        // Custom: clear any non-custom value so the user picks/types one.
+                        if (brief.design_system === "Signal Canon" || brief.design_system === "none_declared") {
+                          onBriefChange({ design_system: null });
+                        }
+                      }
+                    }}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+              {currentDecision === "custom" && (
+                <span
+                  className="surface-ds-chip"
+                  style={{ marginTop: 6 }}
+                >
+                  <span
+                    className="surface-ds-chip-value"
+                    data-empty={brief.design_system && brief.design_system !== "none_declared" ? undefined : "true"}
+                  >
+                    {(brief.design_system && brief.design_system !== "none_declared")
+                      ? brief.design_system
+                      : copy.surfaceStudioDsEmpty}
+                  </span>
+                  <span className="surface-ds-chip-caret" aria-hidden>▾</span>
+                  <select
+                    className="surface-ds-native"
+                    value={
+                      brief.design_system && brief.design_system !== "none_declared"
+                        ? brief.design_system
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      onBriefChange({ design_system: v === "" ? null : v });
+                    }}
+                    aria-label="custom design system"
+                  >
+                    <option value="">{copy.surfaceStudioDsEmpty}</option>
+                    {DESIGN_SYSTEMS.filter((ds) => ds !== "Signal Canon").map((ds) => (
+                      <option key={ds} value={ds}>{ds}</option>
+                    ))}
+                  </select>
+                </span>
+              )}
+            </>
+          );
+        })()}
       </section>
 
       {/* Section 5 — Footer with primary CTA + Handoff secondary +

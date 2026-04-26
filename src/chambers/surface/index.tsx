@@ -14,6 +14,11 @@ import SurfaceLayout from "./SurfaceLayout";
 import SurfaceWorkbench from "./SurfaceWorkbench";
 import CreationPanel from "./CreationPanel";
 import ExplorationRail from "./ExplorationRail";
+import {
+  validateMissionTitle,
+  explainMissionRejection,
+  type MissionRejectionReason,
+} from "../../spine/validation";
 
 // Surface chamber — design workstation.
 //
@@ -28,16 +33,18 @@ const DEFAULT_BRIEF: SurfaceBriefPayload = {
 };
 
 export default function Surface() {
-  const { activeMission, createMission, addNoteToMission, principles } = useSpine();
+  const { activeMission, createMission, addNoteToMission, acceptArtifact, principles } = useSpine();
   const { streamSurface, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
   const copy = useCopy();
+  const [planSealed, setPlanSealed] = useState(false);
 
   const [brief, setBrief] = useState<SurfaceBriefPayload>(DEFAULT_BRIEF);
   const [prompt, setPrompt] = useState("");
   const [plan, setPlan] = useState<SurfacePlanPayload | null>(null);
   const [planIsMock, setPlanIsMock] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
+  const [missionRejection, setMissionRejection] = useState<MissionRejectionReason | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const patchBrief = (p: Partial<SurfaceBriefPayload>) =>
@@ -54,6 +61,12 @@ export default function Surface() {
     let missionId = activeMission?.id;
     if (!missionId) {
       const title = v.length > 64 ? v.slice(0, 61).trimEnd() + "…" : v;
+      const verdict = validateMissionTitle(title);
+      if (!verdict.ok) {
+        setMissionRejection(verdict.reason);
+        return;
+      }
+      setMissionRejection(null);
       missionId = createMission(title, "surface");
     }
     addNoteToMission(missionId, v, "user");
@@ -154,6 +167,22 @@ export default function Surface() {
                   {err}
                 </div>
               )}
+              {missionRejection !== null && (
+                <div
+                  role="alert"
+                  data-mission-rejection
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: "var(--t-body-sec)",
+                    color: "var(--cc-warn)",
+                    padding: "8px 12px",
+                    border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+                    borderRadius: "var(--radius-control)",
+                  }}
+                >
+                  missão não ratificada · {explainMissionRejection(missionRejection)}
+                </div>
+              )}
             </>
           }
           right={
@@ -164,6 +193,23 @@ export default function Surface() {
               promptDraft={prompt}
               onBriefChange={patchBrief}
               pending={pending}
+              sealed={planSealed}
+              onSeal={
+                plan && activeMission
+                  ? () => {
+                      const screenSummary = plan.screens.map((s) => s.name).join(", ");
+                      acceptArtifact(activeMission.id, {
+                        taskTitle: `Surface plan — ${plan.mode} / ${plan.fidelity}`,
+                        answer: `${plan.screens.length} telas · ${plan.components.length} componentes\n${screenSummary}`,
+                        terminatedEarly: planIsMock,
+                        acceptedAt: Date.now(),
+                        toolCount: plan.components.length,
+                        terminationReason: planIsMock ? "surface_mock" : null,
+                      });
+                      setPlanSealed(true);
+                    }
+                  : undefined
+              }
             />
           }
         />

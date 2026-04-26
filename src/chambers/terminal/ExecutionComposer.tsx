@@ -38,6 +38,11 @@ interface Props {
   principlesCount: number;
   priorTurns: number;
   mockMode: boolean;
+  // Honest readiness companion for mockMode — when true the backend is
+  // unreachable. The combined state drives a 3-label readiness chip
+  // ("live" only when mockMode=false AND unreachable=false). Optional
+  // so the canonical caller path keeps compiling; defaults to false.
+  unreachable?: boolean;
 }
 
 type Flyout = null | "context" | "recent" | "tools";
@@ -58,8 +63,20 @@ const TERMINAL_TOOLS: Array<{ name: string; kind: string; gated?: boolean }> = [
 export default function ExecutionComposer({
   copy, value, onChange, onSubmit, pending, missionTitle,
   mode, onModeChange, recentTasks, onPickTask,
-  principlesCount, priorTurns, mockMode,
+  principlesCount, priorTurns, mockMode, unreachable,
 }: Props) {
+  const readinessLabel = mockMode
+    ? "mock"
+    : unreachable
+      ? "unreachable"
+      : "live";
+  const readinessTone: "warn" | "ok" =
+    mockMode || unreachable ? "warn" : "ok";
+  const readinessTitle = mockMode
+    ? "backend em modo simulado — respostas canned"
+    : unreachable
+      ? "backend inacessível — operação local apenas"
+      : "backend ligado — execução real";
   const [focused, setFocused] = useState(false);
   const [flyout, setFlyout] = useState<Flyout>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -222,13 +239,11 @@ export default function ExecutionComposer({
 
           <span
             className="term-rail-chip"
-            data-tone={mockMode ? "warn" : "ok"}
-            title={mockMode
-              ? "backend em modo simulado — respostas canned"
-              : "backend ligado — execução real"}
+            data-tone={readinessTone}
+            title={readinessTitle}
           >
             <span className="term-rail-dot" aria-hidden />
-            <span className="term-rail-value">{mockMode ? "mock" : "live"}</span>
+            <span className="term-rail-value">{readinessLabel}</span>
           </span>
           {principlesCount > 0 && (
             <span
@@ -269,6 +284,7 @@ export default function ExecutionComposer({
             principlesCount={principlesCount}
             priorTurns={priorTurns}
             mockMode={mockMode}
+            readinessLabel={readinessLabel}
             mode={mode}
           />
         )}
@@ -287,11 +303,12 @@ export default function ExecutionComposer({
 // ——— Flyouts ———
 
 function ContextFlyout({
-  principlesCount, priorTurns, mockMode, mode,
+  principlesCount, priorTurns, mockMode, readinessLabel, mode,
 }: {
   principlesCount: number;
   priorTurns: number;
   mockMode: boolean;
+  readinessLabel: string;
   mode: RunMode;
 }) {
   return (
@@ -318,7 +335,16 @@ function ContextFlyout({
         <span className="term-flyout-item-body">
           <span className="term-flyout-item-title">backend</span>
         </span>
-        <span className="term-flyout-item-kicker">{mockMode ? "mock" : "live"}</span>
+        <span
+          className="term-flyout-item-kicker"
+          style={
+            readinessLabel === "live"
+              ? undefined
+              : { color: "var(--cc-warn)" }
+          }
+        >
+          {readinessLabel}
+        </span>
       </button>
       <button className="term-flyout-item" disabled>
         <span className="term-flyout-item-glyph">⚙</span>

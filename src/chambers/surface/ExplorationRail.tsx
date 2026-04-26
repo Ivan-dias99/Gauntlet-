@@ -2,17 +2,31 @@ import { useEffect, useState } from "react";
 import type { SurfaceBriefPayload, SurfacePlanPayload } from "../../hooks/useSignal";
 import { useCopy } from "../../i18n/copy";
 
-// Surface canvas — view router with four top-level tabs:
-//   BRIEF · PLAN · FILES · WIREFRAMES
+// Surface canvas — Visual Contract Engine view router.
 //
-// BRIEF and PLAN are wired (read brief + plan from local state).
-// FILES and WIREFRAMES are honest "not wired" — empty states declare
-// the backend contracts pending. The 5 lens chips that briefly lived
-// inline with these tabs moved up to the SurfaceWorkbench thin pill
-// above the split; the canvas tab bar is now view-router-only, so
-// territory state and view navigation no longer share a row.
+// The six canonical stages of the contract progression:
+//   BRIEF · CONTRACT · PLAN · ARTBOARD · COMPONENTS · SEAL
+//
+// Plus the existing FILES / WIREFRAMES "not wired" tabs preserved from
+// canon for backwards compatibility (they still declare the backend
+// contracts pending).
+//
+// Stages BRIEF and CONTRACT are always available. PLAN / ARTBOARD /
+// COMPONENTS / SEAL appear only after a plan envelope arrives. SEAL is
+// active when an artifact has been accepted for the active mission.
+// The 5 lens chips that lived inline with these tabs moved up to the
+// SurfaceWorkbench thin pill above the split; the canvas tab bar is
+// now view-router-only.
 
-type View = "brief" | "plan" | "files" | "wireframes";
+type View =
+  | "brief"
+  | "contract"
+  | "plan"
+  | "artboard"
+  | "components"
+  | "seal"
+  | "files"
+  | "wireframes";
 
 const EXAMPLES = [
   { title: "Operational dashboard",     kind: "hi-fi",     tag: "analytics" },
@@ -26,20 +40,31 @@ interface Props {
   mock: boolean;
   brief: SurfaceBriefPayload;
   promptDraft: string;
+  // Pre-existing canon parity: SurfaceLayout passes these so the rail
+  // can read pending state and handle brief patches when the contract
+  // checklist becomes interactive in a later wave. Kept optional so the
+  // canonical caller path keeps compiling.
+  pending?: boolean;
+  onBriefChange?: (patch: Partial<SurfaceBriefPayload>) => void;
+  // When the operator has explicitly sealed the plan as a mission
+  // artifact, the SEAL stage activates. Optional so the canonical
+  // caller path keeps compiling.
+  sealed?: boolean;
+  onSeal?: () => void;
 }
 
 export default function ExplorationRail({
-  plan, mock, brief, promptDraft,
+  plan, mock, brief, promptDraft, sealed, onSeal,
 }: Props) {
   const copy = useCopy();
   const [view, setView] = useState<View>("brief");
   const [planSeen, setPlanSeen] = useState(false);
 
-  // Auto-switch to PLAN view the first time a plan arrives. After
-  // that the user owns navigation.
+  // Auto-switch to ARTBOARD the first time a plan arrives so the user
+  // sees the structured output immediately. Then the user owns nav.
   useEffect(() => {
     if (plan && !planSeen) {
-      setView("plan");
+      setView("artboard");
       setPlanSeen(true);
     }
     if (!plan && planSeen) {
@@ -47,15 +72,24 @@ export default function ExplorationRail({
     }
   }, [plan, planSeen]);
 
-  // Tabs: brief always; plan + files appear when a plan exists. Files
-  // is now wired to derived mock artifacts from plan.screens until the
-  // real /surface/files backend lands. Wireframes still pending.
+  // Stage progression: BRIEF + CONTRACT are always reachable. The
+  // post-generation stages (PLAN, ARTBOARD, COMPONENTS, SEAL) become
+  // available only when their backing data exists. Files and
+  // Wireframes are preserved from canon as "not wired" forwards.
   const tabs: Array<{ key: View; label: string; wired: boolean }> = [
-    { key: "brief", label: copy.surfaceCanvasTabBrief, wired: true },
+    { key: "brief",     label: "Brief",     wired: true },
+    { key: "contract",  label: "Contract",  wired: true },
     ...(plan
       ? ([
-          { key: "plan" as View, label: copy.surfaceCanvasTabPlan, wired: true },
-          { key: "files" as View, label: copy.surfaceCanvasTabFiles, wired: true },
+          { key: "plan" as View,       label: "Plan",       wired: true },
+          { key: "artboard" as View,   label: "Artboard",   wired: true },
+          { key: "components" as View, label: "Components", wired: true },
+          {
+            key: "seal" as View,
+            label: "Seal",
+            wired: !!onSeal,
+          },
+          { key: "files" as View,      label: copy.surfaceCanvasTabFiles, wired: true },
         ])
       : []),
   ];
@@ -88,7 +122,18 @@ export default function ExplorationRail({
 
       <div className="surface-canvas-view">
         {view === "brief"      && <BriefView brief={brief} promptDraft={promptDraft} copy={copy} />}
+        {view === "contract"   && <ContractView brief={brief} promptDraft={promptDraft} />}
         {view === "plan"       && <PlanView plan={plan} mock={mock} copy={copy} />}
+        {view === "artboard"   && plan && <ArtboardStageView plan={plan} mock={mock} />}
+        {view === "components" && plan && <ComponentsStageView plan={plan} mock={mock} />}
+        {view === "seal"       && plan && (
+          <SealStageView
+            plan={plan}
+            mock={mock}
+            sealed={!!sealed}
+            onSeal={onSeal}
+          />
+        )}
         {view === "files"      && <FilesView plan={plan} mock={mock} copy={copy} />}
         {view === "wireframes" && <WireframesView copy={copy} />}
       </div>
@@ -445,3 +490,374 @@ function WireframesView({
 
 // (Lens chip + flyout + icons live in SurfaceWorkbench now — the
 // canvas tab bar carries view navigation only.)
+
+// ── Stage views (Brief/Contract/Plan/Artboard/Components/Seal) ─────────────
+//
+// Pure-additive: stages render data the chamber already owns (brief +
+// plan). No fake wiring, no canned content. Mock badge stays honest
+// when the plan came back with mock=true.
+
+function ContractView({
+  brief, promptDraft,
+}: {
+  brief: SurfaceBriefPayload;
+  promptDraft: string;
+}) {
+  const items = [
+    { label: "intent · brief escrito",                       satisfied: promptDraft.trim().length > 0 },
+    { label: "output · prototype / deck / template / other", satisfied: !!brief.mode },
+    { label: "fidelity · wireframe / hi-fi",                 satisfied: !!brief.fidelity },
+    {
+      label: brief.design_system
+        ? `design system · ${brief.design_system}`
+        : "design system · escolhe ou declara 'sem DS'",
+      satisfied: !!brief.design_system,
+    },
+  ];
+  const allSatisfied = items.every((i) => i.satisfied);
+
+  return (
+    <div style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: 14 }}>
+      <span
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: "var(--t-micro)",
+          letterSpacing: "var(--track-label)",
+          textTransform: "uppercase",
+          color: "var(--text-ghost)",
+        }}
+      >
+        — Contract {allSatisfied ? "ready" : "blocked"}
+      </span>
+      <p
+        style={{
+          margin: 0,
+          fontFamily: "var(--serif)",
+          fontSize: 18,
+          lineHeight: 1.4,
+          color: "var(--text-primary)",
+        }}
+      >
+        {allSatisfied
+          ? "Contrato fechado. Submete o brief para gerar o plano."
+          : "Forma o contrato à esquerda. Cada linha por marcar mantém o brief bloqueado."}
+      </p>
+      <ul
+        style={{
+          listStyle: "none",
+          margin: 0,
+          padding: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+        {items.map((it) => (
+          <li
+            key={it.label}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontFamily: "var(--mono)",
+              fontSize: "var(--t-body-sec)",
+              color: it.satisfied ? "var(--text-secondary)" : "var(--text-muted)",
+              opacity: it.satisfied ? 1 : 0.7,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 16,
+                height: 16,
+                borderRadius: 3,
+                border: it.satisfied
+                  ? "1px solid color-mix(in oklab, var(--cc-ok) 60%, transparent)"
+                  : "1px solid var(--border-mid)",
+                color: "var(--cc-ok)",
+                fontSize: 11,
+                lineHeight: 1,
+              }}
+            >
+              {it.satisfied ? "✓" : ""}
+            </span>
+            <span>{it.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ArtboardStageView({
+  plan, mock,
+}: {
+  plan: SurfacePlanPayload;
+  mock: boolean;
+}) {
+  return (
+    <div style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-micro)",
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+            color: "var(--text-ghost)",
+          }}
+        >
+          — Artboard
+        </span>
+        <span style={{ flex: 1 }} aria-hidden />
+        {mock && <MockBadgeStage />}
+      </div>
+      <span
+        style={{
+          fontFamily: "var(--serif)",
+          fontSize: 18,
+          color: "var(--text-primary)",
+          lineHeight: 1.4,
+        }}
+      >
+        {plan.screens.length} {plan.screens.length === 1 ? "tela" : "telas"} · {plan.mode} · {plan.fidelity}
+      </span>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 10,
+        }}
+      >
+        {plan.screens.map((s) => (
+          <div
+            key={s.name}
+            style={{
+              padding: 12,
+              border: "var(--border-soft)",
+              borderRadius: "var(--radius-control)",
+              background: "var(--bg-elevated)",
+            }}
+          >
+            <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-primary)" }}>
+              {s.name}
+            </div>
+            <div style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)", marginTop: 4 }}>
+              {s.purpose}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ComponentsStageView({
+  plan, mock,
+}: {
+  plan: SurfacePlanPayload;
+  mock: boolean;
+}) {
+  const byScreen = new Map<string, typeof plan.components>();
+  for (const c of plan.components) {
+    const arr = byScreen.get(c.screen) ?? [];
+    arr.push(c);
+    byScreen.set(c.screen, arr);
+  }
+  return (
+    <div style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-micro)",
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+            color: "var(--text-ghost)",
+          }}
+        >
+          — Components
+        </span>
+        <span style={{ flex: 1 }} aria-hidden />
+        {mock && <MockBadgeStage />}
+      </div>
+      <span
+        style={{
+          fontFamily: "var(--serif)",
+          fontSize: 18,
+          color: "var(--text-primary)",
+          lineHeight: 1.4,
+        }}
+      >
+        {plan.components.length} componente{plan.components.length === 1 ? "" : "s"} ·{" "}
+        {byScreen.size} tela{byScreen.size === 1 ? "" : "s"}
+      </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {plan.screens.map((s) => {
+          const items = byScreen.get(s.name) ?? [];
+          if (items.length === 0) return null;
+          return (
+            <div
+              key={s.name}
+              style={{
+                padding: 10,
+                border: "var(--border-soft)",
+                borderRadius: "var(--radius-control)",
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: "var(--t-micro)",
+                  letterSpacing: "var(--track-label)",
+                  textTransform: "uppercase",
+                  color: "var(--text-ghost)",
+                  marginBottom: 6,
+                }}
+              >
+                {s.name}
+              </div>
+              <ul
+                style={{
+                  listStyle: "none",
+                  margin: 0,
+                  padding: 0,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 6,
+                }}
+              >
+                {items.map((c) => (
+                  <li
+                    key={`${c.screen}:${c.name}`}
+                    style={{
+                      fontFamily: "var(--mono)",
+                      fontSize: "var(--t-body-sec)",
+                      color: "var(--text-secondary)",
+                      display: "flex",
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ color: "var(--text-ghost)" }}>{c.kind}</span>
+                    <span>{c.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SealStageView({
+  plan, mock, sealed, onSeal,
+}: {
+  plan: SurfacePlanPayload;
+  mock: boolean;
+  sealed: boolean;
+  onSeal: (() => void) | undefined;
+}) {
+  return (
+    <div style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-micro)",
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+            color: "var(--text-ghost)",
+          }}
+        >
+          — Seal
+        </span>
+        <span style={{ flex: 1 }} aria-hidden />
+        {mock && <MockBadgeStage />}
+      </div>
+      <span
+        style={{
+          fontFamily: "var(--serif)",
+          fontSize: 18,
+          color: "var(--text-primary)",
+          lineHeight: 1.4,
+        }}
+      >
+        {sealed
+          ? "Plano selado · artifact gravado na missão."
+          : "Aceitar o plano grava-o como artifact da missão activa."}
+      </span>
+      <div
+        style={{
+          padding: 12,
+          border: sealed
+            ? "1px solid color-mix(in oklab, var(--cc-ok) 36%, transparent)"
+            : "var(--border-soft)",
+          borderRadius: "var(--radius-control)",
+          background: sealed
+            ? "color-mix(in oklab, var(--cc-ok) 6%, transparent)"
+            : "var(--bg-elevated)",
+          fontFamily: "var(--mono)",
+          fontSize: "var(--t-body-sec)",
+          color: "var(--text-secondary)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        <div>{plan.screens.length} telas · {plan.components.length} componentes</div>
+        <div style={{ color: "var(--text-muted)" }}>
+          DS: {plan.design_system_binding ?? "—"}
+        </div>
+      </div>
+      {!sealed && onSeal && (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={onSeal}
+            className="btn-chip"
+            data-variant="ok"
+            title="Aceitar plano e gravar artifact na missão"
+          >
+            Selar plano →
+          </button>
+        </div>
+      )}
+      {!onSeal && (
+        <div
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 11,
+            color: "var(--text-ghost)",
+          }}
+        >
+          missão activa exigida para selar.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MockBadgeStage() {
+  return (
+    <span
+      data-mock-badge
+      style={{
+        fontFamily: "var(--mono)",
+        fontSize: "var(--t-micro)",
+        letterSpacing: "var(--track-label)",
+        textTransform: "uppercase",
+        color: "var(--cc-warn)",
+        padding: "2px 8px",
+        border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+        borderRadius: 999,
+      }}
+    >
+      mock
+    </span>
+  );
+}

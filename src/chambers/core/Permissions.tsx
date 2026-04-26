@@ -38,9 +38,10 @@ export default function Permissions() {
   return (
     <div className="core-page">
       <div className="core-page-intro">
-        <span className="core-page-intro-title">Permissions</span>
+        <span className="core-page-intro-title">Permissions · Registry Mode</span>
         <span className="core-page-intro-sub">
-          Deny-by-default. A coluna gated marca tools que só se activam com{" "}
+          Read-only registry da tool surface activa · deny-by-default. A coluna
+          gated marca tools que só se activam com{" "}
           <code style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>
             AGENT_ALLOW_CODE_EXEC=true
           </code>

@@ -59,8 +59,9 @@ export default function System() {
       <div className="core-page-intro">
         <span className="core-page-intro-title">System</span>
         <span className="core-page-intro-sub">
-          Aparência, idioma, diagnósticos em tempo real e acções destrutivas.
-          Tudo o que controla como Signal se apresenta e como comunica.
+          Sete secções organizadas. Theme + Language são writable; Backend,
+          Model, Permissions, Persistence e Deploy são read-only — refletem o
+          estado real do backend (registry).
         </span>
       </div>
       <div
@@ -70,8 +71,8 @@ export default function System() {
           gap: "var(--space-3)",
         }}
       >
-      {/* Appearance */}
-      <Section title="Appearance">
+      {/* Theme (writable) */}
+      <Section title="Theme" sub="writable">
         <Label>Theme</Label>
         <Segmented<Theme>
           value={values.theme}
@@ -106,8 +107,8 @@ export default function System() {
         </div>
       </Section>
 
-      {/* Language */}
-      <Section title="Language">
+      {/* Language (writable) */}
+      <Section title="Language" sub="writable">
         <Segmented<Lang>
           value={values.lang}
           options={[["pt","Português"],["en","English"]]}
@@ -115,8 +116,8 @@ export default function System() {
         />
       </Section>
 
-      {/* Diagnostics */}
-      <Section title="Diagnostics" sub="/diagnostics snapshot">
+      {/* ── Backend (registry · read-only) ─────────────────────────── */}
+      <Section title="Backend" sub="registry">
         {loadingDiag && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="status-dot" data-tone="info" data-pulse="true" />
@@ -133,6 +134,15 @@ export default function System() {
           <div style={{ display: "flex", flexDirection: "column" }}>
             <DiagRow k="mode" v={diag.boot.mode} tone={diag.boot.mode === "mock" ? "warn" : "ok"} />
             <DiagRow k="engine" v={diag.engine_status} tone={diag.engine_status === "ready" ? "ok" : "warn"} />
+            <DiagRow k="uptime" v={`${diag.boot.uptime_seconds}s`} />
+          </div>
+        )}
+      </Section>
+
+      {/* ── Model (registry · read-only) ───────────────────────────── */}
+      <Section title="Model" sub="registry">
+        {diag ? (
+          <div style={{ display: "flex", flexDirection: "column" }}>
             <DiagRow k="model" v={diag.model} />
             <DiagRow k="triad" v={`${diag.triad_count} × ${diag.triad_temperature}`} />
             <DiagRow k="judge T°" v={String(diag.judge_temperature)} />
@@ -141,8 +151,62 @@ export default function System() {
               v={diag.boot.anthropic_api_key_present ? "present" : "missing"}
               tone={diag.boot.anthropic_api_key_present ? "ok" : "warn"}
             />
-            <DiagRow k="uptime" v={`${diag.boot.uptime_seconds}s`} />
           </div>
+        ) : (
+          <span className="kicker" data-tone="ghost">—</span>
+        )}
+      </Section>
+
+      {/* ── Permissions (registry · read-only) ─────────────────────── */}
+      <Section title="Permissions" sub="registry">
+        <p
+          style={{
+            margin: 0,
+            fontFamily: "var(--sans)",
+            fontSize: "var(--t-body-sec)",
+            color: "var(--text-muted)",
+            lineHeight: 1.5,
+          }}
+        >
+          Tools mutativos (run_command gated, execute_python) exigem{" "}
+          <code style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>
+            SIGNAL_ALLOW_CODE_EXEC=true
+          </code>
+          . Inventário completo em Core › Permissions.
+        </p>
+      </Section>
+
+      {/* ── Persistence (registry · read-only) ─────────────────────── */}
+      <Section title="Persistence" sub="registry">
+        <p
+          style={{
+            margin: 0,
+            fontFamily: "var(--sans)",
+            fontSize: "var(--t-body-sec)",
+            color: "var(--text-muted)",
+            lineHeight: 1.5,
+          }}
+        >
+          Failure memory + run ledger + spine snapshot persistidos em disco
+          (signal-backend/data). Em produção exige volume montado.
+        </p>
+      </Section>
+
+      {/* ── Deploy (registry · read-only) ──────────────────────────── */}
+      <Section title="Deploy" sub="registry">
+        {diag ? (
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <DiagRow
+              k="origins"
+              v={
+                diag.boot.allowed_origins.length
+                  ? diag.boot.allowed_origins.join(", ")
+                  : "—"
+              }
+            />
+          </div>
+        ) : (
+          <span className="kicker" data-tone="ghost">—</span>
         )}
       </Section>
 

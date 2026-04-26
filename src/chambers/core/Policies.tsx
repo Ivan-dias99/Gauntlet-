@@ -108,8 +108,22 @@ export default function Policies() {
       <div className="core-page-intro">
         <span className="core-page-intro-title">Policies</span>
         <span className="core-page-intro-sub">
-          Princípios constitucionais que vinculam cada invocação em qualquer chamber.
-          Inscrição explícita, sem revogação silenciosa.
+          Duas camadas. <strong>System Doctrine</strong> é a constituição vinculante
+          carregada em código — sempre activa.
+          {" "}<strong>Operator Constitution</strong> é o que tu inscreves; sobrepõe-se
+          a cada invocação. Operator vazio não significa doutrina vazia.
+        </span>
+      </div>
+
+      <SystemDoctrineSection />
+
+      <div
+        className="core-page-intro"
+        style={{ paddingTop: "var(--space-3)" }}
+      >
+        <span className="core-page-intro-title">Operator Constitution</span>
+        <span className="core-page-intro-sub">
+          Princípios inscritos por ti — vinculantes ao lado da System Doctrine.
         </span>
       </div>
 
@@ -373,6 +387,112 @@ export default function Policies() {
         </div>
       </section>
     </div>
+  );
+}
+
+// System Doctrine — six articles hard-coded in product. Mirrors the
+// canonical doctrine the backend already enforces (refuse before
+// guessing, triad before answer, judge decides, failure memory,
+// gated tools, archived provenance). Read-only · always visible.
+const SYSTEM_DOCTRINE: Array<{
+  id: string;
+  title: string;
+  summary: string;
+  anchor: string;
+}> = [
+  {
+    id: "refuse_before_guessing",
+    title: "Refuse before guessing",
+    summary: "Prefere não responder a arriscar errar.",
+    anchor: "doctrine.SYSTEM_PROMPT",
+  },
+  {
+    id: "triad_before_answer",
+    title: "Triad before answer",
+    summary: "Três análises paralelas antes de qualquer resposta visível.",
+    anchor: "engine.run_triad",
+  },
+  {
+    id: "judge_decides_confidence",
+    title: "Judge decides confidence",
+    summary: "Juiz implacável colapsa a triad em HIGH ou recusa.",
+    anchor: "doctrine.JUDGE_PROMPT",
+  },
+  {
+    id: "failure_memory_reinforces_caution",
+    title: "Failure memory reinforces caution",
+    summary: "Recusas passadas marcam perguntas futuras; reincidência recusa mais rápido.",
+    anchor: "memory.FailureMemoryStore",
+  },
+  {
+    id: "tool_execution_is_gated",
+    title: "Tool execution is gated",
+    summary: "Tools mutativos exigem SIGNAL_ALLOW_CODE_EXEC; deny-by-default.",
+    anchor: "tools.AGENT_ALLOW_CODE_EXEC",
+  },
+  {
+    id: "archive_preserves_provenance",
+    title: "Archive preserves provenance",
+    summary: "Cada run é registado; recusa sem juízo é provenance degradada, não silenciada.",
+    anchor: "runs.RunStore.record",
+  },
+];
+
+function SystemDoctrineSection() {
+  return (
+    <section
+      className="panel"
+      data-rank="primary"
+      data-system-doctrine
+      style={{ maxWidth: 860, marginInline: "auto", width: "100%" }}
+    >
+      <div className="panel-head">
+        <span className="panel-title">System Doctrine</span>
+        <span className="panel-sub">
+          {SYSTEM_DOCTRINE.length} artigos · read-only · backend-canonical
+        </span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {SYSTEM_DOCTRINE.map((d, i) => (
+          <div
+            key={d.id}
+            className="doctrine-article"
+            style={{ animationDelay: `${i * 35}ms` }}
+          >
+            <div className="doctrine-article-gutter">
+              <span className="doctrine-article-kicker">art.</span>
+              <span className="doctrine-article-num" data-article-roman>
+                {toRoman(i + 1)}
+              </span>
+            </div>
+            <div className="doctrine-article-body">
+              <span
+                className="doctrine-article-text"
+                style={{ fontWeight: 500 }}
+              >
+                {d.title}
+              </span>
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "var(--t-body-sec)",
+                  color: "var(--text-muted)",
+                  marginTop: 4,
+                }}
+              >
+                {d.summary}
+              </span>
+            </div>
+            <div
+              className="doctrine-article-aside"
+              style={{ fontFamily: "var(--mono)", fontSize: 11 }}
+            >
+              {d.anchor}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
