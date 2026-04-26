@@ -456,89 +456,36 @@ export default function Terminal() {
             detail={backend.unreachableDetail}
           />
         )}
-        <WorkbenchStrip
-          copy={copy}
-          missionTitle={activeMission?.title ?? null}
-          activeTask={activeTask}
-          tasks={activeMission?.tasks ?? []}
-        />
-        <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)" }}>
-          <TaskList
-            tasks={tasks}
-            activeTaskId={activeTaskId}
-            duplicateTitles={duplicateTitles}
+        {/* Canon override (operator-approved): workbench strip + hero
+            ReadyState only render when there is an active mission. In
+            the empty/idle state the chamber is silent — the composer
+            below carries the only voice for action ("ready · próxima
+            tarefa torna-se comando" in its identity row). Mirrors the
+            single-card composer pattern Lovable produced for Signal,
+            adapted to Signal's chamber-DNA grammar. The hero copy
+            (termReadyTitle, termReadyBody) is preserved in copy.ts
+            and re-appears as soon as a mission is created. */}
+        {activeMission && (
+          <WorkbenchStrip
             copy={copy}
-            onSelect={selectTaskFromQueue}
+            missionTitle={activeMission?.title ?? null}
+            activeTask={activeTask}
+            tasks={activeMission?.tasks ?? []}
           />
-        </div>
-
-        {/* Wave 6a — Terminal seed suggestion. Only renders when
-            mission has zero tasks, no input typed, no pending run, AND
-            the active TruthDistillation carries a terminalSeed. Click
-            applies the seed as a new task; ignored otherwise. */}
-        {showTerminalSeed && terminalSeed && (
-          <div style={{ maxWidth: 860, margin: "0 auto var(--space-3)", padding: "0 var(--space-4)" }}>
-            <div
-              data-terminal-seed
-              style={{
-                padding: "10px 14px",
-                border: "1px solid color-mix(in oklab, var(--accent) 28%, transparent)",
-                borderRadius: "var(--radius-2)",
-                background: "color-mix(in oklab, var(--accent) 4%, transparent)",
-                fontFamily: "var(--mono)",
-                fontSize: 11,
-                color: "var(--text-secondary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span
-                  style={{
-                    fontSize: 9,
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase",
-                    color: "var(--accent)",
-                  }}
-                >
-                  ↳ insight terminal seed
-                </span>
-                <span style={{ fontFamily: "var(--sans)", fontSize: 13.5, color: "var(--text)" }}>
-                  {terminalSeed.task}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!activeMission) return;
-                  const newId = addTask(terminalSeed.task, "lab");
-                  setActiveTaskId(newId);
-                  fireTelemetry("terminal_seed_consumed", activeMission.id, {
-                    action: "kept",
-                  });
-                }}
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: 10,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                  padding: "6px 12px",
-                  border: "1px solid var(--accent)",
-                  borderRadius: 999,
-                  background: "color-mix(in oklab, var(--accent) 14%, transparent)",
-                  color: "var(--accent)",
-                  cursor: "pointer",
-                }}
-              >
-                aplicar como task
-              </button>
-            </div>
+        )}
+        {activeMission && (
+          <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)" }}>
+            <TaskList
+              tasks={tasks}
+              activeTaskId={activeTaskId}
+              duplicateTitles={duplicateTitles}
+              copy={copy}
+              onSelect={selectTaskFromQueue}
+            />
           </div>
         )}
 
-        {unreachable && err ? (
+        {activeMission && (unreachable && err ? (
           <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)" }}>
             <DormantPanel detail={copy.dormantCreation} />
           </div>
@@ -563,7 +510,7 @@ export default function Terminal() {
             onReplayArtifact={replayArtifact}
             canAccept={Boolean(activeMission)}
           />
-        )}
+        ))}
 
         {showNextStep && (
           <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4) var(--space-5)" }}>

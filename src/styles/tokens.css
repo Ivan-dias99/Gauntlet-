@@ -7411,3 +7411,96 @@ a.term-ws-chip[data-tone="warn"]:hover {
     animation: none !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Signal — Lovable Absorb Pack (operator-approved canon override)
+   Closes the gap with the Lovable-generated Signal mockup. Honors
+   the editorial palette and chamber DNA, but admits Lovable was right
+   about three things: the send button has to be a magnet, the canvas
+   needs texture, and idle posture should be silent. The terminal/index
+   .tsx companion change hides WorkbenchStrip + ReadyState when there
+   is no active mission — together they reproduce the floating-composer
+   feel without losing chamber identity.
+   ───────────────────────────────────────────────────────────── */
+
+/* 1. Send button — promote from 32px chip to 44px focal point. The
+      canon's chamber-DNA fill stays; we add scale, a saturated halo
+      and a strong armed pulse so the act-button is the brightest
+      object on the canvas. */
+.term-command-send {
+  width: 44px;
+  height: 44px;
+}
+.term-command-send:not(:disabled) {
+  box-shadow:
+    0 2px 8px color-mix(in oklab, var(--chamber-dna, var(--ember)) 22%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, transparent);
+}
+.term-command-send:not(:disabled):hover {
+  transform: scale(1.08);
+  box-shadow:
+    0 4px 14px color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent),
+    0 0 0 6px color-mix(in oklab, var(--chamber-dna, var(--ember)) 16%, transparent);
+}
+
+/* 2. Canvas texture — radial dot pattern at 1.2% opacity. Subtle
+      enough to disappear inside cards (which keep their own bg) but
+      gives the empty void around the composer a sense of paper, not
+      flat blankness. */
+.chamber-shell {
+  background-image:
+    radial-gradient(
+      circle at 1px 1px,
+      color-mix(in oklab, var(--text-primary) 8%, transparent) 1px,
+      transparent 0
+    );
+  background-size: 22px 22px;
+  background-attachment: fixed;
+}
+[data-theme="dark"] .chamber-shell {
+  background-image:
+    radial-gradient(
+      circle at 1px 1px,
+      color-mix(in oklab, #ffffff 6%, transparent) 1px,
+      transparent 0
+    );
+}
+
+/* 3. Spine sync chip — semantic dot with real saturation. The dot is
+      already in the markup; we strengthen the unsynced (LOCAL ONLY)
+      tone from a faint indicator to a proper warn beacon. */
+.spine-sync[data-sync-state="unsynced"] .spine-sync-dot {
+  background: var(--cc-warn);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-warn) 22%, transparent);
+}
+.spine-sync[data-sync-state="synced"] .spine-sync-dot {
+  background: var(--cc-ok);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 18%, transparent);
+}
+
+/* 4. Mission pill (top-right "new mission" / active-mission button)
+      — fill it so it reads as a proper CTA, not a ghost. */
+.mission-pill,
+button.mission-pill {
+  background: color-mix(in oklab, var(--text-primary) 5%, transparent);
+  transition:
+    background var(--dur-fast) var(--ease-swift),
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift);
+}
+.mission-pill:not(:disabled):hover,
+button.mission-pill:not(:disabled):hover {
+  background: color-mix(in oklab, var(--text-primary) 9%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px color-mix(in oklab, #000 14%, transparent);
+}
+
+/* 5. Cards still need to feel separate from the textured canvas, so
+      give them an opaque bg that overrides the radial dots cleanly. */
+.term-command,
+.term-workbench-strip,
+.panel,
+.surface-canvas-shell,
+.term-output {
+  background-color: var(--bg);
+}
