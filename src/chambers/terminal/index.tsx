@@ -471,6 +471,12 @@ export default function Terminal() {
       />
 
       <div className="chamber-body" style={{ paddingTop: 0 }}>
+        {!backend.reachable && (
+          <BackendUnreachableBanner
+            reason={backend.unreachableReason}
+            detail={backend.unreachableDetail}
+          />
+        )}
         <WorkbenchStrip
           copy={copy}
           missionTitle={activeMission?.title ?? null}
@@ -644,4 +650,69 @@ export default function Terminal() {
       />
     </div>
   );
+}
+
+// Banner that fires when the forwarder reports the backend unreachable.
+// Shows reason + raw edge-runtime detail in plain text (no truncation,
+// no tooltip), so the operator sees the actionable cause without
+// hovering or opening DevTools. The chip below remains as a quick
+// status indicator; this banner is the diagnostic surface.
+function BackendUnreachableBanner({
+  reason,
+  detail,
+}: {
+  reason: string | null;
+  detail: string | null;
+}) {
+  const fix = reasonFix(reason);
+  return (
+    <div
+      role="alert"
+      style={{
+        maxWidth: 860,
+        margin: "0 auto var(--space-3)",
+        padding: "var(--space-3) var(--space-4)",
+        border: "1px solid var(--accent-warn, #b45309)",
+        borderLeftWidth: 4,
+        borderRadius: 4,
+        background: "color-mix(in srgb, var(--accent-warn, #b45309) 6%, transparent)",
+        font: "var(--font-mono, ui-monospace) 13px/1.5 monospace",
+      }}
+    >
+      <div style={{ fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        backend unreachable
+      </div>
+      <div style={{ marginTop: 4 }}>
+        <span style={{ opacity: 0.7 }}>reason: </span>
+        <span>{reason ?? "(none reported)"}</span>
+      </div>
+      {detail && (
+        <div style={{ marginTop: 2, wordBreak: "break-word" }}>
+          <span style={{ opacity: 0.7 }}>detail: </span>
+          <span>{detail}</span>
+        </div>
+      )}
+      {fix && (
+        <div style={{ marginTop: 6, opacity: 0.85 }}>
+          <span style={{ opacity: 0.7 }}>fix: </span>
+          <span>{fix}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function reasonFix(reason: string | null): string | null {
+  switch (reason) {
+    case "backend_url_not_configured":
+      return "Vercel → Settings → Environment Variables → set SIGNAL_BACKEND_URL = <railway-public-url>, redeploy.";
+    case "network_error":
+      return "Edge could not reach the upstream. Check the Railway service is up and the URL has no typo / trailing space.";
+    case "timeout":
+      return "Upstream took longer than the edge's request budget. Check Railway logs for slow boot or hung requests.";
+    case "upstream_fetch_failed":
+      return "Edge fetch threw an unclassified exception — the `detail` line above carries the literal cause from Vercel's runtime.";
+    default:
+      return null;
+  }
 }
