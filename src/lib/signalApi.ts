@@ -39,10 +39,15 @@ export function apiUrl(path: string): string {
 export class BackendUnreachableError extends Error {
   readonly kind = "backend_unreachable" as const;
   readonly reason: string;
-  constructor(reason: string) {
-    super(`backend_unreachable: ${reason}`);
+  // Edge-runtime error text from the catch-all `upstream_fetch_failed`
+  // bucket (e.g. "Headers.append: 'host' is forbidden header name").
+  // Null for the named buckets where the bucket name IS the diagnosis.
+  readonly detail: string | null;
+  constructor(reason: string, detail: string | null = null) {
+    super(detail ? `backend_unreachable: ${reason} — ${detail}` : `backend_unreachable: ${reason}`);
     this.name = "BackendUnreachableError";
     this.reason = reason;
+    this.detail = detail;
   }
 }
 
@@ -117,21 +122,22 @@ async function unreachableFromResponse(res: Response): Promise<BackendUnreachabl
     res.headers.get(LEGACY_UNREACHABLE_HEADER) === UNREACHABLE_VALUE;
   if (!headerHit) return null;
 
-  // Forwarder body is `{ error: "backend_unreachable", reason: "<kind>" }`.
-  // The reason names the actual failure mode — "backend_url_not_configured",
-  // "network_error", "timeout", "upstream_fetch_failed" — so callers can
-  // surface it in the UI instead of an opaque "edge:503". Body is read from
-  // a clone so the caller's downstream parse path stays available.
+  // Forwarder body is `{ error: "backend_unreachable", reason: "<kind>",
+  // message?: "<edge error text>" }`. The reason names the failure bucket;
+  // message carries the raw edge-runtime detail when fetch threw an
+  // unclassified exception. Both are surfaced so the chip can render the
+  // actionable cause instead of an opaque "edge:503". Body is read from a
+  // clone so the caller's downstream parse path stays available.
   let bodyReason: string | null = null;
+  let bodyMessage: string | null = null;
   try {
-    const body = (await res.clone().json()) as { reason?: unknown };
-    if (typeof body.reason === "string" && body.reason.length > 0) {
-      bodyReason = body.reason;
-    }
+    const body = (await res.clone().json()) as { reason?: unknown; message?: unknown };
+    if (typeof body.reason === "string" && body.reason.length > 0) bodyReason = body.reason;
+    if (typeof body.message === "string" && body.message.length > 0) bodyMessage = body.message;
   } catch {
     // Non-JSON or empty body — fall back to the edge status.
   }
-  return new BackendUnreachableError(bodyReason ?? `edge:${res.status}`);
+  return new BackendUnreachableError(bodyReason ?? `edge:${res.status}`, bodyMessage);
 }
 
 // Wraps fetch and throws BackendUnreachableError on:
@@ -149,6 +155,7 @@ export async function signalFetch(
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new BackendUnreachableError(
+      "network_error",
       err instanceof Error ? err.message : String(err),
     );
   }

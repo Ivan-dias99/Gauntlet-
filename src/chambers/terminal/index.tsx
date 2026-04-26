@@ -618,6 +618,7 @@ export default function Terminal() {
         backendReadiness={backend.readiness}
         backendReasons={backend.readinessReasons}
         backendUnreachableReason={backend.unreachableReason}
+        backendUnreachableDetail={backend.unreachableDetail}
         persistenceEphemeral={backend.persistenceEphemeral}
         repoLabel={(import.meta.env.VITE_SIGNAL_REPO as string | undefined) ?? null}
         branchLabel={(import.meta.env.VITE_SIGNAL_BRANCH as string | undefined) ?? null}

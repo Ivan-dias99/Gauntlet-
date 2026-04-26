@@ -23,6 +23,10 @@ export interface BackendStatus {
   // "timeout", "upstream_fetch_failed", or the raw network message. Lets
   // the chip render the actionable cause instead of "unreachable".
   unreachableReason: string | null;
+  // Edge-runtime error text when the reason is the catch-all bucket
+  // ("upstream_fetch_failed"). Surfaces the literal cause (forbidden
+  // header, TLS error, malformed URL) into the chip tooltip.
+  unreachableDetail: string | null;
 }
 
 const INITIAL: BackendStatus = {
@@ -34,6 +38,7 @@ const INITIAL: BackendStatus = {
   readiness: "degraded",
   readinessReasons: [],
   unreachableReason: null,
+  unreachableDetail: null,
 };
 
 interface HealthBody {
@@ -78,6 +83,7 @@ export function useBackendStatus(): BackendStatus {
               reachable: false,
               readiness: "unreachable",
               unreachableReason: readyErr.reason,
+              unreachableDetail: readyErr.detail,
             });
             return;
           }
@@ -91,6 +97,7 @@ export function useBackendStatus(): BackendStatus {
           readiness,
           readinessReasons,
           unreachableReason: null,
+          unreachableDetail: null,
         });
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
@@ -100,6 +107,7 @@ export function useBackendStatus(): BackendStatus {
             reachable: false,
             readiness: "unreachable",
             unreachableReason: e.reason,
+            unreachableDetail: e.detail,
           });
           return;
         }
