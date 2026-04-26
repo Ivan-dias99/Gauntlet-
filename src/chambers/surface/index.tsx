@@ -162,6 +162,8 @@ export default function Surface() {
               mock={planIsMock}
               brief={brief}
               promptDraft={prompt}
+              onBriefChange={patchBrief}
+              pending={pending}
             />
           }
         />

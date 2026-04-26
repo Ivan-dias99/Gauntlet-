@@ -26,10 +26,12 @@ interface Props {
   mock: boolean;
   brief: SurfaceBriefPayload;
   promptDraft: string;
+  onBriefChange: (patch: Partial<SurfaceBriefPayload>) => void;
+  pending: boolean;
 }
 
 export default function ExplorationRail({
-  plan, mock, brief, promptDraft,
+  plan, mock, brief, promptDraft, onBriefChange, pending,
 }: Props) {
   const copy = useCopy();
   const [view, setView] = useState<View>("brief");
@@ -87,7 +89,15 @@ export default function ExplorationRail({
       </div>
 
       <div className="surface-canvas-view">
-        {view === "brief"      && <BriefView brief={brief} promptDraft={promptDraft} copy={copy} />}
+        {view === "brief"      && (
+          <BriefView
+            brief={brief}
+            promptDraft={promptDraft}
+            copy={copy}
+            onBriefChange={onBriefChange}
+            pending={pending}
+          />
+        )}
         {view === "plan"       && <PlanView plan={plan} mock={mock} copy={copy} />}
         {view === "files"      && <FilesView plan={plan} mock={mock} copy={copy} />}
         {view === "wireframes" && <WireframesView copy={copy} />}
@@ -99,11 +109,13 @@ export default function ExplorationRail({
 // ——— Views ———
 
 function BriefView({
-  brief, promptDraft, copy,
+  brief, promptDraft, copy, onBriefChange, pending,
 }: {
   brief: SurfaceBriefPayload;
   promptDraft: string;
   copy: ReturnType<typeof useCopy>;
+  onBriefChange: (patch: Partial<SurfaceBriefPayload>) => void;
+  pending: boolean;
 }) {
   const checklist: Array<{ key: string; label: string; done: boolean }> = [
     { key: "intent",   label: copy.surfaceContractFieldIntent,   done: promptDraft.trim().length > 0 },
@@ -150,6 +162,13 @@ function BriefView({
               className="surface-rail-card"
               type="button"
               aria-label={`${it.title} · ${it.kind}`}
+              disabled={pending}
+              onClick={() => {
+                onBriefChange({
+                  fidelity: it.kind === "hi-fi" ? "hi-fi" : "wireframe",
+                  mode: brief.mode === "other" ? "prototype" : brief.mode,
+                });
+              }}
             >
               <div className="surface-rail-card-title">{it.title}</div>
               <div className="surface-rail-card-meta">
