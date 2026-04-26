@@ -7327,3 +7327,87 @@ button.surface-rail-card:not(:disabled):active {
     padding-left: revert !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Signal — Semantic Intensity Pack (additive, post-canon)
+   Strengthens visual semantics on action surfaces and tone chips so
+   the user SEES the state, not just reads it. Layered on top of the
+   Interactions Pack — no rewrites, no token replacements, no markup.
+   ───────────────────────────────────────────────────────────── */
+
+/* 1. Submit ↑ — armed pulse stronger. Existing background already fills
+      with --chamber-dna (canon line 3606). Bumping the surrounding
+      halo from 9% to 18% so the call-to-act actually calls. */
+@media (prefers-reduced-motion: no-preference) {
+  .term-command-send:not(:disabled):not([data-state="pending"]) {
+    animation: signalSendArmStrong 2.6s ease-in-out infinite;
+  }
+}
+@keyframes signalSendArmStrong {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 0%, transparent); }
+  50%      { box-shadow: 0 0 0 8px color-mix(in oklab, var(--chamber-dna, var(--ember)) 18%, transparent); }
+}
+
+/* 2. Mode toggle (agent/crew, wireframe/hi-fi via .term-rail-mode-opt)
+      — active option becomes a real DNA-tinted pill. Inactive options
+      gain a subtle wash on hover so they read as reachable. */
+.term-rail-mode-opt[data-active="true"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 16%, transparent);
+  color: var(--text-primary);
+}
+.term-rail-mode-opt:not([data-active="true"]):not(:disabled):hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 6%, transparent);
+}
+
+/* 3. Tone chips — opaque fill at 10-12% so posture is seen, not read.
+      Existing color/glyph rules survive; only background is added. */
+.term-ws-chip[data-tone="ok"] {
+  background: color-mix(in oklab, var(--cc-ok) 10%, transparent);
+}
+.term-ws-chip[data-tone="warn"] {
+  background: color-mix(in oklab, var(--cc-warn) 12%, transparent);
+}
+.term-ws-chip[data-tone="info"] {
+  background: color-mix(in oklab, var(--cc-info) 10%, transparent);
+}
+button.term-ws-chip[data-tone="ok"]:not(:disabled):hover,
+a.term-ws-chip[data-tone="ok"]:hover {
+  background: color-mix(in oklab, var(--cc-ok) 18%, transparent);
+}
+button.term-ws-chip[data-tone="warn"]:not(:disabled):hover,
+a.term-ws-chip[data-tone="warn"]:hover {
+  background: color-mix(in oklab, var(--cc-warn) 20%, transparent);
+}
+
+/* 4. Composer rail chip (.term-rail-chip — the live/mock dot pill) —
+      same opaque tone treatment so the live/mock indicator reads as a
+      semantic pill, not a transparent line. */
+.term-rail-chip[data-tone="ok"] {
+  background: color-mix(in oklab, var(--cc-ok) 10%, transparent);
+}
+.term-rail-chip[data-tone="warn"] {
+  background: color-mix(in oklab, var(--cc-warn) 14%, transparent);
+}
+
+/* 5. OK chip breathing halo — bump 22% → 30% so the "alive" state
+      actually pulses visibly without becoming carnival. */
+.term-ws-chip[data-tone="ok"] .term-ws-chip-glyph::before {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 30%, transparent);
+}
+
+/* 6. Canon-ribbon tabs — thicker active underline (2 → 3px), DNA wash
+      on non-active hover. Tab is positioned via ::after so changing
+      height does not reflow siblings. */
+.canon-ribbon-tabs .tab::after {
+  height: 3px;
+}
+.canon-ribbon-tabs .tab:not(.tab-active):hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 6%, transparent);
+}
+
+/* 7. Reduced motion — kill the strong armed pulse, keep static fills. */
+@media (prefers-reduced-motion: reduce) {
+  .term-command-send:not(:disabled):not([data-state="pending"]) {
+    animation: none !important;
+  }
+}
