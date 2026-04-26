@@ -20,17 +20,21 @@ export type BackendReadiness = "ready_real" | "mock" | "degraded" | "unreachable
 export interface BackendStatus {
   readiness: BackendReadiness;
   reasons: string[];
+  readinessReasons: string[];
   mode: "mock" | "real" | null;
   engine: "ready" | "not_initialized" | null;
   loadErrors: Array<{ store: string; error: string }>;
+  reachable: boolean;
 }
 
 const INITIAL: BackendStatus = {
   readiness: "unreachable",
   reasons: [],
+  readinessReasons: [],
   mode: null,
   engine: null,
   loadErrors: [],
+  reachable: false,
 };
 
 interface ReadyBody {
@@ -78,15 +82,17 @@ export function useBackendStatus(): BackendStatus {
         setStatus({
           readiness: classify(body, res.status),
           reasons: body?.reasons ?? [],
+          readinessReasons: body?.reasons ?? [],
           mode: body?.mode ?? null,
           engine: body?.engine ?? null,
           loadErrors: body?.load_errors ?? [],
+          reachable: classify(body, res.status) !== "unreachable",
         });
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
         if (cancelled) return;
         if (isBackendUnreachable(e)) {
-          setStatus({ ...INITIAL, readiness: "unreachable" });
+          setStatus({ ...INITIAL, reachable: false, readiness: "unreachable" });
           return;
         }
         // Anything else: treat as degraded so the UI doesn't claim live.

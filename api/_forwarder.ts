@@ -24,7 +24,15 @@ export function unreachable(reason: string, status = 503): Response {
 }
 
 export function resolveBackendUrl(): string | null {
-  return process.env.SIGNAL_BACKEND_URL ?? null;
+  const env =
+    typeof process !== "undefined" && process.env
+      ? process.env
+      : undefined;
+  return (
+    env?.SIGNAL_BACKEND_URL ??
+    env?.RUBERRA_BACKEND_URL ??
+    null
+  );
 }
 
 export async function forward(
