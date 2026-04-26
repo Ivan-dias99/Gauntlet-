@@ -12,7 +12,7 @@ Every tool:
 Safety posture (deny-by-default):
   * file / directory ops are rooted at ``TOOL_WORKSPACE_ROOT``
   * command execution is split into a minimal SAFE set (read-only, no exec
-    vector) and a GATED set (requires ``AGENT_ALLOW_CODE_EXEC`` plus a
+    vector) and a GATED set (requires ``SIGNAL_ALLOW_CODE_EXEC`` plus a
     per-binary forbidden-argument policy). Anything not on either list is
     rejected — no default-allow.
   * ``git`` is intentionally NOT reachable through the generic run_command;
@@ -48,34 +48,29 @@ logger = logging.getLogger("signal.tools")
 
 
 # ── Configuration ───────────────────────────────────────────────────────────
-# Env precedence: SIGNAL_* is canonical; RUBERRA_* is honored as a silent
-# legacy fallback so existing deploys keep working until operators flip
-# to the new variable names.
-
-
-def _env(new: str, legacy: str, default: str = "") -> str:
-    return os.environ.get(new) or os.environ.get(legacy) or default
-
 
 TOOL_WORKSPACE_ROOT: Path = Path(
-    _env("SIGNAL_WORKSPACE", "RUBERRA_WORKSPACE", str(Path(__file__).resolve().parent.parent))
+    os.environ.get(
+        "SIGNAL_WORKSPACE",
+        str(Path(__file__).resolve().parent.parent),
+    )
 ).resolve()
 
-AGENT_ALLOW_CODE_EXEC: bool = _env(
-    "SIGNAL_ALLOW_CODE_EXEC", "RUBERRA_ALLOW_CODE_EXEC", "false"
+SIGNAL_ALLOW_CODE_EXEC: bool = os.environ.get(
+    "SIGNAL_ALLOW_CODE_EXEC", "false"
 ).strip().lower() in ("1", "true", "yes", "on")
 
 # ── Command policy (deny-by-default) ────────────────────────────────────────
 #
 # SAFE: read-only inspection binaries with no built-in exec/shell escape.
-#   These run without ``AGENT_ALLOW_CODE_EXEC``. They can still read any
+#   These run without ``SIGNAL_ALLOW_CODE_EXEC``. They can still read any
 #   file the process can read — that is an accepted read-only risk.
 _SAFE_COMMANDS: frozenset[str] = frozenset({
     "ls", "cat", "head", "tail", "wc", "stat", "pwd", "tree",
     "echo", "which", "grep",
 })
 
-# GATED: require ``AGENT_ALLOW_CODE_EXEC`` AND pass the per-binary argument
+# GATED: require ``SIGNAL_ALLOW_CODE_EXEC`` AND pass the per-binary argument
 #   validator below. Anything not in SAFE ∪ GATED is rejected outright.
 _GATED_COMMANDS: frozenset[str] = frozenset({
     "find", "python", "python3", "pip", "pip3",
@@ -220,8 +215,8 @@ def _check_command_policy(argv: list[str]) -> Optional[str]:
     if binary in _SAFE_COMMANDS:
         return None
     if binary in _GATED_COMMANDS:
-        if not AGENT_ALLOW_CODE_EXEC:
-            return f"'{binary}' requires RUBERRA_ALLOW_CODE_EXEC=true"
+        if not SIGNAL_ALLOW_CODE_EXEC:
+            return f"'{binary}' requires SIGNAL_ALLOW_CODE_EXEC=true"
         forbidden = _FORBIDDEN_ARGS.get(binary, frozenset())
         for arg in argv[1:]:
             for bad in forbidden:
@@ -368,7 +363,7 @@ class ExecutePythonTool(Tool):
     name = "execute_python"
     description = (
         "Run a short Python 3 snippet in a subprocess with a hard timeout. "
-        "Stdout and stderr are captured. Disabled unless RUBERRA_ALLOW_CODE_EXEC "
+        "Stdout and stderr are captured. Disabled unless SIGNAL_ALLOW_CODE_EXEC "
         "is true. Never use for destructive ops."
     )
     input_schema = {
@@ -382,10 +377,10 @@ class ExecutePythonTool(Tool):
     timeout_s = 15.0
 
     async def _run(self, code: str, stdin: str = "") -> ToolResult:
-        if not AGENT_ALLOW_CODE_EXEC:
+        if not SIGNAL_ALLOW_CODE_EXEC:
             return ToolResult(
                 ok=False,
-                content="execute_python is disabled (set RUBERRA_ALLOW_CODE_EXEC=true).",
+                content="execute_python is disabled (set SIGNAL_ALLOW_CODE_EXEC=true).",
             )
         proc = await asyncio.create_subprocess_exec(
             "python3", "-I", "-c", code,
@@ -561,7 +556,7 @@ class RunCommandTool(Tool):
         "must be either in the SAFE set "
         f"({', '.join(sorted(_SAFE_COMMANDS))}) which runs ungated, or the "
         f"GATED set ({', '.join(sorted(_GATED_COMMANDS))}) which additionally "
-        "requires RUBERRA_ALLOW_CODE_EXEC=true and passes a per-binary "
+        "requires SIGNAL_ALLOW_CODE_EXEC=true and passes a per-binary "
         "forbidden-argument check (e.g. 'find -exec' is rejected). Git is NOT "
         "reachable here — use the 'git' tool. No shell interpolation — "
         "arguments go directly to execve."

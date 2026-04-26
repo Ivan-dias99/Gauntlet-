@@ -76,7 +76,12 @@ export default function WorkbenchStrip({
           type="button"
           className="term-workbench-action"
           onClick={onContext}
-          title={copy.termStripContext}
+          disabled={!onContext}
+          title={
+            onContext
+              ? copy.termStripContext
+              : `${copy.termStripContext} · indisponível neste contexto`
+          }
         >
           <IconContext />
           <span>{copy.termStripContext}</span>
@@ -85,7 +90,12 @@ export default function WorkbenchStrip({
           type="button"
           className="term-workbench-action"
           onClick={onDocs}
-          title={copy.termStripDocs}
+          disabled={!onDocs}
+          title={
+            onDocs
+              ? copy.termStripDocs
+              : `${copy.termStripDocs} · indisponível neste contexto`
+          }
         >
           <IconDocs />
           <span>{copy.termStripDocs}</span>

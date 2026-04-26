@@ -2,20 +2,12 @@
 Signal — Configuration
 All environment-driven settings. No hardcoded secrets.
 
-Env precedence: SIGNAL_* is canonical; RUBERRA_* is read as a silent
-legacy fallback so existing Railway / Vercel deploys keep working until
-operators flip to the new variable names. The Python constants keep the
-legacy identifiers (RUBERRA_MOCK, SERVER_HOST, …) to minimize churn in
-server.py; the var name is internal, the env var name is what ships.
+All env vars are SIGNAL_*. The Ruberra-era names were removed in this
+wave; deploys must rename their environment variables before upgrading.
 """
 
 import os
 from pathlib import Path
-
-
-def _env(new: str, legacy: str, default: str = "") -> str:
-    """Read env var honoring the SIGNAL_* → RUBERRA_* compatibility window."""
-    return os.environ.get(new) or os.environ.get(legacy) or default
 
 
 # ── API ─────────────────────────────────────────────────────────────────────
@@ -23,12 +15,12 @@ ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # Offline mock mode — bypasses every Anthropic API call with canned responses.
 # Enable for end-to-end validation without an API key.
-RUBERRA_MOCK: bool = _env("SIGNAL_MOCK", "RUBERRA_MOCK").strip().lower() in (
+SIGNAL_MOCK: bool = os.environ.get("SIGNAL_MOCK", "").strip().lower() in (
     "1", "true", "yes", "on",
 )
 
 # ── Model ───────────────────────────────────────────────────────────────────
-# Claude Sonnet 4.6 for self-consistency triad + judge + agent loop.
+# Claude Sonnet 4.6 for self-consistency triad + judge + agent loop + Surface.
 MODEL_ID: str = "claude-sonnet-4-6"
 
 # Low temperature for conservative, deterministic answers
@@ -45,31 +37,42 @@ MAX_TOKENS: int = 4096
 TRIAD_COUNT: int = 3
 
 # ── Server ──────────────────────────────────────────────────────────────────
-SERVER_HOST: str = _env("SIGNAL_HOST", "RUBERRA_HOST", "127.0.0.1")
+SERVER_HOST: str = os.environ.get("SIGNAL_HOST", "127.0.0.1")
 SERVER_PORT: int = int(
-    os.environ.get("PORT")
-    or _env("SIGNAL_PORT", "RUBERRA_PORT", "8080")
+    os.environ.get("PORT") or os.environ.get("SIGNAL_PORT", "8080")
 )
 
 # SIGNAL_ORIGIN accepts a single origin or a comma-separated list, so one
 # backend can serve production, preview deploys, and local dev at once.
-_raw_origins = _env("SIGNAL_ORIGIN", "RUBERRA_ORIGIN", "http://localhost:5173")
+_raw_origins = os.environ.get("SIGNAL_ORIGIN", "http://localhost:5173")
 ALLOWED_ORIGINS: list[str] = [
     o.strip() for o in _raw_origins.split(",") if o.strip()
 ]
-# Backwards compatibility — existing imports of ALLOWED_ORIGIN keep working.
 ALLOWED_ORIGIN: str = ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "http://localhost:5173"
 
-# ── Memory ──────────────────────────────────────────────────────────────────
+# ── Persistence ─────────────────────────────────────────────────────────────
 # Persistent state (failure memory, run log, spine snapshot) is written here.
 # In prod this MUST point at a mounted volume (e.g. Railway volume at /data).
 # Container filesystems are ephemeral — if this is left at the default, every
-# restart/deploy wipes the archive, which silently corrupts doctrine.
-_default_memory_dir = Path(__file__).parent / "data"
-MEMORY_DIR: Path = Path(
-    _env("SIGNAL_DATA_DIR", "RUBERRA_DATA_DIR", str(_default_memory_dir))
-)
-FAILURE_MEMORY_FILE: Path = MEMORY_DIR / "failure_memory.json"
+# restart/deploy wipes the archive.
+_default_data_dir = Path(__file__).parent / "data"
+DATA_DIR: Path = Path(os.environ.get("SIGNAL_DATA_DIR", str(_default_data_dir)))
+
+# Legacy alias kept only as the in-process Python identifier some modules
+# already imported. New code should use DATA_DIR.
+MEMORY_DIR: Path = DATA_DIR
+
+# SQLite database — single file, three tables (runs, spine, failures).
+SIGNAL_DB_FILE: Path = DATA_DIR / "signal.db"
+
+# Legacy JSON sidecars. These exist only for one-shot migration on first
+# boot of this wave; after the migration runs they are renamed to *.migrated.
+LEGACY_RUNS_FILE: Path = DATA_DIR / "runs.json"
+LEGACY_SPINE_FILE: Path = DATA_DIR / "spine.json"
+LEGACY_FAILURE_MEMORY_FILE: Path = DATA_DIR / "failure_memory.json"
+
+# Compat name for memory.py: same path, single source of truth.
+FAILURE_MEMORY_FILE: Path = LEGACY_FAILURE_MEMORY_FILE
 
 # Maximum failure entries to retain (oldest pruned first)
 MAX_FAILURE_ENTRIES: int = 500

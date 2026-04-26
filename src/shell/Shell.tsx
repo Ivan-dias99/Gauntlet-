@@ -37,20 +37,14 @@ export default function Shell() {
   }, [activeMission?.id]);
 
   // Cross-chamber handoff — chambers can request a chamber switch by
-  // dispatching `signal:chamber` with a Chamber detail. The legacy
-  // `ruberra:chamber` event is still accepted during the Wave-0 → Wave-8
-  // compatibility window so call sites can migrate gradually.
+  // dispatching `signal:chamber` with a Chamber detail.
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<Chamber>;
       if (ce.detail) setActiveTab(ce.detail);
     };
     window.addEventListener("signal:chamber", handler);
-    window.addEventListener("ruberra:chamber", handler);
-    return () => {
-      window.removeEventListener("signal:chamber", handler);
-      window.removeEventListener("ruberra:chamber", handler);
-    };
+    return () => window.removeEventListener("signal:chamber", handler);
   }, []);
 
   // Wave-7 keyboard shortcut: Alt+[1-5] switches chambers.

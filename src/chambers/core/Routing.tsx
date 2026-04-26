@@ -32,10 +32,12 @@ export default function Routing() {
   return (
     <div className="core-page">
       <div className="core-page-intro">
-        <span className="core-page-intro-title">Routing</span>
+        <span className="core-page-intro-title">Routing · Registry Mode</span>
         <span className="core-page-intro-sub">
-          Perfis de chamber. O router decide por chamber.dispatch quando
-          query.chamber está presente; cai em is_dev_intent quando ausente.
+          Read-only registry of active chamber profiles. O router decide por
+          chamber.dispatch quando query.chamber está presente; cai em
+          is_dev_intent quando ausente. Edição governada (Ratification Mode)
+          chega numa wave futura.
         </span>
       </div>
       <section className="panel" data-rank="primary">

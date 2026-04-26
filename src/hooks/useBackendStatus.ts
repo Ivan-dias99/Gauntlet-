@@ -1,34 +1,53 @@
 import { useEffect, useState } from "react";
 import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
 
-// Honest surface for the two backend truths every chamber cares about:
-//   - mode: "mock" | "real"  (is the brain running canned responses?)
-//   - persistence_degraded    (did any store boot from a quarantined sidecar?)
+// Honest readiness surface for the shell.
 //
-// Reads /health, which returns 200 even when the engine is degraded —
-// the body carries the real signal. A backend-unreachable throw collapses
-// to `{reachable:false}` so chambers can render their dormant state
-// without refetching on their own.
+//   ready_real   — /health/ready returned 200; engine ready, real provider,
+//                  no persistence quarantine.
+//   mock         — backend reachable but running canned responses
+//                  (SIGNAL_MOCK=1); answers are not real.
+//   degraded     — backend reachable but unsafe to trust: engine not
+//                  initialised, persistence quarantined, or a load error.
+//   unreachable  — no backend response at all (edge dead, CORS, offline).
+//
+// The previous version polled /health (liveness — always 200) and
+// surfaced a "live" state purely from intent. /health/ready is the only
+// honest yes/no.
+
+export type BackendReadiness = "ready_real" | "mock" | "degraded" | "unreachable";
 
 export interface BackendStatus {
-  reachable: boolean;
+  readiness: BackendReadiness;
+  reasons: string[];
   mode: "mock" | "real" | null;
-  persistenceDegraded: boolean;
   engine: "ready" | "not_initialized" | null;
+  loadErrors: Array<{ store: string; error: string }>;
 }
 
 const INITIAL: BackendStatus = {
-  reachable: true,
+  readiness: "unreachable",
+  reasons: [],
   mode: null,
-  persistenceDegraded: false,
   engine: null,
+  loadErrors: [],
 };
 
-interface HealthBody {
-  status?: string;
+interface ReadyBody {
+  ready?: boolean;
+  reasons?: string[];
   engine?: "ready" | "not_initialized";
   mode?: "mock" | "real";
-  persistence_degraded?: boolean;
+  load_errors?: Array<{ store: string; error: string }>;
+}
+
+function classify(body: ReadyBody | null, status: number): BackendReadiness {
+  if (!body) return "unreachable";
+  if (body.ready) return "ready_real";
+  const reasons = body.reasons ?? [];
+  if (reasons.includes("mock_mode") && reasons.length === 1) return "mock";
+  if (reasons.length === 0 && status === 200) return "ready_real";
+  return "degraded";
 }
 
 export function useBackendStatus(): BackendStatus {
@@ -36,30 +55,52 @@ export function useBackendStatus(): BackendStatus {
 
   useEffect(() => {
     const ac = new AbortController();
-    (async () => {
+    let cancelled = false;
+
+    async function probe() {
       try {
-        const res = await signalFetch("/health", { signal: ac.signal });
-        if (!res.ok) {
-          setStatus({ ...INITIAL, reachable: true, engine: "not_initialized" });
-          return;
+        // /health/ready returns 200 when truly ready, 503 with the same
+        // body shape otherwise. Both paths are informational.
+        const res = await signalFetch("/health/ready", { signal: ac.signal });
+        let body: ReadyBody | null = null;
+        try {
+          body = (await res.clone().json()) as ReadyBody;
+        } catch {
+          // FastAPI wraps 503 bodies under `detail`.
+          try {
+            const wrapped = (await res.json()) as { detail?: ReadyBody };
+            body = wrapped?.detail ?? null;
+          } catch {
+            body = null;
+          }
         }
-        const body = (await res.json()) as HealthBody;
+        if (cancelled) return;
         setStatus({
-          reachable: true,
-          mode: body.mode ?? null,
-          persistenceDegraded: !!body.persistence_degraded,
-          engine: body.engine ?? null,
+          readiness: classify(body, res.status),
+          reasons: body?.reasons ?? [],
+          mode: body?.mode ?? null,
+          engine: body?.engine ?? null,
+          loadErrors: body?.load_errors ?? [],
         });
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
+        if (cancelled) return;
         if (isBackendUnreachable(e)) {
-          setStatus({ ...INITIAL, reachable: false });
+          setStatus({ ...INITIAL, readiness: "unreachable" });
           return;
         }
-        setStatus({ ...INITIAL, reachable: true });
+        // Anything else: treat as degraded so the UI doesn't claim live.
+        setStatus({ ...INITIAL, readiness: "degraded", reasons: ["probe_failed"] });
       }
-    })();
-    return () => ac.abort();
+    }
+
+    probe();
+    const id = window.setInterval(probe, 30_000);
+    return () => {
+      cancelled = true;
+      ac.abort();
+      window.clearInterval(id);
+    };
   }, []);
 
   return status;

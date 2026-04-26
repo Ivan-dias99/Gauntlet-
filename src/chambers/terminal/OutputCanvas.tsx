@@ -578,10 +578,10 @@ function humanizeToolName(name: string): string {
     list_directory: "List",
     run_command: "Run",
     execute_python: "Execute",
-    web_fetch: "Fetch",
+    fetch_url: "Fetch",
     web_search: "Search",
+    package_info: "Package",
     git: "Git",
-    update_todos: "Update Todos",
   };
   return map[name] ?? name;
 }

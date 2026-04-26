@@ -1,7 +1,6 @@
 {
   "rewrites": [
     { "source": "/api/signal/:match*", "destination": "/api/signal" },
-    { "source": "/api/ruberra/:match*", "destination": "/api/ruberra" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

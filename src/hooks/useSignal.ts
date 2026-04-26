@@ -7,9 +7,7 @@ import {
   type BackendErrorEnvelope,
 } from "../lib/signalApi";
 
-// Client for the Python backend (signal-backend/) via the /api/signal
-// proxy. The legacy /api/ruberra alias still routes during the compat
-// window — the shell reaches both with the same contract.
+// Client for the Python backend (signal-backend/) via the /api/signal proxy.
 //
 // Endpoints:
 //   POST /api/signal/route        → { route: "agent" | "triad", result: {...} }
@@ -32,10 +30,13 @@ export interface SignalQueryBody {
   surface?: SurfaceBriefPayload;
 }
 
+export type SurfaceDesignSystem = "signal_canon" | "custom" | "none_declared";
+
 export interface SurfaceBriefPayload {
   mode: "prototype" | "slide_deck" | "from_template" | "other";
   fidelity: "wireframe" | "hi-fi";
-  design_system?: string | null;
+  design_system: SurfaceDesignSystem;
+  design_system_label?: string | null;
 }
 
 export interface SurfaceScreenPayload {
@@ -52,7 +53,8 @@ export interface SurfaceComponentPayload {
 export interface SurfacePlanPayload {
   mode: SurfaceBriefPayload["mode"];
   fidelity: SurfaceBriefPayload["fidelity"];
-  design_system_binding: string | null;
+  design_system_binding: SurfaceDesignSystem;
+  design_system_label?: string | null;
   screens: SurfaceScreenPayload[];
   components: SurfaceComponentPayload[];
   notes: string[];

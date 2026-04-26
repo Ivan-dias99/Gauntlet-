@@ -31,19 +31,21 @@ const CREW: Row[] = [
 ];
 
 const SURFACE: Row[] = [
-  { label: "Dispatch",        value: "Mock handler — process_surface_mock_streaming" },
-  { label: "Output contract", value: "SurfacePlan { screens, components, design_system_binding, fidelity, mode, notes, mock }" },
-  { label: "Run recording",   value: "Registado em /runs com route=surface, termination_reason=surface_mock enquanto o mock é a fonte." },
+  { label: "Dispatch",        value: "Sonnet 4.6 (real) — chambers.surface.process_surface_streaming. Mock só com SIGNAL_MOCK=1." },
+  { label: "Output contract", value: "SurfacePlan { screens, components, design_system_binding, design_system_label?, fidelity, mode, notes, mock }" },
+  { label: "Validation",      value: "Pydantic strict; component.screen tem de existir em screens.name antes do done." },
+  { label: "Run recording",   value: "Registado em /runs com route=surface; mock=true só quando o gerador correu sob SIGNAL_MOCK." },
 ];
 
 export default function Orchestration() {
   return (
     <div className="core-page">
       <div className="core-page-intro">
-        <span className="core-page-intro-title">Orchestration</span>
+        <span className="core-page-intro-title">Orchestration · Registry Mode</span>
         <span className="core-page-intro-sub">
-          Quatro pipelines com budgets que mantêm cada rota honesta.
-          Valores espelham o backend — agent.py e engine.py.
+          Read-only registry of execution budgets. Quatro pipelines com
+          limites que mantêm cada rota honesta. Valores espelham agent.py /
+          engine.py / chambers/surface.py.
         </span>
       </div>
       <div

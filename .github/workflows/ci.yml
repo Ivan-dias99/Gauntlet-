@@ -16,6 +16,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: npm test -- --run
       - run: npm run build
 
   backend:
@@ -31,23 +32,8 @@ jobs:
           cache: pip
           cache-dependency-path: signal-backend/requirements.txt
       - run: pip install -r requirements.txt
-      # Syntax + import check without starting the server or hitting Anthropic.
+      - run: pip install pytest pytest-asyncio
       - run: python -m compileall -q .
       - env:
-          ANTHROPIC_API_KEY: placeholder-for-import-check
-        run: |
-          python -c "
-          import importlib
-          mods = (
-              # core runtime
-              'config','models','doctrine','memory','tools',
-              'agent','engine','server','main',
-              # chamber profiles + per-chamber prompt modules (Wave 1/5)
-              'chambers','chambers.profiles',
-              'chambers.insight','chambers.surface','chambers.terminal',
-              'chambers.archive','chambers.core',
-          )
-          for mod in mods:
-              importlib.import_module(mod)
-          print(f'all {len(mods)} modules import cleanly')
-          "
+          SIGNAL_MOCK: "1"
+        run: python -m pytest tests/ -q

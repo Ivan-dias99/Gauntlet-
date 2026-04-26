@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import { useCopy } from "../../i18n/copy";
 import DormantPanel from "../../shell/DormantPanel";
+import { useDiagnostics } from "../../hooks/useDiagnostics";
 
 // Core · Policies — constitutional register of principles in force.
 // Rendered inside the shared .core-page frame so the tab reads with
@@ -103,13 +104,100 @@ export default function Policies() {
   const showStatus =
     syncState !== "synced" || hydratedFromBackend === false || !!syncError;
 
+  const diag = useDiagnostics();
+  const systemDoctrine =
+    diag.status === "ok" ? diag.data.system_doctrine : null;
+
   return (
     <div className="core-page" data-chamber="school">
       <div className="core-page-intro">
         <span className="core-page-intro-title">Policies</span>
         <span className="core-page-intro-sub">
-          Princípios constitucionais que vinculam cada invocação em qualquer chamber.
-          Inscrição explícita, sem revogação silenciosa.
+          Duas camadas: <strong>System Doctrine</strong> — constituição vinculante
+          carregada em código, sempre activa. <strong>Operator Constitution</strong>
+          — princípios inscritos pelo operador, sobrepostos a cada invocação.
+          Operator vazio não significa doutrina vazia.
+        </span>
+      </div>
+
+      <section
+        className="panel"
+        data-rank="primary"
+        style={{ maxWidth: 860, marginInline: "auto", width: "100%" }}
+      >
+        <div className="panel-head">
+          <span className="panel-title">System Doctrine</span>
+          <span className="panel-sub">
+            {systemDoctrine
+              ? `${systemDoctrine.length} artigos · read-only · backend-canonical`
+              : diag.status === "loading"
+                ? "carregando…"
+                : "registry indisponível"}
+          </span>
+        </div>
+        {systemDoctrine === null && diag.status !== "loading" && (
+          <div
+            style={{
+              fontFamily: "var(--sans)",
+              fontSize: "var(--t-body-sec)",
+              color: "var(--cc-warn)",
+            }}
+          >
+            backend não respondeu — não exibimos a doutrina canônica para
+            evitar mostrar uma cópia desactualizada.
+          </div>
+        )}
+        {systemDoctrine && (
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {systemDoctrine.map((d, i) => (
+              <div
+                key={d.id}
+                className="doctrine-article"
+                style={{ animationDelay: `${i * 35}ms` }}
+              >
+                <div className="doctrine-article-gutter">
+                  <span className="doctrine-article-kicker">art.</span>
+                  <span className="doctrine-article-num" data-article-roman>
+                    {toRoman(i + 1)}
+                  </span>
+                </div>
+                <div className="doctrine-article-body">
+                  <span
+                    className="doctrine-article-text"
+                    style={{ fontWeight: 500 }}
+                  >
+                    {d.title}
+                  </span>
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: "var(--t-body-sec)",
+                      color: "var(--text-muted)",
+                      marginTop: 4,
+                    }}
+                  >
+                    {d.summary}
+                  </span>
+                </div>
+                <div
+                  className="doctrine-article-aside"
+                  style={{ fontFamily: "var(--mono)", fontSize: 11 }}
+                >
+                  {d.anchor}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div
+        className="core-page-intro"
+        style={{ paddingTop: "var(--space-3)" }}
+      >
+        <span className="core-page-intro-title">Operator Constitution</span>
+        <span className="core-page-intro-sub">
+          Princípios inscritos por ti — vinculantes ao lado da System Doctrine.
         </span>
       </div>
 

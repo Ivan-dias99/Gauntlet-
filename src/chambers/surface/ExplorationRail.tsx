@@ -1,269 +1,76 @@
-import { useState } from "react";
-import type { SurfacePlanPayload } from "../../hooks/useSignal";
+import type { SurfaceBriefPayload, SurfacePlanPayload } from "../../hooks/useSignal";
 
-// Wave-3 right-side exploration rail. Five tabs: Examples, Templates,
-// Recent, Search, Library. Data is canned in W3 — real catalog comes
-// from the archive connector layer in later waves. The point is that
-// the shell behaves like a real design workstation and not a
-// placeholder galllery.
-
-type Tab = "examples" | "templates" | "recent" | "search" | "library";
-
-const TABS: Array<{ key: Tab; label: string }> = [
-  { key: "examples",  label: "Examples" },
-  { key: "templates", label: "Templates" },
-  { key: "recent",    label: "Recent" },
-  { key: "search",    label: "Search" },
-  { key: "library",   label: "Library" },
-];
-
-const EXAMPLES = [
-  { title: "Operational dashboard",   kind: "Hi-fi",      tag: "analytics" },
-  { title: "Onboarding flow — 3 steps",kind: "Prototype", tag: "activation" },
-  { title: "Governance settings pane", kind: "Hi-fi",     tag: "core" },
-  { title: "Archive search & lineage", kind: "Prototype", tag: "archive" },
-];
-
-const TEMPLATES = [
-  { title: "Command centre",    kind: "hi-fi",    tag: "ops" },
-  { title: "Studio split",      kind: "wireframe",tag: "creation" },
-  { title: "Archive ledger",    kind: "hi-fi",    tag: "retrieval" },
-  { title: "Governance stack",  kind: "hi-fi",    tag: "policy" },
-  { title: "Slide deck — thesis", kind: "hi-fi",  tag: "narrative" },
-];
+// Surface right rail. The previous canned gallery (Examples / Templates /
+// Recent / Search / Library) was deleted — Surface is a workstation, not
+// a placeholder catalog. The rail now carries one of two states:
+//
+//   1. No plan generated yet → a Visual Contract checklist that mirrors
+//      the brief on the left, so the user sees what is satisfied and
+//      what still blocks generation.
+//   2. A plan exists → the structured plan preview (screens, components,
+//      notes), with an explicit mock badge when applicable.
+//
+// Library / catalog can return as a future opt-in surface, but never as
+// the default rail.
 
 interface Props {
   plan: SurfacePlanPayload | null;
   mock: boolean;
+  brief: SurfaceBriefPayload;
+  hasIntent: boolean;
 }
 
-export default function ExplorationRail({ plan, mock }: Props) {
-  const [tab, setTab] = useState<Tab>("examples");
-  const [query, setQuery] = useState("");
+export default function ExplorationRail({ plan, mock, brief, hasIntent }: Props) {
+  if (plan) {
+    return <PlanPreview plan={plan} mock={mock} />;
+  }
+  return <ContractChecklist brief={brief} hasIntent={hasIntent} />;
+}
+
+// ── Empty state — Visual Contract checklist ────────────────────────────────
+
+function ContractChecklist({
+  brief, hasIntent,
+}: {
+  brief: SurfaceBriefPayload;
+  hasIntent: boolean;
+}) {
+  const designSystemSet = brief.design_system !== "none_declared" || true; // explicit decision counts
+  const designSystemHasLabel =
+    brief.design_system === "custom"
+      ? !!(brief.design_system_label && brief.design_system_label.trim())
+      : true;
+
+  const items: Array<{ label: string; satisfied: boolean }> = [
+    { label: "intent · brief escrito", satisfied: hasIntent },
+    { label: "output · prototype / deck / template / other", satisfied: !!brief.mode },
+    { label: "fidelity · wireframe / hi-fi", satisfied: !!brief.fidelity },
+    {
+      label:
+        brief.design_system === "none_declared"
+          ? "design system · 'sem DS' declarado"
+          : brief.design_system === "custom"
+            ? "design system · custom + label"
+            : "design system · Signal Canon",
+      satisfied: designSystemSet && designSystemHasLabel,
+    },
+  ];
+
+  const allSatisfied = items.every((i) => i.satisfied);
 
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
+        gap: 14,
+        padding: "var(--space-4)",
+        height: "100%",
+        minHeight: 0,
+        overflow: "auto",
         border: "var(--border-soft)",
         borderRadius: "var(--radius-panel)",
         background: "var(--bg-surface)",
-        height: "100%",
-        minHeight: 0,
-        overflow: "hidden",
-      }}
-    >
-      {/* Plan preview — sits above the rail when a mock plan has arrived. */}
-      {plan && (
-        <div
-          data-surface-plan-preview
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-            padding: "var(--space-3)",
-            borderBottom: "var(--border-soft)",
-            background: "var(--bg-elevated)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: "var(--t-micro)",
-                letterSpacing: "var(--track-label)",
-                textTransform: "uppercase",
-                color: "var(--text-ghost)",
-              }}
-            >
-              — Plano gerado
-            </span>
-            {mock && (
-              <span
-                data-mock-badge
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: "var(--t-micro)",
-                  letterSpacing: "var(--track-label)",
-                  textTransform: "uppercase",
-                  color: "var(--cc-warn)",
-                  padding: "2px 8px",
-                  border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-                  borderRadius: 999,
-                }}
-              >
-                mock
-              </span>
-            )}
-            <span style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)" }}>
-              {plan.mode} · {plan.fidelity} · {plan.design_system_binding ?? "sem DS"}
-            </span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
-            {plan.screens.map((s) => (
-              <div
-                key={s.name}
-                style={{
-                  padding: 10,
-                  border: "var(--border-soft)",
-                  borderRadius: "var(--radius-control)",
-                  background: "var(--bg-surface)",
-                }}
-              >
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-primary)" }}>
-                  {s.name}
-                </div>
-                <div style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)", marginTop: 4 }}>
-                  {s.purpose}
-                </div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-ghost)", marginTop: 6 }}>
-                  {plan.components.filter((c) => c.screen === s.name).length} componentes
-                </div>
-              </div>
-            ))}
-          </div>
-          {plan.notes.length > 0 && (
-            <ul style={{ margin: 0, paddingLeft: 16, color: "var(--text-muted)", fontSize: "var(--t-body-sec)" }}>
-              {plan.notes.map((n, i) => (
-                <li key={i}>{n}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {/* Tab bar */}
-      <div
-        role="tablist"
-        style={{
-          display: "flex",
-          gap: 2,
-          padding: "var(--space-2)",
-          borderBottom: "var(--border-soft)",
-          background: "var(--bg-surface)",
-        }}
-      >
-        {TABS.map((t) => {
-          const active = t.key === tab;
-          return (
-            <button
-              key={t.key}
-              role="tab"
-              aria-selected={active}
-              onClick={() => setTab(t.key)}
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body-sec)",
-                padding: "6px 10px",
-                background: active ? "var(--bg-elevated)" : "transparent",
-                color: active ? "var(--text-primary)" : "var(--text-muted)",
-                border: active ? "var(--border-soft)" : "1px solid transparent",
-                borderRadius: "var(--radius-control)",
-                cursor: "pointer",
-              }}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Tab body */}
-      <div style={{ flex: 1, overflow: "auto", padding: "var(--space-3)" }}>
-        {tab === "examples" && <Grid items={EXAMPLES} />}
-        {tab === "templates" && <Grid items={TEMPLATES} />}
-        {tab === "recent" && (
-          <EmptyBlock
-            title="Sem histórico ainda"
-            body="Os planos aceites nesta missão vão aparecer aqui. Para ver runs de Surface de todas as missões, vai ao Arquivo."
-          />
-        )}
-        {tab === "search" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Procurar examples, templates, library…"
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body)",
-                padding: "10px 12px",
-                background: "var(--bg-input)",
-                color: "var(--text-primary)",
-                border: "var(--border-mid)",
-                borderRadius: "var(--radius-control)",
-              }}
-            />
-            <EmptyBlock
-              title="Pesquisa federada em breve"
-              body="A pesquisa local nos decks (examples, templates, library) chega primeiro. A pesquisa federada sobre conectores chega quando o Arquivo expor os conectores."
-            />
-          </div>
-        )}
-        {tab === "library" && (
-          <EmptyBlock
-            title="Library de design systems"
-            body="Core → Routing lista os design systems disponíveis para cada chamber. Quando a edição estiver aberta, os DSes passam a ser visíveis aqui também."
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Grid({ items }: { items: Array<{ title: string; kind: string; tag: string }> }) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: 10,
-      }}
-    >
-      {items.map((it) => (
-        <div
-          key={it.title}
-          style={{
-            padding: 12,
-            border: "var(--border-soft)",
-            borderRadius: "var(--radius-control)",
-            background: "var(--bg-surface)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-          }}
-        >
-          <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-primary)" }}>
-            {it.title}
-          </div>
-          <div
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: 10,
-              letterSpacing: "var(--track-meta)",
-              textTransform: "uppercase",
-              color: "var(--text-muted)",
-            }}
-          >
-            {it.kind} · {it.tag}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EmptyBlock({ title, body }: { title: string; body: string }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        padding: "var(--space-4)",
-        textAlign: "center",
-        color: "var(--text-muted)",
       }}
     >
       <div
@@ -275,11 +82,193 @@ function EmptyBlock({ title, body }: { title: string; body: string }) {
           color: "var(--text-ghost)",
         }}
       >
-        — {title}
+        — Visual Contract {allSatisfied ? "ready" : "blocked"}
       </div>
-      <div style={{ fontFamily: "var(--serif)", fontSize: "var(--t-body)", lineHeight: 1.45 }}>
-        {body}
+      <div
+        style={{
+          fontFamily: "var(--serif)",
+          fontSize: 18,
+          lineHeight: 1.4,
+          color: "var(--text-primary)",
+        }}
+      >
+        {allSatisfied
+          ? "Contrato fechado. Submete o brief para gerar o plano."
+          : "Forma o contrato à esquerda. Cada linha por marcar mantém o brief bloqueado."}
       </div>
+      <ul
+        style={{
+          listStyle: "none",
+          margin: 0,
+          padding: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+        {items.map((it) => (
+          <li
+            key={it.label}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontFamily: "var(--mono)",
+              fontSize: "var(--t-body-sec)",
+              color: it.satisfied ? "var(--text-secondary)" : "var(--text-muted)",
+              opacity: it.satisfied ? 1 : 0.7,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 16,
+                height: 16,
+                borderRadius: 3,
+                border: it.satisfied
+                  ? "1px solid color-mix(in oklab, var(--cc-ok) 60%, transparent)"
+                  : "1px solid var(--border-mid)",
+                color: "var(--cc-ok)",
+                fontSize: 11,
+                lineHeight: 1,
+              }}
+            >
+              {it.satisfied ? "✓" : ""}
+            </span>
+            <span>{it.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ── Generated state — plan preview ──────────────────────────────────────────
+
+function PlanPreview({
+  plan, mock,
+}: {
+  plan: SurfacePlanPayload;
+  mock: boolean;
+}) {
+  return (
+    <div
+      data-surface-plan-preview
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+        padding: "var(--space-4)",
+        height: "100%",
+        minHeight: 0,
+        overflow: "auto",
+        border: "var(--border-soft)",
+        borderRadius: "var(--radius-panel)",
+        background: "var(--bg-surface)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-micro)",
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+            color: "var(--text-ghost)",
+          }}
+        >
+          — Plano gerado
+        </span>
+        {mock && (
+          <span
+            data-mock-badge
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: "var(--t-micro)",
+              letterSpacing: "var(--track-label)",
+              textTransform: "uppercase",
+              color: "var(--cc-warn)",
+              padding: "2px 8px",
+              border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+              borderRadius: 999,
+            }}
+          >
+            mock
+          </span>
+        )}
+        <span
+          style={{
+            marginLeft: "auto",
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            color: "var(--text-muted)",
+          }}
+        >
+          {plan.mode} · {plan.fidelity} · {plan.design_system_binding}
+          {plan.design_system_label ? ` (${plan.design_system_label})` : ""}
+        </span>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 10,
+        }}
+      >
+        {plan.screens.map((s) => (
+          <div
+            key={s.name}
+            style={{
+              padding: 10,
+              border: "var(--border-soft)",
+              borderRadius: "var(--radius-control)",
+              background: "var(--bg-elevated)",
+            }}
+          >
+            <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-primary)" }}>
+              {s.name}
+            </div>
+            <div
+              style={{
+                fontSize: "var(--t-body-sec)",
+                color: "var(--text-muted)",
+                marginTop: 4,
+              }}
+            >
+              {s.purpose}
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                color: "var(--text-ghost)",
+                marginTop: 6,
+              }}
+            >
+              {plan.components.filter((c) => c.screen === s.name).length} componentes
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {plan.notes.length > 0 && (
+        <ul
+          style={{
+            margin: 0,
+            paddingLeft: 16,
+            color: "var(--text-muted)",
+            fontSize: "var(--t-body-sec)",
+          }}
+        >
+          {plan.notes.map((n, i) => (
+            <li key={i}>{n}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

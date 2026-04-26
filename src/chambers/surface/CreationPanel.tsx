@@ -1,10 +1,13 @@
 import { useEffect, useRef } from "react";
-import type { SurfaceBriefPayload } from "../../hooks/useSignal";
+import type {
+  SurfaceBriefPayload,
+  SurfaceDesignSystem,
+} from "../../hooks/useSignal";
 
-// Wave-3 left-side creation panel. Four controls:
+// Surface left-side creation panel. Four controls:
 //   - ModeSelector (prototype / slide deck / from template / other)
 //   - FidelitySelector (wireframe / hi-fi)
-//   - DesignSystemPicker (list of canned DSes; optional in W3, mandatory in W5)
+//   - DesignSystemPicker — explicit decision (signal_canon | custom | none_declared)
 //   - Brief textarea + submit
 
 export const MODES: Array<{ key: SurfaceBriefPayload["mode"]; label: string }> = [
@@ -19,17 +22,11 @@ export const FIDELITIES: Array<{ key: SurfaceBriefPayload["fidelity"]; label: st
   { key: "hi-fi",     label: "Alta fidelidade" },
 ];
 
-// Canned design systems. Real catalogue comes from Core (Wave 4) / the
-// archive connector layer. Kept small and uncontroversial in W3.
-export const DESIGN_SYSTEMS = [
-  "Signal Canon",
-  "Claude Design",
-  "Material You",
-  "Tailwind UI",
-  "Shadcn UI",
-  "Radix Primitives",
-  "—",
-] as const;
+const DS_OPTIONS: Array<{ key: SurfaceDesignSystem; label: string }> = [
+  { key: "signal_canon",  label: "Signal Canon" },
+  { key: "custom",        label: "Custom" },
+  { key: "none_declared", label: "Sem DS declarado" },
+];
 
 interface Props {
   brief: SurfaceBriefPayload;
@@ -107,27 +104,39 @@ export default function CreationPanel({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Label>Design system</Label>
-        <select
-          value={brief.design_system ?? "—"}
-          onChange={(e) => {
-            const v = e.target.value;
-            onBriefChange({ design_system: v === "—" ? null : v });
-          }}
-          style={{
-            fontFamily: "var(--sans)",
-            fontSize: "var(--t-body-sec)",
-            padding: "8px 10px",
-            background: "var(--bg-input)",
-            color: "var(--text-primary)",
-            border: "var(--border-mid)",
-            borderRadius: "var(--radius-control)",
-          }}
-        >
-          {DESIGN_SYSTEMS.map((ds) => (
-            <option key={ds} value={ds}>{ds === "—" ? "— sem design system" : ds}</option>
-          ))}
-        </select>
+        <Label>Design system · decisão explícita</Label>
+        <Segmented
+          value={brief.design_system}
+          options={DS_OPTIONS}
+          onChange={(v) =>
+            onBriefChange({
+              design_system: v,
+              // Reset label when leaving "custom" so we never carry a stale name.
+              ...(v !== "custom" ? { design_system_label: null } : {}),
+            })
+          }
+        />
+        {brief.design_system === "custom" && (
+          <input
+            type="text"
+            value={brief.design_system_label ?? ""}
+            onChange={(e) =>
+              onBriefChange({ design_system_label: e.target.value })
+            }
+            placeholder="Nome do design system (ex: Material, Tailwind UI)"
+            maxLength={64}
+            style={{
+              fontFamily: "var(--sans)",
+              fontSize: "var(--t-body-sec)",
+              padding: "8px 10px",
+              background: "var(--bg-input)",
+              color: "var(--text-primary)",
+              border: "var(--border-mid)",
+              borderRadius: "var(--radius-control)",
+              marginTop: 4,
+            }}
+          />
+        )}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

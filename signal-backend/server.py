@@ -10,11 +10,12 @@ Endpoints:
   GET  /memory/stats, /memory/failures
   POST /memory/clear
   GET  /spine — POST /spine
-  GET  /health, /diagnostics
+  GET  /health, /health/ready, /diagnostics
 """
 
 from __future__ import annotations
 
+import asyncio
 import json as _json
 import logging
 import os
@@ -22,6 +23,7 @@ import sys
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,20 +34,31 @@ from config import (
     ALLOWED_ORIGIN,
     ALLOWED_ORIGINS,
     ANTHROPIC_API_KEY,
-    MEMORY_DIR,
-    RUBERRA_MOCK,
+    DATA_DIR,
     SERVER_HOST,
     SERVER_PORT,
+    SIGNAL_MOCK,
 )
+from chambers.profiles import ChamberKey, get_profile
+from db import get_db, migrate_legacy_json_if_needed
 from models import SignalQuery, SignalResponse, SpineSnapshot
 from engine import SignalEngine
 from memory import failure_memory
 from runs import run_store
 from spine import spine_store
+from tools import ToolRegistry, SIGNAL_ALLOW_CODE_EXEC, default_tools
 
 # Captured at import time so /diagnostics can report uptime honestly.
 _PROCESS_START_MONO = time.monotonic()
 _PROCESS_START_ISO = datetime.now(timezone.utc).isoformat()
+
+# Single source of truth for the tool registry — also drives /diagnostics.
+_TOOL_REGISTRY = ToolRegistry(default_tools())
+
+# Heartbeat for SSE streams. Anthropic can pause for tens of seconds when
+# the model is reasoning hard; without a periodic comment frame the edge
+# proxy or browser may decide the connection is dead and drop it.
+_SSE_HEARTBEAT_SECONDS: float = 12.0
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -65,17 +78,27 @@ engine: SignalEngine | None = None
 async def lifespan(app: FastAPI):
     """Initialize engine on startup, cleanup on shutdown."""
     global engine
-    
+
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key and not RUBERRA_MOCK:
+    if not api_key and not SIGNAL_MOCK:
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
             "  ANTHROPIC_API_KEY not set!\n"
-            "  Export it before starting, or set RUBERRA_MOCK=1 to run\n"
+            "  Export it before starting, or set SIGNAL_MOCK=1 to run\n"
             "  the full pipeline against canned responses.\n"
             "═══════════════════════════════════════════════════════════"
         )
         sys.exit(1)
+
+    # One-shot SQLite migration from legacy JSON sidecars; idempotent.
+    try:
+        migration = await migrate_legacy_json_if_needed()
+        if migration["runs"] or migration["spine"] or migration["failures"]:
+            logger.info("Legacy JSON migration: %s", migration)
+        if migration["errors"]:
+            logger.warning("Migration partial errors: %s", migration["errors"])
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Migration failed (server still booting): %s", exc, exc_info=True)
 
     engine = SignalEngine()
     logger.info(
@@ -110,7 +133,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — production origins come from RUBERRA_ORIGIN (comma-separated), with
+# CORS — production origins come from SIGNAL_ORIGIN (comma-separated), with
 # localhost dev origins always appended so the backend stays usable locally.
 _cors_origins = sorted({
     *ALLOWED_ORIGINS,
@@ -149,6 +172,9 @@ def _engine_unavailable_envelope() -> dict:
 def _collect_load_errors() -> list[dict]:
     """Per-store load errors as visible to /health and /diagnostics."""
     out: list[dict] = []
+    db_err = get_db().last_load_error
+    if db_err:
+        out.append({"store": "db", "error": db_err})
     for name, store_attr in (
         ("spine", spine_store._last_load_error),
         ("runs", run_store._last_load_error),
@@ -159,6 +185,68 @@ def _collect_load_errors() -> list[dict]:
     return out
 
 
+# ── SSE helpers ─────────────────────────────────────────────────────────────
+
+async def _heartbeat_stream(
+    source: AsyncIterator[dict],
+    error_kind: str,
+) -> AsyncIterator[str]:
+    """Wrap an async event source with a heartbeat comment frame.
+
+    Emits ``: keepalive\\n\\n`` every _SSE_HEARTBEAT_SECONDS seconds whenever the
+    upstream generator goes quiet. Comment frames (lines starting with ``:``)
+    are mandated by the SSE spec to be ignored by clients, so they cost nothing
+    semantically but keep the TCP connection from being reaped by intermediate
+    proxies (Vercel edge, nginx, browsers) during long Anthropic calls.
+    """
+    iterator = source.__aiter__()
+    next_task: asyncio.Task | None = None
+    try:
+        while True:
+            if next_task is None:
+                next_task = asyncio.create_task(iterator.__anext__())
+            try:
+                event = await asyncio.wait_for(
+                    asyncio.shield(next_task), timeout=_SSE_HEARTBEAT_SECONDS
+                )
+            except asyncio.TimeoutError:
+                yield ": keepalive\n\n"
+                continue
+            except StopAsyncIteration:
+                next_task = None
+                break
+            except Exception as exc:  # noqa: BLE001
+                next_task = None
+                logger.error("Stream %s error: %s", error_kind, exc, exc_info=True)
+                yield (
+                    "data: "
+                    + _json.dumps({"type": "error", **_error_envelope(error_kind, exc)})
+                    + "\n\n"
+                )
+                break
+            next_task = None
+            yield f"data: {_json.dumps(event)}\n\n"
+    finally:
+        if next_task is not None and not next_task.done():
+            next_task.cancel()
+
+
+def _stream_response(
+    source: AsyncIterator[dict],
+    error_kind: str,
+) -> StreamingResponse:
+    return StreamingResponse(
+        _heartbeat_stream(source, error_kind),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ── Health ──────────────────────────────────────────────────────────────────
+
 @app.get("/health")
 async def health_check():
     """
@@ -167,17 +255,15 @@ async def health_check():
     flipping this to 5xx on a degraded engine would trigger a
     crash-restart loop that never resolves.
 
-    The body carries the real signal: engine readiness, run mode
-    (mock vs real), and whether any store booted on a quarantined
-    sidecar. Callers that need a hard yes/no for degraded state must
-    use `/health/ready`.
+    Callers that need a hard yes/no for degraded state must use
+    `/health/ready`.
     """
     return {
         "status": "operational",
         "system": "Signal",
         "doctrine": "active",
         "engine": "ready" if engine else "not_initialized",
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if SIGNAL_MOCK else "real",
         "persistence_degraded": bool(_collect_load_errors()),
     }
 
@@ -188,16 +274,12 @@ async def health_ready():
     Readiness probe. Returns 503 if the system is degraded in any way
     that would make its answers untrustworthy — engine uninitialised,
     running in mock mode, or a store booted on a quarantined file.
-
-    Never flipped to the Railway healthcheck path: `/health` keeps the
-    deploy alive; `/health/ready` is the honest yes/no for clients and
-    operators.
     """
     load_errors = _collect_load_errors()
     reasons: list[str] = []
     if not engine:
         reasons.append("engine_not_initialized")
-    if RUBERRA_MOCK:
+    if SIGNAL_MOCK:
         reasons.append("mock_mode")
     if load_errors:
         reasons.append("persistence_degraded")
@@ -206,7 +288,7 @@ async def health_ready():
         "ready": not reasons,
         "reasons": reasons,
         "engine": "ready" if engine else "not_initialized",
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if SIGNAL_MOCK else "real",
         "load_errors": load_errors,
     }
     if reasons:
@@ -214,147 +296,68 @@ async def health_ready():
     return body
 
 
+# ── Engine endpoints (canonical names; no ask_ruberra_* aliases left) ───────
+
 @app.post("/ask", response_model=SignalResponse)
-async def ask_ruberra(query: SignalQuery):
-    """
-    Submit a question to Signal.
-    
-    The system will:
-    1. Check failure memory for prior failures on similar questions
-    2. Fire 3 parallel calls to Claude Sonnet (self-consistency)
-    3. Send responses to the implacable Judge
-    4. Return answer (high confidence) or refusal (low confidence)
-    """
+async def ask(query: SignalQuery):
+    """Submit a question to Signal's triad + judge pipeline."""
     if not engine:
         raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
 
     try:
-        response = await engine.process_query(query)
-        return response
+        return await engine.process_query(query)
     except Exception as e:
-        logger.error(f"Engine error: {e}", exc_info=True)
+        logger.error("Engine error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=_error_envelope("engine_error", e))
 
 
 @app.post("/dev")
-async def ask_ruberra_dev(query: SignalQuery):
-    """
-    Force the agent (tool-use) pipeline.
-
-    Skips the triad/judge and runs an agentic loop where Claude may call
-    ``read_file``, ``git``, ``run_command``, ``web_search`` and friends. The
-    response includes the final answer plus the full tool-call trace.
-    """
+async def dev(query: SignalQuery):
+    """Force the agent (tool-use) pipeline. Returns the final answer + tool trace."""
     if not engine:
         raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
     try:
         agent_response = await engine.process_dev_query(query)
         return agent_response.to_dict()
     except Exception as e:
-        logger.error(f"Agent error: {e}", exc_info=True)
+        logger.error("Agent error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=_error_envelope("agent_error", e))
 
 
 @app.post("/route/stream")
-async def ask_ruberra_auto_stream(query: SignalQuery):
-    """
-    Streaming variant of ``/route``. Emits the ``route`` decision first, then
-    either agent events (``tool_use``, ``tool_result``, ...) or triad events
-    (``triad_done``, ``judge_done``, ...) and finally ``done``.
-    """
+async def route_stream(query: SignalQuery):
+    """Streaming auto-router. Emits route + per-stage events + done."""
     if not engine:
         raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-
-    async def event_source():
-        try:
-            async for event in engine.process_auto_streaming(query):
-                yield f"data: {_json.dumps(event)}\n\n"
-        except Exception as e:
-            logger.error(f"Route stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('router_error', e)})}\n\n"
-
-    return StreamingResponse(
-        event_source(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
+    return _stream_response(engine.process_auto_streaming(query), "router_error")
 
 
 @app.post("/dev/stream")
-async def ask_ruberra_dev_stream(query: SignalQuery):
-    """
-    Streaming variant of ``/dev``. Emits one SSE event per agent step:
-    ``start``, ``iteration``, ``assistant_text``, ``tool_use``, ``tool_result``,
-    ``done`` (final). The run is recorded once ``done`` fires.
-    """
+async def dev_stream(query: SignalQuery):
+    """Streaming agent loop. Emits per-iteration tool_use/tool_result/done."""
     if not engine:
         raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-
-    async def event_source():
-        try:
-            async for event in engine.process_dev_query_streaming(query):
-                yield f"data: {_json.dumps(event)}\n\n"
-        except Exception as e:
-            logger.error(f"Agent stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('agent_error', e)})}\n\n"
-
-    return StreamingResponse(
-        event_source(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
+    return _stream_response(engine.process_dev_query_streaming(query), "agent_error")
 
 
 @app.post("/crew/stream")
-async def ask_ruberra_crew_stream(query: SignalQuery):
-    """
-    Streaming multi-agent pipeline: planner → (researcher) → coder → critic,
-    with one automatic refinement round if the critic rejects.
-
-    Emits ``crew_start``, ``plan``, ``role_start`` / ``role_event`` /
-    ``role_done`` per specialist, ``critic_verdict`` and finally ``done``.
-    """
+async def crew_stream(query: SignalQuery):
+    """Streaming multi-agent crew: planner → researcher → coder → critic."""
     if not engine:
         raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-
-    async def event_source():
-        try:
-            async for event in engine.process_crew_query_streaming(query):
-                yield f"data: {_json.dumps(event)}\n\n"
-        except Exception as e:
-            logger.error(f"Crew stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('crew_error', e)})}\n\n"
-
-    return StreamingResponse(
-        event_source(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
+    return _stream_response(engine.process_crew_query_streaming(query), "crew_error")
 
 
 @app.post("/route")
-async def ask_ruberra_auto(query: SignalQuery):
-    """
-    Auto-router: dev-intent questions go through the agent loop; the rest
-    go through the triad + judge. Response shape is ``{route, result}``.
-    """
+async def route(query: SignalQuery):
+    """Auto-router: dev-intent → agent loop; rest → triad + judge."""
     if not engine:
         raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
     try:
         return await engine.process_auto(query)
     except Exception as e:
-        logger.error(f"Router error: {e}", exc_info=True)
+        logger.error("Router error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=_error_envelope("router_error", e))
-
 
 
 class BatchQuery(BaseModel):
@@ -363,12 +366,11 @@ class BatchQuery(BaseModel):
 
 
 @app.post("/ask/batch")
-async def ask_ruberra_batch(batch: BatchQuery):
+async def ask_batch(batch: BatchQuery):
     """Submit up to 5 questions in batch."""
     if not engine:
         raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
 
-    import asyncio
     results = await asyncio.gather(
         *[engine.process_query(q) for q in batch.questions],
         return_exceptions=True,
@@ -389,8 +391,7 @@ async def ask_ruberra_batch(batch: BatchQuery):
 @app.get("/memory/stats")
 async def memory_stats():
     """Get failure memory statistics."""
-    stats = await failure_memory.get_stats()
-    return stats
+    return await failure_memory.get_stats()
 
 
 @app.get("/memory/failures")
@@ -413,12 +414,12 @@ async def clear_memory(confirmation: ClearConfirmation):
     """Clear all failure memory. Requires explicit confirmation."""
     if not confirmation.confirm:
         return {"cleared": False, "message": "Confirmation required (confirm=true)"}
-    
+
     async with failure_memory._lock:
         from models import FailureMemory
         failure_memory._memory = FailureMemory()
         await failure_memory._save_to_disk()
-    
+
     return {"cleared": True, "message": "Failure memory cleared"}
 
 
@@ -471,8 +472,6 @@ async def put_spine(snapshot: SpineSnapshot):
     try:
         return await spine_store.put(snapshot)
     except OSError as e:
-        # Disk full, permission denied, read-only volume, missing mount…
-        # Never claim the spine was saved when the filesystem said no.
         logger.error("Spine persist failed: %s", e, exc_info=True)
         raise HTTPException(
             status_code=503,
@@ -482,26 +481,101 @@ async def put_spine(snapshot: SpineSnapshot):
 
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
 
+# Static slice of the Signal doctrine surfaced to Core/Policies. The frontend
+# was rendering "no principles" because it had no way to see the system
+# constitution that lives in code; Operator Constitution is user-defined and
+# remains separate.
+SYSTEM_DOCTRINE: list[dict] = [
+    {
+        "id": "conservative_intelligence",
+        "title": "Conservative intelligence",
+        "summary": "Prefer refusal over the risk of being wrong.",
+        "anchor": "doctrine.SYSTEM_PROMPT",
+    },
+    {
+        "id": "triad_before_answer",
+        "title": "Triad before answer",
+        "summary": "Three parallel completions before any user-visible response.",
+        "anchor": "engine.SignalEngine.run_triad",
+    },
+    {
+        "id": "judge_decides",
+        "title": "Judge decides confidence",
+        "summary": "An implacable judge collapses the triad into HIGH or refusal.",
+        "anchor": "doctrine.JUDGE_PROMPT",
+    },
+    {
+        "id": "failure_memory",
+        "title": "Failure memory reinforces caution",
+        "summary": "Past refusals fingerprint future questions; repeats refuse faster.",
+        "anchor": "memory.FailureMemoryStore",
+    },
+    {
+        "id": "tool_gating",
+        "title": "Tool execution is gated",
+        "summary": "Mutating tools require SIGNAL_ALLOW_CODE_EXEC; deny by default.",
+        "anchor": "tools.SIGNAL_ALLOW_CODE_EXEC",
+    },
+    {
+        "id": "honest_status",
+        "title": "Honest readiness",
+        "summary": "/health/ready returns 503 when degraded; UI must reflect it.",
+        "anchor": "server.health_ready",
+    },
+]
+
+
+def _serialize_tool_registry() -> list[dict]:
+    """Snapshot of every tool the agent can dispatch. Single source of truth."""
+    out: list[dict] = []
+    for tool in _TOOL_REGISTRY._tools.values():
+        gated = tool.name in {"execute_python", "run_command"}
+        if tool.name in {"read_file", "list_directory"}:
+            kind = "filesystem"
+        elif tool.name == "git":
+            kind = "vcs"
+        elif tool.name in {"web_search", "fetch_url", "package_info"}:
+            kind = "network"
+        elif tool.name in {"run_command", "execute_python"}:
+            kind = "process"
+        else:
+            kind = "other"
+        chambers_allowed: list[str] = []
+        for key in ChamberKey:
+            profile = get_profile(key)
+            if not profile:
+                continue
+            if profile.allowed_tools is None:
+                chambers_allowed.append(key.value)
+            elif tool.name in profile.allowed_tools:
+                chambers_allowed.append(key.value)
+        out.append({
+            "name": tool.name,
+            "kind": kind,
+            "gated": gated,
+            "description": tool.description,
+            "chambers": chambers_allowed,
+        })
+    return out
+
+
 @app.get("/diagnostics")
 async def diagnostics():
-    """Full system diagnostics."""
+    """Full system diagnostics. Single source of truth for UI registries."""
     from config import MODEL_ID, TRIAD_TEMPERATURE, JUDGE_TEMPERATURE, TRIAD_COUNT
 
     mem_stats = await failure_memory.get_stats()
 
-    # Honest boot signal: how the process was configured, not how the
-    # operator intended it. Mock-mode and missing API key are the two
-    # most common reasons the deployed brain silently returns canned
-    # answers — both are surfaced here without exposing the key itself.
     boot = {
         "start_iso": _PROCESS_START_ISO,
         "uptime_seconds": int(time.monotonic() - _PROCESS_START_MONO),
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if SIGNAL_MOCK else "real",
         "anthropic_api_key_present": bool(ANTHROPIC_API_KEY),
-        "data_dir": str(MEMORY_DIR),
+        "data_dir": str(DATA_DIR),
         "allowed_origins": ALLOWED_ORIGINS,
         "host": SERVER_HOST,
         "port": SERVER_PORT,
+        "allow_code_exec": SIGNAL_ALLOW_CODE_EXEC,
     }
 
     return {
@@ -513,6 +587,8 @@ async def diagnostics():
         "engine_status": "ready" if engine else "not_initialized",
         "boot": boot,
         "failure_memory": mem_stats,
+        "tools": _serialize_tool_registry(),
+        "system_doctrine": SYSTEM_DOCTRINE,
         "persistence": {
             "spine_last_save_error": spine_store._last_save_error,
             "spine_last_load_error": spine_store._last_load_error,

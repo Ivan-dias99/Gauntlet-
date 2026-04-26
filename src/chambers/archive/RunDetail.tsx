@@ -239,13 +239,36 @@ export default function RunDetail({ run, missionArtifact, doctrineCount }: Props
                   ? run.judge_reasoning.slice(0, 600) + "…"
                   : run.judge_reasoning}
               </div>
+            ) : run.termination_reason === "missing_judgment_quarantine" ? (
+              <div
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: "var(--t-body-sec)",
+                  color: "var(--cc-warn)",
+                  padding: "8px 10px",
+                  border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+                  borderRadius: 6,
+                  lineHeight: 1.5,
+                }}
+                title="Run gravado sem trace de juízo. Backend marcou como provenance degradada."
+              >
+                provenance degradada · refusal sem juízo registado
+                <div
+                  style={{ color: "var(--text-muted)", marginTop: 4, fontSize: 11 }}
+                >
+                  doutrina exige judge_reasoning ou termination_reason em runs
+                  recusadas; este run foi marcado pelo backend como
+                  missing_judgment_quarantine.
+                </div>
+              </div>
             ) : (
               <span
                 className="kicker"
-                data-tone="ghost"
+                data-tone="warn"
                 style={{ fontStyle: "italic" }}
+                title="Run legacy persisted before the refused-with-reason gate"
               >
-                — sem motivo registado —
+                — legacy run · juízo ausente —
               </span>
             )}
           </Section>

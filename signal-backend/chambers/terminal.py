@@ -4,7 +4,7 @@ Signal — Terminal chamber (Wave 5).
 Code · execution · patches · tool use. Dispatches to the agent loop.
 Has access to the full tool registry (filesystem, command, vcs,
 network). The gated tools (run_command's GATED binaries, execute_python)
-still honor AGENT_ALLOW_CODE_EXEC — chamber allowlist does not
+still honor SIGNAL_ALLOW_CODE_EXEC — chamber allowlist does not
 override the global code-exec gate.
 
 Prompt body inherits doctrine.AGENT_SYSTEM_PROMPT verbatim in Wave 5.

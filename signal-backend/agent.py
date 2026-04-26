@@ -29,7 +29,7 @@ from typing import Any, AsyncIterator, Optional
 
 from anthropic import AsyncAnthropic
 
-from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, RUBERRA_MOCK
+from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, SIGNAL_MOCK
 from mock_client import MockAsyncAnthropic
 from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
 from models import SignalQuery
@@ -113,7 +113,7 @@ class AgentOrchestrator:
     ) -> None:
         if client is not None:
             self._client = client
-        elif RUBERRA_MOCK:
+        elif SIGNAL_MOCK:
             self._client = MockAsyncAnthropic()
             logger.warning("AgentOrchestrator initialized in MOCK mode")
         else:

@@ -22,7 +22,7 @@ from config import (
     JUDGE_TEMPERATURE,
     MAX_TOKENS,
     TRIAD_COUNT,
-    RUBERRA_MOCK,
+    SIGNAL_MOCK,
 )
 from mock_client import MockAsyncAnthropic
 from doctrine import (
@@ -93,7 +93,7 @@ class SignalEngine:
     """
     
     def __init__(self) -> None:
-        if RUBERRA_MOCK:
+        if SIGNAL_MOCK:
             self._client = MockAsyncAnthropic()
             logger.warning("Engine initialized in MOCK mode — no network calls")
         else:
@@ -399,14 +399,14 @@ class SignalEngine:
         """
         from chambers.profiles import ChamberKey
         if query.chamber == ChamberKey.SURFACE:
-            from chambers.surface import process_surface_mock_streaming
+            from chambers.surface import process_surface_streaming
             yield {"type": "route", "path": "surface"}
             # Improvement after Wave 8: Surface runs are persisted to the
             # run log just like agent / triad / crew, so the Archive chamber
             # can surface them alongside other mission activity. Without
             # this record the mission ledger showed zero Surface events.
             surface_final: Optional[dict[str, Any]] = None
-            async for event in process_surface_mock_streaming(query.question, query.surface):
+            async for event in process_surface_streaming(query.question, query.surface):
                 yield event
                 if event.get("type") == "done":
                     surface_final = event

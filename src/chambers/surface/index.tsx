@@ -12,17 +12,25 @@ import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
 import CreationPanel from "./CreationPanel";
 import ExplorationRail from "./ExplorationRail";
+import {
+  validateMissionTitle,
+  explainMissionRejection,
+  type MissionRejectionReason,
+} from "../../spine/validation";
 
 // Surface chamber — design workstation.
 //
-// Real shell, mock backend. The mock flag is surfaced in the UI on two
-// places: the creation panel banner and the plan-preview badge. No
-// silent pretend-AI.
+// Sonnet 4.6-backed plan generator. The mock flag (SIGNAL_MOCK=1) is
+// surfaced in two places: the creation panel banner and the plan-preview
+// badge. No silent pretend-AI. The right rail no longer carries a canned
+// gallery; it shows the visual contract checklist before generation and
+// the structured plan after.
 
 const DEFAULT_BRIEF: SurfaceBriefPayload = {
   mode: "prototype",
   fidelity: "hi-fi",
-  design_system: null,
+  design_system: "none_declared",
+  design_system_label: null,
 };
 
 export default function Surface() {
@@ -35,6 +43,7 @@ export default function Surface() {
   const [plan, setPlan] = useState<SurfacePlanPayload | null>(null);
   const [planIsMock, setPlanIsMock] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
+  const [missionRejection, setMissionRejection] = useState<MissionRejectionReason | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const patchBrief = (p: Partial<SurfaceBriefPayload>) =>
@@ -51,6 +60,12 @@ export default function Surface() {
     let missionId = activeMission?.id;
     if (!missionId) {
       const title = v.length > 64 ? v.slice(0, 61).trimEnd() + "…" : v;
+      const verdict = validateMissionTitle(title);
+      if (!verdict.ok) {
+        setMissionRejection(verdict.reason);
+        return;
+      }
+      setMissionRejection(null);
       missionId = createMission(title, "surface");
     }
     addNoteToMission(missionId, v, "user");
@@ -134,9 +149,31 @@ export default function Surface() {
                 {err}
               </div>
             )}
+            {missionRejection !== null && (
+              <div
+                role="alert"
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: "var(--t-body-sec)",
+                  color: "var(--cc-warn)",
+                  padding: "8px 12px",
+                  border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+                  borderRadius: "var(--radius-control)",
+                }}
+              >
+                missão não ratificada · {explainMissionRejection(missionRejection)}
+              </div>
+            )}
           </>
         }
-        right={<ExplorationRail plan={plan} mock={planIsMock} />}
+        right={
+          <ExplorationRail
+            plan={plan}
+            mock={planIsMock}
+            brief={brief}
+            hasIntent={prompt.trim().length > 0}
+          />
+        }
       />
     </div>
   );

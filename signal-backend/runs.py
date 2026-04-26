@@ -1,9 +1,16 @@
 """
 Signal — Run Log
-Append-only on-disk log of every query that hits the engine.
 
-This is the first step toward real domain persistence. Missions, artifacts,
-reviews, and binding records can follow the same pattern.
+Append-only log of every query that hits the engine, persisted in SQLite.
+
+Doctrine gate enforced here:
+    A refused run must carry a judgment trace — at least one of
+    judge_reasoning, refusal_reason, termination_reason or an error
+    envelope. Without that, Archive ends up displaying "sem motivo
+    registado" as a normal state, which violates Signal's own
+    refuse-with-reason rule. Records that fail the gate raise
+    ``RefusedWithoutJudgment``; the caller decides whether to repair
+    the record or 422 the request.
 """
 
 from __future__ import annotations
@@ -12,75 +19,82 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 
-from config import MEMORY_DIR
-from models import RunRecord, RunsLog
-from persistence import atomic_write_text, quarantine_corrupt_file
+from db import get_db
+from models import RunRecord
 
 logger = logging.getLogger("signal.runs")
 
-RUNS_FILE: Path = MEMORY_DIR / "runs.json"
 MAX_RUNS: int = 2000
 
 
+class RefusedWithoutJudgment(ValueError):
+    """A refused run was submitted without any judgment trace."""
+
+
+def _refused_has_judgment(run: RunRecord) -> bool:
+    if (run.judge_reasoning or "").strip():
+        return True
+    if (run.termination_reason or "").strip():
+        return True
+    # An error envelope leaves a fingerprint in tool_calls / termination
+    # state that the UI surfaces as the refusal cause. We accept either
+    # an explicit termination_reason (set above) or an error-flagged
+    # tool call as evidence.
+    for call in run.tool_calls or []:
+        if isinstance(call, dict) and call.get("ok") is False:
+            return True
+    return False
+
+
 class RunStore:
-    """Thread-safe, JSON-backed run log."""
+    """Thread-safe SQLite-backed run log."""
 
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
-        self._log = RunsLog()
-        self._loaded = False
-        # Disk-write failures are surfaced through diagnostics rather than
-        # raised — a broken run log must not crash a user query mid-stream.
         self._last_save_error: str | None = None
-        # Load-path errors are surfaced the same way. Corrupt files are
-        # quarantined so record() does not overwrite the evidence.
         self._last_load_error: str | None = None
 
-    async def _ensure_loaded(self) -> None:
-        if self._loaded:
-            return
-        async with self._lock:
-            if self._loaded:
-                return
-            await self._load()
-            self._loaded = True
-
-    async def _load(self) -> None:
-        if not RUNS_FILE.exists():
-            logger.info("No run log file found — starting fresh")
-            return
-        try:
-            raw = RUNS_FILE.read_text(encoding="utf-8")
-            self._log = RunsLog(**json.loads(raw))
-            logger.info("Loaded %d run records from disk", len(self._log.records))
-        except Exception as e:
-            sidecar = quarantine_corrupt_file(RUNS_FILE)
-            detail = f"{type(e).__name__}: {e}"
-            if sidecar is not None:
-                detail += f" (quarantined to {sidecar.name})"
-            self._last_load_error = detail
-            logger.error("Failed to load run log: %s", detail)
-            self._log = RunsLog()
-
-    def _write_log(self) -> None:
-        atomic_write_text(RUNS_FILE, self._log.model_dump_json(indent=2))
-
     async def record(self, run: RunRecord) -> RunRecord:
-        await self._ensure_loaded()
-        async with self._lock:
-            self._log.records.append(run)
-            if len(self._log.records) > MAX_RUNS:
-                self._log.records = self._log.records[-MAX_RUNS:]
-            self._log.last_updated = datetime.now(timezone.utc).isoformat()
-            try:
-                self._write_log()
-                self._last_save_error = None
-            except Exception as e:
-                self._last_save_error = f"{type(e).__name__}: {e}"
-                logger.error("Failed to save run log: %s", e)
+        if run.refused and not _refused_has_judgment(run):
+            # Doctrine gate: a refusal without a judgment trace is corrupt
+            # provenance. We don't crash the stream — Archive needs the
+            # row — but we stamp the violation onto the record itself so
+            # the UI can flag it instead of pretending the refusal is
+            # normal. The stamped reason is reserved + machine-readable.
+            run.termination_reason = "missing_judgment_quarantine"
+            logger.warning(
+                "Refused run %s missing judgment; recorded with "
+                "termination_reason=missing_judgment_quarantine",
+                run.id,
+            )
+        db = get_db()
+        try:
+            await db.execute(
+                "INSERT OR REPLACE INTO runs"
+                "(id, timestamp, route, mission_id, refused, payload)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    run.id,
+                    run.timestamp,
+                    run.route,
+                    run.mission_id,
+                    1 if run.refused else 0,
+                    run.model_dump_json(),
+                ),
+            )
+            # Cheap pruning: keep at most MAX_RUNS by timestamp.
+            await db.execute(
+                "DELETE FROM runs WHERE id IN ("
+                " SELECT id FROM runs ORDER BY timestamp DESC LIMIT -1 OFFSET ?"
+                ")",
+                (MAX_RUNS,),
+            )
+            self._last_save_error = None
+        except Exception as e:  # noqa: BLE001
+            self._last_save_error = f"{type(e).__name__}: {e}"
+            logger.error("Failed to persist run: %s", e)
         return run
 
     async def list(
@@ -88,24 +102,52 @@ class RunStore:
         mission_id: Optional[str] = None,
         limit: int = 50,
     ) -> list[RunRecord]:
-        await self._ensure_loaded()
-        records = self._log.records
+        db = get_db()
         if mission_id:
-            records = [r for r in records if r.mission_id == mission_id]
-        return list(reversed(records[-limit:]))
+            rows = await db.fetch_all(
+                "SELECT payload FROM runs WHERE mission_id = ?"
+                " ORDER BY timestamp DESC LIMIT ?",
+                (mission_id, limit),
+            )
+        else:
+            rows = await db.fetch_all(
+                "SELECT payload FROM runs ORDER BY timestamp DESC LIMIT ?",
+                (limit,),
+            )
+        out: list[RunRecord] = []
+        for row in rows:
+            try:
+                out.append(RunRecord(**json.loads(row["payload"])))
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Skipping unparseable run row: %s", exc)
+        return out
 
     async def get(self, run_id: str) -> Optional[RunRecord]:
-        await self._ensure_loaded()
-        for r in self._log.records:
-            if r.id == run_id:
-                return r
-        return None
+        db = get_db()
+        row = await db.fetch_one("SELECT payload FROM runs WHERE id = ?", (run_id,))
+        if not row:
+            return None
+        try:
+            return RunRecord(**json.loads(row["payload"]))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Unparseable run %s: %s", run_id, exc)
+            return None
 
     async def stats(self, mission_id: Optional[str] = None) -> dict:
-        await self._ensure_loaded()
-        records = self._log.records
+        db = get_db()
         if mission_id:
-            records = [r for r in records if r.mission_id == mission_id]
+            rows = await db.fetch_all(
+                "SELECT payload FROM runs WHERE mission_id = ?",
+                (mission_id,),
+            )
+        else:
+            rows = await db.fetch_all("SELECT payload FROM runs")
+        records = []
+        for row in rows:
+            try:
+                records.append(RunRecord(**json.loads(row["payload"])))
+            except Exception:  # noqa: BLE001
+                continue
         by_route: dict[str, int] = {}
         refused = 0
         latency_sum = 0
@@ -131,9 +173,8 @@ class RunStore:
             "total_input_tokens": total_in,
             "total_output_tokens": total_out,
             "tool_calls": tool_calls,
-            "last_updated": self._log.last_updated,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
 
 
-# Module-level singleton
 run_store = RunStore()

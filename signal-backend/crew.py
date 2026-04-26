@@ -41,7 +41,7 @@ from typing import Any, AsyncIterator, Optional
 from anthropic import AsyncAnthropic
 
 from agent import AgentOrchestrator, AGENT_WALL_CLOCK_S
-from config import ANTHROPIC_API_KEY, MAX_TOKENS, MODEL_ID, RUBERRA_MOCK
+from config import ANTHROPIC_API_KEY, MAX_TOKENS, MODEL_ID, SIGNAL_MOCK
 from doctrine import (
     CREW_CODER_PROMPT,
     CREW_CRITIC_PROMPT,
@@ -88,7 +88,7 @@ class CrewOrchestrator:
     ) -> None:
         if client is not None:
             self._client = client
-        elif RUBERRA_MOCK:
+        elif SIGNAL_MOCK:
             self._client = MockAsyncAnthropic()
             logger.warning("CrewOrchestrator initialized in MOCK mode")
         else:

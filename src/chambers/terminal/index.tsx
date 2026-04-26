@@ -477,6 +477,7 @@ export default function Terminal() {
         principlesCount={principles.length}
         priorTurns={activeMission?.notes?.length ?? 0}
         mockMode={backend.mode === "mock"}
+        readiness={backend.readiness}
       />
     </div>
   );

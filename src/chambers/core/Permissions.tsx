@@ -1,100 +1,175 @@
-// Core · Permissions — read-only view over the tool allowlist and the
-// code-execution gate. Mirrors signal-backend/tools.py. Each tool lives
-// on a shared .panel card so the permissions register reads with the
-// same composition grammar as Routing / Orchestration / System.
+import { useDiagnostics, type SignalToolDescriptor } from "../../hooks/useDiagnostics";
 
-interface ToolEntry {
-  name: string;
-  kind: "filesystem" | "command" | "vcs" | "network";
-  gated: boolean;
-  note: string;
-}
+// Core · Permissions — read-only registry of the active tool surface.
+// Single source of truth: signal-backend /diagnostics. The previous
+// hardcoded TS list drifted (web_fetch vs fetch_url, missing package_info)
+// and is gone. If the backend is unreachable we say so honestly instead
+// of inventing a fake fallback.
 
-const TOOLS: ToolEntry[] = [
-  { name: "read_file",       kind: "filesystem", gated: false,
-    note: "Rooted at TOOL_WORKSPACE_ROOT. Symlink/traversal blocked." },
-  { name: "list_directory",  kind: "filesystem", gated: false,
-    note: "Rooted; same workspace boundary as read_file." },
-  { name: "run_command",     kind: "command",    gated: true,
-    note: "Deny-by-default. SAFE set (read-only) livre; GATED set (pip, npm, node…) requer AGENT_ALLOW_CODE_EXEC=true." },
-  { name: "execute_python",  kind: "command",    gated: true,
-    note: "Requer AGENT_ALLOW_CODE_EXEC=true. Workspace rooted." },
-  { name: "git",             kind: "vcs",        gated: false,
-    note: "Config / exec-path / upload-pack / receive-pack / worktree / pager hard-blocked." },
-  { name: "web_fetch",       kind: "network",    gated: false,
-    note: "Re-valida cada redirect hop. IPs privados / reservados / loopback / metadata bloqueados (SSRF defence)." },
-  { name: "web_search",      kind: "network",    gated: false,
-    note: "External search API." },
-];
-
-const KIND_TONE: Record<ToolEntry["kind"], "info" | "warn" | "accent" | "ok"> = {
+const KIND_TONE: Record<SignalToolDescriptor["kind"], "info" | "warn" | "accent" | "ok" | "muted"> = {
   filesystem: "info",
-  command:    "warn",
+  process:    "warn",
   vcs:        "accent",
   network:    "ok",
+  other:      "muted",
 };
 
 export default function Permissions() {
+  const diag = useDiagnostics();
+
   return (
     <div className="core-page">
       <div className="core-page-intro">
         <span className="core-page-intro-title">Permissions</span>
         <span className="core-page-intro-sub">
-          Deny-by-default. A coluna gated marca tools que só se activam com{" "}
+          Read-only registry · derivado de{" "}
           <code style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>
-            AGENT_ALLOW_CODE_EXEC=true
+            signal-backend/tools.py
           </code>
-          . Cada chamber tem allowlist própria — Insight e Core sem tools,
-          Terminal completo, Surface só o handler mock, Archive subset de retrieval.
+          . Tools <em>gated</em> só rodam com{" "}
+          <code style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>
+            SIGNAL_ALLOW_CODE_EXEC=true
+          </code>
+          . O allowlist por chamber está na coluna direita.
         </span>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "var(--space-3)",
-        }}
-      >
-        {TOOLS.map((t) => (
-          <section key={t.name} className="panel" data-rank="primary">
-            <div className="panel-head">
-              <code
+      {diag.status === "loading" && (
+        <div
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-body-sec)",
+            color: "var(--text-muted)",
+          }}
+        >
+          carregando registry…
+        </div>
+      )}
+
+      {diag.status === "unreachable" && (
+        <div
+          className="panel"
+          data-rank="primary"
+          style={{ borderColor: "var(--cc-warn)" }}
+        >
+          <div className="panel-head">
+            <span style={{ fontFamily: "var(--mono)", color: "var(--cc-warn)" }}>
+              registry unavailable
+            </span>
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--sans)",
+              fontSize: "var(--t-body-sec)",
+              color: "var(--text-muted)",
+            }}
+          >
+            backend inacessível — sem fonte canônica para tool list. Não há
+            fallback hardcoded para evitar mostrar permissões fora de sincro.
+          </div>
+        </div>
+      )}
+
+      {diag.status === "error" && (
+        <div className="panel" data-rank="primary">
+          <div className="panel-head">
+            <span style={{ fontFamily: "var(--mono)", color: "var(--cc-warn)" }}>
+              registry error
+            </span>
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--sans)",
+              fontSize: "var(--t-body-sec)",
+              color: "var(--text-muted)",
+            }}
+          >
+            {diag.error}
+          </div>
+        </div>
+      )}
+
+      {diag.status === "ok" && (
+        <>
+          {diag.data.boot.allow_code_exec === false && (
+            <div
+              className="panel"
+              data-rank="muted"
+              style={{ marginBottom: "var(--space-3)" }}
+            >
+              <div
                 style={{
                   fontFamily: "var(--mono)",
-                  fontSize: "var(--t-body)",
-                  color: "var(--text-primary)",
+                  fontSize: "var(--t-body-sec)",
+                  color: "var(--text-muted)",
                 }}
               >
-                {t.name}
-              </code>
-              <span
-                className="kicker"
-                data-tone={KIND_TONE[t.kind]}
-                style={{ marginLeft: "auto" }}
-              >
-                {t.kind}
-              </span>
-              {t.gated && (
-                <span data-gated className="state-pill" data-tone="warn">
-                  <span className="state-pill-dot" />
-                  gated
-                </span>
-              )}
+                SIGNAL_ALLOW_CODE_EXEC=false · gated tools recusam invocação
+              </div>
             </div>
-            <div
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body-sec)",
-                color: "var(--text-muted)",
-                lineHeight: "var(--lh-body-sec)",
-              }}
-            >
-              {t.note}
-            </div>
-          </section>
-        ))}
-      </div>
+          )}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: "var(--space-3)",
+            }}
+          >
+            {diag.data.tools.map((t) => (
+              <section key={t.name} className="panel" data-rank="primary">
+                <div className="panel-head">
+                  <code
+                    style={{
+                      fontFamily: "var(--mono)",
+                      fontSize: "var(--t-body)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    {t.name}
+                  </code>
+                  <span
+                    className="kicker"
+                    data-tone={KIND_TONE[t.kind]}
+                    style={{ marginLeft: "auto" }}
+                  >
+                    {t.kind}
+                  </span>
+                  {t.gated && (
+                    <span data-gated className="state-pill" data-tone="warn">
+                      <span className="state-pill-dot" />
+                      gated
+                    </span>
+                  )}
+                </div>
+                {t.description && (
+                  <div
+                    style={{
+                      fontFamily: "var(--sans)",
+                      fontSize: "var(--t-body-sec)",
+                      color: "var(--text-muted)",
+                      lineHeight: "var(--lh-body-sec)",
+                      marginBottom: "var(--space-2)",
+                    }}
+                  >
+                    {t.description.length > 220
+                      ? t.description.slice(0, 217) + "…"
+                      : t.description}
+                  </div>
+                )}
+                <div
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: 11,
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  chambers: {t.chambers.length ? t.chambers.join(", ") : "—"}
+                </div>
+              </section>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

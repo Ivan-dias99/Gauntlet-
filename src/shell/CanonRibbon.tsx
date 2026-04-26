@@ -90,24 +90,47 @@ export default function CanonRibbon({ active, onSelect }: Props) {
       </div>
 
       <div className="canon-ribbon-right">
-        {backend.mode === "mock" && (
-          <span
-            data-shell-mode="mock"
-            title="Backend em modo simulado — toda a inteligência é canned"
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: 9,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              color: "var(--cc-warn)",
-              padding: "2px 8px",
-              borderRadius: 999,
-              border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-            }}
-          >
-            mock
-          </span>
-        )}
+        {(() => {
+          if (backend.readiness === "ready_real") return null;
+          const meta: Record<
+            Exclude<typeof backend.readiness, "ready_real">,
+            { label: string; title: string }
+          > = {
+            mock: {
+              label: "mock",
+              title: "Backend em modo simulado — toda a inteligência é canned",
+            },
+            degraded: {
+              label: "degraded",
+              title: backend.reasons.length
+                ? `Backend degradado: ${backend.reasons.join(", ")}`
+                : "Backend degradado",
+            },
+            unreachable: {
+              label: "unreachable",
+              title: "Backend inacessível — operando em modo local apenas",
+            },
+          };
+          const m = meta[backend.readiness];
+          return (
+            <span
+              data-shell-readiness={backend.readiness}
+              title={m.title}
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 9,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+                color: "var(--cc-warn)",
+                padding: "2px 8px",
+                borderRadius: 999,
+                border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+              }}
+            >
+              {m.label}
+            </span>
+          );
+        })()}
         <span
           className="spine-sync"
           data-sync-state={syncState}

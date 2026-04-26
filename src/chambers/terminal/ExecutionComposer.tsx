@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Copy, RunMode, Task } from "./helpers";
+import { useDiagnostics, type SignalToolDescriptor } from "../../hooks/useDiagnostics";
+import type { BackendReadiness } from "../../hooks/useBackendStatus";
 
 // Terminal command surface — Claude-Code-class composer.
 // Chrome bar carries traffic-lights + path + phase + four affordances:
@@ -27,28 +29,39 @@ interface Props {
   principlesCount: number;
   priorTurns: number;
   mockMode: boolean;
+  readiness: BackendReadiness;
 }
 
 type Flyout = null | "context" | "recent" | "tools";
 
-// Tools the Terminal chamber actually carries server-side. Mirrors the
-// allowlist exposed in Core/Permissions. Read-only — this is a window
-// into the backend posture, not a toggle.
-const TERMINAL_TOOLS: Array<{ name: string; kind: string; gated?: boolean }> = [
-  { name: "read_file",      kind: "fs" },
-  { name: "list_directory", kind: "fs" },
-  { name: "run_command",    kind: "cmd", gated: true },
-  { name: "execute_python", kind: "cmd", gated: true },
-  { name: "git",            kind: "vcs" },
-  { name: "web_fetch",      kind: "net" },
-  { name: "web_search",     kind: "net" },
-];
-
 export default function ExecutionComposer({
   copy, value, onChange, onSubmit, pending, missionTitle,
   mode, onModeChange, recentTasks, onPickTask,
-  principlesCount, priorTurns, mockMode,
+  principlesCount, priorTurns, mockMode, readiness,
 }: Props) {
+  const diagnostics = useDiagnostics();
+  const terminalTools: SignalToolDescriptor[] | null =
+    diagnostics.status === "ok"
+      ? diagnostics.data.tools.filter((t) => t.chambers.includes("terminal"))
+      : null;
+  const readinessLabel: Record<BackendReadiness, string> = {
+    ready_real: "live",
+    mock: "mock",
+    degraded: "degraded",
+    unreachable: "unreachable",
+  };
+  const readinessTone: Record<BackendReadiness, "ok" | "warn"> = {
+    ready_real: "ok",
+    mock: "warn",
+    degraded: "warn",
+    unreachable: "warn",
+  };
+  const readinessTitle: Record<BackendReadiness, string> = {
+    ready_real: "backend ligado · execução real",
+    mock: "backend em modo simulado · respostas canned",
+    degraded: "backend degradado · provenance comprometida",
+    unreachable: "backend inacessível · operação local apenas",
+  };
   const [focused, setFocused] = useState(false);
   const [flyout, setFlyout] = useState<Flyout>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -211,13 +224,13 @@ export default function ExecutionComposer({
           <div className="term-ws-group" aria-label="estado">
             <span
               className="term-ws-chip"
-              data-tone={mockMode ? "warn" : "ok"}
-              title={mockMode ? "backend em modo simulado — respostas canned" : "backend ligado — execução real"}
+              data-tone={readinessTone[readiness]}
+              title={readinessTitle[readiness]}
             >
               <span className="term-ws-chip-glyph" aria-hidden>●</span>
               <span className="term-ws-chip-label">backend</span>
               <span className="term-ws-chip-value">
-                {mockMode ? "mock" : "live"}
+                {readinessLabel[readiness]}
               </span>
             </span>
             {principlesCount > 0 && (
@@ -275,7 +288,12 @@ export default function ExecutionComposer({
             onPick={(t) => { onPickTask(t); setFlyout(null); }}
           />
         )}
-        {flyout === "tools" && <ToolsFlyout />}
+        {flyout === "tools" && (
+          <ToolsFlyout
+            tools={terminalTools}
+            unreachable={diagnostics.status !== "ok"}
+          />
+        )}
       </div>
     </div>
   );
@@ -385,24 +403,50 @@ function RecentFlyout({
 }
 
 
-function ToolsFlyout() {
+function ToolsFlyout({
+  tools, unreachable,
+}: {
+  tools: SignalToolDescriptor[] | null;
+  unreachable: boolean;
+}) {
   return (
     <div className="term-flyout" role="menu">
       <div className="term-flyout-head">
         <span>tools allowlist · terminal</span>
       </div>
-      {TERMINAL_TOOLS.map((t) => (
-        <button key={t.name} className="term-flyout-item" disabled>
-          <span className="term-flyout-item-glyph">⚒</span>
+      {unreachable || tools === null ? (
+        <button className="term-flyout-item" disabled>
+          <span className="term-flyout-item-glyph">—</span>
           <span className="term-flyout-item-body">
-            <span className="term-flyout-item-title" style={{ fontFamily: "var(--mono)" }}>
-              {t.name}
-            </span>
-            <span className="term-flyout-item-meta">{t.kind}</span>
+            <span className="term-flyout-item-title">registry unavailable</span>
+            <span className="term-flyout-item-meta">backend não respondeu</span>
           </span>
-          {t.gated && <span className="term-flyout-item-kicker" style={{ color: "var(--cc-warn)" }}>gated</span>}
         </button>
-      ))}
+      ) : tools.length === 0 ? (
+        <button className="term-flyout-item" disabled>
+          <span className="term-flyout-item-glyph">—</span>
+          <span className="term-flyout-item-body">
+            <span className="term-flyout-item-title">sem tools nesta câmara</span>
+          </span>
+        </button>
+      ) : (
+        tools.map((t) => (
+          <button key={t.name} className="term-flyout-item" disabled>
+            <span className="term-flyout-item-glyph">⚒</span>
+            <span className="term-flyout-item-body">
+              <span className="term-flyout-item-title" style={{ fontFamily: "var(--mono)" }}>
+                {t.name}
+              </span>
+              <span className="term-flyout-item-meta">{t.kind}</span>
+            </span>
+            {t.gated && (
+              <span className="term-flyout-item-kicker" style={{ color: "var(--cc-warn)" }}>
+                gated
+              </span>
+            )}
+          </button>
+        ))
+      )}
     </div>
   );
 }
