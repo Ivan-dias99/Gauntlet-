@@ -74,23 +74,26 @@ const TERMINAL_TOOLS: Array<{ name: string; kind: string; gated?: boolean }> = [
 export default function ExecutionComposer({
   copy, value, onChange, onSubmit, pending, missionTitle,
   mode, onModeChange, recentTasks, onPickTask,
-  principlesCount, priorTurns, mockMode, unreachable,
   principlesCount, priorTurns, mockMode, backendReachable,
   backendReadiness, backendReasons, repoLabel, branchLabel, diffStats,
   gates, reviewState, reviewRisk, onAttachContext, hasArtifacts,
 }: Props) {
+  // Readiness-honest chip — mock wins; otherwise surface the real
+  // readiness from /health/ready (ready · degraded · unreachable).
   const readinessLabel = mockMode
     ? "mock"
-    : unreachable
+    : !backendReachable
       ? "unreachable"
-      : "live";
+      : backendReadiness;
   const readinessTone: "warn" | "ok" =
-    mockMode || unreachable ? "warn" : "ok";
+    mockMode || !backendReachable || backendReadiness !== "ready" ? "warn" : "ok";
   const readinessTitle = mockMode
     ? "backend em modo simulado — respostas canned"
-    : unreachable
+    : !backendReachable
       ? "backend inacessível — operação local apenas"
-      : "backend ligado — execução real";
+      : backendReadiness === "ready"
+        ? "backend ligado — execução real"
+        : `backend ${backendReadiness}${backendReasons.length ? " · " + backendReasons.slice(0, 2).join(", ") : ""}`;
   const [focused, setFocused] = useState(false);
   const [flyout, setFlyout] = useState<Flyout>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -251,30 +254,17 @@ export default function ExecutionComposer({
 
           <span className="term-rail-spacer" />
 
-          <span
-            className="term-rail-chip"
-            data-tone={readinessTone}
-            title={readinessTitle}
-          >
-            <span className="term-rail-dot" aria-hidden />
-            <span className="term-rail-value">{readinessLabel}</span>
-          </span>
-          {principlesCount > 0 && (
+          <div className="term-ws-group" aria-label="posture">
             <span
-              className="term-rail-chip"
-              title="princípios em vigor que viajam com cada tarefa"
+              className="term-ws-chip"
+              data-tone={readinessTone}
+              title={readinessTitle}
             >
-              <span className="term-rail-glyph" aria-hidden>§</span>
-              <span className="term-rail-value">{principlesCount}</span>
-            </span>
-          )}
               <span className="term-ws-chip-glyph" aria-hidden>●</span>
               <span className="term-ws-chip-label">backend</span>
-              <span className="term-ws-chip-value">
-                {!backendReachable ? "unreachable" : mockMode ? "mock" : backendReadiness}
-              </span>
+              <span className="term-ws-chip-value">{readinessLabel}</span>
             </span>
-            <span className="term-ws-chip" title="repositório ligado">
+            <span className="term-ws-chip" title={repoLabel ? "repositório ligado" : "repo unavailable"}>
               <span className="term-ws-chip-glyph" aria-hidden>⌁</span>
               <span className="term-ws-chip-label">repo</span>
               <span className="term-ws-chip-value">{repoLabel ?? "unavailable"}</span>
@@ -379,7 +369,7 @@ export default function ExecutionComposer({
 
 function ContextFlyout({
   principlesCount, priorTurns, mockMode, readinessLabel, mode,
-  principlesCount, priorTurns, mockMode, mode, backendReadiness, backendReasons, onAttach, hasArtifacts,
+  backendReadiness, backendReasons, onAttach, hasArtifacts,
 }: {
   principlesCount: number;
   priorTurns: number;
@@ -418,14 +408,13 @@ function ContextFlyout({
         <span
           className="term-flyout-item-kicker"
           style={
-            readinessLabel === "live"
+            readinessLabel === "ready"
               ? undefined
               : { color: "var(--cc-warn)" }
           }
         >
-          {readinessLabel}
+          {mockMode ? "mock" : backendReadiness}
         </span>
-        <span className="term-flyout-item-kicker">{mockMode ? "mock" : backendReadiness}</span>
       </button>
       {backendReasons.length > 0 && (
         <button className="term-flyout-item" disabled>
@@ -443,12 +432,6 @@ function ContextFlyout({
         </span>
         <span className="term-flyout-item-kicker">{mode}</span>
       </button>
-      <button
-        className="term-flyout-item"
-        disabled
-        title="upload de ficheiros e capturas — ligação ao backend pendente"
-      >
-        <span className="term-flyout-item-glyph">◈</span>
       <button className="term-flyout-item" onClick={() => onAttach("note")}>
         <span className="term-flyout-item-glyph">＋</span>
         <span className="term-flyout-item-body">
