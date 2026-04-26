@@ -34,7 +34,7 @@ const DEFAULT_BRIEF: SurfaceBriefPayload = {
 };
 
 export default function Surface() {
-  const { activeMission, createMission, addNoteToMission } = useSpine();
+  const { activeMission, createMission, addNoteToMission, acceptArtifact } = useSpine();
   const { streamSurface, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
 
@@ -42,6 +42,7 @@ export default function Surface() {
   const [prompt, setPrompt] = useState("");
   const [plan, setPlan] = useState<SurfacePlanPayload | null>(null);
   const [planIsMock, setPlanIsMock] = useState<boolean>(false);
+  const [planSealed, setPlanSealed] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
   const [missionRejection, setMissionRejection] = useState<MissionRejectionReason | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -74,6 +75,7 @@ export default function Surface() {
     const ac = new AbortController();
     abortRef.current = ac;
 
+    setPlanSealed(false);
     let receivedPlan: SurfacePlanPayload | null = null;
     let mock = true;
 
@@ -172,6 +174,24 @@ export default function Surface() {
             mock={planIsMock}
             brief={brief}
             hasIntent={prompt.trim().length > 0}
+            pending={pending}
+            sealed={planSealed}
+            onSeal={
+              plan && activeMission
+                ? () => {
+                    const screenSummary = plan.screens.map((s) => s.name).join(", ");
+                    acceptArtifact(activeMission.id, {
+                      taskTitle: `Surface plan — ${plan.mode} / ${plan.fidelity}`,
+                      answer: `${plan.screens.length} telas · ${plan.components.length} componentes · DS ${plan.design_system_binding}\n${screenSummary}`,
+                      terminatedEarly: planIsMock,
+                      acceptedAt: Date.now(),
+                      toolCount: plan.components.length,
+                      terminationReason: planIsMock ? "surface_mock" : null,
+                    });
+                    setPlanSealed(true);
+                  }
+                : undefined
+            }
           />
         }
       />

@@ -20,9 +20,9 @@ export default function Permissions() {
   return (
     <div className="core-page">
       <div className="core-page-intro">
-        <span className="core-page-intro-title">Permissions</span>
+        <span className="core-page-intro-title">Permissions · Registry Mode</span>
         <span className="core-page-intro-sub">
-          Read-only registry · derivado de{" "}
+          Read-only registry of the active tool surface · derivado de{" "}
           <code style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>
             signal-backend/tools.py
           </code>
@@ -30,7 +30,8 @@ export default function Permissions() {
           <code style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>
             SIGNAL_ALLOW_CODE_EXEC=true
           </code>
-          . O allowlist por chamber está na coluna direita.
+          . O allowlist por chamber está em cada cartão. Edição governada
+          (Ratification Mode) chega numa wave futura.
         </span>
       </div>
 

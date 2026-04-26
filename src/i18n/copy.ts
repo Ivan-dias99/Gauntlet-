@@ -200,7 +200,7 @@ const PT: Copy = {
     terminal: { label: "Terminal", sub: "Código · execução · ferramentas",   lead: "Terminal · execução" },
     archive:  { label: "Archive",  sub: "Retenção · proveniência · continuidade", lead: "Archive · runs · proveniência" },
     // Core retains institutional register by design.
-    core:     { label: "Core",     sub: "Políticas · roteamento · orquestração", lead: "Core · governance" },
+    core:     { label: "Core",     sub: "Políticas · roteamento · orquestração", lead: "Core · registry & doctrine" },
   },
   switchMission: "Trocar missão",
   missions: "Missões",
@@ -246,7 +246,7 @@ const PT: Copy = {
   labRailStatusRouteAgent: "agent",
 
   labRailPrinciplesKicker: "— em vigor",
-  labRailPrinciplesEmpty: "sem princípios activos neste domínio",
+  labRailPrinciplesEmpty: "sem princípios do operador neste domínio",
   labRailPrinciplesMore: (n) => `+ ${n} mais`,
 
   labRailTrailKicker: "— trilha",
@@ -361,8 +361,8 @@ const PT: Copy = {
   schoolTagline: "— POLICIES",
   schoolSubtitle: "princípios que vinculam cada chamber",
   schoolInputVoice: "novo princípio",
-  schoolEmpty: "Sem princípios. Adiciona o primeiro.",
-  schoolEmptyKicker: "Sem princípios",
+  schoolEmpty: "Sem princípios do operador. Inscreve o primeiro. (System Doctrine continua activa.)",
+  schoolEmptyKicker: "Sem princípios do operador",
   schoolEmptyHint: "escreve o primeiro em baixo",
   schoolPlaceholder: "Redigir o próximo princípio…",
   schoolInscribe: "Adicionar",
@@ -380,7 +380,7 @@ const EN: Copy = {
     surface:  { label: "Surface",  sub: "Design · structure · fidelity",        lead: "Surface · design workstation" },
     terminal: { label: "Terminal", sub: "Code · execution · tools",             lead: "Terminal · execution" },
     archive:  { label: "Archive",  sub: "Retention · provenance · continuity",  lead: "Archive · runs · provenance" },
-    core:     { label: "Core",     sub: "Policies · routing · orchestration",   lead: "Core · governance" },
+    core:     { label: "Core",     sub: "Policies · routing · orchestration",   lead: "Core · registry & doctrine" },
   },
   switchMission: "Switch mission",
   missions: "Missions",
@@ -426,7 +426,7 @@ const EN: Copy = {
   labRailStatusRouteAgent: "agent",
 
   labRailPrinciplesKicker: "— in force",
-  labRailPrinciplesEmpty: "no principles active in this domain",
+  labRailPrinciplesEmpty: "no operator principles in this domain",
   labRailPrinciplesMore: (n) => `+ ${n} more`,
 
   labRailTrailKicker: "— trail",
@@ -540,8 +540,8 @@ const EN: Copy = {
   schoolTagline: "— POLICIES",
   schoolSubtitle: "principles that bind every chamber",
   schoolInputVoice: "new principle",
-  schoolEmpty: "No principles. Add the first.",
-  schoolEmptyKicker: "No principles",
+  schoolEmpty: "No operator principles. Inscribe the first. (System Doctrine remains active.)",
+  schoolEmptyKicker: "No operator principles",
   schoolEmptyHint: "write the first one below",
   schoolPlaceholder: "Draft the next principle…",
   schoolInscribe: "Add",

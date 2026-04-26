@@ -487,9 +487,9 @@ async def put_spine(snapshot: SpineSnapshot):
 # remains separate.
 SYSTEM_DOCTRINE: list[dict] = [
     {
-        "id": "conservative_intelligence",
-        "title": "Conservative intelligence",
-        "summary": "Prefer refusal over the risk of being wrong.",
+        "id": "refuse_before_guessing",
+        "title": "Refuse before guessing",
+        "summary": "Prefer not to answer over the risk of being wrong.",
         "anchor": "doctrine.SYSTEM_PROMPT",
     },
     {
@@ -499,28 +499,28 @@ SYSTEM_DOCTRINE: list[dict] = [
         "anchor": "engine.SignalEngine.run_triad",
     },
     {
-        "id": "judge_decides",
+        "id": "judge_decides_confidence",
         "title": "Judge decides confidence",
         "summary": "An implacable judge collapses the triad into HIGH or refusal.",
         "anchor": "doctrine.JUDGE_PROMPT",
     },
     {
-        "id": "failure_memory",
+        "id": "failure_memory_reinforces_caution",
         "title": "Failure memory reinforces caution",
         "summary": "Past refusals fingerprint future questions; repeats refuse faster.",
         "anchor": "memory.FailureMemoryStore",
     },
     {
-        "id": "tool_gating",
+        "id": "tool_execution_is_gated",
         "title": "Tool execution is gated",
         "summary": "Mutating tools require SIGNAL_ALLOW_CODE_EXEC; deny by default.",
         "anchor": "tools.SIGNAL_ALLOW_CODE_EXEC",
     },
     {
-        "id": "honest_status",
-        "title": "Honest readiness",
-        "summary": "/health/ready returns 503 when degraded; UI must reflect it.",
-        "anchor": "server.health_ready",
+        "id": "archive_preserves_provenance",
+        "title": "Archive preserves provenance",
+        "summary": "Every run is recorded; refused runs without judgment are quarantined, not silenced.",
+        "anchor": "runs.RunStore.record",
     },
 ]
 

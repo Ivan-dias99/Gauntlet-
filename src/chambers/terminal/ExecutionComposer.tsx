@@ -2,18 +2,24 @@ import { useEffect, useRef, useState } from "react";
 import type { Copy, RunMode, Task } from "./helpers";
 import { useDiagnostics, type SignalToolDescriptor } from "../../hooks/useDiagnostics";
 import type { BackendReadiness } from "../../hooks/useBackendStatus";
+import {
+  validateMissionTitle,
+  explainMissionRejection,
+  type MissionRejectionReason,
+} from "../../spine/validation";
 
-// Terminal command surface — Claude-Code-class composer.
-// Chrome bar carries traffic-lights + path + phase + four affordances:
-//   (+) context  — flyout listing real signals: doctrine, mission turns, mock/live, profile
-//   (>) recents  — last 5 tasks of the active mission (click to populate input)
-//   (⚙) mode     — agent / crew toggle (moved out of the chamber head)
-//   (⚒) tools    — the chamber's tool allowlist (read-only mirror of Routing/Permissions)
-// Body row carries the real signal@local:~/mission$ prompt + input + send.
-// Workspace bar at the bottom shows project · branch · backend · profile.
+// Terminal Mission Composer.
 //
-// All flyouts are honest enumerations of state Terminal already has.
-// No fake features.
+// The dominant entry point of the chamber. The mission strip on top
+// communicates whether the next submit declares a new task in an
+// active mission or whether a mission must be opened first. The
+// validator gates garbage tokens before they reach the backend, so
+// "jhjhjj," cannot become a task.
+//
+// Chrome bar carries the path + phase + four flyouts (context, recent,
+// tools, mode); body row carries the prompt + input + send; workspace
+// bar at the bottom shows the chamber/mission/backend chips. All
+// flyouts are honest enumerations of state Terminal already has.
 
 interface Props {
   copy: Copy;
@@ -22,6 +28,7 @@ interface Props {
   onSubmit: () => void;
   pending: boolean;
   missionTitle?: string | null;
+  hasActiveMission: boolean;
   mode: RunMode;
   onModeChange: (m: RunMode) => void;
   recentTasks: Task[];
@@ -29,16 +36,21 @@ interface Props {
   principlesCount: number;
   priorTurns: number;
   readiness: BackendReadiness;
+  onOpenMissionInInsight?: () => void;
 }
 
 type Flyout = null | "context" | "recent" | "tools";
 
 export default function ExecutionComposer({
-  copy, value, onChange, onSubmit, pending, missionTitle,
+  copy, value, onChange, onSubmit, pending, missionTitle, hasActiveMission,
   mode, onModeChange, recentTasks, onPickTask,
-  principlesCount, priorTurns, readiness,
+  principlesCount, priorTurns, readiness, onOpenMissionInInsight,
 }: Props) {
   const diagnostics = useDiagnostics();
+  // Local rejection surface for the task-quality gate. Same validator as
+  // mission creation — empty / nonsense / repeat-mash inputs never reach
+  // the backend. Cleared as soon as the user edits the input.
+  const [rejection, setRejection] = useState<MissionRejectionReason | null>(null);
   const terminalTools: SignalToolDescriptor[] | null =
     diagnostics.status === "ok"
       ? diagnostics.data.tools.filter((t) => t.chambers.includes("terminal"))
@@ -80,10 +92,35 @@ export default function ExecutionComposer({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [flyout]);
 
-  const canSubmit = value.trim().length > 0 && !pending;
+  const canSubmit = value.trim().length > 0 && !pending && hasActiveMission;
   const pathLabel = missionTitle
     ? missionTitle.length > 36 ? missionTitle.slice(0, 33).trimEnd() + "…" : missionTitle
     : "~/mission";
+
+  // Mission Composer gate: validates the task title before it ever
+  // reaches the backend. Nonsense like "jhjhjj," is rejected with a
+  // typed reason instead of becoming a real run. The active-mission
+  // requirement is also enforced here so Terminal cannot fire tasks
+  // into the void.
+  function handleSubmit() {
+    if (!canSubmit) return;
+    if (!hasActiveMission) {
+      setRejection("too_short");
+      return;
+    }
+    const verdict = validateMissionTitle(value.trim());
+    if (!verdict.ok) {
+      setRejection(verdict.reason);
+      return;
+    }
+    setRejection(null);
+    onSubmit();
+  }
+
+  function handleChange(v: string) {
+    if (rejection !== null) setRejection(null);
+    onChange(v);
+  }
 
   return (
     <div
@@ -91,6 +128,12 @@ export default function ExecutionComposer({
       data-architect-input-state={focused ? "focused" : "idle"}
       style={{ margin: "0 clamp(20px, 5vw, 64px) var(--space-3)" }}
     >
+      <MissionStrip
+        hasActiveMission={hasActiveMission}
+        missionTitle={missionTitle ?? null}
+        onOpenInsight={onOpenMissionInInsight}
+        rejection={rejection}
+      />
       <div
         ref={shellRef}
         className="term-command"
@@ -156,15 +199,21 @@ export default function ExecutionComposer({
             ref={inputRef}
             autoFocus
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => handleChange(e.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) onSubmit();
+              if (e.key === "Enter" && !e.shiftKey) handleSubmit();
               if (e.key === "Escape") setFlyout(null);
             }}
-            placeholder={pending ? copy.creationRunning : copy.creationPlaceholder}
-            disabled={pending}
+            placeholder={
+              pending
+                ? copy.creationRunning
+                : !hasActiveMission
+                  ? "missão exigida · abre uma em Insight para declarar tarefas"
+                  : copy.creationPlaceholder
+            }
+            disabled={pending || !hasActiveMission}
             className="term-command-input"
             spellCheck={false}
             autoComplete="off"
@@ -174,10 +223,22 @@ export default function ExecutionComposer({
             type="button"
             className="term-command-send"
             data-state={pending ? "pending" : undefined}
-            onClick={onSubmit}
+            onClick={handleSubmit}
             disabled={!canSubmit}
-            title={pending ? "a executar" : "executar"}
-            aria-label={pending ? "a executar" : "executar"}
+            title={
+              pending
+                ? "a executar"
+                : !hasActiveMission
+                  ? "abre uma missão em Insight"
+                  : "declarar tarefa"
+            }
+            aria-label={
+              pending
+                ? "a executar"
+                : !hasActiveMission
+                  ? "abre uma missão em Insight"
+                  : "declarar tarefa"
+            }
           >
             {pending ? (
               <span style={{ fontSize: 14, lineHeight: 1 }}>…</span>
@@ -526,3 +587,117 @@ function IconDot() {
 }
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _iconsExport = { IconPlus, IconClock, IconTools, IconSend, IconDot };
+
+// ── Mission Strip ───────────────────────────────────────────────────────────
+//
+// Sits above the command shell so the user always knows the next submit
+// declares a task within an existing mission — not a free-floating chat.
+// Two states: continue (active mission) and gate (no mission). The gate
+// state offers a one-click jump to Insight where missions originate.
+
+function MissionStrip({
+  hasActiveMission, missionTitle, onOpenInsight, rejection,
+}: {
+  hasActiveMission: boolean;
+  missionTitle: string | null;
+  onOpenInsight: (() => void) | undefined;
+  rejection: MissionRejectionReason | null;
+}) {
+  if (!hasActiveMission) {
+    return (
+      <div
+        data-terminal-mission-strip
+        data-state="gate"
+        role="alert"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 12px",
+          marginBottom: 8,
+          border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+          borderRadius: "var(--radius-control)",
+          background: "color-mix(in oklab, var(--cc-warn) 6%, transparent)",
+          fontFamily: "var(--mono)",
+          fontSize: 11,
+          letterSpacing: "var(--track-label)",
+          textTransform: "uppercase",
+          color: "var(--cc-warn)",
+        }}
+      >
+        <span aria-hidden>◆</span>
+        <span>missão exigida</span>
+        <span
+          style={{
+            color: "var(--text-muted)",
+            textTransform: "none",
+            letterSpacing: 0,
+            fontFamily: "var(--sans)",
+            fontSize: "var(--t-body-sec)",
+          }}
+        >
+          Terminal declara tarefas dentro de uma missão · abre uma em Insight para começar.
+        </span>
+        <span style={{ flex: 1 }} aria-hidden />
+        {onOpenInsight && (
+          <button
+            type="button"
+            onClick={onOpenInsight}
+            className="btn-chip"
+            data-variant="ghost"
+            style={{ fontSize: 11 }}
+          >
+            abrir Insight →
+          </button>
+        )}
+      </div>
+    );
+  }
+  const trimmed =
+    missionTitle && missionTitle.length > 60
+      ? missionTitle.slice(0, 57).trimEnd() + "…"
+      : missionTitle ?? "—";
+  return (
+    <div
+      data-terminal-mission-strip
+      data-state={rejection ? "rejected" : "continue"}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "6px 12px",
+        marginBottom: 8,
+        borderBottom: "1px solid var(--border-color-soft)",
+        fontFamily: "var(--mono)",
+        fontSize: 10,
+        letterSpacing: "var(--track-label)",
+        textTransform: "uppercase",
+        color: rejection ? "var(--cc-warn)" : "var(--text-ghost)",
+      }}
+    >
+      <span aria-hidden>◆</span>
+      <span>missão activa</span>
+      <span
+        style={{
+          color: "var(--text-secondary)",
+          textTransform: "none",
+          letterSpacing: 0,
+          fontFamily: "var(--serif)",
+          fontSize: "var(--t-body-sec)",
+          maxWidth: "min(60ch, 60%)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {trimmed}
+      </span>
+      <span style={{ flex: 1 }} aria-hidden />
+      <span style={{ opacity: 0.7 }}>
+        {rejection
+          ? `tarefa não ratificada · ${explainMissionRejection(rejection)}`
+          : "envio declara tarefa"}
+      </span>
+    </div>
+  );
+}

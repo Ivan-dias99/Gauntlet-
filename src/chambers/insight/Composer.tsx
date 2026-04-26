@@ -1,19 +1,22 @@
 import { useEffect, useRef, useState } from "react";
+import type { BackendReadiness } from "../../hooks/useBackendStatus";
 
-// Insight flagship composer — the dominant anchor of the chamber.
-// A single rounded shell with the question surface up top and a
-// slim action rail underneath. Three icon-level affordances:
+// Insight Mission Composer.
 //
-//   · context    (+)   opens a small flyout listing passive signals
-//                      Insight already honors: doctrine, prior-turn
-//                      context window, mock flag. No fake attach.
-//   · route      (≡)   shows the dispatch Insight uses (triad) and
-//                      the judge thresholds that shape outcomes.
-//   · send       (↑)   the primary action; becomes info-tinted while
-//                      pending, ghost while empty.
+// This is not a generic chat box. It is the surface where a mission
+// starts (when none is active) or continues (when one is). The header
+// strip communicates that state explicitly, the placeholder guides
+// actionable input, and the affordances expose only the signals the
+// chamber actually carries.
 //
-// Enter submits; Shift+Enter inserts a newline. Auto-grow bounded so
-// the thread above keeps reading width even with long prompts.
+// Affordances:
+//   · context (+)  → flyout listing real signals: doctrine count, prior
+//                    turns in window, backend readiness. No fake attach.
+//   · route (≡)    → which dispatch Insight uses (triad + judge) and
+//                    the agent-loop hand-off rule. Read-only.
+//   · send (↑)     → primary action; dim while empty, info while pending.
+//
+// Enter submits; Shift+Enter inserts a newline.
 
 interface Props {
   value: string;
@@ -24,15 +27,28 @@ interface Props {
   voiceLabel: string;
   principlesCount: number;
   priorTurns: number;
-  mockMode: boolean;
+  readiness: BackendReadiness;
   routeHint?: "triad" | "agent";
+  // Mission semantics: tells the composer whether the next submit will
+  // open a new mission or continue an existing one. Drives the header
+  // strip + the rejection-recovery copy from the parent.
+  missionContext:
+    | { kind: "new" }
+    | { kind: "continue"; title: string };
 }
 
 type Flyout = null | "context" | "route";
 
+const READINESS_LABEL: Record<BackendReadiness, string> = {
+  ready_real: "live",
+  mock: "mock",
+  degraded: "degraded",
+  unreachable: "unreachable",
+};
+
 export default function Composer({
   value, onChange, onSubmit, pending, placeholder,
-  voiceLabel, principlesCount, priorTurns, mockMode, routeHint,
+  voiceLabel, principlesCount, priorTurns, readiness, routeHint, missionContext,
 }: Props) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -50,7 +66,6 @@ export default function Composer({
     el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
   }, [value]);
 
-  // Close the flyout when the focus leaves the composer shell.
   useEffect(() => {
     if (!flyout) return;
     function onDoc(e: MouseEvent) {
@@ -67,11 +82,14 @@ export default function Composer({
     <div
       ref={shellRef}
       data-insight-composer
+      data-mission-kind={missionContext.kind}
       className="insight-composer"
       data-focused={focused ? "true" : undefined}
       data-disabled={pending ? "true" : undefined}
       aria-label={voiceLabel}
     >
+      <MissionStrip context={missionContext} />
+
       <textarea
         ref={inputRef}
         autoFocus
@@ -116,7 +134,11 @@ export default function Composer({
 
         {(pending || focused) && (
           <span className="insight-composer-hint">
-            {pending ? "a processar…" : "↵ enviar · ⇧↵ nova linha"}
+            {pending
+              ? "a processar…"
+              : missionContext.kind === "new"
+                ? "↵ ratifica missão · ⇧↵ nova linha"
+                : "↵ continuar missão · ⇧↵ nova linha"}
           </span>
         )}
         {!pending && !focused && <span style={{ flex: 1 }} aria-hidden />}
@@ -127,8 +149,20 @@ export default function Composer({
           data-state={pending ? "pending" : undefined}
           onClick={onSubmit}
           disabled={!canSubmit}
-          title={pending ? "a processar" : "perguntar"}
-          aria-label={pending ? "a processar" : "perguntar"}
+          title={
+            pending
+              ? "a processar"
+              : missionContext.kind === "new"
+                ? "ratificar missão"
+                : "continuar missão"
+          }
+          aria-label={
+            pending
+              ? "a processar"
+              : missionContext.kind === "new"
+                ? "ratificar missão"
+                : "continuar missão"
+          }
         >
           <span className="insight-composer-send-glyph">{pending ? "…" : "↑"}</span>
         </button>
@@ -138,7 +172,7 @@ export default function Composer({
         <ContextFlyout
           principlesCount={principlesCount}
           priorTurns={priorTurns}
-          mockMode={mockMode}
+          readiness={readiness}
           onDismiss={() => setFlyout(null)}
         />
       )}
@@ -152,20 +186,75 @@ export default function Composer({
   );
 }
 
-// ——— Flyouts ———
+// ── Mission strip ───────────────────────────────────────────────────────────
 //
-// Context: what Insight already carries into the request. Principles,
-// prior turns in context window, mock flag. Read-only enumeration.
+// Sits above the textarea so the user always knows whether the next
+// Enter creates a mission or continues one. Replaces the previous
+// "generic chat box" reading of the composer.
+
+function MissionStrip({
+  context,
+}: {
+  context: { kind: "new" } | { kind: "continue"; title: string };
+}) {
+  const isNew = context.kind === "new";
+  return (
+    <div
+      data-insight-mission-strip
+      data-state={isNew ? "new" : "continue"}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "6px 12px",
+        borderBottom: "1px solid var(--border-color-soft)",
+        fontFamily: "var(--mono)",
+        fontSize: 10,
+        letterSpacing: "var(--track-label)",
+        textTransform: "uppercase",
+        color: "var(--text-ghost)",
+      }}
+    >
+      <span aria-hidden>◆</span>
+      <span>{isNew ? "nova missão" : "missão activa"}</span>
+      {!isNew && (
+        <span
+          style={{
+            color: "var(--text-secondary)",
+            textTransform: "none",
+            letterSpacing: 0,
+            fontFamily: "var(--serif)",
+            fontSize: "var(--t-body-sec)",
+            marginLeft: 6,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            maxWidth: "min(60ch, 70%)",
+          }}
+        >
+          {context.title}
+        </span>
+      )}
+      <span style={{ flex: 1 }} aria-hidden />
+      <span style={{ opacity: 0.7 }}>
+        {isNew ? "primeiro envio ratifica" : "envio adiciona turno"}
+      </span>
+    </div>
+  );
+}
+
+// ── Flyouts ─────────────────────────────────────────────────────────────────
 //
-// Route: which dispatch Insight runs and the judge thresholds. Honest
-// about the triad + judge grammar; no fake "switch model" toggle.
+// Context: enumerates the real signals Insight already carries — doctrine
+// count, prior turns in context window, backend readiness. Read-only.
+// Route: shows the dispatch grammar and the cross-chamber hand-off rule.
 
 function ContextFlyout({
-  principlesCount, priorTurns, mockMode, onDismiss,
+  principlesCount, priorTurns, readiness, onDismiss,
 }: {
   principlesCount: number;
   priorTurns: number;
-  mockMode: boolean;
+  readiness: BackendReadiness;
   onDismiss: () => void;
 }) {
   return (
@@ -198,12 +287,19 @@ function ContextFlyout({
         type="button"
         className="insight-composer-flyout-item"
         disabled
-        title="modo atual do backend"
+        title="estado de prontidão do backend (readiness, não liveness)"
       >
         <span className="insight-composer-flyout-item-glyph">◉</span>
         <span>backend</span>
-        <span className="insight-composer-flyout-item-kicker">
-          {mockMode ? "mock" : "live"}
+        <span
+          className="insight-composer-flyout-item-kicker"
+          style={
+            readiness === "ready_real"
+              ? undefined
+              : { color: "var(--cc-warn)" }
+          }
+        >
+          {READINESS_LABEL[readiness]}
         </span>
       </button>
     </div>

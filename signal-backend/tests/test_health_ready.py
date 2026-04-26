@@ -44,7 +44,16 @@ def test_diagnostics_exposes_tools_registry(client):
     # No phantom name.
     assert "web_fetch" not in names
     # System doctrine surfaced.
-    assert any(d["id"] == "conservative_intelligence" for d in body["system_doctrine"])
+    expected_ids = {
+        "refuse_before_guessing",
+        "triad_before_answer",
+        "judge_decides_confidence",
+        "failure_memory_reinforces_caution",
+        "tool_execution_is_gated",
+        "archive_preserves_provenance",
+    }
+    seen_ids = {d["id"] for d in body["system_doctrine"]}
+    assert expected_ids == seen_ids, f"system doctrine ids drifted: {seen_ids}"
 
 
 def test_terminal_chamber_has_every_tool(client):

@@ -15,6 +15,7 @@ import ArchiveLayout from "./ArchiveLayout";
 import StatsBar from "./StatsBar";
 import RunList from "./RunList";
 import RunDetail from "./RunDetail";
+import DocumentsView from "./DocumentsView";
 import {
   computeStats,
   tokenize,
@@ -24,17 +25,20 @@ import {
   type Stats,
 } from "./helpers";
 
+type ArchiveTab = "runs" | "documents";
+
 // Archive — retrieval-first chamber. Split layout: left column is
 // search + ledger, right column is the selected run's detail +
 // provenance. Stats sit at the top of the ledger column; no separate
 // telemetry slab. Matches the Surface chamber's composition grammar.
 
 export default function Archive() {
-  const { activeMission, principles } = useSpine();
+  const { state, activeMission, principles } = useSpine();
   const copy = useCopy();
   const backend = useBackendStatus();
   const missionArtifact = activeMission?.lastArtifact ?? null;
   const doctrineCount = principles.length;
+  const [tab, setTab] = useState<ArchiveTab>("runs");
 
   const [runs, setRuns] = useState<RunRecord[] | null>(null);
   const [serverStats, setServerStats] = useState<ServerStats | null>(null);
@@ -247,6 +251,34 @@ export default function Archive() {
   return (
     <div className="chamber-shell" data-chamber="archive">
       {head}
+      <div
+        role="tablist"
+        aria-label="Archive view"
+        className="tab-sub-band"
+        style={{ position: "sticky", top: 0, zIndex: 1 }}
+      >
+        {(["runs", "documents"] as ArchiveTab[]).map((t) => (
+          <button
+            key={t}
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            data-active={tab === t ? "true" : undefined}
+            className="tab-sub"
+          >
+            {t === "runs" ? "Runs" : "Documents"}
+          </button>
+        ))}
+      </div>
+      {tab === "documents" ? (
+        <div className="chamber-body" style={{ overflow: "auto", padding: 0 }}>
+          <DocumentsView
+            missions={state.missions}
+            principles={principles}
+            runs={runs}
+          />
+        </div>
+      ) : (
       <ArchiveLayout
         left={left}
         right={
@@ -257,6 +289,7 @@ export default function Archive() {
           />
         }
       />
+      )}
     </div>
   );
 }

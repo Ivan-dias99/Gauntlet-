@@ -24,6 +24,9 @@ export interface SignalDoctrineEntry {
 export interface SignalDiagnostics {
   system: string;
   model: string;
+  triad_temperature: number;
+  judge_temperature: number;
+  triad_count: number;
   engine_status: "ready" | "not_initialized";
   boot: {
     mode: "mock" | "real";
@@ -38,6 +41,12 @@ export interface SignalDiagnostics {
   };
   tools: SignalToolDescriptor[];
   system_doctrine: SignalDoctrineEntry[];
+  failure_memory: {
+    total_records: number;
+    total_failures: number;
+    last_updated: string;
+    top_repeat_offenders: Array<{ question: string; times_failed: number }>;
+  };
   persistence: Record<string, string | null>;
 }
 

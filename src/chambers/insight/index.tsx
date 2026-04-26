@@ -304,8 +304,13 @@ export default function Insight() {
         }
         principlesCount={principles.length}
         priorTurns={priorTurnsInContext}
-        mockMode={backend.mode === "mock"}
+        readiness={backend.readiness}
         routeHint={lastVerdict?.routePath}
+        missionContext={
+          activeMission
+            ? { kind: "continue", title: activeMission.title }
+            : { kind: "new" }
+        }
       />
     </>
   );

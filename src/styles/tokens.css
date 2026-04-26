@@ -5016,9 +5016,9 @@ textarea {
 }
 
 /* PRONTO pill — restored on composer chrome with sage tone to
-   encode "composer is ready to receive input". Distinct from
-   BACKEND live in the workspace bar (which encodes "the backend is
-   reachable"). Same family, two honest signals. */
+   encode "composer is ready to receive input". Distinct from the
+   BACKEND readiness chip in the workspace bar (which encodes the
+   four-state /health/ready truth). Same family, two honest signals. */
 .term-command-phase {
   display: inline-flex;
   align-items: center;

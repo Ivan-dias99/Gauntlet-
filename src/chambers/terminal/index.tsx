@@ -470,6 +470,7 @@ export default function Terminal() {
         onSubmit={submit}
         pending={pending}
         missionTitle={activeMission?.title ?? null}
+        hasActiveMission={!!activeMission}
         mode={mode}
         onModeChange={setMode}
         recentTasks={tasks.slice(0, 8)}
@@ -477,6 +478,11 @@ export default function Terminal() {
         principlesCount={principles.length}
         priorTurns={activeMission?.notes?.length ?? 0}
         readiness={backend.readiness}
+        onOpenMissionInInsight={() => {
+          window.dispatchEvent(
+            new CustomEvent("signal:chamber", { detail: "insight" }),
+          );
+        }}
       />
     </div>
   );
