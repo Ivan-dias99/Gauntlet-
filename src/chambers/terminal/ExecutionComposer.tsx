@@ -252,6 +252,11 @@ export default function ExecutionComposer({
               <span className="term-rail-value">{principlesCount}</span>
             </span>
           )}
+          <div className="term-ws-group" aria-label="status">
+            <span
+              className="term-ws-chip"
+              title={!backendReachable ? "backend inacessível" : backendReadiness === "ready" ? "backend pronto" : "backend degradado"}
+            >
               <span className="term-ws-chip-glyph" aria-hidden>●</span>
               <span className="term-ws-chip-label">backend</span>
               <span className="term-ws-chip-value">
@@ -420,6 +425,11 @@ function ContextFlyout({
         title="upload de ficheiros e capturas — ligação ao backend pendente"
       >
         <span className="term-flyout-item-glyph">◈</span>
+        <span className="term-flyout-item-body">
+          <span className="term-flyout-item-title">ficheiros</span>
+        </span>
+        <span className="term-flyout-item-kicker">pendente</span>
+      </button>
       <button className="term-flyout-item" onClick={() => onAttach("note")}>
         <span className="term-flyout-item-glyph">＋</span>
         <span className="term-flyout-item-body">
