@@ -15,6 +15,7 @@ import WorkbenchStrip from "./WorkbenchStrip";
 import OutputCanvas from "./OutputCanvas";
 import NextStepBar from "./NextStepBar";
 import ExecutionComposer from "./ExecutionComposer";
+import { TaskList } from "./TaskBench";
 
 // Terminal — execution environment. State, effects, submit, accept,
 // task state transitions and SSE event reduction stay here; every
@@ -382,6 +383,18 @@ export default function Terminal() {
   ) ?? null;
 
   const allArtifacts = activeMission?.artifacts ?? [];
+  const diffStats = useMemo(() => {
+    for (const t of liveTools) {
+      const text = t.preview ?? "";
+      const m = /(\d+)\s*files?\D+\+(\d+)\D+-(\d+)/i.exec(text);
+      if (m) return { files: Number(m[1]), added: Number(m[2]), removed: Number(m[3]) };
+    }
+    return null;
+  }, [liveTools]);
+  const reviewState: "pass" | "needs-fix" | "blocked" =
+    err ? "blocked" : done?.terminated_early ? "needs-fix" : done ? "pass" : "needs-fix";
+  const reviewRisk: "low" | "medium" | "high" =
+    err ? "high" : blockedTasks.length > 0 ? "medium" : "low";
 
   const staleRunning =
     activeTask?.state === "running" && !pending && done === null && err === null;
@@ -416,6 +429,15 @@ export default function Terminal() {
           activeTask={activeTask}
           tasks={activeMission?.tasks ?? []}
         />
+        <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)" }}>
+          <TaskList
+            tasks={tasks}
+            activeTaskId={activeTaskId}
+            duplicateTitles={duplicateTitles}
+            copy={copy}
+            onSelect={selectTaskFromQueue}
+          />
+        </div>
 
         {unreachable && err ? (
           <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)" }}>
@@ -478,6 +500,30 @@ export default function Terminal() {
         principlesCount={principles.length}
         priorTurns={activeMission?.notes?.length ?? 0}
         mockMode={backend.mode === "mock"}
+        backendReachable={backend.reachable}
+        backendReadiness={backend.readiness}
+        backendReasons={backend.readinessReasons}
+        repoLabel={(import.meta.env.VITE_SIGNAL_REPO as string | undefined) ?? null}
+        branchLabel={(import.meta.env.VITE_SIGNAL_BRANCH as string | undefined) ?? null}
+        diffStats={diffStats}
+        gates={{ typecheck: "pass", build: "pass" }}
+        reviewState={reviewState}
+        reviewRisk={reviewRisk}
+        onAttachContext={(kind) => {
+          if (!activeMission) return;
+          if (kind === "note") {
+            addNoteToMission(activeMission.id, "context attached from terminal composer", "user");
+            return;
+          }
+          if (kind === "prior-run") {
+            const last = activeMission.artifacts[0];
+            if (last) setInput(`continue from prior run: ${last.taskTitle}`);
+            return;
+          }
+          const last = activeMission.artifacts[0];
+          if (last) setInput(`reuse artifact: ${last.taskTitle}`);
+        }}
+        hasArtifacts={allArtifacts.length > 0}
       />
     </div>
   );
