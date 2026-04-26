@@ -1,22 +1,52 @@
+import { useEffect, useRef, useState } from "react";
 import type { Copy, Task } from "./helpers";
 
-// Terminal workbench strip — thin paper bar under the chamber head.
-// Grammar: [icon] LABEL · mission (when present) · italic status ·
-// right-side utility actions with unified SVG icon set. Copy flows
-// from the catalog so the strip speaks one language.
+// Terminal Workbench strip — five lenses on the execution territory.
+//
+// Grammar: [icon] LABEL · MISSION ▾ · italic status      [Repo] [Diff] [Gates] [Deploy] [Queue]
+//
+// The five lenses (Repo, Diff, Gates, Deploy, Queue) live here, above
+// the composer. Composer keeps the live affordances that drive the
+// next execution (Context, Tools, Mode, Send). No tool is owned by
+// both surfaces — Workbench narrates territory, Composer drives action.
+//
+// Each lens carries: icon · label · value (real if wired, "—" if not)
+// and opens a flyout naming the backend contract pending. Run Queue is
+// partially wired (reads mission.tasks); the others are honest "not
+// wired" until the backend lands.
 
 interface Props {
   copy: Copy;
   missionTitle: string | null;
   activeTask: Task | null;
+  /** Mission tasks for Run Queue counts (real, not faked). */
+  tasks?: Task[];
   onMissionMenu?: () => void;
-  onContext?: () => void;
-  onDocs?: () => void;
 }
 
+type Lens = null | "repo" | "diff" | "gates" | "deploy" | "queue";
+
 export default function WorkbenchStrip({
-  copy, missionTitle, activeTask, onMissionMenu, onContext, onDocs,
+  copy, missionTitle, activeTask, tasks = [], onMissionMenu,
 }: Props) {
+  const [lens, setLens] = useState<Lens>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!lens) return;
+    function onDoc(e: MouseEvent) {
+      const el = stripRef.current;
+      if (el && !el.contains(e.target as Node)) setLens(null);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [lens]);
+
+  // Compact territorial status — narrates the bench state in three
+  // tokens at most. The hero below carries the prose; the workbench
+  // here only counts. (Cut wave: drop the "no active task. declare
+  // the next." that the workbench, hero and composer all repeated.)
+  const pendingCount = tasks.filter((t) => t.state !== "done" && t.state !== "blocked").length;
   const statusText = (() => {
     if (activeTask) {
       if (activeTask.state === "running") return copy.termStripStatusRunning;
@@ -24,7 +54,10 @@ export default function WorkbenchStrip({
       if (activeTask.state === "done")    return copy.termStripStatusDone;
       return activeTask.title;
     }
-    return copy.noActiveTask;
+    if (pendingCount > 0) {
+      return `Idle · ${pendingCount} pending`;
+    }
+    return "Idle";
   })();
 
   const hasMission = !!missionTitle;
@@ -32,8 +65,18 @@ export default function WorkbenchStrip({
     ? missionTitle.length > 24 ? missionTitle.slice(0, 21).trimEnd() + "…" : missionTitle
     : null;
 
+  // Run Queue is the one wired lens — it reads real mission tasks.
+  const queueCounts = (() => {
+    if (!tasks.length) return { active: 0, total: 0 };
+    const active = tasks.filter((t) => t.state !== "done").length;
+    return { active, total: tasks.length };
+  })();
+  const queueValue = tasks.length
+    ? `${queueCounts.active}/${queueCounts.total}`
+    : copy.termWbValueIdle;
+
   return (
-    <div className="term-workbench-strip" data-term-workbench>
+    <div ref={stripRef} className="term-workbench-strip" data-term-workbench>
       <span className="term-workbench-icon" aria-hidden>
         <IconTerminal />
       </span>
@@ -49,7 +92,7 @@ export default function WorkbenchStrip({
             title={copy.switchMission}
           >
             <span className="term-workbench-mission-label">
-              {copy.termStripMissionLabel}
+              {copy.wbMissionLabel}
             </span>
             <span className="term-workbench-mission-value">{missionLabel}</span>
             <span className="term-workbench-mission-caret" aria-hidden>
@@ -61,7 +104,7 @@ export default function WorkbenchStrip({
         <>
           <span className="term-workbench-sep" aria-hidden />
           <span className="term-workbench-mission-null">
-            {copy.termStripMissionNull}
+            {copy.wbMissionNull}
           </span>
         </>
       )}
@@ -71,25 +114,158 @@ export default function WorkbenchStrip({
         {statusText}
       </span>
 
-      <div className="term-workbench-actions">
-        <button
-          type="button"
-          className="term-workbench-action"
-          onClick={onContext}
-          title={copy.termStripContext}
-        >
-          <IconContext />
-          <span>{copy.termStripContext}</span>
-        </button>
-        <button
-          type="button"
-          className="term-workbench-action"
-          onClick={onDocs}
-          title={copy.termStripDocs}
-        >
-          <IconDocs />
-          <span>{copy.termStripDocs}</span>
-        </button>
+      {/* Five lenses on the execution territory. Each shows
+          [icon LABEL · value] — value is real when wired, idle dash
+          when not. Click opens a flyout naming the backend contract. */}
+      <div className="term-workbench-lenses">
+        <LensButton
+          icon={<IconRepo />}
+          label={copy.termWbRepoLabel}
+          value={copy.termWbValueIdle}
+          active={lens === "repo"}
+          wired={false}
+          onClick={() => setLens(lens === "repo" ? null : "repo")}
+        />
+        <LensButton
+          icon={<IconDiff />}
+          label={copy.termWbDiffLabel}
+          value={copy.termWbValueIdle}
+          active={lens === "diff"}
+          wired={false}
+          onClick={() => setLens(lens === "diff" ? null : "diff")}
+        />
+        <LensButton
+          icon={<IconGates />}
+          label={copy.termWbGatesLabel}
+          value={copy.termWbValueIdle}
+          active={lens === "gates"}
+          wired={false}
+          onClick={() => setLens(lens === "gates" ? null : "gates")}
+        />
+        <LensButton
+          icon={<IconDeploy />}
+          label={copy.termWbDeployLabel}
+          value={copy.termWbValueIdle}
+          active={lens === "deploy"}
+          wired={false}
+          onClick={() => setLens(lens === "deploy" ? null : "deploy")}
+        />
+        <LensButton
+          icon={<IconQueue />}
+          label={copy.termWbQueueLabel}
+          value={queueValue}
+          active={lens === "queue"}
+          wired={true}
+          onClick={() => setLens(lens === "queue" ? null : "queue")}
+        />
+      </div>
+
+      {/* Flyouts — anchored below the strip. Each carries the
+          contract pending (or, for Queue, the wired posture). */}
+      {lens && (
+        <div className="term-workbench-flyout-anchor">
+          {lens === "repo" && (
+            <LensFlyout
+              title={copy.termWbRepoLabel}
+              body={copy.termWbRepoBody}
+              contract={copy.termWbRepoContract}
+              wired={false}
+            />
+          )}
+          {lens === "diff" && (
+            <LensFlyout
+              title={copy.termWbDiffLabel}
+              body={copy.termWbDiffBody}
+              contract={copy.termWbDiffContract}
+              wired={false}
+            />
+          )}
+          {lens === "gates" && (
+            <LensFlyout
+              title={copy.termWbGatesLabel}
+              body={copy.termWbGatesBody}
+              contract={copy.termWbGatesContract}
+              wired={false}
+            />
+          )}
+          {lens === "deploy" && (
+            <LensFlyout
+              title={copy.termWbDeployLabel}
+              body={copy.termWbDeployBody}
+              contract={copy.termWbDeployContract}
+              wired={false}
+            />
+          )}
+          {lens === "queue" && (
+            <LensFlyout
+              title={copy.termWbQueueLabel}
+              body={copy.termWbQueueBody}
+              contract={copy.termWbQueueContract}
+              wired={true}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ——— Lens button ———
+
+function LensButton({
+  icon, label, value, active, wired, onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  active: boolean;
+  wired: boolean;
+  onClick: () => void;
+}) {
+  // Not-wired lenses no longer open a flyout — title tooltip carries
+  // the contract pending message; the chip only signals territory in
+  // skeleton. (Cut wave: drop flyouts that only say "not wired".)
+  const handleClick = wired ? onClick : undefined;
+  const tooltip = wired ? label : `${label} · backend pending`;
+  return (
+    <button
+      type="button"
+      className="term-wb-lens"
+      data-active={active ? "true" : undefined}
+      data-wired={wired ? "true" : "false"}
+      onClick={handleClick}
+      disabled={!wired}
+      aria-disabled={!wired ? "true" : undefined}
+      title={tooltip}
+    >
+      <span className="term-wb-lens-icon" aria-hidden>{icon}</span>
+      <span className="term-wb-lens-label">{label}</span>
+      <span className="term-wb-lens-value">{value}</span>
+    </button>
+  );
+}
+
+// ——— Lens flyout ———
+
+function LensFlyout({
+  title, body, contract, wired,
+}: {
+  title: string;
+  body: string;
+  contract: string;
+  wired: boolean;
+}) {
+  return (
+    <div className="term-flyout" data-tone={wired ? undefined : "not-wired"} role="menu">
+      <div className="term-flyout-head">
+        <span>{title}{wired ? " · wired" : " · not wired"}</span>
+      </div>
+      <div className="term-flyout-body">
+        <p className="term-flyout-prose">{body}</p>
+        <p className="term-flyout-contract" aria-label="backend contract">
+          <span className="term-flyout-contract-label">{wired ? "source" : "contract"}</span>
+          <code>{contract}</code>
+        </p>
       </div>
     </div>
   );
@@ -126,20 +302,57 @@ function IconCaret() {
     </svg>
   );
 }
-function IconContext() {
+// Repo — git-style branch fork (sibling of the composer's IconRepo).
+function IconRepo() {
   return (
     <svg {...SVG_PROPS}>
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <circle cx="6" cy="6" r="2.5" />
+      <circle cx="6" cy="18" r="2.5" />
+      <circle cx="18" cy="12" r="2.5" />
+      <path d="M6 8.5v7" />
+      <path d="M8.5 6h3a4 4 0 0 1 4 4v0" />
     </svg>
   );
 }
-function IconDocs() {
+// Diff — two stacked horizontal bars with a +/- mark; reads as
+// "lines changed" without committing to a specific tool.
+function IconDiff() {
   return (
     <svg {...SVG_PROPS}>
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <path d="M14 2v6h6" />
-      <path d="M8 13h8" />
-      <path d="M8 17h5" />
+      <path d="M5 7h10" />
+      <path d="M5 12h6" />
+      <path d="M5 17h10" />
+      <path d="M19 9v6" />
+      <path d="M16 12h6" />
+    </svg>
+  );
+}
+// Gates — checklist with a check; reads as "passes/fails".
+function IconGates() {
+  return (
+    <svg {...SVG_PROPS}>
+      <path d="M9 11l2 2 4-4" />
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+    </svg>
+  );
+}
+// Deploy — upward chevron over a base line; "ship".
+function IconDeploy() {
+  return (
+    <svg {...SVG_PROPS}>
+      <path d="M12 18V8" />
+      <path d="m7 13 5-5 5 5" />
+      <path d="M5 21h14" />
+    </svg>
+  );
+}
+// Queue — three stacked horizontal lines decreasing; "list of things".
+function IconQueue() {
+  return (
+    <svg {...SVG_PROPS}>
+      <path d="M5 7h14" />
+      <path d="M5 12h10" />
+      <path d="M5 17h6" />
     </svg>
   );
 }

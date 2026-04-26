@@ -7,9 +7,11 @@ import {
   type SurfacePlanPayload,
 } from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
+import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
 import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
+import SurfaceWorkbench from "./SurfaceWorkbench";
 import CreationPanel from "./CreationPanel";
 import ExplorationRail from "./ExplorationRail";
 
@@ -26,9 +28,10 @@ const DEFAULT_BRIEF: SurfaceBriefPayload = {
 };
 
 export default function Surface() {
-  const { activeMission, createMission, addNoteToMission } = useSpine();
+  const { activeMission, createMission, addNoteToMission, principles } = useSpine();
   const { streamSurface, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
+  const copy = useCopy();
 
   const [brief, setBrief] = useState<SurfaceBriefPayload>(DEFAULT_BRIEF);
   const [prompt, setPrompt] = useState("");
@@ -99,45 +102,72 @@ export default function Surface() {
 
   return (
     <div className="chamber-shell" data-chamber="surface" style={{ height: "100%" }}>
-      <SurfaceLayout
-        left={
-          <>
-            <ChamberHead
-              kicker="— SURFACE"
-              tagline="Workstation de design · modo · fidelidade · design system"
-              mock={mockBannerVisible}
-            />
-            <CreationPanel
-              brief={brief}
-              onBriefChange={patchBrief}
-              prompt={prompt}
-              onPromptChange={setPrompt}
-              onSubmit={submit}
-              pending={pending}
-              mockBanner={mockBannerVisible}
-            />
-            {unreachable && (
-              <DormantPanel detail="Backend de Surface inacessível. Os modos, a fidelidade e o design system ficam guardados localmente; a geração do plano fica suspensa até o backend voltar." />
-            )}
-            {err && !unreachable && (
-              <div
-                data-surface-error
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: "var(--t-meta)",
-                  color: "var(--cc-err)",
-                  padding: "6px 10px",
-                  border: "1px solid color-mix(in oklab, var(--cc-err) 36%, transparent)",
-                  borderRadius: "var(--radius-control)",
-                }}
-              >
-                {err}
-              </div>
-            )}
-          </>
-        }
-        right={<ExplorationRail plan={plan} mock={planIsMock} />}
+      <ChamberHead
+        kicker="— SURFACE"
+        tagline={copy.chambers.surface.sub}
+        mock={mockBannerVisible}
       />
+      <div className="chamber-body" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
+        {/* Two vertical zones: ChamberHead → split. The Workbench pill
+            sits at the top of the LEFT column (above the cockpit
+            builder), so the right canvas can rise to the top of the
+            chamber-body and use the full vertical space — no full-width
+            strip stealing height from the output. The workbench keeps
+            all chrome / lens chips / mission caret intact; only its
+            spatial home moved. */}
+        <SurfaceLayout
+          left={
+            <>
+              <SurfaceWorkbench
+                brief={brief}
+                plan={plan}
+                promptDraft={prompt}
+                pending={pending}
+                missionTitle={activeMission?.title ?? null}
+              />
+              <CreationPanel
+                brief={brief}
+                onBriefChange={patchBrief}
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                onSubmit={submit}
+                pending={pending}
+                mockBanner={mockBannerVisible}
+                principlesCount={principles.length}
+                hasPlan={!!plan}
+              />
+              {unreachable && (
+                <DormantPanel detail={copy.dormantSurface} />
+              )}
+              {err && !unreachable && (
+                <div
+                  data-surface-error
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: "var(--t-meta)",
+                    color: "var(--cc-err)",
+                    padding: "6px 10px",
+                    border: "1px solid color-mix(in oklab, var(--cc-err) 36%, transparent)",
+                    borderRadius: "var(--radius-control)",
+                  }}
+                >
+                  {err}
+                </div>
+              )}
+            </>
+          }
+          right={
+            <ExplorationRail
+              plan={plan}
+              mock={planIsMock}
+              brief={brief}
+              promptDraft={prompt}
+              onBriefChange={patchBrief}
+              pending={pending}
+            />
+          }
+        />
+      </div>
     </div>
   );
 }

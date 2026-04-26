@@ -61,50 +61,56 @@
   --serif: "Fraunces", Georgia, "Times New Roman", serif;
 }
 
-/* ——— DARK — deep ink (default) ——— */
+/* ——— DARK — premium ink (default) ———
+   Neutral cool blacks, no warm brown undertone. White-on-black
+   contrast for ultra-definition reads. Pure white text, deep ink
+   surfaces. Gray bridges only when necessary; semantic warmth lives
+   in cc-* (data signals), never in chrome. */
 :root,
 [data-theme="dark"] {
-  --bg: #0d0b09;
-  --bg-surface: #151210;
-  --bg-sunken: #09080a;
-  --bg-elevated: #1e1a15;
-  --bg-input: #111010;
+  --bg: #08080a;
+  --bg-surface: #131316;
+  --bg-sunken: #050507;
+  --bg-elevated: #1c1c20;
+  --bg-input: #0e0e11;
 
-  --border-color-soft:   color-mix(in oklab, #f3ede2 9%, transparent);
-  --border-color-mid:    color-mix(in oklab, #f3ede2 15%, transparent);
-  --border-color-strong: color-mix(in oklab, #f3ede2 24%, transparent);
+  --border-color-soft:   color-mix(in oklab, #ffffff 7%, transparent);
+  --border-color-mid:    color-mix(in oklab, #ffffff 13%, transparent);
+  --border-color-strong: color-mix(in oklab, #ffffff 20%, transparent);
   --border-soft:   1px solid var(--border-color-soft);
   --border-mid:    1px solid var(--border-color-mid);
   --border-strong: 1px solid var(--border-color-strong);
   --border: var(--border-color-mid); /* legacy alias for raw color usage */
 
-  --text-primary: #f3ede2;
-  --text-secondary: #a89a84;
-  --text-muted: #6b5f50;
-  --text-ghost: #3a342c;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b8;
+  --text-muted: #6a6a72;
+  --text-ghost: #3a3a42;
 
-  --accent: #e8c49a;
-  --accent-dim: #8a7355;
-  --accent-glow: rgba(232, 196, 154, 0.08);
-  --ember: #c47a5a;
+  --accent: #ffffff;
+  --accent-dim: #6a6a72;
+  --accent-glow: rgba(255, 255, 255, 0.06);
+  --ember: #d07a5a;
 
-  --terminal-ok: #7aa070;
+  --terminal-ok: #6aa882;
   --terminal-warn: #d8b058;
 
   --shadow-soft:  0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.04);
   --shadow-panel: 0 2px 4px rgba(0, 0, 0, 0.30), 0 10px 28px rgba(0, 0, 0, 0.35);
   --shadow-float: 0 4px 10px rgba(0, 0, 0, 0.40), 0 22px 50px rgba(0, 0, 0, 0.45);
 
-  /* Claude Code terminal hues */
-  --cc-fg: #e8e0d2;
-  --cc-dim: #7a7062;
-  --cc-prompt: #e8c49a;
-  --cc-ok: #7aa070;
-  --cc-err: #d46a5a;
+  /* cc-* — natural warmth on dark. Earth tones polished for AI
+     workstation, not neon. Forest, terracotta, honey, slate, plum,
+     teal — same family as light, brightness adjusted for contrast. */
+  --cc-fg: #ffffff;
+  --cc-dim: #7a7a82;
+  --cc-prompt: #ffffff;
+  --cc-ok: #7ab48a;
+  --cc-err: #d4785a;
   --cc-warn: #d8b058;
-  --cc-info: #8aa4c8;
-  --cc-tool: #c7a2d8;
-  --cc-path: #8ab0a4;
+  --cc-info: #98b0c8;
+  --cc-tool: #b8a2c8;
+  --cc-path: #8ab4a0;
   --cc-str: #d4a878;
   --cc-kw: #d48860;
 
@@ -115,54 +121,63 @@
   --glass-blur: saturate(1.4) blur(24px);
 }
 
-/* ——— LIGHT — Vision cream ——— */
+/* ——— LIGHT — premium white (Vision Pro / Cursor) ———
+   Pure neutrals, no warm undertone. Ultra-definition reads:
+   pure black on crystalline white. Surfaces are real white;
+   gray exists only to bridge black ↔ white, never to dominate.
+   Borders refined; shadows softened; depth carried by tone, not warmth.
+   Semantics (cc-*) carry warmth — natural earth tones, polished, not
+   cyberpunk. The shell is monochrome; data is where the colour lives. */
 [data-theme="light"] {
-  --bg: #f4f0e8;
-  --bg-surface: #fbf8f0;
-  --bg-sunken: #e8e2d2;
+  --bg: #f7f7f9;
+  --bg-surface: #ffffff;
+  --bg-sunken: #ededf0;
   --bg-elevated: #ffffff;
-  --bg-input: #ede7db;
+  --bg-input: #f9f9fb;
 
-  --border-color-soft:   color-mix(in oklab, #1b1915 8%, transparent);
-  --border-color-mid:    color-mix(in oklab, #1b1915 14%, transparent);
-  --border-color-strong: color-mix(in oklab, #1b1915 22%, transparent);
+  --border-color-soft:   color-mix(in oklab, #000000 5%, transparent);
+  --border-color-mid:    color-mix(in oklab, #000000 10%, transparent);
+  --border-color-strong: color-mix(in oklab, #000000 16%, transparent);
   --border-soft:   1px solid var(--border-color-soft);
   --border-mid:    1px solid var(--border-color-mid);
   --border-strong: 1px solid var(--border-color-strong);
   --border: var(--border-color-mid);
 
-  --text-primary: #1a1712;
-  --text-secondary: #5a5248;
-  --text-muted: #958a78;
-  --text-ghost: #c0b8ab;
+  --text-primary: #000000;
+  --text-secondary: #3a3a3f;
+  --text-muted: #8a8a90;
+  --text-ghost: #c8c8cd;
 
-  --accent: #7a5730;
-  --accent-dim: #b0a08a;
-  --accent-glow: rgba(122, 87, 48, 0.07);
-  --ember: #b86a4a;
+  --accent: #000000;
+  --accent-dim: #8a8a90;
+  --accent-glow: rgba(0, 0, 0, 0.04);
+  --ember: #b8542a;
 
-  --terminal-ok: #3a6a3a;
-  --terminal-warn: #8a6a20;
+  --terminal-ok: #2a6a40;
+  --terminal-warn: #a8742a;
 
-  --shadow-soft:  0 1px 2px rgba(60, 40, 20, 0.05), 0 0 0 1px rgba(60, 40, 20, 0.04);
-  --shadow-panel: 0 2px 6px rgba(60, 40, 20, 0.06), 0 14px 32px rgba(60, 40, 20, 0.08);
-  --shadow-float: 0 6px 14px rgba(60, 40, 20, 0.08), 0 28px 60px rgba(60, 40, 20, 0.12);
+  --shadow-soft:  0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow-panel: 0 2px 6px rgba(0, 0, 0, 0.05), 0 14px 32px rgba(0, 0, 0, 0.07);
+  --shadow-float: 0 6px 14px rgba(0, 0, 0, 0.08), 0 28px 60px rgba(0, 0, 0, 0.10);
 
-  --cc-fg: #262118;
-  --cc-dim: #8a8070;
-  --cc-prompt: #7a5730;
-  --cc-ok: #3a6a3a;
-  --cc-err: #a8322a;
-  --cc-warn: #8a6a20;
-  --cc-info: #3a5a80;
-  --cc-tool: #6a4a88;
+  /* cc-* — semantic data palette. Natural earth tones, polished,
+     warm-leaning. Forest, terracotta, honey, slate, plum, teal —
+     vibe code, not neon. */
+  --cc-fg: #000000;
+  --cc-dim: #8a8a90;
+  --cc-prompt: #000000;
+  --cc-ok: #2a6a40;
+  --cc-err: #a8482a;
+  --cc-warn: #a8742a;
+  --cc-info: #3a5a78;
+  --cc-tool: #6a5078;
   --cc-path: #3a6a5a;
   --cc-str: #8a5a30;
-  --cc-kw: #a84820;
+  --cc-kw: #a85428;
 
-  --glass-bg: color-mix(in oklab, #ffffff 62%, transparent);
-  --glass-border: color-mix(in oklab, #1b1915 10%, transparent);
-  --glass-hl: color-mix(in oklab, #ffffff 30%, transparent);
+  --glass-bg: color-mix(in oklab, #ffffff 80%, transparent);
+  --glass-border: color-mix(in oklab, #000000 8%, transparent);
+  --glass-hl: color-mix(in oklab, #ffffff 55%, transparent);
 }
 
 /* ——— SEPIA — midnight archive ——— */
@@ -990,12 +1005,12 @@ textarea {
    pill-active. The right cluster carries sync, mission, and controls
    separated by subtle vbars so the whole rail reads as integrated. */
 .canon-ribbon {
-  height: 48px;
+  height: 52px;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  padding-left: 24px;
+  padding-left: 22px;
   padding-right: 18px;
   flex-shrink: 0;
   position: relative;
@@ -1003,22 +1018,58 @@ textarea {
 }
 .canon-ribbon-brand {
   font-family: "Fraunces", Georgia, serif;
-  font-size: 17px;
-  font-weight: 400;
-  letter-spacing: -0.015em;
-  margin-right: 28px;
+  font-size: 19px;
+  font-weight: 450;
+  letter-spacing: -0.018em;
+  margin-right: 30px;
   display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
   color: var(--text-primary);
 }
-.canon-ribbon-brand-dot {
-  width: 6px;
-  height: 6px;
+/* Traffic-light dots — semantic identity (refused · pending · ready).
+   Mirror the macOS window control glyph but carry meaning: red = err,
+   yellow = warn, green = ok. Stay always-on as wordmark badge; status
+   readings live elsewhere (sync chip, mission pill). */
+.canon-ribbon-traffic {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.canon-ribbon-traffic-dot {
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: var(--ember);
   display: inline-block;
-  box-shadow: var(--glow-ember-sm);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 1px 1px rgba(0, 0, 0, 0.10);
+}
+.canon-ribbon-traffic-dot[data-tone="err"]  { background: var(--cc-err); }
+.canon-ribbon-traffic-dot[data-tone="warn"] { background: var(--cc-warn); }
+.canon-ribbon-traffic-dot[data-tone="ok"]   { background: var(--cc-ok); }
+[data-theme="dark"] .canon-ribbon-traffic-dot,
+[data-theme="sepia"] .canon-ribbon-traffic-dot {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 1px 1px rgba(0, 0, 0, 0.40);
+}
+/* Legacy dot retained but hidden — we keep the class so any external
+   reader (tests, docs) doesn't 404; the real identity is now the
+   traffic-light triplet above. */
+.canon-ribbon-brand-dot { display: none; }
+.canon-ribbon-doctrine {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: lowercase;
+  color: var(--text-ghost);
+  margin-left: 6px;
+  padding-left: 10px;
+  border-left: 1px solid var(--border-soft);
+  align-self: center;
+  white-space: nowrap;
 }
 .canon-ribbon-tabs {
   display: flex;
@@ -1140,6 +1191,9 @@ textarea {
     font-size: 15px;
     margin-right: 16px;
   }
+  /* Doctrine line is editorial, not load-bearing — first to fold when
+     the ribbon needs space for the chamber tabs. */
+  .canon-ribbon-doctrine { display: none; }
   .canon-ribbon-tabs .tab {
     padding: 0 10px;
     font-size: 10px;
@@ -2299,11 +2353,11 @@ textarea {
    processes. No theatre — structural, informational. */
 .thinking-strip {
   position: relative;
-  height: 2px;
+  height: 3px;
   width: 100%;
-  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 12%, transparent);
+  background: color-mix(in oklab, var(--cc-warn) 14%, transparent);
   overflow: hidden;
-  border-radius: 1px;
+  border-radius: 2px;
 }
 .thinking-strip::after {
   content: "";
@@ -2311,9 +2365,14 @@ textarea {
   top: 0;
   bottom: 0;
   left: 0;
-  width: 35%;
-  background: color-mix(in oklab, var(--chamber-dna, var(--cc-info)) 70%, transparent);
-  animation: scanShimmer 1.4s var(--ease-swift) infinite;
+  width: 38%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--cc-warn) 50%,
+    transparent 100%
+  );
+  animation: scanShimmer 1.6s var(--ease-swift) infinite;
 }
 
 /* ——— Runtime tone overrides for legacy tokens ———
@@ -2383,8 +2442,31 @@ textarea {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  padding: var(--space-3) 0;
+}
+/* Thread shell — wraps the conversation in a clean bordered pill,
+   sibling family of .surface-cockpit and .surface-rail-shell.
+   Insight stays single-column, but the conversation lives inside a
+   contained surface instead of floating loose in the center column. */
+.insight-thread-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-4) 0 var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 36%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+[data-theme="dark"] .insight-thread-shell,
+[data-theme="sepia"] .insight-thread-shell {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 18%, transparent);
 }
 .insight-center-floor {
   width: 100%;
@@ -2704,15 +2786,15 @@ textarea {
   font-size: var(--t-micro);
   letter-spacing: var(--track-kicker);
   text-transform: uppercase;
-  color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 60%, var(--text-ghost));
+  color: var(--text-muted);
 }
 .insight-ready-body {
   font-family: var(--serif);
-  font-size: 22px;
-  line-height: 1.35;
-  letter-spacing: -0.015em;
+  font-size: 38px;
+  line-height: 1.2;
+  letter-spacing: -0.024em;
   color: var(--text-primary);
-  max-width: 560px;
+  max-width: 720px;
 }
 .insight-ready-sub {
   font-family: var(--sans);
@@ -3021,7 +3103,7 @@ textarea {
   font-family: var(--serif);
   font-size: 56px;
   line-height: 1;
-  color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 60%, var(--text-ghost));
+  color: var(--text-ghost);
   user-select: none;
 }
 .core-empty-kicker {
@@ -3243,39 +3325,116 @@ textarea {
   background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 6%, transparent);
 }
 
+/* External widget guard — hides the Vercel toolbar / feedback
+   indicator that gets auto-injected on preview deploys. This is not
+   our chrome; it lives outside #root and reads as a floating black
+   debug button on the right edge, breaking the Signal silhouette.
+   Display:none on the known selectors keeps the chamber surface
+   clean. If we ever want a real Mission Inspector on the right, it
+   ships under our own class — not by reusing the toolbar slot. */
+[data-vercel-toolbar],
+[id^="__vercel-live-feedback"],
+[class*="vercel-toolbar"],
+[class*="vercel-live"] {
+  display: none !important;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    TERMINAL PRODUCTION — one command surface, output on canvas
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ——— Canonical terminal command surface ———
-   Outer shell + inner deck pattern. The outer .term-command is a
-   matted frame (transparent with padded breath); the inner
-   .term-command-deck is the real solid surface. This "frame within
-   frame" reads as premium enterprise materiality — not a single slab
-   trying to earn presence with loud shadows. Two layers of discipline
-   beat five layers of effect. */
+   Sibling to .term-workbench-strip (the bar above). Same hairline pill,
+   same mono family, same glyph-block grammar — but with an input row
+   and a state rail attached. The composer is the workbench's louder
+   sibling, not a slab speaking a different language.
+   Idle target ≈ 96px: id 28 + input 44 + rail 28. */
 .term-command {
   position: relative;
   width: 100%;
   max-width: 820px;
   margin: 0 auto;
-  padding: 4px;
-  border-radius: 22px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--text-primary) 2.5%, transparent) 0%,
-    color-mix(in oklab, var(--text-primary) 1%, transparent) 100%
-  );
+  background: var(--bg-surface);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 11%, transparent);
+  border-radius: 14px;
+  overflow: hidden;
+  font-family: var(--mono);
   box-shadow:
-    0 1px 2px color-mix(in oklab, var(--text-primary) 3%, transparent),
-    0 20px 44px -22px color-mix(in oklab, var(--text-primary) 8%, transparent);
-  transition: box-shadow var(--dur-normal) var(--ease-swift);
+    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
+  transition:
+    border-color var(--dur-normal) var(--ease-swift),
+    box-shadow var(--dur-normal) var(--ease-swift);
+}
+/* Surface cockpit fills the sidebar — both width AND height. The
+   composer (Terminal) keeps its 820px ceiling because it lives on a
+   wider canvas; Surface lives on the cockpit column itself. The
+   cockpit takes the full sidebar height (flex: 1) and the brief
+   input row stretches to fill the remaining space after id row,
+   mock banner, controls and rail are laid out. This restores the
+   structural fill of the pre-cockpit Surface — surgical precision —
+   without losing the new visual grammar. */
+[data-chamber="surface"] .term-command {
+  max-width: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+[data-chamber="surface"] .term-command-input-row {
+  align-items: stretch;
+  padding: 8px 12px 4px 12px;
+  flex-shrink: 0;
+}
+[data-chamber="surface"] .term-command-input-row > .term-command-input-prompt {
+  align-self: flex-start;
+  padding-top: 8px;
+}
+[data-chamber="surface"] .term-command-input-row > .term-command-input {
+  min-height: 110px;
+  max-height: 240px;
+  resize: vertical;
+  /* Brief reads as a discrete writing field — hairline tint + radius
+     restore the surgical clarity of the pre-cockpit Surface. The bare
+     transparent textarea worked for Terminal's single-line command
+     surface; multi-line briefs need a frame. */
+  background: color-mix(in oklab, var(--text-primary) 2.2%, var(--bg-input));
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 8px;
+  padding: 12px 14px;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+[data-chamber="surface"] .term-command-input-row > .term-command-input:focus {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 32%, color-mix(in oklab, var(--text-primary) 8%, transparent));
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 1.5%, var(--bg-input));
+}
+[data-chamber="surface"] .term-command-input-row > .term-command-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.78;
+}
+[data-chamber="surface"] .term-command-input-row > .surface-composer-actions {
+  align-self: flex-end;
+  margin-bottom: 0;
+}
+[data-theme="dark"] .term-command,
+[data-theme="sepia"] .term-command {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 18%, transparent);
 }
 .term-command[data-focused="true"] {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, color-mix(in oklab, var(--text-primary) 12%, transparent));
   box-shadow:
-    0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent),
-    0 6px 16px -8px color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, transparent),
-    0 28px 60px -24px color-mix(in oklab, var(--text-primary) 12%, transparent);
+    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
+    0 0 0 3px color-mix(in oklab, var(--chamber-dna, var(--ember)) 7%, transparent),
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+[data-theme="dark"] .term-command[data-focused="true"],
+[data-theme="sepia"] .term-command[data-focused="true"] {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset,
+    0 0 0 3px color-mix(in oklab, var(--chamber-dna, var(--ember)) 9%, transparent),
+    0 1px 2px color-mix(in oklab, #000 18%, transparent);
 }
 /* Inner deck — the real solid surface. Hairline border, radius
    tighter than the outer so the matted space is always visible.
@@ -3666,6 +3825,1126 @@ textarea {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 18%, transparent) inset,
     0 1px 2px color-mix(in oklab, var(--cc-info) 40%, transparent);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   COMPOSER COCKPIT — workbench-strip family, three thin zones.
+   id row:    [glyph] LABEL · MISSION ▾ · italic status
+   input row: $ [input ............................] [send]
+   rail:      [+ ⏱ ⚒ ⊟ ⌬]  · live · § N · agent | crew
+   * The five affordances live on the rail, not the input row, so
+     the input never fights icons for space. Repo + connectors carry
+     a half-opacity icon and a warn-dot corner — honest "not wired".
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Identity row — sibling to .term-workbench-strip's grammar. */
+.term-command-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 6px 10px;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+  min-height: 28px;
+}
+/* Traffic-light dots — terminal vibe, scaled down to the compact
+   register (8px instead of legacy 9px). Decorative only. The amber
+   dot breathes when a run is pending so the dots stop being purely
+   ornamental and start carrying state. */
+.term-command-id > .term-command-dots {
+  display: inline-flex;
+  gap: 5px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.term-command-id > .term-command-dots > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  opacity: 0.78;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, #000 18%, transparent),
+    inset 0 1px 0 color-mix(in oklab, #fff 22%, transparent);
+}
+.term-command-id > .term-command-dots > span:nth-child(1) { background: var(--cc-err); }
+.term-command-id > .term-command-dots > span:nth-child(2) { background: var(--cc-warn); }
+.term-command-id > .term-command-dots > span:nth-child(3) { background: var(--cc-ok); }
+.term-command[data-state="pending"] .term-command-id > .term-command-dots > span:nth-child(2) {
+  animation: breathe 1.3s var(--ease-swift) infinite;
+}
+.term-command-glyph {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color var(--dur-normal), border-color var(--dur-normal);
+}
+.term-command[data-focused="true"] .term-command-glyph {
+  color: var(--chamber-dna, var(--ember));
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 24%, color-mix(in oklab, var(--text-primary) 6%, transparent));
+}
+.term-command-id-label {
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.term-command-id-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+.term-command-id-mission {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  flex-shrink: 0;
+}
+.term-command-id-mission-label {
+  color: var(--text-ghost);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.term-command-id-mission-value {
+  color: var(--text-secondary);
+}
+.term-command-id-mission-caret {
+  opacity: 0.5;
+  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+}
+.term-command-id-mission-null {
+  color: var(--cc-path);
+  flex-shrink: 0;
+}
+.term-command-id-status {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--sans);
+  font-size: var(--t-body-sec);
+  font-style: italic;
+  color: var(--text-muted);
+  letter-spacing: 0;
+  text-transform: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+.term-command[data-state="pending"] .term-command-id-status {
+  color: var(--cc-info);
+  opacity: 1;
+}
+
+/* Input row — the gravity centre. The `$` prompt token preserves
+   command identity without dragging the full signal@local cosplay. */
+.term-command-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px 8px 12px;
+  font-family: var(--mono);
+  background: transparent;
+}
+.term-command-input-prompt {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  /* Chamber-DNA aware — Terminal stays on cc-ok via [data-chamber=
+     terminal] cascade; Surface inherits its own DNA (◐ glyph in
+     accent tone). The fallback keeps any non-chamber context safe. */
+  color: var(--chamber-dna, var(--cc-ok));
+  opacity: 0.65;
+  flex-shrink: 0;
+  user-select: none;
+  line-height: 1;
+  transition: opacity var(--dur-fast);
+}
+[data-chamber="terminal"] .term-command-input-prompt {
+  color: var(--cc-ok);
+}
+.term-command[data-focused="true"] .term-command-input-prompt {
+  opacity: 1;
+}
+.term-command-input-row > .term-command-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  padding: 4px 0;
+}
+
+.term-command-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Honest not-wired affordance — half-opacity icon + warn-dot corner. */
+.term-tool[data-wired="false"] { opacity: 0.42; }
+.term-tool[data-wired="false"]:hover { opacity: 0.7; }
+.term-tool[data-wired="false"][data-active="true"] { opacity: 0.85; }
+.term-tool[data-wired="false"]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cc-warn);
+  opacity: 0.55;
+}
+
+/* ——— State rail ——— actions left, posture chips + mode right. */
+.term-command-rail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px 5px 8px;
+  border-top: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  background: color-mix(in oklab, var(--text-primary) 2.5%, var(--bg-surface));
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-meta);
+  text-transform: lowercase;
+  min-height: 28px;
+  color: var(--text-muted);
+}
+.term-rail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.term-rail-chip[data-tone="warn"] { color: var(--cc-warn); }
+.term-rail-chip[data-tone="ok"]   { color: var(--cc-ok); }
+.term-rail-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+.term-command[data-state="pending"] .term-rail-chip[data-tone="ok"] .term-rail-dot,
+.term-command[data-state="pending"] .term-rail-chip[data-tone="warn"] .term-rail-dot {
+  animation: breathe 1.4s var(--ease-swift) infinite;
+}
+.term-rail-glyph {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--chamber-dna, var(--accent));
+}
+.term-rail-value {
+  color: inherit;
+  letter-spacing: var(--track-meta);
+}
+.term-rail-spacer { flex: 1; min-width: 8px; }
+
+/* Compact agent/crew toggle — pill segment, ember when active. */
+.term-rail-mode {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+}
+.term-rail-mode-opt {
+  padding: 2px 9px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.term-rail-mode-opt:hover:not(:disabled):not([data-active="true"]) {
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+.term-rail-mode-opt[data-active="true"] {
+  background: var(--chamber-dna, var(--ember));
+  color: var(--bg);
+}
+.term-rail-mode-opt:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ════════════════════════════════════════════════════════════════════
+   SURFACE STUDIO — cockpit grammar applied to the design workstation.
+   Reuses the .term-command shell for outer pill, id row, input row and
+   rail. Adds .surface-controls for the brief-shaping zone (mode,
+   fidelity, design system) that lives between id row and brief input.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════════
+   SURFACE COCKPIT — Archive-style structural panel.
+   Clean bordered card; sections separated by hairlines; label above
+   control; generous internal padding. Mirrors the .surface-rail-shell
+   container on the right (one visual family for both columns).
+   ════════════════════════════════════════════════════════════════════ */
+.surface-cockpit {
+  display: flex;
+  flex-direction: column;
+  /* Medium hierarchy — canvas is primary, cockpit recedes subtly. */
+  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 36%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+[data-theme="dark"] .surface-cockpit,
+[data-theme="sepia"] .surface-cockpit {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 18%, transparent);
+}
+.surface-cockpit-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  background: color-mix(in oklab, var(--cc-warn) 4%, transparent);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--cc-warn);
+}
+.surface-cockpit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+.surface-cockpit-section:last-of-type {
+  border-bottom: 0;
+}
+.surface-cockpit-label {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.surface-cockpit-brief {
+  position: relative;
+  display: block;
+}
+.surface-cockpit-brief-input {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  padding: 12px 44px 12px 14px;
+  background: color-mix(in oklab, var(--text-primary) 2.2%, var(--bg-input));
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 8px;
+  outline: 0;
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  letter-spacing: -0.002em;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.surface-cockpit-brief-input:focus {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 32%, color-mix(in oklab, var(--text-primary) 8%, transparent));
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 1.5%, var(--bg-input));
+}
+.surface-cockpit-brief-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.78;
+}
+.surface-cockpit-refs {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+}
+.surface-cockpit-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 14px 16px;
+  background: color-mix(in oklab, var(--text-primary) 1.5%, transparent);
+}
+.surface-cockpit-doctrine {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-meta);
+  text-transform: lowercase;
+  color: var(--text-muted);
+}
+.surface-cockpit-doctrine-glyph {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--chamber-dna, var(--accent));
+}
+
+.surface-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 14px 12px 14px;
+  font-family: var(--mono);
+}
+.surface-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 36px;
+}
+.surface-controls-label {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  flex-shrink: 0;
+  width: 96px;
+  align-self: center;
+}
+/* Segmented selector — sibling of .term-rail-mode but bigger, denser,
+   so the brief-shaping selections feel like decisions, not toggles.
+   Labels wrap to two lines when needed (e.g. "A partir de template"
+   on a narrow column). Never truncate; truncation lies. */
+.surface-segmented {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+}
+.surface-segmented-opt {
+  flex: 1;
+  padding: 7px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: var(--track-meta);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+  white-space: normal;
+  word-break: break-word;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+.surface-segmented-opt:hover:not(:disabled):not([data-active="true"]) {
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+.surface-segmented-opt[data-active="true"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, var(--bg-elevated));
+  color: var(--chamber-dna, var(--accent));
+  font-weight: 500;
+}
+.surface-segmented-opt + .surface-segmented-opt {
+  border-left: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+/* Design-system chip — replaces the native <select>. Workbench-mission
+   button grammar (label + value + caret-down) so the DS picker reads
+   like an addressable identity, not a form field. */
+.surface-ds-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 9%, transparent);
+  border-radius: 7px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: var(--track-meta);
+  cursor: pointer;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+  position: relative;
+}
+.surface-ds-chip:hover {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 28%, color-mix(in oklab, var(--text-primary) 9%, transparent));
+  color: var(--text-secondary);
+}
+.surface-ds-chip-value {
+  flex: 1;
+  text-align: left;
+  color: var(--chamber-dna, var(--accent));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.surface-ds-chip-value[data-empty="true"] {
+  color: var(--text-ghost);
+  font-style: italic;
+}
+.surface-ds-chip-caret {
+  font-size: 9px;
+  opacity: 0.5;
+  display: inline-flex;
+}
+/* Native select hidden visually but kept for keyboard / accessibility.
+   The chip above is purely presentational — a click bubbles to the
+   select underneath via a wrapping label. */
+.surface-ds-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Mock banner — calmer than the v1 alarm. Reads as posture, not error. */
+.surface-mock-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 0 12px;
+  padding: 5px 10px;
+  background: color-mix(in oklab, var(--cc-warn) 5%, transparent);
+  border: 1px solid color-mix(in oklab, var(--cc-warn) 24%, transparent);
+  border-radius: 7px;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-meta);
+  color: var(--cc-warn);
+  align-self: flex-start;
+}
+.surface-mock-banner-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: breathe 2s var(--ease-swift) infinite;
+}
+
+/* Brief refs button — paperclip lives inline with the textarea so
+   attaching references reads as part of writing intent. */
+.surface-brief-refs {
+  align-self: flex-end;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+/* Primary CTA row — the central act of the chamber lives in a
+   labelled, full-width button so the user sees what happens next.
+   Handoff sits beside it as a secondary affordance. */
+.surface-cta-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 0 14px 10px 14px;
+}
+.surface-cta-primary {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--chamber-dna, var(--accent));
+  color: var(--bg);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 18%, transparent) inset,
+    0 2px 6px color-mix(in oklab, var(--chamber-dna, var(--accent)) 28%, transparent);
+}
+.surface-cta-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 22%, transparent) inset,
+    0 6px 18px color-mix(in oklab, var(--chamber-dna, var(--accent)) 42%, transparent);
+}
+.surface-cta-primary:active:not(:disabled) { transform: translateY(0); }
+.surface-cta-primary:disabled {
+  background: var(--text-ghost);
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.7;
+}
+.surface-cta-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.surface-cta-label {
+  flex: 1;
+  text-align: left;
+  letter-spacing: var(--track-label);
+}
+.surface-cta-hint {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-meta);
+  opacity: 0.7;
+  text-transform: none;
+  flex-shrink: 0;
+}
+
+/* Generate button — circular ember (chamber-DNA), parallels the
+   Terminal send button. Visible promise that the brief will execute. */
+.surface-generate {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--chamber-dna, var(--accent));
+  color: var(--bg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 18%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--chamber-dna, var(--accent)) 35%, transparent);
+}
+.surface-generate:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 22%, transparent) inset,
+    0 4px 12px color-mix(in oklab, var(--chamber-dna, var(--accent)) 45%, transparent);
+}
+.surface-generate:disabled {
+  background: var(--text-ghost);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ──── ExplorationRail elevation ────
+   Tabs adopt the Core/Routing tab-sub grammar (mono uppercase,
+   underline-active in chamber-DNA). Cards get a hover lift, kind chip,
+   serif title with stronger weight. */
+
+.surface-rail-shell {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 11%, transparent);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
+    0 1px 2px color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+[data-theme="dark"] .surface-rail-shell,
+[data-theme="sepia"] .surface-rail-shell {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, #fff 4%, transparent) inset,
+    0 1px 2px color-mix(in oklab, #000 18%, transparent);
+}
+.surface-rail-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 40px 36px;
+  text-align: center;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 2%, transparent);
+  flex-shrink: 0;
+}
+.surface-rail-hero-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+  opacity: 1;
+}
+.surface-rail-hero-body {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 19px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  letter-spacing: -0.012em;
+  max-width: 560px;
+}
+/* Contract-blocked checklist — each row reads as a contract clause
+   the user must satisfy. Done rows light up in chamber-DNA; pending
+   rows stay ghost. The whole list reads top-down as a checklist of
+   what is missing. */
+.surface-contract-checklist {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 480px;
+  text-align: left;
+}
+.surface-contract-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-meta);
+  color: var(--text-ghost);
+  transition: color var(--dur-fast);
+}
+.surface-contract-row[data-done="true"] {
+  color: var(--chamber-dna, var(--accent));
+}
+.surface-contract-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 18%, transparent);
+  background: color-mix(in oklab, var(--text-primary) 3%, transparent);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  flex-shrink: 0;
+  color: var(--bg);
+  font-weight: 500;
+}
+.surface-contract-row[data-done="true"] .surface-contract-box {
+  background: var(--chamber-dna, var(--accent));
+  border-color: var(--chamber-dna, var(--accent));
+}
+.surface-contract-label {
+  flex: 1;
+  letter-spacing: var(--track-meta);
+}
+/* Examples shortcut kicker — drops the gallery to a secondary
+   accelerator strip when no plan exists. Quiet typography so the
+   checklist above stays the protagonist. */
+.surface-rail-shortcut-kicker {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 14px 6px;
+  border-top: 1px solid color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+.surface-rail-shortcut-label {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.surface-rail-shortcut-hint {
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--text-muted);
+  letter-spacing: 0;
+}
+/* Canvas tab bar — view-router only (Brief / Plan / Files / Wireframes).
+   The 5 lens chips moved up to the SurfaceWorkbench pill above the
+   split, so this row carries one job: navigation. */
+.surface-canvas-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-surface));
+  flex-shrink: 0;
+}
+
+/* SurfaceWorkbench thin pill — lens-only container above the split.
+   Carries the 5 territory lenses (Contract · DS · Layout · Components
+   · States) and nothing else. STUDIO label, mission caret and italic
+   status were retired in this rebirth so the workbench no longer
+   duplicates what the canon ribbon and ChamberHead already declare. */
+/* .surface-workbench retired — Surface workbench now uses the full
+   .term-workbench-strip recipe (Photo 2 grammar with glyph + STUDIO
+   label + MISSION caret + italic status + lenses). One visual family
+   shared with Terminal's WorkbenchStrip. */
+.surface-workbench-flyout-anchor {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(420px, calc(100vw - 48px));
+  z-index: 20;
+}
+.surface-canvas-tab {
+  position: relative;
+  padding: 11px 16px;
+  background: transparent;
+  border: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  cursor: pointer;
+  transition: color var(--dur-fast);
+}
+.surface-canvas-tab:hover { color: var(--text-secondary); }
+.surface-canvas-tab[data-active="true"] {
+  color: var(--text-primary);
+}
+.surface-canvas-tab[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--text-primary);
+  border-radius: 2px 2px 0 0;
+}
+.surface-canvas-tab[data-wired="false"] {
+  color: color-mix(in oklab, var(--text-ghost) 70%, transparent);
+}
+.surface-canvas-tab[data-wired="false"]:hover {
+  color: var(--text-muted);
+}
+.surface-canvas-tab[data-wired="false"]::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cc-warn);
+  opacity: 0.5;
+}
+.surface-canvas-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* Empty states for not-wired views (Files, Wireframes) and the
+   plan-not-yet-generated view. Honest body + backend contract block
+   below — same grammar as the .term-flyout-contract pattern used by
+   the Workbench lenses. */
+.surface-canvas-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  text-align: center;
+  padding: 36px 32px;
+}
+.surface-canvas-empty-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.surface-canvas-empty-body {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  letter-spacing: -0.005em;
+  max-width: 520px;
+}
+.surface-canvas-empty-contract {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: color-mix(in oklab, var(--text-primary) 3%, transparent);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  border-radius: 6px;
+  align-self: stretch;
+  max-width: 520px;
+  margin-inline: auto;
+}
+.surface-canvas-empty-contract-label {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.surface-canvas-empty-contract code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  white-space: normal;
+  line-height: 1.5;
+  background: transparent;
+  text-align: left;
+}
+
+/* Files-view stub sections — PAGES / COMPONENTS / UPLOADS each as a
+   labelled empty zone. Visual scaffold of the future file browser
+   without inventing entries. */
+.surface-files-stubs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 480px;
+  margin: 4px 0 0;
+}
+.surface-files-stub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 14px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--text-primary) 2%, transparent);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.surface-files-stub-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.surface-files-stub-state {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-ghost);
+}
+
+.surface-rail-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-surface));
+  flex-shrink: 0;
+}
+.surface-rail-tab {
+  position: relative;
+  padding: 11px 14px;
+  background: transparent;
+  border: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  cursor: pointer;
+  transition: color var(--dur-fast);
+}
+.surface-rail-tab:hover { color: var(--text-secondary); }
+.surface-rail-tab[data-active="true"] {
+  color: var(--chamber-dna, var(--accent));
+}
+/* Not-wired tabs read as honest absence — dimmed, no hover pull,
+   cursor:not-allowed. They keep their place in the strip so the user
+   sees the future shape of the gallery, but Signal does not pretend
+   the catalogue is browsable. */
+.surface-rail-tab[data-wired="false"] {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.surface-rail-tab[data-wired="false"]:hover {
+  color: var(--text-ghost);
+}
+/* A small warn dot in the corner mirrors the lens treatment. */
+.surface-rail-tab[data-wired="false"]::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cc-warn);
+  opacity: 0.5;
+}
+.surface-rail-tab[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--chamber-dna, var(--accent));
+  border-radius: 2px 2px 0 0;
+}
+.surface-rail-body {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-3);
+}
+.surface-rail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+.surface-rail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-swift),
+    border-color var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift);
+}
+.surface-rail-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--accent)) 28%, color-mix(in oklab, var(--text-primary) 8%, transparent));
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--chamber-dna, var(--accent)) 12%, transparent),
+    0 6px 14px -4px color-mix(in oklab, var(--text-primary) 8%, transparent);
+}
+.surface-rail-card-title {
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+}
+.surface-rail-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.surface-rail-card-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 12%, transparent);
+  color: var(--chamber-dna, var(--accent));
+  font-weight: 500;
+}
+.surface-rail-card-kind[data-kind="wireframe"] {
+  background: color-mix(in oklab, var(--text-muted) 14%, transparent);
+  color: var(--text-secondary);
+}
+.surface-rail-card-tag {
+  color: var(--text-ghost);
+}
+
+/* ——— Not-wired flyout body ——— */
+.term-flyout[data-tone="not-wired"] {
+  border-color: color-mix(in oklab, var(--cc-warn) 24%, var(--border-color-soft));
+}
+.term-flyout-body {
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.term-flyout-prose {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  letter-spacing: -0.002em;
+}
+.term-flyout-contract {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: color-mix(in oklab, var(--text-primary) 3%, transparent);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  border-radius: 6px;
+}
+.term-flyout-contract-label {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.term-flyout-contract code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  white-space: normal;
+  line-height: 1.5;
+  background: transparent;
 }
 
 /* ——— Slim bench bar ———
@@ -4177,7 +5456,8 @@ textarea {
   font-size: var(--t-micro);
   letter-spacing: var(--track-meta);
   color: var(--text-muted);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
   min-height: 44px;
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset,
@@ -4307,6 +5587,107 @@ textarea {
   opacity: 0.8;
 }
 
+/* ──── Workbench lenses — Repo · Diff · Gates · Deploy · Queue ────
+   Five compact buttons on the right side of the workbench strip that
+   narrate the execution territory. Each carries an icon, a label and
+   a value chip; the not-wired lenses get a warn dot in the corner so
+   the un-wired status reads at a glance, before the click. */
+.term-workbench-lenses {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+  position: relative;
+}
+.term-wb-lens {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 6%, transparent);
+  border-radius: 5px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-meta);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast),
+    border-color var(--dur-fast),
+    color var(--dur-fast);
+  position: relative;
+}
+.term-wb-lens:hover {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 18%, color-mix(in oklab, var(--text-primary) 4%, transparent));
+  color: var(--text-secondary);
+}
+.term-wb-lens[data-active="true"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 7%, transparent);
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, var(--border-color-soft));
+  color: var(--chamber-dna, var(--ember));
+}
+/* Not-wired lenses are honest — dimmed, non-clickable, no flyout.
+   The flyout-just-to-say-"not wired" pattern was retired in the cut
+   wave. The title tooltip carries the contract pending message; the
+   chip only signals that the territory exists in skeleton. */
+.term-wb-lens[data-wired="false"] {
+  opacity: 0.46;
+  cursor: default;
+}
+.term-wb-lens[data-wired="false"]:hover {
+  opacity: 0.6;
+  border-color: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: var(--text-muted);
+  background: transparent;
+}
+.term-wb-lens-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.term-wb-lens-icon svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 1.75;
+}
+.term-wb-lens-label {
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  flex-shrink: 0;
+}
+.term-wb-lens-value {
+  color: var(--text-ghost);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.term-wb-lens[data-active="true"] .term-wb-lens-value,
+.term-wb-lens[data-wired="true"] .term-wb-lens-value {
+  color: inherit;
+}
+.term-wb-lens[data-wired="false"]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cc-warn);
+  opacity: 0.55;
+}
+/* Flyout anchor — positions the lens flyout below the workbench strip,
+   right-aligned so it doesn't overflow narrow viewports. */
+.term-workbench-flyout-anchor {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(420px, calc(100vw - 48px));
+  z-index: 20;
+}
+.term-workbench-strip { position: relative; }
+
 /* ——— Editorial output canvas ———
    No card, no wrapper. The chamber body itself is the output surface.
    The output column sits on an editorial max-width with generous
@@ -4321,6 +5702,85 @@ textarea {
   flex-direction: column;
   gap: 28px;
   min-width: 0;
+}
+/* Hero injection — when the chamber is in its empty (ready) or brief
+   state, the editorial column fills the available height and centres
+   its content. The composer at the bottom no longer floats over a
+   void. Mirrors the Surface right-rail-hero pattern. */
+.term-output[data-state="brief"],
+.term-output[data-state="ready"] {
+  min-height: 100%;
+  justify-content: center;
+}
+.term-output-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 32px 36px;
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 2.5%, transparent);
+  border: 1px solid color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, color-mix(in oklab, var(--text-primary) 6%, transparent));
+  border-radius: 14px;
+  align-self: stretch;
+  max-width: 720px;
+}
+.term-output-hero .term-output-title {
+  font-size: 40px;
+  letter-spacing: -0.022em;
+}
+.term-output-hero .term-output-lead {
+  font-size: 15px;
+}
+.term-output-hero-kicker {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+  opacity: 1;
+}
+.term-output-hero .term-output-title,
+.term-output-hero .term-output-title-mono {
+  margin: 0;
+}
+.term-output-hero .term-output-title-mono {
+  font-size: 24px;
+  letter-spacing: -0.005em;
+}
+.term-output-hero-tips {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.term-output-hero-tips li {
+  font-family: var(--mono);
+  font-size: var(--t-body-sec);
+  letter-spacing: var(--track-meta);
+  color: var(--text-secondary);
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.5;
+}
+.term-output-hero-tips li::before {
+  content: "›";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--chamber-dna, var(--ember));
+  opacity: 0.7;
+}
+.term-output-hero-tasks {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: var(--t-body-sec);
+  color: var(--text-secondary);
+  letter-spacing: var(--track-meta);
 }
 .term-output-head {
   display: flex;
@@ -4532,127 +5992,17 @@ textarea {
    Only acabamento. Zero structural change.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* Atmospheric page background for the Terminal chamber — a very
-   subtle radial gradient at the top of the chamber body so the
-   composer and strip read as "suspended in air", not "glued to a
-   flat slab". Intensity tuned per theme. */
+/* Terminal chamber — atmosphere retired (2026-04-25 directive).
+   The cinematic sage haze that lived here was breaking harmony
+   between chambers: each chamber must share the same environment so
+   the workstation reads as one calm enterprise surface, not five
+   themed rooms. The chamber-shell still isolates so the ::before /
+   ::after pseudoelements are reserved for future neutral atmosphere
+   if required, and so descendants stack predictably above any future
+   layer. */
 .chamber-shell[data-chamber="terminal"] {
   position: relative;
   isolation: isolate;
-}
-/* Cinematic sage haze — envelopes the whole chamber like cloud cover.
-   5 layers: top highlight · left lateral · right lateral · bottom
-   wash · soft ambient. Second blurred pseudo adds the esfumaçado
-   softness so the green reads atmospheric, not flat. */
-.chamber-shell[data-chamber="terminal"]::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(
-      ellipse 70% 45% at 50% -2%,
-      color-mix(in oklab, var(--cc-ok) 14%, transparent) 0%,
-      transparent 58%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at -8% 42%,
-      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at 108% 58%,
-      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 110% 60% at 50% 108%,
-      color-mix(in oklab, var(--cc-ok) 12%, transparent) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse 120% 80% at 50% 50%,
-      color-mix(in oklab, var(--cc-ok) 3%, transparent) 0%,
-      transparent 80%
-    );
-  pointer-events: none;
-  z-index: 0;
-}
-/* Blurred esfumaçado layer — soft circular blooms that blend the
-   radial edges. Sits above ::before, below the content. */
-.chamber-shell[data-chamber="terminal"]::after {
-  content: "";
-  position: absolute;
-  inset: -40px;
-  background:
-    radial-gradient(
-      circle 320px at 18% 28%,
-      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      circle 340px at 82% 72%,
-      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      circle 280px at 50% 100%,
-      color-mix(in oklab, var(--cc-ok) 7%, transparent) 0%,
-      transparent 55%
-    );
-  filter: blur(40px);
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.9;
-}
-[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::before {
-  background:
-    radial-gradient(
-      ellipse 70% 45% at 50% -2%,
-      color-mix(in oklab, var(--cc-ok) 11%, transparent) 0%,
-      transparent 58%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at -8% 42%,
-      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at 108% 58%,
-      color-mix(in oklab, var(--cc-ok) 8%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 110% 60% at 50% 108%,
-      color-mix(in oklab, var(--cc-ok) 9%, transparent) 0%,
-      transparent 60%
-    );
-}
-[data-theme="dark"] .chamber-shell[data-chamber="terminal"]::after,
-[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::after {
-  opacity: 0.55;
-}
-[data-theme="sepia"] .chamber-shell[data-chamber="terminal"]::before {
-  background:
-    radial-gradient(
-      ellipse 70% 45% at 50% -2%,
-      color-mix(in oklab, var(--cc-ok) 9%, transparent) 0%,
-      transparent 58%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at -8% 42%,
-      color-mix(in oklab, var(--cc-ok) 6%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 55% 70% at 108% 58%,
-      color-mix(in oklab, var(--cc-ok) 6%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse 110% 60% at 50% 108%,
-      color-mix(in oklab, var(--cc-ok) 7%, transparent) 0%,
-      transparent 60%
-    );
 }
 .chamber-shell[data-chamber="terminal"] > * {
   position: relative;
@@ -5057,4 +6407,727 @@ textarea {
 [data-theme="sepia"] .term-command-phase {
   box-shadow:
     0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ELEVATION · hairline container borders
+   ═══════════════════════════════════════════════════════════════════════
+   Directive (2026-04-25): "borda finíssima e opaca de modo quase como
+   se não existisse, no limite de quase não a ver." Containers and
+   layouts get a near-invisible border. Geometry, radius, padding and
+   box-shadows stay — only the perimeter line whispers.
+
+   Deliberately NOT touched:
+     · .term-workbench-strip   — workbench in all chambers
+     · .term-command           — Terminal & Surface composer
+     · .insight-composer       — Insight composer
+     · .doctrine-composer      — Core / Policies composer
+   The Insight workbench is the elegance reference; nothing here
+   disturbs it because workbench chrome lives in the untouched class.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --border-color-hairline: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+[data-theme="dark"] {
+  --border-color-hairline: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+[data-theme="sepia"] {
+  --border-color-hairline: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+
+/* Container shells — Surface right rail, Insight thread, Terminal hero,
+   generic .panel, modals. Border-color drops to hairline; the existing
+   1px / radius / shadow stay intact so depth is preserved. */
+.surface-rail-shell,
+.surface-rail-card,
+.term-output-hero,
+.insight-thread-shell,
+.panel,
+.error-card,
+.dropdown-panel,
+.hero,
+.hero-door {
+  border-color: var(--border-color-hairline);
+}
+
+/* Hero kicker card inside Surface right rail — its bottom edge is a
+   layout divider before the canvas tab; same hairline. */
+.surface-rail-hero {
+  border-bottom-color: var(--border-color-hairline);
+}
+
+/* Layout dividers — chamber-head and canon-ribbon both define a
+   bottom rule that separates them from the chamber body. */
+.chamber-head,
+.canon-ribbon {
+  border-bottom-color: var(--border-color-hairline);
+}
+
+/* Inline-styled containers from Archive (RunList outer panel + its
+   internal section dividers) read border-color through the
+   --border-color-soft token. Lower its strength here — only the soft
+   variant — so layouts breathe while inputs/segmented controls (which
+   typically use --border-color-mid) keep their definition. Theme-aware
+   via var(--text-primary) so the new premium palette tracks correctly. */
+:root,
+[data-theme="light"] {
+  --border-color-soft: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+[data-theme="dark"] {
+  --border-color-soft: color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+[data-theme="sepia"] {
+  --border-color-soft: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SURFACE · workbench docked on the cockpit column
+   ═══════════════════════════════════════════════════════════════════════
+   Directive (2026-04-25): the SurfaceWorkbench moves out of the
+   full-width strip above the split and into the top of the LEFT
+   column, sitting just above the cockpit/builder. Two effects:
+     · the right canvas (ExplorationRail) rises to the top of the
+       chamber-body and reclaims the vertical space the strip used to
+       eat — output container breathes higher;
+     · the workbench keeps every chrome detail (glyph, STUDIO label,
+       mission caret, italic status, 5 lens chips) — only its home
+       moved.
+
+   The base .term-workbench-strip ships with margin: var(--space-2)
+   auto var(--space-5) and max-width: 820px. Inside the cockpit
+   column those defaults add an awkward gap and centre on a narrower
+   container; reset them so the column's own gap: var(--space-3)
+   handles the rhythm and the pill spans the column edge to edge.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+[data-surface-region="creation"] > .term-workbench-strip[data-surface-workbench] {
+  margin: 0;
+  max-width: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LOCK-IN · 3-color discipline · semantic only on data
+   ═══════════════════════════════════════════════════════════════════════
+   Directive (2026-04-25): "o meu website só tem três cores — preto
+   premium, branco premium e cinza opaco premium. O resto são dados
+   importantes realçados por semântica."
+
+   Chamber-DNA tints continuavam a pintar chrome (hero cards, active
+   selectors, hover surfaces, focus glows). Neutralizar para a regra
+   das 3 cores. As cores semânticas (cc-ok / cc-err / cc-warn /
+   cc-info) ficam intactas — elas são para DADOS, não para UI.
+
+   Não tocado:
+     · workbench (.term-workbench-strip e descendentes)
+     · composer (.term-command, .insight-composer, .doctrine-composer)
+     · mission-pill-dot (semantic chamber identity, ponto pequeno)
+     · tab-sub::after underline color (active tab indicator)
+     · cc-* (status colors stay for data signals)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Hero cards — backgrounds passam de DNA-tinted para neutro premium.
+   Fica a mesma profundidade via opacidade; perde a aura colorida. */
+.term-output-hero {
+  background: color-mix(in oklab, var(--text-primary) 1.5%, transparent);
+  border-color: color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+.surface-rail-hero {
+  background: color-mix(in oklab, var(--text-primary) 1.5%, transparent);
+}
+
+/* Insight thread answer card — bg DNA-tinted neutralizado. */
+.turn[data-turn="answer"] {
+  background: color-mix(in oklab, var(--text-primary) 1.5%, var(--bg-surface));
+}
+
+/* Active selector pills (Prototype / Slide deck / Hi-fi / AGENT / CREW
+   e similares) — não são DADOS, são SETTINGS. Trocam o tint DNA por
+   slate neutro. O selecionado lê com presença sem cor de família. */
+.surface-segmented-opt[data-active="true"] {
+  background: color-mix(in oklab, var(--text-primary) 8%, var(--bg-elevated));
+  color: var(--text-primary);
+}
+
+/* Surface shortcut cards — hover passa a neutro (cinza premium). */
+.surface-rail-card:hover {
+  border-color: color-mix(in oklab, var(--text-primary) 16%, transparent);
+  background: color-mix(in oklab, var(--text-primary) 2%, var(--bg-elevated));
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--text-primary) 6%, transparent),
+    0 6px 14px -4px color-mix(in oklab, var(--text-primary) 8%, transparent);
+}
+
+/* Plan canvas — o tint DNA 3% sobre bg-elevated era a única cor
+   de fundo que separava o canvas do resto; passa a momento curado:
+   material fotográfico premium para o "wow" quando o plano aterra.
+   Inset highlight branco + gradient suave + lift shadow. Continua
+   3-color compliant — pure white luz, no chamber tint. */
+[data-surface-plan-preview] {
+  background-color: var(--bg-surface) !important;
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.50) 0%,
+    rgba(255, 255, 255, 0) 32%
+  ) !important;
+  border: 1px solid var(--border-color-hairline);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 18px 40px -12px rgba(0, 0, 0, 0.10) !important;
+}
+[data-surface-plan-preview] > div > span:first-child {
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] [data-surface-plan-preview],
+[data-theme="sepia"] [data-surface-plan-preview] {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.045) 0%,
+    rgba(255, 255, 255, 0) 32%
+  ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.42),
+    0 18px 40px -12px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* Background depth — handled directly in the main [data-theme="light"]
+   block (--bg: #f7f7f9). Override removed to let the source of truth
+   live in one place; keeps the cascade clean. */
+
+/* ═══════════════════════════════════════════════════════════════════════
+   8K · liquid glass varnish
+   ═══════════════════════════════════════════════════════════════════════
+   Directive (2026-04-25): "envernizar o site todo por cima — verniz
+   liquid glass effect, 8K ultra-definição, mas só onde faz sentido,
+   sem cor, 3-color compliant."
+
+   O verniz é três camadas pures de luz:
+     1. inset 0 1px 0 #fff — aresta superior interna (specular highlight,
+        a "lip" de vidro);
+     2. background-image gradient top-down branco translúcido → 0 — uma
+        condensação suave que dá presença/density sem cor;
+     3. shadows refinadas — profundidade enterprise, não dramatic.
+
+   Aplicado APENAS aos containers que beneficiam do lift:
+     · .term-output-hero      (Terminal Mission brief card)
+     · .surface-rail-hero     (Surface Visual Contract Blocked)
+     · .insight-thread-shell  (Insight session card)
+     · .surface-rail-shell    (Surface right canvas panel)
+
+   Deliberadamente NÃO tocado (regra de ouro):
+     · .term-workbench-strip          (workbench, Insight é a referência)
+     · .term-command                  (Terminal & Surface composer)
+     · .insight-composer              (Insight composer)
+     · .doctrine-composer             (Core/Policies composer)
+     · texto, ícones, números, logo  (sua aura é o contraste, não verniz)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.term-output-hero,
+.surface-rail-hero,
+.insight-thread-shell,
+.surface-rail-shell {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.40) 0%,
+    rgba(255, 255, 255, 0) 28%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.030),
+    0 14px 32px -10px rgba(0, 0, 0, 0.055);
+}
+
+[data-theme="dark"] .term-output-hero,
+[data-theme="dark"] .surface-rail-hero,
+[data-theme="dark"] .insight-thread-shell,
+[data-theme="dark"] .surface-rail-shell,
+[data-theme="sepia"] .term-output-hero,
+[data-theme="sepia"] .surface-rail-hero,
+[data-theme="sepia"] .insight-thread-shell,
+[data-theme="sepia"] .surface-rail-shell {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.035) 0%,
+    rgba(255, 255, 255, 0) 28%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.40),
+    0 14px 32px -10px rgba(0, 0, 0, 0.45);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ATMOSPHERIC GRADIENT · liquid glass real (shared across chambers)
+   ═══════════════════════════════════════════════════════════════════════
+   Directive (2026-04-25): liquid glass com gradiente atmosférico real.
+   Uma só atmosfera partilhada por todas as câmaras — não cores próprias,
+   uma única respiração premium subtil. Pastel quase imperceptível, no
+   limite entre cinza puro e luminância colorida. Vibe Apple system bg /
+   Vision Pro / Codex calmo, sem cyberpunk, sem chamber identity.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.chamber-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      ellipse 80% 55% at 12% 8%,
+      rgba(232, 218, 200, 0.18) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 75% 60% at 92% 12%,
+      rgba(214, 222, 232, 0.20) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 95% 55% at 50% 100%,
+      rgba(218, 224, 230, 0.16) 0%,
+      transparent 60%
+    );
+}
+.chamber-shell {
+  position: relative;
+  isolation: isolate;
+}
+.chamber-shell > * {
+  position: relative;
+  z-index: 1;
+}
+[data-theme="dark"] .chamber-shell::before,
+[data-theme="sepia"] .chamber-shell::before {
+  background:
+    radial-gradient(
+      ellipse 80% 55% at 12% 8%,
+      rgba(120, 110, 95, 0.10) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 75% 60% at 92% 12%,
+      rgba(95, 110, 130, 0.10) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 95% 55% at 50% 100%,
+      rgba(105, 115, 130, 0.08) 0%,
+      transparent 60%
+    );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STATUS CHIPS · gramática completa (progress · unread · read · done)
+   ═══════════════════════════════════════════════════════════════════════
+   Lições absorvidas do Codex: status indicators tipados como linguagem
+   coerente. Cada estado tem cor semântica + glyph dedicado.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-meta);
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0;
+  white-space: nowrap;
+}
+.status-chip-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.status-chip[data-state="progress"] {
+  color: var(--cc-warn);
+}
+.status-chip[data-state="progress"] .status-chip-glyph {
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  animation: spinChip 0.9s linear infinite;
+}
+.status-chip[data-state="unread"] {
+  color: var(--cc-info);
+}
+.status-chip[data-state="unread"] .status-chip-glyph::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.status-chip[data-state="read"] {
+  color: var(--text-muted);
+}
+.status-chip[data-state="read"] .status-chip-glyph::before {
+  content: "✓";
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.status-chip[data-state="done"] {
+  color: var(--cc-ok);
+}
+.status-chip[data-state="done"] .status-chip-glyph::before {
+  content: "✓";
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+@keyframes spinChip {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DIFF VIEW · trabalho real visível (files com +N −M)
+   ═══════════════════════════════════════════════════════════════════════
+   Lição absorvida do Codex: mostrar o trabalho a ser editado, não só
+   estado. Diff inline com red/green semantic; lê como artefacto real.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.diff-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.diff-file {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-hairline);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.03);
+}
+[data-theme="dark"] .diff-file,
+[data-theme="sepia"] .diff-file {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.30);
+}
+.diff-file-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color-hairline);
+  background: color-mix(in oklab, var(--text-primary) 1.5%, transparent);
+}
+.diff-file-path {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.diff-file-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-meta);
+}
+.diff-count-add  { color: var(--cc-ok); }
+.diff-count-del  { color: var(--cc-err); }
+.diff-body {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 6px 0;
+  overflow-x: auto;
+}
+.diff-line {
+  display: flex;
+  padding: 0 12px;
+  white-space: pre;
+}
+.diff-line[data-type="add"] {
+  background: color-mix(in oklab, var(--cc-ok) 8%, transparent);
+  color: var(--text-primary);
+}
+.diff-line[data-type="del"] {
+  background: color-mix(in oklab, var(--cc-err) 8%, transparent);
+  color: var(--text-primary);
+}
+.diff-line[data-type="context"] {
+  color: var(--text-secondary);
+}
+.diff-line-prefix {
+  color: var(--text-muted);
+  width: 14px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.diff-line[data-type="add"] .diff-line-prefix    { color: var(--cc-ok); }
+.diff-line[data-type="del"] .diff-line-prefix    { color: var(--cc-err); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LANDING · entry-point premium · Cursor-class confidence
+   ═══════════════════════════════════════════════════════════════════════
+   First-visit landing. Reuses .chamber-shell so the atmospheric gradient
+   envelopes the entry. Custom ribbon (no tabs), giant serif hero,
+   five-chamber slab grid, doctrine quote, dual CTA, footer.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.chamber-shell[data-landing] {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.landing-ribbon {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--border-color-hairline);
+  background: color-mix(in oklab, var(--bg-surface) 88%, transparent);
+  backdrop-filter: saturate(140%) blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.landing-enter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: var(--track-meta);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color-mid);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+.landing-enter-pill:hover {
+  background: color-mix(in oklab, var(--text-primary) 5%, var(--bg-elevated));
+  border-color: var(--border-color-strong);
+}
+
+.landing-main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 80px 32px 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 120px;
+}
+
+.landing-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 900px;
+}
+.landing-hero-kicker {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.landing-hero-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(48px, 7vw, 84px);
+  line-height: 1.05;
+  letter-spacing: -0.030em;
+  font-weight: 450;
+  color: var(--text-primary);
+  margin: 0;
+}
+.landing-hero-sub {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 22px;
+  line-height: 1.45;
+  letter-spacing: -0.012em;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 720px;
+}
+.landing-hero-cta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.landing-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--bg-surface);
+  background: var(--text-primary);
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.10),
+    0 14px 32px -10px rgba(0, 0, 0, 0.20);
+  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+.landing-cta-primary:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 2px 4px rgba(0, 0, 0, 0.12),
+    0 18px 40px -10px rgba(0, 0, 0, 0.25);
+}
+.landing-cta-hint {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+}
+
+.landing-chambers {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.landing-chambers-kicker {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.landing-chambers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.landing-chamber-slab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px 22px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-hairline);
+  border-radius: 14px;
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.40) 0%,
+    rgba(255, 255, 255, 0) 32%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.030),
+    0 12px 28px -10px rgba(0, 0, 0, 0.05);
+  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+.landing-chamber-slab:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 16px 36px -10px rgba(0, 0, 0, 0.07);
+}
+[data-theme="dark"] .landing-chamber-slab,
+[data-theme="sepia"] .landing-chamber-slab {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0) 32%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.40),
+    0 12px 28px -10px rgba(0, 0, 0, 0.45);
+}
+.landing-chamber-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-label);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.landing-chamber-lead {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 16px;
+  line-height: 1.4;
+  letter-spacing: -0.008em;
+  color: var(--text-secondary);
+}
+
+.landing-doctrine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 48px 0;
+  border-top: 1px solid var(--border-color-hairline);
+  border-bottom: 1px solid var(--border-color-hairline);
+}
+.landing-doctrine-quote {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.25;
+  letter-spacing: -0.020em;
+  color: var(--text-primary);
+  max-width: 820px;
+}
+.landing-doctrine-source {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.landing-end {
+  display: flex;
+  justify-content: center;
+}
+
+.landing-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 32px;
+  border-top: 1px solid var(--border-color-hairline);
+  background: color-mix(in oklab, var(--bg-surface) 60%, transparent);
+}
+.landing-footer-mark {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 14px;
+  font-weight: 450;
+  letter-spacing: -0.010em;
+  color: var(--text-primary);
+}
+.landing-footer-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
 }

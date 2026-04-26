@@ -12,7 +12,7 @@ import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
 import ArchiveLayout from "./ArchiveLayout";
-import StatsBar from "./StatsBar";
+import ArchiveWorkbench from "./ArchiveWorkbench";
 import RunList from "./RunList";
 import RunDetail from "./RunDetail";
 import {
@@ -147,7 +147,7 @@ export default function Archive() {
   const head = (
     <ChamberHead
       kicker="— ARCHIVE"
-      tagline="Retenção · proveniência · continuidade"
+      tagline={copy.chambers.archive.sub}
       mock={backend.mode === "mock"}
       right={activeMission ? (
         <span
@@ -232,21 +232,27 @@ export default function Archive() {
       );
     }
     return (
-      <>
-        <StatsBar stats={stats} />
-        <RunList
-          runs={runs}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          activeTokens={activeTokens}
-        />
-      </>
+      <RunList
+        runs={runs}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+        activeTokens={activeTokens}
+      />
     );
   })();
 
   return (
     <div className="chamber-shell" data-chamber="archive">
       {head}
+      {/* Workbench pill — sibling family of Terminal/Surface/Insight/
+          Core. Reads runs/stats telemetry as 5 lenses (Runs · Refused
+          · Latency · Tokens · Tools). Replaces the old StatsBar grid
+          that used to sit at the top of the ledger column. */}
+      <ArchiveWorkbench
+        stats={stats}
+        loading={runs === null}
+        hasMission={!!activeMission}
+      />
       <ArchiveLayout
         left={left}
         right={

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import CanonRibbon from "./CanonRibbon";
+import Landing from "../landing/Landing";
 import { useSpine } from "../spine/SpineContext";
 import { Chamber } from "../spine/types";
 import Insight from "../chambers/insight";
@@ -7,6 +8,8 @@ import Terminal from "../chambers/terminal";
 import Archive from "../chambers/archive";
 import Core from "../chambers/core";
 import Surface from "../chambers/surface";
+
+const ENTERED_KEY = "signal:entered";
 
 // Wave-2: shell is stripped of landing, ritual entry, and tweak-panel
 // gates. Boot opens directly on the active chamber with its composer
@@ -28,6 +31,15 @@ function renderChamber(c: Chamber) {
 export default function Shell() {
   const { activeMission } = useSpine();
   const [activeTab, setActiveTab] = useState<Chamber>(activeMission?.chamber ?? "insight");
+  const [entered, setEntered] = useState<boolean>(() => {
+    try { return localStorage.getItem(ENTERED_KEY) === "true"; }
+    catch { return false; }
+  });
+
+  function enterSignal() {
+    try { localStorage.setItem(ENTERED_KEY, "true"); } catch {}
+    setEntered(true);
+  }
 
   // Follow the active mission's chamber whenever the user switches missions
   // (via the ribbon dropdown). A fresh mission created by Insight first-send
@@ -76,6 +88,10 @@ export default function Shell() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  if (!entered) {
+    return <Landing onEnter={enterSignal} />;
+  }
 
   return (
     <div

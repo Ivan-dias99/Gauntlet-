@@ -1,22 +1,24 @@
 import { ReactNode } from "react";
 
-// Insight central column — no split, no side rail. A single vertical
-// shell that stretches to chamber height, centers its content at 780
-// max-width, and anchors the composer at the bottom. The context strip
-// is rendered inside this layout so it lives integrated with the
-// chamber head rather than as separate furniture.
+// Insight central column — single vertical shell, 780px content
+// width. The workbench pill sits at the top (chamber identity +
+// 5 lenses), the thread shell hosts the conversation, and the
+// composer anchors at the floor. Doctrinally single-column:
+// Insight is one question → one verdict, not a workbench split.
 
 interface Props {
-  strip: ReactNode;
+  workbench: ReactNode;
   scroll: ReactNode;
   floor: ReactNode;
 }
 
-export default function InsightLayout({ strip, scroll, floor }: Props) {
+export default function InsightLayout({ workbench, scroll, floor }: Props) {
   return (
     <div data-insight-layout className="insight-center">
-      {strip}
-      <div className="insight-center-scroll">{scroll}</div>
+      {workbench}
+      <div className="insight-center-scroll">
+        <div className="insight-thread-shell">{scroll}</div>
+      </div>
       <div className="insight-center-floor">{floor}</div>
     </div>
   );

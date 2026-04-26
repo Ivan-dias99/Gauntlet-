@@ -1,167 +1,84 @@
-import { useState } from "react";
-import type { SurfacePlanPayload } from "../../hooks/useSignal";
+import { useEffect, useState } from "react";
+import type { SurfaceBriefPayload, SurfacePlanPayload } from "../../hooks/useSignal";
+import { useCopy } from "../../i18n/copy";
 
-// Wave-3 right-side exploration rail. Five tabs: Examples, Templates,
-// Recent, Search, Library. Data is canned in W3 — real catalog comes
-// from the archive connector layer in later waves. The point is that
-// the shell behaves like a real design workstation and not a
-// placeholder galllery.
+// Surface canvas — view router with four top-level tabs:
+//   BRIEF · PLAN · FILES · WIREFRAMES
+//
+// BRIEF and PLAN are wired (read brief + plan from local state).
+// FILES and WIREFRAMES are honest "not wired" — empty states declare
+// the backend contracts pending. The 5 lens chips that briefly lived
+// inline with these tabs moved up to the SurfaceWorkbench thin pill
+// above the split; the canvas tab bar is now view-router-only, so
+// territory state and view navigation no longer share a row.
 
-type Tab = "examples" | "templates" | "recent" | "search" | "library";
-
-const TABS: Array<{ key: Tab; label: string }> = [
-  { key: "examples",  label: "Examples" },
-  { key: "templates", label: "Templates" },
-  { key: "recent",    label: "Recent" },
-  { key: "search",    label: "Search" },
-  { key: "library",   label: "Library" },
-];
+type View = "brief" | "plan" | "files" | "wireframes";
 
 const EXAMPLES = [
-  { title: "Operational dashboard",   kind: "Hi-fi",      tag: "analytics" },
-  { title: "Onboarding flow — 3 steps",kind: "Prototype", tag: "activation" },
-  { title: "Governance settings pane", kind: "Hi-fi",     tag: "core" },
-  { title: "Archive search & lineage", kind: "Prototype", tag: "archive" },
-];
-
-const TEMPLATES = [
-  { title: "Command centre",    kind: "hi-fi",    tag: "ops" },
-  { title: "Studio split",      kind: "wireframe",tag: "creation" },
-  { title: "Archive ledger",    kind: "hi-fi",    tag: "retrieval" },
-  { title: "Governance stack",  kind: "hi-fi",    tag: "policy" },
-  { title: "Slide deck — thesis", kind: "hi-fi",  tag: "narrative" },
+  { title: "Operational dashboard",     kind: "hi-fi",     tag: "analytics" },
+  { title: "Onboarding flow — 3 steps", kind: "prototype", tag: "activation" },
+  { title: "Governance settings pane",  kind: "hi-fi",     tag: "core" },
+  { title: "Archive search & lineage",  kind: "prototype", tag: "archive" },
 ];
 
 interface Props {
   plan: SurfacePlanPayload | null;
   mock: boolean;
+  brief: SurfaceBriefPayload;
+  promptDraft: string;
 }
 
-export default function ExplorationRail({ plan, mock }: Props) {
-  const [tab, setTab] = useState<Tab>("examples");
-  const [query, setQuery] = useState("");
+export default function ExplorationRail({
+  plan, mock, brief, promptDraft,
+}: Props) {
+  const copy = useCopy();
+  const [view, setView] = useState<View>("brief");
+  const [planSeen, setPlanSeen] = useState(false);
+
+  // Auto-switch to PLAN view the first time a plan arrives. After
+  // that the user owns navigation.
+  useEffect(() => {
+    if (plan && !planSeen) {
+      setView("plan");
+      setPlanSeen(true);
+    }
+    if (!plan && planSeen) {
+      setPlanSeen(false);
+    }
+  }, [plan, planSeen]);
+
+  // Tabs: brief always; plan + files appear when a plan exists. Files
+  // is now wired to derived mock artifacts from plan.screens until the
+  // real /surface/files backend lands. Wireframes still pending.
+  const tabs: Array<{ key: View; label: string; wired: boolean }> = [
+    { key: "brief", label: copy.surfaceCanvasTabBrief, wired: true },
+    ...(plan
+      ? ([
+          { key: "plan" as View, label: copy.surfaceCanvasTabPlan, wired: true },
+          { key: "files" as View, label: copy.surfaceCanvasTabFiles, wired: true },
+        ])
+      : []),
+  ];
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        border: "var(--border-soft)",
-        borderRadius: "var(--radius-panel)",
-        background: "var(--bg-surface)",
-        height: "100%",
-        minHeight: 0,
-        overflow: "hidden",
-      }}
-    >
-      {/* Plan preview — sits above the rail when a mock plan has arrived. */}
-      {plan && (
-        <div
-          data-surface-plan-preview
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-            padding: "var(--space-3)",
-            borderBottom: "var(--border-soft)",
-            background: "var(--bg-elevated)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: "var(--t-micro)",
-                letterSpacing: "var(--track-label)",
-                textTransform: "uppercase",
-                color: "var(--text-ghost)",
-              }}
-            >
-              — Plano gerado
-            </span>
-            {mock && (
-              <span
-                data-mock-badge
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: "var(--t-micro)",
-                  letterSpacing: "var(--track-label)",
-                  textTransform: "uppercase",
-                  color: "var(--cc-warn)",
-                  padding: "2px 8px",
-                  border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-                  borderRadius: 999,
-                }}
-              >
-                mock
-              </span>
-            )}
-            <span style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)" }}>
-              {plan.mode} · {plan.fidelity} · {plan.design_system_binding ?? "sem DS"}
-            </span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
-            {plan.screens.map((s) => (
-              <div
-                key={s.name}
-                style={{
-                  padding: 10,
-                  border: "var(--border-soft)",
-                  borderRadius: "var(--radius-control)",
-                  background: "var(--bg-surface)",
-                }}
-              >
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-primary)" }}>
-                  {s.name}
-                </div>
-                <div style={{ fontSize: "var(--t-body-sec)", color: "var(--text-muted)", marginTop: 4 }}>
-                  {s.purpose}
-                </div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-ghost)", marginTop: 6 }}>
-                  {plan.components.filter((c) => c.screen === s.name).length} componentes
-                </div>
-              </div>
-            ))}
-          </div>
-          {plan.notes.length > 0 && (
-            <ul style={{ margin: 0, paddingLeft: 16, color: "var(--text-muted)", fontSize: "var(--t-body-sec)" }}>
-              {plan.notes.map((n, i) => (
-                <li key={i}>{n}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {/* Tab bar */}
-      <div
-        role="tablist"
-        style={{
-          display: "flex",
-          gap: 2,
-          padding: "var(--space-2)",
-          borderBottom: "var(--border-soft)",
-          background: "var(--bg-surface)",
-        }}
-      >
-        {TABS.map((t) => {
-          const active = t.key === tab;
+    <div className="surface-rail-shell">
+      {/* Canvas tab bar — view-router only. The 5 lens chips moved
+          up to the SurfaceWorkbench thin pill above the split, so the
+          tab bar carries one job (navigation), not two (navigation +
+          territory state). */}
+      <div className="surface-canvas-tabs" role="tablist">
+        {tabs.map((t) => {
+          const active = t.key === view;
           return (
             <button
               key={t.key}
               role="tab"
               aria-selected={active}
-              onClick={() => setTab(t.key)}
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body-sec)",
-                padding: "6px 10px",
-                background: active ? "var(--bg-elevated)" : "transparent",
-                color: active ? "var(--text-primary)" : "var(--text-muted)",
-                border: active ? "var(--border-soft)" : "1px solid transparent",
-                borderRadius: "var(--radius-control)",
-                cursor: "pointer",
-              }}
+              data-active={active ? "true" : undefined}
+              data-wired={t.wired ? "true" : "false"}
+              onClick={() => setView(t.key)}
+              className="surface-canvas-tab"
+              title={t.wired ? t.label : `${t.label} · not wired`}
             >
               {t.label}
             </button>
@@ -169,117 +86,362 @@ export default function ExplorationRail({ plan, mock }: Props) {
         })}
       </div>
 
-      {/* Tab body */}
-      <div style={{ flex: 1, overflow: "auto", padding: "var(--space-3)" }}>
-        {tab === "examples" && <Grid items={EXAMPLES} />}
-        {tab === "templates" && <Grid items={TEMPLATES} />}
-        {tab === "recent" && (
-          <EmptyBlock
-            title="Sem histórico ainda"
-            body="Os planos aceites nesta missão vão aparecer aqui. Para ver runs de Surface de todas as missões, vai ao Arquivo."
-          />
-        )}
-        {tab === "search" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Procurar examples, templates, library…"
-              style={{
-                fontFamily: "var(--sans)",
-                fontSize: "var(--t-body)",
-                padding: "10px 12px",
-                background: "var(--bg-input)",
-                color: "var(--text-primary)",
-                border: "var(--border-mid)",
-                borderRadius: "var(--radius-control)",
-              }}
-            />
-            <EmptyBlock
-              title="Pesquisa federada em breve"
-              body="A pesquisa local nos decks (examples, templates, library) chega primeiro. A pesquisa federada sobre conectores chega quando o Arquivo expor os conectores."
-            />
-          </div>
-        )}
-        {tab === "library" && (
-          <EmptyBlock
-            title="Library de design systems"
-            body="Core → Routing lista os design systems disponíveis para cada chamber. Quando a edição estiver aberta, os DSes passam a ser visíveis aqui também."
-          />
-        )}
+      <div className="surface-canvas-view">
+        {view === "brief"      && <BriefView brief={brief} promptDraft={promptDraft} copy={copy} />}
+        {view === "plan"       && <PlanView plan={plan} mock={mock} copy={copy} />}
+        {view === "files"      && <FilesView plan={plan} mock={mock} copy={copy} />}
+        {view === "wireframes" && <WireframesView copy={copy} />}
       </div>
     </div>
   );
 }
 
-function Grid({ items }: { items: Array<{ title: string; kind: string; tag: string }> }) {
+// ——— Views ———
+
+function BriefView({
+  brief, promptDraft, copy,
+}: {
+  brief: SurfaceBriefPayload;
+  promptDraft: string;
+  copy: ReturnType<typeof useCopy>;
+}) {
+  const checklist: Array<{ key: string; label: string; done: boolean }> = [
+    { key: "intent",   label: copy.surfaceContractFieldIntent,   done: promptDraft.trim().length > 0 },
+    { key: "output",   label: copy.surfaceContractFieldOutput,   done: !!brief.mode },
+    { key: "fidelity", label: copy.surfaceContractFieldFidelity, done: !!brief.fidelity },
+    { key: "ds",       label: copy.surfaceContractFieldDs,       done: !!brief.design_system },
+  ];
+  const allChecked = checklist.every((row) => row.done);
+
+  return (
+    <>
+      <div className="surface-rail-hero" data-state={allChecked ? "ready" : "blocked"}>
+        <span className="surface-rail-hero-kicker">
+          {allChecked ? copy.surfaceRailEmptyKicker : copy.surfaceContractBlockedKicker}
+        </span>
+        <p className="surface-rail-hero-body">
+          {allChecked ? copy.surfaceRailEmptyBody : copy.surfaceContractBlockedBody}
+        </p>
+        <ul className="surface-contract-checklist" aria-label="contract fields">
+          {checklist.map((row) => (
+            <li
+              key={row.key}
+              className="surface-contract-row"
+              data-done={row.done ? "true" : undefined}
+            >
+              <span className="surface-contract-box" aria-hidden>
+                {row.done ? "✓" : ""}
+              </span>
+              <span className="surface-contract-label">{row.label}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="surface-rail-shortcut-kicker">
+        <span className="surface-rail-shortcut-label">{copy.surfaceExamplesKicker}</span>
+        <span className="surface-rail-shortcut-hint">{copy.surfaceExamplesHint}</span>
+      </div>
+      <div className="surface-rail-body">
+        <div className="surface-rail-grid">
+          {EXAMPLES.map((it) => (
+            <button
+              key={it.title}
+              className="surface-rail-card"
+              type="button"
+              aria-label={`${it.title} · ${it.kind}`}
+            >
+              <div className="surface-rail-card-title">{it.title}</div>
+              <div className="surface-rail-card-meta">
+                <span className="surface-rail-card-kind" data-kind={it.kind}>{it.kind}</span>
+                <span className="surface-rail-card-tag">· {it.tag}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PlanView({
+  plan, mock, copy,
+}: {
+  plan: SurfacePlanPayload | null;
+  mock: boolean;
+  copy: ReturnType<typeof useCopy>;
+}) {
+  if (!plan) {
+    return (
+      <div className="surface-canvas-empty">
+        <span className="surface-canvas-empty-kicker">{copy.surfacePlanEmptyKicker}</span>
+        <p className="surface-canvas-empty-body">{copy.surfacePlanEmptyBody}</p>
+      </div>
+    );
+  }
   return (
     <div
+      data-surface-plan-preview
       style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: 10,
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        padding: "var(--space-3) var(--space-4)",
+        background: "color-mix(in oklab, var(--chamber-dna, var(--accent)) 3%, var(--bg-elevated))",
       }}
     >
-      {items.map((it) => (
-        <div
-          key={it.title}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
           style={{
-            padding: 12,
-            border: "var(--border-soft)",
-            borderRadius: "var(--radius-control)",
-            background: "var(--bg-surface)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-micro)",
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+            color: "var(--chamber-dna, var(--accent))",
+            fontWeight: 500,
           }}
         >
-          <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-primary)" }}>
-            {it.title}
-          </div>
-          <div
+          — Plano gerado
+        </span>
+        {mock && (
+          <span
+            data-mock-badge
             style={{
               fontFamily: "var(--mono)",
-              fontSize: 10,
-              letterSpacing: "var(--track-meta)",
+              fontSize: "var(--t-micro)",
+              letterSpacing: "var(--track-label)",
               textTransform: "uppercase",
-              color: "var(--text-muted)",
+              color: "var(--cc-warn)",
+              padding: "2px 8px",
+              border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+              borderRadius: 999,
             }}
           >
-            {it.kind} · {it.tag}
-          </div>
-        </div>
-      ))}
+            mock
+          </span>
+        )}
+        <span
+          style={{
+            marginLeft: "auto",
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            color: "var(--text-muted)",
+            letterSpacing: "var(--track-meta)",
+          }}
+        >
+          {plan.mode} · {plan.fidelity} · {plan.design_system_binding ?? "no DS"}
+        </span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+        {plan.screens.map((s) => {
+          const componentCount = plan.components.filter((c) => c.screen === s.name).length;
+          return (
+            <div
+              key={s.name}
+              className="surface-rail-card"
+              style={{ cursor: "default" }}
+            >
+              <div className="surface-rail-card-title">{s.name}</div>
+              <div
+                style={{
+                  fontFamily: "var(--sans)",
+                  fontSize: "var(--t-body-sec)",
+                  color: "var(--text-muted)",
+                  lineHeight: 1.45,
+                }}
+              >
+                {s.purpose}
+              </div>
+              <div className="surface-rail-card-meta">
+                <span className="surface-rail-card-kind">{componentCount} components</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {plan.notes.length > 0 && (
+        <ul
+          style={{
+            margin: 0,
+            paddingLeft: 16,
+            color: "var(--text-muted)",
+            fontFamily: "var(--sans)",
+            fontSize: "var(--t-body-sec)",
+            lineHeight: 1.5,
+          }}
+        >
+          {plan.notes.map((n, i) => (
+            <li key={i}>{n}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
-function EmptyBlock({ title, body }: { title: string; body: string }) {
+// Mock diff payload — derived from plan.screens until the real
+// /surface/files backend lands. Each screen becomes one .tsx file with
+// a small synthetic diff that demonstrates the work the AI did. When
+// the real backend lights up, swap derivedFiles() for the wire payload.
+type DiffLine = { type: "add" | "del" | "context"; text: string };
+type FileDelta = {
+  path: string;
+  added: number;
+  removed: number;
+  status: "progress" | "unread" | "read" | "done";
+  lines: DiffLine[];
+};
+
+function derivedFiles(plan: SurfacePlanPayload): FileDelta[] {
+  return plan.screens.slice(0, 4).map((s, idx) => {
+    const slug = s.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 32) || `screen-${idx + 1}`;
+    const componentCount = plan.components.filter((c) => c.screen === s.name).length;
+    const status: FileDelta["status"] =
+      idx === 0 ? "done" : idx === 1 ? "unread" : "read";
+    return {
+      path: `src/screens/${slug}.tsx`,
+      added: 24 + componentCount * 6,
+      removed: 4 + idx,
+      status,
+      lines: [
+        { type: "context", text: `// ${s.name} — ${s.purpose.slice(0, 56)}` },
+        { type: "del",     text: `export default function ${slug}() { return null }` },
+        { type: "add",     text: `export default function ${slug}({ mission }: Props) {` },
+        { type: "add",     text: `  const fields = ${componentCount}` },
+        { type: "add",     text: `  return <Layout mission={mission}>{/* … */}</Layout>` },
+        { type: "add",     text: `}` },
+      ],
+    };
+  });
+}
+
+function FilesView({
+  plan, mock, copy,
+}: {
+  plan: SurfacePlanPayload | null;
+  mock: boolean;
+  copy: ReturnType<typeof useCopy>;
+}) {
+  if (!plan) {
+    return (
+      <div className="surface-canvas-empty">
+        <span className="surface-canvas-empty-kicker">{copy.surfaceFilesEmptyKicker}</span>
+        <p className="surface-canvas-empty-body">{copy.surfaceFilesEmptyBody}</p>
+        <p className="surface-canvas-empty-contract" aria-label="backend contract">
+          <span className="surface-canvas-empty-contract-label">contract</span>
+          <code>{copy.surfaceFilesEmptyContract}</code>
+        </p>
+      </div>
+    );
+  }
+  const files = derivedFiles(plan);
+  const totalAdded = files.reduce((acc, f) => acc + f.added, 0);
+  const totalRemoved = files.reduce((acc, f) => acc + f.removed, 0);
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 8,
-        padding: "var(--space-4)",
-        textAlign: "center",
-        color: "var(--text-muted)",
+        gap: 12,
+        padding: "var(--space-3) var(--space-4)",
       }}
     >
-      <div
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: "var(--t-micro)",
-          letterSpacing: "var(--track-label)",
-          textTransform: "uppercase",
-          color: "var(--text-ghost)",
-        }}
-      >
-        — {title}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: "var(--t-micro)",
+            letterSpacing: "var(--track-label)",
+            textTransform: "uppercase",
+            color: "var(--text-muted)",
+            fontWeight: 500,
+          }}
+        >
+          — {files.length} files edited
+        </span>
+        <span className="diff-file-counts">
+          <span className="diff-count-add">+{totalAdded}</span>
+          <span className="diff-count-del">−{totalRemoved}</span>
+        </span>
+        {mock && (
+          <span
+            data-mock-badge
+            style={{
+              marginLeft: "auto",
+              fontFamily: "var(--mono)",
+              fontSize: "var(--t-micro)",
+              letterSpacing: "var(--track-label)",
+              textTransform: "uppercase",
+              color: "var(--cc-warn)",
+              padding: "2px 8px",
+              border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
+              borderRadius: 999,
+            }}
+          >
+            mock
+          </span>
+        )}
       </div>
-      <div style={{ fontFamily: "var(--serif)", fontSize: "var(--t-body)", lineHeight: 1.45 }}>
-        {body}
+      <div className="diff-file-list">
+        {files.map((f) => (
+          <div key={f.path} className="diff-file">
+            <div className="diff-file-head">
+              <span className="diff-file-path">{f.path}</span>
+              <span className="diff-file-counts">
+                <span className="diff-count-add">+{f.added}</span>
+                <span className="diff-count-del">−{f.removed}</span>
+              </span>
+              <span className="status-chip" data-state={f.status}>
+                <span className="status-chip-glyph" aria-hidden />
+                {statusLabel(f.status)}
+              </span>
+            </div>
+            <div className="diff-body">
+              {f.lines.map((ln, i) => (
+                <div key={i} className="diff-line" data-type={ln.type}>
+                  <span className="diff-line-prefix">
+                    {ln.type === "add" ? "+" : ln.type === "del" ? "−" : " "}
+                  </span>
+                  <span>{ln.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
+
+function statusLabel(s: FileDelta["status"]): string {
+  switch (s) {
+    case "progress": return "in progress";
+    case "unread":   return "unread";
+    case "read":     return "read";
+    case "done":     return "done";
+  }
+}
+
+function WireframesView({
+  copy,
+}: {
+  copy: ReturnType<typeof useCopy>;
+}) {
+  return (
+    <div className="surface-canvas-empty">
+      <span className="surface-canvas-empty-kicker">{copy.surfaceWireframesEmptyKicker}</span>
+      <p className="surface-canvas-empty-body">{copy.surfaceWireframesEmptyBody}</p>
+      <p className="surface-canvas-empty-contract" aria-label="backend contract">
+        <span className="surface-canvas-empty-contract-label">contract</span>
+        <code>{copy.surfaceWireframesEmptyContract}</code>
+      </p>
+    </div>
+  );
+}
+
+// (Lens chip + flyout + icons live in SurfaceWorkbench now — the
+// canvas tab bar carries view navigation only.)

@@ -1,17 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import type { Copy, RunMode, Task } from "./helpers";
 
-// Terminal command surface — Claude-Code-class composer.
-// Chrome bar carries traffic-lights + path + phase + four affordances:
-//   (+) context  — flyout listing real signals: doctrine, mission turns, mock/live, profile
-//   (>) recents  — last 5 tasks of the active mission (click to populate input)
-//   (⚙) mode     — agent / crew toggle (moved out of the chamber head)
-//   (⚒) tools    — the chamber's tool allowlist (read-only mirror of Routing/Permissions)
-// Body row carries the real signal@local:~/mission$ prompt + input + send.
-// Workspace bar at the bottom shows project · branch · backend · profile.
+// Terminal command surface — Signal cockpit.
 //
-// All flyouts are honest enumerations of state Terminal already has.
-// No fake features.
+// Visual grammar inherited from WorkbenchStrip (the bar that lives
+// directly above): glyph block, mono label, mission with caret-down,
+// italic status, hairline pill, mono family. The composer is the
+// workbench's louder sibling — same family, but with an input dominant
+// and the cockpit's full action set.
+//
+// Identity row (top):  [glyph] LABEL · MISSION ▾ · italic status
+// Input row (middle):  $ [input dominant] [send]
+// State rail (bottom): [+ ⏱ ⚒]    ● live · § N · agent | crew
+//
+// Composer owns only the live affordances that drive the next
+// execution: Context, Recent, Tools, Mode, Send. The territory lenses
+// (Repo, Diff, Build Gates, Deploy, Run Queue) live on the
+// WorkbenchStrip above — they narrate the execution state, not the
+// next command. Connectors moved out entirely; the connector registry
+// belongs in Core/Routing when it lands. No tool is owned by both
+// surfaces.
+//
+// Doctrine: only enumerate state Terminal already has. No canned data,
+// no fake features.
 
 interface Props {
   copy: Copy;
@@ -82,9 +93,9 @@ export default function ExecutionComposer({
   }, [flyout]);
 
   const canSubmit = value.trim().length > 0 && !pending;
-  const pathLabel = missionTitle
-    ? missionTitle.length > 36 ? missionTitle.slice(0, 33).trimEnd() + "…" : missionTitle
-    : "~/mission";
+  const missionLabel = missionTitle
+    ? missionTitle.length > 24 ? missionTitle.slice(0, 21).trimEnd() + "…" : missionTitle
+    : null;
 
   return (
     <div
@@ -98,61 +109,49 @@ export default function ExecutionComposer({
         data-focused={focused ? "true" : undefined}
         data-state={pending ? "pending" : undefined}
       >
-      <div className="term-command-deck">
-        <div className="term-command-chrome">
-          <span className="term-command-dots" aria-hidden>
-            <span /><span /><span />
+        {/* Identity row — workbench-strip grammar transposed onto the
+            composer. Traffic-light dots dropped: Signal does not need
+            macOS chrome to feel like a terminal. The glyph block + label
+            carry the identity; the dots were duplicating the workbench
+            bar's job. */}
+        <div className="term-command-id">
+          <span className="term-command-glyph" aria-hidden>
+            <IconShell />
           </span>
-          <span className="term-command-path">
-            <strong>signal</strong>
-            <span style={{ color: "var(--text-muted)" }}> · </span>
-            <span style={{ color: "var(--cc-path)" }}>{pathLabel}</span>
-          </span>
-          <div className="term-command-tools">
-            <button
-              type="button"
-              className="term-tool"
-              data-active={flyout === "context" ? "true" : undefined}
-              onClick={() => setFlyout(flyout === "context" ? null : "context")}
-              title="contexto · sinais que viajam com cada tarefa"
-              aria-label="contexto"
-            >
-              <IconPlus />
-            </button>
-            <button
-              type="button"
-              className="term-tool"
-              data-active={flyout === "recent" ? "true" : undefined}
-              onClick={() => setFlyout(flyout === "recent" ? null : "recent")}
-              disabled={recentTasks.length === 0}
-              title="recentes · últimas tarefas desta missão"
-              aria-label="recentes"
-            >
-              <IconClock />
-            </button>
-            <button
-              type="button"
-              className="term-tool"
-              data-active={flyout === "tools" ? "true" : undefined}
-              onClick={() => setFlyout(flyout === "tools" ? null : "tools")}
-              title="tools · allowlist desta câmara"
-              aria-label="tools"
-            >
-              <IconTools />
-            </button>
-          </div>
-          <span className="term-command-phase" aria-live="polite">
-            {pending ? "exec" : "pronto"}
+          <span className="term-command-id-label">{copy.termComposerLabel}</span>
+          {missionLabel ? (
+            <>
+              <span className="term-command-id-sep" aria-hidden />
+              <span className="term-command-id-mission">
+                <span className="term-command-id-mission-label">
+                  mission
+                </span>
+                <span className="term-command-id-mission-value">{missionLabel}</span>
+                <span className="term-command-id-mission-caret" aria-hidden>
+                  <IconCaret />
+                </span>
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="term-command-id-sep" aria-hidden />
+              <span className="term-command-id-mission-null">
+                {copy.termComposerPathRoot}
+              </span>
+            </>
+          )}
+          <span className="term-command-id-sep" aria-hidden />
+          <span className="term-command-id-status" title={pending ? copy.termComposerStatusPending : copy.termComposerStatusIdle}>
+            {pending ? copy.termComposerStatusPending : copy.termComposerStatusIdle}
           </span>
         </div>
 
-        <div className="term-command-body">
-          <span className="term-command-prompt" aria-hidden>
-            <span className="term-command-prompt-user">signal@local</span>
-            <span className="term-command-prompt-sep">:</span>
-            <span className="term-command-prompt-path">~/mission</span>
-            <span className="term-command-prompt-sep">$</span>
-          </span>
+        {/* Input row — the single dominant zone. The `$` prompt glyph
+            is preserved as a small mono token (not the full
+            signal@local:~/mission$ cosplay) so the input still reads
+            as a command, not a chat textarea. */}
+        <div className="term-command-input-row">
+          <span className="term-command-input-prompt" aria-hidden>$</span>
           <input
             ref={inputRef}
             autoFocus
@@ -181,52 +180,78 @@ export default function ExecutionComposer({
             aria-label={pending ? "a executar" : "executar"}
           >
             {pending ? (
-              <span style={{ fontSize: 14, lineHeight: 1 }}>…</span>
+              <span style={{ fontSize: 13, lineHeight: 1 }}>…</span>
             ) : (
               <IconSend />
             )}
           </button>
         </div>
 
-        {/* Workspace bar — three deliberate groups:
-            · identity  (câmara · missão)
-            · state     (backend · doutrina)
-            · mode      (agent / crew toggle)
-            Separated by hairline dividers so the chips read as one
-            coherent family, not a random cluster. */}
-        <div className="term-command-workspace">
-          <div className="term-ws-group" aria-label="identidade">
-            <span
-              className="term-ws-chip"
-              title="câmara ativa"
+        {/* State rail — affordances on the left, posture chips and
+            execution-mode toggle on the right. Repo + connectors are
+            honest "not wired" buttons; the warn dot in their corner
+            tells the user before clicking. */}
+        <div className="term-command-rail">
+          <div className="term-command-actions" role="toolbar" aria-label="composer affordances">
+            <button
+              type="button"
+              className="term-tool"
+              data-active={flyout === "context" ? "true" : undefined}
+              onClick={() => setFlyout(flyout === "context" ? null : "context")}
+              title={copy.termAffordContext}
+              aria-label="context"
             >
-              <span className="term-ws-chip-glyph" aria-hidden>›_</span>
-              <span className="term-ws-chip-label">câmara</span>
-              <span className="term-ws-chip-value">terminal</span>
-            </span>
-            <span
-              className="term-ws-chip"
-              data-role="primary"
-              title="missão atual"
+              <IconPlus />
+            </button>
+            <button
+              type="button"
+              className="term-tool"
+              data-active={flyout === "recent" ? "true" : undefined}
+              onClick={() => setFlyout(flyout === "recent" ? null : "recent")}
+              disabled={recentTasks.length === 0}
+              title={copy.termAffordRecent}
+              aria-label="recent"
             >
-              <span className="term-ws-chip-glyph" aria-hidden>◆</span>
-              <span className="term-ws-chip-label">missão</span>
-              <span className="term-ws-chip-value">
-                {missionTitle
-                  ? missionTitle.length > 32 ? missionTitle.slice(0, 29).trimEnd() + "…" : missionTitle
-                  : "sem missão"}
-              </span>
-            </span>
+              <IconClock />
+            </button>
+            <button
+              type="button"
+              className="term-tool"
+              data-active={flyout === "tools" ? "true" : undefined}
+              onClick={() => setFlyout(flyout === "tools" ? null : "tools")}
+              title={copy.termAffordTools}
+              aria-label="tools"
+            >
+              <IconTools />
+            </button>
+            {/* Repo + Connectors moved out: Repo lives on the
+                WorkbenchStrip above (Repo Lens); Connectors moves to
+                Core/Routing when the registry lands. The composer
+                only carries the live affordances that drive the next
+                command. */}
           </div>
 
-          <span className="term-ws-divider" aria-hidden />
+          <span className="term-rail-spacer" />
 
-          <div className="term-ws-group" aria-label="estado">
+          <span
+            className="term-rail-chip"
+            data-tone={mockMode ? "warn" : "ok"}
+            title={mockMode
+              ? "backend em modo simulado — respostas canned"
+              : "backend ligado — execução real"}
+          >
+            <span className="term-rail-dot" aria-hidden />
+            <span className="term-rail-value">{mockMode ? "mock" : "live"}</span>
+          </span>
+          {principlesCount > 0 && (
             <span
-              className="term-ws-chip"
-              data-tone={mockMode ? "warn" : "ok"}
-              title={mockMode ? "backend em modo simulado — respostas canned" : "backend ligado — execução real"}
+              className="term-rail-chip"
+              title="princípios em vigor que viajam com cada tarefa"
             >
+              <span className="term-rail-glyph" aria-hidden>§</span>
+              <span className="term-rail-value">{principlesCount}</span>
+            </span>
+          )}
               <span className="term-ws-chip-glyph" aria-hidden>●</span>
               <span className="term-ws-chip-label">backend</span>
               <span className="term-ws-chip-value">
@@ -265,7 +290,7 @@ export default function ExecutionComposer({
           <span className="term-ws-spacer" />
 
           <div
-            className="term-ws-mode"
+            className="term-rail-mode"
             role="tablist"
             aria-label="execution mode"
             title="agent: loop iterativo · crew: planner → coder → critic"
@@ -274,7 +299,7 @@ export default function ExecutionComposer({
               <button
                 key={m}
                 role="tab"
-                className="term-ws-mode-opt"
+                className="term-rail-mode-opt"
                 data-active={mode === m ? "true" : undefined}
                 disabled={pending}
                 onClick={() => onModeChange(m)}
@@ -308,7 +333,6 @@ export default function ExecutionComposer({
         </div>
 
         {pending && <div className="thinking-strip" aria-hidden />}
-      </div>
 
         {flyout === "context" && (
           <ContextFlyout
@@ -390,6 +414,12 @@ function ContextFlyout({
         </span>
         <span className="term-flyout-item-kicker">{mode}</span>
       </button>
+      <button
+        className="term-flyout-item"
+        disabled
+        title="upload de ficheiros e capturas — ligação ao backend pendente"
+      >
+        <span className="term-flyout-item-glyph">◈</span>
       <button className="term-flyout-item" onClick={() => onAttach("note")}>
         <span className="term-flyout-item-glyph">＋</span>
         <span className="term-flyout-item-body">
@@ -480,6 +510,11 @@ function ToolsFlyout() {
   );
 }
 
+// NotWiredFlyout (formerly used by Repo + Connectors composer
+// affordances) is now owned by WorkbenchStrip's LensFlyout. The
+// composer no longer carries any not-wired affordances — only live
+// state (Context, Recent, Tools, Mode, Send).
+
 // ——— Unified SVG icon set (composer) ———
 // Same viewbox, same stroke width as the WorkbenchStrip icons so the
 // Terminal chamber speaks one iconographic language.
@@ -496,6 +531,24 @@ const SVG_PROPS = {
   "aria-hidden": true,
 };
 
+// Shell glyph — sibling to WorkbenchStrip's IconTerminal. Same stroke
+// language, slightly bolder so the composer's identity reads from
+// further away than the workbench bar above it.
+function IconShell() {
+  return (
+    <svg {...SVG_PROPS} strokeWidth={2}>
+      <path d="m4 9 3 3-3 3" />
+      <path d="M10 15h10" />
+    </svg>
+  );
+}
+function IconCaret() {
+  return (
+    <svg {...SVG_PROPS} width={10} height={10}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
 function IconPlus() {
   return (
     <svg {...SVG_PROPS}>
@@ -531,17 +584,3 @@ function IconSend() {
     </svg>
   );
 }
-function IconDot() {
-  return (
-    <span
-      aria-hidden
-      style={{
-        width: 6, height: 6, borderRadius: "50%",
-        background: "currentColor",
-        display: "inline-block",
-      }}
-    />
-  );
-}
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _iconsExport = { IconPlus, IconClock, IconTools, IconSend, IconDot };

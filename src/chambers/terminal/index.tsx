@@ -427,6 +427,7 @@ export default function Terminal() {
           copy={copy}
           missionTitle={activeMission?.title ?? null}
           activeTask={activeTask}
+          tasks={activeMission?.tasks ?? []}
         />
         <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)" }}>
           <TaskList
