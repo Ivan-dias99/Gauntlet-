@@ -39,10 +39,9 @@ Four pillars. Everything else is consequence.
 | Archive  | Retrieval · provenance · run ledger · artifact lineage   | triad (read)   |
 | Core     | Policies · Routing · Permissions · Orchestration · System | triad (read)  |
 
-¹ Surface ships mock-first backend in the current wave — the UI
-explicitly labels the mock so nothing pretends to generate. The
-chamber shell is real; the provider swap comes with the Wave-8b
-compat-window closure and the first real Surface generator.
+¹ Surface still ships a mock-first backend — the UI explicitly labels the
+mock so nothing pretends to generate. The chamber shell is real; the
+real Surface generator lands in a later wave.
 
 ## Layout
 
