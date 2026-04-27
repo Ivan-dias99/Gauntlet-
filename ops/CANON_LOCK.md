@@ -47,7 +47,6 @@ only specific logic patches that do not touch protected files.
 codex/implement-operational-must-haves-for-signal-terminal
 claude/plan-backend-frontend-integration-cQe1Y
 claude/vercel-edge-deploy-XwlRb
-ruberra-delivery-execution
 ```
 
 Older `claude/*`, `codex/*`, and `v0/*` branches are also drift unless
