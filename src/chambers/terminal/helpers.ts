@@ -85,7 +85,7 @@ export function stateLabel(state: TaskState, copy: Copy): string {
 
 export function sourceLabel(source: Task["source"], copy: Copy): string {
   switch (source) {
-    case "lab": return copy.taskSourceLab;
+    case "insight": return copy.taskSourceInsight;
     case "crew": return copy.taskSourceCrew;
     case "other": return copy.taskSourceOther;
     default: return copy.taskSourceManual;

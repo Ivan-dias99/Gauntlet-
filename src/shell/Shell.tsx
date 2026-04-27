@@ -11,12 +11,10 @@ import Surface from "../chambers/surface";
 
 const ENTERED_KEY = "signal:entered";
 
-// Wave-2: shell is stripped of landing, ritual entry, and tweak-panel
-// gates. Boot opens directly on the active chamber with its composer
-// focused. First-send inside Insight creates a mission implicitly (see
-// Lab.tsx). VisionLanding and RitualEntry have been deleted; TweaksPanel
-// has been demoted (the TweaksContext provider still applies theme /
-// density at mount — user-facing controls return in Core, Wave 4).
+// Shell boots directly on the active chamber with its composer focused.
+// First-send inside Insight creates a mission implicitly (see
+// chambers/insight/index.tsx). The TweaksContext provider applies theme /
+// density at mount — user-facing controls live in Core.
 
 function renderChamber(c: Chamber) {
   switch (c) {
@@ -49,20 +47,14 @@ export default function Shell() {
   }, [activeMission?.id]);
 
   // Cross-chamber handoff — chambers can request a chamber switch by
-  // dispatching `signal:chamber` with a Chamber detail. The legacy
-  // `ruberra:chamber` event is still accepted during the Wave-0 → Wave-8
-  // compatibility window so call sites can migrate gradually.
+  // dispatching `signal:chamber` with a Chamber detail.
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<Chamber>;
       if (ce.detail) setActiveTab(ce.detail);
     };
     window.addEventListener("signal:chamber", handler);
-    window.addEventListener("ruberra:chamber", handler);
-    return () => {
-      window.removeEventListener("signal:chamber", handler);
-      window.removeEventListener("ruberra:chamber", handler);
-    };
+    return () => window.removeEventListener("signal:chamber", handler);
   }, []);
 
   // Wave-7 keyboard shortcut: Alt+[1-5] switches chambers.

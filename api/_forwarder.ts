@@ -1,21 +1,17 @@
-// Shared edge-forwarder logic for api/signal.ts and api/ruberra.ts.
+// Shared edge-forwarder logic for api/signal.ts.
 //
 // Underscore-prefixed file: Vercel's file-system routing excludes it from
 // the public /api/* surface, so it is safe to import from sibling route
 // files without exposing a duplicate endpoint.
 //
-// Contract (identical for both routes during the Wave-0 → Wave-8 window):
+// Contract:
 //   - status: 503 on unreachable
-//   - headers: BOTH x-signal-backend: unreachable AND x-ruberra-backend:
-//     unreachable, so clients written against either contract keep working.
+//   - header: x-signal-backend: unreachable
 //   - body: { error: "backend_unreachable", reason: "<kind>" }
 //
-// Env precedence for the upstream URL:
-//   SIGNAL_BACKEND_URL   (preferred)
-//   RUBERRA_BACKEND_URL  (legacy, honored during compat)
+// Env: SIGNAL_BACKEND_URL (e.g. https://backend.up.railway.app)
 
-const NEW_HEADER = "x-signal-backend";
-const LEGACY_HEADER = "x-ruberra-backend";
+const HEADER = "x-signal-backend";
 const UNREACHABLE_VALUE = "unreachable";
 
 export function unreachable(reason: string, status = 503): Response {
@@ -26,8 +22,7 @@ export function unreachable(reason: string, status = 503): Response {
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": "no-store",
-        [NEW_HEADER]: UNREACHABLE_VALUE,
-        [LEGACY_HEADER]: UNREACHABLE_VALUE,
+        [HEADER]: UNREACHABLE_VALUE,
       },
     },
   );
@@ -38,11 +33,7 @@ export function resolveBackendUrl(): string | null {
     typeof process !== "undefined" && process.env
       ? process.env
       : undefined;
-  return (
-    env?.SIGNAL_BACKEND_URL ??
-    env?.RUBERRA_BACKEND_URL ??
-    null
-  );
+  return env?.SIGNAL_BACKEND_URL ?? null;
 }
 
 export async function forward(

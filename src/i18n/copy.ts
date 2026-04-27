@@ -318,7 +318,7 @@ export interface Copy {
   blockedSection: string;
   doneSection: string;
   taskSourceManual: string;
-  taskSourceLab: string;
+  taskSourceInsight: string;
   taskSourceCrew: string;
   taskSourceOther: string;
   artifactEmpty: string;
@@ -661,7 +661,7 @@ const PT: Copy = {
   blockedSection: "bloqueadas",
   doneSection: "concluídas",
   taskSourceManual: "manual",
-  taskSourceLab: "insight",
+  taskSourceInsight: "insight",
   taskSourceCrew: "crew",
   taskSourceOther: "outro",
   artifactEmpty: "arquivo vazio · nenhum resultado selado",
@@ -1004,7 +1004,7 @@ const EN: Copy = {
   blockedSection: "blocked",
   doneSection: "done",
   taskSourceManual: "manual",
-  taskSourceLab: "insight",
+  taskSourceInsight: "insight",
   taskSourceCrew: "crew",
   taskSourceOther: "other",
   artifactEmpty: "archive empty · no results sealed",

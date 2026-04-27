@@ -1,34 +1,29 @@
 // Signal — canonical backend client.
 //
-// Public paths (preferred):  /api/signal/*
-// Legacy paths (compat):     /api/ruberra/*   (kept until Wave 8)
+// Public paths: /api/signal/*
 //
 // Env precedence for the base URL override:
-//   VITE_SIGNAL_API_BASE   (preferred)
-//   VITE_RUBERRA_API_BASE  (legacy, honored during compat)
-//   "/api/signal"          (default — handled by the Vite proxy in dev and
-//                            the Vercel edge forwarder in prod).
+//   VITE_SIGNAL_API_BASE  — direct URL override (CORS must permit the dev origin)
+//   "/api/signal"         — default; handled by the Vite proxy in dev and
+//                           the Vercel edge forwarder in prod.
 //
 // Backend-unreachable is a first-class state — NOT a regex on error text.
-// The edge forwarder (api/signal.ts and its legacy alias api/ruberra.ts,
-// both forwarding to the signal-backend/ Python service) signals it with:
+// The edge forwarder (api/signal.ts → signal-backend/ Python service)
+// signals it with:
 //   status: 503
-//   header: x-signal-backend: unreachable   (and, during the compat window,
-//           x-ruberra-backend: unreachable emitted alongside)
+//   header: x-signal-backend: unreachable
 //   body:   { error: "backend_unreachable", reason: <kind> }
 // A network-level throw (edge dead, CORS, offline) also counts as
 // unreachable. Every other non-2xx is a real upstream response.
 
 const RAW_BASE =
   (import.meta.env.VITE_SIGNAL_API_BASE as string | undefined) ??
-  (import.meta.env.VITE_RUBERRA_API_BASE as string | undefined) ??
   "/api/signal";
 
 const BASE = RAW_BASE.replace(/\/+$/, "");
 
 export const SIGNAL_API_BASE = BASE;
 export const UNREACHABLE_HEADER = "x-signal-backend";
-export const LEGACY_UNREACHABLE_HEADER = "x-ruberra-backend";
 export const UNREACHABLE_VALUE = "unreachable";
 
 export function apiUrl(path: string): string {
@@ -110,12 +105,7 @@ export function isBackendError(err: unknown): err is BackendError {
 }
 
 function unreachableFromResponse(res: Response): BackendUnreachableError | null {
-  // Accept the canonical header plus the legacy one emitted by the
-  // forwarder during the Wave-0 → Wave-8 compatibility window.
-  if (
-    res.headers.get(UNREACHABLE_HEADER) === UNREACHABLE_VALUE ||
-    res.headers.get(LEGACY_UNREACHABLE_HEADER) === UNREACHABLE_VALUE
-  ) {
+  if (res.headers.get(UNREACHABLE_HEADER) === UNREACHABLE_VALUE) {
     return new BackendUnreachableError(`edge:${res.status}`);
   }
   return null;
@@ -123,7 +113,7 @@ function unreachableFromResponse(res: Response): BackendUnreachableError | null 
 
 // Wraps fetch and throws BackendUnreachableError on:
 //   - network-level failure (TypeError: Failed to fetch, offline, DNS…)
-//   - responses carrying an unreachable header (new or legacy)
+//   - responses carrying the unreachable header
 // Every other response — including normal 4xx/5xx from the upstream — is
 // returned to the caller to handle with the usual error path.
 export async function signalFetch(

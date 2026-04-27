@@ -72,14 +72,13 @@ export default function Insight() {
   function confirmPromote(note: Note) {
     const raw = note.text.trim();
     const title = raw.length > 120 ? raw.slice(0, 117).trimEnd() + "…" : raw;
-    addTask(title, "lab");
+    addTask(title, "insight");
     if (activeMission) {
       const preview = raw.length > 80 ? raw.slice(0, 77).trimEnd() + "…" : raw;
       addNoteToMission(activeMission.id, `↪ handoff → terminal: ${preview}`, "ai");
     }
     setPromoteId(null);
     window.dispatchEvent(new CustomEvent("signal:chamber", { detail: "terminal" }));
-    window.dispatchEvent(new CustomEvent("ruberra:chamber", { detail: "terminal" }));
   }
 
   const capturedJudge = useRef<{

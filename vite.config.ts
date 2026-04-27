@@ -3,36 +3,24 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  // Env precedence: SIGNAL_BACKEND_URL (preferred) → RUBERRA_BACKEND_URL
-  // (legacy, honored during the Wave-0 → Wave-8 compatibility window).
-  const backendUrl =
-    env.SIGNAL_BACKEND_URL ??
-    env.RUBERRA_BACKEND_URL ??
-    "http://127.0.0.1:3002";
+  const backendUrl = env.SIGNAL_BACKEND_URL ?? "http://127.0.0.1:3002";
   return {
     plugins: [react()],
     server: {
       // Bridge to the Python backend (signal-backend/).
       //
       // The UI calls apiUrl(path) from src/lib/signalApi. By default that
-      // resolves to /api/signal/* and hits the first proxy below. The
-      // /api/ruberra/* proxy is kept as a legacy alias during compat.
-      // Setting VITE_SIGNAL_API_BASE (or legacy VITE_RUBERRA_API_BASE)
-      // overrides the default with a direct URL — in that case these
-      // proxies are BYPASSED and the browser talks to the backend
-      // directly (CORS must allow the dev origin). Use the proxy for
-      // same-origin dev; use the override only for testing against a
+      // resolves to /api/signal/* and hits the proxy below. Setting
+      // VITE_SIGNAL_API_BASE overrides the default with a direct URL — in
+      // that case this proxy is BYPASSED and the browser talks to the
+      // backend directly (CORS must allow the dev origin). Use the proxy
+      // for same-origin dev; use the override only for testing against a
       // remote backend.
       proxy: {
         "/api/signal": {
           target: backendUrl,
           changeOrigin: true,
           rewrite: (p) => p.replace(/^\/api\/signal/, ""),
-        },
-        "/api/ruberra": {
-          target: backendUrl,
-          changeOrigin: true,
-          rewrite: (p) => p.replace(/^\/api\/ruberra/, ""),
         },
       },
     },

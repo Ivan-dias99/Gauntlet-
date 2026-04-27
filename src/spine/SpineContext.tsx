@@ -41,7 +41,7 @@ interface SpineCtx {
   // Whether the initial /spine fetch came back with a parseable body. Null
   // while in flight; true once the backend responded (regardless of which
   // side won the updatedAt race); false if the fetch failed or was aborted
-  // before responding. Chambers like School use this to tell the user
+  // before responding. Chambers like Core use this to tell the user
   // whether the doctrine they see has any backend confirmation at all.
   hydratedFromBackend: boolean | null;
   // Last sync-push failure detail. Cleared on the next successful push.

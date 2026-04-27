@@ -3,12 +3,7 @@ import {
   LogEvent, Principle, Artifact, normalizeChamberKey,
 } from "./types";
 
-// Wave-0 rename: signal:spine:v1 is canonical. ruberra:spine:v1 is still
-// read as a silent legacy fallback so existing users keep their missions,
-// tasks, notes, artifacts and principles across the rename. Writes always
-// target the new key; the legacy key is left in place until Wave 8.
 const KEY = "signal:spine:v1";
-const LEGACY_KEY = "ruberra:spine:v1";
 const ARTIFACT_LEDGER_CAP = 12;
 
 function uid(): string {
@@ -63,7 +58,7 @@ function normalizeArtifact(v: unknown): Artifact | null {
 }
 
 const VALID_TASK_STATES: ReadonlySet<TaskState> = new Set(["open", "running", "done", "blocked"]);
-const VALID_TASK_SOURCES: ReadonlySet<TaskSource> = new Set(["manual", "lab", "crew", "other"]);
+const VALID_TASK_SOURCES: ReadonlySet<TaskSource> = new Set(["manual", "insight", "crew", "other"]);
 
 function normalizeTaskState(raw: unknown, done: boolean): TaskState {
   if (typeof raw === "string" && VALID_TASK_STATES.has(raw as TaskState)) {
@@ -86,10 +81,6 @@ export function normalizeMission(m: unknown): Mission | null {
   return {
     id: r.id,
     title: r.title,
-    // Wave-1 silent migration: "Lab" → "insight", "Creation" → "terminal",
-    // "Memory" → "archive", "School" → "core". Unknown / malformed values
-    // collapse to "insight" (the old normalizer collapsed to "Lab", which
-    // is exactly what "insight" replaces).
     chamber: normalizeChamberKey(r.chamber),
     status: r.status === "closed" ? "closed" : "active",
     createdAt: typeof r.createdAt === "number" ? r.createdAt : Date.now(),
@@ -170,9 +161,7 @@ export function normalizePrinciples(raw: unknown): Principle[] {
 
 export function loadState(): SpineState {
   try {
-    const raw =
-      localStorage.getItem(KEY) ??
-      localStorage.getItem(LEGACY_KEY);
+    const raw = localStorage.getItem(KEY);
     if (!raw) return EMPTY;
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return EMPTY;
@@ -354,9 +343,9 @@ export function addPrinciple(state: SpineState, text: string): SpineState {
   }));
 }
 
-// Recorded when Lab/Creation fires a request WITH principles attached. Proves
-// the doctrine reached the brain for this mission at this moment — the
-// difference between "doctrine exists" and "doctrine governs".
+// Recorded when Insight/Terminal fires a request WITH principles attached.
+// Proves the doctrine reached the brain for this mission at this moment —
+// the difference between "doctrine exists" and "doctrine governs".
 export function logDoctrineApplied(state: SpineState, count: number): SpineState {
   if (count <= 0 || !state.activeMissionId) return state;
   const label = `Doutrina aplicada: ${count} princípio${count === 1 ? "" : "s"}`;

@@ -33,7 +33,7 @@ from config import (
     ALLOWED_ORIGINS,
     ANTHROPIC_API_KEY,
     MEMORY_DIR,
-    RUBERRA_MOCK,
+    SIGNAL_MOCK_MODE,
     SERVER_HOST,
     SERVER_PORT,
 )
@@ -67,11 +67,11 @@ async def lifespan(app: FastAPI):
     global engine
     
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key and not RUBERRA_MOCK:
+    if not api_key and not SIGNAL_MOCK_MODE:
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
             "  ANTHROPIC_API_KEY not set!\n"
-            "  Export it before starting, or set RUBERRA_MOCK=1 to run\n"
+            "  Export it before starting, or set SIGNAL_MOCK=1 to run\n"
             "  the full pipeline against canned responses.\n"
             "═══════════════════════════════════════════════════════════"
         )
@@ -110,7 +110,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — production origins come from RUBERRA_ORIGIN (comma-separated), with
+# CORS — production origins come from SIGNAL_ORIGIN (comma-separated), with
 # localhost dev origins always appended so the backend stays usable locally.
 _cors_origins = sorted({
     *ALLOWED_ORIGINS,
@@ -177,7 +177,7 @@ async def health_check():
         "system": "Signal",
         "doctrine": "active",
         "engine": "ready" if engine else "not_initialized",
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if SIGNAL_MOCK_MODE else "real",
         "persistence_degraded": bool(_collect_load_errors()),
     }
 
@@ -197,7 +197,7 @@ async def health_ready():
     reasons: list[str] = []
     if not engine:
         reasons.append("engine_not_initialized")
-    if RUBERRA_MOCK:
+    if SIGNAL_MOCK_MODE:
         reasons.append("mock_mode")
     if load_errors:
         reasons.append("persistence_degraded")
@@ -206,7 +206,7 @@ async def health_ready():
         "ready": not reasons,
         "reasons": reasons,
         "engine": "ready" if engine else "not_initialized",
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if SIGNAL_MOCK_MODE else "real",
         "load_errors": load_errors,
     }
     if reasons:
@@ -215,7 +215,7 @@ async def health_ready():
 
 
 @app.post("/ask", response_model=SignalResponse)
-async def ask_ruberra(query: SignalQuery):
+async def ask(query: SignalQuery):
     """
     Submit a question to Signal.
     
@@ -237,7 +237,7 @@ async def ask_ruberra(query: SignalQuery):
 
 
 @app.post("/dev")
-async def ask_ruberra_dev(query: SignalQuery):
+async def ask_dev(query: SignalQuery):
     """
     Force the agent (tool-use) pipeline.
 
@@ -256,7 +256,7 @@ async def ask_ruberra_dev(query: SignalQuery):
 
 
 @app.post("/route/stream")
-async def ask_ruberra_auto_stream(query: SignalQuery):
+async def ask_auto_stream(query: SignalQuery):
     """
     Streaming variant of ``/route``. Emits the ``route`` decision first, then
     either agent events (``tool_use``, ``tool_result``, ...) or triad events
@@ -284,7 +284,7 @@ async def ask_ruberra_auto_stream(query: SignalQuery):
 
 
 @app.post("/dev/stream")
-async def ask_ruberra_dev_stream(query: SignalQuery):
+async def ask_dev_stream(query: SignalQuery):
     """
     Streaming variant of ``/dev``. Emits one SSE event per agent step:
     ``start``, ``iteration``, ``assistant_text``, ``tool_use``, ``tool_result``,
@@ -312,7 +312,7 @@ async def ask_ruberra_dev_stream(query: SignalQuery):
 
 
 @app.post("/crew/stream")
-async def ask_ruberra_crew_stream(query: SignalQuery):
+async def ask_crew_stream(query: SignalQuery):
     """
     Streaming multi-agent pipeline: planner → (researcher) → coder → critic,
     with one automatic refinement round if the critic rejects.
@@ -342,7 +342,7 @@ async def ask_ruberra_crew_stream(query: SignalQuery):
 
 
 @app.post("/route")
-async def ask_ruberra_auto(query: SignalQuery):
+async def ask_auto(query: SignalQuery):
     """
     Auto-router: dev-intent questions go through the agent loop; the rest
     go through the triad + judge. Response shape is ``{route, result}``.
@@ -363,7 +363,7 @@ class BatchQuery(BaseModel):
 
 
 @app.post("/ask/batch")
-async def ask_ruberra_batch(batch: BatchQuery):
+async def ask_batch(batch: BatchQuery):
     """Submit up to 5 questions in batch."""
     if not engine:
         raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
@@ -496,7 +496,7 @@ async def diagnostics():
     boot = {
         "start_iso": _PROCESS_START_ISO,
         "uptime_seconds": int(time.monotonic() - _PROCESS_START_MONO),
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if SIGNAL_MOCK_MODE else "real",
         "anthropic_api_key_present": bool(ANTHROPIC_API_KEY),
         "data_dir": str(MEMORY_DIR),
         "allowed_origins": ALLOWED_ORIGINS,

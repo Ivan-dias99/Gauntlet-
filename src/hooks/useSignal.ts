@@ -8,8 +8,7 @@ import {
 } from "../lib/signalApi";
 
 // Client for the Python backend (signal-backend/) via the /api/signal
-// proxy. The legacy /api/ruberra alias still routes during the compat
-// window — the shell reaches both with the same contract.
+// proxy.
 //
 // Endpoints:
 //   POST /api/signal/route        → { route: "agent" | "triad", result: {...} }

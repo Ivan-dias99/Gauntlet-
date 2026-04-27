@@ -22,7 +22,7 @@ from config import (
     JUDGE_TEMPERATURE,
     MAX_TOKENS,
     TRIAD_COUNT,
-    RUBERRA_MOCK,
+    SIGNAL_MOCK_MODE,
 )
 from mock_client import MockAsyncAnthropic
 from doctrine import (
@@ -93,7 +93,7 @@ class SignalEngine:
     """
     
     def __init__(self) -> None:
-        if RUBERRA_MOCK:
+        if SIGNAL_MOCK_MODE:
             self._client = MockAsyncAnthropic()
             logger.warning("Engine initialized in MOCK mode — no network calls")
         else:

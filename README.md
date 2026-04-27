@@ -57,19 +57,18 @@ src/                          React frontend (Vite, TypeScript)
     terminal/                 Terminal — code + tool-use agent loop
     archive/                  Archive — run ledger + artifact lineage
     core/                     Core — Policies · Routing · Permissions · Orchestration · System
-  hooks/useRuberra.ts         SSE client — every backend call routes through here
+  hooks/useSignal.ts          SSE client — every backend call routes through here
   spine/                      Workspace state (SpineContext, store, client, types)
-  lib/signalApi.ts            canonical edge client (ruberraApi.ts kept as compat shim)
+  lib/signalApi.ts            canonical edge client
   tweaks/                     Theme / UI preferences (localStorage)
   trust/                      ErrorBoundary
   i18n/                       copy.ts
   styles/tokens.css           the design canon — radius / spacing / type / motion / chamber-DNA
 
-api/signal.ts                 Vercel edge forwarder — canonical /api/signal/*
-api/ruberra.ts                Vercel edge forwarder — legacy /api/ruberra/* (compat alias)
-api/_forwarder.ts             shared forwarder helper (dual unreachable header)
-vite.config.ts                dev proxy: /api/signal/* (+ legacy /api/ruberra/*)
-vercel.json                   SPA catch-all + both /api/* rewrites
+api/signal.ts                 Vercel edge forwarder — /api/signal/*
+api/_forwarder.ts             shared forwarder helper (unreachable contract)
+vite.config.ts                dev proxy: /api/signal/*
+vercel.json                   SPA catch-all + /api/signal/* rewrite
 
 signal-backend/               FastAPI — the brain
   server.py                   HTTP endpoints (/health, /route, /dev, /crew, /spine, /runs, /diagnostics, …)
@@ -82,7 +81,7 @@ signal-backend/               FastAPI — the brain
     insight.py · surface.py · terminal.py · archive.py · core.py
   memory.py                   persistent failure memory (JSON on disk)
   doctrine.py                 prompt assembly helpers (build_judge_input, build_refusal_message, …)
-  models.py                   Pydantic contracts (RuberraQuery, RuberraResponse, SpineSnapshot, …)
+  models.py                   Pydantic contracts (SignalQuery, SignalResponse, SpineSnapshot, …)
   spine.py                    workspace snapshot store
   runs.py                     append-only run log (agent / triad / crew / surface)
   config.py                   env-driven settings
@@ -92,8 +91,7 @@ signal-backend/               FastAPI — the brain
 ## Runtime path
 
 ```
-Browser → /api/signal/{route}   (canonical)
-       → /api/ruberra/{route}   (legacy alias, routes identically)
+Browser → /api/signal/{route}
   dev:  vite proxy              → http://127.0.0.1:3002/{route}
   prod: Vercel edge function    → $SIGNAL_BACKEND_URL/{route}
                                 → FastAPI (server.py)
@@ -121,7 +119,7 @@ No frontend-to-Anthropic calls. Every AI route traverses the backend.
 # Terminal 1 — brain
 cd signal-backend
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...   # or RUBERRA_MOCK=1 for canned pipeline
+export ANTHROPIC_API_KEY=sk-ant-...   # or SIGNAL_MOCK=1 for canned pipeline
 python main.py                         # http://127.0.0.1:3002
 
 # Terminal 2 — shell
@@ -130,7 +128,7 @@ npm run dev                            # http://localhost:5173
 ```
 
 Agent `run_command` and `execute_python` are gated by
-`RUBERRA_ALLOW_CODE_EXEC` (default `false`). Set to `true` to allow
+`SIGNAL_ALLOW_CODE_EXEC` (default `false`). Set to `true` to allow
 `pip`, `npm`, `npx`, `node`, and arbitrary Python execution inside the
 Terminal agent loop. See `.env.example`.
 
@@ -146,9 +144,8 @@ Keyboard: `Alt + 1..5` switches chambers (insight · surface · terminal
   notes, tasks, principles, artifacts
 
 **Frontend local-only:**
-- Theme, density, accent, language (`signal:tweaks` localStorage;
-  `ruberra:tweaks` read as silent legacy fallback)
-- Mission spine (`signal:spine:v1`; `ruberra:spine:v1` legacy fallback)
+- Theme, density, accent, language (`signal:tweaks` localStorage)
+- Mission spine (`signal:spine:v1` localStorage)
 - Optimistic UI state for in-flight mutations
 
 The `SpineContext` syncs the workspace snapshot to the backend on every
@@ -159,15 +156,13 @@ mutation (debounced 500ms). On mount, the remote snapshot wins if its
 
 - **Frontend** → Vercel. `api/signal.ts` runs at the edge and forwards
   all `/api/signal/*` requests to `$SIGNAL_BACKEND_URL` via the explicit
-  rewrite in `vercel.json`. `api/ruberra.ts` is kept as a legacy alias
-  during the Wave-0 → Wave-8 compatibility window.
+  rewrite in `vercel.json`.
 - **Backend** → any host that runs FastAPI (Railway, Fly, Render, a VM).
-  Set `SIGNAL_BACKEND_URL` (preferred) or legacy `RUBERRA_BACKEND_URL`
-  in the Vercel project env to the backend's public URL.
+  Set `SIGNAL_BACKEND_URL` in the Vercel project env to the backend's
+  public URL.
 
-The Vercel edge forwarder emits **both** `x-signal-backend: unreachable`
-and `x-ruberra-backend: unreachable` on 503, so clients against either
-contract keep working during the compat window.
+The Vercel edge forwarder emits `x-signal-backend: unreachable` on 503
+so clients can detect dormant state without regex-ing error bodies.
 
 ## Backend endpoints
 
@@ -192,20 +187,3 @@ GET  /spine                     workspace snapshot
 POST /spine                     replace workspace snapshot
 ```
 
-## Compat window
-
-The Wave-0 → Wave-8 migration keeps every old contract alive in parallel
-with the canonical one:
-
-- `/api/ruberra/*` still routes alongside `/api/signal/*`
-- `x-ruberra-backend: unreachable` still fires alongside `x-signal-backend`
-- `RUBERRA_BACKEND_URL`, `VITE_RUBERRA_API_BASE` still read as env fallbacks
-- `ruberra:spine:v1`, `ruberra:tweaks`, `ruberra:landed` storage keys
-  still read as silent legacy fallbacks on boot
-- `ruberra:chamber` DOM event still listened + dispatched alongside
-  `signal:chamber`
-- `src/lib/ruberraApi.ts` still re-exports the canonical surface under
-  the legacy names (`ruberraFetch`, `RUBERRA_API_BASE`)
-
-These shims are removed in Wave 8b once a deployed smoke confirms
-parity of the canonical surfaces under real traffic.

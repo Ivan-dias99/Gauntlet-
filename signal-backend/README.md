@@ -1,11 +1,11 @@
-# Ruberra V1 — Conservative Intelligence Backend
+# Signal — Conservative Intelligence Backend
 
 > *«Prefiro não responder a arriscar estar errado.»*
 
 ## Architecture
 
 ```
-ruberra-backend/
+signal-backend/
 ├── main.py           # Entry point — starts uvicorn
 ├── server.py         # FastAPI app, endpoints, CORS
 ├── engine.py         # Self-consistency engine (triad + judge + decision)
@@ -32,7 +32,7 @@ Server at `http://127.0.0.1:3002` — main endpoint: `POST /ask`
 ## Deploy — Railway
 
 The Python backend ships as a Docker image; Railway builds from
-`ruberra-backend/Dockerfile` and starts uvicorn on `$PORT`.
+`signal-backend/Dockerfile` and starts uvicorn on `$PORT`.
 
 ### One-time setup
 
@@ -42,10 +42,10 @@ railway link <project-id>
 
 # secrets (do NOT commit these)
 railway variables set ANTHROPIC_API_KEY=sk-ant-...
-railway variables set RUBERRA_HOST=0.0.0.0
-railway variables set RUBERRA_ORIGIN=https://<your-vercel-domain>
-railway variables set RUBERRA_ALLOW_CODE_EXEC=false
-railway variables set RUBERRA_DATA_DIR=/data
+railway variables set SIGNAL_HOST=0.0.0.0
+railway variables set SIGNAL_ORIGIN=https://<your-vercel-domain>
+railway variables set SIGNAL_ALLOW_CODE_EXEC=false
+railway variables set SIGNAL_DATA_DIR=/data
 ```
 
 ### Volume — REQUIRED
@@ -61,7 +61,7 @@ failure memory, and run log are wiped on every deploy/restart.
 railway volume create --mount-path /data
 ```
 
-The Dockerfile sets `RUBERRA_DATA_DIR=/data` by default, and `config.py`
+The Dockerfile sets `SIGNAL_DATA_DIR=/data` by default, and `config.py`
 reads that env var — so mounting a volume at `/data` is sufficient to
 persist `spine.json`, `runs.json`, and `failure_memory.json`.
 
@@ -72,9 +72,9 @@ railway up
 ```
 
 After the first successful deploy, Railway exposes a public domain (e.g.
-`https://ruberra-backend.up.railway.app`). Set that URL as
-`RUBERRA_BACKEND_URL` in the Vercel project so the edge forwarder
-(`api/ruberra.ts`, routed via the `vercel.json` rewrite) can reach it.
+`https://signal-backend.up.railway.app`). Set that URL as
+`SIGNAL_BACKEND_URL` in the Vercel project so the edge forwarder
+(`api/signal.ts`, routed via the `vercel.json` rewrite) can reach it.
 
 Health check: `GET /health` — Railway's healthcheck probe is configured
 against this route in `railway.json` with a 120s timeout (cold start
@@ -87,12 +87,12 @@ unset, network error, upstream timeout — it returns:
 
 ```
 HTTP/1.1 503
-x-ruberra-backend: unreachable
+x-signal-backend: unreachable
 Content-Type: application/json
 
 {"error": "backend_unreachable", "reason": "<kind>"}
 ```
 
-The React client (`src/lib/ruberraApi.ts`) reads the header and throws
+The React client (`src/lib/signalApi.ts`) reads the header and throws
 `BackendUnreachableError`, which chambers key off to render the dormant
 state. Do NOT regex the body.
