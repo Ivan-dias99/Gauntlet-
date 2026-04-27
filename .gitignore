@@ -26,6 +26,4 @@ __pycache__/
 **/.claude/memory.log
 
 # Signal backend runtime data (failure memory, runs log, spine snapshot).
-# Both paths listed until the Wave-0 → Wave-8 compat window closes.
 signal-backend/data/
-ruberra-backend/data/

@@ -221,7 +221,7 @@ export default function Insight() {
       {error && !pending && (
         <div data-insight-failure-slot>
           {unreachable ? (
-            <DormantPanel detail={copy.dormantLab} />
+            <DormantPanel detail={copy.dormantInsight} />
           ) : (
             <ErrorPanel
               severity={

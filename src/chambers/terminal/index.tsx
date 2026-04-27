@@ -464,7 +464,7 @@ export default function Terminal() {
 
         {unreachable && err ? (
           <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)" }}>
-            <DormantPanel detail={copy.dormantCreation} />
+            <DormantPanel detail={copy.dormantTerminal} />
           </div>
         ) : (
           <OutputCanvas

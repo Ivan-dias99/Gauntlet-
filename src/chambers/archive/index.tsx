@@ -170,7 +170,7 @@ export default function Archive() {
     if (err && offline) {
       return (
         <DormantPanel
-          detail={copy.dormantMemory}
+          detail={copy.dormantArchive}
           action={
             <button
               onClick={retry}
