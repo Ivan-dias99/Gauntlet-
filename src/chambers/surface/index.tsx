@@ -83,7 +83,18 @@ export default function Surface() {
       },
       (ev: SurfaceEvent) => {
         if (ev.type === "error") {
-          setErr(ev.message);
+          // Map typed backend error codes to localized chamber copy.
+          // Unknown codes fall through to the raw message so we never
+          // silently swallow a new failure mode the shell hasn't
+          // learned about yet.
+          const tag = ev.error;
+          const localized =
+            tag === "surface_design_system_required" ? copy.surfaceErrDesignSystemRequired
+            : tag === "surface_provider_error"        ? copy.surfaceErrProvider
+            : tag === "surface_no_tool_use"           ? copy.surfaceErrNoToolUse
+            : tag === "surface_validation_failed"     ? copy.surfaceErrValidation
+            : null;
+          setErr(localized ?? ev.message);
           return;
         }
         if (ev.type === "surface_plan") {

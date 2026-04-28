@@ -598,6 +598,7 @@ async def git_status():
 async def diagnostics():
     """Full system diagnostics."""
     from config import MODEL_ID, TRIAD_TEMPERATURE, JUDGE_TEMPERATURE, TRIAD_COUNT
+    from chambers.surface import _surface_mock_active
 
     mem_stats = await failure_memory.get_stats()
 
@@ -616,6 +617,27 @@ async def diagnostics():
         "port": SERVER_PORT,
     }
 
+    # Wave-5: surface posture is its own honesty axis. The chamber can be
+    # in mock fallback for three distinct reasons; reporting "mock" alone
+    # used to leave the operator guessing which lever to pull. Reasons
+    # are listed in priority order — the first true wins the gate.
+    _surface_flag = os.environ.get("SIGNAL_SURFACE_MOCK", "").strip().lower()
+    surface_flag_on = _surface_flag in ("1", "true", "yes", "on")
+    if RUBERRA_MOCK:
+        surface_reason = "global_mock_flag"
+    elif surface_flag_on:
+        surface_reason = "surface_mock_flag"
+    elif not ANTHROPIC_API_KEY:
+        surface_reason = "anthropic_api_key_missing"
+    else:
+        surface_reason = None
+    surface_status = {
+        "mock_active": _surface_mock_active(),
+        "reason": surface_reason,
+        "global_mock_flag": RUBERRA_MOCK,
+        "surface_mock_flag": surface_flag_on,
+    }
+
     return {
         "system": "Signal",
         "model": MODEL_ID,
@@ -624,6 +646,7 @@ async def diagnostics():
         "triad_count": TRIAD_COUNT,
         "engine_status": "ready" if engine else "not_initialized",
         "boot": boot,
+        "surface": surface_status,
         "failure_memory": mem_stats,
         "persistence": {
             "spine_last_save_error": spine_store._last_save_error,
