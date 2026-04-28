@@ -50,12 +50,22 @@ interface Props {
   pending: boolean;
   /** When true, mock declaration appears at the top of the panel. */
   mockBanner?: boolean;
+  /**
+   * When true, design_system becomes a hard prerequisite for submit.
+   * Wave 5 backend refuses (frame `error` / `surface_design_system_required`)
+   * when the brief lacks one and the real provider path is active. The
+   * panel mirrors that requirement here so the user is gated by UI
+   * instead of seeing a backend error envelope. Defaults to true so a
+   * deploy with a real key never falls through to a refusal envelope.
+   */
+  requireDesignSystem?: boolean;
   principlesCount?: number;
   hasPlan?: boolean;
 }
 
 export default function CreationPanel({
   brief, onBriefChange, prompt, onPromptChange, onSubmit, pending, mockBanner,
+  requireDesignSystem = true,
   principlesCount = 0, hasPlan = false,
 }: Props) {
   const copy = useCopy();
@@ -73,7 +83,8 @@ export default function CreationPanel({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [flyout]);
 
-  const canSubmit = prompt.trim().length > 0 && !pending;
+  const dsMissing = requireDesignSystem && !(brief.design_system ?? "").trim();
+  const canSubmit = prompt.trim().length > 0 && !pending && !dsMissing;
 
   const modeLabels: Record<SurfaceBriefPayload["mode"], string> = {
     prototype:     copy.surfaceModePrototype,
@@ -175,10 +186,29 @@ export default function CreationPanel({
         </div>
       </section>
 
-      {/* Section 4 — Design system. */}
+      {/* Section 4 — Design system. Required marker appears next to the
+          label when Wave-5 real-path gating is on; the chip itself
+          inherits the surface error tone via data-required-missing
+          to mirror the disabled CTA without inventing new chrome. */}
       <section className="surface-cockpit-section">
-        <span className="surface-cockpit-label">{copy.surfaceStudioDsLabel}</span>
-        <span className="surface-ds-chip">
+        <span className="surface-cockpit-label">
+          {copy.surfaceStudioDsLabel}
+          {requireDesignSystem && (
+            <span
+              data-required
+              style={{
+                marginLeft: 8,
+                fontSize: "var(--t-meta)",
+                letterSpacing: "var(--track-meta)",
+                color: dsMissing ? "var(--cc-err)" : "var(--text-ghost)",
+                textTransform: "uppercase",
+              }}
+            >
+              · {copy.surfaceStudioDsRequired}
+            </span>
+          )}
+        </span>
+        <span className="surface-ds-chip" data-required-missing={dsMissing ? "true" : undefined}>
           <span
             className="surface-ds-chip-value"
             data-empty={brief.design_system ? undefined : "true"}
@@ -212,8 +242,20 @@ export default function CreationPanel({
             className="surface-cta-primary"
             onClick={onSubmit}
             disabled={!canSubmit}
-            title={pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
-            aria-label={pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}
+            title={
+              pending
+                ? copy.surfaceStudioGenerating
+                : dsMissing
+                  ? copy.surfaceStudioDsBlockedHint
+                  : copy.surfaceCtaForm
+            }
+            aria-label={
+              pending
+                ? copy.surfaceStudioGenerating
+                : dsMissing
+                  ? copy.surfaceStudioDsBlockedHint
+                  : copy.surfaceCtaForm
+            }
           >
             <span className="surface-cta-glyph" aria-hidden>
               {pending ? <span style={{ fontSize: 13, lineHeight: 1 }}>…</span> : <IconSend />}

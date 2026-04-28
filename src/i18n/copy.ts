@@ -141,6 +141,13 @@ export interface Copy {
   surfaceStudioFidelityLabel: string;
   surfaceStudioDsLabel: string;
   surfaceStudioDsEmpty: string;
+  // Wave 5: design_system is required on the real path. The copy
+  // narrates the requirement (next to the label) and the disabled-CTA
+  // tooltip; the badge text reflects mock vs real generation.
+  surfaceStudioDsRequired: string;
+  surfaceStudioDsBlockedHint: string;
+  surfaceStudioRealBadge: string;
+  surfaceStudioMockBadge: string;
   surfaceStudioBriefLabel: string;
   surfaceStudioBriefPlaceholder: string;
   surfaceStudioGenerate: string;
@@ -507,6 +514,10 @@ const PT: Copy = {
   surfaceStudioFidelityLabel: "fidelidade",
   surfaceStudioDsLabel: "design system",
   surfaceStudioDsEmpty: "sem design system",
+  surfaceStudioDsRequired: "obrigatório",
+  surfaceStudioDsBlockedHint: "escolhe um design system para gerar",
+  surfaceStudioRealBadge: "real · provider ativo",
+  surfaceStudioMockBadge: "mock · plano canned",
   surfaceStudioBriefLabel: "brief",
   surfaceStudioBriefPlaceholder: "Descreve a superfície — propósito, utilizador, restrições…",
   surfaceStudioGenerate: "Gerar plano",
@@ -850,6 +861,10 @@ const EN: Copy = {
   surfaceStudioFidelityLabel: "fidelity",
   surfaceStudioDsLabel: "design system",
   surfaceStudioDsEmpty: "no design system",
+  surfaceStudioDsRequired: "required",
+  surfaceStudioDsBlockedHint: "pick a design system to generate",
+  surfaceStudioRealBadge: "real · provider active",
+  surfaceStudioMockBadge: "mock · canned plan",
   surfaceStudioBriefLabel: "brief",
   surfaceStudioBriefPlaceholder: "Describe the surface — purpose, user, constraints…",
   surfaceStudioGenerate: "Generate plan",
