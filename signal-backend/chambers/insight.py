@@ -258,8 +258,17 @@ def derive_project_contract_v0(mission, principles: list[str]):
     )
 
 
-def _build_distill_user_prompt(mission, contract) -> str:
-    """Compose the input for the distillation call."""
+async def _build_distill_user_prompt(mission, contract) -> str:
+    """Compose the input for the distillation call.
+
+    Wave F integration — long missions go through `compress_notes`
+    before being inlined. Below the threshold (20 notes total), notes
+    are inlined chronologically. Above, the older head is summarised
+    via Anthropic and only the last 8 are inlined verbatim. Mock
+    fallback keeps the prompt structure honest without burning tokens.
+    """
+    from memory_compression import compress_notes
+
     lines: list[str] = []
     lines.append("# Project Contract (auto-derivado)")
     if contract.concept:
@@ -274,21 +283,28 @@ def _build_distill_user_prompt(mission, contract) -> str:
             lines.append(f"  · {r}")
 
     lines.append("")
-    lines.append("# Notas da missão (mais antigas → mais recentes)")
+
     if not mission.notes:
+        lines.append("# Notas da missão")
         lines.append("(missão sem notas — destilar com cautela e baixar confidence)")
     else:
-        # Spine stores notes newest-first (frontend prepends). The cap
-        # picks the 30 NEWEST entries (mission.notes[:30]), then we
-        # reverse to feed them in chronological order — oldest at the
-        # top, newest right before the model's turn. Earlier code did
-        # `mission.notes[-30:]` which actually selected the OLDEST 30,
-        # silently starving the model of recent context on long
-        # missions.
-        recent = list(reversed(mission.notes[:30]))
-        for n in recent:
-            role = n.role or "user"
-            lines.append(f"[{role}] {n.text}")
+        # Spine stores notes newest-first (frontend prepends).
+        # compress_notes returns (summary, tail) where tail is already
+        # in chronological order. summary is None when below threshold.
+        summary, chronological_tail = await compress_notes(
+            mission.id, list(mission.notes),
+        )
+        if summary:
+            lines.append("# Memória comprimida (turnos anteriores)")
+            lines.append(summary)
+            lines.append("")
+            lines.append("# Notas verbatim (mais antigas → mais recentes)")
+        else:
+            lines.append("# Notas da missão (mais antigas → mais recentes)")
+        for n in chronological_tail:
+            role = getattr(n, "role", None) or "user"
+            text = getattr(n, "text", "")
+            lines.append(f"[{role}] {text}")
 
     lines.append("")
     lines.append(
@@ -432,6 +448,9 @@ async def process_distillation_streaming(
     from config import ANTHROPIC_API_KEY, MAX_TOKENS, MODEL_ID
 
     try:
+        # Wave F integration — prompt builder is now async because it
+        # may compress older mission notes via Anthropic before inlining.
+        user_prompt = await _build_distill_user_prompt(mission, contract)
         client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         response = await client.messages.create(
             model=MODEL_ID,
@@ -441,7 +460,7 @@ async def process_distillation_streaming(
             tools=[_DISTILL_TOOL],
             tool_choice={"type": "tool", "name": "submit_truth_distillation"},
             messages=[
-                {"role": "user", "content": _build_distill_user_prompt(mission, contract)},
+                {"role": "user", "content": user_prompt},
             ],
         )
     except Exception as exc:  # noqa: BLE001
