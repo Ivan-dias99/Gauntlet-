@@ -421,10 +421,13 @@ class SignalEngine:
                     processing_time_ms=surface_final.get("processing_time_ms", 0),
                     input_tokens=surface_final.get("input_tokens", 0),
                     output_tokens=surface_final.get("output_tokens", 0),
-                    # Real runs are not "terminated_early"; the field used
-                    # to track the mock flag, which is now carried by
-                    # ``termination_reason`` directly.
-                    terminated_early=False,
+                    # Mock fallbacks are persisted as terminated_early
+                    # so the Archive UI (RunList outcome chip) renders
+                    # the warning tone — they completed the envelope
+                    # but skipped the real provider. Real runs (is_mock
+                    # is False) land as terminated_early=False and run
+                    # the normal "ok" chip.
+                    terminated_early=is_mock,
                     termination_reason="surface_mock" if is_mock else None,
                 ))
             return

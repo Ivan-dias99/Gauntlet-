@@ -70,7 +70,11 @@ class SurfaceComponent(BaseModel):
 class SurfacePlan(BaseModel):
     mode: Mode
     fidelity: Fidelity
-    design_system_binding: Optional[str]
+    # Default to None so a stray omission from the model doesn't trip
+    # Pydantic V2 (which treats `Optional[str]` without a default as
+    # required). Schema-level we still ask the model to emit it — the
+    # default is a safety net, not a license to drop the field.
+    design_system_binding: Optional[str] = None
     screens: list[SurfaceScreen]
     components: list[SurfaceComponent]
     notes: list[str] = Field(default_factory=list)
@@ -125,7 +129,16 @@ _SUBMIT_PLAN_TOOL: dict[str, Any] = {
     ),
     "input_schema": {
         "type": "object",
-        "required": ["mode", "fidelity", "screens", "components", "notes"],
+        # design_system_binding is required at the schema level so the
+        # model is told to always emit it (echoing the brief's design
+        # system, or null when truly absent). The Pydantic field has
+        # a default of None, so a model that ignores this contract
+        # still validates — but the schema requirement keeps the
+        # provider-side hint sharp.
+        "required": [
+            "mode", "fidelity", "design_system_binding",
+            "screens", "components", "notes",
+        ],
         "properties": {
             "mode": {
                 "type": "string",

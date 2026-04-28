@@ -34,6 +34,15 @@ import { TaskList } from "./TaskBench";
 //   · NextStepBar (only when the run has landed and there is a next step)
 //   · ExecutionComposer (floating command dock at the bottom)
 
+// Initial state for the structured gate signals — reused on every
+// task transition so a switch to a different task never inherits the
+// previous run's gates/diff.
+const INITIAL_GATES: Record<GateName, GateState> = {
+  typecheck: "unavailable",
+  build: "unavailable",
+  test: "unavailable",
+};
+
 export default function Terminal() {
   const {
     activeMission, addTask, setTaskState, addNoteToMission,
@@ -55,11 +64,7 @@ export default function Terminal() {
   // Structured gates + diff arrive as typed events from the agent loop
   // (agent.py _extract_signals). These replace the regex-on-tool-preview
   // derivation that used to live in the chamber. Reset on each submit.
-  const [liveGates, setLiveGates] = useState<Record<GateName, GateState>>({
-    typecheck: "unavailable",
-    build: "unavailable",
-    test: "unavailable",
-  });
+  const [liveGates, setLiveGates] = useState<Record<GateName, GateState>>(INITIAL_GATES);
   const [liveDiff, setLiveDiff] = useState<{ files: number; added: number; removed: number } | null>(null);
   const [mode, setMode] = useState<RunMode>("agent");
   const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
@@ -250,7 +255,7 @@ export default function Terminal() {
     setElapsed(0);
     setAccepted(false);
     setCrew({ ...EMPTY_CREW });
-    setLiveGates({ typecheck: "unavailable", build: "unavailable", test: "unavailable" });
+    setLiveGates(INITIAL_GATES);
     setLiveDiff(null);
 
     abortRef.current?.abort();
@@ -335,6 +340,8 @@ export default function Terminal() {
     setErr(null);
     setLiveTools([]);
     setLiveText("");
+    setLiveGates(INITIAL_GATES);
+    setLiveDiff(null);
     setAccepted(false);
   }
 
@@ -346,6 +353,8 @@ export default function Terminal() {
     setErr(null);
     setLiveTools([]);
     setLiveText("");
+    setLiveGates(INITIAL_GATES);
+    setLiveDiff(null);
     setAccepted(false);
   }
 
@@ -366,6 +375,8 @@ export default function Terminal() {
     setErr(null);
     setLiveTools([]);
     setLiveText("");
+    setLiveGates(INITIAL_GATES);
+    setLiveDiff(null);
     setAccepted(true);
     if (a.taskId && activeMission?.tasks.some((t) => t.id === a.taskId)) {
       setActiveTaskId(a.taskId);
