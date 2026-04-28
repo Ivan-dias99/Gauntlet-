@@ -152,6 +152,19 @@ export type SurfaceEvent =
 export type GateName = "typecheck" | "build" | "test";
 export type GateState = "pass" | "fail" | "unavailable";
 
+// Wave G — citation event emitted by the agent loop after a
+// web_search/web_fetch tool_result. Carries url+trust per citation +
+// rolled-up summary so the chamber UI can render trust badges.
+export type CitationTrust = "high" | "medium" | "low" | "unknown";
+export interface CitationPayload {
+  url: string;
+  title: string;
+  snippet: string;
+  domain: string;
+  trust: CitationTrust;
+  retrieved_at: string;
+}
+
 export type AgentEvent =
   | { type: "start" }
   | { type: "iteration"; n: number }
@@ -160,6 +173,7 @@ export type AgentEvent =
   | { type: "tool_result"; id: string; ok: boolean; preview: string; iteration: number }
   | { type: "gate"; name: GateName; state: GateState; iteration: number; source?: string }
   | { type: "diff"; files: number; added: number; removed: number; iteration: number; source?: string }
+  | { type: "citations"; iteration: number; source: string; citations: CitationPayload[]; summary: { total: number; by_trust: Record<CitationTrust, number>; any_low: boolean; majority_high: boolean } }
   | {
       type: "done";
       answer: string;
@@ -252,6 +266,7 @@ export type RouteEvent =
   | { type: "tool_result"; id: string; ok: boolean; preview: string; iteration: number }
   | { type: "gate"; name: GateName; state: GateState; iteration: number; source?: string }
   | { type: "diff"; files: number; added: number; removed: number; iteration: number; source?: string }
+  | { type: "citations"; iteration: number; source: string; citations: CitationPayload[]; summary: { total: number; by_trust: Record<CitationTrust, number>; any_low: boolean; majority_high: boolean } }
   | { type: "error"; message: string; error?: string; reason?: string };
 
 type Route = "route" | "dev" | "ask";
