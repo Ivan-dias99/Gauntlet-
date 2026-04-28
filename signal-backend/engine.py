@@ -103,7 +103,24 @@ class SignalEngine:
                     "Export it in your environment before starting Signal."
                 )
             self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        # Detached run-log tasks. PR #214 moved _log_triad_run after the
+        # `done` yield for stream tail latency parity with agent/crew/
+        # surface, but that opened a regression: if the streaming caller
+        # disconnects right after `done`, cancellation lands between the
+        # yield and the log await, dropping the run record. Logs now run
+        # in detached tasks held here so they survive the streaming
+        # task's cancellation. The set keeps a strong reference to
+        # prevent GC; `_track_log_task` schedules cleanup on completion.
+        self._inflight_logs: set[asyncio.Task[None]] = set()
         logger.info(f"Engine initialized. Model: {MODEL_ID}, Triad count: {TRIAD_COUNT}")
+
+    def _track_log_task(self, task: "asyncio.Task[None]") -> None:
+        """Add the detached log task to the inflight set with auto-cleanup
+        on done. Without the strong reference, asyncio may GC the task
+        mid-flight — the docs warn explicitly about fire-and-forget
+        create_task without a held reference."""
+        self._inflight_logs.add(task)
+        task.add_done_callback(self._inflight_logs.discard)
     
     # ── Triad Call ──────────────────────────────────────────────────────────
     
@@ -572,8 +589,18 @@ class SignalEngine:
                 processing_time_ms=elapsed,
                 matched_prior_failure=has_prior_failure,
             )
+            # Detach the log task BEFORE yielding `done` so it's already
+            # registered with the event loop when the caller closes the
+            # generator. If we created the task AFTER the yield, a client
+            # disconnect would raise GeneratorExit at the suspended yield
+            # point and the create_task line would never execute — losing
+            # the run record. Creating first ships the task to the loop;
+            # the subsequent yield can be cancelled freely without
+            # affecting the detached log.
+            self._track_log_task(asyncio.create_task(
+                self._log_triad_run(query, response)
+            ))
             yield {"type": "done", "result": response.model_dump()}
-            await self._log_triad_run(query, response)
             return
 
         # ── Step 4: judge ───────────────────────────────────────────────────
@@ -657,8 +684,13 @@ class SignalEngine:
                 ),
             )
 
+        # Detach BEFORE yield (see refusal-path comment above for the
+        # full reasoning — GeneratorExit at the yield would kill any
+        # post-yield create_task).
+        self._track_log_task(asyncio.create_task(
+            self._log_triad_run(query, response)
+        ))
         yield {"type": "done", "result": response.model_dump()}
-        await self._log_triad_run(query, response)
 
     async def _log_triad_run(self, query: SignalQuery, response: SignalResponse) -> None:
         await run_store.record(RunRecord(
