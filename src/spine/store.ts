@@ -3,6 +3,7 @@ import {
   LogEvent, Principle, Artifact, normalizeChamberKey,
   TruthDistillation, ProjectContract, ArtifactStatus, ArtifactFailureMode,
   SurfaceSeed, TerminalSeed,
+  normalizeMissionStatus,
 } from "./types";
 
 // Wave-0 rename: signal:spine:v1 is canonical. ruberra:spine:v1 is still
@@ -213,7 +214,7 @@ export function normalizeMission(m: unknown): Mission | null {
     // collapse to "insight" (the old normalizer collapsed to "Lab", which
     // is exactly what "insight" replaces).
     chamber: normalizeChamberKey(r.chamber),
-    status: r.status === "closed" ? "closed" : "active",
+    status: normalizeMissionStatus(r.status),
     createdAt: typeof r.createdAt === "number" ? r.createdAt : Date.now(),
     notes: Array.isArray(r.notes) ? r.notes.flatMap((n: unknown) => {
       if (!n || typeof n !== "object") return [];
