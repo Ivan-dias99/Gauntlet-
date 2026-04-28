@@ -17,7 +17,7 @@ from typing import Optional
 
 from config import MEMORY_DIR
 from models import RunRecord, RunsLog
-from persistence import atomic_write_text, quarantine_corrupt_file
+from persistence import atomic_write_text_async, quarantine_corrupt_file
 
 logger = logging.getLogger("signal.runs")
 
@@ -65,8 +65,10 @@ class RunStore:
             logger.error("Failed to load run log: %s", detail)
             self._log = RunsLog()
 
-    def _write_log(self) -> None:
-        atomic_write_text(RUNS_FILE, self._log.model_dump_json(indent=2))
+    async def _write_log(self) -> None:
+        await atomic_write_text_async(
+            RUNS_FILE, self._log.model_dump_json(indent=2)
+        )
 
     async def record(self, run: RunRecord) -> RunRecord:
         await self._ensure_loaded()
@@ -76,7 +78,7 @@ class RunStore:
                 self._log.records = self._log.records[-MAX_RUNS:]
             self._log.last_updated = datetime.now(timezone.utc).isoformat()
             try:
-                self._write_log()
+                await self._write_log()
                 self._last_save_error = None
             except Exception as e:
                 self._last_save_error = f"{type(e).__name__}: {e}"

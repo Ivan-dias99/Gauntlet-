@@ -9,10 +9,17 @@ intact — never a half-written snapshot.
 Exceptions propagate. Callers that cannot afford to crash (engine
 side-effects like the run log) must catch explicitly and decide how to
 surface the failure — silently swallowing would lie about persistence.
+
+Sync vs async: ``atomic_write_text`` keeps the blocking implementation for
+non-async call sites and tests. ``atomic_write_text_async`` offloads the
+write to a worker thread via ``asyncio.to_thread`` so the event loop is
+not stalled on disk I/O — critical for SSE streams and concurrent
+requests on a hot run log.
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +36,45 @@ def atomic_write_text(path: Path, content: str, encoding: str = "utf-8") -> None
             tmp.unlink(missing_ok=True)
         except OSError:
             pass
+        raise
+
+
+async def atomic_write_text_async(
+    path: Path, content: str, encoding: str = "utf-8"
+) -> None:
+    """Async wrapper for ``atomic_write_text`` — runs the blocking write in a
+    worker thread so the asyncio event loop stays responsive while disk I/O
+    completes. Same atomicity guarantees as the sync version (write to .tmp
+    then os.replace). Exceptions propagate identically.
+
+    Cancellation safety: the awaiting task may be cancelled (client
+    disconnect, server timeout) while the worker thread is mid-write.
+    Python threads cannot be cancelled, so the write would still complete
+    on disk — but a naive ``await asyncio.to_thread(...)`` returns
+    immediately on cancel, which lets the caller's surrounding asyncio
+    lock release before the thread finishes. A second writer can then
+    enter and race on the same ``.tmp`` filename.
+
+    To prevent this race, we shield the inner future and, on cancel,
+    drain it to completion before re-raising ``CancelledError`` so the
+    caller's lock context only releases after disk state stabilises.
+    """
+    task = asyncio.ensure_future(
+        asyncio.to_thread(atomic_write_text, path, content, encoding)
+    )
+    try:
+        await asyncio.shield(task)
+    except asyncio.CancelledError:
+        # We were cancelled. The thread is still running — wait for it
+        # to finish (suppressing further cancellation while we wait)
+        # so the surrounding asyncio lock isn't released over a still-
+        # in-flight writer. Then re-raise the CancelledError so the
+        # caller's normal cancellation path runs.
+        while not task.done():
+            try:
+                await asyncio.shield(task)
+            except asyncio.CancelledError:
+                continue
         raise
 
 
