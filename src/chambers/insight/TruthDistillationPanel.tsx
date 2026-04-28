@@ -46,11 +46,20 @@ export default function TruthDistillationPanel() {
         createdAt: n.createdAt,
       }));
       const inlinePrinciples = principles.map((p) => p.text);
+      // Send the version of every existing distillation so the
+      // server's version helper picks max+1 from the freshest client
+      // view, not from a stale snapshot. Two quick "refinar" clicks
+      // would otherwise both compute the same next version.
+      const inlineExisting = (activeMission.truthDistillations ?? []).map((d) => ({
+        version: d.version,
+        status: d.status,
+      }));
       await streamDistill(
         {
           mission_id: activeMission.id,
           notes: inlineNotes,
           principles: inlinePrinciples,
+          existing_distillations: inlineExisting,
         },
         (ev: DistillEvent) => {
           if (ev.type === "error") {
@@ -195,7 +204,20 @@ export default function TruthDistillationPanel() {
         {isApproved && (
           <button
             type="button"
-            onClick={() => updateTruthDistillationStatus(activeMission.id, distillation.id, "stale", { staleReason: "manual" })}
+            onClick={() => {
+              updateTruthDistillationStatus(
+                activeMission.id, distillation.id, "stale",
+                { staleReason: "manual" },
+              );
+              // Wave 6a telemetry — manual stale transitions go to the
+              // run log so dashboards see when users invalidate their
+              // own approved truths. Fire-and-forget per contract.
+              fireTelemetry("truth_distillation_marked_stale", activeMission.id, {
+                version: distillation.version,
+                fromStatus: "approved",
+                reason: "manual",
+              });
+            }}
             style={ghostBtn}
           >
             marcar stale

@@ -400,16 +400,30 @@ class DistillNoteInline(BaseModel):
     createdAt: Optional[int] = None
 
 
+class DistillExistingInline(BaseModel):
+    """Inline existing-distillation summary carried in the distill request.
+    Only the fields the server needs for versioning — version + status —
+    so version increment computes from the freshest client-side view
+    instead of the persisted snapshot. Avoids the same debounce race
+    when the user clicks 'refinar' twice in quick succession."""
+    version: int
+    status: Optional[str] = None
+
+
 class DistillRequest(BaseModel):
     mission_id: str = Field(..., min_length=1, max_length=128)
-    # Wave 6a — optional inline override of mission state. When the
-    # client sends notes/principles inline, the backend uses those
-    # instead of the persisted snapshot — avoiding the 500ms debounce
-    # race where the user types a note, clicks distill, and the
-    # backend reads stale content. Both fields are optional; if
-    # omitted, the snapshot is the source of truth (back-compat).
+    # Wave 6a — optional inline overrides of mission state. When sent,
+    # the backend uses these instead of the persisted snapshot — avoids
+    # the 500ms debounce race where the user types and immediately
+    # distills. All fields are optional; omitted fields fall back to
+    # the snapshot (back-compat with any external caller).
     notes: Optional[list[DistillNoteInline]] = None
     principles: Optional[list[str]] = None
+    # Wave 6a Codex P1 follow-up — inline existing distillations so
+    # version increment also avoids the snapshot race. Two quick
+    # "refinar" clicks would otherwise both compute the same next
+    # version from a stale snapshot, producing duplicates.
+    existing_distillations: Optional[list[DistillExistingInline]] = None
 
 
 @app.post("/insight/distill/stream")
@@ -453,6 +467,28 @@ async def insight_distill_stream(req: DistillRequest):
             for idx, n in enumerate(req.notes)
         ]
         mission = mission.model_copy(update={"notes": inline_notes})
+
+    # Inline existing distillations override — for the version helper.
+    # Only version + status are needed; the helper looks at .version.
+    # We construct minimal stub records (TruthDistillationRecord is
+    # picky about required fields; we feed safe defaults).
+    if req.existing_distillations is not None:
+        from models import TruthDistillationRecord
+        stubs = [
+            TruthDistillationRecord(
+                id=f"inline-stub-{idx}",
+                version=int(d.version),
+                status=d.status or "draft",
+                sourceMissionId=mission.id,
+                summary="",
+                validatedDirection="",
+                confidence="medium",
+                createdAt=0,
+                updatedAt=0,
+            )
+            for idx, d in enumerate(req.existing_distillations)
+        ]
+        mission = mission.model_copy(update={"truthDistillations": stubs})
 
     principle_texts = (
         list(req.principles)
