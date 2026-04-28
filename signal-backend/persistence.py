@@ -45,8 +45,37 @@ async def atomic_write_text_async(
     """Async wrapper for ``atomic_write_text`` — runs the blocking write in a
     worker thread so the asyncio event loop stays responsive while disk I/O
     completes. Same atomicity guarantees as the sync version (write to .tmp
-    then os.replace). Exceptions propagate identically."""
-    await asyncio.to_thread(atomic_write_text, path, content, encoding)
+    then os.replace). Exceptions propagate identically.
+
+    Cancellation safety: the awaiting task may be cancelled (client
+    disconnect, server timeout) while the worker thread is mid-write.
+    Python threads cannot be cancelled, so the write would still complete
+    on disk — but a naive ``await asyncio.to_thread(...)`` returns
+    immediately on cancel, which lets the caller's surrounding asyncio
+    lock release before the thread finishes. A second writer can then
+    enter and race on the same ``.tmp`` filename.
+
+    To prevent this race, we shield the inner future and, on cancel,
+    drain it to completion before re-raising ``CancelledError`` so the
+    caller's lock context only releases after disk state stabilises.
+    """
+    task = asyncio.ensure_future(
+        asyncio.to_thread(atomic_write_text, path, content, encoding)
+    )
+    try:
+        await asyncio.shield(task)
+    except asyncio.CancelledError:
+        # We were cancelled. The thread is still running — wait for it
+        # to finish (suppressing further cancellation while we wait)
+        # so the surrounding asyncio lock isn't released over a still-
+        # in-flight writer. Then re-raise the CancelledError so the
+        # caller's normal cancellation path runs.
+        while not task.done():
+            try:
+                await asyncio.shield(task)
+            except asyncio.CancelledError:
+                continue
+        raise
 
 
 def quarantine_corrupt_file(path: Path) -> Path | None:
