@@ -221,6 +221,10 @@ export interface Mission {
   // Both optional for back-compat with missions persisted before Wave 6a.
   projectContract?: ProjectContract | null;
   truthDistillations?: TruthDistillation[];
+  // Wave D — Handoff Queue. Pending entries surface in the receiving
+  // chamber's UI as actionable suggestions. Resolved entries kept as
+  // audit trail.
+  handoffs?: HandoffRecord[];
 }
 
 export interface Principle {
@@ -234,6 +238,33 @@ export interface SpineState {
   activeMissionId: string | null;
   principles: Principle[];
   updatedAt: number;
+}
+
+// Wave D — Handoff record. Captures a chamber-to-chamber transfer:
+// who initiated, what artefact, what the next chamber should do.
+// Lives on the mission so the receiving chamber can read it on mount
+// and propose to act on it. Resolved when the receiving chamber
+// consumes (accepts, rejects, defers).
+export type HandoffStatus = "pending" | "consumed" | "rejected" | "deferred";
+
+export interface HandoffRecord {
+  id: string;
+  fromChamber: Chamber;
+  toChamber: Chamber;
+  artifactType:
+    | "project_contract"
+    | "truth_distillation"
+    | "build_specification"
+    | "delivery_ledger"
+    | "note";
+  artifactRef?: string; // distillation id, contract version, etc.
+  summary: string;
+  risks: string[];
+  nextAction: string;
+  createdAt: number;
+  status: HandoffStatus;
+  resolvedAt?: number;
+  resolution?: string;
 }
 
 // Wave 6a — Helper: find the active Truth Distillation for a mission.
@@ -252,4 +283,16 @@ export function activeTruthDistillation(
   if (approved) return approved;
   const draft = sorted.find((d) => d.status === "draft");
   return draft ?? null;
+}
+
+// Wave D — Helper: list pending handoffs for a chamber so the chamber
+// can render an "incoming" banner. Filters by `toChamber` and `pending`.
+export function pendingHandoffsFor(
+  mission: Mission | null,
+  chamber: Chamber,
+): HandoffRecord[] {
+  if (!mission) return [];
+  return (mission.handoffs ?? [])
+    .filter((h) => h.toChamber === chamber && h.status === "pending")
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
