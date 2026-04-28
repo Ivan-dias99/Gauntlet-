@@ -278,6 +278,25 @@ def _compose_mock_distillation(mission, contract) -> dict[str, Any]:
     }
 
 
+def _next_version_for(mission) -> tuple[int, Optional[int]]:
+    """Wave 6a — versioning helper.
+
+    Reads existing distillations on the mission and returns
+    ``(next_version, supersedes_version)``. ``supersedes_version`` is
+    the previous max version (so the new artefact carries a backlink
+    for cascade revalidation), or None when this is the first
+    distillation. Mirrors V3.1 contract Decision 5: nothing is
+    silently overwritten — every generation creates a strictly
+    higher version number.
+    """
+    existing = list(getattr(mission, "truthDistillations", None) or [])
+    if not existing:
+        return 1, None
+    versions = [int(getattr(d, "version", 0) or 0) for d in existing]
+    prev_max = max(versions) if versions else 0
+    return prev_max + 1, prev_max if prev_max > 0 else None
+
+
 async def process_distillation_streaming(
     mission,
     principles: list[str],
@@ -298,6 +317,11 @@ async def process_distillation_streaming(
     contract = derive_project_contract_v0(mission, principles)
     yield {"type": "project_contract", "contract": contract.model_dump()}
 
+    # Wave 6a — version increment per generation. Read existing
+    # distillations on the mission, advance to max+1. supersedes_version
+    # is the prior max for cascade revalidation traceability.
+    next_version, supersedes_version = _next_version_for(mission)
+
     # Mock fallback path
     if _distill_mock_active():
         from models import (
@@ -310,7 +334,7 @@ async def process_distillation_streaming(
             now = int(time.time() * 1000)
             distillation = TruthDistillationRecord(
                 id=str(uuid.uuid4()),
-                version=1,
+                version=next_version,
                 status="draft",
                 sourceMissionId=mission.id,
                 summary=mock_payload["summary"],
@@ -323,6 +347,7 @@ async def process_distillation_streaming(
                 confidence=mock_payload["confidence"],
                 createdAt=now,
                 updatedAt=now,
+                supersedesVersion=supersedes_version,
             )
         except ValidationError as exc:
             yield {
@@ -403,7 +428,7 @@ async def process_distillation_streaming(
         terminal_seed_raw = raw_input.get("terminalSeed") or {}
         distillation = TruthDistillationRecord(
             id=str(uuid.uuid4()),
-            version=1,
+            version=next_version,
             status="draft",
             sourceMissionId=mission.id,
             summary=raw_input.get("summary", ""),
@@ -416,6 +441,7 @@ async def process_distillation_streaming(
             confidence=raw_input.get("confidence", "medium"),
             createdAt=now,
             updatedAt=now,
+            supersedesVersion=supersedes_version,
         )
     except ValidationError as exc:
         logger.warning("Distillation failed validation: %s", exc)

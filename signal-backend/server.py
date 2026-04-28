@@ -391,21 +391,40 @@ async def ask_ruberra_batch(batch: BatchQuery):
 # ── Insight · Distill (Wave 6a) ─────────────────────────────────────────────
 
 
+class DistillNoteInline(BaseModel):
+    """Inline note carried in the distill request body — defends against
+    the spine-debounce race where the user edits a note and immediately
+    asks to distill, before the snapshot has been pushed to disk."""
+    text: str
+    role: Optional[str] = None
+    createdAt: Optional[int] = None
+
+
 class DistillRequest(BaseModel):
     mission_id: str = Field(..., min_length=1, max_length=128)
+    # Wave 6a — optional inline override of mission state. When the
+    # client sends notes/principles inline, the backend uses those
+    # instead of the persisted snapshot — avoiding the 500ms debounce
+    # race where the user types a note, clicks distill, and the
+    # backend reads stale content. Both fields are optional; if
+    # omitted, the snapshot is the source of truth (back-compat).
+    notes: Optional[list[DistillNoteInline]] = None
+    principles: Optional[list[str]] = None
 
 
 @app.post("/insight/distill/stream")
 async def insight_distill_stream(req: DistillRequest):
     """Wave 6a — generate a Truth Distillation for the active mission.
 
-    The endpoint reads the mission + global principles directly from the
-    spine store (single source of truth) so the frontend doesn't have to
-    re-serialize the context. ProjectContract v0 is auto-derived inside
-    the chamber handler. Mock-fallback under env flags so the smoke
-    path keeps working without a key.
+    Reads mission + principles from the spine store by default, but the
+    client can send inline notes/principles in the request body to
+    override — this defends against the debounced spine-push race so
+    the user always distills against the latest content they typed.
+    ProjectContract v0 is auto-derived inside the chamber handler.
+    Mock-fallback under env flags so smoke path works without a key.
     """
     from chambers.insight import process_distillation_streaming
+    from models import NoteRecord
 
     snapshot = await spine_store.get()
     mission = next((m for m in snapshot.missions if m.id == req.mission_id), None)
@@ -418,7 +437,28 @@ async def insight_distill_stream(req: DistillRequest):
                 "message": f"mission {req.mission_id} not found in spine",
             },
         )
-    principle_texts = [p.text for p in snapshot.principles]
+
+    # Inline override path — apply the request's notes / principles on
+    # top of the snapshot mission. We mutate a *copy* (model_copy) so
+    # the persisted snapshot stays untouched; the chamber handler reads
+    # the merged view as the authoritative input for this run.
+    if req.notes is not None:
+        inline_notes = [
+            NoteRecord(
+                id=f"inline-{idx}",
+                text=n.text,
+                createdAt=n.createdAt or int(time.time() * 1000),
+                role=n.role,
+            )
+            for idx, n in enumerate(req.notes)
+        ]
+        mission = mission.model_copy(update={"notes": inline_notes})
+
+    principle_texts = (
+        list(req.principles)
+        if req.principles is not None
+        else [p.text for p in snapshot.principles]
+    )
 
     async def event_source():
         try:

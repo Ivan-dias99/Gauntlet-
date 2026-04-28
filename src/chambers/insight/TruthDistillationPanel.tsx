@@ -21,6 +21,7 @@ import { fireTelemetry } from "../../lib/telemetry";
 export default function TruthDistillationPanel() {
   const {
     activeMission,
+    principles,
     addTruthDistillation,
     updateTruthDistillationStatus,
     setMissionProjectContract,
@@ -36,8 +37,21 @@ export default function TruthDistillationPanel() {
     setError(null);
     setDistilling(true);
     try {
+      // Send notes + principles inline so the backend doesn't read
+      // stale spine state (debounced 500ms push race). Backend falls
+      // back to the snapshot if either field is omitted.
+      const inlineNotes = activeMission.notes.map((n) => ({
+        text: n.text,
+        role: n.role,
+        createdAt: n.createdAt,
+      }));
+      const inlinePrinciples = principles.map((p) => p.text);
       await streamDistill(
-        { mission_id: activeMission.id },
+        {
+          mission_id: activeMission.id,
+          notes: inlineNotes,
+          principles: inlinePrinciples,
+        },
         (ev: DistillEvent) => {
           if (ev.type === "error") {
             setError(ev.message);

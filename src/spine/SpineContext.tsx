@@ -204,16 +204,16 @@ export function SpineProvider({ children }: { children: ReactNode }) {
         ...s,
         missions: s.missions.map((m) => {
           if (m.id !== missionId) return m;
-          // Existing approved distillations become superseded when a new
-          // draft replaces them. Manual mark-stale stays available via
-          // updateTruthDistillationStatus. Versioning here mirrors the
-          // V3.1 rule: nothing is silently overwritten.
-          const previous = (m.truthDistillations ?? []).map((d) =>
-            d.status === "approved" ? { ...d, status: "superseded" as const } : d,
-          );
+          // Wave 6a — append the new draft without touching prior
+          // approved versions. Supersede happens at accept time
+          // (updateTruthDistillationStatus → "approved"), not at
+          // generation. Otherwise an unaccepted draft would silently
+          // become the active seed source for Surface/Terminal because
+          // the prior approved would be flipped to `superseded` and
+          // the draft would win the activeTruthDistillation fallback.
           return {
             ...m,
-            truthDistillations: [...previous, distillation],
+            truthDistillations: [...(m.truthDistillations ?? []), distillation],
           };
         }),
         updatedAt: Date.now(),
@@ -225,17 +225,31 @@ export function SpineProvider({ children }: { children: ReactNode }) {
           return {
             ...m,
             truthDistillations: (m.truthDistillations ?? []).map((d) => {
-              if (d.id !== distillationId) return d;
-              const next: TruthDistillation = {
-                ...d,
-                status,
-                updatedAt: Date.now(),
-              };
-              if (status === "stale") {
-                next.staleSince = Date.now();
-                next.staleReason = options?.staleReason ?? "manual";
+              // The artefact being mutated: flip status + telemetry
+              // bookkeeping. When the new status is "approved", any
+              // OTHER approved version on the same mission becomes
+              // `superseded` — that's the V3.1 rule, finally enforced
+              // at the right moment (accept, not generate).
+              if (d.id === distillationId) {
+                const next: TruthDistillation = {
+                  ...d,
+                  status,
+                  updatedAt: Date.now(),
+                };
+                if (status === "stale") {
+                  next.staleSince = Date.now();
+                  next.staleReason = options?.staleReason ?? "manual";
+                }
+                return next;
               }
-              return next;
+              if (status === "approved" && d.status === "approved") {
+                return {
+                  ...d,
+                  status: "superseded" as const,
+                  updatedAt: Date.now(),
+                };
+              }
+              return d;
             }),
           };
         }),

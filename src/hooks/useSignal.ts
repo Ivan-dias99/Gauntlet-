@@ -445,11 +445,21 @@ export function useSignal() {
   // Wave 6a — Truth Distillation. Body carries only mission_id; the
   // backend reads notes + principles + auto-derives the ProjectContract
   // from the spine snapshot. Streaming envelope mirrors Surface.
+  // Wave 6a — Distill request body. `mission_id` is required; `notes`
+  // and `principles` are optional inline overrides. When sent, the
+  // backend uses them instead of its persisted spine snapshot —
+  // defends against the 500ms debounced push race where the user
+  // edits a note and immediately distills.
+  type DistillBody = {
+    mission_id: string;
+    notes?: Array<{ text: string; role?: string; createdAt?: number }>;
+    principles?: string[];
+  };
   const streamDistill = useCallback(
-    (body: { mission_id: string },
+    (body: DistillBody,
      onEvent: (ev: DistillEvent) => void,
      signal?: AbortSignal) =>
-      openStream<DistillEvent, { mission_id: string }>("insight/distill/stream", body, onEvent, signal),
+      openStream<DistillEvent, DistillBody>("insight/distill/stream", body, onEvent, signal),
     [openStream],
   );
 
