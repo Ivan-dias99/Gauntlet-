@@ -24,6 +24,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,7 +40,7 @@ from config import (
     SERVER_HOST,
     SERVER_PORT,
 )
-from models import SignalQuery, SignalResponse, SpineSnapshot
+from models import SignalQuery, SignalResponse, SpineSnapshot, RunRecord
 from engine import SignalEngine
 from memory import failure_memory
 from runs import run_store
@@ -385,6 +386,120 @@ async def ask_ruberra_batch(batch: BatchQuery):
             responses.append(r.model_dump())
 
     return {"results": responses}
+
+
+# ── Insight · Distill (Wave 6a) ─────────────────────────────────────────────
+
+
+class DistillRequest(BaseModel):
+    mission_id: str = Field(..., min_length=1, max_length=128)
+
+
+@app.post("/insight/distill/stream")
+async def insight_distill_stream(req: DistillRequest):
+    """Wave 6a — generate a Truth Distillation for the active mission.
+
+    The endpoint reads the mission + global principles directly from the
+    spine store (single source of truth) so the frontend doesn't have to
+    re-serialize the context. ProjectContract v0 is auto-derived inside
+    the chamber handler. Mock-fallback under env flags so the smoke
+    path keeps working without a key.
+    """
+    from chambers.insight import process_distillation_streaming
+
+    snapshot = await spine_store.get()
+    mission = next((m for m in snapshot.missions if m.id == req.mission_id), None)
+    if mission is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "mission_not_found",
+                "reason": "KeyError",
+                "message": f"mission {req.mission_id} not found in spine",
+            },
+        )
+    principle_texts = [p.text for p in snapshot.principles]
+
+    async def event_source():
+        try:
+            async for event in process_distillation_streaming(mission, principle_texts):
+                yield f"data: {_json.dumps(event)}\n\n"
+                # Telemetry — Wave 6a Tier-1 Addition #3.
+                # Record the generation event when a `done` frame fires so the
+                # Archive ledger has visibility on distillation throughput.
+                if event.get("type") == "done":
+                    try:
+                        await run_store.record(RunRecord(
+                            route="distill",
+                            mission_id=mission.id,
+                            question=f"distill: {mission.title}",
+                            context=None,
+                            answer=event.get("distillation", {}).get("summary"),
+                            processing_time_ms=event.get("processing_time_ms", 0),
+                            input_tokens=event.get("input_tokens", 0),
+                            output_tokens=event.get("output_tokens", 0),
+                            terminated_early=bool(event.get("mock")),
+                            termination_reason=(
+                                "insight_mock" if event.get("mock") else None
+                            ),
+                        ))
+                    except Exception as log_err:  # noqa: BLE001
+                        logger.warning("distill run_store record failed: %s", log_err)
+        except Exception as e:
+            logger.error(f"Distill stream error: {e}", exc_info=True)
+            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('distill_error', e)})}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ── Telemetry (Wave 6a) ─────────────────────────────────────────────────────
+
+
+class TelemetryEvent(BaseModel):
+    """Lightweight client-fired telemetry event. Lands in the run log
+    under a dedicated `route` so the Archive ledger can filter without
+    a new store. Wave 6a minimum — the 4 consumer-side events that the
+    backend cannot observe by itself."""
+    event: str = Field(..., min_length=1, max_length=64)
+    mission_id: Optional[str] = Field(None, max_length=128)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+@app.post("/telemetry/event")
+async def telemetry_event(ev: TelemetryEvent):
+    """Wave 6a Tier-1 Addition #3 — client-side event capture.
+
+    Used for events the backend doesn't fire itself: distillation
+    accepted (user clicked accept), surface_seed_consumed (Surface
+    saw the seed and the user kept/edited/ignored), terminal_seed_consumed
+    (same for Terminal), intent_switch_guard_fired (when implemented).
+    """
+    try:
+        await run_store.record(RunRecord(
+            route=f"telemetry:{ev.event}",
+            mission_id=ev.mission_id,
+            question=ev.event,
+            context=None,
+            answer=_json.dumps(ev.payload) if ev.payload else None,
+            processing_time_ms=0,
+            input_tokens=0,
+            output_tokens=0,
+            terminated_early=False,
+            termination_reason=None,
+        ))
+        return {"ok": True}
+    except Exception as e:  # noqa: BLE001
+        logger.warning("telemetry record failed: %s", e)
+        # Telemetry failures must never break the chamber. Return ok=false
+        # so client can log locally if it cares; never surface as an error.
+        return {"ok": False, "reason": str(e)}
 
 
 # ── Memory Endpoints ────────────────────────────────────────────────────────

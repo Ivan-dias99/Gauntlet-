@@ -1,5 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
+import { activeTruthDistillation } from "../../spine/types";
+import { fireTelemetry } from "../../lib/telemetry";
 import {
   useSignal,
   type SurfaceBriefPayload,
@@ -38,7 +40,43 @@ export default function Surface() {
   const [plan, setPlan] = useState<SurfacePlanPayload | null>(null);
   const [planIsMock, setPlanIsMock] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
+  // Wave 6a — track which mission we already seeded for, so the
+  // pre-populate effect doesn't fight the user every time they edit
+  // the prompt or switch back to the chamber. Seeds apply once per
+  // mission unless the active distillation version changes.
+  const [seededFor, setSeededFor] = useState<{ missionId: string; version: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Wave 6a — Surface seed consumer. Pre-populate brief.question and
+  // optional hints from the active TruthDistillation when:
+  //   1. There is an active distillation (`approved` preferred, else `draft`)
+  //   2. We haven't yet seeded for this (mission, version) tuple
+  //   3. The user hasn't typed anything yet (no clobbering live input)
+  // Editing the seed afterwards is honest — telemetry will record
+  // "edited" vs "kept" when the user submits.
+  useEffect(() => {
+    if (!activeMission) return;
+    const distillation = activeTruthDistillation(activeMission);
+    if (!distillation || !distillation.surfaceSeed) return;
+    const tuple = { missionId: activeMission.id, version: distillation.version };
+    if (
+      seededFor &&
+      seededFor.missionId === tuple.missionId &&
+      seededFor.version === tuple.version
+    ) return;
+    if (prompt.trim().length > 0) return;
+    setPrompt(distillation.surfaceSeed.question);
+    if (distillation.surfaceSeed.designSystemSuggestion) {
+      setBrief((b) => ({
+        ...b,
+        design_system: b.design_system ?? distillation.surfaceSeed!.designSystemSuggestion ?? null,
+      }));
+    }
+    if (distillation.surfaceSeed.fidelityHint) {
+      setBrief((b) => ({ ...b, fidelity: distillation.surfaceSeed!.fidelityHint! }));
+    }
+    setSeededFor(tuple);
+  }, [activeMission, prompt, seededFor]);
 
   const patchBrief = (p: Partial<SurfaceBriefPayload>) =>
     setBrief((b) => ({ ...b, ...p }));
@@ -66,6 +104,23 @@ export default function Surface() {
       missionId = createMission(title, "surface");
     }
     addNoteToMission(missionId, v, "user");
+
+    // Wave 6a — surface_seed_consumed telemetry. We seeded if there
+    // was an active distillation when the user landed on this chamber.
+    // Action: kept (submit text == seed text), edited (different),
+    // ignored (no seed but submit happened anyway → no event).
+    const distillation = activeTruthDistillation(activeMission);
+    if (distillation?.surfaceSeed) {
+      const seedQuestion = distillation.surfaceSeed.question.trim();
+      const action =
+        v === seedQuestion ? "kept" :
+        seedQuestion && v.toLowerCase().includes(seedQuestion.slice(0, 30).toLowerCase()) ? "edited" :
+        "edited";
+      fireTelemetry("surface_seed_consumed", missionId, {
+        action,
+        distillationVersion: distillation.version,
+      });
+    }
 
     abortRef.current?.abort();
     const ac = new AbortController();

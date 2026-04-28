@@ -1,5 +1,8 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
-import { SpineState, Mission, Principle, Chamber, Artifact, TaskState, TaskSource } from "./types";
+import {
+  SpineState, Mission, Principle, Chamber, Artifact, TaskState, TaskSource,
+  TruthDistillation, ArtifactStatus, ProjectContract,
+} from "./types";
 import {
   loadState, saveState, emptyState,
   createMission as mkMission,
@@ -67,6 +70,22 @@ interface SpineCtx {
   addPrinciple: (text: string) => void;
   logDoctrineApplied: (count: number) => void;
   acceptArtifact: (missionId: string, artifact: Omit<Artifact, "id">, taskId?: string) => void;
+  // Wave 6a — Truth Distillation lifecycle.
+  // `addTruthDistillation` lands a freshly-generated draft from the
+  // /insight/distill/stream endpoint. Versioning is server-side
+  // bookkeeping; the client just pushes whatever the backend produced.
+  // `updateTruthDistillationStatus` flips an existing version's status
+  // (typically draft → approved on accept, or approved → stale on
+  // upstream change). `setMissionProjectContract` lands the auto-derived
+  // v0 from the same endpoint.
+  addTruthDistillation: (missionId: string, distillation: TruthDistillation) => void;
+  updateTruthDistillationStatus: (
+    missionId: string,
+    distillationId: string,
+    status: ArtifactStatus,
+    options?: { staleReason?: string },
+  ) => void;
+  setMissionProjectContract: (missionId: string, contract: ProjectContract) => void;
   resetAll: () => void;
 }
 
@@ -181,6 +200,54 @@ export function SpineProvider({ children }: { children: ReactNode }) {
       addPrinciple: (text) => dispatch(s => addPrincipleFn(s, text)),
       logDoctrineApplied: (count) => dispatch(s => logDoctrineAppliedFn(s, count)),
       acceptArtifact: (id, artifact, taskId) => dispatch(s => acceptArtifactFn(s, id, artifact, taskId)),
+      addTruthDistillation: (missionId, distillation) => dispatch(s => ({
+        ...s,
+        missions: s.missions.map((m) => {
+          if (m.id !== missionId) return m;
+          // Existing approved distillations become superseded when a new
+          // draft replaces them. Manual mark-stale stays available via
+          // updateTruthDistillationStatus. Versioning here mirrors the
+          // V3.1 rule: nothing is silently overwritten.
+          const previous = (m.truthDistillations ?? []).map((d) =>
+            d.status === "approved" ? { ...d, status: "superseded" as const } : d,
+          );
+          return {
+            ...m,
+            truthDistillations: [...previous, distillation],
+          };
+        }),
+        updatedAt: Date.now(),
+      })),
+      updateTruthDistillationStatus: (missionId, distillationId, status, options) => dispatch(s => ({
+        ...s,
+        missions: s.missions.map((m) => {
+          if (m.id !== missionId) return m;
+          return {
+            ...m,
+            truthDistillations: (m.truthDistillations ?? []).map((d) => {
+              if (d.id !== distillationId) return d;
+              const next: TruthDistillation = {
+                ...d,
+                status,
+                updatedAt: Date.now(),
+              };
+              if (status === "stale") {
+                next.staleSince = Date.now();
+                next.staleReason = options?.staleReason ?? "manual";
+              }
+              return next;
+            }),
+          };
+        }),
+        updatedAt: Date.now(),
+      })),
+      setMissionProjectContract: (missionId, contract) => dispatch(s => ({
+        ...s,
+        missions: s.missions.map((m) =>
+          m.id === missionId ? { ...m, projectContract: contract } : m,
+        ),
+        updatedAt: Date.now(),
+      })),
       resetAll: () => setState(emptyState()),
     }}>
       {children}

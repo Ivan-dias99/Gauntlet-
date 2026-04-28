@@ -419,12 +419,11 @@ Objectivo único:
 
 ## Wave 6a Pre-flight Defaults
 
-> Status: **propostos, aguardam confirmação ou edição**
+> Status: **aceites — operacionais para Wave 6a**
 >
 > Estas são respostas concretas a 6 ambiguidades pequenas detectadas durante
-> a revisão de V3.1. Nenhuma bloqueia o contrato; todas precisam de decisão
-> antes do primeiro PR de Wave 6a. Cada uma tem um default sugerido com
-> rationale; o utilizador edita só onde discordar.
+> a revisão de V3.1. Aceites em bloco pelo operador; ficam canónicas até a
+> evidência operacional pedir revisão.
 
 ### Default 1 — `surfaceSeed` / `terminalSeed` shape
 
@@ -543,6 +542,75 @@ Cada Patch Transaction em modo seguro herda esta lista. Visível no Archive.
 
 **Rationale:** comportamento previsível, sem invenção, alinhado com a
 doutrina de não inventar contexto.
+
+---
+
+## Wave 6a Tier-1 additions
+
+> Status: **aceites — incluídas no scope de Wave 6a**
+
+Três adições ao scope original de V3.1, identificadas como o conjunto de
+maior leverage por baixo custo. Mantêm Wave 6a focada em Truth Distillation
+mas maximizam o sinal que a wave produz.
+
+### Addition 1 — Project Contract auto-derivado
+
+V3.1 original obrigava Archive + Core a autorar Project Contract — o que
+exigia duas superfícies de UI novas. Trade-off honesto: derivar v0
+automaticamente da spine actual no momento que Wave 6a entra, deixar o
+utilizador editar inline depois.
+
+**Mapping para v0:**
+```
+projectContract.concept         ← mission.title + última nota do utilizador
+projectContract.principles      ← spine.principles (já existe)
+projectContract.knownRisks      ← failures recentes em failure_memory
+projectContract.targetUser      ← vazio (utilizador edita)
+projectContract.problem         ← vazio
+projectContract.scope           ← vazio
+projectContract.nonGoals        ← vazio
+projectContract.qualityGates    ← defaults globais
+projectContract.definitionOfDone ← vazio
+projectContract.riskPolicy      ← defaults globais
+```
+
+Resultado: Project Contract aparece sem trabalho de autoria. Operador
+preenche o resto on-demand.
+
+### Addition 2 — Recusa com substituto sempre presente
+
+A queixa concreta que motivou Contract V3 — "Insight fica travado, recusa
+seca" — só é resolvida se a recusa **sempre** carregar uma porta de saída.
+
+**Mudança no juiz:**
+- `JudgeVerdict` ganha campo `nearest_answerable_question: str | null`
+- Quando o juiz refusa (`should_refuse=True`), prompt instrui a emitir uma
+  versão mais pequena da pergunta que conseguiria ter `confidence: high`
+- Frame `judge_done` propaga o campo
+- Insight UI mostra "Não posso responder a X. Posso responder a Y →"
+  com botão de reformular
+
+A doutrina não cede (continua a recusar invenção). A UX desbloqueia
+(utilizador tem caminho). Esta é a única mudança que **resolve no nível
+operacional** o problema que motivou V3 inteiro.
+
+### Addition 3 — Telemetria mínima desde o dia 1
+
+Sem dados, todas as decisões pós-Wave 6a são adivinhação. 5 eventos no
+run log:
+
+```
+truth_distillation_generated     timestamp, mission, confidence
+truth_distillation_accepted      timestamp, mission, version
+truth_distillation_refined       timestamp, mission, fromVersion, toVersion
+truth_distillation_marked_stale  timestamp, mission, version, reason
+surface_seed_consumed            timestamp, mission, action: kept|edited|ignored
+terminal_seed_consumed           timestamp, mission, action: kept|edited|ignored
+intent_switch_guard_fired        timestamp, classification, prompted: bool
+```
+
+Custo de implementar agora: minutos (run_store já existe). Custo de
+retrofitar depois: alto.
 
 ---
 

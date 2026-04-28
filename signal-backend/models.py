@@ -95,6 +95,13 @@ class JudgeVerdict(BaseModel):
     divergence_points: list[str] = Field(default_factory=list, description="Where responses diverged")
     should_refuse: bool = Field(False, description="Whether Signal should refuse to answer")
     refusal_reason: Optional[RefusalReason] = None
+    # Wave 6a Tier-1 Addition #2 — refusal with substitute.
+    # When the judge refuses, this carries a smaller / more concrete
+    # version of the question that could have been answered with high
+    # confidence. Null on accept, or when the judge truly cannot offer
+    # any narrower form. The frontend renders it as "I can't answer X
+    # but I can answer Y →" with a reformulate button.
+    nearest_answerable_question: Optional[str] = None
 
 
 # ── Response Models ─────────────────────────────────────────────────────────
@@ -241,6 +248,87 @@ class MissionRecord(BaseModel):
     # TS client's `mission.artifacts` round-trips to `undefined` and pulse.ts
     # crashes on `.length`.
     artifacts: list[ArtifactRecord] = Field(default_factory=list)
+    # Wave 6a — Truth Distillation versioned ledger per mission.
+    # Auto-derived ProjectContract v0 lives here too. Both optional for
+    # back-compat with missions persisted before Wave 6a.
+    projectContract: Optional["ProjectContractRecord"] = None
+    truthDistillations: list["TruthDistillationRecord"] = Field(default_factory=list)
+
+
+# ── Wave 6a — Project Contract + Truth Distillation ────────────────────────
+
+class SurfaceSeedRecord(BaseModel):
+    """Hint passed from Insight to Surface — pre-populates the brief."""
+    question: str
+    designSystemSuggestion: Optional[str] = None
+    screenCountEstimate: Optional[int] = None
+    fidelityHint: Optional[str] = None  # "wireframe" | "hi-fi"
+
+
+class TerminalSeedRecord(BaseModel):
+    """Hint passed from Insight to Terminal — pre-populates first task."""
+    task: str
+    fileTargets: list[str] = Field(default_factory=list)
+    riskLevel: Optional[str] = None  # "low" | "medium" | "high"
+    requiresGate: list[str] = Field(default_factory=list)  # typecheck|build|test
+
+
+class ProjectContractRecord(BaseModel):
+    """Wave 6a ProjectContract — auto-derived v0 from mission spine.
+
+    Kept intentionally permissive: every field optional. Operator edits
+    inline in Insight or Core when they want richer specificity. The
+    derivation happens server-side at distill time so Truth Distillation
+    always has a base to build from.
+    """
+    version: int = 1
+    concept: Optional[str] = None
+    mission: Optional[str] = None
+    targetUser: Optional[str] = None
+    problem: Optional[str] = None
+    scope: Optional[str] = None
+    nonGoals: list[str] = Field(default_factory=list)
+    principles: list[str] = Field(default_factory=list)
+    knownRisks: list[str] = Field(default_factory=list)
+    qualityGates: list[str] = Field(default_factory=list)
+    definitionOfDone: Optional[str] = None
+    riskPolicy: Optional[str] = None
+    derivedFromSpine: bool = True
+    createdAt: int
+    updatedAt: int
+
+
+class TruthDistillationRecord(BaseModel):
+    """Insight's primary artefact — versioned, status-tagged, seedable.
+
+    Status enum (string): draft | review | approved | stale | superseded |
+    invalidated | blocked | failed. Validation is at the consumer side
+    (frontend / backend handlers); we keep it as `str` here so old
+    snapshots load even if the enum gains members later.
+    """
+    id: str
+    version: int = 1
+    status: str = "draft"
+    sourceMissionId: str
+    summary: str
+    validatedDirection: str
+    coreDecisions: list[str] = Field(default_factory=list)
+    unknowns: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    surfaceSeed: Optional[SurfaceSeedRecord] = None
+    terminalSeed: Optional[TerminalSeedRecord] = None
+    confidence: str = "medium"  # "low" | "medium" | "high"
+    createdAt: int
+    updatedAt: int
+    supersedesVersion: Optional[int] = None
+    staleSince: Optional[int] = None
+    staleReason: Optional[str] = None
+    failureState: Optional[str] = None  # 9 canonical codes from V3.1
+
+
+# Forward-ref resolution for MissionRecord (uses ProjectContractRecord and
+# TruthDistillationRecord declared below it).
+MissionRecord.model_rebuild()
 
 
 class PrincipleRecord(BaseModel):

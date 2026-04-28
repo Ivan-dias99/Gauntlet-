@@ -91,6 +91,92 @@ export interface Artifact {
   terminationReason?: string | null;
 }
 
+// Wave 6a — Truth Distillation status enum.
+// Mirrors V3.1 contract Decision 5. Kept narrow until usage data shows
+// need for additional members.
+export type ArtifactStatus =
+  | "draft"
+  | "review"
+  | "approved"
+  | "stale"
+  | "superseded"
+  | "invalidated"
+  | "blocked"
+  | "failed";
+
+// Wave 6a — Failure modes for handoff. Same shape across artefacts.
+export type ArtifactFailureMode =
+  | "missing_context"
+  | "low_confidence"
+  | "contradiction"
+  | "stale_dependency"
+  | "schema_invalid"
+  | "tool_unavailable"
+  | "backend_unreachable"
+  | "user_rejected"
+  | "gate_failed";
+
+// Wave 6a — Surface seed: hint passed from Insight to Surface.
+// `question` always present; hints optional and additive.
+export interface SurfaceSeed {
+  question: string;
+  designSystemSuggestion?: string;
+  screenCountEstimate?: number;
+  fidelityHint?: "wireframe" | "hi-fi";
+}
+
+// Wave 6a — Terminal seed: hint passed from Insight to Terminal.
+export interface TerminalSeed {
+  task: string;
+  fileTargets?: string[];
+  riskLevel?: "low" | "medium" | "high";
+  requiresGate?: ("typecheck" | "build" | "test")[];
+}
+
+// Wave 6a — Project Contract auto-derived from spine state.
+// Operator edits inline when they want more specificity.
+export interface ProjectContract {
+  version: number;
+  concept?: string;
+  mission?: string;
+  targetUser?: string;
+  problem?: string;
+  scope?: string;
+  nonGoals: string[];
+  principles: string[];
+  knownRisks: string[];
+  qualityGates: string[];
+  definitionOfDone?: string;
+  riskPolicy?: string;
+  derivedFromSpine: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Wave 6a — Truth Distillation, the primary Insight artefact.
+// Versioned. Surface and Terminal read the latest `approved` version
+// linked to the active mission as their starting context.
+export interface TruthDistillation {
+  id: string;
+  version: number;
+  status: ArtifactStatus;
+  sourceMissionId: string;
+  summary: string;
+  validatedDirection: string;
+  coreDecisions: string[];
+  unknowns: string[];
+  risks: string[];
+  surfaceSeed: SurfaceSeed | null;
+  terminalSeed: TerminalSeed | null;
+  confidence: "low" | "medium" | "high";
+  createdAt: number;
+  updatedAt: number;
+  supersedesVersion?: number;
+  staleSince?: number;
+  staleReason?: string;
+  failureState?: ArtifactFailureMode;
+}
+
 export interface Mission {
   id: string;
   title: string;
@@ -104,6 +190,10 @@ export interface Mission {
   // Ledger of accepted artifacts, newest first. Capped by the store so the
   // workshop surface stays operational — not a giant archive.
   artifacts: Artifact[];
+  // Wave 6a — Project Contract auto-derived; Truth Distillation versioned.
+  // Both optional for back-compat with missions persisted before Wave 6a.
+  projectContract?: ProjectContract | null;
+  truthDistillations?: TruthDistillation[];
 }
 
 export interface Principle {
@@ -117,4 +207,22 @@ export interface SpineState {
   activeMissionId: string | null;
   principles: Principle[];
   updatedAt: number;
+}
+
+// Wave 6a — Helper: find the active Truth Distillation for a mission.
+// "Active" rule (Default 6 of V3.1): last `approved` linked to the
+// mission. If none, last `draft`. If none, null.
+// Used by Surface and Terminal to read seeds.
+export function activeTruthDistillation(
+  mission: Mission | null,
+): TruthDistillation | null {
+  if (!mission) return null;
+  const list = mission.truthDistillations ?? [];
+  if (list.length === 0) return null;
+  // Newest first: walk from highest version down.
+  const sorted = [...list].sort((a, b) => b.version - a.version);
+  const approved = sorted.find((d) => d.status === "approved");
+  if (approved) return approved;
+  const draft = sorted.find((d) => d.status === "draft");
+  return draft ?? null;
 }

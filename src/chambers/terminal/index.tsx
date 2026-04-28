@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect, useMemo } from "react";
 import { useSpine } from "../../spine/SpineContext";
+import { activeTruthDistillation } from "../../spine/types";
+import { fireTelemetry } from "../../lib/telemetry";
 import {
   useSignal, AgentEvent, CrewEvent,
   type CrewRole, type GateName, type GateState,
@@ -411,6 +413,19 @@ export default function Terminal() {
   const currentObjective =
     activeTask?.title || lastTask || pendingTasks[0]?.title || "";
 
+  // Wave 6a — Terminal seed consumer. When the active mission has a
+  // Truth Distillation with a terminalSeed AND there are no open tasks
+  // yet, surface the seed as a one-click "apply" suggestion. Once the
+  // user applies (creates a task) or types something else, the
+  // suggestion stops fighting them.
+  const terminalSeed = useMemo(() => {
+    const distillation = activeTruthDistillation(activeMission);
+    return distillation?.terminalSeed ?? null;
+  }, [activeMission]);
+  const showTerminalSeed = Boolean(
+    terminalSeed && tasks.length === 0 && !pending && input.trim().length === 0,
+  );
+
   const nextOpenTask = activeMission?.tasks.find(
     (t) => t.state === "open" && t.id !== activeTaskId,
   ) ?? null;
@@ -471,6 +486,72 @@ export default function Terminal() {
             onSelect={selectTaskFromQueue}
           />
         </div>
+
+        {/* Wave 6a — Terminal seed suggestion. Only renders when
+            mission has zero tasks, no input typed, no pending run, AND
+            the active TruthDistillation carries a terminalSeed. Click
+            applies the seed as a new task; ignored otherwise. */}
+        {showTerminalSeed && terminalSeed && (
+          <div style={{ maxWidth: 860, margin: "0 auto var(--space-3)", padding: "0 var(--space-4)" }}>
+            <div
+              data-terminal-seed
+              style={{
+                padding: "10px 14px",
+                border: "1px solid color-mix(in oklab, var(--accent) 28%, transparent)",
+                borderRadius: "var(--radius-2)",
+                background: "color-mix(in oklab, var(--accent) 4%, transparent)",
+                fontFamily: "var(--mono)",
+                fontSize: 11,
+                color: "var(--text-secondary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span
+                  style={{
+                    fontSize: 9,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    color: "var(--accent)",
+                  }}
+                >
+                  ↳ insight terminal seed
+                </span>
+                <span style={{ fontFamily: "var(--sans)", fontSize: 13.5, color: "var(--text)" }}>
+                  {terminalSeed.task}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!activeMission) return;
+                  const newId = addTask(terminalSeed.task, "lab");
+                  setActiveTaskId(newId);
+                  fireTelemetry("terminal_seed_consumed", activeMission.id, {
+                    action: "kept",
+                  });
+                }}
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 10,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  padding: "6px 12px",
+                  border: "1px solid var(--accent)",
+                  borderRadius: 999,
+                  background: "color-mix(in oklab, var(--accent) 14%, transparent)",
+                  color: "var(--accent)",
+                  cursor: "pointer",
+                }}
+              >
+                aplicar como task
+              </button>
+            </div>
+          </div>
+        )}
 
         {unreachable && err ? (
           <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)" }}>
