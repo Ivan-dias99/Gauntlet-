@@ -30,6 +30,7 @@ from chambers import insight as _insight
 from chambers import terminal as _terminal
 from chambers import archive as _archive
 from chambers import core as _core
+from chambers import surface as _surface
 
 
 class ChamberKey(str, Enum):
@@ -41,7 +42,7 @@ class ChamberKey(str, Enum):
     CORE = "core"
 
 
-Dispatch = Literal["agent", "triad", "surface_mock"]
+Dispatch = Literal["agent", "triad", "surface", "surface_mock"]
 
 
 @dataclass(frozen=True)
@@ -66,11 +67,14 @@ PROFILES: dict[ChamberKey, ChamberProfile] = {
     ),
     ChamberKey.SURFACE: ChamberProfile(
         key=ChamberKey.SURFACE,
-        # Surface still dispatches to the mock handler in Wave 5. The real
-        # provider swap happens when the design generator is wired.
-        dispatch="surface_mock",
-        system_prompt=None,  # mock doesn't consume a prompt
-        allowed_tools=(),
+        # Wave 5: real provider-backed generator. The handler itself
+        # falls back to the mock when SIGNAL_SURFACE_MOCK / SIGNAL_MOCK
+        # is set or when ANTHROPIC_API_KEY is missing — the dispatch
+        # is the same in both worlds, so the engine fork stays uniform.
+        dispatch="surface",
+        system_prompt=_surface.SYSTEM_PROMPT,
+        temperature=_surface.TEMPERATURE,
+        allowed_tools=_surface.ALLOWED_TOOLS,
     ),
     ChamberKey.TERMINAL: ChamberProfile(
         key=ChamberKey.TERMINAL,

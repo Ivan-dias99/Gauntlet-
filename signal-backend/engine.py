@@ -399,14 +399,14 @@ class SignalEngine:
         """
         from chambers.profiles import ChamberKey
         if query.chamber == ChamberKey.SURFACE:
-            from chambers.surface import process_surface_mock_streaming
+            # Wave 5: dispatch to the real generator. The handler
+            # collapses to the mock internally when env flags or a
+            # missing API key say so, so this fork stays uniform and
+            # the run log tags the row honestly via the ``mock`` field.
+            from chambers.surface import process_surface_streaming
             yield {"type": "route", "path": "surface"}
-            # Improvement after Wave 8: Surface runs are persisted to the
-            # run log just like agent / triad / crew, so the Archive chamber
-            # can surface them alongside other mission activity. Without
-            # this record the mission ledger showed zero Surface events.
             surface_final: Optional[dict[str, Any]] = None
-            async for event in process_surface_mock_streaming(query.question, query.surface):
+            async for event in process_surface_streaming(query.question, query.surface):
                 yield event
                 if event.get("type") == "done":
                     surface_final = event
@@ -421,7 +421,10 @@ class SignalEngine:
                     processing_time_ms=surface_final.get("processing_time_ms", 0),
                     input_tokens=surface_final.get("input_tokens", 0),
                     output_tokens=surface_final.get("output_tokens", 0),
-                    terminated_early=is_mock,
+                    # Real runs are not "terminated_early"; the field used
+                    # to track the mock flag, which is now carried by
+                    # ``termination_reason`` directly.
+                    terminated_early=False,
                     termination_reason="surface_mock" if is_mock else None,
                 ))
             return
