@@ -13,6 +13,7 @@ import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
 import ArchiveLayout from "./ArchiveLayout";
 import ArchiveWorkbench from "./ArchiveWorkbench";
+import FailureMemoryPanel from "./FailureMemoryPanel";
 import RunList from "./RunList";
 import RunDetail from "./RunDetail";
 import {
@@ -253,6 +254,7 @@ export default function Archive() {
         loading={runs === null}
         hasMission={!!activeMission}
       />
+      <FailureMemoryPanel />
       <ArchiveLayout
         left={left}
         right={

@@ -67,6 +67,83 @@ _DEV_PATTERN = re.compile(
 )
 
 
+# ── Structured gate/diff signal extraction ──────────────────────────────────
+#
+# T085 — replaces the regex-on-tool-preview derivation that used to live
+# in the Terminal chamber (src/chambers/terminal/index.tsx). The agent
+# already runs every tool result; we inspect that result here once and
+# emit typed events so the shell can render gates/diff without scraping.
+# Keep it small: false positives are worse than silence — when the
+# signals are ambiguous we yield nothing.
+
+_DIFF_STAT_RE = re.compile(
+    r"(\d+)\s+files?\s+changed.*?(\d+)\s+insertions?\(\+\).*?(\d+)\s+deletions?\(-\)",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+# tsc-style "Found N errors" or "0 errors". Vite/tsc writes to stderr,
+# our tool surfaces stdout+stderr through `content`.
+_TSC_OK_RE = re.compile(r"\bFound\s+0\s+errors\b", flags=re.IGNORECASE)
+_TSC_FAIL_RE = re.compile(r"\bFound\s+([1-9]\d*)\s+errors?\b", flags=re.IGNORECASE)
+# Vite build success line
+_BUILD_OK_RE = re.compile(r"\bbuilt in\s+\d", flags=re.IGNORECASE)
+_BUILD_FAIL_RE = re.compile(
+    r"\b(build failed|rollup failed|vite build failed|error during build)\b",
+    flags=re.IGNORECASE,
+)
+# pytest / jest / vitest summaries
+_TEST_OK_RE = re.compile(
+    r"\b(\d+ passed(?:,\s*\d+ skipped)?(?:\s*in\s|$)|all tests passed|✓\s+\d+ tests? passed)\b",
+    flags=re.IGNORECASE,
+)
+_TEST_FAIL_RE = re.compile(
+    r"\b(\d+ failed|\d+ failing|FAIL\s+\S+\.(?:test|spec)\.|tests? failed)\b",
+    flags=re.IGNORECASE,
+)
+
+
+def _extract_signals(tool_name: str, content: str) -> list[dict[str, Any]]:
+    """Return zero or more {type:"gate"|"diff", ...} signal dicts derived
+    from a tool_result's content. Caller adds `iteration` + `source`."""
+    if not content:
+        return []
+    out: list[dict[str, Any]] = []
+
+    # Diff stats — only meaningful from git diff/show output.
+    if tool_name == "git":
+        m = _DIFF_STAT_RE.search(content)
+        if m:
+            try:
+                files, added, removed = (int(m.group(i)) for i in (1, 2, 3))
+                out.append({
+                    "type": "diff",
+                    "files": files,
+                    "added": added,
+                    "removed": removed,
+                })
+            except ValueError:
+                pass
+
+    # Gates — only meaningful from run_command / execute_python output.
+    if tool_name in ("run_command", "execute_python"):
+        # typecheck
+        if _TSC_OK_RE.search(content):
+            out.append({"type": "gate", "name": "typecheck", "state": "pass"})
+        elif _TSC_FAIL_RE.search(content):
+            out.append({"type": "gate", "name": "typecheck", "state": "fail"})
+        # build
+        if _BUILD_OK_RE.search(content):
+            out.append({"type": "gate", "name": "build", "state": "pass"})
+        elif _BUILD_FAIL_RE.search(content):
+            out.append({"type": "gate", "name": "build", "state": "fail"})
+        # test
+        if _TEST_FAIL_RE.search(content):
+            out.append({"type": "gate", "name": "test", "state": "fail"})
+        elif _TEST_OK_RE.search(content):
+            out.append({"type": "gate", "name": "test", "state": "pass"})
+
+    return out
+
+
 # ── Response Envelope ───────────────────────────────────────────────────────
 
 @dataclass
@@ -317,6 +394,15 @@ class AgentOrchestrator:
                     "preview": result.content[:300],
                     "iteration": iteration,
                 }
+
+                # Structured signals derived from the full tool content
+                # (not the 300-char preview) so trailing summary lines
+                # like "Found 0 errors" / "built in 1.2s" / git diff
+                # shortstats are not lost. False positives stay silent.
+                for sig in _extract_signals(block.name, result.content):
+                    sig["iteration"] = iteration
+                    sig["source"] = block.name
+                    yield sig
 
             messages.append({"role": "user", "content": tool_results_content})
 
