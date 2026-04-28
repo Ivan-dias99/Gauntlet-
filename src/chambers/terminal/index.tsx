@@ -1,7 +1,11 @@
 import { useRef, useState, useEffect, useMemo } from "react";
 import { useSpine } from "../../spine/SpineContext";
-import { useSignal, AgentEvent, CrewEvent, type CrewRole } from "../../hooks/useSignal";
+import {
+  useSignal, AgentEvent, CrewEvent,
+  type CrewRole, type GateName, type GateState,
+} from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
+import { useGitStatus } from "../../hooks/useGitStatus";
 import { useCopy } from "../../i18n/copy";
 import type { Artifact } from "../../spine/types";
 import DormantPanel from "../../shell/DormantPanel";
@@ -30,7 +34,14 @@ import { TaskList } from "./TaskBench";
 //   · NextStepBar (only when the run has landed and there is a next step)
 //   · ExecutionComposer (floating command dock at the bottom)
 
-type GateState = "pass" | "fail" | "unavailable";
+// Initial state for the structured gate signals — reused on every
+// task transition so a switch to a different task never inherits the
+// previous run's gates/diff.
+const INITIAL_GATES: Record<GateName, GateState> = {
+  typecheck: "unavailable",
+  build: "unavailable",
+  test: "unavailable",
+};
 
 export default function Terminal() {
   const {
@@ -39,6 +50,7 @@ export default function Terminal() {
   } = useSpine();
   const { streamDev, streamCrew, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
+  const git = useGitStatus();
   const copy = useCopy();
 
   const [input, setInput] = useState("");
@@ -49,6 +61,11 @@ export default function Terminal() {
   const [liveText, setLiveText] = useState("");
   const [done, setDone] = useState<DoneSummary | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  // Structured gates + diff arrive as typed events from the agent loop
+  // (agent.py _extract_signals). These replace the regex-on-tool-preview
+  // derivation that used to live in the chamber. Reset on each submit.
+  const [liveGates, setLiveGates] = useState<Record<GateName, GateState>>(INITIAL_GATES);
+  const [liveDiff, setLiveDiff] = useState<{ files: number; added: number; removed: number } | null>(null);
   const [mode, setMode] = useState<RunMode>("agent");
   const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
   // Session-only guard against double-click on the accept button.
@@ -130,6 +147,12 @@ export default function Terminal() {
           next[hit] = { ...next[hit], ok: ev.ok, preview: ev.preview };
           return next;
         });
+        break;
+      case "gate":
+        setLiveGates((prev) => ({ ...prev, [ev.name]: ev.state }));
+        break;
+      case "diff":
+        setLiveDiff({ files: ev.files, added: ev.added, removed: ev.removed });
         break;
       case "done":
         setDone({
@@ -232,6 +255,8 @@ export default function Terminal() {
     setElapsed(0);
     setAccepted(false);
     setCrew({ ...EMPTY_CREW });
+    setLiveGates(INITIAL_GATES);
+    setLiveDiff(null);
 
     abortRef.current?.abort();
     const ac = new AbortController();
@@ -315,6 +340,8 @@ export default function Terminal() {
     setErr(null);
     setLiveTools([]);
     setLiveText("");
+    setLiveGates(INITIAL_GATES);
+    setLiveDiff(null);
     setAccepted(false);
   }
 
@@ -326,6 +353,8 @@ export default function Terminal() {
     setErr(null);
     setLiveTools([]);
     setLiveText("");
+    setLiveGates(INITIAL_GATES);
+    setLiveDiff(null);
     setAccepted(false);
   }
 
@@ -346,6 +375,8 @@ export default function Terminal() {
     setErr(null);
     setLiveTools([]);
     setLiveText("");
+    setLiveGates(INITIAL_GATES);
+    setLiveDiff(null);
     setAccepted(true);
     if (a.taskId && activeMission?.tasks.some((t) => t.id === a.taskId)) {
       setActiveTaskId(a.taskId);
@@ -385,35 +416,14 @@ export default function Terminal() {
   ) ?? null;
 
   const allArtifacts = activeMission?.artifacts ?? [];
-  const diffStats = useMemo(() => {
-    for (const t of liveTools) {
-      const text = t.preview ?? "";
-      const m = /(\d+)\s*files?\D+\+(\d+)\D+-(\d+)/i.exec(text);
-      if (m) return { files: Number(m[1]), added: Number(m[2]), removed: Number(m[3]) };
-    }
-    return null;
-  }, [liveTools]);
-  const gates = useMemo<{ typecheck: GateState; build: GateState }>(() => {
-    const next: { typecheck: GateState; build: GateState } = {
-      typecheck: "unavailable",
-      build: "unavailable",
-    };
-
-    for (const tool of liveTools) {
-      const text = (tool.preview ?? "").toLowerCase();
-      if (!text) continue;
-
-      const failed = /\b(fail(?:ed)?|error|errored|nonzero)\b|exit code\s*[1-9]|✗/.test(text);
-      const passed = /\b(pass(?:ed)?|success|succeeded|clean|ok)\b|✓|built in\s+\d/.test(text);
-      const mentionsTypecheck = /\b(typecheck|tsc|typescript|noemit|ts-noemit)\b/.test(text);
-      const mentionsBuild = /\b(build|vite build|bundl|compiled|dist\/)\b|built in\s+\d/.test(text);
-
-      if (mentionsTypecheck) next.typecheck = failed ? "fail" : passed ? "pass" : next.typecheck;
-      if (mentionsBuild) next.build = failed ? "fail" : passed ? "pass" : next.build;
-    }
-
-    return next;
-  }, [liveTools]);
+  // diffStats / gates come straight from the agent loop now (T085).
+  // The composer prop only carries the two that ExecutionComposer
+  // currently renders — the `test` gate is captured but not yet shown.
+  const diffStats = liveDiff;
+  const gates: { typecheck: GateState; build: GateState } = {
+    typecheck: liveGates.typecheck,
+    build: liveGates.build,
+  };
   const reviewState: "pass" | "needs-fix" | "blocked" =
     err ? "blocked" : done?.terminated_early ? "needs-fix" : done ? "pass" : "needs-fix";
   const reviewRisk: "low" | "medium" | "high" =
@@ -526,8 +536,14 @@ export default function Terminal() {
         backendReachable={backend.reachable}
         backendReadiness={backend.readiness}
         backendReasons={backend.readinessReasons}
-        repoLabel={(import.meta.env.VITE_SIGNAL_REPO as string | undefined) ?? null}
-        branchLabel={(import.meta.env.VITE_SIGNAL_BRANCH as string | undefined) ?? null}
+        repoLabel={
+          git.repo ?? (import.meta.env.VITE_SIGNAL_REPO as string | undefined) ?? null
+        }
+        branchLabel={
+          git.branch
+            ? `${git.branch}${git.dirty ? "*" : ""}`
+            : (import.meta.env.VITE_SIGNAL_BRANCH as string | undefined) ?? null
+        }
         diffStats={diffStats}
         gates={gates}
         reviewState={reviewState}

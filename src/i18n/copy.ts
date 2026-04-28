@@ -141,6 +141,21 @@ export interface Copy {
   surfaceStudioFidelityLabel: string;
   surfaceStudioDsLabel: string;
   surfaceStudioDsEmpty: string;
+  // Wave 5: design_system is required on the real path. The copy
+  // narrates the requirement (next to the label) and the disabled-CTA
+  // tooltip; the badge text reflects mock vs real generation.
+  surfaceStudioDsRequired: string;
+  surfaceStudioDsBlockedHint: string;
+  surfaceStudioRealBadge: string;
+  surfaceStudioMockBadge: string;
+  // Wave 5: typed Surface error codes from backend agent.py /
+  // chambers/surface.py. Localized so the user sees a chamber-tone
+  // message instead of the raw English envelope. Anything outside
+  // this map falls back to the raw `message` field.
+  surfaceErrDesignSystemRequired: string;
+  surfaceErrProvider: string;
+  surfaceErrNoToolUse: string;
+  surfaceErrValidation: string;
   surfaceStudioBriefLabel: string;
   surfaceStudioBriefPlaceholder: string;
   surfaceStudioGenerate: string;
@@ -507,6 +522,14 @@ const PT: Copy = {
   surfaceStudioFidelityLabel: "fidelidade",
   surfaceStudioDsLabel: "design system",
   surfaceStudioDsEmpty: "sem design system",
+  surfaceStudioDsRequired: "obrigatório",
+  surfaceStudioDsBlockedHint: "escolhe um design system para gerar",
+  surfaceStudioRealBadge: "real · provider ativo",
+  surfaceStudioMockBadge: "mock · plano canned",
+  surfaceErrDesignSystemRequired: "design system em falta — o gerador real exige um sistema antes de produzir o plano",
+  surfaceErrProvider: "provider falhou — o pedido ao modelo não chegou ao fim. Tenta de novo ou verifica a chave",
+  surfaceErrNoToolUse: "modelo não devolveu plano estruturado — possível desvio à ferramenta. Reformula o brief",
+  surfaceErrValidation: "plano devolvido falhou validação — recusado para evitar saída malformada",
   surfaceStudioBriefLabel: "brief",
   surfaceStudioBriefPlaceholder: "Descreve a superfície — propósito, utilizador, restrições…",
   surfaceStudioGenerate: "Gerar plano",
@@ -850,6 +873,14 @@ const EN: Copy = {
   surfaceStudioFidelityLabel: "fidelity",
   surfaceStudioDsLabel: "design system",
   surfaceStudioDsEmpty: "no design system",
+  surfaceStudioDsRequired: "required",
+  surfaceStudioDsBlockedHint: "pick a design system to generate",
+  surfaceStudioRealBadge: "real · provider active",
+  surfaceStudioMockBadge: "mock · canned plan",
+  surfaceErrDesignSystemRequired: "design system missing — the real generator requires a system before producing the plan",
+  surfaceErrProvider: "provider call failed — the model request didn't complete. Retry or check the key",
+  surfaceErrNoToolUse: "model returned no structured plan — likely tool drift. Reframe the brief",
+  surfaceErrValidation: "returned plan failed validation — refused to avoid malformed output",
   surfaceStudioBriefLabel: "brief",
   surfaceStudioBriefPlaceholder: "Describe the surface — purpose, user, constraints…",
   surfaceStudioGenerate: "Generate plan",

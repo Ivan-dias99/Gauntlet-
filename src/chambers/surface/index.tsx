@@ -46,6 +46,15 @@ export default function Surface() {
   async function submit() {
     const v = prompt.trim();
     if (!v || pending) return;
+    // Wave 5: design_system is a hard prerequisite on the real path.
+    // CreationPanel disables the CTA but ⌘+Enter from the textarea
+    // bypasses that, so we re-check here. Defensive — a reach to the
+    // backend that ends in `surface_design_system_required` would be
+    // wasted round-trip + a confusing ErrorPanel.
+    if (!(brief.design_system ?? "").trim()) {
+      setErr(copy.surfaceStudioDsBlockedHint);
+      return;
+    }
     setErr(null);
 
     // First-send mission creation — Surface mirrors Insight's implicit-
@@ -74,7 +83,18 @@ export default function Surface() {
       },
       (ev: SurfaceEvent) => {
         if (ev.type === "error") {
-          setErr(ev.message);
+          // Map typed backend error codes to localized chamber copy.
+          // Unknown codes fall through to the raw message so we never
+          // silently swallow a new failure mode the shell hasn't
+          // learned about yet.
+          const tag = ev.error;
+          const localized =
+            tag === "surface_design_system_required" ? copy.surfaceErrDesignSystemRequired
+            : tag === "surface_provider_error"        ? copy.surfaceErrProvider
+            : tag === "surface_no_tool_use"           ? copy.surfaceErrNoToolUse
+            : tag === "surface_validation_failed"     ? copy.surfaceErrValidation
+            : null;
+          setErr(localized ?? ev.message);
           return;
         }
         if (ev.type === "surface_plan") {
@@ -125,6 +145,39 @@ export default function Surface() {
                 pending={pending}
                 missionTitle={activeMission?.title ?? null}
               />
+              {/* Wave 5: promote a "real generation" badge when the
+                  current plan came back from the provider path
+                  (mock=false). The mock case is already declared by
+                  the CreationPanel's existing mockBanner. */}
+              {plan && !planIsMock && (
+                <div
+                  data-surface-real-badge
+                  style={{
+                    margin: "0 var(--space-3) var(--space-2)",
+                    padding: "6px 10px",
+                    border: "1px solid color-mix(in oklab, var(--cc-ok, #2e9c5e) 32%, transparent)",
+                    borderRadius: "var(--radius-control)",
+                    background: "color-mix(in oklab, var(--cc-ok, #2e9c5e) 10%, transparent)",
+                    fontFamily: "var(--mono)",
+                    fontSize: "var(--t-meta)",
+                    letterSpacing: "var(--track-meta)",
+                    color: "var(--cc-ok, #2e9c5e)",
+                    textTransform: "uppercase",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: "var(--cc-ok, #2e9c5e)",
+                    }}
+                  />
+                  {copy.surfaceStudioRealBadge}
+                </div>
+              )}
               <CreationPanel
                 brief={brief}
                 onBriefChange={patchBrief}
@@ -133,6 +186,7 @@ export default function Surface() {
                 onSubmit={submit}
                 pending={pending}
                 mockBanner={mockBannerVisible}
+                requireDesignSystem
                 principlesCount={principles.length}
                 hasPlan={!!plan}
               />

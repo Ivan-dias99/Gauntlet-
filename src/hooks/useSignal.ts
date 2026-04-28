@@ -77,12 +77,22 @@ export type SurfaceEvent =
     }
   | { type: "error"; message: string; error?: string; reason?: string };
 
+// T085: structured gate/diff frames. Replace the legacy regex-on-preview
+// derivation in Terminal — the backend now emits typed signals after each
+// tool_result. `gate` carries pass|fail|unavailable for typecheck/build/test.
+// `diff` carries file-level numeric stats. Both are advisory: a chamber can
+// ignore them without breaking the run.
+export type GateName = "typecheck" | "build" | "test";
+export type GateState = "pass" | "fail" | "unavailable";
+
 export type AgentEvent =
   | { type: "start" }
   | { type: "iteration"; n: number }
   | { type: "assistant_text"; text: string; iteration: number }
   | { type: "tool_use"; id: string; name: string; input: unknown; iteration: number }
   | { type: "tool_result"; id: string; ok: boolean; preview: string; iteration: number }
+  | { type: "gate"; name: GateName; state: GateState; iteration: number; source?: string }
+  | { type: "diff"; files: number; added: number; removed: number; iteration: number; source?: string }
   | {
       type: "done";
       answer: string;
@@ -169,6 +179,8 @@ export type RouteEvent =
   | { type: "assistant_text"; text: string; iteration: number }
   | { type: "tool_use"; id: string; name: string; input: unknown; iteration: number }
   | { type: "tool_result"; id: string; ok: boolean; preview: string; iteration: number }
+  | { type: "gate"; name: GateName; state: GateState; iteration: number; source?: string }
+  | { type: "diff"; files: number; added: number; removed: number; iteration: number; source?: string }
   | { type: "error"; message: string; error?: string; reason?: string };
 
 type Route = "route" | "dev" | "ask";
