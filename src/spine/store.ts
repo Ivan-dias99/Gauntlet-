@@ -1,6 +1,8 @@
 import {
   SpineState, Mission, Chamber, Note, Task, TaskState, TaskSource,
   LogEvent, Principle, Artifact, normalizeChamberKey,
+  TruthDistillation, ProjectContract, ArtifactStatus, ArtifactFailureMode,
+  SurfaceSeed, TerminalSeed,
 } from "./types";
 
 // Wave-0 rename: signal:spine:v1 is canonical. ruberra:spine:v1 is still
@@ -64,6 +66,126 @@ function normalizeArtifact(v: unknown): Artifact | null {
 
 const VALID_TASK_STATES: ReadonlySet<TaskState> = new Set(["open", "running", "done", "blocked"]);
 const VALID_TASK_SOURCES: ReadonlySet<TaskSource> = new Set(["manual", "lab", "crew", "other"]);
+
+// Wave 6a — normalizers for the new Mission fields. Without these,
+// `truthDistillations` and `projectContract` round-trip through
+// `normalizeMission` as undefined and rehydration silently drops them
+// (localStorage load + /spine fetch both pass through normalize).
+
+const VALID_ARTIFACT_STATUS: ReadonlySet<ArtifactStatus> = new Set([
+  "draft", "review", "approved", "stale", "superseded",
+  "invalidated", "blocked", "failed",
+]);
+const VALID_FAILURE_MODE: ReadonlySet<ArtifactFailureMode> = new Set([
+  "missing_context", "low_confidence", "contradiction", "stale_dependency",
+  "schema_invalid", "tool_unavailable", "backend_unreachable",
+  "user_rejected", "gate_failed",
+]);
+const VALID_CONFIDENCE = new Set(["low", "medium", "high"] as const);
+const VALID_FIDELITY = new Set(["wireframe", "hi-fi"] as const);
+const VALID_RISK = new Set(["low", "medium", "high"] as const);
+const VALID_GATE = new Set(["typecheck", "build", "test"] as const);
+
+function normalizeStringList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is string => typeof v === "string");
+}
+
+function normalizeSurfaceSeed(v: unknown): SurfaceSeed | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  if (typeof r.question !== "string") return null;
+  const seed: SurfaceSeed = { question: r.question };
+  if (typeof r.designSystemSuggestion === "string") {
+    seed.designSystemSuggestion = r.designSystemSuggestion;
+  }
+  if (typeof r.screenCountEstimate === "number") {
+    seed.screenCountEstimate = r.screenCountEstimate;
+  }
+  if (typeof r.fidelityHint === "string" && VALID_FIDELITY.has(r.fidelityHint as "wireframe" | "hi-fi")) {
+    seed.fidelityHint = r.fidelityHint as "wireframe" | "hi-fi";
+  }
+  return seed;
+}
+
+function normalizeTerminalSeed(v: unknown): TerminalSeed | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  if (typeof r.task !== "string") return null;
+  const seed: TerminalSeed = { task: r.task };
+  if (Array.isArray(r.fileTargets)) {
+    seed.fileTargets = normalizeStringList(r.fileTargets);
+  }
+  if (typeof r.riskLevel === "string" && VALID_RISK.has(r.riskLevel as "low" | "medium" | "high")) {
+    seed.riskLevel = r.riskLevel as "low" | "medium" | "high";
+  }
+  if (Array.isArray(r.requiresGate)) {
+    seed.requiresGate = r.requiresGate.filter(
+      (g: unknown): g is "typecheck" | "build" | "test" =>
+        typeof g === "string" && VALID_GATE.has(g as "typecheck" | "build" | "test"),
+    );
+  }
+  return seed;
+}
+
+function normalizeTruthDistillation(v: unknown): TruthDistillation | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  if (typeof r.id !== "string") return null;
+  if (typeof r.sourceMissionId !== "string") return null;
+  const status = typeof r.status === "string" && VALID_ARTIFACT_STATUS.has(r.status as ArtifactStatus)
+    ? r.status as ArtifactStatus
+    : "draft";
+  const confidence = typeof r.confidence === "string" && VALID_CONFIDENCE.has(r.confidence as "low" | "medium" | "high")
+    ? r.confidence as "low" | "medium" | "high"
+    : "medium";
+  const failureState = typeof r.failureState === "string" && VALID_FAILURE_MODE.has(r.failureState as ArtifactFailureMode)
+    ? r.failureState as ArtifactFailureMode
+    : undefined;
+  const out: TruthDistillation = {
+    id: r.id,
+    version: typeof r.version === "number" ? r.version : 1,
+    status,
+    sourceMissionId: r.sourceMissionId,
+    summary: typeof r.summary === "string" ? r.summary : "",
+    validatedDirection: typeof r.validatedDirection === "string" ? r.validatedDirection : "",
+    coreDecisions: normalizeStringList(r.coreDecisions),
+    unknowns: normalizeStringList(r.unknowns),
+    risks: normalizeStringList(r.risks),
+    surfaceSeed: normalizeSurfaceSeed(r.surfaceSeed),
+    terminalSeed: normalizeTerminalSeed(r.terminalSeed),
+    confidence,
+    createdAt: typeof r.createdAt === "number" ? r.createdAt : Date.now(),
+    updatedAt: typeof r.updatedAt === "number" ? r.updatedAt : Date.now(),
+  };
+  if (typeof r.supersedesVersion === "number") out.supersedesVersion = r.supersedesVersion;
+  if (typeof r.staleSince === "number") out.staleSince = r.staleSince;
+  if (typeof r.staleReason === "string") out.staleReason = r.staleReason;
+  if (failureState) out.failureState = failureState;
+  return out;
+}
+
+function normalizeProjectContract(v: unknown): ProjectContract | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  return {
+    version: typeof r.version === "number" ? r.version : 1,
+    concept: typeof r.concept === "string" ? r.concept : undefined,
+    mission: typeof r.mission === "string" ? r.mission : undefined,
+    targetUser: typeof r.targetUser === "string" ? r.targetUser : undefined,
+    problem: typeof r.problem === "string" ? r.problem : undefined,
+    scope: typeof r.scope === "string" ? r.scope : undefined,
+    nonGoals: normalizeStringList(r.nonGoals),
+    principles: normalizeStringList(r.principles),
+    knownRisks: normalizeStringList(r.knownRisks),
+    qualityGates: normalizeStringList(r.qualityGates),
+    definitionOfDone: typeof r.definitionOfDone === "string" ? r.definitionOfDone : undefined,
+    riskPolicy: typeof r.riskPolicy === "string" ? r.riskPolicy : undefined,
+    derivedFromSpine: r.derivedFromSpine !== false,
+    createdAt: typeof r.createdAt === "number" ? r.createdAt : Date.now(),
+    updatedAt: typeof r.updatedAt === "number" ? r.updatedAt : Date.now(),
+  };
+}
 
 function normalizeTaskState(raw: unknown, done: boolean): TaskState {
   if (typeof raw === "string" && VALID_TASK_STATES.has(raw as TaskState)) {
@@ -151,6 +273,15 @@ export function normalizeMission(m: unknown): Mission | null {
       const legacy = normalizeArtifact(r.lastArtifact);
       return legacy ? [legacy] : [];
     })(),
+    // Wave 6a — preserve Truth Distillation ledger and auto-derived
+    // ProjectContract across rehydration. Without this, both fields
+    // would be silently dropped on reload / /spine fetch and Surface +
+    // Terminal would lose the seeds. Versioning would also regress
+    // because _next_version_for would always see an empty list.
+    truthDistillations: Array.isArray(r.truthDistillations)
+      ? (r.truthDistillations.map(normalizeTruthDistillation).filter(Boolean) as TruthDistillation[])
+      : [],
+    projectContract: normalizeProjectContract(r.projectContract),
   };
 }
 

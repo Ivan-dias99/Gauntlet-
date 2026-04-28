@@ -187,17 +187,23 @@ def derive_project_contract_v0(mission, principles: list[str]):
     """Wave 6a — auto-derive ProjectContract v0 from spine state.
 
     Lazy authoring per V3.1 Tier-1 Addition #1. Operator edits inline
-    later. Concept seeded from mission title + last user note; principles
-    from the spine; risks left empty (failure_memory integration is a
-    Wave 6b polish).
+    later. Concept seeded from mission title + LATEST user note;
+    principles from the spine; risks left empty (failure_memory
+    integration is a Wave 6b polish).
+
+    Note ordering: spine stores notes newest-first (frontend prepends
+    new notes — see src/spine/store.ts: `notes: [note, ...m.notes]`).
+    The latest user input is therefore at index 0 of the user-only
+    filter, NOT at -1. Earlier code took user_notes[-1] which silently
+    biased the contract toward the FIRST message of long missions.
     """
     from models import ProjectContractRecord
 
     user_notes = [n for n in mission.notes if (n.role or "user") == "user"]
-    last_user = user_notes[-1].text if user_notes else None
+    latest_user = user_notes[0].text if user_notes else None
     concept = mission.title
-    if last_user:
-        concept = f"{mission.title} · {last_user[:120]}"
+    if latest_user:
+        concept = f"{mission.title} · {latest_user[:120]}"
     now = int(time.time() * 1000)
     return ProjectContractRecord(
         version=1,
@@ -230,7 +236,15 @@ def _build_distill_user_prompt(mission, contract) -> str:
     if not mission.notes:
         lines.append("(missão sem notas — destilar com cautela e baixar confidence)")
     else:
-        for n in mission.notes[-30:]:  # cap to last 30 to fit prompt
+        # Spine stores notes newest-first (frontend prepends). The cap
+        # picks the 30 NEWEST entries (mission.notes[:30]), then we
+        # reverse to feed them in chronological order — oldest at the
+        # top, newest right before the model's turn. Earlier code did
+        # `mission.notes[-30:]` which actually selected the OLDEST 30,
+        # silently starving the model of recent context on long
+        # missions.
+        recent = list(reversed(mission.notes[:30]))
+        for n in recent:
             role = n.role or "user"
             lines.append(f"[{role}] {n.text}")
 
