@@ -1043,6 +1043,26 @@ async def git_status():
     }
 
 
+# ── Observability + Gateway endpoints (Wave H + I integration) ────────────
+
+
+@app.get("/observability/snapshot")
+async def observability_snapshot():
+    """Per-route p50/p95/error_rate/in_flight rolled from the in-process
+    ring buffer. Live; resets on backend restart."""
+    import observability
+    return observability.snapshot()
+
+
+@app.get("/gateway/summary")
+async def gateway_summary():
+    """Per-model + per-role call counts, token totals, estimated cost.
+    Lives next to /diagnostics so the operator has a single place to
+    audit routing + cost without scraping the run log."""
+    from model_gateway import gateway as _gateway
+    return _gateway.summary()
+
+
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
 
 @app.get("/diagnostics")
