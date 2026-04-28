@@ -480,6 +480,80 @@ async def put_spine(snapshot: SpineSnapshot):
         )
 
 
+# ── System Registry ─────────────────────────────────────────────────────────
+
+@app.get("/system/registry")
+async def system_registry():
+    """
+    Canonical, frontend-consumable view of what the backend actually does:
+    chambers (with dispatch + temperature + allowed tools), tool registry
+    (with names, descriptions, gated flag), and pipeline budgets (agent
+    iteration / wall-clock caps, triad / judge temperatures).
+
+    Read-only mirror of the truth that lives across chambers/profiles.py,
+    tools.py and agent.py. Lets the Core chamber's Routing / Permissions /
+    Orchestration tabs render live data instead of hand-maintained TS
+    constants that drift the moment any of these change.
+    """
+    from chambers.profiles import PROFILES
+    from tools import default_tools
+    from agent import (
+        MAX_AGENT_ITERATIONS,
+        MAX_TOOL_CALLS,
+        MAX_REPEATS,
+        AGENT_TEMPERATURE,
+        AGENT_WALL_CLOCK_S,
+    )
+    from config import (
+        TRIAD_COUNT,
+        TRIAD_TEMPERATURE,
+        JUDGE_TEMPERATURE,
+        MODEL_ID,
+    )
+
+    chambers = []
+    for key, profile in PROFILES.items():
+        chambers.append({
+            "key": key.value,
+            "dispatch": profile.dispatch,
+            "temperature": profile.temperature,
+            # None → no filter (all tools); () → zero tools; tuple → explicit allowlist
+            "allowed_tools": (
+                None if profile.allowed_tools is None
+                else list(profile.allowed_tools)
+            ),
+        })
+
+    tools = [
+        {
+            "name": t.name,
+            "description": t.description,
+            "gated": t.gated,
+        }
+        for t in default_tools()
+    ]
+
+    return {
+        "chambers": chambers,
+        "tools": tools,
+        "budgets": {
+            "agent": {
+                "max_iterations": MAX_AGENT_ITERATIONS,
+                "max_tool_calls": MAX_TOOL_CALLS,
+                "max_repeats": MAX_REPEATS,
+                "temperature": AGENT_TEMPERATURE,
+                "wall_clock_s": AGENT_WALL_CLOCK_S,
+            },
+            "triad": {
+                "count": TRIAD_COUNT,
+                "temperature": TRIAD_TEMPERATURE,
+                "judge_temperature": JUDGE_TEMPERATURE,
+                "model": MODEL_ID,
+            },
+        },
+    }
+
+
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
 
 @app.get("/diagnostics")

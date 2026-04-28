@@ -272,6 +272,10 @@ class Tool:
     description: str = ""
     input_schema: dict[str, Any] = {"type": "object", "properties": {}}
     timeout_s: float = DEFAULT_TOOL_TIMEOUT_S
+    # When True, the tool requires SIGNAL_ALLOW_CODE_EXEC=true to run.
+    # Surfaced to the frontend via /system/registry so the Permissions
+    # tab can render the gate without duplicating the rule.
+    gated: bool = False
 
     async def _run(self, **kwargs: Any) -> ToolResult:  # pragma: no cover - abstract
         raise NotImplementedError
@@ -361,6 +365,7 @@ class WebSearchTool(Tool):
 
 class ExecutePythonTool(Tool):
     name = "execute_python"
+    gated = True
     description = (
         "Run a short Python 3 snippet in a subprocess with a hard timeout. "
         "Stdout and stderr are captured. Disabled unless SIGNAL_ALLOW_CODE_EXEC "
@@ -551,6 +556,7 @@ class GitTool(Tool):
 
 class RunCommandTool(Tool):
     name = "run_command"
+    gated = True
     description = (
         "Run a vetted binary with arguments. Deny-by-default: the first token "
         "must be either in the SAFE set "

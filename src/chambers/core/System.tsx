@@ -24,12 +24,22 @@ interface Diagnostics {
   doctrine: string;
 }
 
+interface MemoryStats {
+  total_records: number;
+  total_failures: number;
+  last_updated: string;
+  top_repeat_offenders: { question: string; times_failed: number }[];
+}
+
 export default function System() {
   const { values, set, reset } = useTweaks();
   const { resetAll } = useSpine();
   const [diag, setDiag] = useState<Diagnostics | null>(null);
   const [diagErr, setDiagErr] = useState<string | null>(null);
   const [loadingDiag, setLoadingDiag] = useState(false);
+  const [mem, setMem] = useState<MemoryStats | null>(null);
+  const [memErr, setMemErr] = useState<string | null>(null);
+  const [loadingMem, setLoadingMem] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => {
@@ -51,6 +61,28 @@ export default function System() {
         }
       })
       .finally(() => alive && setLoadingDiag(false));
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    setLoadingMem(true);
+    signalFetch("/memory/stats")
+      .then((r) => r.ok ? r.json() : Promise.reject(new Error(`memory ${r.status}`)))
+      .then((body) => {
+        if (!alive) return;
+        setMem(body as MemoryStats);
+        setMemErr(null);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        if (isBackendUnreachable(e)) {
+          setMemErr("backend inacessível");
+        } else {
+          setMemErr(e instanceof Error ? e.message : String(e));
+        }
+      })
+      .finally(() => alive && setLoadingMem(false));
     return () => { alive = false; };
   }, []);
 
@@ -142,6 +174,73 @@ export default function System() {
               tone={diag.boot.anthropic_api_key_present ? "ok" : "warn"}
             />
             <DiagRow k="uptime" v={`${diag.boot.uptime_seconds}s`} />
+          </div>
+        )}
+      </Section>
+
+      {/* Failure Memory */}
+      <Section title="Failure Memory" sub="/memory/stats">
+        {loadingMem && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="status-dot" data-tone="info" data-pulse="true" />
+            <span className="kicker" data-tone="ghost">a ler…</span>
+          </div>
+        )}
+        {memErr && (
+          <span className="state-pill" data-tone="err">
+            <span className="state-pill-dot" />
+            {memErr}
+          </span>
+        )}
+        {mem && (
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <DiagRow k="records" v={String(mem.total_records)} />
+            <DiagRow k="failures" v={String(mem.total_failures)} />
+            {mem.top_repeat_offenders.length > 0 && (
+              <div
+                style={{
+                  marginTop: 8,
+                  paddingTop: 8,
+                  borderTop: "1px solid var(--border-color-soft)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                <span className="kicker" data-tone="ghost">
+                  reincidentes
+                </span>
+                {mem.top_repeat_offenders.map((r, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto",
+                      gap: 8,
+                      fontFamily: "var(--mono)",
+                      fontSize: "var(--t-meta)",
+                      color: "var(--text-muted)",
+                      letterSpacing: 0.2,
+                      alignItems: "baseline",
+                    }}
+                  >
+                    <span
+                      style={{
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                      title={r.question}
+                    >
+                      {r.question}
+                    </span>
+                    <span data-tone="warn" style={{ color: "var(--cc-warn)" }}>
+                      ×{r.times_failed}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Section>
