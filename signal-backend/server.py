@@ -24,6 +24,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,7 +40,7 @@ from config import (
     SERVER_HOST,
     SERVER_PORT,
 )
-from models import SignalQuery, SignalResponse, SpineSnapshot
+from models import SignalQuery, SignalResponse, SpineSnapshot, RunRecord
 from engine import SignalEngine
 from memory import failure_memory
 from runs import run_store
@@ -385,6 +386,196 @@ async def ask_ruberra_batch(batch: BatchQuery):
             responses.append(r.model_dump())
 
     return {"results": responses}
+
+
+# ── Insight · Distill (Wave 6a) ─────────────────────────────────────────────
+
+
+class DistillNoteInline(BaseModel):
+    """Inline note carried in the distill request body — defends against
+    the spine-debounce race where the user edits a note and immediately
+    asks to distill, before the snapshot has been pushed to disk."""
+    text: str
+    role: Optional[str] = None
+    createdAt: Optional[int] = None
+
+
+class DistillExistingInline(BaseModel):
+    """Inline existing-distillation summary carried in the distill request.
+    Only the fields the server needs for versioning — version + status —
+    so version increment computes from the freshest client-side view
+    instead of the persisted snapshot. Avoids the same debounce race
+    when the user clicks 'refinar' twice in quick succession."""
+    version: int
+    status: Optional[str] = None
+
+
+class DistillRequest(BaseModel):
+    mission_id: str = Field(..., min_length=1, max_length=128)
+    # Wave 6a — optional inline overrides of mission state. When sent,
+    # the backend uses these instead of the persisted snapshot — avoids
+    # the 500ms debounce race where the user types and immediately
+    # distills. All fields are optional; omitted fields fall back to
+    # the snapshot (back-compat with any external caller).
+    notes: Optional[list[DistillNoteInline]] = None
+    principles: Optional[list[str]] = None
+    # Wave 6a Codex P1 follow-up — inline existing distillations so
+    # version increment also avoids the snapshot race. Two quick
+    # "refinar" clicks would otherwise both compute the same next
+    # version from a stale snapshot, producing duplicates.
+    existing_distillations: Optional[list[DistillExistingInline]] = None
+
+
+@app.post("/insight/distill/stream")
+async def insight_distill_stream(req: DistillRequest):
+    """Wave 6a — generate a Truth Distillation for the active mission.
+
+    Reads mission + principles from the spine store by default, but the
+    client can send inline notes/principles in the request body to
+    override — this defends against the debounced spine-push race so
+    the user always distills against the latest content they typed.
+    ProjectContract v0 is auto-derived inside the chamber handler.
+    Mock-fallback under env flags so smoke path works without a key.
+    """
+    from chambers.insight import process_distillation_streaming
+    from models import NoteRecord
+
+    snapshot = await spine_store.get()
+    mission = next((m for m in snapshot.missions if m.id == req.mission_id), None)
+    if mission is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "mission_not_found",
+                "reason": "KeyError",
+                "message": f"mission {req.mission_id} not found in spine",
+            },
+        )
+
+    # Inline override path — apply the request's notes / principles on
+    # top of the snapshot mission. We mutate a *copy* (model_copy) so
+    # the persisted snapshot stays untouched; the chamber handler reads
+    # the merged view as the authoritative input for this run.
+    if req.notes is not None:
+        inline_notes = [
+            NoteRecord(
+                id=f"inline-{idx}",
+                text=n.text,
+                createdAt=n.createdAt or int(time.time() * 1000),
+                role=n.role,
+            )
+            for idx, n in enumerate(req.notes)
+        ]
+        mission = mission.model_copy(update={"notes": inline_notes})
+
+    # Inline existing distillations override — for the version helper.
+    # Only version + status are needed; the helper looks at .version.
+    # We construct minimal stub records (TruthDistillationRecord is
+    # picky about required fields; we feed safe defaults).
+    if req.existing_distillations is not None:
+        from models import TruthDistillationRecord
+        stubs = [
+            TruthDistillationRecord(
+                id=f"inline-stub-{idx}",
+                version=int(d.version),
+                status=d.status or "draft",
+                sourceMissionId=mission.id,
+                summary="",
+                validatedDirection="",
+                confidence="medium",
+                createdAt=0,
+                updatedAt=0,
+            )
+            for idx, d in enumerate(req.existing_distillations)
+        ]
+        mission = mission.model_copy(update={"truthDistillations": stubs})
+
+    principle_texts = (
+        list(req.principles)
+        if req.principles is not None
+        else [p.text for p in snapshot.principles]
+    )
+
+    async def event_source():
+        try:
+            async for event in process_distillation_streaming(mission, principle_texts):
+                yield f"data: {_json.dumps(event)}\n\n"
+                # Telemetry — Wave 6a Tier-1 Addition #3.
+                # Record the generation event when a `done` frame fires so the
+                # Archive ledger has visibility on distillation throughput.
+                if event.get("type") == "done":
+                    try:
+                        await run_store.record(RunRecord(
+                            route="distill",
+                            mission_id=mission.id,
+                            question=f"distill: {mission.title}",
+                            context=None,
+                            answer=event.get("distillation", {}).get("summary"),
+                            processing_time_ms=event.get("processing_time_ms", 0),
+                            input_tokens=event.get("input_tokens", 0),
+                            output_tokens=event.get("output_tokens", 0),
+                            terminated_early=bool(event.get("mock")),
+                            termination_reason=(
+                                "insight_mock" if event.get("mock") else None
+                            ),
+                        ))
+                    except Exception as log_err:  # noqa: BLE001
+                        logger.warning("distill run_store record failed: %s", log_err)
+        except Exception as e:
+            logger.error(f"Distill stream error: {e}", exc_info=True)
+            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('distill_error', e)})}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ── Telemetry (Wave 6a) ─────────────────────────────────────────────────────
+
+
+class TelemetryEvent(BaseModel):
+    """Lightweight client-fired telemetry event. Lands in the run log
+    under a dedicated `route` so the Archive ledger can filter without
+    a new store. Wave 6a minimum — the 4 consumer-side events that the
+    backend cannot observe by itself."""
+    event: str = Field(..., min_length=1, max_length=64)
+    mission_id: Optional[str] = Field(None, max_length=128)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+@app.post("/telemetry/event")
+async def telemetry_event(ev: TelemetryEvent):
+    """Wave 6a Tier-1 Addition #3 — client-side event capture.
+
+    Used for events the backend doesn't fire itself: distillation
+    accepted (user clicked accept), surface_seed_consumed (Surface
+    saw the seed and the user kept/edited/ignored), terminal_seed_consumed
+    (same for Terminal), intent_switch_guard_fired (when implemented).
+    """
+    try:
+        await run_store.record(RunRecord(
+            route=f"telemetry:{ev.event}",
+            mission_id=ev.mission_id,
+            question=ev.event,
+            context=None,
+            answer=_json.dumps(ev.payload) if ev.payload else None,
+            processing_time_ms=0,
+            input_tokens=0,
+            output_tokens=0,
+            terminated_early=False,
+            termination_reason=None,
+        ))
+        return {"ok": True}
+    except Exception as e:  # noqa: BLE001
+        logger.warning("telemetry record failed: %s", e)
+        # Telemetry failures must never break the chamber. Return ok=false
+        # so client can log locally if it cares; never surface as an error.
+        return {"ok": False, "reason": str(e)}
 
 
 # ── Memory Endpoints ────────────────────────────────────────────────────────

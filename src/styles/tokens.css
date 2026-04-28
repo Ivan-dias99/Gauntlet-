@@ -4122,6 +4122,15 @@ textarea {
     0 1px 0 color-mix(in oklab, #fff 36%, transparent) inset,
     0 1px 2px color-mix(in oklab, var(--text-primary) 4%, transparent);
 }
+/* Creation column children must not shrink below content height —
+   the cockpit's `overflow: hidden` (needed for the inner border-radius
+   clip) would otherwise clip the design-system row + footer + CTA when
+   viewport is short, leaving the user unable to submit. The aside
+   already has `overflow: auto`, so locking flex-shrink lets the column
+   scroll cleanly instead of swallowing controls. */
+[data-surface-region="creation"] > * {
+  flex-shrink: 0;
+}
 [data-theme="dark"] .surface-cockpit,
 [data-theme="sepia"] .surface-cockpit {
   box-shadow:
@@ -4265,8 +4274,13 @@ textarea {
   letter-spacing: var(--track-meta);
   cursor: pointer;
   transition: background var(--dur-fast), color var(--dur-fast);
-  white-space: normal;
-  word-break: break-word;
+  /* Single-line labels with ellipsis when narrow. Previous
+     `word-break: break-word` was breaking "Protótipo" mid-word into
+     "Protótip o" on the typical ~95px column. Truncation is honest:
+     the label's intent stays readable, no cosmetic mid-word fracture. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-align: center;
   display: inline-flex;
   align-items: center;

@@ -59,6 +59,73 @@ export interface SurfacePlanPayload {
   mock: boolean;
 }
 
+// Wave 6a — Truth Distillation streaming events. Same envelope shape
+// as the Surface generator (start → typed payload → done | error) so
+// the chamber consumer reuses the openStream helper without a parallel
+// SSE code path.
+export interface DistillProjectContractPayload {
+  version: number;
+  concept?: string;
+  mission?: string;
+  targetUser?: string;
+  problem?: string;
+  scope?: string;
+  nonGoals: string[];
+  principles: string[];
+  knownRisks: string[];
+  qualityGates: string[];
+  definitionOfDone?: string;
+  riskPolicy?: string;
+  derivedFromSpine: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface DistillTruthPayload {
+  id: string;
+  version: number;
+  status: string;
+  sourceMissionId: string;
+  summary: string;
+  validatedDirection: string;
+  coreDecisions: string[];
+  unknowns: string[];
+  risks: string[];
+  surfaceSeed: {
+    question: string;
+    designSystemSuggestion?: string | null;
+    screenCountEstimate?: number | null;
+    fidelityHint?: "wireframe" | "hi-fi" | null;
+  } | null;
+  terminalSeed: {
+    task: string;
+    fileTargets?: string[];
+    riskLevel?: "low" | "medium" | "high" | null;
+    requiresGate?: ("typecheck" | "build" | "test")[];
+  } | null;
+  confidence: "low" | "medium" | "high";
+  createdAt: number;
+  updatedAt: number;
+  supersedesVersion?: number | null;
+  staleSince?: number | null;
+  staleReason?: string | null;
+  failureState?: string | null;
+}
+
+export type DistillEvent =
+  | { type: "start" }
+  | { type: "project_contract"; contract: DistillProjectContractPayload }
+  | { type: "truth_distillation"; distillation: DistillTruthPayload }
+  | {
+      type: "done";
+      distillation: DistillTruthPayload;
+      mock: boolean;
+      processing_time_ms: number;
+      input_tokens: number;
+      output_tokens: number;
+    }
+  | { type: "error"; message: string; error?: string; reason?: string };
+
 export type SurfaceEvent =
   | { type: "start" }
   | { type: "route"; path: "surface" }
@@ -172,6 +239,10 @@ export type RouteEvent =
       should_refuse: boolean;
       reasoning: string;
       divergence_count: number;
+      // Wave 6a — refusal substitute. Null on accept; carries a
+      // smaller / sharper version of the question the judge could
+      // have answered with high confidence on refusal.
+      nearest_answerable_question: string | null;
     }
   | { type: "done"; result: Record<string, unknown> }
   // agent sub-events (when route: "agent")
@@ -228,9 +299,9 @@ export function useSignal() {
     }
   }, []);
 
-  const openStream = useCallback(async <E,>(
+  const openStream = useCallback(async <E, B = SignalQueryBody>(
     path: string,
-    body: SignalQueryBody,
+    body: B,
     onEvent: (ev: E) => void,
     signal?: AbortSignal,
   ) => {
@@ -371,12 +442,38 @@ export function useSignal() {
     [openStream],
   );
 
+  // Wave 6a — Truth Distillation. Body carries only mission_id; the
+  // backend reads notes + principles + auto-derives the ProjectContract
+  // from the spine snapshot. Streaming envelope mirrors Surface.
+  // Wave 6a — Distill request body. `mission_id` is required; the
+  // remaining fields are optional inline overrides of mission state
+  // sent to defend against the 500ms debounced spine-push race.
+  // Backend falls back to the persisted snapshot when a field is
+  // omitted (back-compat).
+  type DistillBody = {
+    mission_id: string;
+    notes?: Array<{ text: string; role?: string; createdAt?: number }>;
+    principles?: string[];
+    // version + status of every existing distillation on this mission,
+    // so the version increment helper picks max+1 from the latest
+    // client-side view (not the stale snapshot).
+    existing_distillations?: Array<{ version: number; status?: string }>;
+  };
+  const streamDistill = useCallback(
+    (body: DistillBody,
+     onEvent: (ev: DistillEvent) => void,
+     signal?: AbortSignal) =>
+      openStream<DistillEvent, DistillBody>("insight/distill/stream", body, onEvent, signal),
+    [openStream],
+  );
+
   return {
     call,
     streamDev,
     streamRoute,
     streamCrew,
     streamSurface,
+    streamDistill,
     pending,
     error,
     errorEnvelope,

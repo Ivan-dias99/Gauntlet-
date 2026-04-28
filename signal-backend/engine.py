@@ -257,6 +257,12 @@ class SignalEngine:
             }
             refusal_reason = reason_map.get(refusal_str, RefusalReason.INCONSISTENCY)
         
+        # Wave 6a — refusal substitute. Empty string from the judge
+        # gets normalised to None so the frontend's typed fallback
+        # path doesn't fire on an empty hint.
+        nearest_raw = data.get("nearest_answerable_question")
+        nearest = nearest_raw.strip() if isinstance(nearest_raw, str) and nearest_raw.strip() else None
+
         return JudgeVerdict(
             confidence=confidence,
             reasoning=data.get("reasoning", "No reasoning provided"),
@@ -264,6 +270,7 @@ class SignalEngine:
             divergence_points=data.get("divergence_points", []),
             should_refuse=data.get("should_refuse", confidence == ConfidenceLevel.LOW),
             refusal_reason=refusal_reason,
+            nearest_answerable_question=nearest,
         )
     
     # ── Dev / Agent Path ────────────────────────────────────────────────────
@@ -569,6 +576,9 @@ class SignalEngine:
             "should_refuse": verdict.should_refuse,
             "reasoning": verdict.reasoning,
             "divergence_count": len(verdict.divergence_points),
+            # Wave 6a Tier-1 Addition #2 — refusal substitute. Null on
+            # accept; carries a smaller/sharper question on refusal.
+            "nearest_answerable_question": verdict.nearest_answerable_question,
         }
 
         # ── Step 5: decision ────────────────────────────────────────────────

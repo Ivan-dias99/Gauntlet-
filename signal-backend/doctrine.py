@@ -47,6 +47,17 @@ Regras duras:
 - Se os números não baterem exatamente = "low".
 - Se tiver qualquer dúvida entre high e low, escolha "low".
 
+Quando recusas (should_refuse=true), DEVES também produzir
+``nearest_answerable_question``: uma versão mais pequena, mais concreta ou
+mais delimitada da pergunta original que conseguiria ter "high" confidence
+com o material disponível. É a porta de saída para o utilizador — em vez
+de só "não sei", tens de oferecer "posso responder a isto outro". Nunca
+inventes contexto novo na sub-pergunta; baseia-a só no que está na pergunta
+e nas respostas. Se realmente não houver versão mais pequena que conseguisse
+ser respondida com confiança, usa null.
+
+Quando aceitas (should_refuse=false), ``nearest_answerable_question`` é null.
+
 Responda apenas com o JSON. Nenhuma palavra a mais.
 
 ```json
@@ -56,7 +67,8 @@ Responda apenas com o JSON. Nenhuma palavra a mais.
   "refusal_reason": "inconsistency" | "insufficient_knowledge" | "safety" | "prior_failure" | null,
   "consensus_answer": "string or null",
   "reasoning": "uma frase — porquê este nível de confiança",
-  "divergence_points": ["ponto onde as respostas divergiram"]
+  "divergence_points": ["ponto onde as respostas divergiram"],
+  "nearest_answerable_question": "string or null"
 }
 ```
 """

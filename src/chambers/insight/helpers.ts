@@ -33,6 +33,10 @@ export interface VerdictState {
   agentIter: number;
   agentToolCount: number;
   question: string;
+  // Wave 6a — refusal substitute. Null on accept; carries a smaller /
+  // sharper version of the question on refusal so the chamber can
+  // offer a one-click reformulate path instead of a dead end.
+  nearestAnswerableQuestion?: string | null;
 }
 
 export interface LiveState {
