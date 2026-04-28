@@ -441,8 +441,17 @@ class SignalEngine:
 
         if self._auto_route_agent(query):
             yield {"type": "route", "path": "agent"}
+            # Wave 6c — wrap the agent's `done` envelope in `result` so the
+            # auto-router contract stays uniform with triad. Frontend's
+            # extractAnswer/RouteEvent type expects `done.result`; the agent
+            # loop emits `answer` + `tool_calls` etc at top level. Wrap on
+            # the way out so consumers don't need a parallel parser.
             async for event in self.process_dev_query_streaming(query):
-                yield event
+                if event.get("type") == "done":
+                    inner = {k: v for k, v in event.items() if k != "type"}
+                    yield {"type": "done", "result": inner}
+                else:
+                    yield event
         else:
             yield {"type": "route", "path": "triad"}
             async for event in self.process_query_streaming(query):

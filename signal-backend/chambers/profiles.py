@@ -60,8 +60,14 @@ class ChamberProfile:
 PROFILES: dict[ChamberKey, ChamberProfile] = {
     ChamberKey.INSIGHT: ChamberProfile(
         key=ChamberKey.INSIGHT,
-        dispatch="triad",
-        system_prompt=_insight.SYSTEM_PROMPT,
+        # Wave 6c — Insight switches from triad to conversational agent.
+        # The chamber is now a research lab with read-only exploration
+        # tools (web_search, web_fetch, read_file). Triad+judge stays
+        # available as an on-demand validation path via the dedicated
+        # /insight/validate/stream endpoint, which loads the original
+        # doctrine.SYSTEM_PROMPT independently.
+        dispatch="agent",
+        system_prompt=_insight.EXPLORE_SYSTEM_PROMPT,
         temperature=_insight.TEMPERATURE,
         allowed_tools=_insight.ALLOWED_TOOLS,
     ),

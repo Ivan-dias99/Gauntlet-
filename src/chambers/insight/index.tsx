@@ -13,6 +13,7 @@ import VerdictBadge from "./VerdictBadge";
 import InsightLayout from "./InsightLayout";
 import InsightWorkbench from "./InsightWorkbench";
 import TruthDistillationPanel from "./TruthDistillationPanel";
+import ValidationPanel from "./ValidationPanel";
 import {
   EMPTY_LIVE,
   extractAnswer,
@@ -217,24 +218,19 @@ export default function Insight() {
         onPromoteConfirm={confirmPromote}
         onPromoteCancel={() => setPromoteId(null)}
       />
-      {lastVerdict && !pending && <VerdictBadge verdict={lastVerdict} />}
-      {/* Wave 6a — refusal substitute. When the judge refused but offered
-          a sharper answerable question, give the user a one-click path to
-          reformulate. The full refusal prose stays in the verdict badge. */}
-      {lastVerdict?.refused && lastVerdict.nearestAnswerableQuestion && !pending && (
-        <div data-insight-substitute style={substituteStyle}>
-          <span style={substituteKicker}>posso responder a:</span>
-          <button
-            type="button"
-            onClick={() => {
-              setInput(lastVerdict.nearestAnswerableQuestion ?? "");
-            }}
-            style={substituteBtn}
-          >
-            {lastVerdict.nearestAnswerableQuestion}
-          </button>
-        </div>
+      {/* Wave 6c — Insight switched its default dispatch to agent loop
+          (research lab mode), so each turn no longer carries an
+          automatic verdict. The triad+judge path moved into the
+          ValidationPanel below — fired on-demand when the user
+          clicks "validar direcção". The legacy VerdictBadge still
+          renders if some upstream code surfaces a verdict (back-compat). */}
+      {lastVerdict && !pending && lastVerdict.routePath === "triad" && (
+        <VerdictBadge verdict={lastVerdict} />
       )}
+      {/* Wave 6c — On-demand triad+judge validation. Refusal substitute
+          (nearest_answerable_question) lives inside the panel and
+          calls back to set the composer input. */}
+      <ValidationPanel onReformulate={(text) => setInput(text)} />
       {/* Wave 6a — Truth Distillation panel. Sits between thread and
           composer; shows empty CTA when no distillation, full panel
           when one exists, and updates inline. */}
@@ -303,36 +299,9 @@ export default function Insight() {
 // One calm invitation when the session is empty. The composer itself
 // is the loud anchor; this cue only sets the tone.
 
-// Wave 6a — refusal substitute styles (inline; one-off chamber affordance).
-const substituteStyle: React.CSSProperties = {
-  margin: "var(--space-3) auto",
-  padding: "var(--space-2) var(--space-3)",
-  border: "1px solid color-mix(in oklab, var(--accent) 28%, transparent)",
-  borderRadius: "var(--radius-2)",
-  background: "color-mix(in oklab, var(--accent) 4%, transparent)",
-  maxWidth: 780,
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-};
-const substituteKicker: React.CSSProperties = {
-  fontFamily: "var(--mono)",
-  fontSize: 10,
-  letterSpacing: 1.5,
-  textTransform: "uppercase",
-  color: "var(--accent)",
-};
-const substituteBtn: React.CSSProperties = {
-  textAlign: "left",
-  padding: "8px 0",
-  border: 0,
-  background: "transparent",
-  color: "var(--text)",
-  fontFamily: "var(--sans)",
-  fontSize: 14,
-  lineHeight: 1.4,
-  cursor: "pointer",
-};
+// Wave 6c — refusal substitute moved into ValidationPanel. The chamber
+// no longer needs inline callout styles; the panel handles its own
+// rendering with chamber-tone colors.
 
 function ReadyCue({
   activeMission, copy,
