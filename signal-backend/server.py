@@ -388,6 +388,131 @@ async def ask_ruberra_batch(batch: BatchQuery):
     return {"results": responses}
 
 
+# ── Insight · Validate (Wave 6c) ────────────────────────────────────────────
+#
+# On-demand triad+judge over the conversation accumulated in Insight.
+# Wave 6c moved Insight's default dispatch to the agent loop (research lab
+# mode), which means the doctrine #1 stops governing every conversational
+# turn. This endpoint puts triad+judge back on the table when the user
+# wants explicit validation of where the conversation has landed —
+# triggered by a button in the chamber, not automatically.
+#
+# Input: mission_id + optional inline notes/principles (same race-defence
+#        contract as /insight/distill/stream).
+# Output: SSE stream identical to /route/stream's triad path (triad_start,
+#         triad_done×N, judge_start, judge_done with confidence +
+#         nearest_answerable_question, done).
+
+
+class ValidateRequest(BaseModel):
+    mission_id: str = Field(..., min_length=1, max_length=128)
+    # Same inline override pattern as DistillRequest. When omitted, the
+    # endpoint reads from the spine snapshot.
+    notes: Optional[list[DistillNoteInline]] = None
+    principles: Optional[list[str]] = None
+
+
+def _summarise_conversation(notes_list: list, principles_list: list[str]) -> str:
+    """Build the question fed into triad+judge from the conversation
+    accumulated so far. The summary is plain text — the existing
+    triad pipeline expects a single ``question`` string.
+
+    Note ordering: spine stores notes newest-first. We slice the
+    newest 30 then reverse so the summary reads chronologically.
+    """
+    lines: list[str] = ["Validar a direcção apurada na conversa abaixo."]
+    if principles_list:
+        lines.append("")
+        lines.append("Princípios em vigor:")
+        for p in principles_list:
+            lines.append(f"- {p}")
+    lines.append("")
+    lines.append("Conversa (mais antigas → mais recentes):")
+    if not notes_list:
+        lines.append("(missão sem notas — pedir refinamento)")
+    else:
+        recent = list(reversed(notes_list[:30]))
+        for n in recent:
+            role = getattr(n, "role", None) or "user"
+            text = getattr(n, "text", "")
+            lines.append(f"[{role}] {text}")
+    lines.append("")
+    lines.append(
+        "Avalia se a direcção está sólida o suficiente para avançar para "
+        "Surface/Terminal. Recusa se faltar evidência, contradições, ou "
+        "ambiguidade material."
+    )
+    return "\n".join(lines)
+
+
+@app.post("/insight/validate/stream")
+async def insight_validate_stream(req: ValidateRequest):
+    """Wave 6c — on-demand triad+judge validation of the Insight
+    conversation. Returns the same envelope as /route/stream's triad
+    path so the frontend's openStream consumer reuses the existing
+    plumbing. Refusal carries `nearest_answerable_question` (Wave 6a
+    Tier-1 Addition #2) so the chamber can offer a sharper reformulate.
+    """
+    if not engine:
+        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
+    from models import NoteRecord
+
+    snapshot = await spine_store.get()
+    mission = next((m for m in snapshot.missions if m.id == req.mission_id), None)
+    if mission is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "mission_not_found",
+                "reason": "KeyError",
+                "message": f"mission {req.mission_id} not found in spine",
+            },
+        )
+
+    if req.notes is not None:
+        inline_notes = [
+            NoteRecord(
+                id=f"inline-{idx}",
+                text=n.text,
+                createdAt=n.createdAt or int(time.time() * 1000),
+                role=n.role,
+            )
+            for idx, n in enumerate(req.notes)
+        ]
+    else:
+        inline_notes = list(mission.notes)
+
+    principle_texts = (
+        list(req.principles)
+        if req.principles is not None
+        else [p.text for p in snapshot.principles]
+    )
+
+    question = _summarise_conversation(inline_notes, principle_texts)
+    triad_query = SignalQuery(
+        question=question,
+        mission_id=mission.id,
+        principles=principle_texts or None,
+    )
+
+    async def event_source():
+        try:
+            async for event in engine.process_query_streaming(triad_query):
+                yield f"data: {_json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Validate stream error: {e}", exc_info=True)
+            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('validate_error', e)})}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 # ── Insight · Distill (Wave 6a) ─────────────────────────────────────────────
 
 

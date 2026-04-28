@@ -467,6 +467,23 @@ export function useSignal() {
     [openStream],
   );
 
+  // Wave 6c — Validate the Insight conversation on demand. Returns the
+  // same RouteEvent shape as /route/stream's triad path, so the
+  // chamber can render the verdict in a ValidationPanel without a
+  // parallel parser.
+  type ValidateBody = {
+    mission_id: string;
+    notes?: Array<{ text: string; role?: string; createdAt?: number }>;
+    principles?: string[];
+  };
+  const streamValidate = useCallback(
+    (body: ValidateBody,
+     onEvent: (ev: RouteEvent) => void,
+     signal?: AbortSignal) =>
+      openStream<RouteEvent, ValidateBody>("insight/validate/stream", body, onEvent, signal),
+    [openStream],
+  );
+
   return {
     call,
     streamDev,
@@ -474,6 +491,7 @@ export function useSignal() {
     streamCrew,
     streamSurface,
     streamDistill,
+    streamValidate,
     pending,
     error,
     errorEnvelope,

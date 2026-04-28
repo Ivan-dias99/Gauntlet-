@@ -43,11 +43,53 @@ if False:  # type-check only
 logger = logging.getLogger("signal.chamber.insight")
 
 
-# ── Wave 5 base profile (triad path) ────────────────────────────────────────
+# ── Wave 6c — Conversational agent profile ────────────────────────────────
+#
+# Insight switches from triad+judge one-shot to a multi-turn agent loop
+# with read-only exploration tools. The doctrine #1 ("refuse before
+# guessing") moves from governing every prompt to governing the FINAL
+# outputs — Truth Distillation (validated by Pydantic) and the
+# on-demand /insight/validate/stream endpoint (which still runs
+# triad+judge with the original DOCTRINE_SYSTEM prompt). In conversation,
+# Insight prefers questions and exploration to blind refusal.
 
-SYSTEM_PROMPT = _DOCTRINE_SYSTEM
-TEMPERATURE = 0.15  # Matches TRIAD_TEMPERATURE default.
-ALLOWED_TOOLS: tuple[str, ...] = ()  # No tool use — triad path only.
+EXPLORE_SYSTEM_PROMPT = """És um parceiro de pensamento crítico — modo research lab da câmara Insight do sistema Signal.
+
+Princípios duros:
+- Nunca inventes factos, nomes, números, datas, citações. Se não tens
+  evidência, diz "não sei" ou "preciso de pesquisar".
+- Faz perguntas de volta quando o utilizador não te dá material suficiente.
+  Não respondas em vácuo. Não preenchas lacunas com plausível-soante.
+- Usa tools quando faz sentido para avançar a conversa:
+    web_search   evidência externa (artigos, padrões, comparativos recentes)
+    web_fetch    ler URL específica que o utilizador refere
+    read_file    ler ficheiros do workspace que ajudam a contextualizar
+  Não uses tool por reflexo. Uses quando avança.
+- Aprofundamento progressivo: cada turno deve adicionar substância nova
+  (perguntas, ângulos, evidência, distinções). Não repetir o já dito.
+- Sé curto. Cada parágrafo extra é uma chance de errar. Marca dúvidas
+  explicitamente.
+- A doutrina dura ("refuse before guessing") aplica-se ao output final
+  (Truth Distillation, validação por triad). Aqui em conversa, prefere
+  perguntas e exploração à recusa cega.
+- Idioma: português europeu, espelhando o resto do shell. Excepto se o
+  utilizador escrever noutro idioma — então segue-o.
+"""
+
+# Wave 5 / Wave 6a base — kept aliased for back-compat with anything that
+# imports SYSTEM_PROMPT directly. Validate path (triad on demand) uses
+# the original DOCTRINE_SYSTEM prompt; conversation uses EXPLORE.
+SYSTEM_PROMPT = EXPLORE_SYSTEM_PROMPT
+VALIDATE_SYSTEM_PROMPT = _DOCTRINE_SYSTEM  # used by /insight/validate/stream
+
+# Wave 6c temperature — slightly higher than triad's 0.15 because
+# exploration benefits from variation; not so high that the model
+# starts inventing.
+TEMPERATURE = 0.5
+
+# Wave 6c allowlist — read-only exploration. NO write_file, run_command,
+# execute_python, git. The chamber is a lab, not an executor.
+ALLOWED_TOOLS: tuple[str, ...] = ("web_search", "web_fetch", "read_file")
 
 
 # ── Wave 6a — Truth Distillation generator ─────────────────────────────────
