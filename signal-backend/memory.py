@@ -16,7 +16,7 @@ from typing import Optional
 
 from config import FAILURE_MEMORY_FILE, MAX_FAILURE_ENTRIES, FAILURE_CONTEXT_WINDOW, MEMORY_DIR
 from models import FailureRecord, FailureMemory, RefusalReason
-from persistence import atomic_write_text, quarantine_corrupt_file
+from persistence import atomic_write_text_async, quarantine_corrupt_file
 
 logger = logging.getLogger("signal.memory")
 
@@ -75,9 +75,12 @@ class FailureMemoryStore:
             self._memory = FailureMemory()
     
     async def _save_to_disk(self) -> None:
-        """Persist failure memory to JSON file. Logs + surfaces errors."""
+        """Persist failure memory to JSON file. Logs + surfaces errors.
+
+        Disk I/O is offloaded to a worker thread via atomic_write_text_async
+        so the event loop is not stalled while the file flushes."""
         try:
-            atomic_write_text(
+            await atomic_write_text_async(
                 FAILURE_MEMORY_FILE,
                 self._memory.model_dump_json(indent=2),
             )

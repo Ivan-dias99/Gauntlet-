@@ -9,10 +9,17 @@ intact — never a half-written snapshot.
 Exceptions propagate. Callers that cannot afford to crash (engine
 side-effects like the run log) must catch explicitly and decide how to
 surface the failure — silently swallowing would lie about persistence.
+
+Sync vs async: ``atomic_write_text`` keeps the blocking implementation for
+non-async call sites and tests. ``atomic_write_text_async`` offloads the
+write to a worker thread via ``asyncio.to_thread`` so the event loop is
+not stalled on disk I/O — critical for SSE streams and concurrent
+requests on a hot run log.
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,6 +37,16 @@ def atomic_write_text(path: Path, content: str, encoding: str = "utf-8") -> None
         except OSError:
             pass
         raise
+
+
+async def atomic_write_text_async(
+    path: Path, content: str, encoding: str = "utf-8"
+) -> None:
+    """Async wrapper for ``atomic_write_text`` — runs the blocking write in a
+    worker thread so the asyncio event loop stays responsive while disk I/O
+    completes. Same atomicity guarantees as the sync version (write to .tmp
+    then os.replace). Exceptions propagate identically."""
+    await asyncio.to_thread(atomic_write_text, path, content, encoding)
 
 
 def quarantine_corrupt_file(path: Path) -> Path | None:

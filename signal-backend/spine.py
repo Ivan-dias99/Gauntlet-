@@ -17,7 +17,7 @@ from pathlib import Path
 
 from config import MEMORY_DIR
 from models import SpineSnapshot
-from persistence import atomic_write_text, quarantine_corrupt_file
+from persistence import atomic_write_text_async, quarantine_corrupt_file
 
 logger = logging.getLogger("signal.spine")
 
@@ -73,10 +73,13 @@ class SpineStore:
             logger.error("Failed to load spine: %s", detail)
             self._snapshot = SpineSnapshot()
 
-    def _write_snapshot(self, snapshot: SpineSnapshot) -> None:
-        # Blocking I/O kept sync; called under the asyncio lock, so no
-        # concurrent writer. atomic_write_text propagates on failure.
-        atomic_write_text(SPINE_FILE, snapshot.model_dump_json(indent=2))
+    async def _write_snapshot(self, snapshot: SpineSnapshot) -> None:
+        # Offloaded to a worker thread via atomic_write_text_async so the
+        # event loop stays responsive while the snapshot persists. Called
+        # under the asyncio lock, so still no concurrent writer.
+        await atomic_write_text_async(
+            SPINE_FILE, snapshot.model_dump_json(indent=2)
+        )
 
     async def get(self) -> SpineSnapshot:
         await self._ensure_loaded()
@@ -91,7 +94,7 @@ class SpineStore:
         async with self._lock:
             snapshot.last_updated = datetime.now(timezone.utc).isoformat()
             try:
-                self._write_snapshot(snapshot)
+                await self._write_snapshot(snapshot)
             except Exception as e:
                 self._last_save_error = f"{type(e).__name__}: {e}"
                 logger.error("Failed to save spine: %s", e)

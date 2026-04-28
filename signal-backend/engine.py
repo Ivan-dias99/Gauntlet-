@@ -563,8 +563,8 @@ class SignalEngine:
                 processing_time_ms=elapsed,
                 matched_prior_failure=has_prior_failure,
             )
-            await self._log_triad_run(query, response)
             yield {"type": "done", "result": response.model_dump()}
+            await self._log_triad_run(query, response)
             return
 
         # ── Step 4: judge ───────────────────────────────────────────────────
@@ -648,8 +648,8 @@ class SignalEngine:
                 ),
             )
 
-        await self._log_triad_run(query, response)
         yield {"type": "done", "result": response.model_dump()}
+        await self._log_triad_run(query, response)
 
     async def _log_triad_run(self, query: SignalQuery, response: SignalResponse) -> None:
         await run_store.record(RunRecord(
