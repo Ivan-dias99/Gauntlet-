@@ -40,7 +40,12 @@ export default function ObservabilityPanel() {
 
   useEffect(() => {
     let alive = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const ac = new AbortController();
+    // Codex round-2 (#254): recursive setTimeout instead of setInterval
+    // so we never overlap an in-flight /observability/snapshot fetch.
+    // A slow backend would otherwise stack concurrent requests and let
+    // an older response overwrite a newer one (out-of-order regression).
     async function fetchOnce() {
       if (!alive) return;
       setPending(true);
@@ -61,13 +66,13 @@ export default function ObservabilityPanel() {
         else setErr((e as Error).message);
       } finally {
         if (alive) setPending(false);
+        if (alive) timer = setTimeout(fetchOnce, POLL_INTERVAL_MS);
       }
     }
     void fetchOnce();
-    const id = setInterval(fetchOnce, POLL_INTERVAL_MS);
     return () => {
       alive = false;
-      clearInterval(id);
+      if (timer !== null) clearTimeout(timer);
       ac.abort();
     };
   }, []);
