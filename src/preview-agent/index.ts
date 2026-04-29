@@ -35,7 +35,31 @@ interface Envelope {
   payload?: Record<string, unknown>;
 }
 
-const PARENT_ORIGIN = "*"; // replied to event.origin specifically below.
+// Origin allowlist for inbound envelopes. Default policy: same-origin
+// only — the agent runs inside the same site that hosts the chamber.
+// Operators that mount Surface Final on a different host can extend
+// the list via `VITE_PREVIEW_AGENT_ALLOWED_ORIGINS` at build time
+// (comma-separated). Reads safely when the env var isn't set.
+const ALLOWED_ORIGINS: ReadonlySet<string> = (() => {
+  const set = new Set<string>();
+  if (typeof window !== "undefined" && window.location?.origin) {
+    set.add(window.location.origin);
+  }
+  // Vite injects import.meta.env.* at build time; gate access so the
+  // agent still loads in environments without Vite's helper.
+  const env =
+    typeof import.meta !== "undefined" && (import.meta as { env?: Record<string, string | undefined> }).env
+      ? (import.meta as { env: Record<string, string | undefined> }).env
+      : undefined;
+  const extra = env?.VITE_PREVIEW_AGENT_ALLOWED_ORIGINS;
+  if (typeof extra === "string") {
+    for (const o of extra.split(",")) {
+      const trimmed = o.trim();
+      if (trimmed) set.add(trimmed);
+    }
+  }
+  return set;
+})();
 
 function reply(target: Window, origin: string, env: Envelope) {
   target.postMessage(env, origin);
@@ -250,7 +274,13 @@ export function attachPreviewAgent(): () => void {
     // sibling frames or popups can't drive RPC calls.
     if (e.source === window) return;
     if (window.parent && e.source !== window.parent) return;
-    void handle(e.data, e.source, e.origin || PARENT_ORIGIN);
+    // Codex P1: enforce an origin allowlist before dispatching RPCs.
+    // Without this gate, embedding the agent on an arbitrary site via
+    // ?previewAgent=1 would let the embedder drive list_components /
+    // navigate / select_element cross-origin and read back metadata
+    // SOP would normally hide.
+    if (!ALLOWED_ORIGINS.has(e.origin)) return;
+    void handle(e.data, e.source, e.origin);
   };
   window.addEventListener("message", listener);
   // Send a one-shot "agent_ready" frame to window.parent on boot so
