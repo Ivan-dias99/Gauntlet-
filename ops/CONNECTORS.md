@@ -139,11 +139,11 @@ External evidence retrieval for the Insight (Wave 6c) and Terminal
 - `signal-backend/tools.py`:
   - `WebSearchTool` (name `web_search`) — wraps an external search
     API. Returns ranked hits (title, url, snippet).
-  - `WebFetchTool` (name `web_fetch`) — fetches a URL, sanitises HTML,
+  - `FetchUrlTool` (name `fetch_url`) — fetches a URL, sanitises HTML,
     returns text. SSRF guards: deny-list of internal IPs + `file://`
     + `localhost`. Size cap on response body.
 - `signal-backend/chambers/insight.py` — `ALLOWED_TOOLS = ("web_search",
-  "web_fetch", "read_file")` after Wave 6c. Insight uses these in the
+  "fetch_url", "read_file")` after Wave 6c. Insight uses these in the
   agent loop without the operator having to explicitly invoke.
 - `signal-backend/chambers/terminal.py` — `ALLOWED_TOOLS` includes the
   same web tools so the Terminal agent can research while coding.
@@ -152,7 +152,7 @@ External evidence retrieval for the Insight (Wave 6c) and Terminal
 - The underlying search provider may need a key
   (`SIGNAL_SEARCH_API_KEY` or similar — check `tools.py`'s
   `WebSearchTool`).
-- `web_fetch` SSRF guards live in the tool implementation, not in
+- `fetch_url` SSRF guards live in the tool implementation, not in
   env.
 
 **Operational state**
@@ -164,7 +164,7 @@ External evidence retrieval for the Insight (Wave 6c) and Terminal
 - No source verification yet — the Wave 6c plan flagged this. Citations
   appear in tool_result content but aren't ranked or scored. Tracked
   in Wave G.
-- No caching — every web_fetch hits the network. Polite, but expensive
+- No caching — every fetch_url hits the network. Polite, but expensive
   on repeat URLs.
 
 ---
