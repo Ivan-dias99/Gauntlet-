@@ -396,7 +396,14 @@ export function createMission(
     lastArtifact: null,
     artifacts: [],
   };
-  return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id, updatedAt: now() };
+  // Wave C single-active invariant: any pre-existing "active" mission
+  // must be demoted to "paused" so the new mission is the only active
+  // one. enforceSingleActive does the work given the new activeMissionId.
+  const missions = enforceSingleActive(
+    [mission, ...state.missions],
+    mission.id,
+  );
+  return { ...state, missions, activeMissionId: mission.id, updatedAt: now() };
 }
 
 export function clearActiveMission(state: SpineState): SpineState {
@@ -582,5 +589,11 @@ export function acceptArtifact(
 }
 
 export function switchMission(state: SpineState, id: string): SpineState {
-  return { ...state, activeMissionId: id, updatedAt: now() };
+  // Wave C single-active invariant: switching the active pointer must
+  // reconcile mission statuses too. Without this, switching from
+  // mission A to a pre-existing mission B that also carried status
+  // "active" would leave both claiming active and break setMissionStatus
+  // assumptions until the next rehydration pass.
+  const missions = enforceSingleActive(state.missions, id);
+  return { ...state, missions, activeMissionId: id, updatedAt: now() };
 }
