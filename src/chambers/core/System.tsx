@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTweaks, ACCENT_SWATCHES, type Theme, type Density, type Lang, type AccentKey } from "../../tweaks/TweaksContext";
 import { useSpine } from "../../spine/SpineContext";
 import { signalFetch, isBackendUnreachable } from "../../lib/signalApi";
+import ConnectorStatusPanel from "./ConnectorStatusPanel";
 
 // System tab — theme/density/lang/accent + backend diagnostics snapshot
 // + destructive actions. Built on the shared .panel + .diagnostic-row
@@ -63,6 +64,7 @@ export default function System() {
           Tudo o que controla como Signal se apresenta e como comunica.
         </span>
       </div>
+      <ConnectorStatusPanel />
       <div
         style={{
           display: "grid",
