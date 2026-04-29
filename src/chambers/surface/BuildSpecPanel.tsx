@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   signalFetch,
   isBackendUnreachable,
@@ -52,11 +52,26 @@ export default function BuildSpecPanel({ plan, missionId }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
 
+  // Codex review (PR #255): when the plan reference changes (operator
+  // edited the brief and re-rendered Surface), drop any prior spec
+  // so the panel doesn't render a list of scaffolds that no longer
+  // correspond to the current plan. Errors clear too — the previous
+  // failure state isn't tied to the new plan either.
+  useEffect(() => {
+    setSpec(null);
+    setErr(null);
+    setOffline(false);
+  }, [plan]);
+
   async function compile() {
     if (!plan || busy) return;
     setBusy(true);
     setErr(null);
     setOffline(false);
+    // Codex review (PR #255): clear the previous spec so a failed
+    // retry or a recompile after the plan changed never shows stale
+    // scaffolds as if they were the current output.
+    setSpec(null);
     try {
       const res = await signalFetch("/surface/build-spec", {
         method: "POST",
