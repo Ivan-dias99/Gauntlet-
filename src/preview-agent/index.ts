@@ -245,6 +245,11 @@ export function attachPreviewAgent(): () => void {
   const listener = (e: MessageEvent) => {
     if (!isEnvelope(e.data)) return;
     if (!e.source || !(e.source instanceof Window)) return;
+    // Reject same-window self-talk (the agent's own error replies
+    // would otherwise loop). Also reject non-parent sources so
+    // sibling frames or popups can't drive RPC calls.
+    if (e.source === window) return;
+    if (window.parent && e.source !== window.parent) return;
     void handle(e.data, e.source, e.origin || PARENT_ORIGIN);
   };
   window.addEventListener("message", listener);
