@@ -31,7 +31,34 @@ export function normalizeChamberKey(raw: unknown): Chamber {
   return legacy ?? "insight";
 }
 
-export type MissionStatus = "active" | "closed";
+// Wave C — Project lifecycle states. Replaces the binary
+// active/closed model so Signal can keep many projects without
+// contaminating the active context.
+//
+//   active      — single one at a time; the current working project
+//   paused      — saved snapshot, not the active context; can be resumed
+//   brainstorm  — loose ideas saved without affecting any project
+//   archived    — closed, kept for reference, read-only
+//   completed   — delivered, read-only, badge of pride
+//   closed      — (legacy alias for archived; silently migrated)
+export type MissionStatus =
+  | "active"
+  | "paused"
+  | "brainstorm"
+  | "archived"
+  | "completed"
+  | "closed";
+
+export const MISSION_STATUS_VALID: ReadonlySet<MissionStatus> = new Set([
+  "active", "paused", "brainstorm", "archived", "completed", "closed",
+]);
+
+/** Convert legacy "closed" silently into "archived" on read. */
+export function normalizeMissionStatus(raw: unknown): MissionStatus {
+  if (typeof raw !== "string") return "active";
+  if (raw === "closed") return "archived";
+  return MISSION_STATUS_VALID.has(raw as MissionStatus) ? (raw as MissionStatus) : "active";
+}
 export type TaskState = "open" | "running" | "done" | "blocked";
 export type TaskSource = "manual" | "lab" | "crew" | "other";
 

@@ -14,7 +14,11 @@ export function computePulse(m: Mission): PulseSignal {
   const doneTasks = m.tasks.length - openTasks;
   const notes = m.notes.length;
   const artifacts = m.artifacts.length;
-  const closed = m.status === "closed";
+  // Wave C migrated legacy "closed" missions to "archived"; treat both
+  // (and "completed") as closed for the dropdown's `fechada` marker so
+  // the UX signal users relied on survives rehydration.
+  const closed =
+    m.status === "closed" || m.status === "archived" || m.status === "completed";
   const empty = openTasks === 0 && doneTasks === 0 && notes === 0 && artifacts === 0;
   return { openTasks, doneTasks, notes, artifacts, closed, empty };
 }

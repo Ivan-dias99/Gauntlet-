@@ -56,6 +56,12 @@ interface SpineCtx {
   // waiting for the React setState round-trip to expose activeMission.
   createMission: (title: string, chamber: Chamber) => string;
   switchMission: (id: string) => void;
+  // Wave C — mission lifecycle. Setting status to "active" on a paused
+  // or archived mission resumes it; setting to "paused" on the active
+  // one pauses + clears activeMissionId. "brainstorm" / "archived" /
+  // "completed" are terminal/intermediate states the UI can move
+  // missions through without losing their content.
+  setMissionStatus: (id: string, status: import("./types").MissionStatus) => void;
   // Wave-2 "new thread" trigger. Clears activeMissionId so the next send
   // from a chamber composer creates a fresh mission. Missions themselves
   // stay persisted.
@@ -187,6 +193,32 @@ export function SpineProvider({ children }: { children: ReactNode }) {
         return id;
       },
       switchMission: (id) => dispatch(s => switchFn(s, id)),
+      setMissionStatus: (id, status) => dispatch(s => {
+        const target = s.missions.find((m) => m.id === id);
+        if (!target) return s;
+        // Activating a different mission implicitly pauses any other
+        // currently active one (single-active rule). Activating means
+        // also setting it as activeMissionId.
+        let nextActiveId = s.activeMissionId;
+        const missions = s.missions.map((m) => {
+          if (m.id === id) return { ...m, status };
+          if (status === "active" && m.status === "active" && m.id !== id) {
+            // Demote the previous active to paused so user doesn't lose
+            // it. They can re-activate via the same callable.
+            return { ...m, status: "paused" as const };
+          }
+          return m;
+        });
+        if (status === "active") {
+          nextActiveId = id;
+        } else if (s.activeMissionId === id) {
+          // Pausing/archiving the currently active mission clears
+          // activeMissionId so the next composer submit creates fresh
+          // (or the user picks another via switchMission).
+          nextActiveId = null;
+        }
+        return { ...s, missions, activeMissionId: nextActiveId, updatedAt: Date.now() };
+      }),
       clearActiveMission: () => dispatch(s => clearActiveMissionFn(s)),
       addNote: (text, role) => dispatch(s => addNoteFn(s, text, role)),
       addNoteToMission: (id, text, role) => dispatch(s => addNoteToMissionFn(s, id, text, role)),

@@ -1,8 +1,9 @@
 import {
-  SpineState, Mission, Chamber, Note, Task, TaskState, TaskSource,
+  SpineState, Mission, MissionStatus, Chamber, Note, Task, TaskState, TaskSource,
   LogEvent, Principle, Artifact, normalizeChamberKey,
   TruthDistillation, ProjectContract, ArtifactStatus, ArtifactFailureMode,
   SurfaceSeed, TerminalSeed,
+  normalizeMissionStatus,
 } from "./types";
 
 // Wave-0 rename: signal:spine:v1 is canonical. ruberra:spine:v1 is still
@@ -213,7 +214,7 @@ export function normalizeMission(m: unknown): Mission | null {
     // collapse to "insight" (the old normalizer collapsed to "Lab", which
     // is exactly what "insight" replaces).
     chamber: normalizeChamberKey(r.chamber),
-    status: r.status === "closed" ? "closed" : "active",
+    status: normalizeMissionStatus(r.status),
     createdAt: typeof r.createdAt === "number" ? r.createdAt : Date.now(),
     notes: Array.isArray(r.notes) ? r.notes.flatMap((n: unknown) => {
       if (!n || typeof n !== "object") return [];
@@ -299,6 +300,35 @@ export function normalizePrinciples(raw: unknown): Principle[] {
   });
 }
 
+// Wave C invariant: at most one mission may be "active" at a time.
+// Legacy states (pre-Wave C) marked every open mission as active, so
+// any rehydration path (localStorage load OR /spine fetch) must collapse
+// the multi-active set to one before the state reaches the UI.
+//
+// Conservative on purpose: only acts when the snapshot already violates
+// the invariant (>1 active). A modern Wave C snapshot with a single
+// active and `activeMissionId === null` (user ran clearActiveMission
+// without changing the mission's status) is left alone — otherwise we
+// would silently demote that mission to "paused" on every reload and
+// strip the user's resumable working thread.
+export function enforceSingleActive(
+  missions: Mission[],
+  activeMissionId: string | null,
+): Mission[] {
+  const actives = missions.filter(m => m.status === "active");
+  if (actives.length <= 1) return missions;
+  // Multiple actives — legacy migration. Prefer the one the snapshot
+  // already points at; otherwise pick the first (deterministic) and
+  // demote the rest.
+  const survivor =
+    actives.find(m => m.id === activeMissionId)?.id ?? actives[0].id;
+  return missions.map(m =>
+    m.status === "active" && m.id !== survivor
+      ? { ...m, status: "paused" as MissionStatus }
+      : m,
+  );
+}
+
 export function loadState(): SpineState {
   try {
     const raw =
@@ -308,15 +338,27 @@ export function loadState(): SpineState {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return EMPTY;
     const r = parsed as Record<string, unknown>;
-    const missions = Array.isArray(r.missions)
+    const rawMissions = Array.isArray(r.missions)
       ? (r.missions.map(normalizeMission).filter(Boolean) as Mission[])
       : [];
     const principles = normalizePrinciples(r.principles);
-    const activeMissionId =
-      typeof r.activeMissionId === "string" &&
-      missions.some(m => m.id === r.activeMissionId)
+    // Explicit null is intentional under Wave C: setMissionStatus
+    // clears activeMissionId when the active mission is paused or
+    // archived, so the next chamber submission opens a fresh thread.
+    // Falling back to the first mission would silently reactivate an
+    // old selection on every reload. Only fall back when the field is
+    // missing entirely (legacy snapshot) or points at a stale id.
+    let activeMissionId: string | null;
+    if (typeof r.activeMissionId === "string") {
+      activeMissionId = rawMissions.some(m => m.id === r.activeMissionId)
         ? r.activeMissionId
-        : (missions[0]?.id ?? null);
+        : (rawMissions[0]?.id ?? null);
+    } else if (r.activeMissionId === null) {
+      activeMissionId = null;
+    } else {
+      activeMissionId = rawMissions[0]?.id ?? null;
+    }
+    const missions = enforceSingleActive(rawMissions, activeMissionId);
     const updatedAt = typeof r.updatedAt === "number" ? r.updatedAt : 0;
     return { missions, activeMissionId, principles, updatedAt };
   } catch {
@@ -354,7 +396,14 @@ export function createMission(
     lastArtifact: null,
     artifacts: [],
   };
-  return { ...state, missions: [mission, ...state.missions], activeMissionId: mission.id, updatedAt: now() };
+  // Wave C single-active invariant: any pre-existing "active" mission
+  // must be demoted to "paused" so the new mission is the only active
+  // one. enforceSingleActive does the work given the new activeMissionId.
+  const missions = enforceSingleActive(
+    [mission, ...state.missions],
+    mission.id,
+  );
+  return { ...state, missions, activeMissionId: mission.id, updatedAt: now() };
 }
 
 export function clearActiveMission(state: SpineState): SpineState {
@@ -540,5 +589,34 @@ export function acceptArtifact(
 }
 
 export function switchMission(state: SpineState, id: string): SpineState {
-  return { ...state, activeMissionId: id, updatedAt: now() };
+  if (!state.missions.some(m => m.id === id)) return state;
+  // Wave C "current working project is active": switching the active
+  // pointer must (1) promote the target to active so it matches the
+  // pointer, and (2) demote any other active to paused. Without this,
+  // switching back to a mission previously paused by createMission
+  // would leave its status as "paused" while activeMissionId points
+  // at it — an inconsistent lifecycle state any `status === "active"`
+  // check would misread.
+  //
+  // Brainstorm is the exception: types.ts defines it as "loose ideas
+  // saved without affecting any project", so selecting one is a
+  // non-project navigation event — don't promote it and don't pause
+  // the working project. Closed/archived/completed targets keep their
+  // terminal status; the previously active mission is still demoted
+  // because the pointer is moving off it.
+  const target = state.missions.find(m => m.id === id);
+  if (target && target.status === "brainstorm") {
+    return { ...state, activeMissionId: id, updatedAt: now() };
+  }
+  const missions = state.missions.map(m => {
+    if (m.id === id) {
+      return m.status === "paused"
+        ? { ...m, status: "active" as MissionStatus }
+        : m;
+    }
+    return m.status === "active"
+      ? { ...m, status: "paused" as MissionStatus }
+      : m;
+  });
+  return { ...state, missions, activeMissionId: id, updatedAt: now() };
 }
