@@ -190,7 +190,12 @@ class ModelGateway:
                 + call.output_tokens * choice.cost_per_1m_output_usd / 1_000_000
             )
         self.calls.append(call)
-        if len(self.calls) > self.max_call_history:
+        # max_call_history <= 0 means "disabled" — drop everything.
+        # Naively slicing self.calls[-0:] would return the full list
+        # because Python treats -0 as 0, so the cap silently fails.
+        if self.max_call_history <= 0:
+            self.calls = []
+        elif len(self.calls) > self.max_call_history:
             self.calls = self.calls[-self.max_call_history:]
 
     def summary(self) -> dict[str, Any]:
