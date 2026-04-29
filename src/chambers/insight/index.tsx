@@ -56,6 +56,10 @@ export default function Insight() {
 
   useEffect(() => {
     setVerdictTrail([]);
+    // Codex round-2 (#251): also clear citations on mission switch so
+    // the trust panel never mixes provenance across missions when the
+    // operator switches from the ribbon without sending a new prompt.
+    setLiveCitations([]);
   }, [activeMission?.id]);
 
   // Esc closes a pending handoff confirm; during a streaming call it
