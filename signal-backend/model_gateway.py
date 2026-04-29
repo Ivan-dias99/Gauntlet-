@@ -177,9 +177,14 @@ class ModelGateway:
 
     def record(self, call: GatewayCall) -> None:
         """Record a completed (success or failure) gateway call."""
-        # Compute cost estimate from the call's tokens + catalogue.
+        # Compute cost estimate from the call's tokens + catalogue. Charge
+        # tokens regardless of success — the API still bills for tokens
+        # consumed before a post-generation failure (interrupted streaming,
+        # timeout after first byte). Skipping cost on failure caused
+        # summary() to underreport spend on the fallback path, exactly
+        # where the operator most needs accurate numbers.
         choice = CATALOGUE.get(call.model_id)
-        if choice is not None and call.succeeded:
+        if choice is not None:
             call.cost_usd_estimate = (
                 call.input_tokens * choice.cost_per_1m_input_usd / 1_000_000
                 + call.output_tokens * choice.cost_per_1m_output_usd / 1_000_000
