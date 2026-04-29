@@ -14,6 +14,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 from config import MEMORY_DIR
 from models import SpineSnapshot
@@ -38,6 +39,12 @@ class SpineStore:
         # store still boots on an empty snapshot so the server stays up,
         # but the degraded state is visible via /diagnostics.
         self._last_load_error: str | None = None
+        # In-flight Postgres mirror task. Each put() awaits the prior
+        # mirror before spawning the next one so snapshots land on the
+        # DB in put() order. Without this, two quick put() calls fire
+        # overlapping create_task()s and the older snapshot can land
+        # after the newer one, leaving the mirror stale.
+        self._mirror_task: Optional[asyncio.Task] = None
 
     async def _ensure_loaded(self) -> None:
         if self._loaded:
@@ -106,17 +113,47 @@ class SpineStore:
         # outside the lock so the caller never waits on the DB and
         # JSON remains the canonical store. db.mirror_spine_snapshot
         # is a no-op when dual-write is disabled.
+        #
+        # Ordering — each put() chains its mirror onto the previous
+        # one. Without that chain, two back-to-back put() calls fire
+        # overlapping create_task()s and asyncpg may commit them in
+        # the wrong order, leaving the mirror behind. We still keep
+        # the chain off the snapshot lock so the JSON write returns
+        # immediately; only the mirror itself serializes.
         try:
             from db import mirror_spine_snapshot, is_enabled as _db_enabled
             if _db_enabled():
-                asyncio.create_task(
-                    mirror_spine_snapshot(snapshot.model_dump_json())
+                payload = snapshot.model_dump_json()
+                prior = self._mirror_task
+                self._mirror_task = asyncio.create_task(
+                    self._run_mirror(prior, payload, mirror_spine_snapshot)
                 )
         except Exception:  # noqa: BLE001
             # Mirror failure must never break the JSON write that
             # already succeeded.
             pass
         return self._snapshot
+
+    async def _run_mirror(self, prior: Optional[asyncio.Task],
+                          payload: str, mirror_fn) -> None:
+        """Wait for the previous mirror, then run this one. Keeps
+        snapshot writes ordered on the Postgres side without forcing
+        the caller to block on the DB."""
+        if prior is not None:
+            try:
+                await prior
+            except Exception:  # noqa: BLE001
+                # Prior failure is already logged inside mirror_fn; we
+                # still need to run our own write so the mirror doesn't
+                # stall on a single bad snapshot.
+                pass
+        try:
+            await mirror_fn(payload)
+        except Exception as e:  # noqa: BLE001
+            # mirror_spine_snapshot already swallows DB errors, but a
+            # bare guard here keeps the task from blowing up the loop
+            # if the import or call site itself raises.
+            logger.warning("spine mirror task failed: %s", e)
 
 
 spine_store = SpineStore()

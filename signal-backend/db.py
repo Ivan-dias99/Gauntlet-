@@ -107,7 +107,8 @@ async def mirror_spine_snapshot(snapshot_json: str) -> None:
             async with conn.transaction():
                 # Principles — replace the whole table per snapshot.
                 # The table is small (operator's doctrine) and this avoids
-                # incremental delete/insert ordering bugs.
+                # incremental delete/insert ordering bugs. No FK references
+                # principles, so DELETE is safe here.
                 await conn.execute("DELETE FROM principles")
                 for p in principles:
                     pid = p.get("id")
@@ -120,10 +121,27 @@ async def mirror_spine_snapshot(snapshot_json: str) -> None:
                         pid, text, int(created),
                     )
 
-                # Missions — same replace-all strategy. Cascade clears
-                # notes/tasks/handoffs/distillations/events/artifacts so
-                # the rebuild stays consistent.
-                await conn.execute("DELETE FROM missions")
+                # Missions — UPSERT, then prune orphans. The original
+                # implementation used `DELETE FROM missions` + reinsert,
+                # but `runs.mission_id` and `telemetry_events.mission_id`
+                # are FK ON DELETE SET NULL (see migrations/0001), so
+                # every snapshot write would orphan every historical
+                # run/telemetry row. We now upsert each mission row in
+                # place, rebuild its CASCADE child tables (notes, tasks,
+                # mission_events, mission_artifacts, truth_distillations,
+                # handoffs) by id-scoped DELETE + INSERT, then delete
+                # only the missions that disappeared from the snapshot.
+                # The orphan delete still cascades (rare path: explicit
+                # mission deletion), but the steady-state PUT no longer
+                # touches runs / telemetry mission references.
+                snapshot_ids = [m["id"] for m in missions if m.get("id")]
+                if snapshot_ids:
+                    await conn.execute(
+                        "DELETE FROM missions WHERE id <> ALL($1::text[])",
+                        snapshot_ids,
+                    )
+                else:
+                    await conn.execute("DELETE FROM missions")
                 for m in missions:
                     await _insert_mission(conn, m, m["id"] == active_id if active_id else False)
     except Exception as exc:  # noqa: BLE001
@@ -135,8 +153,17 @@ async def mirror_spine_snapshot(snapshot_json: str) -> None:
 
 
 async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
-    """Insert one mission + its child rows. Caller wraps the whole
-    snapshot in a transaction so partial inserts can't survive."""
+    """Upsert one mission + rebuild its child rows. Caller wraps the
+    whole snapshot in a transaction so partial inserts can't survive.
+
+    The mission row is upserted in place (ON CONFLICT DO UPDATE) so
+    runs.mission_id / telemetry_events.mission_id never see the row
+    disappear — those FKs are ON DELETE SET NULL and would corrupt
+    cross-mission history if we deleted the mission each snapshot. The
+    child tables (notes/tasks/events/artifacts/distillations/handoffs)
+    are CASCADE; we clear them by mission_id and rebuild from the
+    snapshot, which is the truth.
+    """
     mid = m.get("id")
     if not mid:
         return
@@ -150,6 +177,14 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         INSERT INTO missions (id, title, chamber, status, created_at,
                               updated_at, project_contract, last_artifact)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (id) DO UPDATE SET
+            title = EXCLUDED.title,
+            chamber = EXCLUDED.chamber,
+            status = EXCLUDED.status,
+            created_at = EXCLUDED.created_at,
+            updated_at = EXCLUDED.updated_at,
+            project_contract = EXCLUDED.project_contract,
+            last_artifact = EXCLUDED.last_artifact
         """,
         mid,
         m.get("title", ""),
@@ -160,6 +195,16 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         json.dumps(m.get("projectContract")) if m.get("projectContract") else None,
         json.dumps(m.get("lastArtifact")) if m.get("lastArtifact") else None,
     )
+
+    # Clear child rows scoped to this mission, then rebuild from the
+    # snapshot. Scoped DELETE keeps other missions' rows intact and
+    # avoids the global cascade on missions we just removed above.
+    await conn.execute("DELETE FROM notes WHERE mission_id = $1", mid)
+    await conn.execute("DELETE FROM tasks WHERE mission_id = $1", mid)
+    await conn.execute("DELETE FROM mission_events WHERE mission_id = $1", mid)
+    await conn.execute("DELETE FROM mission_artifacts WHERE mission_id = $1", mid)
+    await conn.execute("DELETE FROM truth_distillations WHERE mission_id = $1", mid)
+    await conn.execute("DELETE FROM handoffs WHERE mission_id = $1", mid)
 
     for n in (m.get("notes") or []):
         if not n.get("id"):
@@ -210,8 +255,8 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
 
     # Truth distillations — versioned Insight artefacts. Mirror every
     # record so the Postgres copy keeps full distillation history; the
-    # parent DELETE FROM missions cascades these rows so we always
-    # rebuild from the snapshot's truth.
+    # mission-scoped DELETE above already cleared the prior rows so we
+    # always rebuild from the snapshot's truth.
     for d in (m.get("truthDistillations") or []):
         if not d.get("id"):
             continue
@@ -243,6 +288,36 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             d.get("failureState"),
             int(d.get("createdAt") or 0),
             int(d.get("updatedAt") or 0),
+        )
+
+    # Handoffs (Wave D) — chamber-to-chamber transfer queue. Without
+    # this loop the mirror silently drops the queue, breaking the
+    # receiving chamber's pending-action banner after cutover. The
+    # mission-scoped DELETE above already cleared prior rows.
+    for h in (m.get("handoffs") or []):
+        if not h.get("id"):
+            continue
+        await conn.execute(
+            """
+            INSERT INTO handoffs (
+                id, mission_id, from_chamber, to_chamber, artifact_type,
+                artifact_ref, summary, risks, next_action, status,
+                created_at, resolved_at, resolution
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            """,
+            h["id"], mid,
+            h.get("fromChamber", ""),
+            h.get("toChamber", ""),
+            h.get("artifactType", "note"),
+            h.get("artifactRef"),
+            h.get("summary", ""),
+            json.dumps(h.get("risks") or []),
+            h.get("nextAction") or "",
+            (h.get("status") or "pending"),
+            int(h.get("createdAt") or 0),
+            int(h["resolvedAt"]) if h.get("resolvedAt") is not None else None,
+            h.get("resolution"),
         )
 
 
