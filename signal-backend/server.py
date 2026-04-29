@@ -703,6 +703,85 @@ async def telemetry_event(ev: TelemetryEvent):
         return {"ok": False, "reason": str(e)}
 
 
+# ── Issue draft endpoint (Wave N integration) ─────────────────────────────
+
+
+class IssueDraftRequest(BaseModel):
+    """Provider-agnostic draft. The chamber assembles this; the
+    operator confirms; the orchestration layer (or the Claude Code
+    session) calls the actual MCP/REST create. Backend just formats
+    the kwargs."""
+    title: str = Field(..., min_length=1, max_length=200)
+    body: str = Field(..., max_length=8000)
+    kind: str = Field("bug")          # bug|polish|feature|regression|design|perf
+    severity: str = Field("medium")   # low|medium|high
+    chamber: Optional[str] = None
+    mission_id: Optional[str] = None
+    artifact_ref: Optional[str] = None
+    selector: Optional[str] = None
+    screenshot_url: Optional[str] = None
+    file_path: Optional[str] = None
+    line_number: Optional[int] = None
+    labels: list[str] = Field(default_factory=list)
+    provider: str = Field("github")   # github|linear|jira
+
+
+@app.post("/issues/draft")
+async def issues_draft(req: IssueDraftRequest):
+    """Wave N — formats an IssueDraft for the requested provider.
+    Returns the kwargs dict that the orchestration layer will pass
+    to the actual create_issue MCP/REST call."""
+    from issue_tracker import IssueDraft, format_for_github, format_for_linear
+    valid_kinds = {"bug", "polish", "feature", "regression", "design", "perf"}
+    valid_severity = {"low", "medium", "high"}
+    if req.kind not in valid_kinds:
+        raise HTTPException(status_code=422, detail=_error_envelope(
+            "issue_draft_invalid_kind", ValueError(f"kind={req.kind!r} not in {valid_kinds}")
+        ))
+    if req.severity not in valid_severity:
+        raise HTTPException(status_code=422, detail=_error_envelope(
+            "issue_draft_invalid_severity", ValueError(f"severity={req.severity!r} not in {valid_severity}")
+        ))
+    draft = IssueDraft(
+        title=req.title, body=req.body,
+        kind=req.kind, severity=req.severity,  # type: ignore[arg-type]
+        chamber=req.chamber, mission_id=req.mission_id,
+        artifact_ref=req.artifact_ref, selector=req.selector,
+        screenshot_url=req.screenshot_url, file_path=req.file_path,
+        line_number=req.line_number, labels=list(req.labels or []),
+    )
+    if req.provider == "linear":
+        return {"provider": "linear", "kwargs": format_for_linear(draft)}
+    if req.provider == "github":
+        return {"provider": "github", "kwargs": format_for_github(draft)}
+    raise HTTPException(status_code=422, detail=_error_envelope(
+        "issue_draft_invalid_provider", ValueError(f"provider={req.provider!r} not in [github, linear]")
+    ))
+
+
+# ── Figma token import endpoint (Wave M integration) ──────────────────────
+
+
+class FigmaImportRequest(BaseModel):
+    """The operator pastes a Figma file id + the file's REST API JSON
+    body. v1 doesn't fetch live (no PAT in backend env yet) — caller
+    posts the body directly. v2 will accept (file_id, personal_token)
+    and fetch internally."""
+    file_id: str = Field(..., min_length=1, max_length=64)
+    body: dict[str, Any]
+    name: Optional[str] = Field(None, max_length=128)
+
+
+@app.post("/design/figma/import")
+async def design_figma_import(req: FigmaImportRequest):
+    """Wave M — parses a Figma file body into a normalised TokenSet
+    (colors, spacings, types, radii). Surface can target the result
+    as a custom design system."""
+    from figma_tokens import tokens_from_figma_json
+    ts = tokens_from_figma_json(req.file_id, req.body, name=req.name)
+    return ts.to_dict()
+
+
 # ── Memory Endpoints ────────────────────────────────────────────────────────
 
 @app.get("/memory/stats")
