@@ -781,6 +781,38 @@ async def design_figma_import(req: FigmaImportRequest):
     ts = tokens_from_figma_json(req.file_id, req.body, name=req.name)
     return ts.to_dict()
 
+# ── Surface · BuildSpec endpoint ────────────────────────────────────────────
+#
+# Wave J integration. Compiles a SurfacePlan dict into a structured
+# BuildSpecification with per-component TSX scaffolds. Terminal can
+# pull this and either commit the scaffolds verbatim or feed them
+# into the agent loop for refinement. Pure compute, no provider call.
+
+
+class BuildSpecRequest(BaseModel):
+    """SurfacePlan + project context. Plan shape mirrors chambers/surface.py
+    SurfacePlan: mode, fidelity, design_system_binding, screens[], components[]."""
+    plan: dict[str, Any]
+    project_id: str = Field("", max_length=128)
+    output_dir: str = Field("src/components", max_length=256)
+
+
+@app.post("/surface/build-spec")
+async def surface_build_spec(req: BuildSpecRequest):
+    """Wave J — deterministic SurfacePlan → BuildSpecification compile.
+
+    Returns a JSON-serializable BuildSpecification with components[]
+    (each with name, file_path, kind, props, states, acceptance,
+    scaffold_tsx) and files_to_create[] for Terminal consumption.
+    """
+    from spec_to_code import compile_plan_to_spec
+    spec = compile_plan_to_spec(
+        req.plan,
+        project_id=req.project_id or "",
+        output_dir=req.output_dir or "src/components",
+    )
+    return spec.to_dict()
+
 
 # ── Memory Endpoints ────────────────────────────────────────────────────────
 
