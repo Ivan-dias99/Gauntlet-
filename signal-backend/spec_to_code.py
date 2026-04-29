@@ -87,13 +87,18 @@ def _propose_name(screen_name: str, component_name: str, kind: ComponentKind) ->
 
     Always prefixes the screen name (when present and not already encoded
     in the base) so two `Submit` buttons across screens emit distinct
-    files instead of colliding into one path."""
+    files. Also appends the kind suffix when the base doesn't already
+    end with it, so a `Submit` button and a `Submit` card on the same
+    screen don't collapse to the same file path."""
     screen = _to_pascal(screen_name)
     base = _to_pascal(component_name)
+    kind_suffix = kind.capitalize()
     if not base:
-        return (screen + kind.capitalize()) or "Component"
+        return (screen + kind_suffix) or "Component"
     if screen and not base.startswith(screen):
-        return screen + base
+        base = screen + base
+    if not base.endswith(kind_suffix):
+        base = base + kind_suffix
     return base
 
 
@@ -160,7 +165,14 @@ def _scaffold_for(
   );'''
 
     prop_decls = "\n  ".join(f"{p};" for p in props) if props else "// no props"
-    prop_destructure = ", ".join(p.split(":")[0].strip() for p in props) if props else ""
+    # Strip the optional `?` marker — it's syntactically valid on the
+    # interface declaration but not on a destructured parameter, so
+    # `children?: React.ReactNode` must destructure as just `children`.
+    prop_destructure = (
+        ", ".join(p.split(":")[0].strip().rstrip("?") for p in props)
+        if props
+        else ""
+    )
 
     scaffold = f'''import * as React from "react";
 
