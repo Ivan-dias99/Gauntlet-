@@ -11,6 +11,7 @@ import {
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
+import HandoffInbox from "../../shell/HandoffInbox";
 import ArchiveLayout from "./ArchiveLayout";
 import ArchiveWorkbench from "./ArchiveWorkbench";
 import FailureMemoryPanel from "./FailureMemoryPanel";
@@ -245,6 +246,7 @@ export default function Archive() {
   return (
     <div className="chamber-shell" data-chamber="archive">
       {head}
+      <HandoffInbox chamber="archive" />
       {/* Workbench pill — sibling family of Terminal/Surface/Insight/
           Core. Reads runs/stats telemetry as 5 lenses (Runs · Refused
           · Latency · Tokens · Tools). Replaces the old StatsBar grid

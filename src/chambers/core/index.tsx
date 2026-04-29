@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ChamberHead from "../../shell/ChamberHead";
+import HandoffInbox from "../../shell/HandoffInbox";
 import CoreWorkbench from "./CoreWorkbench";
 import Policies from "./Policies";
 import Routing from "./Routing";
@@ -34,6 +35,7 @@ export default function Core() {
   return (
     <div className="chamber-shell" data-chamber="core">
       <ChamberHead kicker="— CORE" tagline={current.sub} />
+      <HandoffInbox chamber="core" />
 
       {/* Workbench pill — sibling family of Terminal/Surface/Insight.
           Reads system telemetry as 5 lenses (Chambers · Tools ·
