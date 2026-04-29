@@ -404,6 +404,28 @@ class AgentOrchestrator:
                     sig["source"] = block.name
                     yield sig
 
+                # Wave G integration — extract citations from research
+                # tool results. The URL-fetch tool registers as
+                # `fetch_url` (FetchUrlTool); `web_fetch` is the legacy
+                # name and isn't in the runtime allowlist. Other tool
+                # results pass through silent.
+                if block.name in ("web_search", "fetch_url") and result.ok:
+                    try:
+                        from source_verification import extract_citations, trust_summary
+                        cites = extract_citations(result.content)
+                        if cites:
+                            yield {
+                                "type": "citations",
+                                "iteration": iteration,
+                                "source": block.name,
+                                "citations": [c.to_dict() for c in cites],
+                                "summary": trust_summary(cites),
+                            }
+                    except Exception as exc:  # noqa: BLE001
+                        # Citation extraction must never break the
+                        # agent loop; log and move on.
+                        logger.warning("Citation extraction failed: %s", exc)
+
             messages.append({"role": "user", "content": tool_results_content})
 
         else:

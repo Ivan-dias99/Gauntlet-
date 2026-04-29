@@ -147,8 +147,13 @@ async def compress_notes(
 
     summary = await _summarise_with_provider(head)
     if summary is None:
-        # Provider failed — return tail only, no summary. Caller decides.
-        return None, tail
+        # Provider failed (network/timeout/quota). Returning only the
+        # 8-note tail would silently drop the older head and degrade
+        # distillation on long missions for transient errors. Fall back
+        # to the chronological full notes — same shape as the under-
+        # threshold path — so the caller still has the prior context
+        # without a summarised section.
+        return None, list(reversed(notes_newest_first))
 
     _compression_cache[cache_key] = summary
     _compression_cache.move_to_end(cache_key)
