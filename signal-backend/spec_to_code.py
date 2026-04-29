@@ -104,11 +104,22 @@ def _propose_name(screen_name: str, component_name: str, kind: ComponentKind) ->
     kind_suffix = kind.capitalize()
     if not base:
         return (screen + kind_suffix) or "Component"
-    if screen and not base.startswith(screen):
+    if screen and not _starts_with_pascal_segment(base, screen):
         base = screen + base
     if not base.endswith(kind_suffix):
         base = base + kind_suffix
     return base
+
+
+def _starts_with_pascal_segment(base: str, prefix: str) -> bool:
+    """True only when `prefix` is a PascalCase segment at the start of
+    `base` — i.e. either equal to `base` or followed by an uppercase
+    letter. A naive `base.startswith(prefix)` collapses distinct inputs
+    like (screen="A", name="AdminPanel") and (screen="Admin",
+    name="Panel") onto the same output file."""
+    if not base.startswith(prefix):
+        return False
+    return len(base) == len(prefix) or base[len(prefix)].isupper()
 
 
 def _scaffold_for(
