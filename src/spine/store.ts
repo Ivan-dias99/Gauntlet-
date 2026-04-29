@@ -342,11 +342,22 @@ export function loadState(): SpineState {
       ? (r.missions.map(normalizeMission).filter(Boolean) as Mission[])
       : [];
     const principles = normalizePrinciples(r.principles);
-    const activeMissionId =
-      typeof r.activeMissionId === "string" &&
-      rawMissions.some(m => m.id === r.activeMissionId)
+    // Explicit null is intentional under Wave C: setMissionStatus
+    // clears activeMissionId when the active mission is paused or
+    // archived, so the next chamber submission opens a fresh thread.
+    // Falling back to the first mission would silently reactivate an
+    // old selection on every reload. Only fall back when the field is
+    // missing entirely (legacy snapshot) or points at a stale id.
+    let activeMissionId: string | null;
+    if (typeof r.activeMissionId === "string") {
+      activeMissionId = rawMissions.some(m => m.id === r.activeMissionId)
         ? r.activeMissionId
         : (rawMissions[0]?.id ?? null);
+    } else if (r.activeMissionId === null) {
+      activeMissionId = null;
+    } else {
+      activeMissionId = rawMissions[0]?.id ?? null;
+    }
     const missions = enforceSingleActive(rawMissions, activeMissionId);
     const updatedAt = typeof r.updatedAt === "number" ? r.updatedAt : 0;
     return { missions, activeMissionId, principles, updatedAt };
