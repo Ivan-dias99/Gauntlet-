@@ -82,12 +82,22 @@ _LOW_TRUST_HOSTS = {
     "buff.ly", "is.gd", "lnkd.in",
 }
 
-# URL regex — matches http(s)://... reasonable-looking URLs.
-# Conservative: stops at whitespace, quotes, or paren close.
+# URL regex — matches http(s)://... reasonable-looking URLs. Allow
+# parentheses inside the path so Wikipedia-style slugs like
+# `/wiki/Function_(mathematics)` survive intact; trailing unbalanced
+# `)` (from prose wrapping like `(see https://…)`) is stripped after
+# the match.
 _URL_RE = re.compile(
-    r"https?://[^\s\"\'<>\)\]]+",
+    r"https?://[^\s\"\'<>\]]+",
     flags=re.IGNORECASE,
 )
+
+
+def _strip_trailing_unbalanced_parens(url: str) -> str:
+    """Remove trailing `)` chars that don't have a matching `(` in the URL."""
+    while url.endswith(")") and url.count(")") > url.count("("):
+        url = url[:-1]
+    return url
 
 
 def score_domain(host: str) -> TrustScore:
@@ -129,6 +139,7 @@ def extract_citations(tool_result_content: str, *, max_citations: int = 12) -> l
 
     for match in _URL_RE.finditer(tool_result_content):
         url = match.group(0).rstrip(".,;:!?")
+        url = _strip_trailing_unbalanced_parens(url)
         if url in seen:
             continue
         seen.add(url)
