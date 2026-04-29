@@ -49,6 +49,7 @@ class SignalQuery(BaseModel):
     context: Optional[str] = Field(None, max_length=5000, description="Optional additional context")
     force_cautious: bool = Field(False, description="Force maximum caution mode")
     mission_id: Optional[str] = Field(None, max_length=128, description="Optional mission UUID for run tagging")
+    task_id: Optional[str] = Field(None, max_length=128, description="Optional task UUID for evidence provenance (Wave E)")
     principles: Optional[list[str]] = Field(
         None,
         max_length=64,

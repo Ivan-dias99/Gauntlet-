@@ -404,6 +404,46 @@ class AgentOrchestrator:
                     sig["source"] = block.name
                     yield sig
 
+                    # Wave E (P-3) — for every gate/diff signal, also emit
+                    # a typed EvidenceRecord so the chamber can collect
+                    # the trail of proof and downstream Delivery Ledger
+                    # consumers have structured provenance. The record
+                    # mandates source/iteration/missionId/taskId; fall
+                    # back to deterministic placeholders when the caller
+                    # didn't tag the run (ad-hoc curls, smoke tests).
+                    try:
+                        from evidence import gate_evidence, diff_evidence
+                        mission_id_val = (query.mission_id or "ad-hoc").strip() or "ad-hoc"
+                        task_id_val = (query.task_id or f"agent-loop-{iteration}").strip() or f"agent-loop-{iteration}"
+                        record = None
+                        if sig.get("type") == "gate":
+                            record = gate_evidence(
+                                sig["name"], sig["state"],
+                                source=block.name,
+                                iteration=iteration,
+                                mission_id=mission_id_val,
+                                task_id=task_id_val,
+                            )
+                        elif sig.get("type") == "diff":
+                            record = diff_evidence(
+                                int(sig.get("files", 0)),
+                                int(sig.get("added", 0)),
+                                int(sig.get("removed", 0)),
+                                source=block.name,
+                                iteration=iteration,
+                                mission_id=mission_id_val,
+                                task_id=task_id_val,
+                            )
+                        if record is not None:
+                            yield {
+                                "type": "evidence",
+                                "record": record.model_dump(),
+                            }
+                    except Exception:  # noqa: BLE001
+                        # Evidence emission must never break the agent
+                        # loop — the gate/diff signal already shipped.
+                        pass
+
                 # Wave G integration — extract citations from research
                 # tool results. The URL-fetch tool registers as
                 # `fetch_url` (FetchUrlTool); `web_fetch` is the legacy
