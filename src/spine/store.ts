@@ -302,16 +302,28 @@ export function normalizePrinciples(raw: unknown): Principle[] {
 
 // Wave C invariant: at most one mission may be "active" at a time.
 // Legacy states (pre-Wave C) marked every open mission as active, so
-// any rehydration path (localStorage load OR /spine fetch) must demote
-// non-selected actives to "paused" before the state reaches the UI —
-// otherwise setMissionStatus assumptions break and the dropdown shows
-// multiple actives.
+// any rehydration path (localStorage load OR /spine fetch) must collapse
+// the multi-active set to one before the state reaches the UI.
+//
+// Conservative on purpose: only acts when the snapshot already violates
+// the invariant (>1 active). A modern Wave C snapshot with a single
+// active and `activeMissionId === null` (user ran clearActiveMission
+// without changing the mission's status) is left alone — otherwise we
+// would silently demote that mission to "paused" on every reload and
+// strip the user's resumable working thread.
 export function enforceSingleActive(
   missions: Mission[],
   activeMissionId: string | null,
 ): Mission[] {
+  const actives = missions.filter(m => m.status === "active");
+  if (actives.length <= 1) return missions;
+  // Multiple actives — legacy migration. Prefer the one the snapshot
+  // already points at; otherwise pick the first (deterministic) and
+  // demote the rest.
+  const survivor =
+    actives.find(m => m.id === activeMissionId)?.id ?? actives[0].id;
   return missions.map(m =>
-    m.status === "active" && m.id !== activeMissionId
+    m.status === "active" && m.id !== survivor
       ? { ...m, status: "paused" as MissionStatus }
       : m,
   );
