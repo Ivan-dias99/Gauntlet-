@@ -3,6 +3,7 @@ import { useTweaks, ACCENT_SWATCHES, type Theme, type Density, type Lang, type A
 import { useSpine } from "../../spine/SpineContext";
 import { signalFetch, isBackendUnreachable } from "../../lib/signalApi";
 import ConnectorStatusPanel from "./ConnectorStatusPanel";
+import ObservabilityPanel from "./ObservabilityPanel";
 
 // System tab — theme/density/lang/accent + backend diagnostics snapshot
 // + destructive actions. Built on the shared .panel + .diagnostic-row
@@ -65,6 +66,7 @@ export default function System() {
         </span>
       </div>
       <ConnectorStatusPanel />
+      <ObservabilityPanel />
       <div
         style={{
           display: "grid",
