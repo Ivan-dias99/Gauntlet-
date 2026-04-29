@@ -210,6 +210,19 @@ export default function CanonRibbon({ active, onSelect }: Props) {
                 <div className="dropdown-header">{copy.missions}</div>
                 {missions.map((m) => {
                   const isActive = m.id === state.activeMissionId;
+                  // Wave C UI consumer — render the mission lifecycle
+                  // status as a small pill next to the title, except for
+                  // "active" (the default and most common state, no badge
+                  // needed). Operators get a glance at which threads are
+                  // paused, brainstorm-only, archived or completed.
+                  const statusLabel: Record<string, string> = {
+                    paused: "pausada",
+                    brainstorm: "brainstorm",
+                    archived: "arquivada",
+                    completed: "completa",
+                    closed: "fechada",
+                  };
+                  const pillLabel = statusLabel[m.status];
                   return (
                     <button
                       key={m.id}
@@ -220,7 +233,28 @@ export default function CanonRibbon({ active, onSelect }: Props) {
                       className="dropdown-item"
                       data-active={isActive ? "true" : undefined}
                     >
-                      <div className="dropdown-item-title">{m.title}</div>
+                      <div
+                        className="dropdown-item-title"
+                        style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}
+                      >
+                        <span>{m.title}</span>
+                        {pillLabel && (
+                          <span
+                            data-mission-status-pill={m.status}
+                            style={{
+                              fontSize: "0.65em",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.06em",
+                              padding: "1px 6px",
+                              borderRadius: 999,
+                              border: "1px solid currentColor",
+                              opacity: 0.65,
+                            }}
+                          >
+                            {pillLabel}
+                          </span>
+                        )}
+                      </div>
                       <div className="dropdown-item-meta">
                         {(() => {
                           const pulse = formatPulse(m);
