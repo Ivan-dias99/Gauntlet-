@@ -25,6 +25,10 @@ __pycache__/
 .claude/memory.log
 **/.claude/memory.log
 
+# Parallel-agent isolated worktrees (Agent tool with isolation:"worktree").
+# Created at runtime under .claude/worktrees/agent-<id>; never source.
+.claude/worktrees/
+
 # Signal backend runtime data (failure memory, runs log, spine snapshot).
 # Both paths listed until the Wave-0 → Wave-8 compat window closes.
 signal-backend/data/
