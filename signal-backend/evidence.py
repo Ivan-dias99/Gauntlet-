@@ -29,17 +29,19 @@ EvidenceKind = Literal["gate", "diff", "command", "file_change", "tool_result"]
 class EvidenceRecord(BaseModel):
     """A single proof point in a Delivery Ledger entry.
 
-    All fields except `kind` and the discriminating payload are optional
-    — partial evidence is honest evidence ("we have a diff but no
-    typecheck") and the consumer renders accordingly.
+    Provenance (`source`, `iteration`, `missionId`, `taskId`) is mandatory
+    — every claim must be traceable to the tool, agent loop iteration,
+    mission, and task that produced it. Discriminating payload fields
+    stay optional so partial evidence is still honest ("we have a diff
+    but no typecheck"), but the audit trail itself can never be missing.
     """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     kind: EvidenceKind
-    source: Optional[str] = None  # tool name, e.g. "run_command"
-    iteration: Optional[int] = None  # agent loop iteration when fired
-    missionId: Optional[str] = None
-    taskId: Optional[str] = None
+    source: str  # tool name, e.g. "run_command"
+    iteration: int  # agent loop iteration when fired
+    missionId: str
+    taskId: str
 
     # Discriminating payloads — only one is meaningful per kind, but
     # all fields stay optional so the model accepts partial records
@@ -101,10 +103,10 @@ class DeliveryLedgerEntry(BaseModel):
 
 def gate_evidence(
     name: GateName, state: GateState, *,
-    source: Optional[str] = None,
-    iteration: Optional[int] = None,
-    mission_id: Optional[str] = None,
-    task_id: Optional[str] = None,
+    source: str,
+    iteration: int,
+    mission_id: str,
+    task_id: str,
 ) -> EvidenceRecord:
     """Convenience constructor for a gate evidence record."""
     return EvidenceRecord(
@@ -116,10 +118,10 @@ def gate_evidence(
 
 def diff_evidence(
     files: int, added: int, removed: int, *,
-    source: Optional[str] = None,
-    iteration: Optional[int] = None,
-    mission_id: Optional[str] = None,
-    task_id: Optional[str] = None,
+    source: str,
+    iteration: int,
+    mission_id: str,
+    task_id: str,
 ) -> EvidenceRecord:
     """Convenience constructor for a diff evidence record."""
     return EvidenceRecord(
