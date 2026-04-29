@@ -65,18 +65,50 @@ const STOPWORDS = new Set([
 ]);
 
 function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}+/gu, "")
+  return normalizeText(text)
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
     .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
 }
 
-function containsAnchor(haystack: string, needles: string[]): boolean {
-  const h = haystack.toLowerCase();
-  return needles.some((n) => h.includes(n));
+function normalizeText(text: string): string {
+  // Lowercase + strip diacritics so anchors like "começar do zero"
+  // also match users typing "comecar do zero" without accents.
+  // Apostrophes are also stripped so negation prefixes like "don't "
+  // line up with the bare "dont " form regardless of typography
+  // (straight ' or curly ’).
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}+/gu, "")
+    .replace(/['’]/g, "");
+}
+
+// Negation prefixes (matched immediately before an anchor) flip the
+// meaning — "don't ignore that" / "não esquece" should NOT trigger the
+// contradiction shortcut. Patterns are matched against the normalized
+// haystack, so accented forms (`não`) only need their stripped variant.
+const NEGATION_PREFIXES = [
+  "dont ", "don t ", "do not ", "didn t ", "didnt ", "did not ",
+  "nao ", "nunca ", "never ", "no ",
+];
+
+function findAnchorMatches(haystack: string, needles: string[]): string[] {
+  const h = normalizeText(haystack);
+  return needles.filter((needle) => {
+    const n = normalizeText(needle);
+    if (!n) return false;
+    let start = 0;
+    while (start <= h.length - n.length) {
+      const idx = h.indexOf(n, start);
+      if (idx === -1) return false;
+      const before = h.slice(Math.max(0, idx - 12), idx);
+      const negated = NEGATION_PREFIXES.some((p) => before.endsWith(p));
+      if (!negated) return true;
+      start = idx + n.length;
+    }
+    return false;
+  });
 }
 
 /**
@@ -112,33 +144,38 @@ export function classifyIntent(
   }
 
   // Anchor checks — explicit user intent overrides similarity.
-  if (containsAnchor(trimmed, CONTRADICTION_ANCHORS)) {
+  // findAnchorMatches normalizes diacritics and rejects anchors that
+  // appear immediately after a negation ("don't ignore that").
+  const contradictionMatches = findAnchorMatches(trimmed, CONTRADICTION_ANCHORS);
+  if (contradictionMatches.length > 0) {
     return {
       classification: "contradiction",
       confidence: 0.9,
       requiresPrompt: true,
       reason: "Detectei expressão de contradição — confirma se queres reverter decisão anterior.",
-      matchedTokens: CONTRADICTION_ANCHORS.filter((a) => trimmed.toLowerCase().includes(a)),
+      matchedTokens: contradictionMatches,
       driftTokens: [],
     };
   }
-  if (containsAnchor(trimmed, NEW_PROJECT_ANCHORS)) {
+  const newProjectMatches = findAnchorMatches(trimmed, NEW_PROJECT_ANCHORS);
+  if (newProjectMatches.length > 0) {
     return {
       classification: "new_project",
       confidence: 0.9,
       requiresPrompt: true,
       reason: "Detectei expressão de novo projecto — confirma antes de pausar o actual.",
-      matchedTokens: NEW_PROJECT_ANCHORS.filter((a) => trimmed.toLowerCase().includes(a)),
+      matchedTokens: newProjectMatches,
       driftTokens: [],
     };
   }
-  if (containsAnchor(trimmed, BRAINSTORM_ANCHORS)) {
+  const brainstormMatches = findAnchorMatches(trimmed, BRAINSTORM_ANCHORS);
+  if (brainstormMatches.length > 0) {
     return {
       classification: "brainstorm",
       confidence: 0.85,
       requiresPrompt: true,
       reason: "Pareces estar em brainstorm — guardo isto sem afectar o projecto activo?",
-      matchedTokens: BRAINSTORM_ANCHORS.filter((a) => trimmed.toLowerCase().includes(a)),
+      matchedTokens: brainstormMatches,
       driftTokens: [],
     };
   }
