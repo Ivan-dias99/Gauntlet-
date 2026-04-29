@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   signalFetch,
   isBackendUnreachable,
@@ -52,11 +52,24 @@ export default function BuildSpecPanel({ plan, missionId }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
 
+  // Codex thread #255: drop stale spec when the plan input changes
+  // so a previous compile's component list never reads as the current
+  // plan's output.
+  useEffect(() => {
+    setSpec(null);
+    setErr(null);
+    setOffline(false);
+  }, [plan]);
+
   async function compile() {
     if (!plan || busy) return;
     setBusy(true);
     setErr(null);
     setOffline(false);
+    // Codex thread #255: also reset spec at the start of a new
+    // compile so a failed retry can't continue showing the previous
+    // successful output as if it were current.
+    setSpec(null);
     try {
       const res = await signalFetch("/surface/build-spec", {
         method: "POST",
