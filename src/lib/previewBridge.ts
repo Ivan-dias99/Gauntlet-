@@ -85,6 +85,31 @@ function uid(): string {
   return Math.random().toString(36).slice(2);
 }
 
+// Per-request expected response kind. The iframe MUST reply with the
+// matching kind (or "error"); any other kind is a protocol violation
+// and rejects the promise so typed wrappers (screenshot, selectElement,
+// …) never resolve with a payload of the wrong shape.
+const RESPONSE_KIND: Partial<Record<PreviewMessageKind, PreviewMessageKind>> = {
+  ping: "pong",
+  screenshot: "screenshot_result",
+  select_element: "element_selected",
+  list_components: "components_listed",
+  navigate: "navigate_result",
+};
+
+function normalizeOrigin(input: string): string {
+  // MessageEvent.origin is always scheme/host[:port], so callers that
+  // accidentally pass a full URL (e.g. iframe.src) would otherwise never
+  // match and every request would time out. Best-effort normalize via
+  // URL; on parse failure fall back to the raw string so a bare origin
+  // ("https://example.com") still works.
+  try {
+    return new URL(input).origin;
+  } catch {
+    return input;
+  }
+}
+
 export interface BridgeOptions {
   /** Origin allowed to talk to us. Refuses messages from other origins. */
   expectedOrigin: string;
@@ -102,13 +127,22 @@ export class PreviewBridge {
   private opts: Required<BridgeOptions>;
   private pending = new Map<
     string,
-    { resolve: (env: PreviewEnvelope) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }
+    {
+      resolve: (env: PreviewEnvelope) => void;
+      reject: (e: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+      expectedKind?: PreviewMessageKind;
+    }
   >();
   private listener?: (e: MessageEvent) => void;
 
   constructor(iframe: HTMLIFrameElement, opts: BridgeOptions) {
     this.iframe = iframe;
-    this.opts = { timeoutMs: 5000, ...opts };
+    this.opts = {
+      timeoutMs: 5000,
+      ...opts,
+      expectedOrigin: normalizeOrigin(opts.expectedOrigin),
+    };
   }
 
   attach(): void {
@@ -148,6 +182,14 @@ export class PreviewBridge {
       pending.reject(new Error(message));
       return;
     }
+    if (pending.expectedKind && env.kind !== pending.expectedKind) {
+      pending.reject(
+        new Error(
+          `PreviewBridge response kind mismatch: expected ${pending.expectedKind}, got ${env.kind}`,
+        ),
+      );
+      return;
+    }
     pending.resolve(env);
   }
 
@@ -157,12 +199,13 @@ export class PreviewBridge {
     }
     const id = envelope.id ?? uid();
     const out: PreviewEnvelope = { v: 1, id, kind: envelope.kind, payload: envelope.payload };
+    const expectedKind = RESPONSE_KIND[envelope.kind];
     return new Promise<PreviewEnvelope>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`PreviewBridge timeout for kind=${envelope.kind}`));
       }, this.opts.timeoutMs);
-      this.pending.set(id, { resolve, reject, timer });
+      this.pending.set(id, { resolve, reject, timer, expectedKind });
       this.iframe.contentWindow!.postMessage(out, this.opts.expectedOrigin);
     });
   }
