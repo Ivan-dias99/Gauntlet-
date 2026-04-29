@@ -46,9 +46,16 @@ export default function SurfaceFinalPanel({ previewUrl }: Props) {
   // can pass full URLs and the bridge does the right thing.
   const expectedOrigin = useMemo(() => {
     try {
-      return new URL(previewUrl).origin;
+      // Resolve relative URLs against the current document so
+      // same-origin paths like "/preview?previewAgent=1" produce a
+      // valid origin instead of throwing and leaving postMessage
+      // with a non-origin string.
+      return new URL(previewUrl, window.location.href).origin;
     } catch {
-      return previewUrl;
+      // Last-resort fallback — postMessage requires a real origin,
+      // so stick to the current document's origin rather than the
+      // raw input string.
+      return window.location.origin;
     }
   }, [previewUrl]);
 
