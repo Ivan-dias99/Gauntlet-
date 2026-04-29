@@ -127,9 +127,12 @@ def score_domain(host: str) -> TrustScore:
     for known in _HIGH_TRUST_HOSTS:
         if host.endswith("." + known):
             return "high"
-    # TLD match
+    # TLD match — also accept the bare TLD as the host. _HIGH_TRUST_TLDS
+    # entries carry a leading dot (".gov.uk", ".gov.pt") so subdomains
+    # match via endswith, but a hostname that is *exactly* "gov.uk" or
+    # "gov.pt" has no leading dot and was being scored as "medium".
     for tld in _HIGH_TRUST_TLDS:
-        if host.endswith(tld):
+        if host.endswith(tld) or host == tld.lstrip("."):
             return "high"
     return "medium"
 
