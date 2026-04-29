@@ -312,6 +312,12 @@ export default function Terminal() {
       question: mode === "crew" ? clampedV : `${AGENT_PREFIX}${clampedV}`,
       context: activeMission?.title,
       mission_id: activeMission?.id,
+      // Codex thread #249 (discussion_r3164774876, _r3164784132):
+      // forward the chamber's task UUID so EvidenceRecord.taskId
+      // matches the panel's filter (`rec.taskId !== activeTask`).
+      // Without this the backend invents `agent-loop-{uuid}` and the
+      // panel silently drops every event for the run.
+      task_id: newTaskId,
       principles: clampedPrinciples.length ? clampedPrinciples : undefined,
       chamber: "terminal" as const,
     };
