@@ -24,6 +24,7 @@ import json
 import logging
 import re
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Optional
 
@@ -264,6 +265,18 @@ class AgentOrchestrator:
         """
         started = time.monotonic()
 
+        # Wave E (P-3) re-review fix: compute the evidence task_id
+        # fallback ONCE per agent run. Previously this was derived per
+        # iteration (`agent-loop-{iteration}`), which fragmented one
+        # logical run into N pseudo-tasks and broke downstream grouping
+        # by taskId. `iteration` is already a separate field on the
+        # record, so the fallback id stays constant for the whole run.
+        # uuid4 ensures distinct ids across runs of the same mission.
+        _run_task_id_fallback = (
+            (query.task_id or "").strip()
+            or f"agent-loop-{uuid.uuid4().hex[:12]}"
+        )
+
         # Wave-5: profile-aware prompt + tool filter. When no chamber is
         # attached we fall back to the orchestrator's default prompt and
         # the unfiltered schema — unchanged from earlier waves.
@@ -403,6 +416,46 @@ class AgentOrchestrator:
                     sig["iteration"] = iteration
                     sig["source"] = block.name
                     yield sig
+
+                    # Wave E (P-3) — for every gate/diff signal, also emit
+                    # a typed EvidenceRecord so the chamber can collect
+                    # the trail of proof and downstream Delivery Ledger
+                    # consumers have structured provenance. The record
+                    # mandates source/iteration/missionId/taskId; fall
+                    # back to deterministic placeholders when the caller
+                    # didn't tag the run (ad-hoc curls, smoke tests).
+                    try:
+                        from evidence import gate_evidence, diff_evidence
+                        mission_id_val = (query.mission_id or "ad-hoc").strip() or "ad-hoc"
+                        task_id_val = _run_task_id_fallback
+                        record = None
+                        if sig.get("type") == "gate":
+                            record = gate_evidence(
+                                sig["name"], sig["state"],
+                                source=block.name,
+                                iteration=iteration,
+                                mission_id=mission_id_val,
+                                task_id=task_id_val,
+                            )
+                        elif sig.get("type") == "diff":
+                            record = diff_evidence(
+                                int(sig.get("files", 0)),
+                                int(sig.get("added", 0)),
+                                int(sig.get("removed", 0)),
+                                source=block.name,
+                                iteration=iteration,
+                                mission_id=mission_id_val,
+                                task_id=task_id_val,
+                            )
+                        if record is not None:
+                            yield {
+                                "type": "evidence",
+                                "record": record.model_dump(),
+                            }
+                    except Exception:  # noqa: BLE001
+                        # Evidence emission must never break the agent
+                        # loop — the gate/diff signal already shipped.
+                        pass
 
                 # Wave G integration — extract citations from research
                 # tool results. The URL-fetch tool registers as

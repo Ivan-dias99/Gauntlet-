@@ -165,6 +165,33 @@ export interface CitationPayload {
   retrieved_at: string;
 }
 
+// Wave E (P-3) — typed EvidenceRecord payload coming over the SSE wire
+// alongside gate/diff signals. Provenance fields are mandatory on the
+// backend; the chamber just stores them on the run trail. Optional
+// payload fields mirror the discriminated kind on the backend model.
+export interface EvidenceRecordPayload {
+  id: string;
+  timestamp: string;
+  kind: "gate" | "diff" | "command" | "file_change" | "tool_result";
+  source: string;
+  iteration: number;
+  missionId: string;
+  taskId: string;
+  gateName?: GateName | null;
+  gateState?: GateState | null;
+  diffFiles?: number | null;
+  diffAdded?: number | null;
+  diffRemoved?: number | null;
+  commandLine?: string | null;
+  commandExitCode?: number | null;
+  filePath?: string | null;
+  fileChange?: "created" | "modified" | "deleted" | null;
+  toolName?: string | null;
+  toolOk?: boolean | null;
+  toolPreview?: string | null;
+  note?: string | null;
+}
+
 export type AgentEvent =
   | { type: "start" }
   | { type: "iteration"; n: number }
@@ -174,6 +201,7 @@ export type AgentEvent =
   | { type: "gate"; name: GateName; state: GateState; iteration: number; source?: string }
   | { type: "diff"; files: number; added: number; removed: number; iteration: number; source?: string }
   | { type: "citations"; iteration: number; source: string; citations: CitationPayload[]; summary: { total: number; by_trust: Record<CitationTrust, number>; any_low: boolean; majority_high: boolean } }
+  | { type: "evidence"; record: EvidenceRecordPayload }
   | {
       type: "done";
       answer: string;
@@ -267,6 +295,7 @@ export type RouteEvent =
   | { type: "gate"; name: GateName; state: GateState; iteration: number; source?: string }
   | { type: "diff"; files: number; added: number; removed: number; iteration: number; source?: string }
   | { type: "citations"; iteration: number; source: string; citations: CitationPayload[]; summary: { total: number; by_trust: Record<CitationTrust, number>; any_low: boolean; majority_high: boolean } }
+  | { type: "evidence"; record: EvidenceRecordPayload }
   | { type: "error"; message: string; error?: string; reason?: string };
 
 type Route = "route" | "dev" | "ask";
