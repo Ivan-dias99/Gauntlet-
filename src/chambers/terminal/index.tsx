@@ -5,6 +5,7 @@ import { fireTelemetry } from "../../lib/telemetry";
 import {
   useSignal, AgentEvent, CrewEvent,
   type CrewRole, type GateName, type GateState,
+  type EvidenceRecordPayload,
 } from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { useGitStatus } from "../../hooks/useGitStatus";
@@ -23,6 +24,7 @@ import NextStepBar from "./NextStepBar";
 import ExecutionComposer from "./ExecutionComposer";
 import { TaskList } from "./TaskBench";
 import HandoffInbox from "../../shell/HandoffInbox";
+import EvidencePanel from "./EvidencePanel";
 
 // Terminal — execution environment. State, effects, submit, accept,
 // task state transitions and SSE event reduction stay here; every
@@ -78,6 +80,10 @@ export default function Terminal() {
   // derivation that used to live in the chamber. Reset on each submit.
   const [liveGates, setLiveGates] = useState<Record<GateName, GateState>>(INITIAL_GATES);
   const [liveDiff, setLiveDiff] = useState<{ files: number; added: number; removed: number } | null>(null);
+  // P-9 — typed evidence trail collected from the agent loop. Resets
+  // on every submit alongside gates/diff so the panel reflects only
+  // the current run.
+  const [liveEvidence, setLiveEvidence] = useState<EvidenceRecordPayload[]>([]);
   const [mode, setMode] = useState<RunMode>("agent");
   const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
   // Session-only guard against double-click on the accept button.
@@ -165,6 +171,12 @@ export default function Terminal() {
         break;
       case "diff":
         setLiveDiff({ files: ev.files, added: ev.added, removed: ev.removed });
+        break;
+      case "evidence":
+        // P-9 — append the typed EvidenceRecord to the run trail.
+        // Reset is owned by the submit handler so a new run starts
+        // with an empty list (same lifecycle as gates/diff).
+        setLiveEvidence((prev) => [...prev, ev.record]);
         break;
       case "done":
         setDone({
@@ -269,6 +281,7 @@ export default function Terminal() {
     setCrew({ ...EMPTY_CREW });
     setLiveGates(INITIAL_GATES);
     setLiveDiff(null);
+    setLiveEvidence([]);
 
     abortRef.current?.abort();
     const ac = new AbortController();
@@ -354,6 +367,7 @@ export default function Terminal() {
     setLiveText("");
     setLiveGates(INITIAL_GATES);
     setLiveDiff(null);
+    setLiveEvidence([]);
     setAccepted(false);
   }
 
@@ -367,6 +381,7 @@ export default function Terminal() {
     setLiveText("");
     setLiveGates(INITIAL_GATES);
     setLiveDiff(null);
+    setLiveEvidence([]);
     setAccepted(false);
   }
 
@@ -389,6 +404,7 @@ export default function Terminal() {
     setLiveText("");
     setLiveGates(INITIAL_GATES);
     setLiveDiff(null);
+    setLiveEvidence([]);
     setAccepted(true);
     if (a.taskId && activeMission?.tasks.some((t) => t.id === a.taskId)) {
       setActiveTaskId(a.taskId);
@@ -500,6 +516,7 @@ export default function Terminal() {
             <DormantPanel detail={copy.dormantCreation} />
           </div>
         ) : (
+          <>
           <OutputCanvas
             copy={copy}
             mission={activeMission}
@@ -520,6 +537,8 @@ export default function Terminal() {
             onReplayArtifact={replayArtifact}
             canAccept={Boolean(activeMission)}
           />
+          <EvidencePanel records={liveEvidence} />
+          </>
         )}
 
         {showNextStep && (
