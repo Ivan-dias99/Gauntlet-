@@ -157,8 +157,10 @@ class SignalEngine:
         # blip), retry once with the next model in ROUTING. Each
         # GatewayCall recorded carries fallback_from so /gateway/summary
         # shows when failover kicked in.
-        from anthropic import APIStatusError, APIConnectionError, APITimeoutError
-        recoverable = (APIStatusError, APIConnectionError, APITimeoutError)
+        from anthropic import (
+            RateLimitError, APIConnectionError, APITimeoutError, InternalServerError,
+        )
+        recoverable = (RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)
 
         async def _attempt(_choice, _model_id, _from: str | None):
             import time as _t
@@ -229,9 +231,14 @@ class SignalEngine:
                     "Triad call %d primary %s failed (%s) — falling back to %s",
                     index, model_id, type(err).__name__, next_choice.model_id,
                 )
-                fb_result, _, _ = await _attempt(next_choice, next_choice.model_id, model_id)
+                fb_result, fb_err, _ = await _attempt(next_choice, next_choice.model_id, model_id)
                 if fb_result is not None:
                     return fb_result
+                # Fallback also failed — surface its exception, not the primary's,
+                # so triage sees the actual terminal cause (e.g. fallback 400 not
+                # primary 429).
+                if fb_err is not None:
+                    err = fb_err
         logger.error(
             "Triad call %d failed (recoverable=%s): %s",
             index, retry, err,
