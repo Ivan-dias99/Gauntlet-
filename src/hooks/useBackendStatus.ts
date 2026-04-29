@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
 
 // Honest surface for the two backend truths every chamber cares about:
@@ -49,8 +49,19 @@ interface HealthBody {
   persistence_ephemeral?: boolean;
 }
 
-export function useBackendStatus(): BackendStatus {
+export interface UseBackendStatus extends BackendStatus {
+  /**
+   * Re-runs the /health probe. Call after a request marks the backend
+   * unreachable so the banner / chip reflect the live state instead of
+   * the one-shot mount fetch.
+   */
+  refresh: () => void;
+}
+
+export function useBackendStatus(): UseBackendStatus {
   const [status, setStatus] = useState<BackendStatus>(INITIAL);
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick((n) => n + 1), []);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -115,7 +126,7 @@ export function useBackendStatus(): BackendStatus {
       }
     })();
     return () => ac.abort();
-  }, []);
+  }, [tick]);
 
-  return status;
+  return { ...status, refresh };
 }

@@ -61,16 +61,19 @@ ALLOWED_ORIGINS: list[str] = [
 ALLOWED_ORIGIN: str = ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "http://localhost:5173"
 
 # Vercel preview URLs are ephemeral (project-hash-team.vercel.app), so an
-# allow-list cannot enumerate them. Default regex auto-accepts any *.vercel.app
-# subdomain, eliminating the manual SIGNAL_ORIGIN edit on every preview deploy.
-# Operators who need stricter scoping override SIGNAL_ORIGIN_REGEX with their
-# own pattern. To neutralize the regex entirely, set it to a pattern that
-# matches nothing (e.g. "^$") — empty-string is treated as unset and falls
-# back to the default, by `_env()` semantics.
+# allow-list cannot enumerate them. Operators who want preview deploys to
+# pass CORS set SIGNAL_ORIGIN_REGEX to a pattern scoped to their own
+# Vercel project, e.g.
+#     ^https://aiinterfaceshelldesign-[a-z0-9-]+\.vercel\.app$
+# Default is empty (no regex) — paired with allow_credentials=True in
+# server.py, defaulting to a broad `*.vercel.app` regex would let any
+# Vercel-hosted site make credentialed CORS requests, silently
+# broadening previously strict SIGNAL_ORIGIN allow-lists on upgrade.
+# server.py only attaches the regex when it is non-empty.
 ALLOWED_ORIGIN_REGEX: str = _env(
     "SIGNAL_ORIGIN_REGEX",
     "RUBERRA_ORIGIN_REGEX",
-    r"^https://[a-z0-9-]+\.vercel\.app$",
+    "",
 )
 
 # ── Memory ──────────────────────────────────────────────────────────────────
@@ -82,14 +85,33 @@ _default_memory_dir = Path(__file__).parent / "data"
 _data_dir_raw = _env("SIGNAL_DATA_DIR", "RUBERRA_DATA_DIR", str(_default_memory_dir))
 MEMORY_DIR: Path = Path(_data_dir_raw)
 
-# True when the operator did not explicitly set SIGNAL_DATA_DIR / RUBERRA_DATA_DIR,
-# meaning persistence is writing to the in-image default and will be wiped on
-# every container restart. server.py emits a loud boot warning and /health
-# carries this flag so the chip can show "ephemeral" instead of "ready".
-PERSISTENCE_EPHEMERAL: bool = (
-    not os.environ.get("SIGNAL_DATA_DIR")
-    and not os.environ.get("RUBERRA_DATA_DIR")
-)
+# True when persistence is writing to the in-image filesystem (wiped on
+# every container restart). server.py emits a loud boot warning and
+# /health carries this flag so the chip can show "ephemeral" instead of
+# "ready".
+#
+# Detection is path-based rather than env-presence-based: the project's
+# Dockerfile sets SIGNAL_DATA_DIR=/data unconditionally, so an env-only
+# check misses the common "operator forgot to mount the volume" case
+# and silently reports persistence healthy. Treat the path as ephemeral
+# when (a) it equals the in-image default, or (b) it points somewhere
+# that is not a mountpoint on this filesystem.
+def _is_ephemeral_dir(path: Path, default: Path) -> bool:
+    try:
+        if path.resolve() == default.resolve():
+            return True
+    except OSError:
+        return True
+    try:
+        # ismount returns False if the path doesn't exist yet — that
+        # is also an ephemeral signal (writes will land on the image
+        # layer until something mounts there).
+        return not path.exists() or not os.path.ismount(path)
+    except OSError:
+        return True
+
+
+PERSISTENCE_EPHEMERAL: bool = _is_ephemeral_dir(MEMORY_DIR, _default_memory_dir)
 
 FAILURE_MEMORY_FILE: Path = MEMORY_DIR / "failure_memory.json"
 

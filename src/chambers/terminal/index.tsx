@@ -36,6 +36,15 @@ import { TaskList } from "./TaskBench";
 //   · NextStepBar (only when the run has landed and there is a next step)
 //   · ExecutionComposer (floating command dock at the bottom)
 
+// Initial state for the structured gate signals — reused on every
+// task transition so a switch to a different task never inherits the
+// previous run's gates/diff.
+const INITIAL_GATES: Record<GateName, GateState> = {
+  typecheck: "unavailable",
+  build: "unavailable",
+  test: "unavailable",
+};
+
 export default function Terminal() {
   const {
     activeMission, addTask, setTaskState, addNoteToMission,
@@ -45,6 +54,15 @@ export default function Terminal() {
   const backend = useBackendStatus();
   const git = useGitStatus();
   const copy = useCopy();
+
+  // useBackendStatus only checks /health on mount, so a backend that
+  // goes down mid-session would leave backend.reachable=true and the
+  // banner would never appear. Re-check whenever a runtime request
+  // marks the backend unreachable so reason/detail and the
+  // BackendUnreachableBanner reflect live state.
+  useEffect(() => {
+    if (unreachable) backend.refresh();
+  }, [unreachable, backend.refresh]);
 
   const [input, setInput] = useState("");
   const [lastTask, setLastTask] = useState("");
@@ -450,7 +468,10 @@ export default function Terminal() {
       />
 
       <div className="chamber-body" style={{ paddingTop: 0 }}>
-        {!backend.reachable && (
+        {(!backend.reachable || unreachable) && (
+          // Show the banner on either initial-mount unreachable OR a
+          // runtime request that just hit unreachable — the refresh()
+          // effect above will repopulate reason/detail momentarily.
           <BackendUnreachableBanner
             reason={backend.unreachableReason}
             detail={backend.unreachableDetail}

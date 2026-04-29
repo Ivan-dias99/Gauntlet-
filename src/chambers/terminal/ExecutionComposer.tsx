@@ -235,19 +235,26 @@ export default function ExecutionComposer({
 
           <span className="term-rail-spacer" />
 
-          {/* Live/mock dot — single tiny posture indicator. Detailed
+          {/* Live/mock/down dot — tiny posture indicator. Detailed
               backend state has migrated to the BackendUnreachableBanner
-              (above workbench) and the context flyout. */}
-          <span
-            className="term-rail-chip"
-            data-tone={mockMode ? "warn" : "ok"}
-            title={mockMode
+              (above workbench) and the context flyout. Unreachable
+              wins over mockMode so an outage isn't masked as "live". */}
+          {(() => {
+            const isUnreachable = backendReadiness === "unreachable";
+            const tone = isUnreachable ? "danger" : mockMode ? "warn" : "ok";
+            const label = isUnreachable ? "down" : mockMode ? "mock" : "live";
+            const title = isUnreachable
+              ? "backend inalcançável — execução indisponível"
+              : mockMode
               ? "backend em modo simulado — respostas canned"
-              : "backend ligado — execução real"}
-          >
-            <span className="term-rail-dot" aria-hidden />
-            <span className="term-rail-value">{mockMode ? "mock" : "live"}</span>
-          </span>
+              : "backend ligado — execução real";
+            return (
+              <span className="term-rail-chip" data-tone={tone} title={title}>
+                <span className="term-rail-dot" aria-hidden />
+                <span className="term-rail-value">{label}</span>
+              </span>
+            );
+          })()}
           {principlesCount > 0 && (
             <span
               className="term-rail-chip"
