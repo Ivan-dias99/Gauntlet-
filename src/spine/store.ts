@@ -300,6 +300,23 @@ export function normalizePrinciples(raw: unknown): Principle[] {
   });
 }
 
+// Wave C invariant: at most one mission may be "active" at a time.
+// Legacy states (pre-Wave C) marked every open mission as active, so
+// any rehydration path (localStorage load OR /spine fetch) must demote
+// non-selected actives to "paused" before the state reaches the UI —
+// otherwise setMissionStatus assumptions break and the dropdown shows
+// multiple actives.
+export function enforceSingleActive(
+  missions: Mission[],
+  activeMissionId: string | null,
+): Mission[] {
+  return missions.map(m =>
+    m.status === "active" && m.id !== activeMissionId
+      ? { ...m, status: "paused" as MissionStatus }
+      : m,
+  );
+}
+
 export function loadState(): SpineState {
   try {
     const raw =
@@ -318,15 +335,7 @@ export function loadState(): SpineState {
       rawMissions.some(m => m.id === r.activeMissionId)
         ? r.activeMissionId
         : (rawMissions[0]?.id ?? null);
-    // Wave C invariant: at most one mission may be "active" at a time.
-    // Legacy states (pre-Wave C) marked every open mission as active, so
-    // rehydration must demote the non-selected ones to "paused" — otherwise
-    // setMissionStatus assumptions break and the UI shows multiple actives.
-    const missions = rawMissions.map(m =>
-      m.status === "active" && m.id !== activeMissionId
-        ? { ...m, status: "paused" as MissionStatus }
-        : m,
-    );
+    const missions = enforceSingleActive(rawMissions, activeMissionId);
     const updatedAt = typeof r.updatedAt === "number" ? r.updatedAt : 0;
     return { missions, activeMissionId, principles, updatedAt };
   } catch {

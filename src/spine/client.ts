@@ -5,7 +5,7 @@ import {
   BackendError,
 } from "../lib/signalApi";
 import { SpineState, Mission } from "./types";
-import { normalizeMission, normalizePrinciples } from "./store";
+import { normalizeMission, normalizePrinciples, enforceSingleActive } from "./store";
 
 const PATH = "/spine";
 
@@ -25,16 +25,20 @@ export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | nul
       principles?: unknown;
       updatedAt?: unknown;
     };
-    const missions = Array.isArray(raw.missions)
+    const rawMissions = Array.isArray(raw.missions)
       ? (raw.missions.map(normalizeMission).filter(Boolean) as Mission[])
       : [];
+    const activeMissionId =
+      typeof raw.activeMissionId === "string" &&
+      rawMissions.some((m) => m.id === raw.activeMissionId)
+        ? raw.activeMissionId
+        : null;
     return {
-      missions,
-      activeMissionId:
-        typeof raw.activeMissionId === "string" &&
-        missions.some((m) => m.id === raw.activeMissionId)
-          ? raw.activeMissionId
-          : null,
+      // Mirror loadState: a server snapshot may still carry pre-Wave C
+      // multi-active missions (older backend persisting volumes), so
+      // enforce the single-active invariant here too.
+      missions: enforceSingleActive(rawMissions, activeMissionId),
+      activeMissionId,
       principles: normalizePrinciples(raw.principles),
       updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0,
     };
