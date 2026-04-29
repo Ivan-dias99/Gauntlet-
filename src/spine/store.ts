@@ -1,5 +1,5 @@
 import {
-  SpineState, Mission, Chamber, Note, Task, TaskState, TaskSource,
+  SpineState, Mission, MissionStatus, Chamber, Note, Task, TaskState, TaskSource,
   LogEvent, Principle, Artifact, normalizeChamberKey,
   TruthDistillation, ProjectContract, ArtifactStatus, ArtifactFailureMode,
   SurfaceSeed, TerminalSeed,
@@ -309,15 +309,24 @@ export function loadState(): SpineState {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return EMPTY;
     const r = parsed as Record<string, unknown>;
-    const missions = Array.isArray(r.missions)
+    const rawMissions = Array.isArray(r.missions)
       ? (r.missions.map(normalizeMission).filter(Boolean) as Mission[])
       : [];
     const principles = normalizePrinciples(r.principles);
     const activeMissionId =
       typeof r.activeMissionId === "string" &&
-      missions.some(m => m.id === r.activeMissionId)
+      rawMissions.some(m => m.id === r.activeMissionId)
         ? r.activeMissionId
-        : (missions[0]?.id ?? null);
+        : (rawMissions[0]?.id ?? null);
+    // Wave C invariant: at most one mission may be "active" at a time.
+    // Legacy states (pre-Wave C) marked every open mission as active, so
+    // rehydration must demote the non-selected ones to "paused" — otherwise
+    // setMissionStatus assumptions break and the UI shows multiple actives.
+    const missions = rawMissions.map(m =>
+      m.status === "active" && m.id !== activeMissionId
+        ? { ...m, status: "paused" as MissionStatus }
+        : m,
+    );
     const updatedAt = typeof r.updatedAt === "number" ? r.updatedAt : 0;
     return { missions, activeMissionId, principles, updatedAt };
   } catch {
