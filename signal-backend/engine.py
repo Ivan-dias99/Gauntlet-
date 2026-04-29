@@ -45,6 +45,8 @@ from models import (
 )
 from memory import failure_memory
 from runs import run_store
+from model_gateway import gateway, GatewayCall
+import observability
 
 logger = logging.getLogger("signal.engine")
 
@@ -145,9 +147,21 @@ class SignalEngine:
         if context:
             user_message = f"Context: {context}\n\nQuestion: {question}"
 
+        # Wave H integration — pick the model via gateway. Gateway also
+        # records per-call cost + per-role counts for /diagnostics.
+        choice = gateway.select("triad")
+        model_id = choice.model_id
+
+        import time as _t
+        started = _t.monotonic()
+        observability.start("triad")
+        # Track end-state separately so a cancellation (CancelledError
+        # inherits BaseException, not Exception) still decrements the
+        # in-flight counter via the finally block.
+        _obs_finalized = False
         try:
             response = await self._client.messages.create(
-                model=MODEL_ID,
+                model=model_id,
                 max_tokens=MAX_TOKENS,
                 temperature=temperature,
                 system=system_prompt,
@@ -155,29 +169,62 @@ class SignalEngine:
                     {"role": "user", "content": user_message}
                 ],
             )
-            
+
             content = ""
             for block in response.content:
                 if block.type == "text":
                     content += block.text
-            
+
+            in_tok = response.usage.input_tokens
+            out_tok = response.usage.output_tokens
+            gateway.record(GatewayCall(
+                role="triad", model_id=model_id, provider=choice.provider,
+                input_tokens=in_tok, output_tokens=out_tok,
+            ))
+            observability.end(
+                "triad",
+                duration_ms=int((_t.monotonic() - started) * 1000),
+                succeeded=True,
+            )
+            _obs_finalized = True
+
             return TriadResponse(
                 index=index,
                 content=content,
                 model=response.model,
                 stop_reason=response.stop_reason,
-                input_tokens=response.usage.input_tokens,
-                output_tokens=response.usage.output_tokens,
+                input_tokens=in_tok,
+                output_tokens=out_tok,
             )
-        
+
         except Exception as e:
             logger.error(f"Triad call {index} failed: {e}")
+            gateway.record(GatewayCall(
+                role="triad", model_id=model_id, provider=choice.provider,
+                succeeded=False, error_kind=type(e).__name__,
+            ))
+            observability.end(
+                "triad",
+                duration_ms=int((_t.monotonic() - started) * 1000),
+                succeeded=False, error_kind=type(e).__name__,
+            )
+            _obs_finalized = True
             return TriadResponse(
                 index=index,
                 content=f"[TRIAD CALL FAILED: {str(e)}]",
-                model=MODEL_ID,
+                model=model_id,
                 stop_reason="error",
             )
+        finally:
+            # Cancellation (asyncio.CancelledError extends BaseException)
+            # bypasses except Exception. Without this, /observability
+            # would leak in_flight counters on every cancelled triad.
+            if not _obs_finalized:
+                observability.end(
+                    "triad",
+                    duration_ms=int((_t.monotonic() - started) * 1000),
+                    succeeded=False, error_kind="CancelledError",
+                )
     
     # ── Judge ───────────────────────────────────────────────────────────────
     
@@ -196,10 +243,19 @@ class SignalEngine:
         )
         
         logger.info("Invoking Judge...")
-        
+
+        # Wave H integration — judge picks via gateway too (no fallback
+        # chain by design — judge needs deterministic model).
+        choice = gateway.select("judge")
+        model_id = choice.model_id
+
+        import time as _t
+        started = _t.monotonic()
+        observability.start("judge")
+        _obs_finalized = False
         try:
             response = await self._client.messages.create(
-                model=MODEL_ID,
+                model=model_id,
                 max_tokens=MAX_TOKENS,
                 temperature=JUDGE_TEMPERATURE,
                 system=JUDGE_PROMPT,
@@ -207,21 +263,42 @@ class SignalEngine:
                     {"role": "user", "content": judge_input}
                 ],
             )
-            
+
             raw_content = ""
             for block in response.content:
                 if block.type == "text":
                     raw_content += block.text
-            
+
             verdict = self._parse_judge_verdict(raw_content)
             logger.info(
                 f"Judge verdict: confidence={verdict.confidence.value}, "
                 f"should_refuse={verdict.should_refuse}"
             )
+            gateway.record(GatewayCall(
+                role="judge", model_id=model_id, provider=choice.provider,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+            ))
+            observability.end(
+                "judge",
+                duration_ms=int((_t.monotonic() - started) * 1000),
+                succeeded=True,
+            )
+            _obs_finalized = True
             return verdict
-        
+
         except Exception as e:
             logger.error(f"Judge invocation failed: {e}")
+            gateway.record(GatewayCall(
+                role="judge", model_id=model_id, provider=choice.provider,
+                succeeded=False, error_kind=type(e).__name__,
+            ))
+            observability.end(
+                "judge",
+                duration_ms=int((_t.monotonic() - started) * 1000),
+                succeeded=False, error_kind=type(e).__name__,
+            )
+            _obs_finalized = True
             return JudgeVerdict(
                 confidence=ConfidenceLevel.LOW,
                 reasoning=f"Judge invocation failed: {str(e)}. Defaulting to refusal for safety.",
@@ -230,6 +307,14 @@ class SignalEngine:
                 should_refuse=True,
                 refusal_reason=RefusalReason.JUDGE_REJECTION,
             )
+        finally:
+            # Same cancellation guard as _single_triad_call.
+            if not _obs_finalized:
+                observability.end(
+                    "judge",
+                    duration_ms=int((_t.monotonic() - started) * 1000),
+                    succeeded=False, error_kind="CancelledError",
+                )
     
     def _parse_judge_verdict(self, raw: str) -> JudgeVerdict:
         """
