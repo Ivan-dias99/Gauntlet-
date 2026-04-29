@@ -99,6 +99,24 @@ ROUTING: dict[ModelRole, list[str]] = {
 }
 
 
+def _validate_routing() -> None:
+    """Fail loud at import time if ROUTING references an unknown model.
+    Silent gaps here disable failover exactly when resilience matters
+    (a typo or a removed catalogue entry would let `fallback()` return
+    None and the caller would think the chain was legitimately
+    exhausted)."""
+    for role, chain in ROUTING.items():
+        for model_id in chain:
+            if model_id not in CATALOGUE:
+                raise RuntimeError(
+                    f"ROUTING[{role!r}] references unknown model {model_id!r} "
+                    f"— add it to CATALOGUE or fix the routing chain."
+                )
+
+
+_validate_routing()
+
+
 @dataclass
 class GatewayCall:
     """One recorded call through the gateway. Exposed via /diagnostics
@@ -138,7 +156,10 @@ class ModelGateway:
     def fallback(self, role: ModelRole, failed_model_id: str) -> Optional[ModelChoice]:
         """Return the next model after `failed_model_id` in the role's
         chain. None when the chain is exhausted (caller should refuse
-        / surface the original error)."""
+        / surface the original error). Raises RuntimeError if the next
+        link in the chain is missing from the catalogue — silent
+        misconfiguration here would disable failover exactly when the
+        primary is failing."""
         chain = ROUTING.get(role) or ROUTING["default"]
         try:
             idx = chain.index(failed_model_id)
@@ -146,7 +167,13 @@ class ModelGateway:
             return None
         if idx + 1 >= len(chain):
             return None
-        return CATALOGUE.get(chain[idx + 1])
+        next_id = chain[idx + 1]
+        choice = CATALOGUE.get(next_id)
+        if choice is None:
+            raise RuntimeError(
+                f"ROUTING[{role!r}] fallback references unknown model {next_id!r}"
+            )
+        return choice
 
     def record(self, call: GatewayCall) -> None:
         """Record a completed (success or failure) gateway call."""
