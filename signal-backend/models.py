@@ -235,6 +235,29 @@ class ArtifactRecord(BaseModel):
     terminationReason: Optional[str] = None
 
 
+class HandoffRecord(BaseModel):
+    """Wave D — chamber-to-chamber transfer.
+
+    Mirrors the TS HandoffRecord in src/spine/types.ts. Declared here so
+    pydantic does not silently drop the queue on the spine round-trip
+    (MissionRecord lives behind FastAPI's request parser; any field that
+    is not declared is dropped before it reaches the JSON store or the
+    Postgres mirror).
+    """
+    id: str
+    fromChamber: str
+    toChamber: str
+    artifactType: str  # project_contract|truth_distillation|build_specification|delivery_ledger|note
+    artifactRef: Optional[str] = None
+    summary: str
+    risks: list[str] = Field(default_factory=list)
+    nextAction: str = ""
+    status: str = "pending"  # pending|consumed|rejected|deferred
+    createdAt: int
+    resolvedAt: Optional[int] = None
+    resolution: Optional[str] = None
+
+
 class MissionRecord(BaseModel):
     id: str
     title: str
@@ -254,6 +277,9 @@ class MissionRecord(BaseModel):
     # back-compat with missions persisted before Wave 6a.
     projectContract: Optional["ProjectContractRecord"] = None
     truthDistillations: list["TruthDistillationRecord"] = Field(default_factory=list)
+    # Wave D — Handoff queue per mission. Optional for back-compat with
+    # snapshots persisted before Wave D (MissionRecord defaults to empty).
+    handoffs: list[HandoffRecord] = Field(default_factory=list)
 
 
 # ── Wave 6a — Project Contract + Truth Distillation ────────────────────────

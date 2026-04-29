@@ -120,3 +120,17 @@ MAX_FAILURE_ENTRIES: int = 500
 
 # How many past failures to inject as context into the system prompt
 FAILURE_CONTEXT_WINDOW: int = 10
+
+
+# ── Postgres dual-write (Wave O / P-6) ───────────────────────────────────
+# Optional Postgres mirror. When SIGNAL_DATABASE_URL is set, the spine
+# store mirrors writes to the database alongside the JSON file (read
+# path is JSON only; the database is the shadow until parity is proven).
+# SIGNAL_DUAL_WRITE_PG must also be truthy — keeping it explicit so
+# pointing at a database doesn't auto-enable mirror writes.
+DATABASE_URL: str = _env("SIGNAL_DATABASE_URL", "RUBERRA_DATABASE_URL", "")
+DUAL_WRITE_PG: bool = (
+    bool(DATABASE_URL)
+    and _env("SIGNAL_DUAL_WRITE_PG", "RUBERRA_DUAL_WRITE_PG", "").strip().lower()
+    in ("1", "true", "yes", "on")
+)
