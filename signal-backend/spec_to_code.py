@@ -77,9 +77,18 @@ class BuildSpecification:
 # ── Naming + scaffolding helpers ────────────────────────────────────────────
 
 def _to_pascal(s: str) -> str:
-    """`'login form'` → `'LoginForm'`. Drops non-alpha-num runs."""
+    """`'login form'` → `'LoginForm'`. Drops non-alpha-num runs.
+
+    Prefixes the result with `_` if the first character would otherwise
+    be a digit, since SurfacePlan accepts arbitrary strings (e.g.
+    `screen: "2026 dashboard"`) and TS identifiers cannot start with a
+    digit — without this guard the emitted scaffold (`function 2026...`,
+    `interface 2026...Props`) would fail to parse."""
     parts = re.split(r"[^A-Za-z0-9]+", s)
-    return "".join(p[:1].upper() + p[1:] for p in parts if p)
+    out = "".join(p[:1].upper() + p[1:] for p in parts if p)
+    if out and out[0].isdigit():
+        out = "_" + out
+    return out
 
 
 def _propose_name(screen_name: str, component_name: str, kind: ComponentKind) -> str:
