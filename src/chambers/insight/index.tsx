@@ -4,6 +4,7 @@ import { useSignal, RouteEvent } from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { Note } from "../../spine/types";
 import ChamberHead from "../../shell/ChamberHead";
+import HandoffInbox from "../../shell/HandoffInbox";
 import ErrorPanel from "../../shell/ErrorPanel";
 import DormantPanel from "../../shell/DormantPanel";
 import { useCopy } from "../../i18n/copy";
@@ -356,6 +357,7 @@ export default function Insight() {
         tagline={copy.chambers.insight.sub}
         mock={backend.mode === "mock"}
       />
+      <HandoffInbox chamber="insight" />
       <InsightLayout workbench={workbench} scroll={scroll} floor={floor} />
     </div>
   );

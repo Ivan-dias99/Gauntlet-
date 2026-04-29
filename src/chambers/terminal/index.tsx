@@ -22,6 +22,7 @@ import OutputCanvas from "./OutputCanvas";
 import NextStepBar from "./NextStepBar";
 import ExecutionComposer from "./ExecutionComposer";
 import { TaskList } from "./TaskBench";
+import HandoffInbox from "../../shell/HandoffInbox";
 
 // Terminal — execution environment. State, effects, submit, accept,
 // task state transitions and SSE event reduction stay here; every
@@ -483,6 +484,7 @@ export default function Terminal() {
           activeTask={activeTask}
           tasks={activeMission?.tasks ?? []}
         />
+        <HandoffInbox chamber="terminal" />
         <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)" }}>
           <TaskList
             tasks={tasks}

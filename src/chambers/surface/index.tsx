@@ -11,6 +11,7 @@ import {
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
+import HandoffInbox from "../../shell/HandoffInbox";
 import DormantPanel from "../../shell/DormantPanel";
 import SurfaceLayout from "./SurfaceLayout";
 import SurfaceWorkbench from "./SurfaceWorkbench";
@@ -182,6 +183,7 @@ export default function Surface() {
         tagline={copy.chambers.surface.sub}
         mock={mockBannerVisible}
       />
+      <HandoffInbox chamber="surface" />
       <div className="chamber-body" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
         {/* Two vertical zones: ChamberHead → split. The Workbench pill
             sits at the top of the LEFT column (above the cockpit
