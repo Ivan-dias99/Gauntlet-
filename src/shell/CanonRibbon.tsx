@@ -36,6 +36,7 @@ interface Props {
 export default function CanonRibbon({ active, onSelect }: Props) {
   const {
     state, activeMission, switchMission, clearActiveMission,
+    setMissionStatus,
     syncState, syncError, hydratedFromBackend,
   } = useSpine();
   const backend = useBackendStatus();
@@ -223,6 +224,28 @@ export default function CanonRibbon({ active, onSelect }: Props) {
                     closed: "fechada",
                   };
                   const pillLabel = statusLabel[m.status];
+                  // Wave P-2 UI consumer — surface the lifecycle setter as
+                  // small action buttons inline with the mission. Buttons
+                  // available depend on the current status (terminal
+                  // states have none). stopPropagation keeps the wrapping
+                  // <button> from firing switchMission when an inner
+                  // action is clicked.
+                  type Action = { label: string; to: import("../spine/types").MissionStatus };
+                  const actions: Action[] =
+                    m.status === "active"
+                      ? [
+                          { label: "pausar",   to: "paused" },
+                          { label: "arquivar", to: "archived" },
+                          { label: "completar", to: "completed" },
+                        ]
+                      : m.status === "paused"
+                      ? [
+                          { label: "retomar",  to: "active" },
+                          { label: "arquivar", to: "archived" },
+                        ]
+                      : m.status === "brainstorm"
+                      ? [{ label: "promover a activa", to: "active" }]
+                      : [];
                   return (
                     <button
                       key={m.id}
@@ -262,6 +285,47 @@ export default function CanonRibbon({ active, onSelect }: Props) {
                           return pulse ? `${label} · ${pulse}` : label;
                         })()}
                       </div>
+                      {actions.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 6,
+                            marginTop: 6,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          {actions.map((a) => (
+                            <span
+                              key={a.to}
+                              role="button"
+                              tabIndex={0}
+                              data-mission-status-action={a.to}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMissionStatus(m.id, a.to);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setMissionStatus(m.id, a.to);
+                                }
+                              }}
+                              style={{
+                                fontSize: "0.7em",
+                                padding: "2px 8px",
+                                borderRadius: 4,
+                                border: "1px solid currentColor",
+                                opacity: 0.7,
+                                cursor: "pointer",
+                                userSelect: "none",
+                              }}
+                            >
+                              {a.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </button>
                   );
                 })}
