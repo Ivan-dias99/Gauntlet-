@@ -97,6 +97,10 @@ def score_domain(host: str) -> TrustScore:
     host = host.lower().strip(".")
     if host in _LOW_TRUST_HOSTS:
         return "low"
+    # Subdomain match against low-trust hosts (www.bit.ly → bit.ly)
+    for known in _LOW_TRUST_HOSTS:
+        if host.endswith("." + known):
+            return "low"
     if host in _HIGH_TRUST_HOSTS:
         return "high"
     # Subdomain match against high-trust hosts (api.github.com → github.com)
@@ -117,7 +121,7 @@ def extract_citations(tool_result_content: str, *, max_citations: int = 12) -> l
     live — Wave G v1 is heuristic-only. A future iteration can add
     live validation (HEAD probe with HTTPS-only + size cap).
     """
-    if not tool_result_content:
+    if not tool_result_content or max_citations <= 0:
         return []
 
     seen: set[str] = set()
