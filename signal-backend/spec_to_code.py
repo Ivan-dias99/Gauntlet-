@@ -83,81 +83,86 @@ def _to_pascal(s: str) -> str:
 
 
 def _propose_name(screen_name: str, component_name: str, kind: ComponentKind) -> str:
-    """Propose a PascalCase component name from screen + component_name."""
+    """Propose a PascalCase component name from screen + component_name.
+
+    Always prefixes the screen name (when present and not already encoded
+    in the base) so two `Submit` buttons across screens emit distinct
+    files instead of colliding into one path."""
+    screen = _to_pascal(screen_name)
     base = _to_pascal(component_name)
     if not base:
-        base = _to_pascal(screen_name) + kind.capitalize()
-    return base or "Component"
+        return (screen + kind.capitalize()) or "Component"
+    if screen and not base.startswith(screen):
+        return screen + base
+    return base
 
 
-def _scaffold_for(kind: ComponentKind, name: str, props: list[str]) -> str:
-    """Deterministic TSX skeleton per kind. No model call."""
-    prop_decls = "\n  ".join(f"{p};" for p in props) if props else "// no props"
-    prop_destructure = ", ".join(p.split(":")[0].strip() for p in props) if props else ""
+def _scaffold_for(
+    kind: ComponentKind, name: str, props: list[str]
+) -> tuple[str, list[str]]:
+    """Deterministic TSX skeleton per kind. No model call.
+
+    Returns (scaffold_tsx, effective_props) — `effective_props` reflects
+    any required props the scaffold injected (e.g. label/onClick for a
+    button) so the emitted ComponentContract carries the same metadata
+    the scaffold actually depends on. Downstream consumers
+    (validation, docs, codegen) read components[].props and would
+    otherwise see an empty list."""
     if kind == "button":
+        if not any(p.split(":")[0].strip() == "label" for p in props):
+            props = props + ["label: string", "onClick: () => void"]
         body = f'''  return (
     <button data-component="{name}" onClick={{onClick}}>
       {{label}}
     </button>
   );'''
-        if "label: string" not in props and "label" not in (p.split(":")[0].strip() for p in props):
-            props = props + ["label: string", "onClick: () => void"]
-            prop_destructure = ", ".join(p.split(":")[0].strip() for p in props)
-            prop_decls = "\n  ".join(f"{p};" for p in props)
     elif kind == "input":
+        if not any("value" in p for p in props):
+            props = ["label: string", "value: string", "onChange: (v: string) => void"]
         body = f'''  return (
     <label data-component="{name}">
       <span>{{label}}</span>
       <input value={{value}} onChange={{(e) => onChange(e.target.value)}} />
     </label>
   );'''
-        if not any("value" in p for p in props):
-            props = ["label: string", "value: string", "onChange: (v: string) => void"]
-            prop_destructure = ", ".join(p.split(":")[0].strip() for p in props)
-            prop_decls = "\n  ".join(f"{p};" for p in props)
     elif kind == "card":
+        if not any("title" in p for p in props):
+            props = ["title: string", "children?: React.ReactNode"]
         body = f'''  return (
     <article data-component="{name}">
       <header>{{title}}</header>
       <div>{{children}}</div>
     </article>
   );'''
-        if not any("title" in p for p in props):
-            props = ["title: string", "children?: React.ReactNode"]
-            prop_destructure = ", ".join(p.split(":")[0].strip() for p in props)
-            prop_decls = "\n  ".join(f"{p};" for p in props)
     elif kind == "list":
+        if not any("items" in p for p in props):
+            props = ["items: string[]"]
         body = f'''  return (
     <ul data-component="{name}">
       {{items.map((it, i) => <li key={{i}}>{{it}}</li>)}}
     </ul>
   );'''
-        if not any("items" in p for p in props):
-            props = ["items: string[]"]
-            prop_destructure = ", ".join(p.split(":")[0].strip() for p in props)
-            prop_decls = "\n  ".join(f"{p};" for p in props)
     elif kind == "nav":
+        if not any("links" in p for p in props):
+            props = ['links: Array<{ href: string; label: string }>']
         body = f'''  return (
     <nav data-component="{name}">
       {{links.map((l, i) => <a key={{i}} href={{l.href}}>{{l.label}}</a>)}}
     </nav>
   );'''
-        if not any("links" in p for p in props):
-            props = ['links: Array<{ href: string; label: string }>']
-            prop_destructure = ", ".join(p.split(":")[0].strip() for p in props)
-            prop_decls = "\n  ".join(f"{p};" for p in props)
     else:  # rail / fallback
+        if not props:
+            props = ["children?: React.ReactNode"]
         body = f'''  return (
     <aside data-component="{name}">
       {{children}}
     </aside>
   );'''
-        if not props:
-            props = ["children?: React.ReactNode"]
-            prop_destructure = ", ".join(p.split(":")[0].strip() for p in props)
-            prop_decls = "\n  ".join(f"{p};" for p in props)
 
-    return f'''import * as React from "react";
+    prop_decls = "\n  ".join(f"{p};" for p in props) if props else "// no props"
+    prop_destructure = ", ".join(p.split(":")[0].strip() for p in props) if props else ""
+
+    scaffold = f'''import * as React from "react";
 
 // Generated by Signal Spec-to-Code (Wave J).
 // Source: SurfacePlan component "{name}".
@@ -171,6 +176,7 @@ export default function {name}({{ {prop_destructure} }}: {name}Props) {{
 {body}
 }}
 '''
+    return scaffold, props
 
 
 # ── Compiler ────────────────────────────────────────────────────────────────
@@ -224,13 +230,13 @@ def compile_plan_to_spec(
             "matches design system " + (spec.source_design_system or "(none)"),
             "no console errors on first render",
         ]
-        scaffold = _scaffold_for(kind, name, props)
+        scaffold, effective_props = _scaffold_for(kind, name, props)
         spec.components.append(ComponentContract(
             name=name,
             file_path=file_path,
             kind=kind,
             screen_name=screen,
-            props=props,
+            props=effective_props,
             states=states,
             acceptance=acceptance,
             scaffold_tsx=scaffold,
