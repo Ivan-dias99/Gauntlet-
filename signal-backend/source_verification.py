@@ -82,13 +82,19 @@ _LOW_TRUST_HOSTS = {
     "buff.ly", "is.gd", "lnkd.in",
 }
 
-# URL regex — matches http(s)://... reasonable-looking URLs. Allow
-# parentheses inside the path so Wikipedia-style slugs like
-# `/wiki/Function_(mathematics)` survive intact; trailing unbalanced
-# `)` (from prose wrapping like `(see https://…)`) is stripped after
-# the match.
+# URL regex — matches http(s)://... reasonable-looking URLs.
+#   Host: `[...]` IPv6 literal (so https://[2001:db8::1]/docs survives)
+#   OR a normal host without `/`, whitespace, quotes, or `]`.
+#   Rest (optional path/query/fragment): anything except whitespace,
+#   quote, `<>`, `]` — `]` is excluded outside the IPv6 brackets so the
+#   regex can't bleed into markdown wrappers like `[label](url)`.
+# Wikipedia-style slugs (`/wiki/Function_(mathematics)`) survive because
+# `(` and `)` are allowed; trailing unbalanced `)` from prose wrappers
+# is stripped by _strip_trailing_unbalanced_parens after the match.
 _URL_RE = re.compile(
-    r"https?://[^\s\"\'<>\]]+",
+    r"https?://"
+    r"(?:\[[0-9a-fA-F:.%]+\]|[^/\s\"\'<>\]]+)"
+    r"(?:[:/?#][^\s\"\'<>\]]*)?",
     flags=re.IGNORECASE,
 )
 
