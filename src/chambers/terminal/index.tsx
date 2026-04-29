@@ -55,6 +55,15 @@ export default function Terminal() {
   const git = useGitStatus();
   const copy = useCopy();
 
+  // useBackendStatus only checks /health on mount, so a backend that
+  // goes down mid-session would leave backend.reachable=true and the
+  // banner would never appear. Re-check whenever a runtime request
+  // marks the backend unreachable so reason/detail and the
+  // BackendUnreachableBanner reflect live state.
+  useEffect(() => {
+    if (unreachable) backend.refresh();
+  }, [unreachable, backend.refresh]);
+
   const [input, setInput] = useState("");
   const [lastTask, setLastTask] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -431,18 +440,6 @@ export default function Terminal() {
   ) ?? null;
 
   const allArtifacts = activeMission?.artifacts ?? [];
-  // diffStats / gates come straight from the agent loop now (T085).
-  // The composer prop only carries the two that ExecutionComposer
-  // currently renders — the `test` gate is captured but not yet shown.
-  const diffStats = liveDiff;
-  const gates: { typecheck: GateState; build: GateState } = {
-    typecheck: liveGates.typecheck,
-    build: liveGates.build,
-  };
-  const reviewState: "pass" | "needs-fix" | "blocked" =
-    err ? "blocked" : done?.terminated_early ? "needs-fix" : done ? "pass" : "needs-fix";
-  const reviewRisk: "low" | "medium" | "high" =
-    err ? "high" : blockedTasks.length > 0 ? "medium" : "low";
 
   const staleRunning =
     activeTask?.state === "running" && !pending && done === null && err === null;
@@ -471,6 +468,15 @@ export default function Terminal() {
       />
 
       <div className="chamber-body" style={{ paddingTop: 0 }}>
+        {(!backend.reachable || unreachable) && (
+          // Show the banner on either initial-mount unreachable OR a
+          // runtime request that just hit unreachable — the refresh()
+          // effect above will repopulate reason/detail momentarily.
+          <BackendUnreachableBanner
+            reason={backend.unreachableReason}
+            detail={backend.unreachableDetail}
+          />
+        )}
         <WorkbenchStrip
           copy={copy}
           missionTitle={activeMission?.title ?? null}
@@ -486,72 +492,6 @@ export default function Terminal() {
             onSelect={selectTaskFromQueue}
           />
         </div>
-
-        {/* Wave 6a — Terminal seed suggestion. Only renders when
-            mission has zero tasks, no input typed, no pending run, AND
-            the active TruthDistillation carries a terminalSeed. Click
-            applies the seed as a new task; ignored otherwise. */}
-        {showTerminalSeed && terminalSeed && (
-          <div style={{ maxWidth: 860, margin: "0 auto var(--space-3)", padding: "0 var(--space-4)" }}>
-            <div
-              data-terminal-seed
-              style={{
-                padding: "10px 14px",
-                border: "1px solid color-mix(in oklab, var(--accent) 28%, transparent)",
-                borderRadius: "var(--radius-2)",
-                background: "color-mix(in oklab, var(--accent) 4%, transparent)",
-                fontFamily: "var(--mono)",
-                fontSize: 11,
-                color: "var(--text-secondary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span
-                  style={{
-                    fontSize: 9,
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase",
-                    color: "var(--accent)",
-                  }}
-                >
-                  ↳ insight terminal seed
-                </span>
-                <span style={{ fontFamily: "var(--sans)", fontSize: 13.5, color: "var(--text)" }}>
-                  {terminalSeed.task}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!activeMission) return;
-                  const newId = addTask(terminalSeed.task, "lab");
-                  setActiveTaskId(newId);
-                  fireTelemetry("terminal_seed_consumed", activeMission.id, {
-                    action: "kept",
-                  });
-                }}
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: 10,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                  padding: "6px 12px",
-                  border: "1px solid var(--accent)",
-                  borderRadius: 999,
-                  background: "color-mix(in oklab, var(--accent) 14%, transparent)",
-                  color: "var(--accent)",
-                  cursor: "pointer",
-                }}
-              >
-                aplicar como task
-              </button>
-            </div>
-          </div>
-        )}
 
         {unreachable && err ? (
           <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)" }}>
@@ -614,21 +554,11 @@ export default function Terminal() {
         principlesCount={principles.length}
         priorTurns={activeMission?.notes?.length ?? 0}
         mockMode={backend.mode === "mock"}
-        backendReachable={backend.reachable}
         backendReadiness={backend.readiness}
         backendReasons={backend.readinessReasons}
-        repoLabel={
-          git.repo ?? (import.meta.env.VITE_SIGNAL_REPO as string | undefined) ?? null
-        }
-        branchLabel={
-          git.branch
-            ? `${git.branch}${git.dirty ? "*" : ""}`
-            : (import.meta.env.VITE_SIGNAL_BRANCH as string | undefined) ?? null
-        }
-        diffStats={diffStats}
-        gates={gates}
-        reviewState={reviewState}
-        reviewRisk={reviewRisk}
+        backendUnreachableReason={backend.unreachableReason}
+        backendUnreachableDetail={backend.unreachableDetail}
+        persistenceEphemeral={backend.persistenceEphemeral}
         onAttachContext={(kind) => {
           if (!activeMission) return;
           if (kind === "note") {
@@ -647,4 +577,69 @@ export default function Terminal() {
       />
     </div>
   );
+}
+
+// Banner that fires when the forwarder reports the backend unreachable.
+// Shows reason + raw edge-runtime detail in plain text (no truncation,
+// no tooltip), so the operator sees the actionable cause without
+// hovering or opening DevTools. The chip below remains as a quick
+// status indicator; this banner is the diagnostic surface.
+function BackendUnreachableBanner({
+  reason,
+  detail,
+}: {
+  reason: string | null;
+  detail: string | null;
+}) {
+  const fix = reasonFix(reason);
+  return (
+    <div
+      role="alert"
+      style={{
+        maxWidth: 860,
+        margin: "0 auto var(--space-3)",
+        padding: "var(--space-3) var(--space-4)",
+        border: "1px solid var(--accent-warn, #b45309)",
+        borderLeftWidth: 4,
+        borderRadius: 4,
+        background: "color-mix(in srgb, var(--accent-warn, #b45309) 6%, transparent)",
+        font: "var(--font-mono, ui-monospace) 13px/1.5 monospace",
+      }}
+    >
+      <div style={{ fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        backend unreachable
+      </div>
+      <div style={{ marginTop: 4 }}>
+        <span style={{ opacity: 0.7 }}>reason: </span>
+        <span>{reason ?? "(none reported)"}</span>
+      </div>
+      {detail && (
+        <div style={{ marginTop: 2, wordBreak: "break-word" }}>
+          <span style={{ opacity: 0.7 }}>detail: </span>
+          <span>{detail}</span>
+        </div>
+      )}
+      {fix && (
+        <div style={{ marginTop: 6, opacity: 0.85 }}>
+          <span style={{ opacity: 0.7 }}>fix: </span>
+          <span>{fix}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function reasonFix(reason: string | null): string | null {
+  switch (reason) {
+    case "backend_url_not_configured":
+      return "Vercel → Settings → Environment Variables → set SIGNAL_BACKEND_URL = <railway-public-url>, redeploy.";
+    case "network_error":
+      return "Edge could not reach the upstream. Check the Railway service is up and the URL has no typo / trailing space.";
+    case "timeout":
+      return "Upstream took longer than the edge's request budget. Check Railway logs for slow boot or hung requests.";
+    case "upstream_fetch_failed":
+      return "Edge fetch threw an unclassified exception — the `detail` line above carries the literal cause from Vercel's runtime.";
+    default:
+      return null;
+  }
 }

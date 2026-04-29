@@ -33,9 +33,11 @@ from pydantic import BaseModel, Field
 
 from config import (
     ALLOWED_ORIGIN,
+    ALLOWED_ORIGIN_REGEX,
     ALLOWED_ORIGINS,
     ANTHROPIC_API_KEY,
     MEMORY_DIR,
+    PERSISTENCE_EPHEMERAL,
     RUBERRA_MOCK,
     SERVER_HOST,
     SERVER_PORT,
@@ -82,18 +84,31 @@ async def lifespan(app: FastAPI):
         sys.exit(1)
 
     engine = SignalEngine()
+    memory_label = "EPHEMERAL (volume not configured)" if PERSISTENCE_EPHEMERAL else "PERSISTENT"
     logger.info(
         "═══════════════════════════════════════════════════════════\n"
         "  Signal — sovereign AI workspace\n"
         f"  Listening: http://{SERVER_HOST}:{SERVER_PORT}\n"
         f"  CORS Origins: {', '.join(_cors_origins)}\n"
+        f"  CORS Regex: {ALLOWED_ORIGIN_REGEX or '(disabled)'}\n"
+        f"  Data Dir: {MEMORY_DIR}\n"
         "  Chambers: Insight · Surface · Terminal · Archive · Core\n"
         "  Doctrine: ACTIVE\n"
         "  Self-Consistency: 3x parallel triad\n"
         "  Judge: IMPLACABLE\n"
-        "  Failure Memory: PERSISTENT\n"
+        f"  Failure Memory: {memory_label}\n"
         "═══════════════════════════════════════════════════════════"
     )
+
+    if PERSISTENCE_EPHEMERAL and not RUBERRA_MOCK:
+        logger.warning(
+            "═══════════════════════════════════════════════════════════\n"
+            "  PERSISTENCE EPHEMERAL\n"
+            "  SIGNAL_DATA_DIR is not set. failure_memory.json, runs.json,\n"
+            "  and spine.json will be WIPED on every container restart.\n"
+            "  Mount a Railway volume and set SIGNAL_DATA_DIR=/data\n"
+            "═══════════════════════════════════════════════════════════"
+        )
 
     yield
 
@@ -114,20 +129,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — production origins come from RUBERRA_ORIGIN (comma-separated), with
+# CORS — production origins come from SIGNAL_ORIGIN (comma-separated), with
 # localhost dev origins always appended so the backend stays usable locally.
+# SIGNAL_ORIGIN_REGEX (default ^https://[a-z0-9-]+\.vercel\.app$) covers every
+# Vercel preview/production subdomain without requiring a manual env edit per
+# deploy. Either match path admits the request.
 _cors_origins = sorted({
     *ALLOWED_ORIGINS,
     "http://localhost:5173",
     "http://localhost:3000",
 })
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_cors_kwargs: dict = {
+    "allow_origins": _cors_origins,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+if ALLOWED_ORIGIN_REGEX:
+    _cors_kwargs["allow_origin_regex"] = ALLOWED_ORIGIN_REGEX
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 
 # ── Endpoints ───────────────────────────────────────────────────────────────
@@ -183,6 +203,7 @@ async def health_check():
         "engine": "ready" if engine else "not_initialized",
         "mode": "mock" if RUBERRA_MOCK else "real",
         "persistence_degraded": bool(_collect_load_errors()),
+        "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
     }
 
 
@@ -205,6 +226,8 @@ async def health_ready():
         reasons.append("mock_mode")
     if load_errors:
         reasons.append("persistence_degraded")
+    if PERSISTENCE_EPHEMERAL:
+        reasons.append("persistence_ephemeral")
 
     body = {
         "ready": not reasons,
@@ -212,6 +235,7 @@ async def health_ready():
         "engine": "ready" if engine else "not_initialized",
         "mode": "mock" if RUBERRA_MOCK else "real",
         "load_errors": load_errors,
+        "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
     }
     if reasons:
         raise HTTPException(status_code=503, detail=body)
@@ -1039,7 +1063,9 @@ async def diagnostics():
         "mode": "mock" if RUBERRA_MOCK else "real",
         "anthropic_api_key_present": bool(ANTHROPIC_API_KEY),
         "data_dir": str(MEMORY_DIR),
+        "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
         "allowed_origins": ALLOWED_ORIGINS,
+        "allowed_origin_regex": ALLOWED_ORIGIN_REGEX,
         "host": SERVER_HOST,
         "port": SERVER_PORT,
     }

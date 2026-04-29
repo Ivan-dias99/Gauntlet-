@@ -7145,3 +7145,429 @@ textarea {
   text-transform: uppercase;
   color: var(--text-muted);
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Signal — Landing Polish Pack (Pass 1)
+   Operator-approved richer-marketing pass on the landing surface
+   only. Header gains a breathing brand pulse + sharper shadow.
+   Hero gains an atmospheric backdrop of drifting chamber-DNA orbs
+   and a staggered entrance. Each chamber slab earns a sigil tinted
+   in its own DNA. Doctrine quote gets an editorial ornament. No
+   canon-locked color tokens or copy strings touched; all motion
+   honors prefers-reduced-motion.
+   ───────────────────────────────────────────────────────────── */
+
+/* 1. Header — frosted with a subtle bottom shadow on scroll, and a
+      breathing dot anchored after the brand wordmark. */
+.landing-ribbon {
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--text-primary) 4%, transparent),
+              0 8px 24px -16px color-mix(in oklab, #000 18%, transparent);
+}
+.landing-brand-pulse {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: var(--cc-ok);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 22%, transparent);
+  vertical-align: middle;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .landing-brand-pulse {
+    animation: landingBrandBreathe 2.6s ease-in-out infinite;
+  }
+}
+@keyframes landingBrandBreathe {
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 22%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in oklab, var(--cc-ok) 12%, transparent); }
+}
+
+/* 2. Hero atmospheric backdrop — three soft drifting orbs in
+      chamber-DNA tints, blurred behind the title. Contained by the
+      hero so they never bleed into siblings. */
+.landing-hero {
+  position: relative;
+  isolation: isolate;
+}
+.landing-hero-atmosphere {
+  position: absolute;
+  inset: -40px -60px -40px -60px;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.landing-orb {
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  filter: blur(64px);
+  opacity: 0.45;
+}
+.landing-orb[data-orb="insight"] {
+  background: radial-gradient(circle, #b89060 0%, transparent 70%);
+  top: -80px;
+  left: -40px;
+}
+.landing-orb[data-orb="surface"] {
+  background: radial-gradient(circle, #6f8f6a 0%, transparent 70%);
+  top: 40px;
+  right: 5%;
+}
+.landing-orb[data-orb="core"] {
+  background: radial-gradient(circle, #7a8aa8 0%, transparent 70%);
+  bottom: -100px;
+  left: 30%;
+}
+[data-theme="dark"] .landing-orb { opacity: 0.32; filter: blur(80px); }
+@media (prefers-reduced-motion: no-preference) {
+  .landing-orb[data-orb="insight"] { animation: orbDriftA 22s ease-in-out infinite; }
+  .landing-orb[data-orb="surface"] { animation: orbDriftB 28s ease-in-out infinite; }
+  .landing-orb[data-orb="core"]    { animation: orbDriftC 34s ease-in-out infinite; }
+}
+@keyframes orbDriftA {
+  0%, 100% { transform: translate(0, 0)     scale(1); }
+  50%      { transform: translate(40px, 30px) scale(1.08); }
+}
+@keyframes orbDriftB {
+  0%, 100% { transform: translate(0, 0)      scale(1); }
+  50%      { transform: translate(-50px, 40px) scale(1.10); }
+}
+@keyframes orbDriftC {
+  0%, 100% { transform: translate(0, 0)     scale(1); }
+  50%      { transform: translate(30px, -40px) scale(1.06); }
+}
+
+/* 3. Staggered entrance — kicker, title, sub, CTA fade up in order. */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-stagger {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: landingStaggerIn 0.7s var(--ease-swift) forwards;
+  }
+  .landing-stagger[data-stagger="1"] { animation-delay: 0.05s; }
+  .landing-stagger[data-stagger="2"] { animation-delay: 0.18s; }
+  .landing-stagger[data-stagger="3"] { animation-delay: 0.34s; }
+  .landing-stagger[data-stagger="4"] { animation-delay: 0.50s; }
+}
+@keyframes landingStaggerIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 4. Chamber sigils — single-stroke SVG icon per slab, tinted via
+      chamber-DNA. The slab already has data-chamber so we resolve
+      the DNA color the same way the rest of the system does. */
+.landing-chamber-sigil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 8%, transparent);
+  color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 95%, var(--text-primary));
+  transition:
+    background var(--dur-fast) var(--ease-swift),
+    transform var(--dur-fast) var(--ease-swift);
+}
+.landing-chamber-slab:hover .landing-chamber-sigil {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 16%, transparent);
+  transform: scale(1.05);
+}
+
+/* 5. Slab gains DNA-tinted hover border so each chamber declares
+      its own identity on contact, not just a generic lift. */
+.landing-chamber-slab {
+  border-color: color-mix(in oklab, var(--text-primary) 8%, transparent);
+}
+.landing-chamber-slab:hover {
+  border-color: color-mix(in oklab, var(--chamber-dna, var(--ember)) 28%, transparent);
+}
+
+/* 6. Doctrine ornament — single-stroke editorial flourish above the
+      italic quote. Sized small so the quote stays the protagonist. */
+.landing-doctrine-ornament {
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* 7. Reduced motion — kill the orbs, the breath, the stagger. The
+      static layout still reads cleanly without any of them. */
+@media (prefers-reduced-motion: reduce) {
+  .landing-orb,
+  .landing-brand-pulse,
+  .landing-stagger {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Signal — Interactions Pack (additive, post-canon)
+   Adds press / hover / focus affordances and micro-motion to the
+   existing primitives. Does not alter typography, color tokens, or
+   chamber grammar. Honors prefers-reduced-motion.
+   ───────────────────────────────────────────────────────────── */
+
+/* 1. Universal focus-visible — every interactive surface earns a ring */
+.term-ws-chip:focus-visible,
+.term-flyout-item:focus-visible,
+.term-rail-mode-opt:focus-visible,
+.term-ws-mode-opt:focus-visible,
+.term-command-send:focus-visible,
+.surface-rail-card:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--chamber-dna, var(--ember)) 60%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 2. Chips — invitation to interact: cursor, gentle lift, press feedback.
+   Only apply lift when the chip is a real button/link, not a decorative
+   span (the workbench mixes both). */
+.term-ws-chip {
+  transition:
+    color var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift),
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift);
+}
+button.term-ws-chip:not(:disabled),
+a.term-ws-chip {
+  cursor: pointer;
+}
+button.term-ws-chip:not(:disabled):hover,
+a.term-ws-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 22%, transparent);
+}
+button.term-ws-chip:not(:disabled):active,
+a.term-ws-chip:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* 3. Flyout items — slight indent on hover (tactile pull), press dip. */
+.term-flyout-item {
+  transition:
+    color var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift),
+    padding-left var(--dur-fast) var(--ease-swift),
+    transform var(--dur-fast) var(--ease-swift);
+}
+.term-flyout-item:not([disabled]):hover {
+  padding-left: calc(var(--space-3, 16px) + 4px);
+}
+.term-flyout-item:not([disabled]):active {
+  transform: translateY(1px);
+}
+
+/* 4. Mode toggle (agent/crew) — active option lifts inside the rail. */
+.term-rail-mode-opt {
+  transition:
+    color var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift),
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift);
+}
+.term-rail-mode-opt[data-active="true"] {
+  box-shadow:
+    inset  0  1px 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent),
+    inset  0 -1px 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 32%, transparent);
+}
+.term-rail-mode-opt:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* 5. Composer submit (↑) — armed pulse + hover scale + press scale. */
+.term-command-send {
+  transition:
+    transform var(--dur-fast) var(--ease-swift),
+    background var(--dur-fast) var(--ease-swift),
+    color var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift),
+    opacity var(--dur-fast) var(--ease-swift);
+}
+.term-command-send:not(:disabled) { cursor: pointer; }
+.term-command-send:not(:disabled):hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent);
+}
+.term-command-send:not(:disabled):active { transform: scale(0.94); }
+.term-command-send[data-state="pending"] {
+  animation: signalSendPending 1.6s ease-in-out infinite;
+}
+@keyframes signalSendPending {
+  0%, 100% { opacity: 0.65; }
+  50%      { opacity: 1; }
+}
+
+/* 6. Composer placeholder — gentle pulse so the empty state breathes. */
+@media (prefers-reduced-motion: no-preference) {
+  .term-command-input::placeholder {
+    animation: signalPlaceholderPulse 4.4s ease-in-out infinite;
+  }
+  .term-command-send:not(:disabled):not([data-state="pending"]) {
+    animation: signalSendArm 2.6s ease-in-out infinite;
+  }
+}
+@keyframes signalPlaceholderPulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.9; }
+}
+@keyframes signalSendArm {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 0%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in oklab, var(--chamber-dna, var(--ember)) 9%, transparent); }
+}
+
+/* 7. Surface shortcut cards — hover lift + accent glow. Buttons in
+   ExplorationRail.tsx use .surface-rail-card; pure decorative variants
+   without the hover affordance keep the existing flat treatment. */
+button.surface-rail-card,
+a.surface-rail-card {
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-swift),
+    box-shadow var(--dur-fast) var(--ease-swift),
+    border-color var(--dur-fast) var(--ease-swift);
+}
+button.surface-rail-card:not(:disabled):hover,
+a.surface-rail-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 14px color-mix(in oklab, #000 18%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--chamber-dna, var(--ember)) 26%, transparent);
+}
+button.surface-rail-card:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* 8. Banner / role=alert — slide down + fade in on mount. */
+@media (prefers-reduced-motion: no-preference) {
+  [role="alert"] {
+    animation: signalAlertSlide var(--dur-slow) var(--ease-swift);
+  }
+}
+@keyframes signalAlertSlide {
+  from { transform: translateY(-6px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* 9. Tabs already animate the underline color (canon). Add a subtle
+   color transition to the label so non-active tabs feel reachable. */
+.canon-ribbon-tabs .tab {
+  transition: color var(--dur-fast) var(--ease-swift);
+}
+
+/* 10. Reduced-motion kill switch — drops every transform/animation we
+   added above. Static styles (cursor, focus ring, color) survive. */
+@media (prefers-reduced-motion: reduce) {
+  .term-ws-chip,
+  .term-flyout-item,
+  .term-rail-mode-opt,
+  .term-command-send,
+  .surface-rail-card,
+  [role="alert"] {
+    transition: none !important;
+    animation: none !important;
+  }
+  button.term-ws-chip:not(:disabled):hover,
+  a.term-ws-chip:hover,
+  .term-flyout-item:not([disabled]):hover,
+  .term-rail-mode-opt:not(:disabled):active,
+  .term-command-send:not(:disabled):hover,
+  .term-command-send:not(:disabled):active,
+  button.surface-rail-card:not(:disabled):hover,
+  a.surface-rail-card:hover {
+    transform: none !important;
+    padding-left: revert !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Signal — Semantic Intensity Pack (additive, post-canon)
+   Strengthens visual semantics on action surfaces and tone chips so
+   the user SEES the state, not just reads it. Layered on top of the
+   Interactions Pack — no rewrites, no token replacements, no markup.
+   ───────────────────────────────────────────────────────────── */
+
+/* 1. Submit ↑ — armed pulse stronger. Existing background already fills
+      with --chamber-dna (canon line 3606). Bumping the surrounding
+      halo from 9% to 18% so the call-to-act actually calls. */
+@media (prefers-reduced-motion: no-preference) {
+  .term-command-send:not(:disabled):not([data-state="pending"]) {
+    animation: signalSendArmStrong 2.6s ease-in-out infinite;
+  }
+}
+@keyframes signalSendArmStrong {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--chamber-dna, var(--ember)) 0%, transparent); }
+  50%      { box-shadow: 0 0 0 8px color-mix(in oklab, var(--chamber-dna, var(--ember)) 18%, transparent); }
+}
+
+/* 2. Mode toggle (agent/crew, wireframe/hi-fi via .term-rail-mode-opt)
+      — active option becomes a real DNA-tinted pill. Inactive options
+      gain a subtle wash on hover so they read as reachable. */
+.term-rail-mode-opt[data-active="true"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 16%, transparent);
+  color: var(--text-primary);
+}
+.term-rail-mode-opt:not([data-active="true"]):not(:disabled):hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 6%, transparent);
+}
+
+/* 3. Tone chips — opaque fill at 10-12% so posture is seen, not read.
+      Existing color/glyph rules survive; only background is added. */
+.term-ws-chip[data-tone="ok"] {
+  background: color-mix(in oklab, var(--cc-ok) 10%, transparent);
+}
+.term-ws-chip[data-tone="warn"] {
+  background: color-mix(in oklab, var(--cc-warn) 12%, transparent);
+}
+.term-ws-chip[data-tone="info"] {
+  background: color-mix(in oklab, var(--cc-info) 10%, transparent);
+}
+button.term-ws-chip[data-tone="ok"]:not(:disabled):hover,
+a.term-ws-chip[data-tone="ok"]:hover {
+  background: color-mix(in oklab, var(--cc-ok) 18%, transparent);
+}
+button.term-ws-chip[data-tone="warn"]:not(:disabled):hover,
+a.term-ws-chip[data-tone="warn"]:hover {
+  background: color-mix(in oklab, var(--cc-warn) 20%, transparent);
+}
+
+/* 4. Composer rail chip (.term-rail-chip — the live/mock dot pill) —
+      same opaque tone treatment so the live/mock indicator reads as a
+      semantic pill, not a transparent line. */
+.term-rail-chip[data-tone="ok"] {
+  background: color-mix(in oklab, var(--cc-ok) 10%, transparent);
+}
+.term-rail-chip[data-tone="warn"] {
+  background: color-mix(in oklab, var(--cc-warn) 14%, transparent);
+}
+
+/* 5. OK chip breathing halo — bump 22% → 30% so the "alive" state
+      actually pulses visibly without becoming carnival. */
+.term-ws-chip[data-tone="ok"] .term-ws-chip-glyph::before {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--cc-ok) 30%, transparent);
+}
+
+/* 6. Canon-ribbon tabs — thicker active underline (2 → 3px), DNA wash
+      on non-active hover. Tab is positioned via ::after so changing
+      height does not reflow siblings. */
+.canon-ribbon-tabs .tab::after {
+  height: 3px;
+}
+.canon-ribbon-tabs .tab:not(.tab-active):hover {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 6%, transparent);
+}
+
+/* 7. Reduced motion — kill the strong armed pulse, keep static fills. */
+@media (prefers-reduced-motion: reduce) {
+  .term-command-send:not(:disabled):not([data-state="pending"]) {
+    animation: none !important;
+  }
+}

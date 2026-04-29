@@ -38,15 +38,16 @@ interface Props {
   principlesCount: number;
   priorTurns: number;
   mockMode: boolean;
-  backendReachable: boolean;
+  // Workbench owns territorial telemetry (Repo, Diff, Gates, Deploy,
+  // Queue) and the BackendUnreachableBanner above carries the critical
+  // backend story when broken. The composer only forwards readiness
+  // detail into ContextFlyout for diagnostic deep-dive — it no longer
+  // renders inline chips for any of this.
   backendReadiness: "ready" | "degraded" | "unreachable";
   backendReasons: string[];
-  repoLabel?: string | null;
-  branchLabel?: string | null;
-  diffStats?: { files: number; added: number; removed: number } | null;
-  gates: { typecheck: "pass" | "fail" | "unavailable"; build: "pass" | "fail" | "unavailable" };
-  reviewState: "pass" | "needs-fix" | "blocked";
-  reviewRisk: "low" | "medium" | "high";
+  backendUnreachableReason: string | null;
+  backendUnreachableDetail: string | null;
+  persistenceEphemeral: boolean;
   onAttachContext: (kind: "note" | "prior-run" | "artifact") => void;
   hasArtifacts: boolean;
 }
@@ -69,9 +70,10 @@ const TERMINAL_TOOLS: Array<{ name: string; kind: string; gated?: boolean }> = [
 export default function ExecutionComposer({
   copy, value, onChange, onSubmit, pending, missionTitle,
   mode, onModeChange, recentTasks, onPickTask,
-  principlesCount, priorTurns, mockMode, backendReachable,
-  backendReadiness, backendReasons, repoLabel, branchLabel, diffStats,
-  gates, reviewState, reviewRisk, onAttachContext, hasArtifacts,
+  principlesCount, priorTurns, mockMode,
+  backendReadiness, backendReasons, backendUnreachableReason,
+  backendUnreachableDetail, persistenceEphemeral,
+  onAttachContext, hasArtifacts,
 }: Props) {
   const [focused, setFocused] = useState(false);
   const [flyout, setFlyout] = useState<Flyout>(null);
@@ -233,16 +235,26 @@ export default function ExecutionComposer({
 
           <span className="term-rail-spacer" />
 
-          <span
-            className="term-rail-chip"
-            data-tone={mockMode ? "warn" : "ok"}
-            title={mockMode
+          {/* Live/mock/down dot — tiny posture indicator. Detailed
+              backend state has migrated to the BackendUnreachableBanner
+              (above workbench) and the context flyout. Unreachable
+              wins over mockMode so an outage isn't masked as "live". */}
+          {(() => {
+            const isUnreachable = backendReadiness === "unreachable";
+            const tone = isUnreachable ? "danger" : mockMode ? "warn" : "ok";
+            const label = isUnreachable ? "down" : mockMode ? "mock" : "live";
+            const title = isUnreachable
+              ? "backend inalcançável — execução indisponível"
+              : mockMode
               ? "backend em modo simulado — respostas canned"
-              : "backend ligado — execução real"}
-          >
-            <span className="term-rail-dot" aria-hidden />
-            <span className="term-rail-value">{mockMode ? "mock" : "live"}</span>
-          </span>
+              : "backend ligado — execução real";
+            return (
+              <span className="term-rail-chip" data-tone={tone} title={title}>
+                <span className="term-rail-dot" aria-hidden />
+                <span className="term-rail-value">{label}</span>
+              </span>
+            );
+          })()}
           {principlesCount > 0 && (
             <span
               className="term-rail-chip"
@@ -252,38 +264,15 @@ export default function ExecutionComposer({
               <span className="term-rail-value">{principlesCount}</span>
             </span>
           )}
-          <span
-            className="term-ws-chip"
-            data-tone={!backendReachable ? "warn" : mockMode ? "warn" : backendReadiness === "ready" ? "ok" : "warn"}
-            title={!backendReachable
-              ? "backend inacessível"
-              : mockMode
-                ? "backend em modo simulado — respostas canned"
-                : `backend ${backendReadiness}`}
-          >
-            <span className="term-ws-chip-glyph" aria-hidden>●</span>
-            <span className="term-ws-chip-label">backend</span>
-            <span className="term-ws-chip-value">
-              {!backendReachable ? "unreachable" : mockMode ? "mock" : backendReadiness}
-            </span>
-          </span>
-          <span className="term-ws-chip" title="repositório ligado">
-            <span className="term-ws-chip-glyph" aria-hidden>⌁</span>
-            <span className="term-ws-chip-label">repo</span>
-            <span className="term-ws-chip-value">{repoLabel ?? "unavailable"}</span>
-          </span>
-          <button
-            type="button"
-            className="term-ws-chip"
-            disabled
-            title={branchLabel ? "branch switch unavailable" : "branch unavailable"}
-          >
-            <span className="term-ws-chip-glyph" aria-hidden>⑂</span>
-            <span className="term-ws-chip-label">branch</span>
-            <span className="term-ws-chip-value">{branchLabel ?? "unavailable"}</span>
-          </button>
 
           <span className="term-ws-spacer" />
+
+          {/* Repo / Diff / Gates / Branch / Review removed: workbench
+              owns territorial telemetry (Repo, Diff, Gates, Deploy,
+              Queue lenses). Composer only carries what drives the next
+              command. Honors the original WorkbenchStrip rule:
+              "Workbench narrates territory, Composer drives action.
+              No tool is owned by both surfaces." */}
 
           <div
             className="term-rail-mode"
@@ -306,27 +295,6 @@ export default function ExecutionComposer({
             ))}
           </div>
         </div>
-        <div className="term-command-workspace" style={{ borderTop: "1px solid var(--border-soft)" }}>
-          <div className="term-ws-group" aria-label="review">
-            <span className="term-ws-chip">
-              <span className="term-ws-chip-glyph" aria-hidden>Δ</span>
-              <span className="term-ws-chip-label">diff</span>
-              <span className="term-ws-chip-value">
-                {diffStats ? `${diffStats.files} files · +${diffStats.added} · -${diffStats.removed}` : "unavailable"}
-              </span>
-            </span>
-            <span className="term-ws-chip">
-              <span className="term-ws-chip-glyph" aria-hidden>✓</span>
-              <span className="term-ws-chip-label">gates</span>
-              <span className="term-ws-chip-value">tc:{gates.typecheck} · build:{gates.build}</span>
-            </span>
-            <span className="term-ws-chip">
-              <span className="term-ws-chip-glyph" aria-hidden>⊜</span>
-              <span className="term-ws-chip-label">review</span>
-              <span className="term-ws-chip-value">{reviewState} · risk:{reviewRisk}</span>
-            </span>
-          </div>
-        </div>
 
         {pending && <div className="thinking-strip" aria-hidden />}
 
@@ -338,6 +306,9 @@ export default function ExecutionComposer({
             mode={mode}
             backendReadiness={backendReadiness}
             backendReasons={backendReasons}
+            backendUnreachableReason={backendUnreachableReason}
+            backendUnreachableDetail={backendUnreachableDetail}
+            persistenceEphemeral={persistenceEphemeral}
             onAttach={onAttachContext}
             hasArtifacts={hasArtifacts}
           />
@@ -357,7 +328,9 @@ export default function ExecutionComposer({
 // ——— Flyouts ———
 
 function ContextFlyout({
-  principlesCount, priorTurns, mockMode, mode, backendReadiness, backendReasons, onAttach, hasArtifacts,
+  principlesCount, priorTurns, mockMode, mode, backendReadiness, backendReasons,
+  backendUnreachableReason, backendUnreachableDetail, persistenceEphemeral,
+  onAttach, hasArtifacts,
 }: {
   principlesCount: number;
   priorTurns: number;
@@ -365,6 +338,9 @@ function ContextFlyout({
   mode: RunMode;
   backendReadiness: "ready" | "degraded" | "unreachable";
   backendReasons: string[];
+  backendUnreachableReason: string | null;
+  backendUnreachableDetail: string | null;
+  persistenceEphemeral: boolean;
   onAttach: (kind: "note" | "prior-run" | "artifact") => void;
   hasArtifacts: boolean;
 }) {
@@ -394,6 +370,25 @@ function ContextFlyout({
         </span>
         <span className="term-flyout-item-kicker">{mockMode ? "mock" : backendReadiness}</span>
       </button>
+      {backendUnreachableReason && (
+        <button className="term-flyout-item" disabled title={backendUnreachableDetail ?? undefined}>
+          <span className="term-flyout-item-glyph">⚠</span>
+          <span className="term-flyout-item-body">
+            <span className="term-flyout-item-title">
+              {backendUnreachableReason === "backend_url_not_configured"
+                ? "Vercel: defina SIGNAL_BACKEND_URL"
+                : `unreachable: ${backendUnreachableReason}`}
+            </span>
+          </span>
+          <span className="term-flyout-item-kicker">
+            {backendUnreachableDetail
+              ? backendUnreachableDetail.length > 32
+                ? backendUnreachableDetail.slice(0, 29) + "…"
+                : backendUnreachableDetail
+              : "edge"}
+          </span>
+        </button>
+      )}
       {backendReasons.length > 0 && (
         <button className="term-flyout-item" disabled>
           <span className="term-flyout-item-glyph">!</span>
@@ -401,6 +396,15 @@ function ContextFlyout({
             <span className="term-flyout-item-title">readiness reasons</span>
           </span>
           <span className="term-flyout-item-kicker">{backendReasons.slice(0, 2).join(",")}</span>
+        </button>
+      )}
+      {persistenceEphemeral && (
+        <button className="term-flyout-item" disabled>
+          <span className="term-flyout-item-glyph">⚠</span>
+          <span className="term-flyout-item-body">
+            <span className="term-flyout-item-title">persistência ephemeral</span>
+          </span>
+          <span className="term-flyout-item-kicker">no volume</span>
         </button>
       )}
       <button className="term-flyout-item" disabled>
