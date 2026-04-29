@@ -20,8 +20,9 @@ work to the agent.
 
 **Implementation**
 - MCP tools (`mcp__github__*`) — used by the Claude Code agent during
-  PR review cycles. Restricted to the canonical repo via the
-  `Repository Scope` configuration in CLAUDE.md.
+  PR review cycles. Repository allowlist is enforced by the Claude
+  Code harness configuration (the agent system prompt names the
+  permitted repos); the project root `CLAUDE.md` does not encode it.
 - Webhook subscription via `subscribe_pr_activity` — events surface
   to the Claude session as `<github-webhook-activity>` tags.
 
@@ -93,7 +94,7 @@ JSON stores. Per-PR preview environments.
 - `signal-backend/config.py` reads:
   - `ANTHROPIC_API_KEY` — required, no fallback
   - `SIGNAL_HOST` / `SIGNAL_PORT` (legacy `RUBERRA_HOST`/`RUBERRA_PORT`)
-  - `SIGNAL_ORIGIN` / `SIGNAL_ORIGINS` (legacy `RUBERRA_ORIGIN`) — CORS
+  - `SIGNAL_ORIGIN` (comma-separated; legacy `RUBERRA_ORIGIN`) — CORS
   - `SIGNAL_DATA_DIR` / `RUBERRA_DATA_DIR` — the persistent volume path
   - `SIGNAL_MOCK` / `RUBERRA_MOCK` — global mock fallback
 
