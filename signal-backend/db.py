@@ -167,7 +167,7 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         await conn.execute(
             "INSERT INTO notes (id, mission_id, text, role, created_at) "
             "VALUES ($1, $2, $3, $4, $5)",
-            n["id"], mid, n.get("text", ""), n.get("role"), int(n.get("createdAt") or 0),
+            n["id"], mid, n.get("text", ""), (n.get("role") or "user"), int(n.get("createdAt") or 0),
         )
 
     for t in (m.get("tasks") or []):
@@ -180,7 +180,7 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             """,
             t["id"], mid, t.get("title", ""),
-            t.get("state", "open"), t.get("source", "manual"),
+            (t.get("state") or "open"), (t.get("source") or "manual"),
             int(t.get("createdAt") or 0),
             int(t["doneAt"]) if t.get("doneAt") is not None else None,
             int(t["lastUpdateAt"]) if t.get("lastUpdateAt") is not None else None,
@@ -206,6 +206,43 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             art["id"], mid, art.get("taskId"),
             int(art.get("acceptedAt") or 0),
             json.dumps(art),
+        )
+
+    # Truth distillations — versioned Insight artefacts. Mirror every
+    # record so the Postgres copy keeps full distillation history; the
+    # parent DELETE FROM missions cascades these rows so we always
+    # rebuild from the snapshot's truth.
+    for d in (m.get("truthDistillations") or []):
+        if not d.get("id"):
+            continue
+        await conn.execute(
+            """
+            INSERT INTO truth_distillations (
+                id, mission_id, version, status, summary, validated_direction,
+                core_decisions, unknowns, risks, surface_seed, terminal_seed,
+                confidence, supersedes_version, stale_since, stale_reason,
+                failure_state, created_at, updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+                    $14, $15, $16, $17, $18)
+            """,
+            d["id"], mid,
+            int(d.get("version") or 1),
+            (d.get("status") or "draft"),
+            d.get("summary", ""),
+            d.get("validatedDirection", ""),
+            json.dumps(d.get("coreDecisions") or []),
+            json.dumps(d.get("unknowns") or []),
+            json.dumps(d.get("risks") or []),
+            json.dumps(d["surfaceSeed"]) if d.get("surfaceSeed") is not None else None,
+            json.dumps(d["terminalSeed"]) if d.get("terminalSeed") is not None else None,
+            (d.get("confidence") or "medium"),
+            int(d["supersedesVersion"]) if d.get("supersedesVersion") is not None else None,
+            int(d["staleSince"]) if d.get("staleSince") is not None else None,
+            d.get("staleReason"),
+            d.get("failureState"),
+            int(d.get("createdAt") or 0),
+            int(d.get("updatedAt") or 0),
         )
 
 
