@@ -101,6 +101,21 @@ class SpineStore:
                 raise
             self._last_save_error = None
             self._snapshot = snapshot
+        # Wave O / P-6 — fire-and-forget mirror to Postgres when
+        # SIGNAL_DUAL_WRITE_PG=1 + SIGNAL_DATABASE_URL is set. Runs
+        # outside the lock so the caller never waits on the DB and
+        # JSON remains the canonical store. db.mirror_spine_snapshot
+        # is a no-op when dual-write is disabled.
+        try:
+            from db import mirror_spine_snapshot, is_enabled as _db_enabled
+            if _db_enabled():
+                asyncio.create_task(
+                    mirror_spine_snapshot(snapshot.model_dump_json())
+                )
+        except Exception:  # noqa: BLE001
+            # Mirror failure must never break the JSON write that
+            # already succeeded.
+            pass
         return self._snapshot
 
 
