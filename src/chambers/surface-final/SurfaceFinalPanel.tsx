@@ -21,11 +21,28 @@ import {
   type ElementSelected,
   type ComponentsListed,
 } from "../../lib/previewBridge";
+import { signalFetch, isBackendUnreachable } from "../../lib/signalApi";
+
+// P-13 — issue draft form data. Populated from the most recent
+// select_element pick; mission_id sticks across multiple drafts in
+// the same session.
+interface PickedElement {
+  selector: string;
+  text: string;
+  componentHint?: string;
+}
+
+type IssueKind = "bug" | "polish" | "feature" | "regression" | "design" | "perf";
+type IssueSeverity = "low" | "medium" | "high";
 
 interface Props {
   /** URL the iframe should load. Caller is responsible for adding
    *  `?previewAgent=1` so the preview-agent runtime attaches. */
   previewUrl: string;
+  /** Optional spine mission id to tag any issue draft created via
+   *  the "report this" form. Used as IssueDraft.mission_id when
+   *  posting to /issues/draft. */
+  missionId?: string | null;
 }
 
 type LogEntry = {
@@ -35,12 +52,21 @@ type LogEntry = {
   text: string;
 };
 
-export default function SurfaceFinalPanel({ previewUrl }: Props) {
+export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [bridge, setBridge] = useState<PreviewBridge | null>(null);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [navigateInput, setNavigateInput] = useState("");
+  // P-13 — issue draft form. `picked` is the most recent select_element
+  // result; the form lifts state per pick. Submitting POSTs to
+  // /issues/draft and clears the form so the operator can chain
+  // multiple reports in one session.
+  const [picked, setPicked] = useState<PickedElement | null>(null);
+  const [issueKind, setIssueKind] = useState<IssueKind>("bug");
+  const [issueSeverity, setIssueSeverity] = useState<IssueSeverity>("medium");
+  const [issueTitle, setIssueTitle] = useState("");
+  const [issueBody, setIssueBody] = useState("");
 
   // Origin for the bridge — derived from the previewUrl so callers
   // can pass full URLs and the bridge does the right thing.
@@ -136,6 +162,71 @@ export default function SurfaceFinalPanel({ previewUrl }: Props) {
           result.rect.height,
         )}px${result.componentHint ? ` · ${result.componentHint}` : ""})`,
       );
+      // P-13 — populate the issue form. Default title from the
+      // element's text (clipped); operator can edit before submit.
+      setPicked({
+        selector: result.selector,
+        text: result.text,
+        componentHint: result.componentHint,
+      });
+      // Codex thread #253: signal-backend's IssueDraftRequest.title
+      // rejects > 200 chars; deep CSS selectors easily exceed that.
+      // Cap the selector-based fallback the same way the text-based
+      // branch is capped so the one-click flow never 422s.
+      setIssueTitle(
+        result.text
+          ? `[fix this here] ${result.text.slice(0, 60)}${result.text.length > 60 ? "…" : ""}`
+          : `[fix this here] ${result.selector.slice(0, 60)}${result.selector.length > 60 ? "…" : ""}`,
+      );
+      setIssueBody("");
+    }
+  }
+
+  async function submitIssue() {
+    if (!picked) return;
+    if (busy) {
+      pushLog("error", "another RPC is in flight");
+      return;
+    }
+    const title = issueTitle.trim();
+    if (!title) {
+      pushLog("error", "issue title is empty");
+      return;
+    }
+    setBusy(true);
+    pushLog("info", `POST /issues/draft (${issueKind}/${issueSeverity})`);
+    try {
+      const res = await signalFetch("/issues/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          body: issueBody || `Reported via Surface Final.\n\nSelector: ${picked.selector}`,
+          kind: issueKind,
+          severity: issueSeverity,
+          chamber: "surface_final",
+          mission_id: missionId ?? undefined,
+          selector: picked.selector,
+          provider: "github",
+        }),
+      });
+      if (!res.ok) {
+        pushLog("error", `issue draft → HTTP ${res.status}`);
+        return;
+      }
+      const body = await res.json() as { provider: string; kwargs: Record<string, unknown> };
+      pushLog("ok", `issue draft ready (${body.provider}) — labels: ${(body.kwargs.labels as string[] | undefined)?.join(", ") ?? "?"}`);
+      setPicked(null);
+      setIssueTitle("");
+      setIssueBody("");
+    } catch (e) {
+      if (isBackendUnreachable(e)) {
+        pushLog("error", "backend unreachable");
+      } else {
+        pushLog("error", (e as Error).message);
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -226,6 +317,80 @@ export default function SurfaceFinalPanel({ previewUrl }: Props) {
             go
           </button>
         </div>
+
+        {/* P-13 — issue draft form, populated after select_element. */}
+        {picked && (
+          <div
+            data-issue-form
+            style={{
+              borderTop: "1px solid currentColor",
+              paddingTop: 6,
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            <div style={{ fontSize: "0.7em", opacity: 0.65, fontFamily: "var(--mono)" }}>
+              picked: {picked.selector.slice(0, 50)}
+              {picked.selector.length > 50 ? "…" : ""}
+            </div>
+            <input
+              type="text"
+              value={issueTitle}
+              onChange={(e) => setIssueTitle(e.target.value)}
+              disabled={busy}
+              placeholder="issue title"
+              style={fieldStyle}
+            />
+            <textarea
+              value={issueBody}
+              onChange={(e) => setIssueBody(e.target.value)}
+              disabled={busy}
+              placeholder="why is this wrong? what should it look like?"
+              rows={3}
+              style={{ ...fieldStyle, resize: "vertical", fontFamily: "inherit" }}
+            />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+              <select
+                value={issueKind}
+                onChange={(e) => setIssueKind(e.target.value as IssueKind)}
+                disabled={busy}
+                style={fieldStyle}
+              >
+                <option value="bug">bug</option>
+                <option value="polish">polish</option>
+                <option value="feature">feature</option>
+                <option value="regression">regression</option>
+                <option value="design">design</option>
+                <option value="perf">perf</option>
+              </select>
+              <select
+                value={issueSeverity}
+                onChange={(e) => setIssueSeverity(e.target.value as IssueSeverity)}
+                disabled={busy}
+                style={fieldStyle}
+              >
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button type="button" onClick={submitIssue} disabled={busy} style={{ ...btnStyle, flex: 1 }}>
+                report (POST /issues/draft)
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPicked(null); setIssueTitle(""); setIssueBody(""); }}
+                disabled={busy}
+                style={btnStyle}
+              >
+                cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{ borderTop: "1px solid currentColor", paddingTop: 6, opacity: 0.85, flex: 1, overflowY: "auto" }}>
           {log.length === 0 ? (
             <div style={{ opacity: 0.5, fontStyle: "italic" }}>
@@ -262,4 +427,13 @@ const btnStyle: React.CSSProperties = {
   background: "transparent",
   color: "inherit",
   cursor: "pointer",
+};
+
+const fieldStyle: React.CSSProperties = {
+  fontSize: "0.85em",
+  padding: "4px 6px",
+  border: "1px solid currentColor",
+  borderRadius: 4,
+  background: "transparent",
+  color: "inherit",
 };
