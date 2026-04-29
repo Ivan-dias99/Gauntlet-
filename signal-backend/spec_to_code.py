@@ -122,6 +122,39 @@ def _starts_with_pascal_segment(base: str, prefix: str) -> bool:
     return len(base) == len(prefix) or base[len(prefix)].isupper()
 
 
+# Required props per kind. The TSX template references each of these,
+# so any missing entry must be injected before the scaffold renders —
+# otherwise the JSX would reference an undeclared/undestructured name.
+_REQUIRED_PROPS: dict[ComponentKind, list[str]] = {
+    "button": ["label: string", "onClick: () => void"],
+    "input": ["label: string", "value: string", "onChange: (v: string) => void"],
+    "card": ["title: string", "children?: React.ReactNode"],
+    "list": ["items: string[]"],
+    "nav": ['links: Array<{ href: string; label: string }>'],
+    "rail": ["children?: React.ReactNode"],
+}
+
+
+def _prop_name(decl: str) -> str:
+    """Extract the bare prop name (no `?`, no type) from a declaration
+    like `label: string` or `children?: React.ReactNode`."""
+    return decl.split(":", 1)[0].strip().rstrip("?")
+
+
+def _ensure_required(props: list[str], kind: ComponentKind) -> list[str]:
+    """Append any required prop the caller didn't already supply. Each
+    name is checked independently so a partially-filled list (e.g. a
+    button with `label` but no `onClick`) doesn't leave the scaffold
+    referencing a missing destructured name."""
+    existing = {_prop_name(p) for p in props}
+    out = list(props)
+    for required in _REQUIRED_PROPS.get(kind, []):
+        if _prop_name(required) not in existing:
+            out.append(required)
+            existing.add(_prop_name(required))
+    return out
+
+
 def _scaffold_for(
     kind: ComponentKind, name: str, props: list[str]
 ) -> tuple[str, list[str]]:
@@ -133,17 +166,14 @@ def _scaffold_for(
     the scaffold actually depends on. Downstream consumers
     (validation, docs, codegen) read components[].props and would
     otherwise see an empty list."""
+    props = _ensure_required(props, kind)
     if kind == "button":
-        if not any(p.split(":")[0].strip() == "label" for p in props):
-            props = props + ["label: string", "onClick: () => void"]
         body = f'''  return (
     <button data-component="{name}" onClick={{onClick}}>
       {{label}}
     </button>
   );'''
     elif kind == "input":
-        if not any("value" in p for p in props):
-            props = ["label: string", "value: string", "onChange: (v: string) => void"]
         body = f'''  return (
     <label data-component="{name}">
       <span>{{label}}</span>
@@ -151,8 +181,6 @@ def _scaffold_for(
     </label>
   );'''
     elif kind == "card":
-        if not any("title" in p for p in props):
-            props = ["title: string", "children?: React.ReactNode"]
         body = f'''  return (
     <article data-component="{name}">
       <header>{{title}}</header>
@@ -160,24 +188,18 @@ def _scaffold_for(
     </article>
   );'''
     elif kind == "list":
-        if not any("items" in p for p in props):
-            props = ["items: string[]"]
         body = f'''  return (
     <ul data-component="{name}">
       {{items.map((it, i) => <li key={{i}}>{{it}}</li>)}}
     </ul>
   );'''
     elif kind == "nav":
-        if not any("links" in p for p in props):
-            props = ['links: Array<{ href: string; label: string }>']
         body = f'''  return (
     <nav data-component="{name}">
       {{links.map((l, i) => <a key={{i}} href={{l.href}}>{{l.label}}</a>)}}
     </nav>
   );'''
     else:  # rail / fallback
-        if not props:
-            props = ["children?: React.ReactNode"]
         body = f'''  return (
     <aside data-component="{name}">
       {{children}}
