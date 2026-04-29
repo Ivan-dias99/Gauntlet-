@@ -240,6 +240,7 @@ def compile_plan_to_spec(
     )
 
     raw_components = plan.get("components", []) or []
+    used_names: set[str] = set()
     for raw in raw_components:
         screen = raw.get("screen", "Unknown") or "Unknown"
         kind_raw = raw.get("kind", "card") or "card"
@@ -247,7 +248,20 @@ def compile_plan_to_spec(
             "button", "card", "rail", "input", "nav", "list",
         } else "card"
         component_name = raw.get("name", "") or ""
-        name = _propose_name(screen, component_name, kind)
+        proposed = _propose_name(screen, component_name, kind)
+        # Disambiguate residual collisions (e.g. punctuation variants
+        # like "User ID" / "User-ID" both normalize to "UserID", or
+        # genuine duplicate component_names within a screen) by
+        # appending a numeric suffix. Silent dedup of files_to_create
+        # would otherwise drop one component's file entry while the
+        # contract list still claims both, leaving downstream writers
+        # to emit fewer scaffolds than planned.
+        name = proposed
+        suffix = 2
+        while name in used_names:
+            name = f"{proposed}{suffix}"
+            suffix += 1
+        used_names.add(name)
         file_path = f"{output_dir}/{name}.tsx"
         # Default props per kind; the scaffold helper overrides with
         # canonical sets when missing.
@@ -274,14 +288,5 @@ def compile_plan_to_spec(
             scaffold_tsx=scaffold,
         ))
         spec.files_to_create.append(file_path)
-
-    # Dedupe file_path while keeping order
-    seen = set()
-    deduped = []
-    for fp in spec.files_to_create:
-        if fp not in seen:
-            seen.add(fp)
-            deduped.append(fp)
-    spec.files_to_create = deduped
 
     return spec
