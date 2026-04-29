@@ -131,12 +131,23 @@ export class PreviewBridge {
 
   private onMessage(e: MessageEvent): void {
     if (e.origin !== this.opts.expectedOrigin) return;
+    // Origin alone is not enough — any same-origin window (sibling
+    // iframe, popup, opener) could otherwise satisfy a pending request.
+    // Only accept envelopes from the target iframe's contentWindow.
+    if (e.source !== this.iframe.contentWindow) return;
     const env = e.data as PreviewEnvelope | null;
     if (!env || typeof env !== "object" || env.v !== 1 || !env.id) return;
     const pending = this.pending.get(env.id);
     if (!pending) return;
     clearTimeout(pending.timer);
     this.pending.delete(env.id);
+    if (env.kind === "error") {
+      const message =
+        (env.payload && typeof env.payload.message === "string" && env.payload.message) ||
+        `PreviewBridge error envelope id=${env.id}`;
+      pending.reject(new Error(message));
+      return;
+    }
     pending.resolve(env);
   }
 
