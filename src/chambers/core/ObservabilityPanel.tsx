@@ -77,7 +77,14 @@ export default function ObservabilityPanel() {
     };
   }, []);
 
-  const routes = snap ? Object.entries(snap.routes) : [];
+  // Codex thread #254 (discussion_r3164786991): backend builds
+  // `routes` from a Python `set` union, so insertion order is not
+  // semantically stable as routes appear/disappear. Sort by route
+  // name so row positions stay fixed across refreshes — easier for
+  // operators to scan latency/error deltas side by side.
+  const routes = snap
+    ? Object.entries(snap.routes).sort(([a], [b]) => a.localeCompare(b))
+    : [];
 
   return (
     <section
