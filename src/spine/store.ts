@@ -596,11 +596,21 @@ export function switchMission(state: SpineState, id: string): SpineState {
   // switching back to a mission previously paused by createMission
   // would leave its status as "paused" while activeMissionId points
   // at it — an inconsistent lifecycle state any `status === "active"`
-  // check would misread. Closed/archived/completed targets keep
-  // their terminal status.
+  // check would misread.
+  //
+  // Brainstorm is the exception: types.ts defines it as "loose ideas
+  // saved without affecting any project", so selecting one is a
+  // non-project navigation event — don't promote it and don't pause
+  // the working project. Closed/archived/completed targets keep their
+  // terminal status; the previously active mission is still demoted
+  // because the pointer is moving off it.
+  const target = state.missions.find(m => m.id === id);
+  if (target && target.status === "brainstorm") {
+    return { ...state, activeMissionId: id, updatedAt: now() };
+  }
   const missions = state.missions.map(m => {
     if (m.id === id) {
-      return m.status === "paused" || m.status === "brainstorm"
+      return m.status === "paused"
         ? { ...m, status: "active" as MissionStatus }
         : m;
     }
