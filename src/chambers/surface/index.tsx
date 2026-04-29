@@ -16,6 +16,7 @@ import SurfaceLayout from "./SurfaceLayout";
 import SurfaceWorkbench from "./SurfaceWorkbench";
 import CreationPanel from "./CreationPanel";
 import ExplorationRail from "./ExplorationRail";
+import BuildSpecPanel from "./BuildSpecPanel";
 
 // Surface chamber — design workstation.
 //
@@ -244,6 +245,14 @@ export default function Surface() {
                 requireDesignSystem
                 principlesCount={principles.length}
                 hasPlan={!!plan}
+              />
+              {/* P-15 — BuildSpec viewer. Closes the loop on Wave J +
+                  PR #219: takes the live SurfacePlan in state, posts
+                  to /surface/build-spec, and renders the per-component
+                  scaffolds Terminal would otherwise materialise blind. */}
+              <BuildSpecPanel
+                plan={plan}
+                missionId={activeMission?.id ?? null}
               />
               {unreachable && (
                 <DormantPanel detail={copy.dormantSurface} />
