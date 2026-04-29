@@ -24,6 +24,7 @@ import json
 import logging
 import re
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Optional
 
@@ -264,6 +265,18 @@ class AgentOrchestrator:
         """
         started = time.monotonic()
 
+        # Wave E (P-3) re-review fix: compute the evidence task_id
+        # fallback ONCE per agent run. Previously this was derived per
+        # iteration (`agent-loop-{iteration}`), which fragmented one
+        # logical run into N pseudo-tasks and broke downstream grouping
+        # by taskId. `iteration` is already a separate field on the
+        # record, so the fallback id stays constant for the whole run.
+        # uuid4 ensures distinct ids across runs of the same mission.
+        _run_task_id_fallback = (
+            (query.task_id or "").strip()
+            or f"agent-loop-{uuid.uuid4().hex[:12]}"
+        )
+
         # Wave-5: profile-aware prompt + tool filter. When no chamber is
         # attached we fall back to the orchestrator's default prompt and
         # the unfiltered schema — unchanged from earlier waves.
@@ -414,7 +427,7 @@ class AgentOrchestrator:
                     try:
                         from evidence import gate_evidence, diff_evidence
                         mission_id_val = (query.mission_id or "ad-hoc").strip() or "ad-hoc"
-                        task_id_val = (query.task_id or f"agent-loop-{iteration}").strip() or f"agent-loop-{iteration}"
+                        task_id_val = _run_task_id_fallback
                         record = None
                         if sig.get("type") == "gate":
                             record = gate_evidence(
