@@ -90,9 +90,14 @@ def snapshot() -> dict:
     Core/System panel. Per-route stats: count, p50, p95, error_rate,
     in_flight."""
     out: dict[str, dict] = {}
-    for route, ring in _metrics.items():
-        rows = list(ring)
-        if not rows:
+    # Iterate the union so routes with active in-flight calls but no
+    # completed samples (long-running / first request after boot) still
+    # surface in the dashboard instead of vanishing until end() fires.
+    routes = set(_metrics.keys()) | set(_inflight.keys())
+    for route in routes:
+        rows = list(_metrics.get(route, ()))
+        in_flight = _inflight.get(route, 0)
+        if not rows and in_flight <= 0:
             continue
         durations = [r.duration_ms for r in rows]
         errors = sum(1 for r in rows if not r.succeeded)
@@ -103,8 +108,8 @@ def snapshot() -> dict:
             "error_rate": round(errors / total, 4) if total else 0.0,
             "p50_ms": _percentile(durations, 0.5),
             "p95_ms": _percentile(durations, 0.95),
-            "max_ms": max(durations),
-            "in_flight": _inflight.get(route, 0),
+            "max_ms": max(durations) if durations else 0,
+            "in_flight": in_flight,
         }
         # Top error kinds
         kinds: dict[str, int] = {}
