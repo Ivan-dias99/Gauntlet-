@@ -169,10 +169,14 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
         text: result.text,
         componentHint: result.componentHint,
       });
+      // Codex thread #253: signal-backend's IssueDraftRequest.title
+      // rejects > 200 chars; deep CSS selectors easily exceed that.
+      // Cap the selector-based fallback the same way the text-based
+      // branch is capped so the one-click flow never 422s.
       setIssueTitle(
         result.text
           ? `[fix this here] ${result.text.slice(0, 60)}${result.text.length > 60 ? "…" : ""}`
-          : `[fix this here] ${result.selector}`,
+          : `[fix this here] ${result.selector.slice(0, 60)}${result.selector.length > 60 ? "…" : ""}`,
       );
       setIssueBody("");
     }
