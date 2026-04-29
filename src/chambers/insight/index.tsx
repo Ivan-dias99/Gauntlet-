@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import { useSignal, RouteEvent } from "../../hooks/useSignal";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
@@ -14,6 +14,7 @@ import InsightLayout from "./InsightLayout";
 import InsightWorkbench from "./InsightWorkbench";
 import TruthDistillationPanel from "./TruthDistillationPanel";
 import ValidationPanel from "./ValidationPanel";
+import { classifyIntent } from "../../lib/intentSwitchGuard";
 import {
   EMPTY_LIVE,
   extractAnswer,
@@ -93,9 +94,28 @@ export default function Insight() {
 
   const notes: Note[] = [...(activeMission?.notes ?? [])].reverse();
 
+  // Wave B UI consumer — classify the inbound prompt against the active
+  // mission's project concept before submit. The verdict is recomputed
+  // whenever the input changes; intentConfirmed gates the actual submit
+  // when the heuristic flags the prompt as risky (new project /
+  // contradiction / unclear). Operator clicks "continuar" once to
+  // override; switching input or mission resets the confirmation.
+  const intentVerdict = useMemo(
+    () => classifyIntent(input, activeMission ?? null),
+    [input, activeMission],
+  );
+  const [intentConfirmed, setIntentConfirmed] = useState(false);
+  useEffect(() => { setIntentConfirmed(false); }, [input, activeMission?.id]);
+
   async function submit() {
     const v = input.trim();
     if (!v || pending) return;
+    // Block once when the guard flags a risky transition; subsequent
+    // submit on the same input passes through after the operator
+    // explicitly confirmed.
+    if (intentVerdict.requiresPrompt && !intentConfirmed) {
+      return;
+    }
 
     let targetMissionId = activeMission?.id;
     if (!targetMissionId) {
@@ -257,6 +277,53 @@ export default function Insight() {
               message={error}
             />
           )}
+        </div>
+      )}
+      {intentVerdict.requiresPrompt && !intentConfirmed && input.trim().length > 0 && (
+        <div
+          data-intent-guard-banner={intentVerdict.classification}
+          style={{
+            margin: "0 auto var(--space-2)",
+            maxWidth: 780,
+            padding: "var(--space-3)",
+            borderRadius: 8,
+            border: "1px solid currentColor",
+            opacity: 0.85,
+            fontSize: "0.9em",
+            lineHeight: 1.4,
+          }}
+          role="alert"
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            {intentVerdict.classification === "contradiction"
+              ? "Possível contradição"
+              : intentVerdict.classification === "new_project"
+              ? "Possível novo projecto"
+              : intentVerdict.classification === "brainstorm"
+              ? "Possível brainstorm"
+              : "Direção pouco clara"}
+          </div>
+          <div style={{ marginBottom: 6 }}>{intentVerdict.reason}</div>
+          {intentVerdict.matchedTokens.length > 0 && (
+            <div style={{ opacity: 0.7, fontSize: "0.85em", marginBottom: 6 }}>
+              âncoras: {intentVerdict.matchedTokens.join(" · ")}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setIntentConfirmed(true)}
+            style={{
+              fontSize: "0.85em",
+              padding: "4px 10px",
+              borderRadius: 4,
+              border: "1px solid currentColor",
+              background: "transparent",
+              color: "inherit",
+              cursor: "pointer",
+            }}
+          >
+            continuar mesmo assim
+          </button>
         </div>
       )}
       <Composer
