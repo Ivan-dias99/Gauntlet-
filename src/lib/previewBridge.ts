@@ -198,6 +198,16 @@ export class PreviewBridge {
       return Promise.reject(new Error("iframe has no contentWindow"));
     }
     const id = envelope.id ?? uid();
+    // Reject duplicate ids before storing — without this, a second
+    // pending.set(id, …) silently overwrites the first entry, leaving
+    // the original promise to time out and letting the response for
+    // that id resolve the wrong request. The public API allows callers
+    // to supply ids, and the uid() fallback can in theory collide.
+    if (this.pending.has(id)) {
+      return Promise.reject(
+        new Error(`PreviewBridge duplicate request id=${id}`),
+      );
+    }
     const out: PreviewEnvelope = { v: 1, id, kind: envelope.kind, payload: envelope.payload };
     const expectedKind = RESPONSE_KIND[envelope.kind];
     return new Promise<PreviewEnvelope>((resolve, reject) => {
