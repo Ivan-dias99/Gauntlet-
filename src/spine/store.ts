@@ -589,11 +589,24 @@ export function acceptArtifact(
 }
 
 export function switchMission(state: SpineState, id: string): SpineState {
-  // Wave C single-active invariant: switching the active pointer must
-  // reconcile mission statuses too. Without this, switching from
-  // mission A to a pre-existing mission B that also carried status
-  // "active" would leave both claiming active and break setMissionStatus
-  // assumptions until the next rehydration pass.
-  const missions = enforceSingleActive(state.missions, id);
+  if (!state.missions.some(m => m.id === id)) return state;
+  // Wave C "current working project is active": switching the active
+  // pointer must (1) promote the target to active so it matches the
+  // pointer, and (2) demote any other active to paused. Without this,
+  // switching back to a mission previously paused by createMission
+  // would leave its status as "paused" while activeMissionId points
+  // at it — an inconsistent lifecycle state any `status === "active"`
+  // check would misread. Closed/archived/completed targets keep
+  // their terminal status.
+  const missions = state.missions.map(m => {
+    if (m.id === id) {
+      return m.status === "paused" || m.status === "brainstorm"
+        ? { ...m, status: "active" as MissionStatus }
+        : m;
+    }
+    return m.status === "active"
+      ? { ...m, status: "paused" as MissionStatus }
+      : m;
+  });
   return { ...state, missions, activeMissionId: id, updatedAt: now() };
 }
