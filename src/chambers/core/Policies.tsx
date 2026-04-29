@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import { useCopy } from "../../i18n/copy";
 import DormantPanel from "../../shell/DormantPanel";
+import DoctrineTelemetryPanel from "./DoctrineTelemetryPanel";
 
 // Core · Policies — constitutional register of principles in force.
 // Rendered inside the shared .core-page frame so the tab reads with
@@ -292,6 +293,8 @@ export default function Policies() {
           </div>
         </section>
       )}
+
+      {isGoverning && <DoctrineTelemetryPanel />}
 
       <section
         className="command-bay"
