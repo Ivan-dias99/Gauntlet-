@@ -200,7 +200,11 @@ function decide(
     case "database":
       // Persistence flag from /health distinguishes mounted-volume
       // vs ephemeral (in-image filesystem wiped on restart).
-      if (!ctx.health) return { ...base, tone: "ghost", status: "?" };
+      // Codex round-2 (#252): when /health cannot be fetched at all
+      // (probe error, not just unknown persistence), surface
+      // "unreachable" like Vercel/Railway instead of a ghost "?".
+      // A backend outage means persistence is down, not unprobed.
+      if (!ctx.health) return { ...base, tone: "danger", status: "unreachable" };
       if (ctx.health.persistence_ephemeral) return { ...base, tone: "warn", status: "ephemeral" };
       if (ctx.health.persistence_degraded) return { ...base, tone: "danger", status: "degraded" };
       return { ...base, tone: "ok", status: "persistent" };
