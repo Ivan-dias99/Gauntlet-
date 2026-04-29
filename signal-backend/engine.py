@@ -152,79 +152,102 @@ class SignalEngine:
         choice = gateway.select("triad")
         model_id = choice.model_id
 
-        import time as _t
-        started = _t.monotonic()
-        observability.start("triad")
-        # Track end-state separately so a cancellation (CancelledError
-        # inherits BaseException, not Exception) still decrements the
-        # in-flight counter via the finally block.
-        _obs_finalized = False
-        try:
-            response = await self._client.messages.create(
-                model=model_id,
-                max_tokens=MAX_TOKENS,
-                temperature=temperature,
-                system=system_prompt,
-                messages=[
-                    {"role": "user", "content": user_message}
-                ],
-            )
+        # Wave P-7 — fallback chain. When the primary fails with a
+        # recoverable Anthropic error (rate limit, capacity, network
+        # blip), retry once with the next model in ROUTING. Each
+        # GatewayCall recorded carries fallback_from so /gateway/summary
+        # shows when failover kicked in.
+        from anthropic import (
+            RateLimitError, APIConnectionError, APITimeoutError, InternalServerError,
+        )
+        recoverable = (RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)
 
-            content = ""
-            for block in response.content:
-                if block.type == "text":
-                    content += block.text
-
-            in_tok = response.usage.input_tokens
-            out_tok = response.usage.output_tokens
-            gateway.record(GatewayCall(
-                role="triad", model_id=model_id, provider=choice.provider,
-                input_tokens=in_tok, output_tokens=out_tok,
-            ))
-            observability.end(
-                "triad",
-                duration_ms=int((_t.monotonic() - started) * 1000),
-                succeeded=True,
-            )
-            _obs_finalized = True
-
-            return TriadResponse(
-                index=index,
-                content=content,
-                model=response.model,
-                stop_reason=response.stop_reason,
-                input_tokens=in_tok,
-                output_tokens=out_tok,
-            )
-
-        except Exception as e:
-            logger.error(f"Triad call {index} failed: {e}")
-            gateway.record(GatewayCall(
-                role="triad", model_id=model_id, provider=choice.provider,
-                succeeded=False, error_kind=type(e).__name__,
-            ))
-            observability.end(
-                "triad",
-                duration_ms=int((_t.monotonic() - started) * 1000),
-                succeeded=False, error_kind=type(e).__name__,
-            )
-            _obs_finalized = True
-            return TriadResponse(
-                index=index,
-                content=f"[TRIAD CALL FAILED: {str(e)}]",
-                model=model_id,
-                stop_reason="error",
-            )
-        finally:
-            # Cancellation (asyncio.CancelledError extends BaseException)
-            # bypasses except Exception. Without this, /observability
-            # would leak in_flight counters on every cancelled triad.
-            if not _obs_finalized:
+        async def _attempt(_choice, _model_id, _from: str | None):
+            import time as _t
+            started = _t.monotonic()
+            observability.start("triad")
+            _obs_finalized = False
+            try:
+                response = await self._client.messages.create(
+                    model=_model_id,
+                    max_tokens=MAX_TOKENS,
+                    temperature=temperature,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": user_message}],
+                )
+                content = ""
+                for block in response.content:
+                    if block.type == "text":
+                        content += block.text
+                in_tok = response.usage.input_tokens
+                out_tok = response.usage.output_tokens
+                gateway.record(GatewayCall(
+                    role="triad", model_id=_model_id, provider=_choice.provider,
+                    input_tokens=in_tok, output_tokens=out_tok,
+                    fallback_from=_from,
+                ))
                 observability.end(
                     "triad",
                     duration_ms=int((_t.monotonic() - started) * 1000),
-                    succeeded=False, error_kind="CancelledError",
+                    succeeded=True,
                 )
+                _obs_finalized = True
+                return TriadResponse(
+                    index=index, content=content,
+                    model=response.model, stop_reason=response.stop_reason,
+                    input_tokens=in_tok, output_tokens=out_tok,
+                ), None, False
+            except Exception as exc:  # noqa: BLE001
+                # Always record + close observability so any failure
+                # (recoverable or not) decrements in_flight.
+                gateway.record(GatewayCall(
+                    role="triad", model_id=_model_id, provider=_choice.provider,
+                    succeeded=False, error_kind=type(exc).__name__,
+                    fallback_from=_from,
+                ))
+                observability.end(
+                    "triad",
+                    duration_ms=int((_t.monotonic() - started) * 1000),
+                    succeeded=False, error_kind=type(exc).__name__,
+                )
+                _obs_finalized = True
+                return None, exc, isinstance(exc, recoverable)
+            finally:
+                if not _obs_finalized:
+                    observability.end(
+                        "triad",
+                        duration_ms=int((_t.monotonic() - started) * 1000),
+                        succeeded=False, error_kind="CancelledError",
+                    )
+
+        # Primary attempt; on a recoverable error walk the gateway chain.
+        result, err, retry = await _attempt(choice, model_id, None)
+        if result is not None:
+            return result
+        if err is not None and retry:
+            next_choice = gateway.fallback("triad", model_id)
+            if next_choice is not None:
+                logger.warning(
+                    "Triad call %d primary %s failed (%s) — falling back to %s",
+                    index, model_id, type(err).__name__, next_choice.model_id,
+                )
+                fb_result, fb_err, _ = await _attempt(next_choice, next_choice.model_id, model_id)
+                if fb_result is not None:
+                    return fb_result
+                # Fallback also failed — surface its exception, not the primary's,
+                # so triage sees the actual terminal cause (e.g. fallback 400 not
+                # primary 429).
+                if fb_err is not None:
+                    err = fb_err
+        logger.error(
+            "Triad call %d failed (recoverable=%s): %s",
+            index, retry, err,
+        )
+        return TriadResponse(
+            index=index,
+            content=f"[TRIAD CALL FAILED: {err}]",
+            model=model_id, stop_reason="error",
+        )
     
     # ── Judge ───────────────────────────────────────────────────────────────
     
