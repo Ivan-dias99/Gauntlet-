@@ -29,3 +29,7 @@ __pycache__/
 # Both paths listed until the Wave-0 → Wave-8 compat window closes.
 signal-backend/data/
 ruberra-backend/data/
+
+# Parallel-agent isolated worktrees (Agent tool with isolation:"worktree").
+# Created at runtime under .claude/worktrees/agent-<id>; never source.
+.claude/worktrees/
