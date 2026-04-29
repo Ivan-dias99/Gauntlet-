@@ -58,8 +58,22 @@ def start(route: str) -> None:
     _inflight[route] = _inflight.get(route, 0) + 1
 
 
-def end(route: str, *, duration_ms: int, succeeded: bool = True, error_kind: Optional[str] = None) -> None:
-    """Mark the end of an in-flight call and record the metric."""
+def end(
+    route: str,
+    *,
+    duration_ms: int,
+    succeeded: Optional[bool] = None,
+    error_kind: Optional[str] = None,
+) -> None:
+    """Mark the end of an in-flight call and record the metric.
+
+    `succeeded` defaults to inferred-from-error_kind: if the caller
+    passed an error_kind without explicitly setting succeeded, the
+    sample is treated as a failure. This avoids the inconsistency
+    where a route showed up in error_kinds but errors/error_rate
+    undercounted because the default `succeeded=True` won."""
+    if succeeded is None:
+        succeeded = error_kind is None
     _inflight[route] = max(0, _inflight.get(route, 0) - 1)
     record(RouteMetric(
         route=route,
