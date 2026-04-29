@@ -79,7 +79,14 @@ def _slug(name: str) -> str:
 def tokens_from_figma_json(file_id: str, body: dict[str, Any], *, name: Optional[str] = None) -> TokenSet:
     out = TokenSet(name=name or body.get("name") or file_id, source_file_id=file_id)
 
-    styles = body.get("styles") or {}
+    # Codex P2: distinguish "styles section absent" from "styles empty".
+    # Both are diagnostically different — operators need to know if the
+    # caller never provided the map vs provided an empty one.
+    if "styles" not in body:
+        out.raw_warnings.append("no styles map in body")
+        styles: Any = {}
+    else:
+        styles = body.get("styles") or {}
     if isinstance(styles, dict):
         for sid, raw in styles.items():
             if not isinstance(raw, dict):
@@ -93,26 +100,55 @@ def tokens_from_figma_json(file_id: str, body: dict[str, Any], *, name: Optional
             elif style_type == "TEXT":
                 out.types.append(TypeToken(name=_slug(sname), family="Inter", weight=400, size_px=16, line_height_px=24, description=description))
                 out.raw_warnings.append(f"type {sname!r} requires node walk to resolve family/size")
-    else:
-        out.raw_warnings.append("no styles map in body")
+    elif "styles" in body:
+        out.raw_warnings.append("styles section is not a dict")
 
-    variables = (body.get("meta") or {}).get("variables") if isinstance(body.get("meta"), dict) else None
+    meta = body.get("meta") if isinstance(body.get("meta"), dict) else None
+    variables = meta.get("variables") if meta else None
+    # Codex P1 (mode resolution): the file's variable collection
+    # carries `defaultModeId`; if absent, fall back to the first key.
+    collections = meta.get("variableCollections") if meta else None
+    default_mode_by_collection: dict[str, str] = {}
+    if isinstance(collections, dict):
+        for cid, craw in collections.items():
+            if isinstance(craw, dict) and isinstance(craw.get("defaultModeId"), str):
+                default_mode_by_collection[cid] = craw["defaultModeId"]
     if isinstance(variables, dict):
         for vid, raw in variables.items():
             if not isinstance(raw, dict):
                 continue
-            vtype = raw.get("type")
+            # Codex P1: Figma Variables API returns the type as
+            # `resolvedType`, not `type`. Read both for forward/back compat.
+            vtype = raw.get("resolvedType") or raw.get("type")
             vname = raw.get("name", vid)
-            value = raw.get("valuesByMode") or raw.get("value")
             description = raw.get("description")
-            if isinstance(value, dict) and value:
-                value = next(iter(value.values()))
-            if vtype == "COLOR" and isinstance(value, dict):
+            values_by_mode = raw.get("valuesByMode")
+            value: Any = None
+            if isinstance(values_by_mode, dict) and values_by_mode:
+                # Pick the default mode for the collection when known;
+                # otherwise the first key is a deterministic-enough fallback.
+                col_id = raw.get("variableCollectionId")
+                default_mode = default_mode_by_collection.get(col_id) if isinstance(col_id, str) else None
+                if default_mode and default_mode in values_by_mode:
+                    value = values_by_mode[default_mode]
+                else:
+                    value = next(iter(values_by_mode.values()))
+            elif "value" in raw:
+                value = raw["value"]
+            # Codex P1: VARIABLE_ALIAS dicts must not be treated as RGBA.
+            # They reference another variable by id; skip with a warning
+            # rather than silently coerce all channels to 0 (= #000000).
+            is_alias = isinstance(value, dict) and value.get("type") == "VARIABLE_ALIAS"
+            if vtype == "COLOR" and isinstance(value, dict) and not is_alias:
                 hex_value = _rgba_to_hex(
                     float(value.get("r", 0)), float(value.get("g", 0)),
                     float(value.get("b", 0)), float(value.get("a", 1)),
                 )
                 out.colors.append(ColorToken(name=_slug(vname), value_hex=hex_value, description=description))
+            elif vtype == "COLOR" and is_alias:
+                out.raw_warnings.append(
+                    f"color {vname!r} is a VARIABLE_ALIAS — alias resolution not supported in v1"
+                )
             elif vtype == "FLOAT" and isinstance(value, (int, float)):
                 if "radius" in vname.lower() or "round" in vname.lower():
                     out.radii.append(RadiusToken(name=_slug(vname), value_px=float(value), description=description))
