@@ -2,7 +2,7 @@ import {
   SpineState, Mission, MissionStatus, Chamber, Note, Task, TaskState, TaskSource,
   LogEvent, Principle, Artifact, normalizeChamberKey,
   TruthDistillation, ProjectContract, ArtifactStatus, ArtifactFailureMode,
-  SurfaceSeed, TerminalSeed,
+  SurfaceSeed, TerminalSeed, HandoffRecord, HandoffStatus,
   normalizeMissionStatus,
 } from "./types";
 
@@ -188,6 +188,50 @@ function normalizeProjectContract(v: unknown): ProjectContract | null {
   };
 }
 
+const VALID_CHAMBER: ReadonlySet<Chamber> = new Set([
+  "insight", "surface", "terminal", "archive", "core",
+]);
+const VALID_HANDOFF_STATUS: ReadonlySet<HandoffStatus> = new Set([
+  "pending", "consumed", "rejected", "deferred",
+]);
+const VALID_ARTIFACT_TYPES = new Set([
+  "project_contract", "truth_distillation", "build_specification",
+  "delivery_ledger", "note",
+] as const);
+
+function normalizeHandoff(v: unknown): HandoffRecord | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  if (typeof r.id !== "string") return null;
+  const fromChamber = typeof r.fromChamber === "string" && VALID_CHAMBER.has(r.fromChamber as Chamber)
+    ? r.fromChamber as Chamber
+    : null;
+  const toChamber = typeof r.toChamber === "string" && VALID_CHAMBER.has(r.toChamber as Chamber)
+    ? r.toChamber as Chamber
+    : null;
+  if (!fromChamber || !toChamber) return null;
+  const artifactType = typeof r.artifactType === "string" && VALID_ARTIFACT_TYPES.has(r.artifactType as never)
+    ? r.artifactType as HandoffRecord["artifactType"]
+    : "note";
+  const status = typeof r.status === "string" && VALID_HANDOFF_STATUS.has(r.status as HandoffStatus)
+    ? r.status as HandoffStatus
+    : "pending";
+  return {
+    id: r.id,
+    fromChamber,
+    toChamber,
+    artifactType,
+    artifactRef: typeof r.artifactRef === "string" ? r.artifactRef : undefined,
+    summary: typeof r.summary === "string" ? r.summary : "",
+    risks: normalizeStringList(r.risks),
+    nextAction: typeof r.nextAction === "string" ? r.nextAction : "",
+    createdAt: typeof r.createdAt === "number" ? r.createdAt : Date.now(),
+    status,
+    resolvedAt: typeof r.resolvedAt === "number" ? r.resolvedAt : undefined,
+    resolution: typeof r.resolution === "string" ? r.resolution : undefined,
+  };
+}
+
 function normalizeTaskState(raw: unknown, done: boolean): TaskState {
   if (typeof raw === "string" && VALID_TASK_STATES.has(raw as TaskState)) {
     return raw as TaskState;
@@ -283,6 +327,12 @@ export function normalizeMission(m: unknown): Mission | null {
       ? (r.truthDistillations.map(normalizeTruthDistillation).filter(Boolean) as TruthDistillation[])
       : [],
     projectContract: normalizeProjectContract(r.projectContract),
+    // Wave D — preserve handoff queue across rehydration. Same contract
+    // pattern as truthDistillations: silent drop without explicit
+    // normalization on the read path.
+    handoffs: Array.isArray(r.handoffs)
+      ? (r.handoffs.map(normalizeHandoff).filter(Boolean) as HandoffRecord[])
+      : [],
   };
 }
 

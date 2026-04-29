@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, ReactNode } fro
 import {
   SpineState, Mission, Principle, Chamber, Artifact, TaskState, TaskSource,
   TruthDistillation, ArtifactStatus, ProjectContract,
+  HandoffRecord, HandoffStatus,
 } from "./types";
 import {
   loadState, saveState, emptyState,
@@ -92,6 +93,16 @@ interface SpineCtx {
     options?: { staleReason?: string },
   ) => void;
   setMissionProjectContract: (missionId: string, contract: ProjectContract) => void;
+  // Wave D — Handoff Queue. Enqueue an actionable transfer from one
+  // chamber to another. The receiving chamber renders pending entries
+  // as suggestions; resolveHandoff stamps the audit trail.
+  enqueueHandoff: (missionId: string, handoff: Omit<HandoffRecord, "id" | "createdAt" | "status">) => string;
+  resolveHandoff: (
+    missionId: string,
+    handoffId: string,
+    status: HandoffStatus,
+    options?: { resolution?: string },
+  ) => void;
   resetAll: () => void;
 }
 
@@ -292,6 +303,39 @@ export function SpineProvider({ children }: { children: ReactNode }) {
         missions: s.missions.map((m) =>
           m.id === missionId ? { ...m, projectContract: contract } : m,
         ),
+        updatedAt: Date.now(),
+      })),
+      enqueueHandoff: (missionId, partial) => {
+        const newId = uid();
+        dispatch(s => ({
+          ...s,
+          missions: s.missions.map((m) => {
+            if (m.id !== missionId) return m;
+            const handoff: HandoffRecord = {
+              id: newId,
+              createdAt: Date.now(),
+              status: "pending",
+              ...partial,
+            };
+            return { ...m, handoffs: [...(m.handoffs ?? []), handoff] };
+          }),
+          updatedAt: Date.now(),
+        }));
+        return newId;
+      },
+      resolveHandoff: (missionId, handoffId, status, options) => dispatch(s => ({
+        ...s,
+        missions: s.missions.map((m) => {
+          if (m.id !== missionId) return m;
+          return {
+            ...m,
+            handoffs: (m.handoffs ?? []).map((h) =>
+              h.id === handoffId
+                ? { ...h, status, resolvedAt: Date.now(), resolution: options?.resolution }
+                : h,
+            ),
+          };
+        }),
         updatedAt: Date.now(),
       })),
       resetAll: () => setState(emptyState()),
