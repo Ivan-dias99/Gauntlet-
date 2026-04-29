@@ -21,7 +21,9 @@ Design rules (from V3.1 doctrine):
 
 from __future__ import annotations
 
+import hashlib
 import logging
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Optional
 
@@ -36,6 +38,11 @@ DEFAULT_VERBATIM_TAIL: int = 8
 DEFAULT_COMPRESS_THRESHOLD: int = 20
 """Total notes count that triggers compression. Below = pass-through."""
 
+CACHE_MAX_ENTRIES: int = 256
+"""Hard cap on cached summaries across all missions. LRU eviction once
+the cap is hit so a long-running process doesn't grow the cache
+unboundedly (one new entry per turn as head_count climbs)."""
+
 
 # ── Cache ───────────────────────────────────────────────────────────────────
 
@@ -44,14 +51,27 @@ class _CacheKey:
     mission_id: str
     head_count: int  # how many notes were compressed
     tail_count: int  # how many kept verbatim
+    head_fingerprint: str  # sha256 of the head body — invalidates on edit
 
 
-# Module-level cache. Keyed by mission + counts so concurrent agent
-# loop iterations within the same conversational turn share the work.
-# In production with multiple Railway replicas this is per-process
-# only — that's fine because spine snapshot is the source of truth and
-# cache miss just re-summarises (a cost, not a bug).
-_compression_cache: dict[_CacheKey, str] = {}
+# Module-level cache. Keyed by mission + counts + content fingerprint so
+# concurrent agent loop iterations within the same turn share the work,
+# but an edit to an earlier turn (same counts, different text) misses
+# and re-summarises instead of returning a stale summary. OrderedDict +
+# LRU eviction caps memory growth on long-running processes. In
+# multi-replica deployments this is per-process only — fine because
+# spine snapshot is the source of truth and a cache miss is just a cost.
+_compression_cache: "OrderedDict[_CacheKey, str]" = OrderedDict()
+
+
+def _fingerprint_head(head: list) -> str:
+    """Stable hash of the head note bodies — drives cache invalidation
+    when content changes without count changing (edits, replacements)."""
+    h = hashlib.sha256()
+    for note in head:
+        h.update(_format_note(note).encode("utf-8"))
+        h.update(b"\x00")
+    return h.hexdigest()
 
 
 def _format_note(note) -> str:
@@ -117,9 +137,12 @@ async def compress_notes(
         mission_id=mission_id,
         head_count=len(head),
         tail_count=len(tail),
+        head_fingerprint=_fingerprint_head(head),
     )
     cached = _compression_cache.get(cache_key)
     if cached is not None:
+        # Mark as recently used for LRU.
+        _compression_cache.move_to_end(cache_key)
         return cached, tail
 
     summary = await _summarise_with_provider(head)
@@ -128,6 +151,9 @@ async def compress_notes(
         return None, tail
 
     _compression_cache[cache_key] = summary
+    _compression_cache.move_to_end(cache_key)
+    while len(_compression_cache) > CACHE_MAX_ENTRIES:
+        _compression_cache.popitem(last=False)
     return summary, tail
 
 
@@ -178,7 +204,7 @@ def clear_cache(mission_id: Optional[str] = None) -> int:
     global _compression_cache
     if mission_id is None:
         n = len(_compression_cache)
-        _compression_cache = {}
+        _compression_cache = OrderedDict()
         return n
     keys = [k for k in _compression_cache if k.mission_id == mission_id]
     for k in keys:
