@@ -93,7 +93,11 @@ _LOW_TRUST_HOSTS = {
 # is stripped by _strip_trailing_unbalanced_parens after the match.
 _URL_RE = re.compile(
     r"https?://"
-    r"(?:\[[0-9a-fA-F:.%]+\]|[^/\s\"\'<>\]]+)"
+    # IPv6 host range covers hex + IPv4-mapped dot + RFC 6874 zone IDs
+    # (`%25` percent-encoding plus alphanumeric interface names like
+    # `en0`/`eth0`), so link-local URLs such as
+    # `https://[fe80::1%25en0]/docs` aren't dropped during extraction.
+    r"(?:\[[0-9a-zA-Z:.%]+\]|[^/\s\"\'<>\]]+)"
     r"(?:[:/?#][^\s\"\'<>\]]*)?",
     flags=re.IGNORECASE,
 )
