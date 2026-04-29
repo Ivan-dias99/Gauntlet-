@@ -176,7 +176,18 @@ export default function Terminal() {
         // P-9 — append the typed EvidenceRecord to the run trail.
         // Reset is owned by the submit handler so a new run starts
         // with an empty list (same lifecycle as gates/diff).
-        setLiveEvidence((prev) => [...prev, ev.record]);
+        // Codex thread #249: filter to the active run's
+        // mission/task — buffered SSE frames from a previous
+        // request can still be delivered after submit() clears
+        // state, leaking stale proof rows into the new run.
+        {
+          const rec = ev.record;
+          const activeTask = activeTaskIdRef.current;
+          const activeMissionId = activeMission?.id ?? null;
+          if (activeMissionId && rec.missionId !== activeMissionId) break;
+          if (activeTask && rec.taskId !== activeTask) break;
+          setLiveEvidence((prev) => [...prev, rec]);
+        }
         break;
       case "done":
         setDone({
