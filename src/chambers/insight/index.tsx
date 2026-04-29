@@ -15,6 +15,7 @@ import InsightWorkbench from "./InsightWorkbench";
 import TruthDistillationPanel from "./TruthDistillationPanel";
 import ValidationPanel from "./ValidationPanel";
 import { classifyIntent } from "../../lib/intentSwitchGuard";
+import CitationsPanel from "./CitationsPanel";
 import {
   EMPTY_LIVE,
   extractAnswer,
@@ -43,6 +44,9 @@ export default function Insight() {
 
   const [input, setInput] = useState("");
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
+  // P-11 — accumulate citations emitted by the agent loop after each
+  // research tool result. Reset alongside `live` on every submit.
+  const [liveCitations, setLiveCitations] = useState<import("../../hooks/useSignal").CitationPayload[]>([]);
   const [lastConfidence, setLastConfidence] = useState<string | null>(null);
   const [lastVerdict, setLastVerdict] = useState<VerdictState | null>(null);
   const [verdictTrail, setVerdictTrail] = useState<VerdictState[]>([]);
@@ -127,6 +131,7 @@ export default function Insight() {
     if (principles.length > 0) logDoctrineApplied(principles.length);
     setInput("");
     setLive({ ...EMPTY_LIVE });
+    setLiveCitations([]);
     setLastConfidence(null);
     setLastVerdict(null);
     capturedJudge.current = null;
@@ -174,6 +179,9 @@ export default function Insight() {
         }
         if (ev.type === "iteration") capturedAgent.current.iter = ev.n;
         if (ev.type === "tool_use") capturedAgent.current.toolCount++;
+        if (ev.type === "citations") {
+          setLiveCitations((prev) => [...prev, ...ev.citations]);
+        }
 
         setLive((prev) => reduceEvent(prev, ev));
 
@@ -279,6 +287,7 @@ export default function Insight() {
           )}
         </div>
       )}
+      <CitationsPanel citations={liveCitations} />
       {intentVerdict.requiresPrompt && !intentConfirmed && input.trim().length > 0 && (
         <div
           data-intent-guard-banner={intentVerdict.classification}
