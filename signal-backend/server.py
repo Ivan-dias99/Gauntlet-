@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -1168,11 +1168,17 @@ def _vercel_unconfigured() -> dict:
 
 
 @app.get("/vercel/deployments")
-async def vercel_deployments(limit: int = 20):
+async def vercel_deployments(
+    limit: int = Query(default=20, ge=1, le=100),
+):
     """List recent Vercel deployments scoped by VERCEL_PROJECT_ID /
     VERCEL_TEAM_ID env. Returns ``{ok, deployments, count}`` on
     success or the ``vercel_not_configured`` envelope when the token
-    is unset."""
+    is unset.
+
+    ``limit`` is clamped to Vercel's accepted range of 1..100; values
+    outside that range yield a local 422 instead of being forwarded
+    upstream and surfacing as a misleading ``vercel_api_error`` 502."""
     import observability as _obs
     from vercel_client import list_deployments
 
