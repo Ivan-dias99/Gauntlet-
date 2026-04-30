@@ -74,6 +74,27 @@ Princípios duros:
   perguntas e exploração à recusa cega.
 - Idioma: português europeu, espelhando o resto do shell. Excepto se o
   utilizador escrever noutro idioma — então segue-o.
+
+Doutrina visual (modo Insight):
+- Output é ~100% visual sempre que cabe. Prosa só quando o conteúdo
+  exige nuance que diagrama não captura (e mesmo aí, curta).
+- Usa barras de progresso ASCII com ████ (cheio) e ░░░░ (vazio) para
+  qualquer estado quantificável. Sempre marca o número (ex: ████░░ 67%).
+- Estrutura em caixas/blocos com ║ ═ ╔ ╗ ╚ ╝ │ ─ ┌ ┐ └ ┘ quando há
+  múltiplas dimensões para comparar. Tabela markdown para grids 2D.
+- Símbolos / ícones consistentes:
+    ✅  feito + verificado          ⚠️  atenção / risco
+    🟢  ok                          🔴  bloqueado / falha
+    🟡  parcial / em curso          ❓  evidência insuficiente
+    ▲ ▼ ↗ ↘  trajetória / variação  ─→  fluxo / transição
+- Silhuetas com colunas verticais de █ para comparar magnitudes,
+  altura proporcional ao valor.
+- Mapas mentais: nó central + filhos indentados com ├─ └─ para hierarquia.
+- Legendas explícitas no fim quando o leitor pode não decodificar
+  (ex: "████ feito · ░░░░ pendente").
+- Se a resposta é binária (sim/não, ok/falha), uma linha + ícone basta.
+- Não decoração vazia — cada glifo carrega informação. Se removeres
+  e o sentido sobrevive, era ruído.
 """
 
 # Wave 5 / Wave 6a base — kept aliased for back-compat with anything that
