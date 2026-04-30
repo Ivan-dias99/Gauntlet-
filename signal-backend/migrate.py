@@ -103,7 +103,14 @@ async def _migrate_runs(pool: Any, body: dict) -> None:
     # leaving the Postgres mirror partially populated. Build the valid
     # set from the spine snapshot once and coalesce orphans to NULL —
     # the schema allows NULL on runs.mission_id (ON DELETE SET NULL).
-    spine = _load_json(SPINE_FILE) or {}
+    # Codex re-review (#250 P2 round 3): main() coerces non-dict payloads
+    # to {} before dispatch, but this reload happens inside _migrate_runs
+    # and was unguarded. A spine.json shaped as [] (or any non-dict) would
+    # raise AttributeError on spine.get(...), aborting the runs backfill
+    # mid-flight after _migrate_spine had already executed. Apply the
+    # same coercion here so the orphan-FK guard degrades gracefully.
+    spine_raw = _load_json(SPINE_FILE)
+    spine = spine_raw if isinstance(spine_raw, dict) else {}
     valid_mission_ids = {
         m.get("id") for m in (spine.get("missions") or []) if m.get("id")
     }
