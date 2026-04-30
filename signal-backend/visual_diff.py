@@ -1,5 +1,5 @@
 """
-Signal — Visual Diff (Wave K + Wave P-28).
+Signal — Visual Diff (Wave K + Wave P-28 + Wave P-30).
 
 Surface Final compares "what was designed" with "what was actually
 delivered". This module provides the primitives:
@@ -9,16 +9,17 @@ delivered". This module provides the primitives:
 3. Region-of-interest tagging so the operator can mark "here's where
    the contract said X but the implementation shows Y".
 
-Wave K v1 was **schema + helpers**. Wave P-28 adds the actual pixel
-diff: ``compute_diff(before, after)`` returns a ``DiffResult`` with
-the changed-pixel ratio + a single bounding-box region covering all
-deltas. Pillow is the only heavy dep, imported lazily so that a
-Pillow-less deploy can still boot the rest of the server (it just
-fails the diff endpoint with a typed error).
+Wave K v1 was **schema + helpers**. Wave P-28 added the per-pixel
+diff with a single bbox covering all deltas. Wave P-30 splits that
+single bbox into **connected-component regions** so the panel can
+highlight every distinct cluster of changed pixels independently —
+useful when the change is several small edits scattered across the
+page rather than one localised block.
 
-Region clustering is intentionally crude — one bbox over min/max
-deltas. The follow-up wave can split into connected components
-when the operator needs that resolution.
+Pillow is the only heavy dep, imported lazily so that a Pillow-less
+deploy can still boot the rest of the server (it just fails the diff
+endpoint with a typed error). Clustering is pure-Python (iterative
+flood-fill, 4-connectivity) — no scipy/numpy.
 """
 
 from __future__ import annotations
@@ -157,6 +158,23 @@ def empty_diff(baseline: ScreenshotRef, candidate: ScreenshotRef) -> VisualDiff:
 
 CHANNEL_DELTA = 8  # /255 — minimum per-channel difference to count as changed
 
+# Wave P-30 — clustering knobs.
+#
+# MAX_REGIONS caps the number of bboxes returned to the client so a
+# scattered diff (every other pixel different) cannot blow up the
+# payload to thousands of entries. We keep the N largest by changed-
+# pixel count; everything else gets folded into a synthetic
+# "remainder" region so the operator still sees a roll-up of "and the
+# rest". The cap is generous — 10 distinct hotspots is well above
+# what a UI panel can render readably.
+#
+# MIN_REGION_PIXELS suppresses single-pixel speckle (anti-aliasing
+# residue, JPEG quantisation). Anything smaller is dropped from the
+# region list but still counts in the global ``changed_pixels`` /
+# ``ratio`` so the rolled-up severity isn't dishonest.
+MAX_REGIONS = 10
+MIN_REGION_PIXELS = 4
+
 
 @dataclass
 class DiffResult:
@@ -242,6 +260,171 @@ async def compute_diff(
     )
 
 
+def _cluster_regions(
+    mask: bytearray,
+    width: int,
+    height: int,
+) -> list[DiffRegion]:
+    """Wave P-30 — flood-fill over the changed-pixel mask, returning a
+    list of ``DiffRegion`` (one per connected component) capped at
+    ``MAX_REGIONS``.
+
+    The mask is a flat bytearray of length ``width * height``: 1 means
+    "this pixel changed", 0 means "untouched". We walk it once, and for
+    each unvisited "1" pixel run an iterative 4-connectivity flood-fill
+    via an explicit stack — recursive flood-fill blows the Python stack
+    on large diffs. Each visited pixel is rewritten to 2 (visited) so
+    the outer scan never re-enters the same component. The whole pass
+    is O(W·H) — every pixel is touched at most twice (outer scan + one
+    flood-fill membership check).
+
+    Returned regions:
+      - ``mismatch_ratio`` — fraction of the bbox that is changed. We
+        use the *bbox* denominator (not the global frame) because
+        operators want "how dense is this hotspot?", not "how much of
+        the page is it?".
+      - ``severity`` — derived from ``mismatch_ratio`` via
+        ``severity_from_ratio`` so dense hotspots show up as
+        critical/moderate even when the global ratio is small.
+
+    If clustering produces more than ``MAX_REGIONS`` regions we keep
+    the N with the most changed pixels and roll the remainder into
+    one synthetic bbox covering all dropped components, tagged with
+    ``note="aggregated_remainder"`` so the UI can label it differently.
+
+    Suppression rule: components smaller than ``MIN_REGION_PIXELS`` are
+    dropped from the region list (single-pixel anti-alias speckle would
+    otherwise dominate when the user actually changed a small icon).
+    Their changed-pixel count still flows into the global ``ratio`` —
+    that count is the caller's, not ours, this only filters the bbox
+    list.
+    """
+    components: list[tuple[int, int, int, int, int]] = []
+    # tuple shape: (count, min_x, min_y, max_x, max_y)
+    # Iterative scan — outer y/x walk picks seed pixels; flood-fill
+    # marks every visited pixel as 2 so the outer scan skips them.
+    for y in range(height):
+        row_off = y * width
+        for x in range(width):
+            if mask[row_off + x] != 1:
+                continue
+            # Seed found — flood-fill its component, accumulating the
+            # bbox + pixel count as we go.
+            stack: list[tuple[int, int]] = [(x, y)]
+            mask[row_off + x] = 2
+            comp_count = 0
+            comp_min_x = x
+            comp_min_y = y
+            comp_max_x = x
+            comp_max_y = y
+            while stack:
+                cx, cy = stack.pop()
+                comp_count += 1
+                if cx < comp_min_x: comp_min_x = cx
+                if cy < comp_min_y: comp_min_y = cy
+                if cx > comp_max_x: comp_max_x = cx
+                if cy > comp_max_y: comp_max_y = cy
+                # 4-connectivity (N/S/E/W). Diagonal connectivity would
+                # merge near-misses across an antialiased edge — that
+                # is precisely what we DON'T want; the goal is to keep
+                # distinct hotspots distinct.
+                # West
+                if cx > 0:
+                    ni = cy * width + (cx - 1)
+                    if mask[ni] == 1:
+                        mask[ni] = 2
+                        stack.append((cx - 1, cy))
+                # East
+                if cx + 1 < width:
+                    ni = cy * width + (cx + 1)
+                    if mask[ni] == 1:
+                        mask[ni] = 2
+                        stack.append((cx + 1, cy))
+                # North
+                if cy > 0:
+                    ni = (cy - 1) * width + cx
+                    if mask[ni] == 1:
+                        mask[ni] = 2
+                        stack.append((cx, cy - 1))
+                # South
+                if cy + 1 < height:
+                    ni = (cy + 1) * width + cx
+                    if mask[ni] == 1:
+                        mask[ni] = 2
+                        stack.append((cx, cy + 1))
+            components.append((
+                comp_count, comp_min_x, comp_min_y, comp_max_x, comp_max_y,
+            ))
+
+    if not components:
+        return []
+
+    # Drop tiny speckle components from the region list (they still
+    # count toward the global ratio). Sort by changed-pixel count
+    # descending so MAX_REGIONS keeps the meaningful clusters.
+    sized = [c for c in components if c[0] >= MIN_REGION_PIXELS]
+    if not sized:
+        # Everything is speckle — surface a single bbox covering the
+        # union so the operator still sees *something* on the panel.
+        union_min_x = min(c[1] for c in components)
+        union_min_y = min(c[2] for c in components)
+        union_max_x = max(c[3] for c in components)
+        union_max_y = max(c[4] for c in components)
+        union_count = sum(c[0] for c in components)
+        bbox_w = union_max_x - union_min_x + 1
+        bbox_h = union_max_y - union_min_y + 1
+        bbox_area = max(bbox_w * bbox_h, 1)
+        speckle_ratio = union_count / bbox_area
+        return [DiffRegion(
+            x=union_min_x, y=union_min_y,
+            width=bbox_w, height=bbox_h,
+            mismatch_ratio=speckle_ratio,
+            severity=severity_from_ratio(speckle_ratio),
+            note="aggregated_speckle",
+        )]
+
+    sized.sort(key=lambda c: c[0], reverse=True)
+
+    keep = sized[:MAX_REGIONS]
+    overflow = sized[MAX_REGIONS:]
+
+    out: list[DiffRegion] = []
+    for count, min_x, min_y, max_x, max_y in keep:
+        bbox_w = max_x - min_x + 1
+        bbox_h = max_y - min_y + 1
+        bbox_area = max(bbox_w * bbox_h, 1)
+        region_ratio = count / bbox_area
+        out.append(DiffRegion(
+            x=min_x, y=min_y,
+            width=bbox_w, height=bbox_h,
+            mismatch_ratio=region_ratio,
+            severity=severity_from_ratio(region_ratio),
+        ))
+
+    if overflow:
+        # Roll the dropped components into one bbox + count so the
+        # operator at least sees "and N more clusters covering this
+        # area". Tagged so the UI can render it muted vs the keepers.
+        ov_min_x = min(c[1] for c in overflow)
+        ov_min_y = min(c[2] for c in overflow)
+        ov_max_x = max(c[3] for c in overflow)
+        ov_max_y = max(c[4] for c in overflow)
+        ov_count = sum(c[0] for c in overflow)
+        bbox_w = ov_max_x - ov_min_x + 1
+        bbox_h = ov_max_y - ov_min_y + 1
+        bbox_area = max(bbox_w * bbox_h, 1)
+        ov_ratio = ov_count / bbox_area
+        out.append(DiffRegion(
+            x=ov_min_x, y=ov_min_y,
+            width=bbox_w, height=bbox_h,
+            mismatch_ratio=ov_ratio,
+            severity=severity_from_ratio(ov_ratio),
+            note=f"aggregated_remainder:{len(overflow)}",
+        ))
+
+    return out
+
+
 def _compute_diff_sync(
     before: bytes,
     after: bytes,
@@ -260,8 +443,10 @@ def _compute_diff_sync(
                    downstream rule engines.
 
     Returns:
-        DiffResult with a single bbox region (or no region when
-        ``changed_pixels == 0``).
+        DiffResult with one bbox per connected component of changed
+        pixels (Wave P-30), capped at ``MAX_REGIONS`` and sorted by
+        component size — the largest hotspots first. No region when
+        ``changed_pixels == 0``.
 
     Raises:
         DiffUnavailable: Pillow not installed.
@@ -312,18 +497,22 @@ def _compute_diff_sync(
     a_buf = img_a.tobytes()
     b_buf = img_b.tobytes()
 
-    changed = 0
-    min_x = width
-    min_y = height
-    max_x = -1
-    max_y = -1
-
     delta = CHANNEL_DELTA
+
+    # Wave P-30 — track every changed pixel as a bit in a flat bytearray
+    # mask (1 byte/pixel; bool would round to the same memory). We need
+    # the mask so the connected-component pass below can flood-fill
+    # without re-reading the RGBA buffers. Two passes total: O(W·H) for
+    # this scan, O(W·H) for flood-fill = O(W·H) overall.
+    mask = bytearray(total_pixels)
+    changed = 0
+
     # Index into the flat buffer; row-major order matches PIL's tobytes().
     # 4 bytes per pixel (RGBA). We compare each channel; any single
     # channel exceeding `delta` flips the pixel to "changed".
     for y in range(height):
         row_offset = y * width * 4
+        mask_row_offset = y * width
         for x in range(width):
             i = row_offset + x * 4
             if (
@@ -333,22 +522,10 @@ def _compute_diff_sync(
                 or abs(a_buf[i + 3] - b_buf[i + 3]) > delta
             ):
                 changed += 1
-                if x < min_x: min_x = x
-                if y < min_y: min_y = y
-                if x > max_x: max_x = x
-                if y > max_y: max_y = y
+                mask[mask_row_offset + x] = 1
 
     ratio = changed / total_pixels if total_pixels else 0.0
-    regions: list[DiffRegion] = []
-    if changed > 0 and max_x >= 0 and max_y >= 0:
-        bbox_w = max_x - min_x + 1
-        bbox_h = max_y - min_y + 1
-        regions.append(DiffRegion(
-            x=min_x, y=min_y,
-            width=bbox_w, height=bbox_h,
-            mismatch_ratio=ratio,
-            severity=severity_from_ratio(ratio),
-        ))
+    regions = _cluster_regions(mask, width, height) if changed > 0 else []
 
     sev = severity_from_ratio(ratio)
     # Threshold is informational — if ratio < threshold we still

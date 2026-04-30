@@ -27,7 +27,9 @@ import {
   signalFetch,
   isBackendUnreachable,
   compareScreenshots,
+  compareElement,
   type DiffResult,
+  type DiffRegion,
 } from "../../lib/signalApi";
 
 // P-13 — issue draft form data. Populated from the most recent
@@ -81,6 +83,13 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
   const [diffBefore, setDiffBefore] = useState<ScreenshotResult["payload"] | null>(null);
   const [diffAfter, setDiffAfter] = useState<ScreenshotResult["payload"] | null>(null);
   const [diffResult, setDiffResult] = useState<DiffResult | null>(null);
+  // P-30 — element-scoped diff state. When the operator pickElement's
+  // an element and clicks "capture before (element)", we cache the
+  // selector so the matching after-capture re-targets the same element
+  // and the diff metadata flows through compareElement(). Independent
+  // of the full-page flow above so an operator can run both side by
+  // side without one stomping the other.
+  const [diffElementSelector, setDiffElementSelector] = useState<string | null>(null);
 
   // Origin for the bridge — derived from the previewUrl so callers
   // can pass full URLs and the bridge does the right thing.
@@ -270,21 +279,71 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
   // P-28 — capture-before / capture-after / compare. Each capture
   // re-runs the screenshot RPC; the result lives in component state
   // until the operator hits "compare" which POSTs to /visual-diff.
+  //
+  // P-30 — `selector` (optional) scopes html2canvas to a specific
+  // element so before/after capture covers just that subtree. The
+  // selector is sent through to the agent's screenshot payload, which
+  // resolves it via document.querySelector and falls back to the full
+  // document when the selector misses (preview-agent/index.ts). When
+  // the operator runs an element flow we also pin
+  // `diffElementSelector` so the matching after-capture targets the
+  // same element automatically.
   async function captureScreenshotInto(
     label: "before" | "after",
+    selector: string | null = null,
   ): Promise<void> {
-    const env = (await withBusy(`capture ${label}`, async () =>
-      bridge!.screenshot({} as ScreenshotRequest["payload"]),
+    const payload: ScreenshotRequest["payload"] = selector ? { selector } : {};
+    const env = (await withBusy(
+      selector ? `capture ${label} (element)` : `capture ${label}`,
+      async () => bridge!.screenshot(payload),
     )) as ScreenshotResult | null;
     if (!env?.payload) return;
     if (label === "before") {
       setDiffBefore(env.payload);
+      // Pinning the selector here means a follow-up "capture after
+      // (element)" will pick the same target without the operator
+      // needing to re-pick. Set to null when this is a full-page run
+      // so the after-capture also stays full-page.
+      setDiffElementSelector(selector);
       setDiffResult(null);
     } else {
       setDiffAfter(env.payload);
       setDiffResult(null);
     }
-    pushLog("info", `${label} = ${env.payload.width}×${env.payload.height}`);
+    const scopeNote = selector ? ` [${selector.slice(0, 40)}${selector.length > 40 ? "…" : ""}]` : "";
+    pushLog("info", `${label} = ${env.payload.width}×${env.payload.height}${scopeNote}`);
+  }
+
+  // P-30 — element-scoped before-capture. Reuses the most recent
+  // `picked` selector from select_element so the operator can pick
+  // once, then iterate "before → edit → after" without re-picking.
+  // If no element has been picked, falls back to a fresh select RPC
+  // so the operator can chain pick → capture in one click cluster.
+  async function captureElementBefore(): Promise<void> {
+    let selector = picked?.selector ?? null;
+    if (!selector) {
+      // Run a select_element RPC inline so the operator gets one
+      // unified click flow: button → click element → capture.
+      const env = (await withBusy("select_element (for diff)", async () =>
+        (await bridge!.selectElement()) as ElementSelected,
+      )) as ElementSelected | null;
+      if (!env?.payload) return;
+      selector = env.payload.selector;
+      setPicked({
+        selector: env.payload.selector,
+        text: env.payload.text,
+        componentHint: env.payload.componentHint,
+      });
+    }
+    await captureScreenshotInto("before", selector);
+  }
+
+  async function captureElementAfter(): Promise<void> {
+    if (!diffElementSelector) {
+      pushLog("error", "no element-scoped 'before' yet — capture before (element) first");
+      return;
+    }
+    await captureScreenshotInto("after", diffElementSelector);
   }
 
   async function runVisualDiff(): Promise<void> {
@@ -297,9 +356,19 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
       return;
     }
     setBusy(true);
-    pushLog("info", "POST /visual-diff");
+    pushLog(
+      "info",
+      diffElementSelector
+        ? `POST /visual-diff (element ${diffElementSelector.slice(0, 30)}${diffElementSelector.length > 30 ? "…" : ""})`
+        : "POST /visual-diff",
+    );
     try {
-      const result = await compareScreenshots(diffBefore.dataUrl, diffAfter.dataUrl);
+      // P-30 — element-scoped diffs go through compareElement so the
+      // backend RunRecord.context carries the selector. Full-page
+      // diffs keep the legacy compareScreenshots shape (selector=null).
+      const result = diffElementSelector
+        ? await compareElement(diffElementSelector, diffBefore.dataUrl, diffAfter.dataUrl)
+        : await compareScreenshots(diffBefore.dataUrl, diffAfter.dataUrl);
       setDiffResult(result);
       pushLog(
         "ok",
@@ -313,6 +382,28 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  // P-30 — severity → overlay colours. Aggregated remainder/speckle
+  // regions are rendered in a muted neutral so the operator can tell
+  // them apart from real hotspots. Critical/moderate stay in the red
+  // family for "looks wrong"; minor/info drop to amber/grey so a
+  // dense hotspot still wins visually.
+  function regionColour(region: DiffRegion): { outline: string; background: string } {
+    if (region.note && (region.note.startsWith("aggregated_") || region.note === "aggregated_speckle")) {
+      return { outline: "#888", background: "rgba(136,136,136,0.10)" };
+    }
+    switch (region.severity) {
+      case "critical":
+        return { outline: "#f33", background: "rgba(255,51,51,0.18)" };
+      case "moderate":
+        return { outline: "#f60", background: "rgba(255,102,0,0.15)" };
+      case "minor":
+        return { outline: "#fb0", background: "rgba(255,187,0,0.12)" };
+      case "info":
+      default:
+        return { outline: "#999", background: "rgba(153,153,153,0.10)" };
     }
   }
 
@@ -476,10 +567,10 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4 }}>
             <button type="button" onClick={() => captureScreenshotInto("before")} disabled={busy} style={btnStyle}>
-              before {diffBefore ? "✓" : ""}
+              before {diffBefore && !diffElementSelector ? "✓" : ""}
             </button>
             <button type="button" onClick={() => captureScreenshotInto("after")} disabled={busy} style={btnStyle}>
-              after {diffAfter ? "✓" : ""}
+              after {diffAfter && !diffElementSelector ? "✓" : ""}
             </button>
             <button
               type="button"
@@ -490,6 +581,69 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
               compare
             </button>
           </div>
+          {/* P-30 — element-scoped diff. Pick → capture before → edit →
+              capture after (element) → compare. The selector flows
+              through compareElement so the RunRecord lands as
+              "diff over body > main > div" in the Archive. */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+            <button
+              type="button"
+              onClick={captureElementBefore}
+              disabled={busy}
+              style={btnStyle}
+              title="Pick an element (or reuse the last pick) and capture a 'before' screenshot scoped to it."
+            >
+              before (element) {diffBefore && diffElementSelector ? "✓" : ""}
+            </button>
+            <button
+              type="button"
+              onClick={captureElementAfter}
+              disabled={busy || !diffElementSelector}
+              style={btnStyle}
+              title="Re-capture the same element after edits."
+            >
+              compare element after change
+            </button>
+          </div>
+          {diffElementSelector && (
+            <div
+              data-element-scope-chip
+              style={{
+                fontSize: "0.7em",
+                opacity: 0.7,
+                fontFamily: "var(--mono)",
+                padding: "2px 6px",
+                border: "1px dashed currentColor",
+                borderRadius: 3,
+                alignSelf: "flex-start",
+              }}
+            >
+              scoped: {diffElementSelector.slice(0, 60)}
+              {diffElementSelector.length > 60 ? "…" : ""}
+              <button
+                type="button"
+                onClick={() => {
+                  setDiffElementSelector(null);
+                  setDiffBefore(null);
+                  setDiffAfter(null);
+                  setDiffResult(null);
+                  pushLog("info", "element scope cleared");
+                }}
+                disabled={busy}
+                style={{
+                  marginLeft: 6,
+                  fontSize: "0.9em",
+                  border: "none",
+                  background: "transparent",
+                  color: "inherit",
+                  cursor: "pointer",
+                }}
+                aria-label="clear element scope"
+              >
+                ×
+              </button>
+            </div>
+          )}
           {diffResult && diffAfter && (() => {
             // When `before` and `after` differ in dimensions the backend
             // resizes both to the smaller pair and reports coordinates
@@ -502,8 +656,28 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
             const isNormalised =
               typeof diffResult.note === "string"
               && diffResult.note.startsWith("size_mismatch_normalised_to_");
+            // P-30 — render every connected-component region the
+            // backend returned, coloured by per-region severity. The
+            // header chip shows the count so the operator knows how
+            // many discrete hotspots fired before scrolling the list.
+            const regionCount = diffResult.regions.length;
             return (
               <div data-visual-diff-preview style={{ position: "relative", maxWidth: "100%" }}>
+                <div
+                  data-diff-region-count
+                  style={{
+                    fontSize: "0.7em",
+                    fontFamily: "var(--mono)",
+                    marginBottom: 4,
+                    opacity: 0.85,
+                  }}
+                >
+                  {regionCount === 0
+                    ? "no regions changed"
+                    : regionCount === 1
+                    ? "1 region changed"
+                    : `${regionCount} regions changed`}
+                </div>
                 <img
                   src={diffAfter.dataUrl}
                   alt="after"
@@ -515,18 +689,28 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
                   // height so the bbox aligns regardless of CSS scaling.
                   const sx = diffResult.width || 1;
                   const sy = diffResult.height || 1;
+                  const colour = regionColour(r);
+                  // Aggregated overlays render dashed so the operator
+                  // can tell them apart from a real hotspot at a
+                  // glance. Tight regions get the same dashed pattern
+                  // when the region note flags speckle/remainder.
+                  const isAggregated =
+                    typeof r.note === "string"
+                    && r.note.startsWith("aggregated_");
                   return (
                     <div
                       key={i}
                       data-diff-region
+                      data-diff-region-severity={r.severity}
+                      title={`region ${i + 1} · ${r.severity} · ${(r.mismatch_ratio * 100).toFixed(1)}% dense${r.note ? ` · ${r.note}` : ""}`}
                       style={{
                         position: "absolute",
                         left: `${(r.x / sx) * 100}%`,
                         top: `${(r.y / sy) * 100}%`,
                         width: `${(r.width / sx) * 100}%`,
                         height: `${(r.height / sy) * 100}%`,
-                        outline: "2px solid #f33",
-                        background: "rgba(255,51,51,0.12)",
+                        outline: `2px ${isAggregated ? "dashed" : "solid"} ${colour.outline}`,
+                        background: colour.background,
                         pointerEvents: "none",
                       }}
                     />
