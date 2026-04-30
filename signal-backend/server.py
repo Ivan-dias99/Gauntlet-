@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -916,6 +916,114 @@ async def surface_build_spec(req: BuildSpecRequest):
         output_dir=req.output_dir or "src/components",
     )
     return spec.to_dict()
+
+
+# ── Visual diff endpoint (Wave P-28) ───────────────────────────────────────
+#
+# Surface Final's "what changed?" surface. Operator uploads two PNGs
+# (baseline + candidate); the backend runs the per-pixel diff and
+# returns a DiffResult JSON. Pillow is the decoder; if it isn't
+# installed we surface a typed 503 instead of crashing — every other
+# endpoint stays up.
+
+
+# Hard cap on per-image upload size — 16 MiB is well above realistic
+# screenshot sizes (a 4K PNG is ~5–10 MiB) but small enough that an
+# adversarial client can't OOM the worker. Each image is checked
+# independently; the diff loop is per-pixel pure-Python so for very
+# large pairs the request will get slow well before it gets dangerous.
+_VISUAL_DIFF_MAX_BYTES = 16 * 1024 * 1024
+
+
+async def _read_capped(upload: UploadFile, cap: int) -> bytes:
+    """Read an UploadFile into memory with a hard byte cap.
+
+    Streams in 64 KiB chunks and aborts with HTTP 413 the moment the
+    accumulated buffer exceeds ``cap``. The previous shape did
+    ``await upload.read()`` first and *then* checked ``len(...)``, so
+    a malicious 1 GiB upload was already resident in RAM by the time
+    we rejected it. Reading-as-we-cap keeps the worker's memory
+    bounded by ``cap`` regardless of what the client sends.
+    """
+    out = bytearray()
+    while True:
+        chunk = await upload.read(64 * 1024)
+        if not chunk:
+            break
+        out.extend(chunk)
+        if len(out) > cap:
+            raise HTTPException(status_code=413, detail=_error_envelope(
+                "visual_diff_payload_too_large",
+                ValueError(f"per-image cap is {cap} bytes"),
+            ))
+    return bytes(out)
+
+
+@app.post("/visual-diff")
+async def visual_diff_endpoint(
+    before: UploadFile = File(..., description="Baseline image (PNG/JPEG)."),
+    after: UploadFile = File(..., description="Candidate image (PNG/JPEG)."),
+    threshold: float = 0.1,
+):
+    """Wave P-28 — pixel diff between two screenshots.
+
+    Multipart form with `before` + `after` image fields. Returns a
+    ``DiffResult`` (see signal-backend/visual_diff.py) with a single
+    bounding-box region covering all changed pixels, the changed-pixel
+    ratio, and a rolled-up severity. Pillow is loaded lazily so a
+    Pillow-less deploy boots fine — only this endpoint fails with a
+    typed 503.
+    """
+    from visual_diff import DiffUnavailable, compute_diff
+
+    # Cap-as-you-read so the worker can't be OOM'd by a giant upload —
+    # the 16 MiB ceiling is enforced *during* the stream, not after.
+    before_bytes = await _read_capped(before, _VISUAL_DIFF_MAX_BYTES)
+    after_bytes = await _read_capped(after, _VISUAL_DIFF_MAX_BYTES)
+    if not before_bytes or not after_bytes:
+        raise HTTPException(status_code=422, detail=_error_envelope(
+            "visual_diff_empty_image",
+            ValueError("both 'before' and 'after' must be non-empty"),
+        ))
+
+    try:
+        result = await compute_diff(before_bytes, after_bytes, threshold=threshold)
+    except DiffUnavailable as exc:
+        # Pillow not installed — typed 503 mirrors /health/ready's
+        # "degraded" shape so the chamber can show "diff engine
+        # unavailable" instead of a generic 500.
+        raise HTTPException(status_code=503, detail=_error_envelope(
+            "diff_unavailable", exc,
+        ))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=_error_envelope(
+            "visual_diff_invalid_image", exc,
+        ))
+
+    # Telemetry — small payload, mirrors /telemetry/event's pattern so
+    # operators can grep `route=visual_diff` in /runs.
+    try:
+        await run_store.record(RunRecord(
+            route="visual_diff",
+            mission_id=None,
+            question=f"diff:{len(before_bytes)}+{len(after_bytes)}",
+            context=None,
+            answer=_json.dumps({
+                "ratio": result.ratio,
+                "changed": result.changed_pixels,
+                "total": result.total_pixels,
+                "severity": result.severity,
+            }),
+            processing_time_ms=0,
+            input_tokens=0,
+            output_tokens=0,
+            terminated_early=False,
+            termination_reason=None,
+        ))
+    except Exception as log_err:  # noqa: BLE001
+        logger.warning("visual_diff run_store record failed: %s", log_err)
+
+    return result.to_dict()
 
 
 # ── Memory Endpoints ────────────────────────────────────────────────────────

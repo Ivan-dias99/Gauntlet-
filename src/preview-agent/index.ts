@@ -217,6 +217,90 @@ function pickElement(): Promise<PickResult> {
   });
 }
 
+// ── Screenshot capture (Wave P-28) ─────────────────────────────────────────
+//
+// html2canvas is loaded lazily on first call. If it's not installed
+// (the project deliberately keeps it out of the dependency manifest
+// to keep bundle size small) the dynamic import rejects and we throw
+// a typed error with `reason: html2canvas_unavailable`. The chamber
+// shows that as "screenshot engine unavailable" rather than a generic
+// timeout / stack trace.
+//
+// We don't cache the module at module-init time — that would force
+// bundlers to consider it a hard dep. Caching the resolved module
+// after the first successful call IS fine.
+
+interface ScreenshotResultPayload {
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
+interface Html2CanvasModule {
+  default: (
+    element: HTMLElement,
+    options?: { backgroundColor?: string | null; scale?: number; logging?: boolean },
+  ) => Promise<HTMLCanvasElement>;
+}
+
+let _html2canvasCache: Html2CanvasModule | null = null;
+
+// Codex re-review (#270 round 2): the round-1 fix used
+// `import(/* @vite-ignore */ spec)` with a runtime variable so Vite
+// would not pre-resolve the spec. That worked at build time but broke
+// at runtime: bundlers leave the literal `import("html2canvas")` in the
+// output and browsers cannot resolve a bare specifier without an import
+// map. Result: every deploy fell into `html2canvas_unavailable` even
+// when operators expected the capture to work.
+//
+// Fix: resolve at runtime through an ESM CDN URL — browsers resolve URL
+// specifiers natively, the spec stays out of `package.json`, and the
+// bundle stays small. Operators can override the URL via the
+// `VITE_HTML2CANVAS_URL` env var to swap CDN provider, pin a version,
+// or self-host.
+const _html2canvasUrl: string =
+  ((import.meta as unknown as { env?: Record<string, string | undefined> })
+    .env?.VITE_HTML2CANVAS_URL) ??
+  "https://esm.sh/html2canvas@1.4.1";
+
+async function loadHtml2Canvas(): Promise<Html2CanvasModule> {
+  if (_html2canvasCache) return _html2canvasCache;
+  try {
+    // URL-form dynamic import: the spec is a literal URL the browser's
+    // module loader can resolve directly. The `@vite-ignore` keeps Vite
+    // from rewriting it during dev/preview; in the production bundle
+    // the URL stays as-is so the browser fetches it on first use.
+    const mod = (await import(/* @vite-ignore */ _html2canvasUrl)) as unknown as Html2CanvasModule;
+    _html2canvasCache = mod;
+    return mod;
+  } catch (e) {
+    const reason = "html2canvas_unavailable";
+    const detail = (e as Error).message || String(e);
+    const err = new Error(`${reason}: ${detail}`);
+    (err as Error & { reason?: string }).reason = reason;
+    throw err;
+  }
+}
+
+async function captureScreenshot(
+  payload: Envelope["payload"],
+): Promise<ScreenshotResultPayload> {
+  const selector = (payload && typeof payload.selector === "string") ? payload.selector : null;
+  const format = (payload && typeof payload.format === "string" && payload.format === "jpeg")
+    ? "jpeg"
+    : "png";
+
+  const target: HTMLElement = selector
+    ? (document.querySelector(selector) as HTMLElement | null) ?? document.documentElement
+    : document.documentElement;
+
+  const html2canvas = (await loadHtml2Canvas()).default;
+  const canvas = await html2canvas(target, { backgroundColor: null, logging: false });
+  const mime = format === "jpeg" ? "image/jpeg" : "image/png";
+  const dataUrl = canvas.toDataURL(mime);
+  return { dataUrl, width: canvas.width, height: canvas.height };
+}
+
 // ── Message dispatch ───────────────────────────────────────────────────────
 
 async function handle(env: Envelope, source: Window, origin: string): Promise<void> {
@@ -271,14 +355,22 @@ async function handle(env: Envelope, source: Window, origin: string): Promise<vo
       return;
 
     case "screenshot":
-      // No native browser API exposes raster capture without user
-      // mediation (getDisplayMedia requires a click each time). v1
-      // surfaces this as a typed error so the chamber wrapper rejects
-      // with a clear message instead of timing out.
-      reply(source, origin, errorEnvelope(
-        env.id,
-        "screenshot not implemented in v1 — use external capture or wait for v2 with html2canvas",
-      ));
+      // Wave P-28 — try html2canvas via dynamic import. If the package
+      // isn't installed (it's intentionally NOT a hard dep — small
+      // bundle wins over feature breadth), surface a typed error so
+      // the chamber can show "screenshot engine unavailable" instead
+      // of timing out. Selector + format pulled from env.payload when
+      // present; defaults: full document, PNG.
+      try {
+        const result = await captureScreenshot(env.payload);
+        reply(source, origin, {
+          v: 1, id: env.id, kind: "screenshot_result",
+          payload: result as unknown as Record<string, unknown>,
+        });
+      } catch (e) {
+        const msg = (e as Error).message || "screenshot failed";
+        reply(source, origin, errorEnvelope(env.id, msg));
+      }
       return;
 
     default:
