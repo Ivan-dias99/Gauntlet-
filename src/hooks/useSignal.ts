@@ -24,6 +24,13 @@ export interface SignalQueryBody {
   context?: string;
   force_cautious?: boolean;
   mission_id?: string;
+  // Codex thread #249 (discussion_r3164774876, _r3164784132): the
+  // backend falls back to `agent-loop-{uuid}` when no task_id is sent
+  // (signal-backend/agent.py), and the terminal panel filters
+  // EvidenceRecord by taskId — without this field the filter rejects
+  // every event for the active run. Forward the chamber's UUID so
+  // EvidenceRecord.taskId matches activeTaskId.
+  task_id?: string;
   principles?: string[];
   // Wave-1: optional canonical chamber key.
   chamber?: "insight" | "surface" | "terminal" | "archive" | "core";
