@@ -175,3 +175,57 @@ PG_CANONICAL: bool = (
     and _env("SIGNAL_PG_CANONICAL", "RUBERRA_PG_CANONICAL", "").strip().lower()
     in ("1", "true", "yes", "on")
 )
+
+
+# ── Security: defense-in-depth (Wave P-31) ────────────────────────────────
+# Five independent opt-in layers. Default OFF so local dev / current
+# deploys keep working unchanged; flip them on per-environment.
+
+def _truthy(value: str) -> bool:
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
+# Layer 1 — API key gate. When set, every endpoint except /health,
+# /health/ready and CORS preflight requires `Authorization: Bearer <key>`.
+# Empty = no-op (dev keeps zero-friction). Compared with secrets.compare_digest.
+SIGNAL_API_KEY: str = _env("SIGNAL_API_KEY", "RUBERRA_API_KEY", "")
+
+# Layer 2 — rate limiter. In-memory token bucket per (ip, route_class).
+# Set SIGNAL_RATE_LIMIT_DISABLED=1 to bypass entirely (local dev / tests).
+RATE_LIMIT_DISABLED: bool = _truthy(
+    _env("SIGNAL_RATE_LIMIT_DISABLED", "RUBERRA_RATE_LIMIT_DISABLED", "")
+)
+# Trust X-Forwarded-For ONLY when the deploy is behind a known proxy
+# (Vercel edge, Railway router). Default off so an unproxied deploy can't
+# be tricked into rate-limiting by header (any client could spoof itself
+# into someone else's bucket and cause cross-tenant DoS).
+TRUST_PROXY: bool = _truthy(
+    _env("SIGNAL_TRUST_PROXY", "RUBERRA_TRUST_PROXY", "")
+)
+
+# Layer 3 — security headers. HSTS is OPT-IN (off by default) because
+# enabling it on a dev http:// origin will pin browsers to https for a
+# year and break local development. Only flip on for prod https deploys.
+SECURITY_HSTS: bool = _truthy(_env("SIGNAL_HSTS", "RUBERRA_HSTS", ""))
+# X-Frame-Options default DENY. Switch to SAMEORIGIN when the SurfaceFinal
+# preview iframe is hosted on the same origin as the backend. Anything
+# else (a different domain) requires CSP frame-ancestors instead.
+FRAME_OPTIONS: str = _env("SIGNAL_FRAME_OPTIONS", "RUBERRA_FRAME_OPTIONS", "DENY") or "DENY"
+# Full CSP override. Empty = use the conservative default in
+# security_headers.py. Provide a single header value (no `Content-Security-Policy:` prefix).
+SECURITY_CSP: str = _env("SIGNAL_CSP", "RUBERRA_CSP", "")
+
+# Layer 4 — global request body cap (bytes). Default 1 MiB; per-route
+# overrides live in server.py's LARGE_BODY_ROUTES (e.g. /visual-diff).
+BODY_SIZE_LIMIT_BYTES: int = int(
+    _env("SIGNAL_MAX_BODY_BYTES", "RUBERRA_MAX_BODY_BYTES", str(1 * 1024 * 1024))
+    or (1 * 1024 * 1024)
+)
+
+# Layer 5 — log redaction is always installed when SIGNAL_LOG_REDACT=1
+# (default ON). Set SIGNAL_LOG_REDACT=0 to disable for local debugging
+# of an actual token-shape false-positive. Production should never disable.
+LOG_REDACT: bool = (
+    _env("SIGNAL_LOG_REDACT", "RUBERRA_LOG_REDACT", "1").strip().lower()
+    not in ("0", "false", "no", "off")
+)

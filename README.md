@@ -192,6 +192,47 @@ GET  /spine                     workspace snapshot
 POST /spine                     replace workspace snapshot
 ```
 
+## Security (Wave P-31)
+
+Five defense-in-depth layers, each opt-in via env so local dev / current
+deploys keep working unchanged. All knobs are documented inline in
+`signal-backend/config.py`.
+
+| Layer | Module | Enable with | Default |
+|-------|--------|-------------|---------|
+| 1. API key gate (Bearer) | `signal-backend/auth.py` | `SIGNAL_API_KEY=…` (alias `RUBERRA_API_KEY`) | off (no auth) |
+| 2. Rate limiter (token bucket) | `signal-backend/rate_limit.py` | always on; disable with `SIGNAL_RATE_LIMIT_DISABLED=1` | on |
+| 3. Security headers (CSP, X-Frame, …) | `signal-backend/security_headers.py` | always on; HSTS via `SIGNAL_HSTS=1` | on (HSTS off) |
+| 4. Body-size cap | `server.py` middleware | `SIGNAL_MAX_BODY_BYTES=…` (default 1 MiB) | on |
+| 5. Log token redaction | `signal-backend/log_redaction.py` | `SIGNAL_LOG_REDACT=1` (default) | on |
+
+Frontend opt-in: when `VITE_SIGNAL_API_KEY` is set at build time,
+`signalFetch` automatically attaches `Authorization: Bearer <key>` to
+every backend call.
+
+Behaviour:
+
+- The API gate skips `/health`, `/health/ready`, and CORS preflight so
+  Railway / Vercel probes keep working without credentials. Everything
+  else (including `/diagnostics`) requires the bearer token. Misses
+  return a typed `{error:"auth_required",…}` envelope (HTTP 401).
+- Rate limit buckets per `(client_ip, route_class)` — `agent` (10/2),
+  `spine` (60/30), `read` (30/10), `external` (10/2), `default` (20/5).
+  429 responses carry `retry_after_ms` in the envelope. Set
+  `SIGNAL_TRUST_PROXY=1` only when the deploy actually sits behind a
+  trusted proxy (Vercel edge, Railway router).
+- Security headers stamp every response (including 4xx/5xx). HSTS is
+  off by default — only enable on prod https deploys; turning it on
+  against `http://localhost` will pin the browser for a year.
+- Body cap rejects oversize uploads with HTTP 413 before any work
+  happens. `/visual-diff` has a 16 MiB per-route override since
+  screenshots routinely exceed 1 MiB.
+- Log redaction masks Authorization headers, GitHub PATs, Anthropic /
+  OpenAI keys, and 32+-char hex/base64 tokens before the formatter
+  emits the line.
+
+`/diagnostics` reports which layers are active (`security` block).
+
 ## Compat window
 
 The Wave-0 → Wave-8 migration keeps every old contract alive in parallel

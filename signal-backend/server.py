@@ -28,19 +28,33 @@ from typing import Any, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from auth import APIKeyAuthMiddleware
+from log_redaction import install_redaction
+from rate_limit import RateLimitMiddleware
+from security_headers import SecurityHeadersMiddleware
 
 from config import (
     ALLOWED_ORIGIN,
     ALLOWED_ORIGIN_REGEX,
     ALLOWED_ORIGINS,
     ANTHROPIC_API_KEY,
+    BODY_SIZE_LIMIT_BYTES,
+    FRAME_OPTIONS,
+    LOG_REDACT,
     MEMORY_DIR,
     PERSISTENCE_EPHEMERAL,
+    RATE_LIMIT_DISABLED,
     RUBERRA_MOCK,
+    SECURITY_CSP,
+    SECURITY_HSTS,
     SERVER_HOST,
     SERVER_PORT,
+    SIGNAL_API_KEY,
+    TRUST_PROXY,
     VERCEL_PROJECT_ID,
     VERCEL_TEAM_ID,
     VERCEL_TOKEN,
@@ -74,7 +88,14 @@ engine: SignalEngine | None = None
 async def lifespan(app: FastAPI):
     """Initialize engine on startup, cleanup on shutdown."""
     global engine
-    
+
+    # Wave P-31, Layer 5 — log redaction. Installed first so any
+    # subsequent boot logs (engine init, missing-key warnings) are
+    # already filtered. Default ON; SIGNAL_LOG_REDACT=0 disables for
+    # local debugging of a real false-positive.
+    if LOG_REDACT:
+        install_redaction(("", "signal", "uvicorn", "uvicorn.error", "uvicorn.access"))
+
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key and not RUBERRA_MOCK:
         logger.error(
@@ -150,7 +171,116 @@ _cors_kwargs: dict = {
 }
 if ALLOWED_ORIGIN_REGEX:
     _cors_kwargs["allow_origin_regex"] = ALLOWED_ORIGIN_REGEX
+
+
+# ── Wave P-31 · Defense-in-depth security middlewares ──────────────────────
+#
+# Five opt-in layers, each gated by env so local dev / unsecured deploys
+# keep working unchanged. Middlewares are executed *outermost first* on
+# the request path; FastAPI's ``add_middleware`` wraps in REVERSE order,
+# so to get the desired outer→inner pipeline:
+#
+#   body cap  →  security headers  →  CORS  →  auth  →  rate limit  →  app
+#
+# we add them in the OPPOSITE sequence (rate limit first, body cap last).
+#
+# Why this order:
+#   * Body-cap rejects oversize uploads before any work happens.
+#   * Security headers stamp every response, including 413/401/429 so
+#     even error frames don't drop the baseline.
+#   * CORS sits inside body-cap so the preflight still gets the headers
+#     but does NOT consume rate-limit tokens for legitimate browsers.
+#   * Auth sits inside CORS — preflight (OPTIONS) bypasses auth by spec.
+#   * Rate limit is the deepest layer so authenticated callers are
+#     bucketed by IP; it skips OPTIONS to avoid penalising preflight.
+
+# Per-route body-size overrides. /visual-diff already enforces a 16 MiB
+# cap *during* the multipart stream (see _read_capped). Letting the
+# global 1 MiB middleware reject the upload first would break the
+# screenshot-diff flow before the operator even sees the upload page.
+LARGE_BODY_ROUTES: dict[str, int] = {
+    "/visual-diff": 16 * 1024 * 1024,
+}
+
+
+class BodySizeLimitMiddleware(BaseHTTPMiddleware):
+    """Reject requests whose ``Content-Length`` exceeds the configured
+    cap. Per-route overrides allow specific endpoints (e.g.
+    ``/visual-diff``) to accept larger payloads.
+
+    Note: the check is on ``Content-Length`` only — a chunked / no-CL
+    upload still reaches the endpoint, where per-endpoint cap-as-you-read
+    enforcement (see ``_read_capped``) takes over. The middleware's job
+    is the cheap pre-rejection of well-formed oversized requests.
+    """
+
+    def __init__(self, app, default_limit: int, overrides: dict[str, int]) -> None:
+        super().__init__(app)
+        self._default_limit = int(default_limit)
+        self._overrides = dict(overrides or {})
+
+    async def dispatch(self, request, call_next):
+        cl = request.headers.get("content-length")
+        if cl is None:
+            return await call_next(request)
+        try:
+            length = int(cl)
+        except ValueError:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": {
+                        "error": "invalid_content_length",
+                        "reason": "ValueError",
+                        "message": "Content-Length header is not an integer.",
+                    }
+                },
+            )
+        limit = self._overrides.get(request.url.path, self._default_limit)
+        if length > limit:
+            return JSONResponse(
+                status_code=413,
+                content={
+                    "detail": {
+                        "error": "request_too_large",
+                        "reason": "ContentLengthExceeded",
+                        "message": (
+                            f"Request body of {length} bytes exceeds limit "
+                            f"of {limit} bytes for this route."
+                        ),
+                        "limit": limit,
+                    }
+                },
+            )
+        return await call_next(request)
+
+
+# Add in REVERSE pipeline order so the resulting wrap matches the comment above.
+# 1) Innermost: rate limit (last to wrap, runs nearest the app).
+app.add_middleware(
+    RateLimitMiddleware,
+    disabled=RATE_LIMIT_DISABLED,
+    trust_proxy=TRUST_PROXY,
+)
+# 2) Auth gate — reads SIGNAL_API_KEY at install time. Empty key = no-op.
+app.add_middleware(APIKeyAuthMiddleware, api_key=SIGNAL_API_KEY)
+# 3) CORS — must sit OUTSIDE auth so preflight gets the right headers
+#    even when the inner gates would otherwise reject the request.
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
+# 4) Security headers — stamps every outgoing response, including 4xx/5xx.
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    frame_options=FRAME_OPTIONS,
+    csp=SECURITY_CSP,
+    hsts=SECURITY_HSTS,
+)
+# 5) Outermost: body-size cap. Rejects oversize uploads before any
+#    other middleware burns CPU on them.
+app.add_middleware(
+    BodySizeLimitMiddleware,
+    default_limit=BODY_SIZE_LIMIT_BYTES,
+    overrides=LARGE_BODY_ROUTES,
+)
 
 
 # ── Endpoints ───────────────────────────────────────────────────────────────
@@ -1528,6 +1658,21 @@ async def diagnostics():
         "surface_mock_flag": surface_flag_on,
     }
 
+    # Wave P-31 — visibility on which security layers are ACTIVE on this
+    # process. Operators auditing a deploy need a single place to see
+    # whether the auth gate is on, whether HSTS is being stamped, etc.
+    # We never reveal the API key value — only the boolean.
+    security = {
+        "auth_required": bool(SIGNAL_API_KEY),
+        "rate_limit_enabled": not RATE_LIMIT_DISABLED,
+        "trust_proxy": TRUST_PROXY,
+        "hsts": SECURITY_HSTS,
+        "frame_options": FRAME_OPTIONS,
+        "csp_overridden": bool(SECURITY_CSP),
+        "body_size_limit_bytes": BODY_SIZE_LIMIT_BYTES,
+        "log_redaction": LOG_REDACT,
+    }
+
     return {
         "system": "Signal",
         "model": MODEL_ID,
@@ -1537,6 +1682,7 @@ async def diagnostics():
         "engine_status": "ready" if engine else "not_initialized",
         "boot": boot,
         "surface": surface_status,
+        "security": security,
         "failure_memory": mem_stats,
         "persistence": {
             "spine_last_save_error": spine_store._last_save_error,
