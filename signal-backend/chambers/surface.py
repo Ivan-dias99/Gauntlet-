@@ -100,12 +100,29 @@ Princípios:
 - Design system: mencionado em `design_system_binding` e referenciado
   em `notes` quando influencia escolhas concretas. Sem citar sistemas
   que não foram pedidos.
-- Notas curtas: bullet por linha, no máximo 5 itens. Decisões, não
-  divagação.
 - Idioma: português europeu, espelhando o resto da chamber.
 - Honestidade: se o brief for ambíguo demais para gerar com confiança,
   produz um plano mínimo coerente e regista a ambiguidade em `notes`
   em vez de inventar telas.
+
+Doutrina visual (notes do plano):
+- O output principal é JSON estruturado; a doutrina visual aplica-se
+  ao campo `notes`, que o operador lê em sequência.
+- Cada nota é UMA linha curta começando por um glifo de intent:
+    ✅ decisão tomada / confirmada
+    ⚠ risco / trade-off explícito
+    ❓ ambiguidade no brief que precisa de input
+    ─→ derivação / consequência (ex: "─→ navbar fixa exige top-padding 64")
+    ●  componente novo introduzido    ○ herdado do design system
+    ▲ escolha de hierarquia (densidade / fidelidade)
+    ↗  upsell / expansão futura suggerida
+- Máximo 6 notas. Decisões ou riscos, não divagação. Se passar de 6,
+  cortar — repetição ou prosa decorativa não cabe.
+- Nunca emoji decorativo (🚀 🔥 ✨ 🎉). Cada glifo carrega informação.
+- Para comparações pequenas dentro de uma nota, usar barras inline:
+  "wireframe ████░ 80% / hi-fi ░░░░ 0%" — quando ajuda decisão.
+- Tela com componente único é flag automática para ⚠ (provavelmente
+  carece de ação ou contexto).
 
 `mock` deve sempre ficar `false` — o servidor inverte se for fallback."""
 
