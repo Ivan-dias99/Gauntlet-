@@ -1055,7 +1055,12 @@ def _record_figma_route(route: str):
         err: Optional[str] = None
         try:
             yield
-        except Exception as exc:  # noqa: BLE001 — we re-raise after recording
+        except BaseException as exc:  # noqa: BLE001 — capture cancels too
+            # Codex re-review (#267 round 3): Exception alone misses
+            # asyncio.CancelledError (a BaseException), so client
+            # disconnects / timeouts were silently recorded as
+            # successful samples and skewed the route metrics. Catch
+            # BaseException, record the kind, re-raise.
             err = type(exc).__name__
             raise
         finally:
