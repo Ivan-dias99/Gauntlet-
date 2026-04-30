@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from typing import Any, Optional
 
 from config import DATABASE_URL, DUAL_WRITE_PG
@@ -548,15 +549,24 @@ async def read_spine_snapshot() -> Optional[dict]:
         {"id": r["id"], "text": r["text"] or "", "createdAt": int(r["created_at"] or 0)}
         for r in principle_rows
     ]
-    # Empty-DB fallback: when there are no missions yet, MAX(updated_at)
-    # is NULL — use wall-clock so the snapshot still beats a stale local
-    # `prev.updatedAt = 0` (otherwise hydration ties and the client
-    # silently keeps an empty local state).
-    pg_updated_at = max_updated_row["m"] if max_updated_row is not None else None
-    if pg_updated_at is None:
-        updated_at_ms = int(time.time() * 1000)
-    else:
-        updated_at_ms = int(pg_updated_at)
+    # Codex re-review (#264 round 2): `MAX(missions.updated_at)` returns
+    # 0 because `MissionRecord` has no `updatedAt` field and the mirror
+    # writer stores `int(m.get("updatedAt") or 0)`. Using that value
+    # would produce `updatedAt=0` whenever any mission existed, so the
+    # TS hydration `remote.updatedAt > prev.updatedAt` always tied —
+    # the very bug the round-1 fix was supposed to close.
+    #
+    # Use server wall-clock time as the snapshot's `updatedAt`: "this
+    # snapshot was assembled from PG at this moment". The canonical
+    # freshness lives in the DB itself; the load timestamp is the
+    # honest watermark a fresh client can compare against. Always
+    # beats a stale local `prev.updatedAt`. This also avoids the
+    # NameError path Codex flagged when `time` was not imported.
+    updated_at_ms = int(time.time() * 1000)
+    # Keep `max_updated_row` referenced so future debugging can read
+    # the per-mission MAX without resurrecting it. Not used for the
+    # snapshot watermark.
+    _ = max_updated_row
     return {
         # `updatedAt` first so the TS hydration check
         # (`remote.updatedAt > prev.updatedAt`) sees a real timestamp,
