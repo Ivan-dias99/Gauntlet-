@@ -47,14 +47,29 @@ FAILURE_FILE = MEMORY_DIR / "failure_memory.json"
 
 
 def _load_json(path: Path) -> Optional[dict]:
+    """Return the parsed JSON body, or None when the file does not
+    exist (the legitimate "nothing to seed" case).
+
+    Read or parse failures are RAISED — never swallowed — so the
+    backfill aborts with a non-zero exit instead of silently skipping
+    a corrupt section under a "backfill complete" log. The operator
+    must see partial parity as a failure before advancing to the
+    dual-write window.
+    """
     if not path.exists():
         logger.info("skip — %s does not exist", path)
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001
-        logger.error("skip — %s unreadable: %s", path, exc)
-        return None
+        raw = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        # Filesystem-level failure — surface it so main() exits non-zero.
+        raise RuntimeError(f"unreadable file {path}: {exc}") from exc
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        # Corrupt JSON — never silently skip. The operator must fix the
+        # source file (or quarantine it) before the backfill is trusted.
+        raise RuntimeError(f"corrupt JSON in {path}: {exc}") from exc
 
 
 async def _migrate_spine(pool: Any, snapshot: dict) -> None:
@@ -169,7 +184,9 @@ async def main() -> int:
     )
     # Each section runs in its own transaction. Any failure must surface
     # (non-zero exit) so the operator does not ship an incomplete seed
-    # under a "backfill complete" log.
+    # under a "backfill complete" log. _load_json now raises on
+    # unreadable / corrupt files instead of returning None, so a
+    # partial seed is impossible.
     sections: list[tuple[str, Path, Any]] = [
         ("spine", SPINE_FILE, _migrate_spine),
         ("runs", RUNS_FILE, _migrate_runs),
@@ -177,7 +194,14 @@ async def main() -> int:
     ]
     try:
         for name, path, fn in sections:
-            body = _load_json(path)
+            try:
+                body = _load_json(path)
+            except Exception as exc:  # noqa: BLE001
+                logger.error(
+                    "backfill aborted in %s (load): %s: %s",
+                    name, type(exc).__name__, exc,
+                )
+                return 1
             if not body:
                 continue
             try:
