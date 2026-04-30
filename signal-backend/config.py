@@ -134,8 +134,6 @@ DUAL_WRITE_PG: bool = (
     and _env("SIGNAL_DUAL_WRITE_PG", "RUBERRA_DUAL_WRITE_PG", "").strip().lower()
     in ("1", "true", "yes", "on")
 )
-
-
 # ── GitHub Issues (Wave P-23) ───────────────────────────────────────────────
 # When both are set, POST /issues/create posts to the real GitHub REST API.
 # When either is missing, /issues/create returns a friendly fallback so the
@@ -145,3 +143,14 @@ DUAL_WRITE_PG: bool = (
 # the target repo. Repo is in `owner/repo` form (e.g. ivan-dias99/aiinterfaceshelldesign).
 GITHUB_TOKEN: str = _env("SIGNAL_GITHUB_TOKEN", "RUBERRA_GITHUB_TOKEN", "")
 GITHUB_REPO: str = _env("SIGNAL_GITHUB_REPO", "RUBERRA_GITHUB_REPO", "")
+
+
+# ── Vercel API (Wave P-25) ────────────────────────────────────────────────
+# Personal access token + optional project / team scoping for the
+# Vercel REST client (see vercel_client.py). All three keys are
+# read-only here — endpoints that talk to the API decide their own
+# friendly fallback when VERCEL_TOKEN is empty (the audit's 🟡 stub
+# state). RUBERRA_* aliases keep the legacy compat window open.
+VERCEL_TOKEN: str = _env("SIGNAL_VERCEL_TOKEN", "RUBERRA_VERCEL_TOKEN", "")
+VERCEL_PROJECT_ID: str = _env("SIGNAL_VERCEL_PROJECT_ID", "RUBERRA_VERCEL_PROJECT_ID", "")
+VERCEL_TEAM_ID: str = _env("SIGNAL_VERCEL_TEAM_ID", "RUBERRA_VERCEL_TEAM_ID", "")
