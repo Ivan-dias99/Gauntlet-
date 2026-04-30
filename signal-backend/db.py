@@ -183,6 +183,14 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
     child tables (notes/tasks/events/artifacts/distillations/handoffs)
     are CASCADE; we clear them by mission_id and rebuild from the
     snapshot, which is the truth.
+
+    NOT NULL columns use ``(value or default)`` instead of
+    ``dict.get(key, default)`` because legacy snapshots can carry
+    explicit ``null`` for keys that are present — ``.get`` only
+    falls back when the key is missing, so an explicit null would
+    sail through to the DB and trip the NOT NULL constraint, aborting
+    the whole transaction. The coalesce keeps backfills from older
+    JSON payloads working without a separate sanitiser step.
     """
     mid = m.get("id")
     if not mid:
@@ -207,9 +215,9 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             last_artifact = EXCLUDED.last_artifact
         """,
         mid,
-        m.get("title", ""),
-        m.get("chamber", "insight"),
-        m.get("status", "active"),
+        m.get("title") or "",
+        m.get("chamber") or "insight",
+        m.get("status") or "active",
         int(m.get("createdAt") or 0),
         int(m.get("updatedAt") or 0),
         json.dumps(m.get("projectContract")) if m.get("projectContract") else None,
@@ -232,7 +240,7 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         await conn.execute(
             "INSERT INTO notes (id, mission_id, text, role, created_at) "
             "VALUES ($1, $2, $3, $4, $5)",
-            n["id"], mid, n.get("text", ""), (n.get("role") or "user"), int(n.get("createdAt") or 0),
+            n["id"], mid, n.get("text") or "", (n.get("role") or "user"), int(n.get("createdAt") or 0),
         )
 
     for t in (m.get("tasks") or []):
@@ -244,7 +252,7 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
                                created_at, done_at, last_update_at, artifact_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             """,
-            t["id"], mid, t.get("title", ""),
+            t["id"], mid, t.get("title") or "",
             (t.get("state") or "open"), (t.get("source") or "manual"),
             int(t.get("createdAt") or 0),
             int(t["doneAt"]) if t.get("doneAt") is not None else None,
@@ -258,8 +266,8 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         await conn.execute(
             "INSERT INTO mission_events (id, mission_id, type, label, at) "
             "VALUES ($1, $2, $3, $4, $5)",
-            ev["id"], mid, ev.get("type", "note_added"),
-            ev.get("label", ""), int(ev.get("at") or 0),
+            ev["id"], mid, ev.get("type") or "note_added",
+            ev.get("label") or "", int(ev.get("at") or 0),
         )
 
     for art in (m.get("artifacts") or []):
@@ -294,8 +302,8 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             d["id"], mid,
             int(d.get("version") or 1),
             (d.get("status") or "draft"),
-            d.get("summary", ""),
-            d.get("validatedDirection", ""),
+            (d.get("summary") or ""),
+            (d.get("validatedDirection") or ""),
             json.dumps(d.get("coreDecisions") or []),
             json.dumps(d.get("unknowns") or []),
             json.dumps(d.get("risks") or []),
@@ -327,13 +335,13 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             """,
             h["id"], mid,
-            h.get("fromChamber", ""),
-            h.get("toChamber", ""),
-            h.get("artifactType", "note"),
+            (h.get("fromChamber") or ""),
+            (h.get("toChamber") or ""),
+            (h.get("artifactType") or "note"),
             h.get("artifactRef"),
-            h.get("summary", ""),
+            (h.get("summary") or ""),
             json.dumps(h.get("risks") or []),
-            h.get("nextAction") or "",
+            (h.get("nextAction") or ""),
             (h.get("status") or "pending"),
             int(h.get("createdAt") or 0),
             int(h["resolvedAt"]) if h.get("resolvedAt") is not None else None,
