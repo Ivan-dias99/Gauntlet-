@@ -31,9 +31,36 @@ export const UNREACHABLE_HEADER = "x-signal-backend";
 export const LEGACY_UNREACHABLE_HEADER = "x-ruberra-backend";
 export const UNREACHABLE_VALUE = "unreachable";
 
+// Wave P-31 — opt-in API key. Build-time env (Vite inlines at build).
+// When set, signalFetch automatically attaches `Authorization: Bearer <key>`
+// to every backend call. When unset, no header is added — local dev /
+// unsecured deploys keep working unchanged. The legacy alias mirrors
+// the SIGNAL_* / RUBERRA_* compat window used everywhere else.
+const RAW_API_KEY =
+  (import.meta.env.VITE_SIGNAL_API_KEY as string | undefined) ??
+  (import.meta.env.VITE_RUBERRA_API_KEY as string | undefined) ??
+  "";
+const API_KEY = RAW_API_KEY.trim();
+
+export const SIGNAL_API_KEY_PRESENT = API_KEY.length > 0;
+
 export function apiUrl(path: string): string {
   const tail = path.startsWith("/") ? path : `/${path}`;
   return `${BASE}${tail}`;
+}
+
+// Merge `Authorization: Bearer <API_KEY>` into a RequestInit's headers
+// when the build env carries a key. Existing Authorization headers in
+// `init` win — callers that hand-roll their own auth (none today) are
+// not stomped. FormData / multipart bodies are untouched (we only add
+// a header, never change Content-Type).
+function withAuthHeaders(init?: RequestInit): RequestInit | undefined {
+  if (!API_KEY) return init;
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Authorization") && !headers.has("authorization")) {
+    headers.set("Authorization", `Bearer ${API_KEY}`);
+  }
+  return { ...(init ?? {}), headers };
 }
 
 export class BackendUnreachableError extends Error {
@@ -151,7 +178,7 @@ export async function signalFetch(
 ): Promise<Response> {
   let res: Response;
   try {
-    res = await fetch(apiUrl(path), init);
+    res = await fetch(apiUrl(path), withAuthHeaders(init));
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new BackendUnreachableError(
