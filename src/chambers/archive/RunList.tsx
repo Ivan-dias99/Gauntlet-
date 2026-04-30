@@ -16,17 +16,21 @@ function prettyTitle(raw: string | null | undefined): string {
   return v;
 }
 
-// Search + route-filter chips + scrollable run list. Clicking a row
-// promotes that run into the detail pane on the right. Keeps the
-// outcome chip inline so the list reads as ledger, not as chat log.
+// Search + filter strip (route / status / confidence) + scrollable
+// run list. Clicking a row promotes that run into the detail pane on
+// the right. Keeps the outcome chip inline so the list reads as
+// ledger, not as chat log.
+//
+// Wave P-19 — operators were stuck slicing the ledger by route alone.
+// We now expose three orthogonal axes operators were eyeballing
+// manually: Status (success vs refused), Confidence (high / low /
+// null) and the original Route axis — sourced dynamically from the
+// runs[] payload so a new backend route surfaces without code edits.
+// Search remains a free-text substring (case-insensitive) over
+// question/answer/route, exactly as before.
 
-const ROUTES: Array<{ key: string | null; label: string }> = [
-  { key: null,      label: "todas" },
-  { key: "agent",   label: "agent" },
-  { key: "triad",   label: "triad" },
-  { key: "crew",    label: "crew" },
-  { key: "surface", label: "surface" },
-];
+type StatusFilter = "all" | "success" | "refused";
+type ConfidenceFilter = "all" | "high" | "low" | "null";
 
 interface Props {
   runs: RunRecord[];
@@ -39,17 +43,54 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
   const copy = useCopy();
   const [query, setQuery] = useState("");
   const [route, setRoute] = useState<string | null>(null);
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [confidence, setConfidence] = useState<ConfidenceFilter>("all");
+
+  // Derive distinct routes from the actual payload — keeps the chip
+  // strip honest when the backend adds a new route string. Sort
+  // alphabetically for stable ordering across renders.
+  const routes = useMemo<Array<{ key: string | null; label: string }>>(() => {
+    const present = new Set<string>();
+    for (const r of runs) {
+      if (r.route) present.add(r.route);
+    }
+    const list: Array<{ key: string | null; label: string }> = [
+      { key: null, label: "todas" },
+    ];
+    for (const r of Array.from(present).sort()) {
+      list.push({ key: r, label: r });
+    }
+    return list;
+  }, [runs]);
+
+  const filtersActive =
+    query.trim().length > 0 ||
+    route !== null ||
+    status !== "all" ||
+    confidence !== "all";
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return runs.filter((r) => {
       if (route && r.route !== route) return false;
+      if (status === "refused" && !r.refused) return false;
+      if (status === "success" && r.refused) return false;
+      if (confidence === "null" && r.confidence !== null) return false;
+      if (confidence === "high" && r.confidence !== "high") return false;
+      if (confidence === "low" && r.confidence !== "low") return false;
       if (!q) return true;
       return r.question.toLowerCase().includes(q)
         || (r.answer ?? "").toLowerCase().includes(q)
         || r.route.toLowerCase().includes(q);
     });
-  }, [runs, query, route]);
+  }, [runs, query, route, status, confidence]);
+
+  function clearAll() {
+    setQuery("");
+    setRoute(null);
+    setStatus("all");
+    setConfidence("all");
+  }
 
   return (
     <div
@@ -83,9 +124,10 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
         />
       </div>
 
-      {/* Route filter chips */}
+      {/* Route filter chips — derived from the runs[] payload */}
       <div
         role="tablist"
+        aria-label="rota"
         style={{
           display: "flex",
           gap: 4,
@@ -94,7 +136,7 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
           overflowX: "auto",
         }}
       >
-        {ROUTES.map((r) => {
+        {routes.map((r) => {
           const active = r.key === route;
           return (
             <button
@@ -122,6 +164,62 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
         })}
       </div>
 
+      {/* Status / Confidence selects + Clear-all */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: 8,
+          padding: "6px var(--space-3)",
+          borderBottom: "var(--border-soft)",
+        }}
+      >
+        <FilterSelect
+          label="estado"
+          value={status}
+          onChange={(v) => setStatus(v as StatusFilter)}
+          options={[
+            { value: "all",      label: "todos" },
+            { value: "success",  label: "ok" },
+            { value: "refused",  label: "recusado" },
+          ]}
+        />
+        <FilterSelect
+          label="confiança"
+          value={confidence}
+          onChange={(v) => setConfidence(v as ConfidenceFilter)}
+          options={[
+            { value: "all",  label: "toda" },
+            { value: "high", label: "high" },
+            { value: "low",  label: "low" },
+            { value: "null", label: "n/d" },
+          ]}
+        />
+        <span style={{ flex: 1 }} />
+        {filtersActive && (
+          <button
+            onClick={clearAll}
+            data-clear-filters
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              letterSpacing: "var(--track-meta)",
+              textTransform: "uppercase",
+              padding: "4px 10px",
+              background: "transparent",
+              color: "var(--text-secondary)",
+              border: "var(--border-soft)",
+              borderRadius: 999,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            limpar
+          </button>
+        )}
+      </div>
+
       {/* List */}
       <div style={{ flex: 1, overflow: "auto" }}>
         {filtered.length === 0 && (
@@ -134,7 +232,9 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
               textAlign: "center",
             }}
           >
-            {copy.archiveListEmpty}
+            {filtersActive
+              ? "0 runs encontrados — ajusta filtros"
+              : copy.archiveListEmpty}
           </div>
         )}
         {filtered.map((r) => {
@@ -249,4 +349,59 @@ function renderOutcomeChip(r: RunRecord) {
 
 function Chip({ tone, children }: { tone: "ok" | "warn" | "err"; children: React.ReactNode }) {
   return <span className="kicker" data-tone={tone}>{children}</span>;
+}
+
+// FilterSelect — minimal label + native <select> pair, styled to
+// match the chip strip above. Native <select> keeps a11y/keyboard
+// nav for free; the visual cost is consistent with the current
+// chamber grammar (mono labels, soft borders, oklab tokens).
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<{ value: string; label: string }>;
+}) {
+  return (
+    <label
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontFamily: "var(--mono)",
+        fontSize: 10,
+        letterSpacing: "var(--track-meta)",
+        textTransform: "uppercase",
+        color: "var(--text-muted)",
+      }}
+    >
+      <span>{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 10,
+          letterSpacing: "var(--track-meta)",
+          textTransform: "uppercase",
+          padding: "3px 6px",
+          background: "var(--bg-input)",
+          color: "var(--text-primary)",
+          border: "var(--border-soft)",
+          borderRadius: "var(--radius-control)",
+          cursor: "pointer",
+        }}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
