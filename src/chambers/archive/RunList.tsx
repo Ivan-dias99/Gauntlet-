@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RunRecord } from "./helpers";
 import { ROUTE_COLOR, originFor, isLinked } from "./helpers";
 import { useCopy } from "../../i18n/copy";
@@ -62,6 +62,17 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
     }
     return list;
   }, [runs]);
+
+  // Codex P2 (PR #260): RunList stays mounted across mission switches.
+  // If the previously selected route is not present in the new
+  // dataset, the filter quietly excludes every row while no chip is
+  // highlighted — invisible active filter. Reset route when its key
+  // disappears from the derived set.
+  useEffect(() => {
+    if (route === null) return;
+    const stillPresent = routes.some((r) => r.key === route);
+    if (!stillPresent) setRoute(null);
+  }, [route, routes]);
 
   const filtersActive =
     query.trim().length > 0 ||
