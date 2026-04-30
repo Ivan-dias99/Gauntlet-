@@ -164,6 +164,81 @@ export async function signalFetch(
   return res;
 }
 
+// ── Pause / Resume (Wave P-29, Tool 7) ─────────────────────────────────────
+//
+// Thin wrappers around POST /dev/pause, POST /dev/resume, GET /dev/paused.
+// The agent loop checks the registry at every iteration boundary; flipping
+// pause mid-stream lets the next iteration emit `paused` and bail with
+// `terminated_early=true, termination_reason="paused"` — partial tool work
+// is preserved, the run record still closes honestly. See server.py and
+// signal-backend/pause_registry.py.
+
+export interface PauseEntry {
+  task_id: string;
+  paused_at: number;
+  reason: string | null;
+  mission_id: string | null;
+}
+
+export interface PauseAck {
+  ok: boolean;
+  task_id: string;
+  paused_at: number;
+  reason: string | null;
+  mission_id: string | null;
+}
+
+export interface ResumeAck {
+  ok: boolean;
+  task_id: string;
+  resumed_at: number;
+  was_paused: boolean;
+}
+
+export async function pauseTask(
+  taskId: string,
+  opts?: { reason?: string | null; missionId?: string | null },
+): Promise<PauseAck> {
+  const res = await signalFetch("/dev/pause", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      task_id: taskId,
+      reason: opts?.reason ?? undefined,
+      mission_id: opts?.missionId ?? undefined,
+    }),
+  });
+  if (!res.ok) {
+    const env = await parseBackendError(res);
+    throw new BackendError(res.status, env, `HTTP ${res.status} from /dev/pause`);
+  }
+  return (await res.json()) as PauseAck;
+}
+
+export async function resumeTask(taskId: string): Promise<ResumeAck> {
+  const res = await signalFetch("/dev/resume", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task_id: taskId }),
+  });
+  if (!res.ok) {
+    const env = await parseBackendError(res);
+    throw new BackendError(res.status, env, `HTTP ${res.status} from /dev/resume`);
+  }
+  return (await res.json()) as ResumeAck;
+}
+
+export async function listPausedTasks(): Promise<PauseEntry[]> {
+  const res = await signalFetch("/dev/paused");
+  if (!res.ok) {
+    const env = await parseBackendError(res);
+    throw new BackendError(res.status, env, `HTTP ${res.status} from /dev/paused`);
+  }
+  const body = (await res.json()) as { count: number; entries: PauseEntry[] };
+  return Array.isArray(body.entries) ? body.entries : [];
+}
+
+
 // ── Visual diff (Wave P-28) ────────────────────────────────────────────────
 //
 // Posts two image buffers (PNG/JPEG) as multipart form-data to

@@ -2,6 +2,8 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import { activeTruthDistillation } from "../../spine/types";
 import { fireTelemetry } from "../../lib/telemetry";
+// Wave P-29 — pause/resume API helpers.
+import { pauseTask, resumeTask } from "../../lib/signalApi";
 import {
   useSignal, AgentEvent, CrewEvent,
   type CrewRole, type GateName, type GateState,
@@ -171,6 +173,19 @@ export default function Terminal() {
         break;
       case "diff":
         setLiveDiff({ files: ev.files, added: ev.added, removed: ev.removed });
+        break;
+      case "paused":
+        // Wave P-29 — agent loop saw the pause flag at the top of the
+        // iteration and is bailing. Mark the local task paused if
+        // we haven't already (handlePause flips it optimistically;
+        // this branch covers the case where pause was triggered
+        // out-of-band, e.g. by another operator hitting /dev/pause).
+        if (ev.task_id && activeMission?.tasks.some((t) => t.id === ev.task_id)) {
+          setTaskState(ev.task_id, "paused", {
+            pauseReason: ev.reason,
+            pausedAt: ev.paused_at ?? Date.now(),
+          });
+        }
         break;
       case "evidence":
         // P-9 — append the typed EvidenceRecord to the run trail.
@@ -368,6 +383,60 @@ export default function Terminal() {
     setTaskState(activeTaskId, "open");
   }
 
+  // Wave P-29 — pause/resume hooks. The flow is:
+  //   1. local optimistic flip (state → paused, with timestamp)
+  //   2. POST /dev/pause to the backend pause registry
+  //   3. fire telemetry so the doctrine timeline shows the event
+  //
+  // If the backend call fails, revert the local state so the chamber
+  // never lies about persistence. Pause itself is iteration-boundary
+  // semantics — the agent loop won't notice for a tick or two, but
+  // the operator sees the pill flip immediately.
+  async function handlePause(taskId: string) {
+    const target = activeMission?.tasks.find((t) => t.id === taskId) ?? null;
+    if (!target) return;
+    const prevState = target.state;
+    const reasonInput = typeof window !== "undefined"
+      ? window.prompt(copy.pauseReasonPlaceholder, "")
+      : null;
+    const reason = reasonInput && reasonInput.trim() ? reasonInput.trim() : null;
+    setTaskState(taskId, "paused", { pauseReason: reason, pausedAt: Date.now() });
+    try {
+      await pauseTask(taskId, { reason, missionId: activeMission?.id ?? null });
+      fireTelemetry("task_paused", activeMission?.id ?? null, {
+        taskId,
+        reason: reason ?? undefined,
+      });
+    } catch (err) {
+      // Backend rejected — revert the local flip so the chamber and
+      // the registry don't diverge.
+      setTaskState(taskId, prevState);
+      setErr(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleResume(taskId: string) {
+    const target = activeMission?.tasks.find((t) => t.id === taskId) ?? null;
+    if (!target) return;
+    const prevState = target.state;
+    const prevReason = target.pauseReason ?? null;
+    const prevPausedAt = target.pausedAt;
+    // Resume defaults to "running" so the operator can carry on; the
+    // composer's submit flow will overwrite if a fresh run starts.
+    setTaskState(taskId, "running");
+    try {
+      await resumeTask(taskId);
+      fireTelemetry("task_resumed", activeMission?.id ?? null, { taskId });
+    } catch (err) {
+      // Restore prior pause metadata on failure.
+      setTaskState(taskId, prevState, {
+        pauseReason: prevReason,
+        pausedAt: prevPausedAt,
+      });
+      setErr(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   function handleNextTask() {
     if (!activeMission) return;
     const next = activeMission.tasks.find(
@@ -523,6 +592,8 @@ export default function Terminal() {
             duplicateTitles={duplicateTitles}
             copy={copy}
             onSelect={selectTaskFromQueue}
+            onPause={handlePause}
+            onResume={handleResume}
           />
         </div>
 

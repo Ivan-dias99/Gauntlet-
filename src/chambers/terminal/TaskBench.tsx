@@ -10,9 +10,12 @@ import {
 // .kicker and .ledger-row primitives so Terminal reads as part of the
 // same organism as Insight / Surface / Archive.
 
-const STATE_TONE: Record<TaskState, "info" | "ok" | "err" | "ghost"> = {
+const STATE_TONE: Record<TaskState, "info" | "ok" | "err" | "ghost" | "warn"> = {
   open: "ghost",
   running: "info",
+  // Wave P-29 — paused renders with the warn tone so the row stays
+  // visible without escalating to err (blocked).
+  paused: "warn",
   done: "ok",
   blocked: "err",
 };
@@ -32,11 +35,17 @@ interface WorkbenchProps {
   blockedCount: number;
   staleCount: number;
   onReopen: () => void;
+  // Wave P-29 — pause/resume callbacks. Optional so existing call sites
+  // that render the bench without the controls (read-only views) don't
+  // need to thread no-op handlers.
+  onPause?: (taskId: string) => void;
+  onResume?: (taskId: string) => void;
 }
 
 export function WorkbenchCard({
   missionTitle, task, resumed, copy, lang, pending, iteration, elapsed,
   openCount, runningCount, doneCount, blockedCount, staleCount, onReopen,
+  onPause, onResume,
 }: WorkbenchProps) {
   // Slim bench bar — replaces the fat .workbench card. One compact row
   // with hairlines above and below; no panel surface. The heavy lifting
@@ -149,6 +158,49 @@ export function WorkbenchCard({
         </button>
       )}
 
+      {/* Wave P-29 — pause control surfaces on the active running row.
+          Pause is iteration-boundary; the in-flight tool finishes,
+          the next iteration sees the flag and the agent emits a
+          `paused` event before bailing. */}
+      {task.state === "running" && onPause && (
+        <button
+          onClick={() => onPause(task.id)}
+          className="btn-chip"
+          style={{
+            color: "var(--cc-warn)",
+            borderColor: "color-mix(in oklab, var(--cc-warn) 40%, transparent)",
+          }}
+          title={copy.actionPause}
+        >
+          {copy.actionPause}
+        </button>
+      )}
+
+      {task.state === "paused" && onResume && (
+        <button
+          onClick={() => onResume(task.id)}
+          className="btn-chip"
+          style={{
+            color: "var(--cc-info)",
+            borderColor: "color-mix(in oklab, var(--cc-info) 40%, transparent)",
+          }}
+          title={copy.actionResume}
+        >
+          {copy.actionResume}
+        </button>
+      )}
+
+      {task.state === "paused" && task.pauseReason && (
+        <span
+          className="kicker"
+          data-tone="warn"
+          title={task.pauseReason}
+          style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        >
+          · {task.pauseReason}
+        </span>
+      )}
+
       {resumed && (
         <span className="kicker" data-tone="info" style={{ marginLeft: "auto" }}>
           ↺ {copy.resumeHint}
@@ -164,9 +216,15 @@ interface ListProps {
   duplicateTitles: Set<string>;
   copy: Copy;
   onSelect: (id: string) => void;
+  // Wave P-29 — optional pause/resume row controls.
+  onPause?: (taskId: string) => void;
+  onResume?: (taskId: string) => void;
 }
 
-export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect }: ListProps) {
+export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect, onPause, onResume }: ListProps) {
+  // Pause is a non-terminal "warm idle" state — it stays in the open
+  // section so the operator sees the task they paused next to the
+  // others, instead of getting buried below a collapsed banner.
   const open = tasks.filter((t) => t.state !== "done" && t.state !== "blocked");
   const blocked = tasks.filter((t) => t.state === "blocked");
   const done = tasks.filter((t) => t.state === "done");
@@ -192,6 +250,8 @@ export function TaskList({ tasks, activeTaskId, duplicateTitles, copy, onSelect 
           active={t.id === activeTaskId}
           duplicate={duplicateTitles.has(t.title)}
           onSelect={() => onSelect(t.id)}
+          onPause={onPause}
+          onResume={onResume}
         />
       ))}
 
@@ -289,9 +349,14 @@ interface RowProps {
   copy: Copy;
   active?: boolean;
   duplicate?: boolean;
+  // Wave P-29 — passed through from TaskList. When undefined, the
+  // controls don't render (back-compat for the blocked / done sections
+  // that don't expose pause).
+  onPause?: (taskId: string) => void;
+  onResume?: (taskId: string) => void;
 }
 
-function TaskRow({ task, onSelect, copy, active = false, duplicate = false }: RowProps) {
+function TaskRow({ task, onSelect, copy, active = false, duplicate = false, onPause, onResume }: RowProps) {
   const isDone = task.state === "done";
   const tone = STATE_TONE[task.state];
   const displayState = task.state === "done" && task.artifactId ? "sealed" : stateLabel(task.state, copy);
@@ -345,6 +410,44 @@ function TaskRow({ task, onSelect, copy, active = false, duplicate = false }: Ro
         <span className="kicker" data-tone="muted" style={{ marginTop: 3 }}>
           {sourceLabel(task.source, copy)}
         </span>
+      )}
+      {/* Wave P-29 — inline pause/resume buttons. They never render on
+          done / blocked rows because the parent only threads handlers
+          to the open section. Keep them small (kicker class) so a long
+          row doesn't reflow when state flips. */}
+      {task.state === "running" && onPause && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onPause(task.id); }}
+          className="kicker"
+          data-tone="warn"
+          style={{
+            background: "transparent",
+            border: 0,
+            cursor: "pointer",
+            padding: "2px 6px",
+            color: "var(--cc-warn)",
+          }}
+          title={copy.actionPause}
+        >
+          {copy.actionPause}
+        </button>
+      )}
+      {task.state === "paused" && onResume && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onResume(task.id); }}
+          className="kicker"
+          data-tone="info"
+          style={{
+            background: "transparent",
+            border: 0,
+            cursor: "pointer",
+            padding: "2px 6px",
+            color: "var(--cc-info)",
+          }}
+          title={copy.actionResume}
+        >
+          {copy.actionResume}
+        </button>
       )}
       {!active && <StatePill state={task.state} copy={copy} labelOverride={displayState} />}
     </div>

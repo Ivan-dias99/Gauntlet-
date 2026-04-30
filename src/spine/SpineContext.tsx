@@ -73,7 +73,14 @@ interface SpineCtx {
   // its state transitions (running → done / blocked) through the run.
   addTask: (title: string, source?: TaskSource) => string;
   completeTask: (taskId: string) => void;
-  setTaskState: (taskId: string, state: TaskState) => void;
+  // Wave P-29 — `options` carries pause metadata (reason, paused_at)
+  // when entering "paused". Optional for back-compat with every other
+  // call site.
+  setTaskState: (
+    taskId: string,
+    state: TaskState,
+    options?: { pauseReason?: string | null; pausedAt?: number },
+  ) => void;
   addPrinciple: (text: string) => void;
   logDoctrineApplied: (count: number) => void;
   acceptArtifact: (missionId: string, artifact: Omit<Artifact, "id">, taskId?: string) => void;
@@ -239,7 +246,7 @@ export function SpineProvider({ children }: { children: ReactNode }) {
         return newId;
       },
       completeTask: (id) => dispatch(s => completeTaskFn(s, id)),
-      setTaskState: (id, next) => dispatch(s => setTaskStateFn(s, id, next)),
+      setTaskState: (id, next, options) => dispatch(s => setTaskStateFn(s, id, next, options)),
       addPrinciple: (text) => dispatch(s => addPrincipleFn(s, text)),
       logDoctrineApplied: (count) => dispatch(s => logDoctrineAppliedFn(s, count)),
       acceptArtifact: (id, artifact, taskId) => dispatch(s => acceptArtifactFn(s, id, artifact, taskId)),

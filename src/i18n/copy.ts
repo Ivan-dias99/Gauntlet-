@@ -324,9 +324,15 @@ export interface Copy {
   actionRefine: string;
   actionBlock: string;
   actionUnblock: string;
+  // Wave P-29 — pause / resume controls (Tool 7).
+  actionPause: string;
+  actionResume: string;
+  pauseReasonPlaceholder: string;
+  pausePillLabel: string;
   actionAllDone: string;
   taskStateOpen: string;
   taskStateRunning: string;
+  taskStatePaused: string;
   taskStateDone: string;
   taskStateBlocked: string;
   onBench: string;
@@ -676,9 +682,14 @@ const PT: Copy = {
   actionRefine: "↻ refinar",
   actionBlock: "✕ bloquear",
   actionUnblock: "↺ reabrir",
+  actionPause: "❚❚ pausar",
+  actionResume: "▶ retomar",
+  pauseReasonPlaceholder: "razão (opcional)",
+  pausePillLabel: "em pausa",
   actionAllDone: "✓ fila limpa",
   taskStateOpen: "aberta",
   taskStateRunning: "a correr",
+  taskStatePaused: "em pausa",
   taskStateDone: "concluída",
   taskStateBlocked: "bloqueada",
   onBench: "em bancada",
@@ -1028,9 +1039,14 @@ const EN: Copy = {
   actionRefine: "↻ refine",
   actionBlock: "✕ block",
   actionUnblock: "↺ reopen",
+  actionPause: "❚❚ pause",
+  actionResume: "▶ resume",
+  pauseReasonPlaceholder: "reason (optional)",
+  pausePillLabel: "paused",
   actionAllDone: "✓ queue clear",
   taskStateOpen: "open",
   taskStateRunning: "running",
+  taskStatePaused: "paused",
   taskStateDone: "done",
   taskStateBlocked: "blocked",
   onBench: "on bench",
