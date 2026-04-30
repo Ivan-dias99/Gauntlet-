@@ -62,6 +62,41 @@ class SpineStore:
             self._loaded = True
 
     async def _load(self) -> None:
+        # Wave P-22 — Postgres read cutover.
+        # When SIGNAL_PG_CANONICAL=1 + dual-write is enabled, prefer the
+        # database as source-of-truth. Fall back to JSON automatically
+        # if PG returns None (driver missing, pool failure, exception)
+        # — that lets a deploy unset the flag for instant rollback
+        # without losing data, since dual-write keeps JSON warm.
+        try:
+            from config import PG_CANONICAL
+        except Exception:  # noqa: BLE001
+            PG_CANONICAL = False
+        if PG_CANONICAL:
+            try:
+                from db import read_spine_snapshot
+                pg_dict = await read_spine_snapshot()
+            except Exception as exc:  # noqa: BLE001
+                pg_dict = None
+                self._last_load_error = (
+                    f"pg_read_failed: {type(exc).__name__}: {exc}"
+                )
+                logger.warning("PG canonical read failed — falling back to JSON: %s", exc)
+            if pg_dict is not None:
+                try:
+                    self._snapshot = SpineSnapshot(**pg_dict)
+                    logger.info(
+                        "Loaded spine snapshot from Postgres: %d missions, %d principles",
+                        len(self._snapshot.missions),
+                        len(self._snapshot.principles),
+                    )
+                    return
+                except Exception as exc:  # noqa: BLE001
+                    self._last_load_error = (
+                        f"pg_parse_failed: {type(exc).__name__}: {exc}"
+                    )
+                    logger.warning("PG snapshot parse failed — falling back to JSON: %s", exc)
+        # JSON read path (default; or PG fallback after a degraded read).
         if not SPINE_FILE.exists():
             logger.info("No spine file found — starting fresh")
             return
@@ -69,7 +104,7 @@ class SpineStore:
             raw = SPINE_FILE.read_text(encoding="utf-8")
             self._snapshot = SpineSnapshot(**json.loads(raw))
             logger.info(
-                "Loaded spine snapshot: %d missions, %d principles",
+                "Loaded spine snapshot from JSON: %d missions, %d principles",
                 len(self._snapshot.missions),
                 len(self._snapshot.principles),
             )

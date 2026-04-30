@@ -1519,6 +1519,26 @@ async def diagnostics():
             "runs_last_load_error": run_store._last_load_error,
             "memory_last_save_error": failure_memory._last_save_error,
             "memory_last_load_error": failure_memory._last_load_error,
+            # Wave P-22 — surface the canonical-source mode so operators
+            # can verify cutover state without inspecting env vars.
+            "pg_dual_write": _pg_dual_write_status(),
+            "pg_canonical": _pg_canonical_status(),
         },
         "doctrine": "Conservative Intelligence — prefer refusal over error",
     }
+
+
+def _pg_dual_write_status() -> bool:
+    try:
+        from config import DUAL_WRITE_PG
+        return bool(DUAL_WRITE_PG)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _pg_canonical_status() -> bool:
+    try:
+        from config import PG_CANONICAL
+        return bool(PG_CANONICAL)
+    except Exception:  # noqa: BLE001
+        return False

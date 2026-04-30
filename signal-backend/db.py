@@ -349,6 +349,201 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         )
 
 
+async def read_spine_snapshot() -> Optional[dict]:
+    """Wave P-22 — reverse of write_spine_snapshot.
+
+    Reads the full spine state from Postgres into a dict shaped like
+    SpineSnapshot. Returns None when the pool is unavailable so the
+    caller can fall back to JSON.
+
+    Empty database returns an empty snapshot (`missions=[]`,
+    `principles=[]`) — that's a valid state, not a failure. The caller
+    distinguishes via `None` vs. an empty-but-present dict.
+    """
+    pool = await _get_pool()
+    if pool is None:
+        return None
+    try:
+        async with pool.acquire() as conn:
+            mission_rows = await conn.fetch(
+                "SELECT id, title, chamber, status, created_at, updated_at, "
+                "project_contract, last_artifact FROM missions"
+            )
+            note_rows = await conn.fetch(
+                "SELECT id, mission_id, text, role, created_at FROM notes "
+                "ORDER BY mission_id, created_at DESC"
+            )
+            task_rows = await conn.fetch(
+                "SELECT id, mission_id, title, state, source, created_at, "
+                "done_at, last_update_at, artifact_id FROM tasks "
+                "ORDER BY mission_id, created_at"
+            )
+            event_rows = await conn.fetch(
+                "SELECT id, mission_id, type, label, at FROM mission_events "
+                "ORDER BY mission_id, at DESC"
+            )
+            artifact_rows = await conn.fetch(
+                "SELECT id, mission_id, body FROM mission_artifacts "
+                "ORDER BY mission_id, accepted_at DESC"
+            )
+            distillation_rows = await conn.fetch(
+                "SELECT id, mission_id, version, status, summary, "
+                "validated_direction, core_decisions, unknowns, risks, "
+                "surface_seed, terminal_seed, confidence, supersedes_version, "
+                "stale_since, stale_reason, failure_state, created_at, updated_at "
+                "FROM truth_distillations ORDER BY mission_id, version DESC"
+            )
+            handoff_rows = await conn.fetch(
+                "SELECT id, mission_id, from_chamber, to_chamber, artifact_type, "
+                "artifact_ref, summary, risks, next_action, status, created_at, "
+                "resolved_at, resolution FROM handoffs ORDER BY mission_id, created_at DESC"
+            )
+            principle_rows = await conn.fetch(
+                "SELECT id, text, created_at FROM principles ORDER BY created_at"
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("read_spine_snapshot failed — %s: %s", type(exc).__name__, exc)
+        return None
+
+    # Index children by mission_id for stitching.
+    notes_by: dict[str, list[dict]] = {}
+    for r in note_rows:
+        notes_by.setdefault(r["mission_id"], []).append({
+            "id": r["id"], "text": r["text"] or "",
+            "role": r["role"] or "user",
+            "createdAt": int(r["created_at"] or 0),
+        })
+    tasks_by: dict[str, list[dict]] = {}
+    for r in task_rows:
+        tasks_by.setdefault(r["mission_id"], []).append({
+            "id": r["id"], "title": r["title"] or "",
+            "state": r["state"] or "open",
+            "source": r["source"] or "manual",
+            "createdAt": int(r["created_at"] or 0),
+            "doneAt": int(r["done_at"]) if r["done_at"] is not None else None,
+            "lastUpdateAt": int(r["last_update_at"]) if r["last_update_at"] is not None else None,
+            "artifactId": r["artifact_id"],
+            # `done` is derived for back-compat with TS clients reading the flag.
+            "done": (r["state"] or "open") == "done",
+        })
+    events_by: dict[str, list[dict]] = {}
+    for r in event_rows:
+        events_by.setdefault(r["mission_id"], []).append({
+            "id": r["id"], "type": r["type"] or "note_added",
+            "label": r["label"] or "", "at": int(r["at"] or 0),
+        })
+    artifacts_by: dict[str, list[dict]] = {}
+    for r in artifact_rows:
+        # `body` is JSONB — asyncpg returns it as a string; parse defensively.
+        body = r["body"]
+        if isinstance(body, str):
+            try:
+                body = json.loads(body)
+            except Exception:  # noqa: BLE001
+                body = {}
+        if not isinstance(body, dict):
+            body = {}
+        artifacts_by.setdefault(r["mission_id"], []).append(body)
+    distillations_by: dict[str, list[dict]] = {}
+    for r in distillation_rows:
+        def _jload(v: Any) -> Any:
+            if v is None:
+                return None
+            if isinstance(v, str):
+                try:
+                    return json.loads(v)
+                except Exception:  # noqa: BLE001
+                    return None
+            return v
+        distillations_by.setdefault(r["mission_id"], []).append({
+            "id": r["id"],
+            "version": int(r["version"] or 1),
+            "status": r["status"] or "draft",
+            "sourceMissionId": r["mission_id"],
+            "summary": r["summary"] or "",
+            "validatedDirection": r["validated_direction"] or "",
+            "coreDecisions": _jload(r["core_decisions"]) or [],
+            "unknowns": _jload(r["unknowns"]) or [],
+            "risks": _jload(r["risks"]) or [],
+            "surfaceSeed": _jload(r["surface_seed"]),
+            "terminalSeed": _jload(r["terminal_seed"]),
+            "confidence": r["confidence"] or "medium",
+            "supersedesVersion": int(r["supersedes_version"]) if r["supersedes_version"] is not None else None,
+            "staleSince": int(r["stale_since"]) if r["stale_since"] is not None else None,
+            "staleReason": r["stale_reason"],
+            "failureState": r["failure_state"],
+            "createdAt": int(r["created_at"] or 0),
+            "updatedAt": int(r["updated_at"] or 0),
+        })
+    handoffs_by: dict[str, list[dict]] = {}
+    for r in handoff_rows:
+        risks = r["risks"]
+        if isinstance(risks, str):
+            try:
+                risks = json.loads(risks)
+            except Exception:  # noqa: BLE001
+                risks = []
+        handoffs_by.setdefault(r["mission_id"], []).append({
+            "id": r["id"],
+            "fromChamber": r["from_chamber"] or "",
+            "toChamber": r["to_chamber"] or "",
+            "artifactType": r["artifact_type"] or "note",
+            "artifactRef": r["artifact_ref"],
+            "summary": r["summary"] or "",
+            "risks": risks if isinstance(risks, list) else [],
+            "nextAction": r["next_action"] or "",
+            "status": r["status"] or "pending",
+            "createdAt": int(r["created_at"] or 0),
+            "resolvedAt": int(r["resolved_at"]) if r["resolved_at"] is not None else None,
+            "resolution": r["resolution"],
+        })
+
+    missions: list[dict] = []
+    for r in mission_rows:
+        mid = r["id"]
+        contract = r["project_contract"]
+        if isinstance(contract, str):
+            try:
+                contract = json.loads(contract)
+            except Exception:  # noqa: BLE001
+                contract = None
+        last_art = r["last_artifact"]
+        if isinstance(last_art, str):
+            try:
+                last_art = json.loads(last_art)
+            except Exception:  # noqa: BLE001
+                last_art = None
+        missions.append({
+            "id": mid,
+            "title": r["title"] or "",
+            "chamber": r["chamber"] or "core",
+            "status": r["status"] or "active",
+            "createdAt": int(r["created_at"] or 0),
+            "notes": notes_by.get(mid, []),
+            "tasks": tasks_by.get(mid, []),
+            "events": events_by.get(mid, []),
+            "artifacts": artifacts_by.get(mid, []),
+            "lastArtifact": last_art,
+            "projectContract": contract,
+            "truthDistillations": distillations_by.get(mid, []),
+            "handoffs": handoffs_by.get(mid, []),
+        })
+
+    principles = [
+        {"id": r["id"], "text": r["text"] or "", "createdAt": int(r["created_at"] or 0)}
+        for r in principle_rows
+    ]
+    return {
+        "missions": missions,
+        "principles": principles,
+        # activeMissionId is not stored separately in the schema — the
+        # TS client persists it via localStorage. After cutover the
+        # client repopulates it from its own cache; we return None so
+        # the spine snapshot stays valid.
+        "activeMissionId": None,
+    }
+
+
 async def shutdown() -> None:
     """Close the pool (test cleanup, server shutdown). Safe to call
     when never opened."""
