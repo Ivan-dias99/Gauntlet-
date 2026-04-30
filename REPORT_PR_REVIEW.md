@@ -57,15 +57,17 @@ Observação relevante:
 
 ---
 
-## 4) O que falta para eu te entregar o review exato dos 23 PRs
+## 4) Limitação registrada (snapshot 2026-04-29)
 
-Me passe **um** destes itens e eu fecho o relatório PR-a-PR completo:
-- URL do repositório (`owner/repo`), ou
-- configuração do remoto `origin` neste clone, ou
-- lista dos 23 links de PR.
+Quando este relatório foi gerado, o workspace de Codex Cloud não tinha
+o remoto Git configurado nem refs de pull request locais, então a
+revisão PR-a-PR não pôde ser executada. O backlog de 23 itens acima
+foi a entrega prática possível naquele momento: revisão do estado da
+base, não dos diffs individuais.
 
-Com isso, eu entrego uma matriz por PR com:
-- risco (baixo/médio/alto/crítico),
-- correção sugerida com patch objetivo,
-- decisão (`approve` / `request changes`),
-- aderência a padrões atuais (2026).
+Estado atual em main (consolidado depois desta data): a maior parte
+dos PRs originalmente listados foi mergida nas waves P-1 a P-21
+durante 2026-04-29 / 2026-04-30. Este documento é mantido como
+artefato histórico — qualquer item ainda relevante do checklist deve
+ser re-avaliado contra main como nova issue, não como follow-up
+deste arquivo.
