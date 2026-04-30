@@ -621,13 +621,19 @@ class SignalEngine:
         # caution + principles append the same way on top of whichever base
         # was selected. Pre-Wave-1 clients (no chamber) continue to use
         # SYSTEM_PROMPT verbatim.
-        from chambers.profiles import get_profile
-        _profile = get_profile(query.chamber)
-        base_prompt = (
-            _profile.system_prompt
-            if _profile and _profile.system_prompt
-            else SYSTEM_PROMPT
-        )
+        #
+        # Wave P-24: the inline get_profile + base_prompt/temperature
+        # shaping is delegated to ContextRouter. Behaviour for the five
+        # canonical chambers (and the chamber=None legacy path) is
+        # byte-equivalent to the pre-P-24 inline form — the router just
+        # centralises the lookup so the doctrine 10×10 Tool 2 ("Context
+        # Router") has an explicit seam. Temperature still falls back to
+        # TRIAD_TEMPERATURE here because the router carries the profile
+        # value (or None) in notes — engine owns the global default.
+        from context_router import ContextRouter
+        _router = ContextRouter()
+        _ctx = _router.route(query.chamber, query)
+        base_prompt = _ctx.system_prompt
         system_prompt = base_prompt
         if matching_failures or query.force_cautious:
             system_prompt = base_prompt + build_failure_context(matching_failures)
@@ -640,9 +646,12 @@ class SignalEngine:
                 )
         system_prompt += build_principles_context(query.principles)
         # Wave-7: profile.temperature threads through to the triad calls.
+        # Wave P-24: temperature lives in RoutedContext.notes so the
+        # router stays the single source of truth for chamber shaping.
+        _ctx_temperature = _ctx.notes.get("temperature")
         _triad_temperature = (
-            _profile.temperature
-            if _profile and _profile.temperature is not None
+            _ctx_temperature
+            if _ctx_temperature is not None
             else TRIAD_TEMPERATURE
         )
 
