@@ -1,7 +1,11 @@
 import { useCallback, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import { useSignal, type DistillEvent, type DistillTruthPayload } from "../../hooks/useSignal";
-import { activeTruthDistillation, type TruthDistillation } from "../../spine/types";
+import {
+  activeTruthDistillation,
+  pendingHandoffsFor,
+  type TruthDistillation,
+} from "../../spine/types";
 import { fireTelemetry } from "../../lib/telemetry";
 
 // Wave 6a — Truth Distillation panel.
@@ -25,6 +29,7 @@ export default function TruthDistillationPanel() {
     addTruthDistillation,
     updateTruthDistillationStatus,
     setMissionProjectContract,
+    enqueueHandoff,
   } = useSpine();
   const { streamDistill, pending: signalPending, unreachable } = useSignal();
   const [distilling, setDistilling] = useState(false);
@@ -186,6 +191,35 @@ export default function TruthDistillationPanel() {
                 version: distillation.version,
                 confidence: distillation.confidence,
               });
+              // P-18 — Producer wire: a freshly approved distillation
+              // enqueues a handoff into Surface's inbox so the next
+              // chamber sees an actionable suggestion (consume the
+              // surfaceSeed → produce a SurfacePlan). Duplicate guard
+              // checks for an existing pending handoff with the same
+              // artifactRef on this mission/chamber pair, so re-clicking
+              // accept (or accepting different versions concurrently)
+              // does not flood the inbox.
+              const existing = pendingHandoffsFor(activeMission, "surface").some(
+                (h) =>
+                  h.artifactType === "truth_distillation" &&
+                  h.artifactRef === distillation.id,
+              );
+              if (!existing) {
+                const summary = distillation.summary ?? "";
+                const clipped =
+                  summary.length > 200
+                    ? summary.slice(0, 197).trimEnd() + "…"
+                    : summary;
+                enqueueHandoff(activeMission.id, {
+                  fromChamber: "insight",
+                  toChamber: "surface",
+                  artifactType: "truth_distillation",
+                  artifactRef: distillation.id,
+                  summary: clipped,
+                  nextAction: "consumir o seed e produzir SurfacePlan",
+                  risks: distillation.risks ?? [],
+                });
+              }
             }}
             style={primaryBtn}
             disabled={isStale}
