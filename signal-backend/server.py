@@ -1025,6 +1025,22 @@ async def design_figma_import(req: FigmaImportRequest):
 # the existing analogue.
 
 
+def _is_valid_figma_key(s: str) -> bool:
+    """Cheap Figma file-key validator.
+
+    Codex re-review (#267 round 2): the round-1 fix only ``.strip()``-ed
+    the key, so control characters in the middle (`?key=a%0Ab`) flowed
+    into ``figma_client._get_json`` and tripped ``httpx.InvalidURL``,
+    which our handler did not catch — the route 500'd instead of
+    soft-failing. Real Figma file keys are alphanumeric (Figma uses
+    ``[A-Za-z0-9]``), so accept that range plus dash/underscore for
+    safety and reject everything else before issuing the request.
+    """
+    if not s or len(s) > 64:
+        return False
+    return all((c.isalnum() or c in "-_") for c in s)
+
+
 def _record_figma_route(route: str):
     """Tiny context helper to wrap a Figma client call in the
     observability ring buffer. Yields nothing; the caller awaits the
@@ -1064,6 +1080,8 @@ async def figma_file(key: Optional[str] = None):
     file_key = (key or FIGMA_FILE_KEY or "").strip()
     if not file_key:
         return {"ok": False, "reason": "figma_file_key_missing"}
+    if not _is_valid_figma_key(file_key):
+        return {"ok": False, "reason": "figma_file_key_invalid"}
     from figma_client import get_file
     try:
         async with _record_figma_route("figma_file"):
@@ -1094,6 +1112,8 @@ async def figma_tokens(key: Optional[str] = None):
     file_key = (key or FIGMA_FILE_KEY or "").strip()
     if not file_key:
         return {"ok": False, "reason": "figma_file_key_missing"}
+    if not _is_valid_figma_key(file_key):
+        return {"ok": False, "reason": "figma_file_key_invalid"}
     from figma_client import get_local_variables
     try:
         async with _record_figma_route("figma_tokens"):
