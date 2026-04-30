@@ -245,18 +245,32 @@ interface Html2CanvasModule {
 
 let _html2canvasCache: Html2CanvasModule | null = null;
 
+// Codex re-review (#270 round 2): the round-1 fix used
+// `import(/* @vite-ignore */ spec)` with a runtime variable so Vite
+// would not pre-resolve the spec. That worked at build time but broke
+// at runtime: bundlers leave the literal `import("html2canvas")` in the
+// output and browsers cannot resolve a bare specifier without an import
+// map. Result: every deploy fell into `html2canvas_unavailable` even
+// when operators expected the capture to work.
+//
+// Fix: resolve at runtime through an ESM CDN URL — browsers resolve URL
+// specifiers natively, the spec stays out of `package.json`, and the
+// bundle stays small. Operators can override the URL via the
+// `VITE_HTML2CANVAS_URL` env var to swap CDN provider, pin a version,
+// or self-host.
+const _html2canvasUrl: string =
+  ((import.meta as unknown as { env?: Record<string, string | undefined> })
+    .env?.VITE_HTML2CANVAS_URL) ??
+  "https://esm.sh/html2canvas@1.4.1";
+
 async function loadHtml2Canvas(): Promise<Html2CanvasModule> {
   if (_html2canvasCache) return _html2canvasCache;
   try {
-    // html2canvas is intentionally NOT in package.json — we keep the
-    // bundle small and let operators install it on demand. To avoid:
-    //   (a) Vite resolving the spec at build time (would fail), and
-    //   (b) tsc complaining about the missing types,
-    // we hide the spec behind a runtime variable and cast through
-    // unknown. Vite leaves variable-spec imports alone with the
-    // /* @vite-ignore */ pragma; tsc has no literal spec to resolve.
-    const spec = "html2canvas";
-    const mod = (await import(/* @vite-ignore */ spec)) as unknown as Html2CanvasModule;
+    // URL-form dynamic import: the spec is a literal URL the browser's
+    // module loader can resolve directly. The `@vite-ignore` keeps Vite
+    // from rewriting it during dev/preview; in the production bundle
+    // the URL stays as-is so the browser fetches it on first use.
+    const mod = (await import(/* @vite-ignore */ _html2canvasUrl)) as unknown as Html2CanvasModule;
     _html2canvasCache = mod;
     return mod;
   } catch (e) {
