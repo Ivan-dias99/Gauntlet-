@@ -29,7 +29,7 @@
 // Empty state explicit ("spine vazio — nenhuma missão") so a freshly
 // reset spine reads as a deliberate state rather than a missing panel.
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import type { Mission } from "../../spine/types";
 
@@ -97,11 +97,39 @@ export default function SpineSnapshotPanel() {
   // Memoize the JSON serialization so repaints triggered by unrelated
   // tweaks (theme, density) don't pay for it. The spine reference
   // changes on every mutation so this still recomputes when it must.
-  const sizeBytes = useMemo(() => JSON.stringify(state).length, [state]);
+  // Codex P2 (#261): use TextEncoder so the metric matches the "bytes"
+  // label — JSON.stringify().length returns UTF-16 code units, which
+  // undercounts emoji and any text encoded in 2+ UTF-8 bytes.
+  const sizeBytes = useMemo(() => {
+    const json = JSON.stringify(state);
+    if (typeof TextEncoder !== "undefined") {
+      return new TextEncoder().encode(json).length;
+    }
+    // Fallback for older runtimes — approximate via per-char UTF-8 size.
+    let bytes = 0;
+    for (let i = 0; i < json.length; i++) {
+      const c = json.charCodeAt(i);
+      if (c < 0x80) bytes += 1;
+      else if (c < 0x800) bytes += 2;
+      else if (c >= 0xd800 && c <= 0xdbff) { bytes += 4; i++; }
+      else bytes += 3;
+    }
+    return bytes;
+  }, [state]);
 
   const missions = state.missions;
   const breakdowns = useMemo(() => missions.map(breakdownOf), [missions]);
-  const ageMs = Date.now() - state.updatedAt;
+
+  // Codex P2 (#261): age is relative-to-now and the panel doesn't
+  // re-render when the spine state is idle, so the label would freeze
+  // at the last computed value. Tick a per-second clock so the label
+  // stays accurate as long as the panel is mounted.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const ageMs = now - state.updatedAt;
 
   return (
     <section
