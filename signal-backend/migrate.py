@@ -222,6 +222,15 @@ async def main() -> int:
             # been intentionally truncated.
             if body is None:
                 continue
+            # Codex re-review (#250 P2 round 2): the section migrators all
+            # expect dict-shaped bodies and call `.get(...)` on them. A
+            # truncated store that decodes to `[]` (or any non-dict) would
+            # raise AttributeError before the DELETE runs, defeating the
+            # replace-all contract. Coerce non-dict payloads to {} so the
+            # migrator runs its DELETE + empty-INSERT pass and clears the
+            # destination tables.
+            if not isinstance(body, dict):
+                body = {}
             try:
                 await fn(pool, body)
             except Exception as exc:  # noqa: BLE001
