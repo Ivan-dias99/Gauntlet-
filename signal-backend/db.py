@@ -87,7 +87,16 @@ async def _get_pool() -> Optional[Any]:
 
 async def mirror_spine_snapshot(snapshot_json: str) -> None:
     """Mirror the full spine snapshot to Postgres. Safe to call when
-    dual-write is off — returns immediately with no side effects."""
+    dual-write is off — returns immediately with no side effects.
+
+    This is the **dual-write** entrypoint: it is gated on
+    ``is_enabled()`` and swallows any DB exception (logger.warning +
+    return) because JSON remains canonical and we do not want a
+    transient Postgres hiccup to fail the request path. The one-shot
+    backfill (``migrate.py``) MUST NOT use this entrypoint — it should
+    call ``write_spine_snapshot`` directly with the migration pool so
+    failures surface and the dual-write toggle does not gate the seed.
+    """
     pool = await _get_pool()
     if pool is None:
         return
@@ -97,59 +106,70 @@ async def mirror_spine_snapshot(snapshot_json: str) -> None:
         logger.warning("spine mirror skipped — bad JSON: %s", exc)
         return
 
-    missions = snapshot.get("missions") or []
-    principles = snapshot.get("principles") or []
-    active_id = snapshot.get("activeMissionId")
-    updated_at = snapshot.get("last_updated") or snapshot.get("updatedAt")
-
     try:
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                # Principles — replace the whole table per snapshot.
-                # The table is small (operator's doctrine) and this avoids
-                # incremental delete/insert ordering bugs. No FK references
-                # principles, so DELETE is safe here.
-                await conn.execute("DELETE FROM principles")
-                for p in principles:
-                    pid = p.get("id")
-                    text = p.get("text")
-                    created = p.get("createdAt")
-                    if not pid or not text or created is None:
-                        continue
-                    await conn.execute(
-                        "INSERT INTO principles (id, text, created_at) VALUES ($1, $2, $3)",
-                        pid, text, int(created),
-                    )
-
-                # Missions — UPSERT, then prune orphans. The original
-                # implementation used `DELETE FROM missions` + reinsert,
-                # but `runs.mission_id` and `telemetry_events.mission_id`
-                # are FK ON DELETE SET NULL (see migrations/0001), so
-                # every snapshot write would orphan every historical
-                # run/telemetry row. We now upsert each mission row in
-                # place, rebuild its CASCADE child tables (notes, tasks,
-                # mission_events, mission_artifacts, truth_distillations,
-                # handoffs) by id-scoped DELETE + INSERT, then delete
-                # only the missions that disappeared from the snapshot.
-                # The orphan delete still cascades (rare path: explicit
-                # mission deletion), but the steady-state PUT no longer
-                # touches runs / telemetry mission references.
-                snapshot_ids = [m["id"] for m in missions if m.get("id")]
-                if snapshot_ids:
-                    await conn.execute(
-                        "DELETE FROM missions WHERE id <> ALL($1::text[])",
-                        snapshot_ids,
-                    )
-                else:
-                    await conn.execute("DELETE FROM missions")
-                for m in missions:
-                    await _insert_mission(conn, m, m["id"] == active_id if active_id else False)
+        await write_spine_snapshot(pool, snapshot)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "spine mirror write failed (%s) — JSON remains canonical",
             type(exc).__name__,
         )
         return
+
+
+async def write_spine_snapshot(pool: Any, snapshot: dict) -> None:
+    """Write the full spine snapshot to Postgres with the given pool.
+
+    Bypasses the dual-write gate (``is_enabled()``) and propagates any
+    exception. Used by the one-shot backfill so the operator sees a
+    non-zero exit if the seed fails, and so a backfill works even when
+    ``SIGNAL_DUAL_WRITE_PG`` is still off (the documented pre-window
+    flow).
+    """
+    missions = snapshot.get("missions") or []
+    principles = snapshot.get("principles") or []
+    active_id = snapshot.get("activeMissionId")
+
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            # Principles — replace the whole table per snapshot.
+            # The table is small (operator's doctrine) and this avoids
+            # incremental delete/insert ordering bugs. No FK references
+            # principles, so DELETE is safe here.
+            await conn.execute("DELETE FROM principles")
+            for p in principles:
+                pid = p.get("id")
+                text = p.get("text")
+                created = p.get("createdAt")
+                if not pid or not text or created is None:
+                    continue
+                await conn.execute(
+                    "INSERT INTO principles (id, text, created_at) VALUES ($1, $2, $3)",
+                    pid, text, int(created),
+                )
+
+            # Missions — UPSERT, then prune orphans. The original
+            # implementation used `DELETE FROM missions` + reinsert,
+            # but `runs.mission_id` and `telemetry_events.mission_id`
+            # are FK ON DELETE SET NULL (see migrations/0001), so
+            # every snapshot write would orphan every historical
+            # run/telemetry row. We now upsert each mission row in
+            # place, rebuild its CASCADE child tables (notes, tasks,
+            # mission_events, mission_artifacts, truth_distillations,
+            # handoffs) by id-scoped DELETE + INSERT, then delete
+            # only the missions that disappeared from the snapshot.
+            # The orphan delete still cascades (rare path: explicit
+            # mission deletion), but the steady-state PUT no longer
+            # touches runs / telemetry mission references.
+            snapshot_ids = [m["id"] for m in missions if m.get("id")]
+            if snapshot_ids:
+                await conn.execute(
+                    "DELETE FROM missions WHERE id <> ALL($1::text[])",
+                    snapshot_ids,
+                )
+            else:
+                await conn.execute("DELETE FROM missions")
+            for m in missions:
+                await _insert_mission(conn, m, m["id"] == active_id if active_id else False)
 
 
 async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
@@ -163,6 +183,14 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
     child tables (notes/tasks/events/artifacts/distillations/handoffs)
     are CASCADE; we clear them by mission_id and rebuild from the
     snapshot, which is the truth.
+
+    NOT NULL columns use ``(value or default)`` instead of
+    ``dict.get(key, default)`` because legacy snapshots can carry
+    explicit ``null`` for keys that are present — ``.get`` only
+    falls back when the key is missing, so an explicit null would
+    sail through to the DB and trip the NOT NULL constraint, aborting
+    the whole transaction. The coalesce keeps backfills from older
+    JSON payloads working without a separate sanitiser step.
     """
     mid = m.get("id")
     if not mid:
@@ -187,9 +215,9 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             last_artifact = EXCLUDED.last_artifact
         """,
         mid,
-        m.get("title", ""),
-        m.get("chamber", "insight"),
-        m.get("status", "active"),
+        m.get("title") or "",
+        m.get("chamber") or "insight",
+        m.get("status") or "active",
         int(m.get("createdAt") or 0),
         int(m.get("updatedAt") or 0),
         json.dumps(m.get("projectContract")) if m.get("projectContract") else None,
@@ -212,7 +240,7 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         await conn.execute(
             "INSERT INTO notes (id, mission_id, text, role, created_at) "
             "VALUES ($1, $2, $3, $4, $5)",
-            n["id"], mid, n.get("text", ""), (n.get("role") or "user"), int(n.get("createdAt") or 0),
+            n["id"], mid, n.get("text") or "", (n.get("role") or "user"), int(n.get("createdAt") or 0),
         )
 
     for t in (m.get("tasks") or []):
@@ -224,7 +252,7 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
                                created_at, done_at, last_update_at, artifact_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             """,
-            t["id"], mid, t.get("title", ""),
+            t["id"], mid, t.get("title") or "",
             (t.get("state") or "open"), (t.get("source") or "manual"),
             int(t.get("createdAt") or 0),
             int(t["doneAt"]) if t.get("doneAt") is not None else None,
@@ -238,8 +266,8 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         await conn.execute(
             "INSERT INTO mission_events (id, mission_id, type, label, at) "
             "VALUES ($1, $2, $3, $4, $5)",
-            ev["id"], mid, ev.get("type", "note_added"),
-            ev.get("label", ""), int(ev.get("at") or 0),
+            ev["id"], mid, ev.get("type") or "note_added",
+            ev.get("label") or "", int(ev.get("at") or 0),
         )
 
     for art in (m.get("artifacts") or []):
@@ -274,8 +302,8 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             d["id"], mid,
             int(d.get("version") or 1),
             (d.get("status") or "draft"),
-            d.get("summary", ""),
-            d.get("validatedDirection", ""),
+            (d.get("summary") or ""),
+            (d.get("validatedDirection") or ""),
             json.dumps(d.get("coreDecisions") or []),
             json.dumps(d.get("unknowns") or []),
             json.dumps(d.get("risks") or []),
@@ -307,13 +335,13 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             """,
             h["id"], mid,
-            h.get("fromChamber", ""),
-            h.get("toChamber", ""),
-            h.get("artifactType", "note"),
+            (h.get("fromChamber") or ""),
+            (h.get("toChamber") or ""),
+            (h.get("artifactType") or "note"),
             h.get("artifactRef"),
-            h.get("summary", ""),
+            (h.get("summary") or ""),
             json.dumps(h.get("risks") or []),
-            h.get("nextAction") or "",
+            (h.get("nextAction") or ""),
             (h.get("status") or "pending"),
             int(h.get("createdAt") or 0),
             int(h["resolvedAt"]) if h.get("resolvedAt") is not None else None,

@@ -39,12 +39,18 @@ class SpineStore:
         # store still boots on an empty snapshot so the server stays up,
         # but the degraded state is visible via /diagnostics.
         self._last_load_error: str | None = None
-        # In-flight Postgres mirror task. Each put() awaits the prior
-        # mirror before spawning the next one so snapshots land on the
-        # DB in put() order. Without this, two quick put() calls fire
-        # overlapping create_task()s and the older snapshot can land
-        # after the newer one, leaving the mirror stale.
-        self._mirror_task: Optional[asyncio.Task] = None
+        # ── Mirror serialization (Wave O / P-6) ──────────────────────
+        # Concurrent put() calls would otherwise launch independent
+        # mirror tasks via asyncio.create_task — and asyncpg
+        # acquire+transaction has no ordering guarantee, so an older
+        # snapshot can commit after a newer one. We collapse to "always
+        # mirror the latest pending snapshot" with a single-slot holder
+        # plus a single worker task. Bursts of N writes commit at most
+        # twice (in-flight + latest); intermediate snapshots are
+        # superseded, which is correct for a replace-all mirror.
+        self._mirror_pending_json: str | None = None
+        self._mirror_worker_task: asyncio.Task | None = None
+        self._mirror_lock = asyncio.Lock()
 
     async def _ensure_loaded(self) -> None:
         if self._loaded:
@@ -108,52 +114,54 @@ class SpineStore:
                 raise
             self._last_save_error = None
             self._snapshot = snapshot
-        # Wave O / P-6 — fire-and-forget mirror to Postgres when
-        # SIGNAL_DUAL_WRITE_PG=1 + SIGNAL_DATABASE_URL is set. Runs
-        # outside the lock so the caller never waits on the DB and
-        # JSON remains the canonical store. db.mirror_spine_snapshot
-        # is a no-op when dual-write is disabled.
-        #
-        # Ordering — each put() chains its mirror onto the previous
-        # one. Without that chain, two back-to-back put() calls fire
-        # overlapping create_task()s and asyncpg may commit them in
-        # the wrong order, leaving the mirror behind. We still keep
-        # the chain off the snapshot lock so the JSON write returns
-        # immediately; only the mirror itself serializes.
+        # Wave O / P-6 — serialized mirror to Postgres when
+        # SIGNAL_DUAL_WRITE_PG=1 + SIGNAL_DATABASE_URL is set. We stash
+        # the freshest snapshot and ensure one worker is running; bursts
+        # collapse to "in-flight + latest" so older snapshots can never
+        # overwrite a newer commit. db.mirror_spine_snapshot is a no-op
+        # when dual-write is disabled, so this stays free in that mode.
         try:
-            from db import mirror_spine_snapshot, is_enabled as _db_enabled
+            from db import is_enabled as _db_enabled
             if _db_enabled():
-                payload = snapshot.model_dump_json()
-                prior = self._mirror_task
-                self._mirror_task = asyncio.create_task(
-                    self._run_mirror(prior, payload, mirror_spine_snapshot)
-                )
+                await self._enqueue_mirror(snapshot.model_dump_json())
         except Exception:  # noqa: BLE001
-            # Mirror failure must never break the JSON write that
-            # already succeeded.
+            # Mirror scheduling failure must never break the JSON write
+            # that already succeeded.
             pass
         return self._snapshot
 
-    async def _run_mirror(self, prior: Optional[asyncio.Task],
-                          payload: str, mirror_fn) -> None:
-        """Wait for the previous mirror, then run this one. Keeps
-        snapshot writes ordered on the Postgres side without forcing
-        the caller to block on the DB."""
-        if prior is not None:
+    async def _enqueue_mirror(self, snapshot_json: str) -> None:
+        """Queue the latest snapshot for mirroring and ensure a single
+        worker is draining it. Safe to call from any put()."""
+        async with self._mirror_lock:
+            # Collapse-by-latest: only the most recent snapshot matters
+            # for a replace-all mirror, so we just overwrite.
+            self._mirror_pending_json = snapshot_json
+            if self._mirror_worker_task is None or self._mirror_worker_task.done():
+                self._mirror_worker_task = asyncio.create_task(self._mirror_worker())
+
+    async def _mirror_worker(self) -> None:
+        """Drain pending mirror snapshots one at a time. Always picks up
+        the freshest snapshot at the start of each iteration so older
+        ones get superseded without an extra DB round trip."""
+        from db import mirror_spine_snapshot
+        while True:
+            async with self._mirror_lock:
+                pending = self._mirror_pending_json
+                self._mirror_pending_json = None
+                if pending is None:
+                    # Nothing left — drop the worker. A future put()
+                    # will spawn a new one. The lock keeps this race-
+                    # free against a concurrent enqueue.
+                    self._mirror_worker_task = None
+                    return
             try:
-                await prior
+                await mirror_spine_snapshot(pending)
             except Exception:  # noqa: BLE001
-                # Prior failure is already logged inside mirror_fn; we
-                # still need to run our own write so the mirror doesn't
-                # stall on a single bad snapshot.
-                pass
-        try:
-            await mirror_fn(payload)
-        except Exception as e:  # noqa: BLE001
-            # mirror_spine_snapshot already swallows DB errors, but a
-            # bare guard here keeps the task from blowing up the loop
-            # if the import or call site itself raises.
-            logger.warning("spine mirror task failed: %s", e)
+                # mirror_spine_snapshot already swallows DB errors, but
+                # if scheduling itself blows up we must not kill the
+                # worker silently — log and keep draining.
+                logger.exception("spine mirror worker iteration failed")
 
 
 spine_store = SpineStore()
