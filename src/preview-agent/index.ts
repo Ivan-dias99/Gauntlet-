@@ -53,9 +53,22 @@ const ALLOWED_ORIGINS: ReadonlySet<string> = (() => {
       : undefined;
   const extra = env?.VITE_PREVIEW_AGENT_ALLOWED_ORIGINS;
   if (typeof extra === "string") {
+    // Codex P2 (discussion_r3164786811): MessageEvent.origin is always
+    // a bare origin string (`scheme://host[:port]`). Operators may
+    // copy-paste a full URL with path/query into the env var; without
+    // normalisation those entries silently never match and every RPC
+    // is dropped. Run each value through `new URL().origin` (mirrors
+    // PreviewBridge's expectedOrigin handling) and skip anything that
+    // can't parse so a typo can't poison the entire allowlist.
     for (const o of extra.split(",")) {
       const trimmed = o.trim();
-      if (trimmed) set.add(trimmed);
+      if (!trimmed) continue;
+      try {
+        set.add(new URL(trimmed).origin);
+      } catch {
+        // Ignore malformed entries — silently dropping is preferable
+        // to throwing during module init and breaking the agent boot.
+      }
     }
   }
   return set;
@@ -130,8 +143,21 @@ interface PickResult {
   componentHint?: string;
 }
 
+// Codex P2 (discussion_r3164786816): a single active-pick lock. Two
+// overlapping overlays interfere with `elementFromPoint()` (the older
+// overlay can win the hit-test even with pointer-events temporarily
+// disabled on the newer one), producing wrong selectors/rects and
+// stale overlay state until the 60s timeout fires. Reject concurrent
+// requests instead of stacking overlays.
+let activePick = false;
+
 function pickElement(): Promise<PickResult> {
+  if (activePick) {
+    return Promise.reject(new Error("another select_element is already in progress"));
+  }
+  activePick = true;
   return new Promise((resolve, reject) => {
+    const release = () => { activePick = false; };
     const overlay = document.createElement("div");
     overlay.setAttribute("data-preview-agent-overlay", "");
     Object.assign(overlay.style, {
@@ -148,6 +174,7 @@ function pickElement(): Promise<PickResult> {
       window.removeEventListener("keydown", onKey, true);
       overlay.remove();
       if (timeout) clearTimeout(timeout);
+      release();
     };
 
     const onKey = (e: KeyboardEvent) => {
