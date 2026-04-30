@@ -100,20 +100,19 @@ async def _migrate_runs(pool: Any, body: dict) -> None:
     # Legacy snapshots may carry mission_ids for missions that have since
     # been deleted (or otherwise drifted out of spine.json). Inserting
     # those raw would trip the FK and abort the whole transaction,
-    # leaving the Postgres mirror partially populated. Build the valid
-    # set from the spine snapshot once and coalesce orphans to NULL —
-    # the schema allows NULL on runs.mission_id (ON DELETE SET NULL).
-    # Codex re-review (#250 P2 round 3): main() coerces non-dict payloads
-    # to {} before dispatch, but this reload happens inside _migrate_runs
-    # and was unguarded. A spine.json shaped as [] (or any non-dict) would
-    # raise AttributeError on spine.get(...), aborting the runs backfill
-    # mid-flight after _migrate_spine had already executed. Apply the
-    # same coercion here so the orphan-FK guard degrades gracefully.
-    spine_raw = _load_json(SPINE_FILE)
-    spine = spine_raw if isinstance(spine_raw, dict) else {}
-    valid_mission_ids = {
-        m.get("id") for m in (spine.get("missions") or []) if m.get("id")
-    }
+    # leaving the Postgres mirror partially populated. Coalesce orphans
+    # to NULL — the schema allows NULL on runs.mission_id (ON DELETE
+    # SET NULL).
+    # Codex re-review (#250 P2 round 4): the previous version reloaded
+    # spine.json from disk to build valid_mission_ids, which (a) is a
+    # TOCTOU mismatch if the running app writes to spine.json between
+    # _migrate_spine and _migrate_runs, and (b) duplicates the schema
+    # mapping. Source-of-truth is the database itself after
+    # _migrate_spine committed — query missions(id) directly so the
+    # validation set is exactly what was just seeded.
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT id FROM missions")
+    valid_mission_ids = {r["id"] for r in rows}
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute("DELETE FROM runs")
