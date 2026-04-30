@@ -26,6 +26,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+import httpx
+
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -36,6 +38,8 @@ from config import (
     ALLOWED_ORIGIN_REGEX,
     ALLOWED_ORIGINS,
     ANTHROPIC_API_KEY,
+    FIGMA_FILE_KEY,
+    FIGMA_TOKEN,
     MEMORY_DIR,
     PERSISTENCE_EPHEMERAL,
     RUBERRA_MOCK,
@@ -1005,6 +1009,140 @@ async def design_figma_import(req: FigmaImportRequest):
     from figma_tokens import tokens_from_figma_json
     ts = tokens_from_figma_json(req.file_id, req.body, name=req.name)
     return ts.to_dict()
+
+
+# ── Figma live REST endpoints (Wave P-27) ───────────────────────────────────
+#
+# These call api.figma.com on behalf of the operator, using a personal
+# access token configured via SIGNAL_FIGMA_TOKEN. When the token is
+# unset both endpoints return a soft `{ok: false, reason:
+# "figma_not_configured"}` envelope rather than raising 500 — the UI
+# surfaces "configure Figma" instead of "server crashed".
+#
+# Observability: each call is bracketed by observability.start/end so
+# /diagnostics shows latency and error rate per route. There is no
+# separate `record_route` helper in observability.py; start+end is
+# the existing analogue.
+
+
+def _is_valid_figma_key(s: str) -> bool:
+    """Cheap Figma file-key validator.
+
+    Codex re-review (#267 round 2): the round-1 fix only ``.strip()``-ed
+    the key, so control characters in the middle (`?key=a%0Ab`) flowed
+    into ``figma_client._get_json`` and tripped ``httpx.InvalidURL``,
+    which our handler did not catch — the route 500'd instead of
+    soft-failing. Real Figma file keys are alphanumeric (Figma uses
+    ``[A-Za-z0-9]``), so accept that range plus dash/underscore for
+    safety and reject everything else before issuing the request.
+    """
+    if not s or len(s) > 64:
+        return False
+    return all((c.isalnum() or c in "-_") for c in s)
+
+
+def _record_figma_route(route: str):
+    """Tiny context helper to wrap a Figma client call in the
+    observability ring buffer. Yields nothing; the caller awaits the
+    underlying coroutine and we time it."""
+    import contextlib
+    import observability as _obs
+
+    @contextlib.asynccontextmanager
+    async def _ctx():
+        _obs.start(route)
+        t0 = time.monotonic()
+        err: Optional[str] = None
+        try:
+            yield
+        except BaseException as exc:  # noqa: BLE001 — capture cancels too
+            # Codex re-review (#267 round 3): Exception alone misses
+            # asyncio.CancelledError (a BaseException), so client
+            # disconnects / timeouts were silently recorded as
+            # successful samples and skewed the route metrics. Catch
+            # BaseException, record the kind, re-raise.
+            err = type(exc).__name__
+            raise
+        finally:
+            _obs.end(
+                route,
+                duration_ms=int((time.monotonic() - t0) * 1000),
+                error_kind=err,
+            )
+
+    return _ctx()
+
+
+@app.get("/figma/file")
+async def figma_file(key: Optional[str] = None):
+    """Fetch a Figma file body via the REST API. `?key=` overrides the
+    SIGNAL_FIGMA_FILE_KEY default. Returns the raw Figma JSON on
+    success; returns `{ok: false, reason: ...}` for the soft failure
+    cases (no token, no key) so the UI can render a config hint
+    instead of treating it as a server fault."""
+    if not FIGMA_TOKEN:
+        return {"ok": False, "reason": "figma_not_configured"}
+    file_key = (key or FIGMA_FILE_KEY or "").strip()
+    if not file_key:
+        return {"ok": False, "reason": "figma_file_key_missing"}
+    if not _is_valid_figma_key(file_key):
+        return {"ok": False, "reason": "figma_file_key_invalid"}
+    from figma_client import get_file
+    try:
+        async with _record_figma_route("figma_file"):
+            data = await get_file(token=FIGMA_TOKEN, file_key=file_key)
+    except (RuntimeError, httpx.RequestError) as exc:
+        # Upstream Figma error — surface as 502 so the operator can
+        # tell it apart from "we're broken". httpx.RequestError covers
+        # transport failures (DNS, connect/read timeout) where no
+        # response exists yet; RuntimeError covers non-2xx responses
+        # raised by figma_client._get_json.
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "figma_api_error", "message": str(exc)},
+        )
+    return {"ok": True, "file_key": file_key, "data": data}
+
+
+@app.get("/figma/tokens")
+async def figma_tokens(key: Optional[str] = None):
+    """Fetch the file's local variables (Figma Variables API). When
+    figma_tokens.py grows a `parse_variables` helper we'll normalise
+    here; for now we return raw variables alongside a parsed
+    best-effort TokenSet via the existing tokens_from_figma_json walker
+    (which already understands meta.variables/meta.variableCollections).
+    Soft-fails to `{ok: false, reason}` on missing token/key."""
+    if not FIGMA_TOKEN:
+        return {"ok": False, "reason": "figma_not_configured"}
+    file_key = (key or FIGMA_FILE_KEY or "").strip()
+    if not file_key:
+        return {"ok": False, "reason": "figma_file_key_missing"}
+    if not _is_valid_figma_key(file_key):
+        return {"ok": False, "reason": "figma_file_key_invalid"}
+    from figma_client import get_local_variables
+    try:
+        async with _record_figma_route("figma_tokens"):
+            data = await get_local_variables(token=FIGMA_TOKEN, file_key=file_key)
+    except (RuntimeError, httpx.RequestError) as exc:
+        # See figma_file: httpx.RequestError covers transport failures
+        # (DNS, connect/read timeout) before any response exists.
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "figma_api_error", "message": str(exc)},
+        )
+
+    # Best-effort normalisation. The Variables API response is shaped
+    # `{"meta": {"variables": {...}, "variableCollections": {...}}}`,
+    # which is exactly what tokens_from_figma_json walks. If the parser
+    # later exposes a dedicated parse_variables helper, swap to it.
+    parsed: Optional[dict[str, Any]] = None
+    try:
+        from figma_tokens import tokens_from_figma_json
+        parsed = tokens_from_figma_json(file_key, data).to_dict()
+    except Exception:  # noqa: BLE001 — parsing is opportunistic
+        parsed = None
+
+    return {"ok": True, "file_key": file_key, "raw": data, "parsed": parsed}
 
 # ── Surface · BuildSpec endpoint ────────────────────────────────────────────
 #

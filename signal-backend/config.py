@@ -135,12 +135,6 @@ DUAL_WRITE_PG: bool = (
     in ("1", "true", "yes", "on")
 )
 # ── GitHub Issues (Wave P-23) ───────────────────────────────────────────────
-# When both are set, POST /issues/create posts to the real GitHub REST API.
-# When either is missing, /issues/create returns a friendly fallback so the
-# chamber can show a copy-paste body instead of throwing 500.
-#
-# Token: Personal Access Token or fine-grained token with `issues:write` on
-# the target repo. Repo is in `owner/repo` form (e.g. ivan-dias99/aiinterfaceshelldesign).
 GITHUB_TOKEN: str = _env("SIGNAL_GITHUB_TOKEN", "RUBERRA_GITHUB_TOKEN", "")
 GITHUB_REPO: str = _env("SIGNAL_GITHUB_REPO", "RUBERRA_GITHUB_REPO", "")
 
@@ -175,3 +169,8 @@ PG_CANONICAL: bool = (
     and _env("SIGNAL_PG_CANONICAL", "RUBERRA_PG_CANONICAL", "").strip().lower()
     in ("1", "true", "yes", "on")
 )
+
+
+# ── Figma REST client (Wave P-27) ────────────────────────────────────────
+FIGMA_TOKEN: str = _env("SIGNAL_FIGMA_TOKEN", "RUBERRA_FIGMA_TOKEN", "")
+FIGMA_FILE_KEY: str = _env("SIGNAL_FIGMA_FILE_KEY", "RUBERRA_FIGMA_FILE_KEY", "")
