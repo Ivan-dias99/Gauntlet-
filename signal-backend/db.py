@@ -402,21 +402,35 @@ async def read_spine_snapshot() -> Optional[dict]:
             principle_rows = await conn.fetch(
                 "SELECT id, text, created_at FROM principles ORDER BY created_at"
             )
-            # Wave P-22 follow-up — TS hydration (`SpineContext.tsx`) decides
-            # whether the server snapshot wins via
-            # `remote.updatedAt > prev.updatedAt`. Without a value the
-            # PG-derived snapshot was sailing in as `None → 0`, so a fresh
-            # client always saw "remote is older", kept its empty local
-            # state, and overwrote the canonical store on the next push.
-            # MAX(updated_at) over missions is the canonical freshness
-            # watermark: every mutation bumps the owning mission row's
-            # updated_at (children are rebuilt by id-scoped DELETE+INSERT
-            # under the same put()), so the mission max already reflects
-            # the latest write. Empty DB falls back to wall-clock so a
-            # truly fresh server still beats a non-existent local state.
-            max_updated_row = await conn.fetchrow(
-                "SELECT MAX(updated_at) AS m FROM missions"
-            )
+            # Wave P-22 — derive snapshot updatedAt from child timestamps.
+            #
+            # TS hydration (`SpineContext.tsx`) decides whether the server
+            # snapshot wins via `remote.updatedAt > prev.updatedAt`. Codex
+            # rounds 1-3 caught two bad approaches:
+            #   1. `MAX(missions.updated_at)` returns 0 because the writer
+            #      never sets that column (MissionRecord has no updatedAt).
+            #   2. `time.time()` always wins over local — but it overwrites
+            #      offline edits made while server was unreachable.
+            #
+            # Real freshness lives in the child rows: notes.created_at,
+            # tasks.created_at + last_update_at, mission_events.at,
+            # mission_artifacts.accepted_at, truth_distillations.updated_at,
+            # handoffs.created_at, principles.created_at. Take the MAX
+            # across all of them — it's the actual "last activity"
+            # timestamp the DB has seen. No mutation bumps anything else,
+            # so this is provably the highest persisted timestamp.
+            freshness_row = await conn.fetchrow("""
+                SELECT GREATEST(
+                    COALESCE((SELECT MAX(created_at) FROM notes), 0),
+                    COALESCE((SELECT MAX(created_at) FROM tasks), 0),
+                    COALESCE((SELECT MAX(last_update_at) FROM tasks), 0),
+                    COALESCE((SELECT MAX(at) FROM mission_events), 0),
+                    COALESCE((SELECT MAX(accepted_at) FROM mission_artifacts), 0),
+                    COALESCE((SELECT MAX(updated_at) FROM truth_distillations), 0),
+                    COALESCE((SELECT MAX(created_at) FROM handoffs), 0),
+                    COALESCE((SELECT MAX(created_at) FROM principles), 0)
+                ) AS m
+            """)
     except Exception as exc:  # noqa: BLE001
         logger.warning("read_spine_snapshot failed — %s: %s", type(exc).__name__, exc)
         return None
@@ -549,24 +563,17 @@ async def read_spine_snapshot() -> Optional[dict]:
         {"id": r["id"], "text": r["text"] or "", "createdAt": int(r["created_at"] or 0)}
         for r in principle_rows
     ]
-    # Codex re-review (#264 round 2): `MAX(missions.updated_at)` returns
-    # 0 because `MissionRecord` has no `updatedAt` field and the mirror
-    # writer stores `int(m.get("updatedAt") or 0)`. Using that value
-    # would produce `updatedAt=0` whenever any mission existed, so the
-    # TS hydration `remote.updatedAt > prev.updatedAt` always tied —
-    # the very bug the round-1 fix was supposed to close.
-    #
-    # Use server wall-clock time as the snapshot's `updatedAt`: "this
-    # snapshot was assembled from PG at this moment". The canonical
-    # freshness lives in the DB itself; the load timestamp is the
-    # honest watermark a fresh client can compare against. Always
-    # beats a stale local `prev.updatedAt`. This also avoids the
-    # NameError path Codex flagged when `time` was not imported.
-    updated_at_ms = int(time.time() * 1000)
-    # Keep `max_updated_row` referenced so future debugging can read
-    # the per-mission MAX without resurrecting it. Not used for the
-    # snapshot watermark.
-    _ = max_updated_row
+    # Codex re-review (#264 round 3): use real persisted freshness, not
+    # server wall-clock. `time.time()` always wins over local even when
+    # the local cache had legitimate offline edits — that overwrites
+    # those edits silently on the next push. Real freshness comes from
+    # the MAX of every child timestamp the writer actually populates
+    # (notes, tasks, events, artifacts, distillations, handoffs,
+    # principles). Empty DB → 0; client compares 0 > prev.updatedAt and
+    # only wins if the local state was also fresh-empty, which is
+    # exactly the right behaviour.
+    pg_freshness = freshness_row["m"] if freshness_row is not None else 0
+    updated_at_ms = int(pg_freshness or 0)
     return {
         # `updatedAt` first so the TS hydration check
         # (`remote.updatedAt > prev.updatedAt`) sees a real timestamp,
