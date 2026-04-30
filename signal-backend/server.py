@@ -41,6 +41,9 @@ from config import (
     RUBERRA_MOCK,
     SERVER_HOST,
     SERVER_PORT,
+    VERCEL_PROJECT_ID,
+    VERCEL_TEAM_ID,
+    VERCEL_TOKEN,
 )
 from models import SignalQuery, SignalResponse, SpineSnapshot, RunRecord
 from engine import SignalEngine
@@ -1138,6 +1141,117 @@ async def gateway_summary():
     audit routing + cost without scraping the run log."""
     from model_gateway import gateway as _gateway
     return _gateway.summary()
+
+
+# ── Vercel API endpoints (Wave P-25) ──────────────────────────────────────
+#
+# Thin pass-through to vercel_client. Two reads only — list + detail.
+# When VERCEL_TOKEN is unset (the audit's 🟡 stub state), endpoints
+# return ``{ok: false, reason: "vercel_not_configured"}`` with HTTP 200
+# so the Surface/Core dashboard can render an "unconfigured" chip
+# instead of a 500. Same record_route envelope as the rest of Signal.
+
+
+def _vercel_unconfigured() -> dict:
+    """Friendly fallback body when VERCEL_TOKEN is empty. HTTP 200 by
+    design — the chamber needs to know the integration is unconfigured,
+    not that the backend exploded."""
+    return {
+        "ok": False,
+        "reason": "vercel_not_configured",
+        "message": (
+            "Set SIGNAL_VERCEL_TOKEN (or RUBERRA_VERCEL_TOKEN) to enable "
+            "Vercel deployment listing. SIGNAL_VERCEL_PROJECT_ID and "
+            "SIGNAL_VERCEL_TEAM_ID are optional scopes."
+        ),
+    }
+
+
+@app.get("/vercel/deployments")
+async def vercel_deployments(limit: int = 20):
+    """List recent Vercel deployments scoped by VERCEL_PROJECT_ID /
+    VERCEL_TEAM_ID env. Returns ``{ok, deployments, count}`` on
+    success or the ``vercel_not_configured`` envelope when the token
+    is unset."""
+    import observability as _obs
+    from vercel_client import list_deployments
+
+    if not VERCEL_TOKEN:
+        return _vercel_unconfigured()
+
+    _obs.start("vercel_deployments")
+    started = time.monotonic()
+    try:
+        deployments = await list_deployments(
+            token=VERCEL_TOKEN,
+            project=VERCEL_PROJECT_ID or None,
+            team=VERCEL_TEAM_ID or None,
+            limit=limit,
+        )
+        _obs.end(
+            "vercel_deployments",
+            duration_ms=int((time.monotonic() - started) * 1000),
+            succeeded=True,
+        )
+        return {
+            "ok": True,
+            "deployments": deployments,
+            "count": len(deployments),
+        }
+    except Exception as e:  # noqa: BLE001
+        _obs.end(
+            "vercel_deployments",
+            duration_ms=int((time.monotonic() - started) * 1000),
+            succeeded=False,
+            error_kind=type(e).__name__,
+        )
+        logger.error(f"Vercel list error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail=_error_envelope("vercel_api_error", e),
+        )
+
+
+@app.get("/vercel/deployments/{deployment_id}")
+async def vercel_deployment(deployment_id: str):
+    """Fetch a single Vercel deployment by id or host. Same shape /
+    fallback contract as ``/vercel/deployments``."""
+    import observability as _obs
+    from vercel_client import get_deployment
+
+    if not VERCEL_TOKEN:
+        return _vercel_unconfigured()
+
+    _obs.start("vercel_deployment")
+    started = time.monotonic()
+    try:
+        deployment = await get_deployment(
+            token=VERCEL_TOKEN,
+            id=deployment_id,
+            team=VERCEL_TEAM_ID or None,
+        )
+        _obs.end(
+            "vercel_deployment",
+            duration_ms=int((time.monotonic() - started) * 1000),
+            succeeded=True,
+        )
+        return {
+            "ok": True,
+            "deployment": deployment,
+            "count": 1,
+        }
+    except Exception as e:  # noqa: BLE001
+        _obs.end(
+            "vercel_deployment",
+            duration_ms=int((time.monotonic() - started) * 1000),
+            succeeded=False,
+            error_kind=type(e).__name__,
+        )
+        logger.error(f"Vercel detail error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail=_error_envelope("vercel_api_error", e),
+        )
 
 
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
