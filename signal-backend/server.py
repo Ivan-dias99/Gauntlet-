@@ -1260,6 +1260,92 @@ async def vercel_deployment(deployment_id: str):
         )
 
 
+# ── Railway GraphQL endpoints (Wave P-26) ────────────────────────────────
+
+
+@app.get("/railway/services")
+async def railway_services():
+    """List Railway services for the configured project.
+
+    Returns `{ok: false, reason: "railway_not_configured"}` (HTTP 200)
+    when SIGNAL_RAILWAY_TOKEN or SIGNAL_RAILWAY_PROJECT_ID is unset, so
+    the operator dashboard never sees a 500 just because the operator
+    has not wired Railway credentials yet.
+
+    On upstream failure, returns `{ok: false, reason: "railway_error",
+    error: "..."}` so the panel can render a degraded badge instead of
+    a stack trace.
+    """
+    import observability
+    from config import RAILWAY_PROJECT_ID, RAILWAY_TOKEN, RAILWAY_TOKEN_KIND
+    from railway_client import list_services
+
+    if not RAILWAY_TOKEN or not RAILWAY_PROJECT_ID:
+        return {"ok": False, "reason": "railway_not_configured"}
+
+    # Codex round 2 (#269): catch RuntimeError OUTSIDE the record_route
+    # block so the context manager observes the failure (sets
+    # error_kind, succeeded=False). Catching inside would let the
+    # context manager exit cleanly and /observability/snapshot would
+    # under-report Railway errors.
+    try:
+        async with observability.record_route("railway.services"):
+            services = await list_services(
+                token=RAILWAY_TOKEN,
+                project_id=RAILWAY_PROJECT_ID,
+                token_kind=RAILWAY_TOKEN_KIND,
+            )
+    except RuntimeError as exc:
+        logger.warning("railway list_services failed: %s", exc)
+        return {"ok": False, "reason": "railway_error", "error": str(exc)}
+
+    return {
+        "ok": True,
+        "project_id": RAILWAY_PROJECT_ID,
+        "services": services,
+    }
+
+
+@app.get("/railway/services/{service_id}/deployments")
+async def railway_deployments(service_id: str, limit: int = 20):
+    """List recent deployments for a service in the configured environment.
+
+    Same fallback contract as `/railway/services`: missing token /
+    environment yields `{ok: false, reason: "railway_not_configured"}`,
+    upstream failures yield `{ok: false, reason: "railway_error", ...}`.
+    """
+    import observability
+    from config import RAILWAY_ENVIRONMENT_ID, RAILWAY_TOKEN, RAILWAY_TOKEN_KIND
+    from railway_client import list_deployments
+
+    if not RAILWAY_TOKEN or not RAILWAY_ENVIRONMENT_ID:
+        return {"ok": False, "reason": "railway_not_configured"}
+
+    try:
+        async with observability.record_route("railway.deployments"):
+            deployments = await list_deployments(
+                token=RAILWAY_TOKEN,
+                service_id=service_id,
+                environment_id=RAILWAY_ENVIRONMENT_ID,
+                limit=limit,
+                token_kind=RAILWAY_TOKEN_KIND,
+            )
+    except RuntimeError as exc:
+        logger.warning(
+            "railway list_deployments failed (service=%s): %s",
+            service_id,
+            exc,
+        )
+        return {"ok": False, "reason": "railway_error", "error": str(exc)}
+
+    return {
+        "ok": True,
+        "service_id": service_id,
+        "environment_id": RAILWAY_ENVIRONMENT_ID,
+        "deployments": deployments,
+    }
+
+
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
 
 @app.get("/diagnostics")

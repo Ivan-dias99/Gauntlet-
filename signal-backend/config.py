@@ -154,3 +154,29 @@ GITHUB_REPO: str = _env("SIGNAL_GITHUB_REPO", "RUBERRA_GITHUB_REPO", "")
 VERCEL_TOKEN: str = _env("SIGNAL_VERCEL_TOKEN", "RUBERRA_VERCEL_TOKEN", "")
 VERCEL_PROJECT_ID: str = _env("SIGNAL_VERCEL_PROJECT_ID", "RUBERRA_VERCEL_PROJECT_ID", "")
 VERCEL_TEAM_ID: str = _env("SIGNAL_VERCEL_TEAM_ID", "RUBERRA_VERCEL_TEAM_ID", "")
+
+
+# ── Railway GraphQL (Wave P-26) ──────────────────────────────────────────
+# Bearer token for https://backboard.railway.com/graphql/v2 plus the
+# project + environment scope the service/deployment endpoints use.
+# Token unset is the safe default — endpoints respond with a graceful
+# `{ok: false, reason: "railway_not_configured"}` instead of crashing or
+# leaking 500s. Project/environment IDs default to empty strings; the
+# endpoints surface the same fallback when they are missing.
+RAILWAY_TOKEN: str = _env("SIGNAL_RAILWAY_TOKEN", "RUBERRA_RAILWAY_TOKEN", "")
+# Codex re-review (#269 round 2): Railway has two distinct token types
+# with different auth headers. Account / team tokens use Bearer; project
+# tokens (least-privilege, scoped to one project) use
+# `Project-Access-Token` and Bearer is rejected. SIGNAL_RAILWAY_TOKEN_KIND
+# selects the header; default "account" preserves the pre-fix behaviour.
+RAILWAY_TOKEN_KIND: str = (
+    _env("SIGNAL_RAILWAY_TOKEN_KIND", "RUBERRA_RAILWAY_TOKEN_KIND", "account")
+    .strip()
+    .lower()
+    or "account"
+)
+# Project + environment IDs: SIGNAL_* only (no RUBERRA alias by design —
+# they are new knobs, no legacy deploys to honor). Empty default lets the
+# endpoints fall back gracefully without forcing a particular project.
+RAILWAY_PROJECT_ID: str = os.environ.get("SIGNAL_RAILWAY_PROJECT_ID", "")
+RAILWAY_ENVIRONMENT_ID: str = os.environ.get("SIGNAL_RAILWAY_ENVIRONMENT_ID", "")
