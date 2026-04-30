@@ -58,14 +58,24 @@ def _load_json(path: Path) -> Optional[dict]:
 
 
 async def _migrate_spine(pool: Any, snapshot: dict) -> None:
-    """Mirror the spine snapshot. Reuses db.mirror_spine_snapshot via
-    the public entrypoint so the schema mapping stays in one place."""
-    from db import mirror_spine_snapshot
-    await mirror_spine_snapshot(json.dumps(snapshot))
+    """Mirror the spine snapshot using the migration pool directly.
+
+    Bypasses ``db.mirror_spine_snapshot`` because that helper is gated on
+    ``SIGNAL_DUAL_WRITE_PG`` (it returns immediately when the toggle is
+    off) and swallows DB exceptions. The backfill is the documented
+    pre-window seed: it must write regardless of the dual-write toggle
+    and must surface failures so the operator sees a non-zero exit.
+    """
+    from db import write_spine_snapshot
+    await write_spine_snapshot(pool, snapshot)
     logger.info(
-        "spine: mirrored %d missions, %d principles",
+        "spine: mirrored %d missions, %d principles, %d distillations",
         len(snapshot.get("missions") or []),
         len(snapshot.get("principles") or []),
+        sum(
+            len((m.get("truthDistillations") or []))
+            for m in (snapshot.get("missions") or [])
+        ),
     )
 
 
@@ -157,16 +167,27 @@ async def main() -> int:
     pool = await asyncpg.create_pool(
         dsn=DATABASE_URL, min_size=1, max_size=2, command_timeout=30,
     )
+    # Each section runs in its own transaction. Any failure must surface
+    # (non-zero exit) so the operator does not ship an incomplete seed
+    # under a "backfill complete" log.
+    sections: list[tuple[str, Path, Any]] = [
+        ("spine", SPINE_FILE, _migrate_spine),
+        ("runs", RUNS_FILE, _migrate_runs),
+        ("failure_memory", FAILURE_FILE, _migrate_failure),
+    ]
     try:
-        spine = _load_json(SPINE_FILE)
-        if spine:
-            await _migrate_spine(pool, spine)
-        runs = _load_json(RUNS_FILE)
-        if runs:
-            await _migrate_runs(pool, runs)
-        failures = _load_json(FAILURE_FILE)
-        if failures:
-            await _migrate_failure(pool, failures)
+        for name, path, fn in sections:
+            body = _load_json(path)
+            if not body:
+                continue
+            try:
+                await fn(pool, body)
+            except Exception as exc:  # noqa: BLE001
+                logger.error(
+                    "backfill aborted in %s: %s: %s",
+                    name, type(exc).__name__, exc,
+                )
+                return 1
         logger.info("backfill complete")
         return 0
     finally:
