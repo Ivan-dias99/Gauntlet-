@@ -26,6 +26,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+import httpx
+
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -1066,10 +1068,16 @@ async def figma_file(key: Optional[str] = None):
     try:
         async with _record_figma_route("figma_file"):
             data = await get_file(token=FIGMA_TOKEN, file_key=file_key)
-    except RuntimeError as exc:
+    except (RuntimeError, httpx.RequestError) as exc:
         # Upstream Figma error — surface as 502 so the operator can
-        # tell it apart from "we're broken".
-        raise HTTPException(status_code=502, detail=str(exc))
+        # tell it apart from "we're broken". httpx.RequestError covers
+        # transport failures (DNS, connect/read timeout) where no
+        # response exists yet; RuntimeError covers non-2xx responses
+        # raised by figma_client._get_json.
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "figma_api_error", "message": str(exc)},
+        )
     return {"ok": True, "file_key": file_key, "data": data}
 
 
@@ -1090,8 +1098,13 @@ async def figma_tokens(key: Optional[str] = None):
     try:
         async with _record_figma_route("figma_tokens"):
             data = await get_local_variables(token=FIGMA_TOKEN, file_key=file_key)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
+    except (RuntimeError, httpx.RequestError) as exc:
+        # See figma_file: httpx.RequestError covers transport failures
+        # (DNS, connect/read timeout) before any response exists.
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "figma_api_error", "message": str(exc)},
+        )
 
     # Best-effort normalisation. The Variables API response is shaped
     # `{"meta": {"variables": {...}, "variableCollections": {...}}}`,
