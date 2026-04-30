@@ -215,7 +215,12 @@ async def main() -> int:
                     name, type(exc).__name__, exc,
                 )
                 return 1
-            if not body:
+            # Codex re-review (#250 P2): only skip when the file is absent
+            # (_load_json returned None). Present-but-empty payloads ({} / [])
+            # must still run the section's DELETE/reseed transaction so the
+            # replace-all/idempotent contract holds when a JSON store has
+            # been intentionally truncated.
+            if body is None:
                 continue
             try:
                 await fn(pool, body)
