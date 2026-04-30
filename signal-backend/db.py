@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from typing import Any, Optional
 
 from config import DATABASE_URL, DUAL_WRITE_PG
@@ -219,7 +220,15 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         m.get("chamber") or "insight",
         m.get("status") or "active",
         int(m.get("createdAt") or 0),
-        int(m.get("updatedAt") or 0),
+        # Codex re-review (#264 round 4): MissionRecord has no
+        # `updatedAt` field, so the writer used to fall back to 0 for
+        # this column on every UPSERT. That blinded the freshness
+        # watermark to mission-only edits (status flips, title
+        # renames, chamber moves) — none of which touch any child
+        # table. Bump `updated_at` to the current write time so
+        # GREATEST(..., MAX(missions.updated_at)) advances on every
+        # persisted mutation regardless of which row it touched.
+        int((m.get("updatedAt") or (time.time() * 1000))),
         json.dumps(m.get("projectContract")) if m.get("projectContract") else None,
         json.dumps(m.get("lastArtifact")) if m.get("lastArtifact") else None,
     )
@@ -347,6 +356,261 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             int(h["resolvedAt"]) if h.get("resolvedAt") is not None else None,
             h.get("resolution"),
         )
+
+
+async def read_spine_snapshot() -> Optional[dict]:
+    """Wave P-22 — reverse of write_spine_snapshot.
+
+    Reads the full spine state from Postgres into a dict shaped like
+    SpineSnapshot. Returns None when the pool is unavailable so the
+    caller can fall back to JSON.
+
+    Empty database returns an empty snapshot (`missions=[]`,
+    `principles=[]`) — that's a valid state, not a failure. The caller
+    distinguishes via `None` vs. an empty-but-present dict.
+    """
+    pool = await _get_pool()
+    if pool is None:
+        return None
+    try:
+        async with pool.acquire() as conn:
+            mission_rows = await conn.fetch(
+                "SELECT id, title, chamber, status, created_at, updated_at, "
+                "project_contract, last_artifact FROM missions"
+            )
+            note_rows = await conn.fetch(
+                "SELECT id, mission_id, text, role, created_at FROM notes "
+                "ORDER BY mission_id, created_at DESC"
+            )
+            task_rows = await conn.fetch(
+                "SELECT id, mission_id, title, state, source, created_at, "
+                "done_at, last_update_at, artifact_id FROM tasks "
+                "ORDER BY mission_id, created_at"
+            )
+            event_rows = await conn.fetch(
+                "SELECT id, mission_id, type, label, at FROM mission_events "
+                "ORDER BY mission_id, at DESC"
+            )
+            artifact_rows = await conn.fetch(
+                "SELECT id, mission_id, body FROM mission_artifacts "
+                "ORDER BY mission_id, accepted_at DESC"
+            )
+            distillation_rows = await conn.fetch(
+                "SELECT id, mission_id, version, status, summary, "
+                "validated_direction, core_decisions, unknowns, risks, "
+                "surface_seed, terminal_seed, confidence, supersedes_version, "
+                "stale_since, stale_reason, failure_state, created_at, updated_at "
+                "FROM truth_distillations ORDER BY mission_id, version DESC"
+            )
+            handoff_rows = await conn.fetch(
+                "SELECT id, mission_id, from_chamber, to_chamber, artifact_type, "
+                "artifact_ref, summary, risks, next_action, status, created_at, "
+                "resolved_at, resolution FROM handoffs ORDER BY mission_id, created_at DESC"
+            )
+            principle_rows = await conn.fetch(
+                "SELECT id, text, created_at FROM principles ORDER BY created_at"
+            )
+            # Wave P-22 — derive snapshot updatedAt from child timestamps.
+            #
+            # TS hydration (`SpineContext.tsx`) decides whether the server
+            # snapshot wins via `remote.updatedAt > prev.updatedAt`. Codex
+            # rounds 1-3 caught two bad approaches:
+            #   1. `MAX(missions.updated_at)` returns 0 because the writer
+            #      never sets that column (MissionRecord has no updatedAt).
+            #   2. `time.time()` always wins over local — but it overwrites
+            #      offline edits made while server was unreachable.
+            #
+            # Real freshness lives in the child rows: notes.created_at,
+            # tasks.created_at + last_update_at, mission_events.at,
+            # mission_artifacts.accepted_at, truth_distillations.updated_at,
+            # handoffs.created_at, principles.created_at. Take the MAX
+            # across all of them — it's the actual "last activity"
+            # timestamp the DB has seen. No mutation bumps anything else,
+            # so this is provably the highest persisted timestamp.
+            # Codex re-review (#264 round 4): mission-only edits (status
+            # flips, title renames) don't touch any child table, so
+            # GREATEST over child timestamps alone misses them. Include
+            # missions.created_at AND missions.updated_at — the writer
+            # now bumps updated_at on every UPSERT, so any persisted
+            # mission mutation advances the watermark.
+            freshness_row = await conn.fetchrow("""
+                SELECT GREATEST(
+                    COALESCE((SELECT MAX(created_at) FROM missions), 0),
+                    COALESCE((SELECT MAX(updated_at) FROM missions), 0),
+                    COALESCE((SELECT MAX(created_at) FROM notes), 0),
+                    COALESCE((SELECT MAX(created_at) FROM tasks), 0),
+                    COALESCE((SELECT MAX(last_update_at) FROM tasks), 0),
+                    COALESCE((SELECT MAX(at) FROM mission_events), 0),
+                    COALESCE((SELECT MAX(accepted_at) FROM mission_artifacts), 0),
+                    COALESCE((SELECT MAX(updated_at) FROM truth_distillations), 0),
+                    COALESCE((SELECT MAX(created_at) FROM handoffs), 0),
+                    COALESCE((SELECT MAX(created_at) FROM principles), 0)
+                ) AS m
+            """)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("read_spine_snapshot failed — %s: %s", type(exc).__name__, exc)
+        return None
+
+    # Index children by mission_id for stitching.
+    notes_by: dict[str, list[dict]] = {}
+    for r in note_rows:
+        notes_by.setdefault(r["mission_id"], []).append({
+            "id": r["id"], "text": r["text"] or "",
+            "role": r["role"] or "user",
+            "createdAt": int(r["created_at"] or 0),
+        })
+    tasks_by: dict[str, list[dict]] = {}
+    for r in task_rows:
+        tasks_by.setdefault(r["mission_id"], []).append({
+            "id": r["id"], "title": r["title"] or "",
+            "state": r["state"] or "open",
+            "source": r["source"] or "manual",
+            "createdAt": int(r["created_at"] or 0),
+            "doneAt": int(r["done_at"]) if r["done_at"] is not None else None,
+            "lastUpdateAt": int(r["last_update_at"]) if r["last_update_at"] is not None else None,
+            "artifactId": r["artifact_id"],
+            # `done` is derived for back-compat with TS clients reading the flag.
+            # Codex re-review (#264 round 5): legacy rows can have
+            # `done_at` populated but `state` defaulted to "open" (the
+            # writer/backfill never sets state on those rows). Without
+            # this fallback, those tasks come back as incomplete on
+            # cutover even though completion data exists. Derive
+            # done from either signal — explicit state OR a recorded
+            # completion timestamp.
+            "done": (r["state"] or "open") == "done" or r["done_at"] is not None,
+        })
+    events_by: dict[str, list[dict]] = {}
+    for r in event_rows:
+        events_by.setdefault(r["mission_id"], []).append({
+            "id": r["id"], "type": r["type"] or "note_added",
+            "label": r["label"] or "", "at": int(r["at"] or 0),
+        })
+    artifacts_by: dict[str, list[dict]] = {}
+    for r in artifact_rows:
+        # `body` is JSONB — asyncpg returns it as a string; parse defensively.
+        body = r["body"]
+        if isinstance(body, str):
+            try:
+                body = json.loads(body)
+            except Exception:  # noqa: BLE001
+                body = {}
+        if not isinstance(body, dict):
+            body = {}
+        artifacts_by.setdefault(r["mission_id"], []).append(body)
+    distillations_by: dict[str, list[dict]] = {}
+    for r in distillation_rows:
+        def _jload(v: Any) -> Any:
+            if v is None:
+                return None
+            if isinstance(v, str):
+                try:
+                    return json.loads(v)
+                except Exception:  # noqa: BLE001
+                    return None
+            return v
+        distillations_by.setdefault(r["mission_id"], []).append({
+            "id": r["id"],
+            "version": int(r["version"] or 1),
+            "status": r["status"] or "draft",
+            "sourceMissionId": r["mission_id"],
+            "summary": r["summary"] or "",
+            "validatedDirection": r["validated_direction"] or "",
+            "coreDecisions": _jload(r["core_decisions"]) or [],
+            "unknowns": _jload(r["unknowns"]) or [],
+            "risks": _jload(r["risks"]) or [],
+            "surfaceSeed": _jload(r["surface_seed"]),
+            "terminalSeed": _jload(r["terminal_seed"]),
+            "confidence": r["confidence"] or "medium",
+            "supersedesVersion": int(r["supersedes_version"]) if r["supersedes_version"] is not None else None,
+            "staleSince": int(r["stale_since"]) if r["stale_since"] is not None else None,
+            "staleReason": r["stale_reason"],
+            "failureState": r["failure_state"],
+            "createdAt": int(r["created_at"] or 0),
+            "updatedAt": int(r["updated_at"] or 0),
+        })
+    handoffs_by: dict[str, list[dict]] = {}
+    for r in handoff_rows:
+        risks = r["risks"]
+        if isinstance(risks, str):
+            try:
+                risks = json.loads(risks)
+            except Exception:  # noqa: BLE001
+                risks = []
+        handoffs_by.setdefault(r["mission_id"], []).append({
+            "id": r["id"],
+            "fromChamber": r["from_chamber"] or "",
+            "toChamber": r["to_chamber"] or "",
+            "artifactType": r["artifact_type"] or "note",
+            "artifactRef": r["artifact_ref"],
+            "summary": r["summary"] or "",
+            "risks": risks if isinstance(risks, list) else [],
+            "nextAction": r["next_action"] or "",
+            "status": r["status"] or "pending",
+            "createdAt": int(r["created_at"] or 0),
+            "resolvedAt": int(r["resolved_at"]) if r["resolved_at"] is not None else None,
+            "resolution": r["resolution"],
+        })
+
+    missions: list[dict] = []
+    for r in mission_rows:
+        mid = r["id"]
+        contract = r["project_contract"]
+        if isinstance(contract, str):
+            try:
+                contract = json.loads(contract)
+            except Exception:  # noqa: BLE001
+                contract = None
+        last_art = r["last_artifact"]
+        if isinstance(last_art, str):
+            try:
+                last_art = json.loads(last_art)
+            except Exception:  # noqa: BLE001
+                last_art = None
+        missions.append({
+            "id": mid,
+            "title": r["title"] or "",
+            "chamber": r["chamber"] or "core",
+            "status": r["status"] or "active",
+            "createdAt": int(r["created_at"] or 0),
+            "notes": notes_by.get(mid, []),
+            "tasks": tasks_by.get(mid, []),
+            "events": events_by.get(mid, []),
+            "artifacts": artifacts_by.get(mid, []),
+            "lastArtifact": last_art,
+            "projectContract": contract,
+            "truthDistillations": distillations_by.get(mid, []),
+            "handoffs": handoffs_by.get(mid, []),
+        })
+
+    principles = [
+        {"id": r["id"], "text": r["text"] or "", "createdAt": int(r["created_at"] or 0)}
+        for r in principle_rows
+    ]
+    # Codex re-review (#264 round 3): use real persisted freshness, not
+    # server wall-clock. `time.time()` always wins over local even when
+    # the local cache had legitimate offline edits — that overwrites
+    # those edits silently on the next push. Real freshness comes from
+    # the MAX of every child timestamp the writer actually populates
+    # (notes, tasks, events, artifacts, distillations, handoffs,
+    # principles). Empty DB → 0; client compares 0 > prev.updatedAt and
+    # only wins if the local state was also fresh-empty, which is
+    # exactly the right behaviour.
+    pg_freshness = freshness_row["m"] if freshness_row is not None else 0
+    updated_at_ms = int(pg_freshness or 0)
+    return {
+        # `updatedAt` first so the TS hydration check
+        # (`remote.updatedAt > prev.updatedAt`) sees a real timestamp,
+        # not the `None → 0` coercion that made fresh clients ignore
+        # the server snapshot before this fix.
+        "updatedAt": updated_at_ms,
+        "missions": missions,
+        "principles": principles,
+        # activeMissionId is not stored separately in the schema — the
+        # TS client persists it via localStorage. After cutover the
+        # client repopulates it from its own cache; we return None so
+        # the spine snapshot stays valid.
+        "activeMissionId": None,
+    }
 
 
 async def shutdown() -> None:

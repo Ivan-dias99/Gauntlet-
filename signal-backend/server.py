@@ -342,6 +342,127 @@ async def ask_ruberra_dev_stream(query: SignalQuery):
     )
 
 
+# ── Pause / Resume (Wave P-29) ─────────────────────────────────────────────
+#
+# Tool 7 of the 10×10 doctrine matrix. The agent loop checks the pause
+# registry at every iteration boundary. POST /dev/pause flips the flag,
+# the next iteration emits a `paused` event in the SSE stream and
+# breaks with terminated_early=True / termination_reason="paused".
+# POST /dev/resume removes the flag — the next /dev or /dev/stream call
+# proceeds as usual. GET /dev/paused exposes the registry contents to
+# the operator dashboard. Persistence: paused_tasks.json next to runs
+# / failure memory; survives restart, single-writer.
+
+
+class PauseRequest(BaseModel):
+    task_id: str = Field(..., min_length=1, max_length=128)
+    reason: Optional[str] = Field(None, max_length=512)
+    mission_id: Optional[str] = Field(None, max_length=128)
+
+
+class ResumeRequest(BaseModel):
+    task_id: str = Field(..., min_length=1, max_length=128)
+
+
+@app.post("/dev/pause")
+async def dev_pause(req: PauseRequest):
+    """Wave P-29 — mark ``task_id`` as paused. The next agent
+    iteration sees the flag, emits ``{"type": "paused", ...}`` in the
+    SSE stream, and terminates with ``termination_reason="paused"``.
+
+    Re-pausing an already-paused task is a no-op on ``paused_at`` but
+    refreshes ``reason`` so the operator can update context without
+    losing how long the pause has been active.
+    """
+    import observability
+    from pause_registry import pause_registry
+
+    async with observability.record_route("dev.pause"):
+        entry = await pause_registry.mark_paused(
+            task_id=req.task_id,
+            reason=req.reason,
+            mission_id=req.mission_id,
+        )
+
+    # Telemetry — mirrors the /telemetry/event pattern. A failure here
+    # must not break the pause (the registry already saved); record &
+    # move on.
+    try:
+        await run_store.record(RunRecord(
+            route="telemetry:task_paused",
+            mission_id=req.mission_id,
+            question=f"pause:{req.task_id}",
+            context=req.reason,
+            answer=None,
+            processing_time_ms=0,
+            input_tokens=0,
+            output_tokens=0,
+            terminated_early=False,
+            termination_reason=None,
+        ))
+    except Exception as log_err:  # noqa: BLE001
+        logger.warning("dev/pause telemetry record failed: %s", log_err)
+
+    return {
+        "ok": True,
+        "task_id": entry.task_id,
+        "paused_at": entry.paused_at,
+        "reason": entry.reason,
+        "mission_id": entry.mission_id,
+    }
+
+
+@app.post("/dev/resume")
+async def dev_resume(req: ResumeRequest):
+    """Wave P-29 — clear the pause flag for ``task_id``. The next
+    /dev or /dev/stream call proceeds without the iteration-boundary
+    short-circuit. Returns ``{ok: true, resumed_at}`` even when the
+    task was not paused (idempotent — operator double-clicks shouldn't
+    surface as 4xx)."""
+    import observability
+    from pause_registry import pause_registry
+
+    async with observability.record_route("dev.resume"):
+        removed = await pause_registry.unmark(req.task_id)
+
+    resumed_at = int(time.time() * 1000)
+
+    try:
+        await run_store.record(RunRecord(
+            route="telemetry:task_resumed",
+            mission_id=removed.mission_id if removed else None,
+            question=f"resume:{req.task_id}",
+            context=None,
+            answer=None,
+            processing_time_ms=0,
+            input_tokens=0,
+            output_tokens=0,
+            terminated_early=False,
+            termination_reason=None,
+        ))
+    except Exception as log_err:  # noqa: BLE001
+        logger.warning("dev/resume telemetry record failed: %s", log_err)
+
+    return {
+        "ok": True,
+        "task_id": req.task_id,
+        "resumed_at": resumed_at,
+        "was_paused": removed is not None,
+    }
+
+
+@app.get("/dev/paused")
+async def dev_paused():
+    """Wave P-29 — list all currently paused tasks. Sorted newest-first
+    by ``paused_at``."""
+    import observability
+    from pause_registry import pause_registry
+
+    async with observability.record_route("dev.paused"):
+        entries = await pause_registry.list_paused()
+    return {"count": len(entries), "entries": entries}
+
+
 @app.post("/crew/stream")
 async def ask_ruberra_crew_stream(query: SignalQuery):
     """
@@ -1519,6 +1640,26 @@ async def diagnostics():
             "runs_last_load_error": run_store._last_load_error,
             "memory_last_save_error": failure_memory._last_save_error,
             "memory_last_load_error": failure_memory._last_load_error,
+            # Wave P-22 — surface the canonical-source mode so operators
+            # can verify cutover state without inspecting env vars.
+            "pg_dual_write": _pg_dual_write_status(),
+            "pg_canonical": _pg_canonical_status(),
         },
         "doctrine": "Conservative Intelligence — prefer refusal over error",
     }
+
+
+def _pg_dual_write_status() -> bool:
+    try:
+        from config import DUAL_WRITE_PG
+        return bool(DUAL_WRITE_PG)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _pg_canonical_status() -> bool:
+    try:
+        from config import PG_CANONICAL
+        return bool(PG_CANONICAL)
+    except Exception:  # noqa: BLE001
+        return False

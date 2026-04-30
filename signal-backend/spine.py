@@ -62,6 +62,80 @@ class SpineStore:
             self._loaded = True
 
     async def _load(self) -> None:
+        # Wave P-22 — Postgres read cutover.
+        # When SIGNAL_PG_CANONICAL=1 + dual-write is enabled, prefer the
+        # database as source-of-truth. Fall back to JSON automatically
+        # if PG returns None (driver missing, pool failure, exception)
+        # — that lets a deploy unset the flag for instant rollback
+        # without losing data, since dual-write keeps JSON warm.
+        try:
+            from config import PG_CANONICAL
+        except Exception:  # noqa: BLE001
+            PG_CANONICAL = False
+        if PG_CANONICAL:
+            try:
+                from db import read_spine_snapshot
+                pg_dict = await read_spine_snapshot()
+            except Exception as exc:  # noqa: BLE001
+                pg_dict = None
+                self._last_load_error = (
+                    f"pg_read_failed: {type(exc).__name__}: {exc}"
+                )
+                logger.warning("PG canonical read failed — falling back to JSON: %s", exc)
+            else:
+                # `read_spine_snapshot` swallows pool-unavailable / driver-
+                # missing / pool-create-failed cases and returns None
+                # without raising. Without this branch we silently fell
+                # back to JSON in all of those degraded modes — the
+                # operator only saw the truth when an exception escaped.
+                # Surface it on `_last_load_error` so `/diagnostics`
+                # reports the degraded read mode honestly even when
+                # PG_CANONICAL=1 is configured but the pool refuses to
+                # come up.
+                if pg_dict is None:
+                    self._last_load_error = "pg_canonical_returned_none"
+                    logger.warning(
+                        "PG canonical read returned None (pool unavailable, "
+                        "driver missing, or pool create failed) — falling "
+                        "back to JSON"
+                    )
+            if pg_dict is not None:
+                # Codex re-review (#264 round 5): treat an empty
+                # canonical read as degraded when JSON has data.
+                # If PG is unseeded/truncated (missions=[] AND
+                # principles=[]) and spine.json carries real state,
+                # accepting PG as canonical would boot the store with
+                # an empty snapshot and the next full-state PUT could
+                # overwrite the JSON store. Fall back to JSON in that
+                # case so the existing data wins; record the degraded
+                # mode so /diagnostics shows it. If JSON is also empty
+                # (or missing), accept the empty PG snapshot — that's
+                # the legitimate "fresh deploy" case.
+                pg_missions = pg_dict.get("missions") or []
+                pg_principles = pg_dict.get("principles") or []
+                pg_is_empty = not pg_missions and not pg_principles
+                json_has_data = SPINE_FILE.exists() and SPINE_FILE.stat().st_size > 32
+                if pg_is_empty and json_has_data:
+                    self._last_load_error = "pg_canonical_empty_with_json_data"
+                    logger.warning(
+                        "PG canonical empty but JSON has data — falling back to JSON "
+                        "to preserve existing snapshot",
+                    )
+                else:
+                    try:
+                        self._snapshot = SpineSnapshot(**pg_dict)
+                        logger.info(
+                            "Loaded spine snapshot from Postgres: %d missions, %d principles",
+                            len(self._snapshot.missions),
+                            len(self._snapshot.principles),
+                        )
+                        return
+                    except Exception as exc:  # noqa: BLE001
+                        self._last_load_error = (
+                            f"pg_parse_failed: {type(exc).__name__}: {exc}"
+                        )
+                        logger.warning("PG snapshot parse failed — falling back to JSON: %s", exc)
+        # JSON read path (default; or PG fallback after a degraded read).
         if not SPINE_FILE.exists():
             logger.info("No spine file found — starting fresh")
             return
@@ -69,7 +143,7 @@ class SpineStore:
             raw = SPINE_FILE.read_text(encoding="utf-8")
             self._snapshot = SpineSnapshot(**json.loads(raw))
             logger.info(
-                "Loaded spine snapshot: %d missions, %d principles",
+                "Loaded spine snapshot from JSON: %d missions, %d principles",
                 len(self._snapshot.missions),
                 len(self._snapshot.principles),
             )

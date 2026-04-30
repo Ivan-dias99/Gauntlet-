@@ -56,6 +56,9 @@ export function formatMs(ms: number): string {
 export const STATE_COLOR: Record<TaskState, string> = {
   open: "var(--text-ghost)",
   running: "var(--cc-info)",
+  // Wave P-29 — pause is "warm idle": warn-tone keeps it visible
+  // without escalating to err (blocked) or info (running).
+  paused: "var(--cc-warn)",
   done: "var(--cc-ok)",
   blocked: "var(--cc-err)",
 };
@@ -63,6 +66,7 @@ export const STATE_COLOR: Record<TaskState, string> = {
 export const STATE_GLYPH: Record<TaskState, string> = {
   open: "›",
   running: "◐",
+  paused: "❚❚",
   done: "✓",
   blocked: "✕",
 };
@@ -78,6 +82,7 @@ export function stateLabel(state: TaskState, copy: Copy): string {
   switch (state) {
     case "open": return copy.taskStateOpen;
     case "running": return copy.taskStateRunning;
+    case "paused": return copy.taskStatePaused;
     case "done": return copy.taskStateDone;
     case "blocked": return copy.taskStateBlocked;
   }

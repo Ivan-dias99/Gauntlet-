@@ -65,7 +65,7 @@ function normalizeArtifact(v: unknown): Artifact | null {
   };
 }
 
-const VALID_TASK_STATES: ReadonlySet<TaskState> = new Set(["open", "running", "done", "blocked"]);
+const VALID_TASK_STATES: ReadonlySet<TaskState> = new Set(["open", "running", "paused", "done", "blocked"]);
 const VALID_TASK_SOURCES: ReadonlySet<TaskSource> = new Set(["manual", "lab", "crew", "other"]);
 
 // Wave 6a — normalizers for the new Mission fields. Without these,
@@ -288,6 +288,13 @@ export function normalizeMission(m: unknown): Mission | null {
         source: normalizeTaskSource(tr.source),
         lastUpdateAt: typeof tr.lastUpdateAt === "number" ? tr.lastUpdateAt : (doneAt ?? createdAt),
         ...(typeof tr.artifactId === "string" ? { artifactId: tr.artifactId } : {}),
+        // Wave P-29 — preserve pause metadata across spine sync /
+        // localStorage rehydration. Either string OR null is allowed
+        // for `pauseReason`; the chamber renders the reason if any.
+        ...(typeof tr.pauseReason === "string" || tr.pauseReason === null
+          ? { pauseReason: tr.pauseReason as string | null }
+          : {}),
+        ...(typeof tr.pausedAt === "number" ? { pausedAt: tr.pausedAt } : {}),
       }] as Task[];
     }) : [],
     events: Array.isArray(r.events) ? r.events.flatMap((e: unknown) => {
@@ -543,11 +550,12 @@ export function setTaskState(
   state: SpineState,
   taskId: string,
   next: TaskState,
+  options?: { pauseReason?: string | null; pausedAt?: number },
 ): SpineState {
   return onActive(state, m => {
     const task = m.tasks.find(t => t.id === taskId);
     if (!task) return m;
-    if (task.state === next) return m;
+    if (task.state === next && next !== "paused") return m;
     const ts = now();
     const done = next === "done";
     return {
@@ -560,6 +568,19 @@ export function setTaskState(
               done,
               doneAt: done ? (t.doneAt ?? ts) : undefined,
               lastUpdateAt: ts,
+              // Wave P-29 — pause metadata. Set on enter, cleared on
+              // exit so the row doesn't keep stale `pauseReason` once
+              // resumed. Allow callers to pass `null` to explicitly
+              // erase a stale reason while still entering paused.
+              ...(next === "paused"
+                ? {
+                    pauseReason:
+                      options?.pauseReason !== undefined
+                        ? options.pauseReason
+                        : t.pauseReason ?? null,
+                    pausedAt: options?.pausedAt ?? t.pausedAt ?? ts,
+                  }
+                : { pauseReason: undefined, pausedAt: undefined }),
             }
           : t,
       ),

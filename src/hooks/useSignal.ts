@@ -209,6 +209,10 @@ export type AgentEvent =
   | { type: "diff"; files: number; added: number; removed: number; iteration: number; source?: string }
   | { type: "citations"; iteration: number; source: string; citations: CitationPayload[]; summary: { total: number; by_trust: Record<CitationTrust, number>; any_low: boolean; majority_high: boolean } }
   | { type: "evidence"; record: EvidenceRecordPayload }
+  // Wave P-29 — pause taken at iteration boundary. Backend agent loop
+  // emits this exactly once per pause and then yields `done` with
+  // `terminated_early=true, termination_reason="paused"`.
+  | { type: "paused"; task_id: string; iteration: number; reason: string | null; paused_at: number | null }
   | {
       type: "done";
       answer: string;

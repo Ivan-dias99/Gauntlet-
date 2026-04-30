@@ -307,8 +307,32 @@ class AgentOrchestrator:
 
         yield {"type": "start"}
 
+        # Wave P-29 — pause is an iteration-boundary check. We poll the
+        # pause registry at the *top* of every iteration so a flip mid-
+        # tool-call doesn't kill the run halfway through; the in-flight
+        # tool finishes, the next iteration sees the flag, the loop
+        # emits a `paused` event and bails with terminated_early=True.
+        # Imported lazily to keep agent.py importable in environments
+        # where MEMORY_DIR isn't writable (smoke tests).
+        from pause_registry import pause_registry
+
         for iteration in range(1, self._max_iterations + 1):
             iterations = iteration
+
+            # Check pause first so the wall-clock / tool-call budgets
+            # don't shadow the operator's explicit pause request.
+            if query.task_id and await pause_registry.is_paused(query.task_id):
+                paused_entry = await pause_registry.get(query.task_id)
+                terminated_early = True
+                termination_reason = "paused"
+                yield {
+                    "type": "paused",
+                    "task_id": query.task_id,
+                    "iteration": iteration,
+                    "reason": paused_entry.reason if paused_entry else None,
+                    "paused_at": paused_entry.paused_at if paused_entry else None,
+                }
+                break
 
             if time.monotonic() - started > AGENT_WALL_CLOCK_S:
                 terminated_early = True

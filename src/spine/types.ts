@@ -59,7 +59,14 @@ export function normalizeMissionStatus(raw: unknown): MissionStatus {
   if (raw === "closed") return "archived";
   return MISSION_STATUS_VALID.has(raw as MissionStatus) ? (raw as MissionStatus) : "active";
 }
-export type TaskState = "open" | "running" | "done" | "blocked";
+// Wave P-29 — `paused` joins the union for Tool 7 of the 10×10
+// matrix. The agent loop's iteration-boundary pause flag (backend
+// pause_registry) drives transitions: TaskBench renders pause/resume
+// controls when the row is `running` / `paused`. Persisted by the
+// store via VALID_TASK_STATES; older snapshots keep loading because
+// normalizeTaskState falls back to derived-from-`done` when the raw
+// string is unknown.
+export type TaskState = "open" | "running" | "paused" | "done" | "blocked";
 export type TaskSource = "manual" | "lab" | "crew" | "other";
 
 export interface Note {
@@ -82,6 +89,12 @@ export interface Task {
   lastUpdateAt: number;
   // Set when a run originating from this task produced an accepted artifact.
   artifactId?: string;
+  // Wave P-29 — set when the task is in `paused` state. Carries the
+  // operator's optional reason and the moment the pause was recorded
+  // (epoch ms, matching backend pause_registry's `paused_at`). Cleared
+  // when the task transitions away from paused.
+  pauseReason?: string | null;
+  pausedAt?: number;
 }
 
 export interface LogEvent {
