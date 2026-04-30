@@ -935,6 +935,30 @@ async def surface_build_spec(req: BuildSpecRequest):
 _VISUAL_DIFF_MAX_BYTES = 16 * 1024 * 1024
 
 
+async def _read_capped(upload: UploadFile, cap: int) -> bytes:
+    """Read an UploadFile into memory with a hard byte cap.
+
+    Streams in 64 KiB chunks and aborts with HTTP 413 the moment the
+    accumulated buffer exceeds ``cap``. The previous shape did
+    ``await upload.read()`` first and *then* checked ``len(...)``, so
+    a malicious 1 GiB upload was already resident in RAM by the time
+    we rejected it. Reading-as-we-cap keeps the worker's memory
+    bounded by ``cap`` regardless of what the client sends.
+    """
+    out = bytearray()
+    while True:
+        chunk = await upload.read(64 * 1024)
+        if not chunk:
+            break
+        out.extend(chunk)
+        if len(out) > cap:
+            raise HTTPException(status_code=413, detail=_error_envelope(
+                "visual_diff_payload_too_large",
+                ValueError(f"per-image cap is {cap} bytes"),
+            ))
+    return bytes(out)
+
+
 @app.post("/visual-diff")
 async def visual_diff_endpoint(
     before: UploadFile = File(..., description="Baseline image (PNG/JPEG)."),
@@ -952,13 +976,10 @@ async def visual_diff_endpoint(
     """
     from visual_diff import DiffUnavailable, compute_diff
 
-    before_bytes = await before.read()
-    after_bytes = await after.read()
-    if len(before_bytes) > _VISUAL_DIFF_MAX_BYTES or len(after_bytes) > _VISUAL_DIFF_MAX_BYTES:
-        raise HTTPException(status_code=413, detail=_error_envelope(
-            "visual_diff_payload_too_large",
-            ValueError(f"per-image cap is {_VISUAL_DIFF_MAX_BYTES} bytes"),
-        ))
+    # Cap-as-you-read so the worker can't be OOM'd by a giant upload —
+    # the 16 MiB ceiling is enforced *during* the stream, not after.
+    before_bytes = await _read_capped(before, _VISUAL_DIFF_MAX_BYTES)
+    after_bytes = await _read_capped(after, _VISUAL_DIFF_MAX_BYTES)
     if not before_bytes or not after_bytes:
         raise HTTPException(status_code=422, detail=_error_envelope(
             "visual_diff_empty_image",

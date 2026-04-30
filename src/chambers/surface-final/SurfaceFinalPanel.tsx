@@ -490,44 +490,75 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
               compare
             </button>
           </div>
-          {diffResult && diffAfter && (
-            <div data-visual-diff-preview style={{ position: "relative", maxWidth: "100%" }}>
-              <img
-                src={diffAfter.dataUrl}
-                alt="after"
-                style={{ width: "100%", display: "block", border: "1px solid currentColor", borderRadius: 4 }}
-              />
-              {diffResult.regions.map((r, i) => {
-                // Region coords are in source-pixel space; the rendered
-                // <img> may be scaled. Normalise via the result.width/
-                // height so the bbox aligns regardless of CSS scaling.
-                const sx = diffResult.width || 1;
-                const sy = diffResult.height || 1;
-                return (
+          {diffResult && diffAfter && (() => {
+            // When `before` and `after` differ in dimensions the backend
+            // resizes both to the smaller pair and reports coordinates
+            // in that *normalised* space (note=size_mismatch_normalised_to_WxH).
+            // The <img> here renders the original `after` dataUrl, so
+            // overlaying those bbox numbers directly would shift/scale
+            // the box. Honest fallback: skip the overlay and surface a
+            // chip explaining why — operator still sees the bbox numbers
+            // in the footer.
+            const isNormalised =
+              typeof diffResult.note === "string"
+              && diffResult.note.startsWith("size_mismatch_normalised_to_");
+            return (
+              <div data-visual-diff-preview style={{ position: "relative", maxWidth: "100%" }}>
+                <img
+                  src={diffAfter.dataUrl}
+                  alt="after"
+                  style={{ width: "100%", display: "block", border: "1px solid currentColor", borderRadius: 4 }}
+                />
+                {!isNormalised && diffResult.regions.map((r, i) => {
+                  // Region coords are in source-pixel space; the rendered
+                  // <img> may be scaled. Normalise via the result.width/
+                  // height so the bbox aligns regardless of CSS scaling.
+                  const sx = diffResult.width || 1;
+                  const sy = diffResult.height || 1;
+                  return (
+                    <div
+                      key={i}
+                      data-diff-region
+                      style={{
+                        position: "absolute",
+                        left: `${(r.x / sx) * 100}%`,
+                        top: `${(r.y / sy) * 100}%`,
+                        width: `${(r.width / sx) * 100}%`,
+                        height: `${(r.height / sy) * 100}%`,
+                        outline: "2px solid #f33",
+                        background: "rgba(255,51,51,0.12)",
+                        pointerEvents: "none",
+                      }}
+                    />
+                  );
+                })}
+                {isNormalised && (
                   <div
-                    key={i}
-                    data-diff-region
+                    data-diff-normalised-chip
                     style={{
-                      position: "absolute",
-                      left: `${(r.x / sx) * 100}%`,
-                      top: `${(r.y / sy) * 100}%`,
-                      width: `${(r.width / sx) * 100}%`,
-                      height: `${(r.height / sy) * 100}%`,
-                      outline: "2px solid #f33",
-                      background: "rgba(255,51,51,0.12)",
-                      pointerEvents: "none",
+                      display: "inline-block",
+                      marginTop: 4,
+                      padding: "2px 6px",
+                      fontSize: "0.7em",
+                      fontFamily: "var(--mono)",
+                      border: "1px solid #f33",
+                      borderRadius: 3,
+                      color: "#f33",
+                      background: "rgba(255,51,51,0.08)",
                     }}
-                  />
-                );
-              })}
-              <div style={{ fontSize: "0.7em", opacity: 0.65, marginTop: 2, fontFamily: "var(--mono)" }}>
-                ratio={(diffResult.ratio * 100).toFixed(2)}% ·
-                changed={diffResult.changed_pixels}/{diffResult.total_pixels} ·
-                sev={diffResult.severity}
-                {diffResult.note ? ` · ${diffResult.note}` : ""}
+                  >
+                    tamanho diferente — bbox em espaço normalizado
+                  </div>
+                )}
+                <div style={{ fontSize: "0.7em", opacity: 0.65, marginTop: 2, fontFamily: "var(--mono)" }}>
+                  ratio={(diffResult.ratio * 100).toFixed(2)}% ·
+                  changed={diffResult.changed_pixels}/{diffResult.total_pixels} ·
+                  sev={diffResult.severity}
+                  {diffResult.note ? ` · ${diffResult.note}` : ""}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         <div style={{ borderTop: "1px solid currentColor", paddingTop: 6, opacity: 0.85, flex: 1, overflowY: "auto" }}>
