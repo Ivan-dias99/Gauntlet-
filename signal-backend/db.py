@@ -470,7 +470,14 @@ async def read_spine_snapshot() -> Optional[dict]:
             "lastUpdateAt": int(r["last_update_at"]) if r["last_update_at"] is not None else None,
             "artifactId": r["artifact_id"],
             # `done` is derived for back-compat with TS clients reading the flag.
-            "done": (r["state"] or "open") == "done",
+            # Codex re-review (#264 round 5): legacy rows can have
+            # `done_at` populated but `state` defaulted to "open" (the
+            # writer/backfill never sets state on those rows). Without
+            # this fallback, those tasks come back as incomplete on
+            # cutover even though completion data exists. Derive
+            # done from either signal — explicit state OR a recorded
+            # completion timestamp.
+            "done": (r["state"] or "open") == "done" or r["done_at"] is not None,
         })
     events_by: dict[str, list[dict]] = {}
     for r in event_rows:
