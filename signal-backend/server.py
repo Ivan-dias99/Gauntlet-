@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -964,15 +964,30 @@ async def visual_diff_endpoint(
     before: UploadFile = File(..., description="Baseline image (PNG/JPEG)."),
     after: UploadFile = File(..., description="Candidate image (PNG/JPEG)."),
     threshold: float = 0.1,
+    selector: Optional[str] = Form(
+        default=None,
+        description=(
+            "Optional CSS selector — populated when the diff was scoped "
+            "to a single picked element (Wave P-30). Recorded on the "
+            "RunRecord so the Archive can show 'diff over body > main > div'."
+        ),
+        max_length=512,
+    ),
 ):
     """Wave P-28 — pixel diff between two screenshots.
 
     Multipart form with `before` + `after` image fields. Returns a
-    ``DiffResult`` (see signal-backend/visual_diff.py) with a single
-    bounding-box region covering all changed pixels, the changed-pixel
-    ratio, and a rolled-up severity. Pillow is loaded lazily so a
-    Pillow-less deploy boots fine — only this endpoint fails with a
+    ``DiffResult`` (see signal-backend/visual_diff.py): one bbox per
+    connected component of changed pixels (Wave P-30), the changed-
+    pixel ratio, and a rolled-up severity. Pillow is loaded lazily so
+    a Pillow-less deploy boots fine — only this endpoint fails with a
     typed 503.
+
+    Wave P-30 also accepts an optional ``selector`` form field. When
+    set, the chamber's element-pick → diff flow stamps the selector on
+    the resulting RunRecord so the Archive can render
+    ``diff over body > main > div`` instead of a bare ``visual_diff``
+    blob.
     """
     from visual_diff import DiffUnavailable, compute_diff
 
@@ -1001,18 +1016,29 @@ async def visual_diff_endpoint(
         ))
 
     # Telemetry — small payload, mirrors /telemetry/event's pattern so
-    # operators can grep `route=visual_diff` in /runs.
+    # operators can grep `route=visual_diff` in /runs. Wave P-30: when a
+    # selector is supplied (element-scoped flow), it lands in
+    # ``RunRecord.context`` so the Archive can render
+    # ``diff over body > main > div``. The selector is clipped to the
+    # context column's 5000-char cap defensively even though the form
+    # field already enforces 512.
+    selector_clean = (selector or "").strip()
+    context_str: Optional[str] = None
+    if selector_clean:
+        context_str = f"selector={selector_clean[:480]}"
     try:
         await run_store.record(RunRecord(
             route="visual_diff",
             mission_id=None,
             question=f"diff:{len(before_bytes)}+{len(after_bytes)}",
-            context=None,
+            context=context_str,
             answer=_json.dumps({
                 "ratio": result.ratio,
                 "changed": result.changed_pixels,
                 "total": result.total_pixels,
                 "severity": result.severity,
+                "regions": len(result.regions),
+                "selector": selector_clean or None,
             }),
             processing_time_ms=0,
             input_tokens=0,
@@ -1519,26 +1545,6 @@ async def diagnostics():
             "runs_last_load_error": run_store._last_load_error,
             "memory_last_save_error": failure_memory._last_save_error,
             "memory_last_load_error": failure_memory._last_load_error,
-            # Wave P-22 — surface the canonical-source mode so operators
-            # can verify cutover state without inspecting env vars.
-            "pg_dual_write": _pg_dual_write_status(),
-            "pg_canonical": _pg_canonical_status(),
         },
         "doctrine": "Conservative Intelligence — prefer refusal over error",
     }
-
-
-def _pg_dual_write_status() -> bool:
-    try:
-        from config import DUAL_WRITE_PG
-        return bool(DUAL_WRITE_PG)
-    except Exception:  # noqa: BLE001
-        return False
-
-
-def _pg_canonical_status() -> bool:
-    try:
-        from config import PG_CANONICAL
-        return bool(PG_CANONICAL)
-    except Exception:  # noqa: BLE001
-        return False

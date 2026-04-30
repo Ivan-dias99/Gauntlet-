@@ -289,17 +289,30 @@ export function dataUrlToBlob(dataUrl: string): Blob {
  * either a Blob (already in memory) or a string `data:image/...`
  * URL — we normalise to Blob before posting so the multipart body
  * is consistent.
+ *
+ * Wave P-30: when ``opts.selector`` is supplied, it is sent as a
+ * multipart form field so the backend can stamp the resulting
+ * ``RunRecord.context`` with the picked element's CSS path. The
+ * response shape is unchanged (a multi-region ``DiffResult``); the
+ * selector is purely metadata for the Archive.
  */
 export async function compareScreenshots(
   before: Blob | string,
   after: Blob | string,
-  opts?: { threshold?: number },
+  opts?: { threshold?: number; selector?: string | null },
 ): Promise<DiffResult> {
   const beforeBlob = typeof before === "string" ? dataUrlToBlob(before) : before;
   const afterBlob = typeof after === "string" ? dataUrlToBlob(after) : after;
   const fd = new FormData();
   fd.append("before", beforeBlob, "before.png");
   fd.append("after", afterBlob, "after.png");
+  const selector = opts?.selector?.trim();
+  if (selector) {
+    // Backend caps `selector` at 512 chars; clip locally so a deeply
+    // nested CSS path doesn't get rejected with a 422 the operator
+    // doesn't understand.
+    fd.append("selector", selector.slice(0, 512));
+  }
   const threshold = opts?.threshold;
   const path = typeof threshold === "number"
     ? `/visual-diff?threshold=${encodeURIComponent(String(threshold))}`
@@ -310,4 +323,24 @@ export async function compareScreenshots(
     throw new BackendError(res.status, env, `HTTP ${res.status} from /visual-diff`);
   }
   return (await res.json()) as DiffResult;
+}
+
+/**
+ * Wave P-30 — element-scoped variant. Same multipart POST as
+ * ``compareScreenshots`` but tagged with the element's CSS selector
+ * so the resulting RunRecord lands in the Archive as
+ * ``diff over body > main > div`` instead of a bare ``visual_diff``
+ * blob. The chamber's element-pick → capture flow uses this so
+ * component-level QA is grep-able after the fact.
+ */
+export async function compareElement(
+  elementSelector: string,
+  before: Blob | string,
+  after: Blob | string,
+  opts?: { threshold?: number },
+): Promise<DiffResult> {
+  return compareScreenshots(before, after, {
+    threshold: opts?.threshold,
+    selector: elementSelector,
+  });
 }
