@@ -783,6 +783,83 @@ async def issues_draft(req: IssueDraftRequest):
     ))
 
 
+@app.post("/issues/create")
+async def issues_create(req: IssueDraftRequest):
+    """Wave P-23 — actually create the GitHub issue via REST.
+
+    When `SIGNAL_GITHUB_TOKEN` (`RUBERRA_GITHUB_TOKEN`) and
+    `SIGNAL_GITHUB_REPO` are both set in the environment, this posts
+    to GitHub and returns `{ok, number, url}`. When either is unset,
+    we return `{ok: false, reason: "github_not_configured", draft: ...}`
+    with HTTP 200 so the chamber can render a copy-paste fallback
+    body instead of surfacing a 500 to the operator.
+
+    Validation mirrors /issues/draft (kind/severity/provider).
+    """
+    import config as _config
+    import observability
+    from issue_tracker import IssueDraft, create_github_issue, format_for_github
+
+    valid_kinds = {"bug", "polish", "feature", "regression", "design", "perf"}
+    valid_severity = {"low", "medium", "high"}
+    if req.kind not in valid_kinds:
+        raise HTTPException(status_code=422, detail=_error_envelope(
+            "issue_create_invalid_kind", ValueError(f"kind={req.kind!r} not in {valid_kinds}")
+        ))
+    if req.severity not in valid_severity:
+        raise HTTPException(status_code=422, detail=_error_envelope(
+            "issue_create_invalid_severity", ValueError(f"severity={req.severity!r} not in {valid_severity}")
+        ))
+    if req.provider != "github":
+        # P-23 v1 only writes to GitHub. Linear/Jira REST clients land later;
+        # for now, refuse other providers loudly so the chamber doesn't
+        # silently drop the issue.
+        raise HTTPException(status_code=422, detail=_error_envelope(
+            "issue_create_unsupported_provider",
+            ValueError(f"provider={req.provider!r} not supported by /issues/create yet (use /issues/draft for formatting)"),
+        ))
+
+    draft = IssueDraft(
+        title=req.title, body=req.body,
+        kind=req.kind, severity=req.severity,  # type: ignore[arg-type]
+        chamber=req.chamber, mission_id=req.mission_id,
+        artifact_ref=req.artifact_ref, selector=req.selector,
+        screenshot_url=req.screenshot_url, file_path=req.file_path,
+        line_number=req.line_number, labels=list(req.labels or []),
+    )
+
+    async with observability.record_route("/issues/create"):
+        token = _config.GITHUB_TOKEN
+        repo = _config.GITHUB_REPO
+        if not token or not repo:
+            # Friendly fallback — chamber renders a copy-paste form.
+            # 200 with ok=false is intentional: operator did nothing wrong,
+            # the deploy just isn't wired up.
+            return {
+                "ok": False,
+                "reason": "github_not_configured",
+                "draft": format_for_github(draft),
+            }
+
+        try:
+            result = await create_github_issue(draft, token=token, repo=repo)
+        except RuntimeError as e:
+            # Upstream GitHub error (4xx/5xx). Surface a 502 with the raw
+            # message so the operator can see "401 bad credentials" without
+            # us having to guess the cause.
+            logger.warning("issues/create github error: %s", e)
+            raise HTTPException(status_code=502, detail=_error_envelope("github_api_error", e))
+        except Exception as e:  # noqa: BLE001
+            logger.exception("issues/create unexpected error")
+            raise HTTPException(status_code=500, detail=_error_envelope("issue_create_error", e))
+
+    return {
+        "ok": True,
+        "number": result.get("number"),
+        "url": result.get("html_url"),
+    }
+
+
 # ── Figma token import endpoint (Wave M integration) ──────────────────────
 
 

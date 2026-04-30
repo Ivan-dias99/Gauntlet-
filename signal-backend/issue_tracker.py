@@ -130,3 +130,80 @@ def format_for_linear(draft: IssueDraft) -> dict:
         "description": draft.body,
         "labels": _label_set(draft),
     }
+
+
+# ── GitHub REST client (Wave P-23) ──────────────────────────────────────────
+#
+# Until P-23, issue creation was MCP-only — the Claude Code session passed
+# `format_for_github(draft)` to `mcp__github__issue_write`. P-23 adds a
+# direct REST path so the running backend can post issues without an MCP
+# session in the loop. The chamber calls /issues/create; this function does
+# the actual HTTP. httpx is already a dependency (see requirements.txt).
+
+
+GITHUB_ISSUES_TIMEOUT_SECONDS = 10.0
+_GITHUB_API_BASE = "https://api.github.com"
+
+
+async def create_github_issue(
+    draft: IssueDraft,
+    *,
+    token: str,
+    repo: str | None = None,
+) -> dict:
+    """POST a formatted IssueDraft to GitHub REST `/repos/{repo}/issues`.
+
+    Args:
+        draft: assembled IssueDraft (chamber-side).
+        token: GitHub PAT or fine-grained token with `issues:write` on repo.
+        repo: `owner/repo`. When omitted, falls back to `config.GITHUB_REPO`.
+
+    Returns:
+        `{"number": int, "html_url": str}` from the GitHub response.
+
+    Raises:
+        RuntimeError: non-2xx response from GitHub. Message embeds status
+            and raw body so the operator/log can diagnose without re-querying.
+        ValueError: when no repo can be resolved (caller bug).
+    """
+    if not repo:
+        # Lazy import — keeps issue_tracker.py importable in environments
+        # where config isn't fully wired (tests, scripts).
+        import config as _config  # local to avoid import cycle on cold paths
+        repo = _config.GITHUB_REPO
+    if not repo:
+        raise ValueError("create_github_issue: repo not provided and config.GITHUB_REPO is empty")
+    if not token:
+        raise ValueError("create_github_issue: token is required")
+
+    payload = format_for_github(draft)
+    body = {
+        "title": payload["title"],
+        "body": payload["body"],
+        "labels": payload["labels"],
+    }
+
+    # httpx is in requirements.txt; import is lazy to keep cold-start cheap
+    # for callers that never hit the issue path.
+    import httpx  # type: ignore
+
+    url = f"{_GITHUB_API_BASE}/repos/{repo}/issues"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    async with httpx.AsyncClient(timeout=GITHUB_ISSUES_TIMEOUT_SECONDS) as client:
+        resp = await client.post(url, json=body, headers=headers)
+
+    if resp.status_code < 200 or resp.status_code >= 300:
+        # Trim the body so we don't dump a multi-KB error page into a
+        # RuntimeError message; preserve enough to diagnose 401/422.
+        text = resp.text[:500] if resp.text else ""
+        raise RuntimeError(f"github issues api: {resp.status_code} {text}")
+
+    data = resp.json()
+    return {
+        "number": data.get("number"),
+        "html_url": data.get("html_url"),
+    }

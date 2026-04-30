@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict, deque
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import AsyncIterator, Optional
 
 
 @dataclass
@@ -145,3 +146,29 @@ def reset() -> None:
     global _metrics, _inflight
     _metrics = defaultdict(lambda: deque(maxlen=_RING_SIZE))
     _inflight = defaultdict(int)
+
+
+@asynccontextmanager
+async def record_route(route: str) -> AsyncIterator[None]:
+    """Async context manager wrapping start/end for a route.
+
+    Wave P-23 introduced this so endpoint handlers can wrap a block
+    once instead of pairing start/end manually. Engine paths still use
+    the explicit start/end primitives because they record extra
+    intermediate state; this is for thin endpoint wrappers.
+
+    Failures inside the block are recorded with `error_kind` set to
+    the exception class name so the dashboard can surface them in
+    `error_kinds` without losing the type.
+    """
+    start(route)
+    t0 = time.time()
+    error_kind: Optional[str] = None
+    try:
+        yield
+    except BaseException as exc:  # noqa: BLE001 — re-raised after recording
+        error_kind = type(exc).__name__
+        raise
+    finally:
+        duration_ms = int((time.time() - t0) * 1000)
+        end(route, duration_ms=duration_ms, error_kind=error_kind)

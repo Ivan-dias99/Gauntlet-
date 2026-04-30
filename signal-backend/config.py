@@ -134,3 +134,14 @@ DUAL_WRITE_PG: bool = (
     and _env("SIGNAL_DUAL_WRITE_PG", "RUBERRA_DUAL_WRITE_PG", "").strip().lower()
     in ("1", "true", "yes", "on")
 )
+
+
+# ── GitHub Issues (Wave P-23) ───────────────────────────────────────────────
+# When both are set, POST /issues/create posts to the real GitHub REST API.
+# When either is missing, /issues/create returns a friendly fallback so the
+# chamber can show a copy-paste body instead of throwing 500.
+#
+# Token: Personal Access Token or fine-grained token with `issues:write` on
+# the target repo. Repo is in `owner/repo` form (e.g. ivan-dias99/aiinterfaceshelldesign).
+GITHUB_TOKEN: str = _env("SIGNAL_GITHUB_TOKEN", "RUBERRA_GITHUB_TOKEN", "")
+GITHUB_REPO: str = _env("SIGNAL_GITHUB_REPO", "RUBERRA_GITHUB_REPO", "")
