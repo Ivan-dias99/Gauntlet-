@@ -163,3 +163,76 @@ export async function signalFetch(
   if (unreachable) throw unreachable;
   return res;
 }
+
+// ── Visual diff (Wave P-28) ────────────────────────────────────────────────
+//
+// Posts two image buffers (PNG/JPEG) as multipart form-data to
+// /visual-diff and returns the typed DiffResult. Mirrors the backend
+// dataclass in signal-backend/visual_diff.py — kept inline here
+// because the chamber only needs the response shape, not the full
+// VisualDiff schema.
+
+export interface DiffRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  mismatch_ratio: number;
+  severity: "info" | "minor" | "moderate" | "critical";
+  note?: string | null;
+}
+
+export interface DiffResult {
+  regions: DiffRegion[];
+  changed_pixels: number;
+  total_pixels: number;
+  ratio: number;
+  severity: "info" | "minor" | "moderate" | "critical";
+  width: number;
+  height: number;
+  note?: string | null;
+}
+
+/**
+ * Convert a `data:image/...;base64,...` URL into a Blob. Used so the
+ * chamber can take the iframe's html2canvas dataUrl output and POST
+ * it as multipart without round-tripping through canvas again.
+ */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const [head, b64] = dataUrl.split(",", 2);
+  if (!head || !b64) throw new Error("malformed data URL");
+  const mimeMatch = head.match(/^data:([^;]+)/);
+  const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+/**
+ * POST `/visual-diff` with two image references. Each input is
+ * either a Blob (already in memory) or a string `data:image/...`
+ * URL — we normalise to Blob before posting so the multipart body
+ * is consistent.
+ */
+export async function compareScreenshots(
+  before: Blob | string,
+  after: Blob | string,
+  opts?: { threshold?: number },
+): Promise<DiffResult> {
+  const beforeBlob = typeof before === "string" ? dataUrlToBlob(before) : before;
+  const afterBlob = typeof after === "string" ? dataUrlToBlob(after) : after;
+  const fd = new FormData();
+  fd.append("before", beforeBlob, "before.png");
+  fd.append("after", afterBlob, "after.png");
+  const threshold = opts?.threshold;
+  const path = typeof threshold === "number"
+    ? `/visual-diff?threshold=${encodeURIComponent(String(threshold))}`
+    : "/visual-diff";
+  const res = await signalFetch(path, { method: "POST", body: fd });
+  if (!res.ok) {
+    const env = await parseBackendError(res);
+    throw new BackendError(res.status, env, `HTTP ${res.status} from /visual-diff`);
+  }
+  return (await res.json()) as DiffResult;
+}

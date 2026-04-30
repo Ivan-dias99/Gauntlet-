@@ -8,3 +8,11 @@ httpx>=0.27.0
 # writer logs once and skips). Installing it unconditionally avoids
 # a split-environment Dockerfile.
 asyncpg>=0.29.0
+# Visual diff (Wave P-28). Pillow decodes PNG/JPEG buffers for the
+# /visual-diff endpoint. Imported lazily inside visual_diff.compute_diff
+# so that a deploy without Pillow still boots the rest of the server —
+# only the diff endpoint surfaces a typed 503 with reason="diff_unavailable".
+# python-multipart is required by FastAPI's UploadFile / File parameters
+# (the /visual-diff endpoint accepts multipart form-data).
+Pillow>=10.0.0
+python-multipart>=0.0.9

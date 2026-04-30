@@ -7,21 +7,28 @@
 // element, navigate. The result of each call lands inline so the
 // operator can iterate on a candidate against a live preview.
 //
-// Visual diff (Wave K) is intentionally out of scope here — the
-// schema is in main but a real diff requires baseline+candidate
-// screenshots. Screenshot is currently a typed error from the
-// preview-agent (no native browser API), so VisualDiff display
-// stays a follow-up wave once html2canvas (or external capture)
-// lands.
+// Wave P-28 — Visual diff first cut. The preview-agent now attempts
+// html2canvas via dynamic import; if it's installed we get a real
+// screenshot data URL. The chamber holds a "before" snapshot, lets
+// the operator capture an "after", then POSTs both to /visual-diff
+// and renders the returned bounding box overlaid on the after image.
+// Full UX (region inspection, severity gating, side-by-side compare)
+// is a follow-up wave; v1 is just the bbox preview.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PreviewBridge,
   type ScreenshotRequest,
+  type ScreenshotResult,
   type ElementSelected,
   type ComponentsListed,
 } from "../../lib/previewBridge";
-import { signalFetch, isBackendUnreachable } from "../../lib/signalApi";
+import {
+  signalFetch,
+  isBackendUnreachable,
+  compareScreenshots,
+  type DiffResult,
+} from "../../lib/signalApi";
 
 // P-13 — issue draft form data. Populated from the most recent
 // select_element pick; mission_id sticks across multiple drafts in
@@ -67,6 +74,13 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
   const [issueSeverity, setIssueSeverity] = useState<IssueSeverity>("medium");
   const [issueTitle, setIssueTitle] = useState("");
   const [issueBody, setIssueBody] = useState("");
+  // P-28 — visual diff state. `before`/`after` are screenshot data
+  // URLs captured via the preview-agent's html2canvas RPC. `diff`
+  // holds the most recent /visual-diff response so the panel can
+  // render the bbox over the "after" image.
+  const [diffBefore, setDiffBefore] = useState<ScreenshotResult["payload"] | null>(null);
+  const [diffAfter, setDiffAfter] = useState<ScreenshotResult["payload"] | null>(null);
+  const [diffResult, setDiffResult] = useState<DiffResult | null>(null);
 
   // Origin for the bridge — derived from the previewUrl so callers
   // can pass full URLs and the bridge does the right thing.
@@ -240,11 +254,66 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
   }
 
   async function screenshot() {
-    // v1 of the agent returns a typed error for screenshot — surface it
-    // honestly so the operator knows the limitation isn't a bug.
-    await withBusy("screenshot", async () =>
+    // P-28 — agent now attempts html2canvas via dynamic import. If the
+    // package isn't installed, the bridge rejects with a typed error
+    // (`html2canvas_unavailable`); we surface that in the log without
+    // crashing the panel. On success the result is left visible in the
+    // log; the diff workflow uses captureBefore/After below.
+    const env = (await withBusy("screenshot", async () =>
       bridge!.screenshot({} as ScreenshotRequest["payload"]),
-    );
+    )) as ScreenshotResult | null;
+    if (env?.payload) {
+      pushLog("info", `screenshot ${env.payload.width}×${env.payload.height} captured`);
+    }
+  }
+
+  // P-28 — capture-before / capture-after / compare. Each capture
+  // re-runs the screenshot RPC; the result lives in component state
+  // until the operator hits "compare" which POSTs to /visual-diff.
+  async function captureScreenshotInto(
+    label: "before" | "after",
+  ): Promise<void> {
+    const env = (await withBusy(`capture ${label}`, async () =>
+      bridge!.screenshot({} as ScreenshotRequest["payload"]),
+    )) as ScreenshotResult | null;
+    if (!env?.payload) return;
+    if (label === "before") {
+      setDiffBefore(env.payload);
+      setDiffResult(null);
+    } else {
+      setDiffAfter(env.payload);
+      setDiffResult(null);
+    }
+    pushLog("info", `${label} = ${env.payload.width}×${env.payload.height}`);
+  }
+
+  async function runVisualDiff(): Promise<void> {
+    if (!diffBefore || !diffAfter) {
+      pushLog("error", "need both before + after to diff");
+      return;
+    }
+    if (busy) {
+      pushLog("error", "another RPC is in flight");
+      return;
+    }
+    setBusy(true);
+    pushLog("info", "POST /visual-diff");
+    try {
+      const result = await compareScreenshots(diffBefore.dataUrl, diffAfter.dataUrl);
+      setDiffResult(result);
+      pushLog(
+        "ok",
+        `diff ratio=${(result.ratio * 100).toFixed(2)}% sev=${result.severity} regions=${result.regions.length}`,
+      );
+    } catch (e) {
+      if (isBackendUnreachable(e)) {
+        pushLog("error", "backend unreachable");
+      } else {
+        pushLog("error", (e as Error).message);
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -293,7 +362,7 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
             select element
           </button>
           <button type="button" onClick={screenshot} disabled={busy} style={btnStyle}>
-            screenshot (v1: error)
+            screenshot
           </button>
         </div>
         <div style={{ display: "flex", gap: 4 }}>
@@ -390,6 +459,76 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
             </div>
           </div>
         )}
+
+        {/* P-28 — visual diff. Capture before, capture after, compare. */}
+        <div
+          data-visual-diff
+          style={{
+            borderTop: "1px solid currentColor",
+            paddingTop: 6,
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          <div style={{ fontSize: "0.7em", opacity: 0.65, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            visual diff
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4 }}>
+            <button type="button" onClick={() => captureScreenshotInto("before")} disabled={busy} style={btnStyle}>
+              before {diffBefore ? "✓" : ""}
+            </button>
+            <button type="button" onClick={() => captureScreenshotInto("after")} disabled={busy} style={btnStyle}>
+              after {diffAfter ? "✓" : ""}
+            </button>
+            <button
+              type="button"
+              onClick={runVisualDiff}
+              disabled={busy || !diffBefore || !diffAfter}
+              style={btnStyle}
+            >
+              compare
+            </button>
+          </div>
+          {diffResult && diffAfter && (
+            <div data-visual-diff-preview style={{ position: "relative", maxWidth: "100%" }}>
+              <img
+                src={diffAfter.dataUrl}
+                alt="after"
+                style={{ width: "100%", display: "block", border: "1px solid currentColor", borderRadius: 4 }}
+              />
+              {diffResult.regions.map((r, i) => {
+                // Region coords are in source-pixel space; the rendered
+                // <img> may be scaled. Normalise via the result.width/
+                // height so the bbox aligns regardless of CSS scaling.
+                const sx = diffResult.width || 1;
+                const sy = diffResult.height || 1;
+                return (
+                  <div
+                    key={i}
+                    data-diff-region
+                    style={{
+                      position: "absolute",
+                      left: `${(r.x / sx) * 100}%`,
+                      top: `${(r.y / sy) * 100}%`,
+                      width: `${(r.width / sx) * 100}%`,
+                      height: `${(r.height / sy) * 100}%`,
+                      outline: "2px solid #f33",
+                      background: "rgba(255,51,51,0.12)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                );
+              })}
+              <div style={{ fontSize: "0.7em", opacity: 0.65, marginTop: 2, fontFamily: "var(--mono)" }}>
+                ratio={(diffResult.ratio * 100).toFixed(2)}% ·
+                changed={diffResult.changed_pixels}/{diffResult.total_pixels} ·
+                sev={diffResult.severity}
+                {diffResult.note ? ` · ${diffResult.note}` : ""}
+              </div>
+            </div>
+          )}
+        </div>
 
         <div style={{ borderTop: "1px solid currentColor", paddingTop: 6, opacity: 0.85, flex: 1, overflowY: "auto" }}>
           {log.length === 0 ? (
