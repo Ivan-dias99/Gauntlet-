@@ -374,9 +374,17 @@ async def read_spine_snapshot() -> Optional[dict]:
         return None
     try:
         async with pool.acquire() as conn:
+            # Codex re-review (#264 round 4 P2): the previous SELECT had
+            # no ORDER BY, so Postgres returned rows in physical /
+            # planner-dependent order — unstable across restarts /
+            # vacuum. JSON preserved write order; this would be a UI-
+            # rendering regression. Order by created_at DESC so the
+            # most recent mission lands first; tiebreak by id so two
+            # missions created in the same millisecond stay stable.
             mission_rows = await conn.fetch(
                 "SELECT id, title, chamber, status, created_at, updated_at, "
-                "project_contract, last_artifact FROM missions"
+                "project_contract, last_artifact FROM missions "
+                "ORDER BY created_at DESC, id"
             )
             note_rows = await conn.fetch(
                 "SELECT id, mission_id, text, role, created_at FROM notes "
