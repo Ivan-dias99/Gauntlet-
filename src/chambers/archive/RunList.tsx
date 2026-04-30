@@ -233,7 +233,7 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
             }}
           >
             {filtersActive
-              ? "0 runs encontrados — ajusta filtros"
+              ? copy.archiveListEmptyFiltered
               : copy.archiveListEmpty}
           </div>
         )}

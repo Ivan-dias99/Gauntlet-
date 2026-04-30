@@ -397,6 +397,7 @@ export interface Copy {
 
   // Archive list / detail empty states
   archiveListEmpty: string;
+  archiveListEmptyFiltered: string;
   archiveDetailEmptyKicker: string;
   archiveDetailEmptyBody: string;
 
@@ -749,6 +750,7 @@ const PT: Copy = {
   dormantCore: "backend dormente — doutrina por carregar. o que aparece veio só da cache local; nenhum princípio novo é inscrito até a sincronização voltar.",
 
   archiveListEmpty: "— sem entradas para este filtro —",
+  archiveListEmptyFiltered: "0 runs encontrados — ajusta filtros",
   archiveDetailEmptyKicker: "— proveniência",
   archiveDetailEmptyBody: "Selecciona uma entrada do ledger para ver a origem, o artefacto ligado, e a cadeia que a produziu.",
 
@@ -1100,6 +1102,7 @@ const EN: Copy = {
   dormantCore: "backend dormant — doctrine not yet loaded. what appears below came from local cache only; no new principle is inscribed until sync resumes.",
 
   archiveListEmpty: "— no entries for this filter —",
+  archiveListEmptyFiltered: "0 runs found — adjust filters",
   archiveDetailEmptyKicker: "— provenance",
   archiveDetailEmptyBody: "Select a ledger entry to see its origin, the linked artifact, and the chain that produced it.",
 
