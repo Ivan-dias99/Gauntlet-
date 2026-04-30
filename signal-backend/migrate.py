@@ -96,6 +96,17 @@ async def _migrate_spine(pool: Any, snapshot: dict) -> None:
 
 async def _migrate_runs(pool: Any, body: dict) -> None:
     records = body.get("records") or []
+    # Codex re-review (PR #250 P1): runs.mission_id is FK to missions(id).
+    # Legacy snapshots may carry mission_ids for missions that have since
+    # been deleted (or otherwise drifted out of spine.json). Inserting
+    # those raw would trip the FK and abort the whole transaction,
+    # leaving the Postgres mirror partially populated. Build the valid
+    # set from the spine snapshot once and coalesce orphans to NULL —
+    # the schema allows NULL on runs.mission_id (ON DELETE SET NULL).
+    spine = _load_json(SPINE_FILE) or {}
+    valid_mission_ids = {
+        m.get("id") for m in (spine.get("missions") or []) if m.get("id")
+    }
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute("DELETE FROM runs")
@@ -103,6 +114,8 @@ async def _migrate_runs(pool: Any, body: dict) -> None:
                 rid = r.get("id")
                 if not rid:
                     continue
+                raw_mid = r.get("mission_id")
+                mid = raw_mid if raw_mid in valid_mission_ids else None
                 await conn.execute(
                     """
                     INSERT INTO runs (
@@ -118,7 +131,7 @@ async def _migrate_runs(pool: Any, body: dict) -> None:
                     rid,
                     r.get("timestamp", ""),
                     r.get("route", "unknown"),
-                    r.get("mission_id"),
+                    mid,
                     r.get("question", ""),
                     r.get("context"),
                     r.get("answer"),
