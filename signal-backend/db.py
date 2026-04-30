@@ -401,6 +401,21 @@ async def read_spine_snapshot() -> Optional[dict]:
             principle_rows = await conn.fetch(
                 "SELECT id, text, created_at FROM principles ORDER BY created_at"
             )
+            # Wave P-22 follow-up — TS hydration (`SpineContext.tsx`) decides
+            # whether the server snapshot wins via
+            # `remote.updatedAt > prev.updatedAt`. Without a value the
+            # PG-derived snapshot was sailing in as `None → 0`, so a fresh
+            # client always saw "remote is older", kept its empty local
+            # state, and overwrote the canonical store on the next push.
+            # MAX(updated_at) over missions is the canonical freshness
+            # watermark: every mutation bumps the owning mission row's
+            # updated_at (children are rebuilt by id-scoped DELETE+INSERT
+            # under the same put()), so the mission max already reflects
+            # the latest write. Empty DB falls back to wall-clock so a
+            # truly fresh server still beats a non-existent local state.
+            max_updated_row = await conn.fetchrow(
+                "SELECT MAX(updated_at) AS m FROM missions"
+            )
     except Exception as exc:  # noqa: BLE001
         logger.warning("read_spine_snapshot failed — %s: %s", type(exc).__name__, exc)
         return None
@@ -533,7 +548,21 @@ async def read_spine_snapshot() -> Optional[dict]:
         {"id": r["id"], "text": r["text"] or "", "createdAt": int(r["created_at"] or 0)}
         for r in principle_rows
     ]
+    # Empty-DB fallback: when there are no missions yet, MAX(updated_at)
+    # is NULL — use wall-clock so the snapshot still beats a stale local
+    # `prev.updatedAt = 0` (otherwise hydration ties and the client
+    # silently keeps an empty local state).
+    pg_updated_at = max_updated_row["m"] if max_updated_row is not None else None
+    if pg_updated_at is None:
+        updated_at_ms = int(time.time() * 1000)
+    else:
+        updated_at_ms = int(pg_updated_at)
     return {
+        # `updatedAt` first so the TS hydration check
+        # (`remote.updatedAt > prev.updatedAt`) sees a real timestamp,
+        # not the `None → 0` coercion that made fresh clients ignore
+        # the server snapshot before this fix.
+        "updatedAt": updated_at_ms,
         "missions": missions,
         "principles": principles,
         # activeMissionId is not stored separately in the schema — the

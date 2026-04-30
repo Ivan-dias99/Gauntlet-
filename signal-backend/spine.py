@@ -82,6 +82,23 @@ class SpineStore:
                     f"pg_read_failed: {type(exc).__name__}: {exc}"
                 )
                 logger.warning("PG canonical read failed — falling back to JSON: %s", exc)
+            else:
+                # `read_spine_snapshot` swallows pool-unavailable / driver-
+                # missing / pool-create-failed cases and returns None
+                # without raising. Without this branch we silently fell
+                # back to JSON in all of those degraded modes — the
+                # operator only saw the truth when an exception escaped.
+                # Surface it on `_last_load_error` so `/diagnostics`
+                # reports the degraded read mode honestly even when
+                # PG_CANONICAL=1 is configured but the pool refuses to
+                # come up.
+                if pg_dict is None:
+                    self._last_load_error = "pg_canonical_returned_none"
+                    logger.warning(
+                        "PG canonical read returned None (pool unavailable, "
+                        "driver missing, or pool create failed) — falling "
+                        "back to JSON"
+                    )
             if pg_dict is not None:
                 try:
                     self._snapshot = SpineSnapshot(**pg_dict)
