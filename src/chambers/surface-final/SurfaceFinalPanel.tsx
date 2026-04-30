@@ -304,6 +304,14 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
       // (element)" will pick the same target without the operator
       // needing to re-pick. Set to null when this is a full-page run
       // so the after-capture also stays full-page.
+      // Codex re-review (#271 round 3): if the scope is changing —
+      // e.g. operator had a full-page after captured, then clicks
+      // before (element) — clear the stale after so it can't be
+      // mixed into an element-scoped compare. Same applies in the
+      // other direction (was element, now full-page).
+      if (diffElementSelector !== selector) {
+        setDiffAfter(null);
+      }
       setDiffElementSelector(selector);
       setDiffResult(null);
     } else {
