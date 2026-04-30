@@ -28,8 +28,16 @@
 //
 // Empty state explicit ("spine vazio — nenhuma missão") so a freshly
 // reset spine reads as a deliberate state rather than a missing panel.
+//
+// Wave P-21 — operator-side audit export. The summary panel above
+// answers "what's in the spine right now?"; the export button answers
+// "give me the full bytes for support / audit / external analysis."
+// One click, no dialog, browser download via Blob + object URL. The
+// "✓ exportado" pill provides the completion ack so the operator
+// doesn't second-guess whether the click registered when the OS download
+// tray is hidden.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import type { Mission } from "../../spine/types";
 
@@ -131,6 +139,47 @@ export default function SpineSnapshotPanel() {
   }, []);
   const ageMs = now - state.updatedAt;
 
+  // Export ack pill — fades after 2s. Track the timeout so a double-
+  // click resets the timer cleanly instead of stacking handlers.
+  const [exported, setExported] = useState(false);
+  const ackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (ackTimerRef.current) clearTimeout(ackTimerRef.current);
+    };
+  }, []);
+
+  const handleExport = () => {
+    // Filename: signal-spine-{ISO clipped of ms+colons}.json. Colons are
+    // illegal on Windows filesystems and the millisecond suffix is noise
+    // for an audit artifact, so strip both.
+    const stamp = new Date()
+      .toISOString()
+      .replace(/\.\d{3}Z$/, "Z")
+      .replace(/:/g, "");
+    const filename = `signal-spine-${stamp}.json`;
+
+    const json = JSON.stringify(state, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    try {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      // Some browsers require the anchor to be in the DOM for the
+      // synthetic click to honour the download attribute.
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+
+    setExported(true);
+    if (ackTimerRef.current) clearTimeout(ackTimerRef.current);
+    ackTimerRef.current = setTimeout(() => setExported(false), 2000);
+  };
+
   return (
     <section
       className="panel"
@@ -146,6 +195,50 @@ export default function SpineSnapshotPanel() {
             : missions.length === 1
               ? "1 missão"
               : `${missions.length} missões`}
+        </span>
+        <span
+          style={{
+            marginLeft: "auto",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {exported && (
+            <span
+              data-spine-export-ack
+              className="state-pill"
+              data-tone="ok"
+              aria-live="polite"
+              style={{
+                opacity: exported ? 1 : 0,
+                transition: "opacity 200ms ease",
+              }}
+            >
+              <span className="state-pill-dot" />
+              exportado
+            </span>
+          )}
+          <button
+            type="button"
+            data-spine-export
+            onClick={handleExport}
+            title="descarregar snapshot completo do spine como JSON"
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: "var(--t-meta)",
+              letterSpacing: "var(--track-meta)",
+              textTransform: "uppercase",
+              padding: "4px 10px",
+              borderRadius: "var(--radius-pill)",
+              border: "1px solid var(--border-color-mid)",
+              background: "var(--bg-input)",
+              color: "var(--text-primary)",
+              cursor: "pointer",
+            }}
+          >
+            exportar JSON
+          </button>
         </span>
       </div>
 
