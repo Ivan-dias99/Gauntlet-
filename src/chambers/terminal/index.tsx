@@ -176,18 +176,16 @@ export default function Terminal() {
         // P-9 — append the typed EvidenceRecord to the run trail.
         // Reset is owned by the submit handler so a new run starts
         // with an empty list (same lifecycle as gates/diff).
-        // Codex thread #249: filter to the active run's
-        // mission/task — buffered SSE frames from a previous
-        // request can still be delivered after submit() clears
-        // state, leaking stale proof rows into the new run.
-        {
-          const rec = ev.record;
-          const activeTask = activeTaskIdRef.current;
-          const activeMissionId = activeMission?.id ?? null;
-          if (activeMissionId && rec.missionId !== activeMissionId) break;
-          if (activeTask && rec.taskId !== activeTask) break;
-          setLiveEvidence((prev) => [...prev, rec]);
-        }
+        // Codex P1 threads (discussion_r3164774876, _r3164784132):
+        // an earlier round added a `rec.taskId !== activeTaskId`
+        // guard that dropped every event in production, because the
+        // backend emits `agent-loop-{uuid}` fallback IDs while the
+        // chamber's activeTaskId is a separate UUID. Reverted to the
+        // unconditional append used by `gate`/`diff`/`citations` —
+        // the per-submit reset above (setLiveEvidence([])) gives
+        // each run a clean panel, and the chamber does not start
+        // overlapping streams.
+        setLiveEvidence((prev) => [...prev, ev.record]);
         break;
       case "done":
         setDone({
