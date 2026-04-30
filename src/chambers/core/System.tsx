@@ -4,6 +4,7 @@ import { useSpine } from "../../spine/SpineContext";
 import { signalFetch, isBackendUnreachable } from "../../lib/signalApi";
 import ConnectorStatusPanel from "./ConnectorStatusPanel";
 import ObservabilityPanel from "./ObservabilityPanel";
+import SpineSnapshotPanel from "./SpineSnapshotPanel";
 
 // System tab — theme/density/lang/accent + backend diagnostics snapshot
 // + destructive actions. Built on the shared .panel + .diagnostic-row
@@ -67,6 +68,7 @@ export default function System() {
       </div>
       <ConnectorStatusPanel />
       <ObservabilityPanel />
+      <SpineSnapshotPanel />
       <div
         style={{
           display: "grid",
