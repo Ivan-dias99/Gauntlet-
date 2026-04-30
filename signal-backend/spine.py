@@ -25,6 +25,31 @@ logger = logging.getLogger("signal.spine")
 SPINE_FILE: Path = MEMORY_DIR / "spine.json"
 
 
+def _json_has_real_content(path: Path) -> bool:
+    """True iff `path` parses to a snapshot with at least one mission
+    or principle. Handles missing / unreadable / corrupt files by
+    returning False — those don't carry data the cutover should
+    preserve over an empty PG read.
+
+    Codex re-review (#264 round 6 P2): `path.stat().st_size > 32` was
+    fooled by the empty-snapshot serialization (model_dump_json with
+    indent=2 produces ~100+ bytes of braces/whitespace even with
+    `missions=[]`/`principles=[]`).
+    """
+    if not path.exists():
+        return False
+    try:
+        raw = path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+    except Exception:  # noqa: BLE001
+        return False
+    if not isinstance(data, dict):
+        return False
+    missions = data.get("missions") or []
+    principles = data.get("principles") or []
+    return bool(missions) or bool(principles)
+
+
 class SpineStore:
     """Thread-safe, JSON-backed snapshot of the mission workspace."""
 
@@ -114,7 +139,16 @@ class SpineStore:
                 pg_missions = pg_dict.get("missions") or []
                 pg_principles = pg_dict.get("principles") or []
                 pg_is_empty = not pg_missions and not pg_principles
-                json_has_data = SPINE_FILE.exists() and SPINE_FILE.stat().st_size > 32
+                # Codex re-review (#264 round 6 P2): byte-size heuristic
+                # is wrong — `model_dump_json(indent=2)` includes
+                # structural fields and indentation even when missions
+                # and principles are empty (~150+ bytes minimum). That
+                # made empty JSON look like "has data", so a legitimate
+                # fresh deploy with seeded PG would always lose to an
+                # empty JSON file. Parse the file and check the actual
+                # missions/principles arrays so the decision tracks
+                # semantic content, not whitespace.
+                json_has_data = _json_has_real_content(SPINE_FILE)
                 if pg_is_empty and json_has_data:
                     self._last_load_error = "pg_canonical_empty_with_json_data"
                     logger.warning(

@@ -196,41 +196,43 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
     mid = m.get("id")
     if not mid:
         return
-    # Schema mirror — columns match migrations/0001_initial_schema.sql.
-    # active_mission tracking lives at the snapshot level, not the row,
-    # so is_active is intentionally not stored here. The reader can
-    # join against a future spine_meta table if needed.
-    _ = is_active  # reserved for a follow-up wave that adds spine_meta
+    # Schema mirror — columns match migrations/0001_initial_schema.sql
+    # plus migrations/0002_active_mission.sql (is_active flag).
     await conn.execute(
         """
         INSERT INTO missions (id, title, chamber, status, created_at,
-                              updated_at, project_contract, last_artifact)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                              updated_at, project_contract, last_artifact,
+                              is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
             chamber = EXCLUDED.chamber,
             status = EXCLUDED.status,
             created_at = EXCLUDED.created_at,
-            updated_at = EXCLUDED.updated_at,
+            -- Codex re-review (#264 round 6): use GREATEST so a stale
+            -- client push (lower updated_at) cannot regress the
+            -- watermark over a newer in-DB value. Monotonic advance
+            -- only — older writes lose the race honestly.
+            updated_at = GREATEST(missions.updated_at, EXCLUDED.updated_at),
             project_contract = EXCLUDED.project_contract,
-            last_artifact = EXCLUDED.last_artifact
+            last_artifact = EXCLUDED.last_artifact,
+            is_active = EXCLUDED.is_active
         """,
         mid,
         m.get("title") or "",
         m.get("chamber") or "insight",
         m.get("status") or "active",
         int(m.get("createdAt") or 0),
-        # Codex re-review (#264 round 4): MissionRecord has no
-        # `updatedAt` field, so the writer used to fall back to 0 for
-        # this column on every UPSERT. That blinded the freshness
-        # watermark to mission-only edits (status flips, title
-        # renames, chamber moves) — none of which touch any child
-        # table. Bump `updated_at` to the current write time so
-        # GREATEST(..., MAX(missions.updated_at)) advances on every
-        # persisted mutation regardless of which row it touched.
+        # Codex re-review (#264 round 4 + 6): MissionRecord has no
+        # `updatedAt` field, so the writer falls back to write-time wall-
+        # clock. The GREATEST clause above protects against stale-client
+        # regressions while still advancing on real edits. Mission-only
+        # mutations (status/title/chamber) thus advance the snapshot
+        # watermark for hydration, but a stale client cannot rewind it.
         int((m.get("updatedAt") or (time.time() * 1000))),
         json.dumps(m.get("projectContract")) if m.get("projectContract") else None,
         json.dumps(m.get("lastArtifact")) if m.get("lastArtifact") else None,
+        bool(is_active),
     )
 
     # Clear child rows scoped to this mission, then rebuild from the
@@ -374,50 +376,59 @@ async def read_spine_snapshot() -> Optional[dict]:
         return None
     try:
         async with pool.acquire() as conn:
-            # Codex re-review (#264 round 4 P2): the previous SELECT had
-            # no ORDER BY, so Postgres returned rows in physical /
-            # planner-dependent order — unstable across restarts /
-            # vacuum. JSON preserved write order; this would be a UI-
-            # rendering regression. Order by created_at DESC so the
-            # most recent mission lands first; tiebreak by id so two
-            # missions created in the same millisecond stay stable.
-            mission_rows = await conn.fetch(
-                "SELECT id, title, chamber, status, created_at, updated_at, "
-                "project_contract, last_artifact FROM missions "
-                "ORDER BY created_at DESC, id"
-            )
-            note_rows = await conn.fetch(
-                "SELECT id, mission_id, text, role, created_at FROM notes "
-                "ORDER BY mission_id, created_at DESC"
-            )
-            task_rows = await conn.fetch(
-                "SELECT id, mission_id, title, state, source, created_at, "
-                "done_at, last_update_at, artifact_id FROM tasks "
-                "ORDER BY mission_id, created_at"
-            )
-            event_rows = await conn.fetch(
-                "SELECT id, mission_id, type, label, at FROM mission_events "
-                "ORDER BY mission_id, at DESC"
-            )
-            artifact_rows = await conn.fetch(
-                "SELECT id, mission_id, body FROM mission_artifacts "
-                "ORDER BY mission_id, accepted_at DESC"
-            )
-            distillation_rows = await conn.fetch(
-                "SELECT id, mission_id, version, status, summary, "
-                "validated_direction, core_decisions, unknowns, risks, "
-                "surface_seed, terminal_seed, confidence, supersedes_version, "
-                "stale_since, stale_reason, failure_state, created_at, updated_at "
-                "FROM truth_distillations ORDER BY mission_id, version DESC"
-            )
-            handoff_rows = await conn.fetch(
-                "SELECT id, mission_id, from_chamber, to_chamber, artifact_type, "
-                "artifact_ref, summary, risks, next_action, status, created_at, "
-                "resolved_at, resolution FROM handoffs ORDER BY mission_id, created_at DESC"
-            )
-            principle_rows = await conn.fetch(
-                "SELECT id, text, created_at FROM principles ORDER BY created_at"
-            )
+            # Codex re-review (#264 round 6 P2): each SELECT under
+            # READ COMMITTED gets its own snapshot, so a concurrent
+            # /spine PUT between SELECTs can produce a stitched
+            # mixed-version snapshot. Wrap the whole multi-table
+            # read in a REPEATABLE READ transaction so every SELECT
+            # sees the same MVCC view; if a writer commits during
+            # this loop, we read the pre-write version consistently
+            # and the next reload picks up the new state.
+            async with conn.transaction(isolation="repeatable_read", readonly=True):
+                # Codex re-review (#264 round 4 P2): the previous SELECT had
+                # no ORDER BY, so Postgres returned rows in physical /
+                # planner-dependent order — unstable across restarts /
+                # vacuum. JSON preserved write order; this would be a UI-
+                # rendering regression. Order by created_at DESC so the
+                # most recent mission lands first; tiebreak by id so two
+                # missions created in the same millisecond stay stable.
+                mission_rows = await conn.fetch(
+                    "SELECT id, title, chamber, status, created_at, updated_at, "
+                    "project_contract, last_artifact, is_active FROM missions "
+                    "ORDER BY created_at DESC, id"
+                )
+                note_rows = await conn.fetch(
+                    "SELECT id, mission_id, text, role, created_at FROM notes "
+                    "ORDER BY mission_id, created_at DESC"
+                )
+                task_rows = await conn.fetch(
+                    "SELECT id, mission_id, title, state, source, created_at, "
+                    "done_at, last_update_at, artifact_id FROM tasks "
+                    "ORDER BY mission_id, created_at"
+                )
+                event_rows = await conn.fetch(
+                    "SELECT id, mission_id, type, label, at FROM mission_events "
+                    "ORDER BY mission_id, at DESC"
+                )
+                artifact_rows = await conn.fetch(
+                    "SELECT id, mission_id, body FROM mission_artifacts "
+                    "ORDER BY mission_id, accepted_at DESC"
+                )
+                distillation_rows = await conn.fetch(
+                    "SELECT id, mission_id, version, status, summary, "
+                    "validated_direction, core_decisions, unknowns, risks, "
+                    "surface_seed, terminal_seed, confidence, supersedes_version, "
+                    "stale_since, stale_reason, failure_state, created_at, updated_at "
+                    "FROM truth_distillations ORDER BY mission_id, version DESC"
+                )
+                handoff_rows = await conn.fetch(
+                    "SELECT id, mission_id, from_chamber, to_chamber, artifact_type, "
+                    "artifact_ref, summary, risks, next_action, status, created_at, "
+                    "resolved_at, resolution FROM handoffs ORDER BY mission_id, created_at DESC"
+                )
+                principle_rows = await conn.fetch(
+                    "SELECT id, text, created_at FROM principles ORDER BY created_at"
+                )
             # Wave P-22 — derive snapshot updatedAt from child timestamps.
             #
             # TS hydration (`SpineContext.tsx`) decides whether the server
@@ -441,20 +452,20 @@ async def read_spine_snapshot() -> Optional[dict]:
             # missions.created_at AND missions.updated_at — the writer
             # now bumps updated_at on every UPSERT, so any persisted
             # mission mutation advances the watermark.
-            freshness_row = await conn.fetchrow("""
-                SELECT GREATEST(
-                    COALESCE((SELECT MAX(created_at) FROM missions), 0),
-                    COALESCE((SELECT MAX(updated_at) FROM missions), 0),
-                    COALESCE((SELECT MAX(created_at) FROM notes), 0),
-                    COALESCE((SELECT MAX(created_at) FROM tasks), 0),
-                    COALESCE((SELECT MAX(last_update_at) FROM tasks), 0),
-                    COALESCE((SELECT MAX(at) FROM mission_events), 0),
-                    COALESCE((SELECT MAX(accepted_at) FROM mission_artifacts), 0),
-                    COALESCE((SELECT MAX(updated_at) FROM truth_distillations), 0),
-                    COALESCE((SELECT MAX(created_at) FROM handoffs), 0),
-                    COALESCE((SELECT MAX(created_at) FROM principles), 0)
-                ) AS m
-            """)
+                freshness_row = await conn.fetchrow("""
+                    SELECT GREATEST(
+                        COALESCE((SELECT MAX(created_at) FROM missions), 0),
+                        COALESCE((SELECT MAX(updated_at) FROM missions), 0),
+                        COALESCE((SELECT MAX(created_at) FROM notes), 0),
+                        COALESCE((SELECT MAX(created_at) FROM tasks), 0),
+                        COALESCE((SELECT MAX(last_update_at) FROM tasks), 0),
+                        COALESCE((SELECT MAX(at) FROM mission_events), 0),
+                        COALESCE((SELECT MAX(accepted_at) FROM mission_artifacts), 0),
+                        COALESCE((SELECT MAX(updated_at) FROM truth_distillations), 0),
+                        COALESCE((SELECT MAX(created_at) FROM handoffs), 0),
+                        COALESCE((SELECT MAX(created_at) FROM principles), 0)
+                    ) AS m
+                """)
     except Exception as exc:  # noqa: BLE001
         logger.warning("read_spine_snapshot failed — %s: %s", type(exc).__name__, exc)
         return None
@@ -605,6 +616,21 @@ async def read_spine_snapshot() -> Optional[dict]:
     # exactly the right behaviour.
     pg_freshness = freshness_row["m"] if freshness_row is not None else 0
     updated_at_ms = int(pg_freshness or 0)
+    # Codex re-review (#264 round 6 P1): activeMissionId is now persisted
+    # via missions.is_active (migrations/0002_active_mission.sql), so the
+    # snapshot reader can recover the operator's selection across
+    # restarts. Pick the active row from the already-fetched mission_rows
+    # (no extra round-trip — the data was loaded under the same
+    # repeatable-read snapshot above). LIMIT-1 semantics: at most one
+    # row should carry the flag, but the writer rebuilds is_active in a
+    # per-mission loop, so during a transient mid-loop interleave two
+    # rows could briefly carry it. Take the first match by deterministic
+    # ordering and move on.
+    active_mission_id: Optional[str] = None
+    for r in mission_rows:
+        if r.get("is_active"):
+            active_mission_id = r["id"]
+            break
     return {
         # `updatedAt` first so the TS hydration check
         # (`remote.updatedAt > prev.updatedAt`) sees a real timestamp,
@@ -613,11 +639,7 @@ async def read_spine_snapshot() -> Optional[dict]:
         "updatedAt": updated_at_ms,
         "missions": missions,
         "principles": principles,
-        # activeMissionId is not stored separately in the schema — the
-        # TS client persists it via localStorage. After cutover the
-        # client repopulates it from its own cache; we return None so
-        # the spine snapshot stays valid.
-        "activeMissionId": None,
+        "activeMissionId": active_mission_id,
     }
 
 
