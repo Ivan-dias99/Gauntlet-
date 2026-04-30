@@ -307,7 +307,16 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
       setDiffElementSelector(selector);
       setDiffResult(null);
     } else {
+      // Codex re-review (#271 P2): if the after-capture is full-page
+      // (selector is null) but a previous before-capture pinned an
+      // element selector, we'd still route through compareElement and
+      // tag the run as element-scoped. Reset the scoped selector
+      // when the after-capture isn't itself element-scoped so the
+      // diff reports the real scope.
       setDiffAfter(env.payload);
+      if (!selector) {
+        setDiffElementSelector(null);
+      }
       setDiffResult(null);
     }
     const scopeNote = selector ? ` [${selector.slice(0, 40)}${selector.length > 40 ? "…" : ""}]` : "";
