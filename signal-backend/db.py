@@ -220,7 +220,15 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         m.get("chamber") or "insight",
         m.get("status") or "active",
         int(m.get("createdAt") or 0),
-        int(m.get("updatedAt") or 0),
+        # Codex re-review (#264 round 4): MissionRecord has no
+        # `updatedAt` field, so the writer used to fall back to 0 for
+        # this column on every UPSERT. That blinded the freshness
+        # watermark to mission-only edits (status flips, title
+        # renames, chamber moves) — none of which touch any child
+        # table. Bump `updated_at` to the current write time so
+        # GREATEST(..., MAX(missions.updated_at)) advances on every
+        # persisted mutation regardless of which row it touched.
+        int((m.get("updatedAt") or (time.time() * 1000))),
         json.dumps(m.get("projectContract")) if m.get("projectContract") else None,
         json.dumps(m.get("lastArtifact")) if m.get("lastArtifact") else None,
     )
@@ -419,8 +427,16 @@ async def read_spine_snapshot() -> Optional[dict]:
             # across all of them — it's the actual "last activity"
             # timestamp the DB has seen. No mutation bumps anything else,
             # so this is provably the highest persisted timestamp.
+            # Codex re-review (#264 round 4): mission-only edits (status
+            # flips, title renames) don't touch any child table, so
+            # GREATEST over child timestamps alone misses them. Include
+            # missions.created_at AND missions.updated_at — the writer
+            # now bumps updated_at on every UPSERT, so any persisted
+            # mission mutation advances the watermark.
             freshness_row = await conn.fetchrow("""
                 SELECT GREATEST(
+                    COALESCE((SELECT MAX(created_at) FROM missions), 0),
+                    COALESCE((SELECT MAX(updated_at) FROM missions), 0),
                     COALESCE((SELECT MAX(created_at) FROM notes), 0),
                     COALESCE((SELECT MAX(created_at) FROM tasks), 0),
                     COALESCE((SELECT MAX(last_update_at) FROM tasks), 0),
