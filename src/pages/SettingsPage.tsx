@@ -30,14 +30,26 @@ import {
   type Theme,
 } from "../tweaks/TweaksContext";
 
-const SECTIONS = [
-  { key: "preferences", label: "preferências" },
-  { key: "api-keys",    label: "api keys" },
-  { key: "connectors",  label: "conectores" },
-  { key: "language",    label: "idioma" },
-] as const;
+// Codex review #287 (P2): SettingsPage labels were hardcoded in pt and
+// ignored `values.lang`, leaving a mixed-language UI after the toggle.
+// Resolve labels through this map so the language switch is honest.
+const SECTION_KEYS = ["preferences", "api-keys", "connectors", "language"] as const;
+type SectionKey = typeof SECTION_KEYS[number];
 
-type SectionKey = typeof SECTIONS[number]["key"];
+const SECTION_LABELS: Record<"pt" | "en", Record<SectionKey, string>> = {
+  pt: {
+    "preferences": "preferências",
+    "api-keys":    "api keys",
+    "connectors":  "conectores",
+    "language":    "idioma",
+  },
+  en: {
+    "preferences": "preferences",
+    "api-keys":    "api keys",
+    "connectors":  "connectors",
+    "language":    "language",
+  },
+};
 
 const API_KEYS_STORAGE = "signal:settings:api-keys:v1";
 const CONNECTOR_TOKENS_STORAGE = "signal:settings:connectors:v1";
@@ -60,7 +72,9 @@ const CONNECTORS: ReadonlyArray<{ id: string; label: string }> = [
 
 export default function SettingsPage() {
   const { section = "preferences" } = useParams<{ section?: string }>();
-  const active: SectionKey = (SECTIONS.find((s) => s.key === section)?.key ?? "preferences") as SectionKey;
+  const { values: tweaks } = useTweaks();
+  const labels = SECTION_LABELS[tweaks.lang === "en" ? "en" : "pt"];
+  const active: SectionKey = (SECTION_KEYS.find((k) => k === section) ?? "preferences");
 
   return (
     <section
@@ -85,15 +99,15 @@ export default function SettingsPage() {
             gap: "var(--space-1)",
           }}
         >
-          {SECTIONS.map((s) => (
-            <li key={s.key}>
+          {SECTION_KEYS.map((k) => (
+            <li key={k}>
               <Link
-                to={`/settings/${s.key}`}
+                to={`/settings/${k}`}
                 className="btn"
-                data-active={active === s.key ? "true" : undefined}
+                data-active={active === k ? "true" : undefined}
                 style={{ display: "block", padding: "var(--space-2)" }}
               >
-                {s.label}
+                {labels[k]}
               </Link>
             </li>
           ))}
@@ -107,7 +121,7 @@ export default function SettingsPage() {
             margin: "0 0 var(--space-4)",
           }}
         >
-          {SECTIONS.find((s) => s.key === active)?.label ?? "secção"}
+          {labels[active]}
         </h2>
         {active === "preferences" && <PreferencesPanel />}
         {active === "api-keys"    && <ApiKeysPanel />}

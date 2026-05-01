@@ -43,19 +43,25 @@ export default function ProfilePage() {
   }, [profile]);
 
   const stats = useMemo(() => {
+    // Codex review #287 (P2): `m.artifacts` is capped to 12 per mission
+    // (ARTIFACT_LEDGER_CAP in spine/store.ts), so deriving stats from it
+    // silently undercounts past that threshold. Tasks are uncapped — use
+    // task `state === "done"` + `doneAt` for honest run counts.
     const now = Date.now();
     const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-    let artifactsTotal = 0;
+    let runsTotal = 0;
     let runsLast7d = 0;
     for (const m of state.missions) {
-      artifactsTotal += m.artifacts.length;
-      for (const a of m.artifacts) {
-        if (now - a.acceptedAt < SEVEN_DAYS) runsLast7d++;
+      for (const t of m.tasks) {
+        if (t.state !== "done") continue;
+        runsTotal++;
+        const ts = t.doneAt ?? t.lastUpdateAt;
+        if (ts && now - ts < SEVEN_DAYS) runsLast7d++;
       }
     }
     return {
       missions: state.missions.length,
-      artifacts: artifactsTotal,
+      runs: runsTotal,
       principles: principles.length,
       runs7d: runsLast7d,
     };
@@ -238,7 +244,7 @@ export default function ProfilePage() {
           }}
         >
           <StatCard label="missões"        value={stats.missions} />
-          <StatCard label="artefatos"       value={stats.artifacts} note="selados" />
+          <StatCard label="runs concluídos" value={stats.runs} note="tarefas done" />
           <StatCard label="princípios"      value={stats.principles} note="doutrina" />
           <StatCard label="runs últimos 7d" value={stats.runs7d} />
         </div>
