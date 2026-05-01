@@ -37,6 +37,12 @@ export interface SignalQueryBody {
   // Wave-3: optional Surface-chamber brief. Consumed server-side only
   // when chamber === "surface".
   surface?: SurfaceBriefPayload;
+  // Wave P-41 — composer-controlled hints. Backend currently ignores
+  // both fields; they are wired so the UI can already declare operator
+  // intent and the backend can begin honoring them without a contract
+  // change. `route_hint` is "auto" when omitted (the dispatcher decides).
+  route_hint?: "triad" | "agent";
+  tools_allowlist?: string[];
 }
 
 export interface SurfaceBriefPayload {

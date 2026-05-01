@@ -23,7 +23,7 @@ import ContextStrip from "./ContextStrip";
 import WorkbenchStrip from "./WorkbenchStrip";
 import OutputCanvas from "./OutputCanvas";
 import NextStepBar from "./NextStepBar";
-import ExecutionComposer from "./ExecutionComposer";
+import ExecutionComposer, { TERMINAL_TOOL_NAMES } from "./ExecutionComposer";
 import { TaskList } from "./TaskBench";
 import HandoffInbox from "../../shell/HandoffInbox";
 import EvidencePanel from "./EvidencePanel";
@@ -87,6 +87,20 @@ export default function Terminal() {
   // the current run.
   const [liveEvidence, setLiveEvidence] = useState<EvidenceRecordPayload[]>([]);
   const [mode, setMode] = useState<RunMode>("agent");
+  // Wave P-41 — operator-declared tools allowlist for the next run.
+  // Defaults to every tool Terminal carries; the operator narrows it
+  // before submit. Forwarded as `tools_allowlist` in the request body.
+  const [selectedTools, setSelectedTools] = useState<Set<string>>(
+    () => new Set(TERMINAL_TOOL_NAMES),
+  );
+  const onToggleTool = (name: string) => {
+    setSelectedTools((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
   const [crew, setCrew] = useState<CrewState>(EMPTY_CREW);
   // Session-only guard against double-click on the accept button.
   // Persisted acceptance is on spine.activeMission.lastArtifact.
@@ -321,6 +335,13 @@ export default function Terminal() {
       ? principles.slice(-64).map((p) => p.text)
       : principles.map((p) => p.text);
 
+    // Wave P-41 — only forward an allowlist when the operator narrowed
+    // it. An undefined value means "use the chamber's default set" so
+    // the backend sees no contract change for legacy clients.
+    const allowlist = selectedTools.size === TERMINAL_TOOL_NAMES.length
+      ? undefined
+      : Array.from(selectedTools);
+
     const body = {
       question: mode === "crew" ? clampedV : `${AGENT_PREFIX}${clampedV}`,
       context: activeMission?.title,
@@ -333,6 +354,7 @@ export default function Terminal() {
       task_id: newTaskId,
       principles: clampedPrinciples.length ? clampedPrinciples : undefined,
       chamber: "terminal" as const,
+      tools_allowlist: allowlist,
     };
 
     if (mode === "crew") {
@@ -681,6 +703,8 @@ export default function Terminal() {
           if (last) setInput(`reuse artifact: ${last.taskTitle}`);
         }}
         hasArtifacts={allArtifacts.length > 0}
+        selectedTools={selectedTools}
+        onToggleTool={onToggleTool}
       />
     </div>
   );
