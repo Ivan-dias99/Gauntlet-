@@ -1,14 +1,17 @@
+import { BrowserRouter } from "react-router-dom";
 import ErrorBoundary from "./trust/ErrorBoundary";
 import { TweaksProvider } from "./tweaks/TweaksContext";
 import { SpineProvider } from "./spine/SpineContext";
-import Shell from "./shell/Shell";
+import AppRoutes from "./router";
 
 export default function App() {
   return (
     <ErrorBoundary>
       <TweaksProvider>
         <SpineProvider>
-          <Shell />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
         </SpineProvider>
       </TweaksProvider>
     </ErrorBoundary>
