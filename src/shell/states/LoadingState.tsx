@@ -54,7 +54,11 @@ export default function LoadingState({
             // Slightly stagger widths so the row reads as text, not bars.
             width: i === safeLines - 1 ? "60%" : width,
             borderRadius: 4,
-            background: "var(--bg-elevated, var(--bg-surface))",
+            // Longhand: the .skeleton-shimmer class sets background-image
+            // for the travelling highlight, and the `background` shorthand
+            // would reset it to none. backgroundColor only touches the
+            // solid layer, so the shimmer keyframe survives.
+            backgroundColor: "var(--bg-elevated, var(--bg-surface))",
           }}
         />
       ))}

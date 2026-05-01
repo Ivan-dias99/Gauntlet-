@@ -101,7 +101,7 @@ function breakdownOf(m: Mission): MissionBreakdown {
 }
 
 export default function SpineSnapshotPanel() {
-  const { state } = useSpine();
+  const { state, clearActiveMission } = useSpine();
 
   // Memoize the JSON serialization so repaints triggered by unrelated
   // tweaks (theme, density) don't pay for it. The spine reference
@@ -268,9 +268,15 @@ export default function SpineSnapshotPanel() {
           message="spine vazio — nenhuma missão registada"
           actionLabel="nova missão"
           onAction={() => {
-            // Mission creation lives in the ribbon dropdown; dispatch
-            // the canonical event so this CTA shares one entry point.
-            window.dispatchEvent(new CustomEvent("signal:new-mission"));
+            // Mirror the ribbon dropdown's "new thread" flow: clear the
+            // active-mission pointer via the spine context (so Insight's
+            // first-send creates a fresh mission) and route to Insight
+            // through the canonical chamber-switch event. No CustomEvent
+            // shim — the spine API is the entry point.
+            clearActiveMission();
+            window.dispatchEvent(
+              new CustomEvent("signal:chamber", { detail: "insight" }),
+            );
           }}
           style={{ paddingTop: "var(--space-2)" }}
         />

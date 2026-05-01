@@ -45,7 +45,10 @@ export default function SkeletonPanel({
           height: 12,
           width: "32%",
           borderRadius: 4,
-          background: "var(--bg-elevated, var(--bg-surface))",
+          // Longhand: `background` shorthand would clobber the
+          // .skeleton-shimmer class's background-image gradient and
+          // freeze the row to a static block. See LoadingState.
+          backgroundColor: "var(--bg-elevated, var(--bg-surface))",
         }}
       />
       {/* Body lines. */}
@@ -59,7 +62,7 @@ export default function SkeletonPanel({
           height: 8,
           width: "22%",
           borderRadius: 4,
-          background: "var(--bg-elevated, var(--bg-surface))",
+          backgroundColor: "var(--bg-elevated, var(--bg-surface))",
           opacity: 0.7,
         }}
       />
