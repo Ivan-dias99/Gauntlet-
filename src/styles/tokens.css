@@ -7858,6 +7858,11 @@ a.term-ws-chip[data-tone="warn"]:hover {
   font-family: var(--sans);
   font-size: 16px;
   color: var(--text-primary);
+}
+/* Wave P-35 fix — only suppress the outline for non-keyboard focus so
+   the global :focus-visible ring still applies when the operator
+   tabs / shift-tabs onto the search input inside the trap. */
+.cmdk-input:focus:not(:focus-visible) {
   outline: 0;
 }
 .cmdk-input::placeholder {

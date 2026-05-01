@@ -62,6 +62,7 @@ export default function CommandPalette({ open, onClose }: Props) {
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Build the canonical command list. Memoised against the active
   // mission so "pause active task" and "promote distillation" can
@@ -258,15 +259,59 @@ export default function CommandPalette({ open, onClose }: Props) {
     [onClose],
   );
 
+  // Collect focusable descendants of the dialog in DOM order. Used by
+  // the Tab focus trap below. We intentionally exclude `[tabindex="-1"]`
+  // because those are programmatic-focus-only (e.g. the listbox itself).
+  // Disabled / hidden controls are filtered out by `offsetParent` —
+  // anything not laid out cannot receive focus anyway.
+  const collectFocusable = useCallback((): HTMLElement[] => {
+    const root = panelRef.current;
+    if (!root) return [];
+    const sel =
+      'a[href], button:not([disabled]), input:not([disabled]), ' +
+      'select:not([disabled]), textarea:not([disabled]), ' +
+      '[tabindex]:not([tabindex="-1"])';
+    return Array.from(root.querySelectorAll<HTMLElement>(sel)).filter(
+      (el) => el.offsetParent !== null || el === document.activeElement,
+    );
+  }, []);
+
   // Local key handler on the panel: Enter executes, arrow keys move,
-  // Esc closes. We intentionally do not stopPropagation on Esc so any
-  // higher-level listener (Shell already has none) could still react,
-  // but we do preventDefault so the browser does not interpret it as a
-  // form-cancel inside the input.
+  // Esc closes, Tab is trapped inside the dialog. We intentionally do
+  // not stopPropagation on Esc so any higher-level listener (Shell
+  // already has none) could still react, but we do preventDefault so
+  // the browser does not interpret it as a form-cancel inside the
+  // input.
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape") {
       e.preventDefault();
       onClose();
+      return;
+    }
+    if (e.key === "Tab") {
+      // WCAG 2.4.3 — keyboard focus must stay inside an aria-modal
+      // dialog. Wrap from last → first on Tab and first → last on
+      // Shift+Tab. If the active element somehow escaped the panel
+      // already, snap back to the input.
+      const focusables = collectFocusable();
+      if (focusables.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey) {
+        if (active === first || !panelRef.current?.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last || !panelRef.current?.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
       return;
     }
     if (e.key === "ArrowDown") {
@@ -300,6 +345,7 @@ export default function CommandPalette({ open, onClose }: Props) {
       }}
     >
       <div
+        ref={panelRef}
         className="cmdk-panel"
         role="dialog"
         aria-modal="true"

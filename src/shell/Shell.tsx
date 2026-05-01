@@ -152,12 +152,18 @@ export default function Shell() {
         Skip to main
       </a>
       <CanonRibbon active={activeTab} onSelect={switchChamber} />
+      {/* tabIndex={-1} makes <main> programmatically focusable so the
+          skip-link's #main anchor activation actually moves keyboard
+          focus here (the next Tab then continues from inside main
+          instead of bouncing back to the ribbon). The element stays
+          out of the normal Tab order because tabIndex is negative. */}
       <main
         id="main"
         tabIndex={-1}
         style={{
           flex: 1,
           overflow: "auto",
+          outline: "none",
           // Wave P-34 — name the <main> region so the View Transitions
           // API can crossfade just the chamber body when state we
           // mutate is scoped here (e.g. mission switch). The root
