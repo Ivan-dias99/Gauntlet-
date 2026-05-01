@@ -85,6 +85,7 @@ def _mission_totals(snapshot: dict[str, Any]) -> dict[str, int]:
         "notes": 0,
         "tasks": 0,
         "events": 0,
+        "artifacts": 0,
         "distillations": 0,
         "handoffs": 0,
         "principles": len(snapshot.get("principles") or []),
@@ -93,6 +94,7 @@ def _mission_totals(snapshot: dict[str, Any]) -> dict[str, int]:
         totals["notes"] += len(m.get("notes") or [])
         totals["tasks"] += len(m.get("tasks") or [])
         totals["events"] += len(m.get("events") or [])
+        totals["artifacts"] += len(m.get("artifacts") or [])
         totals["distillations"] += len(m.get("truthDistillations") or [])
         totals["handoffs"] += len(m.get("handoffs") or [])
     return totals
@@ -107,6 +109,7 @@ def _per_mission_counts(m: dict[str, Any]) -> dict[str, int]:
         "notes": len(m.get("notes") or []),
         "tasks": len(m.get("tasks") or []),
         "events": len(m.get("events") or []),
+        "artifacts": len(m.get("artifacts") or []),
         "distillations": len(m.get("truthDistillations") or []),
         "handoffs": len(m.get("handoffs") or []),
     }
@@ -138,7 +141,7 @@ def _render_report(json_snap: dict[str, Any], pg_snap: dict[str, Any]) -> tuple[
 
     lines: list[str] = [_box("JSON ↔ POSTGRES PARITY"), ""]
 
-    keys = ("missions", "notes", "tasks", "events", "distillations", "handoffs", "principles")
+    keys = ("missions", "notes", "tasks", "events", "artifacts", "distillations", "handoffs", "principles")
     drift = False
     for k in keys:
         j = j_totals[k]

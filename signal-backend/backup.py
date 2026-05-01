@@ -66,31 +66,73 @@ def _copy_json(src_dir: Path, dest_dir: Path) -> list[Path]:
 
 
 def _run_pg_dump(database_url: str, out_path: Path) -> tuple[bool, str]:
-    """Run pg_dump, gzip the output. Returns (ok, message).
+    """Run pg_dump, streaming stdout straight into a gzip file.
 
     pg_dump is found on PATH; if it is missing the function returns
     ok=False with an explanatory message rather than raising — backup
     of JSON files is still useful even when the PG side is unreachable.
+
+    The dump is streamed: we open the destination .sql.gz with gzip and
+    copy stdout bytes through in chunks. This avoids buffering the entire
+    dump (which can be many GB) in RAM before writing.
     """
     if shutil.which("pg_dump") is None:
         return False, "pg_dump not found on PATH; skipping PG dump"
+
+    bytes_in: int = 0
+    proc: subprocess.Popen[bytes] | None = None
     try:
-        proc = subprocess.run(
+        proc = subprocess.Popen(
             ["pg_dump", "--no-owner", "--no-privileges", database_url],
-            capture_output=True,
-            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
-    except subprocess.CalledProcessError as exc:
-        return False, f"pg_dump failed (exit {exc.returncode}): {exc.stderr.decode('utf-8', 'replace')[:400]}"
     except OSError as exc:  # FileNotFoundError, permission, etc.
         return False, f"pg_dump invocation failed: {exc}"
 
+    assert proc.stdout is not None  # PIPE was requested
     try:
         with gzip.open(out_path, "wb") as gz:
-            gz.write(proc.stdout)
+            # 1 MiB chunks: large enough to amortize syscalls, small enough
+            # to stay flat in memory regardless of dump size.
+            while True:
+                chunk = proc.stdout.read(1024 * 1024)
+                if not chunk:
+                    break
+                gz.write(chunk)
+                bytes_in += len(chunk)
     except OSError as exc:
+        # Reap pg_dump so it does not become a zombie before returning.
+        try:
+            proc.kill()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
         return False, f"failed to write gzip: {exc}"
-    return True, f"pg_dump → {out_path} ({len(proc.stdout)} bytes pre-gzip)"
+    finally:
+        try:
+            proc.stdout.close()
+        except OSError:
+            pass
+
+    # Drain stderr and wait for pg_dump to exit so we can report its status.
+    try:
+        stderr_bytes = proc.stderr.read() if proc.stderr is not None else b""
+    except OSError:
+        stderr_bytes = b""
+    finally:
+        if proc.stderr is not None:
+            try:
+                proc.stderr.close()
+            except OSError:
+                pass
+    rc = proc.wait()
+    if rc != 0:
+        return False, f"pg_dump failed (exit {rc}): {stderr_bytes.decode('utf-8', 'replace')[:400]}"
+    return True, f"pg_dump → {out_path} ({bytes_in} bytes pre-gzip, streamed)"
 
 
 def main() -> int:
@@ -117,7 +159,8 @@ def main() -> int:
         print("[backup] no JSON files found in MEMORY_DIR (proceeding)")
 
     pg_ok = True
-    if DATABASE_URL:
+    pg_was_requested = bool(DATABASE_URL)
+    if pg_was_requested:
         pg_target = target / "pg_dump.sql.gz"
         pg_ok, msg = _run_pg_dump(DATABASE_URL, pg_target)
         print(f"[backup] {msg}")
@@ -134,10 +177,17 @@ def main() -> int:
         print(f"[backup] sentinel write failed: {exc}", file=sys.stderr)
         return 1
 
-    if not pg_ok:
-        print("[backup] WARNING: PG dump did not complete — JSON-only backup.")
-        # Non-fatal: the JSON snapshot is still useful even when PG is
-        # unreachable. The marker reflects what was written.
+    if pg_was_requested and not pg_ok:
+        # Operator asked for a PG backup (DATABASE_URL was set) and we
+        # could not produce one. Treat this as a backup failure so cron
+        # alerts fire — silently logging a warning and exiting 0 would
+        # let pg_dump regressions go unnoticed for days.
+        print(
+            "[backup] ERROR: PG dump did not complete — "
+            "JSON-only backup written; failing the run.",
+            file=sys.stderr,
+        )
+        return 1
     print("[backup] done")
     return 0
 
