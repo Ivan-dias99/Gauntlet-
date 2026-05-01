@@ -266,9 +266,14 @@ function ConnectorDetail({ id }: { id: string }) {
   const [reveal, setReveal] = useState(false);
   const [selectedScopes, setSelectedScopes] = useState<Set<string>>(() => {
     if (!def) return new Set();
+    // Codex review #288 (P2): hydration must always include required
+    // scopes. Legacy/manually-edited storage may omit them; without this
+    // merge the required checkbox renders disabled+unchecked and the
+    // user cannot recover (the input is disabled, so toggling is
+    // impossible). Force the union so required is always present.
+    const required = def.scopes.filter((s) => s.required).map((s) => s.key);
     const seed = stored?.scope?.split(",").filter(Boolean) ?? [];
-    if (seed.length > 0) return new Set(seed);
-    return new Set(def.scopes.filter((s) => s.required).map((s) => s.key));
+    return new Set([...seed, ...required]);
   });
   const [probeState, setProbeState] = useState<"idle" | "running" | "ok" | "err">("idle");
   const [probeMessage, setProbeMessage] = useState<string | null>(null);

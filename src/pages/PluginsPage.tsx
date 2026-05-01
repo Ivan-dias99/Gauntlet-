@@ -167,13 +167,29 @@ export default function PluginsPage() {
           return;
         }
         const plugin = validated.plugin;
-        if (CATALOG.some((p) => p.id === plugin.id) || custom.some((p) => p.id === plugin.id)) {
+        if (CATALOG.some((p) => p.id === plugin.id)) {
           setUploadError(`já existe um plugin com id "${plugin.id}"`);
           return;
         }
-        const updated = [...custom, plugin];
-        setCustom(updated);
-        saveCustom(updated);
+        // Codex review #288 (P2): the previous code closed over `custom`
+        // from render time. Back-to-back uploads could pass the
+        // duplicate-id check against stale state and overwrite each
+        // other. Use the functional updater so the collision check + the
+        // append both run against the latest state.
+        let collided = false;
+        setCustom((prev) => {
+          if (prev.some((p) => p.id === plugin.id)) {
+            collided = true;
+            return prev;
+          }
+          const next = [...prev, plugin];
+          saveCustom(next);
+          return next;
+        });
+        if (collided) {
+          setUploadError(`já existe um plugin com id "${plugin.id}"`);
+          return;
+        }
         setUploadSuccess(`${plugin.name} (${plugin.id}) registado`);
       } catch (e) {
         setUploadError(`JSON inválido: ${e instanceof Error ? e.message : String(e)}`);
