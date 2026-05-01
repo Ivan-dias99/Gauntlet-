@@ -215,10 +215,17 @@ export default function Shell({ activeTab, onSwitchChamber }: Props) {
   // compatibility window so call sites can migrate gradually. P-39c —
   // these events now forward to onSwitchChamber (URL navigate) instead
   // of mutating internal state.
+  // Codex review #283 (P1): some emitters fire both `signal:chamber` and
+  // the legacy `ruberra:chamber` for one logical handoff. Without
+  // deduplication that produced two `navigate()` pushes per action and
+  // duplicated /chambers/ entries in history. Skip when the requested
+  // chamber matches the current activeTab — there is nothing to switch.
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<Chamber>;
-      if (ce.detail) switchChamber(ce.detail);
+      if (!ce.detail) return;
+      if (ce.detail === activeTab) return;
+      switchChamber(ce.detail);
     };
     window.addEventListener("signal:chamber", handler);
     window.addEventListener("ruberra:chamber", handler);
@@ -226,7 +233,7 @@ export default function Shell({ activeTab, onSwitchChamber }: Props) {
       window.removeEventListener("signal:chamber", handler);
       window.removeEventListener("ruberra:chamber", handler);
     };
-  }, [switchChamber]);
+  }, [switchChamber, activeTab]);
 
   // Wave-7 keyboard shortcut: Alt+[1-5] switches chambers.
   // Index order mirrors the ribbon (insight, surface, terminal, archive, core).
