@@ -10,9 +10,24 @@
 // per-route table (count / errors / error_rate / p50 / p95 / max /
 // in_flight) so the operator can see triage signals at a glance
 // without DevTools.
+//
+// Wave P-36 — error / loading / empty paths migrated to the shared
+// state primitives. Raw `(e as Error).message` is gone; the panel
+// branches on a typed FetchError so backend-unreachable lands in the
+// dedicated banner with cause+fix copy and a retry button.
 
 import { useEffect, useState } from "react";
-import { signalFetch, isBackendUnreachable } from "../../lib/signalApi";
+import {
+  signalFetch,
+  isBackendUnreachable,
+  BackendUnreachableError,
+} from "../../lib/signalApi";
+import {
+  BackendUnreachableState,
+  EmptyState,
+  ErrorState,
+  SkeletonPanel,
+} from "../../shell/states";
 
 interface RouteStats {
   count: number;
@@ -33,10 +48,20 @@ interface Snapshot {
 
 const POLL_INTERVAL_MS = 5000;
 
+// Wave P-36 — typed bucket so the UI can pick the right state primitive
+// (BackendUnreachableState vs ErrorState) instead of formatting the
+// message inline.
+type FetchError =
+  | { kind: "unreachable"; error: BackendUnreachableError }
+  | { kind: "http"; status: number }
+  | { kind: "other"; message: string };
+
 export default function ObservabilityPanel() {
   const [snap, setSnap] = useState<Snapshot | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<FetchError | null>(null);
   const [pending, setPending] = useState(false);
+  // Bumped by the retry button to re-trigger the polling effect on demand.
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -52,7 +77,7 @@ export default function ObservabilityPanel() {
       try {
         const res = await signalFetch("/observability/snapshot", { signal: ac.signal });
         if (!res.ok) {
-          if (alive) setErr(`HTTP ${res.status}`);
+          if (alive) setErr({ kind: "http", status: res.status });
           return;
         }
         const body = (await res.json()) as Snapshot;
@@ -62,8 +87,12 @@ export default function ObservabilityPanel() {
       } catch (e) {
         if (!alive) return;
         if (e instanceof DOMException && e.name === "AbortError") return;
-        if (isBackendUnreachable(e)) setErr("backend unreachable");
-        else setErr((e as Error).message);
+        if (isBackendUnreachable(e)) {
+          setErr({ kind: "unreachable", error: e });
+        } else {
+          const message = e instanceof Error ? e.message : String(e);
+          setErr({ kind: "other", message });
+        }
       } finally {
         if (alive) setPending(false);
         if (alive) timer = setTimeout(fetchOnce, POLL_INTERVAL_MS);
@@ -75,8 +104,9 @@ export default function ObservabilityPanel() {
       if (timer !== null) clearTimeout(timer);
       ac.abort();
     };
-  }, []);
+  }, [retryNonce]);
 
+  const retry = () => setRetryNonce((n) => n + 1);
   const routes = snap ? Object.entries(snap.routes) : [];
 
   return (
@@ -110,20 +140,46 @@ export default function ObservabilityPanel() {
           observability · ring
         </span>
         <span style={{ fontSize: "0.75em", opacity: 0.6 }}>
-          {pending && !snap ? "a probar..." : ""}
+          {pending && !snap ? "" : ""}
           {snap && `actualizado às ${new Date(snap.captured_at * 1000).toLocaleTimeString()}`}
-          {err && <span data-tone="danger" style={{ marginLeft: 6 }}>{err}</span>}
         </span>
       </div>
+      {/* Wave P-36 — error / loading / empty states via state primitives. */}
+      {err?.kind === "unreachable" && (
+        <BackendUnreachableState
+          error={err.error}
+          severity="banner"
+          onRetry={retry}
+          style={{ marginBottom: "var(--space-2)" }}
+        />
+      )}
+      {err?.kind === "http" && (
+        <ErrorState
+          severity="banner"
+          title="observability"
+          message={`Backend devolveu HTTP ${err.status}.`}
+          onRetry={retry}
+          style={{ marginBottom: "var(--space-2)" }}
+        />
+      )}
+      {err?.kind === "other" && (
+        <ErrorState
+          severity="banner"
+          title="observability"
+          message="Falha a ler a snapshot do anel."
+          detail={err.message}
+          onRetry={retry}
+          style={{ marginBottom: "var(--space-2)" }}
+        />
+      )}
       {snap === null && !err && (
-        <div style={{ opacity: 0.6, fontStyle: "italic", fontSize: "0.85em" }}>
-          a ler a primeira amostra do anel...
-        </div>
+        <SkeletonPanel bodyLines={4} ariaLabel="a ler primeira amostra do anel" />
       )}
       {routes.length === 0 && snap && (
-        <div style={{ opacity: 0.6, fontStyle: "italic", fontSize: "0.85em" }}>
-          nenhuma rota registou tráfego no anel ainda
-        </div>
+        <EmptyState
+          glyph="·"
+          message="nenhuma rota registou tráfego no anel ainda"
+        />
       )}
       {routes.length > 0 && (
         <table

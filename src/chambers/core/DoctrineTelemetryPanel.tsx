@@ -34,6 +34,7 @@
 
 import { useSpine } from "../../spine/SpineContext";
 import type { LogEvent } from "../../spine/types";
+import { EmptyState } from "../../shell/states";
 
 const LAST_N = 7;
 
@@ -102,17 +103,10 @@ export default function DoctrineTelemetryPanel() {
       </div>
 
       {applications.length === 0 ? (
-        <div
-          style={{
-            fontFamily: "var(--serif)",
-            fontSize: 14.5,
-            lineHeight: 1.55,
-            color: "var(--text-muted)",
-            letterSpacing: "-0.005em",
-          }}
-        >
-          Doutrina ainda não governou nenhum pedido nesta missão.
-        </div>
+        <EmptyState
+          glyph="·"
+          message="doutrina ainda não governou pedidos nesta missão"
+        />
       ) : (
         <>
           <div

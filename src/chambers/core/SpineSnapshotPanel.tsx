@@ -40,6 +40,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import type { Mission } from "../../spine/types";
+import { EmptyState } from "../../shell/states";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -100,7 +101,7 @@ function breakdownOf(m: Mission): MissionBreakdown {
 }
 
 export default function SpineSnapshotPanel() {
-  const { state } = useSpine();
+  const { state, clearActiveMission } = useSpine();
 
   // Memoize the JSON serialization so repaints triggered by unrelated
   // tweaks (theme, density) don't pay for it. The spine reference
@@ -262,18 +263,23 @@ export default function SpineSnapshotPanel() {
       </div>
 
       {breakdowns.length === 0 ? (
-        <div
-          style={{
-            paddingTop: "var(--space-2)",
-            fontFamily: "var(--serif)",
-            fontSize: 14.5,
-            lineHeight: 1.55,
-            color: "var(--text-muted)",
-            letterSpacing: "-0.005em",
+        <EmptyState
+          glyph="○"
+          message="spine vazio — nenhuma missão registada"
+          actionLabel="nova missão"
+          onAction={() => {
+            // Mirror the ribbon dropdown's "new thread" flow: clear the
+            // active-mission pointer via the spine context (so Insight's
+            // first-send creates a fresh mission) and route to Insight
+            // through the canonical chamber-switch event. No CustomEvent
+            // shim — the spine API is the entry point.
+            clearActiveMission();
+            window.dispatchEvent(
+              new CustomEvent("signal:chamber", { detail: "insight" }),
+            );
           }}
-        >
-          spine vazio — nenhuma missão
-        </div>
+          style={{ paddingTop: "var(--space-2)" }}
+        />
       ) : (
         <div
           style={{

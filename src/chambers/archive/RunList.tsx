@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { RunRecord } from "./helpers";
 import { ROUTE_COLOR, originFor, isLinked } from "./helpers";
 import { useCopy } from "../../i18n/copy";
+import { EmptyState } from "../../shell/states";
 
 // prettyTitle — fallback when the run question is empty or reads as
 // gibberish. The cut wave forbade demo-residue strings from reaching
@@ -234,19 +235,19 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
       {/* List */}
       <div style={{ flex: 1, overflow: "auto" }}>
         {filtered.length === 0 && (
-          <div
-            style={{
-              padding: "var(--space-4)",
-              color: "var(--text-muted)",
-              fontFamily: "var(--mono)",
-              fontSize: "var(--t-meta)",
-              textAlign: "center",
-            }}
-          >
-            {filtersActive
-              ? copy.archiveListEmptyFiltered
-              : copy.archiveListEmpty}
-          </div>
+          filtersActive ? (
+            <EmptyState
+              glyph="·"
+              message={copy.archiveListEmptyFiltered}
+              actionLabel="limpar filtros"
+              onAction={clearAll}
+            />
+          ) : (
+            <EmptyState
+              glyph="○"
+              message={copy.archiveListEmpty}
+            />
+          )
         )}
         {filtered.map((r) => {
           const active = selectedId === r.id;
