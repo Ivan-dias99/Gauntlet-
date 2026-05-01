@@ -9,13 +9,25 @@
 // chamber for the active mission. It sits as a thin banner near the top
 // of the chamber body, collapses when there's nothing pending, and
 // exposes the three resolution actions inline.
+//
+// Wave P-36 — optimistic consume + opt-in empty state.
+//   * `showEmpty` lets callers render the canonical EmptyState when the
+//     inbox is empty (default `false` keeps the historical "invisible
+//     when empty" behaviour everywhere else).
+//   * Clicking "consumir" hides the row immediately via local state and
+//     only then commits to the spine. If the commit throws, the row is
+//     re-shown — the optimistic UI rolls back on error.
 
+import { useState } from "react";
 import { useSpine } from "../spine/SpineContext";
 import { pendingHandoffsFor, type Chamber, type HandoffStatus } from "../spine/types";
+import { EmptyState } from "./states";
 
 interface Props {
   /** Which chamber's incoming queue to render. */
   chamber: Chamber;
+  /** Render an EmptyState when nothing is pending (default false). */
+  showEmpty?: boolean;
 }
 
 const FROM_LABEL: Record<Chamber, string> = {
@@ -34,14 +46,54 @@ const ARTIFACT_LABEL: Record<string, string> = {
   note: "note",
 };
 
-export default function HandoffInbox({ chamber }: Props) {
+export default function HandoffInbox({ chamber, showEmpty = false }: Props) {
   const { activeMission, resolveHandoff } = useSpine();
   const pending = pendingHandoffsFor(activeMission, chamber);
 
-  if (!activeMission || pending.length === 0) return null;
+  // Optimistic-resolution book-keeping. A handoff id lands here the
+  // moment the user clicks "consumir"; it is hidden from the rendered
+  // list until the commit completes. On commit failure the id is
+  // dropped so the row reappears with its original state.
+  const [optimisticHidden, setOptimisticHidden] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  const visible = pending.filter((h) => !optimisticHidden.has(h.id));
+
+  if (!activeMission) return null;
+  if (visible.length === 0) {
+    if (!showEmpty) return null;
+    return (
+      <EmptyState
+        glyph="↪"
+        message="sem handoffs pendentes para esta câmara"
+        style={{ margin: "0 auto var(--space-3)", maxWidth: 820 }}
+      />
+    );
+  }
 
   function resolve(id: string, status: HandoffStatus) {
     if (!activeMission) return;
+    if (status === "consumed") {
+      // Optimistic: hide first, commit second. Rollback on throw.
+      setOptimisticHidden((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+      try {
+        resolveHandoff(activeMission.id, id, status);
+      } catch (err) {
+        setOptimisticHidden((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        // eslint-disable-next-line no-console
+        console.error("[handoff] consume rollback", err);
+      }
+      return;
+    }
     resolveHandoff(activeMission.id, id, status);
   }
 
@@ -68,11 +120,11 @@ export default function HandoffInbox({ chamber }: Props) {
           letterSpacing: "0.06em",
         }}
       >
-        ↪ {pending.length} handoff{pending.length === 1 ? "" : "s"} pendente
-        {pending.length === 1 ? "" : "s"}
+        ↪ {visible.length} handoff{visible.length === 1 ? "" : "s"} pendente
+        {visible.length === 1 ? "" : "s"}
       </div>
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-        {pending.map((h) => (
+        {visible.map((h) => (
           <li
             key={h.id}
             data-handoff-id={h.id}

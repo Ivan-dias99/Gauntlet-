@@ -40,6 +40,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSpine } from "../../spine/SpineContext";
 import type { Mission } from "../../spine/types";
+import { EmptyState } from "../../shell/states";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -262,18 +263,17 @@ export default function SpineSnapshotPanel() {
       </div>
 
       {breakdowns.length === 0 ? (
-        <div
-          style={{
-            paddingTop: "var(--space-2)",
-            fontFamily: "var(--serif)",
-            fontSize: 14.5,
-            lineHeight: 1.55,
-            color: "var(--text-muted)",
-            letterSpacing: "-0.005em",
+        <EmptyState
+          glyph="○"
+          message="spine vazio — nenhuma missão registada"
+          actionLabel="nova missão"
+          onAction={() => {
+            // Mission creation lives in the ribbon dropdown; dispatch
+            // the canonical event so this CTA shares one entry point.
+            window.dispatchEvent(new CustomEvent("signal:new-mission"));
           }}
-        >
-          spine vazio — nenhuma missão
-        </div>
+          style={{ paddingTop: "var(--space-2)" }}
+        />
       ) : (
         <div
           style={{

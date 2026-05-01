@@ -11,9 +11,17 @@
 // sources that informed the answer.
 
 import type { CitationPayload, CitationTrust } from "../../hooks/useSignal";
+import { EmptyState } from "../../shell/states";
 
 interface Props {
   citations: CitationPayload[];
+  /**
+   * Wave P-36 — render the canonical EmptyState when the list is empty.
+   * Default `false` keeps the historical no-op behaviour so callers that
+   * mount CitationsPanel unconditionally still collapse to nothing when
+   * the agent loop produced no citations.
+   */
+  showEmpty?: boolean;
 }
 
 const TRUST_LABEL: Record<CitationTrust, string> = {
@@ -30,8 +38,17 @@ const TRUST_TONE: Record<CitationTrust, string> = {
   unknown: "ghost",
 };
 
-export default function CitationsPanel({ citations }: Props) {
-  if (citations.length === 0) return null;
+export default function CitationsPanel({ citations, showEmpty = false }: Props) {
+  if (citations.length === 0) {
+    if (!showEmpty) return null;
+    return (
+      <EmptyState
+        glyph="·"
+        message="sem fontes citadas neste turno"
+        style={{ margin: "var(--space-2) auto 0", maxWidth: 780 }}
+      />
+    );
+  }
 
   // Dedupe by URL — the same source may be cited by multiple tool
   // results in a single run. Keep the first occurrence's trust score

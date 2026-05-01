@@ -423,6 +423,30 @@ textarea {
   animation: scanShimmer 1.8s var(--ease-swift) infinite;
 }
 
+/* ——— Skeleton shimmer (Wave P-36 loading primitive) ———
+   Travelling highlight on top of the muted background of every
+   .skeleton-shimmer block. Honours prefers-reduced-motion via the
+   global rule near the top of this file (animation-duration → 0.01ms),
+   which collapses the keyframe to a static block when the operator
+   has the OS-level "reduce motion" preference set. */
+@keyframes skeletonShimmer {
+  0% { background-position: -120% 0; }
+  100% { background-position: 220% 0; }
+}
+.skeleton-shimmer {
+  position: relative;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--text-ghost) 18%, transparent) 50%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 60% 100%;
+  background-position: -120% 0;
+  animation: skeletonShimmer 1.6s var(--ease-swift) infinite;
+}
+
 /* ——— Slide-in rise for tool calls ——— */
 @keyframes toolRise {
   from {

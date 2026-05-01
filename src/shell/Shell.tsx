@@ -8,8 +8,13 @@ import Terminal from "../chambers/terminal";
 import Archive from "../chambers/archive";
 import Core from "../chambers/core";
 import Surface from "../chambers/surface";
+import ChamberErrorBoundary from "./ChamberErrorBoundary";
 
 const ENTERED_KEY = "signal:entered";
+
+// Wave P-36 — every chamber renders inside its own error boundary so a
+// crash in one doesn't take the shell down. The boundary key includes
+// the chamber id so switching tabs after a crash remounts cleanly.
 
 // Wave-2: shell is stripped of landing, ritual entry, and tweak-panel
 // gates. Boot opens directly on the active chamber with its composer
@@ -104,7 +109,9 @@ export default function Shell() {
     >
       <CanonRibbon active={activeTab} onSelect={setActiveTab} />
       <main style={{ flex: 1, overflow: "auto" }}>
-        {renderChamber(activeTab)}
+        <ChamberErrorBoundary key={activeTab} chamber={activeTab}>
+          {renderChamber(activeTab)}
+        </ChamberErrorBoundary>
       </main>
     </div>
   );
