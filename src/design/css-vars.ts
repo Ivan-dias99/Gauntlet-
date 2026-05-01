@@ -2,10 +2,12 @@
  * Wave P-33 — Token → CSS variable bridge.
  *
  * `buildCssVariables()` flattens the typed token objects into a record
- * of CSS custom properties. `injectCssVariables()` then writes those
- * properties onto `document.documentElement` so the static stylesheet
- * (`src/styles/tokens.css`) and any inline `style={{ color: "var(--…)" }}`
- * resolve through one and the same source.
+ * of CSS custom properties. `injectCssVariables()` then materialises
+ * those properties as a `<style>` element prepended to `<head>` so the
+ * static stylesheet (`src/styles/tokens.css`) and any inline
+ * `style={{ color: "var(--…)" }}` resolve through one and the same
+ * source — and the stylesheet's media-query overrides still cascade
+ * normally on top.
  *
  * Backwards compatibility: the existing canon (e.g. `--space-1..7`,
  * `--t-display`, `--t-body`, `--radius-control`, `--shadow-soft`,
@@ -107,10 +109,9 @@ export function buildCssVariables(): Record<string, string> {
 }
 
 /**
- * Render the token map as a `:root { … }` CSS string. Useful for SSR,
- * style-tag injection or debugging. Not used by the runtime injector
- * (which writes directly via `setProperty`) but kept exported because it
- * is the most legible way to inspect the materialised tokens.
+ * Render the token map as a `:root { … }` CSS string. Used by the
+ * runtime injector (via a `<style>` element) and exported for SSR /
+ * debugging.
  */
 export function renderRootCss(vars: Record<string, string> = buildCssVariables()): string {
   const body = Object.entries(vars)
@@ -119,17 +120,47 @@ export function renderRootCss(vars: Record<string, string> = buildCssVariables()
   return `:root {\n${body}\n}`;
 }
 
+/** ID used for the singleton `<style>` element appended to `<head>`. */
+const STYLE_ELEMENT_ID = "signal-tokens";
+
 /**
- * Apply every token to `document.documentElement` via `setProperty`. Safe
- * to call multiple times — values are overwritten in place. No-op when
- * `document` is undefined (SSR / unit tests).
+ * Materialise every token onto `:root` via a `<style>` element prepended
+ * to `<head>`. Safe to call multiple times — the existing element is
+ * replaced rather than duplicated. No-op when `document` is undefined
+ * (SSR / unit tests).
+ *
+ * Why a `<style>` element and not `documentElement.style.setProperty`:
+ * inline styles on `<html>` win over stylesheet rules at equal
+ * specificity, which would silently blow away the media-query overrides
+ * in `src/styles/tokens.css` (e.g. the `@media (max-width: 640px)` block
+ * that shrinks `--space-4..7` and the display scale on phones). By
+ * emitting a stylesheet rule we let the cascade apply normally — these
+ * values become the BASELINE, and any later `:root { ... }` rule (with
+ * or without a media wrapper) layers on top in source order.
+ *
+ * The element is inserted as the FIRST child of `<head>` so it is
+ * earlier in source order than `tokens.css` (which Vite injects via its
+ * own `<style>` / `<link>` tag). That way the stylesheet's
+ * media-query-wrapped overrides reliably win on narrow viewports.
  */
 export function injectCssVariables(): void {
   if (typeof document === "undefined") return;
-  const root = document.documentElement;
-  if (!root || !root.style) return;
-  const vars = buildCssVariables();
-  for (const [k, v] of Object.entries(vars)) {
-    root.style.setProperty(k, v);
+  const head = document.head;
+  if (!head) return;
+  const css = renderRootCss();
+
+  const existing = document.getElementById(STYLE_ELEMENT_ID);
+  if (existing && existing instanceof HTMLStyleElement) {
+    // Update in place — keeps source-order position so the cascade
+    // contract (this stylesheet first, tokens.css after) is preserved
+    // across hot reloads / repeat calls.
+    existing.textContent = css;
+    return;
   }
+
+  const style = document.createElement("style");
+  style.id = STYLE_ELEMENT_ID;
+  style.textContent = css;
+  // Prepend so any later `<style>` (tokens.css via Vite) layers on top.
+  head.insertBefore(style, head.firstChild);
 }
