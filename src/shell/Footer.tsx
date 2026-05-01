@@ -6,8 +6,14 @@
 
 import { Link } from "react-router-dom";
 
-const BUILD_SHA: string =
-  (import.meta.env?.VITE_BUILD_SHA as string | undefined)?.slice(0, 7) ?? "dev";
+// Codex review #282 (P3): the previous form was
+//   `(env.VITE_BUILD_SHA as string|undefined)?.slice(0, 7) ?? "dev"`,
+// which left the footer blank when CI injected an empty string instead of
+// undefined. Trim + truthy-check before falling back so the docs match.
+const BUILD_SHA: string = (() => {
+  const raw = (import.meta.env?.VITE_BUILD_SHA as string | undefined)?.trim();
+  return raw ? raw.slice(0, 7) : "dev";
+})();
 
 const FOOTER_LINKS: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/docs", label: "docs" },

@@ -9,7 +9,7 @@
 // dropdown. Active route is highlighted.
 
 import { useEffect, useRef, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import AvatarDropdown from "./AvatarDropdown";
 
 const PRIMARY_NAV: ReadonlyArray<{ to: string; label: string }> = [
@@ -94,16 +94,29 @@ export default function TopNav() {
 }
 
 function CmdKButton() {
+  // Codex review #282 (P1): the CommandPalette mounts only inside Shell on
+  // /chambers/* routes, but TopNav (which carries this button) only renders
+  // outside chambers via PageShell. The synthetic keydown was being fired
+  // into a window that had no listener — visible affordance, no effect.
+  //
+  // Honest fix: outside chambers, the button navigates to /chambers/insight
+  // and signals the Shell (via a `?palette=1` query) to open the palette
+  // on mount. Inside chambers (where this button does not currently render)
+  // the existing ⌘K keyboard shortcut keeps working as before.
+  const navigate = useNavigate();
+  const location = useLocation();
+  const inChambers = location.pathname.startsWith("/chambers");
   return (
     <button
       type="button"
       onClick={() => {
-        // The CommandPalette currently mounts inside ChambersPage's Shell.
-        // For non-chamber pages, dispatching the same keydown so any global
-        // listener can react. P-39c will hoist the palette to PageShell-level.
-        window.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }),
-        );
+        if (inChambers) {
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }),
+          );
+        } else {
+          navigate("/chambers/insight?palette=1");
+        }
       }}
       title="⌘K · paleta de comandos"
       style={{
