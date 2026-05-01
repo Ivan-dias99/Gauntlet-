@@ -6,6 +6,12 @@ import { Chamber } from "../spine/types";
 // residue is gone. Tone intentionally calm — institutional register
 // stays only where Core itself is (schoolTagline, severityCritical,
 // errorBoundaryKicker). Other chambers read operational, not forensic.
+//
+// Voice contract: every value here follows docs/VOICE.md — present
+// factual tense, imperative verbs, lowercase by default, no exclamation,
+// no decorative emoji, no apologetic interjections, no animated waits.
+// The ban-list lint at scripts/check-voice.mjs enforces the obvious
+// failures (full ban list lives in the doc).
 
 export interface ChamberCopy {
   label: string;
@@ -712,10 +718,10 @@ const PT: Copy = {
   termStripMissionNull: "sem missão",
   termStripContext: "contexto",
   termStripDocs: "docs",
-  termStripStatusRunning: "Em curso.",
-  termStripStatusBlocked: "Bloqueada.",
-  termStripStatusDone: "Concluída.",
-  termReadyTitle: "Pronto.",
+  termStripStatusRunning: "em curso",
+  termStripStatusBlocked: "bloqueada",
+  termStripStatusDone: "concluída",
+  termReadyTitle: "pronto",
   termReadyLead: "Declara uma tarefa. O comando tem consequência.",
   termReadyTipDeclare: "declarar tarefa · enter",
   termReadyTipMission: "abrir missão · topo da barra",
@@ -1069,10 +1075,10 @@ const EN: Copy = {
   termStripMissionNull: "no mission",
   termStripContext: "context",
   termStripDocs: "docs",
-  termStripStatusRunning: "Running.",
-  termStripStatusBlocked: "Blocked.",
-  termStripStatusDone: "Done.",
-  termReadyTitle: "Ready.",
+  termStripStatusRunning: "running",
+  termStripStatusBlocked: "blocked",
+  termStripStatusDone: "done",
+  termReadyTitle: "ready",
   termReadyLead: "Declare a task. The command has consequence.",
   termReadyTipDeclare: "declare task · enter",
   termReadyTipMission: "open mission · top bar",
