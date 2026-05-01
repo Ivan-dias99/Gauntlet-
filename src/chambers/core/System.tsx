@@ -96,7 +96,7 @@ export default function System() {
         <Label>Density</Label>
         <Segmented<Density>
           value={values.density}
-          options={[["compact","Compact"],["comfortable","Comfortable"],["spacious","Spacious"]]}
+          options={[["cosy","Cosy"],["comfortable","Comfortable"],["compact","Compact"]]}
           onChange={(v) => set("density", v)}
         />
         <Label>Accent</Label>

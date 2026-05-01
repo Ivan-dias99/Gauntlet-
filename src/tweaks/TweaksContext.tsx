@@ -3,7 +3,12 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 export type Theme = "dark" | "light" | "sepia";
 export type Mono = "jetbrains" | "ibm";
 export type Sans = "inter" | "plex" | "system";
-export type Density = "compact" | "comfortable" | "spacious";
+// Wave P-37 — Density renamed cosy/comfortable/compact and now drives a
+// container-aware --density-scale (1.0 / 0.875 / 0.75) on
+// :root[data-density]. The legacy --density multiplier is still emitted
+// for back-compat with chamber padding rules authored against it; new
+// rules should use --density-scale instead.
+export type Density = "cosy" | "comfortable" | "compact";
 export type AccentKey = "bone" | "ember" | "ox" | "moss" | "gold" | "iris";
 export type Lang = "pt" | "en";
 
@@ -39,7 +44,32 @@ const ACCENTS: Record<AccentKey, AccentTriple> = {
   iris:  { dark: "#a0afd0", light: "#3a4c70", sepia: "#a0b0d0", dim_dark: "#60708c", dim_light: "#8a9ac0", dim_sepia: "#506080" },
 };
 
-const DENS: Record<Density, number> = { compact: 0.88, comfortable: 1, spacious: 1.14 };
+// Wave P-37 — Two scales side by side.
+//   DENS         legacy multiplier (old comfortable=1 baseline). Kept so
+//                CSS rules already using calc(... * var(--density, 1))
+//                still resolve to the same visual result. cosy maps to
+//                the old "spacious" coefficient so existing designs that
+//                read fine at spacious also read fine at cosy.
+//   DENS_SCALE   new --density-scale per the wave spec
+//                (cosy 1.0, comfortable 0.875, compact 0.75). Authored
+//                so the *new* rules in tokens.css can scale typography
+//                and container padding via --density-scale without
+//                disturbing existing margins.
+const DENS: Record<Density, number> = { cosy: 1.14, comfortable: 1, compact: 0.88 };
+const DENS_SCALE: Record<Density, number> = { cosy: 1.0, comfortable: 0.875, compact: 0.75 };
+
+// Wave P-37 — Cycle order for the ribbon density toggle:
+//   cosy → comfortable → compact → cosy.
+export const DENSITY_CYCLE: Density[] = ["cosy", "comfortable", "compact"];
+
+// Plain-language label per density. Used by the ribbon button's aria-label
+// and title attributes; UI segmenteds in Core/System.tsx ship their own
+// label list because they can be longer.
+export const DENSITY_LABEL: Record<Density, string> = {
+  cosy: "cosy",
+  comfortable: "comfortable",
+  compact: "compact",
+};
 
 export const ACCENT_SWATCHES: { key: AccentKey; color: string }[] = [
   { key: "bone",  color: "#c4b89a" },
@@ -55,6 +85,8 @@ interface TweaksCtx {
   set: <K extends keyof Tweaks>(k: K, v: Tweaks[K]) => void;
   setMany: (patch: Partial<Tweaks>) => void;
   cycleTheme: () => void;
+  // Wave P-37 — One-tap density cycling for the ribbon icon button.
+  cycleDensity: () => void;
   reset: () => void;
 }
 
@@ -63,6 +95,7 @@ const Ctx = createContext<TweaksCtx>({
   set: () => {},
   setMany: () => {},
   cycleTheme: () => {},
+  cycleDensity: () => {},
   reset: () => {},
 });
 
@@ -79,8 +112,19 @@ function load(): Tweaks {
       localStorage.getItem(STORAGE_KEY) ??
       localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return DEFAULTS;
-    const parsed = JSON.parse(raw) as Partial<Tweaks>;
-    return { ...DEFAULTS, ...parsed };
+    const parsed = JSON.parse(raw) as Partial<Omit<Tweaks, "density">> & { density?: string };
+    // Wave P-37 — migrate legacy density vocabulary (compact/comfortable/
+    // spacious) to the new triple (cosy/comfortable/compact). Map
+    // spacious → cosy so users don't suddenly see a tighter shell on
+    // boot. Unknown values fall back to comfortable (the default),
+    // which is the safe middle option.
+    let density: Density = DEFAULTS.density;
+    const rawDensity = parsed.density;
+    if (rawDensity === "spacious") density = "cosy";
+    else if (rawDensity === "cosy" || rawDensity === "comfortable" || rawDensity === "compact") {
+      density = rawDensity;
+    }
+    return { ...DEFAULTS, ...parsed, density };
   } catch {
     return DEFAULTS;
   }
@@ -99,6 +143,13 @@ function apply(v: Tweaks) {
   root.style.setProperty("--accent-dim", a[dimKey]);
   root.style.setProperty("--accent-glow", `color-mix(in oklab, ${accent} 10%, transparent)`);
   root.style.setProperty("--density", String(DENS[v.density] ?? 1));
+  // Wave P-37 — Container-aware scale + attribute selector. The CSS
+  // tokens layer reads :root[data-density="..."] so chambers can layer
+  // density-specific rules without going through the JS provider, and
+  // --density-scale exposes the typography/padding multiplier in the
+  // cascade for any new calc() that wants to scale uniformly.
+  root.setAttribute("data-density", v.density);
+  root.style.setProperty("--density-scale", String(DENS_SCALE[v.density] ?? 1));
 
   document.body.className = [
     v.mono === "ibm" ? "mono-ibm" : "",
@@ -134,6 +185,13 @@ export function TweaksProvider({ children }: { children: ReactNode }) {
       theme: prev.theme === "dark" ? "light" : prev.theme === "light" ? "sepia" : "dark",
     }));
 
+  const cycleDensity = () =>
+    setValues((prev) => {
+      const idx = DENSITY_CYCLE.indexOf(prev.density);
+      const next = DENSITY_CYCLE[(idx + 1) % DENSITY_CYCLE.length];
+      return { ...prev, density: next };
+    });
+
   const reset = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -143,7 +201,11 @@ export function TweaksProvider({ children }: { children: ReactNode }) {
     setValues(DEFAULTS);
   };
 
-  return <Ctx.Provider value={{ values, set, setMany, cycleTheme, reset }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ values, set, setMany, cycleTheme, cycleDensity, reset }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useTweaks() {

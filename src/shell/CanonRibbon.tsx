@@ -4,6 +4,7 @@ import { formatPulse } from "../spine/pulse";
 import { useSpine } from "../spine/SpineContext";
 import { useBackendStatus } from "../hooks/useBackendStatus";
 import { useCopy } from "../i18n/copy";
+import { useTweaks, DENSITY_LABEL } from "../tweaks/TweaksContext";
 
 // Wave-2 ribbon.
 //
@@ -31,9 +32,16 @@ function formatAgo(ms: number): string {
 interface Props {
   active: Chamber;
   onSelect: (c: Chamber) => void;
+  // Wave P-37 — When the host (Shell) detects a narrow viewport it
+  // renders a hamburger inside the ribbon and slides the chamber
+  // switcher into a drawer. The hamburger sits in the ribbon strip so
+  // the brand/right-cluster visual rhythm stays intact; the drawer
+  // itself lives in Shell.
+  onOpenDrawer?: () => void;
+  isMobile?: boolean;
 }
 
-export default function CanonRibbon({ active, onSelect }: Props) {
+export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }: Props) {
   const {
     state, activeMission, switchMission, clearActiveMission,
     setMissionStatus,
@@ -41,6 +49,7 @@ export default function CanonRibbon({ active, onSelect }: Props) {
   } = useSpine();
   const backend = useBackendStatus();
   const copy = useCopy();
+  const { values: tweaks, cycleDensity } = useTweaks();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -71,7 +80,20 @@ export default function CanonRibbon({ active, onSelect }: Props) {
   }
 
   return (
-    <header className="canon-ribbon">
+    <header className="canon-ribbon" data-mobile={isMobile ? "true" : undefined}>
+      {isMobile && onOpenDrawer && (
+        <button
+          type="button"
+          className="canon-ribbon-hamburger"
+          onClick={onOpenDrawer}
+          aria-label="Abrir menu de câmaras"
+          aria-haspopup="dialog"
+        >
+          <span aria-hidden className="canon-ribbon-hamburger-bar" />
+          <span aria-hidden className="canon-ribbon-hamburger-bar" />
+          <span aria-hidden className="canon-ribbon-hamburger-bar" />
+        </button>
+      )}
       <span className="canon-ribbon-brand" aria-label="Signal">
         <span
           aria-hidden
@@ -143,6 +165,26 @@ export default function CanonRibbon({ active, onSelect }: Props) {
           <span aria-hidden className="spine-sync-dot" />
           {copy.spineSyncLabel(syncState)}
         </span>
+        <span aria-hidden className="vbar" />
+        {/* Wave P-37 — density toggle. Cycles cosy → comfortable → compact.
+            Persisted via TweaksContext (signal:tweaks). The glyph shows
+            three stacked bars whose vertical gap mirrors the active
+            density so the icon itself communicates the current state
+            without copy. */}
+        <button
+          type="button"
+          onClick={cycleDensity}
+          className="btn-icon canon-ribbon-density"
+          data-density-state={tweaks.density}
+          aria-label={`Densidade: ${DENSITY_LABEL[tweaks.density]} (clique para alternar)`}
+          title={`Densidade: ${DENSITY_LABEL[tweaks.density]}`}
+        >
+          <span aria-hidden className="canon-ribbon-density-glyph">
+            <span />
+            <span />
+            <span />
+          </span>
+        </button>
         <span aria-hidden className="vbar" />
         {missions.length > 0 ? (
           <div ref={dropdownRef} style={{ position: "relative" }}>
