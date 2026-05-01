@@ -239,8 +239,18 @@ function RouteFlyout({
     { value: "triad", glyph: "◇", label: "triad+judge", help: "3 análises paralelas, juiz avalia divergência" },
     { value: "agent", glyph: "▸", label: "agent loop",  help: "iterações com tools, para tarefas de execução" },
   ];
+  // Codex review #285 (P2): when the operator tabs from one radio option
+  // to the sibling, the wrapper's `onBlur` would fire and dismiss the
+  // menu before the next option received focus — keyboard traversal was
+  // impossible. Skip dismissal when focus moves to another node still
+  // inside this flyout.
+  const onWrapperBlur: React.FocusEventHandler<HTMLDivElement> = (e) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && e.currentTarget.contains(next)) return;
+    onDismiss();
+  };
   return (
-    <div className="insight-composer-flyout" role="menu" onBlur={onDismiss}>
+    <div className="insight-composer-flyout" role="menu" onBlur={onWrapperBlur}>
       {options.map((opt) => {
         const selected = routeMode === opt.value;
         const lastWas = routeHint && opt.value === routeHint;
