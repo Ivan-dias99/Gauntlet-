@@ -255,7 +255,10 @@ export default function FailureMemoryPanel() {
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-1, 4px)",
                 padding: "3px 8px",
-                outline: "none",
+                // Wave P-35 — outline removed; global :focus-visible in
+                // tokens.css now paints the keyboard ring. Hardcoded
+                // `outline: none` killed it for screen-reader/keyboard
+                // users without giving anything in return.
               }}
             />
             {query && (
