@@ -7938,3 +7938,326 @@ a.term-ws-chip[data-tone="warn"]:hover {
   border-radius: 4px;
   color: var(--text-secondary);
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Wave P-37 — Responsive layout + density tokens.
+
+   One door, three densities:
+     :root[data-density="cosy"]        --density-scale: 1.000
+     :root[data-density="comfortable"] --density-scale: 0.875   (default)
+     :root[data-density="compact"]     --density-scale: 0.750
+
+   What scales:
+     - Typography (chamber/section/body sizes)
+     - Container padding (.chamber-body, .panel)
+
+   What does NOT scale (intentionally):
+     - Border widths (1px stays 1px so hairlines never blur)
+     - Icon glyphs (semantic chrome)
+     - Radii (visual identity, not breath)
+     - Touch targets at @media (pointer: coarse) — see § 6 below
+
+   The legacy --density multiplier (set by TweaksContext) is preserved
+   so prior calc() rules still resolve. New rules should use
+   --density-scale.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* § 1 — Density tokens. CSS fallbacks for the values JS sets at boot. */
+:root {
+  --density-scale: 0.875;
+}
+:root[data-density="cosy"]        { --density-scale: 1.000; }
+:root[data-density="comfortable"] { --density-scale: 0.875; }
+:root[data-density="compact"]     { --density-scale: 0.750; }
+
+/* § 2 — Apply density scale to typography + container padding.
+   Uses the existing --t-* and --space-* tokens as the comfortable
+   baseline; cosy and compact deltas come from the scale. Ribbon font,
+   icons and the canon traffic dots are excluded — they read as chrome,
+   not content. */
+:root[data-density="cosy"] .chamber-body,
+:root[data-density="compact"] .chamber-body {
+  padding-top:    calc(24px * var(--density-scale, 1));
+  padding-bottom: calc(24px * var(--density-scale, 1));
+}
+:root[data-density="cosy"] .panel,
+:root[data-density="compact"] .panel {
+  padding: calc(var(--space-3) * var(--density-scale, 1));
+  gap: calc(var(--space-2) * var(--density-scale, 1));
+}
+:root[data-density="cosy"]    .turn { padding: calc(var(--space-3) * 1.05); }
+:root[data-density="compact"] .turn { padding: calc(var(--space-3) * 0.80); }
+
+/* Body text — single 4-step ramp keyed on density. */
+:root[data-density="cosy"] {
+  --t-body:    15px;
+  --lh-body:   24px;
+}
+:root[data-density="compact"] {
+  --t-body:    13px;
+  --lh-body:   20px;
+  --t-body-sec: 12px;
+  --lh-body-sec: 18px;
+}
+
+/* § 3 — Container queries. .chamber-shell is the chamber root; every
+   chamber renders inside it, so making it a container lets sub-panels
+   answer to their own real width (not the viewport). Useful when a
+   chamber's right rail collapses but the conversation column stays
+   wide, or vice-versa. */
+.chamber-shell {
+  container-type: inline-size;
+  container-name: chamber;
+}
+
+@container chamber (max-width: 640px) {
+  .panel {
+    padding: var(--space-2);
+  }
+  .grid-2col {
+    grid-template-columns: 1fr;
+  }
+  .chamber-body {
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+  }
+}
+
+@container chamber (max-width: 420px) {
+  .panel-head {
+    flex-wrap: wrap;
+  }
+  .panel-head > .panel-sub {
+    margin-left: 0;
+  }
+}
+
+/* When the ribbon is in mobile mode, hide the tab bar — the hamburger
+   + drawer take over chamber switching. The mission pill, density
+   toggle and sync chip stay so the ribbon still carries posture. */
+.canon-ribbon[data-mobile="true"] .canon-ribbon-tabs {
+  display: none;
+}
+.canon-ribbon[data-mobile="true"] .canon-ribbon-doctrine {
+  display: none;
+}
+
+/* § 4 — Density toggle button (CanonRibbon). */
+.canon-ribbon-density {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.canon-ribbon-density-glyph {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 14px;
+  height: 12px;
+}
+.canon-ribbon-density-glyph > span {
+  display: block;
+  height: 1.5px;
+  width: 100%;
+  background: currentColor;
+  border-radius: 1px;
+}
+/* Mirror the active density in the glyph spacing — the icon itself
+   tells you which density is on. */
+.canon-ribbon-density[data-density-state="cosy"] .canon-ribbon-density-glyph {
+  height: 14px;
+}
+.canon-ribbon-density[data-density-state="compact"] .canon-ribbon-density-glyph {
+  height: 9px;
+}
+
+/* § 5 — Mobile drawer (Shell). Slides from the left, sits above the
+   ribbon with a dim scrim. Hidden by default; the [data-open="true"]
+   attribute drives both the visibility and the slide transition. */
+.canon-ribbon-hamburger {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 28px;
+  height: 22px;
+  padding: 4px 2px;
+  margin-right: 10px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+.canon-ribbon-hamburger:hover { color: var(--accent); }
+.canon-ribbon-hamburger-bar {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.mobile-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-normal) var(--ease-swift);
+  z-index: 90;
+}
+.mobile-drawer-scrim[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: min(86vw, 320px);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-color-mid);
+  box-shadow: var(--shadow-float);
+  transform: translateX(-100%);
+  transition: transform var(--dur-normal) var(--ease-swift);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3);
+  gap: var(--space-3);
+  overflow-y: auto;
+}
+.mobile-drawer[data-open="true"] {
+  transform: translateX(0);
+}
+.mobile-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-color-soft);
+}
+.mobile-drawer-title {
+  font-family: var(--serif);
+  font-size: var(--t-section);
+  color: var(--text-primary);
+}
+.mobile-drawer-close {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-size: 18px;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  border-radius: var(--radius-control);
+}
+.mobile-drawer-close:hover {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+.mobile-drawer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mobile-drawer-item {
+  display: block;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-control);
+  padding: 12px 14px;
+  min-height: 44px;
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-swift), color var(--dur-fast) var(--ease-swift);
+}
+.mobile-drawer-item:hover {
+  background: var(--accent-glow);
+  color: var(--text-primary);
+}
+.mobile-drawer-item[data-active="true"] {
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+  color: var(--text-primary);
+}
+.mobile-drawer-controls {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-color-soft);
+}
+.mobile-drawer-section-label {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+.mobile-drawer-density {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.mobile-drawer-density-pill {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-swift),
+              border-color var(--dur-fast) var(--ease-swift);
+}
+.mobile-drawer-density-pill[data-active="true"] {
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+/* § 6 — Touch targets. Coarse pointer (touch device) → enforce 44×44px
+   minimum on every clickable. Fine pointer (mouse) keeps the existing
+   denser hit boxes. The selector targets explicit interactive
+   primitives so the shell typography (kickers, labels) stays compact
+   even on touch. */
+@media (pointer: coarse) {
+  .btn,
+  .btn-icon,
+  .btn-chip,
+  .tab,
+  .canon-ribbon-tabs .tab,
+  .canon-ribbon-density,
+  .canon-ribbon-hamburger,
+  .mobile-drawer-item,
+  .mobile-drawer-density-pill,
+  .mobile-drawer-close,
+  .dropdown-item,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .canon-ribbon-tabs .tab {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
+
+/* § 7 — Reduced motion. Kill the drawer slide transition for users who
+   asked for less motion; the open/close still works, just instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .mobile-drawer,
+  .mobile-drawer-scrim {
+    transition: none;
+  }
+}

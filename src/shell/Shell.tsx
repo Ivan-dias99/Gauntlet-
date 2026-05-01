@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import CanonRibbon from "./CanonRibbon";
+import { useState, useEffect, useCallback, useRef } from "react";
+import CanonRibbon, { CHAMBERS } from "./CanonRibbon";
 import CommandPalette from "./CommandPalette";
 import Landing from "../landing/Landing";
 import { useSpine } from "../spine/SpineContext";
@@ -11,8 +11,38 @@ import Core from "../chambers/core";
 import Surface from "../chambers/surface";
 import ChamberErrorBoundary from "./ChamberErrorBoundary";
 import { runViewTransition, useReducedMotion } from "../lib/motion";
+import { useCopy } from "../i18n/copy";
+import { useTweaks, DENSITY_CYCLE, DENSITY_LABEL } from "../tweaks/TweaksContext";
 
 const ENTERED_KEY = "signal:entered";
+
+// Wave P-37 — viewport breakpoint at which the canon ribbon collapses
+// the chamber switcher into a drawer. 720px keeps tablet portrait on
+// the desktop layout and only kicks in on phone-class widths.
+const MOBILE_BREAKPOINT = "(max-width: 720px)";
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.matchMedia(MOBILE_BREAKPOINT).matches; }
+    catch { return false; }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let mq: MediaQueryList;
+    try { mq = window.matchMedia(MOBILE_BREAKPOINT); }
+    catch { return; }
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    // Safari < 14 used addListener; modern browsers expose addEventListener.
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    }
+    mq.addListener(onChange);
+    return () => mq.removeListener(onChange);
+  }, []);
+  return isMobile;
+}
 
 // Wave P-36 — every chamber renders inside its own error boundary so a
 // crash in one doesn't take the shell down. The boundary key includes
@@ -37,6 +67,9 @@ function renderChamber(c: Chamber) {
 
 export default function Shell() {
   const { activeMission } = useSpine();
+  const copy = useCopy();
+  const { values: tweaks, set: setTweak } = useTweaks();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<Chamber>(activeMission?.chamber ?? "insight");
   const [entered, setEntered] = useState<boolean>(() => {
     try {
@@ -51,6 +84,49 @@ export default function Shell() {
   // ⌘K must work from any chamber. The palette closes itself; the
   // shell only owns the open boolean.
   const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Wave P-37 — Drawer open state. Closed by default. Auto-closes when
+  // the viewport widens past the mobile breakpoint so the operator
+  // never lands on a desktop layout with a stale overlay still up.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const hamburgerReturnRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isMobile && drawerOpen) setDrawerOpen(false);
+  }, [isMobile, drawerOpen]);
+
+  // Drawer keyboard contract: Esc closes, focus returns to whoever
+  // opened it (the hamburger). Existing chamber Alt+[1-5] shortcuts and
+  // mission ⌘ navigation keep working — the drawer is layered above,
+  // not a replacement for global keys.
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setDrawerOpen(false);
+        hamburgerReturnRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
+
+  // Move focus into the drawer's first interactive child on open so a
+  // keyboard user can immediately Tab through chamber options.
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const root = drawerRef.current;
+    if (!root) return;
+    const first = root.querySelector<HTMLElement>("[data-drawer-first]");
+    first?.focus();
+  }, [drawerOpen]);
+
+  function openDrawer() {
+    hamburgerReturnRef.current = document.activeElement as HTMLElement | null;
+    setDrawerOpen(true);
+  }
 
   function enterSignal() {
     try {
@@ -75,6 +151,11 @@ export default function Shell() {
     },
     [reduced],
   );
+
+  function pickChamberFromDrawer(c: Chamber) {
+    switchChamber(c);
+    setDrawerOpen(false);
+  }
 
   // Follow the active mission's chamber whenever the user switches missions
   // (via the ribbon dropdown). A fresh mission created by Insight first-send
@@ -159,7 +240,12 @@ export default function Shell() {
       <a href="#main" className="skip-link">
         Skip to main
       </a>
-      <CanonRibbon active={activeTab} onSelect={switchChamber} />
+      <CanonRibbon
+        active={activeTab}
+        onSelect={switchChamber}
+        isMobile={isMobile}
+        onOpenDrawer={openDrawer}
+      />
       {/* tabIndex={-1} makes <main> programmatically focusable so the
           skip-link's #main anchor activation actually moves keyboard
           focus here (the next Tab then continues from inside main
@@ -191,6 +277,74 @@ export default function Shell() {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
       />
+      {isMobile && (
+        <>
+          {/* Wave P-37 — Mobile drawer. Slides from the left and contains
+              the chamber switcher + density toggle. The dimmed scrim
+              dismisses on click; Esc dismisses via the keyboard contract
+              installed above. The drawer never renders on desktop, so
+              keyboard nav on wide viewports is untouched. */}
+          <div
+            className="mobile-drawer-scrim"
+            data-open={drawerOpen ? "true" : undefined}
+            onClick={() => setDrawerOpen(false)}
+            aria-hidden
+          />
+          <aside
+            ref={drawerRef}
+            className="mobile-drawer"
+            data-open={drawerOpen ? "true" : undefined}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Câmaras"
+            aria-hidden={!drawerOpen}
+          >
+            <div className="mobile-drawer-head">
+              <span className="mobile-drawer-title">Câmaras</span>
+              <button
+                type="button"
+                className="mobile-drawer-close"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Fechar menu"
+              >
+                ✕
+              </button>
+            </div>
+            <nav className="mobile-drawer-nav" aria-label="Câmaras">
+              {CHAMBERS.map((c, i) => (
+                <button
+                  key={c}
+                  type="button"
+                  className="mobile-drawer-item"
+                  data-active={activeTab === c ? "true" : undefined}
+                  data-drawer-first={i === 0 ? "true" : undefined}
+                  onClick={() => pickChamberFromDrawer(c)}
+                  aria-current={activeTab === c ? "page" : undefined}
+                >
+                  {copy.chambers[c].label}
+                </button>
+              ))}
+            </nav>
+            <div className="mobile-drawer-controls">
+              <span className="mobile-drawer-section-label">Densidade</span>
+              <div className="mobile-drawer-density">
+                {DENSITY_CYCLE.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className="mobile-drawer-density-pill"
+                    data-active={tweaks.density === d ? "true" : undefined}
+                    onClick={() => setTweak("density", d)}
+                    aria-pressed={tweaks.density === d}
+                  >
+                    {DENSITY_LABEL[d]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
     </div>
   );
 }
