@@ -60,21 +60,13 @@ interface Props {
 
 type Flyout = null | "context" | "recent" | "tools";
 
-// Tools the Terminal chamber actually carries server-side. Mirrors the
-// allowlist exposed in Core/Permissions. Wave P-41 makes this list
-// interactive — operator toggles which tools the backend may invoke for
-// the next run via `tools_allowlist`.
-export const TERMINAL_TOOLS: ReadonlyArray<{ name: string; kind: string; gated?: boolean }> = [
-  { name: "read_file",      kind: "fs" },
-  { name: "list_directory", kind: "fs" },
-  { name: "run_command",    kind: "cmd", gated: true },
-  { name: "execute_python", kind: "cmd", gated: true },
-  { name: "git",            kind: "vcs" },
-  { name: "web_fetch",      kind: "net" },
-  { name: "web_search",     kind: "net" },
-];
-
-export const TERMINAL_TOOL_NAMES: ReadonlyArray<string> = TERMINAL_TOOLS.map((t) => t.name);
+// Wave P-46 — TERMINAL_TOOLS now lives in `src/tools/registry.ts` (Wave
+// P-45). Re-exported from here for back-compat with the in-tree imports
+// (terminal/index.tsx pulls TERMINAL_TOOL_NAMES from this module). The
+// intermediate inline declaration the file used between P-41 and P-45
+// is gone.
+export { TERMINAL_TOOLS, TERMINAL_TOOL_NAMES } from "../../tools/registry";
+import { TERMINAL_TOOLS } from "../../tools/registry";
 
 export default function ExecutionComposer({
   copy, value, onChange, onSubmit, pending, missionTitle,
