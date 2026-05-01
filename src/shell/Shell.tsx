@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import CanonRibbon from "./CanonRibbon";
 import Landing from "../landing/Landing";
 import { useSpine } from "../spine/SpineContext";
@@ -9,6 +9,7 @@ import Archive from "../chambers/archive";
 import Core from "../chambers/core";
 import Surface from "../chambers/surface";
 import ChamberErrorBoundary from "./ChamberErrorBoundary";
+import { runViewTransition, useReducedMotion } from "../lib/motion";
 
 const ENTERED_KEY = "signal:entered";
 
@@ -40,18 +41,34 @@ export default function Shell() {
     try { return localStorage.getItem(ENTERED_KEY) === "true"; }
     catch { return false; }
   });
+  const reduced = useReducedMotion();
 
   function enterSignal() {
     try { localStorage.setItem(ENTERED_KEY, "true"); } catch {}
     setEntered(true);
   }
 
+  // Wave P-34 — Chamber switch entry/exit motion.
+  //
+  // Every setActiveTab call funnels through runViewTransition so the
+  // browser snapshots the outgoing chamber, runs the React re-render
+  // inside the snapshot frame, and crossfades to the new chamber.
+  // Chromium uses ::view-transition-old/new (styled in tokens.css);
+  // browsers without the API silently no-op and the chamber swaps
+  // instantly. Reduced-motion users bypass the snapshot entirely.
+  const switchChamber = useCallback(
+    (next: Chamber) => {
+      runViewTransition(() => setActiveTab(next), { reduced });
+    },
+    [reduced],
+  );
+
   // Follow the active mission's chamber whenever the user switches missions
   // (via the ribbon dropdown). A fresh mission created by Insight first-send
   // lands as chamber="insight", keeping the user in place.
   useEffect(() => {
-    if (activeMission) setActiveTab(activeMission.chamber);
-  }, [activeMission?.id]);
+    if (activeMission) switchChamber(activeMission.chamber);
+  }, [activeMission?.id, switchChamber]);
 
   // Cross-chamber handoff — chambers can request a chamber switch by
   // dispatching `signal:chamber` with a Chamber detail. The legacy
@@ -60,7 +77,7 @@ export default function Shell() {
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<Chamber>;
-      if (ce.detail) setActiveTab(ce.detail);
+      if (ce.detail) switchChamber(ce.detail);
     };
     window.addEventListener("signal:chamber", handler);
     window.addEventListener("ruberra:chamber", handler);
@@ -68,7 +85,7 @@ export default function Shell() {
       window.removeEventListener("signal:chamber", handler);
       window.removeEventListener("ruberra:chamber", handler);
     };
-  }, []);
+  }, [switchChamber]);
 
   // Wave-7 keyboard shortcut: Alt+[1-5] switches chambers.
   // Index order mirrors the ribbon (insight, surface, terminal, archive, core).
@@ -87,12 +104,12 @@ export default function Shell() {
       const idx = Number(e.key) - 1;
       if (Number.isInteger(idx) && idx >= 0 && idx < ORDER.length) {
         e.preventDefault();
-        setActiveTab(ORDER[idx]);
+        switchChamber(ORDER[idx]);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [switchChamber]);
 
   if (!entered) {
     return <Landing onEnter={enterSignal} />;
@@ -107,8 +124,22 @@ export default function Shell() {
         background: "var(--bg)",
       }}
     >
-      <CanonRibbon active={activeTab} onSelect={setActiveTab} />
-      <main style={{ flex: 1, overflow: "auto" }}>
+      <CanonRibbon active={activeTab} onSelect={switchChamber} />
+      <main
+        style={{
+          flex: 1,
+          overflow: "auto",
+          // Wave P-34 — name the <main> region so the View Transitions
+          // API can crossfade just the chamber body when state we
+          // mutate is scoped here (e.g. mission switch). The root
+          // pseudo (::view-transition-old/new(root)) still snapshots
+          // the whole viewport for full chamber swaps.
+          // viewTransitionName isn't in @types/react yet; cast via
+          // an index signature so the property still serialises onto
+          // the inline style attribute.
+          ...({ viewTransitionName: "chamber" } as Record<string, string>),
+        }}
+      >
         <ChamberErrorBoundary key={activeTab} chamber={activeTab}>
           {renderChamber(activeTab)}
         </ChamberErrorBoundary>

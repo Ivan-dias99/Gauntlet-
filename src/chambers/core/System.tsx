@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTweaks, ACCENT_SWATCHES, type Theme, type Density, type Lang, type AccentKey } from "../../tweaks/TweaksContext";
 import { useSpine } from "../../spine/SpineContext";
 import { signalFetch, isBackendUnreachable } from "../../lib/signalApi";
+import { Stagger } from "../../lib/motion";
 import ConnectorStatusPanel from "./ConnectorStatusPanel";
 import ObservabilityPanel from "./ObservabilityPanel";
 import SpineSnapshotPanel from "./SpineSnapshotPanel";
@@ -66,9 +67,17 @@ export default function System() {
           Tudo o que controla como Signal se apresenta e como comunica.
         </span>
       </div>
-      <ConnectorStatusPanel />
-      <ObservabilityPanel />
-      <SpineSnapshotPanel />
+      {/* Wave P-34 — staggered panel mount entry.
+          The three diagnostic panels each carry .motion-fade-up via
+          the Stagger wrapper (40ms step). The panels themselves
+          rely on their existing .panel chrome; we only inject the
+          animation-delay so they cascade in sequence rather than
+          all popping at once. */}
+      <Stagger step={40}>
+        <div className="motion-fade-up"><ConnectorStatusPanel /></div>
+        <div className="motion-fade-up"><ObservabilityPanel /></div>
+        <div className="motion-fade-up"><SpineSnapshotPanel /></div>
+      </Stagger>
       <div
         style={{
           display: "grid",
