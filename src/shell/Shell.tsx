@@ -1,7 +1,22 @@
+// Wave P-39c — Shell becomes a controlled component driven by props.
+//
+// Before P-39c, Shell owned `activeTab` internally and ChambersPage used a
+// `signal:chamber` CustomEvent stopgap to force the URL → state. That bridge
+// is now gone: ChambersPage reads the tab from `useParams` and feeds Shell
+// via `activeTab` + `onSwitchChamber` props. URL is the single source of
+// truth for the active chamber.
+//
+// In-app handoffs (insight → terminal · core → insight · CommandPalette)
+// continue to dispatch the `signal:chamber` event — Shell still listens
+// and forwards to `onSwitchChamber` so the URL updates accordingly.
+//
+// Wave-2 / P-39c — the legacy `entered` Landing gate is gone. /landing is
+// now a real route (Wave P-39a) and the operator navigates to /chambers/*
+// directly. Boot opens on the active chamber with its composer focused.
+
 import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
 import CanonRibbon, { CHAMBERS } from "./CanonRibbon";
 import CommandPalette from "./CommandPalette";
-import Landing from "../landing/Landing";
 import { useSpine } from "../spine/SpineContext";
 import { Chamber } from "../spine/types";
 import Insight from "../chambers/insight";
@@ -13,8 +28,6 @@ import ChamberErrorBoundary from "./ChamberErrorBoundary";
 import { runViewTransition, useReducedMotion } from "../lib/motion";
 import { useCopy } from "../i18n/copy";
 import { useTweaks, DENSITY_CYCLE, DENSITY_LABEL } from "../tweaks/TweaksContext";
-
-const ENTERED_KEY = "signal:entered";
 
 // Wave P-37 — viewport breakpoint at which the canon ribbon collapses
 // the chamber switcher into a drawer. 720px keeps tablet portrait on
@@ -48,13 +61,6 @@ function useIsMobile(): boolean {
 // crash in one doesn't take the shell down. The boundary key includes
 // the chamber id so switching tabs after a crash remounts cleanly.
 
-// Wave-2: shell is stripped of landing, ritual entry, and tweak-panel
-// gates. Boot opens directly on the active chamber with its composer
-// focused. First-send inside Insight creates a mission implicitly (see
-// Lab.tsx). VisionLanding and RitualEntry have been deleted; TweaksPanel
-// has been demoted (the TweaksContext provider still applies theme /
-// density at mount — user-facing controls return in Core, Wave 4).
-
 function renderChamber(c: Chamber) {
   switch (c) {
     case "insight":  return <Insight />;
@@ -65,20 +71,16 @@ function renderChamber(c: Chamber) {
   }
 }
 
-export default function Shell() {
+interface Props {
+  activeTab: Chamber;
+  onSwitchChamber: (next: Chamber) => void;
+}
+
+export default function Shell({ activeTab, onSwitchChamber }: Props) {
   const { activeMission } = useSpine();
   const copy = useCopy();
   const { values: tweaks, set: setTweak } = useTweaks();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState<Chamber>(activeMission?.chamber ?? "insight");
-  const [entered, setEntered] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(ENTERED_KEY) === "true";
-    } catch (e) {
-      console.warn("[shell] localStorage.getItem failed — assuming not entered:", e);
-      return false;
-    }
-  });
   const reduced = useReducedMotion();
   // Wave P-35 — command palette visibility lives at the shell because
   // ⌘K must work from any chamber. The palette closes itself; the
@@ -176,28 +178,18 @@ export default function Shell() {
     setDrawerOpen(true);
   }
 
-  function enterSignal() {
-    try {
-      localStorage.setItem(ENTERED_KEY, "true");
-    } catch (e) {
-      console.warn("[shell] localStorage.setItem failed — entered flag not persisted:", e);
-    }
-    setEntered(true);
-  }
-
   // Wave P-34 — Chamber switch entry/exit motion.
   //
-  // Every setActiveTab call funnels through runViewTransition so the
-  // browser snapshots the outgoing chamber, runs the React re-render
-  // inside the snapshot frame, and crossfades to the new chamber.
-  // Chromium uses ::view-transition-old/new (styled in tokens.css);
-  // browsers without the API silently no-op and the chamber swaps
-  // instantly. Reduced-motion users bypass the snapshot entirely.
+  // Every switch funnels through runViewTransition so the browser snapshots
+  // the outgoing chamber, runs the React re-render inside the snapshot
+  // frame, and crossfades to the new chamber. P-39c moved the actual state
+  // mutation up to ChambersPage (URL navigate); we still wrap that call in
+  // the transition so the visual contract is unchanged.
   const switchChamber = useCallback(
     (next: Chamber) => {
-      runViewTransition(() => setActiveTab(next), { reduced });
+      runViewTransition(() => onSwitchChamber(next), { reduced });
     },
-    [reduced],
+    [reduced, onSwitchChamber],
   );
 
   function pickChamberFromDrawer(c: Chamber) {
@@ -209,17 +201,31 @@ export default function Shell() {
   // (via the ribbon dropdown). A fresh mission created by Insight first-send
   // lands as chamber="insight", keeping the user in place.
   useEffect(() => {
-    if (activeMission) switchChamber(activeMission.chamber);
+    if (activeMission && activeMission.chamber !== activeTab) {
+      switchChamber(activeMission.chamber);
+    }
+    // We intentionally omit activeTab from deps so this only fires on
+    // mission change, not on every chamber switch (which would loop).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMission?.id, switchChamber]);
 
   // Cross-chamber handoff — chambers can request a chamber switch by
   // dispatching `signal:chamber` with a Chamber detail. The legacy
   // `ruberra:chamber` event is still accepted during the Wave-0 → Wave-8
-  // compatibility window so call sites can migrate gradually.
+  // compatibility window so call sites can migrate gradually. P-39c —
+  // these events now forward to onSwitchChamber (URL navigate) instead
+  // of mutating internal state.
+  // Codex review #283 (P1): some emitters fire both `signal:chamber` and
+  // the legacy `ruberra:chamber` for one logical handoff. Without
+  // deduplication that produced two `navigate()` pushes per action and
+  // duplicated /chambers/ entries in history. Skip when the requested
+  // chamber matches the current activeTab — there is nothing to switch.
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<Chamber>;
-      if (ce.detail) switchChamber(ce.detail);
+      if (!ce.detail) return;
+      if (ce.detail === activeTab) return;
+      switchChamber(ce.detail);
     };
     window.addEventListener("signal:chamber", handler);
     window.addEventListener("ruberra:chamber", handler);
@@ -227,7 +233,7 @@ export default function Shell() {
       window.removeEventListener("signal:chamber", handler);
       window.removeEventListener("ruberra:chamber", handler);
     };
-  }, [switchChamber]);
+  }, [switchChamber, activeTab]);
 
   // Wave-7 keyboard shortcut: Alt+[1-5] switches chambers.
   // Index order mirrors the ribbon (insight, surface, terminal, archive, core).
@@ -269,23 +275,6 @@ export default function Shell() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-
-  // Codex review #282 (P1) — TopNav's CmdKButton outside chambers navigates
-  // here with `?palette=1`. Shell opens the palette on mount and clears the
-  // query so reload / refresh does not re-trigger.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    if (url.searchParams.get("palette") === "1") {
-      setPaletteOpen(true);
-      url.searchParams.delete("palette");
-      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
-    }
-  }, []);
-
-  if (!entered) {
-    return <Landing onEnter={enterSignal} />;
-  }
 
   return (
     <div

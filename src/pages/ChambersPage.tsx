@@ -1,36 +1,39 @@
-// Wave P-39a — chambers page = thin wrapper around the existing Shell.
+// Wave P-39c — chambers page owns the URL ↔ chamber binding.
 //
-// In P-39c, Shell.tsx will be split: chamber routing/ribbon/drawer move
-// here as ChambersPage internals; Shell.tsx will become a context-only
-// provider mounted in App.tsx around the router. For now we keep the
-// behaviour byte-identical by rendering Shell as-is.
+// Reads the active chamber from the route param, validates it, and feeds
+// Shell as a controlled `activeTab` prop. When Shell asks to switch (via
+// ribbon click, Alt+1-5, palette pick, mission follow, or `signal:chamber`
+// CustomEvent), we call navigate() — URL is now the single source of
+// truth.
 //
-// The `/chambers/:tab?` URL parameter is passed-through via a custom
-// event so Shell's existing `signal:chamber` handler picks it up. This
-// is a deliberate stopgap — P-39c removes it.
+// The previous P-39b stopgap (CustomEvent dispatch as a URL → state
+// bridge) is gone.
 
-import { useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useCallback, useMemo } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import Shell from "../shell/Shell";
-
-const CHAMBER_KEYS = ["insight", "surface", "terminal", "archive", "core", "surface-final"] as const;
-type ChamberKey = typeof CHAMBER_KEYS[number];
-
-function isChamberKey(value: string | undefined): value is ChamberKey {
-  return typeof value === "string" && (CHAMBER_KEYS as readonly string[]).includes(value);
-}
+import { Chamber, normalizeChamberKey } from "../spine/types";
 
 export default function ChambersPage() {
   const { tab } = useParams<{ tab?: string }>();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!isChamberKey(tab)) return;
-    // Defer to next tick so Shell is mounted and listening.
-    const id = window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("signal:chamber", { detail: tab }));
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [tab]);
+  // Validate the URL param. `normalizeChamberKey` collapses unknown /
+  // legacy values to "insight"; we only want to render the page when the
+  // URL already matches the canonical key. Anything else redirects so the
+  // address bar stays honest.
+  const canonical: Chamber = useMemo(() => normalizeChamberKey(tab), [tab]);
 
-  return <Shell />;
+  const onSwitchChamber = useCallback(
+    (next: Chamber) => {
+      navigate(`/chambers/${next}`);
+    },
+    [navigate],
+  );
+
+  if (tab !== canonical) {
+    return <Navigate to={`/chambers/${canonical}`} replace />;
+  }
+
+  return <Shell activeTab={canonical} onSwitchChamber={onSwitchChamber} />;
 }
