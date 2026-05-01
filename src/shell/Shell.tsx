@@ -270,6 +270,19 @@ export default function Shell() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Codex review #282 (P1) — TopNav's CmdKButton outside chambers navigates
+  // here with `?palette=1`. Shell opens the palette on mount and clears the
+  // query so reload / refresh does not re-trigger.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("palette") === "1") {
+      setPaletteOpen(true);
+      url.searchParams.delete("palette");
+      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    }
+  }, []);
+
   if (!entered) {
     return <Landing onEnter={enterSignal} />;
   }
