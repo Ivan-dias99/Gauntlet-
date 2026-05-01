@@ -90,7 +90,9 @@ export default function Shell() {
   // never lands on a desktop layout with a stale overlay still up.
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const hamburgerReturnRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
     if (!isMobile && drawerOpen) setDrawerOpen(false);
@@ -99,14 +101,15 @@ export default function Shell() {
   // Drawer keyboard contract: Esc closes, focus returns to whoever
   // opened it (the hamburger). Existing chamber Alt+[1-5] shortcuts and
   // mission ⌘ navigation keep working — the drawer is layered above,
-  // not a replacement for global keys.
+  // not a replacement for global keys. Focus restoration is handled by
+  // a dedicated effect below so it runs AFTER the wrapper is un-inerted
+  // (otherwise focus() would silently fail on the inert hamburger).
   useEffect(() => {
     if (!drawerOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
         setDrawerOpen(false);
-        hamburgerReturnRef.current?.focus();
       }
     };
     document.addEventListener("keydown", onKey);
@@ -136,6 +139,36 @@ export default function Shell() {
     const root = drawerRef.current;
     if (!root) return;
     root.inert = !drawerOpen;
+  }, [drawerOpen]);
+
+  // Wave P-37 round-3 a11y fix — when the drawer is open, the rest of
+  // the shell (ribbon + main chamber) must be removed from the focus
+  // order and the a11y tree. role="dialog" + aria-modal="true" only
+  // *advertises* modality; without `inert` on the background, Tab still
+  // walks into ribbon/chamber controls. Toggle the native HTMLElement
+  // .inert property on the non-drawer wrapper. useLayoutEffect runs
+  // before paint so there's no flash where background is focusable
+  // while the drawer is being opened.
+  useLayoutEffect(() => {
+    const wrap = wrapperRef.current;
+    if (!wrap) return;
+    wrap.inert = drawerOpen;
+  }, [drawerOpen]);
+
+  // Restore focus to the hamburger after the drawer closes. Runs in a
+  // post-commit effect so it executes AFTER the layout effect above has
+  // un-inerted the wrapper — focusing an inert ancestor's child is a
+  // no-op, so doing this synchronously inside the Esc handler would
+  // silently fail. The wasOpenRef gate ensures we don't steal focus on
+  // first render when drawerOpen starts false.
+  useEffect(() => {
+    if (drawerOpen) {
+      wasOpenRef.current = true;
+      return;
+    }
+    if (!wasOpenRef.current) return;
+    wasOpenRef.current = false;
+    hamburgerReturnRef.current?.focus();
   }, [drawerOpen]);
 
   function openDrawer() {
@@ -245,49 +278,69 @@ export default function Shell() {
     <div
       style={{
         height: "100vh",
-        display: "flex",
-        flexDirection: "column",
         background: "var(--bg)",
+        position: "relative",
       }}
     >
-      {/* Wave P-35 — WCAG 2.4.1 skip-link. Hidden until keyboard focus
-          pulls it back into view. */}
-      <a href="#main" className="skip-link">
-        Skip to main
-      </a>
-      <CanonRibbon
-        active={activeTab}
-        onSelect={switchChamber}
-        isMobile={isMobile}
-        onOpenDrawer={openDrawer}
-      />
-      {/* tabIndex={-1} makes <main> programmatically focusable so the
-          skip-link's #main anchor activation actually moves keyboard
-          focus here (the next Tab then continues from inside main
-          instead of bouncing back to the ribbon). The element stays
-          out of the normal Tab order because tabIndex is negative. */}
-      <main
-        id="main"
-        tabIndex={-1}
+      {/* Wave P-37 round-3 — non-drawer content lives inside this
+          wrapper so we can flip HTMLElement.inert on the whole subtree
+          while the mobile drawer is open. The drawer + scrim are
+          siblings (outside this wrapper) so they remain focusable and
+          the dialog stays operable. The wrapper owns the column flex
+          layout that previously sat on the outer container — keeping it
+          on a real (non `display: contents`) box avoids known inert +
+          display:contents browser quirks. */}
+      <div
+        ref={wrapperRef}
         style={{
-          flex: 1,
-          overflow: "auto",
-          outline: "none",
-          // Wave P-34 — name the <main> region so the View Transitions
-          // API can crossfade just the chamber body when state we
-          // mutate is scoped here (e.g. mission switch). The root
-          // pseudo (::view-transition-old/new(root)) still snapshots
-          // the whole viewport for full chamber swaps.
-          // viewTransitionName isn't in @types/react yet; cast via
-          // an index signature so the property still serialises onto
-          // the inline style attribute.
-          ...({ viewTransitionName: "chamber" } as Record<string, string>),
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <ChamberErrorBoundary key={activeTab} chamber={activeTab}>
-          {renderChamber(activeTab)}
-        </ChamberErrorBoundary>
-      </main>
+        {/* Wave P-35 — WCAG 2.4.1 skip-link. Hidden until keyboard focus
+            pulls it back into view. Lives inside the inert wrapper so
+            it correctly disappears from the focus order when the mobile
+            drawer is open (operator should be focused on the dialog). */}
+        <a href="#main" className="skip-link">
+          Skip to main
+        </a>
+        <CanonRibbon
+          active={activeTab}
+          onSelect={switchChamber}
+          isMobile={isMobile}
+          onOpenDrawer={openDrawer}
+        />
+        {/* tabIndex={-1} makes <main> programmatically focusable so the
+            skip-link's #main anchor activation actually moves keyboard
+            focus here (the next Tab then continues from inside main
+            instead of bouncing back to the ribbon). The element stays
+            out of the normal Tab order because tabIndex is negative. */}
+        <main
+          id="main"
+          tabIndex={-1}
+          style={{
+            flex: 1,
+            overflow: "auto",
+            outline: "none",
+            // Wave P-34 — name the <main> region so the View Transitions
+            // API can crossfade just the chamber body when state we
+            // mutate is scoped here (e.g. mission switch). The root
+            // pseudo (::view-transition-old/new(root)) still snapshots
+            // the whole viewport for full chamber swaps.
+            // viewTransitionName isn't in @types/react yet; cast via
+            // an index signature so the property still serialises onto
+            // the inline style attribute.
+            ...({ viewTransitionName: "chamber" } as Record<string, string>),
+          }}
+        >
+          <ChamberErrorBoundary key={activeTab} chamber={activeTab}>
+            {renderChamber(activeTab)}
+          </ChamberErrorBoundary>
+        </main>
+      </div>
+      {/* Wave P-35 — Command palette. Sits outside the inert wrapper so
+          it stays interactive even when the mobile drawer is open. */}
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
