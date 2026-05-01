@@ -38,6 +38,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
@@ -98,6 +99,13 @@ export function useReducedMotion(): boolean {
  * with no animation. Callers should treat the return value as
  * fire-and-forget; the state update inside the callback is what makes
  * the transition snapshot make sense.
+ *
+ * React 18 commit guarantee: state updates are batched and committed
+ * asynchronously by default. View Transitions snapshot the "new" DOM
+ * after the callback returns, so a deferred React commit would be
+ * captured stale or partial. We wrap `update` in `flushSync` so React
+ * commits the DOM synchronously inside the transition callback,
+ * before the snapshot is taken.
  */
 type StartViewTransition = (cb: () => void) => unknown;
 
@@ -113,7 +121,9 @@ export function runViewTransition(update: () => void, opts?: { reduced?: boolean
   const doc = document as Document & { startViewTransition?: StartViewTransition };
   if (typeof doc.startViewTransition === "function") {
     try {
-      doc.startViewTransition(update);
+      doc.startViewTransition(() => {
+        flushSync(update);
+      });
       return;
     } catch {
       // Fall through to the synchronous path on any error so we never

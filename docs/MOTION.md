@@ -105,6 +105,14 @@ On Firefox/Safari it runs the update synchronously (no transition).
 When the user prefers reduced motion, callers can pass `{ reduced:
 true }` to bypass the snapshot entirely.
 
+The `update` callback is wrapped in `flushSync` from `react-dom`
+inside the transition. React 18 batches state updates and commits
+asynchronously by default; without `flushSync` the View Transitions
+API would snapshot the DOM before React's commit lands, capturing a
+stale or partial frame. This means callers must treat `update` as
+synchronously committing — do not await async work inside it, and
+keep the body to the state setters that drive the transition.
+
 ```tsx
 const reduced = useReducedMotion();
 const switchChamber = useCallback(
