@@ -23,6 +23,7 @@ Exit code:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -115,6 +116,69 @@ def _per_mission_counts(m: dict[str, Any]) -> dict[str, int]:
     }
 
 
+# Mapping of logical category name → key used inside a mission dict. Centralized
+# so counts and content hashes always traverse the same fields.
+_MISSION_CHILD_KEYS: dict[str, str] = {
+    "notes": "notes",
+    "tasks": "tasks",
+    "events": "events",
+    "artifacts": "artifacts",
+    "distillations": "truthDistillations",
+    "handoffs": "handoffs",
+}
+
+
+def _stable_dump(value: Any) -> str:
+    """Serialize value deterministically for hashing.
+
+    JSON with sort_keys=True gives us a content-stable string regardless
+    of insertion order on either side (asyncpg row → dict order may differ
+    from the on-disk file). default=str absorbs datetimes / UUIDs without
+    raising, which can appear in the PG snapshot.
+    """
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, default=str)
+
+
+def _hash_collection(items: list[Any] | None) -> str:
+    """Hash an unordered collection of children.
+
+    Each child is serialized stably, the resulting strings are sorted,
+    and the concatenation is hashed. This means two collections compare
+    equal iff they hold the same set of child payloads — order does not
+    matter, but content does. SHA-256 is plenty for drift detection.
+    """
+    if not items:
+        return hashlib.sha256(b"").hexdigest()
+    parts = sorted(_stable_dump(item) for item in items)
+    h = hashlib.sha256()
+    for p in parts:
+        h.update(p.encode("utf-8"))
+        h.update(b"\x00")  # delimiter so concatenations cannot collide
+    return h.hexdigest()
+
+
+def _per_mission_hashes(m: dict[str, Any]) -> dict[str, str]:
+    """Return content hash per child category for a single mission."""
+    return {
+        category: _hash_collection(m.get(field) or [])
+        for category, field in _MISSION_CHILD_KEYS.items()
+    }
+
+
+def _principles_hash(snapshot: dict[str, Any]) -> str:
+    """Hash the ordered principles list.
+
+    Principles are intentionally ORDERED (priority list), so we do not
+    sort before hashing — order is part of the content here.
+    """
+    items = snapshot.get("principles") or []
+    h = hashlib.sha256()
+    for item in items:
+        h.update(_stable_dump(item).encode("utf-8"))
+        h.update(b"\x00")
+    return h.hexdigest()
+
+
 # ── Loaders ─────────────────────────────────────────────────────────────────
 
 
@@ -150,8 +214,28 @@ def _render_report(json_snap: dict[str, Any], pg_snap: dict[str, Any]) -> tuple[
             drift = True
         lines.append(_row(k.capitalize() + ":", j, p))
 
+    # Root-level scalar / ordered fields. Counts above already cover the
+    # principles count; here we additionally check ordered content of
+    # principles and the activeMissionId pointer.
+    j_active = json_snap.get("activeMissionId")
+    p_active = pg_snap.get("activeMissionId")
+    j_principles_h = _principles_hash(json_snap)
+    p_principles_h = _principles_hash(pg_snap)
+
     # Per-mission detail — only emit rows where something disagrees.
     detail: list[str] = []
+    if j_active != p_active:
+        drift = True
+        detail.append(
+            f"  root / activeMissionId: JSON {j_active!r} ←→ PG {p_active!r}"
+        )
+    if j_principles_h != p_principles_h:
+        drift = True
+        detail.append(
+            "  root / principles: content drift "
+            f"(JSON {j_principles_h[:12]}… ←→ PG {p_principles_h[:12]}…)"
+        )
+
     j_missions = _index_missions(json_snap)
     p_missions = _index_missions(pg_snap)
     all_ids = sorted(set(j_missions) | set(p_missions))
@@ -173,15 +257,28 @@ def _render_report(json_snap: dict[str, Any], pg_snap: dict[str, Any]) -> tuple[
             if jv != pv:
                 drift = True
                 detail.append(f"  mission {mid[:12]}… / {field}: JSON {jv!r} ←→ PG {pv!r}")
-        # Children counts.
+        # Children counts AND content hashes — counts catch the obvious
+        # cases (added / removed rows); hashes catch silent edits where
+        # the count stayed equal but a payload changed.
         jc = _per_mission_counts(jm)
         pc = _per_mission_counts(pm)
+        jh = _per_mission_hashes(jm)
+        ph = _per_mission_hashes(pm)
         for field, jcount in jc.items():
             pcount = pc[field]
             if jcount != pcount:
                 drift = True
                 detail.append(
                     f"  mission {mid[:12]}… / {field}: JSON {jcount} ←→ PG {pcount}"
+                )
+                # Count drift already implies content drift; skip the
+                # hash comparison to avoid double-reporting the same row.
+                continue
+            if jh[field] != ph[field]:
+                drift = True
+                detail.append(
+                    f"  mission {mid[:12]}… / {field}: content drift "
+                    f"(count {jcount}, JSON {jh[field][:12]}… ←→ PG {ph[field][:12]}…)"
                 )
 
     lines.append("")

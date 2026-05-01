@@ -25,6 +25,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -91,6 +92,43 @@ def _run_pg_dump(database_url: str, out_path: Path) -> tuple[bool, str]:
         return False, f"pg_dump invocation failed: {exc}"
 
     assert proc.stdout is not None  # PIPE was requested
+
+    # Drain stderr concurrently with stdout. If we read stdout first and
+    # only touch stderr after EOF, a chatty pg_dump that fills its 64 KiB
+    # stderr pipe buffer will block on write(2) — and since it is also
+    # blocked, it stops writing stdout, deadlocking the parent. A daemon
+    # thread continuously consuming stderr breaks that cycle.
+    stderr_chunks: list[bytes] = []
+    stderr_lock = threading.Lock()
+
+    def _drain_stderr() -> None:
+        if proc is None or proc.stderr is None:
+            return
+        try:
+            while True:
+                chunk = proc.stderr.read(64 * 1024)
+                if not chunk:
+                    break
+                with stderr_lock:
+                    # Cap captured stderr to avoid unbounded memory growth
+                    # if pg_dump emits a flood of warnings; we only need
+                    # the tail for the error message.
+                    stderr_chunks.append(chunk)
+                    total = sum(len(c) for c in stderr_chunks)
+                    if total > 1 << 20:  # 1 MiB cap
+                        # Keep only the most recent ~1 MiB.
+                        joined = b"".join(stderr_chunks)[-(1 << 20) :]
+                        stderr_chunks.clear()
+                        stderr_chunks.append(joined)
+        except OSError:
+            # Pipe closed mid-read; treat as EOF.
+            return
+
+    stderr_thread = threading.Thread(
+        target=_drain_stderr, name="pg_dump-stderr", daemon=True
+    )
+    stderr_thread.start()
+
     try:
         with gzip.open(out_path, "wb") as gz:
             # 1 MiB chunks: large enough to amortize syscalls, small enough
@@ -111,6 +149,8 @@ def _run_pg_dump(database_url: str, out_path: Path) -> tuple[bool, str]:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             pass
+        # Best-effort: let the stderr drainer finish so we don't leak it.
+        stderr_thread.join(timeout=5)
         return False, f"failed to write gzip: {exc}"
     finally:
         try:
@@ -118,18 +158,17 @@ def _run_pg_dump(database_url: str, out_path: Path) -> tuple[bool, str]:
         except OSError:
             pass
 
-    # Drain stderr and wait for pg_dump to exit so we can report its status.
-    try:
-        stderr_bytes = proc.stderr.read() if proc.stderr is not None else b""
-    except OSError:
-        stderr_bytes = b""
-    finally:
-        if proc.stderr is not None:
-            try:
-                proc.stderr.close()
-            except OSError:
-                pass
+    # Wait for pg_dump to exit, then join the stderr drainer to capture
+    # any final bytes before we report status.
     rc = proc.wait()
+    stderr_thread.join(timeout=5)
+    if proc.stderr is not None:
+        try:
+            proc.stderr.close()
+        except OSError:
+            pass
+    with stderr_lock:
+        stderr_bytes = b"".join(stderr_chunks)
     if rc != 0:
         return False, f"pg_dump failed (exit {rc}): {stderr_bytes.decode('utf-8', 'replace')[:400]}"
     return True, f"pg_dump → {out_path} ({bytes_in} bytes pre-gzip, streamed)"
