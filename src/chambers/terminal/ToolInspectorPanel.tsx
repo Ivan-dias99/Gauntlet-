@@ -77,16 +77,22 @@ export default function ToolInspectorPanel({ tools }: Props) {
           gap: 4,
         }}
       >
-        {tools.map((t) => {
+        {tools.map((t, index) => {
+          // Codex review #286 (P2): the Terminal reducer permits out-of-
+          // order frames (orphan tool_result first, tool_use later), so
+          // two entries can share the same `t.id` inside one run. Compose
+          // a per-row key from id + index so React can distinguish them
+          // and the open-state never bleeds across siblings sharing an id.
+          const rowKey = `${t.id}-${index}`;
           const phase: ToolPhase = t.ok === undefined ? "running" : t.ok ? "ok" : "err";
-          const isOpen = openId === t.id;
+          const isOpen = openId === rowKey;
           return (
-            <li key={t.id} data-tool-id={t.id} data-tool-phase={phase}>
+            <li key={rowKey} data-tool-id={t.id} data-tool-phase={phase}>
               <button
                 type="button"
-                onClick={() => setOpenId(isOpen ? null : t.id)}
+                onClick={() => setOpenId(isOpen ? null : rowKey)}
                 aria-expanded={isOpen}
-                aria-controls={`tool-detail-${t.id}`}
+                aria-controls={`tool-detail-${rowKey}`}
                 style={{
                   display: "grid",
                   gridTemplateColumns: "16px 1fr auto auto",
@@ -130,7 +136,7 @@ export default function ToolInspectorPanel({ tools }: Props) {
               </button>
               {isOpen && (
                 <div
-                  id={`tool-detail-${t.id}`}
+                  id={`tool-detail-${rowKey}`}
                   role="region"
                   style={{
                     margin: "4px 0 8px 24px",
