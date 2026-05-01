@@ -27,6 +27,7 @@ import ExecutionComposer, { TERMINAL_TOOL_NAMES } from "./ExecutionComposer";
 import { TaskList } from "./TaskBench";
 import HandoffInbox from "../../shell/HandoffInbox";
 import EvidencePanel from "./EvidencePanel";
+import ToolInspectorPanel from "./ToolInspectorPanel";
 
 // Terminal — execution environment. State, effects, submit, accept,
 // task state transitions and SSE event reduction stay here; every
@@ -646,6 +647,10 @@ export default function Terminal() {
             canAccept={Boolean(activeMission)}
           />
           <EvidencePanel records={liveEvidence} />
+          {/* Wave P-42 — explicit per-tool drill-down. Sits next to the
+              EvidencePanel so the operator can audit any tool call's
+              full input + preview without resorting to devtools. */}
+          <ToolInspectorPanel tools={liveTools} />
           </>
         )}
 
