@@ -60,8 +60,19 @@ export default function TokenInput({
   );
 }
 
-/** Visual mask helper — used by consumers to display stored tokens. */
+/** Visual mask helper — used by consumers to display stored tokens.
+ *
+ * Codex review #289 (P1) — the previous form revealed first 4 + last 4
+ * unconditionally, so a 9-char token leaked 8 of its 9 characters in
+ * plain view. Now: tokens of length ≤16 are fully masked, tokens 17-23
+ * chars reveal only the last 4, and tokens ≥24 chars reveal 4+4
+ * (the standard sk-XXXX...XXXX pattern). Always at least 8 mask dots so
+ * a screenshot never exposes most of the secret.
+ */
 export function maskToken(key: string): string {
-  if (key.length <= 8) return "•".repeat(key.length);
-  return `${key.slice(0, 4)}${"•".repeat(8)}${key.slice(-4)}`;
+  const len = key.length;
+  if (len === 0) return "";
+  if (len <= 16) return "•".repeat(Math.max(8, len));
+  if (len < 24) return `${"•".repeat(8)}${key.slice(-4)}`;
+  return `${key.slice(0, 4)}${"•".repeat(Math.max(8, len - 8))}${key.slice(-4)}`;
 }

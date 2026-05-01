@@ -56,11 +56,37 @@ export const TERMINAL_TOOL_NAMES: ReadonlyArray<string> =
 export const INSIGHT_TOOL_NAMES: ReadonlyArray<string> =
   INSIGHT_TOOLS.map((t) => t.name);
 
-/** Lookup table by canonical tool name (across both chambers). */
+/**
+ * Lookup table by canonical tool name (across both chambers).
+ *
+ * Codex review #289 (P1) — the previous form did `all[t.name] = t` for
+ * every entry, so when the same name appeared in both lists with
+ * different metadata (e.g. `web_fetch` carries chamber-specific blurbs)
+ * the second list silently overwrote the first. Now we keep the first
+ * definition seen (TERMINAL is canonical), and warn in dev when a later
+ * list redefines an existing name with conflicting fields. Consumers
+ * that need chamber-specific copy should read TERMINAL_TOOLS or
+ * INSIGHT_TOOLS directly — TOOL_BY_NAME is the canonical lookup.
+ */
 export const TOOL_BY_NAME: Readonly<Record<string, ToolDef>> = (() => {
   const all: Record<string, ToolDef> = {};
   for (const t of [...TERMINAL_TOOLS, ...INSIGHT_TOOLS]) {
-    all[t.name] = t;
+    const existing = all[t.name];
+    if (!existing) {
+      all[t.name] = t;
+      continue;
+    }
+    const conflict =
+      existing.kind !== t.kind ||
+      Boolean(existing.gated) !== Boolean(t.gated) ||
+      (existing.label ?? null) !== (t.label ?? null) ||
+      (existing.blurb ?? null) !== (t.blurb ?? null);
+    if (conflict && import.meta.env?.DEV) {
+      console.warn(
+        `[tools/registry] duplicate tool "${t.name}" with conflicting metadata; keeping first definition`,
+        { kept: existing, dropped: t },
+      );
+    }
   }
   return Object.freeze(all);
 })();
