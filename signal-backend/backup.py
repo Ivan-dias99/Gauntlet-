@@ -25,6 +25,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -66,31 +67,111 @@ def _copy_json(src_dir: Path, dest_dir: Path) -> list[Path]:
 
 
 def _run_pg_dump(database_url: str, out_path: Path) -> tuple[bool, str]:
-    """Run pg_dump, gzip the output. Returns (ok, message).
+    """Run pg_dump, streaming stdout straight into a gzip file.
 
     pg_dump is found on PATH; if it is missing the function returns
     ok=False with an explanatory message rather than raising — backup
     of JSON files is still useful even when the PG side is unreachable.
+
+    The dump is streamed: we open the destination .sql.gz with gzip and
+    copy stdout bytes through in chunks. This avoids buffering the entire
+    dump (which can be many GB) in RAM before writing.
     """
     if shutil.which("pg_dump") is None:
         return False, "pg_dump not found on PATH; skipping PG dump"
+
+    bytes_in: int = 0
+    proc: subprocess.Popen[bytes] | None = None
     try:
-        proc = subprocess.run(
+        proc = subprocess.Popen(
             ["pg_dump", "--no-owner", "--no-privileges", database_url],
-            capture_output=True,
-            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
-    except subprocess.CalledProcessError as exc:
-        return False, f"pg_dump failed (exit {exc.returncode}): {exc.stderr.decode('utf-8', 'replace')[:400]}"
     except OSError as exc:  # FileNotFoundError, permission, etc.
         return False, f"pg_dump invocation failed: {exc}"
 
+    assert proc.stdout is not None  # PIPE was requested
+
+    # Drain stderr concurrently with stdout. If we read stdout first and
+    # only touch stderr after EOF, a chatty pg_dump that fills its 64 KiB
+    # stderr pipe buffer will block on write(2) — and since it is also
+    # blocked, it stops writing stdout, deadlocking the parent. A daemon
+    # thread continuously consuming stderr breaks that cycle.
+    stderr_chunks: list[bytes] = []
+    stderr_lock = threading.Lock()
+
+    def _drain_stderr() -> None:
+        if proc is None or proc.stderr is None:
+            return
+        try:
+            while True:
+                chunk = proc.stderr.read(64 * 1024)
+                if not chunk:
+                    break
+                with stderr_lock:
+                    # Cap captured stderr to avoid unbounded memory growth
+                    # if pg_dump emits a flood of warnings; we only need
+                    # the tail for the error message.
+                    stderr_chunks.append(chunk)
+                    total = sum(len(c) for c in stderr_chunks)
+                    if total > 1 << 20:  # 1 MiB cap
+                        # Keep only the most recent ~1 MiB.
+                        joined = b"".join(stderr_chunks)[-(1 << 20) :]
+                        stderr_chunks.clear()
+                        stderr_chunks.append(joined)
+        except OSError:
+            # Pipe closed mid-read; treat as EOF.
+            return
+
+    stderr_thread = threading.Thread(
+        target=_drain_stderr, name="pg_dump-stderr", daemon=True
+    )
+    stderr_thread.start()
+
     try:
         with gzip.open(out_path, "wb") as gz:
-            gz.write(proc.stdout)
+            # 1 MiB chunks: large enough to amortize syscalls, small enough
+            # to stay flat in memory regardless of dump size.
+            while True:
+                chunk = proc.stdout.read(1024 * 1024)
+                if not chunk:
+                    break
+                gz.write(chunk)
+                bytes_in += len(chunk)
     except OSError as exc:
+        # Reap pg_dump so it does not become a zombie before returning.
+        try:
+            proc.kill()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        # Best-effort: let the stderr drainer finish so we don't leak it.
+        stderr_thread.join(timeout=5)
         return False, f"failed to write gzip: {exc}"
-    return True, f"pg_dump → {out_path} ({len(proc.stdout)} bytes pre-gzip)"
+    finally:
+        try:
+            proc.stdout.close()
+        except OSError:
+            pass
+
+    # Wait for pg_dump to exit, then join the stderr drainer to capture
+    # any final bytes before we report status.
+    rc = proc.wait()
+    stderr_thread.join(timeout=5)
+    if proc.stderr is not None:
+        try:
+            proc.stderr.close()
+        except OSError:
+            pass
+    with stderr_lock:
+        stderr_bytes = b"".join(stderr_chunks)
+    if rc != 0:
+        return False, f"pg_dump failed (exit {rc}): {stderr_bytes.decode('utf-8', 'replace')[:400]}"
+    return True, f"pg_dump → {out_path} ({bytes_in} bytes pre-gzip, streamed)"
 
 
 def main() -> int:
@@ -117,16 +198,39 @@ def main() -> int:
         print("[backup] no JSON files found in MEMORY_DIR (proceeding)")
 
     pg_ok = True
-    if DATABASE_URL:
+    pg_was_requested = bool(DATABASE_URL)
+    if pg_was_requested:
         pg_target = target / "pg_dump.sql.gz"
         pg_ok, msg = _run_pg_dump(DATABASE_URL, pg_target)
         print(f"[backup] {msg}")
     else:
         print("[backup] SIGNAL_DATABASE_URL not set — skipping PG dump")
 
+    if pg_was_requested and not pg_ok:
+        # Operator asked for a PG backup (DATABASE_URL was set) and we
+        # could not produce one. Treat this as a backup failure so cron
+        # alerts fire — silently logging a warning and exiting 0 would
+        # let pg_dump regressions go unnoticed for days.
+        #
+        # Crucially: do NOT write the .backup_complete sentinel in this
+        # branch. Health checks that look for sentinel presence would
+        # otherwise treat a PG-less run as a successful backup, masking
+        # pg_dump regressions for days. The folder stays without a
+        # sentinel so retention sweeps and monitors can spot the partial
+        # run.
+        print(
+            "[backup] ERROR: PG dump did not complete — "
+            "JSON-only backup written; failing the run.",
+            file=sys.stderr,
+        )
+        return 1
+
     # Make the destination folder discoverable: write a sentinel marker
     # so an externally-driven retention sweep knows the folder is a
     # backup root rather than partial output from an interrupted run.
+    # Reached only when JSON copy succeeded AND (PG was not requested
+    # OR pg_dump completed). A JSON-only backup (DATABASE_URL unset)
+    # still gets the sentinel — that is a fully successful run by spec.
     sentinel = target / ".backup_complete"
     try:
         sentinel.write_text(stamp + "\n", encoding="utf-8")
@@ -134,10 +238,6 @@ def main() -> int:
         print(f"[backup] sentinel write failed: {exc}", file=sys.stderr)
         return 1
 
-    if not pg_ok:
-        print("[backup] WARNING: PG dump did not complete — JSON-only backup.")
-        # Non-fatal: the JSON snapshot is still useful even when PG is
-        # unreachable. The marker reflects what was written.
     print("[backup] done")
     return 0
 

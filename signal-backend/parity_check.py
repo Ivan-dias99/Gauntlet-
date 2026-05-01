@@ -23,6 +23,7 @@ Exit code:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -85,6 +86,7 @@ def _mission_totals(snapshot: dict[str, Any]) -> dict[str, int]:
         "notes": 0,
         "tasks": 0,
         "events": 0,
+        "artifacts": 0,
         "distillations": 0,
         "handoffs": 0,
         "principles": len(snapshot.get("principles") or []),
@@ -93,6 +95,7 @@ def _mission_totals(snapshot: dict[str, Any]) -> dict[str, int]:
         totals["notes"] += len(m.get("notes") or [])
         totals["tasks"] += len(m.get("tasks") or [])
         totals["events"] += len(m.get("events") or [])
+        totals["artifacts"] += len(m.get("artifacts") or [])
         totals["distillations"] += len(m.get("truthDistillations") or [])
         totals["handoffs"] += len(m.get("handoffs") or [])
     return totals
@@ -107,9 +110,96 @@ def _per_mission_counts(m: dict[str, Any]) -> dict[str, int]:
         "notes": len(m.get("notes") or []),
         "tasks": len(m.get("tasks") or []),
         "events": len(m.get("events") or []),
+        "artifacts": len(m.get("artifacts") or []),
         "distillations": len(m.get("truthDistillations") or []),
         "handoffs": len(m.get("handoffs") or []),
     }
+
+
+# Mapping of logical category name → key used inside a mission dict. Centralized
+# so counts and content hashes always traverse the same fields.
+_MISSION_CHILD_KEYS: dict[str, str] = {
+    "notes": "notes",
+    "tasks": "tasks",
+    "events": "events",
+    "artifacts": "artifacts",
+    "distillations": "truthDistillations",
+    "handoffs": "handoffs",
+}
+
+
+def _stable_dump(value: Any) -> str:
+    """Serialize value deterministically for hashing.
+
+    JSON with sort_keys=True gives us a content-stable string regardless
+    of insertion order on either side (asyncpg row → dict order may differ
+    from the on-disk file). default=str absorbs datetimes / UUIDs without
+    raising, which can appear in the PG snapshot.
+    """
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, default=str)
+
+
+def _hash_collection(items: list[Any] | None) -> str:
+    """Hash an unordered collection of children.
+
+    Each child is serialized stably, the resulting strings are sorted,
+    and the concatenation is hashed. This means two collections compare
+    equal iff they hold the same set of child payloads — order does not
+    matter, but content does. SHA-256 is plenty for drift detection.
+    """
+    if not items:
+        return hashlib.sha256(b"").hexdigest()
+    parts = sorted(_stable_dump(item) for item in items)
+    h = hashlib.sha256()
+    for p in parts:
+        h.update(p.encode("utf-8"))
+        h.update(b"\x00")  # delimiter so concatenations cannot collide
+    return h.hexdigest()
+
+
+def _per_mission_hashes(m: dict[str, Any]) -> dict[str, str]:
+    """Return content hash per child category for a single mission."""
+    return {
+        category: _hash_collection(m.get(field) or [])
+        for category, field in _MISSION_CHILD_KEYS.items()
+    }
+
+
+# Mission-level scalar/object payload fields that are persisted snapshots
+# but not children collections. Drift here is silent — counts stay equal
+# even when the payload changes — so they need their own per-mission hash.
+_MISSION_PAYLOAD_KEYS: tuple[str, ...] = ("projectContract", "lastArtifact")
+
+
+def _hash_payload(value: Any) -> str | None:
+    """Hash a single payload field stably, or return None when absent.
+
+    None on either side is treated as "no payload"; (None, None) matches
+    without triggering drift. This mirrors how the JSON snapshot omits
+    these keys when never set, while the PG row may surface them as NULL.
+    """
+    if value is None:
+        return None
+    return hashlib.sha256(_stable_dump(value).encode("utf-8")).hexdigest()
+
+
+def _per_mission_payload_hashes(m: dict[str, Any]) -> dict[str, str | None]:
+    """Return content hash per payload field for a single mission."""
+    return {field: _hash_payload(m.get(field)) for field in _MISSION_PAYLOAD_KEYS}
+
+
+def _principles_hash(snapshot: dict[str, Any]) -> str:
+    """Hash the ordered principles list.
+
+    Principles are intentionally ORDERED (priority list), so we do not
+    sort before hashing — order is part of the content here.
+    """
+    items = snapshot.get("principles") or []
+    h = hashlib.sha256()
+    for item in items:
+        h.update(_stable_dump(item).encode("utf-8"))
+        h.update(b"\x00")
+    return h.hexdigest()
 
 
 # ── Loaders ─────────────────────────────────────────────────────────────────
@@ -138,7 +228,7 @@ def _render_report(json_snap: dict[str, Any], pg_snap: dict[str, Any]) -> tuple[
 
     lines: list[str] = [_box("JSON ↔ POSTGRES PARITY"), ""]
 
-    keys = ("missions", "notes", "tasks", "events", "distillations", "handoffs", "principles")
+    keys = ("missions", "notes", "tasks", "events", "artifacts", "distillations", "handoffs", "principles")
     drift = False
     for k in keys:
         j = j_totals[k]
@@ -147,8 +237,28 @@ def _render_report(json_snap: dict[str, Any], pg_snap: dict[str, Any]) -> tuple[
             drift = True
         lines.append(_row(k.capitalize() + ":", j, p))
 
+    # Root-level scalar / ordered fields. Counts above already cover the
+    # principles count; here we additionally check ordered content of
+    # principles and the activeMissionId pointer.
+    j_active = json_snap.get("activeMissionId")
+    p_active = pg_snap.get("activeMissionId")
+    j_principles_h = _principles_hash(json_snap)
+    p_principles_h = _principles_hash(pg_snap)
+
     # Per-mission detail — only emit rows where something disagrees.
     detail: list[str] = []
+    if j_active != p_active:
+        drift = True
+        detail.append(
+            f"  root / activeMissionId: JSON {j_active!r} ←→ PG {p_active!r}"
+        )
+    if j_principles_h != p_principles_h:
+        drift = True
+        detail.append(
+            "  root / principles: content drift "
+            f"(JSON {j_principles_h[:12]}… ←→ PG {p_principles_h[:12]}…)"
+        )
+
     j_missions = _index_missions(json_snap)
     p_missions = _index_missions(pg_snap)
     all_ids = sorted(set(j_missions) | set(p_missions))
@@ -170,15 +280,57 @@ def _render_report(json_snap: dict[str, Any], pg_snap: dict[str, Any]) -> tuple[
             if jv != pv:
                 drift = True
                 detail.append(f"  mission {mid[:12]}… / {field}: JSON {jv!r} ←→ PG {pv!r}")
-        # Children counts.
+        # Children counts AND content hashes — counts catch the obvious
+        # cases (added / removed rows); hashes catch silent edits where
+        # the count stayed equal but a payload changed.
         jc = _per_mission_counts(jm)
         pc = _per_mission_counts(pm)
+        jh = _per_mission_hashes(jm)
+        ph = _per_mission_hashes(pm)
         for field, jcount in jc.items():
             pcount = pc[field]
             if jcount != pcount:
                 drift = True
                 detail.append(
                     f"  mission {mid[:12]}… / {field}: JSON {jcount} ←→ PG {pcount}"
+                )
+                # Count drift already implies content drift; skip the
+                # hash comparison to avoid double-reporting the same row.
+                continue
+            if jh[field] != ph[field]:
+                drift = True
+                detail.append(
+                    f"  mission {mid[:12]}… / {field}: content drift "
+                    f"(count {jcount}, JSON {jh[field][:12]}… ←→ PG {ph[field][:12]}…)"
+                )
+
+        # Payload-shaped fields (projectContract, lastArtifact). These are
+        # persisted snapshots that have no count to compare — without an
+        # explicit hash check, silent payload drift would slip through and
+        # the parity gate would flip canonical onto a divergent PG row.
+        # (None, None) matches; everything else compares by stable hash.
+        jph = _per_mission_payload_hashes(jm)
+        pph = _per_mission_payload_hashes(pm)
+        for field in _MISSION_PAYLOAD_KEYS:
+            jhash = jph[field]
+            phash = pph[field]
+            if jhash == phash:
+                continue
+            drift = True
+            if jhash is None:
+                detail.append(
+                    f"  mission {mid[:12]}… / {field}: MISSING IN JSON "
+                    f"(PG {phash[:12]}…)"
+                )
+            elif phash is None:
+                detail.append(
+                    f"  mission {mid[:12]}… / {field}: MISSING IN PG "
+                    f"(JSON {jhash[:12]}…)"
+                )
+            else:
+                detail.append(
+                    f"  mission {mid[:12]}… / {field}: content drift "
+                    f"(JSON {jhash[:12]}… ←→ PG {phash[:12]}…)"
                 )
 
     lines.append("")
