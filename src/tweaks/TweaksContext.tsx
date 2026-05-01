@@ -115,7 +115,11 @@ export function TweaksProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     apply(values);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(values)); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
+    } catch (e) {
+      console.warn("[tweaks] localStorage.setItem failed — settings not persisted:", e);
+    }
   }, [values]);
 
   const set = <K extends keyof Tweaks>(k: K, v: Tweaks[K]) =>
@@ -131,7 +135,11 @@ export function TweaksProvider({ children }: { children: ReactNode }) {
     }));
 
   const reset = () => {
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn("[tweaks] localStorage.removeItem failed:", e);
+    }
     setValues(DEFAULTS);
   };
 

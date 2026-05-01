@@ -1547,11 +1547,10 @@ async def railway_services():
     if not RAILWAY_TOKEN or not RAILWAY_PROJECT_ID:
         return {"ok": False, "reason": "railway_not_configured"}
 
-    # Codex round 2 (#269): catch RuntimeError OUTSIDE the record_route
-    # block so the context manager observes the failure (sets
-    # error_kind, succeeded=False). Catching inside would let the
-    # context manager exit cleanly and /observability/snapshot would
-    # under-report Railway errors.
+    # Catch RuntimeError OUTSIDE the record_route block so the context
+    # manager observes the failure (sets error_kind, succeeded=False).
+    # Catching inside would let the context manager exit cleanly and
+    # /observability/snapshot would under-report Railway errors.
     try:
         async with observability.record_route("railway.services"):
             services = await list_services(

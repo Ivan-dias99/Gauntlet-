@@ -1,9 +1,9 @@
 -- Wave P-22 round 6 — persist activeMissionId in Postgres.
 --
--- Codex re-review (#264 P1): `read_spine_snapshot` always emitted
--- `activeMissionId: null` because the schema had no place to store
--- it. After PG_CANONICAL=1, every reload would erase the operator's
--- active selection and the next PUT would push that null back.
+-- Before this column, `read_spine_snapshot` always emitted
+-- `activeMissionId: null` because the schema had no place to store it.
+-- After PG_CANONICAL=1, every reload would erase the operator's active
+-- selection and the next PUT would push that null back.
 --
 -- Add a boolean flag to missions so the snapshot reader can identify
 -- the active row. We deliberately do NOT add a unique partial index

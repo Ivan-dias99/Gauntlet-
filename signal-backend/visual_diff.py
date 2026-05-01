@@ -243,14 +243,13 @@ async def compute_diff(
 ) -> DiffResult:
     """Compute a per-pixel diff between two PNG/JPEG byte buffers.
 
-    Codex re-review (#270 round 2): the body is CPU-bound — a pure
-    Python nested loop over every pixel — so awaiting it directly
-    inside an async route handler stalls the event loop until the
-    diff completes, blocking unrelated requests on that worker.
-    Run the work on a thread via ``asyncio.to_thread`` so async
-    request handling stays responsive even under larger images or
-    concurrent calls. The thin async shell is preserved so callers
-    don't have to change.
+    The body is CPU-bound — a pure Python nested loop over every pixel —
+    so awaiting it directly inside an async route handler stalls the
+    event loop until the diff completes, blocking unrelated requests on
+    that worker. Run the work on a thread via ``asyncio.to_thread`` so
+    async request handling stays responsive even under larger images or
+    concurrent calls. The thin async shell is preserved so callers don't
+    have to change.
 
     Args, returns, raises, size-mismatch notes: see ``_compute_diff_sync``.
     """
