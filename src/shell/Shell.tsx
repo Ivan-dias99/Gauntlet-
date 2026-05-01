@@ -276,6 +276,19 @@ export default function Shell({ activeTab, onSwitchChamber }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Codex review #284 (P2) — TopNav's CmdKButton outside chambers
+  // navigates here with `?palette=1`. Open palette on mount and clear
+  // the query so reload does not re-trigger.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("palette") === "1") {
+      setPaletteOpen(true);
+      url.searchParams.delete("palette");
+      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    }
+  }, []);
+
   return (
     <div
       style={{

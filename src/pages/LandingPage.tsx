@@ -42,7 +42,10 @@ const CONNECTORS: ReadonlyArray<{ id: string; label: string }> = [
 export default function LandingPage() {
   return (
     <div className="chamber-shell" data-landing data-page="landing">
-      <main className="landing-main">
+      {/* Codex review #284 (P2): PageShell already wraps page content in
+          <main id="main">. Use a non-landmark <div> here to avoid nested
+          <main> landmarks. */}
+      <div className="landing-main">
         <section className="landing-hero">
           {/* Atmospheric backdrop — three slow-drifting chamber-DNA
               orbs blurred behind the headline. Decorative; aria-hidden. */}
@@ -164,7 +167,7 @@ export default function LandingPage() {
             <span aria-hidden>→</span>
           </Link>
         </section>
-      </main>
+      </div>
     </div>
   );
 }
