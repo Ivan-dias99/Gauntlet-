@@ -7360,6 +7360,181 @@ textarea {
   }
 }
 
+/* ── Wave P-40 — flagship sections (connectors strip · ledger card) ── */
+
+.landing-connectors {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.landing-connectors-lead {
+  margin: 0;
+  max-width: 720px;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 18px;
+  line-height: 1.45;
+  letter-spacing: -0.010em;
+  color: var(--text-secondary);
+}
+.landing-connectors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.landing-connector-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color-hairline);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
+  transition: border-color var(--dur-fast), transform var(--dur-fast);
+}
+.landing-connector-pill:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--text-primary) 32%, transparent);
+}
+.landing-connector-monogram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.landing-connector-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.landing-connectors-link {
+  align-self: flex-start;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-muted) 40%, transparent);
+  padding-bottom: 2px;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.landing-connectors-link:hover {
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
+}
+
+.landing-ledger {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.landing-ledger-title {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.020em;
+  color: var(--text-primary);
+  font-weight: 450;
+}
+.landing-ledger-card {
+  margin-top: 8px;
+  max-width: 640px;
+  padding: 22px 24px;
+  border: 1px solid var(--border-color-hairline);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.40) 0%,
+    rgba(255, 255, 255, 0) 32%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.030),
+    0 12px 28px -10px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+[data-theme="dark"] .landing-ledger-card,
+[data-theme="sepia"] .landing-ledger-card {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0) 32%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.40),
+    0 12px 28px -10px rgba(0, 0, 0, 0.45);
+}
+.landing-ledger-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color-hairline);
+  padding-bottom: 10px;
+}
+.landing-ledger-card-id {
+  letter-spacing: var(--track-meta);
+  color: var(--text-primary);
+}
+.landing-ledger-card-status {
+  font-size: 11px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--ok, #4a8c5d) 16%, transparent);
+  color: color-mix(in oklab, var(--ok, #4a8c5d) 92%, var(--text-primary));
+}
+.landing-ledger-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+.landing-ledger-steps li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.landing-ledger-step-ts {
+  width: 44px;
+  color: var(--text-muted);
+  letter-spacing: var(--track-meta);
+}
+.landing-ledger-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-color-hairline);
+  padding-top: 10px;
+  font-size: 11px;
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+}
+
 /* ─────────────────────────────────────────────────────────────────
    Signal — Interactions Pack (additive, post-canon)
    Adds press / hover / focus affordances and micro-motion to the
