@@ -15,6 +15,8 @@ import { useEffect, useRef, useState } from "react";
 // Enter submits; Shift+Enter inserts a newline. Auto-grow bounded so
 // the thread above keeps reading width even with long prompts.
 
+export type RouteMode = "auto" | "triad" | "agent";
+
 interface Props {
   value: string;
   onChange: (v: string) => void;
@@ -25,7 +27,11 @@ interface Props {
   principlesCount: number;
   priorTurns: number;
   mockMode: boolean;
+  /** Path the last completed turn took (read-only badge in flyout). */
   routeHint?: "triad" | "agent";
+  /** Wave P-41 — operator's declared preference for the next turn. */
+  routeMode: RouteMode;
+  onRouteModeChange: (m: RouteMode) => void;
 }
 
 type Flyout = null | "context" | "route";
@@ -33,6 +39,7 @@ type Flyout = null | "context" | "route";
 export default function Composer({
   value, onChange, onSubmit, pending, placeholder,
   voiceLabel, principlesCount, priorTurns, mockMode, routeHint,
+  routeMode, onRouteModeChange,
 }: Props) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -145,6 +152,8 @@ export default function Composer({
       {flyout === "route" && (
         <RouteFlyout
           routeHint={routeHint}
+          routeMode={routeMode}
+          onRouteModeChange={onRouteModeChange}
           onDismiss={() => setFlyout(null)}
         />
       )}
@@ -210,49 +219,52 @@ function ContextFlyout({
   );
 }
 
+// Wave P-41 — RouteFlyout is now interactive. The operator declares a
+// preferred dispatch mode for the next turn (auto · triad · agent); the
+// chamber reads the value and forwards it as `route_hint` in the request
+// body. Backend may still override based on telemetry, but the operator
+// signal is no longer a no-op.
 function RouteFlyout({
-  routeHint, onDismiss,
+  routeHint, routeMode, onRouteModeChange, onDismiss,
 }: {
   routeHint?: "triad" | "agent";
+  routeMode: RouteMode;
+  onRouteModeChange: (m: RouteMode) => void;
   onDismiss: () => void;
 }) {
-  const current = routeHint ?? "triad";
+  const options: Array<{
+    value: RouteMode; glyph: string; label: string; help: string;
+  }> = [
+    { value: "auto",  glyph: "◆", label: "auto",        help: "dispatcher decide entre triad e agent" },
+    { value: "triad", glyph: "◇", label: "triad+judge", help: "3 análises paralelas, juiz avalia divergência" },
+    { value: "agent", glyph: "▸", label: "agent loop",  help: "iterações com tools, para tarefas de execução" },
+  ];
   return (
     <div className="insight-composer-flyout" role="menu" onBlur={onDismiss}>
-      <button
-        type="button"
-        className="insight-composer-flyout-item"
-        disabled
-        title="triad: 3 análises paralelas, juiz avalia divergência"
-      >
-        <span className="insight-composer-flyout-item-glyph">◆</span>
-        <span>triad + judge</span>
-        <span className="insight-composer-flyout-item-kicker">
-          {current === "triad" ? "ativo" : "ronda"}
-        </span>
-      </button>
-      <button
-        type="button"
-        className="insight-composer-flyout-item"
-        disabled
-        title="agent: iterações com tools, para tarefas de execução"
-      >
-        <span className="insight-composer-flyout-item-glyph">▸</span>
-        <span>agent loop</span>
-        <span className="insight-composer-flyout-item-kicker">
-          {current === "agent" ? "ativo" : "terminal"}
-        </span>
-      </button>
-      <button
-        type="button"
-        className="insight-composer-flyout-item"
-        disabled
-        title="juiz implacável; divergência ou falha prévia → recusa"
-      >
-        <span className="insight-composer-flyout-item-glyph">§</span>
-        <span>juízo</span>
-        <span className="insight-composer-flyout-item-kicker">high / low</span>
-      </button>
+      {options.map((opt) => {
+        const selected = routeMode === opt.value;
+        const lastWas = routeHint && opt.value === routeHint;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="menuitemradio"
+            aria-checked={selected}
+            className="insight-composer-flyout-item"
+            data-active={selected ? "true" : undefined}
+            title={opt.help}
+            onClick={() => onRouteModeChange(opt.value)}
+          >
+            <span className="insight-composer-flyout-item-glyph">
+              {selected ? "●" : opt.glyph}
+            </span>
+            <span>{opt.label}</span>
+            <span className="insight-composer-flyout-item-kicker">
+              {selected ? "selecionado" : lastWas ? "última" : ""}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

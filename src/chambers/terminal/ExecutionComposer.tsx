@@ -50,14 +50,21 @@ interface Props {
   persistenceEphemeral: boolean;
   onAttachContext: (kind: "note" | "prior-run" | "artifact") => void;
   hasArtifacts: boolean;
+  // Wave P-41 — operator-declared tools allowlist for the next run. The
+  // composer surfaces every tool Terminal carries; the operator toggles
+  // which ones the backend may use. Persisted in chamber state and
+  // forwarded as `tools_allowlist`.
+  selectedTools: ReadonlySet<string>;
+  onToggleTool: (name: string) => void;
 }
 
 type Flyout = null | "context" | "recent" | "tools";
 
 // Tools the Terminal chamber actually carries server-side. Mirrors the
-// allowlist exposed in Core/Permissions. Read-only — this is a window
-// into the backend posture, not a toggle.
-const TERMINAL_TOOLS: Array<{ name: string; kind: string; gated?: boolean }> = [
+// allowlist exposed in Core/Permissions. Wave P-41 makes this list
+// interactive — operator toggles which tools the backend may invoke for
+// the next run via `tools_allowlist`.
+export const TERMINAL_TOOLS: ReadonlyArray<{ name: string; kind: string; gated?: boolean }> = [
   { name: "read_file",      kind: "fs" },
   { name: "list_directory", kind: "fs" },
   { name: "run_command",    kind: "cmd", gated: true },
@@ -67,6 +74,8 @@ const TERMINAL_TOOLS: Array<{ name: string; kind: string; gated?: boolean }> = [
   { name: "web_search",     kind: "net" },
 ];
 
+export const TERMINAL_TOOL_NAMES: ReadonlyArray<string> = TERMINAL_TOOLS.map((t) => t.name);
+
 export default function ExecutionComposer({
   copy, value, onChange, onSubmit, pending, missionTitle,
   mode, onModeChange, recentTasks, onPickTask,
@@ -74,6 +83,7 @@ export default function ExecutionComposer({
   backendReadiness, backendReasons, backendUnreachableReason,
   backendUnreachableDetail, persistenceEphemeral,
   onAttachContext, hasArtifacts,
+  selectedTools, onToggleTool,
 }: Props) {
   const [focused, setFocused] = useState(false);
   const [flyout, setFlyout] = useState<Flyout>(null);
@@ -319,7 +329,12 @@ export default function ExecutionComposer({
             onPick={(t) => { onPickTask(t); setFlyout(null); }}
           />
         )}
-        {flyout === "tools" && <ToolsFlyout />}
+        {flyout === "tools" && (
+          <ToolsFlyout
+            selected={selectedTools}
+            onToggle={onToggleTool}
+          />
+        )}
       </div>
     </div>
   );
@@ -482,24 +497,52 @@ function RecentFlyout({
 }
 
 
-function ToolsFlyout() {
+// Wave P-41 — ToolsFlyout is now interactive. Operator toggles each tool
+// on/off; the chamber forwards the allowlist via `tools_allowlist` so the
+// backend can scope which tools the agent loop may invoke for this run.
+// Gated tools (run_command, execute_python) keep their warn marker —
+// they require Core/Permissions sign-off even when ticked here.
+function ToolsFlyout({
+  selected, onToggle,
+}: {
+  selected: ReadonlySet<string>;
+  onToggle: (name: string) => void;
+}) {
   return (
     <div className="term-flyout" role="menu">
       <div className="term-flyout-head">
         <span>tools allowlist · terminal</span>
+        <span style={{ marginLeft: "auto", color: "var(--text-ghost)" }}>
+          {selected.size} / {TERMINAL_TOOLS.length}
+        </span>
       </div>
-      {TERMINAL_TOOLS.map((t) => (
-        <button key={t.name} className="term-flyout-item" disabled>
-          <span className="term-flyout-item-glyph">⚒</span>
-          <span className="term-flyout-item-body">
-            <span className="term-flyout-item-title" style={{ fontFamily: "var(--mono)" }}>
-              {t.name}
+      {TERMINAL_TOOLS.map((t) => {
+        const on = selected.has(t.name);
+        return (
+          <button
+            key={t.name}
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={on}
+            className="term-flyout-item"
+            data-active={on ? "true" : undefined}
+            onClick={() => onToggle(t.name)}
+          >
+            <span className="term-flyout-item-glyph">{on ? "✓" : "⚒"}</span>
+            <span className="term-flyout-item-body">
+              <span className="term-flyout-item-title" style={{ fontFamily: "var(--mono)" }}>
+                {t.name}
+              </span>
+              <span className="term-flyout-item-meta">{t.kind}</span>
             </span>
-            <span className="term-flyout-item-meta">{t.kind}</span>
-          </span>
-          {t.gated && <span className="term-flyout-item-kicker" style={{ color: "var(--cc-warn)" }}>gated</span>}
-        </button>
-      ))}
+            {t.gated && (
+              <span className="term-flyout-item-kicker" style={{ color: "var(--cc-warn)" }}>
+                gated
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

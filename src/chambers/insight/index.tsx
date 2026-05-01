@@ -9,7 +9,7 @@ import ErrorPanel from "../../shell/ErrorPanel";
 import DormantPanel from "../../shell/DormantPanel";
 import { useCopy } from "../../i18n/copy";
 import Thread from "./Thread";
-import Composer from "./Composer";
+import Composer, { type RouteMode } from "./Composer";
 import VerdictBadge from "./VerdictBadge";
 import InsightLayout from "./InsightLayout";
 import InsightWorkbench from "./InsightWorkbench";
@@ -44,6 +44,10 @@ export default function Insight() {
   const copy = useCopy();
 
   const [input, setInput] = useState("");
+  // Wave P-41 — operator-declared dispatch preference. "auto" lets the
+  // backend decide; "triad" / "agent" force a specific path. Surfaced as
+  // an interactive flyout in the composer (Composer.tsx › RouteFlyout).
+  const [routeMode, setRouteMode] = useState<RouteMode>("auto");
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   // P-11 — accumulate citations emitted by the agent loop after each
   // research tool result. Reset alongside `live` on every submit.
@@ -166,6 +170,7 @@ export default function Insight() {
         mission_id: targetMissionId,
         principles: clampedPrinciples.length ? clampedPrinciples : undefined,
         chamber: "insight",
+        route_hint: routeMode === "auto" ? undefined : routeMode,
       },
       (ev: RouteEvent) => {
         if (ev.type === "route") capturedPath = ev.path;
@@ -356,6 +361,8 @@ export default function Insight() {
         priorTurns={priorTurnsInContext}
         mockMode={backend.mode === "mock"}
         routeHint={lastVerdict?.routePath}
+        routeMode={routeMode}
+        onRouteModeChange={setRouteMode}
       />
     </>
   );

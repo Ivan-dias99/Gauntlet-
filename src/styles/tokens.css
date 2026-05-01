@@ -2809,6 +2809,15 @@ textarea {
   color: var(--text-ghost);
   cursor: not-allowed;
 }
+/* Wave P-41 — selected (route mode picker). Interactive state matches
+   chamber-DNA accent so the operator's choice reads first. */
+.insight-composer-flyout-item[data-active="true"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--accent)) 14%, transparent);
+  color: var(--text-primary);
+}
+.insight-composer-flyout-item[data-active="true"] .insight-composer-flyout-item-glyph {
+  color: var(--chamber-dna, var(--accent));
+}
 .insight-composer-flyout-item-glyph {
   color: var(--chamber-dna, var(--accent));
   font-family: var(--mono);
@@ -5462,6 +5471,16 @@ textarea {
   color: var(--text-primary);
 }
 .term-flyout-item[disabled] { color: var(--text-ghost); cursor: not-allowed; }
+/* Wave P-41 — selected (tools allowlist picker). Operator's choice
+   reads first; the green ✓ glyph already declares state, this just adds
+   an envelope so the row pops. */
+.term-flyout-item[data-active="true"] {
+  background: color-mix(in oklab, var(--chamber-dna, var(--ember)) 14%, transparent);
+  color: var(--text-primary);
+}
+.term-flyout-item[data-active="true"] .term-flyout-item-glyph {
+  color: var(--ok, #4a8c5d);
+}
 .term-flyout-item-glyph {
   color: var(--chamber-dna, var(--ember));
   font-family: var(--mono);
