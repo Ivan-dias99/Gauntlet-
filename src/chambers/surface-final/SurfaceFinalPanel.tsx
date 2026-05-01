@@ -523,7 +523,7 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
               value={issueBody}
               onChange={(e) => setIssueBody(e.target.value)}
               disabled={busy}
-              placeholder="why is this wrong? what should it look like?"
+              placeholder="o que está errado · como deveria ficar"
               rows={3}
               style={{ ...fieldStyle, resize: "vertical", fontFamily: "inherit" }}
             />
@@ -608,7 +608,7 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
               onClick={captureElementBefore}
               disabled={busy}
               style={btnStyle}
-              title="Pick an element (or reuse the last pick) and capture a 'before' screenshot scoped to it."
+              title="picar elemento e capturar before scoped"
             >
               before (element) {diffBefore && diffElementSelector ? "✓" : ""}
             </button>
@@ -617,7 +617,7 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
               onClick={captureElementAfter}
               disabled={busy || !diffElementSelector}
               style={btnStyle}
-              title="Re-capture the same element after edits."
+              title="recapturar mesmo elemento após edição"
             >
               compare element after change
             </button>
