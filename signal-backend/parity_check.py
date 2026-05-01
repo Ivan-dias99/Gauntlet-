@@ -165,6 +165,29 @@ def _per_mission_hashes(m: dict[str, Any]) -> dict[str, str]:
     }
 
 
+# Mission-level scalar/object payload fields that are persisted snapshots
+# but not children collections. Drift here is silent — counts stay equal
+# even when the payload changes — so they need their own per-mission hash.
+_MISSION_PAYLOAD_KEYS: tuple[str, ...] = ("projectContract", "lastArtifact")
+
+
+def _hash_payload(value: Any) -> str | None:
+    """Hash a single payload field stably, or return None when absent.
+
+    None on either side is treated as "no payload"; (None, None) matches
+    without triggering drift. This mirrors how the JSON snapshot omits
+    these keys when never set, while the PG row may surface them as NULL.
+    """
+    if value is None:
+        return None
+    return hashlib.sha256(_stable_dump(value).encode("utf-8")).hexdigest()
+
+
+def _per_mission_payload_hashes(m: dict[str, Any]) -> dict[str, str | None]:
+    """Return content hash per payload field for a single mission."""
+    return {field: _hash_payload(m.get(field)) for field in _MISSION_PAYLOAD_KEYS}
+
+
 def _principles_hash(snapshot: dict[str, Any]) -> str:
     """Hash the ordered principles list.
 
@@ -279,6 +302,35 @@ def _render_report(json_snap: dict[str, Any], pg_snap: dict[str, Any]) -> tuple[
                 detail.append(
                     f"  mission {mid[:12]}… / {field}: content drift "
                     f"(count {jcount}, JSON {jh[field][:12]}… ←→ PG {ph[field][:12]}…)"
+                )
+
+        # Payload-shaped fields (projectContract, lastArtifact). These are
+        # persisted snapshots that have no count to compare — without an
+        # explicit hash check, silent payload drift would slip through and
+        # the parity gate would flip canonical onto a divergent PG row.
+        # (None, None) matches; everything else compares by stable hash.
+        jph = _per_mission_payload_hashes(jm)
+        pph = _per_mission_payload_hashes(pm)
+        for field in _MISSION_PAYLOAD_KEYS:
+            jhash = jph[field]
+            phash = pph[field]
+            if jhash == phash:
+                continue
+            drift = True
+            if jhash is None:
+                detail.append(
+                    f"  mission {mid[:12]}… / {field}: MISSING IN JSON "
+                    f"(PG {phash[:12]}…)"
+                )
+            elif phash is None:
+                detail.append(
+                    f"  mission {mid[:12]}… / {field}: MISSING IN PG "
+                    f"(JSON {jhash[:12]}…)"
+                )
+            else:
+                detail.append(
+                    f"  mission {mid[:12]}… / {field}: content drift "
+                    f"(JSON {jhash[:12]}… ←→ PG {phash[:12]}…)"
                 )
 
     lines.append("")

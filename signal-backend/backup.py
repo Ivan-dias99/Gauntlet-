@@ -206,9 +206,31 @@ def main() -> int:
     else:
         print("[backup] SIGNAL_DATABASE_URL not set — skipping PG dump")
 
+    if pg_was_requested and not pg_ok:
+        # Operator asked for a PG backup (DATABASE_URL was set) and we
+        # could not produce one. Treat this as a backup failure so cron
+        # alerts fire — silently logging a warning and exiting 0 would
+        # let pg_dump regressions go unnoticed for days.
+        #
+        # Crucially: do NOT write the .backup_complete sentinel in this
+        # branch. Health checks that look for sentinel presence would
+        # otherwise treat a PG-less run as a successful backup, masking
+        # pg_dump regressions for days. The folder stays without a
+        # sentinel so retention sweeps and monitors can spot the partial
+        # run.
+        print(
+            "[backup] ERROR: PG dump did not complete — "
+            "JSON-only backup written; failing the run.",
+            file=sys.stderr,
+        )
+        return 1
+
     # Make the destination folder discoverable: write a sentinel marker
     # so an externally-driven retention sweep knows the folder is a
     # backup root rather than partial output from an interrupted run.
+    # Reached only when JSON copy succeeded AND (PG was not requested
+    # OR pg_dump completed). A JSON-only backup (DATABASE_URL unset)
+    # still gets the sentinel — that is a fully successful run by spec.
     sentinel = target / ".backup_complete"
     try:
         sentinel.write_text(stamp + "\n", encoding="utf-8")
@@ -216,17 +238,6 @@ def main() -> int:
         print(f"[backup] sentinel write failed: {exc}", file=sys.stderr)
         return 1
 
-    if pg_was_requested and not pg_ok:
-        # Operator asked for a PG backup (DATABASE_URL was set) and we
-        # could not produce one. Treat this as a backup failure so cron
-        # alerts fire — silently logging a warning and exiting 0 would
-        # let pg_dump regressions go unnoticed for days.
-        print(
-            "[backup] ERROR: PG dump did not complete — "
-            "JSON-only backup written; failing the run.",
-            file=sys.stderr,
-        )
-        return 1
     print("[backup] done")
     return 0
 
