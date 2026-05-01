@@ -171,7 +171,7 @@ export default function DoctrineTelemetryPanel() {
                   <span
                     style={{
                       fontFamily: "var(--serif)",
-                      fontSize: 14,
+                      fontSize: "var(--t-body)",
                       color: "var(--text-primary)",
                       letterSpacing: "-0.005em",
                     }}
@@ -225,7 +225,7 @@ function Metric({
       <span
         style={{
           fontFamily: "var(--serif)",
-          fontSize: 22,
+          fontSize: "var(--t-title)",
           lineHeight: 1,
           color: valueColor,
           letterSpacing: "-0.01em",

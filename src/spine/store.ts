@@ -418,7 +418,8 @@ export function loadState(): SpineState {
     const missions = enforceSingleActive(rawMissions, activeMissionId);
     const updatedAt = typeof r.updatedAt === "number" ? r.updatedAt : 0;
     return { missions, activeMissionId, principles, updatedAt };
-  } catch {
+  } catch (e) {
+    console.warn("[spine] loadState failed — starting empty:", e);
     return EMPTY;
   }
 }
@@ -426,8 +427,9 @@ export function loadState(): SpineState {
 export function saveState(state: SpineState): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {
-    // storage unavailable — state lives in memory only
+  } catch (e) {
+    // storage unavailable — state lives in memory only.
+    console.warn("[spine] saveState failed — state not persisted to localStorage:", e);
   }
 }
 

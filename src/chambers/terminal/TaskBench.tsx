@@ -404,7 +404,7 @@ function TaskRow({ task, onSelect, copy, active = false, duplicate = false, onPa
         </span>
       )}
       {task.artifactId && (
-        <span title={copy.artifactTooltip} style={{ color: "var(--cc-ok)", fontSize: 11, marginTop: 2 }}>◆</span>
+        <span title={copy.artifactTooltip} style={{ color: "var(--cc-ok)", fontSize: "var(--t-meta)", marginTop: 2 }}>◆</span>
       )}
       {task.source !== "manual" && (
         <span className="kicker" data-tone="muted" style={{ marginTop: 3 }}>

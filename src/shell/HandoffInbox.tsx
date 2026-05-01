@@ -109,7 +109,7 @@ export default function HandoffInbox({ chamber, showEmpty = false }: Props) {
         margin: "0 auto var(--space-3)",
         maxWidth: 820,
         padding: "var(--space-3)",
-        borderRadius: 8,
+        borderRadius: "var(--radius-lg)",
         border: "1px solid currentColor",
         opacity: 0.92,
         fontSize: "0.9em",
@@ -135,7 +135,7 @@ export default function HandoffInbox({ chamber, showEmpty = false }: Props) {
             data-handoff-id={h.id}
             style={{
               padding: "var(--space-2)",
-              borderRadius: 6,
+              borderRadius: "var(--radius-md)",
               border: "1px solid currentColor",
               opacity: 0.85,
               display: "flex",
@@ -193,7 +193,7 @@ export default function HandoffInbox({ chamber, showEmpty = false }: Props) {
 const actionButtonStyle: React.CSSProperties = {
   fontSize: "0.85em",
   padding: "4px 10px",
-  borderRadius: 4,
+  borderRadius: "var(--radius-sm)",
   border: "1px solid currentColor",
   background: "transparent",
   color: "inherit",

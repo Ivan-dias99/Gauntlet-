@@ -209,10 +209,9 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
             chamber = EXCLUDED.chamber,
             status = EXCLUDED.status,
             created_at = EXCLUDED.created_at,
-            -- Codex re-review (#264 round 6): use GREATEST so a stale
-            -- client push (lower updated_at) cannot regress the
-            -- watermark over a newer in-DB value. Monotonic advance
-            -- only — older writes lose the race honestly.
+            -- Use GREATEST so a stale client push (lower updated_at)
+            -- cannot regress the watermark over a newer in-DB value.
+            -- Monotonic advance only — older writes lose the race honestly.
             updated_at = GREATEST(missions.updated_at, EXCLUDED.updated_at),
             project_contract = EXCLUDED.project_contract,
             last_artifact = EXCLUDED.last_artifact,
@@ -223,12 +222,12 @@ async def _insert_mission(conn: Any, m: dict, is_active: bool) -> None:
         m.get("chamber") or "insight",
         m.get("status") or "active",
         int(m.get("createdAt") or 0),
-        # Codex re-review (#264 round 4 + 6): MissionRecord has no
-        # `updatedAt` field, so the writer falls back to write-time wall-
-        # clock. The GREATEST clause above protects against stale-client
-        # regressions while still advancing on real edits. Mission-only
-        # mutations (status/title/chamber) thus advance the snapshot
-        # watermark for hydration, but a stale client cannot rewind it.
+        # MissionRecord has no `updatedAt` field, so the writer falls
+        # back to write-time wall-clock. The GREATEST clause above
+        # protects against stale-client regressions while still advancing
+        # on real edits. Mission-only mutations (status/title/chamber)
+        # advance the snapshot watermark for hydration without letting a
+        # stale client rewind it.
         int((m.get("updatedAt") or (time.time() * 1000))),
         json.dumps(m.get("projectContract")) if m.get("projectContract") else None,
         json.dumps(m.get("lastArtifact")) if m.get("lastArtifact") else None,
@@ -376,22 +375,20 @@ async def read_spine_snapshot() -> Optional[dict]:
         return None
     try:
         async with pool.acquire() as conn:
-            # Codex re-review (#264 round 6 P2): each SELECT under
-            # READ COMMITTED gets its own snapshot, so a concurrent
-            # /spine PUT between SELECTs can produce a stitched
-            # mixed-version snapshot. Wrap the whole multi-table
-            # read in a REPEATABLE READ transaction so every SELECT
-            # sees the same MVCC view; if a writer commits during
-            # this loop, we read the pre-write version consistently
-            # and the next reload picks up the new state.
+            # Each SELECT under READ COMMITTED gets its own snapshot,
+            # so a concurrent /spine PUT between SELECTs can produce a
+            # stitched mixed-version snapshot. Wrap the whole multi-
+            # table read in a REPEATABLE READ transaction so every
+            # SELECT sees the same MVCC view; if a writer commits during
+            # this loop, we read the pre-write version consistently and
+            # the next reload picks up the new state.
             async with conn.transaction(isolation="repeatable_read", readonly=True):
-                # Codex re-review (#264 round 4 P2): the previous SELECT had
-                # no ORDER BY, so Postgres returned rows in physical /
+                # Without ORDER BY, Postgres returns rows in physical /
                 # planner-dependent order — unstable across restarts /
-                # vacuum. JSON preserved write order; this would be a UI-
-                # rendering regression. Order by created_at DESC so the
-                # most recent mission lands first; tiebreak by id so two
-                # missions created in the same millisecond stay stable.
+                # vacuum, and a UI-rendering regression vs. JSON. Order
+                # by created_at DESC so the most recent mission lands
+                # first; tiebreak by id so two missions created in the
+                # same millisecond stay stable.
                 mission_rows = await conn.fetch(
                     "SELECT id, title, chamber, status, created_at, updated_at, "
                     "project_contract, last_artifact, is_active FROM missions "
@@ -432,8 +429,8 @@ async def read_spine_snapshot() -> Optional[dict]:
             # Wave P-22 — derive snapshot updatedAt from child timestamps.
             #
             # TS hydration (`SpineContext.tsx`) decides whether the server
-            # snapshot wins via `remote.updatedAt > prev.updatedAt`. Codex
-            # rounds 1-3 caught two bad approaches:
+            # snapshot wins via `remote.updatedAt > prev.updatedAt`. Two
+            # earlier approaches both broke this:
             #   1. `MAX(missions.updated_at)` returns 0 because the writer
             #      never sets that column (MissionRecord has no updatedAt).
             #   2. `time.time()` always wins over local — but it overwrites
@@ -446,12 +443,12 @@ async def read_spine_snapshot() -> Optional[dict]:
             # across all of them — it's the actual "last activity"
             # timestamp the DB has seen. No mutation bumps anything else,
             # so this is provably the highest persisted timestamp.
-            # Codex re-review (#264 round 4): mission-only edits (status
-            # flips, title renames) don't touch any child table, so
-            # GREATEST over child timestamps alone misses them. Include
-            # missions.created_at AND missions.updated_at — the writer
-            # now bumps updated_at on every UPSERT, so any persisted
-            # mission mutation advances the watermark.
+            # Mission-only edits (status flips, title renames) don't
+            # touch any child table, so GREATEST over child timestamps
+            # alone misses them. Include missions.created_at AND
+            # missions.updated_at — the writer now bumps updated_at on
+            # every UPSERT, so any persisted mission mutation advances
+            # the watermark.
                 freshness_row = await conn.fetchrow("""
                     SELECT GREATEST(
                         COALESCE((SELECT MAX(created_at) FROM missions), 0),
@@ -489,13 +486,12 @@ async def read_spine_snapshot() -> Optional[dict]:
             "lastUpdateAt": int(r["last_update_at"]) if r["last_update_at"] is not None else None,
             "artifactId": r["artifact_id"],
             # `done` is derived for back-compat with TS clients reading the flag.
-            # Codex re-review (#264 round 5): legacy rows can have
-            # `done_at` populated but `state` defaulted to "open" (the
-            # writer/backfill never sets state on those rows). Without
-            # this fallback, those tasks come back as incomplete on
-            # cutover even though completion data exists. Derive
-            # done from either signal — explicit state OR a recorded
-            # completion timestamp.
+            # Legacy rows can have `done_at` populated but `state`
+            # defaulted to "open" (writer/backfill never sets state on
+            # those rows). Without this fallback, those tasks come back
+            # as incomplete on cutover even though completion data
+            # exists. Derive done from either signal — explicit state
+            # OR a recorded completion timestamp.
             "done": (r["state"] or "open") == "done" or r["done_at"] is not None,
         })
     events_by: dict[str, list[dict]] = {}
@@ -605,24 +601,21 @@ async def read_spine_snapshot() -> Optional[dict]:
         {"id": r["id"], "text": r["text"] or "", "createdAt": int(r["created_at"] or 0)}
         for r in principle_rows
     ]
-    # Codex re-review (#264 round 3): use real persisted freshness, not
-    # server wall-clock. `time.time()` always wins over local even when
-    # the local cache had legitimate offline edits — that overwrites
-    # those edits silently on the next push. Real freshness comes from
-    # the MAX of every child timestamp the writer actually populates
-    # (notes, tasks, events, artifacts, distillations, handoffs,
-    # principles). Empty DB → 0; client compares 0 > prev.updatedAt and
-    # only wins if the local state was also fresh-empty, which is
-    # exactly the right behaviour.
+    # Use real persisted freshness, not server wall-clock. `time.time()`
+    # always wins over local even when the local cache had legitimate
+    # offline edits — that overwrites those edits silently on the next
+    # push. Real freshness comes from the MAX of every child timestamp
+    # the writer actually populates (notes, tasks, events, artifacts,
+    # distillations, handoffs, principles). Empty DB → 0; client
+    # compares 0 > prev.updatedAt and only wins if the local state was
+    # also fresh-empty, which is exactly the right behaviour.
     pg_freshness = freshness_row["m"] if freshness_row is not None else 0
     updated_at_ms = int(pg_freshness or 0)
-    # Codex re-review (#264 round 6 P1): activeMissionId is now persisted
-    # via missions.is_active (migrations/0002_active_mission.sql), so the
-    # snapshot reader can recover the operator's selection across
-    # restarts. Pick the active row from the already-fetched mission_rows
-    # (no extra round-trip — the data was loaded under the same
-    # repeatable-read snapshot above). LIMIT-1 semantics: at most one
-    # row should carry the flag, but the writer rebuilds is_active in a
+    # activeMissionId is persisted via missions.is_active
+    # (migrations/0002_active_mission.sql). Pick the active row from the
+    # already-fetched mission_rows (no extra round-trip — same
+    # repeatable-read snapshot). LIMIT-1 semantics: at most one row
+    # should carry the flag, but the writer rebuilds is_active in a
     # per-mission loop, so during a transient mid-loop interleave two
     # rows could briefly carry it. Take the first match by deterministic
     # ordering and move on.

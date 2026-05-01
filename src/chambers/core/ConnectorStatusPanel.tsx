@@ -78,7 +78,7 @@ export default function ConnectorStatusPanel() {
       style={{
         margin: "var(--space-3) 0",
         padding: "var(--space-3)",
-        borderRadius: 6,
+        borderRadius: "var(--radius-md)",
         border: "1px solid currentColor",
         opacity: 0.92,
       }}
@@ -119,7 +119,7 @@ export default function ConnectorStatusPanel() {
               flexDirection: "column",
               gap: 2,
               padding: "6px 8px",
-              borderRadius: 4,
+              borderRadius: "var(--radius-sm)",
               border: "1px solid currentColor",
               opacity: 0.85,
             }}
@@ -133,7 +133,7 @@ export default function ConnectorStatusPanel() {
                   textTransform: "uppercase",
                   letterSpacing: "0.06em",
                   padding: "1px 6px",
-                  borderRadius: 999,
+                  borderRadius: "var(--radius-full)",
                   border: "1px solid currentColor",
                   opacity: 0.7,
                 }}

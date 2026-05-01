@@ -167,7 +167,7 @@ const shellEmpty: React.CSSProperties = {
   alignItems: "center",
   gap: 12,
   fontFamily: "var(--mono)",
-  fontSize: 11,
+  fontSize: "var(--t-meta)",
   color: "var(--text-secondary)",
 };
 
@@ -195,7 +195,7 @@ const headerRow: React.CSSProperties = {
 function kicker(tone: string): React.CSSProperties {
   return {
     fontFamily: "var(--mono)",
-    fontSize: 10,
+    fontSize: "var(--t-meta)",
     letterSpacing: 1.5,
     textTransform: "uppercase",
     color: tone,
@@ -205,11 +205,11 @@ function kicker(tone: string): React.CSSProperties {
 function confidenceBadge(confidence: string | null, tone: string): React.CSSProperties {
   return {
     fontFamily: "var(--mono)",
-    fontSize: 10,
+    fontSize: "var(--t-meta)",
     letterSpacing: 1.5,
     textTransform: "uppercase",
     padding: "3px 10px",
-    borderRadius: 999,
+    borderRadius: "var(--radius-full)",
     border: `1px solid ${tone}`,
     color: tone,
   };
@@ -218,7 +218,7 @@ function confidenceBadge(confidence: string | null, tone: string): React.CSSProp
 const runningBody: React.CSSProperties = {
   margin: 0,
   fontFamily: "var(--sans)",
-  fontSize: 13,
+  fontSize: "var(--t-body)",
   color: "var(--text-secondary)",
   fontStyle: "italic",
 };
@@ -226,7 +226,7 @@ const runningBody: React.CSSProperties = {
 const reasoningBody: React.CSSProperties = {
   margin: 0,
   fontFamily: "var(--sans)",
-  fontSize: 14,
+  fontSize: "var(--t-body)",
   lineHeight: 1.5,
   color: "var(--text)",
 };
@@ -243,7 +243,7 @@ const substituteBlock: React.CSSProperties = {
 };
 const substituteKicker: React.CSSProperties = {
   fontFamily: "var(--mono)",
-  fontSize: 10,
+  fontSize: "var(--t-meta)",
   letterSpacing: 1.5,
   textTransform: "uppercase",
   color: "var(--accent)",
@@ -255,7 +255,7 @@ const substituteBtn: React.CSSProperties = {
   background: "transparent",
   color: "var(--text)",
   fontFamily: "var(--sans)",
-  fontSize: 13.5,
+  fontSize: "var(--t-body)",
   lineHeight: 1.4,
   cursor: "pointer",
 };
@@ -267,12 +267,12 @@ const actionsRow: React.CSSProperties = {
 
 const primaryBtn: React.CSSProperties = {
   fontFamily: "var(--mono)",
-  fontSize: 11,
+  fontSize: "var(--t-meta)",
   letterSpacing: 1.5,
   textTransform: "uppercase",
   padding: "6px 14px",
   border: "1px solid var(--accent)",
-  borderRadius: 999,
+  borderRadius: "var(--radius-full)",
   background: "color-mix(in oklab, var(--accent) 14%, transparent)",
   color: "var(--accent)",
   cursor: "pointer",
@@ -287,7 +287,7 @@ const secondaryBtn: React.CSSProperties = {
 const hintStyle: React.CSSProperties = {
   fontFamily: "var(--sans)",
   fontStyle: "italic",
-  fontSize: 12,
+  fontSize: "var(--t-kicker)",
   color: "var(--text-ghost)",
 };
 
@@ -299,5 +299,5 @@ const errorStyle: React.CSSProperties = {
   background: "color-mix(in oklab, var(--cc-err) 8%, transparent)",
   color: "var(--cc-err)",
   fontFamily: "var(--mono)",
-  fontSize: 11,
+  fontSize: "var(--t-meta)",
 };

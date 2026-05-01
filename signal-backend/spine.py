@@ -31,10 +31,9 @@ def _json_has_real_content(path: Path) -> bool:
     returning False — those don't carry data the cutover should
     preserve over an empty PG read.
 
-    Codex re-review (#264 round 6 P2): `path.stat().st_size > 32` was
-    fooled by the empty-snapshot serialization (model_dump_json with
-    indent=2 produces ~100+ bytes of braces/whitespace even with
-    `missions=[]`/`principles=[]`).
+    Codex review (#264): `path.stat().st_size > 32` was fooled by the
+    empty-snapshot serialization (model_dump_json with indent=2 produces
+    ~100+ bytes of braces/whitespace even with `missions=[]`/`principles=[]`).
     """
     if not path.exists():
         return False
@@ -125,8 +124,8 @@ class SpineStore:
                         "back to JSON"
                     )
             if pg_dict is not None:
-                # Codex re-review (#264 round 5): treat an empty
-                # canonical read as degraded when JSON has data.
+                # Codex review (#264): treat an empty canonical read as
+                # degraded when JSON has data.
                 # If PG is unseeded/truncated (missions=[] AND
                 # principles=[]) and spine.json carries real state,
                 # accepting PG as canonical would boot the store with
@@ -139,15 +138,11 @@ class SpineStore:
                 pg_missions = pg_dict.get("missions") or []
                 pg_principles = pg_dict.get("principles") or []
                 pg_is_empty = not pg_missions and not pg_principles
-                # Codex re-review (#264 round 6 P2): byte-size heuristic
-                # is wrong — `model_dump_json(indent=2)` includes
-                # structural fields and indentation even when missions
-                # and principles are empty (~150+ bytes minimum). That
-                # made empty JSON look like "has data", so a legitimate
-                # fresh deploy with seeded PG would always lose to an
-                # empty JSON file. Parse the file and check the actual
-                # missions/principles arrays so the decision tracks
-                # semantic content, not whitespace.
+                # The byte-size heuristic was wrong — `model_dump_json(indent=2)`
+                # includes structural fields and indentation even when missions
+                # and principles are empty (~150+ bytes minimum). Parse the
+                # file and check the actual missions/principles arrays so the
+                # decision tracks semantic content, not whitespace.
                 json_has_data = _json_has_real_content(SPINE_FILE)
                 if pg_is_empty and json_has_data:
                     self._last_load_error = "pg_canonical_empty_with_json_data"

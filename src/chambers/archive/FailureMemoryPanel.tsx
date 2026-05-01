@@ -52,13 +52,13 @@ interface MemoryStats {
 
 const PILL: React.CSSProperties = {
   fontFamily: "var(--mono)",
-  fontSize: 10,
+  fontSize: "var(--t-meta)",
   letterSpacing: 1.5,
   textTransform: "uppercase",
   color: "var(--text-secondary)",
   padding: "3px 8px",
   border: "1px solid var(--border)",
-  borderRadius: 999,
+  borderRadius: "var(--radius-full)",
   background: "transparent",
   cursor: "pointer",
 };
@@ -160,7 +160,7 @@ export default function FailureMemoryPanel() {
         borderRadius: "var(--radius-2)",
         background: "var(--surface-1, transparent)",
         fontFamily: "var(--mono)",
-        fontSize: 11,
+        fontSize: "var(--t-meta)",
         letterSpacing: "var(--track-meta)",
         color: "var(--text-secondary)",
       }}
@@ -235,7 +235,7 @@ export default function FailureMemoryPanel() {
               marginBottom: 6,
             }}
           >
-            <span style={{ color: "var(--text-ghost)", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.2 }}>
+            <span style={{ color: "var(--text-ghost)", fontSize: "var(--t-meta)", textTransform: "uppercase", letterSpacing: 1.2 }}>
               filter
             </span>
             <input
@@ -248,7 +248,7 @@ export default function FailureMemoryPanel() {
               style={{
                 flex: 1,
                 fontFamily: "var(--mono)",
-                fontSize: 11,
+                fontSize: "var(--t-meta)",
                 letterSpacing: 0,
                 color: "var(--text)",
                 background: "transparent",
@@ -263,7 +263,7 @@ export default function FailureMemoryPanel() {
                 type="button"
                 onClick={() => setQuery("")}
                 aria-label="clear filter"
-                style={{ ...PILL, padding: "2px 6px", fontSize: 9 }}
+                style={{ ...PILL, padding: "2px 6px", fontSize: "var(--t-micro)" }}
               >
                 clear
               </button>
@@ -288,7 +288,7 @@ export default function FailureMemoryPanel() {
                 <div
                   style={{
                     color: "var(--text-ghost)",
-                    fontSize: 10,
+                    fontSize: "var(--t-meta)",
                     padding: "8px 0",
                     textTransform: "uppercase",
                     letterSpacing: 1.2,
@@ -349,16 +349,16 @@ export default function FailureMemoryPanel() {
                           cursor: "pointer",
                         }}
                       >
-                        <span style={{ color: "var(--text-ghost)", fontSize: 10 }}>
+                        <span style={{ color: "var(--text-ghost)", fontSize: "var(--t-meta)" }}>
                           {r.failure_type}
                         </span>
                         <span style={{ color: "var(--text)", textTransform: "none", letterSpacing: 0 }}>
                           {r.question.length > 120 ? r.question.slice(0, 117) + "…" : r.question}
                         </span>
-                        <span style={{ color: "var(--text-ghost)", fontSize: 10 }}>
+                        <span style={{ color: "var(--text-ghost)", fontSize: "var(--t-meta)" }}>
                           {ts}
                         </span>
-                        <span style={{ color: "var(--text-ghost)", fontSize: 10 }}>
+                        <span style={{ color: "var(--text-ghost)", fontSize: "var(--t-meta)" }}>
                           ×{r.times_failed}
                         </span>
                       </button>
@@ -415,7 +415,7 @@ function DetailField({
       <span
         style={{
           color: "var(--text-ghost)",
-          fontSize: 9,
+          fontSize: "var(--t-micro)",
           letterSpacing: 1.5,
           textTransform: "uppercase",
         }}
@@ -426,7 +426,7 @@ function DetailField({
         style={{
           color: "var(--text)",
           fontFamily: mono ? "var(--mono)" : "inherit",
-          fontSize: 11,
+          fontSize: "var(--t-meta)",
           letterSpacing: 0,
           textTransform: "none",
           whiteSpace: "pre-wrap",

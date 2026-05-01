@@ -329,7 +329,7 @@ export default function SpineSnapshotPanel() {
               <span
                 style={{
                   fontFamily: "var(--serif)",
-                  fontSize: 14,
+                  fontSize: "var(--t-body)",
                   color: "var(--text-primary)",
                   letterSpacing: "-0.005em",
                   overflow: "hidden",
@@ -372,7 +372,7 @@ function Count({ v }: { v: number }) {
       style={{
         fontFamily: "var(--mono)",
         fontVariantNumeric: "tabular-nums",
-        fontSize: 13,
+        fontSize: "var(--t-body)",
         color: v === 0 ? "var(--text-muted)" : "var(--text-primary)",
         textAlign: "right",
         minWidth: 18,
@@ -405,7 +405,7 @@ function Metric({
       <span
         style={{
           fontFamily: "var(--serif)",
-          fontSize: 20,
+          fontSize: "var(--t-title)",
           lineHeight: 1.1,
           color: valueColor,
           letterSpacing: "-0.01em",

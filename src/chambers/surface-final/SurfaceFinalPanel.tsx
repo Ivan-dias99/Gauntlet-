@@ -442,7 +442,7 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
           // Sandbox kept permissive for the agent's same-origin needs;
           // the bridge already validates origin + e.source so untrusted
           // frames can't satisfy our pending RPCs.
-          style={{ width: "100%", height: "100%", border: "1px solid currentColor", borderRadius: 6 }}
+          style={{ width: "100%", height: "100%", border: "1px solid currentColor", borderRadius: "var(--radius-md)" }}
         />
       </div>
       <aside
@@ -452,7 +452,7 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
           gap: "var(--space-2)",
           padding: "var(--space-2)",
           border: "1px solid currentColor",
-          borderRadius: 6,
+          borderRadius: "var(--radius-md)",
           fontSize: "0.85em",
         }}
       >
@@ -485,7 +485,7 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
               fontSize: "0.85em",
               padding: "4px 6px",
               border: "1px solid currentColor",
-              borderRadius: 4,
+              borderRadius: "var(--radius-sm)",
               background: "transparent",
               color: "inherit",
             }}
@@ -631,7 +631,7 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
                 fontFamily: "var(--mono)",
                 padding: "2px 6px",
                 border: "1px dashed currentColor",
-                borderRadius: 3,
+                borderRadius: "var(--radius-sm)",
                 alignSelf: "flex-start",
               }}
             >
@@ -698,7 +698,7 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
                 <img
                   src={diffAfter.dataUrl}
                   alt="after"
-                  style={{ width: "100%", display: "block", border: "1px solid currentColor", borderRadius: 4 }}
+                  style={{ width: "100%", display: "block", border: "1px solid currentColor", borderRadius: "var(--radius-sm)" }}
                 />
                 {!isNormalised && diffResult.regions.map((r, i) => {
                   // Region coords are in source-pixel space; the rendered
@@ -743,7 +743,7 @@ export default function SurfaceFinalPanel({ previewUrl, missionId }: Props) {
                       fontSize: "0.7em",
                       fontFamily: "var(--mono)",
                       border: "1px solid #f33",
-                      borderRadius: 3,
+                      borderRadius: "var(--radius-sm)",
                       color: "#f33",
                       background: "rgba(255,51,51,0.08)",
                     }}
@@ -794,7 +794,7 @@ const btnStyle: React.CSSProperties = {
   fontSize: "0.85em",
   padding: "4px 8px",
   border: "1px solid currentColor",
-  borderRadius: 4,
+  borderRadius: "var(--radius-sm)",
   background: "transparent",
   color: "inherit",
   cursor: "pointer",
@@ -804,7 +804,7 @@ const fieldStyle: React.CSSProperties = {
   fontSize: "0.85em",
   padding: "4px 6px",
   border: "1px solid currentColor",
-  borderRadius: 4,
+  borderRadius: "var(--radius-sm)",
   background: "transparent",
   color: "inherit",
 };

@@ -137,7 +137,7 @@ export default function Policies() {
           <div
             style={{
               fontFamily: "var(--serif)",
-              fontSize: 15.5,
+              fontSize: "var(--t-prominent)",
               lineHeight: 1.55,
               color: "var(--text-primary)",
               letterSpacing: "-0.005em",
@@ -321,7 +321,7 @@ export default function Policies() {
           <span
             aria-hidden
             className="command-bay-prompt"
-            style={{ color: "var(--accent)", fontSize: 18, fontFamily: "var(--serif)" }}
+            style={{ color: "var(--accent)", fontSize: "var(--t-title)", fontFamily: "var(--serif)" }}
           >
             §
           </span>
@@ -348,7 +348,7 @@ export default function Policies() {
             maxLength={PRINCIPLE_MAX_LEN * 2}
             placeholder={copy.schoolPlaceholder}
             className="command-bay-input"
-            style={{ fontFamily: "var(--serif)", fontSize: 15.5 }}
+            style={{ fontFamily: "var(--serif)", fontSize: "var(--t-prominent)" }}
           />
         </div>
         <div className="command-bay-actions">
@@ -394,7 +394,7 @@ function Metric({
       <span
         style={{
           fontFamily: "var(--serif)",
-          fontSize: 22,
+          fontSize: "var(--t-title)",
           lineHeight: 1,
           color: valueColor,
           letterSpacing: "-0.01em",

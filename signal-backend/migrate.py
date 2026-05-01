@@ -96,20 +96,15 @@ async def _migrate_spine(pool: Any, snapshot: dict) -> None:
 
 async def _migrate_runs(pool: Any, body: dict) -> None:
     records = body.get("records") or []
-    # Codex re-review (PR #250 P1): runs.mission_id is FK to missions(id).
-    # Legacy snapshots may carry mission_ids for missions that have since
-    # been deleted (or otherwise drifted out of spine.json). Inserting
-    # those raw would trip the FK and abort the whole transaction,
-    # leaving the Postgres mirror partially populated. Coalesce orphans
-    # to NULL — the schema allows NULL on runs.mission_id (ON DELETE
-    # SET NULL).
-    # Codex re-review (#250 P2 round 4): the previous version reloaded
-    # spine.json from disk to build valid_mission_ids, which (a) is a
-    # TOCTOU mismatch if the running app writes to spine.json between
-    # _migrate_spine and _migrate_runs, and (b) duplicates the schema
-    # mapping. Source-of-truth is the database itself after
-    # _migrate_spine committed — query missions(id) directly so the
-    # validation set is exactly what was just seeded.
+    # runs.mission_id is FK to missions(id). Legacy snapshots may carry
+    # mission_ids for missions that have since been deleted (or otherwise
+    # drifted out of spine.json). Inserting those raw would trip the FK
+    # and abort the whole transaction. Coalesce orphans to NULL — the
+    # schema allows NULL on runs.mission_id (ON DELETE SET NULL).
+    #
+    # Source-of-truth for valid mission ids is the database itself after
+    # _migrate_spine committed — querying missions(id) directly avoids
+    # a TOCTOU mismatch with spine.json and duplicating the schema mapping.
     async with pool.acquire() as conn:
         rows = await conn.fetch("SELECT id FROM missions")
     valid_mission_ids = {r["id"] for r in rows}
@@ -221,20 +216,18 @@ async def main() -> int:
                     name, type(exc).__name__, exc,
                 )
                 return 1
-            # Codex re-review (#250 P2): only skip when the file is absent
-            # (_load_json returned None). Present-but-empty payloads ({} / [])
-            # must still run the section's DELETE/reseed transaction so the
-            # replace-all/idempotent contract holds when a JSON store has
-            # been intentionally truncated.
+            # Only skip when the file is absent (_load_json returned None).
+            # Present-but-empty payloads ({} / []) must still run the section's
+            # DELETE/reseed transaction so the replace-all/idempotent contract
+            # holds when a JSON store has been intentionally truncated.
             if body is None:
                 continue
-            # Codex re-review (#250 P2 round 2): the section migrators all
-            # expect dict-shaped bodies and call `.get(...)` on them. A
-            # truncated store that decodes to `[]` (or any non-dict) would
-            # raise AttributeError before the DELETE runs, defeating the
-            # replace-all contract. Coerce non-dict payloads to {} so the
-            # migrator runs its DELETE + empty-INSERT pass and clears the
-            # destination tables.
+            # The section migrators all expect dict-shaped bodies and call
+            # `.get(...)` on them. A truncated store that decodes to `[]` (or
+            # any non-dict) would raise AttributeError before the DELETE runs,
+            # defeating the replace-all contract. Coerce non-dict payloads to
+            # {} so the migrator runs its DELETE + empty-INSERT pass and
+            # clears the destination tables.
             if not isinstance(body, dict):
                 body = {}
             try:

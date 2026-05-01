@@ -76,7 +76,7 @@ signal-backend/               FastAPI — the brain
   engine.py                   triad + judge pipeline + auto-router + Surface-mock fork
   agent.py                    agent loop (tool-use, anti-loop fingerprint, per-chamber tool allowlist)
   crew.py                     multi-agent: planner → researcher → coder → critic
-  tools.py                    8 hardened tools (SSRF defence, deny-by-default command policy, GitTool)
+  tools.py                    7 active + 1 gated tool (SSRF defence, deny-by-default command policy, GitTool — execute_python is registered but disabled unless SIGNAL_ALLOW_CODE_EXEC=true)
   chambers/                   chamber profiles + per-chamber prompts
     profiles.py               ChamberKey enum, ChamberProfile dataclass, five populated profiles
     insight.py · surface.py · terminal.py · archive.py · core.py

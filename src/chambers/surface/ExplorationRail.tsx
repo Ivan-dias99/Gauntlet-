@@ -233,7 +233,7 @@ function PlanView({
               color: "var(--cc-warn)",
               padding: "2px 8px",
               border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-              borderRadius: 999,
+              borderRadius: "var(--radius-full)",
             }}
           >
             mock
@@ -243,7 +243,7 @@ function PlanView({
           style={{
             marginLeft: "auto",
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: "var(--t-meta)",
             color: "var(--text-muted)",
             letterSpacing: "var(--track-meta)",
           }}
@@ -398,7 +398,7 @@ function FilesView({
               color: "var(--cc-warn)",
               padding: "2px 8px",
               border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
-              borderRadius: 999,
+              borderRadius: "var(--radius-full)",
             }}
           >
             mock

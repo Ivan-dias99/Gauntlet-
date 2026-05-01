@@ -108,12 +108,12 @@ export default function CanonRibbon({ active, onSelect }: Props) {
             title="Backend em modo simulado — toda a inteligência é canned"
             style={{
               fontFamily: "var(--mono)",
-              fontSize: 9,
+              fontSize: "var(--t-micro)",
               letterSpacing: 1.5,
               textTransform: "uppercase",
               color: "var(--cc-warn)",
               padding: "2px 8px",
-              borderRadius: 999,
+              borderRadius: "var(--radius-full)",
               border: "1px solid color-mix(in oklab, var(--cc-warn) 36%, transparent)",
             }}
           >
@@ -285,7 +285,7 @@ export default function CanonRibbon({ active, onSelect }: Props) {
                               textTransform: "uppercase",
                               letterSpacing: "0.06em",
                               padding: "1px 6px",
-                              borderRadius: 999,
+                              borderRadius: "var(--radius-full)",
                               border: "1px solid currentColor",
                               opacity: 0.65,
                             }}
@@ -330,7 +330,7 @@ export default function CanonRibbon({ active, onSelect }: Props) {
                               style={{
                                 fontSize: "0.7em",
                                 padding: "2px 8px",
-                                borderRadius: 4,
+                                borderRadius: "var(--radius-sm)",
                                 border: "1px solid currentColor",
                                 opacity: 0.7,
                                 cursor: "pointer",

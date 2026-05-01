@@ -37,7 +37,7 @@ export default function ContextStrip({
             alignItems: "center",
             gap: 6,
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: "var(--t-meta)",
             letterSpacing: "var(--track-meta)",
             textTransform: "uppercase",
           }}
@@ -54,7 +54,7 @@ export default function ContextStrip({
           style={{
             color: exitCode === 0 ? "var(--cc-ok)" : "var(--cc-err)",
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: "var(--t-meta)",
             letterSpacing: "var(--track-meta)",
             textTransform: "uppercase",
           }}
@@ -67,7 +67,7 @@ export default function ContextStrip({
           style={{
             color: "var(--text-muted)",
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: "var(--t-meta)",
             letterSpacing: "var(--track-meta)",
             textTransform: "uppercase",
           }}
@@ -85,12 +85,12 @@ export default function ContextStrip({
         alignItems: "center",
         gap: 10,
         fontFamily: "var(--mono)",
-        fontSize: 11,
+        fontSize: "var(--t-meta)",
       }}
     >
       <span
         style={{
-          fontSize: 9,
+          fontSize: "var(--t-micro)",
           letterSpacing: 2,
           color: "var(--text-ghost)",
           textTransform: "uppercase",
@@ -111,7 +111,7 @@ export default function ContextStrip({
       </span>
       {currentObjective && (
         <>
-          <span style={{ color: "var(--border-soft)", fontSize: 13 }}>›</span>
+          <span style={{ color: "var(--border-soft)", fontSize: "var(--t-body)" }}>›</span>
           <span
             style={{
               color: "var(--chamber-dna, var(--accent))",
@@ -129,7 +129,7 @@ export default function ContextStrip({
         <span
           style={{
             color: "var(--cc-ok)",
-            fontSize: 10,
+            fontSize: "var(--t-meta)",
             letterSpacing: "var(--track-meta)",
             textTransform: "uppercase",
           }}

@@ -115,7 +115,7 @@ export default function ObservabilityPanel() {
       style={{
         margin: "var(--space-3) 0",
         padding: "var(--space-3)",
-        borderRadius: 6,
+        borderRadius: "var(--radius-md)",
         border: "1px solid currentColor",
         opacity: 0.92,
       }}

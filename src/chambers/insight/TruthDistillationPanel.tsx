@@ -312,7 +312,7 @@ const emptyStyle: React.CSSProperties = {
   borderRadius: "var(--radius-2)",
   maxWidth: 780,
   fontFamily: "var(--mono)",
-  fontSize: 12,
+  fontSize: "var(--t-kicker)",
   color: "var(--text-secondary)",
   display: "flex",
   flexDirection: "column",
@@ -320,7 +320,7 @@ const emptyStyle: React.CSSProperties = {
 };
 
 const emptyHeadStyle: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: "var(--t-meta)",
   letterSpacing: 1.5,
   textTransform: "uppercase",
   color: "var(--text-ghost)",
@@ -329,7 +329,7 @@ const emptyHeadStyle: React.CSSProperties = {
 const emptyBodyStyle: React.CSSProperties = {
   margin: 0,
   fontFamily: "var(--sans)",
-  fontSize: 13,
+  fontSize: "var(--t-body)",
   lineHeight: 1.5,
   color: "var(--text)",
 };
@@ -362,12 +362,12 @@ const activeHeaderStyle: React.CSSProperties = {
 function statusPillStyle(status: string): React.CSSProperties {
   return {
     fontFamily: "var(--mono)",
-    fontSize: 10,
+    fontSize: "var(--t-meta)",
     letterSpacing: 1.5,
     textTransform: "uppercase",
     padding: "3px 10px",
     border: "1px solid var(--border)",
-    borderRadius: 999,
+    borderRadius: "var(--radius-full)",
     color:
       status === "approved" ? "var(--cc-ok, #2e9c5e)" :
       status === "stale" ? "var(--cc-warn, #c08040)" :
@@ -378,7 +378,7 @@ function statusPillStyle(status: string): React.CSSProperties {
 function confidenceStyle(c: string): React.CSSProperties {
   return {
     fontFamily: "var(--mono)",
-    fontSize: 10,
+    fontSize: "var(--t-meta)",
     letterSpacing: 1.5,
     textTransform: "uppercase",
     color:
@@ -391,7 +391,7 @@ function confidenceStyle(c: string): React.CSSProperties {
 const summaryStyle: React.CSSProperties = {
   margin: 0,
   fontFamily: "var(--sans)",
-  fontSize: 14,
+  fontSize: "var(--t-body)",
   lineHeight: 1.5,
   color: "var(--text)",
 };
@@ -404,7 +404,7 @@ const sectionStyle: React.CSSProperties = {
 
 const sectionLabel: React.CSSProperties = {
   fontFamily: "var(--mono)",
-  fontSize: 9,
+  fontSize: "var(--t-micro)",
   letterSpacing: 1.5,
   textTransform: "uppercase",
   color: "var(--text-ghost)",
@@ -413,7 +413,7 @@ const sectionLabel: React.CSSProperties = {
 const sectionBody: React.CSSProperties = {
   margin: 0,
   fontFamily: "var(--sans)",
-  fontSize: 13,
+  fontSize: "var(--t-body)",
   lineHeight: 1.5,
   color: "var(--text)",
 };
@@ -426,12 +426,12 @@ const seedRowStyle: React.CSSProperties = {
   paddingTop: 6,
   borderTop: "1px solid var(--border-soft, var(--border))",
   fontFamily: "var(--mono)",
-  fontSize: 11,
+  fontSize: "var(--t-meta)",
 };
 
 function seedTagStyle(kind: "surface" | "terminal"): React.CSSProperties {
   return {
-    fontSize: 9,
+    fontSize: "var(--t-micro)",
     letterSpacing: 1.5,
     textTransform: "uppercase",
     color: kind === "surface" ? "var(--ch-surface, var(--accent))" : "var(--ch-terminal, var(--accent))",
@@ -440,14 +440,14 @@ function seedTagStyle(kind: "surface" | "terminal"): React.CSSProperties {
 
 const seedQuestion: React.CSSProperties = {
   fontFamily: "var(--sans)",
-  fontSize: 12.5,
+  fontSize: "var(--t-kicker)",
   color: "var(--text)",
   letterSpacing: 0,
 };
 
 const detailsStyle: React.CSSProperties = {
   fontFamily: "var(--mono)",
-  fontSize: 11,
+  fontSize: "var(--t-meta)",
   color: "var(--text-secondary)",
 };
 
@@ -455,7 +455,7 @@ const summaryToggle: React.CSSProperties = {
   cursor: "pointer",
   textTransform: "uppercase",
   letterSpacing: 1.5,
-  fontSize: 10,
+  fontSize: "var(--t-meta)",
   color: "var(--text-ghost)",
 };
 
@@ -469,7 +469,7 @@ const listStyle: React.CSSProperties = {
 
 const listItem: React.CSSProperties = {
   fontFamily: "var(--sans)",
-  fontSize: 12.5,
+  fontSize: "var(--t-kicker)",
   lineHeight: 1.45,
   color: "var(--text)",
 };
@@ -482,12 +482,12 @@ const actionsRowStyle: React.CSSProperties = {
 
 const primaryBtn: React.CSSProperties = {
   fontFamily: "var(--mono)",
-  fontSize: 11,
+  fontSize: "var(--t-meta)",
   letterSpacing: 1.5,
   textTransform: "uppercase",
   padding: "6px 14px",
   border: "1px solid var(--accent)",
-  borderRadius: 999,
+  borderRadius: "var(--radius-full)",
   background: "color-mix(in oklab, var(--accent) 14%, transparent)",
   color: "var(--accent)",
   cursor: "pointer",
@@ -513,5 +513,5 @@ const errorStyle: React.CSSProperties = {
   background: "color-mix(in oklab, var(--cc-err) 8%, transparent)",
   color: "var(--cc-err)",
   fontFamily: "var(--mono)",
-  fontSize: 11,
+  fontSize: "var(--t-meta)",
 };

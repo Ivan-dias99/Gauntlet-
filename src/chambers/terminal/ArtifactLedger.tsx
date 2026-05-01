@@ -88,7 +88,7 @@ export default function ArtifactLedger({ artifacts, copy, lang, onSelectArtifact
                 <span
                   style={{
                     color: a.terminatedEarly ? "var(--cc-warn)" : "var(--cc-ok)",
-                    fontSize: 11,
+                    fontSize: "var(--t-meta)",
                     lineHeight: 1,
                   }}
                   aria-hidden

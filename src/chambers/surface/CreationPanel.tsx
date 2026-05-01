@@ -258,7 +258,7 @@ export default function CreationPanel({
             }
           >
             <span className="surface-cta-glyph" aria-hidden>
-              {pending ? <span style={{ fontSize: 13, lineHeight: 1 }}>…</span> : <IconSend />}
+              {pending ? <span style={{ fontSize: "var(--t-body)", lineHeight: 1 }}>…</span> : <IconSend />}
             </span>
             <span className="surface-cta-label">
               {pending ? copy.surfaceStudioGenerating : copy.surfaceCtaForm}

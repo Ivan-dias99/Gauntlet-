@@ -38,13 +38,21 @@ export default function Shell() {
   const { activeMission } = useSpine();
   const [activeTab, setActiveTab] = useState<Chamber>(activeMission?.chamber ?? "insight");
   const [entered, setEntered] = useState<boolean>(() => {
-    try { return localStorage.getItem(ENTERED_KEY) === "true"; }
-    catch { return false; }
+    try {
+      return localStorage.getItem(ENTERED_KEY) === "true";
+    } catch (e) {
+      console.warn("[shell] localStorage.getItem failed — assuming not entered:", e);
+      return false;
+    }
   });
   const reduced = useReducedMotion();
 
   function enterSignal() {
-    try { localStorage.setItem(ENTERED_KEY, "true"); } catch {}
+    try {
+      localStorage.setItem(ENTERED_KEY, "true");
+    } catch (e) {
+      console.warn("[shell] localStorage.setItem failed — entered flag not persisted:", e);
+    }
     setEntered(true);
   }
 

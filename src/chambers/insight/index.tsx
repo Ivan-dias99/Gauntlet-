@@ -300,7 +300,7 @@ export default function Insight() {
             margin: "0 auto var(--space-2)",
             maxWidth: 780,
             padding: "var(--space-3)",
-            borderRadius: 8,
+            borderRadius: "var(--radius-lg)",
             border: "1px solid currentColor",
             opacity: 0.85,
             fontSize: "0.9em",
@@ -329,7 +329,7 @@ export default function Insight() {
             style={{
               fontSize: "0.85em",
               padding: "4px 10px",
-              borderRadius: 4,
+              borderRadius: "var(--radius-sm)",
               border: "1px solid currentColor",
               background: "transparent",
               color: "inherit",

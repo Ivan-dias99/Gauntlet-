@@ -63,7 +63,7 @@ function Cell({
       <span
         style={{
           fontFamily: "var(--mono)",
-          fontSize: 14,
+          fontSize: "var(--t-body)",
           color,
           lineHeight: 1.1,
         }}
@@ -74,7 +74,7 @@ function Cell({
         <span
           style={{
             fontFamily: "var(--mono)",
-            fontSize: 9,
+            fontSize: "var(--t-micro)",
             color: "var(--text-ghost)",
             letterSpacing: "var(--track-meta)",
           }}
