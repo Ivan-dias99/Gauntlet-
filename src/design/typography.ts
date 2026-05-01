@@ -1,24 +1,34 @@
 /**
  * Wave P-33 — Typography scale.
  *
- * A modular type scale derived from a Major Second (1.125) ratio,
- * snapped to whole pixels for crisp rendering at non-Retina densities.
- * Six steps cover the whole product:
+ * A modular type scale snapped to whole pixels for crisp rendering at
+ * non-Retina densities. Seven steps cover the whole product:
  *
  *   meta(11) → kicker(12) → body(14) → prominent(16)
- *           → title(20)  → display(28) → hero(40)
+ *           → title(20)  → display(40) → hero(40)
+ *
+ * `display` and `hero` currently share 40px — `display` is the editorial
+ * headline ramp (the `.t-display` class, Fraunces serif), `hero` is the
+ * landing-glyph slot (`EmptyState`). They were intentionally aligned in
+ * round 3 of Wave P-33 to match the canonical `.t-display` rendering
+ * the stylesheet has used since pre-wave; the two semantic slots are
+ * preserved for future divergence.
  *
  * Use `scale` for font-size, `weight` for font-weight, `leading` for
  * line-height. The companion CSS variables `--t-meta`, `--t-kicker`,
  * `--t-body`, `--t-prominent`, `--t-title`, `--t-display` and
- * `--t-hero` are emitted by `injectCssVariables()`. Inline JSX may use
- * either the TS constants or the CSS vars — both resolve to the same
- * pixels.
+ * `--t-hero` are emitted by `injectCssVariables()` and are the SINGLE
+ * source of truth at runtime — `src/styles/tokens.css` no longer
+ * declares baseline values for them; only its `@media` overrides
+ * (e.g. `--t-display: 32px` ≤640px) layer on top via the cascade.
+ * Inline JSX may use either the TS constants or the CSS vars — both
+ * resolve to the same pixels.
  */
 
 // ---------------------------------------------------------------------------
-// Modular scale — Major Second (1.125). Each step roughly 1.125x the
-// previous, rounded to the nearest pixel that still reads.
+// Modular scale — pixel-snapped editorial ramp. `display` is held at the
+// historical 40px (canonical .t-display rendering) so the round-3
+// alignment of `tokens.ts` ↔ `tokens.css` does not regress the visual.
 // ---------------------------------------------------------------------------
 export const scale = {
   meta: 11,
@@ -26,7 +36,7 @@ export const scale = {
   body: 14,
   prominent: 16,
   title: 20,
-  display: 28,
+  display: 40,
   hero: 40,
 } as const;
 export type ScaleKey = keyof typeof scale;

@@ -1,5 +1,5 @@
 /**
- * Wave P-33 — Token → CSS variable bridge.
+ * Wave P-33 — Token → CSS variable bridge (single source of truth).
  *
  * `buildCssVariables()` flattens the typed token objects into a record
  * of CSS custom properties. `injectCssVariables()` then materialises
@@ -9,13 +9,22 @@
  * source — and the stylesheet's media-query overrides still cascade
  * normally on top.
  *
- * Backwards compatibility: the existing canon (e.g. `--space-1..7`,
- * `--t-display`, `--t-body`, `--radius-control`, `--shadow-soft`,
- * `--ease-swift`, `--dur-fast`) is re-emitted here so the static
- * stylesheet keeps working even if it ever gets evicted. New Wave P-33
- * vars (`--t-prominent`, `--t-hero`, `--leading-tight|normal|loose`,
+ * Round-3 contract: every primitive emitted here is the AUTHORITATIVE
+ * value. `src/styles/tokens.css` no longer redeclares any of these on
+ * `:root` — only `@media`-wrapped responsive overrides (e.g.
+ * `--space-4..7`, `--t-display`, `--t-chamber`, `--t-section` ≤640px)
+ * layer on top via the cascade. Adding a baseline for an emitted var
+ * to `tokens.css` would silently override the TS source and break the
+ * single-source-of-truth contract — don't.
+ *
+ * The legacy canon (`--space-1..7`, `--radius-shell|panel|control|pill|code`,
+ * `--font-mono|sans|serif`, `--t-meta|kicker|body|prominent|title|display|hero`)
+ * is emitted here so the TS layer stays the only place those values
+ * live. New Wave P-33 vars (`--space-0|8..12`, `--radius-sm|md|lg|full`,
  * `--shadow-sm|md|lg|focus`, `--motion-duration-fast|normal|slow`,
- * `--motion-ease-out|inout|spring`) are emitted alongside.
+ * `--motion-ease-out|inout|spring`, `--leading-tight|normal|loose`,
+ * `--weight-regular|medium`, `--track-{meta|body|display}-new`) are
+ * emitted alongside.
  */
 
 import { tokens } from "./tokens";
@@ -79,15 +88,20 @@ export function buildCssVariables(): Record<string, string> {
   vars["--font-sans"] = tokens.font.sans;
   vars["--font-serif"] = tokens.font.serif;
 
-  // ---- Letter-spacing — new semantic tracks. Legacy --track-tight /
-  // --track-meta / --track-kicker stay as-is in the stylesheet.
+  // ---- Letter-spacing — namespaced tracks. The legacy --track-tight /
+  // --track-normal / --track-meta / --track-label / --track-kicker keys
+  // remain canonical in tokens.css (no TS counterpart yet) — these
+  // -new-suffixed vars are the typed surface for new code.
   vars["--track-meta-new"] = tokens.track.meta;
   vars["--track-body-new"] = tokens.track.body;
   vars["--track-display-new"] = tokens.track.display;
 
-  // ---- Typography scale — new size vars. --t-display / --t-body /
-  // --t-meta already exist in the stylesheet at the same values; we
-  // re-emit them so the TS source remains authoritative.
+  // ---- Typography scale — full ramp emitted here as the SINGLE source.
+  // Round 3 of Wave P-33 removed the duplicate :root declarations for
+  // these from src/styles/tokens.css; only the @media-wrapped responsive
+  // overrides (e.g. `--t-display: 32px` ≤640px) remain there. Adding a
+  // baseline back to the stylesheet would silently override the TS
+  // value — see css-vars.ts header doc for the contract.
   vars["--t-meta"] = px(typography.scale.meta);
   vars["--t-kicker"] = px(typography.scale.kicker);
   vars["--t-body"] = px(typography.scale.body);

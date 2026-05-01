@@ -4,33 +4,38 @@
    grammar) is invariant across themes. Do not reintroduce chamber-local
    palettes. */
 
-/* ——— Theme-invariant canon ——— */
+/* ——— Theme-invariant canon ———
+   Single source of truth — Wave P-33 (round 3).
+
+   Every primitive that exists in `src/design/tokens.ts` or
+   `src/design/typography.ts` is materialised onto :root by
+   `injectCssVariables()` (see `src/design/css-vars.ts`), called once at
+   app boot in `src/main.tsx`. This stylesheet therefore declares ONLY
+   the legacy primitives that have no TypeScript counterpart yet
+   (--t-chamber/section/body-sec/micro, the --lh-* line-heights, the
+   --track-tight/normal/meta/label/kicker letter-spacings, --ease-swift
+   + --dur-*, --density, --mono/--sans/--serif legacy aliases) plus
+   theme palettes ([data-theme="…"]) and the @media-wrapped responsive
+   overrides that intentionally layer on top of the injected baseline.
+
+   The TS injector emits its <style> as the FIRST child of <head> — this
+   stylesheet's @media :root blocks come after it, so the cascade
+   resolves the responsive overrides correctly. Do NOT redeclare a
+   token here that lives in `src/design/tokens.ts` /
+   `src/design/typography.ts`: it would silently override the TS value
+   and break the single-source-of-truth contract this wave enforces. */
 :root {
-  /* Radius grammar — five tiers, no others. */
-  --radius-shell: 28px;
-  --radius-panel: 22px;
-  --radius-control: 16px;
-  --radius-pill: 999px;
-  --radius-code: 18px;
-
-  /* Spacing grammar — seven steps, bottom 8, top 64. */
-  --space-1:  8px;
-  --space-2: 12px;
-  --space-3: 16px;
-  --space-4: 24px;
-  --space-5: 32px;
-  --space-6: 48px;
-  --space-7: 64px;
-
-  /* Type scale — Display / Chamber / Section / Body / Body-sec / Meta / Micro. */
-  --t-display:  40px;
+  /* Type scale — non-canonical legacy rungs not (yet) in typography.ts.
+     The canonical rungs (--t-meta, --t-kicker, --t-body, --t-prominent,
+     --t-title, --t-display, --t-hero) come from typography.ts via
+     injectCssVariables(). */
   --t-chamber:  28px;
   --t-section:  20px;
-  --t-body:     14px;
   --t-body-sec: 13px;
-  --t-meta:     11px;
   --t-micro:     9px;
 
+  /* Line-heights — keyed to the legacy + canonical type rungs. No TS
+     counterpart yet; declare here. */
   --lh-display: 46px;
   --lh-chamber: 34px;
   --lh-section: 26px;
@@ -39,14 +44,17 @@
   --lh-meta:    16px;
   --lh-micro:   14px;
 
-  /* Letter-spacing families. */
+  /* Letter-spacing families. The TS layer emits namespaced --track-*-new
+     vars; these legacy ones (no -new suffix) remain canonical for the
+     existing class library. */
   --track-tight:  -0.015em;
   --track-normal: 0;
   --track-meta:   0.12em;
   --track-label:  0.2em;
   --track-kicker: 0.26em;
 
-  /* Motion — single swift easing, three durations. */
+  /* Motion legacy — single swift easing + three legacy durations. The
+     TS layer emits the new --motion-duration-* / --motion-ease-* names. */
   --ease-swift: cubic-bezier(0.4, 0, 0.2, 1);
   --dur-fast:   140ms;
   --dur-normal: 180ms;
@@ -69,69 +77,11 @@
   /* Density multiplier (driven by TweaksContext). */
   --density: 1;
 
-  /* Font families. */
+  /* Font families — legacy unprefixed names. The TS layer emits
+     --font-mono / --font-sans / --font-serif at the same values. */
   --mono:  "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   --sans:  "Inter", system-ui, -apple-system, sans-serif;
   --serif: "Fraunces", Georgia, "Times New Roman", serif;
-
-  /* ——— Wave P-33 additions ———
-     New token surface generated from src/design/tokens.ts +
-     src/design/typography.ts. Kept here as a stylesheet fallback so the
-     cascade still resolves before injectCssVariables() runs (e.g. SSR,
-     prerendered HTML). The runtime injector overwrites these with the
-     same values. Legacy --space-1..7 / --t-display / --t-body /
-     --radius-* / --shadow-soft|panel|float / --dur-* / --ease-swift
-     above stay canonical and untouched. */
-
-  /* Spacing — extended ramp (legacy --space-1..7 above stays canonical). */
-  --space-0: 0px;
-  --space-8:  32px;
-  --space-9:  40px;
-  --space-10: 56px;
-  --space-11: 72px;
-  --space-12: 96px;
-
-  /* Radius — semantic tier. */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-full: 9999px;
-
-  /* Typography — modular scale 1.125 (Major Second).
-     --t-display, --t-body, --t-meta already live above; these add the
-     missing rungs. */
-  --t-kicker:    12px;
-  --t-prominent: 16px;
-  --t-title:     20px;
-  --t-hero:      40px;
-
-  /* Leading — semantic line-heights. */
-  --leading-tight:  1.2;
-  --leading-normal: 1.5;
-  --leading-loose:  1.7;
-
-  /* Weight — only two; the shell is monochrome. */
-  --weight-regular: 400;
-  --weight-medium:  500;
-
-  /* Shadow — semantic tier. */
-  --shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.04);
-  --shadow-md:    0 2px 4px rgba(0, 0, 0, 0.30), 0 10px 28px rgba(0, 0, 0, 0.35);
-  --shadow-lg:    0 4px 10px rgba(0, 0, 0, 0.40), 0 22px 50px rgba(0, 0, 0, 0.45);
-  --shadow-focus: 0 0 0 2px rgba(255, 255, 255, 0.18);
-
-  /* Motion — three durations + three easings. */
-  --motion-duration-fast:   120ms;
-  --motion-duration-normal: 200ms;
-  --motion-duration-slow:   360ms;
-  --motion-ease-out:    cubic-bezier(0.2, 0, 0, 1);
-  --motion-ease-inout:  cubic-bezier(0.4, 0, 0.2, 1);
-  --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-
-  /* Font family namespaced aliases (legacy --mono/--sans/--serif kept above). */
-  --font-mono:  "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-  --font-sans:  "Inter", system-ui, -apple-system, sans-serif;
-  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
 }
 
 /* ——— DARK — premium ink (default) ———
