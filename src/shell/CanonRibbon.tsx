@@ -157,6 +157,17 @@ export default function CanonRibbon({ active, onSelect }: Props) {
               aria-haspopup="listbox"
               aria-expanded={open}
             >
+              {/* Wave P-34 — Mission switch crossfade.
+                  The inner title span carries a key tied to the active
+                  mission id; remounting on switch reruns the
+                  motion-cross-fade animation (120ms opacity ramp).
+                  Avoiding display:contents because it strips the
+                  element from the layout tree and breaks opacity
+                  inheritance. The .mission-pill-title is already the
+                  load-bearing copy of the pill, so cross-fading just
+                  the title reads as the whole pill morphing without
+                  the layout-disturbing wrapper. Reduced-motion users
+                  skip the fade via the global @media kill switch. */}
               {activeMission ? (() => {
                 const openTasks = activeMission.tasks.filter(
                   (t) => t.state !== "done"
@@ -174,7 +185,12 @@ export default function CanonRibbon({ active, onSelect }: Props) {
                       className={pulseLive ? "mission-pill-dot breathe" : "mission-pill-dot"}
                       data-state={pulseLive ? "live" : "dormant"}
                     />
-                    <span className="mission-pill-title">{activeMission.title}</span>
+                    <span
+                      key={activeMission.id}
+                      className="mission-pill-title motion-cross-fade"
+                    >
+                      {activeMission.title}
+                    </span>
                     <span
                       className="mission-pill-meta"
                       title={
@@ -191,7 +207,7 @@ export default function CanonRibbon({ active, onSelect }: Props) {
               })() : (
                 <>
                   <span aria-hidden className="mission-pill-dot" data-state="dormant" />
-                  <span className="mission-pill-title">{copy.newThreadLabel}</span>
+                  <span className="mission-pill-title motion-cross-fade">{copy.newThreadLabel}</span>
                   <span aria-hidden className="mission-pill-caret">▾</span>
                 </>
               )}

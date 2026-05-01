@@ -100,6 +100,11 @@ export default function HandoffInbox({ chamber, showEmpty = false }: Props) {
   return (
     <section
       data-handoff-inbox={chamber}
+      // Wave P-34 — slide-in-from-top with subtle spring
+      // (motion-slide-in-top → 200ms transform/opacity, spring
+      // easing). Reduced-motion users get an instant mount via
+      // the global @media kill switch in tokens.css.
+      className="motion-slide-in-top"
       style={{
         margin: "0 auto var(--space-3)",
         maxWidth: 820,

@@ -52,6 +52,20 @@
   --dur-normal: 180ms;
   --dur-slow:   240ms;
 
+  /* Wave P-34 — explicit motion grammar.
+     The legacy --dur-* / --ease-swift triple stays for back-compat;
+     new microinteractions reach for these named tokens so the
+     vocabulary in docs/MOTION.md matches the variable name in the
+     diff. Three durations (fast / normal / slow), three curves
+     (out for entries, in-out for in-place transforms, spring for
+     bounce on notification surfaces). */
+  --motion-duration-fast:   120ms;
+  --motion-duration-normal: 200ms;
+  --motion-duration-slow:   360ms;
+  --motion-easing-out:      cubic-bezier(0.2, 0, 0, 1);
+  --motion-easing-in-out:   cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-easing-spring:   cubic-bezier(0.5, 1.5, 0.5, 1);
+
   /* Density multiplier (driven by TweaksContext). */
   --density: 1;
 
@@ -7592,6 +7606,179 @@ a.term-ws-chip[data-tone="warn"]:hover {
 /* 7. Reduced motion — kill the strong armed pulse, keep static fills. */
 @media (prefers-reduced-motion: reduce) {
   .term-command-send:not(:disabled):not([data-state="pending"]) {
+    animation: none !important;
+  }
+}
+
+/* ============================================================
+   Wave P-34 — motion + microinteraction system.
+
+   Canon-locked classes consumed from React via src/lib/motion.ts.
+   Every animation gates on prefers-reduced-motion: reduce; the
+   global reset at the top of this file already enforces a 0.01ms
+   override, but we restate `animation: none` per-class for clarity
+   so future readers don't have to chase the cascade.
+   ============================================================ */
+
+@keyframes motion-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes motion-fade-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes motion-slide-in-top {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes motion-cross-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.motion-fade-in {
+  animation: motion-fade-in var(--motion-duration-normal) var(--motion-easing-out) both;
+}
+
+.motion-fade-up {
+  animation: motion-fade-up var(--motion-duration-normal) var(--motion-easing-out) both;
+}
+
+.motion-slide-in-top {
+  animation: motion-slide-in-top var(--motion-duration-normal) var(--motion-easing-spring) both;
+}
+
+.motion-cross-fade {
+  animation: motion-cross-fade var(--motion-duration-fast) var(--motion-easing-in-out) both;
+}
+
+/* Press affordance — applied automatically to .btn / [data-action]
+   below, but exposed as a class for surfaces that don't use those
+   primitives (e.g. .tab in CanonRibbon). The transform is tiny on
+   purpose: 0.97 reads as "depress" without clipping the surface
+   shadow or stealing focus rings. */
+.motion-press {
+  transition: transform var(--motion-duration-fast) var(--motion-easing-out);
+}
+.motion-press:active {
+  transform: scale(0.97);
+}
+
+/* Global press feedback for primary action surfaces.
+   The .btn family already covers most call-to-action chrome;
+   [data-action] exists for one-off operator surfaces. We keep
+   the transition list narrow (transform + colour-ish) so we
+   don't accidentally fight chamber-specific layout changes. */
+.btn,
+.btn-ghost,
+.btn-icon,
+.btn-chip,
+[data-action] {
+  transition:
+    transform var(--motion-duration-fast) var(--motion-easing-out),
+    background var(--motion-duration-fast) var(--motion-easing-out),
+    border-color var(--motion-duration-fast) var(--motion-easing-out),
+    color var(--motion-duration-fast) var(--motion-easing-out);
+}
+.btn:not(:disabled):active,
+.btn-ghost:not(:disabled):active,
+.btn-icon:not(:disabled):active,
+.btn-chip:not(:disabled):active,
+[data-action]:not([aria-disabled="true"]):active {
+  transform: scale(0.97);
+}
+
+/* Status pill colour crossfade — used by CanonRibbon when a mission
+   flips active ↔ paused ↔ archived. The actual colour swap is
+   driven by inline style; the transition here makes the swap
+   gradient instead of jump-cut. */
+[data-mission-status-pill] {
+  transition:
+    color var(--motion-duration-fast) var(--motion-easing-in-out),
+    border-color var(--motion-duration-fast) var(--motion-easing-in-out),
+    background var(--motion-duration-fast) var(--motion-easing-in-out),
+    opacity var(--motion-duration-fast) var(--motion-easing-in-out);
+}
+
+/* View Transitions — Chamber switch.
+   Shell wraps setActiveTab in document.startViewTransition (see
+   src/lib/motion.ts → runViewTransition). Chromium snapshots the
+   old + new chamber and gives us ::view-transition-old/new
+   pseudo-elements to style. We crossfade with the same duration
+   as .motion-fade-in so the transition reads consistently with
+   the rest of the system. Browsers without the API silently
+   no-op and the chamber swaps instantly. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-duration-normal);
+  animation-timing-function: var(--motion-easing-in-out);
+}
+::view-transition-old(root) {
+  animation-name: motion-fade-in;
+  animation-direction: reverse;
+}
+::view-transition-new(root) {
+  animation-name: motion-fade-in;
+}
+
+/* Mission switch — a tighter view-transition group scoped to the
+   chamber main area (Shell sets view-transition-name on <main>).
+   Cross-fades the chamber body when the active mission changes
+   without remounting the whole shell. */
+::view-transition-old(chamber),
+::view-transition-new(chamber) {
+  animation-duration: 240ms;
+  animation-timing-function: var(--motion-easing-in-out);
+  animation-name: motion-fade-in;
+}
+::view-transition-old(chamber) {
+  animation-direction: reverse;
+}
+
+/* Handoff notification — dismiss exit animation. The mount
+   animation ships via the .motion-slide-in-top class on the
+   inbox section itself; this exit fires when HandoffInbox flips
+   data-handoff-state to "dismissing" right before unmount. */
+@keyframes motion-slide-out-top {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-12px); }
+}
+[data-handoff-state="dismissing"] {
+  animation: motion-slide-out-top var(--motion-duration-normal) var(--motion-easing-in-out) both;
+}
+
+/* Reduced motion kill switch for the Wave P-34 surface. The
+   global reset earlier in this file already collapses every
+   animation to 0.01ms, but we restate `animation: none` /
+   `transition: none` here so a future maintainer reading just
+   this block understands the contract without chasing the
+   cascade. */
+@media (prefers-reduced-motion: reduce) {
+  .motion-fade-in,
+  .motion-fade-up,
+  .motion-slide-in-top,
+  .motion-cross-fade,
+  .motion-press,
+  [data-handoff-state="dismissing"] {
+    animation: none !important;
+    transition: none !important;
+  }
+  .motion-press:active,
+  .btn:not(:disabled):active,
+  .btn-ghost:not(:disabled):active,
+  .btn-icon:not(:disabled):active,
+  .btn-chip:not(:disabled):active,
+  [data-action]:not([aria-disabled="true"]):active {
+    transform: none !important;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(chamber),
+  ::view-transition-new(chamber) {
     animation: none !important;
   }
 }

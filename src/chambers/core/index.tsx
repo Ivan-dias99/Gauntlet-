@@ -72,8 +72,16 @@ export default function Core() {
         })}
       </div>
 
+      {/* Wave P-34 — panel mount entry.
+          Keying by tab remounts the body when the user flips the
+          sub-tab band; motion-fade-up runs a 200ms translateY(4px)
+          + opacity ramp so the new tab body announces itself
+          instead of jump-cutting in. The fine-grained per-panel
+          stagger lives inside System (which has the densest grid);
+          single-panel tabs read fine with the parent fade alone. */}
       <div
-        className="chamber-body"
+        key={tab}
+        className="chamber-body motion-fade-up"
         style={{ minHeight: 0, padding: 0 }}
       >
         {tab === "policies" && <Policies />}
