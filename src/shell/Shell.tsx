@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import CanonRibbon from "./CanonRibbon";
+import CommandPalette from "./CommandPalette";
 import Landing from "../landing/Landing";
 import { useSpine } from "../spine/SpineContext";
 import { Chamber } from "../spine/types";
@@ -42,6 +43,10 @@ export default function Shell() {
     catch { return false; }
   });
   const reduced = useReducedMotion();
+  // Wave P-35 — command palette visibility lives at the shell because
+  // ⌘K must work from any chamber. The palette closes itself; the
+  // shell only owns the open boolean.
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   function enterSignal() {
     try { localStorage.setItem(ENTERED_KEY, "true"); } catch {}
@@ -91,7 +96,7 @@ export default function Shell() {
   // Index order mirrors the ribbon (insight, surface, terminal, archive, core).
   // Ignored when the user is typing — textarea / input / contenteditable
   // targets do not steal focus, and Alt is Option on macOS which avoids
-  // the Cmd+K palette territory (reserved for a later wave).
+  // the Cmd+K palette territory (Wave P-35 owns ⌘K below).
   useEffect(() => {
     const ORDER: Chamber[] = ["insight", "surface", "terminal", "archive", "core"];
     const onKey = (e: KeyboardEvent) => {
@@ -111,6 +116,23 @@ export default function Shell() {
     return () => window.removeEventListener("keydown", onKey);
   }, [switchChamber]);
 
+  // Wave P-35 — ⌘K / Ctrl+K toggles the command palette anywhere, even
+  // mid-typing. Browsers default-bind ⌘K to focus the URL bar; calling
+  // preventDefault is what reclaims it. Esc-to-close is owned by the
+  // palette itself (it has its own keydown handler) so the shell does
+  // not double-handle the close.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (isMod && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   if (!entered) {
     return <Landing onEnter={enterSignal} />;
   }
@@ -124,8 +146,15 @@ export default function Shell() {
         background: "var(--bg)",
       }}
     >
+      {/* Wave P-35 — WCAG 2.4.1 skip-link. Hidden until keyboard focus
+          pulls it back into view. */}
+      <a href="#main" className="skip-link">
+        Skip to main
+      </a>
       <CanonRibbon active={activeTab} onSelect={switchChamber} />
       <main
+        id="main"
+        tabIndex={-1}
         style={{
           flex: 1,
           overflow: "auto",
@@ -144,6 +173,10 @@ export default function Shell() {
           {renderChamber(activeTab)}
         </ChamberErrorBoundary>
       </main>
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
     </div>
   );
 }

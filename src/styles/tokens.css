@@ -292,11 +292,18 @@ textarea {
   outline: 0;
 }
 
-:where(button, a, input, textarea, [role="button"], [tabindex]):focus-visible {
-  outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent);
+/* Wave P-35 — universal focus-visible.
+   Every interactive element earns a high-contrast ring on keyboard focus,
+   never on mouse-press. The ring uses `--accent` (white on dark, black on
+   light, amber on sepia) so contrast against the active surface stays AA
+   without per-theme tweaks. Border-radius collapses to a 4px floor so
+   the ring shape is predictable on chips, buttons and inputs alike. */
+:focus-visible {
+  outline: 2px solid var(--accent, #4af);
   outline-offset: 2px;
-  border-radius: inherit;
+  border-radius: 4px;
 }
+:focus:not(:focus-visible) { outline: none; }
 
 ::selection {
   background: var(--accent-glow);
@@ -7781,4 +7788,139 @@ a.term-ws-chip[data-tone="warn"]:hover {
   ::view-transition-new(chamber) {
     animation: none !important;
   }
+}
+
+/* ——— Wave P-35 — accessibility chrome ———
+   Skip-link: hidden offscreen until keyboard focus pulls it back into the
+   top-left corner. Lets keyboard users jump past the ribbon straight to
+   <main>, which is the WCAG 2.4.1 baseline. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10000;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color-strong);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform var(--dur-fast) var(--ease-swift);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* ——— Wave P-35 — Command Palette (⌘K) ———
+   Modal scrim covers the viewport, palette dock sits in the upper third
+   so the typed query stays in the eye line. Built from scratch — no
+   cmdk / react-aria. Keyboard contract: Esc closes, ↑/↓ move selection,
+   Enter executes, anywhere-click on scrim closes. */
+.cmdk-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: color-mix(in oklab, #000000 45%, transparent);
+  backdrop-filter: blur(6px) saturate(1.1);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 24px 24px;
+  animation: cmdk-fade-in var(--dur-fast) var(--ease-swift);
+}
+@keyframes cmdk-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.cmdk-panel {
+  width: min(640px, 100%);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color-strong);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+}
+.cmdk-input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border-color-soft);
+  padding: 18px 20px;
+  font-family: var(--sans);
+  font-size: 16px;
+  color: var(--text-primary);
+  outline: 0;
+}
+.cmdk-input::placeholder {
+  color: var(--text-muted);
+}
+.cmdk-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.cmdk-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 20px;
+  cursor: pointer;
+  user-select: none;
+  border-left: 2px solid transparent;
+}
+.cmdk-item[data-selected="true"] {
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+  border-left-color: var(--accent);
+}
+.cmdk-item-title {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.cmdk-item-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.cmdk-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+}
+.cmdk-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 20px;
+  border-top: 1px solid var(--border-color-soft);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-meta);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.cmdk-footer kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  margin: 0 2px;
+  border: 1px solid var(--border-color-mid);
+  border-radius: 4px;
+  color: var(--text-secondary);
 }
