@@ -708,7 +708,7 @@ function BackendUnreachableBanner({
         padding: "var(--space-3) var(--space-4)",
         border: "1px solid var(--accent-warn, #b45309)",
         borderLeftWidth: 4,
-        borderRadius: 4,
+        borderRadius: "var(--radius-sm)",
         background: "color-mix(in srgb, var(--accent-warn, #b45309) 6%, transparent)",
         font: "var(--font-mono, ui-monospace) 13px/1.5 monospace",
       }}

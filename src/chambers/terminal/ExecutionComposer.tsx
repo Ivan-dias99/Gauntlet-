@@ -182,7 +182,7 @@ export default function ExecutionComposer({
             aria-label={pending ? "a executar" : "executar"}
           >
             {pending ? (
-              <span style={{ fontSize: 13, lineHeight: 1 }}>…</span>
+              <span style={{ fontSize: "var(--t-body)", lineHeight: 1 }}>…</span>
             ) : (
               <IconSend />
             )}

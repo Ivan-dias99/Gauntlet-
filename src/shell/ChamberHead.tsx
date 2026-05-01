@@ -45,7 +45,7 @@ export default function ChamberHead({
         <span
           data-chamber-kicker
           style={{
-            fontSize: 10,
+            fontSize: "var(--t-meta)",
             letterSpacing: 3,
             textTransform: "uppercase",
             color: "var(--text-ghost)",

@@ -155,7 +155,7 @@ export default function Archive() {
         <span
           style={{
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: "var(--t-meta)",
             color: "var(--text-ghost)",
             letterSpacing: "var(--track-meta)",
             textTransform: "uppercase",
@@ -182,11 +182,11 @@ export default function Archive() {
                 border: "1px solid var(--border)",
                 color: "var(--text-secondary)",
                 fontFamily: "var(--mono)",
-                fontSize: 10,
+                fontSize: "var(--t-meta)",
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
                 padding: "4px 12px",
-                borderRadius: 999,
+                borderRadius: "var(--radius-full)",
                 cursor: "pointer",
               }}
             >
@@ -215,7 +215,7 @@ export default function Archive() {
             gap: 10,
             padding: "var(--space-3)",
             fontFamily: "var(--mono)",
-            fontSize: 11,
+            fontSize: "var(--t-meta)",
             letterSpacing: "var(--track-meta)",
             color: "var(--text-ghost)",
           }}

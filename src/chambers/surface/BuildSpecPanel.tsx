@@ -199,12 +199,12 @@ const kicker: React.CSSProperties = {
 
 const button: React.CSSProperties = {
   fontFamily: "var(--mono)",
-  fontSize: 11,
+  fontSize: "var(--t-meta)",
   letterSpacing: 1.5,
   textTransform: "uppercase",
   padding: "5px 12px",
   border: "1px solid var(--accent)",
-  borderRadius: 999,
+  borderRadius: "var(--radius-full)",
   background: "color-mix(in oklab, var(--accent) 14%, transparent)",
   color: "var(--accent)",
   cursor: "pointer",
@@ -226,7 +226,7 @@ const hint: React.CSSProperties = {
 const summary: React.CSSProperties = {
   margin: 0,
   fontFamily: "var(--mono)",
-  fontSize: 12,
+  fontSize: "var(--t-kicker)",
   color: "var(--text)",
 };
 
@@ -252,7 +252,7 @@ const itemSummary: React.CSSProperties = {
   alignItems: "center",
   gap: 6,
   fontFamily: "var(--mono)",
-  fontSize: 12,
+  fontSize: "var(--t-kicker)",
 };
 
 const componentName: React.CSSProperties = {
@@ -263,13 +263,13 @@ const componentName: React.CSSProperties = {
 const componentMeta: React.CSSProperties = {
   color: "var(--text-secondary)",
   textTransform: "uppercase",
-  fontSize: 10,
+  fontSize: "var(--t-meta)",
   letterSpacing: 1.2,
 };
 
 const componentPath: React.CSSProperties = {
   color: "var(--text-secondary)",
-  fontSize: 11,
+  fontSize: "var(--t-meta)",
   overflowWrap: "anywhere",
 };
 
@@ -286,7 +286,7 @@ const scaffoldPreview: React.CSSProperties = {
   borderRadius: "var(--radius-control)",
   background: "color-mix(in oklab, var(--text) 4%, transparent)",
   fontFamily: "var(--mono)",
-  fontSize: 11,
+  fontSize: "var(--t-meta)",
   lineHeight: 1.45,
   color: "var(--text)",
   whiteSpace: "pre-wrap",

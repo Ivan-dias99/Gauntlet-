@@ -251,7 +251,7 @@ function PendingState({
           <div
             style={{
               fontFamily: "var(--mono)",
-              fontSize: 13,
+              fontSize: "var(--t-body)",
               lineHeight: 1.7,
               color: "var(--cc-fg)",
               whiteSpace: "pre-wrap",
@@ -435,7 +435,7 @@ function ErrorState({
         <div
           style={{
             fontFamily: "var(--mono)",
-            fontSize: 12.5,
+            fontSize: "var(--t-kicker)",
             lineHeight: 1.6,
             color: "var(--cc-err)",
             whiteSpace: "pre-wrap",

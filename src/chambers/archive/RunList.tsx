@@ -158,14 +158,14 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
               onClick={() => setRoute(r.key)}
               style={{
                 fontFamily: "var(--mono)",
-                fontSize: 10,
+                fontSize: "var(--t-meta)",
                 letterSpacing: "var(--track-meta)",
                 textTransform: "uppercase",
                 padding: "4px 10px",
                 background: active ? "var(--bg-elevated)" : "transparent",
                 color: active ? "var(--text-primary)" : "var(--text-muted)",
                 border: active ? "var(--border-soft)" : "1px solid transparent",
-                borderRadius: 999,
+                borderRadius: "var(--radius-full)",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
               }}
@@ -215,14 +215,14 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
             data-clear-filters
             style={{
               fontFamily: "var(--mono)",
-              fontSize: 10,
+              fontSize: "var(--t-meta)",
               letterSpacing: "var(--track-meta)",
               textTransform: "uppercase",
               padding: "4px 10px",
               background: "transparent",
               color: "var(--text-secondary)",
               border: "var(--border-soft)",
-              borderRadius: 999,
+              borderRadius: "var(--radius-full)",
               cursor: "pointer",
               whiteSpace: "nowrap",
             }}
@@ -283,7 +283,7 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
               <span
                 style={{
                   fontFamily: "var(--mono)",
-                  fontSize: 9,
+                  fontSize: "var(--t-micro)",
                   letterSpacing: "var(--track-meta)",
                   textTransform: "uppercase",
                   color: routeColor,
@@ -305,7 +305,7 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
               <span
                 style={{
                   fontFamily: "var(--mono)",
-                  fontSize: 9,
+                  fontSize: "var(--t-micro)",
                   color: "var(--text-ghost)",
                   letterSpacing: "var(--track-meta)",
                   whiteSpace: "nowrap",
@@ -336,7 +336,7 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
           style={{
             padding: "6px var(--space-3)",
             fontFamily: "var(--mono)",
-            fontSize: 9,
+            fontSize: "var(--t-micro)",
             letterSpacing: "var(--track-meta)",
             textTransform: "uppercase",
             color: "var(--text-ghost)",
@@ -385,7 +385,7 @@ function FilterSelect({
         alignItems: "center",
         gap: 6,
         fontFamily: "var(--mono)",
-        fontSize: 10,
+        fontSize: "var(--t-meta)",
         letterSpacing: "var(--track-meta)",
         textTransform: "uppercase",
         color: "var(--text-muted)",
@@ -397,7 +397,7 @@ function FilterSelect({
         onChange={(e) => onChange(e.target.value)}
         style={{
           fontFamily: "var(--mono)",
-          fontSize: 10,
+          fontSize: "var(--t-meta)",
           letterSpacing: "var(--track-meta)",
           textTransform: "uppercase",
           padding: "3px 6px",

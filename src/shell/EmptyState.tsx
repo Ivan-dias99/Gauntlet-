@@ -41,7 +41,7 @@ export default function EmptyState({
           aria-hidden
           style={{
             fontFamily: "'Fraunces', Georgia, serif",
-            fontSize: 52,
+            fontSize: "var(--t-hero)",
             color: "var(--text-ghost)",
             marginBottom: 22,
             opacity: 0.55,
@@ -57,7 +57,7 @@ export default function EmptyState({
           data-empty-kicker
           style={{
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: "var(--t-meta)",
             letterSpacing: ".4em",
             color: TONE_KICKER[tone],
             textTransform: "uppercase",
@@ -72,7 +72,7 @@ export default function EmptyState({
         style={{
           fontFamily: "'Fraunces', Georgia, serif",
           fontStyle: "italic",
-          fontSize: 22,
+          fontSize: "var(--t-title)",
           lineHeight: 1.4,
           color: "var(--text-muted)",
           letterSpacing: "-0.005em",
@@ -86,7 +86,7 @@ export default function EmptyState({
           style={{
             marginTop: 20,
             fontFamily: "var(--mono)",
-            fontSize: 10,
+            fontSize: "var(--t-meta)",
             letterSpacing: 1.5,
             color: "var(--text-ghost)",
           }}

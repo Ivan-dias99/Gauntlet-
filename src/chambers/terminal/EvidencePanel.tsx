@@ -39,7 +39,7 @@ export default function EvidencePanel({ records }: Props) {
         margin: "var(--space-2) auto 0",
         maxWidth: 820,
         padding: "var(--space-2)",
-        borderRadius: 6,
+        borderRadius: "var(--radius-md)",
         border: "1px solid currentColor",
         opacity: 0.88,
         fontSize: "0.85em",
@@ -70,7 +70,7 @@ export default function EvidencePanel({ records }: Props) {
               fontFamily: "var(--mono)",
               fontSize: "0.8em",
               padding: "2px 6px",
-              borderRadius: 4,
+              borderRadius: "var(--radius-sm)",
               border: "1px solid currentColor",
               opacity: 0.85,
             }}
