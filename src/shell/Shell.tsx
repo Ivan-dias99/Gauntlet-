@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
 import CanonRibbon, { CHAMBERS } from "./CanonRibbon";
 import CommandPalette from "./CommandPalette";
 import Landing from "../landing/Landing";
@@ -121,6 +121,21 @@ export default function Shell() {
     if (!root) return;
     const first = root.querySelector<HTMLElement>("[data-drawer-first]");
     first?.focus();
+  }, [drawerOpen]);
+
+  // Wave P-37 a11y fix — when the drawer is closed it stays mounted
+  // (off-screen via CSS) so the slide transition keeps working. Without
+  // `inert`, focusable children would still be reachable by Tab and
+  // would still leak into the accessibility tree on browsers that don't
+  // honor `aria-hidden` strictly. Toggle the native HTMLElement.inert
+  // property directly so we don't depend on React 18 serializing an
+  // `inert` attribute it doesn't yet recognize. useLayoutEffect runs
+  // before the browser paints, so the closed drawer is already inert
+  // on first render — no flash of focusable hidden controls.
+  useLayoutEffect(() => {
+    const root = drawerRef.current;
+    if (!root) return;
+    root.inert = !drawerOpen;
   }, [drawerOpen]);
 
   function openDrawer() {
