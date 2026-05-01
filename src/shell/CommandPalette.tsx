@@ -53,6 +53,7 @@ function dispatchNav(target: string) {
 
 export default function CommandPalette({ open, onClose }: Props) {
   const {
+    state,
     activeMission,
     clearActiveMission,
     setTaskState,
@@ -95,7 +96,14 @@ export default function CommandPalette({ open, onClose }: Props) {
           : "no active mission",
         run: () => {
           if (!activeMission) return;
-          const running = activeMission.tasks.find((t) => t.state === "running");
+          // Tasks are appended in chronological order, so the operator's
+          // "current" running task is the LAST one in the array, not the
+          // first. Iterate from the end. (TS lib target is ES2020 so
+          // `findLast` is unavailable — reverse-then-find is the
+          // dependency-free equivalent.)
+          const running = [...activeMission.tasks]
+            .reverse()
+            .find((t) => t.state === "running");
           if (!running) return;
           setTaskState(running.id, "paused", {
             pauseReason: "manual via cmdk",
@@ -111,11 +119,13 @@ export default function CommandPalette({ open, onClose }: Props) {
           : "no active mission",
         run: () => {
           if (!activeMission) return;
-          // Pick the most-recently-paused task so the operator does not
-          // have to disambiguate. If none, no-op silently.
+          // Mirror the pause command: pick the LAST paused task in
+          // append order so "pause" then "resume" is a clean round-trip
+          // on the operator's current task. Reverse-then-find keeps us
+          // off `findLast` (ES2023) since lib target is ES2020.
           const paused = [...activeMission.tasks]
-            .filter((t) => t.state === "paused")
-            .sort((a, b) => (b.pausedAt ?? 0) - (a.pausedAt ?? 0))[0];
+            .reverse()
+            .find((t) => t.state === "paused");
           if (!paused) return;
           setTaskState(paused.id, "running");
         },
@@ -156,8 +166,15 @@ export default function CommandPalette({ open, onClose }: Props) {
         title: "copy spine JSON",
         hint: "clipboard · raw spine state",
         run: async () => {
+          // Serialize the in-memory snapshot from SpineContext rather
+          // than re-reading localStorage. The localStorage key changed
+          // ("signal:spine" → "signal:spine:v1") but, more importantly,
+          // localStorage is an implementation detail of `store.ts`. The
+          // operator wants the live spine — which is `state` — not
+          // whatever was last persisted (which can lag the in-memory
+          // snapshot during sync).
+          const raw = JSON.stringify(state, null, 2);
           try {
-            const raw = localStorage.getItem("signal:spine") ?? "{}";
             await navigator.clipboard.writeText(raw);
           } catch {
             // Clipboard refused (insecure context, permission denied) —
@@ -167,7 +184,7 @@ export default function CommandPalette({ open, onClose }: Props) {
             // eslint-disable-next-line no-console
             console.warn("[cmdk] clipboard unavailable; spine JSON below");
             // eslint-disable-next-line no-console
-            console.log(localStorage.getItem("signal:spine"));
+            console.log(raw);
           }
         },
       },
@@ -192,7 +209,7 @@ export default function CommandPalette({ open, onClose }: Props) {
     ];
 
     return [...chamberSwitches, ...missionAndTask, ...navigation];
-  }, [activeMission, clearActiveMission, setTaskState, updateTruthDistillationStatus]);
+  }, [state, activeMission, clearActiveMission, setTaskState, updateTruthDistillationStatus]);
 
   // Substring filter — case-insensitive, matches against title or
   // hint. Empty query returns the full canonical list, in canonical
