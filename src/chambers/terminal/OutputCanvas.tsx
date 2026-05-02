@@ -155,7 +155,7 @@ function AIExecutionKicker() {
       <span className="term-output-kicker-glyph" aria-hidden>
         <IconSparkle />
       </span>
-      <span>AI execução</span>
+      <span>AI execution</span>
     </div>
   );
 }

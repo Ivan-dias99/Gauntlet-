@@ -58,7 +58,7 @@ export default function Terminal() {
   const {
     activeMission, addTask, setTaskState, addNoteToMission,
     acceptArtifact, principles, logDoctrineApplied, clearActiveMission,
-    state,
+    switchMission, state,
   } = useSpine();
   const { streamDev, streamCrew, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
@@ -588,6 +588,15 @@ export default function Terminal() {
 
   const recentMissions = state.missions.slice(0, 3);
 
+  // Wave P-43 — Terminal is "idle" when there is no mission, no
+  // streaming task, no completed run, and no error to report. In that
+  // state the new editorial hero owns the canvas (matches the Lovable
+  // target) and the OutputCanvas legacy ReadyState is bypassed. Every
+  // other state (pending / done / err / unreachable / mission with
+  // tasks) keeps the original execution stack intact.
+  const isIdle =
+    !activeMission && !pending && !done && !err && !unreachable && tasks.length === 0;
+
   return (
     <div className="chamber-shell" data-chamber="terminal">
       <ChamberWorkspace
@@ -629,20 +638,11 @@ export default function Terminal() {
         }}
         workbench={
           <>
-            <ContextStrip
-              copy={copy}
-              backendMode={backend.mode}
-              principlesCount={principles.length}
-              pending={pending}
-              elapsed={elapsed}
-              exitCode={exitCode}
-              taskCount={tasks.length}
-              doneCount={doneTasks.length}
-              activeMissionTitle={activeMission?.title ?? null}
-              currentObjective={currentObjective}
-              allDone={allDone}
-              allDoneLabel={copy.actionAllDone}
-            />
+            {/* Wave P-43 — ContextStrip retired in favour of the rail
+                identity card + breadcrumb. Runtime numbers live in
+                WorkbenchStrip's status (italic) and ExecutionComposer
+                meta. ContextStrip kept around as legacy import in case
+                a later wave wants to reinstate the chamber-top header. */}
             {(!backend.reachable || unreachable) && (
               <BackendUnreachableBanner
                 reason={backend.unreachableReason}
@@ -656,46 +656,57 @@ export default function Terminal() {
               tasks={activeMission?.tasks ?? []}
             />
             <HandoffInbox chamber="terminal" />
-            <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
-              <TaskList
-                tasks={tasks}
-                activeTaskId={activeTaskId}
-                duplicateTitles={duplicateTitles}
-                copy={copy}
-                onSelect={selectTaskFromQueue}
-                onPause={handlePause}
-                onResume={handleResume}
-              />
-            </div>
 
-            {unreachable && err ? (
-              <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
-                <DormantPanel detail={copy.dormantCreation} />
-              </div>
+            {isIdle ? (
+              <TerminalIdleHero
+                copy={copy}
+                missions={state.missions}
+                onPickMission={(id) => switchMission(id)}
+              />
             ) : (
               <>
-                <OutputCanvas
-                  copy={copy}
-                  mission={activeMission}
-                  activeTask={activeTask}
-                  lastTask={lastTask}
-                  pending={pending}
-                  iteration={iteration}
-                  elapsed={elapsed}
-                  liveText={liveText}
-                  liveTools={liveTools}
-                  done={done}
-                  accepted={accepted}
-                  err={err}
-                  crew={crew}
-                  mode={mode}
-                  artifacts={allArtifacts}
-                  onAccept={accept}
-                  onReplayArtifact={replayArtifact}
-                  canAccept={Boolean(activeMission)}
-                />
-                <EvidencePanel records={liveEvidence} />
-                <ToolInspectorPanel tools={liveTools} />
+                <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
+                  <TaskList
+                    tasks={tasks}
+                    activeTaskId={activeTaskId}
+                    duplicateTitles={duplicateTitles}
+                    copy={copy}
+                    onSelect={selectTaskFromQueue}
+                    onPause={handlePause}
+                    onResume={handleResume}
+                  />
+                </div>
+
+                {unreachable && err ? (
+                  <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
+                    <DormantPanel detail={copy.dormantCreation} />
+                  </div>
+                ) : (
+                  <>
+                    <OutputCanvas
+                      copy={copy}
+                      mission={activeMission}
+                      activeTask={activeTask}
+                      lastTask={lastTask}
+                      pending={pending}
+                      iteration={iteration}
+                      elapsed={elapsed}
+                      liveText={liveText}
+                      liveTools={liveTools}
+                      done={done}
+                      accepted={accepted}
+                      err={err}
+                      crew={crew}
+                      mode={mode}
+                      artifacts={allArtifacts}
+                      onAccept={accept}
+                      onReplayArtifact={replayArtifact}
+                      canAccept={Boolean(activeMission)}
+                    />
+                    <EvidencePanel records={liveEvidence} />
+                    <ToolInspectorPanel tools={liveTools} />
+                  </>
+                )}
               </>
             )}
 
@@ -825,4 +836,74 @@ function reasonFix(reason: string | null): string | null {
     default:
       return null;
   }
+}
+
+// Wave P-43 — TerminalIdleHero. Editorial empty state for Terminal when
+// no mission is active and no run is in flight. Mirrors the Lovable
+// target: glyph + serif imperative title + sans subtitle + Sessions
+// list sourced from spine.missions. Replaces the legacy
+// OutputCanvas ReadyState in idle paths only — pending / done / err
+// keep the original execution stack.
+function TerminalIdleHero({
+  copy, missions, onPickMission,
+}: {
+  copy: import("../../i18n/copy").Copy;
+  missions: import("../../spine/types").Mission[];
+  onPickMission: (id: string) => void;
+}) {
+  const recents = missions.slice(0, 5);
+  return (
+    <div className="cw-workbench-idle">
+      <header className="cw-hero">
+        <h1 className="cw-hero-title">
+          <span aria-hidden className="cw-hero-glyph">⌘</span>
+          {copy.termReadyTitle}
+        </h1>
+        <p className="cw-hero-body">{copy.termReadyLead}</p>
+      </header>
+
+      {recents.length > 0 && (
+        <section className="cw-session-list" aria-label="Sessions">
+          <div className="cw-session-list-head">
+            <h2 className="cw-session-list-title">Sessions</h2>
+            {missions.length > recents.length && (
+              <button type="button" className="cw-session-list-action">
+                Show all {missions.length}
+              </button>
+            )}
+          </div>
+          {recents.map((m) => {
+            const openTasks = m.tasks.filter((t) => t.state !== "done").length;
+            const stateLabel = openTasks > 0 ? "open" : "idle";
+            const meta = formatMissionAge(m);
+            return (
+              <button
+                key={m.id}
+                type="button"
+                className="cw-session-row"
+                onClick={() => onPickMission(m.id)}
+              >
+                <span className="cw-session-row-state">· {stateLabel}</span>
+                <span className="cw-session-row-title">{m.title}</span>
+                <span className="cw-session-row-meta">{meta}</span>
+                <span aria-hidden className="cw-session-row-caret">›</span>
+              </button>
+            );
+          })}
+        </section>
+      )}
+    </div>
+  );
+}
+
+function formatMissionAge(m: import("../../spine/types").Mission): string {
+  const ts = m.lastArtifact?.acceptedAt ?? m.createdAt ?? Date.now();
+  const ms = Date.now() - ts;
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const min = Math.floor(s / 60);
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
 }
