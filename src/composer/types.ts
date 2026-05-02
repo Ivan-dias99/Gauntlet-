@@ -138,6 +138,57 @@ export interface ApplyResult {
   error?: string;
 }
 
+// ─── Design tokens (Wave 7) ─────────────────────────────────────────────
+//
+// Mirrors signal-backend/figma_tokens.py TokenSet.to_dict(). The
+// /design/figma/import endpoint walks a Figma REST file body and emits
+// this shape. Wave 7 renders it as visual swatches/specimens; the
+// underlying parser handles styles map + Variables API + alias warnings.
+
+export interface ColorToken {
+  name: string;
+  value_hex: string;
+  description: string | null;
+}
+
+export interface SpacingToken {
+  name: string;
+  value_px: number;
+  description: string | null;
+}
+
+export interface TypeToken {
+  name: string;
+  family: string;
+  weight: number;
+  size_px: number;
+  line_height_px: number;
+  description: string | null;
+}
+
+export interface RadiusToken {
+  name: string;
+  value_px: number;
+  description: string | null;
+}
+
+export interface TokenSet {
+  name: string;
+  source_file_id: string;
+  imported_at: string;
+  colors: ColorToken[];
+  spacings: SpacingToken[];
+  types: TypeToken[];
+  radii: RadiusToken[];
+  raw_warnings: string[];
+}
+
+export interface FigmaImportRequest {
+  file_id: string;
+  body: Record<string, unknown>;
+  name?: string;
+}
+
 // Run-state machine for the central Compose surface (Wave 1 only consumes
 // these states; richer statuses land per-mode in Wave 2+).
 export type ComposeState =
@@ -165,7 +216,7 @@ export const MODES: ModeDescriptor[] = [
   { id: "context",  label: "Context",   blurb: "Auto-detects selection, screen, files.",                  live: true  },
   { id: "compose",  label: "Compose",   blurb: "Central canvas — input, plan, preview, apply.",           live: true  },
   { id: "code",     label: "Code",      blurb: "IDE-style diff renderer + files-impacted pills.",         live: true  },
-  { id: "design",   label: "Design",    blurb: "Canvas with components, tokens, frames (Wave 2+).",       live: false },
+  { id: "design",   label: "Design",    blurb: "Figma tokens import + compose flow with design intent.",  live: true  },
   { id: "analysis", label: "Analysis",  blurb: "Report mode with charts and tables (Wave 2+).",           live: false },
   { id: "memory",   label: "Memory",    blurb: "Save canon, search by tag and provenance (Wave 2+).",     live: false },
   { id: "apply",    label: "Apply",     blurb: "Files-impacted preview + risk gate + ledger linkage.",    live: true  },

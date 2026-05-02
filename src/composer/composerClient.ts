@@ -18,6 +18,8 @@ import type {
   IntentResult,
   PreviewResult,
   ApplyResult,
+  FigmaImportRequest,
+  TokenSet,
 } from "./types";
 
 async function postJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
@@ -106,4 +108,16 @@ export async function runCompose(
   });
 
   return { context, intent, preview };
+}
+
+// ── Wave 7 — design tokens import ─────────────────────────────────────
+//
+// Calls POST /design/figma/import with the operator-pasted Figma file
+// body. Backend walks styles + Variables API and returns a normalised
+// TokenSet (colors / spacings / types / radii + warnings). The endpoint
+// is pure compute — no PAT required because the body is supplied
+// directly (operator fetches via curl / browser dev tools).
+
+export function importFigmaTokens(req: FigmaImportRequest): Promise<TokenSet> {
+  return postJson("/design/figma/import", req);
 }
