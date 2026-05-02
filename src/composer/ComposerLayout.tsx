@@ -12,6 +12,7 @@ import { MODES } from "./types";
 import type { ComposerMode, ModeDescriptor } from "./types";
 import ModePanel from "./panels/ModePanel";
 import ComposeCanvas from "./panels/ComposeCanvas";
+import RouteCanvas from "./panels/RouteCanvas";
 import ModePlaceholder from "./panels/ModePlaceholder";
 import PipelineStrip from "./PipelineStrip";
 
@@ -119,7 +120,13 @@ export default function ComposerLayout() {
         </aside>
 
         <section style={{ ...columnStyle, gap: 16 }}>
-          {active === "compose" ? <ComposeCanvas /> : <ModePlaceholder mode={active} />}
+          {active === "compose" ? (
+            <ComposeCanvas />
+          ) : active === "route" ? (
+            <RouteCanvas />
+          ) : (
+            <ModePlaceholder mode={active} />
+          )}
         </section>
 
         <aside style={columnStyle} aria-label="right mode panels">

@@ -8,9 +8,8 @@
 
 import { useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { runCompose, applyPreview } from "../composerClient";
 import type { ComposeState, IntentResult, PreviewResult } from "../types";
-import { isBackendUnreachable } from "../../lib/signalApi";
+import { useComposeFlow } from "../useComposeFlow";
 import Pill from "../../components/atoms/Pill";
 
 const TOOL_TABS = [
@@ -83,47 +82,11 @@ const actionGhost: CSSProperties = {
 export default function ComposeCanvas() {
   const [input, setInput] = useState("");
   const [tool, setTool] = useState<ToolId>("code");
-  const [state, setState] = useState<ComposeState>({ kind: "idle" });
+  const { state, compose, apply } = useComposeFlow();
 
   async function onCompose(e: FormEvent) {
     e.preventDefault();
-    const userInput = input.trim();
-    if (!userInput) return;
-    setState({ kind: "submitting" });
-    try {
-      const { intent, preview } = await runCompose({
-        userInput,
-        source: "control_center",
-      });
-      setState({ kind: "preview_ready", intent, preview });
-    } catch (err) {
-      if (isBackendUnreachable(err)) {
-        setState({ kind: "error", message: err.message, reason: err.reason });
-      } else {
-        setState({ kind: "error", message: err instanceof Error ? err.message : String(err) });
-      }
-    }
-  }
-
-  async function onApply(approved: boolean) {
-    if (state.kind !== "preview_ready") return;
-    const preview = state.preview;
-    const intent = state.intent;
-    setState({ kind: "submitting" });
-    try {
-      const apply = await applyPreview({
-        preview_id: preview.preview_id,
-        approved,
-        approval_reason: approved ? "operator_approved" : "operator_rejected",
-      });
-      if (approved) {
-        setState({ kind: "applied", preview, apply });
-      } else {
-        setState({ kind: "intent_ready", intent });
-      }
-    } catch (err) {
-      setState({ kind: "error", message: err instanceof Error ? err.message : String(err) });
-    }
+    await compose(input);
   }
 
   const submitting = state.kind === "submitting";
@@ -205,7 +168,7 @@ export default function ComposeCanvas() {
         </div>
       </form>
 
-      <ComposeOutput state={state} onApply={onApply} />
+      <ComposeOutput state={state} onApply={apply} />
     </section>
   );
 }
