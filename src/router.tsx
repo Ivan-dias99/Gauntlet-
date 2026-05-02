@@ -12,11 +12,13 @@ import ModelsPage from "./pages/ModelsPage";
 import PermissionsPage from "./pages/PermissionsPage";
 import MemoryPage from "./pages/MemoryPage";
 import LedgerPage from "./pages/LedgerPage";
+import ComposerPage from "./pages/ComposerPage";
 
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/control" replace />} />
+      <Route path="/composer" element={<ComposerPage />} />
       <Route path="/control" element={<ControlLayout />}>
         <Route index element={<OverviewPage />} />
         <Route path="settings" element={<SettingsPage />} />
