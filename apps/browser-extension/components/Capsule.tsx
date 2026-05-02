@@ -115,18 +115,42 @@ export function Capsule({ client, initialSnapshot, onDismiss }: CapsuleProps) {
     }
   }, [result]);
 
+  // Wave 1 — Expand opens the full /composer surface in a new tab via the
+  // background service worker. The destination URL is owned by background.ts
+  // (single source of truth across capsule + popup contexts).
+  const onExpand = useCallback(() => {
+    try {
+      chrome.runtime.sendMessage({ type: 'ruberra:expand' });
+    } catch {
+      // sendMessage can throw if the background is asleep on first use;
+      // a second attempt usually succeeds, but at this point the user
+      // can also click again. Silent for now.
+    }
+  }, []);
+
   return (
     <div className="ruberra-capsule" role="dialog" aria-label="Ruberra Composer">
       <header className="ruberra-capsule__header">
         <span className="ruberra-capsule__brand">RUBERRA · COMPOSER</span>
-        <button
-          type="button"
-          className="ruberra-capsule__close"
-          onClick={onDismiss}
-          aria-label="Dismiss capsule (Esc)"
-        >
-          ×
-        </button>
+        <div className="ruberra-capsule__header-actions">
+          <button
+            type="button"
+            className="ruberra-capsule__expand"
+            onClick={onExpand}
+            title="Expand to full Composer surface in new tab"
+            aria-label="Expand to full Composer surface"
+          >
+            ⤢ Expand
+          </button>
+          <button
+            type="button"
+            className="ruberra-capsule__close"
+            onClick={onDismiss}
+            aria-label="Dismiss capsule (Esc)"
+          >
+            ×
+          </button>
+        </div>
       </header>
 
       <section className="ruberra-capsule__context">
@@ -271,6 +295,17 @@ export const CAPSULE_CSS = `
   font-size: 18px; cursor: pointer; padding: 0 4px;
 }
 .ruberra-capsule__close:hover { color: #fff; }
+.ruberra-capsule__header-actions {
+  display: flex; align-items: center; gap: 6px;
+}
+.ruberra-capsule__expand {
+  background: none; border: 1px solid #2a3140; color: #9eb1cc;
+  font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer;
+  font-family: inherit; letter-spacing: 0.04em;
+}
+.ruberra-capsule__expand:hover {
+  background: #1a2030; color: #fff; border-color: #3a4456;
+}
 .ruberra-capsule__context-meta {
   display: flex; gap: 8px; align-items: center;
   font-size: 11px; color: #8995a6; margin-bottom: 6px;
