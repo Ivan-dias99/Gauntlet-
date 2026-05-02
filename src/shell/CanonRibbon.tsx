@@ -86,7 +86,7 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
           type="button"
           className="canon-ribbon-hamburger"
           onClick={onOpenDrawer}
-          aria-label="Abrir menu de câmaras"
+          aria-label="Open chambers menu"
           aria-haspopup="dialog"
         >
           <span aria-hidden className="canon-ribbon-hamburger-bar" />
@@ -176,8 +176,8 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
           onClick={cycleDensity}
           className="btn-icon canon-ribbon-density"
           data-density-state={tweaks.density}
-          aria-label={`Densidade: ${DENSITY_LABEL[tweaks.density]} (clique para alternar)`}
-          title={`Densidade: ${DENSITY_LABEL[tweaks.density]}`}
+          aria-label={`Density: ${DENSITY_LABEL[tweaks.density]} (click to cycle)`}
+          title={`Density: ${DENSITY_LABEL[tweaks.density]}`}
         >
           <span aria-hidden className="canon-ribbon-density-glyph">
             <span />
@@ -275,11 +275,11 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
                   // needed). Operators get a glance at which threads are
                   // paused, brainstorm-only, archived or completed.
                   const statusLabel: Record<string, string> = {
-                    paused: "pausada",
+                    paused: "paused",
                     brainstorm: "brainstorm",
-                    archived: "arquivada",
-                    completed: "completa",
-                    closed: "fechada",
+                    archived: "archived",
+                    completed: "completed",
+                    closed: "closed",
                   };
                   const pillLabel = statusLabel[m.status];
                   // Wave P-2 UI consumer — surface the lifecycle setter as
@@ -292,17 +292,17 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
                   const actions: Action[] =
                     m.status === "active"
                       ? [
-                          { label: "pausar",   to: "paused" },
-                          { label: "arquivar", to: "archived" },
-                          { label: "completar", to: "completed" },
+                          { label: "pause",    to: "paused" },
+                          { label: "archive",  to: "archived" },
+                          { label: "complete", to: "completed" },
                         ]
                       : m.status === "paused"
                       ? [
-                          { label: "retomar",  to: "active" },
-                          { label: "arquivar", to: "archived" },
+                          { label: "resume",  to: "active" },
+                          { label: "archive", to: "archived" },
                         ]
                       : m.status === "brainstorm"
-                      ? [{ label: "promover a activa", to: "active" }]
+                      ? [{ label: "promote to active", to: "active" }]
                       : [];
                   return (
                     <button

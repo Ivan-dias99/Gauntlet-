@@ -11,10 +11,10 @@ const MENU_ITEMS: ReadonlyArray<
   | { kind: "divider" }
   | { kind: "action"; label: string; tone?: "danger" }
 > = [
-  { kind: "link", to: "/profile", label: "perfil" },
-  { kind: "link", to: "/settings", label: "definições" },
+  { kind: "link", to: "/profile", label: "profile" },
+  { kind: "link", to: "/settings", label: "settings" },
   { kind: "divider" },
-  { kind: "action", label: "sair", tone: "danger" },
+  { kind: "action", label: "sign out", tone: "danger" },
 ];
 
 export default function AvatarDropdown() {
@@ -50,7 +50,7 @@ export default function AvatarDropdown() {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        title="conta"
+        title="account"
         style={{
           width: 32,
           height: 32,

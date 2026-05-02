@@ -8455,3 +8455,604 @@ a.term-ws-chip[data-tone="warn"]:hover {
     transition: none;
   }
 }
+
+/* ============================================================
+   § 8 — Wave P-43 — ChamberWorkspace primitive.
+   Two/three-pane grid replacing the legacy ChamberHead stack.
+   Matches the Lovable mockup target: rail (240px) · workbench
+   (1fr) · optional sidecar (0.6fr). Sidecar collapses below
+   1280px; rail collapses to icons below 1024px and hides
+   below 720px (mobile drawer takes over).
+   ============================================================ */
+
+.chamber-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.chamber-workspace-breadcrumb {
+  padding: 10px 24px 0;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.chamber-workspace-grid {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 0;
+}
+
+.chamber-workspace[data-variant="triple"] .chamber-workspace-grid {
+  grid-template-columns: 240px minmax(0, 1fr) minmax(360px, 0.6fr);
+}
+
+.chamber-workspace[data-variant="sidecar"] .chamber-workspace-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.6fr);
+}
+
+.chamber-workspace[data-variant="single"] .chamber-workspace-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* --- Rail (left navigation column) --- */
+
+.cw-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 16px;
+  border-right: 1px solid var(--border-soft);
+  background: var(--bg);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.cw-rail-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cw-rail-identity-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.cw-rail-identity-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--ink, #111);
+  color: var(--bg, #fff);
+  font-family: var(--mono);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.cw-rail-identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cw-rail-identity-title {
+  font-family: var(--serif, var(--sans));
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.cw-rail-identity-tagline {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cw-rail-cta {
+  display: flex;
+}
+
+.cw-rail-cta > * {
+  flex: 1;
+}
+
+.cw-rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cw-rail-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+  min-height: 36px;
+}
+
+.cw-rail-nav-item:hover {
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+
+.cw-rail-nav-item[data-active="true"] {
+  background: var(--ink, #111);
+  color: var(--bg, #fff);
+  font-weight: 500;
+}
+
+.cw-rail-nav-item[data-active="true"]:hover {
+  background: var(--ink, #111);
+}
+
+.cw-rail-nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cw-rail-nav-glyph {
+  display: inline-flex;
+  width: 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.cw-rail-nav-label {
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+
+.cw-rail-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.cw-rail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cw-rail-section-label {
+  padding: 0 12px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cw-rail-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* --- Workbench (main column) --- */
+
+.cw-workbench {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 32px 64px;
+}
+
+/* --- Sidecar (right column) --- */
+
+.cw-sidecar {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-soft);
+  background: var(--bg);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.cw-sidecar-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.cw-sidecar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.cw-sidecar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cw-sidecar-subtabs {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+.cw-sidecar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  min-height: 0;
+}
+
+/* --- Workbench hero (composer-driven) --- */
+
+.cw-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 24px 0 16px;
+}
+
+.cw-hero-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--serif, var(--sans));
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cw-hero-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.cw-hero-body {
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-secondary, var(--text-muted));
+  max-width: 60ch;
+  margin: 0;
+}
+
+/* --- Status bar above the hero (chamber lenses chip row) --- */
+
+.cw-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-full);
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+}
+
+.cw-status-bar-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  flex-shrink: 0;
+}
+
+.cw-status-bar-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+}
+
+.cw-status-bar-meta {
+  color: var(--text-muted);
+}
+
+.cw-status-bar-state {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.cw-status-bar-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.cw-status-chip {
+  padding: 4px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* --- Session list (RECENTS / Sessions) --- */
+
+.cw-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 32px;
+}
+
+.cw-session-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.cw-session-list-title {
+  font-family: var(--serif, var(--sans));
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.cw-session-list-action {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.cw-session-list-action:hover {
+  color: var(--text-primary);
+}
+
+.cw-session-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.cw-session-row:hover {
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+
+.cw-session-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.cw-session-row-state {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--accent, var(--cc-warn));
+  text-transform: lowercase;
+  flex-shrink: 0;
+}
+
+.cw-session-row-title {
+  flex: 1;
+  font-weight: 500;
+}
+
+.cw-session-row-meta {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.cw-session-row-caret {
+  font-family: var(--mono);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* --- "+ New mission" CTA used in rail --- */
+
+.cw-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--ink, #111);
+  color: var(--bg, #fff);
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  min-height: 40px;
+  transition: opacity 120ms ease;
+}
+
+.cw-cta-primary:hover {
+  opacity: 0.88;
+}
+
+.cw-cta-primary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Responsive collapse --- */
+
+@media (max-width: 1280px) {
+  .chamber-workspace[data-variant="triple"] .chamber-workspace-grid {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .chamber-workspace[data-variant="triple"] .cw-sidecar,
+  .chamber-workspace[data-variant="sidecar"] .cw-sidecar {
+    display: none;
+  }
+  .chamber-workspace[data-variant="sidecar"] .chamber-workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .chamber-workspace[data-variant="rail"] .chamber-workspace-grid,
+  .chamber-workspace[data-variant="triple"] .chamber-workspace-grid {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  .cw-rail {
+    padding: 16px 8px;
+  }
+  .cw-rail-identity-text,
+  .cw-rail-nav-label,
+  .cw-rail-section-label,
+  .cw-rail-section,
+  .cw-rail-secondary,
+  .cw-rail-cta {
+    display: none;
+  }
+  .cw-rail-nav-item {
+    justify-content: center;
+    padding: 10px 0;
+  }
+  .cw-workbench {
+    padding: 20px 20px 64px;
+  }
+}
+
+@media (max-width: 720px) {
+  .chamber-workspace[data-variant="rail"] .chamber-workspace-grid,
+  .chamber-workspace[data-variant="triple"] .chamber-workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cw-rail {
+    display: none;
+  }
+  .cw-workbench {
+    padding: 16px 16px 80px;
+  }
+}
+
+/* ============================================================
+   § 9 — Wave P-43 — CanonRibbon refresh.
+   Pin the ribbon at 56px, normalise sync grammar, and silence
+   the doctrine tagline overflow that produced the
+   "refuse be_INSIGHT" ghost text on tight viewports.
+   ============================================================ */
+
+.canon-ribbon {
+  height: 56px;
+  min-height: 56px;
+  flex-shrink: 0;
+}
+
+/* Doctrine tagline next to the brand wordmark — was leaking under the
+   tab strip on narrow viewports. Truncate cleanly. */
+.canon-ribbon-doctrine {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .canon-ribbon-doctrine {
+    display: none;
+  }
+}
+
+/* Sync grammar — single shape: dot + lowercase label. */
+.spine-sync {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: var(--text-muted);
+}
+
+/* Restore visible focus on tabs (was killed by outline:0 in legacy
+   selectors). Non-destructive — adds an outline-offset and leaves the
+   underline indicator in place. */
+.canon-ribbon-tabs .tab:focus-visible,
+.cw-rail-nav-item:focus-visible,
+.cw-session-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+

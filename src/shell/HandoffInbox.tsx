@@ -154,7 +154,7 @@ export default function HandoffInbox({ chamber, showEmpty = false }: Props) {
             </div>
             {h.risks.length > 0 && (
               <div style={{ fontSize: "0.8em", opacity: 0.75 }}>
-                <strong>riscos:</strong> {h.risks.join(" · ")}
+                <strong>risks:</strong> {h.risks.join(" · ")}
               </div>
             )}
             <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
@@ -164,7 +164,7 @@ export default function HandoffInbox({ chamber, showEmpty = false }: Props) {
                 onClick={() => resolve(h.id, "consumed")}
                 style={actionButtonStyle}
               >
-                consumir
+                consume
               </button>
               <button
                 type="button"
@@ -172,7 +172,7 @@ export default function HandoffInbox({ chamber, showEmpty = false }: Props) {
                 onClick={() => resolve(h.id, "deferred")}
                 style={actionButtonStyle}
               >
-                adiar
+                defer
               </button>
               <button
                 type="button"
@@ -180,7 +180,7 @@ export default function HandoffInbox({ chamber, showEmpty = false }: Props) {
                 onClick={() => resolve(h.id, "rejected")}
                 style={actionButtonStyle}
               >
-                rejeitar
+                reject
               </button>
             </div>
           </li>

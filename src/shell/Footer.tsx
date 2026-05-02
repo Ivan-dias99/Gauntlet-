@@ -17,8 +17,8 @@ const BUILD_SHA: string = (() => {
 
 const FOOTER_LINKS: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/docs", label: "docs" },
-  { to: "/settings", label: "definições" },
-  { to: "/connectors", label: "conectores" },
+  { to: "/settings", label: "settings" },
+  { to: "/connectors", label: "connectors" },
 ];
 
 export default function Footer() {
@@ -63,8 +63,8 @@ export default function Footer() {
           </Link>
         ))}
         <span aria-hidden style={{ opacity: 0.5 }}>·</span>
-        <span data-footer-status title="status do sistema">
-          ● operacional
+        <span data-footer-status title="system status">
+          ● live
         </span>
       </nav>
     </footer>
