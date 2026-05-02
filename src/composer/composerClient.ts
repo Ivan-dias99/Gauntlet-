@@ -20,6 +20,9 @@ import type {
   ApplyResult,
   FigmaImportRequest,
   TokenSet,
+  RunRecord,
+  FailureRecord,
+  MemoryStats,
 } from "./types";
 
 async function postJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
@@ -28,6 +31,15 @@ async function postJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  if (!res.ok) {
+    const env = await parseBackendError(res);
+    throw new BackendError(res.status, env, `HTTP ${res.status} from ${path}`);
+  }
+  return (await res.json()) as TRes;
+}
+
+async function getJson<TRes>(path: string): Promise<TRes> {
+  const res = await signalFetch(path);
   if (!res.ok) {
     const env = await parseBackendError(res);
     throw new BackendError(res.status, env, `HTTP ${res.status} from ${path}`);
@@ -120,4 +132,33 @@ export async function runCompose(
 
 export function importFigmaTokens(req: FigmaImportRequest): Promise<TokenSet> {
   return postJson("/design/figma/import", req);
+}
+
+// ── Wave 5 — memory (runs + failures) ─────────────────────────────────
+
+export interface RunsList {
+  count: number;
+  mission_id: string | null;
+  records: RunRecord[];
+}
+
+export interface FailuresList {
+  count: number;
+  records: FailureRecord[];
+}
+
+export function listRuns(opts?: { limit?: number; missionId?: string }): Promise<RunsList> {
+  const params = new URLSearchParams();
+  if (opts?.limit) params.set("limit", String(opts.limit));
+  if (opts?.missionId) params.set("mission_id", opts.missionId);
+  const qs = params.toString();
+  return getJson(`/runs${qs ? `?${qs}` : ""}`);
+}
+
+export function listFailures(limit = 50): Promise<FailuresList> {
+  return getJson(`/memory/failures?limit=${limit}`);
+}
+
+export function getMemoryStats(): Promise<MemoryStats> {
+  return getJson("/memory/stats");
 }

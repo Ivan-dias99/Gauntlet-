@@ -189,6 +189,56 @@ export interface FigmaImportRequest {
   name?: string;
 }
 
+// ─── Memory + Runs (Wave 5) ─────────────────────────────────────────────
+//
+// Mirrors signal-backend/models.py — RunRecord (full record persisted by
+// the engine after every triad/agent/crew/composer run) and FailureRecord
+// (the "what the brain refused" memory). Field types are intentionally
+// permissive (most numeric / boolean fields can be null) because the
+// backend writes records progressively and old persisted rows may lack
+// later-added fields.
+
+export interface ToolCallTrace {
+  name: string;
+  ok?: boolean;
+}
+
+export interface RunRecord {
+  id: string;
+  timestamp: string;
+  route: string;
+  mission_id?: string | null;
+  question: string;
+  context?: string | null;
+  answer?: string | null;
+  refused?: boolean;
+  confidence?: string | null;
+  judge_reasoning?: string | null;
+  tool_calls?: ToolCallTrace[];
+  iterations?: number | null;
+  processing_time_ms?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  terminated_early?: boolean;
+  termination_reason?: string | null;
+}
+
+export interface FailureRecord {
+  id: string;
+  timestamp: string;
+  question: string;
+  failure_type: string;
+  triad_divergence_summary?: string;
+  judge_reasoning?: string;
+  times_failed: number;
+}
+
+export interface MemoryStats {
+  total_records?: number;
+  total_failures?: number;
+  last_updated?: string;
+}
+
 // Run-state machine for the central Compose surface (Wave 1 only consumes
 // these states; richer statuses land per-mode in Wave 2+).
 export type ComposeState =
@@ -218,7 +268,7 @@ export const MODES: ModeDescriptor[] = [
   { id: "code",     label: "Code",      blurb: "IDE-style diff renderer + files-impacted pills.",         live: true  },
   { id: "design",   label: "Design",    blurb: "Figma tokens import + compose flow with design intent.",  live: true  },
   { id: "analysis", label: "Analysis",  blurb: "Markdown reports + KPI tiles + bar charts from tables.",  live: true  },
-  { id: "memory",   label: "Memory",    blurb: "Save canon, search by tag and provenance (Wave 2+).",     live: false },
+  { id: "memory",   label: "Memory",    blurb: "Combined runs+failures browser with filters + compose flow.", live: true  },
   { id: "apply",    label: "Apply",     blurb: "Files-impacted preview + risk gate + ledger linkage.",    live: true  },
   { id: "route",    label: "Route",     blurb: "Tools registry × models gateway — read-only.",            live: true  },
 ];
