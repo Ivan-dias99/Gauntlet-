@@ -164,7 +164,7 @@ export const MODES: ModeDescriptor[] = [
   { id: "idle",     label: "Idle",      blurb: "Composer is dormant until you call it.",                  live: true  },
   { id: "context",  label: "Context",   blurb: "Auto-detects selection, screen, files.",                  live: true  },
   { id: "compose",  label: "Compose",   blurb: "Central canvas — input, plan, preview, apply.",           live: true  },
-  { id: "code",     label: "Code",      blurb: "IDE-style patch + diff (Wave 2+).",                       live: false },
+  { id: "code",     label: "Code",      blurb: "IDE-style diff renderer + files-impacted pills.",         live: true  },
   { id: "design",   label: "Design",    blurb: "Canvas with components, tokens, frames (Wave 2+).",       live: false },
   { id: "analysis", label: "Analysis",  blurb: "Report mode with charts and tables (Wave 2+).",           live: false },
   { id: "memory",   label: "Memory",    blurb: "Save canon, search by tag and provenance (Wave 2+).",     live: false },

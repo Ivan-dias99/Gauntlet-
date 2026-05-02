@@ -13,6 +13,7 @@ import type { ComposerMode, ModeDescriptor } from "./types";
 import ModePanel from "./panels/ModePanel";
 import ComposeCanvas from "./panels/ComposeCanvas";
 import RouteCanvas from "./panels/RouteCanvas";
+import CodeCanvas from "./panels/CodeCanvas";
 import ModePlaceholder from "./panels/ModePlaceholder";
 import PipelineStrip from "./PipelineStrip";
 
@@ -124,6 +125,8 @@ export default function ComposerLayout() {
             <ComposeCanvas />
           ) : active === "route" ? (
             <RouteCanvas />
+          ) : active === "code" ? (
+            <CodeCanvas />
           ) : (
             <ModePlaceholder mode={active} />
           )}
