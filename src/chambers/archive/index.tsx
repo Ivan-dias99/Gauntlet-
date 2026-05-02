@@ -12,6 +12,7 @@ import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
 import HandoffInbox from "../../shell/HandoffInbox";
+import ChamberIdleShell from "../../shell/ChamberIdleShell";
 import ArchiveLayout from "./ArchiveLayout";
 import ArchiveWorkbench from "./ArchiveWorkbench";
 import FailureMemoryPanel from "./FailureMemoryPanel";
@@ -161,7 +162,7 @@ export default function Archive() {
             textTransform: "uppercase",
           }}
         >
-          missão · {activeMission.title}
+          mission · {activeMission.title}
         </span>
       ) : null}
     />
@@ -242,6 +243,18 @@ export default function Archive() {
       />
     );
   })();
+
+  // Wave P-43.4 — Archive is "idle" when there is no run history yet
+  // and the backend isn't returning anything. Show the unified idle
+  // shell instead of a half-empty ledger.
+  const hasRuns = (runs?.length ?? 0) > 0;
+  if (!hasRuns && !err && !offline) {
+    return (
+      <div className="chamber-shell" data-chamber="archive">
+        <ChamberIdleShell chamber="archive" />
+      </div>
+    );
+  }
 
   return (
     <div className="chamber-shell" data-chamber="archive">

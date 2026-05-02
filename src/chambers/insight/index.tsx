@@ -6,6 +6,7 @@ import { Note } from "../../spine/types";
 import ChamberHead from "../../shell/ChamberHead";
 import HandoffInbox from "../../shell/HandoffInbox";
 import ErrorPanel from "../../shell/ErrorPanel";
+import ChamberIdleShell from "../../shell/ChamberIdleShell";
 import DormantPanel from "../../shell/DormantPanel";
 import { useCopy } from "../../i18n/copy";
 import Thread from "./Thread";
@@ -366,6 +367,17 @@ export default function Insight() {
       />
     </>
   );
+
+  // Wave P-43.4 — Insight is "idle" when no mission has been opened.
+  // First-send creates a mission, so before that the chamber has
+  // nothing to render. Show the unified idle shell.
+  if (!activeMission && !pending && !error) {
+    return (
+      <div className="chamber-shell" data-chamber="insight">
+        <ChamberIdleShell chamber="insight" />
+      </div>
+    );
+  }
 
   return (
     <div className="chamber-shell" data-chamber="insight">

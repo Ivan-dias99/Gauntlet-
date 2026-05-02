@@ -19,15 +19,20 @@ import {
   type RunMode, type LiveTool, type DoneSummary, type CrewState,
   type Task,
 } from "./helpers";
-import ContextStrip from "./ContextStrip";
 import WorkbenchStrip from "./WorkbenchStrip";
 import OutputCanvas from "./OutputCanvas";
 import NextStepBar from "./NextStepBar";
-import ExecutionComposer, { TERMINAL_TOOL_NAMES } from "./ExecutionComposer";
+import { TERMINAL_TOOL_NAMES } from "./ExecutionComposer";
+import TerminalComposer from "./TerminalComposer";
+import PullRequestsPanel from "./PullRequestsPanel";
 import { TaskList } from "./TaskBench";
 import HandoffInbox from "../../shell/HandoffInbox";
 import EvidencePanel from "./EvidencePanel";
 import ToolInspectorPanel from "./ToolInspectorPanel";
+import ChamberWorkspace, {
+  RailIdentity, RailNavItem, RailSection,
+} from "../../shell/ChamberWorkspace";
+import ChamberIdleShell from "../../shell/ChamberIdleShell";
 
 // Terminal — execution environment. State, effects, submit, accept,
 // task state transitions and SSE event reduction stay here; every
@@ -54,7 +59,8 @@ const INITIAL_GATES: Record<GateName, GateState> = {
 export default function Terminal() {
   const {
     activeMission, addTask, setTaskState, addNoteToMission,
-    acceptArtifact, principles, logDoctrineApplied,
+    acceptArtifact, principles, logDoctrineApplied, clearActiveMission,
+    switchMission, state,
   } = useSpine();
   const { streamDev, streamCrew, pending, unreachable } = useSignal();
   const backend = useBackendStatus();
@@ -574,142 +580,190 @@ export default function Terminal() {
 
   // ── Render ─────────────────────────────────────────────────────────
 
+  // Wave P-43 — "+ New mission" CTA in the rail. Mirrors CanonRibbon
+  // startNewThread: clear the active mission pointer and route to
+  // Insight, where first-send creates a fresh mission implicitly.
+  const handleNewMission = () => {
+    clearActiveMission();
+    window.dispatchEvent(new CustomEvent("signal:chamber", { detail: "insight" }));
+  };
+
+  const recentMissions = state.missions.slice(0, 3);
+
+  // Wave P-43 — Terminal is "idle" when there is no mission, no
+  // streaming task, no completed run, and no error to report. In that
+  // state the new editorial hero owns the canvas (matches the Lovable
+  // target) and the OutputCanvas legacy ReadyState is bypassed. Every
+  // other state (pending / done / err / unreachable / mission with
+  // tasks) keeps the original execution stack intact.
+  const isIdle =
+    !activeMission && !pending && !done && !err && !unreachable && tasks.length === 0;
+
+  // Wave P-43.4 — Unified empty layout. Every chamber wears the same
+  // shell when there's nothing to render. Idle short-circuits the
+  // entire chamber tree; the active/legacy layout lives below.
+  if (isIdle) {
+    return (
+      <div className="chamber-shell" data-chamber="terminal">
+        <ChamberIdleShell chamber="terminal" />
+      </div>
+    );
+  }
+
   return (
     <div className="chamber-shell" data-chamber="terminal">
-      <ContextStrip
-        copy={copy}
-        backendMode={backend.mode}
-        principlesCount={principles.length}
-        pending={pending}
-        elapsed={elapsed}
-        exitCode={exitCode}
-        taskCount={tasks.length}
-        doneCount={doneTasks.length}
-        activeMissionTitle={activeMission?.title ?? null}
-        currentObjective={currentObjective}
-        allDone={allDone}
-        allDoneLabel={copy.actionAllDone}
+      <ChamberWorkspace
+        chamber="terminal"
+        breadcrumb={
+          <>
+            <span data-kicker>— Terminal</span>
+            code · agent loop · tool allowlist
+          </>
+        }
+        rail={{
+          identity: (
+            <RailIdentity
+              glyph={">_"}
+              title="Terminal"
+              tagline="Agent code command"
+            />
+          ),
+          cta: (
+            <button
+              type="button"
+              className="cw-cta-primary"
+              onClick={handleNewMission}
+            >
+              + New mission
+            </button>
+          ),
+          nav: (
+            <>
+              <RailNavItem active glyph="⌘" label="Workbench" />
+              <RailNavItem glyph="◐" label="Routines" />
+              <RailNavItem glyph="◇" label="Tools" />
+              <RailNavItem glyph="◯" label="Customize" />
+            </>
+          ),
+          secondary:
+            recentMissions.length > 0 ? (
+              <RailSection label="Recents">
+                {recentMissions.map((m) => (
+                  <RailNavItem key={m.id} glyph="↳" label={m.title} />
+                ))}
+              </RailSection>
+            ) : undefined,
+        }}
+        workbench={
+          <>
+            {/* Wave P-43 — ContextStrip retired in favour of the rail
+                identity card + breadcrumb. Runtime numbers live in
+                WorkbenchStrip's status and ExecutionComposer meta. */}
+            {(!backend.reachable || unreachable) && (
+              <BackendUnreachableBanner
+                reason={backend.unreachableReason}
+                detail={backend.unreachableDetail}
+              />
+            )}
+            <WorkbenchStrip
+              copy={copy}
+              missionTitle={activeMission?.title ?? null}
+              activeTask={activeTask}
+              tasks={activeMission?.tasks ?? []}
+            />
+            <HandoffInbox chamber="terminal" />
+
+            {activeMission && activeMission.tasks.length > 0 && (
+              <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
+                <PullRequestsPanel
+                  mission={activeMission}
+                  onPick={(id) => selectTaskFromQueue(id)}
+                />
+              </div>
+            )}
+
+            <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
+              <TaskList
+                tasks={tasks}
+                activeTaskId={activeTaskId}
+                duplicateTitles={duplicateTitles}
+                copy={copy}
+                onSelect={selectTaskFromQueue}
+                onPause={handlePause}
+                onResume={handleResume}
+              />
+            </div>
+
+            {unreachable && err ? (
+              <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
+                <DormantPanel detail={copy.dormantCreation} />
+              </div>
+            ) : (
+              <>
+                <OutputCanvas
+                  copy={copy}
+                  mission={activeMission}
+                  activeTask={activeTask}
+                  lastTask={lastTask}
+                  pending={pending}
+                  iteration={iteration}
+                  elapsed={elapsed}
+                  liveText={liveText}
+                  liveTools={liveTools}
+                  done={done}
+                  accepted={accepted}
+                  err={err}
+                  crew={crew}
+                  mode={mode}
+                  artifacts={allArtifacts}
+                  onAccept={accept}
+                  onReplayArtifact={replayArtifact}
+                  canAccept={Boolean(activeMission)}
+                />
+                <EvidencePanel records={liveEvidence} />
+                <ToolInspectorPanel tools={liveTools} />
+              </>
+            )}
+
+            {showNextStep && (
+              <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4) var(--space-5)", width: "100%" }}>
+                <NextStepBar
+                  hasNextOpen={nextOpenTask !== null}
+                  canRefine={Boolean(activeTask?.title || lastTask) && activeTask?.state !== "done"}
+                  isBlocked={activeTask?.state === "blocked"}
+                  canBlock={
+                    activeTask !== null &&
+                    (activeTask.state === "open" || activeTask.state === "running")
+                  }
+                  copy={copy}
+                  onNext={handleNextTask}
+                  onRefine={handleRefine}
+                  onBlock={handleBlock}
+                  onReopen={handleReopen}
+                />
+              </div>
+            )}
+          </>
+        }
       />
 
-      <div className="chamber-body" style={{ paddingTop: 0 }}>
-        {(!backend.reachable || unreachable) && (
-          // Show the banner on either initial-mount unreachable OR a
-          // runtime request that just hit unreachable — the refresh()
-          // effect above will repopulate reason/detail momentarily.
-          <BackendUnreachableBanner
-            reason={backend.unreachableReason}
-            detail={backend.unreachableDetail}
-          />
-        )}
-        <WorkbenchStrip
-          copy={copy}
-          missionTitle={activeMission?.title ?? null}
-          activeTask={activeTask}
-          tasks={activeMission?.tasks ?? []}
-        />
-        <HandoffInbox chamber="terminal" />
-        <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)" }}>
-          <TaskList
-            tasks={tasks}
-            activeTaskId={activeTaskId}
-            duplicateTitles={duplicateTitles}
-            copy={copy}
-            onSelect={selectTaskFromQueue}
-            onPause={handlePause}
-            onResume={handleResume}
-          />
-        </div>
-
-        {unreachable && err ? (
-          <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)" }}>
-            <DormantPanel detail={copy.dormantCreation} />
-          </div>
-        ) : (
-          <>
-          <OutputCanvas
-            copy={copy}
-            mission={activeMission}
-            activeTask={activeTask}
-            lastTask={lastTask}
-            pending={pending}
-            iteration={iteration}
-            elapsed={elapsed}
-            liveText={liveText}
-            liveTools={liveTools}
-            done={done}
-            accepted={accepted}
-            err={err}
-            crew={crew}
-            mode={mode}
-            artifacts={allArtifacts}
-            onAccept={accept}
-            onReplayArtifact={replayArtifact}
-            canAccept={Boolean(activeMission)}
-          />
-          <EvidencePanel records={liveEvidence} />
-          {/* Wave P-42 — explicit per-tool drill-down. Sits next to the
-              EvidencePanel so the operator can audit any tool call's
-              full input + preview without resorting to devtools. */}
-          <ToolInspectorPanel tools={liveTools} />
-          </>
-        )}
-
-        {showNextStep && (
-          <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4) var(--space-5)" }}>
-            <NextStepBar
-              hasNextOpen={nextOpenTask !== null}
-              canRefine={Boolean(activeTask?.title || lastTask) && activeTask?.state !== "done"}
-              isBlocked={activeTask?.state === "blocked"}
-              canBlock={
-                activeTask !== null &&
-                (activeTask.state === "open" || activeTask.state === "running")
-              }
-              copy={copy}
-              onNext={handleNextTask}
-              onRefine={handleRefine}
-              onBlock={handleBlock}
-              onReopen={handleReopen}
-            />
-          </div>
-        )}
-      </div>
-
-      <ExecutionComposer
-        copy={copy}
+      <TerminalComposer
         value={input}
         onChange={setInput}
         onSubmit={submit}
         pending={pending}
-        missionTitle={activeMission?.title ?? null}
-        mode={mode}
-        onModeChange={setMode}
-        recentTasks={tasks.slice(0, 8)}
-        onPickTask={(title) => setInput(title)}
-        principlesCount={principles.length}
-        priorTurns={activeMission?.notes?.length ?? 0}
-        mockMode={backend.mode === "mock"}
-        backendReadiness={backend.readiness}
-        backendReasons={backend.readinessReasons}
-        backendUnreachableReason={backend.unreachableReason}
-        backendUnreachableDetail={backend.unreachableDetail}
-        persistenceEphemeral={backend.persistenceEphemeral}
-        onAttachContext={(kind) => {
-          if (!activeMission) return;
-          if (kind === "note") {
-            addNoteToMission(activeMission.id, "context attached from terminal composer", "user");
-            return;
-          }
-          if (kind === "prior-run") {
-            const last = activeMission.artifacts[0];
-            if (last) setInput(`continue from prior run: ${last.taskTitle}`);
-            return;
-          }
-          const last = activeMission.artifacts[0];
-          if (last) setInput(`reuse artifact: ${last.taskTitle}`);
-        }}
-        hasArtifacts={allArtifacts.length > 0}
-        selectedTools={selectedTools}
-        onToggleTool={onToggleTool}
+        repoName={git.repo}
+        branch={git.branch}
+        repoReachable={git.reachable}
+        modelLabel="OPUS 4.7"
+        contextWindow="1M"
+        backendMode={
+          backend.mode === "mock"
+            ? "mock"
+            : !backend.reachable || unreachable
+            ? "down"
+            : "live"
+        }
       />
     </div>
   );

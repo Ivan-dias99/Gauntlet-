@@ -246,10 +246,10 @@ export default function ExecutionComposer({
             const tone = isUnreachable ? "danger" : mockMode ? "warn" : "ok";
             const label = isUnreachable ? "down" : mockMode ? "mock" : "live";
             const title = isUnreachable
-              ? "backend inalcançável — execução indisponível"
+              ? "backend unreachable — execution unavailable"
               : mockMode
-              ? "backend em modo simulado — respostas canned"
-              : "backend ligado — execução real";
+              ? "backend in simulated mode — canned responses"
+              : "backend live — real execution";
             return (
               <span className="term-rail-chip" data-tone={tone} title={title}>
                 <span className="term-rail-dot" aria-hidden />
@@ -260,7 +260,7 @@ export default function ExecutionComposer({
           {principlesCount > 0 && (
             <span
               className="term-rail-chip"
-              title="princípios em vigor que viajam com cada tarefa"
+              title="principles in effect — they travel with every task"
             >
               <span className="term-rail-glyph" aria-hidden>§</span>
               <span className="term-rail-value">{principlesCount}</span>
@@ -354,19 +354,19 @@ function ContextFlyout({
   return (
     <div className="term-flyout" role="menu">
       <div className="term-flyout-head">
-        <span>contexto da próxima invocação</span>
+        <span>context for next invocation</span>
       </div>
       <button className="term-flyout-item" disabled>
         <span className="term-flyout-item-glyph">§</span>
         <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">doutrina viaja com a tarefa</span>
+          <span className="term-flyout-item-title">doctrine travels with the task</span>
         </span>
         <span className="term-flyout-item-kicker">{principlesCount}</span>
       </button>
       <button className="term-flyout-item" disabled>
         <span className="term-flyout-item-glyph">⋯</span>
         <span className="term-flyout-item-body">
-          <span className="term-flyout-item-title">turnos no contexto</span>
+          <span className="term-flyout-item-title">turns in context</span>
         </span>
         <span className="term-flyout-item-kicker">{Math.min(priorTurns, 8)}</span>
       </button>
@@ -383,7 +383,7 @@ function ContextFlyout({
           <span className="term-flyout-item-body">
             <span className="term-flyout-item-title">
               {backendUnreachableReason === "backend_url_not_configured"
-                ? "Vercel: defina SIGNAL_BACKEND_URL"
+                ? "Vercel: set SIGNAL_BACKEND_URL"
                 : `unreachable: ${backendUnreachableReason}`}
             </span>
           </span>
@@ -409,7 +409,7 @@ function ContextFlyout({
         <button className="term-flyout-item" disabled>
           <span className="term-flyout-item-glyph">⚠</span>
           <span className="term-flyout-item-body">
-            <span className="term-flyout-item-title">persistência ephemeral</span>
+            <span className="term-flyout-item-title">persistence ephemeral</span>
           </span>
           <span className="term-flyout-item-kicker">no volume</span>
         </button>
@@ -456,7 +456,7 @@ function RecentFlyout({
   return (
     <div className="term-flyout" role="menu">
       <div className="term-flyout-head">
-        <span>tarefas recentes</span>
+        <span>recent tasks</span>
         <span style={{ marginLeft: "auto", color: "var(--text-ghost)" }}>
           {tasks.length}
         </span>
@@ -465,7 +465,7 @@ function RecentFlyout({
         <button className="term-flyout-item" disabled>
           <span className="term-flyout-item-glyph">—</span>
           <span className="term-flyout-item-body">
-            <span className="term-flyout-item-title">sem tarefas registadas</span>
+            <span className="term-flyout-item-title">no tasks recorded</span>
           </span>
         </button>
       ) : (

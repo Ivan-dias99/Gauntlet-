@@ -49,7 +49,7 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
   } = useSpine();
   const backend = useBackendStatus();
   const copy = useCopy();
-  const { values: tweaks, cycleDensity } = useTweaks();
+  const { values: tweaks, cycleDensity, set: setTweak } = useTweaks();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -86,7 +86,7 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
           type="button"
           className="canon-ribbon-hamburger"
           onClick={onOpenDrawer}
-          aria-label="Abrir menu de câmaras"
+          aria-label="Open chambers menu"
           aria-haspopup="dialog"
         >
           <span aria-hidden className="canon-ribbon-hamburger-bar" />
@@ -105,9 +105,6 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
           <span className="canon-ribbon-traffic-dot" data-tone="ok" />
         </span>
         Signal
-        <span aria-hidden className="canon-ribbon-doctrine">
-          {copy.brandDoctrine}
-        </span>
       </span>
 
       <div className="canon-ribbon-tabs">
@@ -124,6 +121,22 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
       </div>
 
       <div className="canon-ribbon-right">
+        {/* Wave P-43.6 — Chamber position counter (e.g. CHAMBER · 03 / 05).
+            Reads the active chamber's index in the canonical CHAMBERS
+            array. The label sits before the mock pill so the operator's
+            eye lands on identity → state → controls. */}
+        <span className="canon-ribbon-counter" aria-hidden>
+          <span className="canon-ribbon-counter-label">Chamber</span>
+          <span className="canon-ribbon-counter-sep">·</span>
+          <span className="canon-ribbon-counter-value">
+            {String(CHAMBERS.indexOf(active) + 1).padStart(2, "0")}
+          </span>
+          <span className="canon-ribbon-counter-sep">/</span>
+          <span className="canon-ribbon-counter-total">
+            {String(CHAMBERS.length).padStart(2, "0")}
+          </span>
+        </span>
+        <span aria-hidden className="vbar" />
         {backend.mode === "mock" && (
           <span
             data-shell-mode="mock"
@@ -142,6 +155,37 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
             mock
           </span>
         )}
+        {/* Wave P-43.4 — Theme toggle (sun/moon). Cycles dark↔light;
+            sepia is reachable via Core/Customize for power users. The
+            paired-button design mirrors the Lovable target. */}
+        <div className="canon-ribbon-theme" role="group" aria-label="Theme">
+          <button
+            type="button"
+            className="canon-ribbon-theme-btn"
+            data-active={tweaks.theme === "light" ? "true" : undefined}
+            onClick={() => setTweak("theme", "light")}
+            aria-label="Light theme"
+            title="Light theme"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2 V4 M12 20 V22 M2 12 H4 M20 12 H22 M4.93 4.93 L6.34 6.34 M17.66 17.66 L19.07 19.07 M4.93 19.07 L6.34 17.66 M17.66 6.34 L19.07 4.93" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="canon-ribbon-theme-btn"
+            data-active={tweaks.theme === "dark" ? "true" : undefined}
+            onClick={() => setTweak("theme", "dark")}
+            aria-label="Dark theme"
+            title="Dark theme"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+            </svg>
+          </button>
+        </div>
+        <span aria-hidden className="vbar" />
         <span
           className="spine-sync"
           data-sync-state={syncState}
@@ -176,8 +220,8 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
           onClick={cycleDensity}
           className="btn-icon canon-ribbon-density"
           data-density-state={tweaks.density}
-          aria-label={`Densidade: ${DENSITY_LABEL[tweaks.density]} (clique para alternar)`}
-          title={`Densidade: ${DENSITY_LABEL[tweaks.density]}`}
+          aria-label={`Density: ${DENSITY_LABEL[tweaks.density]} (click to cycle)`}
+          title={`Density: ${DENSITY_LABEL[tweaks.density]}`}
         >
           <span aria-hidden className="canon-ribbon-density-glyph">
             <span />
@@ -275,11 +319,11 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
                   // needed). Operators get a glance at which threads are
                   // paused, brainstorm-only, archived or completed.
                   const statusLabel: Record<string, string> = {
-                    paused: "pausada",
+                    paused: "paused",
                     brainstorm: "brainstorm",
-                    archived: "arquivada",
-                    completed: "completa",
-                    closed: "fechada",
+                    archived: "archived",
+                    completed: "completed",
+                    closed: "closed",
                   };
                   const pillLabel = statusLabel[m.status];
                   // Wave P-2 UI consumer — surface the lifecycle setter as
@@ -292,17 +336,17 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
                   const actions: Action[] =
                     m.status === "active"
                       ? [
-                          { label: "pausar",   to: "paused" },
-                          { label: "arquivar", to: "archived" },
-                          { label: "completar", to: "completed" },
+                          { label: "pause",    to: "paused" },
+                          { label: "archive",  to: "archived" },
+                          { label: "complete", to: "completed" },
                         ]
                       : m.status === "paused"
                       ? [
-                          { label: "retomar",  to: "active" },
-                          { label: "arquivar", to: "archived" },
+                          { label: "resume",  to: "active" },
+                          { label: "archive", to: "archived" },
                         ]
                       : m.status === "brainstorm"
-                      ? [{ label: "promover a activa", to: "active" }]
+                      ? [{ label: "promote to active", to: "active" }]
                       : [];
                   return (
                     <button

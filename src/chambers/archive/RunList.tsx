@@ -122,7 +122,7 @@ export default function RunList({ runs, selectedId, onSelect, activeTokens }: Pr
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="procurar pergunta, resposta, rota…"
+          placeholder="search question, answer, route…"
           style={{
             width: "100%",
             fontFamily: "var(--sans)",

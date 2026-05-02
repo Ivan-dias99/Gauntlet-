@@ -541,17 +541,17 @@ textarea {
    One border width, tonal borders, near-invisible shadows; only .surface-flagship earns elevation. */
 .surface {
   background: var(--bg-surface);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-control);
 }
 .surface-quiet {
   background: color-mix(in oklab, var(--text-primary) 2%, var(--bg));
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-control);
 }
 .surface-sunken {
   background: var(--bg-sunken);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-control);
 }
 .surface-flagship {
@@ -897,7 +897,7 @@ textarea {
   letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--text-ghost);
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
 }
 .dropdown-item {
   display: block;
@@ -905,7 +905,7 @@ textarea {
   text-align: left;
   background: none;
   border: 0;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
   padding: var(--space-1) var(--space-3);
   cursor: pointer;
   transition: background 0.18s;
@@ -1004,7 +1004,7 @@ textarea {
   color: var(--text-ghost);
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   background: transparent;
   transition: color 0.2s var(--ease-swift), border-color 0.2s var(--ease-swift);
 }
@@ -1039,7 +1039,7 @@ textarea {
 }
 .chamber-head {
   padding: 20px 40px 16px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
 }
 .chamber-body {
   flex: 1;
@@ -1121,7 +1121,7 @@ textarea {
   color: var(--text-ghost);
   margin-left: 6px;
   padding-left: 10px;
-  border-left: 1px solid var(--border-soft);
+  border-left: 1px solid var(--border-color-soft);
   align-self: center;
   white-space: nowrap;
 }
@@ -8455,3 +8455,1780 @@ a.term-ws-chip[data-tone="warn"]:hover {
     transition: none;
   }
 }
+
+/* ============================================================
+   § 8 — Wave P-43 — ChamberWorkspace primitive.
+   Two/three-pane grid replacing the legacy ChamberHead stack.
+   Matches the Lovable mockup target: rail (240px) · workbench
+   (1fr) · optional sidecar (0.6fr). Sidecar collapses below
+   1280px; rail collapses to icons below 1024px and hides
+   below 720px (mobile drawer takes over).
+   ============================================================ */
+
+.chamber-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.chamber-workspace-breadcrumb {
+  padding: 12px 24px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Only the leading kicker (e.g. "— TERMINAL") goes uppercase. The
+   trailing tags (`code · agent loop · tool allowlist`) stay
+   lowercase so the breadcrumb reads as a proper subhead, not a
+   shouted second header. Apply via a [data-kicker] inline span. */
+.chamber-workspace-breadcrumb [data-kicker] {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  margin-right: 14px;
+  opacity: 0.85;
+}
+
+.chamber-workspace-grid {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 0;
+}
+
+.chamber-workspace[data-variant="triple"] .chamber-workspace-grid {
+  grid-template-columns: 240px minmax(0, 1fr) minmax(360px, 0.6fr);
+}
+
+.chamber-workspace[data-variant="sidecar"] .chamber-workspace-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.6fr);
+}
+
+.chamber-workspace[data-variant="single"] .chamber-workspace-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* --- Rail (left navigation column) --- */
+
+.cw-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 16px;
+  border-right: 1px solid var(--border-color-soft);
+  background: var(--bg);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.cw-rail-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cw-rail-identity-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.cw-rail-identity-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--ink, #111);
+  color: var(--bg, #fff);
+  font-family: var(--mono);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.cw-rail-identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cw-rail-identity-title {
+  font-family: var(--serif, var(--sans));
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.cw-rail-identity-tagline {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cw-rail-cta {
+  display: flex;
+}
+
+.cw-rail-cta > * {
+  flex: 1;
+}
+
+.cw-rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cw-rail-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+  min-height: 36px;
+}
+
+.cw-rail-nav-item:hover {
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+
+.cw-rail-nav-item[data-active="true"] {
+  background: var(--ink, #111);
+  color: var(--bg, #fff);
+  font-weight: 500;
+}
+
+.cw-rail-nav-item[data-active="true"]:hover {
+  background: var(--ink, #111);
+}
+
+.cw-rail-nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cw-rail-nav-glyph {
+  display: inline-flex;
+  width: 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.cw-rail-nav-label {
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+
+.cw-rail-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color-soft);
+}
+
+.cw-rail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cw-rail-section-label {
+  padding: 0 12px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cw-rail-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* --- Workbench (main column) --- */
+
+.cw-workbench {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 32px 64px;
+}
+
+/* --- Sidecar (right column) --- */
+
+.cw-sidecar {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-color-soft);
+  background: var(--bg);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.cw-sidecar-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-color-soft);
+}
+
+.cw-sidecar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.cw-sidecar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cw-sidecar-subtabs {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-color-soft);
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+.cw-sidecar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  min-height: 0;
+}
+
+/* --- Workbench hero (composer-driven) --- */
+
+.cw-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 24px 0 16px;
+}
+
+.cw-hero-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--serif, var(--sans));
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cw-hero-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.cw-hero-body {
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-secondary, var(--text-muted));
+  max-width: 60ch;
+  margin: 0;
+}
+
+/* --- Status bar above the hero (chamber lenses chip row) --- */
+
+.cw-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-full);
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+}
+
+.cw-status-bar-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  flex-shrink: 0;
+}
+
+.cw-status-bar-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+}
+
+.cw-status-bar-meta {
+  color: var(--text-muted);
+}
+
+.cw-status-bar-state {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.cw-status-bar-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.cw-status-chip {
+  padding: 4px 10px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* --- Session list (RECENTS / Sessions) --- */
+
+.cw-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 32px;
+}
+
+.cw-session-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color-soft);
+}
+
+.cw-session-list-title {
+  font-family: var(--serif, var(--sans));
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.cw-session-list-action {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.cw-session-list-action:hover {
+  color: var(--text-primary);
+}
+
+.cw-session-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color-soft);
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.cw-session-row:hover {
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+
+.cw-session-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.cw-session-row-state {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--accent, var(--cc-warn));
+  text-transform: lowercase;
+  flex-shrink: 0;
+}
+
+.cw-session-row-title {
+  flex: 1;
+  font-weight: 500;
+}
+
+.cw-session-row-meta {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.cw-session-row-caret {
+  font-family: var(--mono);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* --- "+ New mission" CTA used in rail --- */
+
+.cw-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--ink, #111);
+  color: var(--bg, #fff);
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  min-height: 40px;
+  transition: opacity 120ms ease;
+}
+
+.cw-cta-primary:hover {
+  opacity: 0.88;
+}
+
+.cw-cta-primary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Responsive collapse --- */
+
+@media (max-width: 1280px) {
+  .chamber-workspace[data-variant="triple"] .chamber-workspace-grid {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .chamber-workspace[data-variant="triple"] .cw-sidecar,
+  .chamber-workspace[data-variant="sidecar"] .cw-sidecar {
+    display: none;
+  }
+  .chamber-workspace[data-variant="sidecar"] .chamber-workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .chamber-workspace[data-variant="rail"] .chamber-workspace-grid,
+  .chamber-workspace[data-variant="triple"] .chamber-workspace-grid {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  .cw-rail {
+    padding: 16px 8px;
+  }
+  .cw-rail-identity-text,
+  .cw-rail-nav-label,
+  .cw-rail-section-label,
+  .cw-rail-section,
+  .cw-rail-secondary,
+  .cw-rail-cta {
+    display: none;
+  }
+  .cw-rail-nav-item {
+    justify-content: center;
+    padding: 10px 0;
+  }
+  .cw-workbench {
+    padding: 20px 20px 64px;
+  }
+}
+
+@media (max-width: 720px) {
+  .chamber-workspace[data-variant="rail"] .chamber-workspace-grid,
+  .chamber-workspace[data-variant="triple"] .chamber-workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cw-rail {
+    display: none;
+  }
+  .cw-workbench {
+    padding: 16px 16px 80px;
+  }
+}
+
+/* ============================================================
+   § 9 — Wave P-43 — CanonRibbon refresh.
+   Pin the ribbon at 56px, normalise sync grammar, and silence
+   the doctrine tagline overflow that produced the
+   "refuse be_INSIGHT" ghost text on tight viewports.
+   ============================================================ */
+
+.canon-ribbon {
+  height: 56px;
+  min-height: 56px;
+  flex-shrink: 0;
+}
+
+/* Doctrine tagline next to the brand wordmark — was leaking under the
+   tab strip on narrow viewports. Truncate cleanly. */
+.canon-ribbon-doctrine {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .canon-ribbon-doctrine {
+    display: none;
+  }
+}
+
+/* Sync grammar — single shape: dot + lowercase label. */
+.spine-sync {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: var(--text-muted);
+}
+
+/* Restore visible focus on tabs (was killed by outline:0 in legacy
+   selectors). Non-destructive — adds an outline-offset and leaves the
+   underline indicator in place. */
+.canon-ribbon-tabs .tab:focus-visible,
+.cw-rail-nav-item:focus-visible,
+.cw-session-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   § 10 — Wave P-43.3 — Composer dock.
+   Wraps ExecutionComposer with a shortcut chip strip on top
+   and a model-attribution meta line at the bottom, so the
+   Terminal composer reads as part of the new identity even
+   though the inner component still carries legacy chrome.
+   ============================================================ */
+
+.cw-composer-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px clamp(20px, 5vw, 64px) 12px;
+  border-top: 1px solid var(--border-color-soft);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.cw-composer-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.cw-composer-shortcut {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: var(--radius-full);
+  background: transparent;
+  white-space: nowrap;
+}
+
+.cw-composer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 4px 6px 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+.cw-composer-model-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.cw-composer-model-dot[data-state="live"] {
+  background: var(--cc-ok, #7ab48a);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--cc-ok, #7ab48a) 22%, transparent);
+}
+
+/* Tighten ExecutionComposer's outer margin since the dock provides
+   horizontal padding now. Inner pieces stay untouched. */
+.cw-composer-dock [data-architect-input="comando"] {
+  margin: 0 !important;
+}
+
+@media (max-width: 720px) {
+  .cw-composer-dock {
+    padding: 10px 16px 12px;
+  }
+  .cw-composer-shortcuts {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}
+
+/* ============================================================
+   § 11 — Wave P-43.4 — ChamberIdleShell.
+   Unified empty layout shared by every chamber. Three-column
+   grid that fills the chamber-shell exactly, with hairline
+   dividers between columns and warm cream background driven
+   by --bg. Identity copy varies via chamber-config; the visual
+   contract here never branches on chamber.
+   ============================================================ */
+
+.cis {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 360px;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+/* --- Rail --- */
+
+.cis-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 16px 16px;
+  border-right: 1px solid var(--border-color-soft);
+  min-height: 0;
+  overflow-y: auto;
+  position: relative;
+}
+
+.cis-rail-identity {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px 18px;
+}
+
+.cis-rail-identity-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.cis-rail-identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cis-rail-identity-title {
+  font-family: var(--serif, var(--sans));
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  line-height: 1.05;
+}
+
+.cis-rail-identity-tagline {
+  align-self: flex-start;
+  padding: 3px 8px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cis-rail-search {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.cis-rail-search:hover {
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: var(--text-primary);
+}
+
+.cis-rail-search:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cis-rail-search svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Legacy class kept so any consumer outside ChamberIdleShell still
+   resolves; the new tree uses .cis-rail-identity-title instead. */
+.cis-rail-identity-label {
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.cis-rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cis-rail-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-align: left;
+  cursor: pointer;
+  min-height: 40px;
+  transition: background 120ms ease;
+}
+
+.cis-rail-nav-item:hover {
+  background: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+
+.cis-rail-nav-item[data-active="true"] {
+  background: color-mix(in oklab, var(--text-primary) 9%, transparent);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.cis-rail-nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cis-rail-nav-glyph {
+  display: inline-flex;
+  width: 18px;
+  font-size: 14px;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.cis-rail-nav-label {
+  font-family: var(--mono);
+}
+
+.cis-rail-footer {
+  padding: 12px 8px 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-color-soft);
+}
+
+/* Recents section — title + body slot. Empty state today; populated
+   by spine.missions in a follow-up wave once the rail can host real
+   recent items. */
+.cis-rail-section {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cis-rail-section-label {
+  padding: 0 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cis-rail-section-empty {
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.cis-rail-recents {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cis-rail-recent {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+  min-height: 36px;
+}
+
+.cis-rail-recent:hover {
+  background: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+
+.cis-rail-recent:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cis-rail-recent-glyph {
+  display: inline-flex;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding-top: 2px;
+}
+
+.cis-rail-recent-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cis-rail-recent-title {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.cis-rail-recent-meta {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* User card — sits below the Recents section, above the rail
+   footer. id-circle + name/plan + settings cog. */
+.cis-rail-user {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 8px;
+  border-top: 1px solid var(--border-color-soft);
+}
+
+.cis-rail-user-id {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cis-rail-user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.cis-rail-user-name {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cis-rail-user-plan {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cis-rail-user-cog {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.cis-rail-user-cog:hover {
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: var(--text-primary);
+}
+
+.cis-rail-user-cog:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cis-rail-user-cog svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* --- Center column --- */
+
+.cis-center {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border-color-soft);
+}
+
+.cis-center-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 32px 22px;
+  border-bottom: 1px solid var(--border-color-soft);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cis-center-head-left {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cis-center-head-right {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.cis-center-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px 32px 80px;
+  text-align: center;
+}
+
+.cis-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 999px;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.cis-hero-kicker-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.cis-hero-kicker-glyph svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cis-hero-kicker-label {
+  letter-spacing: 0.16em;
+}
+
+.cis-hero-title {
+  font-family: var(--serif, var(--sans));
+  font-size: clamp(36px, 4vw, 52px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cis-hero-body {
+  font-family: var(--sans);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 38ch;
+  margin: 0;
+}
+
+.cis-hero-chips {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.cis-hero-chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 8px 14px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 999px;
+  background: transparent;
+  white-space: nowrap;
+}
+
+/* --- Sidecar --- */
+
+.cis-sidecar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.cis-sidecar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--border-color-soft);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cis-sidecar-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px 28px;
+  text-align: center;
+}
+
+.cis-sidecar-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text-primary) 7%, transparent);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.cis-sidecar-glyph svg {
+  opacity: 0.65;
+}
+
+.cis-sidecar-kicker {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cis-sidecar-body-text {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  max-width: 28ch;
+  margin: 0;
+}
+
+/* --- Responsive collapse --- */
+
+@media (max-width: 1100px) {
+  .cis {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .cis-sidecar {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .cis {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  .cis-rail {
+    padding: 16px 6px;
+  }
+  .cis-rail-identity-label,
+  .cis-rail-identity-text,
+  .cis-rail-search,
+  .cis-rail-nav-label,
+  .cis-rail-section-label,
+  .cis-rail-section-empty,
+  .cis-rail-user-meta,
+  .cis-rail-user-cog,
+  .cis-rail-footer {
+    display: none;
+  }
+  .cis-rail-nav-item {
+    justify-content: center;
+    padding: 10px 0;
+  }
+  .cis-rail-identity {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 4px 0 18px;
+  }
+  .cis-rail-user {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 12px 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .cis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cis-rail {
+    display: none;
+  }
+  .cis-center-head {
+    padding: 16px 20px;
+    flex-wrap: wrap;
+  }
+  .cis-center-head-right {
+    display: none;
+  }
+  .cis-center-body {
+    padding: 24px 20px 64px;
+  }
+  .cis-hero-title {
+    font-size: 32px;
+  }
+}
+
+/* ============================================================
+   § 12 — Wave P-43.4 — Theme toggle in CanonRibbon.
+   Sun/moon paired button, reuses TweaksContext.cycleTheme.
+   ============================================================ */
+
+.canon-ribbon-theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 999px;
+  padding: 2px;
+  background: transparent;
+}
+
+.canon-ribbon-theme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.canon-ribbon-theme-btn[data-active="true"] {
+  background: var(--ink, #111);
+  color: var(--bg, #fff);
+}
+
+.canon-ribbon-theme-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.canon-ribbon-theme-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Wave P-43.6 — Chamber position counter. */
+.canon-ribbon-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.canon-ribbon-counter-label {
+  font-weight: 500;
+}
+
+.canon-ribbon-counter-sep {
+  opacity: 0.4;
+}
+
+.canon-ribbon-counter-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.canon-ribbon-counter-total {
+  opacity: 0.7;
+}
+
+@media (max-width: 1100px) {
+  .canon-ribbon-counter-label {
+    display: none;
+  }
+}
+
+/* ============================================================
+   § 13 — Wave P-43.6 — TerminalComposer.
+   Replaces the legacy ExecutionComposer chrome with the target
+   layout: context chips on top, full-width textarea with a big
+   round send button, footer with edit-mode + icons left and
+   model attribution right.
+   ============================================================ */
+
+.tcomp {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px clamp(20px, 4vw, 40px) 16px;
+  border-top: 1px solid var(--border-color-soft);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.tcomp-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tcomp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: default;
+  white-space: nowrap;
+}
+
+button.tcomp-chip {
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+button.tcomp-chip:hover {
+  background: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+
+button.tcomp-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tcomp-chip-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tcomp-chip[data-tone="online"] .tcomp-chip-glyph {
+  color: var(--cc-ok, #7ab48a);
+}
+
+.tcomp-chip[data-tone="down"] .tcomp-chip-glyph {
+  color: var(--cc-err, #d4785a);
+}
+
+.tcomp-chip-label {
+  font-weight: 500;
+}
+
+.tcomp-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 14px;
+  background: var(--bg);
+}
+
+.tcomp-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  resize: none;
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 4px 0;
+  max-height: 200px;
+}
+
+.tcomp-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.tcomp-input:disabled {
+  opacity: 0.6;
+}
+
+.tcomp-send {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--ink, #111);
+  color: var(--bg, #fff);
+  font-size: 16px;
+  cursor: pointer;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.tcomp-send[data-state="idle"] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tcomp-send[data-state="ready"]:hover {
+  transform: translateY(-1px);
+}
+
+.tcomp-send[data-state="pending"] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.tcomp-send:disabled {
+  cursor: not-allowed;
+}
+
+.tcomp-send:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tcomp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+  flex-wrap: wrap;
+}
+
+.tcomp-foot-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tcomp-foot-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.tcomp-foot-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.tcomp-foot-icon:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: var(--text-primary);
+}
+
+.tcomp-foot-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tcomp-foot-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tcomp-foot-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.tcomp-foot-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.tcomp-foot-sep {
+  opacity: 0.5;
+}
+
+.tcomp-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.tcomp-status-dot[data-tone="live"] {
+  background: var(--cc-ok, #7ab48a);
+}
+
+.tcomp-status-dot[data-tone="mock"] {
+  background: var(--cc-warn, #d8b058);
+}
+
+.tcomp-status-dot[data-tone="down"] {
+  background: var(--cc-err, #d4785a);
+}
+
+@media (max-width: 720px) {
+  .tcomp {
+    padding: 12px 16px 14px;
+  }
+  .tcomp-context {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .tcomp-foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+
+/* ============================================================
+   § 14 — Wave P-43.6 — PullRequestsPanel.
+   Mission tasks rendered as PR-like rows: status pill +
+   title + #id + diff stats placeholder + age + caret.
+   Sits at the top of the Terminal active workbench column.
+   ============================================================ */
+
+.prp {
+  display: flex;
+  flex-direction: column;
+  margin: 12px 0 16px;
+}
+
+.prp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color-soft);
+}
+
+.prp-head-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.prp-head-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.prp-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.prp-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 60px 80px 50px 16px;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border-color-soft);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+  font-family: var(--sans);
+}
+
+.prp-row:hover {
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+
+.prp-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.prp-row-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.prp-row-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.prp-row-status[data-tone="info"] .prp-row-status-dot {
+  background: var(--cc-warn, #d8b058);
+}
+
+.prp-row-status[data-tone="ok"] .prp-row-status-dot {
+  background: var(--cc-ok, #7ab48a);
+}
+
+.prp-row-status[data-tone="err"] .prp-row-status-dot {
+  background: var(--cc-err, #d4785a);
+}
+
+.prp-row-title {
+  font-family: var(--sans);
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prp-row-id {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.prp-row-diff {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.prp-row-age {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.prp-row-caret {
+  font-family: var(--mono);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .prp-row {
+    grid-template-columns: minmax(0, 1fr) 50px;
+  }
+  .prp-row-status,
+  .prp-row-id,
+  .prp-row-diff,
+  .prp-row-caret {
+    display: none;
+  }
+}
+

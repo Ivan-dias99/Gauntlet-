@@ -27,7 +27,7 @@ const DEFAULTS: Tweaks = {
   sans: "inter",
   density: "comfortable",
   accent: "bone",
-  lang: "pt",
+  lang: "en",
 };
 
 interface AccentTriple {

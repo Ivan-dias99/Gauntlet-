@@ -379,21 +379,21 @@ export default function Shell({ activeTab, onSwitchChamber }: Props) {
             data-open={drawerOpen ? "true" : undefined}
             role="dialog"
             aria-modal="true"
-            aria-label="Câmaras"
+            aria-label="Chambers"
             aria-hidden={!drawerOpen}
           >
             <div className="mobile-drawer-head">
-              <span className="mobile-drawer-title">Câmaras</span>
+              <span className="mobile-drawer-title">Chambers</span>
               <button
                 type="button"
                 className="mobile-drawer-close"
                 onClick={() => setDrawerOpen(false)}
-                aria-label="Fechar menu"
+                aria-label="Close menu"
               >
                 ✕
               </button>
             </div>
-            <nav className="mobile-drawer-nav" aria-label="Câmaras">
+            <nav className="mobile-drawer-nav" aria-label="Chambers">
               {CHAMBERS.map((c, i) => (
                 <button
                   key={c}
@@ -409,7 +409,7 @@ export default function Shell({ activeTab, onSwitchChamber }: Props) {
               ))}
             </nav>
             <div className="mobile-drawer-controls">
-              <span className="mobile-drawer-section-label">Densidade</span>
+              <span className="mobile-drawer-section-label">Density</span>
               <div className="mobile-drawer-density">
                 {DENSITY_CYCLE.map((d) => (
                   <button
