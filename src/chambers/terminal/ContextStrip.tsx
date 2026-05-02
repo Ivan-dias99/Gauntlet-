@@ -96,7 +96,7 @@ export default function ContextStrip({
           textTransform: "uppercase",
         }}
       >
-        missão
+        mission
       </span>
       <span
         style={{

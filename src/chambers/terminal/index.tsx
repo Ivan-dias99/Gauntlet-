@@ -19,7 +19,6 @@ import {
   type RunMode, type LiveTool, type DoneSummary, type CrewState,
   type Task,
 } from "./helpers";
-import ContextStrip from "./ContextStrip";
 import WorkbenchStrip from "./WorkbenchStrip";
 import OutputCanvas from "./OutputCanvas";
 import NextStepBar from "./NextStepBar";
@@ -601,7 +600,12 @@ export default function Terminal() {
     <div className="chamber-shell" data-chamber="terminal">
       <ChamberWorkspace
         chamber="terminal"
-        breadcrumb={<>— TERMINAL · code · agent loop · tool allowlist</>}
+        breadcrumb={
+          <>
+            <span data-kicker>— Terminal</span>
+            code · agent loop · tool allowlist
+          </>
+        }
         rail={{
           identity: (
             <RailIdentity
@@ -640,9 +644,7 @@ export default function Terminal() {
           <>
             {/* Wave P-43 — ContextStrip retired in favour of the rail
                 identity card + breadcrumb. Runtime numbers live in
-                WorkbenchStrip's status (italic) and ExecutionComposer
-                meta. ContextStrip kept around as legacy import in case
-                a later wave wants to reinstate the chamber-top header. */}
+                WorkbenchStrip's status and ExecutionComposer meta. */}
             {(!backend.reachable || unreachable) && (
               <BackendUnreachableBanner
                 reason={backend.unreachableReason}
@@ -732,43 +734,54 @@ export default function Terminal() {
         }
       />
 
-      <ExecutionComposer
-        copy={copy}
-        value={input}
-        onChange={setInput}
-        onSubmit={submit}
-        pending={pending}
-        missionTitle={activeMission?.title ?? null}
-        mode={mode}
-        onModeChange={setMode}
-        recentTasks={tasks.slice(0, 8)}
-        onPickTask={(title) => setInput(title)}
-        principlesCount={principles.length}
-        priorTurns={activeMission?.notes?.length ?? 0}
-        mockMode={backend.mode === "mock"}
-        backendReadiness={backend.readiness}
-        backendReasons={backend.readinessReasons}
-        backendUnreachableReason={backend.unreachableReason}
-        backendUnreachableDetail={backend.unreachableDetail}
-        persistenceEphemeral={backend.persistenceEphemeral}
-        onAttachContext={(kind) => {
-          if (!activeMission) return;
-          if (kind === "note") {
-            addNoteToMission(activeMission.id, "context attached from terminal composer", "user");
-            return;
-          }
-          if (kind === "prior-run") {
+      <div className="cw-composer-dock">
+        <div className="cw-composer-shortcuts" aria-hidden>
+          <span className="cw-composer-shortcut">⌘K Command</span>
+          <span className="cw-composer-shortcut">⌘↵ Send</span>
+          <span className="cw-composer-shortcut">⌘I Import</span>
+        </div>
+        <ExecutionComposer
+          copy={copy}
+          value={input}
+          onChange={setInput}
+          onSubmit={submit}
+          pending={pending}
+          missionTitle={activeMission?.title ?? null}
+          mode={mode}
+          onModeChange={setMode}
+          recentTasks={tasks.slice(0, 8)}
+          onPickTask={(title) => setInput(title)}
+          principlesCount={principles.length}
+          priorTurns={activeMission?.notes?.length ?? 0}
+          mockMode={backend.mode === "mock"}
+          backendReadiness={backend.readiness}
+          backendReasons={backend.readinessReasons}
+          backendUnreachableReason={backend.unreachableReason}
+          backendUnreachableDetail={backend.unreachableDetail}
+          persistenceEphemeral={backend.persistenceEphemeral}
+          onAttachContext={(kind) => {
+            if (!activeMission) return;
+            if (kind === "note") {
+              addNoteToMission(activeMission.id, "context attached from terminal composer", "user");
+              return;
+            }
+            if (kind === "prior-run") {
+              const last = activeMission.artifacts[0];
+              if (last) setInput(`continue from prior run: ${last.taskTitle}`);
+              return;
+            }
             const last = activeMission.artifacts[0];
-            if (last) setInput(`continue from prior run: ${last.taskTitle}`);
-            return;
-          }
-          const last = activeMission.artifacts[0];
-          if (last) setInput(`reuse artifact: ${last.taskTitle}`);
-        }}
-        hasArtifacts={allArtifacts.length > 0}
-        selectedTools={selectedTools}
-        onToggleTool={onToggleTool}
-      />
+            if (last) setInput(`reuse artifact: ${last.taskTitle}`);
+          }}
+          hasArtifacts={allArtifacts.length > 0}
+          selectedTools={selectedTools}
+          onToggleTool={onToggleTool}
+        />
+        <div className="cw-composer-meta" aria-hidden>
+          <span className="cw-composer-model">OPUS 4.7 · TERMINAL COMPOSER</span>
+          <span className="cw-composer-model-dot" data-state={pending ? "live" : "idle"} />
+        </div>
+      </div>
     </div>
   );
 }
