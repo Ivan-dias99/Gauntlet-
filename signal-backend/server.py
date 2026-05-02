@@ -65,6 +65,7 @@ from memory import failure_memory
 from runs import run_store
 from spine import spine_store
 from tools import TOOL_WORKSPACE_ROOT
+from composer import router as composer_router
 
 # Captured at import time so /diagnostics can report uptime honestly.
 _PROCESS_START_MONO = time.monotonic()
@@ -281,6 +282,10 @@ app.add_middleware(
     default_limit=BODY_SIZE_LIMIT_BYTES,
     overrides=LARGE_BODY_ROUTES,
 )
+
+# Composer surface (Wave V0) — context · intent · preview · apply.
+# Mounted after middleware so the same defense-in-depth stack covers it.
+app.include_router(composer_router)
 
 
 # ── Endpoints ───────────────────────────────────────────────────────────────

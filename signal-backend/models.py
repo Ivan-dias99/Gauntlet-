@@ -7,9 +7,10 @@ Confidence is binary: HIGH or LOW. No medium tier, no caveats.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Optional
+from typing import Any, Literal, Optional
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
@@ -371,3 +372,169 @@ class SpineSnapshot(BaseModel):
     principles: list[PrincipleRecord] = Field(default_factory=list)
     last_updated: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updatedAt: Optional[int] = None
+
+
+# ── Composer (Wave V0) — context · intent · preview · apply ────────────────
+#
+# The Composer surface wraps the existing brain (engine + agent + runs)
+# without rewriting it. Four canonical stages, each carrying a typed id
+# the next stage references — so payload is never resent.
+
+class ContextSource(str, Enum):
+    browser = "browser"
+    desktop = "desktop"
+    ide = "ide"
+    terminal = "terminal"
+    file = "file"
+    image = "image"
+    clipboard = "clipboard"
+
+
+class ContextPackage(BaseModel):
+    """Canonical context object captured at the cursor.
+
+    Lives in an in-memory TTL cache (composer.py) and is referenced by
+    `context_id` in subsequent calls so payload is never resent.
+    """
+    context_id: UUID = Field(default_factory=uuid4)
+    source: ContextSource
+    url: Optional[str] = None
+    page_title: Optional[str] = None
+    app_name: Optional[str] = None
+    window_title: Optional[str] = None
+    selection: Optional[str] = None
+    clipboard: Optional[str] = None
+    screenshot_ref: Optional[str] = None
+    files: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    permission_scope: list[str] = Field(default_factory=list)
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ContextCaptureRequest(BaseModel):
+    source: ContextSource
+    url: Optional[str] = None
+    page_title: Optional[str] = None
+    app_name: Optional[str] = None
+    window_title: Optional[str] = None
+    selection: Optional[str] = Field(default=None, max_length=50_000)
+    clipboard: Optional[str] = Field(default=None, max_length=50_000)
+    screenshot_ref: Optional[str] = None
+    files: list[str] = Field(default_factory=list, max_length=32)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    permission_scope: list[str] = Field(default_factory=list)
+
+
+class ContextCaptureResponse(BaseModel):
+    context_id: UUID
+    confidence: float
+    expires_at: datetime
+
+
+# Open enum — backend may extend without breaking the wire.
+IntentKind = Literal[
+    "summarize", "rewrite", "extract", "analyze",
+    "generate_code", "debug_code",
+    "generate_image", "create_report", "create_design",
+    "save_memory", "search_memory",
+    "execute_plan", "automate_flow",
+    "ambiguous",
+    "unsupported",
+]
+
+
+class RiskLevel(str, Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class ModelRoute(BaseModel):
+    primary_model: str
+    fallback_models: list[str] = Field(default_factory=list)
+    reason: str
+    expected_cost_usd: Optional[float] = None
+    expected_latency_ms: Optional[int] = None
+    quality_score: Optional[float] = None
+    tool_requirements: list[str] = Field(default_factory=list)
+
+
+class SuggestedAction(BaseModel):
+    id: str
+    label: str
+    intent: IntentKind
+    risk: RiskLevel = RiskLevel.low
+
+
+class ComposerIntentRequest(BaseModel):
+    context_id: UUID
+    user_input: str = Field(..., min_length=1, max_length=10_000)
+    chamber_hint: Optional[ChamberKey] = None
+
+
+class IntentResult(BaseModel):
+    intent_id: UUID = Field(default_factory=uuid4)
+    context_id: UUID
+    intent: IntentKind
+    confidence: float = Field(ge=0.0, le=1.0)
+    summary: str
+    suggested_actions: list[SuggestedAction] = Field(default_factory=list)
+    model_route: ModelRoute
+    tools_needed: list[str] = Field(default_factory=list)
+    risk_estimate: RiskLevel
+    requires_approval: bool
+    clarifying_questions: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+ArtifactKind = Literal[
+    "code_patch", "code_file", "text", "report",
+    "image_prompt", "plan", "summary", "diff",
+]
+
+
+class ComposerArtifact(BaseModel):
+    artifact_id: UUID = Field(default_factory=uuid4)
+    kind: ArtifactKind
+    content: str
+    files_impacted: list[str] = Field(default_factory=list)
+    diff: Optional[str] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ComposerPreviewRequest(BaseModel):
+    intent_id: UUID
+    overrides: dict[str, Any] = Field(default_factory=dict)
+
+
+class PreviewResult(BaseModel):
+    preview_id: UUID = Field(default_factory=uuid4)
+    intent_id: UUID
+    context_id: UUID
+    artifact: ComposerArtifact
+    risk: RiskLevel
+    requires_approval: bool
+    model_used: str
+    tools_used: list[str] = Field(default_factory=list)
+    latency_ms: int
+    judge_verdict: Optional[Literal["high", "low"]] = None
+    refused: bool = False
+    refusal_reason: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ComposerApplyRequest(BaseModel):
+    preview_id: UUID
+    approved: bool
+    approval_reason: Optional[str] = None
+
+
+class ApplyResult(BaseModel):
+    run_id: UUID
+    preview_id: UUID
+    status: Literal["applied", "rejected", "failed", "skipped"]
+    artifacts: list[ComposerArtifact] = Field(default_factory=list)
+    ledger_event_id: Optional[str] = None
+    error: Optional[str] = None
+    completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
