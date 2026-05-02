@@ -89,6 +89,8 @@ export interface ChamberConfig {
   label: string;
   /** Mono uppercase tagline rendered top-right of the workbench header. */
   tagline: string;
+  /** Optional rail tagline (mono dotted form, e.g. "AGENT · CODE · COMMAND"). */
+  taglineRail?: string;
   /** SVG sigil — reused in rail card, sidecar idle glyph, and rail nav. */
   sigil: () => ReactElement;
   /** Three middle nav items (between Workbench and Recents). */
@@ -105,6 +107,7 @@ export const CHAMBER_CONFIG: Record<Chamber, ChamberConfig> = {
   insight: {
     label: "INSIGHT",
     tagline: "EVIDENCE BEFORE ANSWER",
+    taglineRail: "TRIAD · ROUTE · ANSWER",
     sigil: SigilInsight,
     navItems: [
       { label: "Threads", glyph: "◇" },
@@ -119,6 +122,7 @@ export const CHAMBER_CONFIG: Record<Chamber, ChamberConfig> = {
   surface: {
     label: "SURFACE",
     tagline: "CONTRACTS BECOME INTERFACE",
+    taglineRail: "DESIGN · CONTRACT · BUILD",
     sigil: SigilSurface,
     navItems: [
       { label: "Files",          glyph: "❑" },
@@ -133,6 +137,7 @@ export const CHAMBER_CONFIG: Record<Chamber, ChamberConfig> = {
   terminal: {
     label: "TERMINAL",
     tagline: "COMMANDS WITH CONSEQUENCE",
+    taglineRail: "AGENT · CODE · COMMAND",
     sigil: SigilTerminal,
     navItems: [
       { label: "Routines", glyph: "◐" },
@@ -147,6 +152,7 @@ export const CHAMBER_CONFIG: Record<Chamber, ChamberConfig> = {
   archive: {
     label: "ARCHIVE",
     tagline: "SEALED MEMORY · PROVENANCE",
+    taglineRail: "SEAL · LEDGER · REPLAY",
     sigil: SigilArchive,
     navItems: [
       { label: "Filters",        glyph: "▽" },
@@ -161,6 +167,7 @@ export const CHAMBER_CONFIG: Record<Chamber, ChamberConfig> = {
   core: {
     label: "CORE",
     tagline: "POLICY GOVERNS MOTION",
+    taglineRail: "POLICY · ROUTING · BUDGETS",
     sigil: SigilCore,
     navItems: [
       { label: "Routing",     glyph: "↳" },

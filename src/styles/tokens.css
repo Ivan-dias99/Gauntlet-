@@ -9178,9 +9178,10 @@ a.term-ws-chip[data-tone="warn"]:hover {
 }
 
 .cis-rail-identity {
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 24px;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 4px 6px 18px;
 }
 
@@ -9194,6 +9195,69 @@ a.term-ws-chip[data-tone="warn"]:hover {
   flex-shrink: 0;
 }
 
+.cis-rail-identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cis-rail-identity-title {
+  font-family: var(--serif, var(--sans));
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  line-height: 1.05;
+}
+
+.cis-rail-identity-tagline {
+  align-self: flex-start;
+  padding: 3px 8px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cis-rail-search {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.cis-rail-search:hover {
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: var(--text-primary);
+}
+
+.cis-rail-search:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cis-rail-search svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Legacy class kept so any consumer outside ChamberIdleShell still
+   resolves; the new tree uses .cis-rail-identity-title instead. */
 .cis-rail-identity-label {
   font-family: var(--mono);
   font-size: 13px;
@@ -9255,14 +9319,183 @@ a.term-ws-chip[data-tone="warn"]:hover {
 }
 
 .cis-rail-footer {
-  margin-top: auto;
-  padding: 14px 8px 4px;
+  padding: 12px 8px 4px;
   font-family: var(--mono);
   font-size: 10.5px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-muted);
   border-top: 1px solid var(--border-color-soft);
+}
+
+/* Recents section — title + body slot. Empty state today; populated
+   by spine.missions in a follow-up wave once the rail can host real
+   recent items. */
+.cis-rail-section {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cis-rail-section-label {
+  padding: 0 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cis-rail-section-empty {
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.cis-rail-recents {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cis-rail-recent {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+  min-height: 36px;
+}
+
+.cis-rail-recent:hover {
+  background: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+
+.cis-rail-recent:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cis-rail-recent-glyph {
+  display: inline-flex;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding-top: 2px;
+}
+
+.cis-rail-recent-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cis-rail-recent-title {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.cis-rail-recent-meta {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* User card — sits below the Recents section, above the rail
+   footer. id-circle + name/plan + settings cog. */
+.cis-rail-user {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 8px;
+  border-top: 1px solid var(--border-color-soft);
+}
+
+.cis-rail-user-id {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cis-rail-user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.cis-rail-user-name {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cis-rail-user-plan {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cis-rail-user-cog {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.cis-rail-user-cog:hover {
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: var(--text-primary);
+}
+
+.cis-rail-user-cog:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cis-rail-user-cog svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* --- Center column --- */
@@ -9311,6 +9544,42 @@ a.term-ws-chip[data-tone="warn"]:hover {
   gap: 16px;
   padding: 32px 32px 80px;
   text-align: center;
+}
+
+.cis-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 999px;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.cis-hero-kicker-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.cis-hero-kicker-glyph svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cis-hero-kicker-label {
+  letter-spacing: 0.16em;
 }
 
 .cis-hero-title {
@@ -9439,7 +9708,13 @@ a.term-ws-chip[data-tone="warn"]:hover {
     padding: 16px 6px;
   }
   .cis-rail-identity-label,
+  .cis-rail-identity-text,
+  .cis-rail-search,
   .cis-rail-nav-label,
+  .cis-rail-section-label,
+  .cis-rail-section-empty,
+  .cis-rail-user-meta,
+  .cis-rail-user-cog,
   .cis-rail-footer {
     display: none;
   }
@@ -9448,8 +9723,14 @@ a.term-ws-chip[data-tone="warn"]:hover {
     padding: 10px 0;
   }
   .cis-rail-identity {
-    justify-content: center;
+    grid-template-columns: 1fr;
+    justify-items: center;
     padding: 4px 0 18px;
+  }
+  .cis-rail-user {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 12px 0;
   }
 }
 
@@ -9517,5 +9798,437 @@ a.term-ws-chip[data-tone="warn"]:hover {
 .canon-ribbon-theme-btn svg {
   width: 14px;
   height: 14px;
+}
+
+/* Wave P-43.6 — Chamber position counter. */
+.canon-ribbon-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.canon-ribbon-counter-label {
+  font-weight: 500;
+}
+
+.canon-ribbon-counter-sep {
+  opacity: 0.4;
+}
+
+.canon-ribbon-counter-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.canon-ribbon-counter-total {
+  opacity: 0.7;
+}
+
+@media (max-width: 1100px) {
+  .canon-ribbon-counter-label {
+    display: none;
+  }
+}
+
+/* ============================================================
+   § 13 — Wave P-43.6 — TerminalComposer.
+   Replaces the legacy ExecutionComposer chrome with the target
+   layout: context chips on top, full-width textarea with a big
+   round send button, footer with edit-mode + icons left and
+   model attribution right.
+   ============================================================ */
+
+.tcomp {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px clamp(20px, 4vw, 40px) 16px;
+  border-top: 1px solid var(--border-color-soft);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.tcomp-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tcomp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: default;
+  white-space: nowrap;
+}
+
+button.tcomp-chip {
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+button.tcomp-chip:hover {
+  background: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+
+button.tcomp-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tcomp-chip-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tcomp-chip[data-tone="online"] .tcomp-chip-glyph {
+  color: var(--cc-ok, #7ab48a);
+}
+
+.tcomp-chip[data-tone="down"] .tcomp-chip-glyph {
+  color: var(--cc-err, #d4785a);
+}
+
+.tcomp-chip-label {
+  font-weight: 500;
+}
+
+.tcomp-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 14px;
+  background: var(--bg);
+}
+
+.tcomp-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  resize: none;
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 4px 0;
+  max-height: 200px;
+}
+
+.tcomp-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.tcomp-input:disabled {
+  opacity: 0.6;
+}
+
+.tcomp-send {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--ink, #111);
+  color: var(--bg, #fff);
+  font-size: 16px;
+  cursor: pointer;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.tcomp-send[data-state="idle"] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tcomp-send[data-state="ready"]:hover {
+  transform: translateY(-1px);
+}
+
+.tcomp-send[data-state="pending"] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.tcomp-send:disabled {
+  cursor: not-allowed;
+}
+
+.tcomp-send:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tcomp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+  flex-wrap: wrap;
+}
+
+.tcomp-foot-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tcomp-foot-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.tcomp-foot-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.tcomp-foot-icon:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  color: var(--text-primary);
+}
+
+.tcomp-foot-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tcomp-foot-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tcomp-foot-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.tcomp-foot-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.tcomp-foot-sep {
+  opacity: 0.5;
+}
+
+.tcomp-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.tcomp-status-dot[data-tone="live"] {
+  background: var(--cc-ok, #7ab48a);
+}
+
+.tcomp-status-dot[data-tone="mock"] {
+  background: var(--cc-warn, #d8b058);
+}
+
+.tcomp-status-dot[data-tone="down"] {
+  background: var(--cc-err, #d4785a);
+}
+
+@media (max-width: 720px) {
+  .tcomp {
+    padding: 12px 16px 14px;
+  }
+  .tcomp-context {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .tcomp-foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+
+/* ============================================================
+   § 14 — Wave P-43.6 — PullRequestsPanel.
+   Mission tasks rendered as PR-like rows: status pill +
+   title + #id + diff stats placeholder + age + caret.
+   Sits at the top of the Terminal active workbench column.
+   ============================================================ */
+
+.prp {
+  display: flex;
+  flex-direction: column;
+  margin: 12px 0 16px;
+}
+
+.prp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color-soft);
+}
+
+.prp-head-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.prp-head-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.prp-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.prp-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 60px 80px 50px 16px;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border-color-soft);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+  font-family: var(--sans);
+}
+
+.prp-row:hover {
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+
+.prp-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.prp-row-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.prp-row-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.prp-row-status[data-tone="info"] .prp-row-status-dot {
+  background: var(--cc-warn, #d8b058);
+}
+
+.prp-row-status[data-tone="ok"] .prp-row-status-dot {
+  background: var(--cc-ok, #7ab48a);
+}
+
+.prp-row-status[data-tone="err"] .prp-row-status-dot {
+  background: var(--cc-err, #d4785a);
+}
+
+.prp-row-title {
+  font-family: var(--sans);
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prp-row-id {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.prp-row-diff {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.prp-row-age {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.prp-row-caret {
+  font-family: var(--mono);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .prp-row {
+    grid-template-columns: minmax(0, 1fr) 50px;
+  }
+  .prp-row-status,
+  .prp-row-id,
+  .prp-row-diff,
+  .prp-row-caret {
+    display: none;
+  }
 }
 

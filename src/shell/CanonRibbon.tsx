@@ -121,6 +121,22 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
       </div>
 
       <div className="canon-ribbon-right">
+        {/* Wave P-43.6 — Chamber position counter (e.g. CHAMBER · 03 / 05).
+            Reads the active chamber's index in the canonical CHAMBERS
+            array. The label sits before the mock pill so the operator's
+            eye lands on identity → state → controls. */}
+        <span className="canon-ribbon-counter" aria-hidden>
+          <span className="canon-ribbon-counter-label">Chamber</span>
+          <span className="canon-ribbon-counter-sep">·</span>
+          <span className="canon-ribbon-counter-value">
+            {String(CHAMBERS.indexOf(active) + 1).padStart(2, "0")}
+          </span>
+          <span className="canon-ribbon-counter-sep">/</span>
+          <span className="canon-ribbon-counter-total">
+            {String(CHAMBERS.length).padStart(2, "0")}
+          </span>
+        </span>
+        <span aria-hidden className="vbar" />
         {backend.mode === "mock" && (
           <span
             data-shell-mode="mock"

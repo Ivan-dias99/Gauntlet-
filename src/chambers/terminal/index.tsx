@@ -22,7 +22,9 @@ import {
 import WorkbenchStrip from "./WorkbenchStrip";
 import OutputCanvas from "./OutputCanvas";
 import NextStepBar from "./NextStepBar";
-import ExecutionComposer, { TERMINAL_TOOL_NAMES } from "./ExecutionComposer";
+import { TERMINAL_TOOL_NAMES } from "./ExecutionComposer";
+import TerminalComposer from "./TerminalComposer";
+import PullRequestsPanel from "./PullRequestsPanel";
 import { TaskList } from "./TaskBench";
 import HandoffInbox from "../../shell/HandoffInbox";
 import EvidencePanel from "./EvidencePanel";
@@ -671,6 +673,15 @@ export default function Terminal() {
             />
             <HandoffInbox chamber="terminal" />
 
+            {activeMission && activeMission.tasks.length > 0 && (
+              <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
+                <PullRequestsPanel
+                  mission={activeMission}
+                  onPick={(id) => selectTaskFromQueue(id)}
+                />
+              </div>
+            )}
+
             <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
               <TaskList
                 tasks={tasks}
@@ -736,54 +747,24 @@ export default function Terminal() {
         }
       />
 
-      <div className="cw-composer-dock">
-        <div className="cw-composer-shortcuts" aria-hidden>
-          <span className="cw-composer-shortcut">⌘K Command</span>
-          <span className="cw-composer-shortcut">⌘↵ Send</span>
-          <span className="cw-composer-shortcut">⌘I Import</span>
-        </div>
-        <ExecutionComposer
-          copy={copy}
-          value={input}
-          onChange={setInput}
-          onSubmit={submit}
-          pending={pending}
-          missionTitle={activeMission?.title ?? null}
-          mode={mode}
-          onModeChange={setMode}
-          recentTasks={tasks.slice(0, 8)}
-          onPickTask={(title) => setInput(title)}
-          principlesCount={principles.length}
-          priorTurns={activeMission?.notes?.length ?? 0}
-          mockMode={backend.mode === "mock"}
-          backendReadiness={backend.readiness}
-          backendReasons={backend.readinessReasons}
-          backendUnreachableReason={backend.unreachableReason}
-          backendUnreachableDetail={backend.unreachableDetail}
-          persistenceEphemeral={backend.persistenceEphemeral}
-          onAttachContext={(kind) => {
-            if (!activeMission) return;
-            if (kind === "note") {
-              addNoteToMission(activeMission.id, "context attached from terminal composer", "user");
-              return;
-            }
-            if (kind === "prior-run") {
-              const last = activeMission.artifacts[0];
-              if (last) setInput(`continue from prior run: ${last.taskTitle}`);
-              return;
-            }
-            const last = activeMission.artifacts[0];
-            if (last) setInput(`reuse artifact: ${last.taskTitle}`);
-          }}
-          hasArtifacts={allArtifacts.length > 0}
-          selectedTools={selectedTools}
-          onToggleTool={onToggleTool}
-        />
-        <div className="cw-composer-meta" aria-hidden>
-          <span className="cw-composer-model">OPUS 4.7 · TERMINAL COMPOSER</span>
-          <span className="cw-composer-model-dot" data-state={pending ? "live" : "idle"} />
-        </div>
-      </div>
+      <TerminalComposer
+        value={input}
+        onChange={setInput}
+        onSubmit={submit}
+        pending={pending}
+        repoName={git.repo}
+        branch={git.branch}
+        repoReachable={git.reachable}
+        modelLabel="OPUS 4.7"
+        contextWindow="1M"
+        backendMode={
+          backend.mode === "mock"
+            ? "mock"
+            : !backend.reachable || unreachable
+            ? "down"
+            : "live"
+        }
+      />
     </div>
   );
 }
