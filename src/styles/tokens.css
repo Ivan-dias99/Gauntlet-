@@ -541,17 +541,17 @@ textarea {
    One border width, tonal borders, near-invisible shadows; only .surface-flagship earns elevation. */
 .surface {
   background: var(--bg-surface);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-control);
 }
 .surface-quiet {
   background: color-mix(in oklab, var(--text-primary) 2%, var(--bg));
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-control);
 }
 .surface-sunken {
   background: var(--bg-sunken);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-control);
 }
 .surface-flagship {
@@ -897,7 +897,7 @@ textarea {
   letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--text-ghost);
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
 }
 .dropdown-item {
   display: block;
@@ -905,7 +905,7 @@ textarea {
   text-align: left;
   background: none;
   border: 0;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
   padding: var(--space-1) var(--space-3);
   cursor: pointer;
   transition: background 0.18s;
@@ -1004,7 +1004,7 @@ textarea {
   color: var(--text-ghost);
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   background: transparent;
   transition: color 0.2s var(--ease-swift), border-color 0.2s var(--ease-swift);
 }
@@ -1039,7 +1039,7 @@ textarea {
 }
 .chamber-head {
   padding: 20px 40px 16px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
 }
 .chamber-body {
   flex: 1;
@@ -1121,7 +1121,7 @@ textarea {
   color: var(--text-ghost);
   margin-left: 6px;
   padding-left: 10px;
-  border-left: 1px solid var(--border-soft);
+  border-left: 1px solid var(--border-color-soft);
   align-self: center;
   white-space: nowrap;
 }
@@ -8519,7 +8519,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   flex-direction: column;
   gap: 16px;
   padding: 20px 16px;
-  border-right: 1px solid var(--border-soft);
+  border-right: 1px solid var(--border-color-soft);
   background: var(--bg);
   overflow-y: auto;
   min-height: 0;
@@ -8536,7 +8536,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-md);
   background: var(--bg);
 }
@@ -8648,7 +8648,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   flex-direction: column;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid var(--border-color-soft);
 }
 
 .cw-rail-section {
@@ -8687,7 +8687,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
 .cw-sidecar {
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--border-soft);
+  border-left: 1px solid var(--border-color-soft);
   background: var(--bg);
   overflow: hidden;
   min-height: 0;
@@ -8699,7 +8699,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
 }
 
 .cw-sidecar-tabs {
@@ -8724,7 +8724,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   align-items: center;
   gap: 18px;
   padding: 8px 16px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
   font-family: var(--sans);
   font-size: 13px;
 }
@@ -8787,7 +8787,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-full);
   background: var(--bg);
   font-family: var(--mono);
@@ -8832,7 +8832,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
 
 .cw-status-chip {
   padding: 4px 10px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-full);
   background: transparent;
   color: var(--text-muted);
@@ -8856,7 +8856,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   align-items: baseline;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
 }
 
 .cw-session-list-title {
@@ -8886,7 +8886,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
   font-family: var(--sans);
   font-size: 14px;
   color: var(--text-primary);
@@ -9079,7 +9079,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   flex-direction: column;
   gap: 6px;
   padding: 12px clamp(20px, 5vw, 64px) 12px;
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid var(--border-color-soft);
   background: var(--bg);
   flex-shrink: 0;
 }
@@ -9097,7 +9097,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   letter-spacing: 0.06em;
   color: var(--text-muted);
   padding: 4px 10px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: var(--radius-full);
   background: transparent;
   white-space: nowrap;
@@ -9158,6 +9158,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 360px;
   flex: 1;
+  width: 100%;
   min-height: 0;
   background: var(--bg);
   color: var(--text-primary);
@@ -9170,7 +9171,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   flex-direction: column;
   gap: 10px;
   padding: 22px 16px 16px;
-  border-right: 1px solid var(--border-soft);
+  border-right: 1px solid var(--border-color-soft);
   min-height: 0;
   overflow-y: auto;
   position: relative;
@@ -9261,7 +9262,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-muted);
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid var(--border-color-soft);
 }
 
 /* --- Center column --- */
@@ -9270,7 +9271,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-right: 1px solid var(--border-soft);
+  border-right: 1px solid var(--border-color-soft);
 }
 
 .cis-center-head {
@@ -9279,7 +9280,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   justify-content: space-between;
   gap: 16px;
   padding: 22px 32px 22px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.16em;
@@ -9346,7 +9347,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   letter-spacing: 0.06em;
   color: var(--text-muted);
   padding: 8px 14px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: 999px;
   background: transparent;
   white-space: nowrap;
@@ -9358,6 +9359,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background: var(--bg);
 }
 
 .cis-sidecar-head {
@@ -9365,7 +9367,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   align-items: center;
   justify-content: space-between;
   padding: 22px 24px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-color-soft);
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.16em;
@@ -9420,7 +9422,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
 
 /* --- Responsive collapse --- */
 
-@media (max-width: 1280px) {
+@media (max-width: 1100px) {
   .cis {
     grid-template-columns: 240px minmax(0, 1fr);
   }
@@ -9429,7 +9431,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 900px) {
   .cis {
     grid-template-columns: 64px minmax(0, 1fr);
   }
@@ -9482,7 +9484,7 @@ a.term-ws-chip[data-tone="warn"]:hover {
   display: inline-flex;
   align-items: center;
   gap: 0;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-color-soft);
   border-radius: 999px;
   padding: 2px;
   background: transparent;
