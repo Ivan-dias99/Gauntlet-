@@ -1,6 +1,8 @@
 import { useState } from "react";
 import ChamberHead from "../../shell/ChamberHead";
 import HandoffInbox from "../../shell/HandoffInbox";
+import ChamberIdleShell from "../../shell/ChamberIdleShell";
+import { useSpine } from "../../spine/SpineContext";
 import CoreWorkbench from "./CoreWorkbench";
 import Policies from "./Policies";
 import Routing from "./Routing";
@@ -21,9 +23,9 @@ import System from "./System";
 type Tab = "policies" | "routing" | "permissions" | "orchestration" | "system";
 
 const TABS: Array<{ key: Tab; label: string; sub: string }> = [
-  { key: "policies",      label: "Policies",      sub: "Princípios constitucionais" },
-  { key: "routing",       label: "Routing",       sub: "Perfis de chamber" },
-  { key: "permissions",   label: "Permissions",   sub: "Allowlist de tools" },
+  { key: "policies",      label: "Policies",      sub: "Constitutional principles" },
+  { key: "routing",       label: "Routing",       sub: "Chamber profiles" },
+  { key: "permissions",   label: "Permissions",   sub: "Tool allowlist" },
   { key: "orchestration", label: "Orchestration", sub: "Budgets · crew · triad" },
   { key: "system",        label: "System",        sub: "Theme · density · lang · diagnostics" },
 ];
@@ -31,6 +33,19 @@ const TABS: Array<{ key: Tab; label: string; sub: string }> = [
 export default function Core() {
   const [tab, setTab] = useState<Tab>("policies");
   const current = TABS.find((t) => t.key === tab) ?? TABS[0];
+  const { principles } = useSpine();
+
+  // Wave P-43.4 — Core is "idle" when no principles have been declared
+  // yet AND the operator hasn't navigated away from the default
+  // Policies tab. The unified shell takes over so the empty Core
+  // doesn't read as broken.
+  if (tab === "policies" && principles.length === 0) {
+    return (
+      <div className="chamber-shell" data-chamber="core">
+        <ChamberIdleShell chamber="core" />
+      </div>
+    );
+  }
 
   return (
     <div className="chamber-shell" data-chamber="core">

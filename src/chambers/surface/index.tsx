@@ -13,6 +13,7 @@ import { useCopy } from "../../i18n/copy";
 import ChamberHead from "../../shell/ChamberHead";
 import HandoffInbox from "../../shell/HandoffInbox";
 import DormantPanel from "../../shell/DormantPanel";
+import ChamberIdleShell from "../../shell/ChamberIdleShell";
 import SurfaceLayout from "./SurfaceLayout";
 import SurfaceWorkbench from "./SurfaceWorkbench";
 import CreationPanel from "./CreationPanel";
@@ -176,6 +177,16 @@ export default function Surface() {
   }
 
   const mockBannerVisible = backend.mode === "mock" || planIsMock;
+
+  // Wave P-43.4 — Surface is "idle" when no contract has been drafted
+  // and no plan has been streamed. Show the unified idle shell.
+  if (!activeMission && !pending && !plan) {
+    return (
+      <div className="chamber-shell" data-chamber="surface" style={{ height: "100%" }}>
+        <ChamberIdleShell chamber="surface" />
+      </div>
+    );
+  }
 
   return (
     <div className="chamber-shell" data-chamber="surface" style={{ height: "100%" }}>

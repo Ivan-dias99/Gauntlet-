@@ -30,6 +30,7 @@ import ToolInspectorPanel from "./ToolInspectorPanel";
 import ChamberWorkspace, {
   RailIdentity, RailNavItem, RailSection,
 } from "../../shell/ChamberWorkspace";
+import ChamberIdleShell from "../../shell/ChamberIdleShell";
 
 // Terminal — execution environment. State, effects, submit, accept,
 // task state transitions and SSE event reduction stay here; every
@@ -596,6 +597,17 @@ export default function Terminal() {
   const isIdle =
     !activeMission && !pending && !done && !err && !unreachable && tasks.length === 0;
 
+  // Wave P-43.4 — Unified empty layout. Every chamber wears the same
+  // shell when there's nothing to render. Idle short-circuits the
+  // entire chamber tree; the active/legacy layout lives below.
+  if (isIdle) {
+    return (
+      <div className="chamber-shell" data-chamber="terminal">
+        <ChamberIdleShell chamber="terminal" />
+      </div>
+    );
+  }
+
   return (
     <div className="chamber-shell" data-chamber="terminal">
       <ChamberWorkspace
@@ -659,56 +671,46 @@ export default function Terminal() {
             />
             <HandoffInbox chamber="terminal" />
 
-            {isIdle ? (
-              <TerminalIdleHero
+            <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
+              <TaskList
+                tasks={tasks}
+                activeTaskId={activeTaskId}
+                duplicateTitles={duplicateTitles}
                 copy={copy}
-                missions={state.missions}
-                onPickMission={(id) => switchMission(id)}
+                onSelect={selectTaskFromQueue}
+                onPause={handlePause}
+                onResume={handleResume}
               />
+            </div>
+
+            {unreachable && err ? (
+              <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
+                <DormantPanel detail={copy.dormantCreation} />
+              </div>
             ) : (
               <>
-                <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
-                  <TaskList
-                    tasks={tasks}
-                    activeTaskId={activeTaskId}
-                    duplicateTitles={duplicateTitles}
-                    copy={copy}
-                    onSelect={selectTaskFromQueue}
-                    onPause={handlePause}
-                    onResume={handleResume}
-                  />
-                </div>
-
-                {unreachable && err ? (
-                  <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 var(--space-4)", width: "100%" }}>
-                    <DormantPanel detail={copy.dormantCreation} />
-                  </div>
-                ) : (
-                  <>
-                    <OutputCanvas
-                      copy={copy}
-                      mission={activeMission}
-                      activeTask={activeTask}
-                      lastTask={lastTask}
-                      pending={pending}
-                      iteration={iteration}
-                      elapsed={elapsed}
-                      liveText={liveText}
-                      liveTools={liveTools}
-                      done={done}
-                      accepted={accepted}
-                      err={err}
-                      crew={crew}
-                      mode={mode}
-                      artifacts={allArtifacts}
-                      onAccept={accept}
-                      onReplayArtifact={replayArtifact}
-                      canAccept={Boolean(activeMission)}
-                    />
-                    <EvidencePanel records={liveEvidence} />
-                    <ToolInspectorPanel tools={liveTools} />
-                  </>
-                )}
+                <OutputCanvas
+                  copy={copy}
+                  mission={activeMission}
+                  activeTask={activeTask}
+                  lastTask={lastTask}
+                  pending={pending}
+                  iteration={iteration}
+                  elapsed={elapsed}
+                  liveText={liveText}
+                  liveTools={liveTools}
+                  done={done}
+                  accepted={accepted}
+                  err={err}
+                  crew={crew}
+                  mode={mode}
+                  artifacts={allArtifacts}
+                  onAccept={accept}
+                  onReplayArtifact={replayArtifact}
+                  canAccept={Boolean(activeMission)}
+                />
+                <EvidencePanel records={liveEvidence} />
+                <ToolInspectorPanel tools={liveTools} />
               </>
             )}
 
@@ -849,74 +851,4 @@ function reasonFix(reason: string | null): string | null {
     default:
       return null;
   }
-}
-
-// Wave P-43 — TerminalIdleHero. Editorial empty state for Terminal when
-// no mission is active and no run is in flight. Mirrors the Lovable
-// target: glyph + serif imperative title + sans subtitle + Sessions
-// list sourced from spine.missions. Replaces the legacy
-// OutputCanvas ReadyState in idle paths only — pending / done / err
-// keep the original execution stack.
-function TerminalIdleHero({
-  copy, missions, onPickMission,
-}: {
-  copy: import("../../i18n/copy").Copy;
-  missions: import("../../spine/types").Mission[];
-  onPickMission: (id: string) => void;
-}) {
-  const recents = missions.slice(0, 5);
-  return (
-    <div className="cw-workbench-idle">
-      <header className="cw-hero">
-        <h1 className="cw-hero-title">
-          <span aria-hidden className="cw-hero-glyph">⌘</span>
-          {copy.termReadyTitle}
-        </h1>
-        <p className="cw-hero-body">{copy.termReadyLead}</p>
-      </header>
-
-      {recents.length > 0 && (
-        <section className="cw-session-list" aria-label="Sessions">
-          <div className="cw-session-list-head">
-            <h2 className="cw-session-list-title">Sessions</h2>
-            {missions.length > recents.length && (
-              <button type="button" className="cw-session-list-action">
-                Show all {missions.length}
-              </button>
-            )}
-          </div>
-          {recents.map((m) => {
-            const openTasks = m.tasks.filter((t) => t.state !== "done").length;
-            const stateLabel = openTasks > 0 ? "open" : "idle";
-            const meta = formatMissionAge(m);
-            return (
-              <button
-                key={m.id}
-                type="button"
-                className="cw-session-row"
-                onClick={() => onPickMission(m.id)}
-              >
-                <span className="cw-session-row-state">· {stateLabel}</span>
-                <span className="cw-session-row-title">{m.title}</span>
-                <span className="cw-session-row-meta">{meta}</span>
-                <span aria-hidden className="cw-session-row-caret">›</span>
-              </button>
-            );
-          })}
-        </section>
-      )}
-    </div>
-  );
-}
-
-function formatMissionAge(m: import("../../spine/types").Mission): string {
-  const ts = m.lastArtifact?.acceptedAt ?? m.createdAt ?? Date.now();
-  const ms = Date.now() - ts;
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s`;
-  const min = Math.floor(s / 60);
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
 }

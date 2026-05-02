@@ -49,7 +49,7 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
   } = useSpine();
   const backend = useBackendStatus();
   const copy = useCopy();
-  const { values: tweaks, cycleDensity } = useTweaks();
+  const { values: tweaks, cycleDensity, set: setTweak } = useTweaks();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -105,9 +105,6 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
           <span className="canon-ribbon-traffic-dot" data-tone="ok" />
         </span>
         Signal
-        <span aria-hidden className="canon-ribbon-doctrine">
-          {copy.brandDoctrine}
-        </span>
       </span>
 
       <div className="canon-ribbon-tabs">
@@ -142,6 +139,37 @@ export default function CanonRibbon({ active, onSelect, onOpenDrawer, isMobile }
             mock
           </span>
         )}
+        {/* Wave P-43.4 — Theme toggle (sun/moon). Cycles dark↔light;
+            sepia is reachable via Core/Customize for power users. The
+            paired-button design mirrors the Lovable target. */}
+        <div className="canon-ribbon-theme" role="group" aria-label="Theme">
+          <button
+            type="button"
+            className="canon-ribbon-theme-btn"
+            data-active={tweaks.theme === "light" ? "true" : undefined}
+            onClick={() => setTweak("theme", "light")}
+            aria-label="Light theme"
+            title="Light theme"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2 V4 M12 20 V22 M2 12 H4 M20 12 H22 M4.93 4.93 L6.34 6.34 M17.66 17.66 L19.07 19.07 M4.93 19.07 L6.34 17.66 M17.66 6.34 L19.07 4.93" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="canon-ribbon-theme-btn"
+            data-active={tweaks.theme === "dark" ? "true" : undefined}
+            onClick={() => setTweak("theme", "dark")}
+            aria-label="Dark theme"
+            title="Dark theme"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+            </svg>
+          </button>
+        </div>
+        <span aria-hidden className="vbar" />
         <span
           className="spine-sync"
           data-sync-state={syncState}
