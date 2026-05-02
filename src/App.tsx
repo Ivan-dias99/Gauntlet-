@@ -1,3 +1,9 @@
+// Composer V0 — Control Center root (Operação 4).
+//
+// The browser extension at apps/browser-extension is the actual product
+// surface. This is the operator console: read the brain's state, debug
+// runs, inspect failure memory, see model routing.
+
 import { BrowserRouter } from "react-router-dom";
 import ErrorBoundary from "./trust/ErrorBoundary";
 import { TweaksProvider } from "./tweaks/TweaksContext";
