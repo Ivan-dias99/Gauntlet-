@@ -17,9 +17,18 @@ import { runCompose, applyPreview } from "./composerClient";
 import type { ComposeState, ContextSource } from "./types";
 import { isBackendUnreachable } from "../lib/signalApi";
 
+export interface ComposeOptions {
+  source?: ContextSource;
+  /** Data context — pasted CSV / JSON / selection text. Posted to
+   *  signal-backend as ContextCaptureRequest.selection (50k char cap). */
+  selection?: string;
+  url?: string;
+  pageTitle?: string;
+}
+
 export interface UseComposeFlow {
   state: ComposeState;
-  compose: (userInput: string, source?: ContextSource) => Promise<void>;
+  compose: (userInput: string, opts?: ComposeOptions) => Promise<void>;
   apply: (approved: boolean) => Promise<void>;
   reset: () => void;
 }
@@ -28,12 +37,18 @@ export function useComposeFlow(): UseComposeFlow {
   const [state, setState] = useState<ComposeState>({ kind: "idle" });
 
   const compose = useCallback(
-    async (userInput: string, source: ContextSource = "control_center") => {
+    async (userInput: string, opts?: ComposeOptions) => {
       const trimmed = userInput.trim();
       if (!trimmed) return;
       setState({ kind: "submitting" });
       try {
-        const { intent, preview } = await runCompose({ userInput: trimmed, source });
+        const { intent, preview } = await runCompose({
+          userInput: trimmed,
+          source: opts?.source ?? "control_center",
+          selection: opts?.selection,
+          url: opts?.url,
+          pageTitle: opts?.pageTitle,
+        });
         setState({ kind: "preview_ready", intent, preview });
       } catch (err) {
         if (isBackendUnreachable(err)) {
