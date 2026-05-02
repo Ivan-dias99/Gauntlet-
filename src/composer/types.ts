@@ -168,7 +168,7 @@ export const MODES: ModeDescriptor[] = [
   { id: "design",   label: "Design",    blurb: "Canvas with components, tokens, frames (Wave 2+).",       live: false },
   { id: "analysis", label: "Analysis",  blurb: "Report mode with charts and tables (Wave 2+).",           live: false },
   { id: "memory",   label: "Memory",    blurb: "Save canon, search by tag and provenance (Wave 2+).",     live: false },
-  { id: "apply",    label: "Apply",     blurb: "Files to create or modify, ready to commit (Wave 2+).",   live: false },
+  { id: "apply",    label: "Apply",     blurb: "Files-impacted preview + risk gate + ledger linkage.",    live: true  },
   { id: "route",    label: "Route",     blurb: "Tools registry × models gateway — read-only.",            live: true  },
 ];
 
