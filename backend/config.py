@@ -29,7 +29,21 @@ def _env(canonical: str, *fallbacks: str, default: str = "") -> str:
 # ── API ─────────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 
-# Offline mock mode — bypasses every Anthropic API call with canned responses.
+# Gemini (optional free-tier fallback). Used when ANTHROPIC_API_KEY is empty
+# and GEMINI_API_KEY is set. gemini_provider.AsyncGeminiAnthropicAdapter
+# wraps the google-genai SDK in an Anthropic-compatible shape so engine.py
+# / agent.py do not need provider branching. Default free model:
+# gemini-2.5-flash (AI Studio free tier: 15 RPM / 1500 RPD as of 2025).
+GEMINI_API_KEY: str = _env(
+    "GAUNTLET_GEMINI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY",
+    default="",
+)
+GEMINI_MODEL: str = _env(
+    "GAUNTLET_GEMINI_MODEL", "GEMINI_MODEL",
+    default="gemini-2.5-flash",
+)
+
+# Offline mock mode — bypasses every provider API call with canned responses.
 # Enable for end-to-end validation without an API key.
 RUBERRA_MOCK: bool = _env("GAUNTLET_MOCK", "SIGNAL_MOCK", "RUBERRA_MOCK").strip().lower() in (
     "1", "true", "yes", "on",

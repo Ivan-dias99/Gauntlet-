@@ -17,6 +17,8 @@ from anthropic import AsyncAnthropic
 
 from config import (
     ANTHROPIC_API_KEY,
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
     MODEL_ID,
     TRIAD_TEMPERATURE,
     JUDGE_TEMPERATURE,
@@ -86,13 +88,27 @@ class SignalEngine:
         if RUBERRA_MOCK:
             self._client = MockAsyncAnthropic()
             logger.warning("Engine initialized in MOCK mode — no network calls")
-        else:
-            if not ANTHROPIC_API_KEY:
-                raise RuntimeError(
-                    "ANTHROPIC_API_KEY not set. "
-                    "Export it in your environment before starting Signal."
-                )
+        elif ANTHROPIC_API_KEY:
             self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        elif GEMINI_API_KEY:
+            # Free-tier fallback. Triad + judge run against Gemini; the
+            # agent loop (tools, streaming) degrades because the v1
+            # adapter does not implement those Anthropic-only paths.
+            from gemini_provider import AsyncGeminiAnthropicAdapter
+            self._client = AsyncGeminiAnthropicAdapter(
+                api_key=GEMINI_API_KEY, model=GEMINI_MODEL,
+            )
+            logger.warning(
+                "Engine initialised on Gemini (model=%s). Anthropic key not set.",
+                GEMINI_MODEL,
+            )
+        else:
+            raise RuntimeError(
+                "Neither ANTHROPIC_API_KEY nor GAUNTLET_GEMINI_API_KEY set, and "
+                "GAUNTLET_MOCK is off. Set ANTHROPIC_API_KEY for Claude, "
+                "GAUNTLET_GEMINI_API_KEY for Gemini free tier, or "
+                "GAUNTLET_MOCK=1 for canned responses."
+            )
         # Detached run-log tasks. PR #214 moved _log_triad_run after the
         # `done` yield for stream tail latency parity with agent/crew/
         # surface, but that opened a regression: if the streaming caller
