@@ -117,154 +117,163 @@ export function Capsule({ client, initialSnapshot, onDismiss }: CapsuleProps) {
   return (
     <div className="gauntlet-capsule" role="dialog" aria-label="Gauntlet">
       <div className="gauntlet-capsule__aurora" aria-hidden />
-      <header className="gauntlet-capsule__header">
-        <div className="gauntlet-capsule__brand-block">
-          <span className="gauntlet-capsule__mark" aria-hidden>
-            <span className="gauntlet-capsule__mark-dot" />
-          </span>
-          <div className="gauntlet-capsule__brand-text">
-            <span className="gauntlet-capsule__brand">GAUNTLET</span>
-            <span className="gauntlet-capsule__tagline">cursor · capsule</span>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="gauntlet-capsule__close"
-          onClick={onDismiss}
-          aria-label="Dismiss capsule (Esc)"
-        >
-          <span aria-hidden>esc</span>
-        </button>
-      </header>
 
-      <section className="gauntlet-capsule__context">
-        <div className="gauntlet-capsule__context-meta">
-          <span className="gauntlet-capsule__source">browser</span>
-          <span className="gauntlet-capsule__url" title={snapshot.url}>
-            {snapshot.pageTitle || snapshot.url}
-          </span>
-          <button
-            type="button"
-            className="gauntlet-capsule__refresh"
-            onClick={refreshSnapshot}
-            title="Re-read current selection"
-          >
-            re-read
-          </button>
-        </div>
-        {snapshot.text ? (
-          <pre className="gauntlet-capsule__selection">{truncate(snapshot.text, 600)}</pre>
-        ) : (
-          <p className="gauntlet-capsule__selection gauntlet-capsule__selection--empty">
-            no selection — input alone will be sent as context
-          </p>
-        )}
-      </section>
-
-      <form className="gauntlet-capsule__form" onSubmit={onSubmit}>
-        <textarea
-          ref={inputRef}
-          className="gauntlet-capsule__input"
-          placeholder="O que queres fazer? — Cmd/Ctrl + Enter to compose"
-          value={userInput}
-          onChange={(ev) => setUserInput(ev.target.value)}
-          onKeyDown={onTextareaKey}
-          rows={2}
-          disabled={phase === 'composing'}
-        />
-        <div className="gauntlet-capsule__actions">
-          <span className="gauntlet-capsule__hint" aria-hidden>
-            <span className="gauntlet-capsule__kbd">⌘</span>
-            <span className="gauntlet-capsule__kbd">↵</span>
-          </span>
-          <button
-            type="submit"
-            className="gauntlet-capsule__compose"
-            disabled={phase === 'composing' || !userInput.trim()}
-          >
-            {phase === 'composing' ? (
-              <>
-                <span className="gauntlet-capsule__compose-spinner" aria-hidden />
-                <span>compondo</span>
-              </>
-            ) : (
-              'Compor'
-            )}
-          </button>
-        </div>
-      </form>
-
-      {phase === 'error' && error && (
-        <div className="gauntlet-capsule__error" role="alert">
-          <span className="gauntlet-capsule__error-icon" aria-hidden>!</span>
-          <span>{error}</span>
-        </div>
-      )}
-
-      {result && (
-        <section className="gauntlet-capsule__preview">
-          <div className="gauntlet-capsule__preview-meta">
-            <span className="gauntlet-capsule__preview-pill">
-              <span className="gauntlet-capsule__preview-key">intent</span>
-              <span className="gauntlet-capsule__preview-val">{result.intent.intent}</span>
-            </span>
-            <span className="gauntlet-capsule__preview-pill">
-              <span className="gauntlet-capsule__preview-key">conf</span>
-              <span className="gauntlet-capsule__preview-val">
-                {result.intent.confidence.toFixed(2)}
+      <div className="gauntlet-capsule__layout">
+        {/* Left panel: brand + context */}
+        <div className="gauntlet-capsule__panel gauntlet-capsule__panel--left">
+          <header className="gauntlet-capsule__header">
+            <div className="gauntlet-capsule__brand-block">
+              <span className="gauntlet-capsule__mark" aria-hidden>
+                <span className="gauntlet-capsule__mark-dot" />
               </span>
-            </span>
-            <span className="gauntlet-capsule__preview-pill">
-              <span className="gauntlet-capsule__preview-key">model</span>
-              <span className="gauntlet-capsule__preview-val">{result.preview.model_used}</span>
-            </span>
-            <span className="gauntlet-capsule__preview-pill">
-              <span className="gauntlet-capsule__preview-key">latency</span>
-              <span className="gauntlet-capsule__preview-val">{result.preview.latency_ms} ms</span>
-            </span>
-            {result.preview.judge_verdict && (
-              <span className="gauntlet-capsule__preview-pill" data-tone={result.preview.judge_verdict}>
-                <span className="gauntlet-capsule__preview-key">judge</span>
-                <span className="gauntlet-capsule__preview-val">{result.preview.judge_verdict}</span>
-              </span>
-            )}
-          </div>
-
-          {result.preview.refused ? (
-            <div className="gauntlet-capsule__refusal">
-              <header>
-                <span className="gauntlet-capsule__refusal-mark">refusal</span>
-                <span className="gauntlet-capsule__refusal-reason">
-                  {result.preview.refusal_reason}
-                </span>
-              </header>
-              <p>{result.preview.artifact.content}</p>
-              {result.intent.clarifying_questions.length > 0 && (
-                <ul>
-                  {result.intent.clarifying_questions.map((q) => (
-                    <li key={q}>{q}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : (
-            <>
-              <pre className="gauntlet-capsule__artifact">
-                {result.preview.artifact.content}
-              </pre>
-              <div className="gauntlet-capsule__preview-actions">
-                <button
-                  type="button"
-                  className="gauntlet-capsule__copy"
-                  onClick={onCopy}
-                >
-                  {copied ? 'copiado ✓' : 'Copy'}
-                </button>
+              <div className="gauntlet-capsule__brand-text">
+                <span className="gauntlet-capsule__brand">GAUNTLET</span>
+                <span className="gauntlet-capsule__tagline">cursor · capsule</span>
               </div>
-            </>
+            </div>
+            <button
+              type="button"
+              className="gauntlet-capsule__close"
+              onClick={onDismiss}
+              aria-label="Dismiss capsule (Esc)"
+            >
+              <span aria-hidden>esc</span>
+            </button>
+          </header>
+
+          <section className="gauntlet-capsule__context">
+            <div className="gauntlet-capsule__context-meta">
+              <span className="gauntlet-capsule__source">browser</span>
+              <span className="gauntlet-capsule__url" title={snapshot.url}>
+                {snapshot.pageTitle || snapshot.url}
+              </span>
+              <button
+                type="button"
+                className="gauntlet-capsule__refresh"
+                onClick={refreshSnapshot}
+                title="Re-read current selection"
+              >
+                re-read
+              </button>
+            </div>
+            {snapshot.text ? (
+              <pre className="gauntlet-capsule__selection">{truncate(snapshot.text, 600)}</pre>
+            ) : (
+              <p className="gauntlet-capsule__selection gauntlet-capsule__selection--empty">
+                no selection — input alone will be sent as context
+              </p>
+            )}
+          </section>
+        </div>
+
+        {/* Right panel: input + results */}
+        <div className="gauntlet-capsule__panel gauntlet-capsule__panel--right">
+          <form className="gauntlet-capsule__form" onSubmit={onSubmit}>
+            <textarea
+              ref={inputRef}
+              className="gauntlet-capsule__input"
+              placeholder="O que queres fazer? — Cmd/Ctrl + Enter to compose"
+              value={userInput}
+              onChange={(ev) => setUserInput(ev.target.value)}
+              onKeyDown={onTextareaKey}
+              rows={2}
+              disabled={phase === 'composing'}
+            />
+            <div className="gauntlet-capsule__actions">
+              <span className="gauntlet-capsule__hint" aria-hidden>
+                <span className="gauntlet-capsule__kbd">⌘</span>
+                <span className="gauntlet-capsule__kbd">↵</span>
+              </span>
+              <button
+                type="submit"
+                className="gauntlet-capsule__compose"
+                disabled={phase === 'composing' || !userInput.trim()}
+              >
+                {phase === 'composing' ? (
+                  <>
+                    <span className="gauntlet-capsule__compose-spinner" aria-hidden />
+                    <span>compondo</span>
+                  </>
+                ) : (
+                  'Compor'
+                )}
+              </button>
+            </div>
+          </form>
+
+          {phase === 'error' && error && (
+            <div className="gauntlet-capsule__error" role="alert">
+              <span className="gauntlet-capsule__error-icon" aria-hidden>!</span>
+              <span>{error}</span>
+            </div>
           )}
-        </section>
-      )}
+
+          {result && (
+            <section className="gauntlet-capsule__preview">
+              <div className="gauntlet-capsule__preview-meta">
+                <span className="gauntlet-capsule__preview-pill">
+                  <span className="gauntlet-capsule__preview-key">intent</span>
+                  <span className="gauntlet-capsule__preview-val">{result.intent.intent}</span>
+                </span>
+                <span className="gauntlet-capsule__preview-pill">
+                  <span className="gauntlet-capsule__preview-key">conf</span>
+                  <span className="gauntlet-capsule__preview-val">
+                    {result.intent.confidence.toFixed(2)}
+                  </span>
+                </span>
+                <span className="gauntlet-capsule__preview-pill">
+                  <span className="gauntlet-capsule__preview-key">model</span>
+                  <span className="gauntlet-capsule__preview-val">{result.preview.model_used}</span>
+                </span>
+                <span className="gauntlet-capsule__preview-pill">
+                  <span className="gauntlet-capsule__preview-key">latency</span>
+                  <span className="gauntlet-capsule__preview-val">{result.preview.latency_ms} ms</span>
+                </span>
+                {result.preview.judge_verdict && (
+                  <span className="gauntlet-capsule__preview-pill" data-tone={result.preview.judge_verdict}>
+                    <span className="gauntlet-capsule__preview-key">judge</span>
+                    <span className="gauntlet-capsule__preview-val">{result.preview.judge_verdict}</span>
+                  </span>
+                )}
+              </div>
+
+              {result.preview.refused ? (
+                <div className="gauntlet-capsule__refusal">
+                  <header>
+                    <span className="gauntlet-capsule__refusal-mark">refusal</span>
+                    <span className="gauntlet-capsule__refusal-reason">
+                      {result.preview.refusal_reason}
+                    </span>
+                  </header>
+                  <p>{result.preview.artifact.content}</p>
+                  {result.intent.clarifying_questions.length > 0 && (
+                    <ul>
+                      {result.intent.clarifying_questions.map((q) => (
+                        <li key={q}>{q}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <pre className="gauntlet-capsule__artifact">
+                    {result.preview.artifact.content}
+                  </pre>
+                  <div className="gauntlet-capsule__preview-actions">
+                    <button
+                      type="button"
+                      className="gauntlet-capsule__copy"
+                      onClick={onCopy}
+                    >
+                      {copied ? 'copiado ✓' : 'Copy'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -296,7 +305,7 @@ export const CAPSULE_CSS = `
 
 .gauntlet-capsule {
   --gx-ember: #d07a5a;
-  --gx-bg: rgba(14, 16, 22, 0.78);
+  --gx-bg: rgba(14, 16, 22, 0.92);
   --gx-bg-solid: #0e1016;
   --gx-surface: rgba(28, 30, 38, 0.70);
   --gx-border: rgba(255, 255, 255, 0.08);
@@ -306,26 +315,28 @@ export const CAPSULE_CSS = `
   --gx-fg-muted: #6a7080;
 
   position: fixed;
-  top: 80px;
-  right: 24px;
-  width: 480px;
-  max-height: calc(100vh - 120px);
-  overflow: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 25vh;
+  min-height: 180px;
+  overflow: hidden;
   background: var(--gx-bg);
   color: var(--gx-fg);
-  border: 1px solid var(--gx-border);
-  border-radius: 14px;
+  border-top: 1px solid var(--gx-border-mid);
+  border-radius: 12px 12px 0 0;
   backdrop-filter: saturate(1.4) blur(28px);
   -webkit-backdrop-filter: saturate(1.4) blur(28px);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.06),
-    0 12px 40px rgba(0, 0, 0, 0.45),
-    0 4px 12px rgba(0, 0, 0, 0.35);
+    0 -8px 40px rgba(0, 0, 0, 0.45),
+    0 -2px 12px rgba(0, 0, 0, 0.35);
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
   line-height: 1.45;
   z-index: 2147483647;
-  padding: 16px 18px 18px;
+  padding: 0;
   isolation: isolate;
   animation: gauntlet-cap-rise 280ms cubic-bezier(0.2, 0, 0, 1) both;
 }
@@ -334,8 +345,8 @@ export const CAPSULE_CSS = `
   position: absolute;
   inset: -30%;
   background:
-    radial-gradient(40% 40% at 30% 30%, rgba(208, 122, 90, 0.22), transparent 60%),
-    radial-gradient(40% 40% at 70% 70%, rgba(98, 130, 200, 0.16), transparent 60%);
+    radial-gradient(40% 40% at 30% 30%, rgba(208, 122, 90, 0.18), transparent 60%),
+    radial-gradient(40% 40% at 70% 70%, rgba(98, 130, 200, 0.12), transparent 60%);
   filter: blur(40px);
   opacity: 0.6;
   pointer-events: none;
@@ -343,9 +354,41 @@ export const CAPSULE_CSS = `
   animation: gauntlet-cap-aurora 28s linear infinite;
 }
 
+/* ── Layout ── */
+.gauntlet-capsule__layout {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  overflow: hidden;
+}
+
+.gauntlet-capsule__panel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.gauntlet-capsule__panel--left {
+  width: 28%;
+  min-width: 200px;
+  max-width: 340px;
+  flex-shrink: 0;
+  padding: 14px 16px;
+  border-right: 1px solid var(--gx-border);
+}
+
+.gauntlet-capsule__panel--right {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 18px;
+}
+
+/* ── Header ── */
 .gauntlet-capsule__header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 .gauntlet-capsule__brand-block {
   display: flex; align-items: center; gap: 10px;
@@ -405,17 +448,22 @@ export const CAPSULE_CSS = `
   background: rgba(255, 255, 255, 0.04);
 }
 
+/* ── Context ── */
 .gauntlet-capsule__context {
-  margin-bottom: 12px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .gauntlet-capsule__context-meta {
   display: flex; gap: 8px; align-items: center;
   font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--gx-fg-muted);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   text-transform: uppercase;
   font-family: "JetBrains Mono", monospace;
+  flex-shrink: 0;
 }
 .gauntlet-capsule__source {
   background: rgba(208, 122, 90, 0.14);
@@ -448,12 +496,13 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__selection {
   background: rgba(8, 9, 13, 0.6);
   border: 1px solid var(--gx-border);
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 8px;
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: 11px;
   white-space: pre-wrap; word-break: break-word;
-  max-height: 140px; overflow: auto;
+  flex: 1;
+  overflow: auto;
   color: var(--gx-fg-dim); margin: 0;
 }
 .gauntlet-capsule__selection--empty {
@@ -462,8 +511,10 @@ export const CAPSULE_CSS = `
   font-size: 11px;
 }
 
+/* ── Form ── */
 .gauntlet-capsule__form {
   position: relative;
+  flex-shrink: 0;
 }
 .gauntlet-capsule__input {
   width: 100%;
@@ -471,10 +522,11 @@ export const CAPSULE_CSS = `
   color: var(--gx-fg);
   border: 1px solid var(--gx-border);
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   font-family: inherit;
   font-size: 14px;
-  resize: vertical; min-height: 64px;
+  resize: none;
+  min-height: 56px;
   box-sizing: border-box;
   line-height: 1.5;
   transition: border-color 140ms ease, box-shadow 200ms ease;
@@ -489,7 +541,7 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__actions {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; margin-top: 10px;
+  gap: 12px; margin-top: 8px;
 }
 .gauntlet-capsule__hint {
   display: inline-flex; gap: 4px; align-items: center;
@@ -512,7 +564,7 @@ export const CAPSULE_CSS = `
   position: relative;
   border: none;
   cursor: pointer;
-  padding: 9px 18px;
+  padding: 8px 16px;
   border-radius: 8px;
   font-family: inherit;
   font-size: 13px;
@@ -545,8 +597,9 @@ export const CAPSULE_CSS = `
   animation: gauntlet-cap-spin 0.7s linear infinite;
 }
 
+/* ── Error ── */
 .gauntlet-capsule__error {
-  margin-top: 12px; padding: 10px 12px;
+  margin-top: 10px; padding: 8px 12px;
   background: rgba(212, 96, 60, 0.10);
   border: 1px solid rgba(212, 96, 60, 0.32);
   color: #f1a4ad;
@@ -563,17 +616,19 @@ export const CAPSULE_CSS = `
   font-family: "JetBrains Mono", monospace;
   font-weight: 700;
   font-size: 11px;
+  flex-shrink: 0;
 }
 
+/* ── Preview ── */
 .gauntlet-capsule__preview {
-  margin-top: 16px;
-  padding-top: 14px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--gx-border);
   animation: gauntlet-cap-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 .gauntlet-capsule__preview-meta {
   display: flex; flex-wrap: wrap; gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .gauntlet-capsule__preview-pill {
   display: inline-flex; align-items: center; gap: 6px;
@@ -599,24 +654,24 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__artifact {
   background: rgba(8, 9, 13, 0.65);
   border: 1px solid var(--gx-border);
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: 10px;
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   font-size: 12px;
   color: var(--gx-fg);
   white-space: pre-wrap; word-break: break-word;
-  max-height: 360px; overflow: auto; margin: 0;
+  margin: 0;
   line-height: 1.55;
 }
 .gauntlet-capsule__preview-actions {
-  display: flex; justify-content: flex-end; margin-top: 10px;
+  display: flex; justify-content: flex-end; margin-top: 8px;
 }
 .gauntlet-capsule__copy {
   background: rgba(255, 255, 255, 0.04);
   color: var(--gx-fg);
   border: 1px solid var(--gx-border-mid);
   border-radius: 8px;
-  padding: 7px 16px;
+  padding: 6px 14px;
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;
@@ -629,7 +684,7 @@ export const CAPSULE_CSS = `
 }
 
 .gauntlet-capsule__refusal {
-  padding: 14px;
+  padding: 12px;
   background: rgba(208, 122, 90, 0.07);
   border: 1px solid rgba(208, 122, 90, 0.25);
   border-radius: 10px;

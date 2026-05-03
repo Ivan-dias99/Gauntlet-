@@ -45,6 +45,7 @@ from config import (
     BODY_SIZE_LIMIT_BYTES,
     FRAME_OPTIONS,
     GEMINI_API_KEY,
+    GEMINI_MODEL,
     LOG_REDACT,
     MEMORY_DIR,
     PERSISTENCE_EPHEMERAL,
@@ -99,6 +100,10 @@ async def lifespan(app: FastAPI):
     if not api_key and not GEMINI_API_KEY and not RUBERRA_MOCK:
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
+            "  No provider key found!\n"
+            "  Set ANTHROPIC_API_KEY for Claude, or\n"
+            "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY for Gemini (free tier).\n"
+            "  Or set GAUNTLET_MOCK=1 for canned responses.\n"
             "  Nenhuma API key configurada!\n"
             "  Define ANTHROPIC_API_KEY para Claude, ou\n"
             "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY para Gemini,\n"
@@ -106,6 +111,12 @@ async def lifespan(app: FastAPI):
             "═══════════════════════════════════════════════════════════"
         )
         sys.exit(1)
+    if not api_key and GEMINI_API_KEY:
+        logger.warning(
+            "Running on Gemini provider (model=%s). "
+            "Agent loop and streaming are not supported on this path.",
+            GEMINI_MODEL,
+        )
 
     engine = SignalEngine()
     memory_label = "EPHEMERAL (volume not configured)" if PERSISTENCE_EPHEMERAL else "PERSISTENT"
@@ -811,6 +822,9 @@ async def diagnostics():
         "uptime_seconds": int(time.monotonic() - _PROCESS_START_MONO),
         "mode": "mock" if RUBERRA_MOCK else "real",
         "anthropic_api_key_present": bool(ANTHROPIC_API_KEY),
+        "gemini_api_key_present": bool(GEMINI_API_KEY),
+        "active_provider": "anthropic" if ANTHROPIC_API_KEY else ("gemini" if GEMINI_API_KEY else "mock"),
+        "gemini_model": GEMINI_MODEL if GEMINI_API_KEY and not ANTHROPIC_API_KEY else None,
         "data_dir": str(MEMORY_DIR),
         "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
         "allowed_origins": ALLOWED_ORIGINS,

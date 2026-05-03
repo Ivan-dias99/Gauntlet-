@@ -30,6 +30,8 @@ __pycache__/
 .claude/worktrees/
 
 # Signal backend runtime data (failure memory, runs log, spine snapshot).
-# Both paths listed until the Wave-0 → Wave-8 compat window closes.
+# All known path variants listed — canonical is backend/data/.
+backend/data/
+data/
 signal-backend/data/
 ruberra-backend/data/
