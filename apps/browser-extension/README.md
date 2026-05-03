@@ -19,26 +19,35 @@ Out of scope here (lands in Wave 1+):
 
 - Code Mode / Design Mode / Analysis Mode tabs
 - streaming previews
-- OAuth / API-key wiring (handled by Operação 4 — Control Center)
+- OAuth / API-key wiring (handled by the Studio settings)
 - per-host narrowing of `host_permissions`
-- production backend URL (V0 hardcodes `http://127.0.0.1:3002`)
 
 ## Run locally
 
+The extension defaults to the production Railway backend
+(`https://ruberra-backend-jkpf-production.up.railway.app`). To run
+against a local brain instead, copy `.env.example` to `.env` and
+uncomment the override:
+
 ```bash
 cd apps/browser-extension
+cp .env.example .env
+# edit .env → uncomment VITE_RUBERRA_BACKEND_URL=http://127.0.0.1:3002
 npm install
 npm run dev          # Chrome dev with auto-reload via WXT
 # or
 npm run build        # produces .output/chrome-mv3-prod
+npm run zip          # produces .output/chrome-mv3-<version>.zip
 ```
 
-For the smoke flow, also boot the backend:
+For the local smoke flow, also boot the backend:
 
 ```bash
 cd ../../signal-backend
 SIGNAL_MOCK=1 python main.py    # http://127.0.0.1:3002
 ```
+
+Without `.env`, every build (dev or prod) talks straight to Railway.
 
 ## Manual validation gate (Portão de Validação 2)
 

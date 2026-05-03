@@ -12,6 +12,7 @@
     "entrypoints/**/*",
     "components/**/*",
     "lib/**/*",
-    "wxt.config.ts"
+    "wxt.config.ts",
+    ".wxt/wxt.d.ts"
   ]
 }

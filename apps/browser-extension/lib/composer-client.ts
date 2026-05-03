@@ -2,8 +2,22 @@
 // V0 scope: deterministic HTTP, no streaming, no retries beyond a single
 // transport-level catch. Auth header wiring lands in Operação 4 with the
 // Control Center settings.
+//
+// Backend URL precedence (build-time, inlined by Vite/WXT):
+//   1. import.meta.env.VITE_RUBERRA_BACKEND_URL   (dev override)
+//   2. PRODUCTION_BACKEND constant below          (Railway, default)
+//
+// To run against a local backend during dev, create
+// apps/browser-extension/.env with:
+//   VITE_RUBERRA_BACKEND_URL=http://127.0.0.1:3002
 
-const DEFAULT_BACKEND = 'http://127.0.0.1:3002';
+const PRODUCTION_BACKEND = 'https://ruberra-backend-jkpf-production.up.railway.app';
+
+const ENV_BACKEND = (import.meta.env?.VITE_RUBERRA_BACKEND_URL as string | undefined)?.trim();
+
+const DEFAULT_BACKEND = ENV_BACKEND && ENV_BACKEND.length > 0
+  ? ENV_BACKEND
+  : PRODUCTION_BACKEND;
 
 export type ContextSource =
   | 'browser'
