@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
     # already filtered. Default ON; SIGNAL_LOG_REDACT=0 disables for
     # local debugging of a real false-positive.
     if LOG_REDACT:
-        install_redaction(("", "signal", "uvicorn", "uvicorn.error", "uvicorn.access"))
+        install_redaction(("", "gauntlet", "signal", "uvicorn", "uvicorn.error", "uvicorn.access"))
 
     if not ANTHROPIC_API_KEY and not GEMINI_API_KEY and not RUBERRA_MOCK:
         logger.error(

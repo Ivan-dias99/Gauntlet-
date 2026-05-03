@@ -37,7 +37,7 @@ from typing import Any, Optional
 
 from config import DATABASE_URL, MEMORY_DIR
 
-logger = logging.getLogger("signal.migrate")
+logger = logging.getLogger("gauntlet.migrate")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 

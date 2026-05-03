@@ -19,7 +19,7 @@ from config import MEMORY_DIR
 from models import RunRecord, RunsLog
 from persistence import atomic_write_text_async, quarantine_corrupt_file
 
-logger = logging.getLogger("signal.runs")
+logger = logging.getLogger("gauntlet.runs")
 
 RUNS_FILE: Path = MEMORY_DIR / "runs.json"
 MAX_RUNS: int = 2000

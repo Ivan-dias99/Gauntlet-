@@ -36,7 +36,7 @@ from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
 from models import SignalQuery
 from tools import ToolRegistry, ToolResult
 
-logger = logging.getLogger("signal.agent")
+logger = logging.getLogger("gauntlet.agent")
 
 
 # ── Tunables ────────────────────────────────────────────────────────────────

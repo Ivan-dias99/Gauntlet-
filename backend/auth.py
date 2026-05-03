@@ -31,7 +31,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-logger = logging.getLogger("signal.auth")
+logger = logging.getLogger("gauntlet.auth")
 
 # Paths that MUST be reachable without auth — kept tight on purpose.
 # Health probes, CORS preflight handled by method check below.

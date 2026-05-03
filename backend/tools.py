@@ -44,7 +44,7 @@ from typing import Any, Optional
 
 import httpx
 
-logger = logging.getLogger("signal.tools")
+logger = logging.getLogger("gauntlet.tools")
 
 
 # ── Configuration ───────────────────────────────────────────────────────────

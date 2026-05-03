@@ -50,7 +50,7 @@ from runs import run_store
 from model_gateway import gateway, GatewayCall
 import observability
 
-logger = logging.getLogger("signal.engine")
+logger = logging.getLogger("gauntlet.engine")
 
 # Agent layer is imported lazily to avoid an import cycle and to keep the
 # triad path usable even if the agent module is later swapped out.
