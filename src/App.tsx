@@ -1,8 +1,14 @@
-// Composer V0 — Control Center root (Operação 4).
+// Composer V0 — app root.
 //
-// The browser extension at apps/browser-extension is the actual product
-// surface. This is the operator console: read the brain's state, debug
-// runs, inspect failure memory, see model routing.
+// Two surfaces share this app:
+//   /composer/*  — the studio (Idle Hero, sidebar, status bar — Fase 1+).
+//   /control/*   — the legacy operator console, kept addressable while
+//                  Fase 2 absorbs Models / Permissions / Memory / Ledger
+//                  into the studio.
+//
+// The cursor capsule (apps/browser-extension) remains the primary
+// product surface. The studio is the secondary surface — depth and
+// inspection — and consumes the same backend as the capsule.
 
 import { BrowserRouter } from "react-router-dom";
 import ErrorBoundary from "./trust/ErrorBoundary";

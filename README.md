@@ -11,9 +11,19 @@ Three processes:
 2. **Cursor capsule** — `apps/browser-extension/` (WXT, Manifest V3).
    The actual product surface. Press `Alt+Space` on any page → capsule →
    brain → result → cursor never leaves the page.
-3. **Control Center** — `src/` (React + Vite). Operator console for
-   Settings · Models · Permissions · Memory · Ledger. Read the brain's
-   state, debug runs, inspect failures. Not the product — the cockpit.
+3. **Studio** — `src/` (React + Vite). The IDE-shaped surface for
+   Composer. Sidebar nav (Workspace / Compose / Governance), Idle Hero
+   with real-data tiles (Recent commands, Last used tools, Readiness
+   status), Permissions & Privacy summary, status bar. Lives at
+   `/composer/*`. The legacy operator console at `/control/*` stays
+   addressable while Fase 2 absorbs Models / Permissions / Memory /
+   Ledger into the studio sidebar.
+
+   Doctrine: **the capsule is the product, the studio is where Composer
+   is inspected, configured, and operated standalone**. If a user opens
+   the studio for work that should fit in the capsule, the capsule has
+   failed its function. The studio justifies existing only because it
+   makes the capsule more powerful — never as a replacement for it.
 
 ## Norte
 

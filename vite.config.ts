@@ -1,5 +1,14 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(
+  readFileSync(resolve(__dirname, "package.json"), "utf-8"),
+) as { version?: string };
+const APP_VERSION = typeof pkg.version === "string" ? pkg.version : "dev";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -11,6 +20,11 @@ export default defineConfig(({ mode }) => {
     "http://127.0.0.1:3002";
   return {
     plugins: [react()],
+    define: {
+      // Surfaced to the studio status bar (src/composer/shell/StatusBar.tsx).
+      // JSON.stringify so the value lands as a string literal in the bundle.
+      __APP_VERSION__: JSON.stringify(APP_VERSION),
+    },
     server: {
       // Bridge to the Python backend (signal-backend/).
       //

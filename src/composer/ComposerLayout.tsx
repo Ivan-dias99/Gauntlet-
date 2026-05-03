@@ -1,135 +1,74 @@
-// Wave 1 — Composer layout (canonical surface fiel à Foto 3).
-//
-// Three-column grid: 4 mode panels stacked left, central canvas, 4 mode
-// panels stacked right. Bottom: pipeline strip. Active mode controls
-// what the central column renders — Compose is wired end-to-end, the
-// other 8 modes render ModePlaceholder.
+/**
+ * ComposerLayout — the studio of Ruberra Composer.
+ *
+ * The cursor capsule (apps/browser-extension) is the primary product
+ * surface — where 80% of work happens, in context, without leaving
+ * the user's app.
+ *
+ * This studio is the secondary surface — where Composer operations
+ * are inspected, configured, audited, and operated standalone when
+ * no host app provides context.
+ *
+ * Both surfaces consume the same backend, share the same design
+ * tokens, and (Fase 4+) operate the same sessions. The capsule is
+ * compact because the studio exists. The studio exists because some
+ * work genuinely needs depth.
+ *
+ * If a user finds themselves opening the studio for work that should
+ * fit in the capsule, the capsule has failed its function. The
+ * studio justifies existing only because it makes the capsule more
+ * powerful — never as a replacement for it.
+ *
+ * Fase 1 ships only the Idle Mode at /composer (StudioHome). Every
+ * other sidebar entry routes to a StudioStub — honest about which
+ * fase activates the wiring.
+ */
 
-import { useState } from "react";
+import { Outlet } from "react-router-dom";
 import type { CSSProperties } from "react";
-import { Link } from "react-router-dom";
-import { MODES } from "./types";
-import type { ComposerMode, ModeDescriptor } from "./types";
-import ModePanel from "./panels/ModePanel";
-import ComposeCanvas from "./panels/ComposeCanvas";
-import ModePlaceholder from "./panels/ModePlaceholder";
-import PipelineStrip from "./PipelineStrip";
+import SidebarNav from "./shell/SidebarNav";
+import StatusBar from "./shell/StatusBar";
 
-// Split the 8 non-compose modes evenly across the two side columns.
-// Order roughly mirrors Foto 3 (input-side panels first on the left,
-// downstream panels on the right).
-const LEFT_MODES: ComposerMode[] = ["idle", "context", "route", "memory"];
-const RIGHT_MODES: ComposerMode[] = ["code", "design", "analysis", "apply"];
-
-const headerStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "16px 24px",
-  borderBottom: "var(--border-soft)",
-  background: "var(--bg-surface)",
-};
-
-const gridStyle: CSSProperties = {
-  flex: 1,
+const rootStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(220px, 280px) minmax(0, 1fr) minmax(220px, 280px)",
-  gap: 16,
-  padding: 24,
+  gridTemplateColumns: "240px minmax(0, 1fr)",
+  gridTemplateRows: "1fr auto",
+  minHeight: "100vh",
+  background: "var(--bg)",
+  color: "var(--text-primary)",
+  fontFamily: "var(--sans)",
+};
+
+const sidebarCellStyle: CSSProperties = {
+  gridColumn: "1",
+  gridRow: "1 / span 2",
+};
+
+const mainStyle: CSSProperties = {
+  gridColumn: "2",
+  gridRow: "1",
+  padding: "32px 40px 40px",
   overflow: "auto",
-  alignItems: "start",
+  minWidth: 0,
 };
 
-const columnStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
+const statusCellStyle: CSSProperties = {
+  gridColumn: "2",
+  gridRow: "2",
 };
-
-function findMode(id: ComposerMode): ModeDescriptor {
-  const found = MODES.find((m) => m.id === id);
-  if (!found) throw new Error(`unknown mode: ${id}`);
-  return found;
-}
 
 export default function ComposerLayout() {
-  const [active, setActive] = useState<ComposerMode>("compose");
-
   return (
-    <div
-      style={{
-        background: "var(--bg)",
-        color: "var(--text-primary)",
-        fontFamily: "var(--sans)",
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-      }}
-      data-composer-surface
-    >
-      <header style={headerStyle}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span
-            aria-hidden
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              background: "var(--accent, #4a7cff)",
-              boxShadow: "0 0 14px var(--accent, #4a7cff)",
-            }}
-          />
-          <p
-            style={{
-              margin: 0,
-              fontFamily: "var(--mono)",
-              fontSize: "var(--t-meta)",
-              letterSpacing: "var(--track-kicker)",
-              color: "var(--text-muted)",
-            }}
-          >
-            RUBERRA · COMPOSER
-          </p>
-          <span style={{ color: "var(--text-muted)" }}>·</span>
-          <span style={{ fontSize: 14, color: "var(--text-primary)" }}>Wave 1 surface</span>
-        </div>
-        <Link
-          to="/control"
-          style={{
-            color: "var(--text-secondary, var(--text-muted))",
-            textDecoration: "none",
-            fontFamily: "var(--mono)",
-            fontSize: "var(--t-meta)",
-            letterSpacing: "var(--track-meta)",
-            textTransform: "uppercase",
-            border: "var(--border-soft)",
-            borderRadius: "var(--radius-sm, 4px)",
-            padding: "6px 12px",
-          }}
-        >
-          → Control
-        </Link>
-      </header>
-
-      <main style={gridStyle}>
-        <aside style={columnStyle} aria-label="left mode panels">
-          {LEFT_MODES.map((id) => (
-            <ModePanel key={id} mode={findMode(id)} active={active} onSelect={setActive} />
-          ))}
-        </aside>
-
-        <section style={{ ...columnStyle, gap: 16 }}>
-          {active === "compose" ? <ComposeCanvas /> : <ModePlaceholder mode={active} />}
-        </section>
-
-        <aside style={columnStyle} aria-label="right mode panels">
-          {RIGHT_MODES.map((id) => (
-            <ModePanel key={id} mode={findMode(id)} active={active} onSelect={setActive} />
-          ))}
-        </aside>
+    <div style={rootStyle} data-composer-studio>
+      <div style={sidebarCellStyle}>
+        <SidebarNav />
+      </div>
+      <main style={mainStyle}>
+        <Outlet />
       </main>
-
-      <PipelineStrip />
+      <div style={statusCellStyle}>
+        <StatusBar />
+      </div>
     </div>
   );
 }
