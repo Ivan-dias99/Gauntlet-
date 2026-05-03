@@ -186,6 +186,46 @@
     linear-gradient(180deg, #0a1628 0%, #08111e 100%);
 }
 
+/* ——— STUDIO LIGHT — premium white variant ———
+   Activated by [data-theme="light"] on a parent (typically <html>).
+   Inverts the dark studio: pristine off-white surfaces, deep cyan
+   accent, near-black text. Same structural tokens, opposite
+   luminance. */
+[data-composer-studio][data-theme="light"],
+[data-theme="light"] [data-composer-studio] {
+  --bg: #f4f7fb;
+  --bg-surface: #ffffff;
+  --bg-sunken: #ebeff5;
+  --bg-elevated: #f9fbfd;
+  --bg-input: #ffffff;
+
+  --border-color-soft:   color-mix(in oklab, #1f4f6b 12%, transparent);
+  --border-color-mid:    color-mix(in oklab, #1f4f6b 22%, transparent);
+  --border-color-strong: color-mix(in oklab, #1f4f6b 36%, transparent);
+  --border-soft:   1px solid var(--border-color-soft);
+  --border-mid:    1px solid var(--border-color-mid);
+  --border-strong: 1px solid var(--border-color-strong);
+  --border: var(--border-color-mid);
+
+  --text-primary: #0a1f33;
+  --text-secondary: #3a5a73;
+  --text-muted: #6b8499;
+  --text-ghost: #b3c2cf;
+
+  --accent: #1f8aab;
+  --accent-dim: #6ba8c0;
+  --accent-glow: rgba(31, 138, 171, 0.18);
+
+  --studio-backdrop:
+    radial-gradient(
+      ellipse 110% 80% at 50% 0%,
+      rgba(31, 138, 171, 0.06) 0%,
+      rgba(31, 138, 171, 0.02) 30%,
+      transparent 65%
+    ),
+    linear-gradient(180deg, #f4f7fb 0%, #eaeff5 100%);
+}
+
 /* ——— LIGHT — premium white (Vision Pro / Cursor) ———
    Pure neutrals, no warm undertone. Ultra-definition reads:
    pure black on crystalline white. Surfaces are real white;

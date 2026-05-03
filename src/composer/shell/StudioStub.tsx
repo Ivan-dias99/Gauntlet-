@@ -23,6 +23,16 @@ interface StubMeta {
 // Permissions / Ledger / Settings landed live in this fase, absorbed
 // from the (now deleted) /control/* layout.
 const STUBS: Record<string, StubMeta> = {
+  "/composer/context": {
+    title: "Context",
+    fase: "Wave 1",
+    blurb: "Live context inspector — selection, screen, files, app source, and the confidence score the brain assigned. Manual override + re-capture.",
+    requires: [
+      "context capture stream from /composer/context",
+      "confidence + provenance fields per source",
+      "manual override + re-capture controls",
+    ],
+  },
   "/composer/compose": {
     title: "Compose",
     fase: "Fase 3",
@@ -31,6 +41,16 @@ const STUBS: Record<string, StubMeta> = {
       "ComposeCanvas restored from src/composer/panels/",
       "preview rendering with cost + latency annotations",
       "approval inline + audit hand-off to ledger",
+    ],
+  },
+  "/composer/route": {
+    title: "Route",
+    fase: "Wave 1",
+    blurb: "Tool routing console — model gateway state, per-tool latency, cost, and the routing reasons.",
+    requires: [
+      "tools registry visualisation (read from registry.ts)",
+      "model gateway routing reasons",
+      "per-tool latency + cost summary",
     ],
   },
   "/composer/code": {

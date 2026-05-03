@@ -26,18 +26,23 @@ export default function AppRoutes() {
         {/* Workspace */}
         <Route index element={<StudioHome />} />
 
-        {/* Compose group — wiring lands in later fases. */}
+        {/* Sidebar stubs — wiring lands in later fases. */}
+        <Route path="context"  element={<StudioStub />} />
         <Route path="compose"  element={<StudioStub />} />
         <Route path="code"     element={<StudioStub />} />
         <Route path="design"   element={<StudioStub />} />
         <Route path="analysis" element={<StudioStub />} />
+        <Route path="route"    element={<StudioStub />} />
 
-        {/* Governance — absorbed from the legacy /control/* layout. */}
+        {/* Sidebar live — Memory + Settings absorbed from legacy /control/*. */}
         <Route path="memory"      element={<MemoryPage />} />
+        <Route path="settings"    element={<SettingsPage />} />
+
+        {/* Off-sidebar live — accessible via right-rail link or
+            Settings sub-navigation; absorbed from legacy /control/*. */}
         <Route path="models"      element={<ModelsPage />} />
         <Route path="permissions" element={<PermissionsPage />} />
         <Route path="ledger"      element={<LedgerPage />} />
-        <Route path="settings"    element={<SettingsPage />} />
         <Route path="overview"    element={<OverviewPage />} />
       </Route>
 

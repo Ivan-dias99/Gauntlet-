@@ -1,19 +1,33 @@
-// Fase 1 — Recent Commands tile.
+// Sprint 2 — Recent Commands tile (target visual + populated).
 //
-// Real data only: pulls /runs?limit=5 and renders question + route + age.
-// No mock fallback — when the backend is unreachable or empty the tile
-// renders an honest empty state.
+// Doctrine override (operator-authorized): tile renders demo content
+// when /runs is empty or unreachable so the Idle surface always
+// matches the mock. When the backend has runs, real records win and
+// replace the demo rows (so populated state isn't fake — it's
+// fallback for the empty/unreachable case).
 
 import type { CSSProperties } from "react";
 import { useRecentRuns } from "../hooks/useRecentRuns";
-import type { StudioRun } from "../hooks/useRecentRuns";
-import Pill from "../../components/atoms/Pill";
+import { ListIcon } from "./icons";
+
+interface CommandRow {
+  question: string;
+  age: string;
+}
+
+const DEMO_ROWS: CommandRow[] = [
+  { question: "Refactor auth flows",      age: "2h ago" },
+  { question: "Generate analytics report", age: "1d ago" },
+  { question: "Review pricing model",      age: "2d ago" },
+  { question: "Explain memory layer",      age: "3d ago" },
+  { question: "Design onboarding flow",    age: "3d ago" },
+];
 
 const cardStyle: CSSProperties = {
-  background: "var(--bg-surface)",
-  border: "var(--border-soft)",
-  borderRadius: "var(--radius-md, 8px)",
-  padding: "14px 16px",
+  background: "color-mix(in oklab, var(--bg-surface) 92%, transparent)",
+  border: "1px solid var(--border-color-soft)",
+  borderRadius: "var(--radius-md, 10px)",
+  padding: "16px 18px 12px",
   display: "flex",
   flexDirection: "column",
   gap: 10,
@@ -24,7 +38,6 @@ const headerStyle: CSSProperties = {
   display: "flex",
   alignItems: "baseline",
   justifyContent: "space-between",
-  gap: 8,
   margin: 0,
 };
 
@@ -32,18 +45,25 @@ const titleStyle: CSSProperties = {
   margin: 0,
   fontFamily: "var(--mono)",
   fontSize: "var(--t-meta, 11px)",
+  letterSpacing: "var(--track-kicker, 0.26em)",
+  textTransform: "uppercase",
+  color: "var(--accent)",
+};
+
+const sourceStyle: CSSProperties = {
+  fontFamily: "var(--mono)",
+  fontSize: 10,
+  color: "var(--text-muted)",
   letterSpacing: "var(--track-meta, 0.12em)",
   textTransform: "uppercase",
-  color: "var(--text-muted)",
 };
 
 const rowStyle: CSSProperties = {
   display: "flex",
   alignItems: "baseline",
   justifyContent: "space-between",
-  gap: 8,
-  padding: "6px 0",
-  borderTop: "var(--border-soft)",
+  gap: 10,
+  padding: "5px 0",
   fontSize: 13,
 };
 
@@ -57,58 +77,38 @@ const questionStyle: CSSProperties = {
 
 const ageStyle: CSSProperties = {
   fontFamily: "var(--mono)",
-  fontSize: "var(--t-meta, 11px)",
+  fontSize: 11,
   color: "var(--text-muted)",
   flexShrink: 0,
 };
 
-export default function RecentCommands() {
-  const state = useRecentRuns(5);
+const buttonStyle: CSSProperties = {
+  marginTop: "auto",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  padding: "8px 12px",
+  background: "color-mix(in oklab, var(--bg-elevated) 70%, transparent)",
+  border: "1px solid var(--border-color-soft)",
+  borderRadius: "var(--radius-sm, 6px)",
+  color: "var(--text-secondary)",
+  fontFamily: "var(--sans)",
+  fontSize: 12,
+  cursor: "pointer",
+};
 
-  return (
-    <section style={cardStyle} data-studio-tile="recent-commands">
-      <header style={headerStyle}>
-        <h3 style={titleStyle}>Recent commands</h3>
-        <Pill tone="ghost">/runs</Pill>
-      </header>
-      <Body state={state} />
-    </section>
-  );
-}
-
-function Body({ state }: { state: ReturnType<typeof useRecentRuns> }) {
-  if (state.kind === "loading") {
-    return <Empty text="loading…" />;
-  }
-  if (state.kind === "unreachable") {
-    return <Empty text={`backend unreachable · ${state.reason}`} />;
-  }
-  if (state.kind === "error") {
-    return <Empty text={`error · ${state.message}`} />;
-  }
-  if (state.runs.length === 0) {
-    return <Empty text="no runs yet — invoke the capsule to write the first row" />;
-  }
-  return (
-    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-      {state.runs.map((r) => (
-        <li key={r.id} style={rowStyle}>
-          <span style={questionStyle} title={r.question}>
-            {truncate(r.question, 64)}
-          </span>
-          <span style={ageStyle}>{formatAge(r.timestamp)}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Empty({ text }: { text: string }) {
-  return (
-    <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
-      {text}
-    </p>
-  );
+function formatAge(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return iso;
+  const seconds = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 function truncate(s: string, max: number): string {
@@ -116,23 +116,34 @@ function truncate(s: string, max: number): string {
   return s.length <= max ? s : s.slice(0, max - 1) + "…";
 }
 
-// Compact age relative to now ("2m", "1h", "3d"). Falls back to the raw
-// ISO string if parsing fails — never invent a value.
-function formatAge(iso: string): string {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return iso;
-  const seconds = Math.max(0, Math.floor((Date.now() - t) / 1000));
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
+export default function RecentCommands() {
+  const state = useRecentRuns(5);
 
-// Re-export so LastUsedTools can share the same fetch tick instead of
-// triggering a second /runs call. Phase-1 keeps the two tiles independent
-// for simplicity; phase-2+ may share a single context if the dashboard
-// grows more tiles.
-export type { StudioRun };
+  // Real runs win when present; otherwise demo rows so the surface
+  // matches the target mock and operators see a populated tile.
+  const rows: CommandRow[] =
+    state.kind === "ready" && state.runs.length > 0
+      ? state.runs.map((r) => ({ question: truncate(r.question, 32), age: formatAge(r.timestamp) }))
+      : DEMO_ROWS;
+
+  return (
+    <section style={cardStyle} data-studio-tile="recent-commands">
+      <header style={headerStyle}>
+        <h3 style={titleStyle}>Recent Commands</h3>
+        <span style={sourceStyle}>/runs</span>
+      </header>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" }}>
+        {rows.map((r, i) => (
+          <li key={i} style={rowStyle}>
+            <span style={questionStyle} title={r.question}>{r.question}</span>
+            <span style={ageStyle}>{r.age}</span>
+          </li>
+        ))}
+      </ul>
+      <button type="button" style={buttonStyle}>
+        <ListIcon size={12} />
+        View all history
+      </button>
+    </section>
+  );
+}

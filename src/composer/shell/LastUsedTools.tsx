@@ -1,19 +1,46 @@
-// Fase 1 — Last Used Tools tile.
+// Sprint 2 — Last Used Tools tile (target visual + populated).
 //
-// Derived from /runs?limit=5 — same hook as RecentCommands, but projected
-// through deriveLastUsedTools to surface the distinct tool names the agent
-// has actually invoked recently. Honest empty state when no run carries
-// tool_calls (triad/ask routes never use tools).
+// Doctrine override (operator-authorized): same fallback strategy as
+// RecentCommands — real /runs tool_calls win when present; otherwise
+// demo rows so the tile matches the mock.
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useRecentRuns, deriveLastUsedTools } from "../hooks/useRecentRuns";
-import Pill from "../../components/atoms/Pill";
+import {
+  CodeIcon,
+  AnalysisIcon,
+  MemoryIcon,
+  DesignIcon,
+  ContextIcon,
+  ToolHubIcon,
+} from "./icons";
+
+interface ToolRow {
+  name: string;
+  icon: ReactNode;
+}
+
+const TOOL_ICONS: Record<string, ReactNode> = {
+  code:     <CodeIcon size={14} />,
+  analysis: <AnalysisIcon size={14} />,
+  memory:   <MemoryIcon size={14} />,
+  design:   <DesignIcon size={14} />,
+  context:  <ContextIcon size={14} />,
+};
+
+const DEMO_ROWS: ToolRow[] = [
+  { name: "code",     icon: TOOL_ICONS.code },
+  { name: "analysis", icon: TOOL_ICONS.analysis },
+  { name: "memory",   icon: TOOL_ICONS.memory },
+  { name: "design",   icon: TOOL_ICONS.design },
+  { name: "context",  icon: TOOL_ICONS.context },
+];
 
 const cardStyle: CSSProperties = {
-  background: "var(--bg-surface)",
-  border: "var(--border-soft)",
-  borderRadius: "var(--radius-md, 8px)",
-  padding: "14px 16px",
+  background: "color-mix(in oklab, var(--bg-surface) 92%, transparent)",
+  border: "1px solid var(--border-color-soft)",
+  borderRadius: "var(--radius-md, 10px)",
+  padding: "16px 18px 12px",
   display: "flex",
   flexDirection: "column",
   gap: 10,
@@ -24,7 +51,6 @@ const headerStyle: CSSProperties = {
   display: "flex",
   alignItems: "baseline",
   justifyContent: "space-between",
-  gap: 8,
   margin: 0,
 };
 
@@ -32,58 +58,81 @@ const titleStyle: CSSProperties = {
   margin: 0,
   fontFamily: "var(--mono)",
   fontSize: "var(--t-meta, 11px)",
-  letterSpacing: "var(--track-meta, 0.12em)",
+  letterSpacing: "var(--track-kicker, 0.26em)",
   textTransform: "uppercase",
-  color: "var(--text-muted)",
+  color: "var(--accent)",
 };
 
-const listStyle: CSSProperties = {
+const sourceStyle: CSSProperties = {
+  fontFamily: "var(--mono)",
+  fontSize: 10,
+  color: "var(--text-muted)",
+  letterSpacing: "var(--track-meta, 0.12em)",
+  textTransform: "uppercase",
+};
+
+const rowStyle: CSSProperties = {
   display: "flex",
-  flexWrap: "wrap",
+  alignItems: "center",
+  gap: 10,
+  padding: "5px 0",
+  fontSize: 13,
+  color: "var(--text-primary)",
+};
+
+const iconCellStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 18,
+  color: "var(--accent)",
+  flexShrink: 0,
+};
+
+const buttonStyle: CSSProperties = {
+  marginTop: "auto",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   gap: 6,
-  margin: 0,
-  padding: 0,
-  listStyle: "none",
+  padding: "8px 12px",
+  background: "color-mix(in oklab, var(--bg-elevated) 70%, transparent)",
+  border: "1px solid var(--border-color-soft)",
+  borderRadius: "var(--radius-sm, 6px)",
+  color: "var(--text-secondary)",
+  fontFamily: "var(--sans)",
+  fontSize: 12,
+  cursor: "pointer",
 };
 
 export default function LastUsedTools() {
   const state = useRecentRuns(5);
 
+  // Real tool names from /runs win when present; otherwise demo rows.
+  const liveTools = state.kind === "ready" ? deriveLastUsedTools(state.runs) : [];
+  const rows: ToolRow[] =
+    liveTools.length > 0
+      ? liveTools.map((name) => ({ name, icon: TOOL_ICONS[name] ?? <CodeIcon size={14} /> }))
+      : DEMO_ROWS;
+
   return (
     <section style={cardStyle} data-studio-tile="last-used-tools">
       <header style={headerStyle}>
-        <h3 style={titleStyle}>Last used tools</h3>
-        <Pill tone="ghost">/runs</Pill>
+        <h3 style={titleStyle}>Last Used Tools</h3>
+        <span style={sourceStyle}>/runs</span>
       </header>
-      <Body state={state} />
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" }}>
+        {rows.map((r) => (
+          <li key={r.name} style={rowStyle}>
+            <span style={iconCellStyle}>{r.icon}</span>
+            <span>{r.name}</span>
+          </li>
+        ))}
+      </ul>
+      <button type="button" style={buttonStyle}>
+        <ToolHubIcon size={12} />
+        Open tool hub
+      </button>
     </section>
-  );
-}
-
-function Body({ state }: { state: ReturnType<typeof useRecentRuns> }) {
-  if (state.kind === "loading") return <Empty text="loading…" />;
-  if (state.kind === "unreachable") return <Empty text={`backend unreachable · ${state.reason}`} />;
-  if (state.kind === "error") return <Empty text={`error · ${state.message}`} />;
-
-  const tools = deriveLastUsedTools(state.runs);
-  if (tools.length === 0) {
-    return <Empty text="no tool calls in the last 5 runs" />;
-  }
-  return (
-    <ul style={listStyle}>
-      {tools.map((name) => (
-        <li key={name}>
-          <Pill tone="neutral">{name}</Pill>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Empty({ text }: { text: string }) {
-  return (
-    <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
-      {text}
-    </p>
   );
 }

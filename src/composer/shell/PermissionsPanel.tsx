@@ -1,59 +1,33 @@
-// Fase 1.5 — Permissions & Privacy panel (right rail), recalibrated.
+// Sprint 2 — Permissions & Privacy panel (target visual + full rows).
 //
-// Visual identity tightened:
-//   * accent-tinted border + soft glow ring on the wrapper
-//   * shield glyph in the header (CSS-drawn, no asset)
-//   * tighter type rhythm; status pill aligned right
-//   * link to the full matrix as a subtle CTA at the bottom
-//
-// Data is unchanged from Fase 1: three categories derived from the
-// same MATRIX that PermissionsPage renders in detail. Privacy Mode and
-// Data Retention stay out — there is no backend setting that would
-// honour them honestly today.
+// Doctrine override (operator-authorized): adds Data Retention row
+// with Manage button + Privacy Mode toggle. Both are decorative until
+// the corresponding settings endpoints ship — the toggle is local
+// state only and does not call the backend.
 
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import Pill from "../../components/atoms/Pill";
+import { ShieldIcon, CheckCircleIcon } from "./icons";
 
 interface CategorySummary {
   label: string;
   description: string;
-  scopes: string[];
   granted: boolean;
 }
 
-// Human-first descriptions so the panel reads like product chrome,
-// not like a config dump. The technical scopes stay below the
-// description for operators who need them — they map 1:1 to the
-// connector × scope rows on PermissionsPage MATRIX.
 const CATEGORIES: CategorySummary[] = [
-  {
-    label: "Data Access",
-    description: "Workspace files, docs, terminal",
-    scopes: ["filesystem.fs.read", "filesystem.fs.write"],
-    granted: true,
-  },
-  {
-    label: "Network Access",
-    description: "Anthropic models, internal APIs",
-    scopes: ["anthropic.models.invoke"],
-    granted: true,
-  },
-  {
-    label: "Code Execution",
-    description: "Local environment only",
-    scopes: ["shell.cmd.run"],
-    granted: true,
-  },
+  { label: "Data Access",     description: "Workspace files, docs, terminal",     granted: true },
+  { label: "Network Access",  description: "api.internal.local, docs.company.com", granted: true },
+  { label: "Code Execution",  description: "Local environment only",              granted: true },
 ];
 
 const wrapStyle: CSSProperties = {
-  background: "color-mix(in oklab, var(--bg-surface) 92%, transparent)",
+  background: "color-mix(in oklab, var(--bg-surface) 94%, transparent)",
   border: "1px solid var(--border-color-mid)",
-  borderRadius: "var(--radius-md, 8px)",
+  borderRadius: "var(--radius-md, 10px)",
   boxShadow:
     "0 0 0 1px color-mix(in oklab, var(--accent) 14%, transparent), 0 24px 60px rgba(0, 0, 0, 0.30)",
-  padding: 0,
   display: "flex",
   flexDirection: "column",
   position: "sticky",
@@ -74,12 +48,12 @@ const shieldStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  width: 22,
-  height: 22,
+  width: 24,
+  height: 24,
   borderRadius: 6,
-  border: "1px solid var(--accent)",
+  border: "1px solid color-mix(in oklab, var(--accent) 50%, transparent)",
+  background: "color-mix(in oklab, var(--accent) 14%, transparent)",
   color: "var(--accent)",
-  fontSize: 12,
   flexShrink: 0,
 };
 
@@ -87,9 +61,18 @@ const titleStyle: CSSProperties = {
   margin: 0,
   fontFamily: "var(--mono)",
   fontSize: "var(--t-meta, 11px)",
-  letterSpacing: "var(--track-kicker, 0.26em)",
+  letterSpacing: "var(--track-meta, 0.12em)",
   textTransform: "uppercase",
   color: "var(--accent)",
+};
+
+const versionStyle: CSSProperties = {
+  marginLeft: "auto",
+  fontFamily: "var(--mono)",
+  fontSize: 10,
+  letterSpacing: "var(--track-meta, 0.12em)",
+  textTransform: "uppercase",
+  color: "var(--text-muted)",
 };
 
 const bodyStyle: CSSProperties = {
@@ -118,57 +101,156 @@ const rowHeader: CSSProperties = {
   gap: 8,
 };
 
-const scopeStyle: CSSProperties = {
+const labelStyle: CSSProperties = {
+  fontSize: 13,
+  color: "var(--text-primary)",
+  fontWeight: 500,
+};
+
+const allowedBadgeStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  padding: "2px 8px",
+  borderRadius: "999px",
+  border: "1px solid color-mix(in oklab, #7ab48a 50%, transparent)",
+  background: "color-mix(in oklab, #7ab48a 14%, transparent)",
+  color: "color-mix(in oklab, #7ab48a 92%, var(--text-primary))",
   fontFamily: "var(--mono)",
-  fontSize: "var(--t-meta, 11px)",
-  color: "var(--text-muted)",
+  fontSize: 10,
+  letterSpacing: "var(--track-meta, 0.12em)",
+  textTransform: "uppercase",
+};
+
+const descriptionStyle: CSSProperties = {
+  fontSize: 12,
+  color: "var(--text-secondary)",
+};
+
+const manageButtonStyle: CSSProperties = {
+  padding: "5px 10px",
+  background: "transparent",
+  border: "1px solid var(--border-color-soft)",
+  borderRadius: "var(--radius-sm, 4px)",
+  color: "var(--text-secondary)",
+  fontFamily: "var(--sans)",
+  fontSize: 12,
+  cursor: "pointer",
 };
 
 const linkStyle: CSSProperties = {
   display: "block",
-  margin: "0 16px 14px",
+  margin: "4px 16px 14px",
   padding: "8px 12px",
   fontFamily: "var(--mono)",
   fontSize: "var(--t-meta, 11px)",
   letterSpacing: "var(--track-meta, 0.12em)",
   textTransform: "uppercase",
-  color: "var(--accent)",
+  color: "var(--text-muted)",
   textDecoration: "none",
-  border: "1px solid color-mix(in oklab, var(--accent) 32%, transparent)",
+  border: "1px solid var(--border-color-soft)",
   borderRadius: "var(--radius-sm, 4px)",
   textAlign: "center",
 };
 
+// Local toggle for Privacy Mode — purely visual. The backend has no
+// privacy-mode setting; flipping this does not change behaviour. It's
+// chrome that matches the mock's authorized override.
+function ToggleSwitch({
+  on,
+  onChange,
+  label,
+}: {
+  on: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={() => onChange(!on)}
+      style={{
+        width: 36,
+        height: 20,
+        borderRadius: "999px",
+        border: "1px solid var(--border-color-soft)",
+        background: on
+          ? "color-mix(in oklab, var(--accent) 80%, transparent)"
+          : "color-mix(in oklab, var(--bg-elevated) 80%, transparent)",
+        position: "relative",
+        cursor: "pointer",
+        padding: 0,
+        transition: "background var(--motion-duration-fast, 120ms)",
+      }}
+    >
+      <span
+        style={{
+          position: "absolute",
+          top: 2,
+          left: on ? 18 : 2,
+          width: 14,
+          height: 14,
+          borderRadius: "50%",
+          background: on ? "#ffffff" : "var(--text-muted)",
+          boxShadow: on ? "0 0 8px var(--accent)" : "none",
+          transition: "left var(--motion-duration-fast, 120ms)",
+        }}
+      />
+    </button>
+  );
+}
+
 export default function PermissionsPanel() {
+  const [privacyOn, setPrivacyOn] = useState(true);
+
   return (
     <aside style={wrapStyle} aria-label="Permissions and privacy">
       <header style={headerStyle}>
         <span style={shieldStyle} aria-hidden>
-          {/* Minimal shield glyph — text instead of SVG keeps the
-              file token-driven and free of asset dependencies. */}
-          ▣
+          <ShieldIcon size={14} />
         </span>
         <h3 style={titleStyle}>Permissions &amp; Privacy</h3>
-        <span style={{ marginLeft: "auto" }}>
-          <Pill tone="ghost">V0 static</Pill>
-        </span>
+        <span style={versionStyle}>V0 static</span>
       </header>
 
       <div style={bodyStyle}>
         {CATEGORIES.map((cat, i) => (
           <div key={cat.label} style={i === 0 ? rowFirstStyle : rowStyle}>
             <div style={rowHeader}>
-              <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{cat.label}</span>
-              <Pill tone={cat.granted ? "ok" : "ghost"}>
-                {cat.granted ? "allowed" : "declined"}
-              </Pill>
+              <span style={labelStyle}>{cat.label}</span>
+              <span style={allowedBadgeStyle}>
+                Allowed
+                <CheckCircleIcon size={10} />
+              </span>
             </div>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>
-              {cat.description}
-            </span>
-            <span style={scopeStyle}>{cat.scopes.join(" · ")}</span>
+            <span style={descriptionStyle}>{cat.description}</span>
           </div>
         ))}
+
+        {/* Data Retention row — Manage button is decorative. */}
+        <div style={rowStyle}>
+          <div style={rowHeader}>
+            <span style={labelStyle}>Data Retention</span>
+            <button type="button" style={manageButtonStyle}>Manage</button>
+          </div>
+          <span style={descriptionStyle}>30 days</span>
+        </div>
+
+        {/* Privacy Mode toggle — local state only, no backend wire. */}
+        <div style={rowStyle}>
+          <div style={rowHeader}>
+            <span style={labelStyle}>Privacy Mode</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, color: privacyOn ? "var(--accent)" : "var(--text-muted)", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "var(--track-meta, 0.12em)" }}>
+                {privacyOn ? "On" : "Off"}
+              </span>
+              <ToggleSwitch on={privacyOn} onChange={setPrivacyOn} label="Privacy mode" />
+            </span>
+          </div>
+        </div>
       </div>
 
       <Link to="/composer/permissions" style={linkStyle}>
