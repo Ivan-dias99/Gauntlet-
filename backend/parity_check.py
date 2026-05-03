@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 # Make this script runnable both as `python -m parity_check` (from the
-# signal-backend directory) and as `python parity_check.py`. Imports below
+# backend/ directory) and as `python parity_check.py`. Imports below
 # match the existing module layout — config / db are siblings.
 try:
     from config import DATABASE_URL, MEMORY_DIR

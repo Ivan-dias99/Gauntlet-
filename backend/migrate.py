@@ -5,8 +5,8 @@ One-shot script that walks the existing JSON stores under MEMORY_DIR
 and seeds the Postgres tables defined by migrations/0001_initial_schema.sql.
 
 Usage:
-    cd signal-backend
-    SIGNAL_DATABASE_URL=postgres://user:pass@host:5432/db \
+    cd backend
+    GAUNTLET_DATABASE_URL=postgres://user:pass@host:5432/db \
     python -m migrate
 
 Idempotent: each section replaces the table contents (DELETE + reinsert)
