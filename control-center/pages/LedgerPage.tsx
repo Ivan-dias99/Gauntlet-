@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
-import { Kv, Panel, SurfaceHeader } from "./ControlLayout";
+import { Panel, SurfaceHeader } from "./ControlLayout";
 import Pill from "../components/atoms/Pill";
 
 interface RunRecord {
@@ -32,7 +32,6 @@ const ROUTE_TONES: Record<string, "ok" | "warn" | "neutral" | "ghost"> = {
   composer: "ok",
   agent: "neutral",
   triad: "neutral",
-  crew: "neutral",
   dev: "neutral",
 };
 
@@ -70,7 +69,10 @@ export default function LedgerPage() {
       if (routeFilter !== "all" && r.route !== routeFilter) return false;
       if (text) {
         const q = text.toLowerCase();
-        if (!r.question.toLowerCase().includes(q) && !(r.context ?? "").toLowerCase().includes(q)) {
+        if (
+          !r.question.toLowerCase().includes(q) &&
+          !(r.context ?? "").toLowerCase().includes(q)
+        ) {
           return false;
         }
       }
@@ -81,59 +83,88 @@ export default function LedgerPage() {
   return (
     <>
       <SurfaceHeader
-        title="Ledger"
+        eyebrow="Ledger"
+        title="Run provenance"
         subtitle="Every run that hit the engine — composer envelopes plus the underlying agent / triad rows."
         actions={
           <button
             type="button"
             onClick={() => void load()}
             style={{
-              padding: "6px 14px",
-              borderRadius: "var(--radius-sm, 4px)",
+              padding: "8px 16px",
+              borderRadius: 8,
               border: "var(--border-soft)",
-              background: "transparent",
+              background: "var(--bg-elevated)",
               color: "var(--text-primary)",
               fontFamily: "var(--mono)",
-              fontSize: 12,
+              fontSize: 11,
               letterSpacing: "var(--track-meta)",
               textTransform: "uppercase",
               cursor: "pointer",
             }}
           >
-            reload
+            ↻ reload
           </button>
         }
       />
 
       {error && (
         <Panel>
-          <p style={{ color: "var(--danger, #d04a4a)", fontSize: 12, margin: 0 }}>{error}</p>
+          <div
+            style={{
+              padding: "10px 12px",
+              borderRadius: 6,
+              background: "color-mix(in oklab, var(--cc-err) 8%, transparent)",
+              border: "1px solid color-mix(in oklab, var(--cc-err) 28%, transparent)",
+              color: "color-mix(in oklab, var(--cc-err) 86%, var(--text-primary))",
+              fontFamily: "var(--mono)",
+              fontSize: 12,
+            }}
+          >
+            {error}
+          </div>
         </Panel>
       )}
 
-      <Panel>
-        <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-          {routes.map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setRouteFilter(r)}
-              style={{
-                padding: "4px 10px",
-                borderRadius: "var(--radius-sm, 4px)",
-                border: routeFilter === r ? "1px solid var(--text-primary)" : "var(--border-soft)",
-                background: routeFilter === r ? "var(--bg-elevated)" : "transparent",
-                color: "var(--text-secondary)",
-                fontFamily: "var(--mono)",
-                fontSize: 11,
-                letterSpacing: "var(--track-meta)",
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              {r}
-            </button>
-          ))}
+      <Panel title="Filters" hint={`${visible.length} of ${runs.length} record(s)`}>
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            marginBottom: 14,
+            flexWrap: "wrap",
+          }}
+        >
+          {routes.map((r) => {
+            const active = routeFilter === r;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRouteFilter(r)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  border: active
+                    ? "1px solid color-mix(in oklab, var(--ember) 50%, var(--border-color-mid))"
+                    : "var(--border-soft)",
+                  background: active
+                    ? "color-mix(in oklab, var(--ember) 10%, var(--bg-elevated))"
+                    : "var(--bg-elevated)",
+                  color: active ? "var(--text-primary)" : "var(--text-secondary)",
+                  fontFamily: "var(--mono)",
+                  fontSize: 11,
+                  letterSpacing: "var(--track-meta)",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  transition: "all 180ms var(--motion-easing-out)",
+                  fontWeight: active ? 600 : 400,
+                }}
+              >
+                {r}
+              </button>
+            );
+          })}
         </div>
         <input
           type="search"
@@ -142,20 +173,42 @@ export default function LedgerPage() {
           onChange={(ev) => setText(ev.target.value)}
           style={{
             width: "100%",
-            padding: "8px 10px",
-            borderRadius: "var(--radius-sm, 4px)",
+            padding: "10px 12px",
+            borderRadius: 8,
             background: "var(--bg-input)",
             border: "var(--border-soft)",
             color: "var(--text-primary)",
             fontFamily: "var(--mono)",
             fontSize: 12,
+            outline: "none",
+            transition: "border-color 200ms ease, box-shadow 200ms ease",
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor =
+              "color-mix(in oklab, var(--ember) 50%, var(--border-color-mid))";
+            e.currentTarget.style.boxShadow =
+              "0 0 0 1px color-mix(in oklab, var(--ember) 30%, transparent), 0 0 18px color-mix(in oklab, var(--ember) 15%, transparent)";
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "";
+            e.currentTarget.style.boxShadow = "";
           }}
         />
       </Panel>
 
-      <Panel title="Runs" hint={`${visible.length} of ${runs.length} record(s)`}>
+      <Panel title="Runs">
         {visible.length === 0 ? (
-          <p style={{ color: "var(--text-muted)", fontSize: 12, margin: 0 }}>
+          <p
+            style={{
+              color: "var(--text-muted)",
+              fontSize: 12,
+              margin: 0,
+              padding: "12px 0",
+              fontFamily: "var(--mono)",
+              letterSpacing: "var(--track-meta)",
+              textTransform: "uppercase",
+            }}
+          >
             {runs.length === 0 ? "no runs recorded yet" : "no matches for filter"}
           </p>
         ) : (
@@ -168,59 +221,75 @@ export default function LedgerPage() {
             }}
           >
             <thead>
-              <tr style={{ color: "var(--text-muted)", textAlign: "left" }}>
-                <th style={{ padding: "6px 10px", fontWeight: 500 }}>route</th>
-                <th style={{ padding: "6px 10px", fontWeight: 500 }}>timestamp</th>
-                <th style={{ padding: "6px 10px", fontWeight: 500 }}>question</th>
-                <th style={{ padding: "6px 10px", fontWeight: 500 }}>tools</th>
-                <th style={{ padding: "6px 10px", fontWeight: 500 }}>ms</th>
-                <th style={{ padding: "6px 10px", fontWeight: 500 }}>state</th>
+              <tr style={{ textAlign: "left" }}>
+                <Th>route</Th>
+                <Th>timestamp</Th>
+                <Th>question</Th>
+                <Th align="right">tools</Th>
+                <Th align="right">ms</Th>
+                <Th>state</Th>
               </tr>
             </thead>
             <tbody>
-              {visible.map((r) => (
-                <tr
-                  key={r.id}
-                  onClick={() => setSelected(r)}
-                  style={{
-                    borderTop: "var(--border-soft)",
-                    cursor: "pointer",
-                    background: selected?.id === r.id ? "var(--bg-elevated)" : "transparent",
-                  }}
-                >
-                  <td style={{ padding: "8px 10px" }}>
-                    <Pill tone={ROUTE_TONES[r.route] ?? "ghost"}>{r.route}</Pill>
-                  </td>
-                  <td style={{ padding: "8px 10px", color: "var(--text-muted)" }}>
-                    {r.timestamp.slice(0, 19).replace("T", " ")}
-                  </td>
-                  <td
+              {visible.map((r) => {
+                const active = selected?.id === r.id;
+                return (
+                  <tr
+                    key={r.id}
+                    onClick={() => setSelected(r)}
                     style={{
-                      padding: "8px 10px",
-                      color: "var(--text-primary)",
-                      maxWidth: 360,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
+                      borderTop: "var(--border-soft)",
+                      cursor: "pointer",
+                      background: active ? "var(--bg-elevated)" : "transparent",
+                      transition: "background 140ms ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!active)
+                        e.currentTarget.style.background =
+                          "color-mix(in oklab, var(--text-primary) 3%, transparent)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!active) e.currentTarget.style.background = "transparent";
                     }}
                   >
-                    {r.question.split("\n")[0]}
-                  </td>
-                  <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>
-                    {r.tool_calls?.length ?? 0}
-                  </td>
-                  <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>
-                    {r.processing_time_ms ?? 0}
-                  </td>
-                  <td style={{ padding: "8px 10px" }}>
-                    {r.refused
-                      ? <Pill tone="warn">refused</Pill>
-                      : r.terminated_early
-                        ? <Pill tone="warn">early</Pill>
-                        : <Pill tone="ok">ok</Pill>}
-                  </td>
-                </tr>
-              ))}
+                    <Td>
+                      <Pill tone={ROUTE_TONES[r.route] ?? "ghost"}>{r.route}</Pill>
+                    </Td>
+                    <Td>
+                      <span style={{ color: "var(--text-muted)" }}>
+                        {r.timestamp.slice(0, 19).replace("T", " ")}
+                      </span>
+                    </Td>
+                    <Td>
+                      <span
+                        style={{
+                          color: "var(--text-primary)",
+                          fontFamily: "var(--sans)",
+                          maxWidth: 360,
+                          display: "inline-block",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        {r.question.split("\n")[0]}
+                      </span>
+                    </Td>
+                    <Td align="right">{r.tool_calls?.length ?? 0}</Td>
+                    <Td align="right">{r.processing_time_ms ?? 0}</Td>
+                    <Td>
+                      {r.refused ? (
+                        <Pill tone="warn">refused</Pill>
+                      ) : r.terminated_early ? (
+                        <Pill tone="warn">early</Pill>
+                      ) : (
+                        <Pill tone="ok">ok</Pill>
+                      )}
+                    </Td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -228,118 +297,165 @@ export default function LedgerPage() {
 
       {selected && (
         <Panel title="Run detail" hint={selected.id}>
-          <Kv
-            rows={[
-              ["route", selected.route],
-              ["timestamp", selected.timestamp],
-              ["mission_id", selected.mission_id ?? "—"],
-              ["iterations", String(selected.iterations ?? "—")],
-              [
-                "tokens",
-                `${selected.input_tokens ?? 0} in · ${selected.output_tokens ?? 0} out`,
-              ],
-              ["latency_ms", String(selected.processing_time_ms ?? 0)],
-              ["confidence", selected.confidence ?? "—"],
-              ["refused", selected.refused ? "true" : "false"],
-              ["termination_reason", selected.termination_reason ?? "—"],
-            ]}
-          />
-          <div style={{ marginTop: 14 }}>
-            <div
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: "var(--t-micro)",
-                letterSpacing: "var(--track-meta)",
-                textTransform: "uppercase",
-                color: "var(--text-muted)",
-                marginBottom: 6,
-              }}
-            >
-              question
-            </div>
-            <pre
-              style={{
-                margin: 0,
-                background: "var(--bg-sunken)",
-                padding: "10px 12px",
-                borderRadius: "var(--radius-sm, 4px)",
-                color: "var(--text-primary)",
-                fontFamily: "var(--mono)",
-                fontSize: 12,
-                whiteSpace: "pre-wrap",
-                maxHeight: 200,
-                overflow: "auto",
-              }}
-            >
-              {selected.question}
-            </pre>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gap: 12,
+              marginBottom: 18,
+            }}
+          >
+            <DetailStat label="route" value={selected.route} />
+            <DetailStat label="iterations" value={String(selected.iterations ?? "—")} />
+            <DetailStat
+              label="tokens"
+              value={`${selected.input_tokens ?? 0} / ${selected.output_tokens ?? 0}`}
+            />
+            <DetailStat label="latency" value={`${selected.processing_time_ms ?? 0} ms`} />
+            <DetailStat label="confidence" value={selected.confidence ?? "—"} />
+            <DetailStat label="mission" value={selected.mission_id ?? "—"} />
+            <DetailStat
+              label="refused"
+              value={selected.refused ? "true" : "false"}
+              tone={selected.refused ? "warn" : "ok"}
+            />
+            <DetailStat
+              label="terminated"
+              value={selected.termination_reason ?? "—"}
+            />
           </div>
-          {selected.context && (
-            <div style={{ marginTop: 14 }}>
-              <div
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: "var(--t-micro)",
-                  letterSpacing: "var(--track-meta)",
-                  textTransform: "uppercase",
-                  color: "var(--text-muted)",
-                  marginBottom: 6,
-                }}
-              >
-                context
-              </div>
-              <pre
-                style={{
-                  margin: 0,
-                  background: "var(--bg-sunken)",
-                  padding: "10px 12px",
-                  borderRadius: "var(--radius-sm, 4px)",
-                  color: "var(--text-secondary)",
-                  fontFamily: "var(--mono)",
-                  fontSize: 12,
-                  whiteSpace: "pre-wrap",
-                  maxHeight: 200,
-                  overflow: "auto",
-                }}
-              >
-                {selected.context}
-              </pre>
-            </div>
-          )}
-          {selected.answer && (
-            <div style={{ marginTop: 14 }}>
-              <div
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: "var(--t-micro)",
-                  letterSpacing: "var(--track-meta)",
-                  textTransform: "uppercase",
-                  color: "var(--text-muted)",
-                  marginBottom: 6,
-                }}
-              >
-                answer
-              </div>
-              <pre
-                style={{
-                  margin: 0,
-                  background: "var(--bg-sunken)",
-                  padding: "10px 12px",
-                  borderRadius: "var(--radius-sm, 4px)",
-                  color: "var(--text-primary)",
-                  fontFamily: "var(--mono)",
-                  fontSize: 12,
-                  whiteSpace: "pre-wrap",
-                  maxHeight: 320,
-                  overflow: "auto",
-                }}
-              >
-                {selected.answer}
-              </pre>
-            </div>
-          )}
+
+          <DetailBlock kicker="question" body={selected.question} mono />
+          {selected.context && <DetailBlock kicker="context" body={selected.context} mono dim />}
+          {selected.answer && <DetailBlock kicker="answer" body={selected.answer} mono />}
         </Panel>
       )}
     </>
+  );
+}
+
+function Th({
+  children,
+  align,
+}: {
+  children: React.ReactNode;
+  align?: "right";
+}) {
+  return (
+    <th
+      style={{
+        padding: "10px 12px",
+        fontWeight: 500,
+        fontSize: 10,
+        letterSpacing: "var(--track-meta)",
+        textTransform: "uppercase",
+        textAlign: align ?? "left",
+        color: "var(--text-muted)",
+      }}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  align,
+}: {
+  children: React.ReactNode;
+  align?: "right";
+}) {
+  return (
+    <td
+      style={{
+        padding: "12px 12px",
+        color: "var(--text-secondary)",
+        textAlign: align ?? "left",
+        verticalAlign: "middle",
+      }}
+    >
+      {children}
+    </td>
+  );
+}
+
+function DetailStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "ok" | "warn";
+}) {
+  const accent =
+    tone === "ok"
+      ? "var(--cc-ok)"
+      : tone === "warn"
+      ? "var(--cc-warn)"
+      : "var(--text-primary)";
+  return (
+    <div
+      style={{
+        padding: "10px 12px",
+        background: "var(--bg-elevated)",
+        border: "var(--border-soft)",
+        borderRadius: 8,
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        minWidth: 0,
+      }}
+    >
+      <span className="gx-eyebrow">{label}</span>
+      <span
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 13,
+          color: accent,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function DetailBlock({
+  kicker,
+  body,
+  mono,
+  dim,
+}: {
+  kicker: string;
+  body: string;
+  mono?: boolean;
+  dim?: boolean;
+}) {
+  return (
+    <div style={{ marginTop: 16 }}>
+      <span className="gx-eyebrow">{kicker}</span>
+      <pre
+        style={{
+          margin: "8px 0 0",
+          background: "var(--bg-sunken)",
+          padding: "12px 14px",
+          borderRadius: 8,
+          color: dim ? "var(--text-secondary)" : "var(--text-primary)",
+          fontFamily: mono ? "var(--mono)" : "var(--sans)",
+          fontSize: 12,
+          whiteSpace: "pre-wrap",
+          maxHeight: 320,
+          overflow: "auto",
+          lineHeight: 1.55,
+          border: "var(--border-soft)",
+        }}
+      >
+        {body}
+      </pre>
+    </div>
   );
 }

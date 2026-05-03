@@ -1,0 +1,321 @@
+/* Gauntlet — aesthetic layer.
+ *
+ * Sits on top of styles/tokens.css. Adds motion grammar, glass
+ * primitives, gradient surfaces, and the ambient effects used by
+ * the flagship surfaces (Capsule, Control Center hero cards,
+ * Composer landing).
+ *
+ * Doctrine: chrome stays dense and technical. Drama lives in
+ * accent (single-pixel glow lines, soft auroras, focus halos).
+ * Color stays in the data; the shell is monochrome with one
+ * warm ember used sparingly for the brand pulse. */
+
+@keyframes gauntlet-pulse {
+  0%, 100% { opacity: 0.65; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.04); }
+}
+
+@keyframes gauntlet-aurora {
+  0%   { transform: translate3d(-12%, -8%, 0) rotate(0deg); }
+  50%  { transform: translate3d(8%,    6%, 0) rotate(180deg); }
+  100% { transform: translate3d(-12%, -8%, 0) rotate(360deg); }
+}
+
+@keyframes gauntlet-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes gauntlet-rise {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gauntlet-fade {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* ── Glass primitive ──────────────────────────────────────────── */
+.gx-glass {
+  background:
+    linear-gradient(180deg,
+      color-mix(in oklab, var(--bg-elevated) 75%, transparent) 0%,
+      color-mix(in oklab, var(--bg-surface)  82%, transparent) 100%);
+  backdrop-filter: var(--glass-blur, saturate(1.4) blur(20px));
+  -webkit-backdrop-filter: var(--glass-blur, saturate(1.4) blur(20px));
+  border: 1px solid var(--glass-border, var(--border-color-soft));
+  box-shadow:
+    inset 0 1px 0 var(--glass-hl, rgba(255,255,255,0.06)),
+    var(--shadow-panel);
+}
+
+/* ── Cinematic card ───────────────────────────────────────────── */
+.gx-card {
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-soft);
+  border-radius: 12px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow-soft);
+  transition:
+    transform var(--motion-duration-normal) var(--motion-easing-out),
+    border-color var(--motion-duration-normal) var(--motion-easing-out),
+    box-shadow var(--motion-duration-normal) var(--motion-easing-out);
+}
+.gx-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-color-mid);
+  box-shadow: var(--shadow-panel);
+}
+.gx-card[data-tone="hero"] {
+  background:
+    radial-gradient(120% 80% at 0% 0%,
+      color-mix(in oklab, var(--ember) 14%, transparent) 0%,
+      transparent 55%),
+    var(--bg-surface);
+  border-color: var(--border-color-mid);
+}
+
+/* ── Section eyebrow + title ──────────────────────────────────── */
+.gx-eyebrow {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-kicker);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.gx-title {
+  margin: 6px 0 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: var(--t-section);
+  line-height: var(--lh-section);
+  color: var(--text-primary);
+  letter-spacing: var(--track-tight);
+}
+.gx-display {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(34px, 4vw, 52px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+/* ── Status dot with pulse ────────────────────────────────────── */
+.gx-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 0 currentColor;
+  animation: gauntlet-pulse 2.4s var(--motion-easing-in-out) infinite;
+}
+.gx-dot[data-tone="ok"]    { background: var(--cc-ok);    color: var(--cc-ok); }
+.gx-dot[data-tone="warn"]  { background: var(--cc-warn);  color: var(--cc-warn); }
+.gx-dot[data-tone="err"]   { background: var(--cc-err);   color: var(--cc-err); }
+.gx-dot[data-tone="ember"] { background: var(--ember);    color: var(--ember); }
+
+/* ── Aurora background (Composer landing, Overview hero) ──────── */
+.gx-aurora {
+  position: absolute;
+  inset: -40%;
+  background:
+    radial-gradient(40% 40% at 30% 30%,
+      color-mix(in oklab, var(--ember) 18%, transparent), transparent 60%),
+    radial-gradient(40% 40% at 70% 70%,
+      color-mix(in oklab, var(--cc-info) 14%, transparent), transparent 60%);
+  filter: blur(40px);
+  opacity: 0.6;
+  pointer-events: none;
+  animation: gauntlet-aurora 24s linear infinite;
+}
+
+/* ── Shimmer line (compose button accent) ─────────────────────── */
+.gx-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--text-primary) 60%, transparent) 45%,
+    color-mix(in oklab, var(--text-primary) 100%, transparent) 50%,
+    color-mix(in oklab, var(--text-primary) 60%, transparent) 55%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: gauntlet-shimmer 2.2s var(--motion-easing-in-out) infinite;
+}
+
+/* ── Brand mark (Gauntlet G) ──────────────────────────────────── */
+.gx-mark {
+  position: relative;
+  width: 22px; height: 22px;
+  border-radius: 7px;
+  background:
+    radial-gradient(60% 60% at 30% 30%,
+      color-mix(in oklab, var(--ember) 65%, transparent),
+      color-mix(in oklab, var(--ember) 25%, transparent) 60%,
+      transparent 100%),
+    var(--bg-elevated);
+  border: 1px solid color-mix(in oklab, var(--ember) 35%, var(--border-color-mid));
+  box-shadow:
+    0 0 18px color-mix(in oklab, var(--ember) 35%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 8%, transparent);
+}
+
+/* ── Rising row (page enter) ──────────────────────────────────── */
+.gx-rise > * {
+  animation: gauntlet-rise var(--motion-duration-slow) var(--motion-easing-out) both;
+}
+.gx-rise > :nth-child(1) { animation-delay: 0ms; }
+.gx-rise > :nth-child(2) { animation-delay: 60ms; }
+.gx-rise > :nth-child(3) { animation-delay: 120ms; }
+.gx-rise > :nth-child(4) { animation-delay: 180ms; }
+.gx-rise > :nth-child(5) { animation-delay: 240ms; }
+.gx-rise > :nth-child(6) { animation-delay: 300ms; }
+
+/* ── Sparkline / volume bar ───────────────────────────────────── */
+.gx-bar-track {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  overflow: hidden;
+}
+.gx-bar-fill {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    color-mix(in oklab, var(--ember) 80%, var(--text-primary)),
+    color-mix(in oklab, var(--ember) 40%, var(--text-primary)));
+  border-radius: inherit;
+  transform-origin: left center;
+}
+
+/* ── Big metric number ────────────────────────────────────────── */
+.gx-metric {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 38px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.gx-metric-unit {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-left: 6px;
+}
+
+/* ── Divider with kicker ──────────────────────────────────────── */
+.gx-rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px 0 12px;
+}
+.gx-rule::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-color-soft);
+}
+
+/* ── Connector tile ───────────────────────────────────────────── */
+.gx-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color-soft);
+  transition:
+    border-color var(--motion-duration-normal) var(--motion-easing-out),
+    transform var(--motion-duration-normal) var(--motion-easing-out);
+}
+.gx-tile[data-state="granted"] {
+  border-color: color-mix(in oklab, var(--cc-ok) 35%, var(--border-color-soft));
+  background:
+    radial-gradient(80% 60% at 100% 0%,
+      color-mix(in oklab, var(--cc-ok) 8%, transparent), transparent 60%),
+    var(--bg-surface);
+}
+.gx-tile[data-state="declined"] {
+  opacity: 0.72;
+}
+.gx-tile:hover { transform: translateY(-1px); }
+
+/* ── Pipeline trail (Composer landing) ────────────────────────── */
+.gx-trail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-meta);
+  color: var(--text-muted);
+}
+.gx-trail-step {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color-soft);
+  background: color-mix(in oklab, var(--bg-elevated) 60%, transparent);
+}
+
+/* ── Focus halo ───────────────────────────────────────────────── */
+.gx-focus:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px var(--bg),
+    0 0 0 3px color-mix(in oklab, var(--ember) 60%, transparent);
+}
+
+/* ── Composer button (compose CTA) ────────────────────────────── */
+.gx-cta {
+  position: relative;
+  border: none;
+  cursor: pointer;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--bg);
+  background:
+    linear-gradient(180deg,
+      color-mix(in oklab, var(--text-primary) 96%, var(--ember)),
+      color-mix(in oklab, var(--text-primary) 86%, var(--ember)));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--text-primary) 30%, transparent),
+    0 6px 18px color-mix(in oklab, var(--ember) 24%, transparent);
+  transition:
+    transform var(--motion-duration-fast) var(--motion-easing-out),
+    box-shadow var(--motion-duration-fast) var(--motion-easing-out);
+}
+.gx-cta:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--text-primary) 50%, transparent),
+    0 10px 24px color-mix(in oklab, var(--ember) 36%, transparent);
+}
+.gx-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Subtle scroll bg dotgrid ─────────────────────────────────── */
+.gx-dotgrid {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--text-primary) 8%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  background-position: 0 0;
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
-import { Kv, Panel, SurfaceHeader } from "./ControlLayout";
+import { Panel, SurfaceHeader } from "./ControlLayout";
 import Pill from "../components/atoms/Pill";
 
 interface MemoryStats {
@@ -52,7 +52,11 @@ export default function MemoryPage() {
     if (!window.confirm("Clear failure memory? This cannot be undone.")) return;
     setBusy(true);
     try {
-      const res = await signalFetch("/memory/clear", { method: "POST" });
+      const res = await signalFetch("/memory/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await reload();
     } catch (err) {
@@ -63,16 +67,18 @@ export default function MemoryPage() {
   }, [reload]);
 
   const visible = filter
-    ? failures.filter((f) =>
-        f.question.toLowerCase().includes(filter.toLowerCase()) ||
-        f.failure_type.toLowerCase().includes(filter.toLowerCase()),
+    ? failures.filter(
+        (f) =>
+          f.question.toLowerCase().includes(filter.toLowerCase()) ||
+          f.failure_type.toLowerCase().includes(filter.toLowerCase()),
       )
     : failures;
 
   return (
     <>
       <SurfaceHeader
-        title="Memory"
+        eyebrow="Memory"
+        title="What the brain remembers"
         subtitle="Failure memory + run search. The brain remembers what it refused so it doesn't lie next time."
         actions={
           <button
@@ -80,17 +86,18 @@ export default function MemoryPage() {
             onClick={onClear}
             disabled={busy || !failures.length}
             style={{
-              padding: "6px 14px",
-              borderRadius: "var(--radius-sm, 4px)",
+              padding: "8px 16px",
+              borderRadius: 8,
               border: "var(--border-soft)",
-              background: "transparent",
+              background: "var(--bg-elevated)",
               color: "var(--text-primary)",
               fontFamily: "var(--mono)",
-              fontSize: 12,
+              fontSize: 11,
               letterSpacing: "var(--track-meta)",
               textTransform: "uppercase",
               cursor: busy || !failures.length ? "not-allowed" : "pointer",
-              opacity: busy || !failures.length ? 0.5 : 1,
+              opacity: busy || !failures.length ? 0.45 : 1,
+              transition: "background 200ms ease, border-color 200ms ease",
             }}
           >
             {busy ? "clearing…" : "clear all"}
@@ -98,73 +105,164 @@ export default function MemoryPage() {
         }
       />
 
-      {error && (
-        <Panel>
-          <p style={{ color: "var(--danger, #d04a4a)", fontSize: 12, margin: 0 }}>{error}</p>
-        </Panel>
-      )}
+      {error && <ErrorBlock msg={error} />}
 
-      <Panel title="Failure memory · stats" hint="from /memory/stats">
-        {stats ? (
-          <Kv
-            rows={[
-              ["total_records", String(stats.total_records ?? 0)],
-              ["total_failures", String(stats.total_failures ?? 0)],
-              ["last_updated", stats.last_updated ?? "—"],
-            ]}
-          />
-        ) : (
-          !error && <p style={{ color: "var(--text-muted)", fontSize: 12 }}>loading…</p>
-        )}
-      </Panel>
+      {/* 4-tier memory grid */}
+      <section
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: 12,
+          marginBottom: 18,
+        }}
+      >
+        <TierCard
+          kicker="failures"
+          metric={stats?.total_failures ?? 0}
+          label="refusals retained"
+          sub="cautious recall · prior_failure"
+          tone="warn"
+        />
+        <TierCard
+          kicker="records"
+          metric={stats?.total_records ?? 0}
+          label="distinct entries"
+          sub="dedup · oldest pruned"
+          tone="neutral"
+        />
+        <TierCard
+          kicker="spine"
+          metric={"·"}
+          label="workspace state"
+          sub="missions · notes · principles"
+          tone="ok"
+        />
+        <TierCard
+          kicker="updated"
+          metric={stats?.last_updated ? "·" : "—"}
+          label="last write"
+          sub={stats?.last_updated ?? "no writes yet"}
+          tone="neutral"
+        />
+      </section>
 
       <Panel title="Failures" hint={`${visible.length} of ${failures.length} record(s)`}>
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 14 }}>
           <input
             type="search"
             value={filter}
-            placeholder="filter by question or failure type…"
+            placeholder="filter by question or failure_type…"
             onChange={(ev) => setFilter(ev.target.value)}
             style={{
               width: "100%",
-              padding: "8px 10px",
-              borderRadius: "var(--radius-sm, 4px)",
+              padding: "10px 12px",
+              borderRadius: 8,
               background: "var(--bg-input)",
               border: "var(--border-soft)",
               color: "var(--text-primary)",
               fontFamily: "var(--mono)",
               fontSize: 12,
+              outline: "none",
+              transition: "border-color 200ms ease, box-shadow 200ms ease",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor =
+                "color-mix(in oklab, var(--ember) 50%, var(--border-color-mid))";
+              e.currentTarget.style.boxShadow =
+                "0 0 0 1px color-mix(in oklab, var(--ember) 30%, transparent), 0 0 18px color-mix(in oklab, var(--ember) 15%, transparent)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "";
+              e.currentTarget.style.boxShadow = "";
             }}
           />
         </div>
 
         {visible.length === 0 ? (
-          <p style={{ color: "var(--text-muted)", fontSize: 12, margin: 0 }}>
+          <p
+            style={{
+              color: "var(--text-muted)",
+              fontSize: 12,
+              margin: 0,
+              padding: "14px 0",
+              fontFamily: "var(--mono)",
+              letterSpacing: "var(--track-meta)",
+              textTransform: "uppercase",
+            }}
+          >
             {failures.length === 0 ? "no failures recorded yet" : "no matches for filter"}
           </p>
         ) : (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
             {visible.map((f) => (
               <li
                 key={f.id}
                 style={{
-                  padding: "10px 12px",
-                  background: "var(--bg-elevated)",
-                  borderRadius: "var(--radius-sm, 4px)",
-                  fontSize: 12,
+                  position: "relative",
+                  padding: "14px 16px",
+                  background: "var(--bg-surface)",
+                  borderRadius: 10,
+                  fontSize: 13,
                   border: "var(--border-soft)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  transition: "border-color 200ms ease",
                 }}
               >
-                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                <span
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: 0, top: 0, bottom: 0,
+                    width: 3,
+                    borderRadius: "10px 0 0 10px",
+                    background: "color-mix(in oklab, var(--cc-warn) 60%, transparent)",
+                  }}
+                />
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   <Pill tone="warn">{f.failure_type}</Pill>
                   <Pill tone="ghost">×{f.times_failed}</Pill>
-                  <span style={{ color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
+                  <span
+                    style={{
+                      color: "var(--text-muted)",
+                      fontFamily: "var(--mono)",
+                      fontSize: 11,
+                      letterSpacing: "var(--track-meta)",
+                    }}
+                  >
                     {f.timestamp}
                   </span>
                 </div>
-                <div style={{ color: "var(--text-primary)", marginBottom: 4 }}>{f.question}</div>
+                <div
+                  style={{
+                    color: "var(--text-primary)",
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {f.question}
+                </div>
                 {f.judge_reasoning && (
-                  <div style={{ color: "var(--text-muted)", fontSize: 11, fontStyle: "italic" }}>
+                  <div
+                    style={{
+                      color: "var(--text-muted)",
+                      fontSize: 12,
+                      fontStyle: "italic",
+                      lineHeight: 1.55,
+                      paddingLeft: 12,
+                      borderLeft: "var(--border-soft)",
+                    }}
+                  >
                     {f.judge_reasoning}
                   </div>
                 )}
@@ -174,5 +272,115 @@ export default function MemoryPage() {
         )}
       </Panel>
     </>
+  );
+}
+
+function TierCard({
+  kicker,
+  metric,
+  label,
+  sub,
+  tone,
+}: {
+  kicker: string;
+  metric: number | string;
+  label: string;
+  sub: string;
+  tone: "ok" | "warn" | "err" | "neutral";
+}) {
+  const accent =
+    tone === "ok"
+      ? "var(--cc-ok)"
+      : tone === "warn"
+      ? "var(--cc-warn)"
+      : tone === "err"
+      ? "var(--cc-err)"
+      : "var(--text-primary)";
+  return (
+    <div
+      className="gx-card"
+      style={{
+        position: "relative",
+        padding: "16px 18px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 2,
+          background: `linear-gradient(90deg, ${accent}, transparent 80%)`,
+        }}
+      />
+      <span
+        className="gx-eyebrow"
+        style={{ color: tone === "neutral" ? "var(--text-muted)" : accent }}
+      >
+        {kicker}
+      </span>
+      <span
+        style={{
+          fontFamily: "var(--serif)",
+          fontSize: typeof metric === "number" ? 32 : 26,
+          fontWeight: 400,
+          lineHeight: 1,
+          color: "var(--text-primary)",
+          letterSpacing: "-0.02em",
+        }}
+      >
+        {metric}
+      </span>
+      <span
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 11,
+          letterSpacing: "var(--track-meta)",
+          color: "var(--text-secondary)",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: 11,
+          color: "var(--text-muted)",
+          marginTop: 2,
+          lineHeight: 1.4,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {sub}
+      </span>
+    </div>
+  );
+}
+
+function ErrorBlock({ msg }: { msg: string }) {
+  return (
+    <Panel>
+      <div
+        style={{
+          padding: "10px 12px",
+          borderRadius: 6,
+          background: "color-mix(in oklab, var(--cc-err) 8%, transparent)",
+          border: "1px solid color-mix(in oklab, var(--cc-err) 28%, transparent)",
+          color: "color-mix(in oklab, var(--cc-err) 86%, var(--text-primary))",
+          fontFamily: "var(--mono)",
+          fontSize: 12,
+        }}
+      >
+        {msg}
+      </div>
+    </Panel>
   );
 }
