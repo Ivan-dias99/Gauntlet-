@@ -20,7 +20,7 @@ from config import MEMORY_DIR
 from models import SpineSnapshot
 from persistence import atomic_write_text_async, quarantine_corrupt_file
 
-logger = logging.getLogger("signal.spine")
+logger = logging.getLogger("gauntlet.spine")
 
 SPINE_FILE: Path = MEMORY_DIR / "spine.json"
 

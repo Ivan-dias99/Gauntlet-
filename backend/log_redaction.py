@@ -117,13 +117,17 @@ class TokenRedactionFilter(logging.Filter):
 _INSTALL_MARKER = "_signal_redaction_installed"
 
 
-def install_redaction(loggers: Iterable[str] = ("", "signal", "uvicorn")) -> TokenRedactionFilter:
+def install_redaction(
+    loggers: Iterable[str] = ("", "gauntlet", "signal", "uvicorn"),
+) -> TokenRedactionFilter:
     """Attach ``TokenRedactionFilter`` to the named loggers (and their
     handlers). Idempotent — repeated calls don't stack filters.
 
-    The default set covers the root logger (catch-all), Signal's own
-    ``signal.*`` namespace, and ``uvicorn`` so HTTP access lines also
-    pass through redaction. ``loggers=()`` is a no-op convenience.
+    The default set covers the root logger (catch-all), Gauntlet's own
+    ``gauntlet.*`` namespace, the legacy ``signal.*`` namespace (kept
+    until the rename has finished propagating through every module),
+    and ``uvicorn`` so HTTP access lines also pass through redaction.
+    ``loggers=()`` is a no-op convenience.
     """
     f = TokenRedactionFilter()
     for name in loggers:

@@ -26,7 +26,7 @@ from typing import Any, Optional
 
 from config import DATABASE_URL, DUAL_WRITE_PG
 
-logger = logging.getLogger("signal.db")
+logger = logging.getLogger("gauntlet.db")
 
 
 # ── Lazy connection pool ─────────────────────────────────────────────────

@@ -50,7 +50,7 @@ from models import (
 )
 from runs import run_store
 
-logger = logging.getLogger("signal.composer")
+logger = logging.getLogger("gauntlet.composer")
 
 router = APIRouter(prefix="/composer", tags=["composer"])
 

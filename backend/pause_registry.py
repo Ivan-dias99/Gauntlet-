@@ -39,7 +39,7 @@ from typing import Optional
 from config import MEMORY_DIR
 from persistence import atomic_write_text_async, quarantine_corrupt_file
 
-logger = logging.getLogger("signal.pause")
+logger = logging.getLogger("gauntlet.pause")
 
 PAUSED_FILE: Path = MEMORY_DIR / "paused_tasks.json"
 

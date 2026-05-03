@@ -55,7 +55,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-logger = logging.getLogger("signal.rate_limit")
+logger = logging.getLogger("gauntlet.rate_limit")
 
 
 @dataclass(frozen=True)
