@@ -21,8 +21,12 @@ export default defineConfig({
     commands: {
       'summon-capsule': {
         suggested_key: {
-          default: 'Alt+Space',
-          mac: 'Alt+Space',
+          // Alt+Space conflicts with the Windows window menu, so the
+          // capsule never gets the keypress on Windows. Ctrl+Shift+Space
+          // is the convention for extension hotkeys on Chrome / Edge
+          // and is unclaimed across Windows / Linux / macOS shells.
+          default: 'Ctrl+Shift+Space',
+          mac: 'Command+Shift+Space',
         },
         description: 'Summon the Gauntlet capsule on the active page',
       },
