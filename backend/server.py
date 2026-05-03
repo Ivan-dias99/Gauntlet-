@@ -44,6 +44,7 @@ from config import (
     ANTHROPIC_API_KEY,
     BODY_SIZE_LIMIT_BYTES,
     FRAME_OPTIONS,
+    GEMINI_API_KEY,
     LOG_REDACT,
     MEMORY_DIR,
     PERSISTENCE_EPHEMERAL,
@@ -95,12 +96,13 @@ async def lifespan(app: FastAPI):
         install_redaction(("", "signal", "uvicorn", "uvicorn.error", "uvicorn.access"))
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key and not RUBERRA_MOCK:
+    if not api_key and not GEMINI_API_KEY and not RUBERRA_MOCK:
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
-            "  ANTHROPIC_API_KEY not set!\n"
-            "  Export it before starting, or set RUBERRA_MOCK=1 to run\n"
-            "  the full pipeline against canned responses.\n"
+            "  Nenhuma API key configurada!\n"
+            "  Define ANTHROPIC_API_KEY para Claude, ou\n"
+            "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY para Gemini,\n"
+            "  ou GAUNTLET_MOCK=1 para respostas offline.\n"
             "═══════════════════════════════════════════════════════════"
         )
         sys.exit(1)
