@@ -21,6 +21,9 @@ interface Props {
   mode: ModeDescriptor;
   active: ComposerMode;
   onSelect: (id: ComposerMode) => void;
+  /** Extra style merged onto the card — used by ComposerLayout to set
+   *  grid-area / gridColumn / gridRow per panel. */
+  cellStyle?: CSSProperties;
 }
 
 const MODE_SUBTITLE: Record<ComposerMode, string> = {
@@ -37,7 +40,6 @@ const MODE_SUBTITLE: Record<ComposerMode, string> = {
 
 const cardStyle: CSSProperties = {
   padding: "12px 14px 10px",
-  width: "100%",
   textAlign: "left",
   cursor: "pointer",
   background: "transparent",
@@ -46,7 +48,8 @@ const cardStyle: CSSProperties = {
   gap: 8,
   position: "relative",
   height: "100%",
-  minHeight: 170,
+  minHeight: 0,
+  width: "auto",
 };
 
 const titleStyle: CSSProperties = {
@@ -74,7 +77,7 @@ const blurbStyle: CSSProperties = {
   lineHeight: 1.4,
 };
 
-export default function ModePanel({ mode, active, onSelect }: Props) {
+export default function ModePanel({ mode, active, onSelect, cellStyle }: Props) {
   const isActive = mode.id === active;
   const meta = MODE_ICON[mode.id];
 
@@ -85,7 +88,7 @@ export default function ModePanel({ mode, active, onSelect }: Props) {
       data-glow-panel
       data-active={isActive}
       data-mode={mode.id}
-      style={cardStyle}
+      style={{ ...cardStyle, ...cellStyle }}
     >
       <span data-glow-badge aria-hidden>
         {meta?.n ?? "·"}

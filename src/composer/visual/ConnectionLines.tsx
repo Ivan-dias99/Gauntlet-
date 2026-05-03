@@ -1,51 +1,61 @@
-// Wave 8c — convergence INTO the composer, not below it.
+// Wave 8d — connection lines for the canonical 4×3 layout.
 //
-// The eight rays now terminate at the geometric centre of the central
-// canvas (NODE_Y=50). The composer's outer halo (box-shadow stacks +
-// radial-gradient halo div) overpowers the visible end of each ray, so
-// the eye reads the composer as the destination rather than a point
-// floating in empty space underneath it.
+// 9 rays: one from each mode panel toward the geometric centre of the
+// canvas (cell 2/2-2/3 in the 4-col × 3-row grid). Each ray ends INSIDE
+// the canvas's halo so the eye reads the canvas as the destination.
 //
-// No visible <circle> node any more — the composer IS the node.
+// Panel positions in viewBox (0..100), assuming the layout grid is
+// 4 columns × 3 rows with route spanning cols 2-3 in row 3:
+//
+//   row 1 (top):    (12.5, 18)  (37.5, 18)  (62.5, 18)  (87.5, 18)
+//   row 2 (middle): (12.5, 50)  [canvas cols 2-3]       (87.5, 50)
+//   row 3 (bottom): (12.5, 82)  (50, 82, route wide)    (87.5, 82)
+//
+// Centre: (50, 50). Endpoints get pulled back by CANVAS_RADIUS so the
+// rays disappear into the composer's glow.
 
-const LEFT_X_INNER = 18;
-const RIGHT_X_INNER = 82;
-
-// Y centres of the 4 panels per side. Match the 4-row stacked grid in
-// ComposerLayout (each row ≈ 25% of the column).
-const SIDE_Y = [12, 35, 58, 81];
-
-// Convergence — geometric centre of the grid, where the canvas sits.
-const NODE_X = 50;
-const NODE_Y = 50;
-
-// Stop short of the canvas centre by this delta (in viewBox units) so
-// the rays disappear into the composer's halo rather than sticking
-// out the other side.
-const CANVAS_RADIUS = 16;
-
-interface RayProps {
-  x1: number;
-  y1: number;
+interface Source {
+  x: number;
+  y: number;
+  /** "side" — coming from left (panel on left side) or right; controls
+   *  the gradient direction so the bright stop faces the centre. */
+  side: "l" | "r" | "v";
 }
 
-function Ray({ x1, y1 }: RayProps) {
-  // Pull the ray's endpoint back along the vector toward the panel by
-  // CANVAS_RADIUS so the line ends inside the composer's glow halo.
-  const dx = NODE_X - x1;
-  const dy = NODE_Y - y1;
-  const len = Math.hypot(dx, dy);
-  const t = (len - CANVAS_RADIUS) / len;
-  const ex = x1 + dx * t;
-  const ey = y1 + dy * t;
+const SOURCES: Source[] = [
+  { x: 12.5, y: 18, side: "l" }, // 1 idle
+  { x: 37.5, y: 18, side: "l" }, // 2 context
+  { x: 62.5, y: 18, side: "r" }, // 3 compose-thumb
+  { x: 87.5, y: 18, side: "r" }, // 4 code
+  { x: 12.5, y: 50, side: "l" }, // 5 design
+  { x: 87.5, y: 50, side: "r" }, // 6 analysis
+  { x: 12.5, y: 82, side: "l" }, // 7 memory
+  { x: 50,   y: 82, side: "v" }, // 9 route (wide)
+  { x: 87.5, y: 82, side: "r" }, // 8 apply
+];
 
-  // Cubic bezier — smooth easing toward the composer.
-  const cx1 = x1 + (ex - x1) * 0.55;
-  const cy1 = y1;
-  const cx2 = ex - (ex - x1) * 0.25;
+const NODE_X = 50;
+const NODE_Y = 50;
+const CANVAS_RADIUS = 14;
+
+function endpoint(s: Source): { ex: number; ey: number } {
+  const dx = NODE_X - s.x;
+  const dy = NODE_Y - s.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const t = Math.max(0, (len - CANVAS_RADIUS) / len);
+  return { ex: s.x + dx * t, ey: s.y + dy * t };
+}
+
+function curvePath(s: Source): string {
+  const { ex, ey } = endpoint(s);
+  // Control points smooth the curve so it eases into the destination.
+  // For straight verticals (route panel), the curve is essentially a
+  // straight line — the ease still works.
+  const cx1 = s.x + (ex - s.x) * 0.55;
+  const cy1 = s.y;
+  const cx2 = ex - (ex - s.x) * 0.25;
   const cy2 = ey;
-  const path = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${ex} ${ey}`;
-  return <path d={path} />;
+  return `M ${s.x} ${s.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${ex} ${ey}`;
 }
 
 export default function ConnectionLines() {
@@ -65,12 +75,17 @@ export default function ConnectionLines() {
           </feMerge>
         </filter>
 
-        <linearGradient id="composer-ray-fade-l" x1="0%" y1="0%" x2="100%" y2="0%">
+        <linearGradient id="ray-fade-l" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%"   stopColor="rgba(94,165,255,0.10)" />
           <stop offset="50%"  stopColor="rgba(94,165,255,0.55)" />
           <stop offset="100%" stopColor="rgba(180,220,255,1)" />
         </linearGradient>
-        <linearGradient id="composer-ray-fade-r" x1="100%" y1="0%" x2="0%" y2="0%">
+        <linearGradient id="ray-fade-r" x1="100%" y1="0%" x2="0%" y2="0%">
+          <stop offset="0%"   stopColor="rgba(94,165,255,0.10)" />
+          <stop offset="50%"  stopColor="rgba(94,165,255,0.55)" />
+          <stop offset="100%" stopColor="rgba(180,220,255,1)" />
+        </linearGradient>
+        <linearGradient id="ray-fade-v" x1="50%" y1="100%" x2="50%" y2="0%">
           <stop offset="0%"   stopColor="rgba(94,165,255,0.10)" />
           <stop offset="50%"  stopColor="rgba(94,165,255,0.55)" />
           <stop offset="100%" stopColor="rgba(180,220,255,1)" />
@@ -78,14 +93,9 @@ export default function ConnectionLines() {
       </defs>
 
       <g strokeWidth="0.45" fill="none" filter="url(#composer-line-glow)">
-        {SIDE_Y.map((y) => (
-          <g key={`l-${y}`} stroke="url(#composer-ray-fade-l)">
-            <Ray x1={LEFT_X_INNER} y1={y} />
-          </g>
-        ))}
-        {SIDE_Y.map((y) => (
-          <g key={`r-${y}`} stroke="url(#composer-ray-fade-r)">
-            <Ray x1={RIGHT_X_INNER} y1={y} />
+        {SOURCES.map((s, i) => (
+          <g key={i} stroke={`url(#ray-fade-${s.side})`}>
+            <path d={curvePath(s)} />
           </g>
         ))}
       </g>

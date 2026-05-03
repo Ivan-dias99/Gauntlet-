@@ -119,6 +119,7 @@ export const COMPOSER_TOKENS = `
 [data-composer-surface] [data-memory-canvas],
 [data-composer-surface] [data-route-canvas] {
   position: relative;
+  padding: 22px 22px 18px !important;
   background:
     radial-gradient(ellipse at 50% 50%, rgba(94, 165, 255, 0.10) 0%, rgba(94, 165, 255, 0.04) 35%, transparent 70%),
     var(--bg-surface) !important;
@@ -132,6 +133,16 @@ export const COMPOSER_TOKENS = `
     0 20px 60px rgba(0, 0, 0, 0.6),
     inset 0 0 40px rgba(94, 165, 255, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+/* Tighten the canvas h2 so the reduced padding stays balanced. */
+[data-composer-surface] [data-composer-canvas] > header h2,
+[data-composer-surface] [data-code-canvas] > header h2,
+[data-composer-surface] [data-apply-canvas] > header h2,
+[data-composer-surface] [data-design-canvas] > header h2,
+[data-composer-surface] [data-analysis-canvas] > header h2,
+[data-composer-surface] [data-memory-canvas] > header h2,
+[data-composer-surface] [data-route-canvas] > header h2 {
+  font-size: 18px !important;
 }
 
 /* Composer halo — a luminous disc behind the active canvas so the

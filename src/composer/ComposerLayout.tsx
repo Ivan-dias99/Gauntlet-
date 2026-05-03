@@ -1,13 +1,15 @@
-// Wave 8 — Composer surface layout (visual revision).
+// Wave 8d — Composer surface layout (canonical 4×3 grid).
 //
-// Three-column grid: 4 stacked side panels left, central canvas, 4
-// stacked side panels right. The grid sits on top of an absolutely-
-// positioned ConnectionLines SVG layer that draws glow curves from the
-// inner edge of each side panel toward the central composer node.
+// Faithful to the mockup proportions:
+//   row 1: 4 mode panels (idle, context, compose-thumb, code)
+//   row 2: design left | active canvas (spans cols 2-3) | analysis right
+//   row 3: memory left | route (spans cols 2-3, wide thumbnail) | apply right
 //
-// All visual treatment (glow borders, palette, pulse, gradients) is
-// scoped to [data-composer-surface] via ensureComposerStyles() so the
-// /control surface keeps its own operator-console look.
+// The active canvas always lives in cell 2/2-2/3 regardless of which
+// mode is selected. Clicking any side panel swaps the canvas content.
+// When compose is active, the compose thumbnail panel at 1/3 still
+// renders (it is a clickable thumbnail), and the live ComposeCanvas
+// renders in the central cell — the redundancy mirrors the mockup.
 
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
@@ -28,8 +30,20 @@ import ConnectionLines from "./visual/ConnectionLines";
 import { ensureComposerStyles } from "./visual/tokens";
 import Icon from "./visual/Icons";
 
-const LEFT_MODES: ComposerMode[] = ["idle", "context", "memory", "apply"];
-const RIGHT_MODES: ComposerMode[] = ["code", "design", "analysis", "route"];
+// Each entry maps a mode → grid placement (gridColumn, gridRow). Compose
+// is positioned at 1/3 (top-row thumbnail). The active canvas occupies
+// 2/2-2/3 regardless of mode and is rendered separately.
+const PANEL_PLACEMENT: Array<{ id: ComposerMode; col: string; row: string }> = [
+  { id: "idle",     col: "1",     row: "1" },
+  { id: "context",  col: "2",     row: "1" },
+  { id: "compose",  col: "3",     row: "1" },
+  { id: "code",     col: "4",     row: "1" },
+  { id: "design",   col: "1",     row: "2" },
+  { id: "analysis", col: "4",     row: "2" },
+  { id: "memory",   col: "1",     row: "3" },
+  { id: "route",    col: "2 / 4", row: "3" }, // wide
+  { id: "apply",    col: "4",     row: "3" },
+];
 
 const headerStyle: CSSProperties = {
   display: "flex",
@@ -43,7 +57,7 @@ const headerStyle: CSSProperties = {
 const gridShellStyle: CSSProperties = {
   flex: 1,
   position: "relative",
-  padding: "32px 28px",
+  padding: "28px 28px",
   overflow: "auto",
 };
 
@@ -51,16 +65,21 @@ const gridStyle: CSSProperties = {
   position: "relative",
   zIndex: 1,
   display: "grid",
-  gridTemplateColumns: "minmax(240px, 290px) minmax(0, 1fr) minmax(240px, 290px)",
-  gap: 22,
-  alignItems: "stretch",
+  gridTemplateColumns: "repeat(4, minmax(180px, 1fr))",
+  gridTemplateRows: "minmax(140px, auto) minmax(280px, auto) minmax(140px, auto)",
+  gap: 14,
+  maxWidth: 1320,
+  margin: "0 auto",
 };
 
-const columnStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateRows: "repeat(4, minmax(170px, 1fr))",
-  gap: 16,
-  minHeight: 720,
+const canvasCellStyle: CSSProperties = {
+  gridColumn: "2 / 4",
+  gridRow: "2",
+  position: "relative",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 0,
 };
 
 function findMode(id: ComposerMode): ModeDescriptor {
@@ -128,29 +147,27 @@ export default function ComposerLayout() {
         <ConnectionLines />
 
         <div style={gridStyle}>
-          <aside style={columnStyle} aria-label="left mode panels">
-            {LEFT_MODES.map((id) => (
-              <ModePanel
-                key={id}
-                mode={findMode(id)}
-                active={active}
-                onSelect={setActive}
-              />
-            ))}
-          </aside>
+          {PANEL_PLACEMENT.map(({ id, col, row }) => (
+            <ModePanel
+              key={id}
+              mode={findMode(id)}
+              active={active}
+              onSelect={setActive}
+              cellStyle={{ gridColumn: col, gridRow: row }}
+            />
+          ))}
 
-          <section
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              minHeight: 580,
-              position: "relative",
-            }}
-          >
+          <section style={canvasCellStyle}>
             <div data-composer-halo aria-hidden />
             <CursorDecoration />
-            <div style={{ position: "relative", zIndex: 1 }}>
+            <div
+              style={{
+                position: "relative",
+                zIndex: 1,
+                width: "100%",
+                maxWidth: 540,
+              }}
+            >
               {active === "compose" ? (
                 <ComposeCanvas />
               ) : active === "route" ? (
@@ -170,17 +187,6 @@ export default function ComposerLayout() {
               )}
             </div>
           </section>
-
-          <aside style={columnStyle} aria-label="right mode panels">
-            {RIGHT_MODES.map((id) => (
-              <ModePanel
-                key={id}
-                mode={findMode(id)}
-                active={active}
-                onSelect={setActive}
-              />
-            ))}
-          </aside>
         </div>
       </main>
 
@@ -189,16 +195,13 @@ export default function ComposerLayout() {
   );
 }
 
-// Decorative cursor + node above the central canvas, mirroring the
-// Foto 3 detail. Pointer-events disabled so it does not interfere with
-// the canvas interaction beneath.
 function CursorDecoration() {
   return (
     <div
       aria-hidden
       style={{
         position: "absolute",
-        top: -22,
+        top: -28,
         left: "50%",
         transform: "translateX(-50%)",
         display: "flex",
@@ -206,7 +209,7 @@ function CursorDecoration() {
         alignItems: "center",
         gap: 6,
         pointerEvents: "none",
-        zIndex: 1,
+        zIndex: 2,
       }}
     >
       <span
