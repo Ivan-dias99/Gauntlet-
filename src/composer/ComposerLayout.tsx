@@ -148,24 +148,27 @@ export default function ComposerLayout() {
               position: "relative",
             }}
           >
+            <div data-composer-halo aria-hidden />
             <CursorDecoration />
-            {active === "compose" ? (
-              <ComposeCanvas />
-            ) : active === "route" ? (
-              <RouteCanvas />
-            ) : active === "code" ? (
-              <CodeCanvas />
-            ) : active === "apply" ? (
-              <ApplyCanvas />
-            ) : active === "design" ? (
-              <DesignCanvas />
-            ) : active === "analysis" ? (
-              <AnalysisCanvas />
-            ) : active === "memory" ? (
-              <MemoryCanvas />
-            ) : (
-              <ModePlaceholder mode={active} />
-            )}
+            <div style={{ position: "relative", zIndex: 1 }}>
+              {active === "compose" ? (
+                <ComposeCanvas />
+              ) : active === "route" ? (
+                <RouteCanvas />
+              ) : active === "code" ? (
+                <CodeCanvas />
+              ) : active === "apply" ? (
+                <ApplyCanvas />
+              ) : active === "design" ? (
+                <DesignCanvas />
+              ) : active === "analysis" ? (
+                <AnalysisCanvas />
+              ) : active === "memory" ? (
+                <MemoryCanvas />
+              ) : (
+                <ModePlaceholder mode={active} />
+              )}
+            </div>
           </section>
 
           <aside style={columnStyle} aria-label="right mode panels">

@@ -106,20 +106,51 @@ export const COMPOSER_TOKENS = `
   z-index: 2;
 }
 
-/* ─── Central canvas — the active mode surface ─── */
-[data-composer-surface] [data-canvas-frame] {
+/* ─── Central canvas — the active mode surface.
+   Override every canvas variant via attribute selector + !important
+   so the ComposeCanvas / CodeCanvas / etc. inline styles cede to the
+   surface palette. The composer is the convergence point of every
+   connection ray, so the glow stack is intentionally heavy. ─── */
+[data-composer-surface] [data-composer-canvas],
+[data-composer-surface] [data-code-canvas],
+[data-composer-surface] [data-apply-canvas],
+[data-composer-surface] [data-design-canvas],
+[data-composer-surface] [data-analysis-canvas],
+[data-composer-surface] [data-memory-canvas],
+[data-composer-surface] [data-route-canvas] {
   position: relative;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(94, 165, 255, 0.08) 0%, transparent 60%),
-    var(--bg-surface);
-  border: 1px solid rgba(94, 165, 255, 0.45);
-  border-radius: var(--radius-lg);
+    radial-gradient(ellipse at 50% 50%, rgba(94, 165, 255, 0.10) 0%, rgba(94, 165, 255, 0.04) 35%, transparent 70%),
+    var(--bg-surface) !important;
+  border: 1px solid rgba(94, 165, 255, 0.55) !important;
+  border-radius: var(--radius-lg) !important;
   box-shadow:
-    0 0 0 1px rgba(94, 165, 255, 0.25),
-    0 0 56px rgba(94, 165, 255, 0.30),
-    0 0 120px rgba(94, 165, 255, 0.14),
-    0 16px 60px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 0 0 1px rgba(94, 165, 255, 0.45),
+    0 0 60px rgba(94, 165, 255, 0.45),
+    0 0 140px rgba(94, 165, 255, 0.25),
+    0 0 240px rgba(94, 165, 255, 0.10),
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    inset 0 0 40px rgba(94, 165, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Composer halo — a luminous disc behind the active canvas so the
+   connection rays appear to be absorbed into a glowing centre. The
+   halo is a sibling DIV positioned absolutely; this rule supplies
+   the visual treatment, the layout positions it. */
+[data-composer-surface] [data-composer-halo] {
+  position: absolute;
+  inset: -60px;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(180, 220, 255, 0.22) 0%,
+      rgba(94, 165, 255, 0.18) 14%,
+      rgba(94, 165, 255, 0.08) 30%,
+      rgba(94, 165, 255, 0.03) 50%,
+      transparent 72%);
+  filter: blur(2px);
 }
 
 /* ─── Pulse dot used in canvas headers ─── */
