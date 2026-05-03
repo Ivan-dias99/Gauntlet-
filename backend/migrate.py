@@ -1,5 +1,5 @@
 """
-Signal — JSON → Postgres backfill (Wave O / P-10).
+Gauntlet — JSON → Postgres backfill (Wave O / P-10).
 
 One-shot script that walks the existing JSON stores under MEMORY_DIR
 and seeds the Postgres tables defined by migrations/0001_initial_schema.sql.

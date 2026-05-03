@@ -1,5 +1,5 @@
 """
-Signal — Composer Surface (Wave V0)
+Gauntlet — Composer Surface (Wave V0)
 
 Four routes — context, intent, preview, apply — wrapping the existing
 brain (engine.py · agent.py · runs.py · memory.py) without rewriting it.

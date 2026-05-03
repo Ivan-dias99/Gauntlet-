@@ -1,5 +1,5 @@
 """
-Signal — Run Log
+Gauntlet — Run Log
 Append-only on-disk log of every query that hits the engine.
 
 This is the first step toward real domain persistence. Missions, artifacts,

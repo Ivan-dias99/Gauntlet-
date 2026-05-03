@@ -1,5 +1,5 @@
 """
-Signal — Failure Memory System
+Gauntlet — Failure Memory System
 Persistent memory of questions where Signal failed to achieve consistency.
 The system learns from its own failures and becomes more cautious on repeat topics.
 """

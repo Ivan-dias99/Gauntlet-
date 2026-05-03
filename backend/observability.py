@@ -1,5 +1,5 @@
 """
-Signal — Observability surface (Wave I).
+Gauntlet — Observability surface (Wave I).
 
 Today the run log captures completed runs and failure_memory captures
 explicit refusals. What's missing: a per-route operational view that

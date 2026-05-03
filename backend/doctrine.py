@@ -1,5 +1,5 @@
 """
-Signal — Internal Doctrine
+Gauntlet — Internal Doctrine
 Three prompts. No philosophy. No poetry.
 
 1. SYSTEM_PROMPT  — Short. Dry. Paranoid.

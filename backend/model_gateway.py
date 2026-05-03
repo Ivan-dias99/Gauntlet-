@@ -1,5 +1,5 @@
 """
-Signal — Model Gateway (Wave H).
+Gauntlet — Model Gateway (Wave H).
 
 Today every chamber calls Anthropic directly with the global MODEL_ID.
 Wave H introduces a thin routing layer so the chambers can:
