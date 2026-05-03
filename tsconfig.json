@@ -16,6 +16,6 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"],
-  "exclude": ["_legacy", "apps", "node_modules"]
+  "include": ["control-center"],
+  "exclude": ["apps", "node_modules"]
 }

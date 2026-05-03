@@ -1,4 +1,17 @@
-# Project Doutrina
+# Project Doutrina — Gauntlet
+
+## O que é o Gauntlet
+
+A camada de inteligência na ponta do cursor. Não é mais um chat, dashboard,
+sidebar ou IDE. É uma cápsula mínima que segue o cursor — o utilizador aponta,
+diz o que quer, e o sistema executa onde ele já está.
+
+- **Composer** (`apps/browser-extension/`) — o carro. Cápsula leve, discreta,
+  sempre presente. É a experiência principal.
+- **Control Center** (`control-center/`, ex `src/`) — a garagem. Só abre para
+  configurar, tunar, ver histórico. Nunca compete com o Composer.
+- **Backend FastAPI** (`backend/`, ex `signal-backend/`) — o maestro. Faz todo
+  o trabalho sujo: model routing multimodelo, tools, memória, execução.
 
 ## Juiz anti-teimosia
 
@@ -65,3 +78,25 @@ anything:
 
 If a mid-sequence edit reveals the plan is wrong, stop and replan before
 continuing.
+
+## Lentes específicas do Gauntlet
+
+Quando avaliares qualquer mudança, passa-a pelas três lentes:
+
+1. **Filosofia "ponta do cursor".** A mudança aproxima o utilizador do fluxo
+   `apontar → pedir → executar`, ou afasta? Janelas grandes, cliques extra e
+   contexto-fora-de-cursor são red flags.
+2. **Composer mínimo, backend gordo.** Lógica nova pertence ao backend
+   (FastAPI). O Composer só apresenta. Se uma feature nova pede UI complexa
+   na cápsula, repensar.
+3. **Multimodelo via gateway.** Qualquer chamada a LLM passa pelo
+   `model_gateway`. Frontend nunca chama Anthropic/Gemini/OpenAI direto.
+
+## Nomenclatura canónica
+
+- Vars de ambiente: `GAUNTLET_*` é canónico. `SIGNAL_*` e `RUBERRA_*` são
+  aliases legacy lidos como fallback (a remover quando o deploy estabilizar).
+- Rotas API: `/api/gauntlet/*` é canónico. `/api/signal/*` e `/api/ruberra/*`
+  são aliases temporários durante o compat window.
+- Pastas: `backend/`, `control-center/`, `apps/browser-extension/`. Nada de
+  `signal-backend/`, `src/`, `_legacy/`, `chambers/` em código novo.

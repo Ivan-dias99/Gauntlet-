@@ -1,29 +1,28 @@
-// Shared edge-forwarder logic for api/signal.ts and api/ruberra.ts.
+// Shared edge-forwarder logic for api/gauntlet.ts and the legacy aliases
+// at api/signal.ts and api/ruberra.ts.
 //
 // Underscore-prefixed file: Vercel's file-system routing excludes it from
 // the public /api/* surface, so it is safe to import from sibling route
 // files without exposing a duplicate endpoint.
 //
-// Contract (identical for both routes during the Wave-0 → Wave-8 window):
+// Contract:
 //   - status: 503 on unreachable
-//   - headers: BOTH x-signal-backend: unreachable AND x-ruberra-backend:
-//     unreachable, so clients written against either contract keep working.
+//   - headers: x-gauntlet-backend / x-signal-backend / x-ruberra-backend
+//     all carry "unreachable" so clients written against any of the three
+//     contracts keep working during the compat window.
 //   - body: { error: "backend_unreachable", reason: "<kind>" }
 //
 // Env precedence for the upstream URL:
-//   SIGNAL_BACKEND_URL   (preferred)
-//   RUBERRA_BACKEND_URL  (legacy, honored during compat)
+//   GAUNTLET_BACKEND_URL (canonical)
+//   SIGNAL_BACKEND_URL   (legacy)
+//   RUBERRA_BACKEND_URL  (older legacy)
 
-const NEW_HEADER = "x-signal-backend";
-const LEGACY_HEADER = "x-ruberra-backend";
+const HEADER_GAUNTLET = "x-gauntlet-backend";
+const HEADER_SIGNAL = "x-signal-backend";
+const HEADER_RUBERRA = "x-ruberra-backend";
 const UNREACHABLE_VALUE = "unreachable";
 
 export function unreachable(reason: string, status = 503, message?: string): Response {
-  // `message` carries the raw edge-runtime error text when fetch threw an
-  // unclassified exception (the residual `upstream_fetch_failed` bucket).
-  // Surfacing it lets the chip render the actionable cause instead of just
-  // the bucket name. Omitted from the body when absent so the contract stays
-  // identical for the named buckets (`backend_url_not_configured`, etc.).
   const body: Record<string, string> = { error: "backend_unreachable", reason };
   if (message) body.message = message;
   return new Response(JSON.stringify(body), {
@@ -31,8 +30,9 @@ export function unreachable(reason: string, status = 503, message?: string): Res
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
-      [NEW_HEADER]: UNREACHABLE_VALUE,
-      [LEGACY_HEADER]: UNREACHABLE_VALUE,
+      [HEADER_GAUNTLET]: UNREACHABLE_VALUE,
+      [HEADER_SIGNAL]: UNREACHABLE_VALUE,
+      [HEADER_RUBERRA]: UNREACHABLE_VALUE,
     },
   });
 }
@@ -72,6 +72,7 @@ export function resolveBackendUrl(): string | null {
       ? process.env
       : undefined;
   return (
+    env?.GAUNTLET_BACKEND_URL ??
     env?.SIGNAL_BACKEND_URL ??
     env?.RUBERRA_BACKEND_URL ??
     null

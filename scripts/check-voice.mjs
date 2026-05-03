@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // scripts/check-voice.mjs
 //
-// Voice ban-list lint. Greps banned tokens in src/ and reports every hit
+// Voice ban-list lint. Greps banned tokens in control-center/ and reports every hit
 // with file · line · matched fragment. Exits 1 on any hit so CI fails
 // before broken voice reaches main. Honours the doctrine in docs/VOICE.md.
 //
@@ -59,7 +59,7 @@ const SKIP_PATHS = new Set([
   join("docs", "VOICE.md"),
 ]);
 
-const SCAN_ROOTS = ["src"];
+const SCAN_ROOTS = ["control-center"];
 
 async function* walk(dir) {
   let entries;
@@ -131,7 +131,7 @@ async function main() {
   }
 
   if (allHits.length === 0) {
-    console.log("voice: clean (zero banned tokens in src/)");
+    console.log("voice: clean (zero banned tokens in control-center/)");
     process.exit(0);
   }
 

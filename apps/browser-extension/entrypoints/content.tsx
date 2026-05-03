@@ -28,7 +28,7 @@ export default defineContentScript({
       }
 
       mounted = await createShadowRootUi(ctx, {
-        name: 'ruberra-capsule-host',
+        name: 'gauntlet-capsule-host',
         position: 'inline',
         anchor: 'body',
         onMount: (container) => {
@@ -77,11 +77,11 @@ export default defineContentScript({
 
     // Listen for the summon message from the background script (Alt+Space).
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-      if (msg && msg.type === 'ruberra:summon') {
+      if (msg && msg.type === 'gauntlet:summon') {
         void summon().then(() => sendResponse({ ok: true }));
         return true; // keep the channel open for the async response
       }
-      if (msg && msg.type === 'ruberra:dismiss') {
+      if (msg && msg.type === 'gauntlet:dismiss') {
         dismiss();
         sendResponse({ ok: true });
         return false;
