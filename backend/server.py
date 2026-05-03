@@ -167,8 +167,18 @@ _cors_kwargs: dict = {
     "allow_methods": ["*"],
     "allow_headers": ["*"],
 }
+# Chrome / Edge / Firefox extensions ship with a non-deterministic origin
+# (chrome-extension://<id>, moz-extension://<uuid>) so they cannot be
+# enumerated in ALLOWED_ORIGINS. Match them via regex so the cursor
+# capsule can reach the local backend without per-install configuration.
+# When the operator already supplied a regex, OR ours into theirs.
+_extension_regex = r"^(chrome-extension|moz-extension|safari-web-extension):\/\/.+$"
 if ALLOWED_ORIGIN_REGEX:
-    _cors_kwargs["allow_origin_regex"] = ALLOWED_ORIGIN_REGEX
+    _cors_kwargs["allow_origin_regex"] = (
+        f"({ALLOWED_ORIGIN_REGEX})|({_extension_regex})"
+    )
+else:
+    _cors_kwargs["allow_origin_regex"] = _extension_regex
 
 
 # ── Wave P-31 · Defense-in-depth security middlewares ──────────────────────
