@@ -3,7 +3,7 @@
 // transport-level catch. Auth header wiring lands in Operação 4 with the
 // Control Center settings.
 
-const DEFAULT_BACKEND = 'http://127.0.0.1:3002';
+const DEFAULT_BACKEND = 'https://ruberra-backend-jkpf-production.up.railway.app';
 
 export type ContextSource =
   | 'browser'

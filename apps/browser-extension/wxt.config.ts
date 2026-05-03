@@ -15,6 +15,7 @@ export default defineConfig({
       'Cursor capsule. Press Alt+Space anywhere on the web to talk to the brain.',
     permissions: ['activeTab', 'scripting', 'storage'],
     host_permissions: [
+      'https://ruberra-backend-jkpf-production.up.railway.app/*',
       'http://127.0.0.1:3002/*',
       'http://localhost:3002/*',
     ],

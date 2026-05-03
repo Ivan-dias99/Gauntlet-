@@ -104,6 +104,10 @@ async def lifespan(app: FastAPI):
             "  Set ANTHROPIC_API_KEY for Claude, or\n"
             "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY for Gemini (free tier).\n"
             "  Or set GAUNTLET_MOCK=1 for canned responses.\n"
+            "  Nenhuma API key configurada!\n"
+            "  Define ANTHROPIC_API_KEY para Claude, ou\n"
+            "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY para Gemini,\n"
+            "  ou GAUNTLET_MOCK=1 para respostas offline.\n"
             "═══════════════════════════════════════════════════════════"
         )
         sys.exit(1)
