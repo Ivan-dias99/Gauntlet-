@@ -8,6 +8,7 @@
 // do NOT call dedicated endpoints.
 
 import type { CSSProperties, ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
 import { CheckCircleIcon, LockIcon } from "./icons";
 
@@ -99,6 +100,7 @@ const buttonStyle: CSSProperties = {
 
 export default function ReadinessStatus() {
   const status = useBackendStatus();
+  const navigate = useNavigate();
 
   // System row reflects /health honestly. Other rows are static
   // because the subsystems exist as code modules in the brain — the
@@ -136,7 +138,7 @@ export default function ReadinessStatus() {
           </li>
         ))}
       </ul>
-      <button type="button" style={buttonStyle}>
+      <button type="button" style={buttonStyle} onClick={() => navigate("/composer/overview")}>
         View details
       </button>
     </section>

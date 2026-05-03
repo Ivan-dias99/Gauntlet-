@@ -1,16 +1,17 @@
-// Sprint 2 — Sidebar nav, 9-item target shape.
+// Sprint 3 — Sidebar nav with live footer behaviours.
 //
-// Per the target mock: Home, Context, Compose, Code, Design, Analysis,
-// Route, Memory, Settings. No group headers, no hint subtext — icons +
-// labels only, with active state. Footer carries collapse arrow, help
-// glyphs, and a fake operator profile (Avery Morris · Pro).
+// 9-item target shape (Home, Context, Compose, Code, Design, Analysis,
+// Route, Memory, Settings). Footer carries:
+//   * collapse arrow — toggles icon-only mode (sidebar shrinks to 60px)
+//   * theme toggle — flips data-theme on <html> (dark ↔ light premium)
+//   * help — opens documentation popover
+//   * info — opens "what's new" popover
+//   * operator profile — clickable, navigates to /composer/settings
 //
-// Doctrine override (operator-authorized): the operator profile is
-// chrome — no auth system exists yet. Models / Permissions / Ledger
-// are no longer in the sidebar (they live as sub-routes accessible
-// from Settings / right-rail link). Their routes still exist.
+// Operator avatar (Avery Morris · Pro) is chrome — no auth wired yet.
 
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import type { CSSProperties, ReactNode } from "react";
 import {
   HomeIcon,
@@ -25,18 +26,14 @@ import {
   ChevronRightIcon,
   HelpIcon,
   InfoIcon,
+  SunIcon,
+  MoonIcon,
 } from "./icons";
+import { useTheme } from "./useTheme";
 
 export type StudioRouteId =
-  | "home"
-  | "context"
-  | "compose"
-  | "code"
-  | "design"
-  | "analysis"
-  | "route"
-  | "memory"
-  | "settings";
+  | "home" | "context" | "compose" | "code" | "design"
+  | "analysis" | "route" | "memory" | "settings";
 
 export interface StudioNavEntry {
   id: StudioRouteId;
@@ -57,18 +54,6 @@ export const STUDIO_NAV: StudioNavEntry[] = [
   { id: "memory",   to: "/composer/memory",   label: "Memory",   icon: <MemoryIcon size={16} />,   live: true  },
   { id: "settings", to: "/composer/settings", label: "Settings", icon: <SettingsIcon size={16} />, live: true  },
 ];
-
-const asideStyle: CSSProperties = {
-  borderRight: "1px solid var(--border-color-soft)",
-  background: "color-mix(in oklab, var(--bg-surface) 92%, transparent)",
-  padding: "20px 0 16px",
-  display: "flex",
-  flexDirection: "column",
-  position: "sticky",
-  top: 0,
-  height: "100vh",
-  overflow: "hidden",
-};
 
 const navStyle: CSSProperties = {
   display: "flex",
@@ -106,11 +91,16 @@ const footerIconStyle: CSSProperties = {
   cursor: "pointer",
 };
 
-const userStyle: CSSProperties = {
+const userButtonStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 10,
-  paddingTop: 4,
+  padding: "8px 6px",
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  color: "inherit",
+  textAlign: "left",
 };
 
 const avatarStyle: CSSProperties = {
@@ -141,7 +131,42 @@ const avatarStatusDot: CSSProperties = {
   border: "2px solid var(--bg-surface)",
 };
 
+const popoverStyle: CSSProperties = {
+  position: "absolute",
+  bottom: "calc(100% + 8px)",
+  left: 12,
+  width: 248,
+  background: "color-mix(in oklab, var(--bg-surface) 96%, transparent)",
+  border: "1px solid var(--border-color-mid)",
+  borderRadius: "var(--radius-md, 8px)",
+  boxShadow:
+    "0 0 0 1px color-mix(in oklab, var(--accent) 14%, transparent), 0 18px 50px rgba(0, 0, 0, 0.45)",
+  padding: "12px 14px",
+  zIndex: 30,
+};
+
+type PopId = "help" | "info" | null;
+
 export default function SidebarNav() {
+  const navigate = useNavigate();
+  const { theme, toggle: toggleTheme } = useTheme();
+  const [collapsed, setCollapsed] = useState(false);
+  const [pop, setPop] = useState<PopId>(null);
+
+  const asideStyle: CSSProperties = {
+    borderRight: "1px solid var(--border-color-soft)",
+    background: "color-mix(in oklab, var(--bg-surface) 92%, transparent)",
+    padding: "20px 0 16px",
+    display: "flex",
+    flexDirection: "column",
+    position: "sticky",
+    top: 0,
+    height: "100vh",
+    overflow: "visible",
+    width: collapsed ? 64 : "100%",
+    transition: "width var(--motion-duration-fast, 140ms)",
+  };
+
   return (
     <aside style={asideStyle} aria-label="Studio navigation">
       <nav style={navStyle}>
@@ -150,50 +175,135 @@ export default function SidebarNav() {
             key={entry.id}
             to={entry.to}
             end={entry.to === "/composer"}
-            style={({ isActive }) => navLinkStyle(isActive, entry.live)}
+            style={({ isActive }) => navLinkStyle(isActive, collapsed)}
             data-studio-entry={entry.id}
+            title={collapsed ? entry.label : undefined}
           >
             <span style={iconCellStyle} aria-hidden>{entry.icon}</span>
-            <span style={{ flex: 1 }}>{entry.label}</span>
+            {!collapsed && <span style={{ flex: 1 }}>{entry.label}</span>}
           </NavLink>
         ))}
       </nav>
 
-      <footer style={footerStyle}>
+      <footer style={{ ...footerStyle, position: "relative" }}>
         <div style={footerIconRowStyle}>
-          <button type="button" style={footerIconStyle} aria-label="Collapse sidebar">
-            <ChevronRightIcon size={16} />
+          <button
+            type="button"
+            style={footerIconStyle}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setCollapsed((v) => !v)}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <span style={{ display: "inline-block", transform: collapsed ? "none" : "rotate(180deg)" }}>
+              <ChevronRightIcon size={16} />
+            </span>
           </button>
-          <button type="button" style={footerIconStyle} aria-label="Help">
-            <HelpIcon size={16} />
+          <button
+            type="button"
+            style={footerIconStyle}
+            aria-label="Toggle theme"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Switch to light premium" : "Switch to dark premium"}
+          >
+            {theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
           </button>
-          <button type="button" style={footerIconStyle} aria-label="What's new">
-            <InfoIcon size={16} />
-          </button>
+          {!collapsed && (
+            <>
+              <button
+                type="button"
+                style={footerIconStyle}
+                aria-label="Help"
+                onClick={() => setPop((p) => (p === "help" ? null : "help"))}
+                title="Help"
+              >
+                <HelpIcon size={16} />
+              </button>
+              <button
+                type="button"
+                style={footerIconStyle}
+                aria-label="What's new"
+                onClick={() => setPop((p) => (p === "info" ? null : "info"))}
+                title="What's new"
+              >
+                <InfoIcon size={16} />
+              </button>
+            </>
+          )}
         </div>
 
-        <div style={userStyle}>
+        {pop === "help" && (
+          <div style={popoverStyle} role="dialog" aria-label="Help">
+            <p style={popHeader}>Help</p>
+            <p style={popBody}>
+              Studio is the standalone surface for Composer. The cursor
+              capsule (Alt+Space) remains the primary product. For
+              shortcuts, settings, and ledger inspection, you're in the
+              right place.
+            </p>
+            <button
+              type="button"
+              style={popButton}
+              onClick={() => {
+                setPop(null);
+                navigate("/composer/settings");
+              }}
+            >
+              Open Settings
+            </button>
+          </div>
+        )}
+
+        {pop === "info" && (
+          <div style={popoverStyle} role="dialog" aria-label="What's new">
+            <p style={popHeader}>What's new</p>
+            <p style={popBody}>
+              Studio Sprint 3 — premium hover, theme toggle, all
+              navigation now leads somewhere. Memory and Settings are
+              live; Compose / Code / Design / Analysis / Route / Context
+              are next.
+            </p>
+            <button
+              type="button"
+              style={popButton}
+              onClick={() => {
+                setPop(null);
+                navigate("/composer/overview");
+              }}
+            >
+              Open Overview
+            </button>
+          </div>
+        )}
+
+        <button
+          type="button"
+          style={userButtonStyle}
+          onClick={() => navigate("/composer/settings")}
+          title="Open profile settings"
+        >
           <span style={avatarStyle} aria-hidden>
             AM
             <span style={avatarStatusDot} />
           </span>
-          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-            <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>
-              Avery Morris
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: "var(--t-meta, 11px)",
-                letterSpacing: "var(--track-meta, 0.12em)",
-                color: "var(--accent)",
-                textTransform: "uppercase",
-              }}
-            >
-              Pro
-            </span>
-          </div>
-        </div>
+          {!collapsed && (
+            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>
+                Avery Morris
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: "var(--t-meta, 11px)",
+                  letterSpacing: "var(--track-meta, 0.12em)",
+                  color: "var(--accent)",
+                  textTransform: "uppercase",
+                }}
+              >
+                Pro
+              </span>
+            </div>
+          )}
+        </button>
       </footer>
     </aside>
   );
@@ -208,9 +318,38 @@ const iconCellStyle: CSSProperties = {
   color: "currentColor",
 };
 
-function navLinkStyle(isActive: boolean, _isLive: boolean): CSSProperties {
+const popHeader: CSSProperties = {
+  margin: 0,
+  fontFamily: "var(--mono)",
+  fontSize: "var(--t-meta, 11px)",
+  letterSpacing: "var(--track-kicker, 0.26em)",
+  textTransform: "uppercase",
+  color: "var(--accent)",
+};
+
+const popBody: CSSProperties = {
+  margin: "8px 0 12px",
+  fontSize: 12.5,
+  color: "var(--text-secondary)",
+  lineHeight: 1.55,
+};
+
+const popButton: CSSProperties = {
+  display: "block",
+  width: "100%",
+  padding: "8px 12px",
+  background: "transparent",
+  border: "1px solid var(--border-color-mid)",
+  borderRadius: "var(--radius-sm, 4px)",
+  color: "var(--text-primary)",
+  fontFamily: "var(--sans)",
+  fontSize: 12,
+  cursor: "pointer",
+};
+
+function navLinkStyle(isActive: boolean, collapsed: boolean): CSSProperties {
   return {
-    padding: "10px 12px",
+    padding: collapsed ? "10px 0" : "10px 12px",
     borderRadius: "var(--radius-sm, 6px)",
     textDecoration: "none",
     color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
@@ -223,6 +362,7 @@ function navLinkStyle(isActive: boolean, _isLive: boolean): CSSProperties {
     display: "flex",
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: collapsed ? "center" : "flex-start",
     gap: 12,
     fontSize: 13.5,
     fontFamily: "var(--sans)",

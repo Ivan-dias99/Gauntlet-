@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./styles/tokens.css";
+import "./composer/shell/studio.css";
 import { injectCssVariables } from "./design/css-vars";
 
 // Wave P-33 — Materialise the typed token graph (src/design/*) into CSS

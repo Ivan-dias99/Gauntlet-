@@ -1,16 +1,15 @@
-// Sprint 2 — Studio header (top bar).
+// Sprint 3 — Studio header (top bar) with live behaviour.
 //
-// Per the target mock: brand logo on the left, Quick Summon pill +
-// notification bell + window controls (minimize / maximize / close)
-// on the right. The QuickSummonPopover hangs off the Quick Summon
-// pill via a dotted connector line.
-//
-// Doctrine override (operator-authorized): some elements here are
-// chrome — they don't bind to backend signals (Quick Summon shortcut
-// is decorative until the desktop bridge ships, window controls are
-// decorative inside a browser tab). Marked clearly in comments.
+// Brand mark navigates Home. Quick Summon pill toggles the popover
+// (no longer always-visible). Bell opens a tiny notifications panel.
+// Configure Shortcut button (inside popover) navigates to Settings.
+// Window controls remain decorative inside a browser tab — clicking
+// them shows a transient toast explaining they belong to the Tauri
+// shell. The brand keeps the operator oriented at all times.
 
+import { useState, useRef, useEffect } from "react";
 import type { CSSProperties } from "react";
+import { useNavigate } from "react-router-dom";
 import { BellIcon, MinimizeIcon, MaximizeIcon, CloseIcon } from "./icons";
 import QuickSummonPopover from "./QuickSummonPopover";
 
@@ -26,10 +25,15 @@ const headerStyle: CSSProperties = {
   zIndex: 10,
 };
 
-const brandStyle: CSSProperties = {
+const brandButtonStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 10,
+  padding: "4px 8px",
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  color: "inherit",
 };
 
 const brandMarkStyle: CSSProperties = {
@@ -75,6 +79,7 @@ const summonPillStyle: CSSProperties = {
   fontFamily: "var(--mono)",
   fontSize: "var(--t-meta, 11px)",
   letterSpacing: "var(--track-meta, 0.12em)",
+  cursor: "pointer",
 };
 
 const summonDotStyle: CSSProperties = {
@@ -124,42 +129,163 @@ const windowControlsStyle: CSSProperties = {
   borderLeft: "1px solid var(--border-color-soft)",
 };
 
+const dropdownStyle: CSSProperties = {
+  position: "absolute",
+  top: "calc(100% + 8px)",
+  right: 0,
+  width: 280,
+  background: "color-mix(in oklab, var(--bg-surface) 96%, transparent)",
+  border: "1px solid var(--border-color-mid)",
+  borderRadius: "var(--radius-md, 8px)",
+  boxShadow:
+    "0 0 0 1px color-mix(in oklab, var(--accent) 14%, transparent), 0 18px 50px rgba(0, 0, 0, 0.45)",
+  padding: "12px 14px",
+  zIndex: 30,
+};
+
+const toastStyle: CSSProperties = {
+  position: "fixed",
+  bottom: 80,
+  right: 32,
+  padding: "10px 14px",
+  background: "color-mix(in oklab, var(--bg-surface) 96%, transparent)",
+  border: "1px solid var(--border-color-mid)",
+  borderRadius: "var(--radius-md, 8px)",
+  boxShadow: "0 10px 28px rgba(0, 0, 0, 0.40)",
+  fontSize: 12.5,
+  color: "var(--text-secondary)",
+  zIndex: 40,
+};
+
 export default function StudioHeader() {
+  const navigate = useNavigate();
+  const [summonOpen, setSummonOpen] = useState(true);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Click-outside collapses the popovers.
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target as Node)) {
+        setBellOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  // Auto-dismiss toast after 2.4s.
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 2400);
+    return () => window.clearTimeout(id);
+  }, [toast]);
+
+  function handleConfigureShortcut() {
+    setSummonOpen(false);
+    navigate("/composer/settings");
+  }
+
+  function handleWindowControl(label: string) {
+    setToast(`${label} is part of the desktop shell — decorative inside a browser tab.`);
+  }
+
   return (
     <header style={headerStyle} data-studio-header>
-      <div style={brandStyle}>
+      <button
+        type="button"
+        style={brandButtonStyle}
+        onClick={() => navigate("/composer")}
+        aria-label="Composer home"
+      >
         <span style={brandMarkStyle} aria-hidden>◇</span>
         <p style={brandTextStyle}>Composer</p>
-      </div>
+      </button>
 
-      <div style={rightStyle}>
-        <span style={summonPillStyle}>
+      <div style={rightStyle} ref={wrapRef}>
+        <button
+          type="button"
+          style={summonPillStyle}
+          onClick={() => setSummonOpen((v) => !v)}
+          aria-expanded={summonOpen}
+          aria-label="Toggle Quick Summon"
+        >
           <span style={summonDotStyle} aria-hidden>⚡</span>
           <span>Quick Summon</span>
           <span style={{ display: "inline-flex", gap: 3, marginLeft: 4 }}>
             <span style={kbdStyle}>⌥</span>
             <span style={kbdStyle}>Space</span>
           </span>
-        </span>
+        </button>
 
-        <button type="button" style={iconButtonStyle} aria-label="Notifications">
+        <button
+          type="button"
+          style={iconButtonStyle}
+          onClick={() => setBellOpen((v) => !v)}
+          aria-label="Notifications"
+          aria-expanded={bellOpen}
+        >
           <BellIcon size={16} />
         </button>
 
         <div style={windowControlsStyle} aria-hidden>
-          <button type="button" style={iconButtonStyle} aria-label="Minimize">
+          <button
+            type="button"
+            style={iconButtonStyle}
+            aria-label="Minimize"
+            onClick={() => handleWindowControl("Minimize")}
+          >
             <MinimizeIcon size={14} />
           </button>
-          <button type="button" style={iconButtonStyle} aria-label="Maximize">
+          <button
+            type="button"
+            style={iconButtonStyle}
+            aria-label="Maximize"
+            onClick={() => handleWindowControl("Maximize")}
+          >
             <MaximizeIcon size={12} />
           </button>
-          <button type="button" style={iconButtonStyle} aria-label="Close">
+          <button
+            type="button"
+            style={iconButtonStyle}
+            aria-label="Close"
+            onClick={() => handleWindowControl("Close")}
+          >
             <CloseIcon size={14} />
           </button>
         </div>
 
-        <QuickSummonPopover />
+        {summonOpen && (
+          <QuickSummonPopover onConfigure={handleConfigureShortcut} />
+        )}
+
+        {bellOpen && (
+          <div style={dropdownStyle} role="dialog" aria-label="Notifications">
+            <p
+              style={{
+                margin: 0,
+                fontFamily: "var(--mono)",
+                fontSize: "var(--t-meta, 11px)",
+                letterSpacing: "var(--track-kicker, 0.26em)",
+                textTransform: "uppercase",
+                color: "var(--accent)",
+              }}
+            >
+              Notifications
+            </p>
+            <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+              No new notifications. The studio surfaces alerts here when
+              the brain emits warnings or when a run requires attention.
+            </p>
+          </div>
+        )}
       </div>
+
+      {toast && (
+        <div style={toastStyle} role="status">{toast}</div>
+      )}
     </header>
   );
 }

@@ -1,11 +1,15 @@
-// Sprint 2 — Quick Summon popover.
+// Sprint 3 — Quick Summon popover, now toggleable.
 //
-// Always-visible card that hangs off the Quick Summon header pill via
-// a dotted vertical connector. Matches the target mock literally.
-// The Configure Shortcut button is decorative in V0 — desktop-bridge
-// shortcut config lands when the Tauri shell ships.
+// Hangs off the Quick Summon header pill via a dotted vertical
+// connector. Configure Shortcut button navigates to /composer/settings
+// (operator-side shortcut config lands when the Tauri shell ships;
+// for now Settings is the closest live destination).
 
 import type { CSSProperties } from "react";
+
+interface Props {
+  onConfigure?: () => void;
+}
 
 const wrapStyle: CSSProperties = {
   position: "absolute",
@@ -62,7 +66,7 @@ const buttonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
-export default function QuickSummonPopover() {
+export default function QuickSummonPopover({ onConfigure }: Props) {
   return (
     <div style={wrapStyle} data-quick-summon-popover>
       <span style={connectorStyle} aria-hidden />
@@ -71,7 +75,7 @@ export default function QuickSummonPopover() {
         <p style={bodyStyle}>
           Instantly summon Composer from anywhere using your shortcut.
         </p>
-        <button type="button" style={buttonStyle}>
+        <button type="button" style={buttonStyle} onClick={onConfigure}>
           Configure Shortcut
         </button>
       </div>

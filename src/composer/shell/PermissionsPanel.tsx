@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ShieldIcon, CheckCircleIcon } from "./icons";
 
 interface CategorySummary {
@@ -205,6 +205,7 @@ function ToggleSwitch({
 
 export default function PermissionsPanel() {
   const [privacyOn, setPrivacyOn] = useState(true);
+  const navigate = useNavigate();
 
   return (
     <aside style={wrapStyle} aria-label="Permissions and privacy">
@@ -234,7 +235,13 @@ export default function PermissionsPanel() {
         <div style={rowStyle}>
           <div style={rowHeader}>
             <span style={labelStyle}>Data Retention</span>
-            <button type="button" style={manageButtonStyle}>Manage</button>
+            <button
+              type="button"
+              style={manageButtonStyle}
+              onClick={() => navigate("/composer/settings")}
+            >
+              Manage
+            </button>
           </div>
           <span style={descriptionStyle}>30 days</span>
         </div>

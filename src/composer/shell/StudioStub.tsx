@@ -1,86 +1,127 @@
-// Sprint 1 — StudioStub with stronger visual framing.
+// Sprint 3 — Studio stub with premium framing + actionable CTAs.
 //
-// Breadcrumb header (Studio › Section), serif title with a prominent
-// fase pill, "What needs to ship" requirements card with cyan-tinted
-// border, and a subtle notice pointing operators at /control while
-// the studio absorption is in progress.
-//
-// Honest about state: never claims functionality the route does not
-// have. Every fase / requirement is verifiable against the codebase.
+// Honest about state (route is not wired), but never a dead end. Each
+// stub now offers two concrete paths: a primary action that opens the
+// nearest live surface (Ledger, Memory, Settings, Overview), and a
+// secondary action that returns Home. Operators always have somewhere
+// to go.
 
-import type { CSSProperties } from "react";
-import { Link, useLocation } from "react-router-dom";
-import Pill from "../../components/atoms/Pill";
+import type { CSSProperties, ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  ContextIcon,
+  ComposeIcon,
+  CodeIcon,
+  DesignIcon,
+  AnalysisIcon,
+  RouteIcon,
+  ChevronRightIcon,
+} from "./icons";
+
+interface StubAction {
+  label: string;
+  to: string;
+  primary?: boolean;
+}
 
 interface StubMeta {
   title: string;
   fase: string;
   blurb: string;
   requires: string[];
+  icon: ReactNode;
+  actions: StubAction[];
 }
 
-// Only the four Compose-group routes are stubbed. Memory / Models /
-// Permissions / Ledger / Settings landed live in this fase, absorbed
-// from the (now deleted) /control/* layout.
 const STUBS: Record<string, StubMeta> = {
   "/composer/context": {
     title: "Context",
     fase: "Wave 1",
-    blurb: "Live context inspector — selection, screen, files, app source, and the confidence score the brain assigned. Manual override + re-capture.",
+    icon: <ContextIcon size={20} />,
+    blurb: "Live context inspector — selection, screen, files, app source, and the confidence the brain assigned. Manual override + re-capture.",
     requires: [
       "context capture stream from /composer/context",
       "confidence + provenance fields per source",
       "manual override + re-capture controls",
     ],
+    actions: [
+      { label: "View latest captures", to: "/composer/ledger", primary: true },
+      { label: "Open Settings", to: "/composer/settings" },
+    ],
   },
   "/composer/compose": {
     title: "Compose",
     fase: "Fase 3",
+    icon: <ComposeIcon size={20} />,
     blurb: "Direct invocation of the /composer/* pipeline from inside the studio — input, plan, preview with cost + latency + files-impacted, reasoning trace.",
     requires: [
       "ComposeCanvas restored from src/composer/panels/",
       "preview rendering with cost + latency annotations",
       "approval inline + audit hand-off to ledger",
     ],
-  },
-  "/composer/route": {
-    title: "Route",
-    fase: "Wave 1",
-    blurb: "Tool routing console — model gateway state, per-tool latency, cost, and the routing reasons.",
-    requires: [
-      "tools registry visualisation (read from registry.ts)",
-      "model gateway routing reasons",
-      "per-tool latency + cost summary",
+    actions: [
+      { label: "Use the cursor capsule", to: "/composer", primary: true },
+      { label: "Inspect previous runs", to: "/composer/ledger" },
     ],
   },
   "/composer/code": {
     title: "Code",
     fase: "Wave 1",
+    icon: <CodeIcon size={20} />,
     blurb: "IDE-style patch + diff renderer with syntax highlighting, working-tree apply, test-pass gate.",
     requires: [
       "diff renderer",
       "patch apply against the workspace",
       "test gate before commit",
     ],
+    actions: [
+      { label: "Browse code runs in Ledger", to: "/composer/ledger", primary: true },
+      { label: "Open Memory inspector", to: "/composer/memory" },
+    ],
   },
   "/composer/design": {
     title: "Design",
     fase: "Wave 2",
+    icon: <DesignIcon size={20} />,
     blurb: "Canvas with frames, components, and tokens — Figma client cutover already scaffolded in signal-backend/figma_client.py.",
     requires: [
       "canvas renderer",
       "/composer/design endpoint",
       "Figma import flow live",
     ],
+    actions: [
+      { label: "View design connectors", to: "/composer/permissions", primary: true },
+      { label: "Return Home", to: "/composer" },
+    ],
   },
   "/composer/analysis": {
     title: "Analysis",
     fase: "Wave 2",
+    icon: <AnalysisIcon size={20} />,
     blurb: "Long-form report builder with charts, tables, narrative blocks. CSV / SQL / JSON ingestion.",
     requires: [
       "report renderer (charts + tables)",
       "data ingestion (csv / sql / json)",
       "exec summary generator with extended thinking",
+    ],
+    actions: [
+      { label: "View run analytics", to: "/composer/overview", primary: true },
+      { label: "Inspect Memory", to: "/composer/memory" },
+    ],
+  },
+  "/composer/route": {
+    title: "Route",
+    fase: "Wave 1",
+    icon: <RouteIcon size={20} />,
+    blurb: "Tool routing console — model gateway state, per-tool latency, cost, and the routing reasons.",
+    requires: [
+      "tools registry visualisation (read from registry.ts)",
+      "model gateway routing reasons",
+      "per-tool latency + cost summary",
+    ],
+    actions: [
+      { label: "View model gateway", to: "/composer/models", primary: true },
+      { label: "Open Settings", to: "/composer/settings" },
     ],
   },
 };
@@ -116,6 +157,19 @@ const titleRowStyle: CSSProperties = {
   flexWrap: "wrap",
 };
 
+const iconBadgeStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 44,
+  height: 44,
+  borderRadius: 10,
+  background: "color-mix(in oklab, var(--accent) 14%, transparent)",
+  border: "1px solid color-mix(in oklab, var(--accent) 38%, transparent)",
+  color: "var(--accent)",
+  flexShrink: 0,
+};
+
 const titleStyle: CSSProperties = {
   margin: 0,
   fontFamily: "var(--serif)",
@@ -149,7 +203,7 @@ const blurbStyle: CSSProperties = {
 const cardStyle: CSSProperties = {
   background: "color-mix(in oklab, var(--bg-surface) 92%, transparent)",
   border: "1px solid var(--border-color-soft)",
-  borderRadius: "var(--radius-md, 8px)",
+  borderRadius: "var(--radius-md, 10px)",
   boxShadow: "0 0 0 1px color-mix(in oklab, var(--accent) 10%, transparent)",
   padding: "16px 18px",
 };
@@ -163,26 +217,56 @@ const cardHeaderStyle: CSSProperties = {
   color: "var(--text-muted)",
 };
 
-const noticeStyle: CSSProperties = {
-  margin: 0,
-  padding: "10px 14px",
-  background: "color-mix(in oklab, var(--bg-elevated) 70%, transparent)",
-  border: "1px dashed var(--border-color-soft)",
-  borderRadius: "var(--radius-md, 8px)",
+const actionsRowStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 10,
+  marginTop: 4,
+};
+
+const primaryActionStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "10px 16px",
+  background: "color-mix(in oklab, var(--accent) 22%, transparent)",
+  border: "1px solid color-mix(in oklab, var(--accent) 60%, transparent)",
+  borderRadius: "var(--radius-sm, 6px)",
+  color: "var(--text-primary)",
+  fontFamily: "var(--sans)",
   fontSize: 13,
-  color: "var(--text-muted)",
-  lineHeight: 1.5,
+  fontWeight: 500,
+  cursor: "pointer",
+  textDecoration: "none",
+};
+
+const secondaryActionStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "10px 16px",
+  background: "transparent",
+  border: "1px solid var(--border-color-soft)",
+  borderRadius: "var(--radius-sm, 6px)",
+  color: "var(--text-secondary)",
+  fontFamily: "var(--sans)",
+  fontSize: 13,
+  cursor: "pointer",
+  textDecoration: "none",
 };
 
 const fallback: StubMeta = {
   title: "Studio",
   fase: "Fase 2+",
+  icon: null,
   blurb: "This studio surface is not wired in this fase.",
   requires: [],
+  actions: [{ label: "Return Home", to: "/composer", primary: true }],
 };
 
 export default function StudioStub() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const meta = STUBS[pathname] ?? fallback;
 
   return (
@@ -194,11 +278,9 @@ export default function StudioStub() {
       </nav>
 
       <header style={titleRowStyle}>
+        {meta.icon && <span style={iconBadgeStyle} aria-hidden>{meta.icon}</span>}
         <h1 style={titleStyle}>{meta.title}</h1>
         <span style={fasePillStyle}>{meta.fase}</span>
-        <span style={{ marginLeft: "auto" }}>
-          <Pill tone="ghost">stub</Pill>
-        </span>
       </header>
 
       <p style={blurbStyle}>{meta.blurb}</p>
@@ -214,14 +296,19 @@ export default function StudioStub() {
         </div>
       )}
 
-      <p style={noticeStyle}>
-        Until then, return to{" "}
-        <Link to="/composer" style={{ color: "var(--accent)", textDecoration: "none" }}>
-          Home
-        </Link>
-        {" "}— the studio is the single house. Memory, Models, Permissions,
-        Ledger, and Settings are already live in the sidebar.
-      </p>
+      <div style={actionsRowStyle}>
+        {meta.actions.map((a) => (
+          <button
+            key={a.to + a.label}
+            type="button"
+            onClick={() => navigate(a.to)}
+            style={a.primary ? primaryActionStyle : secondaryActionStyle}
+          >
+            {a.label}
+            <ChevronRightIcon size={12} />
+          </button>
+        ))}
+      </div>
     </section>
   );
 }

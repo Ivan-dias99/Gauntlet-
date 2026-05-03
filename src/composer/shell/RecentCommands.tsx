@@ -7,6 +7,7 @@
 // fallback for the empty/unreachable case).
 
 import type { CSSProperties } from "react";
+import { useNavigate } from "react-router-dom";
 import { useRecentRuns } from "../hooks/useRecentRuns";
 import { ListIcon } from "./icons";
 
@@ -118,6 +119,7 @@ function truncate(s: string, max: number): string {
 
 export default function RecentCommands() {
   const state = useRecentRuns(5);
+  const navigate = useNavigate();
 
   // Real runs win when present; otherwise demo rows so the surface
   // matches the target mock and operators see a populated tile.
@@ -140,7 +142,7 @@ export default function RecentCommands() {
           </li>
         ))}
       </ul>
-      <button type="button" style={buttonStyle}>
+      <button type="button" style={buttonStyle} onClick={() => navigate("/composer/ledger")}>
         <ListIcon size={12} />
         View all history
       </button>

@@ -1,0 +1,84 @@
+/* Sprint 3 — Studio premium chrome.
+ *
+ * Hover, focus, and transition rules scoped to [data-composer-studio].
+ * Inline-styled components carry the static styling; this file adds
+ * the interaction states that JSX inline styles cannot express.
+ *
+ * Imported once from src/main.tsx. Every selector starts with the
+ * studio data attribute so /control/* (or any other surface) is
+ * untouched. */
+
+[data-composer-studio] *,
+[data-composer-studio] *::before,
+[data-composer-studio] *::after {
+  transition-property: background, background-color, border-color, color, box-shadow, opacity, transform;
+  transition-duration: var(--motion-duration-fast, 140ms);
+  transition-timing-function: var(--ease-swift, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+/* Focus ring — visible only on keyboard focus, never on mouse click. */
+[data-composer-studio] :focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 65%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Sidebar nav links — gentle accent wash on hover when not active. */
+[data-composer-studio] [data-studio-entry]:hover {
+  background: color-mix(in oklab, var(--accent) 7%, transparent) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Buttons — generic hover lift across the studio. */
+[data-composer-studio] button:not(:disabled):hover {
+  background: color-mix(in oklab, var(--accent) 10%, var(--bg-elevated)) !important;
+  color: var(--text-primary) !important;
+  border-color: color-mix(in oklab, var(--accent) 35%, var(--border-color-soft)) !important;
+}
+
+/* Icon-only buttons (28px wide square) — subtle background pill. */
+[data-composer-studio] button[aria-label]:not(:disabled):hover {
+  background: color-mix(in oklab, var(--accent) 12%, transparent) !important;
+}
+
+/* Anchor links — accent on hover. */
+[data-composer-studio] a:not(:disabled):hover {
+  color: var(--accent) !important;
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--border-color-soft)) !important;
+}
+
+/* Idle orb breathing — subtle pulse so the orb feels alive. */
+@keyframes studio-orb-breathe {
+  0%, 100% { opacity: 0.95; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.06); }
+}
+[data-composer-studio] [data-studio-orb-mid] {
+  animation: studio-orb-breathe 4.5s ease-in-out infinite;
+}
+@keyframes studio-orb-glow {
+  0%, 100% { box-shadow: 0 0 8px var(--accent), 0 0 22px color-mix(in oklab, var(--accent) 75%, transparent), 0 0 44px color-mix(in oklab, var(--accent) 40%, transparent); }
+  50%      { box-shadow: 0 0 12px var(--accent), 0 0 32px color-mix(in oklab, var(--accent) 85%, transparent), 0 0 60px color-mix(in oklab, var(--accent) 55%, transparent); }
+}
+[data-composer-studio] [data-studio-orb-core] {
+  animation: studio-orb-glow 4.5s ease-in-out infinite;
+}
+
+/* Status bar dots — gentle pulse on the active (ok / accent) ones. */
+@keyframes studio-dot-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+[data-composer-studio] [data-status-dot="ok"],
+[data-composer-studio] [data-status-dot="accent"] {
+  animation: studio-dot-pulse 2.4s ease-in-out infinite;
+}
+
+/* Reduced motion — drop animations honour OS preference. */
+@media (prefers-reduced-motion: reduce) {
+  [data-composer-studio] *,
+  [data-composer-studio] *::before,
+  [data-composer-studio] *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

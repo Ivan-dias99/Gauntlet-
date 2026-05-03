@@ -52,7 +52,8 @@ const PILLARS: Pillar[] = [
 
 interface Props {
   // Provided by StudioHome — fires when the operator clicks Expand on
-  // the chip. Scrolls the tile grid into view; never navigates away.
+  // the chip OR clicks the orb itself. Scrolls the tile grid into
+  // view; never navigates away.
   onExpand?: () => void;
 }
 
@@ -402,12 +403,18 @@ export default function IdleHero({ onExpand }: Props) {
         </div>
 
         <div style={orbCellStyle}>
-          <div style={orbBaseStyle}>
+          <button
+            type="button"
+            onClick={onExpand}
+            aria-label="Click the orb to expand"
+            title="Click to scroll to tiles below"
+            style={{ ...orbBaseStyle, background: "transparent", border: "none", padding: 0, cursor: onExpand ? "pointer" : "default" }}
+          >
             <div style={orbRingStyle} />
-            <div style={orbOuterAuraStyle} />
-            <div style={orbMidAuraStyle} />
-            <div style={orbCoreStyle} />
-          </div>
+            <div style={orbOuterAuraStyle} data-studio-orb-mid />
+            <div style={orbMidAuraStyle} data-studio-orb-mid />
+            <div style={orbCoreStyle} data-studio-orb-core />
+          </button>
         </div>
 
         <div style={{ gridColumn: "1 / span 2", gridRow: "3" }}>

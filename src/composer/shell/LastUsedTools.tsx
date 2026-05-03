@@ -5,6 +5,7 @@
 // demo rows so the tile matches the mock.
 
 import type { CSSProperties, ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { useRecentRuns, deriveLastUsedTools } from "../hooks/useRecentRuns";
 import {
   CodeIcon,
@@ -107,6 +108,7 @@ const buttonStyle: CSSProperties = {
 
 export default function LastUsedTools() {
   const state = useRecentRuns(5);
+  const navigate = useNavigate();
 
   // Real tool names from /runs win when present; otherwise demo rows.
   const liveTools = state.kind === "ready" ? deriveLastUsedTools(state.runs) : [];
@@ -129,7 +131,7 @@ export default function LastUsedTools() {
           </li>
         ))}
       </ul>
-      <button type="button" style={buttonStyle}>
+      <button type="button" style={buttonStyle} onClick={() => navigate("/composer/route")}>
         <ToolHubIcon size={12} />
         Open tool hub
       </button>
