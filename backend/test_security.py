@@ -8,7 +8,7 @@ would not flip the auth gate — the middleware snapshots the key at
 init.
 
 Run from repo root:
-    cd signal-backend
+    cd backend
     pytest -q test_security.py
 """
 

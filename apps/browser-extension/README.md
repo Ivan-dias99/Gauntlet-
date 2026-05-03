@@ -1,4 +1,4 @@
-# Ruberra Composer — Browser Extension (Operação 2 — V0)
+# Gauntlet — Browser Extension (Operação 2 — V0)
 
 Cursor capsule for the browser. Press `Alt+Space` on any page → capsule
 appears anchored at the top-right → write what you want → preview comes
@@ -36,8 +36,8 @@ npm run build        # produces .output/chrome-mv3-prod
 For the smoke flow, also boot the backend:
 
 ```bash
-cd ../../signal-backend
-SIGNAL_MOCK=1 python main.py    # http://127.0.0.1:3002
+cd ../../backend
+GAUNTLET_MOCK=1 python main.py    # http://127.0.0.1:3002
 ```
 
 ## Manual validation gate (Portão de Validação 2)

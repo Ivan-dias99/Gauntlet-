@@ -7,7 +7,7 @@ the same second produces a single timestamp folder (the second invocation
 overwrites the first), so cron retries are safe.
 
 Usage:
-    cd signal-backend && python backup.py
+    cd backend && python backup.py
 
 Cron-friendly: writes to stdout/stderr, exits non-zero on failure so a
 wrapper like `cron` can detect partial backups.

@@ -17,10 +17,10 @@ state.
   `INSERT` into the new tables. Sketch:
 
   ```python
-  # signal-backend/migrate_to_postgres.py (future)
+  # backend/migrate_to_postgres.py (future)
   import asyncpg, json
   async def migrate():
-      conn = await asyncpg.connect(dsn=os.environ["SIGNAL_DATABASE_URL"])
+      conn = await asyncpg.connect(dsn=os.environ["GAUNTLET_DATABASE_URL"])
       # 1. Apply 0001_initial_schema.sql
       # 2. Walk spine.json → INSERT missions/notes/tasks/distillations/handoffs
       # 3. Walk runs.json → INSERT runs (cap to MAX_RUNS or roll older entries
