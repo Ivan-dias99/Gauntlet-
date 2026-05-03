@@ -1,11 +1,11 @@
 """
-Signal — FastAPI Server
-HTTP interface for the Signal sovereign AI workspace.
+Gauntlet — FastAPI Server
+HTTP interface for the Gauntlet backend (the maestro).
 
 Endpoints:
   POST /ask, /route, /route/stream  — triad+judge / auto-router
   POST /dev, /dev/stream            — agent loop (tool-use)
-  POST /crew/stream                 — multi-agent crew
+  POST /composer/{context,intent,preview,apply}
   GET  /runs, /runs/stats, /runs/{id}
   GET  /memory/stats, /memory/failures
   POST /memory/clear
@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
@@ -55,9 +55,6 @@ from config import (
     SERVER_PORT,
     SIGNAL_API_KEY,
     TRUST_PROXY,
-    VERCEL_PROJECT_ID,
-    VERCEL_TEAM_ID,
-    VERCEL_TOKEN,
 )
 from models import SignalQuery, SignalResponse, SpineSnapshot, RunRecord
 from engine import SignalEngine
@@ -137,18 +134,18 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    logger.info("Signal backend shutting down.")
+    logger.info("Gauntlet backend shutting down.")
 
 
 # ── FastAPI App ─────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Signal",
+    title="Gauntlet",
     description=(
-        "Signal — sovereign AI workspace over external models. Five "
-        "chambers (Insight · Surface · Terminal · Archive · Core) "
-        "sharing one shell and one conservative doctrine: prefer "
-        "refusal over the risk of being wrong."
+        "Gauntlet — intelligence at the cursor tip. The browser-extension "
+        "capsule (Composer) speaks to this backend (the maestro), which "
+        "owns model routing, tools, memory and the conservative doctrine: "
+        "prefer refusal over the risk of being wrong."
     ),
     version="1.0.0",
     lifespan=lifespan,
@@ -195,13 +192,9 @@ if ALLOWED_ORIGIN_REGEX:
 #   * Rate limit is the deepest layer so authenticated callers are
 #     bucketed by IP; it skips OPTIONS to avoid penalising preflight.
 
-# Per-route body-size overrides. /visual-diff already enforces a 16 MiB
-# cap *during* the multipart stream (see _read_capped). Letting the
-# global 1 MiB middleware reject the upload first would break the
-# screenshot-diff flow before the operator even sees the upload page.
-LARGE_BODY_ROUTES: dict[str, int] = {
-    "/visual-diff": 16 * 1024 * 1024,
-}
+# Per-route body-size overrides. Empty after the Gauntlet migration retired
+# the /visual-diff endpoint; kept as a hook for future large-body routes.
+LARGE_BODY_ROUTES: dict[str, int] = {}
 
 
 class BodySizeLimitMiddleware(BaseHTTPMiddleware):
@@ -477,36 +470,6 @@ async def ask_ruberra_dev_stream(query: SignalQuery):
     )
 
 
-@app.post("/crew/stream")
-async def ask_ruberra_crew_stream(query: SignalQuery):
-    """
-    Streaming multi-agent pipeline: planner → (researcher) → coder → critic,
-    with one automatic refinement round if the critic rejects.
-
-    Emits ``crew_start``, ``plan``, ``role_start`` / ``role_event`` /
-    ``role_done`` per specialist, ``critic_verdict`` and finally ``done``.
-    """
-    if not engine:
-        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-
-    async def event_source():
-        try:
-            async for event in engine.process_crew_query_streaming(query):
-                yield f"data: {_json.dumps(event)}\n\n"
-        except Exception as e:
-            logger.error(f"Crew stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('crew_error', e)})}\n\n"
-
-    return StreamingResponse(
-        event_source(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
-
 @app.post("/route")
 async def ask_ruberra_auto(query: SignalQuery):
     """
@@ -550,279 +513,7 @@ async def ask_ruberra_batch(batch: BatchQuery):
     return {"results": responses}
 
 
-# ── Insight · Validate (Wave 6c) ────────────────────────────────────────────
-#
-# On-demand triad+judge over the conversation accumulated in Insight.
-# Wave 6c moved Insight's default dispatch to the agent loop (research lab
-# mode), which means the doctrine #1 stops governing every conversational
-# turn. This endpoint puts triad+judge back on the table when the user
-# wants explicit validation of where the conversation has landed —
-# triggered by a button in the chamber, not automatically.
-#
-# Input: mission_id + optional inline notes/principles (same race-defence
-#        contract as /insight/distill/stream).
-# Output: SSE stream identical to /route/stream's triad path (triad_start,
-#         triad_done×N, judge_start, judge_done with confidence +
-#         nearest_answerable_question, done).
-
-
-class ValidateRequest(BaseModel):
-    mission_id: str = Field(..., min_length=1, max_length=128)
-    # Same inline override pattern as DistillRequest. When omitted, the
-    # endpoint reads from the spine snapshot.
-    notes: Optional[list[DistillNoteInline]] = None
-    principles: Optional[list[str]] = None
-
-
-def _summarise_conversation(notes_list: list, principles_list: list[str]) -> str:
-    """Build the question fed into triad+judge from the conversation
-    accumulated so far. The summary is plain text — the existing
-    triad pipeline expects a single ``question`` string.
-
-    Note ordering: spine stores notes newest-first. We slice the
-    newest 30 then reverse so the summary reads chronologically.
-    """
-    lines: list[str] = ["Validar a direcção apurada na conversa abaixo."]
-    if principles_list:
-        lines.append("")
-        lines.append("Princípios em vigor:")
-        for p in principles_list:
-            lines.append(f"- {p}")
-    lines.append("")
-    lines.append("Conversa (mais antigas → mais recentes):")
-    if not notes_list:
-        lines.append("(missão sem notas — pedir refinamento)")
-    else:
-        recent = list(reversed(notes_list[:30]))
-        for n in recent:
-            role = getattr(n, "role", None) or "user"
-            text = getattr(n, "text", "")
-            lines.append(f"[{role}] {text}")
-    lines.append("")
-    lines.append(
-        "Avalia se a direcção está sólida o suficiente para avançar para "
-        "Surface/Terminal. Recusa se faltar evidência, contradições, ou "
-        "ambiguidade material."
-    )
-    return "\n".join(lines)
-
-
-@app.post("/insight/validate/stream")
-async def insight_validate_stream(req: ValidateRequest):
-    """Wave 6c — on-demand triad+judge validation of the Insight
-    conversation. Returns the same envelope as /route/stream's triad
-    path so the frontend's openStream consumer reuses the existing
-    plumbing. Refusal carries `nearest_answerable_question` (Wave 6a
-    Tier-1 Addition #2) so the chamber can offer a sharper reformulate.
-    """
-    if not engine:
-        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-    from models import NoteRecord
-
-    snapshot = await spine_store.get()
-    mission = next((m for m in snapshot.missions if m.id == req.mission_id), None)
-    if mission is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": "mission_not_found",
-                "reason": "KeyError",
-                "message": f"mission {req.mission_id} not found in spine",
-            },
-        )
-
-    if req.notes is not None:
-        inline_notes = [
-            NoteRecord(
-                id=f"inline-{idx}",
-                text=n.text,
-                createdAt=n.createdAt or int(time.time() * 1000),
-                role=n.role,
-            )
-            for idx, n in enumerate(req.notes)
-        ]
-    else:
-        inline_notes = list(mission.notes)
-
-    principle_texts = (
-        list(req.principles)
-        if req.principles is not None
-        else [p.text for p in snapshot.principles]
-    )
-
-    question = _summarise_conversation(inline_notes, principle_texts)
-    triad_query = SignalQuery(
-        question=question,
-        mission_id=mission.id,
-        principles=principle_texts or None,
-    )
-
-    async def event_source():
-        try:
-            async for event in engine.process_query_streaming(triad_query):
-                yield f"data: {_json.dumps(event)}\n\n"
-        except Exception as e:
-            logger.error(f"Validate stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('validate_error', e)})}\n\n"
-
-    return StreamingResponse(
-        event_source(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
-
-# ── Insight · Distill (Wave 6a) ─────────────────────────────────────────────
-
-
-class DistillNoteInline(BaseModel):
-    """Inline note carried in the distill request body — defends against
-    the spine-debounce race where the user edits a note and immediately
-    asks to distill, before the snapshot has been pushed to disk."""
-    text: str
-    role: Optional[str] = None
-    createdAt: Optional[int] = None
-
-
-class DistillExistingInline(BaseModel):
-    """Inline existing-distillation summary carried in the distill request.
-    Only the fields the server needs for versioning — version + status —
-    so version increment computes from the freshest client-side view
-    instead of the persisted snapshot. Avoids the same debounce race
-    when the user clicks 'refinar' twice in quick succession."""
-    version: int
-    status: Optional[str] = None
-
-
-class DistillRequest(BaseModel):
-    mission_id: str = Field(..., min_length=1, max_length=128)
-    # Wave 6a — optional inline overrides of mission state. When sent,
-    # the backend uses these instead of the persisted snapshot — avoids
-    # the 500ms debounce race where the user types and immediately
-    # distills. All fields are optional; omitted fields fall back to
-    # the snapshot (back-compat with any external caller).
-    notes: Optional[list[DistillNoteInline]] = None
-    principles: Optional[list[str]] = None
-    # Wave 6a Codex P1 follow-up — inline existing distillations so
-    # version increment also avoids the snapshot race. Two quick
-    # "refinar" clicks would otherwise both compute the same next
-    # version from a stale snapshot, producing duplicates.
-    existing_distillations: Optional[list[DistillExistingInline]] = None
-
-
-@app.post("/insight/distill/stream")
-async def insight_distill_stream(req: DistillRequest):
-    """Wave 6a — generate a Truth Distillation for the active mission.
-
-    Reads mission + principles from the spine store by default, but the
-    client can send inline notes/principles in the request body to
-    override — this defends against the debounced spine-push race so
-    the user always distills against the latest content they typed.
-    ProjectContract v0 is auto-derived inside the chamber handler.
-    Mock-fallback under env flags so smoke path works without a key.
-    """
-    from chambers.insight import process_distillation_streaming
-    from models import NoteRecord
-
-    snapshot = await spine_store.get()
-    mission = next((m for m in snapshot.missions if m.id == req.mission_id), None)
-    if mission is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": "mission_not_found",
-                "reason": "KeyError",
-                "message": f"mission {req.mission_id} not found in spine",
-            },
-        )
-
-    # Inline override path — apply the request's notes / principles on
-    # top of the snapshot mission. We mutate a *copy* (model_copy) so
-    # the persisted snapshot stays untouched; the chamber handler reads
-    # the merged view as the authoritative input for this run.
-    if req.notes is not None:
-        inline_notes = [
-            NoteRecord(
-                id=f"inline-{idx}",
-                text=n.text,
-                createdAt=n.createdAt or int(time.time() * 1000),
-                role=n.role,
-            )
-            for idx, n in enumerate(req.notes)
-        ]
-        mission = mission.model_copy(update={"notes": inline_notes})
-
-    # Inline existing distillations override — for the version helper.
-    # Only version + status are needed; the helper looks at .version.
-    # We construct minimal stub records (TruthDistillationRecord is
-    # picky about required fields; we feed safe defaults).
-    if req.existing_distillations is not None:
-        from models import TruthDistillationRecord
-        stubs = [
-            TruthDistillationRecord(
-                id=f"inline-stub-{idx}",
-                version=int(d.version),
-                status=d.status or "draft",
-                sourceMissionId=mission.id,
-                summary="",
-                validatedDirection="",
-                confidence="medium",
-                createdAt=0,
-                updatedAt=0,
-            )
-            for idx, d in enumerate(req.existing_distillations)
-        ]
-        mission = mission.model_copy(update={"truthDistillations": stubs})
-
-    principle_texts = (
-        list(req.principles)
-        if req.principles is not None
-        else [p.text for p in snapshot.principles]
-    )
-
-    async def event_source():
-        try:
-            async for event in process_distillation_streaming(mission, principle_texts):
-                yield f"data: {_json.dumps(event)}\n\n"
-                # Telemetry — Wave 6a Tier-1 Addition #3.
-                # Record the generation event when a `done` frame fires so the
-                # Archive ledger has visibility on distillation throughput.
-                if event.get("type") == "done":
-                    try:
-                        await run_store.record(RunRecord(
-                            route="distill",
-                            mission_id=mission.id,
-                            question=f"distill: {mission.title}",
-                            context=None,
-                            answer=event.get("distillation", {}).get("summary"),
-                            processing_time_ms=event.get("processing_time_ms", 0),
-                            input_tokens=event.get("input_tokens", 0),
-                            output_tokens=event.get("output_tokens", 0),
-                            terminated_early=bool(event.get("mock")),
-                            termination_reason=(
-                                "insight_mock" if event.get("mock") else None
-                            ),
-                        ))
-                    except Exception as log_err:  # noqa: BLE001
-                        logger.warning("distill run_store record failed: %s", log_err)
-        except Exception as e:
-            logger.error(f"Distill stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('distill_error', e)})}\n\n"
-
-    return StreamingResponse(
-        event_source(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
-
-# ── Telemetry (Wave 6a) ─────────────────────────────────────────────────────
+# ── Telemetry ───────────────────────────────────────────────────────────────
 
 
 class TelemetryEvent(BaseModel):
@@ -863,328 +554,6 @@ async def telemetry_event(ev: TelemetryEvent):
         # Telemetry failures must never break the chamber. Return ok=false
         # so client can log locally if it cares; never surface as an error.
         return {"ok": False, "reason": str(e)}
-
-
-# ── Issue draft endpoint (Wave N integration) ─────────────────────────────
-
-
-class IssueDraftRequest(BaseModel):
-    """Provider-agnostic draft. The chamber assembles this; the
-    operator confirms; the orchestration layer (or the Claude Code
-    session) calls the actual MCP/REST create. Backend just formats
-    the kwargs."""
-    title: str = Field(..., min_length=1, max_length=200)
-    body: str = Field(..., max_length=8000)
-    kind: str = Field("bug")          # bug|polish|feature|regression|design|perf
-    severity: str = Field("medium")   # low|medium|high
-    chamber: Optional[str] = None
-    mission_id: Optional[str] = None
-    artifact_ref: Optional[str] = None
-    selector: Optional[str] = None
-    screenshot_url: Optional[str] = None
-    file_path: Optional[str] = None
-    line_number: Optional[int] = None
-    labels: list[str] = Field(default_factory=list)
-    provider: str = Field("github")   # github|linear|jira
-
-
-@app.post("/issues/draft")
-async def issues_draft(req: IssueDraftRequest):
-    """Wave N — formats an IssueDraft for the requested provider.
-    Returns the kwargs dict that the orchestration layer will pass
-    to the actual create_issue MCP/REST call."""
-    from issue_tracker import IssueDraft, format_for_github, format_for_linear
-    valid_kinds = {"bug", "polish", "feature", "regression", "design", "perf"}
-    valid_severity = {"low", "medium", "high"}
-    if req.kind not in valid_kinds:
-        raise HTTPException(status_code=422, detail=_error_envelope(
-            "issue_draft_invalid_kind", ValueError(f"kind={req.kind!r} not in {valid_kinds}")
-        ))
-    if req.severity not in valid_severity:
-        raise HTTPException(status_code=422, detail=_error_envelope(
-            "issue_draft_invalid_severity", ValueError(f"severity={req.severity!r} not in {valid_severity}")
-        ))
-    draft = IssueDraft(
-        title=req.title, body=req.body,
-        kind=req.kind, severity=req.severity,  # type: ignore[arg-type]
-        chamber=req.chamber, mission_id=req.mission_id,
-        artifact_ref=req.artifact_ref, selector=req.selector,
-        screenshot_url=req.screenshot_url, file_path=req.file_path,
-        line_number=req.line_number, labels=list(req.labels or []),
-    )
-    if req.provider == "linear":
-        return {"provider": "linear", "kwargs": format_for_linear(draft)}
-    if req.provider == "github":
-        return {"provider": "github", "kwargs": format_for_github(draft)}
-    raise HTTPException(status_code=422, detail=_error_envelope(
-        "issue_draft_invalid_provider", ValueError(f"provider={req.provider!r} not in [github, linear]")
-    ))
-
-
-@app.post("/issues/create")
-async def issues_create(req: IssueDraftRequest):
-    """Wave P-23 — actually create the GitHub issue via REST.
-
-    When `SIGNAL_GITHUB_TOKEN` (`RUBERRA_GITHUB_TOKEN`) and
-    `SIGNAL_GITHUB_REPO` are both set in the environment, this posts
-    to GitHub and returns `{ok, number, url}`. When either is unset,
-    we return `{ok: false, reason: "github_not_configured", draft: ...}`
-    with HTTP 200 so the chamber can render a copy-paste fallback
-    body instead of surfacing a 500 to the operator.
-
-    Validation mirrors /issues/draft (kind/severity/provider).
-    """
-    import config as _config
-    import observability
-    from issue_tracker import IssueDraft, create_github_issue, format_for_github
-
-    valid_kinds = {"bug", "polish", "feature", "regression", "design", "perf"}
-    valid_severity = {"low", "medium", "high"}
-    if req.kind not in valid_kinds:
-        raise HTTPException(status_code=422, detail=_error_envelope(
-            "issue_create_invalid_kind", ValueError(f"kind={req.kind!r} not in {valid_kinds}")
-        ))
-    if req.severity not in valid_severity:
-        raise HTTPException(status_code=422, detail=_error_envelope(
-            "issue_create_invalid_severity", ValueError(f"severity={req.severity!r} not in {valid_severity}")
-        ))
-    if req.provider != "github":
-        # P-23 v1 only writes to GitHub. Linear/Jira REST clients land later;
-        # for now, refuse other providers loudly so the chamber doesn't
-        # silently drop the issue.
-        raise HTTPException(status_code=422, detail=_error_envelope(
-            "issue_create_unsupported_provider",
-            ValueError(f"provider={req.provider!r} not supported by /issues/create yet (use /issues/draft for formatting)"),
-        ))
-
-    draft = IssueDraft(
-        title=req.title, body=req.body,
-        kind=req.kind, severity=req.severity,  # type: ignore[arg-type]
-        chamber=req.chamber, mission_id=req.mission_id,
-        artifact_ref=req.artifact_ref, selector=req.selector,
-        screenshot_url=req.screenshot_url, file_path=req.file_path,
-        line_number=req.line_number, labels=list(req.labels or []),
-    )
-
-    async with observability.record_route("/issues/create"):
-        token = _config.GITHUB_TOKEN
-        repo = _config.GITHUB_REPO
-        if not token or not repo:
-            # Friendly fallback — chamber renders a copy-paste form.
-            # 200 with ok=false is intentional: operator did nothing wrong,
-            # the deploy just isn't wired up.
-            return {
-                "ok": False,
-                "reason": "github_not_configured",
-                "draft": format_for_github(draft),
-            }
-
-        try:
-            result = await create_github_issue(draft, token=token, repo=repo)
-        except RuntimeError as e:
-            # Upstream GitHub error (4xx/5xx). Surface a 502 with the raw
-            # message so the operator can see "401 bad credentials" without
-            # us having to guess the cause.
-            logger.warning("issues/create github error: %s", e)
-            raise HTTPException(status_code=502, detail=_error_envelope("github_api_error", e))
-        except Exception as e:  # noqa: BLE001
-            logger.exception("issues/create unexpected error")
-            raise HTTPException(status_code=500, detail=_error_envelope("issue_create_error", e))
-
-    return {
-        "ok": True,
-        "number": result.get("number"),
-        "url": result.get("html_url"),
-    }
-
-
-# ── Figma token import endpoint (Wave M integration) ──────────────────────
-
-
-class FigmaImportRequest(BaseModel):
-    """The operator pastes a Figma file id + the file's REST API JSON
-    body. v1 doesn't fetch live (no PAT in backend env yet) — caller
-    posts the body directly. v2 will accept (file_id, personal_token)
-    and fetch internally."""
-    file_id: str = Field(..., min_length=1, max_length=64)
-    body: dict[str, Any]
-    name: Optional[str] = Field(None, max_length=128)
-
-
-@app.post("/design/figma/import")
-async def design_figma_import(req: FigmaImportRequest):
-    """Wave M — parses a Figma file body into a normalised TokenSet
-    (colors, spacings, types, radii). Surface can target the result
-    as a custom design system."""
-    from figma_tokens import tokens_from_figma_json
-    ts = tokens_from_figma_json(req.file_id, req.body, name=req.name)
-    return ts.to_dict()
-
-# ── Surface · BuildSpec endpoint ────────────────────────────────────────────
-#
-# Wave J integration. Compiles a SurfacePlan dict into a structured
-# BuildSpecification with per-component TSX scaffolds. Terminal can
-# pull this and either commit the scaffolds verbatim or feed them
-# into the agent loop for refinement. Pure compute, no provider call.
-
-
-class BuildSpecRequest(BaseModel):
-    """SurfacePlan + project context. Plan shape mirrors chambers/surface.py
-    SurfacePlan: mode, fidelity, design_system_binding, screens[], components[]."""
-    plan: dict[str, Any]
-    project_id: str = Field("", max_length=128)
-    output_dir: str = Field("src/components", max_length=256)
-
-
-@app.post("/surface/build-spec")
-async def surface_build_spec(req: BuildSpecRequest):
-    """Wave J — deterministic SurfacePlan → BuildSpecification compile.
-
-    Returns a JSON-serializable BuildSpecification with components[]
-    (each with name, file_path, kind, props, states, acceptance,
-    scaffold_tsx) and files_to_create[] for Terminal consumption.
-    """
-    from spec_to_code import compile_plan_to_spec
-    spec = compile_plan_to_spec(
-        req.plan,
-        project_id=req.project_id or "",
-        output_dir=req.output_dir or "src/components",
-    )
-    return spec.to_dict()
-
-
-# ── Visual diff endpoint (Wave P-28) ───────────────────────────────────────
-#
-# Surface Final's "what changed?" surface. Operator uploads two PNGs
-# (baseline + candidate); the backend runs the per-pixel diff and
-# returns a DiffResult JSON. Pillow is the decoder; if it isn't
-# installed we surface a typed 503 instead of crashing — every other
-# endpoint stays up.
-
-
-# Hard cap on per-image upload size — 16 MiB is well above realistic
-# screenshot sizes (a 4K PNG is ~5–10 MiB) but small enough that an
-# adversarial client can't OOM the worker. Each image is checked
-# independently; the diff loop is per-pixel pure-Python so for very
-# large pairs the request will get slow well before it gets dangerous.
-_VISUAL_DIFF_MAX_BYTES = 16 * 1024 * 1024
-
-
-async def _read_capped(upload: UploadFile, cap: int) -> bytes:
-    """Read an UploadFile into memory with a hard byte cap.
-
-    Streams in 64 KiB chunks and aborts with HTTP 413 the moment the
-    accumulated buffer exceeds ``cap``. The previous shape did
-    ``await upload.read()`` first and *then* checked ``len(...)``, so
-    a malicious 1 GiB upload was already resident in RAM by the time
-    we rejected it. Reading-as-we-cap keeps the worker's memory
-    bounded by ``cap`` regardless of what the client sends.
-    """
-    out = bytearray()
-    while True:
-        chunk = await upload.read(64 * 1024)
-        if not chunk:
-            break
-        out.extend(chunk)
-        if len(out) > cap:
-            raise HTTPException(status_code=413, detail=_error_envelope(
-                "visual_diff_payload_too_large",
-                ValueError(f"per-image cap is {cap} bytes"),
-            ))
-    return bytes(out)
-
-
-@app.post("/visual-diff")
-async def visual_diff_endpoint(
-    before: UploadFile = File(..., description="Baseline image (PNG/JPEG)."),
-    after: UploadFile = File(..., description="Candidate image (PNG/JPEG)."),
-    threshold: float = 0.1,
-    selector: Optional[str] = Form(
-        default=None,
-        description=(
-            "Optional CSS selector — populated when the diff was scoped "
-            "to a single picked element (Wave P-30). Recorded on the "
-            "RunRecord so the Archive can show 'diff over body > main > div'."
-        ),
-        max_length=512,
-    ),
-):
-    """Wave P-28 — pixel diff between two screenshots.
-
-    Multipart form with `before` + `after` image fields. Returns a
-    ``DiffResult`` (see signal-backend/visual_diff.py): one bbox per
-    connected component of changed pixels (Wave P-30), the changed-
-    pixel ratio, and a rolled-up severity. Pillow is loaded lazily so
-    a Pillow-less deploy boots fine — only this endpoint fails with a
-    typed 503.
-
-    Wave P-30 also accepts an optional ``selector`` form field. When
-    set, the chamber's element-pick → diff flow stamps the selector on
-    the resulting RunRecord so the Archive can render
-    ``diff over body > main > div`` instead of a bare ``visual_diff``
-    blob.
-    """
-    from visual_diff import DiffUnavailable, compute_diff
-
-    # Cap-as-you-read so the worker can't be OOM'd by a giant upload —
-    # the 16 MiB ceiling is enforced *during* the stream, not after.
-    before_bytes = await _read_capped(before, _VISUAL_DIFF_MAX_BYTES)
-    after_bytes = await _read_capped(after, _VISUAL_DIFF_MAX_BYTES)
-    if not before_bytes or not after_bytes:
-        raise HTTPException(status_code=422, detail=_error_envelope(
-            "visual_diff_empty_image",
-            ValueError("both 'before' and 'after' must be non-empty"),
-        ))
-
-    try:
-        result = await compute_diff(before_bytes, after_bytes, threshold=threshold)
-    except DiffUnavailable as exc:
-        # Pillow not installed — typed 503 mirrors /health/ready's
-        # "degraded" shape so the chamber can show "diff engine
-        # unavailable" instead of a generic 500.
-        raise HTTPException(status_code=503, detail=_error_envelope(
-            "diff_unavailable", exc,
-        ))
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=_error_envelope(
-            "visual_diff_invalid_image", exc,
-        ))
-
-    # Telemetry — small payload, mirrors /telemetry/event's pattern so
-    # operators can grep `route=visual_diff` in /runs. Wave P-30: when a
-    # selector is supplied (element-scoped flow), it lands in
-    # ``RunRecord.context`` so the Archive can render
-    # ``diff over body > main > div``. The selector is clipped to the
-    # context column's 5000-char cap defensively even though the form
-    # field already enforces 512.
-    selector_clean = (selector or "").strip()
-    context_str: Optional[str] = None
-    if selector_clean:
-        context_str = f"selector={selector_clean[:480]}"
-    try:
-        await run_store.record(RunRecord(
-            route="visual_diff",
-            mission_id=None,
-            question=f"diff:{len(before_bytes)}+{len(after_bytes)}",
-            context=context_str,
-            answer=_json.dumps({
-                "ratio": result.ratio,
-                "changed": result.changed_pixels,
-                "total": result.total_pixels,
-                "severity": result.severity,
-                "regions": len(result.regions),
-                "selector": selector_clean or None,
-            }),
-            processing_time_ms=0,
-            input_tokens=0,
-            output_tokens=0,
-            terminated_early=False,
-            termination_reason=None,
-        ))
-    except Exception as log_err:  # noqa: BLE001
-        logger.warning("visual_diff run_store record failed: %s", log_err)
-
-    return result.to_dict()
 
 
 # ── Memory Endpoints ────────────────────────────────────────────────────────
@@ -1412,215 +781,12 @@ async def gateway_summary():
     return _gateway.summary()
 
 
-# ── Vercel API endpoints (Wave P-25) ──────────────────────────────────────
-#
-# Thin pass-through to vercel_client. Two reads only — list + detail.
-# When VERCEL_TOKEN is unset (the audit's 🟡 stub state), endpoints
-# return ``{ok: false, reason: "vercel_not_configured"}`` with HTTP 200
-# so the Surface/Core dashboard can render an "unconfigured" chip
-# instead of a 500. Same record_route envelope as the rest of Signal.
-
-
-def _vercel_unconfigured() -> dict:
-    """Friendly fallback body when VERCEL_TOKEN is empty. HTTP 200 by
-    design — the chamber needs to know the integration is unconfigured,
-    not that the backend exploded."""
-    return {
-        "ok": False,
-        "reason": "vercel_not_configured",
-        "message": (
-            "Set SIGNAL_VERCEL_TOKEN (or RUBERRA_VERCEL_TOKEN) to enable "
-            "Vercel deployment listing. SIGNAL_VERCEL_PROJECT_ID and "
-            "SIGNAL_VERCEL_TEAM_ID are optional scopes."
-        ),
-    }
-
-
-@app.get("/vercel/deployments")
-async def vercel_deployments(
-    limit: int = Query(default=20, ge=1, le=100),
-):
-    """List recent Vercel deployments scoped by VERCEL_PROJECT_ID /
-    VERCEL_TEAM_ID env. Returns ``{ok, deployments, count}`` on
-    success or the ``vercel_not_configured`` envelope when the token
-    is unset.
-
-    ``limit`` is clamped to Vercel's accepted range of 1..100; values
-    outside that range yield a local 422 instead of being forwarded
-    upstream and surfacing as a misleading ``vercel_api_error`` 502."""
-    import observability as _obs
-    from vercel_client import list_deployments
-
-    if not VERCEL_TOKEN:
-        return _vercel_unconfigured()
-
-    _obs.start("vercel_deployments")
-    started = time.monotonic()
-    try:
-        deployments = await list_deployments(
-            token=VERCEL_TOKEN,
-            project=VERCEL_PROJECT_ID or None,
-            team=VERCEL_TEAM_ID or None,
-            limit=limit,
-        )
-        _obs.end(
-            "vercel_deployments",
-            duration_ms=int((time.monotonic() - started) * 1000),
-            succeeded=True,
-        )
-        return {
-            "ok": True,
-            "deployments": deployments,
-            "count": len(deployments),
-        }
-    except Exception as e:  # noqa: BLE001
-        _obs.end(
-            "vercel_deployments",
-            duration_ms=int((time.monotonic() - started) * 1000),
-            succeeded=False,
-            error_kind=type(e).__name__,
-        )
-        logger.error(f"Vercel list error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=502,
-            detail=_error_envelope("vercel_api_error", e),
-        )
-
-
-@app.get("/vercel/deployments/{deployment_id}")
-async def vercel_deployment(deployment_id: str):
-    """Fetch a single Vercel deployment by id or host. Same shape /
-    fallback contract as ``/vercel/deployments``."""
-    import observability as _obs
-    from vercel_client import get_deployment
-
-    if not VERCEL_TOKEN:
-        return _vercel_unconfigured()
-
-    _obs.start("vercel_deployment")
-    started = time.monotonic()
-    try:
-        deployment = await get_deployment(
-            token=VERCEL_TOKEN,
-            id=deployment_id,
-            team=VERCEL_TEAM_ID or None,
-        )
-        _obs.end(
-            "vercel_deployment",
-            duration_ms=int((time.monotonic() - started) * 1000),
-            succeeded=True,
-        )
-        return {
-            "ok": True,
-            "deployment": deployment,
-            "count": 1,
-        }
-    except Exception as e:  # noqa: BLE001
-        _obs.end(
-            "vercel_deployment",
-            duration_ms=int((time.monotonic() - started) * 1000),
-            succeeded=False,
-            error_kind=type(e).__name__,
-        )
-        logger.error(f"Vercel detail error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=502,
-            detail=_error_envelope("vercel_api_error", e),
-        )
-
-
-# ── Railway GraphQL endpoints (Wave P-26) ────────────────────────────────
-
-
-@app.get("/railway/services")
-async def railway_services():
-    """List Railway services for the configured project.
-
-    Returns `{ok: false, reason: "railway_not_configured"}` (HTTP 200)
-    when SIGNAL_RAILWAY_TOKEN or SIGNAL_RAILWAY_PROJECT_ID is unset, so
-    the operator dashboard never sees a 500 just because the operator
-    has not wired Railway credentials yet.
-
-    On upstream failure, returns `{ok: false, reason: "railway_error",
-    error: "..."}` so the panel can render a degraded badge instead of
-    a stack trace.
-    """
-    import observability
-    from config import RAILWAY_PROJECT_ID, RAILWAY_TOKEN, RAILWAY_TOKEN_KIND
-    from railway_client import list_services
-
-    if not RAILWAY_TOKEN or not RAILWAY_PROJECT_ID:
-        return {"ok": False, "reason": "railway_not_configured"}
-
-    # Catch RuntimeError OUTSIDE the record_route block so the context
-    # manager observes the failure (sets error_kind, succeeded=False).
-    # Catching inside would let the context manager exit cleanly and
-    # /observability/snapshot would under-report Railway errors.
-    try:
-        async with observability.record_route("railway.services"):
-            services = await list_services(
-                token=RAILWAY_TOKEN,
-                project_id=RAILWAY_PROJECT_ID,
-                token_kind=RAILWAY_TOKEN_KIND,
-            )
-    except RuntimeError as exc:
-        logger.warning("railway list_services failed: %s", exc)
-        return {"ok": False, "reason": "railway_error", "error": str(exc)}
-
-    return {
-        "ok": True,
-        "project_id": RAILWAY_PROJECT_ID,
-        "services": services,
-    }
-
-
-@app.get("/railway/services/{service_id}/deployments")
-async def railway_deployments(service_id: str, limit: int = 20):
-    """List recent deployments for a service in the configured environment.
-
-    Same fallback contract as `/railway/services`: missing token /
-    environment yields `{ok: false, reason: "railway_not_configured"}`,
-    upstream failures yield `{ok: false, reason: "railway_error", ...}`.
-    """
-    import observability
-    from config import RAILWAY_ENVIRONMENT_ID, RAILWAY_TOKEN, RAILWAY_TOKEN_KIND
-    from railway_client import list_deployments
-
-    if not RAILWAY_TOKEN or not RAILWAY_ENVIRONMENT_ID:
-        return {"ok": False, "reason": "railway_not_configured"}
-
-    try:
-        async with observability.record_route("railway.deployments"):
-            deployments = await list_deployments(
-                token=RAILWAY_TOKEN,
-                service_id=service_id,
-                environment_id=RAILWAY_ENVIRONMENT_ID,
-                limit=limit,
-                token_kind=RAILWAY_TOKEN_KIND,
-            )
-    except RuntimeError as exc:
-        logger.warning(
-            "railway list_deployments failed (service=%s): %s",
-            service_id,
-            exc,
-        )
-        return {"ok": False, "reason": "railway_error", "error": str(exc)}
-
-    return {
-        "ok": True,
-        "service_id": service_id,
-        "environment_id": RAILWAY_ENVIRONMENT_ID,
-        "deployments": deployments,
-    }
-
-
 # ── Diagnostic Endpoint ─────────────────────────────────────────────────────
 
 @app.get("/diagnostics")
 async def diagnostics():
     """Full system diagnostics."""
     from config import MODEL_ID, TRIAD_TEMPERATURE, JUDGE_TEMPERATURE, TRIAD_COUNT
-    from chambers.surface import _surface_mock_active
 
     mem_stats = await failure_memory.get_stats()
 
@@ -1641,27 +807,6 @@ async def diagnostics():
         "port": SERVER_PORT,
     }
 
-    # Wave-5: surface posture is its own honesty axis. The chamber can be
-    # in mock fallback for three distinct reasons; reporting "mock" alone
-    # used to leave the operator guessing which lever to pull. Reasons
-    # are listed in priority order — the first true wins the gate.
-    _surface_flag = os.environ.get("SIGNAL_SURFACE_MOCK", "").strip().lower()
-    surface_flag_on = _surface_flag in ("1", "true", "yes", "on")
-    if RUBERRA_MOCK:
-        surface_reason = "global_mock_flag"
-    elif surface_flag_on:
-        surface_reason = "surface_mock_flag"
-    elif not ANTHROPIC_API_KEY:
-        surface_reason = "anthropic_api_key_missing"
-    else:
-        surface_reason = None
-    surface_status = {
-        "mock_active": _surface_mock_active(),
-        "reason": surface_reason,
-        "global_mock_flag": RUBERRA_MOCK,
-        "surface_mock_flag": surface_flag_on,
-    }
-
     # Wave P-31 — visibility on which security layers are ACTIVE on this
     # process. Operators auditing a deploy need a single place to see
     # whether the auth gate is on, whether HSTS is being stamped, etc.
@@ -1678,14 +823,13 @@ async def diagnostics():
     }
 
     return {
-        "system": "Signal",
+        "system": "Gauntlet",
         "model": MODEL_ID,
         "triad_temperature": TRIAD_TEMPERATURE,
         "judge_temperature": JUDGE_TEMPERATURE,
         "triad_count": TRIAD_COUNT,
         "engine_status": "ready" if engine else "not_initialized",
         "boot": boot,
-        "surface": surface_status,
         "security": security,
         "failure_memory": mem_stats,
         "persistence": {

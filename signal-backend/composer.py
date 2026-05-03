@@ -30,7 +30,6 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, status
 
-from chambers.profiles import ChamberKey
 from models import (
     ApplyResult,
     ComposerApplyRequest,
@@ -129,7 +128,7 @@ def _get_engine():
 # that surface is exposed. Cheap and auditable beats flashy and opaque.
 
 async def _classify_intent(
-    ctx: ContextPackage, user_input: str, chamber_hint: Optional[ChamberKey]
+    ctx: ContextPackage, user_input: str, chamber_hint: Optional[str]
 ) -> tuple[IntentKind, float, str, list[str]]:
     text = user_input.lower().strip()
 
@@ -348,12 +347,12 @@ async def generate_preview(req: ComposerPreviewRequest) -> PreviewResult:
 
     try:
         if intent.intent in {"generate_code", "debug_code", "execute_plan"}:
-            # Agent path — tool use + chamber=terminal
+            # Agent path — tool use
             engine = _get_engine()
             agent_query = SignalQuery(
                 question=_compose_agent_question(intent, req.intent_id),
                 context=_compose_context_blob(ctx),
-                chamber=ChamberKey.TERMINAL,
+                chamber="terminal",
             )
             agent_result = await engine.process_dev_query(agent_query)
             tools_used = [tc.get("name", "") for tc in agent_result.tool_calls]

@@ -277,11 +277,11 @@ class AgentOrchestrator:
             or f"agent-loop-{uuid.uuid4().hex[:12]}"
         )
 
-        # Wave-5: profile-aware prompt + tool filter. When no chamber is
-        # attached we fall back to the orchestrator's default prompt and
-        # the unfiltered schema — unchanged from earlier waves.
-        from chambers.profiles import get_profile
-        profile = get_profile(query.chamber)
+        # Chamber profiles were retired with the Gauntlet migration; the
+        # agent loop now always uses the orchestrator's default prompt and
+        # the unfiltered tool schema. ``profile`` is kept as a local None
+        # so the existing fallbacks downstream stay byte-equivalent.
+        profile = None
         effective_system_prompt = (
             profile.system_prompt
             if profile and profile.system_prompt
@@ -440,68 +440,6 @@ class AgentOrchestrator:
                     sig["iteration"] = iteration
                     sig["source"] = block.name
                     yield sig
-
-                    # Wave E (P-3) — for every gate/diff signal, also emit
-                    # a typed EvidenceRecord so the chamber can collect
-                    # the trail of proof and downstream Delivery Ledger
-                    # consumers have structured provenance. The record
-                    # mandates source/iteration/missionId/taskId; fall
-                    # back to deterministic placeholders when the caller
-                    # didn't tag the run (ad-hoc curls, smoke tests).
-                    try:
-                        from evidence import gate_evidence, diff_evidence
-                        mission_id_val = (query.mission_id or "ad-hoc").strip() or "ad-hoc"
-                        task_id_val = _run_task_id_fallback
-                        record = None
-                        if sig.get("type") == "gate":
-                            record = gate_evidence(
-                                sig["name"], sig["state"],
-                                source=block.name,
-                                iteration=iteration,
-                                mission_id=mission_id_val,
-                                task_id=task_id_val,
-                            )
-                        elif sig.get("type") == "diff":
-                            record = diff_evidence(
-                                int(sig.get("files", 0)),
-                                int(sig.get("added", 0)),
-                                int(sig.get("removed", 0)),
-                                source=block.name,
-                                iteration=iteration,
-                                mission_id=mission_id_val,
-                                task_id=task_id_val,
-                            )
-                        if record is not None:
-                            yield {
-                                "type": "evidence",
-                                "record": record.model_dump(),
-                            }
-                    except Exception:  # noqa: BLE001
-                        # Evidence emission must never break the agent
-                        # loop — the gate/diff signal already shipped.
-                        pass
-
-                # Wave G integration — extract citations from research
-                # tool results. The URL-fetch tool registers as
-                # `fetch_url` (FetchUrlTool); `web_fetch` is the legacy
-                # name and isn't in the runtime allowlist. Other tool
-                # results pass through silent.
-                if block.name in ("web_search", "fetch_url") and result.ok:
-                    try:
-                        from source_verification import extract_citations, trust_summary
-                        cites = extract_citations(result.content)
-                        if cites:
-                            yield {
-                                "type": "citations",
-                                "iteration": iteration,
-                                "source": block.name,
-                                "citations": [c.to_dict() for c in cites],
-                                "summary": trust_summary(cites),
-                            }
-                    except Exception as exc:  # noqa: BLE001
-                        # Citation extraction must never break the
-                        # agent loop; log and move on.
-                        logger.warning("Citation extraction failed: %s", exc)
 
             messages.append({"role": "user", "content": tool_results_content})
 

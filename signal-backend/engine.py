@@ -63,18 +63,6 @@ def _get_agent() -> "AgentOrchestrator":  # type: ignore[name-defined]
     return _agent_singleton
 
 
-_crew_singleton: Optional["CrewOrchestrator"] = None  # type: ignore[name-defined]
-
-
-def _get_crew() -> "CrewOrchestrator":  # type: ignore[name-defined]
-    global _crew_singleton
-    if _crew_singleton is None:
-        from crew import CrewOrchestrator
-        _crew_singleton = CrewOrchestrator()
-    return _crew_singleton
-
-
-
 class SignalEngine:
     """
     The sovereign intelligence engine.
@@ -452,57 +440,16 @@ class SignalEngine:
                 termination_reason=final["termination_reason"],
             ))
 
-    async def process_crew_query_streaming(
-        self, query: SignalQuery
-    ) -> AsyncIterator[dict[str, Any]]:
-        """Multi-agent crew: planner → (researcher) → coder → critic.
-
-        Yields crew envelope events. On ``done``, records the run so the
-        Memory chamber shows it alongside agent / triad runs.
-        """
-        logger.info("Routing to crew (streaming): %s", query.question[:120])
-        crew = _get_crew()
-        final: Optional[dict[str, Any]] = None
-        async for event in crew.run_streaming(query):
-            yield event
-            if event["type"] == "done":
-                final = event
-        if final:
-            await run_store.record(RunRecord(
-                route="crew",
-                mission_id=query.mission_id,
-                question=query.question,
-                context=query.context,
-                answer=final["answer"],
-                tool_calls=[{"name": r, "ok": True} for r in final.get("roles_run", [])],
-                iterations=final.get("refinements", 0),
-                processing_time_ms=final["processing_time_ms"],
-                input_tokens=final["input_tokens"],
-                output_tokens=final["output_tokens"],
-                terminated_early=not final.get("accepted", True),
-                termination_reason=(
-                    "critic rejected after refinement"
-                    if not final.get("accepted", True) else None
-                ),
-            ))
-
-    # ── Routing helper (Wave 1, populated in Wave 5) ───────────────────────
+    # ── Routing helper ─────────────────────────────────────────────────────
 
     @staticmethod
     def _auto_route_agent(query: SignalQuery) -> bool:
         """
-        Decide whether the auto-router dispatches to the agent loop. When
-        the query carries an explicit ``chamber`` key, the chamber
-        profile's ``dispatch`` decides; when absent, falls back to the
-        legacy ``is_dev_intent`` heuristic so pre-Wave-1 clients behave
-        exactly as before. The surface_mock dispatch is handled out of
-        this function — see process_auto_streaming's surface fork.
+        Decide whether the auto-router dispatches to the agent loop. After
+        the Gauntlet migration removed chamber profiles, the only signal
+        is the legacy ``is_dev_intent`` heuristic on the question text.
         """
         from agent import AgentOrchestrator
-        from chambers.profiles import get_profile
-        profile = get_profile(query.chamber)
-        if profile is not None:
-            return profile.dispatch == "agent"
         return AgentOrchestrator.is_dev_intent(query.question)
 
     async def process_auto(self, query: SignalQuery):
@@ -521,49 +468,9 @@ class SignalEngine:
         self, query: SignalQuery
     ) -> AsyncIterator[dict[str, Any]]:
         """Auto-router streaming variant. Emits a ``route`` event first, then
-        streams agent, triad or surface-mock events under a unified envelope.
-
-        Wave-3 addition: when ``query.chamber == "surface"`` the router forks
-        to the chamber-specific mock handler instead of the generic agent
-        loop. The mock emits a structured ``surface_plan`` event and a
-        ``done`` event with ``mock: True`` in the payload — no provider is
-        invoked. Replaced by real generation in Wave 5.
+        streams agent or triad events under a unified envelope. The Surface
+        chamber fork was removed with the Gauntlet migration.
         """
-        from chambers.profiles import ChamberKey
-        if query.chamber == ChamberKey.SURFACE:
-            # Wave 5: dispatch to the real generator. The handler
-            # collapses to the mock internally when env flags or a
-            # missing API key say so, so this fork stays uniform and
-            # the run log tags the row honestly via the ``mock`` field.
-            from chambers.surface import process_surface_streaming
-            yield {"type": "route", "path": "surface"}
-            surface_final: Optional[dict[str, Any]] = None
-            async for event in process_surface_streaming(query.question, query.surface):
-                yield event
-                if event.get("type") == "done":
-                    surface_final = event
-            if surface_final is not None:
-                is_mock = bool(surface_final.get("mock"))
-                await run_store.record(RunRecord(
-                    route="surface",
-                    mission_id=query.mission_id,
-                    question=query.question,
-                    context=query.context,
-                    answer=surface_final.get("answer"),
-                    processing_time_ms=surface_final.get("processing_time_ms", 0),
-                    input_tokens=surface_final.get("input_tokens", 0),
-                    output_tokens=surface_final.get("output_tokens", 0),
-                    # Mock fallbacks are persisted as terminated_early
-                    # so the Archive UI (RunList outcome chip) renders
-                    # the warning tone — they completed the envelope
-                    # but skipped the real provider. Real runs (is_mock
-                    # is False) land as terminated_early=False and run
-                    # the normal "ok" chip.
-                    terminated_early=is_mock,
-                    termination_reason="surface_mock" if is_mock else None,
-                ))
-            return
-
         if self._auto_route_agent(query):
             yield {"type": "route", "path": "agent"}
             # Wave 6c — wrap the agent's `done` envelope in `result` so the
