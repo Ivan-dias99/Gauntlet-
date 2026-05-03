@@ -1,11 +1,15 @@
-// Wave 1 — Composer layout (canonical surface fiel à Foto 3).
+// Wave 8 — Composer surface layout (visual revision).
 //
-// Three-column grid: 4 mode panels stacked left, central canvas, 4 mode
-// panels stacked right. Bottom: pipeline strip. Active mode controls
-// what the central column renders — Compose is wired end-to-end, the
-// other 8 modes render ModePlaceholder.
+// Three-column grid: 4 stacked side panels left, central canvas, 4
+// stacked side panels right. The grid sits on top of an absolutely-
+// positioned ConnectionLines SVG layer that draws glow curves from the
+// inner edge of each side panel toward the central composer node.
+//
+// All visual treatment (glow borders, palette, pulse, gradients) is
+// scoped to [data-composer-surface] via ensureComposerStyles() so the
+// /control surface keeps its own operator-console look.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { MODES } from "./types";
@@ -20,36 +24,43 @@ import AnalysisCanvas from "./panels/AnalysisCanvas";
 import MemoryCanvas from "./panels/MemoryCanvas";
 import ModePlaceholder from "./panels/ModePlaceholder";
 import PipelineStrip from "./PipelineStrip";
+import ConnectionLines from "./visual/ConnectionLines";
+import { ensureComposerStyles } from "./visual/tokens";
+import Icon from "./visual/Icons";
 
-// Split the 8 non-compose modes evenly across the two side columns.
-// Order roughly mirrors Foto 3 (input-side panels first on the left,
-// downstream panels on the right).
-const LEFT_MODES: ComposerMode[] = ["idle", "context", "route", "memory"];
-const RIGHT_MODES: ComposerMode[] = ["code", "design", "analysis", "apply"];
+const LEFT_MODES: ComposerMode[] = ["idle", "context", "memory", "apply"];
+const RIGHT_MODES: ComposerMode[] = ["code", "design", "analysis", "route"];
 
 const headerStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: "16px 24px",
-  borderBottom: "var(--border-soft)",
-  background: "var(--bg-surface)",
+  padding: "16px 28px",
+  position: "relative",
+  zIndex: 2,
+};
+
+const gridShellStyle: CSSProperties = {
+  flex: 1,
+  position: "relative",
+  padding: "32px 28px",
+  overflow: "auto",
 };
 
 const gridStyle: CSSProperties = {
-  flex: 1,
+  position: "relative",
+  zIndex: 1,
   display: "grid",
-  gridTemplateColumns: "minmax(220px, 280px) minmax(0, 1fr) minmax(220px, 280px)",
-  gap: 16,
-  padding: 24,
-  overflow: "auto",
-  alignItems: "start",
+  gridTemplateColumns: "minmax(220px, 260px) minmax(0, 1fr) minmax(220px, 260px)",
+  gap: 18,
+  alignItems: "stretch",
 };
 
 const columnStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
+  display: "grid",
+  gridTemplateRows: "repeat(4, minmax(0, 1fr))",
+  gap: 14,
+  minHeight: 580,
 };
 
 function findMode(id: ComposerMode): ModeDescriptor {
@@ -61,97 +72,149 @@ function findMode(id: ComposerMode): ModeDescriptor {
 export default function ComposerLayout() {
   const [active, setActive] = useState<ComposerMode>("compose");
 
+  useEffect(() => {
+    ensureComposerStyles();
+  }, []);
+
   return (
     <div
+      data-composer-surface
       style={{
-        background: "var(--bg)",
-        color: "var(--text-primary)",
-        fontFamily: "var(--sans)",
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
       }}
-      data-composer-surface
     >
-      <header style={headerStyle}>
+      <header data-top-strip style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span
-            aria-hidden
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              background: "var(--accent, #4a7cff)",
-              boxShadow: "0 0 14px var(--accent, #4a7cff)",
-            }}
-          />
+          <span data-pulse-dot aria-hidden />
           <p
             style={{
               margin: 0,
               fontFamily: "var(--mono)",
-              fontSize: "var(--t-meta)",
-              letterSpacing: "var(--track-kicker)",
+              fontSize: 12,
+              letterSpacing: "0.28em",
+              textTransform: "uppercase",
               color: "var(--text-muted)",
             }}
           >
-            RUBERRA · COMPOSER
+            Ruberra · Composer
           </p>
-          <span style={{ color: "var(--text-muted)" }}>·</span>
-          <span style={{ fontSize: 14, color: "var(--text-primary)" }}>Wave 1 surface</span>
+          <span style={{ color: "var(--text-ghost)" }}>·</span>
+          <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>
+            Super wireframe canónico
+          </span>
         </div>
         <Link
           to="/control"
           style={{
-            color: "var(--text-secondary, var(--text-muted))",
+            color: "var(--text-secondary)",
             textDecoration: "none",
             fontFamily: "var(--mono)",
-            fontSize: "var(--t-meta)",
-            letterSpacing: "var(--track-meta)",
+            fontSize: 11,
+            letterSpacing: "0.18em",
             textTransform: "uppercase",
-            border: "var(--border-soft)",
-            borderRadius: "var(--radius-sm, 4px)",
+            border: "1px solid rgba(120,180,255,0.18)",
+            borderRadius: 4,
             padding: "6px 12px",
+            background: "rgba(94,165,255,0.05)",
           }}
         >
           → Control
         </Link>
       </header>
 
-      <main style={gridStyle}>
-        <aside style={columnStyle} aria-label="left mode panels">
-          {LEFT_MODES.map((id) => (
-            <ModePanel key={id} mode={findMode(id)} active={active} onSelect={setActive} />
-          ))}
-        </aside>
+      <main style={gridShellStyle}>
+        <ConnectionLines />
 
-        <section style={{ ...columnStyle, gap: 16 }}>
-          {active === "compose" ? (
-            <ComposeCanvas />
-          ) : active === "route" ? (
-            <RouteCanvas />
-          ) : active === "code" ? (
-            <CodeCanvas />
-          ) : active === "apply" ? (
-            <ApplyCanvas />
-          ) : active === "design" ? (
-            <DesignCanvas />
-          ) : active === "analysis" ? (
-            <AnalysisCanvas />
-          ) : active === "memory" ? (
-            <MemoryCanvas />
-          ) : (
-            <ModePlaceholder mode={active} />
-          )}
-        </section>
+        <div style={gridStyle}>
+          <aside style={columnStyle} aria-label="left mode panels">
+            {LEFT_MODES.map((id) => (
+              <ModePanel
+                key={id}
+                mode={findMode(id)}
+                active={active}
+                onSelect={setActive}
+              />
+            ))}
+          </aside>
 
-        <aside style={columnStyle} aria-label="right mode panels">
-          {RIGHT_MODES.map((id) => (
-            <ModePanel key={id} mode={findMode(id)} active={active} onSelect={setActive} />
-          ))}
-        </aside>
+          <section
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              minHeight: 580,
+              position: "relative",
+            }}
+          >
+            <CursorDecoration />
+            {active === "compose" ? (
+              <ComposeCanvas />
+            ) : active === "route" ? (
+              <RouteCanvas />
+            ) : active === "code" ? (
+              <CodeCanvas />
+            ) : active === "apply" ? (
+              <ApplyCanvas />
+            ) : active === "design" ? (
+              <DesignCanvas />
+            ) : active === "analysis" ? (
+              <AnalysisCanvas />
+            ) : active === "memory" ? (
+              <MemoryCanvas />
+            ) : (
+              <ModePlaceholder mode={active} />
+            )}
+          </section>
+
+          <aside style={columnStyle} aria-label="right mode panels">
+            {RIGHT_MODES.map((id) => (
+              <ModePanel
+                key={id}
+                mode={findMode(id)}
+                active={active}
+                onSelect={setActive}
+              />
+            ))}
+          </aside>
+        </div>
       </main>
 
       <PipelineStrip />
+    </div>
+  );
+}
+
+// Decorative cursor + node above the central canvas, mirroring the
+// Foto 3 detail. Pointer-events disabled so it does not interfere with
+// the canvas interaction beneath.
+function CursorDecoration() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        top: -22,
+        left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 6,
+        pointerEvents: "none",
+        zIndex: 1,
+      }}
+    >
+      <span
+        style={{
+          color: "var(--text-secondary)",
+          filter: "drop-shadow(0 0 6px rgba(94,165,255,0.55))",
+          opacity: 0.85,
+        }}
+      >
+        <Icon name="cursor" size={22} strokeWidth={1.2} />
+      </span>
     </div>
   );
 }

@@ -1,64 +1,94 @@
-// Wave 1 — bottom pipeline strip. Pure decoration: shows the canonical
-// stages a request flows through (Context Capture → … → Execution),
-// matching Foto 3's bottom strip. No state hookup yet. Wave 2+ will tint
-// the active stage live as a request progresses.
+// Wave 8 — pipeline strip. Visual treatment matches the canonical
+// Foto 3 mockup:
+//   - Each stage is its own glow card via [data-pipeline-stage]
+//   - Icon on top, title (mono kicker) middle, blurb (small) bottom
+//   - Glow arrow → between stages
+//   - Whole strip lives in [data-pipeline-bar] for the dark gradient
+//     bottom band
 
+import type { CSSProperties } from "react";
 import { PIPELINE_STAGES } from "./types";
+import Icon, { PIPELINE_ICON, PIPELINE_BLURB } from "./visual/Icons";
+
+const stageStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 6,
+  padding: "12px 16px",
+  flexShrink: 0,
+  minWidth: 130,
+  textAlign: "center",
+};
+
+const titleStyle: CSSProperties = {
+  margin: 0,
+  fontFamily: "var(--mono)",
+  fontSize: 11,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  color: "var(--text-primary)",
+  fontWeight: 600,
+};
+
+const blurbStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 10,
+  color: "var(--text-muted)",
+  lineHeight: 1.4,
+  maxWidth: 130,
+};
 
 export default function PipelineStrip() {
   return (
     <footer
+      data-pipeline-bar
       style={{
-        borderTop: "var(--border-soft)",
-        background: "var(--bg-surface)",
-        padding: "14px 24px",
+        padding: "18px 24px 22px",
         display: "flex",
         alignItems: "center",
-        gap: 8,
+        justifyContent: "center",
+        gap: 0,
         overflowX: "auto",
       }}
       data-pipeline-strip
     >
-      <span
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: "var(--t-meta)",
-          letterSpacing: "var(--track-meta)",
-          textTransform: "uppercase",
-          color: "var(--text-muted)",
-          flexShrink: 0,
-          marginRight: 8,
-        }}
-      >
-        Pipeline
-      </span>
       {PIPELINE_STAGES.map((stage, i) => (
         <div
           key={stage}
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            flexShrink: 0,
+            gap: 4,
           }}
         >
-          <span
-            style={{
-              fontFamily: "var(--sans)",
-              fontSize: 12,
-              color: "var(--text-secondary, var(--text-muted))",
-              padding: "4px 10px",
-              border: "var(--border-soft)",
-              borderRadius: "999px",
-              background: "var(--bg-elevated, transparent)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {stage}
-          </span>
+          <div data-pipeline-stage style={stageStyle}>
+            <span
+              aria-hidden
+              style={{
+                color: "var(--accent)",
+                display: "inline-flex",
+                filter: "drop-shadow(0 0 6px rgba(94,165,255,0.55))",
+              }}
+            >
+              <Icon name={PIPELINE_ICON[stage]} size={22} />
+            </span>
+            <p style={titleStyle}>{stage}</p>
+            <p style={blurbStyle}>{PIPELINE_BLURB[stage]}</p>
+          </div>
           {i < PIPELINE_STAGES.length - 1 && (
-            <span aria-hidden style={{ color: "var(--text-muted)", fontSize: 14, opacity: 0.5 }}>
-              →
+            <span
+              aria-hidden
+              style={{
+                color: "var(--accent)",
+                opacity: 0.55,
+                flexShrink: 0,
+                display: "inline-flex",
+                filter: "drop-shadow(0 0 4px rgba(94,165,255,0.45))",
+                margin: "0 2px",
+              }}
+            >
+              <Icon name="arrow-right" size={14} strokeWidth={1.6} />
             </span>
           )}
         </div>
