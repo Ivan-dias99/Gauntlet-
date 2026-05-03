@@ -48,15 +48,16 @@ export const COMPOSER_TOKENS = `
 [data-composer-surface] [data-glow-panel] {
   position: relative;
   background:
-    linear-gradient(180deg, rgba(94, 165, 255, 0.04) 0%, transparent 40%),
+    linear-gradient(180deg, rgba(94, 165, 255, 0.05) 0%, transparent 35%),
+    radial-gradient(ellipse at 50% 100%, rgba(94, 165, 255, 0.06), transparent 70%),
     var(--bg-surface);
-  border: 1px solid rgba(120, 180, 255, 0.16);
+  border: 1px solid rgba(120, 180, 255, 0.18);
   border-radius: var(--radius-lg);
   box-shadow:
     0 0 0 1px rgba(94, 165, 255, 0.08),
-    0 0 32px rgba(94, 165, 255, 0.10),
-    0 8px 28px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    0 0 36px rgba(94, 165, 255, 0.12),
+    0 10px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition:
     border-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),

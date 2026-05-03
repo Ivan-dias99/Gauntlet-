@@ -1,17 +1,21 @@
-// Wave 8 — side panel card. Visual treatment matches the canonical
-// Foto 3 mockup:
-//   - Numbered badge top-left (1..9, ordinal from MODE_ICON)
-//   - Glow border via [data-glow-panel] (active state strengthens it)
-//   - Two-line header: TITLE (mono, kicker) + subtitle (sans, body)
-//   - Mode glyph (SVG icon) on the right of the header
-//   - Compact blurb beneath
-//   - live / Wave 2+ chip in the bottom corner
-// Click swaps the active mode in ComposerLayout.
+// Wave 8b — side panel card with mini-mockup. Each panel renders a
+// thumbnail of its mode's UI so the canonical surface reads as "every
+// panel is already a product" instead of empty cards. Layout:
+//
+//   ┌──────────────────────────┐
+//   │ ① TITLE       [icon]     │
+//   │   subtitle               │
+//   │ ┌────────────────────┐   │
+//   │ │   mini-mockup      │   │
+//   │ └────────────────────┘   │
+//   │ blurb                     [live]
+//   └──────────────────────────┘
 
 import type { CSSProperties } from "react";
 import type { ComposerMode, ModeDescriptor } from "../types";
 import Pill from "../../components/atoms/Pill";
 import Icon, { MODE_ICON } from "../visual/Icons";
+import PanelMockup from "../visual/PanelMockups";
 
 interface Props {
   mode: ModeDescriptor;
@@ -32,23 +36,24 @@ const MODE_SUBTITLE: Record<ComposerMode, string> = {
 };
 
 const cardStyle: CSSProperties = {
-  padding: "14px 16px 12px",
+  padding: "12px 14px 10px",
   width: "100%",
   textAlign: "left",
   cursor: "pointer",
   background: "transparent",
   display: "flex",
   flexDirection: "column",
-  gap: 10,
-  minHeight: 132,
+  gap: 8,
   position: "relative",
+  height: "100%",
+  minHeight: 170,
 };
 
 const titleStyle: CSSProperties = {
   margin: 0,
   fontFamily: "var(--mono)",
-  fontSize: 13,
-  letterSpacing: "0.16em",
+  fontSize: 12,
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
   color: "var(--text-primary)",
   fontWeight: 600,
@@ -57,16 +62,16 @@ const titleStyle: CSSProperties = {
 const subtitleStyle: CSSProperties = {
   margin: 0,
   fontFamily: "var(--sans)",
-  fontSize: 11,
+  fontSize: 10,
   color: "var(--text-muted)",
-  lineHeight: 1.4,
+  lineHeight: 1.3,
 };
 
 const blurbStyle: CSSProperties = {
-  margin: "auto 0 0",
-  fontSize: 12,
+  margin: 0,
+  fontSize: 11,
   color: "var(--text-secondary)",
-  lineHeight: 1.5,
+  lineHeight: 1.4,
 };
 
 export default function ModePanel({ mode, active, onSelect }: Props) {
@@ -91,10 +96,10 @@ export default function ModePanel({ mode, active, onSelect }: Props) {
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "space-between",
-          gap: 10,
+          gap: 8,
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, flex: 1 }}>
           <p style={titleStyle}>{mode.label}</p>
           <p style={subtitleStyle}>{MODE_SUBTITLE[mode.id]}</p>
         </div>
@@ -105,15 +110,25 @@ export default function ModePanel({ mode, active, onSelect }: Props) {
             opacity: isActive ? 1 : 0.7,
             flexShrink: 0,
             display: "inline-flex",
+            filter: isActive ? "drop-shadow(0 0 6px rgba(94,165,255,0.55))" : "none",
           }}
         >
-          {meta && <Icon name={meta.icon} size={20} />}
+          {meta && <Icon name={meta.icon} size={18} />}
         </span>
       </header>
 
-      <p style={blurbStyle}>{mode.blurb}</p>
+      <PanelMockup mode={mode.id} />
 
-      <footer style={{ display: "flex", justifyContent: "flex-end" }}>
+      <footer
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 6,
+          marginTop: "auto",
+        }}
+      >
+        <p style={blurbStyle}>{mode.blurb}</p>
         {mode.live ? <Pill tone="ok">live</Pill> : <Pill tone="ghost">Wave 2+</Pill>}
       </footer>
     </button>

@@ -51,16 +51,16 @@ const gridStyle: CSSProperties = {
   position: "relative",
   zIndex: 1,
   display: "grid",
-  gridTemplateColumns: "minmax(220px, 260px) minmax(0, 1fr) minmax(220px, 260px)",
-  gap: 18,
+  gridTemplateColumns: "minmax(240px, 290px) minmax(0, 1fr) minmax(240px, 290px)",
+  gap: 22,
   alignItems: "stretch",
 };
 
 const columnStyle: CSSProperties = {
   display: "grid",
-  gridTemplateRows: "repeat(4, minmax(0, 1fr))",
-  gap: 14,
-  minHeight: 580,
+  gridTemplateRows: "repeat(4, minmax(170px, 1fr))",
+  gap: 16,
+  minHeight: 720,
 };
 
 function findMode(id: ComposerMode): ModeDescriptor {
