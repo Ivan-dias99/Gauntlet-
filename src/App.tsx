@@ -1,10 +1,10 @@
 // Composer V0 — app root.
 //
-// Two surfaces share this app:
-//   /composer/*  — the studio (Idle Hero, sidebar, status bar — Fase 1+).
-//   /control/*   — the legacy operator console, kept addressable while
-//                  Fase 2 absorbs Models / Permissions / Memory / Ledger
-//                  into the studio.
+// One destination: /composer/* — the studio. Sidebar nav, Idle hero,
+// real-data tiles, plus the Memory / Models / Permissions / Ledger /
+// Settings surfaces absorbed from the deleted /control/* layout.
+// Legacy /control/* paths redirect to their /composer/* equivalents
+// so old bookmarks land somewhere honest.
 //
 // The cursor capsule (apps/browser-extension) remains the primary
 // product surface. The studio is the secondary surface — depth and

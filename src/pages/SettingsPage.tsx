@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { SIGNAL_API_BASE, SIGNAL_API_KEY_PRESENT } from "../lib/signalApi";
-import { Kv, Panel, SurfaceHeader } from "./ControlLayout";
+import { Kv, Panel, SurfaceHeader } from "../composer/shell/StudioPrimitives";
 import Pill from "../components/atoms/Pill";
 
 const THEMES = ["dark", "light"] as const;

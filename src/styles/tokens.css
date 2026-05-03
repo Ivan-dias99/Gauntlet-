@@ -146,10 +146,10 @@
 
 /* ——— STUDIO — scoped cyan/navy palette (Fase 1.5) ———
    Applies only inside [data-composer-studio]. The global dark theme
-   above stays monochrome white-on-black for /control/* and any other
-   surface. Studio gets atmosphere: deep navy chrome + cyan accent.
-   Derived by inspection from the Idle/Dormant Mode mock — not from a
-   declared design system. Tweak hex values if your eye disagrees. */
+   above stays monochrome white-on-black as the default for any future
+   non-studio surface. Studio gets atmosphere: deep navy chrome + cyan
+   accent. Derived by inspection from the Idle/Dormant Mode mock — not
+   from a declared design system. Tweak hex values if your eye disagrees. */
 [data-composer-studio] {
   --bg: #0a1628;
   --bg-surface: #0f2038;

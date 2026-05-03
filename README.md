@@ -12,12 +12,14 @@ Three processes:
    The actual product surface. Press `Alt+Space` on any page → capsule →
    brain → result → cursor never leaves the page.
 3. **Studio** — `src/` (React + Vite). The IDE-shaped surface for
-   Composer. Sidebar nav (Workspace / Compose / Governance), Idle Hero
-   with real-data tiles (Recent commands, Last used tools, Readiness
-   status), Permissions & Privacy summary, status bar. Lives at
-   `/composer/*`. The legacy operator console at `/control/*` stays
-   addressable while Fase 2 absorbs Models / Permissions / Memory /
-   Ledger into the studio sidebar.
+   Composer. Single destination at `/composer/*`. Sidebar nav
+   (Workspace / Compose / Governance), Idle hero with real-data tiles
+   (Recent commands, Last used tools, Readiness status), Permissions &
+   Privacy summary, status bar. The Governance group (Memory · Models ·
+   Permissions · Ledger · Settings) absorbed every surface that used to
+   live under the deleted `/control/*` layout — there is now **one
+   house**. Legacy `/control/*` paths redirect to their `/composer/*`
+   equivalents.
 
    Doctrine: **the capsule is the product, the studio is where Composer
    is inspected, configured, and operated standalone**. If a user opens
@@ -75,12 +77,29 @@ apps/browser-extension/      WXT + Manifest V3 — the cursor capsule
   entrypoints/background.ts  service worker (chrome.commands listener)
   entrypoints/popup/         toolbar fallback for chrome:// pages
 
-src/                         React Control Center (Vite, TypeScript)
+src/                         React Studio (Vite, TypeScript)
   main.tsx                   entry
   App.tsx                    ErrorBoundary → Tweaks → Spine → Router
-  router.tsx                 react-router-dom routes (/control/*)
-  pages/
-    ControlLayout.tsx        sidebar + outlet + reusable Panel/Kv
+  router.tsx                 routes (/composer/* + /control/* redirects)
+  composer/
+    ComposerLayout.tsx       sidebar + outlet + status bar (studio shell)
+    shell/
+      SidebarNav.tsx         3-group nav (Workspace · Compose · Governance)
+      IdleHero.tsx           orb + 4 pillars + connection lines + chip
+      RecentCommands.tsx     /runs?limit=5 tile
+      LastUsedTools.tsx      tools derived from /runs tile
+      ReadinessStatus.tsx    /health-driven readiness tile
+      PermissionsPanel.tsx   right-rail summary derived from MATRIX
+      StatusBar.tsx          STATUS · CONNECTION · MODE · TIME · VERSION
+      StudioHome.tsx         hero + 3-tile grid + permissions panel
+      StudioStub.tsx         honest "next" page for unwired routes
+      StudioPrimitives.tsx   Panel · SurfaceHeader · Kv (shared chrome)
+      icons.tsx              14 inline SVG glyphs (currentColor)
+    panels/ComposeCanvas.tsx end-to-end Compose mode (Fase 3 mounts)
+    composerClient.ts        thin wrappers around 4 /composer/* routes
+    types.ts                 wire shapes mirroring signal-backend/models.py
+    hooks/useRecentRuns.ts   typed /runs fetch + tool derivation
+  pages/                     surfaces absorbed into /composer/*
     OverviewPage.tsx         /health + /diagnostics summary
     SettingsPage.tsx         backend config + per-session theme
     ModelsPage.tsx           /gateway/summary tables
@@ -141,9 +160,9 @@ pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...   # or SIGNAL_MOCK=1 for canned pipeline
 python main.py                         # http://127.0.0.1:3002
 
-# Terminal 2 — Control Center (operator console, browser tab)
+# Terminal 2 — Studio (single destination, browser tab)
 npm install
-npm run dev                            # http://localhost:5173/control
+npm run dev                            # http://localhost:5173/composer
 
 # Terminal 3 — cursor capsule (the actual product)
 cd apps/browser-extension
@@ -154,7 +173,7 @@ npm run dev                            # opens Chrome with the extension loaded
 
 The capsule talks directly to `http://127.0.0.1:3002/composer/*` in dev
 (declared in `apps/browser-extension/wxt.config.ts` under
-`host_permissions`). The Control Center talks via the Vite proxy.
+`host_permissions`). The studio talks via the Vite proxy.
 
 ## Backend endpoints
 

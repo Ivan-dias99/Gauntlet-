@@ -66,11 +66,11 @@ export const STUDIO_NAV: StudioNavGroup[] = [
   {
     group: "GOVERNANCE",
     entries: [
-      { id: "memory",      to: "/composer/memory",      label: "Memory",      hint: "Failures · spine",      live: false, icon: <MemoryIcon size={14} /> },
-      { id: "models",      to: "/composer/models",      label: "Models",      hint: "Routing · gateway",     live: false, icon: <ModelsIcon size={14} /> },
-      { id: "permissions", to: "/composer/permissions", label: "Permissions", hint: "Connector × scope",     live: false, icon: <PermissionsIcon size={14} /> },
-      { id: "ledger",      to: "/composer/ledger",      label: "Ledger",      hint: "Runs · provenance",     live: false, icon: <LedgerIcon size={14} /> },
-      { id: "settings",    to: "/composer/settings",    label: "Settings",    hint: "API · runtime · theme", live: false, icon: <SettingsIcon size={14} /> },
+      { id: "memory",      to: "/composer/memory",      label: "Memory",      hint: "Failures · spine",      live: true, icon: <MemoryIcon size={14} /> },
+      { id: "models",      to: "/composer/models",      label: "Models",      hint: "Routing · gateway",     live: true, icon: <ModelsIcon size={14} /> },
+      { id: "permissions", to: "/composer/permissions", label: "Permissions", hint: "Connector × scope",     live: true, icon: <PermissionsIcon size={14} /> },
+      { id: "ledger",      to: "/composer/ledger",      label: "Ledger",      hint: "Runs · provenance",     live: true, icon: <LedgerIcon size={14} /> },
+      { id: "settings",    to: "/composer/settings",    label: "Settings",    hint: "API · runtime · theme", live: true, icon: <SettingsIcon size={14} /> },
     ],
   },
 ];

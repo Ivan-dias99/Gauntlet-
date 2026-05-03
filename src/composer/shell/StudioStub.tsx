@@ -19,6 +19,9 @@ interface StubMeta {
   requires: string[];
 }
 
+// Only the four Compose-group routes are stubbed. Memory / Models /
+// Permissions / Ledger / Settings landed live in this fase, absorbed
+// from the (now deleted) /control/* layout.
 const STUBS: Record<string, StubMeta> = {
   "/composer/compose": {
     title: "Compose",
@@ -58,52 +61,6 @@ const STUBS: Record<string, StubMeta> = {
       "report renderer (charts + tables)",
       "data ingestion (csv / sql / json)",
       "exec summary generator with extended thinking",
-    ],
-  },
-  "/composer/memory": {
-    title: "Memory",
-    fase: "Fase 2",
-    blurb: "Failure memory + spine inspector + semantic search over runs. Migrates the current /control/memory surface into the studio.",
-    requires: [
-      "absorb /control/memory page contents",
-      "tag system + provenance fields (Wave 1)",
-      "semantic search across runs (Wave 1)",
-    ],
-  },
-  "/composer/models": {
-    title: "Models",
-    fase: "Fase 2",
-    blurb: "Model routing, gateway summary, cost tables. Migrates the current /control/models surface into the studio.",
-    requires: [
-      "absorb /control/models page contents",
-      "per-tool latency + cost summary (Wave 1)",
-    ],
-  },
-  "/composer/permissions": {
-    title: "Permissions",
-    fase: "Fase 2",
-    blurb: "Connector × scope matrix. Migrates the current /control/permissions surface; mutation lands when /permissions/{set,get} ships.",
-    requires: [
-      "absorb /control/permissions page contents",
-      "/permissions/{set,get} backend (Wave 1)",
-    ],
-  },
-  "/composer/ledger": {
-    title: "Ledger",
-    fase: "Fase 2",
-    blurb: "Filterable run log with detail panel. Migrates the current /control/ledger surface into the studio.",
-    requires: [
-      "absorb /control/ledger page contents",
-      "ledger event hash + signature (Wave 2)",
-    ],
-  },
-  "/composer/settings": {
-    title: "Settings",
-    fase: "Fase 2",
-    blurb: "Backend config, API keys, runtime, theme. Migrates the current /control/settings surface into the studio.",
-    requires: [
-      "absorb /control/settings page contents",
-      "operator-side write surface for permissions (Wave 1)",
     ],
   },
 };
@@ -238,11 +195,12 @@ export default function StudioStub() {
       )}
 
       <p style={noticeStyle}>
-        Today: visit{" "}
-        <Link to="/control" style={{ color: "var(--accent)", textDecoration: "none" }}>
-          /control
+        Until then, return to{" "}
+        <Link to="/composer" style={{ color: "var(--accent)", textDecoration: "none" }}>
+          Home
         </Link>
-        {" "}for the operator surfaces still active during the studio migration.
+        {" "}— the studio is the single house. Memory, Models, Permissions,
+        Ledger, and Settings are already live in the sidebar.
       </p>
     </section>
   );

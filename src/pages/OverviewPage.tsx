@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
 import { useBackendStatus } from "../hooks/useBackendStatus";
-import { Kv, Panel, SurfaceHeader } from "./ControlLayout";
+import { Kv, Panel, SurfaceHeader } from "../composer/shell/StudioPrimitives";
 import Pill from "../components/atoms/Pill";
 
 interface BootSummary {

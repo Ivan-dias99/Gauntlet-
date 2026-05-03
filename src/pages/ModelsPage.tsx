@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
-import { Panel, SurfaceHeader } from "./ControlLayout";
+import { Panel, SurfaceHeader } from "../composer/shell/StudioPrimitives";
 import Pill from "../components/atoms/Pill";
 
 interface RoleStats {

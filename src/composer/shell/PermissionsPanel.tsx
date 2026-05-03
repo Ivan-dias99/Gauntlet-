@@ -171,7 +171,7 @@ export default function PermissionsPanel() {
         ))}
       </div>
 
-      <Link to="/control/permissions" style={linkStyle}>
+      <Link to="/composer/permissions" style={linkStyle}>
         Open full matrix →
       </Link>
     </aside>

@@ -1,22 +1,12 @@
 // Composer V0 — router.
 //
-// Two destinations, distinct roles:
-//
-//   /composer/*   — the studio (src/composer/ComposerLayout). Where
-//                   Composer operations are inspected, configured,
-//                   audited, and operated standalone. Fase 1 ships
-//                   the Home (Idle) surface; the rest of the sidebar
-//                   routes to honest StudioStub entries.
-//
-//   /control/*    — the legacy operator console. Kept addressable
-//                   during the studio migration so operators can still
-//                   reach Models / Permissions / Memory / Ledger pages
-//                   while Fase 2 absorbs them into the studio.
-//
-// Both share the same backend and the same brain.
+// One destination: /composer/*. The studio absorbs every operator
+// surface that previously lived under /control/* (Models, Permissions,
+// Memory, Ledger, Settings, Overview). The legacy /control/* routes
+// redirect to their /composer/* equivalents so old bookmarks still
+// land somewhere honest.
 
 import { Navigate, Route, Routes } from "react-router-dom";
-import ControlLayout from "./pages/ControlLayout";
 import OverviewPage from "./pages/OverviewPage";
 import SettingsPage from "./pages/SettingsPage";
 import ModelsPage from "./pages/ModelsPage";
@@ -33,26 +23,32 @@ export default function AppRoutes() {
       <Route path="/" element={<Navigate to="/composer" replace />} />
 
       <Route path="/composer" element={<ComposerLayout />}>
+        {/* Workspace */}
         <Route index element={<StudioHome />} />
-        <Route path="compose" element={<StudioStub />} />
-        <Route path="code" element={<StudioStub />} />
-        <Route path="design" element={<StudioStub />} />
+
+        {/* Compose group — wiring lands in later fases. */}
+        <Route path="compose"  element={<StudioStub />} />
+        <Route path="code"     element={<StudioStub />} />
+        <Route path="design"   element={<StudioStub />} />
         <Route path="analysis" element={<StudioStub />} />
-        <Route path="memory" element={<StudioStub />} />
-        <Route path="models" element={<StudioStub />} />
-        <Route path="permissions" element={<StudioStub />} />
-        <Route path="ledger" element={<StudioStub />} />
-        <Route path="settings" element={<StudioStub />} />
+
+        {/* Governance — absorbed from the legacy /control/* layout. */}
+        <Route path="memory"      element={<MemoryPage />} />
+        <Route path="models"      element={<ModelsPage />} />
+        <Route path="permissions" element={<PermissionsPage />} />
+        <Route path="ledger"      element={<LedgerPage />} />
+        <Route path="settings"    element={<SettingsPage />} />
+        <Route path="overview"    element={<OverviewPage />} />
       </Route>
 
-      <Route path="/control" element={<ControlLayout />}>
-        <Route index element={<OverviewPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="models" element={<ModelsPage />} />
-        <Route path="permissions" element={<PermissionsPage />} />
-        <Route path="memory" element={<MemoryPage />} />
-        <Route path="ledger" element={<LedgerPage />} />
-      </Route>
+      {/* Legacy /control/* — redirect each old path to its /composer/*
+          equivalent. The bare /control redirects to the studio root. */}
+      <Route path="/control"             element={<Navigate to="/composer"             replace />} />
+      <Route path="/control/settings"    element={<Navigate to="/composer/settings"    replace />} />
+      <Route path="/control/models"      element={<Navigate to="/composer/models"      replace />} />
+      <Route path="/control/permissions" element={<Navigate to="/composer/permissions" replace />} />
+      <Route path="/control/memory"      element={<Navigate to="/composer/memory"      replace />} />
+      <Route path="/control/ledger"      element={<Navigate to="/composer/ledger"      replace />} />
 
       <Route path="*" element={<Navigate to="/composer" replace />} />
     </Routes>

@@ -1,4 +1,4 @@
-import { Panel, SurfaceHeader } from "./ControlLayout";
+import { Panel, SurfaceHeader } from "../composer/shell/StudioPrimitives";
 import Pill from "../components/atoms/Pill";
 
 // V0 read-only matrix of declared connector scopes. Mutating permissions
