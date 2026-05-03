@@ -1,6 +1,6 @@
 """
-Signal — Entry Point
-Start the conservative intelligence server.
+Gauntlet — Entry Point
+Start the FastAPI server (the maestro).
 
 Usage:
   python main.py
@@ -14,19 +14,19 @@ from config import SERVER_HOST, SERVER_PORT
 
 
 def main() -> None:
-    """Launch the Signal backend."""
+    """Launch the Gauntlet backend."""
     print(
         "\n"
         "  ╔═══════════════════════════════════════════════════════╗\n"
         "  ║                                                       ║\n"
-        "  ║   S I G N A L                                         ║\n"
-        "  ║   Sovereign AI workspace — five chambers              ║\n"
+        "  ║   G A U N T L E T                                     ║\n"
+        "  ║   Inteligência na ponta do cursor                     ║\n"
         "  ║                                                       ║\n"
         "  ║   «Prefiro não responder a arriscar estar errado.»    ║\n"
         "  ║                                                       ║\n"
         "  ╚═══════════════════════════════════════════════════════╝\n"
     )
-    
+
     uvicorn.run(
         "server:app",
         host=SERVER_HOST,

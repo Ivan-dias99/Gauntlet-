@@ -15,7 +15,7 @@ style.textContent =
   CAPSULE_CSS +
   `
   body { margin: 0; background: #0a0c10; }
-  .ruberra-capsule {
+  .gauntlet-capsule {
     position: static;
     width: 420px;
     border-radius: 0;
