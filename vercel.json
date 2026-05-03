@@ -1,4 +1,5 @@
 {
+  "outputDirectory": ".output/chrome-mv3",
   "rewrites": [
     { "source": "/api/signal/:match*", "destination": "/api/signal" },
     { "source": "/api/ruberra/:match*", "destination": "/api/ruberra" },
