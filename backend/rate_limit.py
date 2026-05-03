@@ -1,5 +1,5 @@
 """
-Signal — in-memory token-bucket rate limiter (Wave P-31, Layer 2).
+Gauntlet — in-memory token-bucket rate limiter (Wave P-31, Layer 2).
 
 Per ``(client_ip, route_class)`` token bucket. Each bucket has a burst
 capacity and a refill rate (tokens/second). Every request costs one

@@ -1,5 +1,5 @@
 """
-Signal — log token redaction (Wave P-31, Layer 5).
+Gauntlet — log token redaction (Wave P-31, Layer 5).
 
 A ``logging.Filter`` subclass that walks ``LogRecord.msg`` and
 ``LogRecord.args`` and substitutes well-known credential shapes with a

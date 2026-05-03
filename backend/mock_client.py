@@ -1,5 +1,5 @@
 """
-Signal — Mock Anthropic Client
+Gauntlet — Mock Anthropic Client
 Zero-network stand-in for ``AsyncAnthropic`` used when
 ``SIGNAL_MOCK=1``. Emits deterministic canned responses so the full
 pipeline (triad → judge, agent loop) can be exercised end-to-end without

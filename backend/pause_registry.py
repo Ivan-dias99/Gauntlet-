@@ -1,5 +1,5 @@
 """
-Signal — Pause Registry (Wave P-29, Tool 7 of the 10×10 doctrine matrix).
+Gauntlet — Pause Registry (Wave P-29, Tool 7 of the 10×10 doctrine matrix).
 
 A small JSON-backed map ``task_id → PausedEntry`` recording which tasks
 are currently paused. The agent loop polls ``is_paused(task_id)`` at

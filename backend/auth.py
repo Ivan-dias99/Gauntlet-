@@ -1,5 +1,5 @@
 """
-Signal — API key authentication middleware (Wave P-31, Layer 1).
+Gauntlet — API key authentication middleware (Wave P-31, Layer 1).
 
 Reads `SIGNAL_API_KEY` (legacy alias `RUBERRA_API_KEY`) at module init via
 ``config._env``. When the env var is unset, ``api_key_required`` is a

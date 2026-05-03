@@ -1,5 +1,5 @@
 """
-Signal — Persistence Primitives
+Gauntlet — Persistence Primitives
 
 Atomic text write: write to a sibling ``.tmp`` file then ``os.replace`` onto
 the final path. POSIX guarantees the rename is atomic; on Windows, NTFS

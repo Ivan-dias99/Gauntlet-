@@ -1,5 +1,5 @@
 """
-Signal — Data Models
+Gauntlet — Data Models
 Pydantic models for request/response contracts and internal state.
 Confidence is binary: HIGH or LOW. No medium tier, no caveats.
 """

@@ -1,5 +1,5 @@
 """
-Signal — Postgres connection pool + spine mirror writer (Wave O / P-6).
+Gauntlet — Postgres connection pool + spine mirror writer (Wave O / P-6).
 
 Read path is JSON (spine.py). This module ships the **mirror writer**
 that, when SIGNAL_DUAL_WRITE_PG is on, replicates the spine snapshot

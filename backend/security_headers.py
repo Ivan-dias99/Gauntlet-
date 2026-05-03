@@ -1,5 +1,5 @@
 """
-Signal — security response headers (Wave P-31, Layer 3).
+Gauntlet — security response headers (Wave P-31, Layer 3).
 
 Stamps a conservative baseline of security headers onto every response.
 Each header is justified inline so the next person editing this file
