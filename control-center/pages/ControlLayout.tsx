@@ -66,7 +66,7 @@ export default function ControlLayout() {
               color: "var(--text-muted)",
             }}
           >
-            RUBERRA · CONTROL
+            GAUNTLET · CONTROL
           </p>
           <p
             style={{
@@ -126,7 +126,7 @@ export default function ControlLayout() {
         >
           <ReadinessPill status={status} />
           <span style={{ fontFamily: "var(--mono)", letterSpacing: "var(--track-meta)" }}>
-            Composer V0
+            Gauntlet
           </span>
         </footer>
       </aside>

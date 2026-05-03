@@ -2,8 +2,8 @@ import { Panel, SurfaceHeader } from "./ControlLayout";
 import Pill from "../components/atoms/Pill";
 
 // V0 read-only matrix of declared connector scopes. Mutating permissions
-// requires a backend write surface (POST /permissions or similar) that
-// signal-backend doesn't yet expose — the actual enforcement lives in
+// requires a backend write surface (POST /permissions or similar) that the
+// Gauntlet backend doesn't yet expose — the actual enforcement lives in
 // the per-tool / per-connector handlers. Wave 1 lands the writable
 // matrix once /permissions/{set,get} is shipped on the backend.
 
@@ -39,25 +39,12 @@ const MATRIX: ConnectorRow[] = [
   },
   {
     connector: "github",
-    description: "Connector for repo browsing + PR ops (Op 5+).",
+    description: "Connector for repo browsing + PR ops (post-V0).",
     scopes: [
       { scope: "repo.read", granted: false },
       { scope: "repo.write", granted: false },
       { scope: "pulls.create", granted: false },
     ],
-  },
-  {
-    connector: "vercel",
-    description: "Connector for deployments observation (read).",
-    scopes: [
-      { scope: "deployments.list", granted: false },
-      { scope: "deployments.read", granted: false },
-    ],
-  },
-  {
-    connector: "figma",
-    description: "Connector for design import (Surface chamber legacy).",
-    scopes: [{ scope: "files.read", granted: false }],
   },
 ];
 
@@ -114,9 +101,9 @@ export default function PermissionsPage() {
       <Panel title="V0 disclosure" hint="why this is read-only">
         <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.55 }}>
           The composer routes (<code style={{ fontFamily: "var(--mono)" }}>/composer/*</code>) and the
-          tool runtime currently consult the backend's static config. Per-operator scope mutation is
-          deferred to Wave 1 along with the OAuth flows for GitHub / Vercel / Figma. The Composer V0
-          smoke flow does not depend on writable permissions.
+          tool runtime currently consult the backend's static config. Per-operator scope mutation
+          lands later along with the OAuth flow for GitHub. The Gauntlet smoke flow does not depend
+          on writable permissions.
         </p>
       </Panel>
     </>

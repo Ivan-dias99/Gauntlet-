@@ -1,42 +1,45 @@
-// Signal — canonical backend client.
+// Gauntlet — canonical backend client.
 //
-// Public paths (preferred):  /api/signal/*
-// Legacy paths (compat):     /api/ruberra/*   (kept until Wave 8)
+// Public paths (canonical):  /api/gauntlet/*
+// Legacy aliases (compat):   /api/signal/* and /api/ruberra/*
 //
 // Env precedence for the base URL override:
-//   VITE_SIGNAL_API_BASE   (preferred)
-//   VITE_RUBERRA_API_BASE  (legacy, honored during compat)
-//   "/api/signal"          (default — handled by the Vite proxy in dev and
-//                            the Vercel edge forwarder in prod).
+//   VITE_GAUNTLET_API_BASE  (canonical)
+//   VITE_SIGNAL_API_BASE    (legacy)
+//   VITE_RUBERRA_API_BASE   (older legacy)
+//   "/api/gauntlet"         (default — handled by the Vite proxy in dev and
+//                             the Vercel edge forwarder in prod).
 //
 // Backend-unreachable is a first-class state — NOT a regex on error text.
-// The edge forwarder (api/signal.ts and its legacy alias api/ruberra.ts,
-// both forwarding to the signal-backend/ Python service) signals it with:
+// The edge forwarder (api/gauntlet.ts and its legacy aliases) signals it with:
 //   status: 503
-//   header: x-signal-backend: unreachable   (and, during the compat window,
-//           x-ruberra-backend: unreachable emitted alongside)
+//   header: x-gauntlet-backend: unreachable (canonical), and during the
+//           compat window x-signal-backend / x-ruberra-backend are emitted
+//           alongside so older clients keep working.
 //   body:   { error: "backend_unreachable", reason: <kind> }
 // A network-level throw (edge dead, CORS, offline) also counts as
 // unreachable. Every other non-2xx is a real upstream response.
 
 const RAW_BASE =
+  (import.meta.env.VITE_GAUNTLET_API_BASE as string | undefined) ??
   (import.meta.env.VITE_SIGNAL_API_BASE as string | undefined) ??
   (import.meta.env.VITE_RUBERRA_API_BASE as string | undefined) ??
-  "/api/signal";
+  "/api/gauntlet";
 
 const BASE = RAW_BASE.replace(/\/+$/, "");
 
 export const SIGNAL_API_BASE = BASE;
-export const UNREACHABLE_HEADER = "x-signal-backend";
-export const LEGACY_UNREACHABLE_HEADER = "x-ruberra-backend";
+export const UNREACHABLE_HEADER = "x-gauntlet-backend";
+export const LEGACY_UNREACHABLE_HEADER = "x-signal-backend";
+export const LEGACY_RUBERRA_UNREACHABLE_HEADER = "x-ruberra-backend";
 export const UNREACHABLE_VALUE = "unreachable";
 
-// Wave P-31 — opt-in API key. Build-time env (Vite inlines at build).
+// Opt-in API key. Build-time env (Vite inlines at build).
 // When set, signalFetch automatically attaches `Authorization: Bearer <key>`
 // to every backend call. When unset, no header is added — local dev /
-// unsecured deploys keep working unchanged. The legacy alias mirrors
-// the SIGNAL_* / RUBERRA_* compat window used everywhere else.
+// unsecured deploys keep working unchanged.
 const RAW_API_KEY =
+  (import.meta.env.VITE_GAUNTLET_API_KEY as string | undefined) ??
   (import.meta.env.VITE_SIGNAL_API_KEY as string | undefined) ??
   (import.meta.env.VITE_RUBERRA_API_KEY as string | undefined) ??
   "";
@@ -146,7 +149,8 @@ async function unreachableFromResponse(res: Response): Promise<BackendUnreachabl
   // forwarder during the Wave-0 → Wave-8 compatibility window.
   const headerHit =
     res.headers.get(UNREACHABLE_HEADER) === UNREACHABLE_VALUE ||
-    res.headers.get(LEGACY_UNREACHABLE_HEADER) === UNREACHABLE_VALUE;
+    res.headers.get(LEGACY_UNREACHABLE_HEADER) === UNREACHABLE_VALUE ||
+    res.headers.get(LEGACY_RUBERRA_UNREACHABLE_HEADER) === UNREACHABLE_VALUE;
   if (!headerHit) return null;
 
   // Forwarder body is `{ error: "backend_unreachable", reason: "<kind>",

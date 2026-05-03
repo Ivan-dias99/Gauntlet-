@@ -31,7 +31,7 @@ export default function SettingsPage() {
         subtitle="Build-time API config + per-session theme. Mutating server-side keys lands in Wave 1."
       />
 
-      <Panel title="Backend client" hint="from src/lib/signalApi.ts (Vite-inlined env)">
+      <Panel title="Backend client" hint="from control-center/lib/signalApi.ts (Vite-inlined env)">
         <Kv
           rows={[
             ["base url", <code style={{ fontFamily: "var(--mono)" }}>{SIGNAL_API_BASE}</code>],
@@ -43,7 +43,7 @@ export default function SettingsPage() {
             ],
             [
               "set via",
-              <code style={{ fontFamily: "var(--mono)" }}>VITE_SIGNAL_API_BASE</code>,
+              <code style={{ fontFamily: "var(--mono)" }}>VITE_GAUNTLET_API_BASE</code>,
             ],
           ]}
         />
