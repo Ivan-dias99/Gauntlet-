@@ -1,8 +1,8 @@
-# Signal — RUNBOOK
+# Gauntlet — OPERATIONS
 
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║   OPERATIONAL GUIDE — Wave P-32                              ║
+║   OPERATIONAL GUIDE                                          ║
 ║   Boot · Cutover · Rollback · Incident · Backup · Deploy     ║
 ╚══════════════════════════════════════════════════════════════╝
 ```
@@ -12,36 +12,56 @@
 ### Required env
 
 ```
-ANTHROPIC_API_KEY        Anthropic key (sk-ant-…)         REQUIRED
-SIGNAL_HOST              Bind host                        default 127.0.0.1
-SIGNAL_PORT              Bind port (PORT also honored)    default 8080
-SIGNAL_DATA_DIR          Persistent data dir              REQUIRED in prod
-SIGNAL_ORIGIN            CORS origin (comma list ok)      REQUIRED in prod
+ANTHROPIC_API_KEY          Anthropic key (sk-ant-…)         REQUIRED
+GAUNTLET_HOST              Bind host                        default 127.0.0.1
+GAUNTLET_PORT              Bind port (PORT also honored)    default 8080
+GAUNTLET_DATA_DIR          Persistent data dir              REQUIRED in prod
+GAUNTLET_ORIGIN            CORS origin (comma list ok)      REQUIRED in prod
 ```
 
 ### Optional env
 
 ```
-SIGNAL_MOCK=1                  Bypass Anthropic with canned answers
-SIGNAL_DATABASE_URL=…          Enable Postgres mirror (cutover candidate)
-SIGNAL_DUAL_WRITE_PG=1         Activate mirror writes (PG stays shadow)
-SIGNAL_PG_CANONICAL=1          Read from PG (requires DUAL_WRITE_PG=1)
-SIGNAL_API_KEY=…               Bearer token gate (off if empty)
-SIGNAL_RATE_LIMIT_DISABLED=1   Bypass rate limiter (dev/test only)
-SIGNAL_HSTS=1                  Stamp HSTS (https deploys only)
-SIGNAL_FRAME_OPTIONS=DENY      DENY | SAMEORIGIN
-SIGNAL_CSP=…                   Full CSP override
-SIGNAL_MAX_BODY_BYTES=1048576  Per-request body cap
-SIGNAL_LOG_REDACT=1            Token redaction in logs (default ON)
-SIGNAL_ALLOW_CODE_EXEC=1       Enable execute_python tool (off by default)
+GAUNTLET_MOCK=1                  Bypass Anthropic with canned answers
+GAUNTLET_DATABASE_URL=…          Enable Postgres mirror (cutover candidate)
+GAUNTLET_DUAL_WRITE_PG=1         Activate mirror writes (PG stays shadow)
+GAUNTLET_PG_CANONICAL=1          Read from PG (requires DUAL_WRITE_PG=1)
+GAUNTLET_API_KEY=…               Bearer token gate (off if empty)
+GAUNTLET_RATE_LIMIT_DISABLED=1   Bypass rate limiter (dev/test only)
+GAUNTLET_HSTS=1                  Stamp HSTS (https deploys only)
+GAUNTLET_FRAME_OPTIONS=DENY      DENY | SAMEORIGIN
+GAUNTLET_CSP=…                   Full CSP override
+GAUNTLET_MAX_BODY_BYTES=1048576  Per-request body cap
+GAUNTLET_LOG_REDACT=1            Token redaction in logs (default ON)
+GAUNTLET_ALLOW_CODE_EXEC=1       Enable execute_python tool (off by default)
+```
+
+### Legacy aliases (transition window)
+
+`SIGNAL_*` and `RUBERRA_*` are still read as silent fallbacks if the matching
+`GAUNTLET_*` is unset. Plan: remove the aliases once the canonical names land
+in every deployed env.
+
+```
+SIGNAL_HOST              → GAUNTLET_HOST
+SIGNAL_PORT              → GAUNTLET_PORT
+SIGNAL_DATA_DIR          → GAUNTLET_DATA_DIR
+SIGNAL_ORIGIN            → GAUNTLET_ORIGIN
+SIGNAL_MOCK              → GAUNTLET_MOCK
+SIGNAL_DATABASE_URL      → GAUNTLET_DATABASE_URL
+SIGNAL_API_KEY           → GAUNTLET_API_KEY
+RUBERRA_HOST             → GAUNTLET_HOST           (older alias)
+RUBERRA_PORT             → GAUNTLET_PORT
+RUBERRA_BACKEND_URL      → GAUNTLET_BACKEND_URL
+RUBERRA_ALLOW_CODE_EXEC  → GAUNTLET_ALLOW_CODE_EXEC
 ```
 
 ### Start
 
 ```
-DEV    cd signal-backend && python main.py
-PROD   docker build -t signal . && docker run -p 8080:8080 \
-         -e ANTHROPIC_API_KEY=… -v signal-data:/data signal
+DEV    cd backend && python main.py
+PROD   docker build -t gauntlet . && docker run -p 8080:8080 \
+         -e ANTHROPIC_API_KEY=… -v gauntlet-data:/data gauntlet
 ```
 
 ## Cutover JSON → Postgres
@@ -55,27 +75,27 @@ PROD   docker build -t signal . && docker run -p 8080:8080 \
 
 1. **Dual-write on**
    ```
-   SIGNAL_DATABASE_URL=postgres://…
-   SIGNAL_DUAL_WRITE_PG=1
+   GAUNTLET_DATABASE_URL=postgres://…
+   GAUNTLET_DUAL_WRITE_PG=1
    ```
    Restart. Reads stay JSON; writes mirror to PG.
 
 2. **Backfill legacy state**
    ```
-   cd signal-backend && python migrate.py
+   cd backend && python migrate.py
    ```
    Replace-all by section (spine, runs, failure_memory). Idempotent.
 
 3. **Parity check**
    ```
-   cd signal-backend && python -m parity_check
+   cd backend && python -m parity_check
    ```
    - Exit 0 → safe to flip
    - Exit 1 → drift; do NOT flip; investigate
 
 4. **Canonical flip**
    ```
-   SIGNAL_PG_CANONICAL=1
+   GAUNTLET_PG_CANONICAL=1
    ```
    Restart. JSON stays warm via dual-write so rollback is instant.
 
@@ -89,13 +109,13 @@ PROD   docker build -t signal . && docker run -p 8080:8080 \
 ## Rollback
 
 ```
-┌──────────────────────────────────────────────────────┐
-│  unset SIGNAL_PG_CANONICAL  →  restart  →  JSON wins │
-└──────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  unset GAUNTLET_PG_CANONICAL  →  restart  →  JSON wins   │
+└──────────────────────────────────────────────────────────┘
 ```
 
 Dual-write keeps JSON warm; no data loss. If you also want to stop
-mirroring, unset `SIGNAL_DUAL_WRITE_PG`.
+mirroring, unset `GAUNTLET_DUAL_WRITE_PG`.
 
 ## Incident response — `/diagnostics`
 
@@ -104,7 +124,6 @@ Shape (abridged):
 ```
 boot.persistence_ephemeral      true  → operator forgot the volume
 boot.anthropic_api_key_present  false → key not loaded; will refuse
-surface.mock_active             true  → check surface.reason field
 persistence.spine_last_save_error  →  disk write failed; replicas?
 persistence.spine_last_load_error  →  PG / JSON read degraded
 security.auth_required          false → public endpoint!
@@ -115,12 +134,11 @@ Triage table:
 ```
 field                          when not-ok      action
 ─────────────────────────────  ───────────────  ─────────────────────────
-persistence_ephemeral          true (prod)      mount volume at SIGNAL_DATA_DIR
+persistence_ephemeral          true (prod)      mount volume at GAUNTLET_DATA_DIR
 anthropic_api_key_present      false            set ANTHROPIC_API_KEY
 spine_last_save_error          non-empty        check disk + PG pool
 spine_last_load_error          non-empty        rollback PG_CANONICAL
-surface.mock_active            true unexpectedly look at surface.reason
-auth_required (prod)           false            set SIGNAL_API_KEY
+auth_required (prod)           false            set GAUNTLET_API_KEY
 ```
 
 ## Backup
@@ -128,17 +146,17 @@ auth_required (prod)           false            set SIGNAL_API_KEY
 ### Daily
 
 ```
-cd signal-backend && python backup.py
+cd backend && python backup.py
 ```
 
 Output:
 - `MEMORY_DIR/backups/<ISO>/` with copies of `*.json`
-- If `SIGNAL_DATABASE_URL` is set: `pg_dump.sql.gz` alongside
+- If `GAUNTLET_DATABASE_URL` is set: `pg_dump.sql.gz` alongside
 
 Cron example:
 
 ```
-0 4 * * *  cd /app/signal-backend && python backup.py >> /var/log/signal-backup.log 2>&1
+0 4 * * *  cd /app/backend && python backup.py >> /var/log/gauntlet-backup.log 2>&1
 ```
 
 Retention: rotate `MEMORY_DIR/backups/` externally (logrotate or
@@ -149,7 +167,7 @@ object-store sync) — `backup.py` does NOT prune old folders.
 ```
 1. Stop the service.
 2. cp -r MEMORY_DIR/backups/<ISO>/*.json MEMORY_DIR/
-3. (optional) gunzip < pg_dump.sql.gz | psql "$SIGNAL_DATABASE_URL"
+3. (optional) gunzip < pg_dump.sql.gz | psql "$GAUNTLET_DATABASE_URL"
 4. Start.
 5. python -m parity_check  → confirm parity before re-flipping canonical.
 ```
@@ -161,7 +179,7 @@ object-store sync) — `backup.py` does NOT prune old folders.
 ```
 railway link <project-id>
 railway variables set ANTHROPIC_API_KEY=…
-railway variables set SIGNAL_DATA_DIR=/data
+railway variables set GAUNTLET_DATA_DIR=/data
 railway volume create --mount-path /data
 railway up
 ```
@@ -173,7 +191,7 @@ SDK init can exceed 30s default).
 
 ```
 vercel link
-vercel env add SIGNAL_BACKEND_URL          # the Railway public URL
+vercel env add GAUNTLET_BACKEND_URL          # the Railway public URL
 vercel deploy --prod
 ```
 
@@ -183,12 +201,9 @@ vercel deploy --prod
 key                          where     scope
 ───────────────────────────  ────────  ─────────────────────────
 ANTHROPIC_API_KEY            railway   backend only
-SIGNAL_API_KEY               railway   backend bearer gate
-SIGNAL_DATABASE_URL          railway   PG mirror DSN
-SIGNAL_GITHUB_TOKEN          railway   /issues/create
-SIGNAL_RAILWAY_TOKEN         railway   self-introspection
-SIGNAL_VERCEL_TOKEN          railway   /deploys/vercel
-SIGNAL_BACKEND_URL           vercel    edge forwarder target
+GAUNTLET_API_KEY             railway   backend bearer gate
+GAUNTLET_DATABASE_URL        railway   PG mirror DSN
+GAUNTLET_BACKEND_URL         vercel    edge forwarder target
 ```
 
 ```
