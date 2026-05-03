@@ -34,7 +34,10 @@ const rootStyle: CSSProperties = {
   gridTemplateColumns: "240px minmax(0, 1fr)",
   gridTemplateRows: "1fr auto",
   minHeight: "100vh",
-  background: "var(--bg)",
+  // The studio palette + atmospheric backdrop are scoped via the
+  // [data-composer-studio] selector in src/styles/tokens.css. The
+  // root just consumes the resulting CSS variables.
+  background: "var(--studio-backdrop, var(--bg))",
   color: "var(--text-primary)",
   fontFamily: "var(--sans)",
 };

@@ -144,6 +144,48 @@
   --glass-blur: saturate(1.4) blur(24px);
 }
 
+/* ——— STUDIO — scoped cyan/navy palette (Fase 1.5) ———
+   Applies only inside [data-composer-studio]. The global dark theme
+   above stays monochrome white-on-black for /control/* and any other
+   surface. Studio gets atmosphere: deep navy chrome + cyan accent.
+   Derived by inspection from the Idle/Dormant Mode mock — not from a
+   declared design system. Tweak hex values if your eye disagrees. */
+[data-composer-studio] {
+  --bg: #0a1628;
+  --bg-surface: #0f2038;
+  --bg-sunken: #061020;
+  --bg-elevated: #152a47;
+  --bg-input: #0c1c33;
+
+  --border-color-soft:   color-mix(in oklab, #4fb8d9 18%, transparent);
+  --border-color-mid:    color-mix(in oklab, #4fb8d9 32%, transparent);
+  --border-color-strong: color-mix(in oklab, #4fb8d9 48%, transparent);
+  --border-soft:   1px solid var(--border-color-soft);
+  --border-mid:    1px solid var(--border-color-mid);
+  --border-strong: 1px solid var(--border-color-strong);
+  --border: var(--border-color-mid);
+
+  --text-primary: #eaf2f9;
+  --text-secondary: #9ab4c9;
+  --text-muted: #5a7390;
+  --text-ghost: #34495e;
+
+  --accent: #4fb8d9;
+  --accent-dim: #2a5a72;
+  --accent-glow: rgba(79, 184, 217, 0.22);
+
+  /* Atmospheric background — radial cyan haze fading to deep navy at
+     the edges. Layered behind the layout grid via background-image. */
+  --studio-backdrop:
+    radial-gradient(
+      ellipse 110% 80% at 50% 0%,
+      rgba(79, 184, 217, 0.10) 0%,
+      rgba(79, 184, 217, 0.04) 30%,
+      transparent 65%
+    ),
+    linear-gradient(180deg, #0a1628 0%, #08111e 100%);
+}
+
 /* ——— LIGHT — premium white (Vision Pro / Cursor) ———
    Pure neutrals, no warm undertone. Ultra-definition reads:
    pure black on crystalline white. Surfaces are real white;

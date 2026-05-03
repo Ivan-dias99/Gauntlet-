@@ -1,31 +1,33 @@
-// Fase 1 — Studio status bar.
+// Fase 1.5 — Studio status bar with 5 honest columns.
 //
-// Minimal by doctrine: only signals backed by a real source appear.
-//   * Connection — useBackendStatus.reachable / readiness / unreachableReason
-//   * Version    — package.json#version, injected at build time via Vite
+//   * STATUS      — derived from useBackendStatus.readiness
+//   * CONNECTION  — derived from useBackendStatus.reachable + readiness
+//   * MODE        — useBackendStatus.mode (mock | real)
+//   * TIME        — formatted Date.now() (locale HH:MM)
+//   * VERSION     — package.json#version, injected via vite define
 //
-// System Load, Memory Usage, Time, Model Router (the rest of the mockup's
-// status bar) are intentionally absent. They had no honest source in V0.
+// System Load and Memory Usage (from the mockup) stay absent: there is
+// no honest source. Time is a fact of the local clock — not invented,
+// not a backend signal either. Treated as a real, honest column.
 
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { useBackendStatus } from "../../hooks/useBackendStatus";
-import Pill from "../../components/atoms/Pill";
 
 // Injected by vite.config.ts `define` from package.json#version (see
-// src/vite-env.d.ts for the ambient declaration). Falls back to "dev"
-// only when the constant is absent — better an honest label than a
-// fake number.
+// src/vite-env.d.ts for the ambient declaration).
 const APP_VERSION =
   typeof __APP_VERSION__ === "string" && __APP_VERSION__.length > 0
     ? __APP_VERSION__
     : "dev";
 
 const barStyle: CSSProperties = {
-  borderTop: "var(--border-soft)",
-  background: "var(--bg-surface)",
+  borderTop: "1px solid var(--border-color-soft)",
+  background: "color-mix(in oklab, var(--bg-surface) 90%, transparent)",
+  backdropFilter: "blur(6px)",
   padding: "10px 24px",
-  display: "flex",
-  alignItems: "center",
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
   gap: 16,
   fontFamily: "var(--mono)",
   fontSize: "var(--t-meta, 11px)",
@@ -34,38 +36,143 @@ const barStyle: CSSProperties = {
   color: "var(--text-muted)",
 };
 
-const groupStyle: CSSProperties = {
+const cellStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 3,
+  minWidth: 0,
+};
+
+const labelStyle: CSSProperties = {
+  color: "var(--text-muted)",
+  fontSize: "var(--t-micro, 9px)",
+  letterSpacing: "var(--track-kicker, 0.26em)",
+};
+
+const valueStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  gap: 6,
+  fontSize: 12,
+  color: "var(--text-primary)",
+  textTransform: "none",
+  letterSpacing: "var(--track-normal, 0)",
+  fontFamily: "var(--sans)",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
 };
+
+type Tone = "ok" | "warn" | "danger" | "muted";
+
+const TONE_DOT: Record<Tone, string> = {
+  ok: "color-mix(in oklab, var(--accent) 70%, #6aa882)",
+  warn: "var(--terminal-warn, #d8b058)",
+  danger: "var(--cc-err, #d4785a)",
+  muted: "var(--text-muted)",
+};
+
+function Dot({ tone }: { tone: Tone }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 6,
+        height: 6,
+        borderRadius: "50%",
+        background: TONE_DOT[tone],
+        boxShadow: tone === "ok" || tone === "warn" || tone === "danger"
+          ? `0 0 6px ${TONE_DOT[tone]}`
+          : "none",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+// Live clock — re-renders every 30s, plenty for HH:MM precision and
+// gentle on React reconciliation. Locale-aware via toLocaleTimeString.
+function useLocalClock(): string {
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+  return now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
 
 export default function StatusBar() {
   const status = useBackendStatus();
+  const time = useLocalClock();
 
-  let connectionLabel = "checking";
-  let connectionTone: "ok" | "warn" | "danger" = "warn";
+  // STATUS — single-pass mapping from readiness state.
+  let statusText = "checking";
+  let statusTone: Tone = "muted";
   if (!status.reachable) {
-    connectionLabel = status.unreachableReason ?? "unreachable";
-    connectionTone = "danger";
+    statusText = "offline";
+    statusTone = "danger";
   } else if (status.readiness === "ready") {
-    connectionLabel = "secure";
-    connectionTone = "ok";
+    statusText = "idle / dormant";
+    statusTone = "ok";
   } else if (status.readiness === "degraded") {
-    connectionLabel = "degraded";
-    connectionTone = "warn";
+    statusText = "degraded";
+    statusTone = "warn";
   }
+
+  // CONNECTION — surfaces the actionable cause when unreachable.
+  let connText = "checking";
+  let connTone: Tone = "muted";
+  if (!status.reachable) {
+    connText = status.unreachableReason ?? "unreachable";
+    connTone = "danger";
+  } else if (status.readiness === "ready") {
+    connText = "secure";
+    connTone = "ok";
+  } else {
+    connText = "degraded";
+    connTone = "warn";
+  }
+
+  // MODE — mock vs real, only meaningful when reachable.
+  const modeText = status.reachable && status.mode ? status.mode : "—";
+  const modeTone: Tone =
+    !status.reachable || !status.mode
+      ? "muted"
+      : status.mode === "real"
+        ? "ok"
+        : "warn";
 
   return (
     <footer style={barStyle} role="status" aria-label="Studio status">
-      <span style={groupStyle}>
-        <span>connection</span>
-        <Pill tone={connectionTone}>{connectionLabel}</Pill>
-      </span>
-      <span style={groupStyle}>
-        <span>version</span>
-        <span style={{ color: "var(--text-secondary)" }}>{APP_VERSION}</span>
-      </span>
+      <div style={cellStyle}>
+        <span style={labelStyle}>Status</span>
+        <span style={valueStyle}>
+          <Dot tone={statusTone} />
+          {statusText}
+        </span>
+      </div>
+      <div style={cellStyle}>
+        <span style={labelStyle}>Connection</span>
+        <span style={valueStyle}>
+          <Dot tone={connTone} />
+          {connText}
+        </span>
+      </div>
+      <div style={cellStyle}>
+        <span style={labelStyle}>Mode</span>
+        <span style={valueStyle}>
+          <Dot tone={modeTone} />
+          {modeText}
+        </span>
+      </div>
+      <div style={cellStyle}>
+        <span style={labelStyle}>Time</span>
+        <span style={valueStyle}>{time}</span>
+      </div>
+      <div style={cellStyle}>
+        <span style={labelStyle}>Version</span>
+        <span style={valueStyle}>{APP_VERSION}</span>
+      </div>
     </footer>
   );
 }
