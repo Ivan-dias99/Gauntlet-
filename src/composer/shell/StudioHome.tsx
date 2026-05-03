@@ -1,13 +1,14 @@
-// Fase 1 — Studio Home (Idle / Dormant Mode).
+// Sprint 1 — Studio Home (Idle / Dormant Mode).
 //
-// Composes the orb hero, three real-data tiles, and the permissions
-// summary panel. Every tile here either reads from a real backend
-// endpoint or derives from one — there is no mock data with badges.
+// Layout:
+//   * Left column (flex 1): hero (orb + pillars + chip + tip) →
+//     3-col grid of real-data tiles directly below the chip.
+//   * Right column (320px): Permissions & Privacy panel.
 //
-// Layout: 2-column main split — content on the left, permissions on
-// the right. The grid tiles below the hero share /runs once the
-// hooks are split into a context (Fase 2+).
+// The Expand button on the hero chip scrolls the tiles into view via
+// the tilesRef — never navigates. Pure scroll behaviour.
 
+import { useCallback, useRef } from "react";
 import type { CSSProperties } from "react";
 import IdleHero from "./IdleHero";
 import RecentCommands from "./RecentCommands";
@@ -17,30 +18,37 @@ import PermissionsPanel from "./PermissionsPanel";
 
 const wrapStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)",
-  gap: 24,
+  gridTemplateColumns: "minmax(0, 1fr) minmax(280px, 320px)",
+  gap: 28,
   alignItems: "start",
 };
 
 const leftStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 24,
+  gap: 20,
   minWidth: 0,
 };
 
 const tilesStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gap: 12,
+  scrollMarginTop: 24,
 };
 
 export default function StudioHome() {
+  const tilesRef = useRef<HTMLDivElement>(null);
+
+  const onExpand = useCallback(() => {
+    tilesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   return (
     <div style={wrapStyle} data-studio-home>
       <div style={leftStyle}>
-        <IdleHero />
-        <div style={tilesStyle}>
+        <IdleHero onExpand={onExpand} />
+        <div ref={tilesRef} style={tilesStyle} data-studio-tiles>
           <RecentCommands />
           <LastUsedTools />
           <ReadinessStatus />

@@ -17,23 +17,31 @@ import Pill from "../../components/atoms/Pill";
 
 interface CategorySummary {
   label: string;
+  description: string;
   scopes: string[];
   granted: boolean;
 }
 
+// Human-first descriptions so the panel reads like product chrome,
+// not like a config dump. The technical scopes stay below the
+// description for operators who need them — they map 1:1 to the
+// connector × scope rows on PermissionsPage MATRIX.
 const CATEGORIES: CategorySummary[] = [
   {
     label: "Data Access",
+    description: "Workspace files, docs, terminal",
     scopes: ["filesystem.fs.read", "filesystem.fs.write"],
     granted: true,
   },
   {
     label: "Network Access",
+    description: "Anthropic models, internal APIs",
     scopes: ["anthropic.models.invoke"],
     granted: true,
   },
   {
     label: "Code Execution",
+    description: "Local environment only",
     scopes: ["shell.cmd.run"],
     granted: true,
   },
@@ -155,6 +163,9 @@ export default function PermissionsPanel() {
                 {cat.granted ? "allowed" : "declined"}
               </Pill>
             </div>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+              {cat.description}
+            </span>
             <span style={scopeStyle}>{cat.scopes.join(" · ")}</span>
           </div>
         ))}

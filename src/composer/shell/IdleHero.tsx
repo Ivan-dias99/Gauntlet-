@@ -1,23 +1,26 @@
-// Fase 1.5 — Idle / Dormant Hero, recalibrated.
+// Sprint 1 — Idle / Dormant Hero with full visual identity.
 //
-// Composes the full Idle visual identity (per the target mock):
-//   * orb: multi-layer aura + bright core + ambient base ring
-//   * 4 numbered pillars (UX copy, not data) arranged in a diamond
-//   * SVG connection lines from orb to each pillar
-//   * status chip below ("Composer is idle / Listening for context…")
+// Pillar icons (clock / ear / shield / lightning), connection lines
+// with L-shaped joints (not diagonals), Expand button on the chip
+// with scroll-to-tiles behaviour, and a tip line beneath the chip.
 //
-// Pillars are static copy describing what Idle means. They are not
-// mock data — they are design language. Same for the connection lines.
-//
-// Token consumption only: every colour comes from the studio palette
-// scoped under [data-composer-studio] (src/styles/tokens.css).
+// Pillars are static descriptive copy. Tip line is static copy.
+// Neither carries data, neither is mock — both are design language.
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import {
+  ClockIcon,
+  EarIcon,
+  ShieldIcon,
+  LightningIcon,
+  ChevronDownIcon,
+} from "./icons";
 
 interface Pillar {
   number: string;
   title: string;
   body: string;
+  icon: ReactNode;
 }
 
 const PILLARS: Pillar[] = [
@@ -25,30 +28,40 @@ const PILLARS: Pillar[] = [
     number: "1",
     title: "Waiting",
     body: "Composer remains dormant until you call it.",
+    icon: <ClockIcon size={14} />,
   },
   {
     number: "2",
     title: "Listening for context",
     body: "Continuously monitors active context to provide relevant, proactive assistance.",
+    icon: <EarIcon size={14} />,
   },
   {
     number: "3",
     title: "Respecting permissions",
     body: "Operates only within the boundaries you've defined.",
+    icon: <ShieldIcon size={14} />,
   },
   {
     number: "4",
     title: "Instant summon",
     body: "Ready to expand and help in a fraction of a second.",
+    icon: <LightningIcon size={14} />,
   },
 ];
+
+interface Props {
+  // Provided by StudioHome — fires when the operator clicks Expand on
+  // the chip. Scrolls the tile grid into view; never navigates away.
+  onExpand?: () => void;
+}
 
 const wrapStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: 28,
-  padding: "32px 16px 16px",
+  gap: 24,
+  padding: "32px 16px 8px",
 };
 
 const titleBlockStyle: CSSProperties = {
@@ -76,21 +89,20 @@ const subtitleStyle: CSSProperties = {
   maxWidth: 520,
 };
 
-// The diamond stage: 5 columns × 3 rows so the orb has horizontal
-// breathing room from the pillars. Pillars sit in the corner cells.
+// Diamond stage: 5 columns × 3 rows. Pillars in corner cells, orb in
+// the centre cell. The SVG connection layer covers the entire stage.
 const stageStyle: CSSProperties = {
   position: "relative",
   width: "100%",
   maxWidth: 880,
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr)",
-  gridTemplateRows: "auto 200px auto",
-  rowGap: 24,
+  gridTemplateRows: "auto 220px auto",
+  rowGap: 28,
   alignItems: "center",
   padding: "16px 8px",
 };
 
-// Pillar cards — used in the 4 corner cells of the diamond stage.
 const pillarStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -100,7 +112,6 @@ const pillarStyle: CSSProperties = {
   border: "1px solid var(--border-color-soft)",
   borderRadius: "var(--radius-md, 8px)",
   backdropFilter: "blur(2px)",
-  // Pillars sit above the SVG connection layer.
   position: "relative",
   zIndex: 2,
 };
@@ -111,18 +122,19 @@ const pillarHeaderStyle: CSSProperties = {
   gap: 8,
 };
 
-const pillarNumberStyle: CSSProperties = {
+const pillarBadgeStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  width: 22,
-  height: 22,
-  borderRadius: "50%",
+  gap: 5,
+  padding: "2px 7px",
+  borderRadius: "999px",
   border: "1px solid var(--accent)",
   color: "var(--accent)",
   fontFamily: "var(--mono)",
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 600,
+  letterSpacing: "var(--track-meta, 0.12em)",
 };
 
 const pillarTitleStyle: CSSProperties = {
@@ -141,7 +153,6 @@ const pillarBodyStyle: CSSProperties = {
   color: "var(--text-secondary)",
 };
 
-// Orb container — center cell, vertical center of the stage.
 const orbCellStyle: CSSProperties = {
   gridColumn: "3",
   gridRow: "2",
@@ -152,13 +163,12 @@ const orbCellStyle: CSSProperties = {
   zIndex: 2,
 };
 
-// Multi-layer orb — base ring (subtle), outer aura, mid aura, core.
-// CSS-only, no SVG. Each layer is a positioned div with a radial-gradient
-// or solid background. Box-shadow on the core supplies the bright glow.
+// Multi-layer orb — base ring + outer aura + mid aura + bright core.
+// Pure CSS (no SVG) keeps token-driven theming intact.
 const orbBaseStyle: CSSProperties = {
   position: "relative",
-  width: 180,
-  height: 180,
+  width: 200,
+  height: 200,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -168,47 +178,48 @@ const orbRingStyle: CSSProperties = {
   position: "absolute",
   inset: 0,
   borderRadius: "50%",
-  border: "1px solid color-mix(in oklab, var(--accent) 24%, transparent)",
-  boxShadow: "inset 0 0 24px rgba(79, 184, 217, 0.10)",
+  border: "1px solid color-mix(in oklab, var(--accent) 28%, transparent)",
+  boxShadow: "inset 0 0 32px rgba(79, 184, 217, 0.12)",
 };
 
 const orbOuterAuraStyle: CSSProperties = {
   position: "absolute",
-  width: 160,
-  height: 160,
+  width: 180,
+  height: 180,
   borderRadius: "50%",
-  background: "radial-gradient(circle, color-mix(in oklab, var(--accent) 22%, transparent) 0%, color-mix(in oklab, var(--accent) 8%, transparent) 50%, transparent 75%)",
+  background: "radial-gradient(circle, color-mix(in oklab, var(--accent) 26%, transparent) 0%, color-mix(in oklab, var(--accent) 10%, transparent) 50%, transparent 78%)",
 };
 
 const orbMidAuraStyle: CSSProperties = {
   position: "absolute",
-  width: 90,
-  height: 90,
+  width: 110,
+  height: 110,
   borderRadius: "50%",
-  background: "radial-gradient(circle, color-mix(in oklab, var(--accent) 60%, transparent) 0%, color-mix(in oklab, var(--accent) 18%, transparent) 60%, transparent 90%)",
+  background: "radial-gradient(circle, color-mix(in oklab, var(--accent) 65%, transparent) 0%, color-mix(in oklab, var(--accent) 24%, transparent) 55%, transparent 90%)",
 };
 
 const orbCoreStyle: CSSProperties = {
   position: "relative",
-  width: 14,
-  height: 14,
+  width: 16,
+  height: 16,
   borderRadius: "50%",
   background: "var(--accent)",
   boxShadow:
-    "0 0 6px var(--accent), 0 0 18px color-mix(in oklab, var(--accent) 70%, transparent), 0 0 36px color-mix(in oklab, var(--accent) 35%, transparent)",
+    "0 0 8px var(--accent), 0 0 22px color-mix(in oklab, var(--accent) 75%, transparent), 0 0 44px color-mix(in oklab, var(--accent) 40%, transparent)",
 };
 
-// Status chip below the stage — anchors the orb's signal to a textual
-// statement of state. Uses the same Expand metaphor as the capsule.
+// Status chip below the stage — orb dot + label + sub-label + Expand
+// button. The Expand button scrolls the tile grid into view; never
+// navigates.
 const chipStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 12,
-  padding: "10px 14px",
+  padding: "10px 14px 10px 16px",
   background: "color-mix(in oklab, var(--bg-surface) 70%, transparent)",
   border: "1px solid var(--border-color-mid)",
   borderRadius: "999px",
-  boxShadow: "0 0 0 1px color-mix(in oklab, var(--accent) 18%, transparent), 0 0 24px color-mix(in oklab, var(--accent) 12%, transparent)",
+  boxShadow: "0 0 0 1px color-mix(in oklab, var(--accent) 18%, transparent), 0 0 32px color-mix(in oklab, var(--accent) 14%, transparent)",
 };
 
 const chipDotStyle: CSSProperties = {
@@ -232,34 +243,74 @@ const chipSubLabelStyle: CSSProperties = {
   color: "var(--text-muted)",
 };
 
-// Connection lines — single SVG covering the stage, drawn behind the
-// pillars and orb (zIndex stays at 1 vs the cards' zIndex 2). The
-// viewBox + percentages keep it responsive as the grid resizes.
-function ConnectionLines() {
-  // viewBox coordinates chosen so the SVG corners roughly align with
-  // the centres of the corner pillars. Tuning numbers — adjust if the
-  // grid template changes.
-  const lineColor = "color-mix(in oklab, var(--accent) 40%, transparent)";
-  const dotColor = "color-mix(in oklab, var(--accent) 75%, transparent)";
+const expandButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
+  padding: "4px 10px",
+  background: "transparent",
+  border: "1px solid var(--border-color-mid)",
+  borderRadius: "999px",
+  color: "var(--text-secondary)",
+  fontFamily: "var(--mono)",
+  fontSize: "var(--t-meta, 11px)",
+  letterSpacing: "var(--track-meta, 0.12em)",
+  textTransform: "uppercase",
+  cursor: "pointer",
+  marginLeft: 4,
+};
 
-  // Centres in viewBox space.
-  const cx = 500;
-  const cy = 200;
-  const orbRadius = 60;
-  const pillars = [
-    { x: 130, y: 70 },   // top-left
-    { x: 870, y: 70 },   // top-right
-    { x: 130, y: 330 },  // bottom-left
-    { x: 870, y: 330 },  // bottom-right
+const tipStyle: CSSProperties = {
+  margin: 0,
+  fontFamily: "var(--mono)",
+  fontSize: "var(--t-meta, 11px)",
+  letterSpacing: "var(--track-meta, 0.12em)",
+  color: "var(--text-muted)",
+  textAlign: "center",
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  flexWrap: "wrap",
+  justifyContent: "center",
+};
+
+const kbdStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "1px 6px",
+  background: "color-mix(in oklab, var(--bg-elevated) 80%, transparent)",
+  border: "1px solid var(--border-color-soft)",
+  borderRadius: "var(--radius-sm, 4px)",
+  fontFamily: "var(--mono)",
+  fontSize: 10,
+  color: "var(--text-secondary)",
+};
+
+// Connection lines — single SVG covering the stage. Each path is an
+// L-shape (orb edge → horizontal-ish segment → diagonal to pillar)
+// matching the joint look of the target mock instead of straight
+// diagonals.
+function ConnectionLines() {
+  const lineColor = "color-mix(in oklab, var(--accent) 38%, transparent)";
+  const lineColorDim = "color-mix(in oklab, var(--accent) 18%, transparent)";
+  const dotColor = "var(--accent)";
+
+  // viewBox 1000×400; orb at (500, 200) with visual radius ≈ 60.
+  // Pillar anchors chosen near each pillar's inner corner.
+  const orb = { cx: 500, cy: 200, r: 62 };
+
+  // Each line: orb-edge entry, midpoint corner, pillar landing dot.
+  // Direction angle from orb centre defines the edge entry point.
+  const lines = [
+    { angle: 200, mid: { x: 320, y: 160 }, end: { x: 200, y: 90 } },   // top-left
+    { angle: 340, mid: { x: 680, y: 160 }, end: { x: 800, y: 90 } },   // top-right
+    { angle: 160, mid: { x: 320, y: 240 }, end: { x: 200, y: 310 } },  // bottom-left
+    { angle: 20,  mid: { x: 680, y: 240 }, end: { x: 800, y: 310 } },  // bottom-right
   ];
 
-  // Helper: compute the entry point on the orb's edge along the line
-  // from orb centre to a pillar — keeps lines from piercing the core.
-  function orbEdge(px: number, py: number) {
-    const dx = px - cx;
-    const dy = py - cy;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    return { x: cx + (dx / len) * orbRadius, y: cy + (dy / len) * orbRadius };
+  function entryFromAngle(angleDeg: number) {
+    const rad = (angleDeg * Math.PI) / 180;
+    return { x: orb.cx + orb.r * Math.cos(rad), y: orb.cy + orb.r * Math.sin(rad) };
   }
 
   return (
@@ -276,21 +327,37 @@ function ConnectionLines() {
         zIndex: 1,
       }}
     >
-      {pillars.map((p, i) => {
-        const start = orbEdge(p.x, p.y);
+      <defs>
+        {/* Soft fade — line is brighter near the orb, softer at the pillar. */}
+        <linearGradient id="lineFadeLR" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor={lineColor} />
+          <stop offset="100%" stopColor={lineColorDim} />
+        </linearGradient>
+        <linearGradient id="lineFadeRL" x1="1" y1="0" x2="0" y2="0">
+          <stop offset="0%" stopColor={lineColor} />
+          <stop offset="100%" stopColor={lineColorDim} />
+        </linearGradient>
+      </defs>
+      {lines.map((l, i) => {
+        const start = entryFromAngle(l.angle);
+        const goingRight = l.end.x > orb.cx;
+        const grad = goingRight ? "url(#lineFadeLR)" : "url(#lineFadeRL)";
+        // Path: entry → corner (midpoint) → landing dot.
+        const d = `M ${start.x} ${start.y} L ${l.mid.x} ${l.mid.y} L ${l.end.x} ${l.end.y}`;
         return (
           <g key={i}>
-            <line
-              x1={start.x}
-              y1={start.y}
-              x2={p.x}
-              y2={p.y}
-              stroke={lineColor}
-              strokeWidth={1.2}
+            <path
+              d={d}
+              stroke={grad}
+              strokeWidth={1.4}
               strokeLinecap="round"
-              strokeDasharray="2 4"
+              strokeLinejoin="round"
+              fill="none"
             />
-            <circle cx={p.x} cy={p.y} r={3} fill={dotColor} />
+            {/* Tiny corner joint dot */}
+            <circle cx={l.mid.x} cy={l.mid.y} r={1.8} fill={lineColorDim} />
+            {/* Pillar landing dot */}
+            <circle cx={l.end.x} cy={l.end.y} r={3} fill={dotColor} opacity={0.85} />
           </g>
         );
       })}
@@ -298,11 +365,14 @@ function ConnectionLines() {
   );
 }
 
-function PillarCard({ pillar, gridArea }: { pillar: Pillar; gridArea: string }) {
+function PillarCard({ pillar }: { pillar: Pillar }) {
   return (
-    <div style={{ ...pillarStyle, gridArea }}>
+    <div style={pillarStyle}>
       <header style={pillarHeaderStyle}>
-        <span style={pillarNumberStyle}>{pillar.number}</span>
+        <span style={pillarBadgeStyle}>
+          {pillar.icon}
+          {pillar.number}
+        </span>
         <h3 style={pillarTitleStyle}>{pillar.title}</h3>
       </header>
       <p style={pillarBodyStyle}>{pillar.body}</p>
@@ -310,7 +380,7 @@ function PillarCard({ pillar, gridArea }: { pillar: Pillar; gridArea: string }) 
   );
 }
 
-export default function IdleHero() {
+export default function IdleHero({ onExpand }: Props) {
   return (
     <section style={wrapStyle} data-studio-idle-hero>
       <div style={titleBlockStyle}>
@@ -325,10 +395,10 @@ export default function IdleHero() {
         <ConnectionLines />
 
         <div style={{ gridColumn: "1 / span 2", gridRow: "1" }}>
-          <PillarCard pillar={PILLARS[0]} gridArea="auto" />
+          <PillarCard pillar={PILLARS[0]} />
         </div>
         <div style={{ gridColumn: "4 / span 2", gridRow: "1" }}>
-          <PillarCard pillar={PILLARS[1]} gridArea="auto" />
+          <PillarCard pillar={PILLARS[1]} />
         </div>
 
         <div style={orbCellStyle}>
@@ -341,10 +411,10 @@ export default function IdleHero() {
         </div>
 
         <div style={{ gridColumn: "1 / span 2", gridRow: "3" }}>
-          <PillarCard pillar={PILLARS[2]} gridArea="auto" />
+          <PillarCard pillar={PILLARS[2]} />
         </div>
         <div style={{ gridColumn: "4 / span 2", gridRow: "3" }}>
-          <PillarCard pillar={PILLARS[3]} gridArea="auto" />
+          <PillarCard pillar={PILLARS[3]} />
         </div>
       </div>
 
@@ -352,7 +422,29 @@ export default function IdleHero() {
         <span style={chipDotStyle} aria-hidden />
         <span style={chipLabelStyle}>Composer is idle</span>
         <span style={chipSubLabelStyle}>· listening for context</span>
+        {onExpand && (
+          <button
+            type="button"
+            onClick={onExpand}
+            style={expandButtonStyle}
+            title="Scroll to tiles below"
+          >
+            Expand
+            <ChevronDownIcon size={12} />
+          </button>
+        )}
       </div>
+
+      <p style={tipStyle}>
+        <span>Tip</span>
+        <span>·</span>
+        <span>Press</span>
+        <kbd style={kbdStyle}>⌥</kbd>
+        <kbd style={kbdStyle}>⌘</kbd>
+        <kbd style={kbdStyle}>Space</kbd>
+        <span>to summon · click the orb · or type</span>
+        <kbd style={kbdStyle}>/composer</kbd>
+      </p>
     </section>
   );
 }
