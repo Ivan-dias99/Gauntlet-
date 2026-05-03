@@ -222,6 +222,25 @@ else:
 LARGE_BODY_ROUTES: dict[str, int] = {}
 
 
+class OptionsNoOriginMiddleware(BaseHTTPMiddleware):
+    """Intercept OPTIONS requests that carry no Origin header and return
+    200 immediately, before CORSMiddleware sees them.
+
+    Starlette's CORSMiddleware returns 400 Bad Request for any preflight
+    whose Origin does not match the allow-list — including requests with
+    *no* Origin at all. Railway's internal load-balancer sends bare OPTIONS
+    probes (no Origin) which trigger this 400 and pollute the logs. Browser
+    preflights always include Origin so they bypass this guard and get the
+    proper CORS handling from CORSMiddleware.
+    """
+
+    async def dispatch(self, request, call_next):
+        if request.method == "OPTIONS" and not request.headers.get("origin"):
+            from fastapi.responses import Response as _Resp
+            return _Resp(status_code=200)
+        return await call_next(request)
+
+
 class BodySizeLimitMiddleware(BaseHTTPMiddleware):
     """Reject requests whose ``Content-Length`` exceeds the configured
     cap. Per-route overrides allow specific endpoints (e.g.
@@ -286,6 +305,9 @@ app.add_middleware(APIKeyAuthMiddleware, api_key=SIGNAL_API_KEY)
 # 3) CORS — must sit OUTSIDE auth so preflight gets the right headers
 #    even when the inner gates would otherwise reject the request.
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
+# 3b) Short-circuit no-Origin OPTIONS before CORSMiddleware returns 400.
+#     Browser preflights always have Origin and bypass this guard.
+app.add_middleware(OptionsNoOriginMiddleware)
 # 4) Security headers — stamps every outgoing response, including 4xx/5xx.
 app.add_middleware(
     SecurityHeadersMiddleware,
