@@ -151,18 +151,16 @@ async def _classify_intent(
     if any(w in text for w in ("search memory", "find in memory", "what did i save")):
         return "search_memory", 0.95, "Search saved memory", []
 
-    if len(text) < 12 and not ctx.selection:
-        return (
-            "ambiguous",
-            0.35,
-            "Intent unclear — context is thin",
-            ["What should I produce: code, text, image, or report?"],
-        )
+    # Any non-empty input that didn't match a specific keyword goes to
+    # the engine (triad + judge). The engine's doctrine decides whether to
+    # answer or refuse — the classifier should not preemptively refuse for
+    # the user. Ambiguous is reserved for truly empty input.
+    if text:
+        source_note = f"with selection from {ctx.source.value}" if ctx.selection else f"from {ctx.source.value}"
+        return "analyze", 0.60, f"Answer or analyse input {source_note}", []
 
-    if ctx.selection:
-        return "analyze", 0.65, "Analyze the selected content", []
+    return "ambiguous", 0.35, "No input provided", ["What would you like to do?"]
 
-    return "ambiguous", 0.40, "Intent unclear", ["Can you describe the desired output?"]
 
 
 def _route_model(intent: IntentKind, ctx: ContextPackage) -> ModelRoute:
@@ -296,6 +294,7 @@ async def detect_intent(req: ComposerIntentRequest) -> IntentResult:
         intent=intent,
         confidence=confidence,
         summary=summary,
+        user_input=req.user_input,
         suggested_actions=actions,
         model_route=route,
         tools_needed=route.tool_requirements,
@@ -577,19 +576,20 @@ async def _record_composer_run(
 
 
 def _compose_agent_question(intent: IntentResult, intent_id: UUID) -> str:
-    return (
-        f"[composer:{intent_id}] intent={intent.intent}\n"
-        f"task: {intent.summary}\n"
-        f"Produce a working code patch or command sequence. "
-        f"If the request is unclear, ask one clarifying question."
-    )
+    lines = [f"[composer:{intent_id}] intent={intent.intent}"]
+    if intent.user_input:
+        lines.append(f"user: {intent.user_input}")
+    lines.append(f"task: {intent.summary}")
+    lines.append("Produce a working code patch or command sequence. If the request is unclear, ask one clarifying question.")
+    return "\n".join(lines)
 
 
 def _compose_triad_question(intent: IntentResult, intent_id: UUID) -> str:
-    return (
-        f"[composer:{intent_id}] intent={intent.intent}\n"
-        f"task: {intent.summary}\n"
-    )
+    lines = [f"[composer:{intent_id}] intent={intent.intent}"]
+    if intent.user_input:
+        lines.append(f"user: {intent.user_input}")
+    lines.append(f"task: {intent.summary}")
+    return "\n".join(lines)
 
 
 def _compose_context_blob(ctx: ContextPackage) -> str:

@@ -96,22 +96,17 @@ async def lifespan(app: FastAPI):
     if LOG_REDACT:
         install_redaction(("", "signal", "uvicorn", "uvicorn.error", "uvicorn.access"))
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key and not GEMINI_API_KEY and not RUBERRA_MOCK:
+    if not ANTHROPIC_API_KEY and not GEMINI_API_KEY and not RUBERRA_MOCK:
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
             "  No provider key found!\n"
             "  Set ANTHROPIC_API_KEY for Claude, or\n"
             "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY for Gemini (free tier).\n"
             "  Or set GAUNTLET_MOCK=1 for canned responses.\n"
-            "  Nenhuma API key configurada!\n"
-            "  Define ANTHROPIC_API_KEY para Claude, ou\n"
-            "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY para Gemini,\n"
-            "  ou GAUNTLET_MOCK=1 para respostas offline.\n"
             "═══════════════════════════════════════════════════════════"
         )
         sys.exit(1)
-    if not api_key and GEMINI_API_KEY:
+    if not ANTHROPIC_API_KEY and GEMINI_API_KEY:
         logger.warning(
             "Running on Gemini provider (model=%s). "
             "Agent loop and streaming are not supported on this path.",
@@ -120,10 +115,17 @@ async def lifespan(app: FastAPI):
 
     engine = SignalEngine()
     memory_label = "EPHEMERAL (volume not configured)" if PERSISTENCE_EPHEMERAL else "PERSISTENT"
+    if RUBERRA_MOCK:
+        _provider_label = "MOCK (canned)"
+    elif ANTHROPIC_API_KEY:
+        _provider_label = "Anthropic Claude"
+    else:
+        _provider_label = f"Gemini ({GEMINI_MODEL})"
     logger.info(
         "═══════════════════════════════════════════════════════════\n"
         "  Gauntlet — inteligência na ponta do cursor\n"
         f"  Listening: http://{SERVER_HOST}:{SERVER_PORT}\n"
+        f"  Provider: {_provider_label}\n"
         f"  CORS Origins: {', '.join(_cors_origins)}\n"
         f"  CORS Regex: {ALLOWED_ORIGIN_REGEX or '(disabled)'}\n"
         f"  Data Dir: {MEMORY_DIR}\n"
@@ -823,7 +825,11 @@ async def diagnostics():
         "mode": "mock" if RUBERRA_MOCK else "real",
         "anthropic_api_key_present": bool(ANTHROPIC_API_KEY),
         "gemini_api_key_present": bool(GEMINI_API_KEY),
-        "active_provider": "anthropic" if ANTHROPIC_API_KEY else ("gemini" if GEMINI_API_KEY else "mock"),
+        "active_provider": (
+            "mock" if RUBERRA_MOCK
+            else "anthropic" if ANTHROPIC_API_KEY
+            else "gemini"
+        ),
         "gemini_model": GEMINI_MODEL if GEMINI_API_KEY and not ANTHROPIC_API_KEY else None,
         "data_dir": str(MEMORY_DIR),
         "persistence_ephemeral": PERSISTENCE_EPHEMERAL,

@@ -22,16 +22,16 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: signal-backend
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: signal-backend/requirements.txt
+          cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
-      # Syntax + import check without starting the server or hitting Anthropic.
+      # Syntax + import check without starting the server or hitting any provider.
       - run: python -m compileall -q .
       - env:
           ANTHROPIC_API_KEY: placeholder-for-import-check
@@ -39,13 +39,11 @@ jobs:
           python -c "
           import importlib
           mods = (
-              # core runtime
               'config','models','doctrine','memory','tools',
               'agent','engine','server','main',
-              # chamber profiles + per-chamber prompt modules (Wave 1/5)
-              'chambers','chambers.profiles',
-              'chambers.insight','chambers.surface','chambers.terminal',
-              'chambers.archive','chambers.core',
+              'composer','runs','spine','auth','rate_limit',
+              'security_headers','log_redaction','model_gateway',
+              'gemini_provider','mock_client','observability',
           )
           for mod in mods:
               importlib.import_module(mod)
