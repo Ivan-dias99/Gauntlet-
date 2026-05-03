@@ -465,6 +465,7 @@ class IntentResult(BaseModel):
     intent: IntentKind
     confidence: float = Field(ge=0.0, le=1.0)
     summary: str
+    user_input: str = Field(default="", max_length=10_000)
     suggested_actions: list[SuggestedAction] = Field(default_factory=list)
     model_route: ModelRoute
     tools_needed: list[str] = Field(default_factory=list)
