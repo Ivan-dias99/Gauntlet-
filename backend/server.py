@@ -75,7 +75,7 @@ logging.basicConfig(
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("signal.server")
+logger = logging.getLogger("gauntlet.server")
 
 # ── App Lifecycle ───────────────────────────────────────────────────────────
 
@@ -109,12 +109,12 @@ async def lifespan(app: FastAPI):
     memory_label = "EPHEMERAL (volume not configured)" if PERSISTENCE_EPHEMERAL else "PERSISTENT"
     logger.info(
         "═══════════════════════════════════════════════════════════\n"
-        "  Signal — sovereign AI workspace\n"
+        "  Gauntlet — inteligência na ponta do cursor\n"
         f"  Listening: http://{SERVER_HOST}:{SERVER_PORT}\n"
         f"  CORS Origins: {', '.join(_cors_origins)}\n"
         f"  CORS Regex: {ALLOWED_ORIGIN_REGEX or '(disabled)'}\n"
         f"  Data Dir: {MEMORY_DIR}\n"
-        "  Chambers: Insight · Surface · Terminal · Archive · Core\n"
+        "  Composer routes: /composer/{context, intent, preview, apply}\n"
         "  Doctrine: ACTIVE\n"
         "  Self-Consistency: 3x parallel triad\n"
         "  Judge: IMPLACABLE\n"
@@ -329,7 +329,7 @@ async def health_check():
     """
     return {
         "status": "operational",
-        "system": "Signal",
+        "system": "Gauntlet",
         "doctrine": "active",
         "engine": "ready" if engine else "not_initialized",
         "mode": "mock" if RUBERRA_MOCK else "real",
