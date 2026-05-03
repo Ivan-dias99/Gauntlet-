@@ -8,9 +8,53 @@
 // Doctrine: O Composer é o carro. O Control Center é a garagem. Nunca
 // compete com o Composer como local de trabalho.
 
+import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 
-const stepStyle = {
+const containerStyle: CSSProperties = {
+  position: "relative",
+  background: "var(--bg)",
+  color: "var(--text-primary)",
+  fontFamily: "var(--sans)",
+  minHeight: "100vh",
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
+};
+
+const headerStyle: CSSProperties = {
+  position: "relative",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "20px 32px",
+  borderBottom: "var(--border-soft)",
+  background:
+    "linear-gradient(180deg, color-mix(in oklab, var(--bg-surface) 96%, transparent) 0%, color-mix(in oklab, var(--bg) 80%, transparent) 100%)",
+  backdropFilter: "saturate(1.4) blur(20px)",
+  WebkitBackdropFilter: "saturate(1.4) blur(20px)",
+  zIndex: 2,
+};
+
+const mainStyle: CSSProperties = {
+  position: "relative",
+  flex: 1,
+  display: "grid",
+  placeItems: "center",
+  padding: "56px 32px",
+  zIndex: 1,
+};
+
+const heroGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1.15fr) minmax(0, 1fr)",
+  gap: 48,
+  maxWidth: 1120,
+  width: "100%",
+  alignItems: "center",
+};
+
+const stepRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "32px 1fr",
   alignItems: "start",
@@ -19,7 +63,7 @@ const stepStyle = {
   borderBottom: "var(--border-soft)",
 };
 
-const stepIndex = {
+const stepIndexStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -34,23 +78,24 @@ const stepIndex = {
   color: "var(--text-secondary)",
 };
 
-const kbdStyle = {
+const kbdStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  minWidth: 22,
-  height: 22,
-  padding: "0 6px",
+  minWidth: 24,
+  height: 24,
+  padding: "0 7px",
   fontFamily: "var(--mono)",
   fontSize: 11,
-  background: "var(--bg-elevated)",
+  background: "var(--bg-surface)",
   border: "var(--border-soft)",
   borderRadius: 5,
   color: "var(--text-primary)",
   margin: "0 2px",
+  boxShadow: "0 1px 0 rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.04)",
 };
 
-const codeStyle = {
+const codeStyle: CSSProperties = {
   display: "inline-block",
   fontFamily: "var(--mono)",
   fontSize: 12,
@@ -63,34 +108,11 @@ const codeStyle = {
 
 export default function ComposerPage() {
   return (
-    <div
-      style={{
-        position: "relative",
-        background: "var(--bg)",
-        color: "var(--text-primary)",
-        fontFamily: "var(--sans)",
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-      data-composer-redirect
-    >
-      <div className="gx-aurora" aria-hidden />
+    <div style={containerStyle} data-composer-redirect>
+      {/* Aurora — subtle in light, present in dark */}
+      <div className="gx-aurora" aria-hidden style={{ zIndex: 0 }} />
 
-      <header
-        style={{
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "20px 32px",
-          borderBottom: "var(--border-soft)",
-          background:
-            "linear-gradient(180deg, var(--bg-surface) 0%, transparent 100%)",
-          backdropFilter: "blur(20px)",
-        }}
-      >
+      <header style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span className="gx-mark" aria-hidden />
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
@@ -129,49 +151,39 @@ export default function ComposerPage() {
             letterSpacing: "var(--track-meta)",
             textTransform: "uppercase",
             border: "var(--border-soft)",
-            borderRadius: "var(--radius-sm, 6px)",
-            padding: "7px 14px",
-            transition: "color 200ms ease, border-color 200ms ease",
+            borderRadius: 6,
+            padding: "8px 16px",
+            background: "var(--bg-surface)",
+            transition: "all 200ms var(--motion-easing-out)",
           }}
         >
           → Control
         </Link>
       </header>
 
-      <main
-        style={{
-          position: "relative",
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 48,
-        }}
-      >
-        <section
-          className="gx-rise"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1fr)",
-            gap: 40,
-            maxWidth: 1100,
-            width: "100%",
-            alignItems: "center",
-          }}
-        >
+      <main style={mainStyle}>
+        <section style={heroGridStyle}>
+          {/* LEFT — Hero copy + summon steps */}
           <div>
             <span className="gx-eyebrow">flagship surface</span>
             <h1
-              className="gx-display"
-              style={{ marginTop: 10 }}
+              style={{
+                margin: "10px 0 0",
+                fontFamily: "var(--serif)",
+                fontWeight: 400,
+                fontSize: "clamp(36px, 4.4vw, 56px)",
+                lineHeight: 1.04,
+                letterSpacing: "-0.022em",
+                color: "var(--text-primary)",
+              }}
             >
               O Composer vive
               <br />
-              na <span style={{ color: "var(--ember)" }}>ponta do cursor</span>.
+              na <em style={{ color: "var(--ember)", fontStyle: "normal" }}>ponta do cursor</em>.
             </h1>
             <p
               style={{
-                margin: "20px 0 0",
+                margin: "22px 0 0",
                 color: "var(--text-secondary)",
                 fontSize: 15,
                 lineHeight: 1.6,
@@ -185,36 +197,38 @@ export default function ComposerPage() {
 
             <div
               style={{
-                marginTop: 28,
-                padding: "8px 0 0",
+                marginTop: 32,
+                paddingTop: 16,
                 borderTop: "var(--border-soft)",
               }}
             >
-              <span className="gx-eyebrow">summon</span>
-              <ol style={{ margin: "10px 0 0", padding: 0, listStyle: "none" }}>
-                <li style={stepStyle}>
-                  <span style={stepIndex}>01</span>
+              <span className="gx-eyebrow">summon · 4 steps</span>
+              <ol style={{ margin: "12px 0 0", padding: 0, listStyle: "none" }}>
+                <li style={stepRowStyle}>
+                  <span style={stepIndexStyle}>01</span>
                   <span style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
                     Build da extensão:{" "}
-                    <code style={codeStyle}>cd apps/browser-extension && npm run dev</code>
+                    <code style={codeStyle}>cd apps/browser-extension</code>{" "}
+                    <code style={codeStyle}>npm run dev</code>
                   </span>
                 </li>
-                <li style={stepStyle}>
-                  <span style={stepIndex}>02</span>
+                <li style={stepRowStyle}>
+                  <span style={stepIndexStyle}>02</span>
                   <span style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                    Carregar a build em <code style={codeStyle}>chrome://extensions</code> (Load unpacked)
+                    Carregar a build em{" "}
+                    <code style={codeStyle}>chrome://extensions</code> (Load unpacked)
                   </span>
                 </li>
-                <li style={stepStyle}>
-                  <span style={stepIndex}>03</span>
+                <li style={stepRowStyle}>
+                  <span style={stepIndexStyle}>03</span>
                   <span style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
                     Em qualquer página: <kbd style={kbdStyle}>Alt</kbd>
                     <span style={{ color: "var(--text-muted)", margin: "0 4px" }}>+</span>
                     <kbd style={kbdStyle}>Space</kbd>
                   </span>
                 </li>
-                <li style={{ ...stepStyle, borderBottom: "none" }}>
-                  <span style={stepIndex}>04</span>
+                <li style={{ ...stepRowStyle, borderBottom: "none" }}>
+                  <span style={stepIndexStyle}>04</span>
                   <span style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
                     Escrever o pedido. <kbd style={kbdStyle}>Esc</kbd> dispensa a cápsula.
                   </span>
@@ -223,7 +237,7 @@ export default function ComposerPage() {
             </div>
           </div>
 
-          {/* Capsule mockup — purely illustrative, not interactive */}
+          {/* RIGHT — Capsule mockup */}
           <CapsuleMockup />
         </section>
       </main>
@@ -234,10 +248,14 @@ export default function ComposerPage() {
           padding: "20px 32px",
           borderTop: "var(--border-soft)",
           background: "var(--bg-surface)",
+          zIndex: 2,
         }}
       >
         <div className="gx-trail">
-          <span className="gx-eyebrow" style={{ color: "var(--text-muted)" }}>
+          <span
+            className="gx-eyebrow"
+            style={{ color: "var(--text-muted)" }}
+          >
             backend pipeline
           </span>
           <span className="gx-trail-step">/composer/context</span>
@@ -261,23 +279,47 @@ function CapsuleMockup() {
         position: "relative",
         borderRadius: 16,
         background:
-          "linear-gradient(180deg, color-mix(in oklab, var(--bg-elevated) 90%, transparent) 0%, color-mix(in oklab, var(--bg-surface) 90%, transparent) 100%)",
+          "linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-surface) 100%)",
         border: "1px solid color-mix(in oklab, var(--ember) 18%, var(--border-color-mid))",
         boxShadow:
-          "0 0 0 1px color-mix(in oklab, var(--ember) 10%, transparent), 0 24px 60px rgba(0,0,0,0.4), inset 0 1px 0 color-mix(in oklab, white 6%, transparent)",
-        padding: "18px 20px",
-        backdropFilter: "blur(20px)",
+          "0 0 0 1px color-mix(in oklab, var(--ember) 10%, transparent), 0 24px 60px color-mix(in oklab, var(--text-primary) 14%, transparent), inset 0 1px 0 color-mix(in oklab, white 8%, transparent)",
+        padding: "20px 22px",
+        backdropFilter: "saturate(1.2) blur(20px)",
         fontFamily: "var(--sans)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+      {/* Capsule header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 14,
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span className="gx-mark" />
           <div style={{ lineHeight: 1.1 }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "var(--track-kicker)", color: "var(--text-primary)" }}>
+            <div
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: "var(--track-kicker)",
+                color: "var(--text-primary)",
+              }}
+            >
               GAUNTLET
             </div>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "var(--track-meta)", color: "var(--text-muted)", marginTop: 2 }}>
+            <div
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 9,
+                letterSpacing: "var(--track-meta)",
+                color: "var(--text-muted)",
+                marginTop: 2,
+              }}
+            >
               cursor · capsule
             </div>
           </div>
@@ -286,28 +328,25 @@ function CapsuleMockup() {
           style={{
             border: "var(--border-soft)",
             borderRadius: 5,
-            padding: "3px 7px",
+            padding: "3px 8px",
             fontFamily: "var(--mono)",
             fontSize: 9,
             color: "var(--text-muted)",
             letterSpacing: "var(--track-meta)",
             textTransform: "uppercase",
+            background: "var(--bg-surface)",
           }}
         >
           esc
         </span>
       </div>
 
+      {/* Context strip */}
       <div
         style={{
           display: "flex",
           gap: 8,
           alignItems: "center",
-          fontFamily: "var(--mono)",
-          fontSize: 9,
-          letterSpacing: "var(--track-meta)",
-          color: "var(--text-muted)",
-          textTransform: "uppercase",
           marginBottom: 8,
         }}
       >
@@ -317,62 +356,93 @@ function CapsuleMockup() {
             background: "color-mix(in oklab, var(--ember) 14%, transparent)",
             border: "1px solid color-mix(in oklab, var(--ember) 30%, transparent)",
             borderRadius: 999,
-            padding: "2px 8px",
+            padding: "2px 10px",
             letterSpacing: "var(--track-meta)",
+            fontFamily: "var(--mono)",
+            fontSize: 9,
+            fontWeight: 600,
+            textTransform: "uppercase",
           }}
         >
           browser
         </span>
-        <span style={{ flex: 1, fontFamily: "var(--sans)", textTransform: "none", letterSpacing: 0, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11 }}>
+        <span
+          style={{
+            flex: 1,
+            color: "var(--text-secondary)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontSize: 11,
+          }}
+        >
           docs.anthropic.com / claude / pricing
         </span>
       </div>
 
+      {/* Selection block */}
       <pre
         style={{
           margin: 0,
-          padding: "8px 10px",
+          padding: "10px 12px",
           background: "var(--bg-sunken)",
           border: "var(--border-soft)",
           borderRadius: 8,
           fontFamily: "var(--mono)",
           fontSize: 11,
           color: "var(--text-secondary)",
-          maxHeight: 70,
+          maxHeight: 80,
           overflow: "hidden",
-          lineHeight: 1.5,
+          lineHeight: 1.55,
           whiteSpace: "pre-wrap",
         }}
       >
-        Sonnet 4.6 input $3/MTok, output $15/MTok.
-        Cache hits 1/10 of input. Batch -50%.
+{`Sonnet 4.6 input $3 / MTok, output $15 / MTok.
+Cache hits 1/10 of input. Batch −50%.`}
       </pre>
 
-      <textarea
-        readOnly
-        rows={2}
-        defaultValue="Resume os preços do Sonnet em PT, em uma frase, para colar no slack."
+      {/* Input */}
+      <div
         style={{
-          width: "100%",
           marginTop: 12,
           background: "var(--bg-input)",
           color: "var(--text-primary)",
           border: "1px solid color-mix(in oklab, var(--ember) 30%, transparent)",
-          boxShadow: "0 0 0 1px color-mix(in oklab, var(--ember) 18%, transparent), 0 0 24px color-mix(in oklab, var(--ember) 14%, transparent)",
-          borderRadius: 8,
-          padding: "10px 12px",
+          boxShadow:
+            "0 0 0 1px color-mix(in oklab, var(--ember) 18%, transparent), 0 0 24px color-mix(in oklab, var(--ember) 12%, transparent)",
+          borderRadius: 10,
+          padding: "12px 14px",
           fontFamily: "var(--sans)",
           fontSize: 13,
-          resize: "none",
-          outline: "none",
-          boxSizing: "border-box",
+          lineHeight: 1.5,
+          minHeight: 48,
         }}
-      />
+      >
+        Resume os preços do Sonnet em PT,
+        <br />
+        em uma frase, para colar no slack.
+      </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-        <span style={{ display: "inline-flex", gap: 4, fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)" }}>
-          <span style={{ ...kbdStyle, height: 16, minWidth: 16, fontSize: 10 }}>⌘</span>
-          <span style={{ ...kbdStyle, height: 16, minWidth: 16, fontSize: 10 }}>↵</span>
+      {/* CTA row */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 12,
+        }}
+      >
+        <span
+          style={{
+            display: "inline-flex",
+            gap: 4,
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            color: "var(--text-muted)",
+          }}
+        >
+          <span style={{ ...kbdStyle, height: 18, minWidth: 18, padding: "0 5px", fontSize: 10 }}>⌘</span>
+          <span style={{ ...kbdStyle, height: 18, minWidth: 18, padding: "0 5px", fontSize: 10 }}>↵</span>
         </span>
         <button
           type="button"
@@ -383,6 +453,66 @@ function CapsuleMockup() {
           Compor
         </button>
       </div>
+
+      {/* Preview meta strip */}
+      <div
+        style={{
+          display: "flex",
+          gap: 6,
+          marginTop: 14,
+          paddingTop: 12,
+          borderTop: "var(--border-soft)",
+          flexWrap: "wrap",
+        }}
+      >
+        <MockPill k="intent" v="summarize" />
+        <MockPill k="conf" v="0.92" />
+        <MockPill k="model" v="sonnet-4.6" />
+        <MockPill k="latency" v="612 ms" />
+        <MockPill k="judge" v="high" tone="ok" />
+      </div>
     </div>
+  );
+}
+
+function MockPill({
+  k,
+  v,
+  tone,
+}: {
+  k: string;
+  v: string;
+  tone?: "ok";
+}) {
+  const okColor = "color-mix(in oklab, var(--cc-ok) 35%, var(--border-color-soft))";
+  const okBg = "color-mix(in oklab, var(--cc-ok) 10%, transparent)";
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "3px 9px",
+        borderRadius: 999,
+        border:
+          tone === "ok"
+            ? `1px solid ${okColor}`
+            : "var(--border-soft)",
+        background:
+          tone === "ok" ? okBg : "var(--bg-elevated)",
+        fontFamily: "var(--mono)",
+        fontSize: 10,
+        letterSpacing: "var(--track-meta)",
+      }}
+    >
+      <span style={{ color: "var(--text-muted)" }}>{k}</span>
+      <span
+        style={{
+          color: tone === "ok" ? "var(--cc-ok)" : "var(--text-primary)",
+        }}
+      >
+        {v}
+      </span>
+    </span>
   );
 }

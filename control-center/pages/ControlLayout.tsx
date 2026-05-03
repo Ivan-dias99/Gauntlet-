@@ -196,7 +196,7 @@ export default function ControlLayout() {
           minWidth: 0,
         }}
       >
-        <div className="gx-rise" style={{ display: "flex", flexDirection: "column", maxWidth: 1180 }}>
+        <div style={{ display: "flex", flexDirection: "column", maxWidth: 1180 }}>
           <Outlet />
         </div>
       </main>

@@ -131,6 +131,17 @@
   pointer-events: none;
   animation: gauntlet-aurora 24s linear infinite;
 }
+[data-theme="light"] .gx-aurora {
+  /* Light mode: warmer ember + cooler info, much subtler so the
+     crystalline white surface still reads. */
+  background:
+    radial-gradient(45% 45% at 25% 30%,
+      color-mix(in oklab, var(--ember) 22%, transparent), transparent 65%),
+    radial-gradient(45% 45% at 75% 70%,
+      color-mix(in oklab, var(--cc-info) 18%, transparent), transparent 65%);
+  opacity: 0.32;
+  filter: blur(60px);
+}
 
 /* ── Shimmer line (compose button accent) ─────────────────────── */
 .gx-shimmer {
@@ -164,8 +175,11 @@
 }
 
 /* ── Rising row (page enter) ──────────────────────────────────── */
+/* Defensive: content is always visible by default (opacity 1).
+ * Only when the animation runs do we briefly fade-in from 0 → 1.
+ * If JS or motion is blocked, the page still renders. */
 .gx-rise > * {
-  animation: gauntlet-rise var(--motion-duration-slow) var(--motion-easing-out) both;
+  animation: gauntlet-rise var(--motion-duration-slow) var(--motion-easing-out) forwards;
 }
 .gx-rise > :nth-child(1) { animation-delay: 0ms; }
 .gx-rise > :nth-child(2) { animation-delay: 60ms; }
@@ -173,6 +187,12 @@
 .gx-rise > :nth-child(4) { animation-delay: 180ms; }
 .gx-rise > :nth-child(5) { animation-delay: 240ms; }
 .gx-rise > :nth-child(6) { animation-delay: 300ms; }
+@media (prefers-reduced-motion: reduce) {
+  .gx-rise > * { animation: none; }
+  .gx-aurora    { animation: none; }
+  .gx-dot       { animation: none; }
+  .gx-shimmer   { animation: none; }
+}
 
 /* ── Sparkline / volume bar ───────────────────────────────────── */
 .gx-bar-track {
