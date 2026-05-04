@@ -5,13 +5,26 @@
 
 import type { DomAction } from './dom-actions';
 
-// LOCALHOST TEST BUILD — points at the dev backend on
-// http://localhost:3002. To run against the deployed Railway backend
-// instead, switch this constant back to the Railway URL and rebuild.
-// This branch (claude/sprint-2-visao-localhost) exists ONLY for local
-// smoke testing while the new /composer/dom_plan routes aren't on
-// Railway yet.
-const DEFAULT_BACKEND = 'http://localhost:3002';
+// Production backend (Railway). For local dev against the FastAPI server
+// on http://localhost:3002, build the extension with:
+//
+//     VITE_BACKEND_URL=http://localhost:3002 npm run build
+//
+// host_permissions in wxt.config.ts already covers both URLs, so a build
+// override is enough — no manifest edit required.
+const PRODUCTION_BACKEND =
+  'https://ruberra-backend-jkpf-production.up.railway.app';
+
+const BUILD_TIME_BACKEND: string | undefined =
+  typeof import.meta !== 'undefined'
+    ? (import.meta as { env?: Record<string, string | undefined> }).env
+        ?.VITE_BACKEND_URL
+    : undefined;
+
+const DEFAULT_BACKEND = (BUILD_TIME_BACKEND ?? PRODUCTION_BACKEND).replace(
+  /\/+$/,
+  '',
+);
 
 export type ContextSource =
   | 'browser'
