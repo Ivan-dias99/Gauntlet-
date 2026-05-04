@@ -33,6 +33,13 @@ export interface CapsuleProps {
   // window fallback) the "Acionar" button hides — the popup has no
   // page to actuate against.
   executor?: (actions: DomAction[]) => Promise<DomActionResult[]>;
+  // Last known cursor position, in viewport coordinates. Used as the
+  // anchor when there is no text selection — without it we'd fall
+  // back to the bottom-of-screen strip, which is the opposite of
+  // "ponta do cursor". When both bbox and cursor are absent (rare:
+  // hotkey before any pointer activity), the strip still serves as
+  // the orientation fallback.
+  cursorAnchor?: { x: number; y: number } | null;
 }
 
 type Phase =
@@ -50,6 +57,7 @@ export function Capsule({
   initialSnapshot,
   onDismiss,
   executor,
+  cursorAnchor,
 }: CapsuleProps) {
   const [snapshot, setSnapshot] = useState<SelectionSnapshot>(initialSnapshot);
   const [userInput, setUserInput] = useState('');
@@ -192,11 +200,26 @@ export function Capsule({
     }
   }, [executor, plan, hasDanger, dangerConfirmed]);
 
-  // When the capsule has a real bbox, anchor it next to the user's
-  // selection — that's literal "ponta do cursor". Without a bbox (icon
-  // click, no selection) we fall back to the strip layout pinned to the
-  // bottom of the viewport, which keeps the user oriented.
-  const anchor = useMemo<SelectionRect | null>(() => snapshot.bbox, [snapshot.bbox]);
+  // Where to anchor the capsule, in priority order:
+  //   1. Selection bbox — the user is pointing at specific text.
+  //   2. Cursor position — no selection, but we know where the mouse
+  //      was last seen on the page; treat that as a zero-size rect so
+  //      computeAnchorPosition's flip-up/flip-down + clamp logic keeps
+  //      working unchanged.
+  //   3. Null — the strip layout pinned to the bottom of the viewport
+  //      catches us as the last-resort orientation fallback.
+  const anchor = useMemo<SelectionRect | null>(() => {
+    if (snapshot.bbox) return snapshot.bbox;
+    if (cursorAnchor) {
+      return {
+        x: cursorAnchor.x,
+        y: cursorAnchor.y,
+        width: 0,
+        height: 0,
+      };
+    }
+    return null;
+  }, [snapshot.bbox, cursorAnchor]);
   const anchoredStyle = useMemo<React.CSSProperties | undefined>(() => {
     if (!anchor) return undefined;
     const pos = computeAnchorPosition(anchor);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Capsule, CAPSULE_CSS } from './Capsule';
 import { Pill, PILL_CSS } from './Pill';
 import { ComposerClient } from '../lib/composer-client';
@@ -23,9 +23,19 @@ const client = new ComposerClient();
 // currently rendered.
 export const GAUNTLET_SHADOW_CSS = CAPSULE_CSS + PILL_CSS;
 
+interface CursorPoint {
+  x: number;
+  y: number;
+}
+
 type Surface =
   | { kind: 'pill' }
-  | { kind: 'capsule'; snapshot: SelectionSnapshot; nonce: number }
+  | {
+      kind: 'capsule';
+      snapshot: SelectionSnapshot;
+      cursor: CursorPoint | null;
+      nonce: number;
+    }
   | { kind: 'gone' };
 
 // App — the state container that lives in the content script's shadow
@@ -43,6 +53,22 @@ export function App() {
   // the dismiss callback closes over the latest value via the
   // dependency array.
   const [domainDismissed, setDomainDismissed] = useState(false);
+
+  // Last known cursor position on the page. The hotkey doesn't carry
+  // pointer coordinates, so without this ref we'd have nothing to
+  // anchor to when the user summons without a text selection — and the
+  // capsule would fall back to the bottom strip, far from where they
+  // were actually working. Keep it as a ref (not state) because we
+  // don't want to re-render on every mousemove.
+  const lastCursorRef = useRef<CursorPoint | null>(null);
+
+  useEffect(() => {
+    function track(ev: MouseEvent) {
+      lastCursorRef.current = { x: ev.clientX, y: ev.clientY };
+    }
+    window.addEventListener('mousemove', track, { passive: true });
+    return () => window.removeEventListener('mousemove', track);
+  }, []);
 
   // Load persisted pill prefs once at mount. Until they resolve we
   // render the pill at the default position — there's no flash because
@@ -87,6 +113,7 @@ export function App() {
     setSurface((prev) => ({
       kind: 'capsule',
       snapshot: readSelectionSnapshot(),
+      cursor: lastCursorRef.current,
       nonce: prev.kind === 'capsule' ? prev.nonce + 1 : 1,
     }));
   }, []);
@@ -156,6 +183,7 @@ export function App() {
       key={surface.nonce}
       client={client}
       initialSnapshot={surface.snapshot}
+      cursorAnchor={surface.cursor}
       onDismiss={dismiss}
       executor={executeDomActions}
     />
