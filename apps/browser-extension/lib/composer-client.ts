@@ -5,7 +5,13 @@
 
 import type { DomAction } from './dom-actions';
 
-const DEFAULT_BACKEND = 'https://ruberra-backend-jkpf-production.up.railway.app';
+// LOCALHOST TEST BUILD — points at the dev backend on
+// http://localhost:3002. To run against the deployed Railway backend
+// instead, switch this constant back to the Railway URL and rebuild.
+// This branch (claude/sprint-2-visao-localhost) exists ONLY for local
+// smoke testing while the new /composer/dom_plan routes aren't on
+// Railway yet.
+const DEFAULT_BACKEND = 'http://localhost:3002';
 
 export type ContextSource =
   | 'browser'
