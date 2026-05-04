@@ -28,8 +28,16 @@ export interface PillProps {
 // no-op drag and feel laggy.
 const DRAG_THRESHOLD_PX = 4;
 
+// After this many ms with no pointer movement on the page, the pill
+// fades and the dot stops pulsing. The doctrine ("personalidade tem
+// custo, cada animação tem de servir o flow") says we should not burn
+// ink while the user is concentrated. Any mousemove resets the timer;
+// hovering over the pill cancels the idle state outright.
+const IDLE_AFTER_MS = 30_000;
+
 export function Pill({ position, onClick, onDismissDomain }: PillProps) {
   const [pos, setPos] = useState<PillPosition>(position);
+  const [idle, setIdle] = useState(false);
   const dragStateRef = useRef<{
     pressX: number;
     pressY: number;
@@ -38,6 +46,7 @@ export function Pill({ position, onClick, onDismissDomain }: PillProps) {
     armed: boolean;
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const idleTimerRef = useRef<number | null>(null);
 
   // Sync incoming prop changes (e.g. App finished loading prefs from
   // storage after the initial render). Only when the prop actually
@@ -45,6 +54,31 @@ export function Pill({ position, onClick, onDismissDomain }: PillProps) {
   useEffect(() => {
     setPos(position);
   }, [position.bottom, position.right]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mousemove anywhere on the page resets the idle timer. Pointer
+  // entering / leaving the pill itself short-circuits the timer too.
+  // We keep the listener passive so we never fight scroll handlers.
+  useEffect(() => {
+    function reset() {
+      if (idleTimerRef.current !== null) {
+        window.clearTimeout(idleTimerRef.current);
+      }
+      setIdle((prev) => (prev ? false : prev));
+      idleTimerRef.current = window.setTimeout(() => {
+        setIdle(true);
+      }, IDLE_AFTER_MS);
+    }
+    reset();
+    window.addEventListener('mousemove', reset, { passive: true });
+    window.addEventListener('keydown', reset, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', reset);
+      window.removeEventListener('keydown', reset);
+      if (idleTimerRef.current !== null) {
+        window.clearTimeout(idleTimerRef.current);
+      }
+    };
+  }, []);
 
   const onPointerDown = useCallback(
     (ev: React.PointerEvent<HTMLButtonElement>) => {
@@ -131,11 +165,12 @@ export function Pill({ position, onClick, onDismissDomain }: PillProps) {
     <button
       ref={buttonRef}
       type="button"
-      className="gauntlet-pill"
+      className={`gauntlet-pill${idle ? ' gauntlet-pill--idle' : ''}`}
       style={{ bottom: `${pos.bottom}px`, right: `${pos.right}px` }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onPointerEnter={() => setIdle(false)}
       onContextMenu={onContextMenu}
       aria-label="Summon Gauntlet capsule"
       title="Click: abrir · Drag: mover · Right-click: esconder neste domínio"
@@ -164,18 +199,18 @@ export const PILL_CSS = `
 
 .gauntlet-pill {
   position: fixed;
-  width: 32px;
-  height: 32px;
+  width: 18px;
+  height: 18px;
   padding: 0;
   border-radius: 50%;
   background: rgba(14, 16, 22, 0.92);
   border: 1px solid rgba(208, 122, 90, 0.45);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 0 22px rgba(208, 122, 90, 0.30),
-    0 8px 20px rgba(0, 0, 0, 0.45);
-  backdrop-filter: saturate(1.4) blur(20px);
-  -webkit-backdrop-filter: saturate(1.4) blur(20px);
+    0 0 14px rgba(208, 122, 90, 0.28),
+    0 4px 12px rgba(0, 0, 0, 0.40);
+  backdrop-filter: saturate(1.4) blur(16px);
+  -webkit-backdrop-filter: saturate(1.4) blur(16px);
   cursor: grab;
   display: flex;
   align-items: center;
@@ -185,33 +220,46 @@ export const PILL_CSS = `
   transition:
     transform 160ms cubic-bezier(0.2, 0, 0, 1),
     box-shadow 160ms cubic-bezier(0.2, 0, 0, 1),
-    border-color 160ms ease;
+    border-color 160ms ease,
+    opacity 600ms ease,
+    width 200ms cubic-bezier(0.2, 0, 0, 1),
+    height 200ms cubic-bezier(0.2, 0, 0, 1);
   animation: gauntlet-pill-rise 320ms cubic-bezier(0.2, 0, 0, 1) both;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
 }
 .gauntlet-pill:hover {
+  width: 24px;
+  height: 24px;
   transform: translateY(-2px);
   border-color: rgba(208, 122, 90, 0.65);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 0 30px rgba(208, 122, 90, 0.55),
-    0 12px 28px rgba(0, 0, 0, 0.55);
+    0 0 26px rgba(208, 122, 90, 0.55),
+    0 8px 22px rgba(0, 0, 0, 0.55);
 }
 .gauntlet-pill:active {
   cursor: grabbing;
-  transform: translateY(0) scale(0.96);
+  transform: translateY(0) scale(0.94);
 }
 .gauntlet-pill:focus-visible {
   outline: 2px solid rgba(208, 122, 90, 0.7);
   outline-offset: 3px;
 }
+/* Idle: dim and quiet. Activity (mousemove, hover, keydown) brings
+   the pill back to full presence in the same tick the listener fires. */
+.gauntlet-pill--idle {
+  opacity: 0.32;
+}
+.gauntlet-pill--idle .gauntlet-pill__dot {
+  animation-play-state: paused;
+}
 .gauntlet-pill__mark {
   position: relative;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
   background:
     radial-gradient(60% 60% at 30% 30%, rgba(208, 122, 90, 0.95), rgba(208, 122, 90, 0.45) 60%, transparent 100%),
     #1a1d26;
@@ -222,11 +270,11 @@ export const PILL_CSS = `
   pointer-events: none;
 }
 .gauntlet-pill__dot {
-  width: 4px;
-  height: 4px;
+  width: 2.5px;
+  height: 2.5px;
   border-radius: 50%;
   background: #f4c4ad;
-  box-shadow: 0 0 8px rgba(244, 196, 173, 0.85);
+  box-shadow: 0 0 6px rgba(244, 196, 173, 0.85);
   animation: gauntlet-pill-pulse 2.4s ease-in-out infinite;
 }
 `;

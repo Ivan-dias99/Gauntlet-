@@ -88,15 +88,16 @@ export async function isDomainDismissed(hostname: string): Promise<boolean> {
 }
 
 // Keep the pill on-screen even when the viewport is tiny or the user
-// somehow persisted a wild position. The pill itself is 32px wide; we
-// always want at least 4px of it visible.
+// somehow persisted a wild position. The pill itself is 18px wide at
+// rest (24px on hover, but base position is what's stored); we always
+// want at least 4px of it visible.
 function clampPosition(pos: PillPosition): PillPosition {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const PILL = 32;
+  const PILL = 18;
   const MIN_VISIBLE = 4;
-  const maxRight = vw - MIN_VISIBLE - 0;
-  const maxBottom = vh - MIN_VISIBLE - 0;
+  const maxRight = vw - MIN_VISIBLE;
+  const maxBottom = vh - MIN_VISIBLE;
   return {
     right: Math.max(-(PILL - MIN_VISIBLE), Math.min(maxRight, pos.right)),
     bottom: Math.max(-(PILL - MIN_VISIBLE), Math.min(maxBottom, pos.bottom)),
