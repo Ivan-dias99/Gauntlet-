@@ -306,6 +306,23 @@ export function Capsule({
             </div>
           </form>
 
+          {phase === 'planning' && (
+            <section
+              className="gauntlet-capsule__skeleton"
+              role="status"
+              aria-live="polite"
+              aria-label="A pensar..."
+            >
+              <header className="gauntlet-capsule__skeleton-header">
+                <span className="gauntlet-capsule__skeleton-tag" />
+                <span className="gauntlet-capsule__skeleton-meta" />
+              </header>
+              <div className="gauntlet-capsule__skeleton-line gauntlet-capsule__skeleton-line--w90" />
+              <div className="gauntlet-capsule__skeleton-line gauntlet-capsule__skeleton-line--w75" />
+              <div className="gauntlet-capsule__skeleton-line gauntlet-capsule__skeleton-line--w55" />
+            </section>
+          )}
+
           {plan?.compose && phase === 'plan_ready' && (
             <section className="gauntlet-capsule__compose-result">
               <header className="gauntlet-capsule__compose-meta">
@@ -1013,6 +1030,53 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__actuate:disabled {
   opacity: 0.45; cursor: not-allowed;
 }
+
+/* ── Skeleton (perceived speed during the planning roundtrip) ──
+   We can't stream tokens yet (Sprint 1.4-A), but a shimmering
+   placeholder turns 1.5–4s of model latency from "spinner silence"
+   into "the capsule is thinking". The shimmer reads as activity even
+   if nothing else changes on screen. */
+@keyframes gauntlet-cap-shimmer {
+  0%   { background-position: -240px 0; }
+  100% { background-position:  240px 0; }
+}
+.gauntlet-capsule__skeleton {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(8, 9, 13, 0.5);
+  border: 1px solid var(--gx-border);
+  border-radius: 10px;
+  animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gauntlet-capsule__skeleton-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 2px;
+}
+.gauntlet-capsule__skeleton-tag,
+.gauntlet-capsule__skeleton-meta,
+.gauntlet-capsule__skeleton-line {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04) 0%,
+      rgba(208, 122, 90, 0.18) 50%,
+      rgba(255, 255, 255, 0.04) 100%
+    );
+  background-size: 240px 100%;
+  background-repeat: no-repeat;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  animation: gauntlet-cap-shimmer 1.4s ease-in-out infinite;
+}
+.gauntlet-capsule__skeleton-tag   { width: 56px; height: 14px; border-radius: 4px; }
+.gauntlet-capsule__skeleton-meta  { width: 140px; height: 10px; border-radius: 3px; }
+.gauntlet-capsule__skeleton-line  { height: 11px; border-radius: 3px; }
+.gauntlet-capsule__skeleton-line--w90 { width: 90%; animation-delay: 0ms; }
+.gauntlet-capsule__skeleton-line--w75 { width: 75%; animation-delay: 120ms; }
+.gauntlet-capsule__skeleton-line--w55 { width: 55%; animation-delay: 240ms; }
 
 /* ── Compose response (inline text answer) ── */
 .gauntlet-capsule__compose-result {
