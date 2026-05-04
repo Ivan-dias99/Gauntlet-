@@ -1,7 +1,9 @@
-// Composer client — talks to /composer/{context,intent,preview,apply}.
+// Composer client — talks to /composer/{context,intent,preview,apply,dom_plan}.
 // V0 scope: deterministic HTTP, no streaming, no retries beyond a single
 // transport-level catch. Auth header wiring lands in Operação 4 with the
 // Control Center settings.
+
+import type { DomAction } from './dom-actions';
 
 const DEFAULT_BACKEND = 'https://ruberra-backend-jkpf-production.up.railway.app';
 
@@ -66,6 +68,16 @@ export interface ApplyResult {
   status: 'applied' | 'rejected' | 'failed' | 'skipped';
   ledger_event_id: string | null;
   error: string | null;
+}
+
+export interface DomPlanResult {
+  plan_id: string;
+  context_id: string;
+  actions: DomAction[];
+  reason: string | null;
+  model_used: string;
+  latency_ms: number;
+  raw_response: string | null;
 }
 
 export interface ComposerClientOptions {
@@ -222,6 +234,21 @@ export class ComposerClient {
         approved,
         approval_reason: approvalReason ?? null,
       },
+      signal,
+    );
+  }
+
+  // DOM-action planner — natural language → typed list of DOM actions
+  // the content script will execute on approval. The route does not go
+  // through the triad/agent loop; it's a single-shot strict-JSON call.
+  requestDomPlan(
+    contextId: string,
+    userInput: string,
+    signal?: AbortSignal,
+  ): Promise<DomPlanResult> {
+    return postJson(
+      `${this.backendUrl}/composer/dom_plan`,
+      { context_id: contextId, user_input: userInput },
       signal,
     );
   }

@@ -11,7 +11,9 @@ import {
   composeOnce,
   type ComposeResult,
   type ContextCaptureRequest,
+  type DomPlanResult,
 } from '../lib/composer-client';
+import type { DomAction, DomActionResult } from '../lib/dom-actions';
 import {
   readSelectionSnapshot,
   type SelectionRect,
@@ -22,17 +24,36 @@ export interface CapsuleProps {
   client: ComposerClient;
   initialSnapshot: SelectionSnapshot;
   onDismiss: () => void;
+  // Provided by the in-page content script. When undefined (popup
+  // window fallback) the "Acionar" button hides — the popup has no
+  // page to actuate against.
+  executor?: (actions: DomAction[]) => Promise<DomActionResult[]>;
 }
 
-type Phase = 'idle' | 'composing' | 'ready' | 'error';
+type Phase =
+  | 'idle'
+  | 'composing'
+  | 'ready'
+  | 'error'
+  | 'planning'
+  | 'plan_ready'
+  | 'executing'
+  | 'executed';
 
-export function Capsule({ client, initialSnapshot, onDismiss }: CapsuleProps) {
+export function Capsule({
+  client,
+  initialSnapshot,
+  onDismiss,
+  executor,
+}: CapsuleProps) {
   const [snapshot, setSnapshot] = useState<SelectionSnapshot>(initialSnapshot);
   const [userInput, setUserInput] = useState('');
   const [phase, setPhase] = useState<Phase>('idle');
   const [result, setResult] = useState<ComposeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [plan, setPlan] = useState<DomPlanResult | null>(null);
+  const [planResults, setPlanResults] = useState<DomActionResult[] | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -62,20 +83,7 @@ export function Capsule({ client, initialSnapshot, onDismiss }: CapsuleProps) {
     setError(null);
     setResult(null);
     setCopied(false);
-    // Carry the live page text and selection bbox through metadata so the
-    // backend (and any future tool that wants real page context) sees more
-    // than just the URL + title. Backwards-compatible: the existing
-    // /composer/context handler ignores unknown metadata keys.
-    const metadata: Record<string, unknown> = {};
-    if (snapshot.pageText) metadata.page_text = snapshot.pageText;
-    if (snapshot.bbox) metadata.selection_bbox = snapshot.bbox;
-    const capture: ContextCaptureRequest = {
-      source: 'browser',
-      url: snapshot.url,
-      page_title: snapshot.pageTitle,
-      selection: snapshot.text || undefined,
-      metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
-    };
+    const capture = buildCapture(snapshot);
     try {
       const r = await composeOnce(client, capture, userInput.trim(), ac.signal);
       setResult(r);
@@ -119,6 +127,48 @@ export function Capsule({ client, initialSnapshot, onDismiss }: CapsuleProps) {
       setError('Clipboard write blocked. Select the preview and copy manually.');
     }
   }, [result]);
+
+  const requestPlan = useCallback(async () => {
+    if (!executor) return;
+    if (!userInput.trim() || phase === 'planning' || phase === 'executing') return;
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    setPhase('planning');
+    setError(null);
+    setPlan(null);
+    setPlanResults(null);
+    setResult(null);
+    const capture = buildCapture(snapshot);
+    try {
+      const ctx = await client.captureContext(capture, ac.signal);
+      const planResult = await client.requestDomPlan(
+        ctx.context_id,
+        userInput.trim(),
+        ac.signal,
+      );
+      setPlan(planResult);
+      setPhase('plan_ready');
+    } catch (err: unknown) {
+      if (ac.signal.aborted) return;
+      setError(err instanceof Error ? err.message : String(err));
+      setPhase('error');
+    }
+  }, [client, snapshot, userInput, phase, executor]);
+
+  const executePlan = useCallback(async () => {
+    if (!executor || !plan || plan.actions.length === 0) return;
+    setPhase('executing');
+    setError(null);
+    try {
+      const results = await executor(plan.actions);
+      setPlanResults(results);
+      setPhase('executed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+      setPhase('error');
+    }
+  }, [executor, plan]);
 
   // When the capsule has a real bbox, anchor it next to the user's
   // selection — that's literal "ponta do cursor". Without a bbox (icon
@@ -205,29 +255,102 @@ export function Capsule({ client, initialSnapshot, onDismiss }: CapsuleProps) {
               onChange={(ev) => setUserInput(ev.target.value)}
               onKeyDown={onTextareaKey}
               rows={2}
-              disabled={phase === 'composing'}
+              disabled={phase === 'composing' || phase === 'planning' || phase === 'executing'}
             />
             <div className="gauntlet-capsule__actions">
               <span className="gauntlet-capsule__hint" aria-hidden>
                 <span className="gauntlet-capsule__kbd">⌘</span>
                 <span className="gauntlet-capsule__kbd">↵</span>
               </span>
-              <button
-                type="submit"
-                className="gauntlet-capsule__compose"
-                disabled={phase === 'composing' || !userInput.trim()}
-              >
-                {phase === 'composing' ? (
-                  <>
-                    <span className="gauntlet-capsule__compose-spinner" aria-hidden />
-                    <span>compondo</span>
-                  </>
-                ) : (
-                  'Compor'
+              <div className="gauntlet-capsule__action-buttons">
+                {executor && (
+                  <button
+                    type="button"
+                    className="gauntlet-capsule__actuate"
+                    onClick={() => void requestPlan()}
+                    disabled={phase === 'planning' || phase === 'executing' || !userInput.trim()}
+                    title="Plan DOM actions and execute on this page"
+                  >
+                    {phase === 'planning' ? (
+                      <>
+                        <span className="gauntlet-capsule__compose-spinner" aria-hidden />
+                        <span>planeando</span>
+                      </>
+                    ) : (
+                      'Acionar'
+                    )}
+                  </button>
                 )}
-              </button>
+                <button
+                  type="submit"
+                  className="gauntlet-capsule__compose"
+                  disabled={phase === 'composing' || phase === 'planning' || !userInput.trim()}
+                >
+                  {phase === 'composing' ? (
+                    <>
+                      <span className="gauntlet-capsule__compose-spinner" aria-hidden />
+                      <span>compondo</span>
+                    </>
+                  ) : (
+                    'Compor'
+                  )}
+                </button>
+              </div>
             </div>
           </form>
+
+          {plan && (phase === 'plan_ready' || phase === 'executing' || phase === 'executed') && (
+            <section className="gauntlet-capsule__plan">
+              <header className="gauntlet-capsule__plan-header">
+                <span className="gauntlet-capsule__plan-title">plano</span>
+                <span className="gauntlet-capsule__plan-meta">
+                  {plan.actions.length} action{plan.actions.length === 1 ? '' : 's'}
+                  {' · '}
+                  {plan.model_used}
+                  {' · '}
+                  {plan.latency_ms} ms
+                </span>
+              </header>
+              {plan.actions.length === 0 ? (
+                <p className="gauntlet-capsule__plan-empty">
+                  {plan.reason ?? 'Modelo não conseguiu planear.'}
+                </p>
+              ) : (
+                <ol className="gauntlet-capsule__plan-list">
+                  {plan.actions.map((a, i) => {
+                    const r = planResults?.[i];
+                    const status = r ? (r.ok ? 'ok' : 'fail') : 'pending';
+                    return (
+                      <li
+                        key={`${i}-${a.type}-${a.selector}`}
+                        className={`gauntlet-capsule__plan-item gauntlet-capsule__plan-item--${status}`}
+                      >
+                        <span className="gauntlet-capsule__plan-step">{i + 1}</span>
+                        <span className="gauntlet-capsule__plan-desc">{describeAction(a)}</span>
+                        {r && !r.ok && (
+                          <span className="gauntlet-capsule__plan-err" title={r.error}>
+                            {r.error}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+              {plan.actions.length > 0 && phase !== 'executed' && (
+                <div className="gauntlet-capsule__plan-actions">
+                  <button
+                    type="button"
+                    className="gauntlet-capsule__execute"
+                    onClick={() => void executePlan()}
+                    disabled={phase === 'executing'}
+                  >
+                    {phase === 'executing' ? 'executando…' : 'Executar'}
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
 
           {phase === 'error' && error && (
             <div className="gauntlet-capsule__error" role="alert">
@@ -309,6 +432,37 @@ export function Capsule({ client, initialSnapshot, onDismiss }: CapsuleProps) {
 function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
   return s.slice(0, max) + '…';
+}
+
+// Carry the live page text, DOM skeleton and selection bbox through
+// metadata so the backend (and the DOM-action planner in particular)
+// has real selectors and live page context to work with. Backwards
+// compatible: /composer/context ignores unknown metadata keys.
+function buildCapture(snapshot: SelectionSnapshot): ContextCaptureRequest {
+  const metadata: Record<string, unknown> = {};
+  if (snapshot.pageText) metadata.page_text = snapshot.pageText;
+  if (snapshot.domSkeleton) metadata.dom_skeleton = snapshot.domSkeleton;
+  if (snapshot.bbox) metadata.selection_bbox = snapshot.bbox;
+  return {
+    source: 'browser',
+    url: snapshot.url,
+    page_title: snapshot.pageTitle,
+    selection: snapshot.text || undefined,
+    metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+  };
+}
+
+function describeAction(action: DomAction): string {
+  switch (action.type) {
+    case 'fill':
+      return `fill ${action.selector} ← "${truncate(action.value, 80)}"`;
+    case 'click':
+      return `click ${action.selector}`;
+    case 'highlight':
+      return `highlight ${action.selector}`;
+    case 'scroll_to':
+      return `scroll to ${action.selector}`;
+  }
 }
 
 // Where to put the anchored capsule. Prefers below the selection; flips
@@ -819,4 +973,139 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__refusal p { margin: 0 0 8px; line-height: 1.5; }
 .gauntlet-capsule__refusal ul { margin: 8px 0 0; padding-left: 18px; }
 .gauntlet-capsule__refusal li { margin: 3px 0; }
+
+/* ── Action-buttons row ── */
+.gauntlet-capsule__action-buttons {
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.gauntlet-capsule__actuate {
+  background: rgba(208, 122, 90, 0.12);
+  color: #f4c4ad;
+  border: 1px solid rgba(208, 122, 90, 0.45);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: background 120ms ease, transform 120ms ease, opacity 120ms ease;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.gauntlet-capsule__actuate:hover:not(:disabled) {
+  background: rgba(208, 122, 90, 0.22);
+  transform: translateY(-1px);
+}
+.gauntlet-capsule__actuate:disabled {
+  opacity: 0.45; cursor: not-allowed;
+}
+
+/* ── Plan section ── */
+.gauntlet-capsule__plan {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(8, 9, 13, 0.5);
+  border: 1px solid var(--gx-border);
+  border-radius: 10px;
+  animation: gauntlet-cap-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__plan-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.gauntlet-capsule__plan-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f4c4ad;
+  padding: 2px 8px;
+  background: rgba(208, 122, 90, 0.20);
+  border: 1px solid rgba(208, 122, 90, 0.35);
+  border-radius: 4px;
+}
+.gauntlet-capsule__plan-meta {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--gx-fg-muted);
+}
+.gauntlet-capsule__plan-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gx-fg-dim);
+  font-style: italic;
+}
+.gauntlet-capsule__plan-list {
+  margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.gauntlet-capsule__plan-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--gx-fg-dim);
+  border: 1px solid transparent;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.gauntlet-capsule__plan-item--ok {
+  background: rgba(122, 180, 138, 0.10);
+  border-color: rgba(122, 180, 138, 0.35);
+  color: #cfe8d3;
+}
+.gauntlet-capsule__plan-item--fail {
+  background: rgba(212, 96, 60, 0.10);
+  border-color: rgba(212, 96, 60, 0.35);
+  color: #f1a4ad;
+}
+.gauntlet-capsule__plan-step {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--gx-fg);
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__plan-desc {
+  flex: 1;
+  word-break: break-all;
+}
+.gauntlet-capsule__plan-err {
+  font-size: 10px;
+  color: #f1a4ad;
+  font-style: italic;
+}
+.gauntlet-capsule__plan-actions {
+  display: flex; justify-content: flex-end; margin-top: 8px;
+}
+.gauntlet-capsule__execute {
+  background: linear-gradient(180deg, #d07a5a 0%, #b65d3f 100%);
+  color: #0e1016;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 6px 18px rgba(208, 122, 90, 0.45);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+.gauntlet-capsule__execute:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.25),
+    0 10px 24px rgba(208, 122, 90, 0.55);
+}
+.gauntlet-capsule__execute:disabled {
+  opacity: 0.45; cursor: not-allowed; transform: none;
+}
 `;

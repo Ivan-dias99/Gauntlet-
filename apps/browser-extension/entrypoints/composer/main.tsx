@@ -47,6 +47,7 @@ root.render(
         url: 'window://composer',
         pageTitle: 'Composer',
         pageText: '',
+        domSkeleton: '',
         bbox: null,
       }}
       onDismiss={() => window.close()}

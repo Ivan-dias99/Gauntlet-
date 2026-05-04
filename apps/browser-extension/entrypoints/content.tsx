@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Capsule, CAPSULE_CSS } from '../components/Capsule';
 import { ComposerClient } from '../lib/composer-client';
+import { executeDomActions } from '../lib/dom-actions';
 import { readSelectionSnapshot } from '../lib/selection';
 
 // Content script — mounts the Gauntlet capsule **inside the page** as a
@@ -95,6 +96,7 @@ export default defineContentScript({
             client={new ComposerClient()}
             initialSnapshot={snapshot}
             onDismiss={dismiss}
+            executor={executeDomActions}
           />
         </StrictMode>,
       );

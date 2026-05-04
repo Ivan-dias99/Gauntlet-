@@ -21,6 +21,7 @@ mount on the same FastAPI app. No per-route work needed here.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from collections import OrderedDict
@@ -39,6 +40,9 @@ from models import (
     ContextCaptureRequest,
     ContextCaptureResponse,
     ContextPackage,
+    DomAction,
+    DomPlanRequest,
+    DomPlanResult,
     IntentKind,
     IntentResult,
     ModelRoute,
@@ -48,6 +52,8 @@ from models import (
     SignalQuery,
     SuggestedAction,
 )
+from model_gateway import GatewayCall, gateway
+from pydantic import TypeAdapter, ValidationError
 from runs import run_store
 
 logger = logging.getLogger("gauntlet.composer")
@@ -458,6 +464,153 @@ async def generate_preview(req: ComposerPreviewRequest) -> PreviewResult:
     return result
 
 
+_DOM_ACTION_ADAPTER = TypeAdapter(list[DomAction])
+
+
+_DOM_PLAN_SYSTEM_PROMPT = """You are Gauntlet's DOM-action planner.
+
+The user is on a live web page. Your job is to translate their request
+into a precise list of DOM actions the browser will execute on the
+page. Only emit actions whose selectors are present in the dom_skeleton
+context section.
+
+Output ONLY a JSON object of the form:
+  {"actions":[<action>,...]}
+
+Action shapes (the "type" field is the discriminator):
+  {"type":"fill","selector":"<css>","value":"<string>"}
+  {"type":"click","selector":"<css>"}
+  {"type":"highlight","selector":"<css>","duration_ms":<int 100..10000>}
+  {"type":"scroll_to","selector":"<css>"}
+
+Hard rules:
+  * No prose, no markdown fences, no explanation — JSON only.
+  * Selectors must be valid CSS selectors. Prefer #id or
+    [name="..."] over fragile structural paths.
+  * If you cannot plan (ambiguous request, missing element, dangerous
+    action like submitting payment forms without explicit confirmation),
+    return {"actions":[],"reason":"<short why in user's language>"}.
+  * Never include actions that target the Gauntlet capsule itself
+    (selectors starting with "gauntlet-" or inside #gauntlet-capsule-host).
+"""
+
+
+def _strip_json_fence(raw: str) -> str:
+    """Some models still wrap JSON in ```json ... ``` despite the
+    instruction. Strip a single leading + trailing fence; everything
+    else is left to the JSON parser to flag."""
+    s = raw.strip()
+    if s.startswith("```"):
+        first_nl = s.find("\n")
+        if first_nl != -1:
+            s = s[first_nl + 1 :]
+        if s.endswith("```"):
+            s = s[: -3]
+    return s.strip()
+
+
+@router.post("/dom_plan", response_model=DomPlanResult)
+async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
+    """Translate a natural-language request into a typed list of DOM
+    actions the browser content script will execute on approval.
+
+    Single-shot model call routed through the gateway. The response is
+    JSON-only; we strip any stray markdown fence and validate against
+    the DomAction discriminated union. Actions that fail validation are
+    dropped silently — the user still sees what survived plus a reason
+    line when the model refused.
+    """
+    ctx = await _contexts.get(req.context_id)
+    if ctx is None:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail={"error": "context_expired"},
+        )
+    assert isinstance(ctx, ContextPackage)
+
+    engine = _get_engine()
+    choice = gateway.select("default")
+    model_id = choice.model_id
+
+    user_msg = (
+        f"Page context:\n{_compose_context_blob(ctx)}\n\n"
+        f"Request: {req.user_input}"
+    )
+
+    started = time.perf_counter()
+    raw_text = ""
+    try:
+        response = await engine._client.messages.create(
+            model=model_id,
+            max_tokens=2000,
+            temperature=0.1,
+            system=_DOM_PLAN_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        for block in response.content:
+            if getattr(block, "type", None) == "text":
+                raw_text += block.text
+        gateway.record(GatewayCall(
+            role="default", model_id=model_id, provider=choice.provider,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+        ))
+    except Exception as exc:  # noqa: BLE001
+        gateway.record(GatewayCall(
+            role="default", model_id=model_id, provider=choice.provider,
+            succeeded=False, error_kind=type(exc).__name__,
+        ))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": "dom_plan_model_failed", "message": str(exc)},
+        )
+
+    latency_ms = int((time.perf_counter() - started) * 1000)
+
+    cleaned = _strip_json_fence(raw_text)
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        logger.warning("dom_plan: model returned non-JSON: %r", raw_text[:300])
+        return DomPlanResult(
+            context_id=req.context_id,
+            actions=[],
+            reason="model returned non-JSON; refusing to execute",
+            model_used=model_id,
+            latency_ms=latency_ms,
+            raw_response=raw_text[:1000],
+        )
+
+    raw_actions = parsed.get("actions") if isinstance(parsed, dict) else None
+    reason = parsed.get("reason") if isinstance(parsed, dict) else None
+
+    actions: list[DomAction] = []
+    if isinstance(raw_actions, list):
+        try:
+            actions = _DOM_ACTION_ADAPTER.validate_python(raw_actions)
+        except ValidationError:
+            # Try to salvage: validate one-by-one, drop the rotten ones.
+            for a in raw_actions:
+                try:
+                    actions.append(_DOM_ACTION_ADAPTER.validate_python([a])[0])
+                except ValidationError:
+                    continue
+
+    logger.info(
+        "composer.dom_plan model=%s latency_ms=%d actions=%d reason=%r",
+        model_id, latency_ms, len(actions), reason,
+    )
+
+    return DomPlanResult(
+        context_id=req.context_id,
+        actions=actions,
+        reason=reason if isinstance(reason, str) else None,
+        model_used=model_id,
+        latency_ms=latency_ms,
+        raw_response=None if actions else raw_text[:1000],
+    )
+
+
 @router.post("/apply", response_model=ApplyResult)
 async def apply_preview(req: ComposerApplyRequest) -> ApplyResult:
     """Stage 4 — apply (or reject) the preview, record the run."""
@@ -622,4 +775,12 @@ def _compose_context_blob(ctx: ContextPackage) -> str:
         lines.append("---")
         lines.append("page_text:")
         lines.append(page_text[:6000])
+    # dom_skeleton is a structured listing of fillable/clickable elements
+    # with their selectors. The DOM-action planner needs real selectors
+    # to avoid hallucinating CSS; without this it would guess and fail.
+    dom_skeleton = ctx.metadata.get("dom_skeleton") if ctx.metadata else None
+    if isinstance(dom_skeleton, str) and dom_skeleton.strip():
+        lines.append("---")
+        lines.append("dom_skeleton:")
+        lines.append(dom_skeleton[:4000])
     return "\n".join(lines)

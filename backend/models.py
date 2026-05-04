@@ -525,3 +525,55 @@ class ApplyResult(BaseModel):
     ledger_event_id: Optional[str] = None
     error: Optional[str] = None
     completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── DOM Actuator (Wave: ponta do cursor executa) ────────────────────────────
+#
+# The browser content script can manipulate the live page DOM. The model
+# emits a typed list of actions; the content script executes them after
+# user approval. Types are kept narrow on purpose — adding a new action
+# requires touching this discriminated union and the matching TS executor
+# in apps/browser-extension/lib/dom-actions.ts.
+
+class DomActionFill(BaseModel):
+    type: Literal["fill"] = "fill"
+    selector: str = Field(min_length=1, max_length=500)
+    value: str = Field(max_length=10_000)
+
+
+class DomActionClick(BaseModel):
+    type: Literal["click"] = "click"
+    selector: str = Field(min_length=1, max_length=500)
+
+
+class DomActionHighlight(BaseModel):
+    type: Literal["highlight"] = "highlight"
+    selector: str = Field(min_length=1, max_length=500)
+    duration_ms: int = Field(default=1500, ge=100, le=10_000)
+
+
+class DomActionScrollTo(BaseModel):
+    type: Literal["scroll_to"] = "scroll_to"
+    selector: str = Field(min_length=1, max_length=500)
+
+
+# Discriminated union — pydantic uses the `type` field to pick the right
+# subclass during validation. Wire format on JSON:
+#   {"type":"fill","selector":"#email","value":"x@y.com"}
+DomAction = DomActionFill | DomActionClick | DomActionHighlight | DomActionScrollTo
+
+
+class DomPlanRequest(BaseModel):
+    context_id: UUID
+    user_input: str = Field(min_length=1, max_length=4000)
+
+
+class DomPlanResult(BaseModel):
+    plan_id: UUID = Field(default_factory=uuid4)
+    context_id: UUID
+    actions: list[DomAction] = Field(default_factory=list)
+    reason: Optional[str] = None
+    model_used: str
+    latency_ms: int
+    raw_response: Optional[str] = None  # kept for debugging when actions=[]
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
