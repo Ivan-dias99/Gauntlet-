@@ -22,6 +22,111 @@ export interface DomActionResult {
   error?: string;
 }
 
+export interface DangerAssessment {
+  danger: boolean;
+  reason?: string;
+}
+
+// Heuristic flags for actions the user should explicitly confirm before
+// the executor runs them. The assessor leans toward false positives —
+// when in doubt, flag it. The cost of an extra confirmation click is a
+// fraction of the cost of an unintended payment, deletion, or
+// password-field overwrite. Caller (Capsule) is responsible for showing
+// the warning and gating the Executar button.
+
+const DANGER_SELECTOR_PATTERNS: RegExp[] = [
+  /\bpassword\b/i,
+  /\bdelete\b/i,
+  /\bdestroy\b/i,
+  /\bremove\b/i,
+  /\bunsubscribe\b/i,
+  /payment|checkout|billing/i,
+  /credit[-_ ]?card|\bccnum\b|\bcvv\b|\bcvc\b/i,
+];
+
+// Verb-as-button-text — matches the entire trimmed innerText (or a
+// suffix/prefix like "Delete account") rather than substring so
+// "Delete" flags but "Deleted at 12:00" doesn't.
+const DANGER_VERBS = [
+  'delete', 'remove', 'destroy', 'drop', 'discard',
+  'apagar', 'eliminar', 'remover', 'destruir',
+  'pay', 'buy', 'purchase', 'order', 'checkout',
+  'pagar', 'comprar', 'encomendar',
+  'confirm', 'submit', 'send', 'publish',
+  'enviar', 'confirmar', 'publicar',
+  'transfer', 'withdraw', 'transferir', 'levantar',
+  'cancel subscription', 'cancelar subscrição', 'cancelar assinatura',
+];
+
+const FILL_VALUE_DANGER_LEN = 5000;
+
+export function assessDanger(action: DomAction): DangerAssessment {
+  // Read-only / visual actions are always safe.
+  if (action.type === 'highlight' || action.type === 'scroll_to') {
+    return { danger: false };
+  }
+
+  const sel = action.selector;
+  for (const re of DANGER_SELECTOR_PATTERNS) {
+    if (re.test(sel)) {
+      return { danger: true, reason: `selector matches /${re.source}/` };
+    }
+  }
+
+  let el: Element | null = null;
+  try {
+    el = document.querySelector(sel);
+  } catch {
+    // Invalid CSS — let the executor's own validation surface this.
+  }
+
+  if (action.type === 'fill') {
+    if (el instanceof HTMLInputElement && el.type === 'password') {
+      return { danger: true, reason: 'password field' };
+    }
+    if (
+      el instanceof HTMLInputElement &&
+      (el.autocomplete?.includes('cc-') ?? false)
+    ) {
+      return { danger: true, reason: 'credit-card autocomplete' };
+    }
+    if (action.value.length > FILL_VALUE_DANGER_LEN) {
+      return { danger: true, reason: 'unusually long value' };
+    }
+    return { danger: false };
+  }
+
+  if (action.type === 'click') {
+    if (el instanceof HTMLButtonElement && el.type === 'submit') {
+      return { danger: true, reason: 'submit button' };
+    }
+    if (
+      el instanceof HTMLInputElement &&
+      (el.type === 'submit' || el.type === 'reset')
+    ) {
+      return { danger: true, reason: `${el.type} button` };
+    }
+    if (el instanceof HTMLElement) {
+      const text = (el.innerText ?? '').trim().toLowerCase();
+      if (text) {
+        for (const verb of DANGER_VERBS) {
+          if (
+            text === verb ||
+            text.startsWith(verb + ' ') ||
+            text.endsWith(' ' + verb) ||
+            text.includes(' ' + verb + ' ')
+          ) {
+            return { danger: true, reason: `action label: "${verb}"` };
+          }
+        }
+      }
+    }
+    return { danger: false };
+  }
+
+  return { danger: false };
+}
+
 export async function executeDomActions(
   actions: DomAction[],
 ): Promise<DomActionResult[]> {

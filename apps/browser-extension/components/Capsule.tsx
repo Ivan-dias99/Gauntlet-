@@ -13,7 +13,12 @@ import {
   type ContextCaptureRequest,
   type DomPlanResult,
 } from '../lib/composer-client';
-import type { DomAction, DomActionResult } from '../lib/dom-actions';
+import {
+  assessDanger,
+  type DangerAssessment,
+  type DomAction,
+  type DomActionResult,
+} from '../lib/dom-actions';
 import {
   readSelectionSnapshot,
   type SelectionRect,
@@ -54,8 +59,20 @@ export function Capsule({
   const [copied, setCopied] = useState(false);
   const [plan, setPlan] = useState<DomPlanResult | null>(null);
   const [planResults, setPlanResults] = useState<DomActionResult[] | null>(null);
+  const [dangerConfirmed, setDangerConfirmed] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Danger assessment runs in-page (where document.querySelector resolves
+  // against the live DOM) so each action gets per-element classification
+  // — submit buttons, password inputs, "Delete" labels. Recomputed only
+  // when the plan changes; the result feeds the warning banner and the
+  // danger badges in the action list.
+  const dangers = useMemo<DangerAssessment[]>(
+    () => (plan ? plan.actions.map(assessDanger) : []),
+    [plan],
+  );
+  const hasDanger = dangers.some((d) => d.danger);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -138,6 +155,7 @@ export function Capsule({
     setError(null);
     setPlan(null);
     setPlanResults(null);
+    setDangerConfirmed(false);
     setResult(null);
     const capture = buildCapture(snapshot);
     try {
@@ -158,6 +176,10 @@ export function Capsule({
 
   const executePlan = useCallback(async () => {
     if (!executor || !plan || plan.actions.length === 0) return;
+    // Belt-and-braces: the button is disabled when danger is unconfirmed,
+    // but a stale render or an injected event could still fire onClick.
+    // Refuse to execute here too so the gate isn't only UI-deep.
+    if (hasDanger && !dangerConfirmed) return;
     setPhase('executing');
     setError(null);
     try {
@@ -168,7 +190,7 @@ export function Capsule({
       setError(err instanceof Error ? err.message : String(err));
       setPhase('error');
     }
-  }, [executor, plan]);
+  }, [executor, plan, hasDanger, dangerConfirmed]);
 
   // When the capsule has a real bbox, anchor it next to the user's
   // selection — that's literal "ponta do cursor". Without a bbox (icon
@@ -320,13 +342,24 @@ export function Capsule({
                   {plan.actions.map((a, i) => {
                     const r = planResults?.[i];
                     const status = r ? (r.ok ? 'ok' : 'fail') : 'pending';
+                    const danger = dangers[i];
                     return (
                       <li
                         key={`${i}-${a.type}-${a.selector}`}
-                        className={`gauntlet-capsule__plan-item gauntlet-capsule__plan-item--${status}`}
+                        className={`gauntlet-capsule__plan-item gauntlet-capsule__plan-item--${status}${
+                          danger?.danger ? ' gauntlet-capsule__plan-item--danger' : ''
+                        }`}
                       >
                         <span className="gauntlet-capsule__plan-step">{i + 1}</span>
                         <span className="gauntlet-capsule__plan-desc">{describeAction(a)}</span>
+                        {danger?.danger && (
+                          <span
+                            className="gauntlet-capsule__plan-danger"
+                            title={danger.reason}
+                          >
+                            sensível
+                          </span>
+                        )}
                         {r && !r.ok && (
                           <span className="gauntlet-capsule__plan-err" title={r.error}>
                             {r.error}
@@ -337,15 +370,51 @@ export function Capsule({
                   })}
                 </ol>
               )}
+              {plan.actions.length > 0 && phase !== 'executed' && hasDanger && (
+                <div className="gauntlet-capsule__danger-gate" role="alert">
+                  <header className="gauntlet-capsule__danger-header">
+                    <span className="gauntlet-capsule__danger-mark" aria-hidden>!</span>
+                    <span className="gauntlet-capsule__danger-title">
+                      Acções sensíveis no plano
+                    </span>
+                  </header>
+                  <ul className="gauntlet-capsule__danger-list">
+                    {dangers.map((d, i) =>
+                      d.danger ? (
+                        <li key={`danger-${i}`}>
+                          <strong>step {i + 1}:</strong> {d.reason ?? 'flagged'}
+                        </li>
+                      ) : null,
+                    )}
+                  </ul>
+                  <label className="gauntlet-capsule__danger-confirm">
+                    <input
+                      type="checkbox"
+                      checked={dangerConfirmed}
+                      onChange={(ev) => setDangerConfirmed(ev.target.checked)}
+                      disabled={phase === 'executing'}
+                    />
+                    <span>Confirmo, executar mesmo assim.</span>
+                  </label>
+                </div>
+              )}
               {plan.actions.length > 0 && phase !== 'executed' && (
                 <div className="gauntlet-capsule__plan-actions">
                   <button
                     type="button"
-                    className="gauntlet-capsule__execute"
+                    className={`gauntlet-capsule__execute${
+                      hasDanger ? ' gauntlet-capsule__execute--danger' : ''
+                    }`}
                     onClick={() => void executePlan()}
-                    disabled={phase === 'executing'}
+                    disabled={
+                      phase === 'executing' || (hasDanger && !dangerConfirmed)
+                    }
                   >
-                    {phase === 'executing' ? 'executando…' : 'Executar'}
+                    {phase === 'executing'
+                      ? 'executando…'
+                      : hasDanger
+                        ? 'Executar com cuidado'
+                        : 'Executar'}
                   </button>
                 </div>
               )}
@@ -1107,5 +1176,94 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__execute:disabled {
   opacity: 0.45; cursor: not-allowed; transform: none;
+}
+.gauntlet-capsule__execute--danger {
+  background: linear-gradient(180deg, #d4603c 0%, #a8401e 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 90, 60, 0.35),
+    0 6px 18px rgba(212, 96, 60, 0.55);
+  color: #fff;
+}
+.gauntlet-capsule__execute--danger:hover:not(:disabled) {
+  box-shadow:
+    0 0 0 1px rgba(255, 120, 90, 0.45),
+    0 10px 24px rgba(212, 96, 60, 0.65);
+}
+
+/* ── Per-item danger badge ── */
+.gauntlet-capsule__plan-item--danger {
+  background: rgba(212, 96, 60, 0.08);
+  border-color: rgba(212, 96, 60, 0.30);
+}
+.gauntlet-capsule__plan-danger {
+  flex-shrink: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #f1a4ad;
+  background: rgba(212, 96, 60, 0.18);
+  border: 1px solid rgba(212, 96, 60, 0.45);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* ── Danger gate — explicit confirmation before destructive execution ── */
+.gauntlet-capsule__danger-gate {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(212, 96, 60, 0.10);
+  border: 1px solid rgba(212, 96, 60, 0.40);
+  border-radius: 8px;
+  animation: gauntlet-cap-rise 220ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__danger-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px;
+}
+.gauntlet-capsule__danger-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(212, 96, 60, 0.30);
+  color: #fff;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__danger-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: #f1a4ad;
+}
+.gauntlet-capsule__danger-list {
+  margin: 0 0 8px 0; padding: 0 0 0 24px;
+  font-size: 11px;
+  color: #f1a4ad;
+  line-height: 1.6;
+}
+.gauntlet-capsule__danger-list li { margin: 0; }
+.gauntlet-capsule__danger-list strong {
+  color: #fff;
+  font-weight: 600;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  margin-right: 4px;
+}
+.gauntlet-capsule__danger-confirm {
+  display: inline-flex; align-items: center; gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--gx-fg);
+  user-select: none;
+}
+.gauntlet-capsule__danger-confirm input[type="checkbox"] {
+  width: 14px; height: 14px;
+  accent-color: #d4603c;
+  cursor: pointer;
 }
 `;
