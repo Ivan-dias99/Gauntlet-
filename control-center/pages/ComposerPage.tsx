@@ -376,7 +376,7 @@ function CapsuleMockup() {
             fontSize: 11,
           }}
         >
-          docs.anthropic.com / claude / pricing
+          gauntlet.dev / capsule / preview
         </span>
       </div>
 

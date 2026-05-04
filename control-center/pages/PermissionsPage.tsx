@@ -15,9 +15,9 @@ interface ConnectorRow {
 
 const MATRIX: ConnectorRow[] = [
   {
-    connector: "anthropic",
+    connector: "models",
     glyph: "▲",
-    description: "Engine + agent calls (triad, judge, dev loop).",
+    description: "LLM provider — engine + agent calls (triad, judge, dev loop). Concrete provider (Anthropic / Gemini) is decided server-side by the model gateway.",
     scopes: [{ scope: "models.invoke", granted: true }],
   },
   {
@@ -98,7 +98,7 @@ export default function PermissionsPage() {
               maxWidth: 560,
             }}
           >
-            Anthropic + filesystem + shell are live by default — they back the agent loop's tool
+            Models + filesystem + shell are live by default — they back the agent loop's tool
             registry. GitHub stays declined until OAuth ships.
           </p>
         </div>

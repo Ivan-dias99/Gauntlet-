@@ -9,6 +9,9 @@ interface BootSummary {
   uptime_seconds?: number;
   mode?: string;
   anthropic_api_key_present?: boolean;
+  gemini_api_key_present?: boolean;
+  gemini_model?: string | null;
+  active_provider?: "anthropic" | "gemini" | "mock" | string;
   data_dir?: string;
   persistence_ephemeral?: boolean;
   host?: string;
@@ -312,21 +315,38 @@ function SurfaceTile({
 }
 
 function DiagGrid({ diag }: { diag: Diagnostics }) {
+  // Provider activo: Anthropic se a key estiver presente; senão Gemini se a
+  // sua key estiver presente; senão mock. O backend já calcula isto em
+  // /diagnostics (server.py:828-832); usamos o campo dele e caímos para
+  // inferência local apenas quando o deploy ainda é antigo.
+  const provider =
+    diag.boot?.active_provider ??
+    (diag.boot?.anthropic_api_key_present
+      ? "anthropic"
+      : diag.boot?.gemini_api_key_present
+      ? "gemini"
+      : "mock");
+  const realModel =
+    provider === "gemini"
+      ? diag.boot?.gemini_model ?? "gemini"
+      : diag.model ?? "—";
+  const providerPill =
+    provider === "anthropic" ? (
+      <Pill tone="ok">anthropic · live</Pill>
+    ) : provider === "gemini" ? (
+      <Pill tone="ok">gemini · live</Pill>
+    ) : (
+      <Pill tone="warn">mock only</Pill>
+    );
+
   const rows: Array<[string, React.ReactNode]> = [
     ["system", diag.system ?? "—"],
-    ["primary model", <code style={{ fontFamily: "var(--mono)" }}>{diag.model ?? "—"}</code>],
+    ["provider", providerPill],
+    ["active model", <code style={{ fontFamily: "var(--mono)" }}>{realModel}</code>],
     ["engine_status", diag.engine_status ?? "—"],
     ["uptime_s", String(diag.boot?.uptime_seconds ?? "—")],
     ["started", diag.boot?.start_iso ?? "—"],
     ["mode", diag.boot?.mode ?? "—"],
-    [
-      "anthropic key",
-      diag.boot?.anthropic_api_key_present ? (
-        <Pill tone="ok">present</Pill>
-      ) : (
-        <Pill tone="warn">absent · mock only</Pill>
-      ),
-    ],
     [
       "ephemeral disk",
       diag.boot?.persistence_ephemeral ? (
