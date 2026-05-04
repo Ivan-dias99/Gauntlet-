@@ -74,6 +74,7 @@ export interface DomPlanResult {
   plan_id: string;
   context_id: string;
   actions: DomAction[];
+  compose: string | null;
   reason: string | null;
   model_used: string;
   latency_ms: number;

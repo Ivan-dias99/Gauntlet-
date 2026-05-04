@@ -572,8 +572,13 @@ class DomPlanResult(BaseModel):
     plan_id: UUID = Field(default_factory=uuid4)
     context_id: UUID
     actions: list[DomAction] = Field(default_factory=list)
+    # Inline text answer when the user's input is a question / request
+    # for explanation rather than an action on the page. Mutually
+    # exclusive with `actions` in practice — the capsule renders one
+    # surface or the other based on which is non-empty.
+    compose: Optional[str] = None
     reason: Optional[str] = None
     model_used: str
     latency_ms: int
-    raw_response: Optional[str] = None  # kept for debugging when actions=[]
+    raw_response: Optional[str] = None  # kept for debugging when both empty
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

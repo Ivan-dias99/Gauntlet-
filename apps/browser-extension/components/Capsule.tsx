@@ -3,13 +3,13 @@
 // Doctrine for this file:
 //   * Cursor never leaves the page. Capsule floats, dismissable on Esc.
 //   * Glass + serif headline + mono labels. One ember accent for life.
-//   * Input + Compor + preview + Copy. Nothing else.
+//   * One input. One button. One response. The backend decides whether
+//     the response is a text answer or a list of DOM actions — the
+//     user never has to choose between "Compor" and "Acionar".
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ComposerClient,
-  composeOnce,
-  type ComposeResult,
   type ContextCaptureRequest,
   type DomPlanResult,
 } from '../lib/composer-client';
@@ -44,13 +44,11 @@ export interface CapsuleProps {
 
 type Phase =
   | 'idle'
-  | 'composing'
-  | 'ready'
-  | 'error'
   | 'planning'
   | 'plan_ready'
   | 'executing'
-  | 'executed';
+  | 'executed'
+  | 'error';
 
 export function Capsule({
   client,
@@ -62,7 +60,6 @@ export function Capsule({
   const [snapshot, setSnapshot] = useState<SelectionSnapshot>(initialSnapshot);
   const [userInput, setUserInput] = useState('');
   const [phase, setPhase] = useState<Phase>('idle');
-  const [result, setResult] = useState<ComposeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [plan, setPlan] = useState<DomPlanResult | null>(null);
@@ -99,63 +96,18 @@ export function Capsule({
     return () => window.removeEventListener('keydown', onKey, true);
   }, [onDismiss]);
 
-  const compose = useCallback(async () => {
-    if (!userInput.trim() || phase === 'composing') return;
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-    setPhase('composing');
-    setError(null);
-    setResult(null);
-    setCopied(false);
-    const capture = buildCapture(snapshot);
-    try {
-      const r = await composeOnce(client, capture, userInput.trim(), ac.signal);
-      setResult(r);
-      setPhase('ready');
-    } catch (err: unknown) {
-      if (ac.signal.aborted) return;
-      setError(err instanceof Error ? err.message : String(err));
-      setPhase('error');
-    }
-  }, [client, snapshot, userInput, phase]);
-
-  const onSubmit = useCallback(
-    (ev: React.FormEvent) => {
-      ev.preventDefault();
-      void compose();
-    },
-    [compose],
-  );
-
-  const onTextareaKey = useCallback(
-    (ev: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) {
-        ev.preventDefault();
-        void compose();
-      }
-    },
-    [compose],
-  );
-
   const refreshSnapshot = useCallback(() => {
     setSnapshot(readSelectionSnapshot());
   }, []);
 
-  const onCopy = useCallback(async () => {
-    if (!result) return;
-    try {
-      await navigator.clipboard.writeText(result.preview.artifact.content);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setError('Clipboard write blocked. Select the preview and copy manually.');
-    }
-  }, [result]);
-
+  // The single send path. Backend's /composer/dom_plan decides whether
+  // the response is a list of DOM actions, an inline text answer, or
+  // a refusal — the user never has to choose. Works in popup mode too;
+  // without a DOM the model naturally falls into the compose branch.
   const requestPlan = useCallback(async () => {
-    if (!executor) return;
-    if (!userInput.trim() || phase === 'planning' || phase === 'executing') return;
+    if (!userInput.trim() || phase === 'planning' || phase === 'executing') {
+      return;
+    }
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -164,7 +116,7 @@ export function Capsule({
     setPlan(null);
     setPlanResults(null);
     setDangerConfirmed(false);
-    setResult(null);
+    setCopied(false);
     const capture = buildCapture(snapshot);
     try {
       const ctx = await client.captureContext(capture, ac.signal);
@@ -180,7 +132,38 @@ export function Capsule({
       setError(err instanceof Error ? err.message : String(err));
       setPhase('error');
     }
-  }, [client, snapshot, userInput, phase, executor]);
+  }, [client, snapshot, userInput, phase]);
+
+  const onSubmit = useCallback(
+    (ev: React.FormEvent) => {
+      ev.preventDefault();
+      void requestPlan();
+    },
+    [requestPlan],
+  );
+
+  // Plain Enter submits. Shift+Enter inserts a newline. Cmd/Ctrl+Enter
+  // also submits as a back-compat habit. Matches conventional chat UX.
+  const onTextareaKey = useCallback(
+    (ev: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (ev.key !== 'Enter') return;
+      if (ev.shiftKey) return;
+      ev.preventDefault();
+      void requestPlan();
+    },
+    [requestPlan],
+  );
+
+  const onCopyCompose = useCallback(async () => {
+    if (!plan?.compose) return;
+    try {
+      await navigator.clipboard.writeText(plan.compose);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setError('Clipboard write blocked. Select the text and copy manually.');
+    }
+  }, [plan]);
 
   const executePlan = useCallback(async () => {
     if (!executor || !plan || plan.actions.length === 0) return;
@@ -295,56 +278,66 @@ export function Capsule({
             <textarea
               ref={inputRef}
               className="gauntlet-capsule__input"
-              placeholder="O que queres fazer? — Cmd/Ctrl + Enter to compose"
+              placeholder="O que queres? — Enter para enviar, Shift+Enter nova linha"
               value={userInput}
               onChange={(ev) => setUserInput(ev.target.value)}
               onKeyDown={onTextareaKey}
               rows={2}
-              disabled={phase === 'composing' || phase === 'planning' || phase === 'executing'}
+              disabled={phase === 'planning' || phase === 'executing'}
             />
             <div className="gauntlet-capsule__actions">
               <span className="gauntlet-capsule__hint" aria-hidden>
-                <span className="gauntlet-capsule__kbd">⌘</span>
                 <span className="gauntlet-capsule__kbd">↵</span>
               </span>
-              <div className="gauntlet-capsule__action-buttons">
-                {executor && (
-                  <button
-                    type="button"
-                    className="gauntlet-capsule__actuate"
-                    onClick={() => void requestPlan()}
-                    disabled={phase === 'planning' || phase === 'executing' || !userInput.trim()}
-                    title="Plan DOM actions and execute on this page"
-                  >
-                    {phase === 'planning' ? (
-                      <>
-                        <span className="gauntlet-capsule__compose-spinner" aria-hidden />
-                        <span>planeando</span>
-                      </>
-                    ) : (
-                      'Acionar'
-                    )}
-                  </button>
+              <button
+                type="submit"
+                className="gauntlet-capsule__compose"
+                disabled={phase === 'planning' || phase === 'executing' || !userInput.trim()}
+              >
+                {phase === 'planning' ? (
+                  <>
+                    <span className="gauntlet-capsule__compose-spinner" aria-hidden />
+                    <span>a pensar</span>
+                  </>
+                ) : (
+                  'Enviar'
                 )}
-                <button
-                  type="submit"
-                  className="gauntlet-capsule__compose"
-                  disabled={phase === 'composing' || phase === 'planning' || !userInput.trim()}
-                >
-                  {phase === 'composing' ? (
-                    <>
-                      <span className="gauntlet-capsule__compose-spinner" aria-hidden />
-                      <span>compondo</span>
-                    </>
-                  ) : (
-                    'Compor'
-                  )}
-                </button>
-              </div>
+              </button>
             </div>
           </form>
 
-          {plan && (phase === 'plan_ready' || phase === 'executing' || phase === 'executed') && (
+          {plan?.compose && phase === 'plan_ready' && (
+            <section className="gauntlet-capsule__compose-result">
+              <header className="gauntlet-capsule__compose-meta">
+                <span className="gauntlet-capsule__compose-tag">resposta</span>
+                <span className="gauntlet-capsule__compose-meta-text">
+                  {plan.model_used}
+                  {' · '}
+                  {plan.latency_ms} ms
+                </span>
+              </header>
+              <div className="gauntlet-capsule__compose-text">{plan.compose}</div>
+              <div className="gauntlet-capsule__compose-actions">
+                <button
+                  type="button"
+                  className="gauntlet-capsule__copy"
+                  onClick={() => void onCopyCompose()}
+                >
+                  {copied ? 'copiado ✓' : 'Copy'}
+                </button>
+              </div>
+            </section>
+          )}
+
+          {plan && plan.actions.length === 0 && !plan.compose && phase === 'plan_ready' && (
+            <section className="gauntlet-capsule__plan">
+              <p className="gauntlet-capsule__plan-empty">
+                {plan.reason ?? 'Modelo não conseguiu planear.'}
+              </p>
+            </section>
+          )}
+
+          {plan && plan.actions.length > 0 && (phase === 'plan_ready' || phase === 'executing' || phase === 'executed') && (
             <section className="gauntlet-capsule__plan">
               <header className="gauntlet-capsule__plan-header">
                 <span className="gauntlet-capsule__plan-title">plano</span>
@@ -356,12 +349,7 @@ export function Capsule({
                   {plan.latency_ms} ms
                 </span>
               </header>
-              {plan.actions.length === 0 ? (
-                <p className="gauntlet-capsule__plan-empty">
-                  {plan.reason ?? 'Modelo não conseguiu planear.'}
-                </p>
-              ) : (
-                <ol className="gauntlet-capsule__plan-list">
+              <ol className="gauntlet-capsule__plan-list">
                   {plan.actions.map((a, i) => {
                     const r = planResults?.[i];
                     const status = r ? (r.ok ? 'ok' : 'fail') : 'pending';
@@ -391,9 +379,8 @@ export function Capsule({
                       </li>
                     );
                   })}
-                </ol>
-              )}
-              {plan.actions.length > 0 && phase !== 'executed' && hasDanger && (
+              </ol>
+              {phase !== 'executed' && hasDanger && (
                 <div className="gauntlet-capsule__danger-gate" role="alert">
                   <header className="gauntlet-capsule__danger-header">
                     <span className="gauntlet-capsule__danger-mark" aria-hidden>!</span>
@@ -421,7 +408,7 @@ export function Capsule({
                   </label>
                 </div>
               )}
-              {plan.actions.length > 0 && phase !== 'executed' && (
+              {phase !== 'executed' && (
                 <div className="gauntlet-capsule__plan-actions">
                   <button
                     type="button"
@@ -449,71 +436,6 @@ export function Capsule({
               <span className="gauntlet-capsule__error-icon" aria-hidden>!</span>
               <span>{error}</span>
             </div>
-          )}
-
-          {result && (
-            <section className="gauntlet-capsule__preview">
-              <div className="gauntlet-capsule__preview-meta">
-                <span className="gauntlet-capsule__preview-pill">
-                  <span className="gauntlet-capsule__preview-key">intent</span>
-                  <span className="gauntlet-capsule__preview-val">{result.intent.intent}</span>
-                </span>
-                <span className="gauntlet-capsule__preview-pill">
-                  <span className="gauntlet-capsule__preview-key">conf</span>
-                  <span className="gauntlet-capsule__preview-val">
-                    {result.intent.confidence.toFixed(2)}
-                  </span>
-                </span>
-                <span className="gauntlet-capsule__preview-pill">
-                  <span className="gauntlet-capsule__preview-key">model</span>
-                  <span className="gauntlet-capsule__preview-val">{result.preview.model_used}</span>
-                </span>
-                <span className="gauntlet-capsule__preview-pill">
-                  <span className="gauntlet-capsule__preview-key">latency</span>
-                  <span className="gauntlet-capsule__preview-val">{result.preview.latency_ms} ms</span>
-                </span>
-                {result.preview.judge_verdict && (
-                  <span className="gauntlet-capsule__preview-pill" data-tone={result.preview.judge_verdict}>
-                    <span className="gauntlet-capsule__preview-key">judge</span>
-                    <span className="gauntlet-capsule__preview-val">{result.preview.judge_verdict}</span>
-                  </span>
-                )}
-              </div>
-
-              {result.preview.refused ? (
-                <div className="gauntlet-capsule__refusal">
-                  <header>
-                    <span className="gauntlet-capsule__refusal-mark">refusal</span>
-                    <span className="gauntlet-capsule__refusal-reason">
-                      {result.preview.refusal_reason}
-                    </span>
-                  </header>
-                  <p>{result.preview.artifact.content}</p>
-                  {result.intent.clarifying_questions.length > 0 && (
-                    <ul>
-                      {result.intent.clarifying_questions.map((q) => (
-                        <li key={q}>{q}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <pre className="gauntlet-capsule__artifact">
-                    {result.preview.artifact.content}
-                  </pre>
-                  <div className="gauntlet-capsule__preview-actions">
-                    <button
-                      type="button"
-                      className="gauntlet-capsule__copy"
-                      onClick={onCopy}
-                    >
-                      {copied ? 'copiado ✓' : 'Copy'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </section>
           )}
         </div>
       </div>
@@ -1090,6 +1012,49 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__actuate:disabled {
   opacity: 0.45; cursor: not-allowed;
+}
+
+/* ── Compose response (inline text answer) ── */
+.gauntlet-capsule__compose-result {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(8, 9, 13, 0.5);
+  border: 1px solid var(--gx-border);
+  border-radius: 10px;
+  animation: gauntlet-cap-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__compose-meta {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.gauntlet-capsule__compose-tag {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f4c4ad;
+  padding: 2px 8px;
+  background: rgba(208, 122, 90, 0.20);
+  border: 1px solid rgba(208, 122, 90, 0.35);
+  border-radius: 4px;
+}
+.gauntlet-capsule__compose-meta-text {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--gx-fg-muted);
+}
+.gauntlet-capsule__compose-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--gx-fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.gauntlet-capsule__compose-actions {
+  display: flex; justify-content: flex-end; margin-top: 8px;
 }
 
 /* ── Plan section ── */

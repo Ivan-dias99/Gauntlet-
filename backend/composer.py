@@ -467,31 +467,46 @@ async def generate_preview(req: ComposerPreviewRequest) -> PreviewResult:
 _DOM_ACTION_ADAPTER = TypeAdapter(list[DomAction])
 
 
-_DOM_PLAN_SYSTEM_PROMPT = """You are Gauntlet's DOM-action planner.
+_DOM_PLAN_SYSTEM_PROMPT = """You are Gauntlet's planner.
 
-The user is on a live web page. Your job is to translate their request
-into a precise list of DOM actions the browser will execute on the
-page. Only emit actions whose selectors are present in the dom_skeleton
-context section.
+The user is on a live web page. Their input is one of three things:
+  (A) a request to ACT on the page (fill, click, highlight, scroll),
+  (B) a question or short request for a TEXT answer about the page or
+      content (explain, summarise, translate, suggest wording),
+  (C) neither — ambiguous, dangerous, or impossible given the page.
 
-Output ONLY a JSON object of the form:
+You must decide which case applies and respond in JSON only.
+
+Case A — emit a typed action plan:
   {"actions":[<action>,...]}
-
-Action shapes (the "type" field is the discriminator):
+where each action is one of:
   {"type":"fill","selector":"<css>","value":"<string>"}
   {"type":"click","selector":"<css>"}
   {"type":"highlight","selector":"<css>","duration_ms":<int 100..10000>}
   {"type":"scroll_to","selector":"<css>"}
+Selectors must come from the dom_skeleton context section. Prefer
+#id or [name="..."] over fragile structural paths. Never target the
+Gauntlet capsule itself (selectors starting with "gauntlet-" or
+inside #gauntlet-capsule-host).
+
+Case B — emit a compose text:
+  {"compose":"<your answer in the user's language, markdown ok>"}
+Keep it tight. The user is reading inside a small capsule, not a chat.
+Three short paragraphs max unless they explicitly asked for more.
+
+Case C — refuse and explain:
+  {"actions":[],"reason":"<short why in user's language>"}
 
 Hard rules:
-  * No prose, no markdown fences, no explanation — JSON only.
-  * Selectors must be valid CSS selectors. Prefer #id or
-    [name="..."] over fragile structural paths.
-  * If you cannot plan (ambiguous request, missing element, dangerous
-    action like submitting payment forms without explicit confirmation),
-    return {"actions":[],"reason":"<short why in user's language>"}.
-  * Never include actions that target the Gauntlet capsule itself
-    (selectors starting with "gauntlet-" or inside #gauntlet-capsule-host).
+  * No prose outside the JSON object. No markdown fences around the
+    JSON. JSON only.
+  * Pick exactly one case. Do not return both `actions` and `compose`
+    populated simultaneously.
+  * When in doubt between A and B, prefer B (text answer) — actions
+    have side effects, text doesn't.
+  * Refuse (case C) for: payment confirmations, account deletion,
+    sending money, posting on someone's behalf without an explicit
+    instruction to do so.
 """
 
 
@@ -582,6 +597,7 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
         )
 
     raw_actions = parsed.get("actions") if isinstance(parsed, dict) else None
+    raw_compose = parsed.get("compose") if isinstance(parsed, dict) else None
     reason = parsed.get("reason") if isinstance(parsed, dict) else None
 
     actions: list[DomAction] = []
@@ -596,18 +612,31 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
                 except ValidationError:
                     continue
 
+    # Compose is mutually exclusive with actions. If the model returned
+    # both (against instructions), prefer the actions — they're the
+    # higher-fidelity intent. The compose text is only kept when there
+    # are no executable actions, which is the case-B branch the prompt
+    # asks for.
+    compose: Optional[str] = None
+    if not actions and isinstance(raw_compose, str) and raw_compose.strip():
+        compose = raw_compose.strip()
+
     logger.info(
-        "composer.dom_plan model=%s latency_ms=%d actions=%d reason=%r",
-        model_id, latency_ms, len(actions), reason,
+        "composer.dom_plan model=%s latency_ms=%d actions=%d compose=%s reason=%r",
+        model_id, latency_ms, len(actions),
+        "yes" if compose else "no", reason,
     )
 
     return DomPlanResult(
         context_id=req.context_id,
         actions=actions,
+        compose=compose,
         reason=reason if isinstance(reason, str) else None,
         model_used=model_id,
         latency_ms=latency_ms,
-        raw_response=None if actions else raw_text[:1000],
+        # Keep raw response only when neither path produced anything —
+        # that's the only case the operator might want to debug.
+        raw_response=None if (actions or compose) else raw_text[:1000],
     )
 
 
