@@ -15,6 +15,7 @@ import {
 } from '../lib/composer-client';
 import {
   assessDanger,
+  assessSequenceDanger,
   type DangerAssessment,
   type DomAction,
   type DomActionResult,
@@ -84,7 +85,11 @@ export function Capsule({
     () => (plan ? plan.actions.map(assessDanger) : []),
     [plan],
   );
-  const hasDanger = dangers.some((d) => d.danger);
+  const sequenceDanger = useMemo<DangerAssessment>(
+    () => (plan ? assessSequenceDanger(plan.actions) : { danger: false }),
+    [plan],
+  );
+  const hasDanger = dangers.some((d) => d.danger) || sequenceDanger.danger;
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -462,6 +467,11 @@ export function Capsule({
                     </span>
                   </header>
                   <ul className="gauntlet-capsule__danger-list">
+                    {sequenceDanger.danger && (
+                      <li key="danger-sequence">
+                        <strong>cadeia:</strong> {sequenceDanger.reason ?? 'flagged'}
+                      </li>
+                    )}
                     {dangers.map((d, i) =>
                       d.danger ? (
                         <li key={`danger-${i}`}>

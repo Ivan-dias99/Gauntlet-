@@ -60,6 +60,45 @@ const DANGER_VERBS = [
 
 const FILL_VALUE_DANGER_LEN = 5000;
 
+// Pipeline-level heuristic: an individual action might pass per-step
+// scrutiny but the SEQUENCE may still be destructive. Most common
+// pattern: fill a sensitive field (password, cc, payment) and then
+// click a submit-like element. Each action looks fine in isolation,
+// the chain is "complete the destructive operation". Surface it as a
+// separate banner in the danger gate.
+export function assessSequenceDanger(actions: DomAction[]): DangerAssessment {
+  const fills = actions.filter((a): a is Extract<DomAction, { type: 'fill' }> =>
+    a.type === 'fill',
+  );
+  const clicks = actions.filter((a): a is Extract<DomAction, { type: 'click' }> =>
+    a.type === 'click',
+  );
+  if (fills.length === 0 || clicks.length === 0) return { danger: false };
+
+  const sensitiveFill = fills.find((a) => {
+    const sel = a.selector.toLowerCase();
+    if (/\bpassword\b/.test(sel)) return true;
+    if (/\bcvv\b|\bcvc\b|\bccnum\b|credit[-_ ]?card/.test(sel)) return true;
+    if (/payment|checkout|billing/.test(sel)) return true;
+    if (/cc-(number|exp|csc|name)/.test(sel)) return true;
+    return false;
+  });
+  if (!sensitiveFill) return { danger: false };
+
+  const submittingClick = clicks.find((a) => {
+    const sel = a.selector.toLowerCase();
+    if (sel.includes('submit')) return true;
+    if (/\b(pay|buy|purchase|confirm|send|order|checkout|pagar|comprar|enviar|confirmar)\b/.test(sel)) return true;
+    return false;
+  });
+  if (!submittingClick) return { danger: false };
+
+  return {
+    danger: true,
+    reason: `cadeia destrutiva: fill em "${sensitiveFill.selector}" seguido de click em "${submittingClick.selector}"`,
+  };
+}
+
 export function assessDanger(action: DomAction): DangerAssessment {
   // Read-only / visual actions are always safe.
   if (action.type === 'highlight' || action.type === 'scroll_to') {
