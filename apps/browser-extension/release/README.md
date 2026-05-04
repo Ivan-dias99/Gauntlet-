@@ -1,24 +1,38 @@
 # Pre-built extension
 
-`gauntlet-extension.zip` is a ready-to-load Chromium extension package
-(Chrome, Edge, Brave, Arc, Vivaldi, etc.). It is committed so operators
-without a Node toolchain can install the extension directly from GitHub.
+`unpacked/` is a ready-to-load Chromium extension build (Chrome, Edge,
+Brave, Arc, Vivaldi, etc.). It is committed so operators without a
+Node toolchain can install the extension directly from a GitHub
+download.
 
-## Install
+## Install (no build tools required)
 
-1. Download `gauntlet-extension.zip` from the GitHub UI: open the file
-   on the branch page and click **Download raw file**.
-2. Unzip it anywhere (Desktop is fine). You will get a folder containing
-   `manifest.json`, `composer.html`, `background.js`, etc.
-3. Open `chrome://extensions` (or `edge://extensions`).
-4. Toggle **Developer mode** on (top-right).
-5. Click **Load unpacked** and pick the unzipped folder.
-6. Click the Gauntlet icon in the toolbar — a 1200×800 composer window
-   opens. Same window via the global hotkey `Ctrl+Shift+Space`
-   (`⌘+Shift+Space` on macOS).
+1. On GitHub, open the branch you want to install from. Click the
+   green **Code** button → **Download ZIP**. This gives you a zip of
+   the entire repository.
+2. Extract the zip anywhere — Desktop is fine.
+3. Inside the extracted folder, navigate to:
+   `apps/browser-extension/release/unpacked/`
+4. Open `chrome://extensions` (or `edge://extensions`).
+5. Toggle **Developer mode** on (top-right of the page).
+6. Click **Load unpacked** and select the `unpacked/` folder you found
+   in step 3.
+7. Click the Gauntlet icon in the toolbar — a 1200×800 composer window
+   opens. The same window also opens via the global hotkey
+   `Ctrl+Shift+Space` (`⌘+Shift+Space` on macOS).
 
-## Rebuilding
+To upgrade later: re-download the repo zip, replace the `unpacked/`
+folder, and click the **Reload** button in `chrome://extensions`.
 
-For developers: `cd apps/browser-extension && npm run zip` regenerates
-`.output/gauntletbrowser-extension-*.zip`. Copy it over this file and
-commit when shipping a new build.
+## Rebuilding (developer flow)
+
+For developers with Node installed:
+
+```bash
+cd apps/browser-extension
+npm install
+npm run build      # writes .output/chrome-mv3/
+```
+
+To refresh the committed `release/unpacked/` after a build, copy the
+contents of `.output/chrome-mv3/` over the folder and commit.
