@@ -2,17 +2,18 @@ import { defineBackground } from 'wxt/sandbox';
 
 // Background — service worker (Manifest V3).
 //
-// Two responsibilities:
-//   1. Listen for the summon command (Ctrl+Shift+Space) and forward the
-//      summon message to the active tab's content script. If that tab
-//      has no content script (chrome://, edge://, …), open the toolbar
-//      popup as fallback so the operator still gets a surface.
-//   2. Proxy `gauntlet:fetch` messages from popup / content script and
-//      perform the HTTP request from this service-worker context. This
-//      sidesteps page-origin CORS: requests from the content script
-//      would otherwise carry the host page's origin (e.g. vercel.app)
-//      and be rejected by the backend, while requests fired from here
-//      go out as `chrome-extension://<id>` which is on the allow-list.
+// Single-surface composer: clicking the toolbar icon OR pressing the
+// global hotkey both open the same standalone window (1200x800) that
+// hosts the full capsule. Toolbar popups are hard-capped by the
+// browser at 800x600 and lay out the two-panel capsule cramped — a
+// separate window via chrome.windows.create has no such cap.
+//
+// All HTTP traffic is also proxied here (gauntlet:fetch) so requests
+// originate from chrome-extension://<id> instead of the host page,
+// bypassing CORS rejection on non-deploy origins.
+
+const COMPOSER_WINDOW_WIDTH = 1200;
+const COMPOSER_WINDOW_HEIGHT = 800;
 
 interface FetchProxyRequest {
   type: 'gauntlet:fetch';
@@ -58,22 +59,53 @@ async function proxyFetch(req: FetchProxyRequest): Promise<FetchProxyResponse> {
   }
 }
 
-export default defineBackground(() => {
-  chrome.commands.onCommand.addListener(async (command) => {
-    if (command !== 'summon-capsule') return;
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) return;
-    try {
-      await chrome.tabs.sendMessage(tab.id, { type: 'gauntlet:summon' });
-    } catch {
-      // Content script not loaded on this URL (chrome://, edge://, etc.).
-      // Open a popup as a fallback so the operator still has a surface.
-      try {
-        await chrome.action.openPopup();
-      } catch {
-        // openPopup requires user gesture in some browsers — ignore.
-      }
+async function findExistingComposerWindow(): Promise<number | null> {
+  // The composer URL is unique per extension install, so a tab whose URL
+  // points at our popup.html identifies the window we already opened.
+  // Querying every popup window survives service-worker eviction (no
+  // module-level state to lose).
+  const expected = chrome.runtime.getURL('composer.html');
+  const wins = await chrome.windows.getAll({
+    populate: true,
+    windowTypes: ['popup'],
+  });
+  for (const w of wins) {
+    if (!w.id) continue;
+    for (const t of w.tabs ?? []) {
+      if (t.url === expected) return w.id;
     }
+  }
+  return null;
+}
+
+async function openComposerWindow(): Promise<void> {
+  const existingId = await findExistingComposerWindow();
+  if (existingId !== null) {
+    try {
+      await chrome.windows.update(existingId, { focused: true });
+      return;
+    } catch {
+      // Window vanished between query and update — fall through and
+      // create a fresh one.
+    }
+  }
+  await chrome.windows.create({
+    url: chrome.runtime.getURL('composer.html'),
+    type: 'popup',
+    width: COMPOSER_WINDOW_WIDTH,
+    height: COMPOSER_WINDOW_HEIGHT,
+    focused: true,
+  });
+}
+
+export default defineBackground(() => {
+  chrome.action.onClicked.addListener(() => {
+    void openComposerWindow();
+  });
+
+  chrome.commands.onCommand.addListener((command) => {
+    if (command !== 'summon-capsule') return;
+    void openComposerWindow();
   });
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
