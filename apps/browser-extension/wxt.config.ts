@@ -13,8 +13,12 @@ export default defineConfig({
     name: 'Gauntlet',
     description:
       'Cursor capsule. Press Alt+Space anywhere on the web to talk to the brain.',
-    permissions: ['activeTab', 'scripting', 'storage'],
+    permissions: ['activeTab', 'tabs', 'scripting', 'storage'],
     host_permissions: [
+      // <all_urls> is required so the content script can read the live DOM
+      // of any page the user invokes the capsule on. Without it, the
+      // composer is blind to everything outside the popup window.
+      '<all_urls>',
       'https://ruberra-backend-jkpf-production.up.railway.app/*',
       'http://127.0.0.1:3002/*',
       'http://localhost:3002/*',
