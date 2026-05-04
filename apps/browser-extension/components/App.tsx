@@ -10,7 +10,11 @@ import {
   readPillPosition,
   type PillPosition,
 } from '../lib/pill-prefs';
-import { readSelectionSnapshot, type SelectionSnapshot } from '../lib/selection';
+import {
+  readSelectionAcrossFrames,
+  readSelectionSnapshot,
+  type SelectionSnapshot,
+} from '../lib/selection';
 
 // One ComposerClient per content script — connections are stateless
 // (HTTP), but reusing the instance keeps backend URL config in one
@@ -105,17 +109,33 @@ export function App() {
   }, []);
 
   const summon = useCallback(() => {
-    // Refresh the selection snapshot every time we summon. Bump the
-    // nonce so the Capsule's `key` changes and React remounts it,
-    // resetting internal state (input field, plan, danger gate). Without
-    // this, a second summon while the capsule is open would keep the
-    // previous user input and stale plan in view.
+    // Sync first: render the cápsula immediately with the top-frame
+    // snapshot — no perceptible delay for the user. Then async-enrich
+    // with a 50ms iframe selection harvest; if a subframe had a
+    // longer/non-empty selection (Notion, Reddit, embedded markdown),
+    // remount the cápsula with that snapshot. Cheap optimistic mount,
+    // best-effort upgrade.
+    const cursor = lastCursorRef.current;
     setSurface((prev) => ({
       kind: 'capsule',
       snapshot: readSelectionSnapshot(),
-      cursor: lastCursorRef.current,
+      cursor,
       nonce: prev.kind === 'capsule' ? prev.nonce + 1 : 1,
     }));
+    void readSelectionAcrossFrames().then((enriched) => {
+      setSurface((prev) => {
+        if (prev.kind !== 'capsule') return prev;
+        // Only upgrade when the iframe round-trip actually found
+        // text the top frame didn't have. Avoids the user typing
+        // into the cápsula and having React swap snapshots out from
+        // under them for nothing.
+        if (!enriched.text || enriched.text === prev.snapshot.text) return prev;
+        return {
+          ...prev,
+          snapshot: enriched,
+        };
+      });
+    });
   }, []);
 
   const dismiss = useCallback(() => {

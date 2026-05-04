@@ -25,10 +25,38 @@ export default defineContentScript({
   // host page's stylesheet, which would clash with site CSS.
   cssInjectionMode: 'manual',
   async main() {
-    // Top frame only. iframes get the script too (cheap), but mounting
-    // a second pill inside an iframe would visually duplicate the
-    // surface and break the bbox math. Skip silently.
-    if (window.top !== window.self) return;
+    // Subframe path: don't mount UI — the user can't interact with a
+    // capsule trapped inside an iframe — but DO answer the top frame's
+    // postMessage requests for the iframe's current selection. This
+    // lets the top frame harvest selections across same-origin AND
+    // cross-origin iframes (Notion embeds, GitHub markdown, embedded
+    // tweets) since both flavours run our content script under
+    // `<all_urls>`.
+    if (window.top !== window.self) {
+      window.addEventListener('message', (ev: MessageEvent) => {
+        const data = ev.data as
+          | { gauntlet?: string; cid?: string }
+          | undefined;
+        if (!data || data.gauntlet !== 'subframe-selection-request') return;
+        const sel = window.getSelection();
+        const text = sel ? sel.toString().trim() : '';
+        ev.source?.postMessage(
+          {
+            gauntlet: 'subframe-selection-response',
+            cid: data.cid,
+            text,
+            url: window.location.href,
+            pageTitle: document.title,
+          },
+          // We can't easily target a specific origin since it might be
+          // cross-origin to us; '*' is fine because the payload only
+          // carries the user's selection text + url + title, and only
+          // gets here in response to a request we received.
+          { targetOrigin: '*' } as WindowPostMessageOptions,
+        );
+      });
+      return;
+    }
 
     // Defensive: never mount twice. WXT's HMR can re-run main() in dev,
     // and some MV3 race conditions can re-fire the script. If we find

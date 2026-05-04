@@ -112,6 +112,15 @@ export function Capsule({
     };
   }, []);
 
+  // App may upgrade initialSnapshot after mount (iframe selection
+  // harvest finishes ~50ms in). Sync into local state so buildCapture
+  // sees the upgraded snapshot at submit time. The user's own
+  // refreshSnapshot button still wins because it runs after this
+  // effect on every render.
+  useEffect(() => {
+    setSnapshot(initialSnapshot);
+  }, [initialSnapshot]);
+
   // Fire-and-forget screenshot capture on mount when the pref is on.
   // The background script handles chrome.tabs.captureVisibleTab and
   // returns a data URL; we keep it in component state until the next
