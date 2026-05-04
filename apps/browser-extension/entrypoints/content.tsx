@@ -30,7 +30,14 @@ export default defineContentScript({
       mounted = await createShadowRootUi(ctx, {
         name: 'gauntlet-capsule-host',
         position: 'inline',
-        anchor: 'body',
+        // Anchor to <html>, not <body>. Pages like the Control Center wrap
+        // body in containers with `backdrop-filter` / `transform`, which
+        // create a containing block for `position: fixed` descendants —
+        // the capsule then collapses to a sliver inside that ancestor
+        // instead of pinning to the viewport. Mounting as a sibling of
+        // <body> escapes that chain so `position: fixed; bottom: 0`
+        // resolves against the viewport everywhere.
+        anchor: () => document.documentElement,
         onMount: (container) => {
           // Inject styles inside the shadow root so the host page's CSS
           // never reaches the capsule.
