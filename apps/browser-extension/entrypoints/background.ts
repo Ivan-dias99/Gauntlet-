@@ -124,7 +124,19 @@ async function resolveActiveTab(
   }
 }
 
+// Hotkey dedupe — chrome.commands fires once per keystroke but the
+// repeat-on-hold rate plus accidental double-tap can race the content
+// script's mount/unmount and produce a flicker as the capsule tears
+// itself down and rebuilds. 250 ms is comfortably below human "I
+// pressed it twice on purpose" but well above hardware key bounce.
+const SUMMON_DEDUPE_MS = 250;
+let lastSummonAt = 0;
+
 async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
+  const now = Date.now();
+  if (now - lastSummonAt < SUMMON_DEDUPE_MS) return;
+  lastSummonAt = now;
+
   const tab = await resolveActiveTab(hint);
   if (!tab?.id || !isInjectableUrl(tab.url)) {
     await openComposerWindow();
@@ -143,6 +155,126 @@ async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
   }
 }
 
+// Port-based streaming fetch proxy. chrome.runtime.sendMessage is one
+// shot — fine for /composer/dom_plan, useless for SSE where we want
+// to forward each text/event-stream chunk as it arrives. A long-lived
+// Port lets us post many messages back to the content script as the
+// upstream response trickles in. The protocol:
+//   client → background : { type: 'start', url, body }
+//   background → client : { type: 'sse', event: 'delta'|'done'|'error', data: <string> }
+//   background → client : { type: 'closed' }                — clean end
+//   background → client : { type: 'error', error: <string> } — transport failure
+//   client → background : { type: 'abort' }                  — cancel
+function parseSseEvent(block: string): { event: string; data: string } | null {
+  const lines = block.split('\n');
+  let eventName = 'message';
+  let dataParts: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith('event:')) eventName = line.slice(6).trim();
+    else if (line.startsWith('data:')) dataParts.push(line.slice(5).trimStart());
+  }
+  if (dataParts.length === 0) return null;
+  // SSE allows multi-line data: lines; rejoin with newline.
+  return { event: eventName, data: dataParts.join('\n') };
+}
+
+interface StreamStartMessage {
+  type: 'start';
+  url: string;
+  body: unknown;
+}
+
+async function handleStreamPort(port: chrome.runtime.Port): Promise<void> {
+  let aborter: AbortController | null = null;
+
+  port.onMessage.addListener((rawMsg) => {
+    const msg = rawMsg as { type?: string; url?: string; body?: unknown };
+    if (msg.type === 'start' && typeof msg.url === 'string') {
+      aborter = new AbortController();
+      const start = msg as StreamStartMessage;
+      void runStream(port, start, aborter.signal);
+    } else if (msg.type === 'abort') {
+      aborter?.abort();
+    }
+  });
+  port.onDisconnect.addListener(() => {
+    aborter?.abort();
+  });
+}
+
+async function runStream(
+  port: chrome.runtime.Port,
+  msg: StreamStartMessage,
+  signal: AbortSignal,
+): Promise<void> {
+  try {
+    const res = await fetch(msg.url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'text/event-stream',
+      },
+      body: JSON.stringify(msg.body),
+      signal,
+    });
+    if (!res.ok || !res.body) {
+      port.postMessage({
+        type: 'error',
+        error: `${res.status} ${res.statusText || 'no body'}`,
+      });
+      try {
+        port.disconnect();
+      } catch {
+        // already disconnected
+      }
+      return;
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      // SSE event boundary is a blank line (\n\n). Process complete
+      // events from the buffer; keep the partial tail for next round.
+      while (true) {
+        const idx = buffer.indexOf('\n\n');
+        if (idx === -1) break;
+        const block = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        const ev = parseSseEvent(block);
+        if (ev) {
+          try {
+            port.postMessage({ type: 'sse', event: ev.event, data: ev.data });
+          } catch {
+            // Port closed by the other side mid-stream — abort the
+            // upstream fetch and bail.
+            return;
+          }
+        }
+      }
+    }
+    try {
+      port.postMessage({ type: 'closed' });
+      port.disconnect();
+    } catch {
+      // ignore
+    }
+  } catch (err: unknown) {
+    if (signal.aborted) return;
+    try {
+      port.postMessage({
+        type: 'error',
+        error: err instanceof Error ? err.message : String(err),
+      });
+      port.disconnect();
+    } catch {
+      // ignore
+    }
+  }
+}
+
 export default defineBackground(() => {
   chrome.action.onClicked.addListener((tab) => {
     void summonOnActiveTab(tab);
@@ -153,11 +285,39 @@ export default defineBackground(() => {
     void summonOnActiveTab(tab);
   });
 
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg && msg.type === 'gauntlet:fetch') {
       void proxyFetch(msg as FetchProxyRequest).then(sendResponse);
       return true; // keep the channel open for the async response
     }
+    if (msg && msg.type === 'gauntlet:capture_screenshot') {
+      // Screenshot the visible part of the tab the request came from.
+      // chrome.tabs.captureVisibleTab requires either activeTab or
+      // <all_urls> + the tab to be active in its window — both true
+      // by the time the user has hit summon. Returns a data URL we
+      // forward verbatim to the content script.
+      const windowId = sender.tab?.windowId;
+      void (async () => {
+        try {
+          const dataUrl = await chrome.tabs.captureVisibleTab(
+            windowId ?? chrome.windows.WINDOW_ID_CURRENT,
+            { format: 'png' },
+          );
+          sendResponse({ ok: true, dataUrl });
+        } catch (err: unknown) {
+          sendResponse({
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      })();
+      return true;
+    }
     return false;
+  });
+
+  chrome.runtime.onConnect.addListener((port) => {
+    if (port.name !== 'gauntlet:stream') return;
+    void handleStreamPort(port);
   });
 });

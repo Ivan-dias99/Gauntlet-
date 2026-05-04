@@ -21,6 +21,7 @@ mount on the same FastAPI app. No per-route work needed here.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from collections import OrderedDict
@@ -29,6 +30,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from models import (
     ApplyResult,
@@ -39,6 +41,9 @@ from models import (
     ContextCaptureRequest,
     ContextCaptureResponse,
     ContextPackage,
+    DomAction,
+    DomPlanRequest,
+    DomPlanResult,
     IntentKind,
     IntentResult,
     ModelRoute,
@@ -48,6 +53,8 @@ from models import (
     SignalQuery,
     SuggestedAction,
 )
+from model_gateway import GatewayCall, gateway
+from pydantic import TypeAdapter, ValidationError
 from runs import run_store
 
 logger = logging.getLogger("gauntlet.composer")
@@ -458,6 +465,368 @@ async def generate_preview(req: ComposerPreviewRequest) -> PreviewResult:
     return result
 
 
+_DOM_ACTION_ADAPTER = TypeAdapter(list[DomAction])
+
+
+_DOM_PLAN_SYSTEM_PROMPT = """You are Gauntlet's planner.
+
+The user is on a live web page. Their input is one of three things:
+  (A) a request to ACT on the page (fill, click, highlight, scroll),
+  (B) a question or short request for a TEXT answer about the page or
+      content (explain, summarise, translate, suggest wording),
+  (C) neither — ambiguous, dangerous, or impossible given the page.
+
+You must decide which case applies and respond in JSON only.
+
+Case A — emit a typed action plan:
+  {"actions":[<action>,...]}
+where each action is one of:
+  {"type":"fill","selector":"<css>","value":"<string>"}
+  {"type":"click","selector":"<css>"}
+  {"type":"highlight","selector":"<css>","duration_ms":<int 100..10000>}
+  {"type":"scroll_to","selector":"<css>"}
+Selectors must come from the dom_skeleton context section. Prefer
+#id or [name="..."] over fragile structural paths. Never target the
+Gauntlet capsule itself (selectors starting with "gauntlet-" or
+inside #gauntlet-capsule-host).
+
+Case B — emit a compose text:
+  {"compose":"<your answer in the user's language, markdown ok>"}
+Keep it tight. The user is reading inside a small capsule, not a chat.
+Three short paragraphs max unless they explicitly asked for more.
+
+Case C — refuse and explain:
+  {"actions":[],"reason":"<short why in user's language>"}
+
+Hard rules:
+  * No prose outside the JSON object. No markdown fences around the
+    JSON. JSON only.
+  * Pick exactly one case. Do not return both `actions` and `compose`
+    populated simultaneously.
+  * When in doubt between A and B, prefer B (text answer) — actions
+    have side effects, text doesn't.
+  * Refuse (case C) for: payment confirmations, account deletion,
+    sending money, posting on someone's behalf without an explicit
+    instruction to do so.
+"""
+
+
+def _provider_supports_images(engine) -> bool:
+    """True only when the underlying SDK client is the real Anthropic
+    one. Groq and Gemini adapters reject Anthropic's image content
+    blocks; sending one would 502 on the user. We detect by class
+    name to avoid importing the Anthropic SDK just for an isinstance
+    check (also: in MOCK mode the client is MockAsyncAnthropic which
+    we treat as image-capable for parity testing)."""
+    cls = type(engine._client).__name__
+    return cls in ("AsyncAnthropic", "MockAsyncAnthropic")
+
+
+def _build_user_messages(ctx: ContextPackage, user_input: str, engine=None) -> list[dict]:
+    """Compose the messages array for the planner, including a base64
+    image block when the content script forwarded an opt-in viewport
+    screenshot AND the active provider supports image inputs.
+    Anthropic accepts a content list mixing image and text; when the
+    screenshot is absent we send a plain string content (the SDK
+    accepts both shapes interchangeably). On Groq/Gemini adapters we
+    quietly drop the image block — those adapters only do text and
+    would 502 on a list-shaped content with image blocks."""
+    user_msg = (
+        f"Page context:\n{_compose_context_blob(ctx)}\n\n"
+        f"Request: {user_input}"
+    )
+    raw_screenshot = ctx.metadata.get("screenshot_data_url") if ctx.metadata else None
+    if (
+        engine is not None
+        and _provider_supports_images(engine)
+        and isinstance(raw_screenshot, str)
+        and raw_screenshot.startswith("data:image/")
+        and ";base64," in raw_screenshot
+    ):
+        prefix, b64 = raw_screenshot.split(";base64,", 1)
+        media_type = prefix[len("data:") :] or "image/png"
+        # Cap raw payload size — runaway screenshots burn input tokens
+        # and hit Anthropic's 5MB-per-image limit. Roughly 1MB encoded
+        # is plenty for a 1280x800 PNG.
+        if len(b64) <= 1_500_000:
+            return [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": b64,
+                            },
+                        },
+                        {"type": "text", "text": user_msg},
+                    ],
+                }
+            ]
+    if raw_screenshot and engine is not None and not _provider_supports_images(engine):
+        logger.info(
+            "composer.screenshot_dropped provider=%s — Groq/Gemini adapters don't accept image blocks",
+            type(engine._client).__name__,
+        )
+    return [{"role": "user", "content": user_msg}]
+
+
+def _strip_json_fence(raw: str) -> str:
+    """Some models still wrap JSON in ```json ... ``` despite the
+    instruction. Strip a single leading + trailing fence; everything
+    else is left to the JSON parser to flag."""
+    s = raw.strip()
+    if s.startswith("```"):
+        first_nl = s.find("\n")
+        if first_nl != -1:
+            s = s[first_nl + 1 :]
+        if s.endswith("```"):
+            s = s[: -3]
+    return s.strip()
+
+
+@router.post("/dom_plan", response_model=DomPlanResult)
+async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
+    """Translate a natural-language request into a typed list of DOM
+    actions the browser content script will execute on approval.
+
+    Single-shot model call routed through the gateway. The response is
+    JSON-only; we strip any stray markdown fence and validate against
+    the DomAction discriminated union. Actions that fail validation are
+    dropped silently — the user still sees what survived plus a reason
+    line when the model refused.
+    """
+    ctx = await _contexts.get(req.context_id)
+    if ctx is None:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail={"error": "context_expired"},
+        )
+    assert isinstance(ctx, ContextPackage)
+
+    engine = _get_engine()
+    choice = gateway.select("default")
+    model_id = choice.model_id
+
+    messages = _build_user_messages(ctx, req.user_input, engine)
+
+    started = time.perf_counter()
+    raw_text = ""
+    try:
+        response = await engine._client.messages.create(
+            model=model_id,
+            max_tokens=2000,
+            temperature=0.1,
+            system=_DOM_PLAN_SYSTEM_PROMPT,
+            messages=messages,
+        )
+        for block in response.content:
+            if getattr(block, "type", None) == "text":
+                raw_text += block.text
+        gateway.record(GatewayCall(
+            role="default", model_id=model_id, provider=choice.provider,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+        ))
+    except Exception as exc:  # noqa: BLE001
+        gateway.record(GatewayCall(
+            role="default", model_id=model_id, provider=choice.provider,
+            succeeded=False, error_kind=type(exc).__name__,
+        ))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": "dom_plan_model_failed", "message": str(exc)},
+        )
+
+    latency_ms = int((time.perf_counter() - started) * 1000)
+
+    cleaned = _strip_json_fence(raw_text)
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        logger.warning("dom_plan: model returned non-JSON: %r", raw_text[:300])
+        return DomPlanResult(
+            context_id=req.context_id,
+            actions=[],
+            reason="model returned non-JSON; refusing to execute",
+            model_used=model_id,
+            latency_ms=latency_ms,
+            raw_response=raw_text[:1000],
+        )
+
+    raw_actions = parsed.get("actions") if isinstance(parsed, dict) else None
+    raw_compose = parsed.get("compose") if isinstance(parsed, dict) else None
+    reason = parsed.get("reason") if isinstance(parsed, dict) else None
+
+    actions: list[DomAction] = []
+    if isinstance(raw_actions, list):
+        try:
+            actions = _DOM_ACTION_ADAPTER.validate_python(raw_actions)
+        except ValidationError:
+            # Try to salvage: validate one-by-one, drop the rotten ones.
+            for a in raw_actions:
+                try:
+                    actions.append(_DOM_ACTION_ADAPTER.validate_python([a])[0])
+                except ValidationError:
+                    continue
+
+    # Compose is mutually exclusive with actions. If the model returned
+    # both (against instructions), prefer the actions — they're the
+    # higher-fidelity intent. The compose text is only kept when there
+    # are no executable actions, which is the case-B branch the prompt
+    # asks for.
+    compose: Optional[str] = None
+    if not actions and isinstance(raw_compose, str) and raw_compose.strip():
+        compose = raw_compose.strip()
+
+    logger.info(
+        "composer.dom_plan model=%s latency_ms=%d actions=%d compose=%s reason=%r",
+        model_id, latency_ms, len(actions),
+        "yes" if compose else "no", reason,
+    )
+
+    return DomPlanResult(
+        context_id=req.context_id,
+        actions=actions,
+        compose=compose,
+        reason=reason if isinstance(reason, str) else None,
+        model_used=model_id,
+        latency_ms=latency_ms,
+        # Keep raw response only when neither path produced anything —
+        # that's the only case the operator might want to debug.
+        raw_response=None if (actions or compose) else raw_text[:1000],
+    )
+
+
+@router.post("/dom_plan_stream")
+async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
+    """Same as /dom_plan but server-sent events.
+
+    The user perceives a 1.5–4s wait as "the capsule is alive" instead
+    of "the spinner has frozen". Two SSE event names are emitted:
+      * delta — raw text chunks straight from the model (the capsule
+                regex-extracts the partial `compose` value to render
+                token-by-token).
+      * done  — the parsed DomPlanResult after the stream closes.
+
+    Any failure mid-stream emits an `error` event and ends. The
+    underlying provider must support Anthropic's streaming API
+    (engine._client.messages.stream); the Groq and Gemini adapters
+    don't expose it, so this route is best-effort: callers that hit
+    those providers will get an error event and should fall back to
+    the non-streaming /dom_plan.
+    """
+    ctx = await _contexts.get(req.context_id)
+    if ctx is None:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail={"error": "context_expired"},
+        )
+    assert isinstance(ctx, ContextPackage)
+
+    engine = _get_engine()
+    choice = gateway.select("default")
+    model_id = choice.model_id
+
+    messages = _build_user_messages(ctx, req.user_input, engine)
+
+    async def event_stream():
+        raw_text = ""
+        started = time.perf_counter()
+        in_tokens = 0
+        out_tokens = 0
+        try:
+            async with engine._client.messages.stream(
+                model=model_id,
+                max_tokens=2000,
+                temperature=0.1,
+                system=_DOM_PLAN_SYSTEM_PROMPT,
+                messages=messages,
+            ) as stream:
+                async for text in stream.text_stream:
+                    raw_text += text
+                    payload = json.dumps({"text": text})
+                    yield f"event: delta\ndata: {payload}\n\n"
+                final = await stream.get_final_message()
+                in_tokens = final.usage.input_tokens
+                out_tokens = final.usage.output_tokens
+        except Exception as exc:  # noqa: BLE001
+            gateway.record(GatewayCall(
+                role="default", model_id=model_id, provider=choice.provider,
+                succeeded=False, error_kind=type(exc).__name__,
+            ))
+            err_payload = json.dumps({
+                "error": str(exc),
+                "kind": type(exc).__name__,
+            })
+            yield f"event: error\ndata: {err_payload}\n\n"
+            return
+
+        gateway.record(GatewayCall(
+            role="default", model_id=model_id, provider=choice.provider,
+            input_tokens=in_tokens, output_tokens=out_tokens,
+        ))
+
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        cleaned = _strip_json_fence(raw_text)
+        try:
+            parsed = json.loads(cleaned)
+        except json.JSONDecodeError:
+            parsed = {}
+
+        raw_actions = parsed.get("actions") if isinstance(parsed, dict) else None
+        raw_compose = parsed.get("compose") if isinstance(parsed, dict) else None
+        reason = parsed.get("reason") if isinstance(parsed, dict) else None
+
+        actions_data: list[dict] = []
+        if isinstance(raw_actions, list):
+            try:
+                validated = _DOM_ACTION_ADAPTER.validate_python(raw_actions)
+                actions_data = [a.model_dump() for a in validated]
+            except ValidationError:
+                for a in raw_actions:
+                    try:
+                        v = _DOM_ACTION_ADAPTER.validate_python([a])[0]
+                        actions_data.append(v.model_dump())
+                    except ValidationError:
+                        continue
+
+        compose: Optional[str] = None
+        if not actions_data and isinstance(raw_compose, str) and raw_compose.strip():
+            compose = raw_compose.strip()
+
+        result_payload = json.dumps({
+            "actions": actions_data,
+            "compose": compose,
+            "reason": reason if isinstance(reason, str) else None,
+            "model_used": model_id,
+            "latency_ms": latency_ms,
+            "context_id": str(req.context_id),
+        })
+        logger.info(
+            "composer.dom_plan_stream model=%s latency_ms=%d actions=%d compose=%s",
+            model_id, latency_ms, len(actions_data),
+            "yes" if compose else "no",
+        )
+        yield f"event: done\ndata: {result_payload}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            # Defensive headers for proxies that buffer SSE by default.
+            # Without X-Accel-Buffering, nginx/CloudFront/Cloudflare
+            # will hold the stream until it ends and the user sees no
+            # token-by-token effect.
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @router.post("/apply", response_model=ApplyResult)
 async def apply_preview(req: ComposerApplyRequest) -> ApplyResult:
     """Stage 4 — apply (or reject) the preview, record the run."""
@@ -612,4 +981,22 @@ def _compose_context_blob(ctx: ContextPackage) -> str:
         lines.append("---")
         lines.append("clipboard:")
         lines.append(ctx.clipboard[:4000])
+    # The browser content script forwards a capped slice of the live page's
+    # innerText through metadata.page_text. Without this block the model
+    # only ever saw url+title+selection and answered "I can't see the
+    # page". Keep the cap conservative — page_text is a fuzzy fallback,
+    # not the primary signal. Selection (when present) still wins.
+    page_text = ctx.metadata.get("page_text") if ctx.metadata else None
+    if isinstance(page_text, str) and page_text.strip():
+        lines.append("---")
+        lines.append("page_text:")
+        lines.append(page_text[:6000])
+    # dom_skeleton is a structured listing of fillable/clickable elements
+    # with their selectors. The DOM-action planner needs real selectors
+    # to avoid hallucinating CSS; without this it would guess and fail.
+    dom_skeleton = ctx.metadata.get("dom_skeleton") if ctx.metadata else None
+    if isinstance(dom_skeleton, str) and dom_skeleton.strip():
+        lines.append("---")
+        lines.append("dom_skeleton:")
+        lines.append(dom_skeleton[:4000])
     return "\n".join(lines)
