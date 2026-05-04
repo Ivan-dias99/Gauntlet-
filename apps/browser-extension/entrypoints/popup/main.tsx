@@ -13,13 +13,28 @@ import { ComposerClient } from '../../lib/composer-client';
 // new-tab page), the popup renders the same capsule locally as fallback
 // — so the operator NEVER sees an empty popup.
 
+// Chrome / Edge cap toolbar popups at 800×600. Fill the maximum so the
+// fallback capsule reads the same as the in-page drawer instead of the
+// pinched 420 px sliver it used to be. Body sizes the popup window;
+// #root + .gauntlet-capsule fill it without margins so the operator
+// sees the same two-panel layout regardless of entry point.
 const FALLBACK_CSS = `
-  body { margin: 0; background: #0a0c10; }
+  html, body {
+    margin: 0;
+    width: 800px;
+    height: 600px;
+    overflow: hidden;
+    background: #0a0c10;
+  }
+  #root {
+    width: 100%;
+    height: 100%;
+  }
   .gauntlet-capsule {
     position: static;
-    width: 720px;
-    max-width: 95vw;
-    min-height: 360px;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
     border-radius: 0;
     box-shadow: none;
     border: none;
