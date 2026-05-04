@@ -35,6 +35,12 @@ export default defineContentScript({
     // our host already on the page, leave it alone.
     if (document.getElementById(HOST_ID)) return;
 
+    // Per-domain dismiss is honoured INSIDE App, not by skipping the
+    // mount, because the App also owns the runtime.onMessage listener
+    // that handles hotkey summons. A dismissed domain hides the pill
+    // but the explicit hotkey still works in-page — that's a deliberate
+    // user gesture, not Gauntlet imposing itself.
+
     const host = document.createElement('div');
     host.id = HOST_ID;
     Object.assign(host.style, {
