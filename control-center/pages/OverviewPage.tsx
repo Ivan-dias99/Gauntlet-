@@ -9,9 +9,11 @@ interface BootSummary {
   uptime_seconds?: number;
   mode?: string;
   anthropic_api_key_present?: boolean;
+  groq_api_key_present?: boolean;
   gemini_api_key_present?: boolean;
+  groq_model?: string | null;
   gemini_model?: string | null;
-  active_provider?: "anthropic" | "gemini" | "mock" | string;
+  active_provider?: "anthropic" | "groq" | "gemini" | "mock" | "none" | string;
   data_dir?: string;
   persistence_ephemeral?: boolean;
   host?: string;
@@ -315,28 +317,42 @@ function SurfaceTile({
 }
 
 function DiagGrid({ diag }: { diag: Diagnostics }) {
-  // Provider activo: Anthropic se a key estiver presente; senão Gemini se a
-  // sua key estiver presente; senão mock. O backend já calcula isto em
-  // /diagnostics (server.py:828-832); usamos o campo dele e caímos para
-  // inferência local apenas quando o deploy ainda é antigo.
+  // Provider activo: o backend já calcula em /diagnostics (server.py
+  // active_provider field). Caímos para inferência local — pela mesma
+  // ordem de prioridade do engine (Anthropic > Groq > Gemini > mock) —
+  // só quando o deploy ainda é antigo e o campo não existe.
   const provider =
     diag.boot?.active_provider ??
     (diag.boot?.anthropic_api_key_present
       ? "anthropic"
+      : diag.boot?.groq_api_key_present
+      ? "groq"
       : diag.boot?.gemini_api_key_present
       ? "gemini"
       : "mock");
+  // For non-Anthropic providers the gateway echoes back its requested
+  // model id (claude-sonnet-4-6) on the response, so we prefer the
+  // provider-specific model id from /diagnostics when available.
   const realModel =
-    provider === "gemini"
+    provider === "groq"
+      ? diag.boot?.groq_model ?? "groq"
+      : provider === "gemini"
       ? diag.boot?.gemini_model ?? "gemini"
       : diag.model ?? "—";
+  // Catch-all renders "mock only" only when no provider is active. An
+  // unknown provider name (a forward-compat case for newer backends)
+  // is shown as live with its raw label rather than falsely warning.
   const providerPill =
     provider === "anthropic" ? (
       <Pill tone="ok">anthropic · live</Pill>
+    ) : provider === "groq" ? (
+      <Pill tone="ok">groq · live</Pill>
     ) : provider === "gemini" ? (
       <Pill tone="ok">gemini · live</Pill>
-    ) : (
+    ) : provider === "mock" || provider === "none" ? (
       <Pill tone="warn">mock only</Pill>
+    ) : (
+      <Pill tone="ok">{`${provider} · live`}</Pill>
     );
 
   const rows: Array<[string, React.ReactNode]> = [
