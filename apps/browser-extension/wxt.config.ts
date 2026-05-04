@@ -34,7 +34,10 @@ export default defineConfig({
     },
     action: {
       default_title: 'Gauntlet',
-      default_popup: 'popup.html',
+      // No default_popup: the icon click is handled in background.ts and
+      // opens a real window via chrome.windows.create. Toolbar popups are
+      // capped at 800x600 by the browser, which is too small to host the
+      // capsule's two-panel layout — a separate window has no such cap.
     },
   },
 });
