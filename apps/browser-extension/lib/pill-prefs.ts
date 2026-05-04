@@ -16,6 +16,7 @@
 
 const KEY_POSITION = 'gauntlet:pill_position';
 const KEY_DISMISSED = 'gauntlet:dismissed_domains';
+const KEY_SCREENSHOT_ENABLED = 'gauntlet:screenshot_enabled';
 
 export interface PillPosition {
   // Distance from the bottom-right corner, in CSS pixels. Positive
@@ -97,6 +98,27 @@ export async function isDomainDismissed(hostname: string): Promise<boolean> {
   if (!hostname) return false;
   const current = await readDismissedDomains();
   return current.includes(hostname);
+}
+
+// Screenshot capture is privacy-sensitive — a viewport snapshot can
+// contain passwords, private DMs, banking balances. Off by default;
+// the user opts in once via the settings drawer and the preference
+// applies to every subsequent summon.
+export async function readScreenshotEnabled(): Promise<boolean> {
+  try {
+    const got = await chrome.storage.local.get(KEY_SCREENSHOT_ENABLED);
+    return got[KEY_SCREENSHOT_ENABLED] === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function writeScreenshotEnabled(enabled: boolean): Promise<void> {
+  try {
+    await chrome.storage.local.set({ [KEY_SCREENSHOT_ENABLED]: !!enabled });
+  } catch {
+    // Non-fatal.
+  }
 }
 
 // Keep the pill on-screen even when the viewport is tiny or the user

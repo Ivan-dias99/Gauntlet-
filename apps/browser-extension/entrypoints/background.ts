@@ -285,10 +285,33 @@ export default defineBackground(() => {
     void summonOnActiveTab(tab);
   });
 
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg && msg.type === 'gauntlet:fetch') {
       void proxyFetch(msg as FetchProxyRequest).then(sendResponse);
       return true; // keep the channel open for the async response
+    }
+    if (msg && msg.type === 'gauntlet:capture_screenshot') {
+      // Screenshot the visible part of the tab the request came from.
+      // chrome.tabs.captureVisibleTab requires either activeTab or
+      // <all_urls> + the tab to be active in its window — both true
+      // by the time the user has hit summon. Returns a data URL we
+      // forward verbatim to the content script.
+      const windowId = sender.tab?.windowId;
+      void (async () => {
+        try {
+          const dataUrl = await chrome.tabs.captureVisibleTab(
+            windowId ?? chrome.windows.WINDOW_ID_CURRENT,
+            { format: 'png' },
+          );
+          sendResponse({ ok: true, dataUrl });
+        } catch (err: unknown) {
+          sendResponse({
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      })();
+      return true;
     }
     return false;
   });

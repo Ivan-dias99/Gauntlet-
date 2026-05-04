@@ -511,6 +511,47 @@ Hard rules:
 """
 
 
+def _build_user_messages(ctx: ContextPackage, user_input: str) -> list[dict]:
+    """Compose the messages array for the planner, including a base64
+    image block when the content script forwarded an opt-in viewport
+    screenshot. Anthropic accepts a content list mixing image and text;
+    when the screenshot is absent we send a plain string content (the
+    SDK accepts both shapes interchangeably)."""
+    user_msg = (
+        f"Page context:\n{_compose_context_blob(ctx)}\n\n"
+        f"Request: {user_input}"
+    )
+    raw_screenshot = ctx.metadata.get("screenshot_data_url") if ctx.metadata else None
+    if (
+        isinstance(raw_screenshot, str)
+        and raw_screenshot.startswith("data:image/")
+        and ";base64," in raw_screenshot
+    ):
+        prefix, b64 = raw_screenshot.split(";base64,", 1)
+        media_type = prefix[len("data:") :] or "image/png"
+        # Cap raw payload size — runaway screenshots burn input tokens
+        # and hit Anthropic's 5MB-per-image limit. Roughly 1MB encoded
+        # is plenty for a 1280x800 PNG.
+        if len(b64) <= 1_500_000:
+            return [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": b64,
+                            },
+                        },
+                        {"type": "text", "text": user_msg},
+                    ],
+                }
+            ]
+    return [{"role": "user", "content": user_msg}]
+
+
 def _strip_json_fence(raw: str) -> str:
     """Some models still wrap JSON in ```json ... ``` despite the
     instruction. Strip a single leading + trailing fence; everything
@@ -548,10 +589,7 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
     choice = gateway.select("default")
     model_id = choice.model_id
 
-    user_msg = (
-        f"Page context:\n{_compose_context_blob(ctx)}\n\n"
-        f"Request: {req.user_input}"
-    )
+    messages = _build_user_messages(ctx, req.user_input)
 
     started = time.perf_counter()
     raw_text = ""
@@ -561,7 +599,7 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
             max_tokens=2000,
             temperature=0.1,
             system=_DOM_PLAN_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_msg}],
+            messages=messages,
         )
         for block in response.content:
             if getattr(block, "type", None) == "text":
@@ -671,10 +709,7 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
     choice = gateway.select("default")
     model_id = choice.model_id
 
-    user_msg = (
-        f"Page context:\n{_compose_context_blob(ctx)}\n\n"
-        f"Request: {req.user_input}"
-    )
+    messages = _build_user_messages(ctx, req.user_input)
 
     async def event_stream():
         raw_text = ""
@@ -687,7 +722,7 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
                 max_tokens=2000,
                 temperature=0.1,
                 system=_DOM_PLAN_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": user_msg}],
+                messages=messages,
             ) as stream:
                 async for text in stream.text_stream:
                     raw_text += text

@@ -22,7 +22,9 @@ import {
 } from '../lib/dom-actions';
 import {
   readDismissedDomains,
+  readScreenshotEnabled,
   restoreDomain,
+  writeScreenshotEnabled,
 } from '../lib/pill-prefs';
 import {
   readSelectionSnapshot,
@@ -76,6 +78,12 @@ export function Capsule({
   // once the `done` event fires, the full plan.compose replaces it.
   const [partialCompose, setPartialCompose] = useState<string>('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Multimodal: when the user opted in (via SettingsDrawer), capture
+  // a viewport screenshot once per cápsula mount. The result is
+  // attached to the next request's metadata so the planner can "see"
+  // the page. If the request fires before capture finishes, we send
+  // without the image — better than blocking the user.
+  const [screenshot, setScreenshot] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<(() => void) | null>(null);
@@ -101,6 +109,30 @@ export function Capsule({
     return () => {
       abortRef.current?.abort();
       streamAbortRef.current?.();
+    };
+  }, []);
+
+  // Fire-and-forget screenshot capture on mount when the pref is on.
+  // The background script handles chrome.tabs.captureVisibleTab and
+  // returns a data URL; we keep it in component state until the next
+  // submit copies it into the request metadata.
+  useEffect(() => {
+    let cancelled = false;
+    void readScreenshotEnabled().then((enabled) => {
+      if (cancelled || !enabled) return;
+      if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) return;
+      void chrome.runtime
+        .sendMessage({ type: 'gauntlet:capture_screenshot' })
+        .then((reply: { ok?: boolean; dataUrl?: string } | undefined) => {
+          if (cancelled || !reply?.ok || !reply.dataUrl) return;
+          setScreenshot(reply.dataUrl);
+        })
+        .catch(() => {
+          // Silent — screenshot is opt-in and best-effort.
+        });
+    });
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -142,7 +174,7 @@ export function Capsule({
     setCopied(false);
     setPartialCompose('');
     streamBufferRef.current = '';
-    const capture = buildCapture(snapshot);
+    const capture = buildCapture(snapshot, screenshot);
     try {
       const ctx = await client.captureContext(capture, ac.signal);
       if (ac.signal.aborted) return;
@@ -185,7 +217,7 @@ export function Capsule({
       setError(err instanceof Error ? err.message : String(err));
       setPhase('error');
     }
-  }, [client, snapshot, userInput, phase]);
+  }, [client, snapshot, screenshot, userInput, phase]);
 
   const onSubmit = useCallback(
     (ev: React.FormEvent) => {
@@ -561,12 +593,17 @@ function truncate(s: string, max: number): string {
 function SettingsDrawer({ onClose }: { onClose: () => void }) {
   const [domains, setDomains] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [screenshotEnabled, setScreenshotEnabled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     void readDismissedDomains().then((list) => {
       if (cancelled) return;
       setDomains(list);
+    });
+    void readScreenshotEnabled().then((enabled) => {
+      if (cancelled) return;
+      setScreenshotEnabled(enabled);
       setLoading(false);
     });
     return () => {
@@ -579,10 +616,15 @@ function SettingsDrawer({ onClose }: { onClose: () => void }) {
     setDomains((prev) => prev.filter((h) => h !== host));
   }, []);
 
+  const toggleScreenshot = useCallback(async (enabled: boolean) => {
+    setScreenshotEnabled(enabled);
+    await writeScreenshotEnabled(enabled);
+  }, []);
+
   return (
     <section className="gauntlet-capsule__settings" role="region" aria-label="Definições">
       <header className="gauntlet-capsule__settings-header">
-        <span className="gauntlet-capsule__settings-title">domínios escondidos</span>
+        <span className="gauntlet-capsule__settings-title">definições</span>
         <button
           type="button"
           className="gauntlet-capsule__settings-close"
@@ -592,28 +634,49 @@ function SettingsDrawer({ onClose }: { onClose: () => void }) {
           ×
         </button>
       </header>
-      {loading ? (
-        <p className="gauntlet-capsule__settings-empty">a carregar…</p>
-      ) : domains.length === 0 ? (
-        <p className="gauntlet-capsule__settings-empty">
-          nenhum domínio escondido — clica direito no pill em qualquer site para o esconder lá.
-        </p>
-      ) : (
-        <ul className="gauntlet-capsule__settings-list">
-          {domains.map((host) => (
-            <li key={host} className="gauntlet-capsule__settings-row">
-              <span className="gauntlet-capsule__settings-host">{host}</span>
-              <button
-                type="button"
-                className="gauntlet-capsule__settings-restore"
-                onClick={() => void restore(host)}
-              >
-                restaurar
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+
+      <div className="gauntlet-capsule__settings-section">
+        <label className="gauntlet-capsule__settings-toggle">
+          <input
+            type="checkbox"
+            checked={screenshotEnabled}
+            onChange={(ev) => void toggleScreenshot(ev.target.checked)}
+          />
+          <span className="gauntlet-capsule__settings-toggle-label">
+            <strong>incluir screenshot</strong>
+            <small>
+              o modelo vê a página visível. útil para layouts e imagens, exposição
+              de senhas/DMs visíveis. opt-in.
+            </small>
+          </span>
+        </label>
+      </div>
+
+      <div className="gauntlet-capsule__settings-section">
+        <span className="gauntlet-capsule__settings-subtitle">domínios escondidos</span>
+        {loading ? (
+          <p className="gauntlet-capsule__settings-empty">a carregar…</p>
+        ) : domains.length === 0 ? (
+          <p className="gauntlet-capsule__settings-empty">
+            nenhum — clica direito no pill em qualquer site para o esconder.
+          </p>
+        ) : (
+          <ul className="gauntlet-capsule__settings-list">
+            {domains.map((host) => (
+              <li key={host} className="gauntlet-capsule__settings-row">
+                <span className="gauntlet-capsule__settings-host">{host}</span>
+                <button
+                  type="button"
+                  className="gauntlet-capsule__settings-restore"
+                  onClick={() => void restore(host)}
+                >
+                  restaurar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }
@@ -645,11 +708,15 @@ function extractPartialCompose(buffer: string): string | null {
 // metadata so the backend (and the DOM-action planner in particular)
 // has real selectors and live page context to work with. Backwards
 // compatible: /composer/context ignores unknown metadata keys.
-function buildCapture(snapshot: SelectionSnapshot): ContextCaptureRequest {
+function buildCapture(
+  snapshot: SelectionSnapshot,
+  screenshotDataUrl?: string | null,
+): ContextCaptureRequest {
   const metadata: Record<string, unknown> = {};
   if (snapshot.pageText) metadata.page_text = snapshot.pageText;
   if (snapshot.domSkeleton) metadata.dom_skeleton = snapshot.domSkeleton;
   if (snapshot.bbox) metadata.selection_bbox = snapshot.bbox;
+  if (screenshotDataUrl) metadata.screenshot_data_url = screenshotDataUrl;
   return {
     source: 'browser',
     url: snapshot.url,
@@ -1255,6 +1322,47 @@ export const CAPSULE_CSS = `
   font-size: 16px; line-height: 1; padding: 0 4px;
 }
 .gauntlet-capsule__settings-close:hover { color: var(--gx-fg); }
+.gauntlet-capsule__settings-section {
+  margin-bottom: 10px;
+}
+.gauntlet-capsule__settings-section:last-child { margin-bottom: 0; }
+.gauntlet-capsule__settings-subtitle {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gx-fg-muted);
+  margin-bottom: 6px;
+}
+.gauntlet-capsule__settings-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  padding: 6px 0;
+  user-select: none;
+}
+.gauntlet-capsule__settings-toggle input[type="checkbox"] {
+  margin-top: 3px;
+  width: 14px; height: 14px;
+  accent-color: var(--gx-ember);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__settings-toggle-label {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.gauntlet-capsule__settings-toggle-label strong {
+  font-size: 12px;
+  color: var(--gx-fg);
+  font-weight: 500;
+}
+.gauntlet-capsule__settings-toggle-label small {
+  font-size: 10px;
+  color: var(--gx-fg-muted);
+  line-height: 1.4;
+}
 .gauntlet-capsule__settings-empty {
   margin: 0;
   font-size: 11px;
