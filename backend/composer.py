@@ -511,19 +511,35 @@ Hard rules:
 """
 
 
-def _build_user_messages(ctx: ContextPackage, user_input: str) -> list[dict]:
+def _provider_supports_images(engine) -> bool:
+    """True only when the underlying SDK client is the real Anthropic
+    one. Groq and Gemini adapters reject Anthropic's image content
+    blocks; sending one would 502 on the user. We detect by class
+    name to avoid importing the Anthropic SDK just for an isinstance
+    check (also: in MOCK mode the client is MockAsyncAnthropic which
+    we treat as image-capable for parity testing)."""
+    cls = type(engine._client).__name__
+    return cls in ("AsyncAnthropic", "MockAsyncAnthropic")
+
+
+def _build_user_messages(ctx: ContextPackage, user_input: str, engine=None) -> list[dict]:
     """Compose the messages array for the planner, including a base64
     image block when the content script forwarded an opt-in viewport
-    screenshot. Anthropic accepts a content list mixing image and text;
-    when the screenshot is absent we send a plain string content (the
-    SDK accepts both shapes interchangeably)."""
+    screenshot AND the active provider supports image inputs.
+    Anthropic accepts a content list mixing image and text; when the
+    screenshot is absent we send a plain string content (the SDK
+    accepts both shapes interchangeably). On Groq/Gemini adapters we
+    quietly drop the image block — those adapters only do text and
+    would 502 on a list-shaped content with image blocks."""
     user_msg = (
         f"Page context:\n{_compose_context_blob(ctx)}\n\n"
         f"Request: {user_input}"
     )
     raw_screenshot = ctx.metadata.get("screenshot_data_url") if ctx.metadata else None
     if (
-        isinstance(raw_screenshot, str)
+        engine is not None
+        and _provider_supports_images(engine)
+        and isinstance(raw_screenshot, str)
         and raw_screenshot.startswith("data:image/")
         and ";base64," in raw_screenshot
     ):
@@ -549,6 +565,11 @@ def _build_user_messages(ctx: ContextPackage, user_input: str) -> list[dict]:
                     ],
                 }
             ]
+    if raw_screenshot and engine is not None and not _provider_supports_images(engine):
+        logger.info(
+            "composer.screenshot_dropped provider=%s — Groq/Gemini adapters don't accept image blocks",
+            type(engine._client).__name__,
+        )
     return [{"role": "user", "content": user_msg}]
 
 
@@ -589,7 +610,7 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
     choice = gateway.select("default")
     model_id = choice.model_id
 
-    messages = _build_user_messages(ctx, req.user_input)
+    messages = _build_user_messages(ctx, req.user_input, engine)
 
     started = time.perf_counter()
     raw_text = ""
@@ -709,7 +730,7 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
     choice = gateway.select("default")
     model_id = choice.model_id
 
-    messages = _build_user_messages(ctx, req.user_input)
+    messages = _build_user_messages(ctx, req.user_input, engine)
 
     async def event_stream():
         raw_text = ""
