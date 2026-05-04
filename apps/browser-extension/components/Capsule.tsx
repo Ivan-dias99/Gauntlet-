@@ -124,8 +124,11 @@ export function Capsule({
   // Fire-and-forget screenshot capture on mount when the pref is on.
   // The background script handles chrome.tabs.captureVisibleTab and
   // returns a data URL; we keep it in component state until the next
-  // submit copies it into the request metadata.
+  // submit copies it into the request metadata. Skipped in popup mode
+  // (no executor) — capturing there returns a screenshot of the
+  // popup window itself, which is useless and visually recursive.
   useEffect(() => {
+    if (!executor) return;
     let cancelled = false;
     void readScreenshotEnabled().then((enabled) => {
       if (cancelled || !enabled) return;
@@ -143,7 +146,7 @@ export function Capsule({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [executor]);
 
   useEffect(() => {
     function onKey(ev: KeyboardEvent) {
@@ -183,7 +186,15 @@ export function Capsule({
     setCopied(false);
     setPartialCompose('');
     streamBufferRef.current = '';
-    const capture = buildCapture(snapshot, screenshot);
+    // Re-read the screenshot pref at submit time. The user may have
+    // toggled it off in the settings drawer between mount and submit;
+    // the captured data URL is in our state but should not be sent
+    // when the toggle is currently off.
+    const screenshotEnabled = await readScreenshotEnabled();
+    const capture = buildCapture(
+      snapshot,
+      screenshotEnabled ? screenshot : null,
+    );
     try {
       const ctx = await client.captureContext(capture, ac.signal);
       if (ac.signal.aborted) return;
@@ -214,10 +225,39 @@ export function Capsule({
           },
           onError: (err) => {
             if (ac.signal.aborted) return;
-            setError(err);
-            setPhase('error');
-            setPartialCompose('');
-            streamBufferRef.current = '';
+            // The streaming endpoint can fail for transient reasons
+            // (provider doesn't support .messages.stream, e.g.
+            // Groq/Gemini adapters; CORS preflight hiccup; SSE
+            // proxy buffering). Fall back to the non-streaming
+            // endpoint once before surfacing the failure — the user
+            // gets a slower but complete response instead of an
+            // error toast.
+            void (async () => {
+              try {
+                const planResult = await client.requestDomPlan(
+                  ctx.context_id,
+                  userInput.trim(),
+                  ac.signal,
+                );
+                if (ac.signal.aborted) return;
+                setPlan(planResult);
+                setPhase('plan_ready');
+                setPartialCompose('');
+                streamBufferRef.current = '';
+              } catch (fallbackErr: unknown) {
+                if (ac.signal.aborted) return;
+                const fbMsg =
+                  fallbackErr instanceof Error
+                    ? fallbackErr.message
+                    : String(fallbackErr);
+                // Surface the original streaming error too so the
+                // operator can see both paths failed.
+                setError(`stream: ${err} · fallback: ${fbMsg}`);
+                setPhase('error');
+                setPartialCompose('');
+                streamBufferRef.current = '';
+              }
+            })();
           },
         },
       );
@@ -365,7 +405,10 @@ export function Capsule({
           </header>
 
           {settingsOpen && (
-            <SettingsDrawer onClose={() => setSettingsOpen(false)} />
+            <SettingsDrawer
+              onClose={() => setSettingsOpen(false)}
+              showScreenshot={!!executor}
+            />
           )}
 
           <section className="gauntlet-capsule__context">
@@ -440,7 +483,7 @@ export function Capsule({
             </section>
           )}
 
-          {phase === 'planning' && (
+          {(phase === 'planning' || (phase === 'streaming' && !partialCompose)) && (
             <section
               className="gauntlet-capsule__skeleton"
               role="status"
@@ -564,7 +607,7 @@ export function Capsule({
                   </label>
                 </div>
               )}
-              {phase !== 'executed' && (
+              {phase !== 'executed' && executor && (
                 <div className="gauntlet-capsule__plan-actions">
                   <button
                     type="button"
@@ -583,6 +626,12 @@ export function Capsule({
                         : 'Executar'}
                   </button>
                 </div>
+              )}
+              {phase !== 'executed' && !executor && (
+                <p className="gauntlet-capsule__plan-empty">
+                  esta superfície não tem acesso a uma página viva — abre o
+                  Gauntlet num separador para executar acções.
+                </p>
               )}
             </section>
           )}
@@ -610,7 +659,16 @@ function truncate(s: string, max: number): string {
 // because that's where context already lives; opening it doesn't
 // push the user into a separate Control Center surface (doctrine:
 // utilizador vive no Composer).
-function SettingsDrawer({ onClose }: { onClose: () => void }) {
+function SettingsDrawer({
+  onClose,
+  showScreenshot,
+}: {
+  onClose: () => void;
+  // Only the in-page surface has a real tab to screenshot. The popup
+  // window would capture itself, which is useless and visually
+  // recursive — hide the toggle there.
+  showScreenshot: boolean;
+}) {
   const [domains, setDomains] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [screenshotEnabled, setScreenshotEnabled] = useState(false);
@@ -655,22 +713,24 @@ function SettingsDrawer({ onClose }: { onClose: () => void }) {
         </button>
       </header>
 
-      <div className="gauntlet-capsule__settings-section">
-        <label className="gauntlet-capsule__settings-toggle">
-          <input
-            type="checkbox"
-            checked={screenshotEnabled}
-            onChange={(ev) => void toggleScreenshot(ev.target.checked)}
-          />
-          <span className="gauntlet-capsule__settings-toggle-label">
-            <strong>incluir screenshot</strong>
-            <small>
-              o modelo vê a página visível. útil para layouts e imagens, exposição
-              de senhas/DMs visíveis. opt-in.
-            </small>
-          </span>
-        </label>
-      </div>
+      {showScreenshot && (
+        <div className="gauntlet-capsule__settings-section">
+          <label className="gauntlet-capsule__settings-toggle">
+            <input
+              type="checkbox"
+              checked={screenshotEnabled}
+              onChange={(ev) => void toggleScreenshot(ev.target.checked)}
+            />
+            <span className="gauntlet-capsule__settings-toggle-label">
+              <strong>incluir screenshot</strong>
+              <small>
+                o modelo vê a página visível. útil para layouts e imagens, exposição
+                de senhas/DMs visíveis. opt-in.
+              </small>
+            </span>
+          </label>
+        </div>
+      )}
 
       <div className="gauntlet-capsule__settings-section">
         <span className="gauntlet-capsule__settings-subtitle">domínios escondidos</span>

@@ -157,7 +157,7 @@ export function Pill({ position, onClick, onDismissDomain, flash }: PillProps) {
       })();
       const ok = window.confirm(
         host
-          ? `Esconder o Gauntlet em ${host}? Voltas a activar nas definições da extensão.`
+          ? `Esconder o Gauntlet em ${host}? Restauras na cápsula → "···" → restaurar.`
           : 'Esconder o Gauntlet neste site?',
       );
       if (ok) onDismissDomain();
