@@ -253,6 +253,134 @@ export class ComposerClient {
       signal,
     );
   }
+
+  // Streaming version of requestDomPlan. Uses a port-based bridge to
+  // background.ts which forwards the SSE chunks. Callbacks are
+  // intentionally narrow:
+  //   onDelta  — raw text fragment from the model. The capsule
+  //              maintains its own buffer + regex-extracts a partial
+  //              `compose` value to render token-by-token.
+  //   onDone   — final parsed DomPlanResult (or whatever the server
+  //              could salvage from a malformed response).
+  //   onError  — string description; transport error or model error.
+  // Returns an `abort` function the caller invokes to stop early.
+  requestDomPlanStream(
+    contextId: string,
+    userInput: string,
+    callbacks: {
+      onDelta: (text: string) => void;
+      onDone: (result: DomPlanResult) => void;
+      onError: (err: string) => void;
+    },
+  ): () => void {
+    if (!inExtensionContext()) {
+      // Direct fetch streaming from a non-extension context isn't
+      // wired up — surface the limitation rather than silently fall
+      // back to one-shot. Callers should use requestDomPlan in those
+      // contexts.
+      callbacks.onError('streaming requires extension context');
+      return () => {};
+    }
+
+    const port = chrome.runtime.connect({ name: 'gauntlet:stream' });
+    let settled = false;
+
+    function settle() {
+      if (settled) return;
+      settled = true;
+      try {
+        port.disconnect();
+      } catch {
+        // already disconnected
+      }
+    }
+
+    port.onMessage.addListener((rawMsg: unknown) => {
+      if (!rawMsg || typeof rawMsg !== 'object') return;
+      const msg = rawMsg as {
+        type?: string;
+        event?: string;
+        data?: string;
+        error?: string;
+      };
+      if (msg.type === 'sse' && typeof msg.data === 'string') {
+        let parsed: unknown = null;
+        try {
+          parsed = JSON.parse(msg.data);
+        } catch {
+          // The server JSON-encodes every event payload, so a parse
+          // failure here is an upstream protocol bug — surface it.
+          callbacks.onError('malformed SSE payload');
+          settle();
+          return;
+        }
+        if (msg.event === 'delta') {
+          const text = (parsed as { text?: string }).text ?? '';
+          callbacks.onDelta(text);
+        } else if (msg.event === 'done') {
+          const d = parsed as Partial<DomPlanResult>;
+          callbacks.onDone({
+            plan_id: d.plan_id ?? '',
+            context_id: d.context_id ?? contextId,
+            actions: d.actions ?? [],
+            compose: d.compose ?? null,
+            reason: d.reason ?? null,
+            model_used: d.model_used ?? '',
+            latency_ms: d.latency_ms ?? 0,
+            raw_response: null,
+          });
+          settle();
+        } else if (msg.event === 'error') {
+          const err = (parsed as { error?: string }).error ?? 'model error';
+          callbacks.onError(err);
+          settle();
+        }
+      } else if (msg.type === 'error') {
+        callbacks.onError(msg.error ?? 'transport error');
+        settle();
+      } else if (msg.type === 'closed') {
+        // Stream closed cleanly without a `done` event — treat as
+        // an empty refusal rather than a hard error.
+        if (!settled) {
+          callbacks.onDone({
+            plan_id: '',
+            context_id: contextId,
+            actions: [],
+            compose: null,
+            reason: 'stream ended without result',
+            model_used: '',
+            latency_ms: 0,
+            raw_response: null,
+          });
+          settled = true;
+        }
+      }
+    });
+
+    port.onDisconnect.addListener(() => {
+      if (!settled) {
+        const lastError = chrome.runtime.lastError?.message;
+        callbacks.onError(lastError ?? 'disconnected');
+        settled = true;
+      }
+    });
+
+    port.postMessage({
+      type: 'start',
+      url: `${this.backendUrl}/composer/dom_plan_stream`,
+      body: { context_id: contextId, user_input: userInput },
+    });
+
+    return () => {
+      if (settled) return;
+      try {
+        port.postMessage({ type: 'abort' });
+      } catch {
+        // ignore — port may already be down
+      }
+      settle();
+    };
+  }
 }
 
 // Convenience: end-to-end one-shot. Used by the Capsule component so the

@@ -44,8 +44,9 @@ export interface CapsuleProps {
 
 type Phase =
   | 'idle'
-  | 'planning'
-  | 'plan_ready'
+  | 'planning'    // request sent, no deltas yet → skeleton showing
+  | 'streaming'   // first delta arrived → partial compose rendering
+  | 'plan_ready'  // `done` event received → final plan/compose visible
   | 'executing'
   | 'executed'
   | 'error';
@@ -65,8 +66,14 @@ export function Capsule({
   const [plan, setPlan] = useState<DomPlanResult | null>(null);
   const [planResults, setPlanResults] = useState<DomActionResult[] | null>(null);
   const [dangerConfirmed, setDangerConfirmed] = useState(false);
+  // partialCompose holds whatever text we've extracted from the
+  // streaming JSON buffer so far. It's only visible in phase 'streaming';
+  // once the `done` event fires, the full plan.compose replaces it.
+  const [partialCompose, setPartialCompose] = useState<string>('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const streamAbortRef = useRef<(() => void) | null>(null);
+  const streamBufferRef = useRef<string>('');
 
   // Danger assessment runs in-page (where document.querySelector resolves
   // against the live DOM) so each action gets per-element classification
@@ -81,7 +88,10 @@ export function Capsule({
 
   useEffect(() => {
     inputRef.current?.focus();
-    return () => abortRef.current?.abort();
+    return () => {
+      abortRef.current?.abort();
+      streamAbortRef.current?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -100,15 +110,18 @@ export function Capsule({
     setSnapshot(readSelectionSnapshot());
   }, []);
 
-  // The single send path. Backend's /composer/dom_plan decides whether
-  // the response is a list of DOM actions, an inline text answer, or
-  // a refusal — the user never has to choose. Works in popup mode too;
-  // without a DOM the model naturally falls into the compose branch.
+  // The single send path, streaming. Backend's /composer/dom_plan_stream
+  // emits delta chunks and a final `done` event with the parsed result.
+  // We progressively extract a partial `compose` value from the JSON
+  // buffer so the user sees text appear token-by-token instead of
+  // staring at a spinner. Action plans still arrive in batch on `done`
+  // (parsing partial action arrays is not worth the complexity yet).
   const requestPlan = useCallback(async () => {
-    if (!userInput.trim() || phase === 'planning' || phase === 'executing') {
+    if (!userInput.trim() || phase === 'planning' || phase === 'streaming' || phase === 'executing') {
       return;
     }
     abortRef.current?.abort();
+    streamAbortRef.current?.();
     const ac = new AbortController();
     abortRef.current = ac;
     setPhase('planning');
@@ -117,16 +130,46 @@ export function Capsule({
     setPlanResults(null);
     setDangerConfirmed(false);
     setCopied(false);
+    setPartialCompose('');
+    streamBufferRef.current = '';
     const capture = buildCapture(snapshot);
     try {
       const ctx = await client.captureContext(capture, ac.signal);
-      const planResult = await client.requestDomPlan(
+      if (ac.signal.aborted) return;
+      streamAbortRef.current = client.requestDomPlanStream(
         ctx.context_id,
         userInput.trim(),
-        ac.signal,
+        {
+          onDelta: (text) => {
+            if (ac.signal.aborted) return;
+            streamBufferRef.current += text;
+            const partial = extractPartialCompose(streamBufferRef.current);
+            if (partial !== null) {
+              setPartialCompose(partial);
+              setPhase((p) => (p === 'planning' ? 'streaming' : p));
+            } else {
+              // No compose yet — could be an action plan being built.
+              // Just transition out of skeleton on first delta so the
+              // user knows we're alive.
+              setPhase((p) => (p === 'planning' ? 'streaming' : p));
+            }
+          },
+          onDone: (planResult) => {
+            if (ac.signal.aborted) return;
+            setPlan(planResult);
+            setPhase('plan_ready');
+            setPartialCompose('');
+            streamBufferRef.current = '';
+          },
+          onError: (err) => {
+            if (ac.signal.aborted) return;
+            setError(err);
+            setPhase('error');
+            setPartialCompose('');
+            streamBufferRef.current = '';
+          },
+        },
       );
-      setPlan(planResult);
-      setPhase('plan_ready');
     } catch (err: unknown) {
       if (ac.signal.aborted) return;
       setError(err instanceof Error ? err.message : String(err));
@@ -283,7 +326,7 @@ export function Capsule({
               onChange={(ev) => setUserInput(ev.target.value)}
               onKeyDown={onTextareaKey}
               rows={2}
-              disabled={phase === 'planning' || phase === 'executing'}
+              disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
             />
             <div className="gauntlet-capsule__actions">
               <span className="gauntlet-capsule__hint" aria-hidden>
@@ -292,12 +335,12 @@ export function Capsule({
               <button
                 type="submit"
                 className="gauntlet-capsule__compose"
-                disabled={phase === 'planning' || phase === 'executing' || !userInput.trim()}
+                disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing' || !userInput.trim()}
               >
-                {phase === 'planning' ? (
+                {phase === 'planning' || phase === 'streaming' ? (
                   <>
                     <span className="gauntlet-capsule__compose-spinner" aria-hidden />
-                    <span>a pensar</span>
+                    <span>{phase === 'planning' ? 'a pensar' : 'a escrever'}</span>
                   </>
                 ) : (
                   'Enviar'
@@ -305,6 +348,19 @@ export function Capsule({
               </button>
             </div>
           </form>
+
+          {phase === 'streaming' && partialCompose && (
+            <section className="gauntlet-capsule__compose-result gauntlet-capsule__compose-result--streaming">
+              <header className="gauntlet-capsule__compose-meta">
+                <span className="gauntlet-capsule__compose-tag">resposta</span>
+                <span className="gauntlet-capsule__compose-meta-text">a escrever…</span>
+              </header>
+              <div className="gauntlet-capsule__compose-text">
+                {partialCompose}
+                <span className="gauntlet-capsule__compose-caret" aria-hidden>▍</span>
+              </div>
+            </section>
+          )}
 
           {phase === 'planning' && (
             <section
@@ -463,6 +519,29 @@ export function Capsule({
 function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
   return s.slice(0, max) + '…';
+}
+
+// Pull a partial `compose` value out of a streaming JSON buffer.
+// Returns null if the response does not look like a compose case
+// (e.g., the model started with `{"actions":[…`). Handles the most
+// common JSON escape sequences inside the partial string. The buffer
+// can end mid-escape (`...He\` waiting for the next char); we drop a
+// trailing lone backslash so the rendered text stays clean.
+function extractPartialCompose(buffer: string): string | null {
+  const match = buffer.match(/"compose"\s*:\s*"((?:[^"\\]|\\.)*)/);
+  if (!match) return null;
+  let raw = match[1];
+  // Drop a dangling backslash that could be the start of the next
+  // escape sequence we haven't received yet.
+  if (raw.endsWith('\\') && !raw.endsWith('\\\\')) {
+    raw = raw.slice(0, -1);
+  }
+  return raw
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\');
 }
 
 // Carry the live page text, DOM skeleton and selection bbox through
@@ -1119,6 +1198,19 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__compose-actions {
   display: flex; justify-content: flex-end; margin-top: 8px;
+}
+@keyframes gauntlet-cap-caret {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.gauntlet-capsule__compose-caret {
+  display: inline-block;
+  margin-left: 1px;
+  color: var(--gx-ember);
+  animation: gauntlet-cap-caret 1s steps(1) infinite;
+}
+.gauntlet-capsule__compose-result--streaming {
+  border-color: rgba(208, 122, 90, 0.35);
 }
 
 /* ── Plan section ── */

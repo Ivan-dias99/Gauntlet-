@@ -155,6 +155,126 @@ async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
   }
 }
 
+// Port-based streaming fetch proxy. chrome.runtime.sendMessage is one
+// shot — fine for /composer/dom_plan, useless for SSE where we want
+// to forward each text/event-stream chunk as it arrives. A long-lived
+// Port lets us post many messages back to the content script as the
+// upstream response trickles in. The protocol:
+//   client → background : { type: 'start', url, body }
+//   background → client : { type: 'sse', event: 'delta'|'done'|'error', data: <string> }
+//   background → client : { type: 'closed' }                — clean end
+//   background → client : { type: 'error', error: <string> } — transport failure
+//   client → background : { type: 'abort' }                  — cancel
+function parseSseEvent(block: string): { event: string; data: string } | null {
+  const lines = block.split('\n');
+  let eventName = 'message';
+  let dataParts: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith('event:')) eventName = line.slice(6).trim();
+    else if (line.startsWith('data:')) dataParts.push(line.slice(5).trimStart());
+  }
+  if (dataParts.length === 0) return null;
+  // SSE allows multi-line data: lines; rejoin with newline.
+  return { event: eventName, data: dataParts.join('\n') };
+}
+
+interface StreamStartMessage {
+  type: 'start';
+  url: string;
+  body: unknown;
+}
+
+async function handleStreamPort(port: chrome.runtime.Port): Promise<void> {
+  let aborter: AbortController | null = null;
+
+  port.onMessage.addListener((rawMsg) => {
+    const msg = rawMsg as { type?: string; url?: string; body?: unknown };
+    if (msg.type === 'start' && typeof msg.url === 'string') {
+      aborter = new AbortController();
+      const start = msg as StreamStartMessage;
+      void runStream(port, start, aborter.signal);
+    } else if (msg.type === 'abort') {
+      aborter?.abort();
+    }
+  });
+  port.onDisconnect.addListener(() => {
+    aborter?.abort();
+  });
+}
+
+async function runStream(
+  port: chrome.runtime.Port,
+  msg: StreamStartMessage,
+  signal: AbortSignal,
+): Promise<void> {
+  try {
+    const res = await fetch(msg.url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'text/event-stream',
+      },
+      body: JSON.stringify(msg.body),
+      signal,
+    });
+    if (!res.ok || !res.body) {
+      port.postMessage({
+        type: 'error',
+        error: `${res.status} ${res.statusText || 'no body'}`,
+      });
+      try {
+        port.disconnect();
+      } catch {
+        // already disconnected
+      }
+      return;
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      // SSE event boundary is a blank line (\n\n). Process complete
+      // events from the buffer; keep the partial tail for next round.
+      while (true) {
+        const idx = buffer.indexOf('\n\n');
+        if (idx === -1) break;
+        const block = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        const ev = parseSseEvent(block);
+        if (ev) {
+          try {
+            port.postMessage({ type: 'sse', event: ev.event, data: ev.data });
+          } catch {
+            // Port closed by the other side mid-stream — abort the
+            // upstream fetch and bail.
+            return;
+          }
+        }
+      }
+    }
+    try {
+      port.postMessage({ type: 'closed' });
+      port.disconnect();
+    } catch {
+      // ignore
+    }
+  } catch (err: unknown) {
+    if (signal.aborted) return;
+    try {
+      port.postMessage({
+        type: 'error',
+        error: err instanceof Error ? err.message : String(err),
+      });
+      port.disconnect();
+    } catch {
+      // ignore
+    }
+  }
+}
+
 export default defineBackground(() => {
   chrome.action.onClicked.addListener((tab) => {
     void summonOnActiveTab(tab);
@@ -171,5 +291,10 @@ export default defineBackground(() => {
       return true; // keep the channel open for the async response
     }
     return false;
+  });
+
+  chrome.runtime.onConnect.addListener((port) => {
+    if (port.name !== 'gauntlet:stream') return;
+    void handleStreamPort(port);
   });
 });

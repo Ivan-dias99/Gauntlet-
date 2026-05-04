@@ -30,6 +30,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from models import (
     ApplyResult,
@@ -637,6 +638,136 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
         # Keep raw response only when neither path produced anything —
         # that's the only case the operator might want to debug.
         raw_response=None if (actions or compose) else raw_text[:1000],
+    )
+
+
+@router.post("/dom_plan_stream")
+async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
+    """Same as /dom_plan but server-sent events.
+
+    The user perceives a 1.5–4s wait as "the capsule is alive" instead
+    of "the spinner has frozen". Two SSE event names are emitted:
+      * delta — raw text chunks straight from the model (the capsule
+                regex-extracts the partial `compose` value to render
+                token-by-token).
+      * done  — the parsed DomPlanResult after the stream closes.
+
+    Any failure mid-stream emits an `error` event and ends. The
+    underlying provider must support Anthropic's streaming API
+    (engine._client.messages.stream); the Groq and Gemini adapters
+    don't expose it, so this route is best-effort: callers that hit
+    those providers will get an error event and should fall back to
+    the non-streaming /dom_plan.
+    """
+    ctx = await _contexts.get(req.context_id)
+    if ctx is None:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail={"error": "context_expired"},
+        )
+    assert isinstance(ctx, ContextPackage)
+
+    engine = _get_engine()
+    choice = gateway.select("default")
+    model_id = choice.model_id
+
+    user_msg = (
+        f"Page context:\n{_compose_context_blob(ctx)}\n\n"
+        f"Request: {req.user_input}"
+    )
+
+    async def event_stream():
+        raw_text = ""
+        started = time.perf_counter()
+        in_tokens = 0
+        out_tokens = 0
+        try:
+            async with engine._client.messages.stream(
+                model=model_id,
+                max_tokens=2000,
+                temperature=0.1,
+                system=_DOM_PLAN_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_msg}],
+            ) as stream:
+                async for text in stream.text_stream:
+                    raw_text += text
+                    payload = json.dumps({"text": text})
+                    yield f"event: delta\ndata: {payload}\n\n"
+                final = await stream.get_final_message()
+                in_tokens = final.usage.input_tokens
+                out_tokens = final.usage.output_tokens
+        except Exception as exc:  # noqa: BLE001
+            gateway.record(GatewayCall(
+                role="default", model_id=model_id, provider=choice.provider,
+                succeeded=False, error_kind=type(exc).__name__,
+            ))
+            err_payload = json.dumps({
+                "error": str(exc),
+                "kind": type(exc).__name__,
+            })
+            yield f"event: error\ndata: {err_payload}\n\n"
+            return
+
+        gateway.record(GatewayCall(
+            role="default", model_id=model_id, provider=choice.provider,
+            input_tokens=in_tokens, output_tokens=out_tokens,
+        ))
+
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        cleaned = _strip_json_fence(raw_text)
+        try:
+            parsed = json.loads(cleaned)
+        except json.JSONDecodeError:
+            parsed = {}
+
+        raw_actions = parsed.get("actions") if isinstance(parsed, dict) else None
+        raw_compose = parsed.get("compose") if isinstance(parsed, dict) else None
+        reason = parsed.get("reason") if isinstance(parsed, dict) else None
+
+        actions_data: list[dict] = []
+        if isinstance(raw_actions, list):
+            try:
+                validated = _DOM_ACTION_ADAPTER.validate_python(raw_actions)
+                actions_data = [a.model_dump() for a in validated]
+            except ValidationError:
+                for a in raw_actions:
+                    try:
+                        v = _DOM_ACTION_ADAPTER.validate_python([a])[0]
+                        actions_data.append(v.model_dump())
+                    except ValidationError:
+                        continue
+
+        compose: Optional[str] = None
+        if not actions_data and isinstance(raw_compose, str) and raw_compose.strip():
+            compose = raw_compose.strip()
+
+        result_payload = json.dumps({
+            "actions": actions_data,
+            "compose": compose,
+            "reason": reason if isinstance(reason, str) else None,
+            "model_used": model_id,
+            "latency_ms": latency_ms,
+            "context_id": str(req.context_id),
+        })
+        logger.info(
+            "composer.dom_plan_stream model=%s latency_ms=%d actions=%d compose=%s",
+            model_id, latency_ms, len(actions_data),
+            "yes" if compose else "no",
+        )
+        yield f"event: done\ndata: {result_payload}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            # Defensive headers for proxies that buffer SSE by default.
+            # Without X-Accel-Buffering, nginx/CloudFront/Cloudflare
+            # will hold the stream until it ends and the user sees no
+            # token-by-token effect.
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
