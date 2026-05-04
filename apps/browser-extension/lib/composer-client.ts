@@ -84,11 +84,73 @@ export class ComposerError extends Error {
   }
 }
 
+// When this client runs inside the extension (popup or content script),
+// route HTTP calls through the background service worker. Background
+// fetches use the chrome-extension:// origin which is on the backend's
+// CORS allow-list; direct fetches from a content script would carry
+// the host page's origin (e.g. https://*.vercel.app) and be rejected.
+function inExtensionContext(): boolean {
+  return (
+    typeof chrome !== 'undefined' &&
+    typeof chrome.runtime !== 'undefined' &&
+    typeof chrome.runtime.id === 'string'
+  );
+}
+
+interface BackgroundFetchResponse {
+  ok: boolean;
+  status?: number;
+  statusText?: string;
+  body?: string;
+  headers?: Record<string, string>;
+  error?: string;
+}
+
+async function backgroundFetchJson<T>(
+  url: string,
+  body: unknown,
+): Promise<T> {
+  const reply: BackgroundFetchResponse = await chrome.runtime.sendMessage({
+    type: 'gauntlet:fetch',
+    url,
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!reply || !reply.ok) {
+    throw new ComposerError(
+      `composer: background fetch failed — ${reply?.error ?? 'unknown error'}`,
+      0,
+      reply ?? null,
+    );
+  }
+  let parsed: unknown = null;
+  if (reply.body != null && reply.body !== '') {
+    try {
+      parsed = JSON.parse(reply.body);
+    } catch {
+      parsed = reply.body;
+    }
+  }
+  const status = reply.status ?? 0;
+  if (status < 200 || status >= 300) {
+    throw new ComposerError(
+      `composer: ${status} ${reply.statusText ?? ''}`.trim(),
+      status,
+      parsed,
+    );
+  }
+  return parsed as T;
+}
+
 async function postJson<T>(
   url: string,
   body: unknown,
   signal?: AbortSignal,
 ): Promise<T> {
+  if (inExtensionContext()) {
+    return backgroundFetchJson<T>(url, body);
+  }
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
