@@ -43,6 +43,22 @@ GEMINI_MODEL: str = _env(
     default="gemini-2.5-flash",
 )
 
+# Groq (optional free-tier fallback). Used when ANTHROPIC_API_KEY is empty
+# and GAUNTLET_GROQ_API_KEY is set. groq_provider.AsyncGroqAnthropicAdapter
+# wraps the groq SDK in an Anthropic-compatible shape so engine.py does not
+# need provider branching. Free-tier default model: llama-3.3-70b-versatile
+# (Groq free tier as of 2025 — generous RPM, very high throughput).
+# Selected ahead of Gemini in the engine init chain because the free tier
+# limits are typically less restrictive for chat workloads.
+GROQ_API_KEY: str = _env(
+    "GAUNTLET_GROQ_API_KEY", "GROQ_API_KEY",
+    default="",
+)
+GROQ_MODEL: str = _env(
+    "GAUNTLET_GROQ_MODEL", "GROQ_MODEL",
+    default="llama-3.3-70b-versatile",
+)
+
 # Offline mock mode — bypasses every provider API call with canned responses.
 # Enable for end-to-end validation without an API key.
 RUBERRA_MOCK: bool = _env("GAUNTLET_MOCK", "SIGNAL_MOCK", "RUBERRA_MOCK").strip().lower() in (
