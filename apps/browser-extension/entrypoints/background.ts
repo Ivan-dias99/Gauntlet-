@@ -124,7 +124,19 @@ async function resolveActiveTab(
   }
 }
 
+// Hotkey dedupe — chrome.commands fires once per keystroke but the
+// repeat-on-hold rate plus accidental double-tap can race the content
+// script's mount/unmount and produce a flicker as the capsule tears
+// itself down and rebuilds. 250 ms is comfortably below human "I
+// pressed it twice on purpose" but well above hardware key bounce.
+const SUMMON_DEDUPE_MS = 250;
+let lastSummonAt = 0;
+
 async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
+  const now = Date.now();
+  if (now - lastSummonAt < SUMMON_DEDUPE_MS) return;
+  lastSummonAt = now;
+
   const tab = await resolveActiveTab(hint);
   if (!tab?.id || !isInjectableUrl(tab.url)) {
     await openComposerWindow();

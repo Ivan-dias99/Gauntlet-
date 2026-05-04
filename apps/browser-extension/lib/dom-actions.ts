@@ -95,7 +95,12 @@ function fillElement(selector: string, value: string): void {
     // descriptor that tracks state. Setting el.value directly bypasses
     // that descriptor and the framework never sees the change. We set
     // through the prototype's native setter instead, then dispatch the
-    // events the framework listens for.
+    // events the framework listens for. Focus before the change and
+    // blur after — many forms gate validation on focus/blur, not just
+    // input/change, so without them we silently skip required-field
+    // checks and the user submits a form that "looks" filled but
+    // hasn't been validated.
+    el.focus({ preventScroll: true });
     const proto =
       el instanceof HTMLInputElement
         ? HTMLInputElement.prototype
@@ -108,17 +113,21 @@ function fillElement(selector: string, value: string): void {
     }
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dispatchEvent(new Event('blur', { bubbles: true }));
     return;
   }
 
   if (el instanceof HTMLSelectElement) {
+    el.focus({ preventScroll: true });
     const setter = Object.getOwnPropertyDescriptor(
       HTMLSelectElement.prototype,
       'value',
     )?.set;
     if (setter) setter.call(el, value);
     else el.value = value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dispatchEvent(new Event('blur', { bubbles: true }));
     return;
   }
 
@@ -138,6 +147,41 @@ function clickElement(selector: string): void {
   if (!(el instanceof HTMLElement)) {
     throw new Error(`element at ${selector} is not clickable`);
   }
+  // el.click() alone fires only the synthetic `click` event. Many
+  // modern UI libraries (Radix, Headless UI, Tailwind UI, ProseMirror,
+  // shadcn/ui) attach handlers to pointerdown / mousedown instead and
+  // ignore click. The full sequence — pointerdown, mousedown, focus,
+  // pointerup, mouseup, then native click() — covers both styles. We
+  // dispatch from the element's own bounding rect so coordinate-based
+  // listeners (e.g. drag-to-select on canvases) get sane values.
+  const rect = el.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  const init: MouseEventInit = {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    clientX: x,
+    clientY: y,
+    button: 0,
+    buttons: 1,
+  };
+  const pointerInit: PointerEventInit = {
+    ...init,
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+  };
+
+  el.dispatchEvent(new PointerEvent('pointerdown', pointerInit));
+  el.dispatchEvent(new MouseEvent('mousedown', init));
+  el.focus({ preventScroll: true });
+  el.dispatchEvent(new PointerEvent('pointerup', pointerInit));
+  el.dispatchEvent(new MouseEvent('mouseup', init));
+  // Native click() runs the activation algorithm — handles links, form
+  // submit buttons, label-for-input forwarding, etc. Skipping it would
+  // break form submission, which the dispatched MouseEvent('click')
+  // does NOT trigger because it's "untrusted".
   el.click();
 }
 
