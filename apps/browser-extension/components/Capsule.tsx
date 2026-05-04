@@ -21,6 +21,10 @@ import {
   type DomActionResult,
 } from '../lib/dom-actions';
 import {
+  readDismissedDomains,
+  restoreDomain,
+} from '../lib/pill-prefs';
+import {
   readSelectionSnapshot,
   type SelectionRect,
   type SelectionSnapshot,
@@ -71,6 +75,7 @@ export function Capsule({
   // streaming JSON buffer so far. It's only visible in phase 'streaming';
   // once the `done` event fires, the full plan.compose replaces it.
   const [partialCompose, setPartialCompose] = useState<string>('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<(() => void) | null>(null);
@@ -285,15 +290,31 @@ export function Capsule({
                 <span className="gauntlet-capsule__tagline">cursor · capsule</span>
               </div>
             </div>
-            <button
-              type="button"
-              className="gauntlet-capsule__close"
-              onClick={onDismiss}
-              aria-label="Dismiss capsule (Esc)"
-            >
-              <span aria-hidden>esc</span>
-            </button>
+            <div className="gauntlet-capsule__header-actions">
+              <button
+                type="button"
+                className="gauntlet-capsule__settings-btn"
+                onClick={() => setSettingsOpen((v) => !v)}
+                aria-label="Definições"
+                aria-expanded={settingsOpen}
+                title="Definições"
+              >
+                <span aria-hidden>···</span>
+              </button>
+              <button
+                type="button"
+                className="gauntlet-capsule__close"
+                onClick={onDismiss}
+                aria-label="Dismiss capsule (Esc)"
+              >
+                <span aria-hidden>esc</span>
+              </button>
+            </div>
           </header>
+
+          {settingsOpen && (
+            <SettingsDrawer onClose={() => setSettingsOpen(false)} />
+          )}
 
           <section className="gauntlet-capsule__context">
             <div className="gauntlet-capsule__context-meta">
@@ -529,6 +550,72 @@ export function Capsule({
 function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
   return s.slice(0, max) + '…';
+}
+
+// Settings drawer — for now, the only knob is "domínios escondidos".
+// Reads the current dismiss list from chrome.storage and offers a
+// per-domain restore button. Lives inside the cápsula's left panel
+// because that's where context already lives; opening it doesn't
+// push the user into a separate Control Center surface (doctrine:
+// utilizador vive no Composer).
+function SettingsDrawer({ onClose }: { onClose: () => void }) {
+  const [domains, setDomains] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void readDismissedDomains().then((list) => {
+      if (cancelled) return;
+      setDomains(list);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const restore = useCallback(async (host: string) => {
+    await restoreDomain(host);
+    setDomains((prev) => prev.filter((h) => h !== host));
+  }, []);
+
+  return (
+    <section className="gauntlet-capsule__settings" role="region" aria-label="Definições">
+      <header className="gauntlet-capsule__settings-header">
+        <span className="gauntlet-capsule__settings-title">domínios escondidos</span>
+        <button
+          type="button"
+          className="gauntlet-capsule__settings-close"
+          onClick={onClose}
+          aria-label="Fechar definições"
+        >
+          ×
+        </button>
+      </header>
+      {loading ? (
+        <p className="gauntlet-capsule__settings-empty">a carregar…</p>
+      ) : domains.length === 0 ? (
+        <p className="gauntlet-capsule__settings-empty">
+          nenhum domínio escondido — clica direito no pill em qualquer site para o esconder lá.
+        </p>
+      ) : (
+        <ul className="gauntlet-capsule__settings-list">
+          {domains.map((host) => (
+            <li key={host} className="gauntlet-capsule__settings-row">
+              <span className="gauntlet-capsule__settings-host">{host}</span>
+              <button
+                type="button"
+                className="gauntlet-capsule__settings-restore"
+                onClick={() => void restore(host)}
+              >
+                restaurar
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
 }
 
 // Pull a partial `compose` value out of a streaming JSON buffer.
@@ -1118,6 +1205,95 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__actuate:disabled {
   opacity: 0.45; cursor: not-allowed;
+}
+
+/* ── Settings drawer (currently: dismissed-domain list) ── */
+.gauntlet-capsule__header-actions {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.gauntlet-capsule__settings-btn {
+  background: transparent;
+  border: 1px solid var(--gx-border);
+  color: var(--gx-fg-muted);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.gauntlet-capsule__settings-btn:hover {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+  background: rgba(255, 255, 255, 0.04);
+}
+.gauntlet-capsule__settings {
+  margin: 8px 0;
+  padding: 10px 12px;
+  background: rgba(8, 9, 13, 0.55);
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 10px;
+  animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__settings-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.gauntlet-capsule__settings-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gx-fg-dim);
+}
+.gauntlet-capsule__settings-close {
+  background: transparent; border: none;
+  color: var(--gx-fg-muted);
+  cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 0 4px;
+}
+.gauntlet-capsule__settings-close:hover { color: var(--gx-fg); }
+.gauntlet-capsule__settings-empty {
+  margin: 0;
+  font-size: 11px;
+  color: var(--gx-fg-muted);
+  font-style: italic;
+}
+.gauntlet-capsule__settings-list {
+  margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 180px; overflow-y: auto;
+}
+.gauntlet-capsule__settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--gx-fg-dim);
+}
+.gauntlet-capsule__settings-host {
+  flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gauntlet-capsule__settings-restore {
+  background: rgba(208, 122, 90, 0.12);
+  color: #f4c4ad;
+  border: 1px solid rgba(208, 122, 90, 0.45);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__settings-restore:hover {
+  background: rgba(208, 122, 90, 0.22);
 }
 
 /* ── Skeleton (perceived speed during the planning roundtrip) ──

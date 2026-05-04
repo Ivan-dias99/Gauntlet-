@@ -81,6 +81,18 @@ export async function dismissDomain(hostname: string): Promise<void> {
   }
 }
 
+export async function restoreDomain(hostname: string): Promise<void> {
+  if (!hostname) return;
+  const current = await readDismissedDomains();
+  const next = current.filter((h) => h !== hostname);
+  if (next.length === current.length) return;
+  try {
+    await chrome.storage.local.set({ [KEY_DISMISSED]: next });
+  } catch {
+    // Non-fatal — caller will see stale state until next read.
+  }
+}
+
 export async function isDomainDismissed(hostname: string): Promise<boolean> {
   if (!hostname) return false;
   const current = await readDismissedDomains();
