@@ -12,7 +12,7 @@ import {
   type ComposeResult,
   type ContextCaptureRequest,
 } from '../lib/composer-client';
-import type { SelectionSnapshot } from '../lib/selection';
+import { readSelectionSnapshot, type SelectionSnapshot } from '../lib/selection';
 
 export interface CapsuleProps {
   client: ComposerClient;
@@ -58,11 +58,19 @@ export function Capsule({ client, initialSnapshot, onDismiss }: CapsuleProps) {
     setError(null);
     setResult(null);
     setCopied(false);
+    // Carry the live page text and selection bbox through metadata so the
+    // backend (and any future tool that wants real page context) sees more
+    // than just the URL + title. Backwards-compatible: the existing
+    // /composer/context handler ignores unknown metadata keys.
+    const metadata: Record<string, unknown> = {};
+    if (snapshot.pageText) metadata.page_text = snapshot.pageText;
+    if (snapshot.bbox) metadata.selection_bbox = snapshot.bbox;
     const capture: ContextCaptureRequest = {
       source: 'browser',
       url: snapshot.url,
       page_title: snapshot.pageTitle,
       selection: snapshot.text || undefined,
+      metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
     };
     try {
       const r = await composeOnce(client, capture, userInput.trim(), ac.signal);
@@ -94,13 +102,7 @@ export function Capsule({ client, initialSnapshot, onDismiss }: CapsuleProps) {
   );
 
   const refreshSnapshot = useCallback(() => {
-    const sel = window.getSelection();
-    const text = sel ? sel.toString().trim() : '';
-    setSnapshot({
-      text,
-      url: window.location.href,
-      pageTitle: document.title,
-    });
+    setSnapshot(readSelectionSnapshot());
   }, []);
 
   const onCopy = useCallback(async () => {
@@ -338,6 +340,7 @@ export const CAPSULE_CSS = `
   z-index: 2147483647;
   padding: 0;
   isolation: isolate;
+  pointer-events: auto;
   animation: gauntlet-cap-rise 280ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 

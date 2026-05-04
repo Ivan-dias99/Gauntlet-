@@ -2,15 +2,17 @@ import { defineBackground } from 'wxt/sandbox';
 
 // Background — service worker (Manifest V3).
 //
-// Single-surface composer: clicking the toolbar icon OR pressing the
-// global hotkey both open the same standalone window (1200x800) that
-// hosts the full capsule. Toolbar popups are hard-capped by the
-// browser at 800x600 and lay out the two-panel capsule cramped — a
-// separate window via chrome.windows.create has no such cap.
+// Doctrine: the capsule lives at the cursor, not in a separate window.
+// On hotkey or icon click we ask the active tab's content script to
+// mount the in-page overlay. Only when that fails — chrome:// pages,
+// the Web Store, PDF viewer, freshly opened blank tabs where the
+// content script hasn't loaded — do we fall back to the standalone
+// composer.html window. The fallback is the lifeboat, not the surface.
 //
-// All HTTP traffic is also proxied here (gauntlet:fetch) so requests
-// originate from chrome-extension://<id> instead of the host page,
-// bypassing CORS rejection on non-deploy origins.
+// All HTTP traffic from the extension also flows through here
+// (gauntlet:fetch) so requests originate from chrome-extension://<id>
+// instead of the host page, bypassing CORS rejection on non-deploy
+// origins.
 
 const COMPOSER_WINDOW_WIDTH = 1200;
 const COMPOSER_WINDOW_HEIGHT = 800;
@@ -60,10 +62,6 @@ async function proxyFetch(req: FetchProxyRequest): Promise<FetchProxyResponse> {
 }
 
 async function findExistingComposerWindow(): Promise<number | null> {
-  // The composer URL is unique per extension install, so a tab whose URL
-  // points at our popup.html identifies the window we already opened.
-  // Querying every popup window survives service-worker eviction (no
-  // module-level state to lose).
   const expected = chrome.runtime.getURL('composer.html');
   const wins = await chrome.windows.getAll({
     populate: true,
@@ -85,8 +83,7 @@ async function openComposerWindow(): Promise<void> {
       await chrome.windows.update(existingId, { focused: true });
       return;
     } catch {
-      // Window vanished between query and update — fall through and
-      // create a fresh one.
+      // Window vanished between query and update — fall through.
     }
   }
   await chrome.windows.create({
@@ -98,14 +95,62 @@ async function openComposerWindow(): Promise<void> {
   });
 }
 
+// Tabs the content script can never reach. We don't even attempt
+// sendMessage on these — go straight to the fallback window.
+function isInjectableUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  if (url.startsWith('chrome://')) return false;
+  if (url.startsWith('chrome-extension://')) return false;
+  if (url.startsWith('edge://')) return false;
+  if (url.startsWith('about:')) return false;
+  if (url.startsWith('view-source:')) return false;
+  if (url.startsWith('https://chrome.google.com/webstore')) return false;
+  if (url.startsWith('https://chromewebstore.google.com')) return false;
+  return true;
+}
+
+async function resolveActiveTab(
+  hint?: chrome.tabs.Tab,
+): Promise<chrome.tabs.Tab | null> {
+  if (hint?.id != null) return hint;
+  try {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    return tab ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
+  const tab = await resolveActiveTab(hint);
+  if (!tab?.id || !isInjectableUrl(tab.url)) {
+    await openComposerWindow();
+    return;
+  }
+  try {
+    const reply = (await chrome.tabs.sendMessage(tab.id, {
+      type: 'gauntlet:summon',
+    })) as { ok?: boolean } | undefined;
+    if (reply?.ok) return;
+    await openComposerWindow();
+  } catch {
+    // No content script in this tab (race during page load, or a tab
+    // that loaded before the extension was installed). Fallback.
+    await openComposerWindow();
+  }
+}
+
 export default defineBackground(() => {
-  chrome.action.onClicked.addListener(() => {
-    void openComposerWindow();
+  chrome.action.onClicked.addListener((tab) => {
+    void summonOnActiveTab(tab);
   });
 
-  chrome.commands.onCommand.addListener((command) => {
+  chrome.commands.onCommand.addListener((command, tab) => {
     if (command !== 'summon-capsule') return;
-    void openComposerWindow();
+    void summonOnActiveTab(tab);
   });
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

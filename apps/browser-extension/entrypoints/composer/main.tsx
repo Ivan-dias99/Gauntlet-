@@ -3,11 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { Capsule, CAPSULE_CSS } from '../../components/Capsule';
 import { ComposerClient } from '../../lib/composer-client';
 
-// composer.html is loaded inside a 1200x800 (or larger) window opened by
-// background.ts via chrome.windows.create. There is no toolbar popup
-// anymore — clicking the icon goes straight to a real window. The
-// capsule fills the entire viewport so resizing the window scales the
-// surface naturally.
+// composer.html is the FALLBACK surface. The doctrinal surface is the
+// in-page capsule mounted by content.tsx via shadow DOM. background.ts
+// only opens this window when the active tab cannot host a content
+// script (chrome://, the Web Store, freshly opened blank tabs, etc.).
+// Keep it lean: same Capsule component, no page context — there is no
+// page to read.
 
 const WINDOW_CSS = `
   html, body {
@@ -41,7 +42,13 @@ root.render(
   <StrictMode>
     <Capsule
       client={new ComposerClient()}
-      initialSnapshot={{ text: '', url: 'window://composer', pageTitle: 'Composer' }}
+      initialSnapshot={{
+        text: '',
+        url: 'window://composer',
+        pageTitle: 'Composer',
+        pageText: '',
+        bbox: null,
+      }}
       onDismiss={() => window.close()}
     />
   </StrictMode>,
