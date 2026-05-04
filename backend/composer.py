@@ -612,4 +612,14 @@ def _compose_context_blob(ctx: ContextPackage) -> str:
         lines.append("---")
         lines.append("clipboard:")
         lines.append(ctx.clipboard[:4000])
+    # The browser content script forwards a capped slice of the live page's
+    # innerText through metadata.page_text. Without this block the model
+    # only ever saw url+title+selection and answered "I can't see the
+    # page". Keep the cap conservative — page_text is a fuzzy fallback,
+    # not the primary signal. Selection (when present) still wins.
+    page_text = ctx.metadata.get("page_text") if ctx.metadata else None
+    if isinstance(page_text, str) and page_text.strip():
+        lines.append("---")
+        lines.append("page_text:")
+        lines.append(page_text[:6000])
     return "\n".join(lines)
