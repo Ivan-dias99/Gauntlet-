@@ -48,6 +48,7 @@ from models import (
 from memory import failure_memory
 from runs import run_store
 from model_gateway import gateway, GatewayCall
+from config import FAILURE_MEMORY_ENABLED
 import observability
 
 logger = logging.getLogger("gauntlet.engine")
@@ -530,13 +531,17 @@ class SignalEngine:
         yield {"type": "start"}
 
         # ── Step 1: failure memory ──────────────────────────────────────────
-        matching_failures = await failure_memory.find_matching_failures(query.question)
-        has_prior_failure = len(matching_failures) > 0
-        if has_prior_failure:
-            logger.warning(
-                f"Found {len(matching_failures)} prior failure(s). "
-                "Engaging reinforced caution."
-            )
+        if FAILURE_MEMORY_ENABLED:
+            matching_failures = await failure_memory.find_matching_failures(query.question)
+            has_prior_failure = len(matching_failures) > 0
+            if has_prior_failure:
+                logger.warning(
+                    f"Found {len(matching_failures)} prior failure(s). "
+                    "Engaging reinforced caution."
+                )
+        else:
+            matching_failures = []
+            has_prior_failure = False
 
         # ── Step 2: system prompt ───────────────────────────────────────────
         # Wave-5: chamber profile overrides the global SYSTEM_PROMPT when
@@ -697,12 +702,13 @@ class SignalEngine:
                 divergence_points=verdict.divergence_points,
                 prior_failure=has_prior_failure,
             )
-            await failure_memory.record_failure(
-                question=query.question,
-                failure_type=refusal_reason,
-                triad_divergence_summary="; ".join(verdict.divergence_points[:3]),
-                judge_reasoning=verdict.reasoning[:500],
-            )
+            if FAILURE_MEMORY_ENABLED:
+                await failure_memory.record_failure(
+                    question=query.question,
+                    failure_type=refusal_reason,
+                    triad_divergence_summary="; ".join(verdict.divergence_points[:3]),
+                    judge_reasoning=verdict.reasoning[:500],
+                )
             response = SignalResponse(
                 refused=True,
                 refusal_message=refusal_msg,

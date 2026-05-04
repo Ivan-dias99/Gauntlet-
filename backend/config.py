@@ -113,6 +113,16 @@ FAILURE_MEMORY_FILE: Path = MEMORY_DIR / "failure_memory.json"
 MAX_FAILURE_ENTRIES: int = 500
 FAILURE_CONTEXT_WINDOW: int = 10
 
+# Kill-switch for the prior_failure feedback loop. When false, the engine
+# skips the memory lookup and never records new failures, so the triad runs
+# without reinforced caution and the judge stops refusing on prior_failure.
+# Defaulted off because the lookup was over-generalising and blocking
+# trivial questions; flip GAUNTLET_FAILURE_MEMORY=1 to re-enable.
+FAILURE_MEMORY_ENABLED: bool = _env(
+    "GAUNTLET_FAILURE_MEMORY", "SIGNAL_FAILURE_MEMORY", "RUBERRA_FAILURE_MEMORY",
+    default="",
+).strip().lower() in ("1", "true", "yes", "on")
+
 
 # ── Postgres dual-write ───────────────────────────────────────────────────
 DATABASE_URL: str = _env(
