@@ -271,9 +271,20 @@ export function Capsule({
       const results = await executor(plan.actions);
       setPlanResults(results);
       setPhase('executed');
+      // Ambient feedback for the pill (rendered by App after the
+      // capsule closes). All steps OK → green pulse; any fail →
+      // red shake. The user gets confirmation even if they Esc out
+      // before reading the per-step status.
+      const allOk = results.every((r) => r.ok);
+      window.dispatchEvent(
+        new CustomEvent('gauntlet:execute-result', { detail: { ok: allOk } }),
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
       setPhase('error');
+      window.dispatchEvent(
+        new CustomEvent('gauntlet:execute-result', { detail: { ok: false } }),
+      );
     }
   }, [executor, plan, hasDanger, dangerConfirmed]);
 
@@ -958,11 +969,19 @@ export const CAPSULE_CSS = `
   display: flex; flex-direction: column; line-height: 1.05;
 }
 .gauntlet-capsule__brand {
-  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.26em;
+  /* Doutrina: glass + serif headline + mono labels. The headline is
+     the one place a serif earns its keep — distinguishes Gauntlet
+     from generic dev-tool aesthetics without bundling a custom font.
+     System serifs are surprisingly distinctive on macOS (New York /
+     Charter) and Windows (Cambria) and degrade gracefully elsewhere. */
+  font-family:
+    "Charter", "New York", "Cambria", "Georgia",
+    "Iowan Old Style", "Apple Garamond", serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
   color: var(--gx-fg);
+  font-feature-settings: "kern" 1, "liga" 1;
 }
 .gauntlet-capsule__tagline {
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;

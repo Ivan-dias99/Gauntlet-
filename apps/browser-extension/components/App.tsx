@@ -57,6 +57,21 @@ export function App() {
   // the dismiss callback closes over the latest value via the
   // dependency array.
   const [domainDismissed, setDomainDismissed] = useState(false);
+  // Transient flash state for the pill after a plan executes. Cleared
+  // by a timer so the pill returns to its resting state and doesn't
+  // accumulate stale ambient feedback across multiple sessions.
+  const [pillFlash, setPillFlash] = useState<'ok' | 'fail' | null>(null);
+
+  useEffect(() => {
+    function onResult(ev: Event) {
+      const detail = (ev as CustomEvent<{ ok?: boolean }>).detail;
+      const kind: 'ok' | 'fail' = detail?.ok === false ? 'fail' : 'ok';
+      setPillFlash(kind);
+      window.setTimeout(() => setPillFlash(null), 1500);
+    }
+    window.addEventListener('gauntlet:execute-result', onResult);
+    return () => window.removeEventListener('gauntlet:execute-result', onResult);
+  }, []);
 
   // Last known cursor position on the page. The hotkey doesn't carry
   // pointer coordinates, so without this ref we'd have nothing to
@@ -195,6 +210,7 @@ export function App() {
         position={pillPosition}
         onClick={summon}
         onDismissDomain={dismissThisDomain}
+        flash={pillFlash}
       />
     );
   }

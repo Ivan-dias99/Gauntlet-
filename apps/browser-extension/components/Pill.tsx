@@ -20,6 +20,10 @@ export interface PillProps {
   position: PillPosition;
   onClick: () => void;
   onDismissDomain: () => void;
+  // Transient feedback after the cápsula closes following an
+  // executed plan. The pill flashes green/red for ~1.4s so the user
+  // gets ambient confirmation that the action actually landed.
+  flash?: 'ok' | 'fail' | null;
 }
 
 // Drag is "armed" only after the pointer moves more than this many
@@ -35,7 +39,7 @@ const DRAG_THRESHOLD_PX = 4;
 // hovering over the pill cancels the idle state outright.
 const IDLE_AFTER_MS = 30_000;
 
-export function Pill({ position, onClick, onDismissDomain }: PillProps) {
+export function Pill({ position, onClick, onDismissDomain, flash }: PillProps) {
   const [pos, setPos] = useState<PillPosition>(position);
   const [idle, setIdle] = useState(false);
   const dragStateRef = useRef<{
@@ -165,7 +169,9 @@ export function Pill({ position, onClick, onDismissDomain }: PillProps) {
     <button
       ref={buttonRef}
       type="button"
-      className={`gauntlet-pill${idle ? ' gauntlet-pill--idle' : ''}`}
+      className={`gauntlet-pill${idle ? ' gauntlet-pill--idle' : ''}${
+        flash ? ` gauntlet-pill--flash-${flash}` : ''
+      }`}
       style={{ bottom: `${pos.bottom}px`, right: `${pos.right}px` }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -254,6 +260,30 @@ export const PILL_CSS = `
 }
 .gauntlet-pill--idle .gauntlet-pill__dot {
   animation-play-state: paused;
+}
+@keyframes gauntlet-pill-flash-ok {
+  0%   { box-shadow: 0 0 0 0 rgba(122, 180, 138, 0.85); transform: scale(1); }
+  40%  { box-shadow: 0 0 0 12px rgba(122, 180, 138, 0); transform: scale(1.18); }
+  100% { box-shadow: 0 0 0 0 rgba(122, 180, 138, 0); transform: scale(1); }
+}
+@keyframes gauntlet-pill-flash-fail {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-3px) rotate(-4deg); }
+  40%      { transform: translateX(3px)  rotate(4deg); }
+  60%      { transform: translateX(-2px) rotate(-2deg); }
+  80%      { transform: translateX(2px)  rotate(2deg); }
+}
+.gauntlet-pill--flash-ok {
+  border-color: rgba(122, 180, 138, 0.85) !important;
+  animation:
+    gauntlet-pill-rise 320ms cubic-bezier(0.2, 0, 0, 1) both,
+    gauntlet-pill-flash-ok 1400ms ease-out 1;
+}
+.gauntlet-pill--flash-fail {
+  border-color: rgba(212, 96, 60, 0.85) !important;
+  animation:
+    gauntlet-pill-rise 320ms cubic-bezier(0.2, 0, 0, 1) both,
+    gauntlet-pill-flash-fail 600ms ease-in-out 1;
 }
 .gauntlet-pill__mark {
   position: relative;
