@@ -48,7 +48,7 @@ from models import (
 from memory import failure_memory
 from runs import run_store
 from model_gateway import gateway, GatewayCall
-from config import FAILURE_MEMORY_ENABLED
+from config import FAILURE_MEMORY_ENABLED, JUDGE_ENABLED
 import observability
 
 logger = logging.getLogger("gauntlet.engine")
@@ -584,9 +584,13 @@ class SignalEngine:
         )
 
         # ── Step 3: parallel triad with per-completion events ───────────────
+        # When JUDGE_ENABLED is false the consensus layer is bypassed, so
+        # firing N parallel calls just to keep the first one would be pure
+        # waste — collapse to a single call.
+        effective_triad_count = TRIAD_COUNT if JUDGE_ENABLED else 1
         yield {
             "type": "triad_start",
-            "count": TRIAD_COUNT,
+            "count": effective_triad_count,
             "has_prior_failure": has_prior_failure,
         }
         tasks = [
@@ -596,7 +600,7 @@ class SignalEngine:
                     _triad_temperature,
                 )
             )
-            for i in range(TRIAD_COUNT)
+            for i in range(effective_triad_count)
         ]
         triad_responses: list[TriadResponse] = []
         for coro in asyncio.as_completed(tasks):
@@ -610,9 +614,54 @@ class SignalEngine:
                 "output_tokens": r.output_tokens,
                 "stop_reason": r.stop_reason,
                 "completed": len(triad_responses),
-                "total": TRIAD_COUNT,
+                "total": effective_triad_count,
             }
         triad_responses.sort(key=lambda r: r.index)
+
+        # ── Single-call shortcut: judge disabled ────────────────────────────
+        # No consensus vote, no judge invocation, no divergence-based
+        # refusal. The single triad response is the final answer. We still
+        # surface a refusal if the LLM call itself errored — that is a
+        # transport failure, not a consensus disagreement.
+        if not JUDGE_ENABLED:
+            elapsed = int((time.monotonic() - start_time) * 1000)
+            total_in = sum(r.input_tokens for r in triad_responses)
+            total_out = sum(r.output_tokens for r in triad_responses)
+            only = triad_responses[0]
+            if only.stop_reason == "error":
+                response = SignalResponse(
+                    refused=True,
+                    refusal_message=(
+                        "⚠️ **Falha de transporte ao modelo**\n\n"
+                        f"{only.content[:300]}"
+                    ),
+                    refusal_reason=RefusalReason.JUDGE_REJECTION,
+                    confidence=ConfidenceLevel.LOW,
+                    confidence_explanation="Single-call mode: model call failed.",
+                    total_input_tokens=total_in,
+                    total_output_tokens=total_out,
+                    processing_time_ms=elapsed,
+                    matched_prior_failure=has_prior_failure,
+                )
+            else:
+                response = SignalResponse(
+                    answer=only.content,
+                    refused=False,
+                    confidence=ConfidenceLevel.HIGH,
+                    confidence_explanation=(
+                        "Single-call mode (judge disabled). Resposta directa do modelo, "
+                        "sem camada de consenso."
+                    ),
+                    total_input_tokens=total_in,
+                    total_output_tokens=total_out,
+                    processing_time_ms=elapsed,
+                    matched_prior_failure=has_prior_failure,
+                )
+            self._track_log_task(asyncio.create_task(
+                self._log_triad_run(query, response)
+            ))
+            yield {"type": "done", "result": response.model_dump()}
+            return
 
         # Check for total triad failure
         failed_calls = [r for r in triad_responses if r.stop_reason == "error"]

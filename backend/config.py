@@ -123,6 +123,18 @@ FAILURE_MEMORY_ENABLED: bool = _env(
     default="",
 ).strip().lower() in ("1", "true", "yes", "on")
 
+# Kill-switch for the triad + judge consensus layer. When false the engine
+# fires a single LLM call and returns the answer directly — no
+# self-consistency vote, no judge verdict, no refusal-on-divergence.
+# Defaulted off because the consensus layer was rejecting trivial chat
+# turns ("inconsistency", "judge_rejection") and blocking free
+# conversation with the model. Flip GAUNTLET_JUDGE=1 to re-enable the
+# original triad+judge pipeline once we have a better consensus design.
+JUDGE_ENABLED: bool = _env(
+    "GAUNTLET_JUDGE", "SIGNAL_JUDGE", "RUBERRA_JUDGE",
+    default="",
+).strip().lower() in ("1", "true", "yes", "on")
+
 
 # ── Postgres dual-write ───────────────────────────────────────────────────
 DATABASE_URL: str = _env(
