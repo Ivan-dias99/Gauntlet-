@@ -46,6 +46,8 @@ from config import (
     FRAME_OPTIONS,
     GEMINI_API_KEY,
     GEMINI_MODEL,
+    GROQ_API_KEY,
+    GROQ_MODEL,
     LOG_REDACT,
     MEMORY_DIR,
     PERSISTENCE_EPHEMERAL,
@@ -96,17 +98,29 @@ async def lifespan(app: FastAPI):
     if LOG_REDACT:
         install_redaction(("", "gauntlet", "signal", "uvicorn", "uvicorn.error", "uvicorn.access"))
 
-    if not ANTHROPIC_API_KEY and not GEMINI_API_KEY and not RUBERRA_MOCK:
+    if (
+        not ANTHROPIC_API_KEY
+        and not GROQ_API_KEY
+        and not GEMINI_API_KEY
+        and not RUBERRA_MOCK
+    ):
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
             "  No provider key found!\n"
             "  Set ANTHROPIC_API_KEY for Claude, or\n"
+            "  GAUNTLET_GROQ_API_KEY for Groq (free tier, preferred), or\n"
             "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY for Gemini (free tier).\n"
             "  Or set GAUNTLET_MOCK=1 for canned responses.\n"
             "═══════════════════════════════════════════════════════════"
         )
         sys.exit(1)
-    if not ANTHROPIC_API_KEY and GEMINI_API_KEY:
+    if not ANTHROPIC_API_KEY and GROQ_API_KEY:
+        logger.warning(
+            "Running on Groq provider (model=%s). "
+            "Agent loop and streaming are not supported on this path.",
+            GROQ_MODEL,
+        )
+    elif not ANTHROPIC_API_KEY and GEMINI_API_KEY:
         logger.warning(
             "Running on Gemini provider (model=%s). "
             "Agent loop and streaming are not supported on this path.",
@@ -119,6 +133,8 @@ async def lifespan(app: FastAPI):
         _provider_label = "MOCK (canned)"
     elif ANTHROPIC_API_KEY:
         _provider_label = "Anthropic Claude"
+    elif GROQ_API_KEY:
+        _provider_label = f"Groq ({GROQ_MODEL})"
     else:
         _provider_label = f"Gemini ({GEMINI_MODEL})"
     logger.info(
@@ -824,13 +840,23 @@ async def diagnostics():
         "uptime_seconds": int(time.monotonic() - _PROCESS_START_MONO),
         "mode": "mock" if RUBERRA_MOCK else "real",
         "anthropic_api_key_present": bool(ANTHROPIC_API_KEY),
+        "groq_api_key_present": bool(GROQ_API_KEY),
         "gemini_api_key_present": bool(GEMINI_API_KEY),
         "active_provider": (
             "mock" if RUBERRA_MOCK
             else "anthropic" if ANTHROPIC_API_KEY
-            else "gemini"
+            else "groq" if GROQ_API_KEY
+            else "gemini" if GEMINI_API_KEY
+            else "none"
         ),
-        "gemini_model": GEMINI_MODEL if GEMINI_API_KEY and not ANTHROPIC_API_KEY else None,
+        "groq_model": (
+            GROQ_MODEL if GROQ_API_KEY and not ANTHROPIC_API_KEY else None
+        ),
+        "gemini_model": (
+            GEMINI_MODEL
+            if GEMINI_API_KEY and not ANTHROPIC_API_KEY and not GROQ_API_KEY
+            else None
+        ),
         "data_dir": str(MEMORY_DIR),
         "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
         "allowed_origins": ALLOWED_ORIGINS,

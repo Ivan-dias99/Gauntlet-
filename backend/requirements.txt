@@ -13,3 +13,8 @@ python-multipart>=0.0.9
 # gemini_provider.py exposes an Anthropic-compatible messages.create()
 # so engine.py / agent.py can swap providers without branching.
 google-genai>=0.3.0
+# Groq provider — preferred free-tier fallback when ANTHROPIC_API_KEY is
+# unset and GAUNTLET_GROQ_API_KEY is provided. groq_provider.py wraps the
+# OpenAI-compatible chat.completions surface in the same Anthropic-shaped
+# adapter as gemini_provider.py.
+groq>=0.11.0

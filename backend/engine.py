@@ -19,6 +19,8 @@ from config import (
     ANTHROPIC_API_KEY,
     GEMINI_API_KEY,
     GEMINI_MODEL,
+    GROQ_API_KEY,
+    GROQ_MODEL,
     MODEL_ID,
     TRIAD_TEMPERATURE,
     JUDGE_TEMPERATURE,
@@ -91,6 +93,19 @@ class SignalEngine:
             logger.warning("Engine initialized in MOCK mode — no network calls")
         elif ANTHROPIC_API_KEY:
             self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        elif GROQ_API_KEY:
+            # Free-tier fallback (preferred over Gemini). Triad + judge run
+            # against Groq Llama; the agent loop (tools, streaming) degrades
+            # because the v1 adapter does not implement those Anthropic-only
+            # paths — same scope as the Gemini adapter.
+            from groq_provider import AsyncGroqAnthropicAdapter
+            self._client = AsyncGroqAnthropicAdapter(
+                api_key=GROQ_API_KEY, model=GROQ_MODEL,
+            )
+            logger.warning(
+                "Engine initialised on Groq (model=%s). Anthropic key not set.",
+                GROQ_MODEL,
+            )
         elif GEMINI_API_KEY:
             # Free-tier fallback. Triad + judge run against Gemini; the
             # agent loop (tools, streaming) degrades because the v1
@@ -105,10 +120,10 @@ class SignalEngine:
             )
         else:
             raise RuntimeError(
-                "Neither ANTHROPIC_API_KEY nor GAUNTLET_GEMINI_API_KEY set, and "
-                "GAUNTLET_MOCK is off. Set ANTHROPIC_API_KEY for Claude, "
-                "GAUNTLET_GEMINI_API_KEY for Gemini free tier, or "
-                "GAUNTLET_MOCK=1 for canned responses."
+                "No provider key set and GAUNTLET_MOCK is off. Set one of: "
+                "ANTHROPIC_API_KEY (Claude), GAUNTLET_GROQ_API_KEY (Groq free), "
+                "GAUNTLET_GEMINI_API_KEY (Gemini free), or GAUNTLET_MOCK=1 "
+                "for canned responses."
             )
         # Detached run-log tasks. PR #214 moved _log_triad_run after the
         # `done` yield for stream tail latency parity with agent/crew/
