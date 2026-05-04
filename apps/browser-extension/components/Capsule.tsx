@@ -5,14 +5,18 @@
 //   * Glass + serif headline + mono labels. One ember accent for life.
 //   * Input + Compor + preview + Copy. Nothing else.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ComposerClient,
   composeOnce,
   type ComposeResult,
   type ContextCaptureRequest,
 } from '../lib/composer-client';
-import { readSelectionSnapshot, type SelectionSnapshot } from '../lib/selection';
+import {
+  readSelectionSnapshot,
+  type SelectionRect,
+  type SelectionSnapshot,
+} from '../lib/selection';
 
 export interface CapsuleProps {
   client: ComposerClient;
@@ -116,8 +120,30 @@ export function Capsule({ client, initialSnapshot, onDismiss }: CapsuleProps) {
     }
   }, [result]);
 
+  // When the capsule has a real bbox, anchor it next to the user's
+  // selection — that's literal "ponta do cursor". Without a bbox (icon
+  // click, no selection) we fall back to the strip layout pinned to the
+  // bottom of the viewport, which keeps the user oriented.
+  const anchor = useMemo<SelectionRect | null>(() => snapshot.bbox, [snapshot.bbox]);
+  const anchoredStyle = useMemo<React.CSSProperties | undefined>(() => {
+    if (!anchor) return undefined;
+    const pos = computeAnchorPosition(anchor);
+    return {
+      top: `${pos.top}px`,
+      left: `${pos.left}px`,
+    };
+  }, [anchor]);
+  const className = anchor
+    ? 'gauntlet-capsule gauntlet-capsule--anchored'
+    : 'gauntlet-capsule';
+
   return (
-    <div className="gauntlet-capsule" role="dialog" aria-label="Gauntlet">
+    <div
+      className={className}
+      role="dialog"
+      aria-label="Gauntlet"
+      style={anchoredStyle}
+    >
       <div className="gauntlet-capsule__aurora" aria-hidden />
 
       <div className="gauntlet-capsule__layout">
@@ -285,6 +311,44 @@ function truncate(s: string, max: number): string {
   return s.slice(0, max) + '…';
 }
 
+// Where to put the anchored capsule. Prefers below the selection; flips
+// above when there isn't enough room below; clamps inside the viewport
+// so the capsule never spills off-screen on small windows or selections
+// near the edges. The output is a top-left corner — width/height are
+// fixed via CSS so we don't need to know the rendered size to decide
+// the corner.
+const ANCHOR_WIDTH = 560;
+const ANCHOR_GAP = 12;
+const ANCHOR_VIEWPORT_PAD = 8;
+const ANCHOR_MIN_BELOW_ROOM = 220;
+
+function computeAnchorPosition(bbox: SelectionRect): { top: number; left: number } {
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+
+  const belowTop = bbox.y + bbox.height + ANCHOR_GAP;
+  const aboveBottom = bbox.y - ANCHOR_GAP;
+
+  let top: number;
+  if (belowTop + ANCHOR_MIN_BELOW_ROOM <= vh - ANCHOR_VIEWPORT_PAD) {
+    top = belowTop;
+  } else if (aboveBottom > ANCHOR_MIN_BELOW_ROOM) {
+    // Flip above. Top edge sits N above the selection; the capsule's own
+    // max-height handles the lower edge.
+    top = Math.max(ANCHOR_VIEWPORT_PAD, aboveBottom - ANCHOR_MIN_BELOW_ROOM);
+  } else {
+    // No room either way — center vertically.
+    top = Math.max(ANCHOR_VIEWPORT_PAD, Math.floor((vh - ANCHOR_MIN_BELOW_ROOM) / 2));
+  }
+
+  let left = bbox.x;
+  const maxLeft = vw - ANCHOR_VIEWPORT_PAD - ANCHOR_WIDTH;
+  if (left > maxLeft) left = maxLeft;
+  if (left < ANCHOR_VIEWPORT_PAD) left = ANCHOR_VIEWPORT_PAD;
+
+  return { top, left };
+}
+
 // CSS colocated — content-script shadow root needs the styles in the bundle.
 // Aesthetic: glass morphism, ember accent, mono+serif typography, motion.
 export const CAPSULE_CSS = `
@@ -342,6 +406,44 @@ export const CAPSULE_CSS = `
   isolation: isolate;
   pointer-events: auto;
   animation: gauntlet-cap-rise 280ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+/* Anchored mode — when the user has a selection on a web page, the
+   capsule pops next to the cursor instead of pinning to the bottom of
+   the viewport. The position itself is set via inline style by the
+   component (computeAnchorPosition). The shape, border, shadow and
+   max-height come from here so site CSS can never override them. */
+.gauntlet-capsule--anchored {
+  bottom: auto;
+  right: auto;
+  width: 560px;
+  max-width: calc(100vw - 16px);
+  height: auto;
+  min-height: 0;
+  max-height: 60vh;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.gauntlet-capsule--anchored .gauntlet-capsule__layout {
+  flex-direction: column;
+}
+.gauntlet-capsule--anchored .gauntlet-capsule__panel--left {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  border-right: none;
+  border-bottom: 1px solid var(--gx-border);
+  padding: 12px 14px;
+}
+.gauntlet-capsule--anchored .gauntlet-capsule__panel--right {
+  padding: 12px 14px;
+}
+.gauntlet-capsule--anchored .gauntlet-capsule__selection {
+  max-height: 90px;
 }
 
 .gauntlet-capsule__aurora {
