@@ -21,23 +21,41 @@ Out of scope here (lands in Wave 1+):
 - streaming previews
 - OAuth / API-key wiring (handled by Operação 4 — Control Center)
 - per-host narrowing of `host_permissions`
-- production backend URL (V0 hardcodes `http://127.0.0.1:3002`)
+
+## Backend URL
+
+By default the extension targets the production Railway backend
+(`https://ruberra-backend-jkpf-production.up.railway.app`). For local
+dev, override at build time:
+
+```bash
+VITE_BACKEND_URL=http://localhost:3002 npm run build
+# or for the dev server with HMR:
+VITE_BACKEND_URL=http://localhost:3002 npm run dev
+```
+
+`host_permissions` in `wxt.config.ts` already allow-lists both URLs, so
+no manifest change is required when switching.
 
 ## Run locally
 
 ```bash
 cd apps/browser-extension
 npm install
-npm run dev          # Chrome dev with auto-reload via WXT
+npm run dev          # Chrome dev with auto-reload via WXT (talks to Railway)
 # or
 npm run build        # produces .output/chrome-mv3-prod
 ```
 
-For the smoke flow, also boot the backend:
+For the smoke flow against a local backend, boot it and rebuild with the
+override:
 
 ```bash
 cd ../../backend
 GAUNTLET_MOCK=1 python main.py    # http://127.0.0.1:3002
+
+cd ../apps/browser-extension
+VITE_BACKEND_URL=http://localhost:3002 npm run dev
 ```
 
 ## Manual validation gate (Portão de Validação 2)
