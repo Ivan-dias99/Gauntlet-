@@ -222,7 +222,9 @@ export default function ComposerPage() {
                 <li style={stepRowStyle}>
                   <span style={stepIndexStyle}>03</span>
                   <span style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                    Em qualquer página: <kbd style={kbdStyle}>Alt</kbd>
+                    Em qualquer página: <kbd style={kbdStyle}>Ctrl</kbd>
+                    <span style={{ color: "var(--text-muted)", margin: "0 4px" }}>+</span>
+                    <kbd style={kbdStyle}>Shift</kbd>
                     <span style={{ color: "var(--text-muted)", margin: "0 4px" }}>+</span>
                     <kbd style={kbdStyle}>Space</kbd>
                   </span>
@@ -376,7 +378,7 @@ function CapsuleMockup() {
             fontSize: 11,
           }}
         >
-          gauntlet.dev / capsule / preview
+          gauntlet.dev/pricing · selected block
         </span>
       </div>
 
@@ -450,7 +452,7 @@ Cache hits 1/10 of input. Batch −50%.`}
           style={{ pointerEvents: "none" }}
           tabIndex={-1}
         >
-          Compor
+          Preview
         </button>
       </div>
 
@@ -465,11 +467,11 @@ Cache hits 1/10 of input. Batch −50%.`}
           flexWrap: "wrap",
         }}
       >
+        <MockPill k="state" v="preview ready" tone="ok" />
         <MockPill k="intent" v="summarize" />
-        <MockPill k="conf" v="0.92" />
+        <MockPill k="confidence" v="0.92" />
         <MockPill k="model" v="sonnet-4.6" />
         <MockPill k="latency" v="612 ms" />
-        <MockPill k="judge" v="high" tone="ok" />
       </div>
     </div>
   );
