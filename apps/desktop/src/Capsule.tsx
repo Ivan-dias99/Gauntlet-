@@ -20,6 +20,7 @@ import {
 } from "./composer-client";
 import {
   captureContextSnapshot,
+  captureScreenRegion,
   type DesktopContextSnapshot,
 } from "./adapters/tauri";
 import { Markdown } from "./markdown";
@@ -238,7 +239,9 @@ export function Capsule({ onDismiss }: { onDismiss: () => void }) {
 
           <section className="gauntlet-capsule__context">
             <div className="gauntlet-capsule__context-meta">
-              <span className="gauntlet-capsule__source">desktop</span>
+              <span className="gauntlet-capsule__source">
+                {snapshot?.appName || "desktop"}
+              </span>
               <span
                 className="gauntlet-capsule__url"
                 title={snapshot?.windowTitle || ""}
@@ -249,9 +252,28 @@ export function Capsule({ onDismiss }: { onDismiss: () => void }) {
                 type="button"
                 className="gauntlet-capsule__refresh"
                 onClick={refreshContext}
-                title="Re-read clipboard"
+                title="Re-read clipboard + active window"
               >
                 re-read
+              </button>
+              <button
+                type="button"
+                className="gauntlet-capsule__refresh"
+                onClick={async () => {
+                  const path = await captureScreenRegion();
+                  if (path) {
+                    flashSaved(`shot → ${path.split("/").pop()}`);
+                  } else {
+                    setError(
+                      "screenshot unavailable — install gnome-screenshot " +
+                        "(Linux), grant accessibility (macOS), or use " +
+                        "Win+Shift+S (Windows)",
+                    );
+                  }
+                }}
+                title="Interactive region screenshot"
+              >
+                shot
               </button>
             </div>
             {snapshot?.clipboard ? (
