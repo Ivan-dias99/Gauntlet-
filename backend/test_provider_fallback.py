@@ -211,6 +211,76 @@ def test_validate_routing_catches_typos(fresh_gateway, monkeypatch):
 
 # ── Walk a full simulated fallback ─────────────────────────────────────────
 
+def test_typed_run_tool_ignores_extraneous_kwargs():
+    """Audit fix — Tool.execute filters kwargs by the subclass _run
+    signature so an extra key (e.g. dispatcher's `approved` flag)
+    doesn't crash typed-arg tools with a TypeError. This used to make
+    every typed tool return "Tool 'X' crashed: unexpected keyword
+    argument 'approved'" the moment require_approval was enabled."""
+    import asyncio as _asyncio
+    import os as _os
+    _os.environ.setdefault("GAUNTLET_MOCK", "1")
+    from tools import Tool, ToolResult
+
+    class TypedTool(Tool):
+        name = "_typed_test"
+        description = "fixture"
+        scopes = ()
+
+        async def _run(self, query: str) -> ToolResult:
+            return ToolResult(ok=True, content=f"got {query}")
+
+    t = TypedTool()
+    # Pass a typed arg + a stranger arg the dispatcher might inject.
+    result = _asyncio.run(t.execute(query="hello", approved=True, junk=99))
+    assert result.ok, f"typed tool crashed on extra kwargs: {result.content}"
+    assert "hello" in result.content
+
+
+def test_flexible_run_tool_keeps_extraneous_kwargs():
+    """Counterpart — tools that opt in via **kwargs see every key."""
+    import asyncio as _asyncio
+    import os as _os
+    _os.environ.setdefault("GAUNTLET_MOCK", "1")
+    from tools import Tool, ToolResult
+    from typing import Any as _Any
+
+    class FlexibleTool(Tool):
+        name = "_flex_test"
+        description = "fixture"
+        scopes = ()
+
+        async def _run(self, **kwargs: _Any) -> ToolResult:
+            return ToolResult(
+                ok=True,
+                content=" ".join(sorted(kwargs.keys())),
+            )
+
+    t = FlexibleTool()
+    result = _asyncio.run(t.execute(a=1, b=2, approved=True))
+    assert result.ok
+    # All three keys made it through to the flexible tool.
+    assert "approved" in result.content
+    assert "a" in result.content
+    assert "b" in result.content
+
+
+def test_approval_required_set_isolated_per_registry():
+    """Audit fix — _approval_required is now an instance attribute
+    initialised in __init__. This test catches the regression where it
+    was a class attribute (mutable default leaks across registries)."""
+    import os as _os
+    _os.environ.setdefault("GAUNTLET_MOCK", "1")
+    from tools import ToolRegistry
+
+    a = ToolRegistry()
+    b = ToolRegistry()
+    a._approval_required.add("a-only")
+    assert "a-only" not in b._approval_required, (
+        "class-level mutable default leaked across registries"
+    )
+
+
 def test_full_fallback_walk_records_chain(fresh_gateway):
     """Simulate a triad call that exhausts the chain — primary fails,
     secondary succeeds. The gateway's ledger should reflect both calls
