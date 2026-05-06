@@ -197,21 +197,48 @@ def test_body_cap_passes_normal():
     assert r.status_code == 200, r.text
 
 
-def test_body_cap_route_override_for_visual_diff():
-    # /visual-diff should accept payloads above the 1 MiB default. We
-    # don't actually upload a real image — we just confirm the size
-    # gate is the per-route 16 MiB cap, not the global 1 MiB.
-    # Sending Content-Length 2 MiB with no body causes a 4xx from the
-    # endpoint (multipart parse), but NOT a 413 from our middleware.
-    client, _ = _fresh_client({})
-    two_mib = 2 * 1024 * 1024
-    r = client.post(
-        "/visual-diff",
-        content=b"",
-        headers={"Content-Type": "multipart/form-data", "Content-Length": str(two_mib)},
+def test_body_cap_route_override_mechanism():
+    # The /visual-diff endpoint that previously exercised this path
+    # was retired in the Gauntlet migration (server.LARGE_BODY_ROUTES
+    # is now empty). The override mechanism itself is still useful for
+    # future large-body routes, so we test it directly against the
+    # middleware class with a synthetic override map.
+    from server import BodySizeLimitMiddleware
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+    from starlette.responses import JSONResponse
+
+    async def echo(_request):
+        return JSONResponse({"ok": True})
+
+    app = Starlette(routes=[Route("/big", echo, methods=["POST"])])
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        default_limit=1024,           # 1 KiB global default
+        overrides={"/big": 64 * 1024},  # 64 KiB per-route override
     )
-    # We just need to verify NOT-413 from the cap layer.
-    assert r.status_code != 413, "global cap leaked onto /visual-diff"
+    from starlette.testclient import TestClient as Sync
+    client = Sync(app)
+
+    # 8 KiB body to /big — over the global 1 KiB but under the
+    # override's 64 KiB. Middleware must let it through.
+    body = b"x" * (8 * 1024)
+    r = client.post(
+        "/big",
+        content=body,
+        headers={"Content-Length": str(len(body))},
+    )
+    assert r.status_code == 200, "override should allow body over global default"
+
+    # 8 KiB body to a route WITHOUT override — global default applies.
+    # Use a path the route table doesn't know; the middleware fires
+    # before routing so the 413 lands first.
+    r = client.post(
+        "/no-override",
+        content=body,
+        headers={"Content-Length": str(len(body))},
+    )
+    assert r.status_code == 413, "global default should block body above 1 KiB"
 
 
 # ── Layer 5 — log redaction ───────────────────────────────────────────────

@@ -11,6 +11,7 @@
 // wired in tauri.conf.json or the platform refuses (Wayland clipboard
 // can deny silently, macOS prompts for accessibility permissions, etc).
 
+import { invoke } from "@tauri-apps/api/core";
 import { readText as readClipboardText } from "@tauri-apps/plugin-clipboard-manager";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -22,13 +23,22 @@ export interface DesktopContextSnapshot {
   // cápsula has a fast "what was I just looking at" hook without any
   // user gesture.
   clipboard: string;
-  // Active window title — Tauri 2.x doesn't expose foreign-window
-  // titles cross-platform out of the box, so we fall back to our own
-  // window's title, which is at least honest about the source.
+  // Active window title — captured via Tauri command get_active_window
+  // (xdotool / osascript / PowerShell shellout). Falls back to the
+  // cápsula's own window title when the OS lookup fails so the operator
+  // still sees something.
   windowTitle: string;
+  // Active app name — populated when the OS lookup yields it
+  // (osascript/PowerShell on macOS/Windows; empty on Linux/xdotool).
+  appName: string;
   // Best-effort source identifier. "desktop" for Tauri runs, lifted to
   // the backend's ContextSource enum.
   source: "desktop";
+}
+
+interface ActiveWindowInfo {
+  title: string;
+  app: string;
 }
 
 export async function readClipboardSafe(): Promise<string> {
@@ -40,7 +50,7 @@ export async function readClipboardSafe(): Promise<string> {
   }
 }
 
-export async function readActiveWindowTitle(): Promise<string> {
+export async function readActiveWindowOwn(): Promise<string> {
   try {
     return await getCurrentWindow().title();
   } catch {
@@ -48,16 +58,75 @@ export async function readActiveWindowTitle(): Promise<string> {
   }
 }
 
+export async function readActiveWindowOS(): Promise<ActiveWindowInfo | null> {
+  try {
+    const info = await invoke<ActiveWindowInfo>("get_active_window");
+    if (!info || typeof info.title !== "string") return null;
+    return info;
+  } catch {
+    // OS-level lookup not available on this platform / xdotool missing
+    // on Linux / accessibility permission denied on macOS. Caller will
+    // fall back to our own window title, which is at least honest.
+    return null;
+  }
+}
+
 export async function captureContextSnapshot(): Promise<DesktopContextSnapshot> {
-  const [clipboard, windowTitle] = await Promise.all([
+  const [clipboard, fromOS] = await Promise.all([
     readClipboardSafe(),
-    readActiveWindowTitle(),
+    readActiveWindowOS(),
   ]);
+  if (fromOS) {
+    return {
+      clipboard,
+      windowTitle: fromOS.title,
+      appName: fromOS.app,
+      source: "desktop",
+    };
+  }
+  // OS lookup failed — surface our own window title so the cápsula
+  // still has *some* context for the model.
+  const ownTitle = await readActiveWindowOwn();
   return {
     clipboard,
-    windowTitle,
+    windowTitle: ownTitle,
+    appName: "gauntlet-desktop",
     source: "desktop",
   };
+}
+
+// Sprint 6 close — interactive screen-region capture via the Tauri
+// command capture_screen_region, which shells out to the OS native
+// screenshot binary. Returns the path to a PNG in the temp dir, or
+// null when the platform/binary isn't available. Caller is expected
+// to surface the path to the operator (the cápsula doesn't preview
+// images yet — Sprint 9+ will).
+export async function captureScreenRegion(): Promise<string | null> {
+  try {
+    return await invoke<string>("capture_screen_region");
+  } catch {
+    return null;
+  }
+}
+
+// Backend autostart — opt-in via env var checked Rust-side. Returns
+// the start error verbatim when the env isn't enabled OR the spawn
+// failed; caller surfaces it as a regular cápsula error band.
+export async function startBackend(): Promise<string | null> {
+  try {
+    await invoke<void>("start_backend");
+    return null;
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+}
+
+export async function stopBackend(): Promise<void> {
+  try {
+    await invoke<void>("stop_backend");
+  } catch {
+    // best-effort
+  }
 }
 
 // Global shortcut wrapper. The Tauri plugin's API takes a string spec

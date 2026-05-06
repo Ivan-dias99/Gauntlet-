@@ -30,6 +30,7 @@ Safety posture (deny-by-default):
 from __future__ import annotations
 
 import asyncio
+import inspect
 import ipaddress
 import json
 import logging
@@ -328,9 +329,20 @@ class Tool:
         raise NotImplementedError
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        """Run the tool with timeout and error containment."""
+        """Run the tool with timeout and error containment.
+
+        Filters kwargs by the subclass's _run signature when _run lacks
+        **kwargs. Without this, tools with typed args crash with a
+        TypeError the moment the dispatcher (or a hallucinating model)
+        adds an extra key — most concretely the dispatcher's `approved`
+        flag for the require_approval gate. Tools that opt in to the
+        flexible shape (GitHubTool, VercelTool with `**kwargs`) bypass
+        the filter and see every key the caller passed."""
         try:
-            return await asyncio.wait_for(self._run(**kwargs), timeout=self.timeout_s)
+            forward = self._filter_run_kwargs(kwargs)
+            return await asyncio.wait_for(
+                self._run(**forward), timeout=self.timeout_s,
+            )
         except asyncio.TimeoutError:
             return ToolResult(
                 ok=False,
@@ -339,6 +351,36 @@ class Tool:
         except Exception as exc:  # noqa: BLE001
             logger.exception("Tool %s crashed", self.name)
             return ToolResult(ok=False, content=f"Tool '{self.name}' crashed: {exc}")
+
+    def _filter_run_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Drop kwargs the subclass's _run can't accept.
+
+        When _run declares **kwargs we forward everything verbatim.
+        Otherwise we keep only the names that are explicit parameters
+        of _run. Cached per-class because `inspect.signature` walks the
+        MRO every call and the registry dispatches a lot."""
+        cache = type(self).__dict__.get("_run_signature_cache")
+        if cache is None:
+            sig = inspect.signature(self._run)
+            params = sig.parameters
+            has_var_kw = any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
+            )
+            accepted = (
+                None
+                if has_var_kw
+                else frozenset(
+                    name
+                    for name, p in params.items()
+                    if name != "self" and p.kind != inspect.Parameter.VAR_POSITIONAL
+                )
+            )
+            cache = accepted
+            # Cache on the class so subclasses don't all rebuild it.
+            setattr(type(self), "_run_signature_cache", cache)
+        if cache is None:
+            return kwargs
+        return {k: v for k, v in kwargs.items() if k in cache}
 
     def to_anthropic(self) -> dict[str, Any]:
         """Anthropic tool-use descriptor."""
@@ -1039,30 +1081,103 @@ class MemorySearchTool(Tool):
 class GitHubTool(Tool):
     name = "github"
     description = (
-        "Inspect the local repo's GitHub identity and recent activity. "
-        "Subcommands: 'remote' (origin URL), 'branch' (current branch), "
-        "'log' (last 10 commits). Write operations (open_pr, create_branch, "
-        "push) are not yet implemented — they require an OAuth-scoped "
-        "REST client which Sprint 7 will add."
+        "Inspect a GitHub repository — local git for read subcommands "
+        "(remote/branch/log) and the GitHub REST API for repo-level "
+        "queries. With a Personal Access Token in GITHUB_TOKEN the "
+        "subcommands list_prs / get_pr / list_branches_remote / "
+        "list_issues / get_issue read against api.github.com. "
+        "Write subcommands (comment_pr, create_pr) require GITHUB_TOKEN "
+        "AND require_approval=true on this tool's policy: setting "
+        "GAUNTLET_AUTO_APPROVE=1 lets the agent run them autonomously, "
+        "otherwise the dispatcher refuses with [approval_required]."
     )
-    mode = "read"
-    risk = "low"
-    scopes = ("git.read", "github.read")
-    rollback_policy = "n/a (read-only stub)"
-    timeout_s = 15.0
+    mode = "execute_with_approval"
+    risk = "medium"
+    scopes = ("git.read", "github.read", "github.write")
+    rollback_policy = (
+        "writes are not auto-rolled-back; comment_pr leaves an audit "
+        "trail in the PR thread; create_pr can be closed manually if "
+        "the agent created it in error"
+    )
+    timeout_s = 20.0
     input_schema = {
         "type": "object",
         "properties": {
             "subcommand": {
                 "type": "string",
-                "enum": ["remote", "branch", "log"],
-                "description": "Which read-only inspection to run",
+                "enum": [
+                    "remote", "branch", "log",
+                    "list_prs", "get_pr", "list_branches_remote",
+                    "list_issues", "get_issue",
+                    "comment_pr", "create_pr",
+                ],
+                "description": (
+                    "Read: remote/branch/log (local git), "
+                    "list_prs/get_pr/list_branches_remote/list_issues/"
+                    "get_issue (GitHub API). Write: comment_pr, "
+                    "create_pr (require GITHUB_TOKEN + approval)."
+                ),
+            },
+            "owner": {
+                "type": "string",
+                "description": "GitHub owner/org (required for API subcommands)",
+            },
+            "repo": {
+                "type": "string",
+                "description": "Repository name (required for API subcommands)",
+            },
+            "number": {
+                "type": "integer",
+                "description": "PR or issue number (get_pr, get_issue, comment_pr)",
+            },
+            "body": {
+                "type": "string",
+                "description": "Comment body (comment_pr) or PR description (create_pr)",
+            },
+            "title": {
+                "type": "string",
+                "description": "PR title (create_pr)",
+            },
+            "head": {
+                "type": "string",
+                "description": "PR head branch — owner:branch or just branch (create_pr)",
+            },
+            "base": {
+                "type": "string",
+                "description": "PR base branch (create_pr); defaults to main",
+            },
+            "approved": {
+                "type": "boolean",
+                "description": (
+                    "Set to true to bypass the require_approval gate. "
+                    "Auto-true when GAUNTLET_AUTO_APPROVE=1."
+                ),
             },
         },
         "required": ["subcommand"],
     }
 
-    async def _run(self, subcommand: str) -> ToolResult:
+    _LOCAL_SUBCOMMANDS = frozenset({"remote", "branch", "log"})
+    _READ_API_SUBCOMMANDS = frozenset({
+        "list_prs", "get_pr", "list_branches_remote",
+        "list_issues", "get_issue",
+    })
+    _WRITE_API_SUBCOMMANDS = frozenset({"comment_pr", "create_pr"})
+
+    async def _run(self, **kwargs: Any) -> ToolResult:
+        subcommand = kwargs.get("subcommand")
+        if not isinstance(subcommand, str):
+            return ToolResult(ok=False, content="github: subcommand required")
+
+        if subcommand in self._LOCAL_SUBCOMMANDS:
+            return await self._run_local(subcommand)
+        if subcommand in self._READ_API_SUBCOMMANDS:
+            return await self._run_read_api(subcommand, kwargs)
+        if subcommand in self._WRITE_API_SUBCOMMANDS:
+            return await self._run_write_api(subcommand, kwargs)
+        return ToolResult(ok=False, content=f"github: unknown subcommand '{subcommand}'")
+
+    async def _run_local(self, subcommand: str) -> ToolResult:
         proc = await asyncio.create_subprocess_exec(
             "git",
             *_subcmd_argv(subcommand),
@@ -1081,7 +1196,118 @@ class GitHubTool(Tool):
         return ToolResult(
             ok=True,
             content=out or "(empty)",
-            metadata={"subcommand": subcommand},
+            metadata={"subcommand": subcommand, "channel": "local"},
+        )
+
+    async def _run_read_api(self, subcommand: str, kwargs: dict) -> ToolResult:
+        token = _env("GITHUB_TOKEN", "GAUNTLET_GITHUB_TOKEN", default="")
+        if not token:
+            return ToolResult(
+                ok=False,
+                content=(
+                    f"github/{subcommand}: GITHUB_TOKEN not configured. "
+                    "Set a Personal Access Token (read-only `repo` scope is "
+                    "enough for read subcommands) and re-deploy."
+                ),
+            )
+        owner = kwargs.get("owner")
+        repo = kwargs.get("repo")
+        if not owner or not repo:
+            return ToolResult(
+                ok=False,
+                content=f"github/{subcommand}: owner + repo required",
+            )
+        path = self._read_api_path(subcommand, owner, repo, kwargs)
+        if path is None:
+            return ToolResult(
+                ok=False,
+                content=f"github/{subcommand}: missing required parameters",
+            )
+        return await _github_get(token, path, subcommand)
+
+    @staticmethod
+    def _read_api_path(
+        subcommand: str, owner: str, repo: str, kwargs: dict,
+    ) -> Optional[str]:
+        if subcommand == "list_prs":
+            return f"/repos/{owner}/{repo}/pulls?state=open&per_page=20"
+        if subcommand == "get_pr":
+            number = kwargs.get("number")
+            if not isinstance(number, int):
+                return None
+            return f"/repos/{owner}/{repo}/pulls/{number}"
+        if subcommand == "list_branches_remote":
+            return f"/repos/{owner}/{repo}/branches?per_page=50"
+        if subcommand == "list_issues":
+            return f"/repos/{owner}/{repo}/issues?state=open&per_page=20"
+        if subcommand == "get_issue":
+            number = kwargs.get("number")
+            if not isinstance(number, int):
+                return None
+            return f"/repos/{owner}/{repo}/issues/{number}"
+        return None
+
+    async def _run_write_api(self, subcommand: str, kwargs: dict) -> ToolResult:
+        token = _env("GITHUB_TOKEN", "GAUNTLET_GITHUB_TOKEN", default="")
+        if not token:
+            return ToolResult(
+                ok=False,
+                content=(
+                    f"github/{subcommand}: GITHUB_TOKEN not configured. "
+                    "Write subcommands need a PAT with `repo` scope."
+                ),
+            )
+        approved = bool(kwargs.get("approved")) or _auto_approved()
+        if not approved:
+            return ToolResult(
+                ok=False,
+                content=(
+                    f"[approval_required] github/{subcommand} mutates the "
+                    "remote repo. Re-call with approved=true after operator "
+                    "confirms, or set GAUNTLET_AUTO_APPROVE=1 to bypass."
+                ),
+                metadata={"approval_required": True},
+            )
+        owner = kwargs.get("owner")
+        repo = kwargs.get("repo")
+        if not owner or not repo:
+            return ToolResult(
+                ok=False,
+                content=f"github/{subcommand}: owner + repo required",
+            )
+        if subcommand == "comment_pr":
+            number = kwargs.get("number")
+            body = kwargs.get("body")
+            if not isinstance(number, int) or not isinstance(body, str) or not body.strip():
+                return ToolResult(
+                    ok=False,
+                    content="github/comment_pr: number + body required",
+                )
+            return await _github_post(
+                token,
+                f"/repos/{owner}/{repo}/issues/{number}/comments",
+                {"body": body},
+                subcommand,
+            )
+        if subcommand == "create_pr":
+            title = kwargs.get("title")
+            body = kwargs.get("body") or ""
+            head = kwargs.get("head")
+            base = kwargs.get("base") or "main"
+            if not title or not head:
+                return ToolResult(
+                    ok=False,
+                    content="github/create_pr: title + head required",
+                )
+            return await _github_post(
+                token,
+                f"/repos/{owner}/{repo}/pulls",
+                {"title": title, "body": body, "head": head, "base": base},
+                subcommand,
+            )
+        return ToolResult(
+            ok=False,
+            content=f"github: unsupported write subcommand '{subcommand}'",
         )
 
 
@@ -1096,61 +1322,418 @@ def _subcmd_argv(sub: str) -> list[str]:
     raise ValueError(f"unknown subcommand: {sub}")
 
 
-# ── 12. Vercel (Sprint 5 — stub) ────────────────────────────────────────────
+# ── GitHub REST helpers ────────────────────────────────────────────────────
+
+GITHUB_API_BASE = "https://api.github.com"
+GITHUB_API_VERSION = "2022-11-28"
+
+
+def _github_headers(token: str) -> dict[str, str]:
+    return {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "User-Agent": "Gauntlet/1.0",
+        "X-GitHub-Api-Version": GITHUB_API_VERSION,
+    }
+
+
+async def _github_get(token: str, path: str, subcommand: str) -> ToolResult:
+    url = GITHUB_API_BASE + path
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+            resp = await client.get(url, headers=_github_headers(token))
+    except httpx.HTTPError as exc:
+        return ToolResult(
+            ok=False,
+            content=f"github/{subcommand}: {type(exc).__name__}: {exc}",
+        )
+    if resp.status_code >= 400:
+        return ToolResult(
+            ok=False,
+            content=f"github/{subcommand}: HTTP {resp.status_code} — {resp.text[:300]}",
+        )
+    payload = _safe_json(resp)
+    if payload is None:
+        return ToolResult(
+            ok=False,
+            content=(
+                f"github/{subcommand}: HTTP {resp.status_code} but body was "
+                "not valid JSON; upstream may be misbehaving."
+            ),
+        )
+    return ToolResult(
+        ok=True,
+        content=_summarize_github_payload(subcommand, payload),
+        metadata={"subcommand": subcommand, "channel": "rest", "path": path},
+    )
+
+
+async def _github_post(
+    token: str, path: str, body: dict, subcommand: str,
+) -> ToolResult:
+    url = GITHUB_API_BASE + path
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+            resp = await client.post(
+                url, headers=_github_headers(token), json=body,
+            )
+    except httpx.HTTPError as exc:
+        return ToolResult(
+            ok=False,
+            content=f"github/{subcommand}: {type(exc).__name__}: {exc}",
+        )
+    if resp.status_code >= 400:
+        return ToolResult(
+            ok=False,
+            content=f"github/{subcommand}: HTTP {resp.status_code} — {resp.text[:300]}",
+        )
+    payload = _safe_json(resp) if resp.content else {}
+    if payload is None:
+        return ToolResult(
+            ok=False,
+            content=(
+                f"github/{subcommand}: HTTP {resp.status_code} but body was "
+                "not valid JSON; the write may or may not have landed — "
+                "verify on github.com."
+            ),
+        )
+    out = _summarize_github_payload(subcommand, payload)
+    return ToolResult(
+        ok=True,
+        content=out,
+        metadata={
+            "subcommand": subcommand,
+            "channel": "rest",
+            "path": path,
+            "html_url": payload.get("html_url") if isinstance(payload, dict) else None,
+        },
+    )
+
+
+def _safe_json(resp: httpx.Response) -> Any:
+    """resp.json() but None on parse failure instead of an exception
+    that crashes the agent loop. Used by the REST helpers below — a
+    misbehaving upstream that returns HTML or a truncated body should
+    surface as a clean tool refusal, not a stack trace."""
+    try:
+        return resp.json()
+    except (ValueError, json.JSONDecodeError):
+        return None
+
+
+def _summarize_github_payload(subcommand: str, payload: Any) -> str:
+    """Compact text rendering of a GitHub REST payload — full JSON would
+    burn agent context. Falls back to truncated JSON for unrecognised
+    shapes so the operator still sees something useful."""
+    if subcommand in ("list_prs", "list_issues") and isinstance(payload, list):
+        if not payload:
+            return f"(no items for {subcommand})"
+        lines = [f"Found {len(payload)} {subcommand[5:]}:"]
+        for item in payload:
+            lines.append(
+                f"  · #{item.get('number')} {item.get('title', '(no title)')[:80]} "
+                f"[{item.get('state', '?')}] by {item.get('user', {}).get('login', '?')}"
+            )
+        return "\n".join(lines)
+    if subcommand == "list_branches_remote" and isinstance(payload, list):
+        if not payload:
+            return "(no branches)"
+        return f"Branches ({len(payload)}):\n" + "\n".join(
+            f"  · {b.get('name')}" for b in payload
+        )
+    if subcommand in ("get_pr", "get_issue") and isinstance(payload, dict):
+        return (
+            f"#{payload.get('number')} {payload.get('title', '(no title)')}\n"
+            f"  state: {payload.get('state')}  by: {payload.get('user', {}).get('login', '?')}\n"
+            f"  url: {payload.get('html_url')}\n"
+            f"  body: {(payload.get('body') or '')[:600]}"
+        )
+    if subcommand == "comment_pr" and isinstance(payload, dict):
+        return f"Comment posted: {payload.get('html_url')}"
+    if subcommand == "create_pr" and isinstance(payload, dict):
+        return (
+            f"PR #{payload.get('number')} created: {payload.get('html_url')}"
+        )
+    # Fallback — short JSON
+    text = json.dumps(payload, indent=2)
+    return text[:1500] + ("…" if len(text) > 1500 else "")
+
+
+def _auto_approved() -> bool:
+    """Sprint 5 close — when GAUNTLET_AUTO_APPROVE is truthy, tools that
+    declare require_approval=true treat every call as approved. Useful
+    for trusted single-operator deploys; otherwise the agent must pass
+    approved=true (which the operator-driven UI sets after explicit
+    confirmation, currently a TODO surface)."""
+    raw = _env("GAUNTLET_AUTO_APPROVE", default="").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
+# ── 12. Vercel (real REST client) ──────────────────────────────────────────
 #
-# Placeholder so the manifest exists in the matrix. Production deploy
-# operations (deploy, list_deployments, get_logs) need a Vercel API token
-# and rate-limit handling that aren't in scope this sprint. Returns a
-# clear "not configured" envelope so the agent's tool loop sees a
-# deterministic refusal rather than a crash.
+# Reads VERCEL_TOKEN at call time (so rotating the env doesn't require a
+# backend restart). Three read subcommands are unconditionally callable
+# once the token is set; redeploy is gated by the require_approval
+# envelope (no destructive default, GAUNTLET_AUTO_APPROVE=1 bypasses).
 
 class VercelTool(Tool):
     name = "vercel"
     description = (
-        "Stub for Vercel deploy operations. Currently returns a "
-        "not-configured envelope. Wire up VERCEL_TOKEN and the REST "
-        "client in Sprint 7 to enable deploy/list/logs."
+        "Vercel deploy operations via the REST API. Read subcommands: "
+        "list_projects, list_deployments (latest 10), get_deployment "
+        "(by id), get_build_logs (by deployment id). Write: redeploy "
+        "(creates a new deployment from an existing target). All write "
+        "subcommands require approved=true (or GAUNTLET_AUTO_APPROVE=1). "
+        "VERCEL_TEAM_ID env scopes API calls to a team when set."
     )
     mode = "execute_with_approval"
     risk = "high"
-    scopes = ("vercel.write",)
+    scopes = ("vercel.read", "vercel.write")
     rollback_policy = (
-        "vercel deployments are immutable; rollback = redeploy a previous "
-        "build via the dashboard or 'vercel rollback'"
+        "vercel deployments are immutable; rollback = promote a previous "
+        "deployment via 'redeploy' on its target, or via the Vercel "
+        "dashboard. Auto-rollback isn't safe — old deployments may have "
+        "been deleted."
     )
-    timeout_s = 5.0
+    timeout_s = 20.0
     input_schema = {
         "type": "object",
         "properties": {
             "subcommand": {
                 "type": "string",
-                "enum": ["deploy", "list", "logs"],
+                "enum": [
+                    "list_projects", "list_deployments",
+                    "get_deployment", "get_build_logs",
+                    "redeploy",
+                ],
+            },
+            "deployment_id": {
+                "type": "string",
+                "description": "Deployment id (get_deployment, get_build_logs, redeploy)",
+            },
+            "project_id": {
+                "type": "string",
+                "description": "Filter list_deployments by project (optional)",
+            },
+            "approved": {
+                "type": "boolean",
+                "description": (
+                    "Set to true to bypass require_approval for write "
+                    "subcommands. Auto-true when GAUNTLET_AUTO_APPROVE=1."
+                ),
             },
         },
         "required": ["subcommand"],
     }
 
-    async def _run(self, subcommand: str) -> ToolResult:
+    _READ_SUBCOMMANDS = frozenset({
+        "list_projects", "list_deployments",
+        "get_deployment", "get_build_logs",
+    })
+    _WRITE_SUBCOMMANDS = frozenset({"redeploy"})
+
+    async def _run(self, **kwargs: Any) -> ToolResult:
+        subcommand = kwargs.get("subcommand")
+        if not isinstance(subcommand, str):
+            return ToolResult(ok=False, content="vercel: subcommand required")
+
         token = _env("VERCEL_TOKEN", default="")
         if not token:
             return ToolResult(
                 ok=False,
                 content=(
-                    "vercel: VERCEL_TOKEN not configured. "
-                    "Set the env var and re-deploy the backend to enable."
+                    f"vercel/{subcommand}: VERCEL_TOKEN not configured. "
+                    "Create a token at https://vercel.com/account/tokens "
+                    "and set VERCEL_TOKEN on the backend."
                 ),
                 metadata={"subcommand": subcommand, "configured": False},
             )
-        # Token present but the REST adapter isn't wired yet — fail
-        # explicitly rather than pretend to work.
+
+        team_id = _env("VERCEL_TEAM_ID", default="").strip() or None
+
+        if subcommand in self._WRITE_SUBCOMMANDS:
+            approved = bool(kwargs.get("approved")) or _auto_approved()
+            if not approved:
+                return ToolResult(
+                    ok=False,
+                    content=(
+                        f"[approval_required] vercel/{subcommand} mutates "
+                        "production deployments. Re-call with approved=true "
+                        "after operator confirms, or set "
+                        "GAUNTLET_AUTO_APPROVE=1."
+                    ),
+                    metadata={"approval_required": True},
+                )
+
+        if subcommand == "list_projects":
+            return await _vercel_get(token, team_id, "/v9/projects?limit=20", subcommand)
+        if subcommand == "list_deployments":
+            project_id = kwargs.get("project_id")
+            qs = "?limit=10" + (f"&projectId={project_id}" if project_id else "")
+            return await _vercel_get(token, team_id, f"/v6/deployments{qs}", subcommand)
+        if subcommand == "get_deployment":
+            deployment_id = kwargs.get("deployment_id")
+            if not deployment_id:
+                return ToolResult(ok=False, content="vercel/get_deployment: deployment_id required")
+            return await _vercel_get(
+                token, team_id, f"/v13/deployments/{deployment_id}", subcommand,
+            )
+        if subcommand == "get_build_logs":
+            deployment_id = kwargs.get("deployment_id")
+            if not deployment_id:
+                return ToolResult(ok=False, content="vercel/get_build_logs: deployment_id required")
+            return await _vercel_get(
+                token, team_id, f"/v3/deployments/{deployment_id}/events", subcommand,
+            )
+        if subcommand == "redeploy":
+            deployment_id = kwargs.get("deployment_id")
+            if not deployment_id:
+                return ToolResult(ok=False, content="vercel/redeploy: deployment_id required")
+            return await _vercel_post(
+                token, team_id, "/v13/deployments",
+                {"deploymentId": deployment_id},
+                subcommand,
+            )
+        return ToolResult(ok=False, content=f"vercel: unknown subcommand '{subcommand}'")
+
+
+# ── Vercel REST helpers ────────────────────────────────────────────────────
+
+VERCEL_API_BASE = "https://api.vercel.com"
+
+
+def _vercel_headers(token: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {token}",
+        "User-Agent": "Gauntlet/1.0",
+        "Content-Type": "application/json",
+    }
+
+
+def _vercel_url(path: str, team_id: Optional[str]) -> str:
+    if team_id:
+        sep = "&" if "?" in path else "?"
+        return f"{VERCEL_API_BASE}{path}{sep}teamId={team_id}"
+    return VERCEL_API_BASE + path
+
+
+async def _vercel_get(
+    token: str, team_id: Optional[str], path: str, subcommand: str,
+) -> ToolResult:
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+            resp = await client.get(
+                _vercel_url(path, team_id),
+                headers=_vercel_headers(token),
+            )
+    except httpx.HTTPError as exc:
+        return ToolResult(
+            ok=False,
+            content=f"vercel/{subcommand}: {type(exc).__name__}: {exc}",
+        )
+    if resp.status_code >= 400:
+        return ToolResult(
+            ok=False,
+            content=f"vercel/{subcommand}: HTTP {resp.status_code} — {resp.text[:300]}",
+        )
+    payload = _safe_json(resp)
+    if payload is None:
         return ToolResult(
             ok=False,
             content=(
-                f"vercel/{subcommand}: REST adapter not implemented in this "
-                "sprint. Stubbed; Sprint 7+ will land it."
+                f"vercel/{subcommand}: HTTP {resp.status_code} but body was "
+                "not valid JSON; upstream may be misbehaving."
             ),
-            metadata={"subcommand": subcommand, "configured": True},
         )
+    return ToolResult(
+        ok=True,
+        content=_summarize_vercel_payload(subcommand, payload),
+        metadata={"subcommand": subcommand, "path": path},
+    )
+
+
+async def _vercel_post(
+    token: str, team_id: Optional[str], path: str, body: dict, subcommand: str,
+) -> ToolResult:
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+            resp = await client.post(
+                _vercel_url(path, team_id),
+                headers=_vercel_headers(token),
+                json=body,
+            )
+    except httpx.HTTPError as exc:
+        return ToolResult(
+            ok=False,
+            content=f"vercel/{subcommand}: {type(exc).__name__}: {exc}",
+        )
+    if resp.status_code >= 400:
+        return ToolResult(
+            ok=False,
+            content=f"vercel/{subcommand}: HTTP {resp.status_code} — {resp.text[:300]}",
+        )
+    payload = _safe_json(resp)
+    if payload is None:
+        return ToolResult(
+            ok=False,
+            content=(
+                f"vercel/{subcommand}: HTTP {resp.status_code} but body was "
+                "not valid JSON; the write may or may not have landed — "
+                "verify on vercel.com."
+            ),
+        )
+    return ToolResult(
+        ok=True,
+        content=_summarize_vercel_payload(subcommand, payload),
+        metadata={"subcommand": subcommand, "path": path},
+    )
+
+
+def _summarize_vercel_payload(subcommand: str, payload: Any) -> str:
+    if subcommand == "list_projects" and isinstance(payload, dict):
+        items = payload.get("projects") or []
+        if not items:
+            return "(no projects)"
+        return f"{len(items)} project(s):\n" + "\n".join(
+            f"  · {p.get('name')} (id={p.get('id')})" for p in items
+        )
+    if subcommand == "list_deployments" and isinstance(payload, dict):
+        items = payload.get("deployments") or []
+        if not items:
+            return "(no deployments)"
+        lines = [f"{len(items)} deployment(s):"]
+        for d in items:
+            lines.append(
+                f"  · {d.get('uid')} state={d.get('state')} "
+                f"target={d.get('target') or 'preview'} url={d.get('url') or ''}"
+            )
+        return "\n".join(lines)
+    if subcommand == "get_deployment" and isinstance(payload, dict):
+        return (
+            f"deployment {payload.get('id') or payload.get('uid')}\n"
+            f"  url:    {payload.get('url')}\n"
+            f"  state:  {payload.get('readyState') or payload.get('state')}\n"
+            f"  target: {payload.get('target') or 'preview'}\n"
+            f"  source: {(payload.get('source') or {}).get('type', '?')}"
+        )
+    if subcommand == "get_build_logs" and isinstance(payload, list):
+        if not payload:
+            return "(no log events)"
+        lines = [f"{len(payload)} log event(s):"]
+        for ev in payload[-30:]:
+            ts = ev.get("created") or ev.get("date") or ""
+            text = ev.get("text") or ev.get("payload") or ""
+            if isinstance(text, dict):
+                text = json.dumps(text)
+            lines.append(f"  [{ts}] {str(text)[:200]}")
+        return "\n".join(lines)
+    if subcommand == "redeploy" and isinstance(payload, dict):
+        return (
+            f"redeployed: id={payload.get('id') or payload.get('uid')} "
+            f"url={payload.get('url')}"
+        )
+    text = json.dumps(payload, indent=2)
+    return text[:1500] + ("…" if len(text) > 1500 else "")
 
 
 class ToolRegistry:
@@ -1158,6 +1741,11 @@ class ToolRegistry:
 
     def __init__(self, tools: Optional[list[Tool]] = None) -> None:
         self._tools: dict[str, Tool] = {}
+        # Set of tool names whose dispatch is gated by an explicit
+        # approved=true (or GAUNTLET_AUTO_APPROVE env). Initialised
+        # per-instance so a class-level mutable default can't leak
+        # across registries — bug 2 from the post-Sprint-8 audit.
+        self._approval_required: set[str] = set()
         # Use None sentinel — an explicit empty list means "start empty", it
         # must not fall through to the default bundle.
         effective = default_tools() if tools is None else tools
@@ -1202,18 +1790,46 @@ class ToolRegistry:
         per-tool policy dict. Each entry is shaped like
         {"allowed": bool, "require_approval": bool}; unknown tool names
         in the policy dict are ignored. Tools without an explicit entry
-        keep their default (allowed)."""
+        keep their default (allowed). The require_approval flag is
+        carried into the new registry's _approval_required set so
+        dispatch can surface a [approval_required] envelope without
+        running the tool — see dispatch() below."""
         kept: list[Tool] = []
+        approval_required: set[str] = set()
         for tool in self._tools.values():
             policy = policies.get(tool.name)
-            if policy is None or policy.get("allowed", True):
-                kept.append(tool)
-        return ToolRegistry(tools=kept)
+            if policy is not None and not policy.get("allowed", True):
+                continue
+            kept.append(tool)
+            if policy is not None and policy.get("require_approval", False):
+                approval_required.add(tool.name)
+        out = ToolRegistry(tools=kept)
+        out._approval_required = approval_required
+        return out
 
     async def dispatch(self, name: str, arguments: dict[str, Any]) -> ToolResult:
         tool = self._tools.get(name)
         if tool is None:
             return ToolResult(ok=False, content=f"Unknown tool: {name}")
+        # Sprint 5 close — when this tool is in the policy's
+        # require_approval set, gate the call. The agent sees a
+        # deterministic refusal that names the requirement; the model
+        # can then decide to ask the operator. GAUNTLET_AUTO_APPROVE
+        # is the trusted-deploy bypass.
+        if name in self._approval_required:
+            approved = bool(arguments.get("approved")) or _auto_approved()
+            if not approved:
+                logger.info("dispatch %s blocked by require_approval policy", name)
+                return ToolResult(
+                    ok=False,
+                    content=(
+                        f"[approval_required] tool '{name}' requires "
+                        "explicit operator approval. Re-call with "
+                        "approved=true after confirmation, or set "
+                        "GAUNTLET_AUTO_APPROVE=1 on a trusted deploy."
+                    ),
+                    metadata={"approval_required": True, "tool": name},
+                )
         logger.info("dispatch %s args=%s", name, list(arguments))
         return await tool.execute(**arguments)
 

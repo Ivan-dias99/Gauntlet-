@@ -88,9 +88,16 @@ class ComposerSettingsStore:
         return self._settings
 
     async def replace(self, settings: ComposerSettings) -> ComposerSettings:
-        """Replace the whole document. Stamps updated_at fresh."""
+        """Replace the whole document. Stamps updated_at fresh.
+
+        Sprint 8 close — snapshots the previous document to a
+        timestamped backup file before overwriting, so the operator can
+        restore via /composer/settings/restore. Snapshots cap at the
+        last MAX_SNAPSHOTS so disk doesn't grow unbounded over time.
+        """
         await self._ensure_loaded()
         async with self._lock:
+            await self._snapshot_current()
             settings.updated_at = datetime.now(timezone.utc).isoformat()
             self._settings = settings
             await self._write()
@@ -103,6 +110,100 @@ class ComposerSettingsStore:
         )
         return self._settings
 
+    async def _snapshot_current(self) -> None:
+        """Atomic write of the current document to a timestamped sidecar.
+        Run before every replace() so the previous state is recoverable.
+        Failures here do NOT abort replace — disk full / permission
+        denied is logged as last_save_error and the operator's mutation
+        still goes through. Best-effort, by design."""
+        if not self._loaded:
+            return
+        snap_dir = self._snapshot_dir()
+        try:
+            snap_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("composer.settings.snapshot_dir_failed: %s", e)
+            return
+        # Microsecond precision so two PUTs in the same wall-clock
+        # second don't collide and overwrite each other (test discovered
+        # this — back-to-back replace() calls happen all the time when
+        # the operator ramps a knob).
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        snap_path = snap_dir / f"settings-{ts}.json"
+        try:
+            await atomic_write_text_async(
+                snap_path, self._settings.model_dump_json(indent=2)
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("composer.settings.snapshot_failed: %s", e)
+            return
+        # Prune oldest beyond the cap. List + sort by name (timestamps
+        # in the filename make this lexicographic == chronological).
+        try:
+            existing = sorted(snap_dir.glob("settings-*.json"))
+            for stale in existing[: -MAX_SNAPSHOTS]:
+                stale.unlink(missing_ok=True)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("composer.settings.snapshot_prune_failed: %s", e)
+
+    def _snapshot_dir(self) -> Path:
+        return self._file.parent / "composer_settings_snapshots"
+
+    async def list_snapshots(self) -> list[dict]:
+        """Sprint 8 close — list available snapshots, newest first.
+        Each entry: {file: <name>, timestamp: <iso>, bytes: <size>}.
+        Returns empty list if the dir doesn't exist yet (no replace
+        has happened on this deploy)."""
+        snap_dir = self._snapshot_dir()
+        if not snap_dir.exists():
+            return []
+        out: list[dict] = []
+        for p in sorted(snap_dir.glob("settings-*.json"), reverse=True):
+            try:
+                stat = p.stat()
+            except OSError:
+                continue
+            # Lift the embedded timestamp from filename for display.
+            name_iso = p.stem.replace("settings-", "")
+            out.append({
+                "file": p.name,
+                "timestamp": name_iso,
+                "bytes": stat.st_size,
+            })
+        return out
+
+    async def restore(self, file_name: str) -> ComposerSettings:
+        """Sprint 8 close — restore a snapshot identified by its file
+        name. The current document is itself snapshotted first so the
+        restore is reversible. Raises FileNotFoundError when the
+        target snapshot is missing or its name escapes the snapshot
+        dir (defensive: file_name is operator-controlled)."""
+        snap_dir = self._snapshot_dir()
+        # Reject path traversal — only basenames inside the snapshot dir.
+        if "/" in file_name or "\\" in file_name or file_name.startswith("."):
+            raise FileNotFoundError(
+                f"snapshot name rejected (must be a bare basename): {file_name!r}"
+            )
+        target = snap_dir / file_name
+        if not target.exists():
+            raise FileNotFoundError(f"snapshot not found: {file_name!r}")
+        raw = target.read_text(encoding="utf-8")
+        try:
+            restored = ComposerSettings(**json.loads(raw))
+        except (ValueError, json.JSONDecodeError) as exc:
+            # Quarantine the corrupt snapshot so subsequent list_snapshots
+            # doesn't keep offering it to the operator. Re-raise as
+            # ValueError so the route surfaces a typed 422 instead of a
+            # 500. JSONDecodeError is itself a ValueError subclass; we
+            # widen the catch to include schema mismatches too.
+            quarantine_corrupt_file(target)
+            raise ValueError(
+                f"snapshot {file_name!r} is corrupt or schema-mismatched: {exc}"
+            ) from exc
+        # restore() goes through replace() so the current doc snapshots
+        # first — operator can roll forward if the restore was wrong.
+        return await self.replace(restored)
+
     @property
     def last_save_error(self) -> Optional[str]:
         return self._last_save_error
@@ -110,6 +211,9 @@ class ComposerSettingsStore:
     @property
     def last_load_error(self) -> Optional[str]:
         return self._last_load_error
+
+
+MAX_SNAPSHOTS: int = 10
 
 
 # Module-level singleton.

@@ -1088,9 +1088,60 @@ async def get_composer_settings() -> ComposerSettings:
 
 @router.put("/settings", response_model=ComposerSettings)
 async def put_composer_settings(req: ComposerSettings) -> ComposerSettings:
-    """Replace the governance contract. updated_at is overwritten."""
+    """Replace the governance contract. updated_at is overwritten.
+    The previous document is snapshotted automatically so the operator
+    can roll back via /composer/settings/restore — see Sprint 8 close."""
     saved = await settings_store.replace(req)
     return saved
+
+
+@router.get("/settings/snapshots")
+async def list_settings_snapshots():
+    """Sprint 8 close — list rollback snapshots written before each PUT.
+    Newest first; capped at MAX_SNAPSHOTS by the store."""
+    return {"snapshots": await settings_store.list_snapshots()}
+
+
+@router.post("/settings/restore")
+async def restore_settings_snapshot(req: dict):
+    """Sprint 8 close — restore a snapshot by its file name. The current
+    document is itself snapshotted first, so the restore is reversible
+    via another /settings/restore against the new snapshot. Operator
+    sees a typed envelope when the file is missing or the name escapes
+    the snapshot dir."""
+    file_name = req.get("file") if isinstance(req, dict) else None
+    if not isinstance(file_name, str) or not file_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "missing_file",
+                "reason": "ValueError",
+                "message": "POST body must include {'file': '<snapshot-filename>'}",
+            },
+        )
+    try:
+        restored = await settings_store.restore(file_name)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "snapshot_not_found",
+                "reason": "FileNotFoundError",
+                "message": str(exc),
+            },
+        )
+    except ValueError as exc:
+        # Snapshot file exists but is corrupt or schema-mismatched.
+        # The store quarantined it; operator gets 422 with the cause.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "snapshot_corrupt",
+                "reason": "ValueError",
+                "message": str(exc),
+            },
+        )
+    return restored
 
 
 # ── Execution Contract (Sprint 3) ──────────────────────────────────────────
