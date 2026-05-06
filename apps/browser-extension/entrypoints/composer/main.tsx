@@ -75,6 +75,11 @@ const popupAmbient = {
     screenshot: false,
     dismissDomain: false,
     refreshSelection: false,
+    // No Pill mounts in this window — the cápsula IS the surface. The
+    // settings drawer reads this flag to hide the pill-mode toggle so
+    // the operator doesn't toggle a control with no visible effect
+    // here (the choice still persists for the in-page surface).
+    pillSurface: false,
   },
   domActions: undefined,
   screenshot: undefined,

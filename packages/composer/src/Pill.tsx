@@ -114,7 +114,15 @@ export function Pill({
   // Mousemove anywhere on the page resets the idle timer. Pointer
   // entering / leaving the pill itself short-circuits the timer too.
   // We keep the listener passive so we never fight scroll handlers.
+  // Cursor mode bypasses idle entirely — a dim cursor would mislead
+  // the operator about whether the pointer is responsive.
   useEffect(() => {
+    if (mode === 'cursor') {
+      // Reset state so a previously-set idle flag doesn't linger when
+      // we flip back to corner mode.
+      setIdle((prev) => (prev ? false : prev));
+      return;
+    }
     function reset() {
       if (idleTimerRef.current !== null) {
         window.clearTimeout(idleTimerRef.current);
@@ -134,7 +142,7 @@ export function Pill({
         window.clearTimeout(idleTimerRef.current);
       }
     };
-  }, []);
+  }, [mode]);
 
   // Cursor-mode — pill becomes the visual pointer.
   //
@@ -213,8 +221,20 @@ export function Pill({
   // Magnet — passive pointermove updates the cursor ref; a single rAF
   // pumps the React state at frame rate so we never thrash transforms.
   // Effect bails out during drag (the dragger needs full control of
-  // the pill's position).
+  // the pill's position) and in cursor mode (where the pill IS the
+  // cursor — no separate magnet pull makes sense, and the pump would
+  // do useless getBoundingClientRect + setMagnet every frame).
   useEffect(() => {
+    if (mode === 'cursor') {
+      // Drop any lingering offset before bailing so a flip back to
+      // corner mode starts from rest.
+      setMagnet((prev) =>
+        prev.dx === 0 && prev.dy === 0 && !prev.near
+          ? prev
+          : { dx: 0, dy: 0, near: false },
+      );
+      return;
+    }
     function onPointer(ev: PointerEvent) {
       cursorRef.current = { x: ev.clientX, y: ev.clientY };
       if (magnetRafRef.current != null) return;
@@ -256,7 +276,7 @@ export function Pill({
         magnetRafRef.current = null;
       }
     };
-  }, []);
+  }, [mode]);
 
   const onPointerDown = useCallback(
     (ev: React.PointerEvent<HTMLButtonElement>) => {
@@ -364,16 +384,22 @@ export function Pill({
     .join(' ');
 
   // Position style — corner mode uses bottom/right + magnet transform;
-  // cursor mode uses top/left from the latest pointer coords with a
-  // small offset so the pill points at the cursor tip rather than
-  // centring on it.
+  // cursor mode anchors top/left at the exact pointer coordinates and
+  // uses translate(-50%, -50%) so the pill is centred on the cursor.
+  // Centring matters for two reasons: (1) clicks pass through with
+  // pointer-events: none, so the operator's perceived target must
+  // match the actual cursor position — any offset misleads clicks;
+  // (2) the pill morphs (over-interactive 22px / cmd-held 26px) and
+  // a translate-centred element grows symmetrically instead of
+  // expanding down-right.
   const styleProps: React.CSSProperties = isCursorMode
     ? cursorPos
       ? {
-          top: `${cursorPos.y - 6}px`,
-          left: `${cursorPos.x + 4}px`,
+          top: `${cursorPos.y}px`,
+          left: `${cursorPos.x}px`,
           right: 'auto',
           bottom: 'auto',
+          transform: 'translate(-50%, -50%)',
           // Pill must not intercept page clicks — it IS the cursor.
           // The keyboard shortcut summons the cápsula in this mode.
           pointerEvents: 'none',

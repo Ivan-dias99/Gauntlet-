@@ -1957,6 +1957,7 @@ export const CAPSULE_CSS = `
   --gx-tint-soft: rgba(15, 17, 22, 0.04);
   --gx-tint-strong: rgba(15, 17, 22, 0.08);
   --gx-sunken: rgba(15, 17, 22, 0.04);
+  --gx-scrim: rgba(15, 17, 22, 0.32);
   --gx-shadow-rgb: 32, 24, 18;
   /* Code block ink — purple keywords, rust strings, slate comments.
      Mirrors the Codex/Claude-Code premium-light reference the operator
@@ -1986,6 +1987,7 @@ export const CAPSULE_CSS = `
   --gx-tint-soft: rgba(255, 255, 255, 0.04);
   --gx-tint-strong: rgba(255, 255, 255, 0.08);
   --gx-sunken: rgba(8, 9, 13, 0.55);
+  --gx-scrim: rgba(8, 9, 13, 0.55);
   --gx-shadow-rgb: 0, 0, 0;
   --gx-code-bg: rgba(8, 9, 13, 0.7);
   --gx-code-fg: #e6e8ee;
@@ -3287,7 +3289,11 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__palette-scrim {
   position: absolute;
   inset: 0;
-  background: var(--gx-sunken);
+  /* Distinct scrim token — sunken is too soft for a meaningful dim on
+     light theme (it's 4% black there for inset surfaces). The scrim
+     needs to actually darken the background so the palette panel
+     reads as a focused layer above. */
+  background: var(--gx-scrim);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   pointer-events: auto;
@@ -3296,12 +3302,15 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__palette-panel {
   position: relative;
   width: min(420px, calc(100% - 36px));
-  background: rgba(20, 22, 30, 0.96);
+  /* Theme-aware surface — was hardcoded rgba(20, 22, 30, 0.96) which
+     showed as a dark slab over the cream flagship. Use the cápsula's
+     own surface tokens so the palette inherits the active theme. */
+  background: var(--gx-surface-strong, var(--gx-bg-solid));
   border: 1px solid var(--gx-border-mid);
   border-radius: 12px;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 24px 48px rgba(0, 0, 0, 0.55);
+    0 0 0 1px var(--gx-tint-soft),
+    0 24px 48px rgba(var(--gx-shadow-rgb), 0.30);
   pointer-events: auto;
   animation: gauntlet-cap-palette-rise 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
