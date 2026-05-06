@@ -719,3 +719,77 @@ class ToolManifest(BaseModel):
     scopes: list[str] = Field(default_factory=list)
     rollback_policy: str = "n/a"
     timeout_s: float
+
+
+# ── Memory / Canon Lock (Sprint 7) ─────────────────────────────────────────
+#
+# Three memory namespaces, one store. The cápsula's memory_save tool
+# writes into `note` by default; the composer pipeline injects relevant
+# prior records into the model context on every preview/dom_plan call so
+# the system carries continuity instead of starting from zero.
+#
+# kinds:
+#   note            — operator-saved free-form prose
+#   decision        — a decision made + the rationale (becomes canon
+#                     when ratified; until then it's just a note)
+#   failure_pattern — a known failure mode the operator wants surfaced
+#                     when similar topics come up
+#   preference      — user preference (style, tone, libraries to favour)
+#   canon           — ratified decision; treated as authoritative when
+#                     surfaced in context
+#
+# scope:
+#   user            — visible to all projects
+#   project         — scoped to project_id; only surfaces when that
+#                     project is the active context
+
+MemoryKind = Literal["note", "decision", "failure_pattern", "preference", "canon"]
+MemoryScope = Literal["user", "project"]
+
+
+class MemoryRecord(BaseModel):
+    """One entry in the operator-callable memory store."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    kind: MemoryKind = "note"
+    scope: MemoryScope = "user"
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    topic: str = Field(..., min_length=1, max_length=500)
+    body: str = Field(..., min_length=1, max_length=8000)
+    fingerprint: str = Field(default="")
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    updated_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    times_seen: int = 1
+
+
+class MemoryStoreSnapshot(BaseModel):
+    """On-disk shape for the JSON-backed store."""
+    records: list[MemoryRecord] = Field(default_factory=list)
+    last_updated: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+
+class MemoryRecordCreate(BaseModel):
+    """POST /memory/records body."""
+    kind: MemoryKind = "note"
+    scope: MemoryScope = "user"
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    topic: str = Field(..., min_length=1, max_length=500)
+    body: str = Field(..., min_length=1, max_length=8000)
+
+
+class MemoryRecoverRequest(BaseModel):
+    """POST /memory/recover body."""
+    query: str = Field(..., min_length=1, max_length=500)
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    max_results: int = Field(default=5, ge=1, le=20)
+
+
+class MemoryRecoverResponse(BaseModel):
+    matches: list[MemoryRecord] = Field(default_factory=list)
+    query: str
+    project_id: Optional[str] = None

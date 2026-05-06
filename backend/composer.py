@@ -435,13 +435,18 @@ async def generate_preview(req: ComposerPreviewRequest) -> PreviewResult:
     tools_used: list[str] = []
     model_used = intent.model_route.primary_model
 
+    # Sprint 7 — memory recovery applies to both paths. Computed once
+    # here so the agent and triad branches share the same recovered
+    # context instead of querying twice.
+    memory_block = await _compose_memory_block(ctx, intent.user_input)
+
     try:
         if intent.intent in {"generate_code", "debug_code", "execute_plan"}:
             # Agent path — tool use
             engine = _get_engine()
             agent_query = SignalQuery(
                 question=_compose_agent_question(intent, req.intent_id),
-                context=_compose_context_blob(ctx),
+                context=_compose_context_blob(ctx, memory_block),
                 chamber="terminal",
             )
             agent_result = await engine.process_dev_query(agent_query)
@@ -467,7 +472,7 @@ async def generate_preview(req: ComposerPreviewRequest) -> PreviewResult:
             engine = _get_engine()
             triad_query = SignalQuery(
                 question=_compose_triad_question(intent, req.intent_id),
-                context=_compose_context_blob(ctx),
+                context=_compose_context_blob(ctx, memory_block),
             )
             signal_response = await engine.process_query(triad_query)
             judge_verdict = "high" if signal_response.confidence.value == "high" else "low"
@@ -606,7 +611,9 @@ def _provider_supports_images(engine) -> bool:
     return cls in ("AsyncAnthropic", "MockAsyncAnthropic")
 
 
-def _build_user_messages(ctx: ContextPackage, user_input: str, engine=None) -> list[dict]:
+async def _build_user_messages(
+    ctx: ContextPackage, user_input: str, engine=None,
+) -> list[dict]:
     """Compose the messages array for the planner, including a base64
     image block when the content script forwarded an opt-in viewport
     screenshot AND the active provider supports image inputs.
@@ -614,9 +621,14 @@ def _build_user_messages(ctx: ContextPackage, user_input: str, engine=None) -> l
     screenshot is absent we send a plain string content (the SDK
     accepts both shapes interchangeably). On Groq/Gemini adapters we
     quietly drop the image block — those adapters only do text and
-    would 502 on a list-shaped content with image blocks."""
+    would 502 on a list-shaped content with image blocks.
+
+    Sprint 7 — pulls memory records relevant to the request and prepends
+    them inside the context blob so the model sees prior decisions and
+    canon as authoritative context."""
+    memory_block = await _compose_memory_block(ctx, user_input)
     user_msg = (
-        f"Page context:\n{_compose_context_blob(ctx)}\n\n"
+        f"Page context:\n{_compose_context_blob(ctx, memory_block)}\n\n"
         f"Request: {user_input}"
     )
     raw_screenshot = ctx.metadata.get("screenshot_data_url") if ctx.metadata else None
@@ -703,7 +715,7 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
     choice = gateway.select("default")
     model_id = choice.model_id
 
-    messages = _build_user_messages(ctx, req.user_input, engine)
+    messages = await _build_user_messages(ctx, req.user_input, engine)
 
     started = time.perf_counter()
     raw_text = ""
@@ -853,7 +865,7 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
     choice = gateway.select("default")
     model_id = choice.model_id
 
-    messages = _build_user_messages(ctx, req.user_input, engine)
+    messages = await _build_user_messages(ctx, req.user_input, engine)
 
     async def event_stream():
         raw_text = ""
@@ -1250,7 +1262,52 @@ def _compose_triad_question(intent: IntentResult, intent_id: UUID) -> str:
     return "\n".join(lines)
 
 
-def _compose_context_blob(ctx: ContextPackage) -> str:
+async def _compose_memory_block(ctx: ContextPackage, user_input: str) -> str:
+    """Sprint 7 — context recovery. Pull the top-N similar memory
+    records for the current request and format them into a compact
+    block the model treats as authoritative prior. Failures here
+    degrade silently: a missing memory store must not block the
+    composer flow."""
+    try:
+        from memory_records import memory_records_store
+        # Compose query: user input + selection prefix (the "what is the
+        # user pointing at" handle). Both inform similarity.
+        query_parts = [user_input]
+        if ctx.selection:
+            query_parts.append(ctx.selection[:200])
+        query = " ".join(query_parts).strip()
+        if not query:
+            return ""
+        # Project hint travels in metadata.project_id — set by the
+        # cápsula or the operator's tool call. None falls through to
+        # global user-scoped recovery.
+        project_id = None
+        if ctx.metadata:
+            pid = ctx.metadata.get("project_id")
+            if isinstance(pid, str) and pid:
+                project_id = pid
+        matches = await memory_records_store.find_relevant(
+            query=query, project_id=project_id, max_results=5,
+        )
+        if not matches:
+            return ""
+        lines = ["memory (prior context — authoritative when canon):"]
+        for m in matches:
+            tag = f"[{m.kind}/{m.scope}]"
+            head = f"  · {tag} {m.topic}"
+            if m.times_seen > 1:
+                head += f"  ×{m.times_seen}"
+            lines.append(head)
+            if m.body:
+                lines.append(f"    {m.body[:400]}")
+        return "\n".join(lines)
+    except Exception:  # noqa: BLE001
+        # Never break the composer flow over a memory store hiccup.
+        logger.exception("composer.memory_block.failed")
+        return ""
+
+
+def _compose_context_blob(ctx: ContextPackage, memory_block: str = "") -> str:
     lines: list[str] = [f"source: {ctx.source.value}"]
     if ctx.url:
         lines.append(f"url: {ctx.url}")
@@ -1262,6 +1319,9 @@ def _compose_context_blob(ctx: ContextPackage) -> str:
         lines.append(f"window: {ctx.window_title}")
     if ctx.files:
         lines.append(f"files: {', '.join(ctx.files[:8])}")
+    if memory_block:
+        lines.append("---")
+        lines.append(memory_block)
     if ctx.selection:
         lines.append("---")
         lines.append("selection:")

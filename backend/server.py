@@ -670,6 +670,97 @@ async def get_run(run_id: str):
     return record.model_dump()
 
 
+# ── Memory Records (Sprint 7) ──────────────────────────────────────────────
+
+@app.get("/memory/records")
+async def list_memory_records(
+    kind: Optional[str] = None,
+    scope: Optional[str] = None,
+    project_id: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 200,
+):
+    """Sprint 7 — list operator-callable memory entries. Filters compose:
+    pass kind, scope, project_id, search (substring on topic+body) to
+    narrow. Newest first."""
+    from memory_records import memory_records_store
+    records = await memory_records_store.list(
+        kind=kind, scope=scope, project_id=project_id, search=search, limit=limit,
+    )
+    return {
+        "count": len(records),
+        "records": [r.model_dump() for r in records],
+    }
+
+
+@app.post("/memory/records")
+async def create_memory_record(req: dict):
+    """Create or merge-by-fingerprint a memory entry. Operator + cápsula
+    + memory_save tool all funnel through here."""
+    from memory_records import memory_records_store
+    from models import MemoryRecordCreate
+
+    parsed = MemoryRecordCreate(**req)
+    record = await memory_records_store.record(
+        topic=parsed.topic,
+        body=parsed.body,
+        kind=parsed.kind,
+        scope=parsed.scope,
+        project_id=parsed.project_id,
+    )
+    return record.model_dump()
+
+
+@app.delete("/memory/records/{record_id}")
+async def delete_memory_record(record_id: str):
+    from memory_records import memory_records_store
+    deleted = await memory_records_store.delete(record_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "memory_record_not_found",
+                "reason": "KeyError",
+                "message": f"no record with id {record_id}",
+            },
+        )
+    return {"deleted": True, "id": record_id}
+
+
+@app.get("/memory/projects")
+async def list_memory_projects():
+    from memory_records import memory_records_store
+    return {"projects": await memory_records_store.projects()}
+
+
+@app.post("/memory/recover")
+async def recover_memory(req: dict):
+    """Sprint 7 — context recovery hook. Returns up to N similar prior
+    records for a query, scoped to project_id when supplied. The composer
+    pipeline calls this to inject continuity into model context; ad-hoc
+    operator queries hit it too."""
+    from memory_records import memory_records_store
+    from models import MemoryRecoverRequest, MemoryRecoverResponse
+
+    parsed = MemoryRecoverRequest(**req)
+    matches = await memory_records_store.find_relevant(
+        query=parsed.query,
+        project_id=parsed.project_id,
+        max_results=parsed.max_results,
+    )
+    return MemoryRecoverResponse(
+        matches=matches,
+        query=parsed.query,
+        project_id=parsed.project_id,
+    ).model_dump()
+
+
+@app.get("/memory/records/stats")
+async def memory_records_stats():
+    from memory_records import memory_records_store
+    return await memory_records_store.stats()
+
+
 # ── Tool Manifests (Sprint 5) ──────────────────────────────────────────────
 
 @app.get("/tools/manifests")

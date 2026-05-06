@@ -897,15 +897,15 @@ class MemorySaveTool(Tool):
     name = "memory_save"
     description = (
         "Persist a note into Gauntlet's memory store. Use to record a "
-        "decision, a known failure pattern, or a project preference so "
-        "future runs surface it as prior context. The 'kind' field "
-        "namespaces the entry: 'decision', 'failure_pattern', "
-        "'preference', 'note'. Body is free-form prose."
+        "decision, a known failure pattern, a preference, ratified canon, "
+        "or free-form note so future runs surface it as prior context. "
+        "Scope=user is global; scope=project requires a project_id and "
+        "only surfaces when that project is the active context."
     )
     mode = "draft"
     risk = "low"
     scopes = ("memory.write",)
-    rollback_policy = "memory entries can be cleared via POST /memory/clear"
+    rollback_policy = "memory entries can be deleted via DELETE /memory/records/{id}"
     input_schema = {
         "type": "object",
         "properties": {
@@ -916,31 +916,57 @@ class MemorySaveTool(Tool):
             "body": {"type": "string", "description": "Free-form note body"},
             "kind": {
                 "type": "string",
-                "description": "Namespace: decision | failure_pattern | preference | note",
-                "enum": ["decision", "failure_pattern", "preference", "note"],
+                "description": "note | decision | failure_pattern | preference | canon",
+                "enum": ["note", "decision", "failure_pattern", "preference", "canon"],
+            },
+            "scope": {
+                "type": "string",
+                "description": "user (global) | project (scoped to project_id)",
+                "enum": ["user", "project"],
+            },
+            "project_id": {
+                "type": "string",
+                "description": "Required when scope=project; ignored otherwise",
             },
         },
         "required": ["topic", "body"],
     }
 
-    async def _run(self, topic: str, body: str, kind: str = "note") -> ToolResult:
-        from memory import failure_memory  # local import — avoid circular at module load
-        from models import RefusalReason
+    async def _run(
+        self,
+        topic: str,
+        body: str,
+        kind: str = "note",
+        scope: str = "user",
+        project_id: Optional[str] = None,
+    ) -> ToolResult:
+        # Sprint 7 — backed by the memory_records store. Gives us
+        # user/project scoping and the kind tag without bending
+        # failure_memory's RefusalReason enum.
+        from memory_records import memory_records_store  # local import — avoid cycle
 
-        # The failure_memory store maps every entry to a RefusalReason; we
-        # bend that to carry the operator's `kind` by writing the kind into
-        # judge_reasoning and using a stable failure_type bucket. Sprint 7
-        # ships a proper user/project memory store.
-        record = await failure_memory.record_failure(
-            question=topic,
-            failure_type=RefusalReason.INSUFFICIENT_KNOWLEDGE,
-            triad_divergence_summary="",
-            judge_reasoning=f"[{kind}] {body[:1500]}",
+        record = await memory_records_store.record(
+            topic=topic,
+            body=body,
+            kind=kind,
+            scope=scope,
+            project_id=project_id,
         )
         return ToolResult(
             ok=True,
-            content=f"Saved memory ({kind}): {topic} → {record.id}",
-            metadata={"record_id": record.id, "kind": kind, "topic": topic},
+            content=(
+                f"Saved memory ({kind}, scope={scope}"
+                + (f", project={project_id}" if project_id else "")
+                + f"): {topic} → {record.id}"
+            ),
+            metadata={
+                "record_id": record.id,
+                "kind": kind,
+                "scope": scope,
+                "project_id": project_id,
+                "topic": topic,
+                "times_seen": record.times_seen,
+            },
         )
 
 
@@ -958,16 +984,24 @@ class MemorySearchTool(Tool):
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Topic or phrase to look up"},
+            "project_id": {
+                "type": "string",
+                "description": "Optional — restrict to project-scoped records of this id",
+            },
         },
         "required": ["query"],
     }
 
-    async def _run(self, query: str) -> ToolResult:
-        from memory import failure_memory
+    async def _run(
+        self,
+        query: str,
+        project_id: Optional[str] = None,
+    ) -> ToolResult:
+        from memory_records import memory_records_store  # local — avoid cycle
 
-        matches = await failure_memory.find_matching_failures(
-            question=query,
-            threshold=0.3,
+        matches = await memory_records_store.find_relevant(
+            query=query,
+            project_id=project_id,
             max_results=5,
         )
         if not matches:
@@ -976,14 +1010,18 @@ class MemorySearchTool(Tool):
                 content=f"No memory entries match {query!r}",
                 metadata={"matches": 0},
             )
-        lines = [f"Found {len(matches)} memory entry(ies) for {query!r}:"]
+        lines = [
+            f"Found {len(matches)} memory entry(ies) for {query!r}"
+            + (f" (project={project_id})" if project_id else "")
+            + ":"
+        ]
         for m in matches:
             lines.append(
-                f"  · {m['question']} "
-                f"(seen {m['times_failed']}x, similarity {m['similarity']})"
+                f"  · [{m.kind}/{m.scope}] {m.topic}"
+                f"  (seen {m.times_seen}x)"
             )
-            if m.get("triad_divergence_summary"):
-                lines.append(f"    note: {m['triad_divergence_summary'][:200]}")
+            if m.body:
+                lines.append(f"    body: {m.body[:300]}")
         return ToolResult(
             ok=True,
             content="\n".join(lines),
