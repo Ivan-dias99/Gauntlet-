@@ -10,6 +10,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ComposerClient,
+  DEFAULT_COMPOSER_SETTINGS,
+  type ComposerSettings,
   type ContextCaptureRequest,
   type DomPlanResult,
   type ExecutedActionRecord,
@@ -87,6 +89,15 @@ export function Capsule({
   // the page. If the request fires before capture finishes, we send
   // without the image — better than blocking the user.
   const [screenshot, setScreenshot] = useState<string | null>(null);
+  // Sprint 4 — governance lock. Fetched once on mount; missing fields
+  // fall through to DEFAULT_COMPOSER_SETTINGS. The cápsula honors
+  // screenshot_default (when the local pref is unset), per-domain
+  // require_danger_ack (force the danger gate even on neutral plans),
+  // and execution_reporting_required (await the ledger row instead of
+  // fire-and-forget).
+  const [settings, setSettings] = useState<ComposerSettings>(
+    DEFAULT_COMPOSER_SETTINGS,
+  );
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<(() => void) | null>(null);
@@ -110,7 +121,47 @@ export function Capsule({
     () => (plan ? assessSequenceDanger(plan.actions) : { danger: false }),
     [plan],
   );
-  const hasDanger = dangers.some((d) => d.danger) || sequenceDanger.danger;
+  // Sprint 4 — policy-forced ack. When the active domain policy or any
+  // action's type policy carries require_danger_ack=true, force the
+  // danger gate even on plans that look benign. Lets the operator
+  // tighten beyond the heuristic-driven flagging.
+  const policyForcesAck = useMemo<{ forced: boolean; reason: string | null }>(
+    () => {
+      if (!plan || plan.actions.length === 0) {
+        return { forced: false, reason: null };
+      }
+      let host = '';
+      try {
+        host = new URL(snapshot.url).hostname.toLowerCase();
+      } catch {
+        // Invalid URL on a hostile page — fall through to defaults.
+      }
+      const domainPolicy = settings.domains[host] ?? settings.default_domain_policy;
+      if (domainPolicy.require_danger_ack) {
+        return {
+          forced: true,
+          reason: host
+            ? `policy: domain '${host}' requires explicit confirmation`
+            : 'policy: default domain policy requires explicit confirmation',
+        };
+      }
+      for (const a of plan.actions) {
+        const policy = settings.actions[a.type] ?? settings.default_action_policy;
+        if (policy.require_danger_ack) {
+          return {
+            forced: true,
+            reason: `policy: action type '${a.type}' requires explicit confirmation`,
+          };
+        }
+      }
+      return { forced: false, reason: null };
+    },
+    [plan, snapshot.url, settings],
+  );
+  const hasDanger =
+    dangers.some((d) => d.danger) ||
+    sequenceDanger.danger ||
+    policyForcesAck.forced;
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -129,16 +180,45 @@ export function Capsule({
     setSnapshot(initialSnapshot);
   }, [initialSnapshot]);
 
+  // Sprint 4 — fetch governance settings once at mount. Failure leaves
+  // the defaults in place (open, generous caps) so a backend that's
+  // slow or down doesn't block the cápsula from working. The screenshot
+  // pref effect below depends on this so it lives upstream.
+  useEffect(() => {
+    let cancelled = false;
+    void client
+      .getSettings()
+      .then((s) => {
+        if (cancelled) return;
+        setSettings(s);
+      })
+      .catch(() => {
+        // Settings unreachable — keep defaults.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
+
   // Fire-and-forget screenshot capture on mount when the pref is on.
-  // The background script handles chrome.tabs.captureVisibleTab and
-  // returns a data URL; we keep it in component state until the next
-  // submit copies it into the request metadata. Skipped in popup mode
-  // (no executor) — capturing there returns a screenshot of the
-  // popup window itself, which is useless and visually recursive.
+  // Pref source order:
+  //   1. Local toggle (chrome.storage.local) — explicit user choice wins.
+  //   2. Backend settings.screenshot_default — operator-set default.
+  // Skipped in popup mode (no executor) — capturing there returns a
+  // screenshot of the popup window itself, which is useless and
+  // visually recursive.
   useEffect(() => {
     if (!executor) return;
     let cancelled = false;
-    void readScreenshotEnabled().then((enabled) => {
+    void readScreenshotEnabled().then((enabledLocal) => {
+      // The local pref defaults to false in pill-prefs.ts. If the
+      // operator-side default is true, we honor it as the boot value
+      // unless the user already toggled it locally. To avoid a third
+      // tri-state pref we treat "local was never set" the same as
+      // "local is false" — operator default only applies when local is
+      // false. That biases toward minimal screenshot capture (privacy
+      // wins on draws).
+      const enabled = enabledLocal || settings.screenshot_default;
       if (cancelled || !enabled) return;
       if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) return;
       void chrome.runtime
@@ -154,7 +234,7 @@ export function Capsule({
     return () => {
       cancelled = true;
     };
-  }, [executor]);
+  }, [executor, settings.screenshot_default]);
 
   const refreshSnapshot = useCallback(() => {
     setSnapshot(readSelectionSnapshot());
@@ -167,7 +247,7 @@ export function Capsule({
   // the contract is about DOM-action outcomes, not about every cápsula
   // interaction. Failure of the report itself never propagates.
   const reportExecution = useCallback(
-    (
+    async (
       status: ExecutionStatus,
       results: DomActionResult[] = [],
       errorMsg?: string,
@@ -202,10 +282,24 @@ export function Capsule({
         plan_latency_ms: plan.latency_ms || null,
         user_input: userInput.trim() || null,
       };
-      void client.reportExecution(payload).catch(() => {
-        // Reporting is best-effort. The user already saw the result;
-        // ledger fidelity comes second to UX continuity.
-      });
+      // Sprint 4 — when execution_reporting_required is true, the
+      // operator declared the ledger row part of the contract. We
+      // await + surface failure inline. When it's false, fire-and-
+      // forget keeps Sprint 3 ergonomics: the action already happened
+      // on the page; reporting is best-effort.
+      if (settings.execution_reporting_required) {
+        try {
+          await client.reportExecution(payload);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          setError(`policy: execution report rejected — ${msg}`);
+          setPhase('error');
+        }
+      } else {
+        void client.reportExecution(payload).catch(() => {
+          // Best-effort; ledger fidelity comes second to UX.
+        });
+      }
     },
     [
       client,
@@ -216,6 +310,7 @@ export function Capsule({
       sequenceDanger,
       dangerConfirmed,
       userInput,
+      settings.execution_reporting_required,
     ],
   );
 
@@ -229,7 +324,10 @@ export function Capsule({
       plan.actions.length > 0 &&
       !executionReportedRef.current
     ) {
-      reportExecution('rejected');
+      // Rejection is housekeeping — fire-and-forget regardless of the
+      // execution_reporting_required flag. The user is already gone;
+      // no UI to surface a failure to.
+      void reportExecution('rejected');
     }
     onDismiss();
   }, [plan, onDismiss, reportExecution]);
@@ -265,7 +363,9 @@ export function Capsule({
       plan.actions.length > 0 &&
       !executionReportedRef.current
     ) {
-      reportExecution('rejected');
+      // Implicit rejection — fire-and-forget. New plan is already on
+      // the way; we don't await the ledger row.
+      void reportExecution('rejected');
     }
     abortRef.current?.abort();
     streamAbortRef.current?.();
@@ -415,8 +515,9 @@ export function Capsule({
       );
       // Sprint 3 — execution row in the ledger. Per-action ok/error is
       // in `results`; status="executed" only means the executor ran,
-      // not that every action succeeded.
-      reportExecution('executed', results);
+      // not that every action succeeded. Sprint 4 — when
+      // execution_reporting_required is true, await + surface failure.
+      await reportExecution('executed', results);
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       setError(errMsg);
@@ -424,7 +525,7 @@ export function Capsule({
       window.dispatchEvent(
         new CustomEvent('gauntlet:execute-result', { detail: { ok: false } }),
       );
-      reportExecution('failed', [], errMsg);
+      await reportExecution('failed', [], errMsg);
     }
   }, [executor, plan, hasDanger, dangerConfirmed, reportExecution]);
 
@@ -683,6 +784,11 @@ export function Capsule({
                     </span>
                   </header>
                   <ul className="gauntlet-capsule__danger-list">
+                    {policyForcesAck.forced && policyForcesAck.reason && (
+                      <li key="danger-policy">
+                        <strong>governança:</strong> {policyForcesAck.reason}
+                      </li>
+                    )}
                     {sequenceDanger.danger && (
                       <li key="danger-sequence">
                         <strong>cadeia:</strong> {sequenceDanger.reason ?? 'flagged'}

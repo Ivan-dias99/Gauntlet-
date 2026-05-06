@@ -38,6 +38,7 @@ from models import (
     ComposerArtifact,
     ComposerIntentRequest,
     ComposerPreviewRequest,
+    ComposerSettings,
     ContextCaptureRequest,
     ContextCaptureResponse,
     ContextPackage,
@@ -55,9 +56,11 @@ from models import (
     SignalQuery,
     SuggestedAction,
 )
+from composer_settings import settings_store
 from model_gateway import GatewayCall, gateway
 from pydantic import TypeAdapter, ValidationError
 from runs import run_store
+from urllib.parse import urlparse
 
 logger = logging.getLogger("gauntlet.composer")
 
@@ -130,6 +133,79 @@ def _get_engine():
             },
         )
     return server.engine
+
+
+# ── Governance Lock (Sprint 4) — settings application helpers ──────────────
+
+def _hostname_of(url: Optional[str]) -> Optional[str]:
+    """Lower-case hostname for policy lookup. Returns None when the URL
+    is missing or unparseable; callers treat None as 'default policy'."""
+    if not url:
+        return None
+    try:
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        return host or None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _domain_policy_for(settings: ComposerSettings, url: Optional[str]):
+    """Resolve the effective DomainPolicy for a URL.
+
+    Lookup order:
+      1. Exact hostname match in settings.domains
+      2. settings.default_domain_policy
+    """
+    host = _hostname_of(url)
+    if host and host in settings.domains:
+        return settings.domains[host]
+    return settings.default_domain_policy
+
+
+def _action_policy_for(settings: ComposerSettings, action_type: str):
+    """Resolve the effective ActionPolicy for a DomAction.type."""
+    if action_type in settings.actions:
+        return settings.actions[action_type]
+    return settings.default_action_policy
+
+
+def _apply_context_caps(
+    metadata: dict,
+    settings: ComposerSettings,
+) -> dict:
+    """Truncate page_text + dom_skeleton on /composer/context per settings.
+
+    Defense-in-depth: the extension already pre-caps in selection.ts but
+    settings let the operator tighten further (or loosen, up to the
+    Pydantic max). Returns a new dict — never mutates the caller's."""
+    if not metadata:
+        return metadata
+    out = dict(metadata)
+    page_text = out.get("page_text")
+    if isinstance(page_text, str) and len(page_text) > settings.max_page_text_chars:
+        out["page_text"] = page_text[: settings.max_page_text_chars] + "…"
+    dom_skel = out.get("dom_skeleton")
+    if isinstance(dom_skel, str) and len(dom_skel) > settings.max_dom_skeleton_chars:
+        out["dom_skeleton"] = dom_skel[: settings.max_dom_skeleton_chars] + "…"
+    return out
+
+
+def _filter_actions_by_policy(
+    actions: list[DomAction],
+    settings: ComposerSettings,
+) -> tuple[list[DomAction], list[str]]:
+    """Drop actions whose type policy disallows them. Returns (kept, dropped_types)."""
+    kept: list[DomAction] = []
+    dropped: list[str] = []
+    for a in actions:
+        action_type = getattr(a, "type", None) or "unknown"
+        policy = _action_policy_for(settings, action_type)
+        if policy.allowed:
+            kept.append(a)
+        else:
+            dropped.append(action_type)
+    return kept, dropped
 
 
 # ── Intent classification (V0 heuristic) ───────────────────────────────────
@@ -253,6 +329,12 @@ async def capture_context(req: ContextCaptureRequest) -> ContextCaptureResponse:
     if not req.selection and not req.url and not req.app_name:
         confidence = 0.5  # weak context → downstream may need to clarify
 
+    # Sprint 4 — apply governance caps before stashing the context.
+    # max_page_text_chars / max_dom_skeleton_chars truncate metadata
+    # blobs at intake so downstream stages never see oversized payloads.
+    settings = await settings_store.get()
+    capped_metadata = _apply_context_caps(req.metadata or {}, settings)
+
     pkg = ContextPackage(
         source=req.source,
         url=req.url,
@@ -263,7 +345,7 @@ async def capture_context(req: ContextCaptureRequest) -> ContextCaptureResponse:
         clipboard=req.clipboard,
         screenshot_ref=req.screenshot_ref,
         files=req.files,
-        metadata=req.metadata,
+        metadata=capped_metadata,
         permission_scope=req.permission_scope,
         confidence=confidence,
     )
@@ -608,6 +690,15 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
         )
     assert isinstance(ctx, ContextPackage)
 
+    # Sprint 4 — domain gate. Refuse to plan actions on a hostname the
+    # operator disallowed. Compose-only paths are NOT blocked by the
+    # domain policy — text answers about a page are read-only and don't
+    # touch the DOM. This short-circuits before the model call so we
+    # don't burn tokens on a request that would be filtered to nothing.
+    settings = await settings_store.get()
+    domain_policy = _domain_policy_for(settings, ctx.url)
+    domain_blocked = not domain_policy.allowed
+
     engine = _get_engine()
     choice = gateway.select("default")
     model_id = choice.model_id
@@ -674,6 +765,22 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
                 except ValidationError:
                     continue
 
+    # Sprint 4 — apply policy gates before returning. Order matters:
+    # domain block wins (everything dropped, reason carries the why),
+    # then per-action filter strips disallowed types.
+    policy_reason: Optional[str] = None
+    if domain_blocked and actions:
+        host = _hostname_of(ctx.url) or "this domain"
+        policy_reason = f"domain '{host}' is disallowed by Composer policy"
+        actions = []
+    elif actions:
+        actions, dropped = _filter_actions_by_policy(actions, settings)
+        if dropped:
+            uniq = sorted(set(dropped))
+            policy_reason = (
+                f"action type(s) not permitted by policy: {', '.join(uniq)}"
+            )
+
     # Compose is mutually exclusive with actions. If the model returned
     # both (against instructions), prefer the actions — they're the
     # higher-fidelity intent. The compose text is only kept when there
@@ -682,6 +789,11 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
     compose: Optional[str] = None
     if not actions and isinstance(raw_compose, str) and raw_compose.strip():
         compose = raw_compose.strip()
+    # Surface the policy filter reason when it fired and there's no
+    # other narrative to show — keep any model-supplied reason if the
+    # planner already had one.
+    if policy_reason and not reason:
+        reason = policy_reason
 
     logger.info(
         "composer.dom_plan model=%s latency_ms=%d actions=%d compose=%s reason=%r",
@@ -727,6 +839,15 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
             detail={"error": "context_expired"},
         )
     assert isinstance(ctx, ContextPackage)
+
+    # Sprint 4 — domain gate (mirror of /composer/dom_plan). The
+    # streaming path can't short-circuit before opening the stream
+    # without breaking the SSE contract the cápsula expects, so we
+    # collect the policy here and apply it inside event_stream after
+    # the model finishes.
+    settings = await settings_store.get()
+    domain_policy = _domain_policy_for(settings, ctx.url)
+    domain_blocked = not domain_policy.allowed
 
     engine = _get_engine()
     choice = gateway.select("default")
@@ -782,22 +903,41 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
         raw_compose = parsed.get("compose") if isinstance(parsed, dict) else None
         reason = parsed.get("reason") if isinstance(parsed, dict) else None
 
-        actions_data: list[dict] = []
+        actions_validated: list[DomAction] = []
         if isinstance(raw_actions, list):
             try:
-                validated = _DOM_ACTION_ADAPTER.validate_python(raw_actions)
-                actions_data = [a.model_dump() for a in validated]
+                actions_validated = _DOM_ACTION_ADAPTER.validate_python(raw_actions)
             except ValidationError:
                 for a in raw_actions:
                     try:
                         v = _DOM_ACTION_ADAPTER.validate_python([a])[0]
-                        actions_data.append(v.model_dump())
+                        actions_validated.append(v)
                     except ValidationError:
                         continue
+
+        # Sprint 4 — apply policy gates after parse, before yield.
+        # Mirror of /composer/dom_plan logic.
+        policy_reason: Optional[str] = None
+        if domain_blocked and actions_validated:
+            host = _hostname_of(ctx.url) or "this domain"
+            policy_reason = f"domain '{host}' is disallowed by Composer policy"
+            actions_validated = []
+        elif actions_validated:
+            actions_validated, dropped = _filter_actions_by_policy(
+                actions_validated, settings,
+            )
+            if dropped:
+                uniq = sorted(set(dropped))
+                policy_reason = (
+                    f"action type(s) not permitted by policy: {', '.join(uniq)}"
+                )
+        actions_data: list[dict] = [a.model_dump() for a in actions_validated]
 
         compose: Optional[str] = None
         if not actions_data and isinstance(raw_compose, str) and raw_compose.strip():
             compose = raw_compose.strip()
+        if policy_reason and not reason:
+            reason = policy_reason
 
         result_payload = json.dumps({
             "actions": actions_data,
@@ -902,6 +1042,27 @@ async def apply_preview(req: ComposerApplyRequest) -> ApplyResult:
             status="failed",
             error=str(exc),
         )
+
+
+# ── Governance Lock (Sprint 4) — settings routes ───────────────────────────
+#
+# /composer/settings — single document store. The Control Center always
+# PUTs the full ComposerSettings payload (no PATCH) because the document
+# is small and round-tripping it sidesteps three-way-merge headaches.
+# The cápsula GETs at mount and applies the screenshot_default + the
+# execution_reporting_required flag.
+
+@router.get("/settings", response_model=ComposerSettings)
+async def get_composer_settings() -> ComposerSettings:
+    """Read the current governance contract."""
+    return await settings_store.get()
+
+
+@router.put("/settings", response_model=ComposerSettings)
+async def put_composer_settings(req: ComposerSettings) -> ComposerSettings:
+    """Replace the governance contract. updated_at is overwritten."""
+    saved = await settings_store.replace(req)
+    return saved
 
 
 # ── Execution Contract (Sprint 3) ──────────────────────────────────────────

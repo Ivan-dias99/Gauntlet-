@@ -638,3 +638,58 @@ class ExecutionReportResponse(BaseModel):
     run_id: UUID
     ledger_event_id: Optional[str] = None
     received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── Governance Lock (Sprint 4) — Composer Settings ─────────────────────────
+#
+# Single source of truth for how the Composer captures context, executes
+# actions, and requires approval. Persisted server-side so the Control
+# Center can edit and the cápsula can read on every summon. Defaults are
+# permissive (everything allowed, sane caps) so an empty settings file
+# still produces a working Composer.
+
+class DomainPolicy(BaseModel):
+    """Per-hostname rule. Hostname is the matrix key.
+
+    `allowed` is the hard gate — when false, no DOM action runs on this
+    domain regardless of type. `require_danger_ack` is opt-in stricter
+    behavior: when true, the cápsula forces the danger acknowledgement
+    even on plans that wouldn't otherwise trigger it. Default false so
+    Sprint 3 ergonomics survive the upgrade; operators tighten per-domain
+    via the Control Center matrix."""
+    allowed: bool = True
+    require_danger_ack: bool = False
+
+
+class ActionPolicy(BaseModel):
+    """Per-DomAction.type rule. Type ('click', 'fill', 'highlight',
+    'scroll_to') is the matrix key. Same semantics as DomainPolicy."""
+    allowed: bool = True
+    require_danger_ack: bool = False
+
+
+class ComposerSettings(BaseModel):
+    """The full governance contract. Everything optional in the Update
+    counterpart — this model is the canonical replace-payload form
+    used by GET / PUT /composer/settings."""
+    # Per-domain matrix. Lookup by hostname; missing → default_domain_policy.
+    domains: dict[str, DomainPolicy] = Field(default_factory=dict)
+    # Per-action matrix. Lookup by DomAction.type; missing → default_action_policy.
+    actions: dict[str, ActionPolicy] = Field(default_factory=dict)
+    # Defaults for unmatched keys.
+    default_domain_policy: DomainPolicy = Field(default_factory=DomainPolicy)
+    default_action_policy: ActionPolicy = Field(default_factory=ActionPolicy)
+    # Context caps applied at /composer/context to keep payloads bounded.
+    # Char-based for honesty: backend can only count chars, not "DOM
+    # elements" — the extension also pre-truncates and the server cap is
+    # defense-in-depth.
+    max_page_text_chars: int = Field(default=6000, ge=500, le=50_000)
+    max_dom_skeleton_chars: int = Field(default=4000, ge=500, le=20_000)
+    # Defaults the cápsula honors at mount time.
+    screenshot_default: bool = False
+    # When true, the cápsula awaits reportExecution and surfaces failure
+    # as an inline error — the lifecycle is mandatory, not best-effort.
+    execution_reporting_required: bool = False
+    updated_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )

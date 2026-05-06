@@ -138,6 +138,45 @@ export interface ExecutionReportResponse {
   received_at?: string;
 }
 
+// Governance Lock (Sprint 4) -------------------------------------------------
+// Single document under /composer/settings. The cápsula GETs at mount
+// to apply screenshot_default + the execution_reporting_required flag.
+// Edits live in the Control Center.
+
+export interface DomainPolicy {
+  allowed: boolean;
+  require_danger_ack: boolean;
+}
+
+export interface ActionPolicy {
+  allowed: boolean;
+  require_danger_ack: boolean;
+}
+
+export interface ComposerSettings {
+  domains: Record<string, DomainPolicy>;
+  actions: Record<string, ActionPolicy>;
+  default_domain_policy: DomainPolicy;
+  default_action_policy: ActionPolicy;
+  max_page_text_chars: number;
+  max_dom_skeleton_chars: number;
+  screenshot_default: boolean;
+  execution_reporting_required: boolean;
+  updated_at: string;
+}
+
+export const DEFAULT_COMPOSER_SETTINGS: ComposerSettings = {
+  domains: {},
+  actions: {},
+  default_domain_policy: { allowed: true, require_danger_ack: false },
+  default_action_policy: { allowed: true, require_danger_ack: false },
+  max_page_text_chars: 6000,
+  max_dom_skeleton_chars: 4000,
+  screenshot_default: false,
+  execution_reporting_required: false,
+  updated_at: '',
+};
+
 export interface ComposerClientOptions {
   backendUrl?: string;
   signal?: AbortSignal;
@@ -177,15 +216,16 @@ interface BackgroundFetchResponse {
 }
 
 async function backgroundFetchJson<T>(
+  method: string,
   url: string,
   body: unknown,
 ): Promise<T> {
   const reply: BackgroundFetchResponse = await chrome.runtime.sendMessage({
     type: 'gauntlet:fetch',
     url,
-    method: 'POST',
+    method,
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!reply || !reply.ok) {
     throw new ComposerError(
@@ -213,18 +253,19 @@ async function backgroundFetchJson<T>(
   return parsed as T;
 }
 
-async function postJson<T>(
+async function requestJson<T>(
+  method: string,
   url: string,
   body: unknown,
   signal?: AbortSignal,
 ): Promise<T> {
   if (inExtensionContext()) {
-    return backgroundFetchJson<T>(url, body);
+    return backgroundFetchJson<T>(method, url, body);
   }
   const res = await fetch(url, {
-    method: 'POST',
+    method,
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
     signal,
   });
   let parsed: unknown = null;
@@ -241,6 +282,26 @@ async function postJson<T>(
     );
   }
   return parsed as T;
+}
+
+async function postJson<T>(
+  url: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  return requestJson<T>('POST', url, body, signal);
+}
+
+async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
+  return requestJson<T>('GET', url, undefined, signal);
+}
+
+async function putJson<T>(
+  url: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  return requestJson<T>('PUT', url, body, signal);
 }
 
 export class ComposerClient {
@@ -294,6 +355,20 @@ export class ComposerClient {
       },
       signal,
     );
+  }
+
+  // Sprint 4 — governance lock. Single document GET/PUT. Cápsula
+  // calls getSettings on mount; updateSettings is reserved for the
+  // Control Center but lives here for symmetry.
+  getSettings(signal?: AbortSignal): Promise<ComposerSettings> {
+    return getJson(`${this.backendUrl}/composer/settings`, signal);
+  }
+
+  updateSettings(
+    settings: ComposerSettings,
+    signal?: AbortSignal,
+  ): Promise<ComposerSettings> {
+    return putJson(`${this.backendUrl}/composer/settings`, settings, signal);
   }
 
   // Sprint 3 — execution contract.
