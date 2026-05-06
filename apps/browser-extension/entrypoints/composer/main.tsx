@@ -26,23 +26,43 @@ const WINDOW_CSS = `
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: #0a0c10;
+    /* Flagship light cream — the cápsula fills the window edge-to-edge
+       but the FIRST PAINT (before React hydrates and the cápsula
+       paints over) shows the body. Cream avoids the black border /
+       black-window-only artifact when something off-screens the
+       cápsula or hydration is slow. */
+    background: #fbf7ee;
+  }
+  html[data-theme="dark"], body[data-theme="dark"] {
+    background: #0e1016;
   }
   #root {
     width: 100%;
     height: 100%;
   }
+  /* The popup window IS the cápsula container. We force the cápsula
+     to fill the window with !important + clear position/animation so
+     the .gauntlet-capsule--centered class (applied automatically when
+     no anchor is present) can't translate the cápsula off-screen via
+     its rise-centered keyframe (which has fill-mode: both and ends
+     at transform: translate(-50%, -50%)). Without animation: none,
+     the cápsula's own animation overrides our transform: none and
+     half the cápsula renders past the window edge — operator sees
+     only the body's background. */
   .gauntlet-capsule {
-    position: static;
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    max-height: 100%;
-    min-height: 0;
-    border-radius: 0;
-    box-shadow: none;
-    border: none;
-    transform: none;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    transform: none !important;
+    animation: none !important;
+    top: auto !important;
+    left: auto !important;
   }
 `;
 
@@ -66,6 +86,15 @@ const popupAmbient = {
   domActions: undefined,
   screenshot: undefined,
 };
+
+// Mirror the operator's persisted theme onto html/body so the cold-load
+// frame matches the cápsula's resolved theme (no flash of cream around
+// a dark cápsula or vice versa).
+void popupAmbient.storage.get<string>('gauntlet:theme').then((t) => {
+  const theme = t === 'dark' || t === 'light' ? t : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  document.body.setAttribute('data-theme', theme);
+});
 
 const root = createRoot(document.getElementById('root')!);
 root.render(
