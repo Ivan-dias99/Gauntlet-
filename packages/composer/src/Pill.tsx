@@ -88,6 +88,10 @@ export function Pill({
   // anchor) so flipping modes doesn't fight the existing drag/magnet.
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [overInteractive, setOverInteractive] = useState(false);
+  // Editable detection — separate from clickable so the pill can morph
+  // into an I-beam (thin vertical bar) over text-entry zones, mirroring
+  // the OS cursor convention the operator's muscle memory expects.
+  const [overEditable, setOverEditable] = useState(false);
   const [cmdHeld, setCmdHeld] = useState(false);
   const dragStateRef = useRef<{
     pressX: number;
@@ -158,6 +162,7 @@ export function Pill({
     if (mode !== 'cursor') {
       setCursorPos(null);
       setOverInteractive(false);
+      setOverEditable(false);
       setCmdHeld(false);
       return;
     }
@@ -180,15 +185,19 @@ export function Pill({
       raf = null;
       if (!latest) return;
       setCursorPos(latest);
-      // Detect interactive element under the pointer. document.elementFromPoint
-      // returns the topmost element including elements inside our own shadow
-      // host — but we've set pointer-events: none on the pill in cursor mode
-      // so the pill itself isn't picked.
+      // Two-tier element detection. Editable wins over clickable — an
+      // <input> nested inside a [role=button] (rare but legal) should
+      // show the I-beam, not the click ring. Both checks live in one
+      // elementFromPoint call so the rAF stays cheap.
       const el = document.elementFromPoint(latest.x, latest.y) as Element | null;
-      const interactive = !!el?.closest(
-        'a, button, [role="button"], input, textarea, select, [contenteditable=""], [contenteditable="true"]',
+      const editable = !!el?.closest(
+        'input:not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), textarea, [contenteditable=""], [contenteditable="true"]',
       );
-      setOverInteractive((prev) => (prev === interactive ? prev : interactive));
+      const clickable = editable
+        ? false
+        : !!el?.closest('a, button, [role="button"], select');
+      setOverEditable((prev) => (prev === editable ? prev : editable));
+      setOverInteractive((prev) => (prev === clickable ? prev : clickable));
     }
 
     function onMove(ev: PointerEvent) {
@@ -214,6 +223,7 @@ export function Pill({
       style.remove();
       setCursorPos(null);
       setOverInteractive(false);
+      setOverEditable(false);
       setCmdHeld(false);
     };
   }, [mode]);
@@ -378,6 +388,7 @@ export function Pill({
     phase && phase !== 'idle' ? `gauntlet-pill--phase-${phase}` : '',
     isCursorMode ? 'gauntlet-pill--cursor-mode' : '',
     isCursorMode && overInteractive ? 'gauntlet-pill--over-interactive' : '',
+    isCursorMode && overEditable ? 'gauntlet-pill--over-editable' : '',
     isCursorMode && cmdHeld ? 'gauntlet-pill--cmd-held' : '',
   ]
     .filter(Boolean)
@@ -712,6 +723,26 @@ export const PILL_CSS = `
     0 0 0 1px rgba(208, 122, 90, 0.35),
     0 0 18px rgba(208, 122, 90, 0.55),
     0 4px 10px rgba(0, 0, 0, 0.30);
+}
+
+/* Over an editable surface — pill morphs to a thin vertical bar that
+   reads as the OS I-beam. Width collapses to 2px, height grows to
+   18px, the inner mark/dot are hidden so the bar is a clean stripe.
+   The transition is fast (160ms) so the I-beam ↔ ring morph feels
+   snappy as the operator skims between text and links. */
+.gauntlet-pill--over-editable {
+  width: 2px;
+  height: 18px;
+  border-radius: 1px;
+  border-color: rgba(208, 122, 90, 0.95);
+  background: rgba(208, 122, 90, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 0 8px rgba(208, 122, 90, 0.55);
+}
+.gauntlet-pill--over-editable .gauntlet-pill__mark,
+.gauntlet-pill--over-editable .gauntlet-pill__dot {
+  display: none;
 }
 
 /* Cmd / Ctrl held — "ready to invoke" expand. The keyboard shortcut
