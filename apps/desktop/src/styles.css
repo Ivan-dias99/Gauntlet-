@@ -7,9 +7,16 @@ html, body, #root {
   padding: 0;
   height: 100vh;
   width: 100vw;
-  background: #0a0c10;
+  /* Default flagship light — the cápsula fills the window edge-to-edge,
+     so the body is only visible during the cold-load frame before the
+     React tree hydrates. Cream avoids the "black flash" the popup
+     window had on first paint. */
+  background: #fbf7ee;
   overflow: hidden;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+html[data-theme="dark"], body[data-theme="dark"] {
+  background: #0e1016;
 }
 
 /* Override the floating-capsule defaults: in this shell the Tauri

@@ -6,6 +6,8 @@ import {
   PILL_CSS,
   createPillPrefs,
   DEFAULT_PILL_POSITION,
+  DEFAULT_PILL_MODE,
+  type PillMode,
   type PillPosition,
   type SelectionSnapshot,
 } from '@gauntlet/composer';
@@ -47,6 +49,7 @@ export function App() {
   const [pillPosition, setPillPosition] = useState<PillPosition>(
     DEFAULT_PILL_POSITION,
   );
+  const [pillMode, setPillMode] = useState<PillMode>(DEFAULT_PILL_MODE);
   // Track whether the current domain was dismissed by the user. The
   // dismiss callback flips this true; the initial useEffect reads
   // chrome.storage to populate it. We keep it as state (not a ref) so
@@ -134,6 +137,18 @@ export function App() {
     void prefs.readPillPosition().then((p) => {
       if (!cancelled) setPillPosition(p);
     });
+    void prefs.readPillMode().then((m) => {
+      if (!cancelled) setPillMode(m);
+    });
+    // Listen for live pill-mode changes broadcast from the cápsula's
+    // settings drawer so flipping mode takes effect without reloading.
+    function onPillMode(ev: Event) {
+      const detail = (ev as CustomEvent<{ mode?: PillMode }>).detail;
+      if (detail?.mode === 'cursor' || detail?.mode === 'corner') {
+        setPillMode(detail.mode);
+      }
+    }
+    window.addEventListener('gauntlet:pill-mode', onPillMode);
     const host = (() => {
       try {
         return window.location.hostname;
@@ -150,6 +165,7 @@ export function App() {
     }
     return () => {
       cancelled = true;
+      window.removeEventListener('gauntlet:pill-mode', onPillMode);
     };
   }, [prefs]);
 
@@ -233,6 +249,7 @@ export function App() {
     return (
       <Pill
         position={pillPosition}
+        mode={pillMode}
         onClick={summon}
         onDismissDomain={dismissThisDomain}
         onPersistPosition={persistPillPosition}

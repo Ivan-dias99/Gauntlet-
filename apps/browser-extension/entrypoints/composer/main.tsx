@@ -26,7 +26,15 @@ const WINDOW_CSS = `
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: #0a0c10;
+    /* Flagship light background — was #0a0c10 (deep ink) which left a
+       black border around the cream cápsula on the first paint. The
+       cápsula itself fills the window edge-to-edge, but if any frame
+       slips through with --gx-bg unresolved (cold load, slow shadow
+       css), this guard keeps the surface luminous instead of pitch. */
+    background: #fbf7ee;
+  }
+  html[data-theme="dark"], body[data-theme="dark"] {
+    background: #0e1016;
   }
   #root {
     width: 100%;
@@ -43,6 +51,11 @@ const WINDOW_CSS = `
     box-shadow: none;
     border: none;
     transform: none;
+    /* The standalone window is the cápsula container — disable the
+       enter rise transform; the capsule is already in place when the
+       window opens. Removes the awkward double-animation of OS chrome
+       fade + cap rise. */
+    animation: none !important;
   }
 `;
 
@@ -62,10 +75,24 @@ const popupAmbient = {
     screenshot: false,
     dismissDomain: false,
     refreshSelection: false,
+    // No Pill mounts in this window — the cápsula IS the surface. The
+    // settings drawer reads this flag to hide the pill-mode toggle so
+    // the operator doesn't toggle a control with no visible effect
+    // here (the choice still persists for the in-page surface).
+    pillSurface: false,
   },
   domActions: undefined,
   screenshot: undefined,
 };
+
+// Mirror the persisted theme onto the html element so the body
+// background matches the cápsula's resolved theme on the first paint
+// — no flash of cream around a dark capsule, or vice versa.
+void popupAmbient.storage.get<string>('gauntlet:theme').then((t) => {
+  const theme = t === 'dark' || t === 'light' ? t : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  document.body.setAttribute('data-theme', theme);
+});
 
 const root = createRoot(document.getElementById('root')!);
 root.render(

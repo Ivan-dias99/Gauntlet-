@@ -105,6 +105,28 @@ export function Capsule({
   // sees what's actually available; doctrine is "tudo à mão".
   const [toolManifests, setToolManifests] = useState<ToolManifest[]>([]);
   const [paletteRecent, setPaletteRecent] = useState<string[]>([]);
+  // Ripple counter — incremented on each submit so React keys the
+  // ripple element fresh, replaying the keyframe even when the user
+  // submits twice in quick succession.
+  const [submitRipple, setSubmitRipple] = useState(0);
+  // Context-pop pulse — fires once when the page selection transitions
+  // from empty → non-empty. The chip pops to confirm "context locked
+  // in" before the operator even looks at the meta strip. Cleared by
+  // a timer so the chip returns to rest. The timer lives in a ref so
+  // it survives effect re-runs (e.g. iframe-harvest enriches snapshot
+  // mid-pop) — without that the cleanup would clear the timer and the
+  // re-run path wouldn't re-arm it (prev is already true), leaving
+  // contextJustArrived stuck on permanently.
+  const [contextJustArrived, setContextJustArrived] = useState(false);
+  const prevHadContextRef = useRef(false);
+  const contextPopTimerRef = useRef<number | null>(null);
+  // TTS — when enabled in settings, the cápsula speaks the compose
+  // response as soon as plan_ready fires. Persisted via prefs;
+  // synthesizer instance lives on the window.speechSynthesis singleton
+  // so we cancel any in-flight utterance when the operator submits a
+  // new request or dismisses the cápsula.
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const lastSpokenRef = useRef<string>('');
   // Multimodal: when the user opted in (via SettingsDrawer), capture
   // a viewport screenshot once per cápsula mount. The result is
   // attached to the next request's metadata so the planner can "see"
@@ -235,6 +257,96 @@ export function Capsule({
       cancelled = true;
     };
   }, [client, prefs]);
+
+  // Context-pop watcher — when snapshot.text flips empty → non-empty
+  // (e.g. iframe-harvest enriched the snapshot, or refreshSnapshot
+  // pulled in a fresh selection), pulse the source chip so the
+  // operator's eye catches the new context. One-shot, no infinite
+  // pulse loop. Timer is held in a ref so subsequent snapshot updates
+  // (non-empty → other-non-empty during incremental enrichment) don't
+  // tear down the running pop: the effect re-runs, sees prev === true,
+  // doesn't re-arm; if the timer were inside the closure cleanup it
+  // would die here and the pop would freeze indefinitely (Codex P2).
+  useEffect(() => {
+    const has = !!snapshot.text;
+    if (has && !prevHadContextRef.current) {
+      setContextJustArrived(true);
+      if (contextPopTimerRef.current !== null) {
+        window.clearTimeout(contextPopTimerRef.current);
+      }
+      contextPopTimerRef.current = window.setTimeout(() => {
+        setContextJustArrived(false);
+        contextPopTimerRef.current = null;
+      }, 700);
+    }
+    prevHadContextRef.current = has;
+  }, [snapshot.text]);
+
+  // Tear down the context-pop timer on unmount only — see comment
+  // above for why effect re-runs must NOT clear it.
+  useEffect(() => {
+    return () => {
+      if (contextPopTimerRef.current !== null) {
+        window.clearTimeout(contextPopTimerRef.current);
+        contextPopTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // TTS — load persisted toggle. Speak when plan_ready arrives with a
+  // compose answer. The Web Speech API is feature-detected at speak
+  // time; an unsupported browser silently does nothing.
+  useEffect(() => {
+    let cancelled = false;
+    void prefs.readTtsEnabled().then((enabled) => {
+      if (!cancelled) setTtsEnabled(enabled);
+    });
+    // Live sync — the settings drawer broadcasts gauntlet:tts when the
+    // operator flips the toggle. Without this listener the cápsula's
+    // own state would stay stale and continue speaking after the
+    // operator turned TTS off.
+    function onTts(ev: Event) {
+      const detail = (ev as CustomEvent<{ enabled?: boolean }>).detail;
+      if (typeof detail?.enabled === 'boolean') setTtsEnabled(detail.enabled);
+    }
+    window.addEventListener('gauntlet:tts', onTts);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('gauntlet:tts', onTts);
+    };
+  }, [prefs]);
+
+  useEffect(() => {
+    if (!ttsEnabled) return;
+    if (phase !== 'plan_ready') return;
+    const text = plan?.compose;
+    if (!text) return;
+    if (text === lastSpokenRef.current) return;
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.rate = 1.05;
+      utt.pitch = 1;
+      window.speechSynthesis.speak(utt);
+      lastSpokenRef.current = text;
+    } catch {
+      // SpeechSynthesisUtterance constructor or .speak can throw on
+      // hostile shadow contexts; swallow — TTS is a bonus, not core.
+    }
+  }, [ttsEnabled, phase, plan?.compose]);
+
+  // Cancel any in-flight utterance when the cápsula unmounts so the
+  // voice doesn't keep reading after dismiss.
+  useEffect(() => {
+    return () => {
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
 
   // Theme — load persisted choice once at mount. While the storage
   // round-trip resolves the cápsula renders the default flagship light,
@@ -654,6 +766,22 @@ export function Capsule({
   const onSubmit = useCallback(
     (ev: React.FormEvent) => {
       ev.preventDefault();
+      // Trigger the submit ripple — visual confirmation that the
+      // gesture landed even before the network round-trip starts.
+      // Cleared by the keyframe's animationend listener below.
+      setSubmitRipple((n) => n + 1);
+      // Cancel any in-flight TTS utterance from the previous response
+      // so the operator's new submit doesn't compete with stale audio.
+      // The settings drawer's description promises "cancela ao submeter
+      // outro pedido" — this is the cancel hook. Also reset the spoken
+      // ref so the next plan_ready (even if it produces the same text)
+      // gets read again.
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {
+        // ignore — TTS is a bonus, not core
+      }
+      lastSpokenRef.current = '';
       void requestPlan();
     },
     [requestPlan],
@@ -820,6 +948,7 @@ export function Capsule({
               onClose={() => setSettingsOpen(false)}
               showScreenshot={ambient.capabilities.screenshot}
               showDismissedDomains={ambient.capabilities.dismissDomain}
+              showPillMode={ambient.capabilities.pillSurface}
               prefs={prefs}
               theme={theme}
               onChangeTheme={(t) => {
@@ -831,7 +960,13 @@ export function Capsule({
 
           <section className="gauntlet-capsule__context">
             <div className="gauntlet-capsule__context-meta">
-              <span className="gauntlet-capsule__source">browser</span>
+              <span
+                className={`gauntlet-capsule__source${
+                  contextJustArrived ? ' gauntlet-capsule__source--popped' : ''
+                }`}
+              >
+                browser
+              </span>
               <span className="gauntlet-capsule__url" title={snapshot.url}>
                 {snapshot.pageTitle || snapshot.url}
               </span>
@@ -915,6 +1050,17 @@ export function Capsule({
                 className="gauntlet-capsule__compose"
                 disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing' || !userInput.trim()}
               >
+                {/* Ripple — keyed on submitRipple so each submit
+                    replays the keyframe even if the previous ripple
+                    is still mid-animation. Pointer-events none so
+                    the underlying button still takes clicks. */}
+                {submitRipple > 0 && (
+                  <span
+                    key={submitRipple}
+                    className="gauntlet-capsule__compose-ripple"
+                    aria-hidden
+                  />
+                )}
                 {phase === 'planning' || phase === 'streaming' ? (
                   <>
                     <span className="gauntlet-capsule__compose-spinner" aria-hidden />
@@ -1512,6 +1658,7 @@ function SettingsDrawer({
   showDismissedDomains,
   theme,
   onChangeTheme,
+  showPillMode,
 }: {
   onClose: () => void;
   // Only the in-page surface has a real tab to screenshot. The popup
@@ -1524,10 +1671,14 @@ function SettingsDrawer({
   showDismissedDomains: boolean;
   theme: CapsuleTheme;
   onChangeTheme: (theme: CapsuleTheme) => void;
+  // Show the pill-mode toggle only on shells that actually render a pill.
+  showPillMode: boolean;
 }) {
   const [domains, setDomains] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [screenshotEnabled, setScreenshotEnabled] = useState(false);
+  const [pillMode, setPillModeState] = useState<'corner' | 'cursor'>('corner');
+  const [ttsEnabledLocal, setTtsEnabledLocal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1542,10 +1693,47 @@ function SettingsDrawer({
       setScreenshotEnabled(enabled);
       setLoading(false);
     });
+    void prefs.readPillMode().then((m) => {
+      if (!cancelled) setPillModeState(m);
+    });
+    void prefs.readTtsEnabled().then((b) => {
+      if (!cancelled) setTtsEnabledLocal(b);
+    });
     return () => {
       cancelled = true;
     };
   }, [prefs, showDismissedDomains]);
+
+  const togglePillMode = useCallback(
+    async (next: 'corner' | 'cursor') => {
+      setPillModeState(next);
+      await prefs.writePillMode(next);
+      // Live broadcast so App.tsx flips the pill without a reload.
+      window.dispatchEvent(
+        new CustomEvent('gauntlet:pill-mode', { detail: { mode: next } }),
+      );
+    },
+    [prefs],
+  );
+
+  const toggleTts = useCallback(
+    async (enabled: boolean) => {
+      setTtsEnabledLocal(enabled);
+      await prefs.writeTtsEnabled(enabled);
+      // Cancel any speaking voice when the operator turns TTS off mid-read.
+      if (!enabled) {
+        try {
+          window.speechSynthesis?.cancel();
+        } catch {
+          // ignore
+        }
+      }
+      window.dispatchEvent(
+        new CustomEvent('gauntlet:tts', { detail: { enabled } }),
+      );
+    },
+    [prefs],
+  );
 
   const restore = useCallback(
     async (host: string) => {
@@ -1607,6 +1795,38 @@ function SettingsDrawer({
         </div>
       </div>
 
+      {showPillMode && (
+        <div className="gauntlet-capsule__settings-section">
+          <span className="gauntlet-capsule__settings-subtitle">pill</span>
+          <div className="gauntlet-capsule__theme-switch" role="radiogroup" aria-label="pill mode">
+            <button
+              type="button"
+              className={`gauntlet-capsule__theme-option${
+                pillMode === 'corner' ? ' gauntlet-capsule__theme-option--active' : ''
+              }`}
+              onClick={() => void togglePillMode('corner')}
+              role="radio"
+              aria-checked={pillMode === 'corner'}
+            >
+              <span className="gauntlet-capsule__theme-swatch gauntlet-capsule__pill-mode-swatch--corner" aria-hidden />
+              <span>resting corner</span>
+            </button>
+            <button
+              type="button"
+              className={`gauntlet-capsule__theme-option${
+                pillMode === 'cursor' ? ' gauntlet-capsule__theme-option--active' : ''
+              }`}
+              onClick={() => void togglePillMode('cursor')}
+              role="radio"
+              aria-checked={pillMode === 'cursor'}
+            >
+              <span className="gauntlet-capsule__theme-swatch gauntlet-capsule__pill-mode-swatch--cursor" aria-hidden />
+              <span>cursor pill</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {showScreenshot && (
         <div className="gauntlet-capsule__settings-section">
           <label className="gauntlet-capsule__settings-toggle">
@@ -1625,6 +1845,23 @@ function SettingsDrawer({
           </label>
         </div>
       )}
+
+      <div className="gauntlet-capsule__settings-section">
+        <label className="gauntlet-capsule__settings-toggle">
+          <input
+            type="checkbox"
+            checked={ttsEnabledLocal}
+            onChange={(ev) => void toggleTts(ev.target.checked)}
+          />
+          <span className="gauntlet-capsule__settings-toggle-label">
+            <strong>ler resposta em voz alta</strong>
+            <small>
+              quando o modelo termina, a cápsula fala a resposta via Web Speech.
+              cancela ao submeter outro pedido ou fechar a cápsula.
+            </small>
+          </span>
+        </label>
+      </div>
 
       <div className="gauntlet-capsule__settings-section">
         <span className="gauntlet-capsule__settings-subtitle">domínios escondidos</span>
@@ -1846,26 +2083,44 @@ export const CAPSULE_CSS = `
   50%      { opacity: 1;   transform: scale(1.15); }
 }
 @keyframes gauntlet-cap-aurora {
-  0%   { transform: translate3d(-12%, -8%, 0) rotate(0deg); }
-  50%  { transform: translate3d(8%,    6%, 0) rotate(180deg); }
-  100% { transform: translate3d(-12%, -8%, 0) rotate(360deg); }
+  0%   { transform: translate3d(-12%, -8%, 0) rotate(0deg) scale(1); }
+  33%  { transform: translate3d(6%,   -4%, 0) rotate(120deg) scale(1.06); }
+  66%  { transform: translate3d(8%,    6%, 0) rotate(240deg) scale(0.96); }
+  100% { transform: translate3d(-12%, -8%, 0) rotate(360deg) scale(1); }
 }
+/* Capsule enter — layered choreography: the shell rises with a soft
+   spring (~360ms cubic), the aurora drifts in slightly later (200ms
+   delay), and the content panels stagger by 60ms each so the eye
+   reads the cápsula assembling itself instead of materialising as a
+   single slab. Doutrina: a cápsula respira ao chegar, não aparece. */
 @keyframes gauntlet-cap-rise {
-  0%   { opacity: 0; transform: translateY(8px) scale(0.985); }
-  100% { opacity: 1; transform: translateY(0)   scale(1); }
+  0%   { opacity: 0; transform: translateY(10px) scale(0.97); filter: blur(2px); }
+  60%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0)   scale(1); filter: blur(0); }
 }
-/* Centered-mode rise — keeps the same opacity + 8px lift motion but
-   bakes the centering translate into both keyframes. Without this the
-   base rise's end keyframe (transform: translateY(0) scale(1)) with
-   fill-mode: both overrides .gauntlet-capsule--centered's
-   translate(-50%, -50%), anchoring the capsule by its top-left at
-   50%/50% instead of truly centring it. */
 @keyframes gauntlet-cap-rise-centered {
-  0%   { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(0.985); }
-  100% { opacity: 1; transform: translate(-50%, -50%)             scale(1); }
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% + 10px)) scale(0.97); filter: blur(2px); }
+  60%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: translate(-50%, -50%)              scale(1); filter: blur(0); }
+}
+@keyframes gauntlet-cap-aurora-fade-in {
+  0%   { opacity: 0; }
+  100% { opacity: 0.6; }
+}
+@keyframes gauntlet-cap-stagger-in {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 @keyframes gauntlet-cap-spin {
   to { transform: rotate(360deg); }
+}
+/* Phase ring morph — when the active phase changes, the ring picks up
+   the new colour over 600ms with an easing curve so the operator
+   reads the transition as a state change, not a flicker. */
+@keyframes gauntlet-cap-phase-morph {
+  0%   { box-shadow: 0 0 0 1px transparent, 0 0 12px transparent; }
+  50%  { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 36px var(--gx-phase, transparent); }
+  100% { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 24px var(--gx-phase, transparent); }
 }
 
 .gauntlet-capsule {
@@ -1887,7 +2142,14 @@ export const CAPSULE_CSS = `
   --gx-tint-soft: rgba(15, 17, 22, 0.04);
   --gx-tint-strong: rgba(15, 17, 22, 0.08);
   --gx-sunken: rgba(15, 17, 22, 0.04);
+  --gx-scrim: rgba(15, 17, 22, 0.32);
   --gx-shadow-rgb: 32, 24, 18;
+  /* Semantic ink — text on tinted accent backgrounds. Light needs
+     deeper hues to stay readable; dark uses paler hues. Each pairs
+     with its own --gx-{accent,success,danger}-bg tint above. */
+  --gx-accent-text: #b3501f;
+  --gx-success-text: #2f6e44;
+  --gx-danger-text: #9b2c2c;
   /* Code block ink — purple keywords, rust strings, slate comments.
      Mirrors the Codex/Claude-Code premium-light reference the operator
      pinned for the flagship surface. */
@@ -1916,7 +2178,11 @@ export const CAPSULE_CSS = `
   --gx-tint-soft: rgba(255, 255, 255, 0.04);
   --gx-tint-strong: rgba(255, 255, 255, 0.08);
   --gx-sunken: rgba(8, 9, 13, 0.55);
+  --gx-scrim: rgba(8, 9, 13, 0.55);
   --gx-shadow-rgb: 0, 0, 0;
+  --gx-accent-text: #f4c4ad;
+  --gx-success-text: #cfe8d3;
+  --gx-danger-text: #f1a4ad;
   --gx-code-bg: rgba(8, 9, 13, 0.7);
   --gx-code-fg: #e6e8ee;
   --gx-code-keyword: #c4a8ff;
@@ -1955,7 +2221,10 @@ export const CAPSULE_CSS = `
   padding: 0;
   isolation: isolate;
   pointer-events: auto;
-  animation: gauntlet-cap-rise 220ms cubic-bezier(0.2, 0, 0, 1) both;
+  /* Spring-shaped curve — slightly past the target, settles back. The
+     overshoot is ≤2px so the operator reads it as confidence, not
+     bounce. 360ms gives the layered stagger room to breathe. */
+  animation: gauntlet-cap-rise 360ms cubic-bezier(0.16, 1.05, 0.34, 1) both;
 }
 
 /* Tight viewports collapse to a near-fullscreen shape, but still
@@ -1984,7 +2253,7 @@ export const CAPSULE_CSS = `
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  animation: gauntlet-cap-rise-centered 220ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: gauntlet-cap-rise-centered 360ms cubic-bezier(0.16, 1.05, 0.34, 1) both;
 }
 
 /* Anchored mode — top/left set inline via computeCapsulePosition. The
@@ -2041,10 +2310,23 @@ export const CAPSULE_CSS = `
     radial-gradient(40% 40% at 30% 30%, rgba(208, 122, 90, 0.18), transparent 60%),
     radial-gradient(40% 40% at 70% 70%, rgba(98, 130, 200, 0.12), transparent 60%);
   filter: blur(40px);
-  opacity: 0.6;
+  opacity: 0;
   pointer-events: none;
   z-index: -1;
-  animation: gauntlet-cap-aurora 28s linear infinite;
+  /* Aurora fades in after the shell rise (200ms delay), then drifts
+     forever at a 28s loop. Two-layer animation = mount fade + ambient
+     drift; the comma syntax stacks them. */
+  animation:
+    gauntlet-cap-aurora-fade-in 600ms 200ms cubic-bezier(0.2, 0, 0, 1) forwards,
+    gauntlet-cap-aurora 28s linear infinite;
+}
+/* Layered staggered entrance — each panel rises ~60ms after the one
+   before it so the cápsula reads as composed, not stamped. */
+.gauntlet-capsule__panel--left {
+  animation: gauntlet-cap-stagger-in 320ms 120ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__panel--right {
+  animation: gauntlet-cap-stagger-in 320ms 200ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 /* ── Layout — single-column floating capsule ── */
@@ -2164,6 +2446,7 @@ export const CAPSULE_CSS = `
   color: var(--gx-fg);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), border-color 180ms ease, box-shadow 200ms ease;
   letter-spacing: 0.10em;
   text-transform: uppercase;
 }
@@ -2174,6 +2457,22 @@ export const CAPSULE_CSS = `
   background: var(--gx-ember);
   box-shadow: 0 0 6px rgba(208, 122, 90, 0.65);
   flex-shrink: 0;
+}
+/* Context pop — fires once when a fresh selection lands. The chip
+   bumps to 1.06 with an ember halo, settles back. The dot inside also
+   flashes brighter for the same window. */
+@keyframes gauntlet-cap-chip-pop {
+  0%   { transform: translateY(0)    scale(1);    box-shadow: 0 0 0 0 rgba(208, 122, 90, 0); }
+  35%  { transform: translateY(-2px) scale(1.06); box-shadow: 0 0 0 6px rgba(208, 122, 90, 0.18); }
+  70%  { transform: translateY(-1px) scale(1.02); box-shadow: 0 0 0 3px rgba(208, 122, 90, 0.10); }
+  100% { transform: translateY(0)    scale(1);    box-shadow: 0 0 0 0 rgba(208, 122, 90, 0); }
+}
+.gauntlet-capsule__source--popped {
+  animation: gauntlet-cap-chip-pop 700ms cubic-bezier(0.16, 1.05, 0.34, 1);
+}
+.gauntlet-capsule__source--popped::before {
+  background: #ffd2b6;
+  box-shadow: 0 0 12px rgba(208, 122, 90, 0.95);
 }
 .gauntlet-capsule__url {
   flex: 1;
@@ -2189,6 +2488,16 @@ export const CAPSULE_CSS = `
   font-family: "Inter", system-ui, sans-serif;
   font-size: 11px;
   letter-spacing: 0;
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), border-color 180ms ease, color 160ms ease;
+}
+/* Chip lift on hover — every context chip gets a 1px lift + ember
+   border kiss so the operator senses the chip row is alive. Compose
+   button gets its own pressed-state below. */
+.gauntlet-capsule__source:hover,
+.gauntlet-capsule__url:hover {
+  transform: translateY(-1px);
+  border-color: rgba(208, 122, 90, 0.45);
+  color: var(--gx-fg);
 }
 .gauntlet-capsule__refresh {
   background: transparent;
@@ -2201,12 +2510,13 @@ export const CAPSULE_CSS = `
   cursor: pointer;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 180ms cubic-bezier(0.2, 0, 0, 1);
   flex-shrink: 0;
 }
 .gauntlet-capsule__refresh:hover {
   color: var(--gx-fg);
   border-color: var(--gx-border-mid);
+  transform: translateY(-1px);
   background: var(--gx-tint-soft);
 }
 .gauntlet-capsule__selection {
@@ -2312,6 +2622,39 @@ export const CAPSULE_CSS = `
   color: var(--gx-fg-dim);
   font-size: 10px;
 }
+/* Submit ripple — radiates from the compose button on every submit so
+   the operator's gesture has visible weight. Pure CSS animation, lives
+   inside the button (overflow stays clipped to the pill shape so the
+   ripple looks like an inner pulse expanding outward). */
+@keyframes gauntlet-cap-ripple {
+  0%   { opacity: 0.45; transform: translate(-50%, -50%) scale(0.2); }
+  60%  { opacity: 0.20; }
+  100% { opacity: 0;    transform: translate(-50%, -50%) scale(2.6); }
+}
+.gauntlet-capsule__compose {
+  position: relative;
+  overflow: hidden;
+}
+.gauntlet-capsule__compose-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.65) 0%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  pointer-events: none;
+  animation: gauntlet-cap-ripple 520ms cubic-bezier(0.2, 0, 0, 1) forwards;
+  z-index: 0;
+}
+.gauntlet-capsule__compose > *:not(.gauntlet-capsule__compose-ripple) {
+  position: relative;
+  z-index: 1;
+}
 .gauntlet-capsule__compose {
   position: relative;
   border: none;
@@ -2331,14 +2674,24 @@ export const CAPSULE_CSS = `
   display: inline-flex; align-items: center; gap: 8px;
 }
 .gauntlet-capsule__compose:hover:not(:disabled) {
-  transform: translateY(-1px);
+  transform: translateY(-1.5px);
   box-shadow:
     0 0 0 1px rgba(208, 122, 90, 0.55),
-    0 10px 26px rgba(208, 122, 90, 0.50);
+    0 12px 28px rgba(208, 122, 90, 0.55),
+    0 0 0 4px rgba(208, 122, 90, 0.10);
+}
+/* Press feedback — micro-spring inward when the operator commits.
+   Slightly past flat (0.5px down) reads like a real button settling. */
+.gauntlet-capsule__compose:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.985);
+  box-shadow:
+    0 0 0 1px rgba(208, 122, 90, 0.55),
+    0 4px 12px rgba(208, 122, 90, 0.40);
+  transition-duration: 60ms;
 }
 .gauntlet-capsule__compose:disabled {
   opacity: 0.45; cursor: not-allowed; transform: none;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.10);
+  box-shadow: 0 0 0 1px var(--gx-border-mid);
 }
 .gauntlet-capsule__compose-spinner {
   width: 12px; height: 12px;
@@ -2353,7 +2706,7 @@ export const CAPSULE_CSS = `
   margin-top: 10px; padding: 8px 12px;
   background: rgba(212, 96, 60, 0.10);
   border: 1px solid rgba(212, 96, 60, 0.32);
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
   border-radius: 8px;
   font-size: 12px;
   display: flex; align-items: center; gap: 10px;
@@ -2363,7 +2716,7 @@ export const CAPSULE_CSS = `
   width: 18px; height: 18px;
   border-radius: 50%;
   background: rgba(212, 96, 60, 0.25);
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
   font-family: "JetBrains Mono", monospace;
   font-weight: 700;
   font-size: 11px;
@@ -2440,7 +2793,7 @@ export const CAPSULE_CSS = `
   border: 1px solid rgba(208, 122, 90, 0.25);
   border-radius: 10px;
   font-size: 12px;
-  color: #e8c8a4;
+  color: var(--gx-accent-text);
 }
 .gauntlet-capsule__refusal header {
   display: flex; align-items: center; gap: 10px;
@@ -2451,7 +2804,7 @@ export const CAPSULE_CSS = `
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #f4c4ad;
+  color: var(--gx-accent-text);
   padding: 2px 8px;
   background: rgba(208, 122, 90, 0.20);
   border: 1px solid rgba(208, 122, 90, 0.35);
@@ -2472,7 +2825,7 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__actuate {
   background: rgba(208, 122, 90, 0.12);
-  color: #f4c4ad;
+  color: var(--gx-accent-text);
   border: 1px solid rgba(208, 122, 90, 0.45);
   border-radius: 8px;
   padding: 8px 14px;
@@ -2514,13 +2867,20 @@ export const CAPSULE_CSS = `
   border-color: var(--gx-border-mid);
   background: var(--gx-tint-soft);
 }
+@keyframes gauntlet-cap-drawer-flip {
+  0%   { opacity: 0; transform: translateY(-4px) scaleY(0.92); transform-origin: top; }
+  60%  { opacity: 1; transform: translateY(1px)  scaleY(1.02); }
+  100% { opacity: 1; transform: translateY(0)    scaleY(1); }
+}
 .gauntlet-capsule__settings {
   margin: 8px 0;
   padding: 10px 12px;
   background: var(--gx-sunken);
   border: 1px solid var(--gx-border-mid);
   border-radius: 10px;
-  animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  /* Flip-spring open — the drawer scaleY-overshoots slightly so it
+     reads like a real surface unfolding from under the header. */
+  animation: gauntlet-cap-drawer-flip 280ms cubic-bezier(0.16, 1.05, 0.34, 1) both;
 }
 .gauntlet-capsule__settings-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -2649,13 +3009,47 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__theme-swatch--dark {
   background: linear-gradient(135deg, #1a1d26 0%, #0e1016 100%);
 }
+/* Pill-mode swatches — visual hint for the toggle: corner shows a
+   resting dot in the bottom-right; cursor shows a small dot at the
+   centre to suggest "follows pointer". */
+.gauntlet-capsule__pill-mode-swatch--corner {
+  background: var(--gx-surface-strong, #ffffff);
+  position: relative;
+}
+.gauntlet-capsule__pill-mode-swatch--corner::after {
+  content: '';
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gx-ember);
+  box-shadow: 0 0 4px rgba(208, 122, 90, 0.55);
+}
+.gauntlet-capsule__pill-mode-swatch--cursor {
+  background: var(--gx-surface-strong, #ffffff);
+  position: relative;
+}
+.gauntlet-capsule__pill-mode-swatch--cursor::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--gx-ember);
+  box-shadow: 0 0 6px rgba(208, 122, 90, 0.65);
+}
 .gauntlet-capsule__settings-host {
   flex: 1;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .gauntlet-capsule__settings-restore {
   background: rgba(208, 122, 90, 0.12);
-  color: #f4c4ad;
+  color: var(--gx-accent-text);
   border: 1px solid rgba(208, 122, 90, 0.45);
   border-radius: 4px;
   padding: 2px 8px;
@@ -2712,9 +3106,12 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__skeleton-tag   { width: 56px; height: 14px; border-radius: 4px; }
 .gauntlet-capsule__skeleton-meta  { width: 140px; height: 10px; border-radius: 3px; }
 .gauntlet-capsule__skeleton-line  { height: 11px; border-radius: 3px; }
+/* Wave-coordinated skeleton — three lines start the shimmer offset by
+   140ms each so the eye reads a cohesive wave moving down, not three
+   loose lines flickering independently. */
 .gauntlet-capsule__skeleton-line--w90 { width: 90%; animation-delay: 0ms; }
-.gauntlet-capsule__skeleton-line--w75 { width: 75%; animation-delay: 120ms; }
-.gauntlet-capsule__skeleton-line--w55 { width: 55%; animation-delay: 240ms; }
+.gauntlet-capsule__skeleton-line--w75 { width: 75%; animation-delay: 140ms; }
+.gauntlet-capsule__skeleton-line--w55 { width: 55%; animation-delay: 280ms; }
 
 /* ── Compose response (inline text answer) ── */
 .gauntlet-capsule__compose-result {
@@ -2734,7 +3131,7 @@ export const CAPSULE_CSS = `
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #f4c4ad;
+  color: var(--gx-accent-text);
   padding: 2px 8px;
   background: rgba(208, 122, 90, 0.20);
   border: 1px solid rgba(208, 122, 90, 0.35);
@@ -2794,7 +3191,7 @@ export const CAPSULE_CSS = `
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #f4c4ad;
+  color: var(--gx-accent-text);
   padding: 2px 8px;
   background: rgba(208, 122, 90, 0.20);
   border: 1px solid rgba(208, 122, 90, 0.35);
@@ -2830,12 +3227,12 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__plan-item--ok {
   background: rgba(122, 180, 138, 0.10);
   border-color: rgba(122, 180, 138, 0.35);
-  color: #cfe8d3;
+  color: var(--gx-success-text);
 }
 .gauntlet-capsule__plan-item--fail {
   background: rgba(212, 96, 60, 0.10);
   border-color: rgba(212, 96, 60, 0.35);
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
 }
 .gauntlet-capsule__plan-step {
   display: inline-flex; align-items: center; justify-content: center;
@@ -2853,7 +3250,7 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__plan-err {
   font-size: 10px;
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
   font-style: italic;
 }
 .gauntlet-capsule__plan-actions {
@@ -2908,7 +3305,7 @@ export const CAPSULE_CSS = `
   font-size: 9px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
   background: rgba(212, 96, 60, 0.18);
   border: 1px solid rgba(212, 96, 60, 0.45);
   border-radius: 4px;
@@ -2944,12 +3341,12 @@ export const CAPSULE_CSS = `
   font-size: 11px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
 }
 .gauntlet-capsule__danger-list {
   margin: 0 0 8px 0; padding: 0 0 0 24px;
   font-size: 11px;
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
   line-height: 1.6;
 }
 .gauntlet-capsule__danger-list li { margin: 0; }
@@ -2996,14 +3393,32 @@ export const CAPSULE_CSS = `
   pointer-events: none;
   box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 24px var(--gx-phase, transparent);
   opacity: 0;
-  transition: opacity 280ms ease;
+  /* Both opacity AND box-shadow fade so a phase swap (planning → streaming
+     → done) reads as a colour morph, not a flicker. The cubic curve gives
+     a slight lead-in before the colour settles. */
+  transition:
+    opacity 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 480ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .gauntlet-capsule--phase-planning::before,
 .gauntlet-capsule--phase-streaming::before,
+.gauntlet-capsule--phase-plan_ready::before,
 .gauntlet-capsule--phase-executing::before,
 .gauntlet-capsule--phase-executed::before,
 .gauntlet-capsule--phase-error::before {
   opacity: 1;
+}
+/* Heartbeat pulse on long-running phases (planning + streaming +
+   executing) so the operator senses the cápsula "still thinking" even
+   when no text is changing. Softer + slower than a loading spinner. */
+@keyframes gauntlet-cap-phase-heartbeat {
+  0%, 100% { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 18px var(--gx-phase, transparent); }
+  50%      { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 36px var(--gx-phase, transparent); }
+}
+.gauntlet-capsule--phase-planning::before,
+.gauntlet-capsule--phase-streaming::before,
+.gauntlet-capsule--phase-executing::before {
+  animation: gauntlet-cap-phase-heartbeat 2.4s ease-in-out infinite;
 }
 
 /* Phase mark-dot tint — the brand mark itself communicates state */
@@ -3042,9 +3457,22 @@ export const CAPSULE_CSS = `
 }
 
 /* ── Voice button (press-and-hold) ──────────────────────────────────────── */
+/* Resonant waves — three concentric rings ride out as the operator
+   speaks. Visual mic feedback without reading volume meters; reads as
+   "the cápsula is listening" at a glance. */
 @keyframes gauntlet-cap-listen {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 96, 60, 0.45); }
-  50%      { box-shadow: 0 0 0 6px rgba(212, 96, 60, 0); }
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(212, 96, 60, 0.45),
+      0 0 0 0 rgba(212, 96, 60, 0.30),
+      0 0 0 0 rgba(212, 96, 60, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(212, 96, 60, 0.10),
+      0 0 0 8px rgba(212, 96, 60, 0.05),
+      0 0 0 12px rgba(212, 96, 60, 0);
+  }
 }
 .gauntlet-capsule__voice {
   display: inline-flex;
@@ -3105,7 +3533,11 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__palette-scrim {
   position: absolute;
   inset: 0;
-  background: var(--gx-sunken);
+  /* Distinct scrim token — sunken is too soft for a meaningful dim on
+     light theme (it's 4% black there for inset surfaces). The scrim
+     needs to actually darken the background so the palette panel
+     reads as a focused layer above. */
+  background: var(--gx-scrim);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   pointer-events: auto;
@@ -3114,12 +3546,15 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__palette-panel {
   position: relative;
   width: min(420px, calc(100% - 36px));
-  background: rgba(20, 22, 30, 0.96);
+  /* Theme-aware surface — was hardcoded rgba(20, 22, 30, 0.96) which
+     showed as a dark slab over the cream flagship. Use the cápsula's
+     own surface tokens so the palette inherits the active theme. */
+  background: var(--gx-surface-strong, var(--gx-bg-solid));
   border: 1px solid var(--gx-border-mid);
   border-radius: 12px;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 24px 48px rgba(0, 0, 0, 0.55);
+    0 0 0 1px var(--gx-tint-soft),
+    0 24px 48px rgba(var(--gx-shadow-rgb), 0.30);
   pointer-events: auto;
   animation: gauntlet-cap-palette-rise 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
@@ -3156,6 +3591,7 @@ export const CAPSULE_CSS = `
   text-transform: uppercase;
 }
 .gauntlet-capsule__palette-item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3166,11 +3602,35 @@ export const CAPSULE_CSS = `
   font-size: 13px;
   color: var(--gx-fg-dim);
   cursor: pointer;
-  transition: background 100ms ease, color 100ms ease;
+  overflow: hidden;
+  transition: color 140ms ease, transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+/* Slide-in hover — instead of a static fade-in background, an ember
+   wash slides in from the left to the active item. The eye reads
+   movement, not just a colour swap. */
+.gauntlet-capsule__palette-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(208, 122, 90, 0.18) 0%,
+    rgba(208, 122, 90, 0.10) 60%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+  z-index: 0;
+}
+.gauntlet-capsule__palette-item > * {
+  position: relative;
+  z-index: 1;
 }
 .gauntlet-capsule__palette-item--active {
-  background: rgba(208, 122, 90, 0.14);
   color: var(--gx-fg);
+}
+.gauntlet-capsule__palette-item--active::before {
+  transform: translateX(0);
 }
 .gauntlet-capsule__palette-item--disabled {
   opacity: 0.42;
@@ -3277,7 +3737,7 @@ export const CAPSULE_CSS = `
   padding: 6px 14px;
   border-radius: 999px;
   background: rgba(122, 180, 138, 0.14);
-  color: #a8d4b6;
+  color: var(--gx-success-text);
   border: 1px solid rgba(122, 180, 138, 0.32);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
