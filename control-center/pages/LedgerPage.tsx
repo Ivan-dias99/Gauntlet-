@@ -30,10 +30,53 @@ interface RunsList {
 
 const ROUTE_TONES: Record<string, "ok" | "warn" | "neutral" | "ghost"> = {
   composer: "ok",
+  "composer:execution": "ok",
   agent: "neutral",
   triad: "neutral",
   dev: "neutral",
 };
+
+// Sprint 3 — execution rows are JSON-encoded in `answer`. Decoded shape
+// matches the backend's _record_execution summary. Used by the Run
+// detail panel to render the lifecycle nicely instead of a wall of JSON.
+interface ExecutionAnswerSummary {
+  status?: "executed" | "rejected" | "failed";
+  url?: string | null;
+  page_title?: string | null;
+  model_used?: string | null;
+  plan_latency_ms?: number | null;
+  has_danger?: boolean;
+  danger_acknowledged?: boolean;
+  sequence_danger_reason?: string | null;
+  user_input?: string | null;
+  actions?: Array<{
+    type?: string;
+    selector?: string;
+    value?: string;
+    duration_ms?: number;
+  }>;
+  results?: Array<{
+    ok?: boolean;
+    error?: string | null;
+    danger?: boolean;
+    danger_reason?: string | null;
+  }>;
+}
+
+function tryParseExecutionAnswer(
+  raw: string | null | undefined,
+): ExecutionAnswerSummary | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === "object") {
+      return parsed as ExecutionAnswerSummary;
+    }
+  } catch {
+    // Not JSON — fall back to the raw renderer.
+  }
+  return null;
+}
 
 export default function LedgerPage() {
   const [runs, setRuns] = useState<RunRecord[]>([]);
@@ -327,7 +370,14 @@ export default function LedgerPage() {
 
           <DetailBlock kicker="question" body={selected.question} mono />
           {selected.context && <DetailBlock kicker="context" body={selected.context} mono dim />}
-          {selected.answer && <DetailBlock kicker="answer" body={selected.answer} mono />}
+          {selected.route === "composer:execution" ? (
+            <ExecutionDetail
+              summary={tryParseExecutionAnswer(selected.answer)}
+              fallbackAnswer={selected.answer ?? null}
+            />
+          ) : (
+            selected.answer && <DetailBlock kicker="answer" body={selected.answer} mono />
+          )}
         </Panel>
       )}
     </>
@@ -420,6 +470,241 @@ function DetailStat({
       >
         {value}
       </span>
+    </div>
+  );
+}
+
+function ExecutionDetail({
+  summary,
+  fallbackAnswer,
+}: {
+  summary: ExecutionAnswerSummary | null;
+  fallbackAnswer: string | null;
+}) {
+  if (!summary) {
+    return fallbackAnswer ? (
+      <DetailBlock kicker="answer" body={fallbackAnswer} mono />
+    ) : null;
+  }
+
+  const status = summary.status ?? "executed";
+  const statusTone: "ok" | "warn" | "neutral" =
+    status === "executed" ? "ok" : status === "rejected" ? "warn" : "warn";
+  const actions = summary.actions ?? [];
+  const results = summary.results ?? [];
+  const failures = results.filter((r) => r?.ok === false).length;
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <span className="gx-eyebrow">execution</span>
+      <div
+        style={{
+          marginTop: 8,
+          display: "grid",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: 12,
+        }}
+      >
+        <DetailStat
+          label="status"
+          value={status}
+          tone={statusTone === "ok" ? "ok" : "warn"}
+        />
+        <DetailStat
+          label="actions"
+          value={
+            results.length > 0
+              ? `${results.length - failures}/${results.length} ok`
+              : String(actions.length)
+          }
+        />
+        <DetailStat
+          label="danger"
+          value={
+            summary.has_danger
+              ? summary.danger_acknowledged
+                ? "acknowledged"
+                : "unacknowledged"
+              : "none"
+          }
+          tone={summary.has_danger ? "warn" : "ok"}
+        />
+        <DetailStat
+          label="model"
+          value={summary.model_used ?? "—"}
+        />
+      </div>
+
+      {(summary.url || summary.page_title) && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: "10px 12px",
+            background: "var(--bg-elevated)",
+            border: "var(--border-soft)",
+            borderRadius: 8,
+            fontFamily: "var(--mono)",
+            fontSize: 12,
+            color: "var(--text-secondary)",
+            wordBreak: "break-all",
+          }}
+        >
+          {summary.page_title && (
+            <div style={{ color: "var(--text-primary)", marginBottom: 4 }}>
+              {summary.page_title}
+            </div>
+          )}
+          {summary.url && (
+            <div style={{ color: "var(--text-muted)" }}>{summary.url}</div>
+          )}
+        </div>
+      )}
+
+      {summary.user_input && (
+        <DetailBlock kicker="user input" body={summary.user_input} />
+      )}
+
+      {summary.sequence_danger_reason && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: "10px 12px",
+            borderRadius: 8,
+            background: "color-mix(in oklab, var(--cc-warn) 8%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--cc-warn) 30%, transparent)",
+            color: "color-mix(in oklab, var(--cc-warn) 86%, var(--text-primary))",
+            fontFamily: "var(--mono)",
+            fontSize: 12,
+          }}
+        >
+          <strong>sequence danger:</strong> {summary.sequence_danger_reason}
+        </div>
+      )}
+
+      {actions.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <span className="gx-eyebrow">action steps</span>
+          <ol
+            style={{
+              margin: "8px 0 0",
+              padding: 0,
+              listStyle: "none",
+              border: "var(--border-soft)",
+              borderRadius: 8,
+              overflow: "hidden",
+            }}
+          >
+            {actions.map((a, i) => {
+              const r = results[i];
+              const ok = r?.ok ?? false;
+              const danger = r?.danger ?? false;
+              return (
+                <li
+                  key={`${i}-${a.type ?? "?"}-${a.selector ?? ""}`}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "26px minmax(0, 1fr) auto",
+                    gap: 10,
+                    padding: "9px 12px",
+                    alignItems: "center",
+                    borderTop: i === 0 ? "none" : "var(--border-soft)",
+                    background: ok
+                      ? "transparent"
+                      : "color-mix(in oklab, var(--cc-warn) 4%, transparent)",
+                    fontFamily: "var(--mono)",
+                    fontSize: 12,
+                  }}
+                >
+                  <span style={{ color: "var(--text-muted)" }}>{i + 1}</span>
+                  <span
+                    style={{
+                      color: "var(--text-primary)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={`${a.type ?? "?"} ${a.selector ?? ""}${
+                      a.value ? ` ← ${a.value}` : ""
+                    }`}
+                  >
+                    <span style={{ color: "var(--ember)" }}>{a.type ?? "?"}</span>{" "}
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      {a.selector ?? ""}
+                    </span>
+                    {a.value && (
+                      <span style={{ color: "var(--text-muted)" }}>
+                        {" "}
+                        ← {a.value.length > 40
+                          ? `${a.value.slice(0, 40)}…`
+                          : a.value}
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      gap: 6,
+                      alignItems: "center",
+                    }}
+                  >
+                    {danger && (
+                      <span
+                        style={{
+                          padding: "1px 7px",
+                          borderRadius: 999,
+                          fontSize: 9,
+                          letterSpacing: "var(--track-meta)",
+                          textTransform: "uppercase",
+                          color: "color-mix(in oklab, var(--cc-warn) 80%, var(--text-primary))",
+                          border: "1px solid color-mix(in oklab, var(--cc-warn) 35%, transparent)",
+                          background: "color-mix(in oklab, var(--cc-warn) 8%, transparent)",
+                        }}
+                      >
+                        sensível
+                      </span>
+                    )}
+                    <span
+                      style={{
+                        color: ok ? "var(--cc-ok)" : "var(--cc-warn)",
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {ok ? "ok" : r ? "fail" : "—"}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          {results.some((r) => !r?.ok && r?.error) && (
+            <ul
+              style={{
+                margin: "8px 0 0",
+                padding: "8px 12px",
+                listStyle: "none",
+                background: "var(--bg-sunken)",
+                border: "var(--border-soft)",
+                borderRadius: 8,
+                fontFamily: "var(--mono)",
+                fontSize: 11,
+                color: "var(--text-muted)",
+              }}
+            >
+              {results.map((r, i) =>
+                !r?.ok && r?.error ? (
+                  <li key={`err-${i}`}>
+                    <strong style={{ color: "var(--cc-warn)" }}>
+                      step {i + 1}:
+                    </strong>{" "}
+                    {r.error}
+                  </li>
+                ) : null,
+              )}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

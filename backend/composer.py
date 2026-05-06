@@ -44,6 +44,8 @@ from models import (
     DomAction,
     DomPlanRequest,
     DomPlanResult,
+    ExecutionReportRequest,
+    ExecutionReportResponse,
     IntentKind,
     IntentResult,
     ModelRoute,
@@ -900,6 +902,132 @@ async def apply_preview(req: ComposerApplyRequest) -> ApplyResult:
             status="failed",
             error=str(exc),
         )
+
+
+# ── Execution Contract (Sprint 3) ──────────────────────────────────────────
+#
+# After the cápsula runs the planner's actions on the live page, it
+# reports the outcome back here. We record one ledger row per call with
+# route="composer:execution" so the Control Center can show the full
+# lifecycle (context → plan → approval → execution → result) without a
+# second store. The cápsula is authoritative on what actually ran on the
+# page — the backend just records.
+
+@router.post("/execution", response_model=ExecutionReportResponse)
+async def report_execution(req: ExecutionReportRequest) -> ExecutionReportResponse:
+    """Stage 5 — record the outcome of executeDomActions on the live page."""
+    run_id = uuid4()
+    ledger_event = await _record_execution(run_id, req)
+    logger.info(
+        "composer.execution.recorded run_id=%s status=%s actions=%d url=%s",
+        run_id, req.status, len(req.results), req.url or "—",
+    )
+    return ExecutionReportResponse(
+        run_id=run_id,
+        ledger_event_id=ledger_event,
+    )
+
+
+async def _record_execution(
+    run_id: UUID,
+    req: ExecutionReportRequest,
+) -> Optional[str]:
+    """Append one execution row to runs.json with route='composer:execution'.
+
+    Layout intentional so the existing LedgerPage renders without a new
+    schema:
+      * tool_calls — one entry per executed action (name=type, ok,
+        selector, error). The Ledger table already shows tool_calls
+        count, so the action count surfaces for free.
+      * answer — JSON summary (URL, title, danger gate, full action+result
+        list) so the Run detail panel can render the full story.
+      * context — one-line header (status / url / context_id / plan_id)
+        for the table preview.
+      * refused — true on user rejection.
+      * terminated_early + termination_reason — true when execution
+        failed or any action failed.
+    """
+    failures = sum(1 for r in req.results if not r.ok)
+    refused = req.status == "rejected"
+    terminated = req.status == "failed" or (req.status == "executed" and failures > 0)
+    termination_reason: Optional[str] = None
+    if req.status == "failed":
+        termination_reason = req.error or "execution_failed"
+    elif req.status == "executed" and failures > 0:
+        termination_reason = f"{failures}/{len(req.results)} action(s) failed"
+    elif req.status == "rejected":
+        termination_reason = "user_rejected"
+
+    tool_calls: list[dict] = []
+    for ar in req.results:
+        action_dict = ar.action.model_dump()
+        tool_calls.append({
+            "name": action_dict.get("type", "unknown"),
+            "ok": ar.ok,
+            "selector": action_dict.get("selector"),
+            "error": ar.error,
+            "danger": ar.danger,
+        })
+
+    summary = {
+        "status": req.status,
+        "url": req.url,
+        "page_title": req.page_title,
+        "model_used": req.model_used,
+        "plan_latency_ms": req.plan_latency_ms,
+        "has_danger": req.has_danger,
+        "danger_acknowledged": req.danger_acknowledged,
+        "sequence_danger_reason": req.sequence_danger_reason,
+        "user_input": req.user_input,
+        "actions": [r.action.model_dump() for r in req.results],
+        "results": [
+            {
+                "ok": r.ok,
+                "error": r.error,
+                "danger": r.danger,
+                "danger_reason": r.danger_reason,
+            }
+            for r in req.results
+        ],
+    }
+
+    question = (
+        req.user_input
+        or f"composer:execution {req.status} on {req.url or 'unknown page'}"
+    )
+    context_parts: list[str] = [f"status={req.status}"]
+    if req.url:
+        context_parts.append(f"url={req.url}")
+    if req.context_id:
+        context_parts.append(f"context_id={req.context_id}")
+    if req.plan_id:
+        context_parts.append(f"plan_id={req.plan_id}")
+    if req.has_danger:
+        context_parts.append(
+            f"danger={'acknowledged' if req.danger_acknowledged else 'unacknowledged'}"
+        )
+
+    try:
+        record = RunRecord(
+            id=str(run_id),
+            route="composer:execution",
+            question=question,
+            context=" ".join(context_parts),
+            answer=json.dumps(summary, ensure_ascii=False, indent=2),
+            refused=refused,
+            confidence=None,
+            judge_reasoning=req.error or req.sequence_danger_reason,
+            tool_calls=tool_calls,
+            iterations=None,
+            processing_time_ms=req.plan_latency_ms or 0,
+            terminated_early=terminated,
+            termination_reason=termination_reason,
+        )
+        await run_store.record(record)
+        return str(run_id)
+    except Exception:  # noqa: BLE001
+        logger.exception("composer.execution.record_failed")
+        return None
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────

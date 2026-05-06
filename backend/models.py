@@ -582,3 +582,59 @@ class DomPlanResult(BaseModel):
     latency_ms: int
     raw_response: Optional[str] = None  # kept for debugging when both empty
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── Execution Contract (Sprint 3) ──────────────────────────────────────────
+#
+# After the cápsula runs the planner's actions on the live page, it
+# reports the outcome back to the backend. The backend records each
+# execution as a ledger event (route="composer:execution") so the
+# Control Center can show the full lifecycle:
+#   context → plan → approval → execution → result
+#
+# Status:
+#   executed — user approved, executor ran. Per-action ok/err is in
+#              `results`; "executed" is the envelope status, not a
+#              guarantee that every step succeeded.
+#   rejected — user dismissed the cápsula with an action plan visible
+#              without executing. Records the *intent* to reject so the
+#              Control Center can show the lifecycle even when the user
+#              backed out.
+#   failed   — the executor itself threw before/across steps. `error`
+#              carries the message; `results` may be empty or partial.
+
+ExecutionStatus = Literal["executed", "rejected", "failed"]
+
+
+class ExecutedActionRecord(BaseModel):
+    """One DOM action and its outcome — wire shape used by the
+    /composer/execution endpoint and stored verbatim in the ledger."""
+    action: DomAction
+    ok: bool
+    error: Optional[str] = Field(default=None, max_length=2000)
+    danger: bool = False
+    danger_reason: Optional[str] = Field(default=None, max_length=500)
+
+
+class ExecutionReportRequest(BaseModel):
+    """Cápsula → backend payload after executeDomActions resolves
+    (or after user rejection of an action plan)."""
+    plan_id: Optional[UUID] = None
+    context_id: Optional[UUID] = None
+    url: Optional[str] = Field(default=None, max_length=2000)
+    page_title: Optional[str] = Field(default=None, max_length=500)
+    status: ExecutionStatus
+    results: list[ExecutedActionRecord] = Field(default_factory=list, max_length=64)
+    has_danger: bool = False
+    sequence_danger_reason: Optional[str] = Field(default=None, max_length=500)
+    danger_acknowledged: bool = False
+    error: Optional[str] = Field(default=None, max_length=2000)
+    model_used: Optional[str] = Field(default=None, max_length=200)
+    plan_latency_ms: Optional[int] = None
+    user_input: Optional[str] = Field(default=None, max_length=10_000)
+
+
+class ExecutionReportResponse(BaseModel):
+    run_id: UUID
+    ledger_event_id: Optional[str] = None
+    received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

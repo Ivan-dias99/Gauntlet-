@@ -100,6 +100,44 @@ export interface DomPlanResult {
   raw_response: string | null;
 }
 
+// Execution Contract (Sprint 3) ----------------------------------------------
+// After executeDomActions resolves on the live page, the cápsula reports
+// the outcome here. Backend records one ledger row per call so the
+// Control Center shows the lifecycle: context → plan → approval →
+// execution → result.
+
+export type ExecutionStatus = 'executed' | 'rejected' | 'failed';
+
+export interface ExecutedActionRecord {
+  action: DomAction;
+  ok: boolean;
+  error?: string | null;
+  danger?: boolean;
+  danger_reason?: string | null;
+}
+
+export interface ExecutionReportRequest {
+  plan_id?: string | null;
+  context_id?: string | null;
+  url?: string | null;
+  page_title?: string | null;
+  status: ExecutionStatus;
+  results: ExecutedActionRecord[];
+  has_danger?: boolean;
+  sequence_danger_reason?: string | null;
+  danger_acknowledged?: boolean;
+  error?: string | null;
+  model_used?: string | null;
+  plan_latency_ms?: number | null;
+  user_input?: string | null;
+}
+
+export interface ExecutionReportResponse {
+  run_id: string;
+  ledger_event_id: string | null;
+  received_at?: string;
+}
+
 export interface ComposerClientOptions {
   backendUrl?: string;
   signal?: AbortSignal;
@@ -254,6 +292,22 @@ export class ComposerClient {
         approved,
         approval_reason: approvalReason ?? null,
       },
+      signal,
+    );
+  }
+
+  // Sprint 3 — execution contract.
+  // After the cápsula resolves executeDomActions (or the user dismisses
+  // an action plan without executing), it calls this with the outcome.
+  // Backend writes one ledger row per call. Failures here must not
+  // surface to the user — caller should fire-and-forget.
+  reportExecution(
+    payload: ExecutionReportRequest,
+    signal?: AbortSignal,
+  ): Promise<ExecutionReportResponse> {
+    return postJson(
+      `${this.backendUrl}/composer/execution`,
+      payload,
       signal,
     );
   }

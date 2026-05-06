@@ -12,6 +12,9 @@ import {
   ComposerClient,
   type ContextCaptureRequest,
   type DomPlanResult,
+  type ExecutedActionRecord,
+  type ExecutionReportRequest,
+  type ExecutionStatus,
 } from '../lib/composer-client';
 import {
   assessDanger,
@@ -88,6 +91,11 @@ export function Capsule({
   const abortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<(() => void) | null>(null);
   const streamBufferRef = useRef<string>('');
+  // Sprint 3 — every action plan ends in exactly one execution row in
+  // the backend ledger (executed | rejected | failed). This ref guards
+  // against double-reporting when the user dismisses the cápsula after
+  // already executing.
+  const executionReportedRef = useRef<boolean>(false);
 
   // Danger assessment runs in-page (where document.querySelector resolves
   // against the live DOM) so each action gets per-element classification
@@ -148,21 +156,95 @@ export function Capsule({
     };
   }, [executor]);
 
+  const refreshSnapshot = useCallback(() => {
+    setSnapshot(readSelectionSnapshot());
+  }, []);
+
+  // Sprint 3 — execution contract. Fire-and-forget reporting after
+  // executeDomActions resolves (executed/failed) or when the user
+  // dismisses the cápsula with an action plan still pending (rejected).
+  // Compose-only plans (plan.actions.length === 0) are NOT reported —
+  // the contract is about DOM-action outcomes, not about every cápsula
+  // interaction. Failure of the report itself never propagates.
+  const reportExecution = useCallback(
+    (
+      status: ExecutionStatus,
+      results: DomActionResult[] = [],
+      errorMsg?: string,
+    ) => {
+      if (!plan || plan.actions.length === 0) return;
+      executionReportedRef.current = true;
+      const records: ExecutedActionRecord[] = plan.actions.map((action, i) => {
+        const r = results[i];
+        const d = dangers[i];
+        return {
+          action,
+          ok: r ? r.ok : false,
+          error: r?.error ?? null,
+          danger: d?.danger ?? false,
+          danger_reason: d?.reason ?? null,
+        };
+      });
+      const payload: ExecutionReportRequest = {
+        plan_id: plan.plan_id || null,
+        context_id: plan.context_id || null,
+        url: snapshot.url || null,
+        page_title: snapshot.pageTitle || null,
+        status,
+        results: records,
+        has_danger: hasDanger,
+        sequence_danger_reason: sequenceDanger.danger
+          ? sequenceDanger.reason ?? null
+          : null,
+        danger_acknowledged: dangerConfirmed,
+        error: errorMsg ?? null,
+        model_used: plan.model_used || null,
+        plan_latency_ms: plan.latency_ms || null,
+        user_input: userInput.trim() || null,
+      };
+      void client.reportExecution(payload).catch(() => {
+        // Reporting is best-effort. The user already saw the result;
+        // ledger fidelity comes second to UX continuity.
+      });
+    },
+    [
+      client,
+      plan,
+      snapshot,
+      dangers,
+      hasDanger,
+      sequenceDanger,
+      dangerConfirmed,
+      userInput,
+    ],
+  );
+
+  // Wrap onDismiss so a pending action plan that was never executed
+  // gets recorded as rejected before the cápsula tears down. Used by
+  // every dismiss surface (close button, Esc keypress, dismissThisDomain
+  // through the parent App).
+  const handleDismiss = useCallback(() => {
+    if (
+      plan &&
+      plan.actions.length > 0 &&
+      !executionReportedRef.current
+    ) {
+      reportExecution('rejected');
+    }
+    onDismiss();
+  }, [plan, onDismiss, reportExecution]);
+
   useEffect(() => {
     function onKey(ev: KeyboardEvent) {
       if (ev.key === 'Escape') {
         ev.preventDefault();
         ev.stopPropagation();
-        onDismiss();
+        handleDismiss();
       }
     }
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [onDismiss]);
-
-  const refreshSnapshot = useCallback(() => {
-    setSnapshot(readSelectionSnapshot());
-  }, []);
+  }, [handleDismiss]);
 
   // The single send path, streaming. Backend's /composer/dom_plan_stream
   // emits delta chunks and a final `done` event with the parsed result.
@@ -173,6 +255,17 @@ export function Capsule({
   const requestPlan = useCallback(async () => {
     if (!userInput.trim() || phase === 'planning' || phase === 'streaming' || phase === 'executing') {
       return;
+    }
+    // If the previous plan had actions and was never executed/rejected,
+    // record it as rejected before the new plan replaces it. Without
+    // this the ledger would show a planned set of actions that just
+    // vanishes when the user submits a new prompt.
+    if (
+      plan &&
+      plan.actions.length > 0 &&
+      !executionReportedRef.current
+    ) {
+      reportExecution('rejected');
     }
     abortRef.current?.abort();
     streamAbortRef.current?.();
@@ -186,6 +279,7 @@ export function Capsule({
     setCopied(false);
     setPartialCompose('');
     streamBufferRef.current = '';
+    executionReportedRef.current = false;
     // Re-read the screenshot pref at submit time. The user may have
     // toggled it off in the settings drawer between mount and submit;
     // the captured data URL is in our state but should not be sent
@@ -266,7 +360,7 @@ export function Capsule({
       setError(err instanceof Error ? err.message : String(err));
       setPhase('error');
     }
-  }, [client, snapshot, screenshot, userInput, phase]);
+  }, [client, snapshot, screenshot, userInput, phase, plan, reportExecution]);
 
   const onSubmit = useCallback(
     (ev: React.FormEvent) => {
@@ -319,14 +413,20 @@ export function Capsule({
       window.dispatchEvent(
         new CustomEvent('gauntlet:execute-result', { detail: { ok: allOk } }),
       );
+      // Sprint 3 — execution row in the ledger. Per-action ok/error is
+      // in `results`; status="executed" only means the executor ran,
+      // not that every action succeeded.
+      reportExecution('executed', results);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setError(errMsg);
       setPhase('error');
       window.dispatchEvent(
         new CustomEvent('gauntlet:execute-result', { detail: { ok: false } }),
       );
+      reportExecution('failed', [], errMsg);
     }
-  }, [executor, plan, hasDanger, dangerConfirmed]);
+  }, [executor, plan, hasDanger, dangerConfirmed, reportExecution]);
 
   // Where to anchor the capsule, in priority order:
   //   1. Selection bbox — the user is pointing at specific text.
@@ -396,7 +496,7 @@ export function Capsule({
               <button
                 type="button"
                 className="gauntlet-capsule__close"
-                onClick={onDismiss}
+                onClick={handleDismiss}
                 aria-label="Dismiss capsule (Esc)"
               >
                 <span aria-hidden>esc</span>
