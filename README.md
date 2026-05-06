@@ -76,12 +76,26 @@ Duas linhas em `runs.json` por ciclo: `route="composer"` (envelope) e
 ## Layout
 
 ```
-apps/browser-extension/      WXT + Manifest V3 — a cápsula
+packages/composer/           @gauntlet/composer — single Composer
+  src/Capsule.tsx            input + Compor + preview + Copy + Esc
+  src/Pill.tsx               cursor-magnetic resting state (browser only)
+  src/composer-client.ts     transport-agnostic HTTP client
+  src/ambient.ts             capability + adapter contract per shell
+  src/pill-prefs.ts          createPillPrefs(store) factory
+  src/{voice,markdown,dom-actions,types}.ts   shared utilities/types
+
+apps/browser-extension/      WXT + Manifest V3 — web shell
   wxt.config.ts              MV3 manifest, Alt+Space command, host_perms
-  lib/composer-client.ts     typed 4-route HTTP client
-  components/Capsule.tsx     input + Compor + preview + Copy + Esc
-  entrypoints/content.tsx    injects capsule via createShadowRootUi
+  lib/ambient.ts             createBrowserAmbient — chrome.* adapters
+  lib/selection.ts           getSelection + iframe round-trip
+  components/App.tsx         pill ↔ capsule state + ambient wiring
+  entrypoints/content.tsx    injects shadow-DOM host
   entrypoints/background.ts  service worker (chrome.commands listener)
+
+apps/desktop/                Tauri 2 — desktop shell
+  src/App.tsx                mounts the same @gauntlet/composer Capsule
+  src/ambient.ts             createDesktopAmbient — Tauri adapters
+  src/adapters/tauri.ts      clipboard, window title, global shortcut
 
 control-center/              React + Vite — a garagem (operator console)
   main.tsx · App.tsx · router.tsx

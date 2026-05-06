@@ -15,8 +15,6 @@ import {
   type Ambient,
   type AmbientCapabilities,
   type AmbientStorage,
-  type DomAction,
-  type DomActionResult,
   type SelectionSnapshot,
   type StreamCallbacks,
   executeDomActions,
@@ -203,10 +201,7 @@ function streamViaPort(
   };
 }
 
-export function createBrowserAmbient(executor?: {
-  execute(actions: DomAction[]): Promise<DomActionResult[]>;
-}): Ambient {
-  const domActions = executor ?? { execute: executeDomActions };
+export function createBrowserAmbient(): Ambient {
   return {
     shell: 'browser',
     capabilities: CAPABILITIES,
@@ -225,7 +220,7 @@ export function createBrowserAmbient(executor?: {
       read: (): SelectionSnapshot => readSelectionSnapshot(),
       readAsync: () => readSelectionAcrossFrames(),
     },
-    domActions,
+    domActions: { execute: executeDomActions },
     screenshot: {
       async capture(): Promise<string | null> {
         if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) {
