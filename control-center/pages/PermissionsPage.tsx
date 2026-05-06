@@ -10,8 +10,11 @@ import Pill from "../components/atoms/Pill";
 //
 // Replaces the Wave-V0 read-only matrix with a live binding against
 // /tools/manifests and /composer/settings.tool_policies. Operator can
-// flip allowed / require_approval per tool; the agent loop honours the
-// allowed flag immediately, require_approval is reserved for Sprint 7.
+// flip allowed / require_approval per tool; both are honoured by the
+// agent loop's dispatcher — allowed=false strips the tool from the
+// model schema and the dispatch path, require_approval=true gates the
+// dispatch with an [approval_required] envelope until the call carries
+// approved=true (or GAUNTLET_AUTO_APPROVE=1 is set on a trusted deploy).
 
 interface ToolManifest {
   name: string;
@@ -351,14 +354,13 @@ function ToolMatrix({
                   <ToggleChip
                     label="require_approval"
                     value={effectiveApproval}
-                    disabled
                     onChange={(v) =>
                       onPolicy(m.name, {
                         allowed: effectiveAllowed,
                         require_approval: v,
                       })
                     }
-                    title="recorded but not enforced until Sprint 7"
+                    title="when on, the agent must call with approved=true; GAUNTLET_AUTO_APPROVE=1 bypasses on trusted deploys"
                   />
                   {overridden && (
                     <button
