@@ -115,6 +115,13 @@ export function Capsule({
   // a timer so the chip returns to rest.
   const [contextJustArrived, setContextJustArrived] = useState(false);
   const prevHadContextRef = useRef(false);
+  // TTS — when enabled in settings, the cápsula speaks the compose
+  // response as soon as plan_ready fires. Persisted via prefs;
+  // synthesizer instance lives on the window.speechSynthesis singleton
+  // so we cancel any in-flight utterance when the operator submits a
+  // new request or dismisses the cápsula.
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const lastSpokenRef = useRef<string>('');
   // Multimodal: when the user opted in (via SettingsDrawer), capture
   // a viewport screenshot once per cápsula mount. The result is
   // attached to the next request's metadata so the planner can "see"
@@ -261,6 +268,61 @@ export function Capsule({
     }
     prevHadContextRef.current = has;
   }, [snapshot.text]);
+
+  // TTS — load persisted toggle. Speak when plan_ready arrives with a
+  // compose answer. The Web Speech API is feature-detected at speak
+  // time; an unsupported browser silently does nothing.
+  useEffect(() => {
+    let cancelled = false;
+    void prefs.readTtsEnabled().then((enabled) => {
+      if (!cancelled) setTtsEnabled(enabled);
+    });
+    // Live sync — the settings drawer broadcasts gauntlet:tts when the
+    // operator flips the toggle. Without this listener the cápsula's
+    // own state would stay stale and continue speaking after the
+    // operator turned TTS off.
+    function onTts(ev: Event) {
+      const detail = (ev as CustomEvent<{ enabled?: boolean }>).detail;
+      if (typeof detail?.enabled === 'boolean') setTtsEnabled(detail.enabled);
+    }
+    window.addEventListener('gauntlet:tts', onTts);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('gauntlet:tts', onTts);
+    };
+  }, [prefs]);
+
+  useEffect(() => {
+    if (!ttsEnabled) return;
+    if (phase !== 'plan_ready') return;
+    const text = plan?.compose;
+    if (!text) return;
+    if (text === lastSpokenRef.current) return;
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.rate = 1.05;
+      utt.pitch = 1;
+      window.speechSynthesis.speak(utt);
+      lastSpokenRef.current = text;
+    } catch {
+      // SpeechSynthesisUtterance constructor or .speak can throw on
+      // hostile shadow contexts; swallow — TTS is a bonus, not core.
+    }
+  }, [ttsEnabled, phase, plan?.compose]);
+
+  // Cancel any in-flight utterance when the cápsula unmounts so the
+  // voice doesn't keep reading after dismiss.
+  useEffect(() => {
+    return () => {
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
 
   // Theme — load persisted choice once at mount. While the storage
   // round-trip resolves the cápsula renders the default flagship light,
@@ -1580,6 +1642,7 @@ function SettingsDrawer({
   const [loading, setLoading] = useState(true);
   const [screenshotEnabled, setScreenshotEnabled] = useState(false);
   const [pillMode, setPillModeState] = useState<'corner' | 'cursor'>('corner');
+  const [ttsEnabledLocal, setTtsEnabledLocal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1597,6 +1660,9 @@ function SettingsDrawer({
     void prefs.readPillMode().then((m) => {
       if (!cancelled) setPillModeState(m);
     });
+    void prefs.readTtsEnabled().then((b) => {
+      if (!cancelled) setTtsEnabledLocal(b);
+    });
     return () => {
       cancelled = true;
     };
@@ -1609,6 +1675,25 @@ function SettingsDrawer({
       // Live broadcast so App.tsx flips the pill without a reload.
       window.dispatchEvent(
         new CustomEvent('gauntlet:pill-mode', { detail: { mode: next } }),
+      );
+    },
+    [prefs],
+  );
+
+  const toggleTts = useCallback(
+    async (enabled: boolean) => {
+      setTtsEnabledLocal(enabled);
+      await prefs.writeTtsEnabled(enabled);
+      // Cancel any speaking voice when the operator turns TTS off mid-read.
+      if (!enabled) {
+        try {
+          window.speechSynthesis?.cancel();
+        } catch {
+          // ignore
+        }
+      }
+      window.dispatchEvent(
+        new CustomEvent('gauntlet:tts', { detail: { enabled } }),
       );
     },
     [prefs],
@@ -1724,6 +1809,23 @@ function SettingsDrawer({
           </label>
         </div>
       )}
+
+      <div className="gauntlet-capsule__settings-section">
+        <label className="gauntlet-capsule__settings-toggle">
+          <input
+            type="checkbox"
+            checked={ttsEnabledLocal}
+            onChange={(ev) => void toggleTts(ev.target.checked)}
+          />
+          <span className="gauntlet-capsule__settings-toggle-label">
+            <strong>ler resposta em voz alta</strong>
+            <small>
+              quando o modelo termina, a cápsula fala a resposta via Web Speech.
+              cancela ao submeter outro pedido ou fechar a cápsula.
+            </small>
+          </span>
+        </label>
+      </div>
 
       <div className="gauntlet-capsule__settings-section">
         <span className="gauntlet-capsule__settings-subtitle">domínios escondidos</span>

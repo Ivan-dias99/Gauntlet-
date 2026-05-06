@@ -21,6 +21,7 @@ const KEY_SCREENSHOT_ENABLED = 'gauntlet:screenshot_enabled';
 const KEY_THEME = 'gauntlet:theme';
 const KEY_PALETTE_RECENT = 'gauntlet:palette_recent';
 const KEY_PILL_MODE = 'gauntlet:pill_mode';
+const KEY_TTS_ENABLED = 'gauntlet:tts_enabled';
 const PALETTE_RECENT_MAX = 8;
 
 export type CapsuleTheme = 'light' | 'dark';
@@ -71,6 +72,8 @@ export interface PillPrefs {
   notePaletteUse(id: string): Promise<void>;
   readPillMode(): Promise<PillMode>;
   writePillMode(mode: PillMode): Promise<void>;
+  readTtsEnabled(): Promise<boolean>;
+  writeTtsEnabled(enabled: boolean): Promise<void>;
 }
 
 export function createPillPrefs(store: AmbientStorage): PillPrefs {
@@ -146,6 +149,13 @@ export function createPillPrefs(store: AmbientStorage): PillPrefs {
     },
     async writePillMode(mode) {
       await store.set(KEY_PILL_MODE, mode);
+    },
+    async readTtsEnabled() {
+      const raw = await store.get<boolean>(KEY_TTS_ENABLED);
+      return raw === true;
+    },
+    async writeTtsEnabled(enabled) {
+      await store.set(KEY_TTS_ENABLED, !!enabled);
     },
   };
 }
