@@ -6,13 +6,35 @@ Tu apontas. Dizes o que queres. O Gauntlet executa — sem abrires uma app de
 IA, sem mudares de tab, sem dashboards no caminho. A cápsula vive colada ao
 cursor, e o backend faz o trabalho sujo.
 
+## Product Law
+
+Existe **um único Gauntlet Composer** com duas shells de runtime:
+
+1. **Web runtime** — browser extension (`apps/browser-extension/`)
+2. **Desktop runtime** — Tauri (`apps/desktop/`)
+
+As duas shells têm de manter **paridade visual e comportamental 1:1**. A
+cápsula no browser e a cápsula no desktop são o mesmo objeto de produto a
+correr em ambientes diferentes.
+
+A diferença é só ambiental:
+
+- Browser runtime atua dentro de páginas web
+- Desktop runtime atua no contexto do sistema operativo/apps
+
+O backend FastAPI continua a ser o cérebro de execução (context, routing,
+tools, memory, execution). O Control Center é a garagem/pit stop, e o
+landing do Composer pertence ao Control Center como superfície principal
+(home).
+
 ## Filosofia
 
 Três peças, três papéis:
 
-- **Composer** — `apps/browser-extension/`. A cápsula. É o carro. Discreta,
-  rápida, sempre presente. Press `Alt+Space` em qualquer página → escreves o
-  que queres → vês o resultado → cursor nunca sai do sítio.
+- **Composer** — `apps/browser-extension/` + `apps/desktop/`. A cápsula
+  única em duas shells. Discreta, rápida, sempre presente. Press
+  `Alt+Space` em qualquer página (web) ou abre no runtime desktop →
+  escreves o que queres → vês o resultado.
 - **Control Center** — `control-center/`. A garagem. Só abre quando
   precisas configurar, ver histórico, inspecionar memórias ou trocar
   modelos. Nunca compete com o Composer como local de trabalho.
