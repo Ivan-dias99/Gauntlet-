@@ -1,4 +1,5 @@
 import { defineConfig } from 'wxt';
+import { fileURLToPath } from 'node:url';
 
 // Gauntlet — browser extension (Manifest V3).
 //
@@ -9,6 +10,18 @@ import { defineConfig } from 'wxt';
 //   - calls the four /composer/* routes on the local backend
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  // Single Composer — vite alias resolves @gauntlet/composer to the
+  // shared package source without needing npm workspaces. Mirrors the
+  // TS path mapping in tsconfig.json.
+  vite: () => ({
+    resolve: {
+      alias: {
+        '@gauntlet/composer': fileURLToPath(
+          new URL('../../packages/composer/src/index.ts', import.meta.url),
+        ),
+      },
+    },
+  }),
   manifest: {
     name: 'Gauntlet',
     description:

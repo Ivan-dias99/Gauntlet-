@@ -1,25 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Capsule, CAPSULE_CSS } from './Capsule';
-import { Pill, PILL_CSS } from './Pill';
-import { ComposerClient } from '../lib/composer-client';
-import { executeDomActions } from '../lib/dom-actions';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Capsule,
+  CAPSULE_CSS,
+  Pill,
+  PILL_CSS,
+  createPillPrefs,
   DEFAULT_PILL_POSITION,
-  dismissDomain,
-  isDomainDismissed,
-  readPillPosition,
   type PillPosition,
-} from '../lib/pill-prefs';
-import {
-  readSelectionAcrossFrames,
-  readSelectionSnapshot,
   type SelectionSnapshot,
-} from '../lib/selection';
-
-// One ComposerClient per content script — connections are stateless
-// (HTTP), but reusing the instance keeps backend URL config in one
-// place per page.
-const client = new ComposerClient();
+} from '@gauntlet/composer';
+import { createBrowserAmbient } from '../lib/ambient';
 
 // Single stylesheet injected into the shadow root by content.tsx.
 // Concatenating both CSS bodies into a single export means the script
@@ -47,6 +37,12 @@ type Surface =
 // subscription so background.ts can summon/dismiss without us
 // reaching back through the DOM, and the persisted pill prefs.
 export function App() {
+  // Single Ambient per content-script lifetime — wires every chrome.*
+  // touchpoint the shared Composer needs (transport, storage,
+  // selection, screenshot, debug).
+  const ambient = useMemo(() => createBrowserAmbient(), []);
+  const prefs = useMemo(() => createPillPrefs(ambient.storage), [ambient]);
+
   const [surface, setSurface] = useState<Surface>({ kind: 'pill' });
   const [pillPosition, setPillPosition] = useState<PillPosition>(
     DEFAULT_PILL_POSITION,
@@ -67,6 +63,29 @@ export function App() {
   const [phase, setPhase] = useState<
     'idle' | 'planning' | 'streaming' | 'plan_ready' | 'executing' | 'executed' | 'error' | null
   >(null);
+  // Page-level selection presence — drives the pill's --context state
+  // so the operator senses "ready to summon" without opening it.
+  const [hasContext, setHasContext] = useState(false);
+
+  // selectionchange fires far more often than we need (every keystroke
+  // inside a contenteditable, every micro-drag of the caret). A simple
+  // boolean flip is cheap so we don't throttle, but we do guard against
+  // pointless re-renders by short-circuiting equal values.
+  useEffect(() => {
+    function update() {
+      let next = false;
+      try {
+        const sel = window.getSelection();
+        next = !!(sel && sel.toString().trim().length > 0);
+      } catch {
+        next = false;
+      }
+      setHasContext((prev) => (prev === next ? prev : next));
+    }
+    update();
+    document.addEventListener('selectionchange', update, { passive: true });
+    return () => document.removeEventListener('selectionchange', update);
+  }, []);
 
   useEffect(() => {
     function onResult(ev: Event) {
@@ -109,14 +128,10 @@ export function App() {
     return () => window.removeEventListener('mousemove', track);
   }, []);
 
-  // Load persisted pill prefs once at mount. Until they resolve we
-  // render the pill at the default position — there's no flash because
-  // the default IS the most common position (bottom-right corner). A
-  // later setState swaps to the dragged position or hides the pill
-  // entirely if the domain is dismissed.
+  // Load persisted pill prefs once at mount.
   useEffect(() => {
     let cancelled = false;
-    void readPillPosition().then((p) => {
+    void prefs.readPillPosition().then((p) => {
       if (!cancelled) setPillPosition(p);
     });
     const host = (() => {
@@ -127,55 +142,43 @@ export function App() {
       }
     })();
     if (host) {
-      void isDomainDismissed(host).then((dismissed) => {
+      void prefs.isDomainDismissed(host).then((dismissed) => {
         if (cancelled || !dismissed) return;
         setDomainDismissed(true);
-        // Hide the pill the moment we know — the brief default render
-        // of the pill (a few ms before storage resolves) is acceptable
-        // and the only alternative is a "loading" state that flashes
-        // worse. setSurface only flips if we're still in the pill
-        // state — the hotkey could race and put us in capsule first.
         setSurface((prev) => (prev.kind === 'pill' ? { kind: 'gone' } : prev));
       });
     }
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [prefs]);
 
   const summon = useCallback(() => {
     // Sync first: render the cápsula immediately with the top-frame
     // snapshot — no perceptible delay for the user. Then async-enrich
-    // with a 50ms iframe selection harvest; if a subframe had a
-    // longer/non-empty selection (Notion, Reddit, embedded markdown),
-    // remount the cápsula with that snapshot. Cheap optimistic mount,
-    // best-effort upgrade.
+    // with a 50ms iframe selection harvest if the ambient supports it.
     const cursor = lastCursorRef.current;
     setSurface((prev) => ({
       kind: 'capsule',
-      snapshot: readSelectionSnapshot(),
+      snapshot: ambient.selection.read(),
       cursor,
       nonce: prev.kind === 'capsule' ? prev.nonce + 1 : 1,
     }));
-    void readSelectionAcrossFrames().then((enriched) => {
-      setSurface((prev) => {
-        if (prev.kind !== 'capsule') return prev;
-        // Only upgrade when the iframe round-trip actually found
-        // text the top frame didn't have. Avoids the user typing
-        // into the cápsula and having React swap snapshots out from
-        // under them for nothing.
-        if (!enriched.text || enriched.text === prev.snapshot.text) return prev;
-        return {
-          ...prev,
-          snapshot: enriched,
-        };
+    if (ambient.selection.readAsync) {
+      void ambient.selection.readAsync().then((enriched) => {
+        setSurface((prev) => {
+          if (prev.kind !== 'capsule') return prev;
+          if (!enriched.text || enriched.text === prev.snapshot.text) return prev;
+          return {
+            ...prev,
+            snapshot: enriched,
+          };
+        });
       });
-    });
-  }, []);
+    }
+  }, [ambient]);
 
   const dismiss = useCallback(() => {
-    // After closing the capsule, return to the pill — unless the
-    // domain has been opted out, in which case stay invisible.
     setSurface(domainDismissed ? { kind: 'gone' } : { kind: 'pill' });
   }, [domainDismissed]);
 
@@ -187,12 +190,17 @@ export function App() {
         return '';
       }
     })();
-    if (host) void dismissDomain(host);
+    if (host) void prefs.dismissDomain(host);
     setDomainDismissed(true);
-    // Hide the surface immediately too — don't make the user wait for
-    // a reload to confirm their gesture worked.
     setSurface({ kind: 'gone' });
-  }, []);
+  }, [prefs]);
+
+  const persistPillPosition = useCallback(
+    (pos: PillPosition) => {
+      void prefs.writePillPosition(pos);
+    },
+    [prefs],
+  );
 
   useEffect(() => {
     function listener(
@@ -203,9 +211,6 @@ export function App() {
       if (!msg || typeof msg !== 'object') return false;
       const type = (msg as { type?: unknown }).type;
       if (type === 'gauntlet:summon') {
-        // A dismissed-domain user can still summon explicitly via
-        // hotkey — that's a deliberate invocation, not a violation of
-        // their preference. We just don't show the persistent pill.
         summon();
         sendResponse({ ok: true });
         return false;
@@ -230,19 +235,21 @@ export function App() {
         position={pillPosition}
         onClick={summon}
         onDismissDomain={dismissThisDomain}
+        onPersistPosition={persistPillPosition}
         flash={pillFlash}
         phase={phase}
+        hasContext={hasContext}
+        disconnected={phase === 'error'}
       />
     );
   }
   return (
     <Capsule
       key={surface.nonce}
-      client={client}
+      ambient={ambient}
       initialSnapshot={surface.snapshot}
       cursorAnchor={surface.cursor}
       onDismiss={dismiss}
-      executor={executeDomActions}
     />
   );
 }

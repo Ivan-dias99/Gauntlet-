@@ -6,12 +6,18 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@gauntlet/composer": ["../../packages/composer/src/index.ts"],
+      "@gauntlet/composer/*": ["../../packages/composer/src/*"]
+    }
   },
   "include": [
     "entrypoints/**/*",
     "components/**/*",
     "lib/**/*",
-    "wxt.config.ts"
+    "wxt.config.ts",
+    "../../packages/composer/src/**/*"
   ]
 }

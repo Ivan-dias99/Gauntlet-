@@ -14,8 +14,46 @@ import { defineBackground } from 'wxt/sandbox';
 // instead of the host page, bypassing CORS rejection on non-deploy
 // origins.
 
-const COMPOSER_WINDOW_WIDTH = 1200;
-const COMPOSER_WINDOW_HEIGHT = 800;
+// Compact fallback window — the standalone composer is a lifeboat for
+// restricted surfaces (chrome://, edge://, the Web Store, PDF viewer).
+// On normal pages the in-page capsule must win; the fallback never
+// becomes a 1200x800 dashboard.
+const COMPOSER_WINDOW_WIDTH = 760;
+const COMPOSER_WINDOW_HEIGHT = 460;
+
+// Last-summon diagnostics — surfaced via gauntlet:debug message so the
+// operator (and tests) can see WHY the fallback opened. Ephemeral; only
+// the most recent decision is kept.
+type SummonMode = 'in-page' | 'injected' | 'fallback-window';
+type FallbackReason =
+  | 'restricted-url'
+  | 'no-active-tab'
+  | 'content-script-unavailable'
+  | 'injection-failed'
+  | 'injection-retry-failed';
+
+interface SummonDiagnostics {
+  at: number;
+  mode: SummonMode;
+  url?: string;
+  reason?: FallbackReason;
+  detail?: string;
+}
+
+let lastSummonDiagnostics: SummonDiagnostics | null = null;
+
+function recordSummon(d: SummonDiagnostics): void {
+  lastSummonDiagnostics = d;
+  // Console-visible to anyone with the service-worker devtools open.
+  // No PII beyond the page URL — that's already in the operator's tab.
+  if (d.mode === 'fallback-window') {
+    // eslint-disable-next-line no-console
+    console.warn('[gauntlet] fallback-window opened', d);
+  } else {
+    // eslint-disable-next-line no-console
+    console.info('[gauntlet] summon', d);
+  }
+}
 
 interface FetchProxyRequest {
   type: 'gauntlet:fetch';
@@ -132,27 +170,90 @@ async function resolveActiveTab(
 const SUMMON_DEDUPE_MS = 250;
 let lastSummonAt = 0;
 
+async function trySendSummon(tabId: number): Promise<boolean> {
+  try {
+    const reply = (await chrome.tabs.sendMessage(tabId, {
+      type: 'gauntlet:summon',
+    })) as { ok?: boolean } | undefined;
+    return reply?.ok === true;
+  } catch {
+    // No content script in this tab — caller decides whether to inject.
+    return false;
+  }
+}
+
+async function tryInjectContentScript(tabId: number): Promise<boolean> {
+  // WXT bundles the content script into `content-scripts/content.js`
+  // (the default output) so we can re-inject on demand into pages that
+  // loaded before the extension was installed or that the content
+  // script never reached for any other reason.
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId, allFrames: false },
+      files: ['content-scripts/content.js'],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
   const now = Date.now();
   if (now - lastSummonAt < SUMMON_DEDUPE_MS) return;
   lastSummonAt = now;
 
   const tab = await resolveActiveTab(hint);
-  if (!tab?.id || !isInjectableUrl(tab.url)) {
+  if (!tab?.id) {
+    recordSummon({ at: now, mode: 'fallback-window', reason: 'no-active-tab' });
     await openComposerWindow();
     return;
   }
-  try {
-    const reply = (await chrome.tabs.sendMessage(tab.id, {
-      type: 'gauntlet:summon',
-    })) as { ok?: boolean } | undefined;
-    if (reply?.ok) return;
+  if (!isInjectableUrl(tab.url)) {
+    recordSummon({
+      at: now,
+      mode: 'fallback-window',
+      url: tab.url,
+      reason: 'restricted-url',
+    });
     await openComposerWindow();
-  } catch {
-    // No content script in this tab (race during page load, or a tab
-    // that loaded before the extension was installed). Fallback.
-    await openComposerWindow();
+    return;
   }
+
+  // First attempt: assume the content script is already there.
+  if (await trySendSummon(tab.id)) {
+    recordSummon({ at: now, mode: 'in-page', url: tab.url });
+    return;
+  }
+
+  // Second attempt: inject the content script and retry once.
+  const injected = await tryInjectContentScript(tab.id);
+  if (!injected) {
+    recordSummon({
+      at: now,
+      mode: 'fallback-window',
+      url: tab.url,
+      reason: 'injection-failed',
+    });
+    await openComposerWindow();
+    return;
+  }
+  // Give the freshly mounted React tree a tick to register its
+  // runtime.onMessage listener. 80ms is comfortably above microtask
+  // turnaround on cold pages without being perceptible to the user.
+  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  if (await trySendSummon(tab.id)) {
+    recordSummon({ at: now, mode: 'injected', url: tab.url });
+    return;
+  }
+
+  recordSummon({
+    at: now,
+    mode: 'fallback-window',
+    url: tab.url,
+    reason: 'injection-retry-failed',
+  });
+  await openComposerWindow();
 }
 
 // Port-based streaming fetch proxy. chrome.runtime.sendMessage is one
@@ -286,6 +387,10 @@ export default defineBackground(() => {
   });
 
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg && msg.type === 'gauntlet:debug') {
+      sendResponse({ ok: true, lastSummon: lastSummonDiagnostics });
+      return false;
+    }
     if (msg && msg.type === 'gauntlet:fetch') {
       void proxyFetch(msg as FetchProxyRequest).then(sendResponse);
       return true; // keep the channel open for the async response
