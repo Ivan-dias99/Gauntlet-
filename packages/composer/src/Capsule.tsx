@@ -746,6 +746,18 @@ export function Capsule({
       // gesture landed even before the network round-trip starts.
       // Cleared by the keyframe's animationend listener below.
       setSubmitRipple((n) => n + 1);
+      // Cancel any in-flight TTS utterance from the previous response
+      // so the operator's new submit doesn't compete with stale audio.
+      // The settings drawer's description promises "cancela ao submeter
+      // outro pedido" — this is the cancel hook. Also reset the spoken
+      // ref so the next plan_ready (even if it produces the same text)
+      // gets read again.
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {
+        // ignore — TTS is a bonus, not core
+      }
+      lastSpokenRef.current = '';
       void requestPlan();
     },
     [requestPlan],
@@ -3436,6 +3448,7 @@ export const CAPSULE_CSS = `
       0 0 0 4px rgba(212, 96, 60, 0.10),
       0 0 0 8px rgba(212, 96, 60, 0.05),
       0 0 0 12px rgba(212, 96, 60, 0);
+  }
 }
 .gauntlet-capsule__voice {
   display: inline-flex;
