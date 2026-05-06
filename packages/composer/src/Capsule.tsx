@@ -2198,6 +2198,7 @@ export const CAPSULE_CSS = `
   color: var(--gx-fg);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), border-color 180ms ease, box-shadow 200ms ease;
   letter-spacing: 0.10em;
   text-transform: uppercase;
 }
@@ -2223,6 +2224,16 @@ export const CAPSULE_CSS = `
   font-family: "Inter", system-ui, sans-serif;
   font-size: 11px;
   letter-spacing: 0;
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), border-color 180ms ease, color 160ms ease;
+}
+/* Chip lift on hover — every context chip gets a 1px lift + ember
+   border kiss so the operator senses the chip row is alive. Compose
+   button gets its own pressed-state below. */
+.gauntlet-capsule__source:hover,
+.gauntlet-capsule__url:hover {
+  transform: translateY(-1px);
+  border-color: rgba(208, 122, 90, 0.45);
+  color: var(--gx-fg);
 }
 .gauntlet-capsule__refresh {
   background: transparent;
@@ -2235,12 +2246,13 @@ export const CAPSULE_CSS = `
   cursor: pointer;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 180ms cubic-bezier(0.2, 0, 0, 1);
   flex-shrink: 0;
 }
 .gauntlet-capsule__refresh:hover {
   color: var(--gx-fg);
   border-color: var(--gx-border-mid);
+  transform: translateY(-1px);
   background: var(--gx-tint-soft);
 }
 .gauntlet-capsule__selection {
@@ -2365,14 +2377,24 @@ export const CAPSULE_CSS = `
   display: inline-flex; align-items: center; gap: 8px;
 }
 .gauntlet-capsule__compose:hover:not(:disabled) {
-  transform: translateY(-1px);
+  transform: translateY(-1.5px);
   box-shadow:
     0 0 0 1px rgba(208, 122, 90, 0.55),
-    0 10px 26px rgba(208, 122, 90, 0.50);
+    0 12px 28px rgba(208, 122, 90, 0.55),
+    0 0 0 4px rgba(208, 122, 90, 0.10);
+}
+/* Press feedback — micro-spring inward when the operator commits.
+   Slightly past flat (0.5px down) reads like a real button settling. */
+.gauntlet-capsule__compose:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.985);
+  box-shadow:
+    0 0 0 1px rgba(208, 122, 90, 0.55),
+    0 4px 12px rgba(208, 122, 90, 0.40);
+  transition-duration: 60ms;
 }
 .gauntlet-capsule__compose:disabled {
   opacity: 0.45; cursor: not-allowed; transform: none;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.10);
+  box-shadow: 0 0 0 1px var(--gx-border-mid);
 }
 .gauntlet-capsule__compose-spinner {
   width: 12px; height: 12px;
@@ -2548,13 +2570,20 @@ export const CAPSULE_CSS = `
   border-color: var(--gx-border-mid);
   background: var(--gx-tint-soft);
 }
+@keyframes gauntlet-cap-drawer-flip {
+  0%   { opacity: 0; transform: translateY(-4px) scaleY(0.92); transform-origin: top; }
+  60%  { opacity: 1; transform: translateY(1px)  scaleY(1.02); }
+  100% { opacity: 1; transform: translateY(0)    scaleY(1); }
+}
 .gauntlet-capsule__settings {
   margin: 8px 0;
   padding: 10px 12px;
   background: var(--gx-sunken);
   border: 1px solid var(--gx-border-mid);
   border-radius: 10px;
-  animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  /* Flip-spring open — the drawer scaleY-overshoots slightly so it
+     reads like a real surface unfolding from under the header. */
+  animation: gauntlet-cap-drawer-flip 280ms cubic-bezier(0.16, 1.05, 0.34, 1) both;
 }
 .gauntlet-capsule__settings-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -3097,9 +3126,21 @@ export const CAPSULE_CSS = `
 }
 
 /* ── Voice button (press-and-hold) ──────────────────────────────────────── */
+/* Resonant waves — three concentric rings ride out as the operator
+   speaks. Visual mic feedback without reading volume meters; reads as
+   "the cápsula is listening" at a glance. */
 @keyframes gauntlet-cap-listen {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 96, 60, 0.45); }
-  50%      { box-shadow: 0 0 0 6px rgba(212, 96, 60, 0); }
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(212, 96, 60, 0.45),
+      0 0 0 0 rgba(212, 96, 60, 0.30),
+      0 0 0 0 rgba(212, 96, 60, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(212, 96, 60, 0.10),
+      0 0 0 8px rgba(212, 96, 60, 0.05),
+      0 0 0 12px rgba(212, 96, 60, 0);
 }
 .gauntlet-capsule__voice {
   display: inline-flex;
@@ -3211,6 +3252,7 @@ export const CAPSULE_CSS = `
   text-transform: uppercase;
 }
 .gauntlet-capsule__palette-item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3221,11 +3263,35 @@ export const CAPSULE_CSS = `
   font-size: 13px;
   color: var(--gx-fg-dim);
   cursor: pointer;
-  transition: background 100ms ease, color 100ms ease;
+  overflow: hidden;
+  transition: color 140ms ease, transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+/* Slide-in hover — instead of a static fade-in background, an ember
+   wash slides in from the left to the active item. The eye reads
+   movement, not just a colour swap. */
+.gauntlet-capsule__palette-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(208, 122, 90, 0.18) 0%,
+    rgba(208, 122, 90, 0.10) 60%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+  z-index: 0;
+}
+.gauntlet-capsule__palette-item > * {
+  position: relative;
+  z-index: 1;
 }
 .gauntlet-capsule__palette-item--active {
-  background: rgba(208, 122, 90, 0.14);
   color: var(--gx-fg);
+}
+.gauntlet-capsule__palette-item--active::before {
+  transform: translateX(0);
 }
 .gauntlet-capsule__palette-item--disabled {
   opacity: 0.42;
