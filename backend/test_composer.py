@@ -359,6 +359,74 @@ def test_memory_projects_lists_distinct(fresh_app: TestClient):
     assert projects == ["alpha", "beta"]
 
 
+# ── Sprint 8 close — settings rollback snapshots ───────────────────────────
+
+def test_settings_snapshots_taken_before_replace(fresh_app: TestClient):
+    initial = fresh_app.get("/composer/settings").json()
+    # No replace yet → no snapshots.
+    assert fresh_app.get("/composer/settings/snapshots").json()["snapshots"] == []
+
+    # First PUT — store snapshots the BEFORE state.
+    payload = dict(initial)
+    payload["screenshot_default"] = True
+    fresh_app.put("/composer/settings", json=payload)
+    snaps = fresh_app.get("/composer/settings/snapshots").json()["snapshots"]
+    assert len(snaps) == 1
+    assert snaps[0]["file"].startswith("settings-")
+    assert snaps[0]["file"].endswith(".json")
+
+    # Second PUT — second snapshot of the now-already-mutated state.
+    payload["execution_reporting_required"] = True
+    fresh_app.put("/composer/settings", json=payload)
+    snaps2 = fresh_app.get("/composer/settings/snapshots").json()["snapshots"]
+    assert len(snaps2) == 2
+    # Newest first.
+    assert snaps2[0]["timestamp"] >= snaps2[1]["timestamp"]
+
+
+def test_settings_restore_rolls_back(fresh_app: TestClient):
+    initial = fresh_app.get("/composer/settings").json()
+    # Mutate twice so we have two snapshots and a known "before" state.
+    fresh_app.put("/composer/settings", json={
+        **initial, "screenshot_default": True,
+    })
+    fresh_app.put("/composer/settings", json={
+        **initial, "screenshot_default": True, "execution_reporting_required": True,
+    })
+
+    snaps = fresh_app.get("/composer/settings/snapshots").json()["snapshots"]
+    # Restore the OLDEST snapshot — that's the original defaults.
+    oldest = snaps[-1]["file"]
+    r = fresh_app.post("/composer/settings/restore", json={"file": oldest})
+    assert r.status_code == 200
+    restored = r.json()
+    assert restored["screenshot_default"] is False
+    assert restored["execution_reporting_required"] is False
+
+
+def test_settings_restore_rejects_path_traversal(fresh_app: TestClient):
+    # Operator-controlled file name must not escape the snapshot dir.
+    r = fresh_app.post(
+        "/composer/settings/restore",
+        json={"file": "../../etc/passwd"},
+    )
+    assert r.status_code == 404
+    assert r.json()["detail"]["error"] == "snapshot_not_found"
+
+
+def test_settings_restore_404_on_missing_file(fresh_app: TestClient):
+    r = fresh_app.post(
+        "/composer/settings/restore",
+        json={"file": "settings-19990101T000000Z.json"},
+    )
+    assert r.status_code == 404
+
+
+def test_settings_restore_400_on_missing_body(fresh_app: TestClient):
+    r = fresh_app.post("/composer/settings/restore", json={})
+    assert r.status_code == 400
+
+
 # ── Sprint 8 — diagnostics + observability ─────────────────────────────────
 
 def test_diagnostics_surfaces_new_store_state(fresh_app: TestClient):
