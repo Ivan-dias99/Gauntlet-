@@ -19,6 +19,7 @@ import {
   type ExecutionStatus,
   type SelectionRect,
   type SelectionSnapshot,
+  type ToolManifest,
 } from './types';
 import { Markdown } from './markdown';
 import {
@@ -34,7 +35,12 @@ import {
   type DomActionResult,
 } from './dom-actions';
 import { type Ambient } from './ambient';
-import { createPillPrefs, type PillPrefs } from './pill-prefs';
+import {
+  createPillPrefs,
+  DEFAULT_CAPSULE_THEME,
+  type CapsuleTheme,
+  type PillPrefs,
+} from './pill-prefs';
 
 export interface CapsuleProps {
   // Single seam to the host shell — provides transport, storage,
@@ -89,6 +95,16 @@ export function Capsule({
   // once the `done` event fires, the full plan.compose replaces it.
   const [partialCompose, setPartialCompose] = useState<string>('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Flagship theme — light by default ("surface flagship"); dark stays
+  // available via the settings drawer toggle. Persisted in
+  // ambient.storage so the choice survives across sessions/tabs/shells.
+  const [theme, setTheme] = useState<CapsuleTheme>(DEFAULT_CAPSULE_THEME);
+  // Tool manifests — fetched once on mount via GET /tools/manifests so
+  // the command palette can list every tool the agent CAN call (with
+  // mode + risk + version), not just the ad-hoc UI shortcuts. Operator
+  // sees what's actually available; doctrine is "tudo à mão".
+  const [toolManifests, setToolManifests] = useState<ToolManifest[]>([]);
+  const [paletteRecent, setPaletteRecent] = useState<string[]>([]);
   // Multimodal: when the user opted in (via SettingsDrawer), capture
   // a viewport screenshot once per cápsula mount. The result is
   // attached to the next request's metadata so the planner can "see"
@@ -197,6 +213,41 @@ export function Capsule({
   useEffect(() => {
     setSnapshot(initialSnapshot);
   }, [initialSnapshot]);
+
+  // Tool manifests — load on mount; failure leaves the list empty so
+  // the palette still shows the built-in actions. Recently-used tool
+  // ids load in parallel so the palette renders ordered from the start.
+  useEffect(() => {
+    let cancelled = false;
+    void client
+      .getToolManifests()
+      .then((tools) => {
+        if (!cancelled) setToolManifests(tools);
+      })
+      .catch(() => {
+        // Manifests endpoint unreachable — keep palette working with
+        // built-in actions only.
+      });
+    void prefs.readPaletteRecent().then((recent) => {
+      if (!cancelled) setPaletteRecent(recent);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [client, prefs]);
+
+  // Theme — load persisted choice once at mount. While the storage
+  // round-trip resolves the cápsula renders the default flagship light,
+  // so there's no flash for the most common path.
+  useEffect(() => {
+    let cancelled = false;
+    void prefs.readTheme().then((t) => {
+      if (!cancelled) setTheme(t);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [prefs]);
 
   // Sprint 4 — fetch governance settings once at mount. Failure leaves
   // the defaults in place (open, generous caps) so a backend that's
@@ -722,6 +773,7 @@ export function Capsule({
   return (
     <div
       className={className}
+      data-theme={theme}
       role="dialog"
       aria-label="Gauntlet"
       style={placedStyle}
@@ -769,6 +821,11 @@ export function Capsule({
               showScreenshot={ambient.capabilities.screenshot}
               showDismissedDomains={ambient.capabilities.dismissDomain}
               prefs={prefs}
+              theme={theme}
+              onChangeTheme={(t) => {
+                setTheme(t);
+                void prefs.writeTheme(t);
+              }}
             />
           )}
 
@@ -1071,66 +1128,123 @@ export function Capsule({
       {paletteOpen && (
         <CommandPalette
           onClose={() => setPaletteOpen(false)}
-          actions={[
-            {
-              id: 'focus',
-              label: 'Focar input',
-              shortcut: '↵',
-              run: () => {
-                setPaletteOpen(false);
-                window.setTimeout(() => inputRef.current?.focus(), 0);
+          recentIds={paletteRecent}
+          actions={(() => {
+            const noteUse = (id: string) => {
+              setPaletteRecent((prev) => {
+                const next = [id, ...prev.filter((x) => x !== id)].slice(0, 8);
+                return next;
+              });
+              void prefs.notePaletteUse(id);
+            };
+            const insertToolPrefix = (toolName: string) => {
+              setUserInput((prev) => {
+                const trimmed = prev.trimEnd();
+                const head = `usa a tool ${toolName} para `;
+                if (trimmed.startsWith('usa a tool ')) return head;
+                return trimmed ? `${head}${trimmed}` : head;
+              });
+              window.setTimeout(() => {
+                const el = inputRef.current;
+                if (!el) return;
+                el.focus();
+                el.setSelectionRange(el.value.length, el.value.length);
+              }, 0);
+            };
+            const builtIns: PaletteAction[] = [
+              {
+                id: 'focus',
+                label: 'Focar input',
+                shortcut: '↵',
+                group: 'action',
+                run: () => {
+                  noteUse('focus');
+                  setPaletteOpen(false);
+                  window.setTimeout(() => inputRef.current?.focus(), 0);
+                },
               },
-            },
-            {
-              id: 'copy',
-              label: 'Copiar resposta',
-              shortcut: '⌘C',
-              disabled: !plan?.compose,
-              run: () => {
-                setPaletteOpen(false);
-                void onCopyCompose();
+              {
+                id: 'copy',
+                label: 'Copiar resposta',
+                shortcut: '⌘C',
+                group: 'action',
+                disabled: !plan?.compose,
+                run: () => {
+                  noteUse('copy');
+                  setPaletteOpen(false);
+                  void onCopyCompose();
+                },
               },
-            },
-            {
-              id: 'save',
-              label: 'Guardar em memória',
-              shortcut: 'S',
-              disabled: !plan?.compose && !snapshot.text && !userInput.trim(),
-              run: () => {
-                setPaletteOpen(false);
-                void saveToMemory();
+              {
+                id: 'save',
+                label: 'Guardar em memória',
+                shortcut: 'S',
+                group: 'action',
+                disabled: !plan?.compose && !snapshot.text && !userInput.trim(),
+                run: () => {
+                  noteUse('save');
+                  setPaletteOpen(false);
+                  void saveToMemory();
+                },
               },
-            },
-            {
-              id: 'reread',
-              label: 'Re-ler contexto',
-              shortcut: 'R',
-              run: () => {
-                setPaletteOpen(false);
-                refreshSnapshot();
+              {
+                id: 'reread',
+                label: 'Re-ler contexto',
+                shortcut: 'R',
+                group: 'action',
+                run: () => {
+                  noteUse('reread');
+                  setPaletteOpen(false);
+                  refreshSnapshot();
+                },
               },
-            },
-            {
-              id: 'clear',
-              label: 'Limpar input',
-              shortcut: 'X',
-              disabled: !userInput,
-              run: () => {
-                setPaletteOpen(false);
-                setUserInput('');
-                inputRef.current?.focus();
+              {
+                id: 'clear',
+                label: 'Limpar input',
+                shortcut: 'X',
+                group: 'action',
+                disabled: !userInput,
+                run: () => {
+                  noteUse('clear');
+                  setPaletteOpen(false);
+                  setUserInput('');
+                  inputRef.current?.focus();
+                },
               },
-            },
-            {
-              id: 'dismiss',
-              label: 'Fechar cápsula',
-              shortcut: 'Esc',
-              run: () => {
-                setPaletteOpen(false);
-                handleDismiss();
+              {
+                id: 'dismiss',
+                label: 'Fechar cápsula',
+                shortcut: 'Esc',
+                group: 'action',
+                run: () => {
+                  noteUse('dismiss');
+                  setPaletteOpen(false);
+                  handleDismiss();
+                },
               },
-            },
-          ]}
+            ];
+            const allowedTools = toolManifests.filter((t) => {
+              const policy = settings.tool_policies?.[t.name];
+              return !policy || policy.allowed !== false;
+            });
+            const toolEntries: PaletteAction[] = allowedTools.map((t) => ({
+              id: `tool:${t.name}`,
+              label: t.name,
+              description: t.description,
+              shortcut: '',
+              group: 'tool',
+              mode: t.mode,
+              risk: t.risk,
+              requiresApproval:
+                settings.tool_policies?.[t.name]?.require_approval === true,
+              run: () => {
+                noteUse(`tool:${t.name}`);
+                setPaletteOpen(false);
+                insertToolPrefix(t.name);
+              },
+            }));
+            return [...builtIns, ...toolEntries];
+          })()}
         />
       )}
 
@@ -1148,15 +1262,48 @@ interface PaletteAction {
   label: string;
   shortcut: string;
   disabled?: boolean;
+  // Optional metadata for tool entries — drives the badges + description
+  // line below the label. Action entries leave these undefined.
+  description?: string;
+  group?: 'action' | 'tool';
+  mode?: string;
+  risk?: string;
+  requiresApproval?: boolean;
   run: () => void;
+}
+
+// Fuzzy scorer — substring match wins; otherwise score by how cheaply
+// the query characters can be found in order in the candidate. Higher
+// score = better match. Returns -1 when no order-preserving match
+// exists, which the caller filters out.
+function fuzzyScore(query: string, target: string): number {
+  if (!query) return 0;
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+  if (t.includes(q)) return 1000 - t.indexOf(q);
+  let qi = 0;
+  let runs = 0;
+  let lastMatch = -2;
+  for (let i = 0; i < t.length && qi < q.length; i++) {
+    if (t[i] === q[qi]) {
+      if (i !== lastMatch + 1) runs++;
+      lastMatch = i;
+      qi++;
+    }
+  }
+  if (qi < q.length) return -1;
+  // Fewer "runs" = chars came in sequence, which we prefer.
+  return 500 - runs * 10 - (t.length - q.length);
 }
 
 function CommandPalette({
   actions,
   onClose,
+  recentIds,
 }: {
   actions: PaletteAction[];
   onClose: () => void;
+  recentIds: string[];
 }) {
   const [filter, setFilter] = useState('');
   const [cursor, setCursor] = useState(0);
@@ -1166,13 +1313,38 @@ function CommandPalette({
     inputRef.current?.focus();
   }, []);
 
-  const visible = useMemo(
-    () =>
-      actions.filter((a) =>
-        a.label.toLowerCase().includes(filter.toLowerCase()),
-      ),
-    [actions, filter],
-  );
+  // Score + sort: empty filter promotes recents to the top of each
+  // group; non-empty filter ranks by fuzzy match across all entries.
+  const visible = useMemo(() => {
+    if (!filter) {
+      const recentRank = new Map(recentIds.map((id, i) => [id, i]));
+      const score = (a: PaletteAction) => {
+        const r = recentRank.get(a.id);
+        return r === undefined ? recentIds.length : r;
+      };
+      const sorted = [...actions].sort((a, b) => {
+        const sa = score(a);
+        const sb = score(b);
+        if (sa !== sb) return sa - sb;
+        // Stable-ish secondary sort: actions before tools, then label.
+        const groupOrder = (g?: string) => (g === 'tool' ? 1 : 0);
+        const ga = groupOrder(a.group);
+        const gb = groupOrder(b.group);
+        if (ga !== gb) return ga - gb;
+        return a.label.localeCompare(b.label);
+      });
+      return sorted;
+    }
+    const scored = actions
+      .map((a) => {
+        const haystack = `${a.label} ${a.id} ${a.description ?? ''}`;
+        return { a, score: fuzzyScore(filter, haystack) };
+      })
+      .filter((x) => x.score >= 0)
+      .sort((x, y) => y.score - x.score)
+      .map((x) => x.a);
+    return scored;
+  }, [actions, filter, recentIds]);
 
   useEffect(() => {
     if (cursor >= visible.length) setCursor(0);
@@ -1203,13 +1375,13 @@ function CommandPalette({
           ref={inputRef}
           className="gauntlet-capsule__palette-input"
           type="text"
-          placeholder="comandos…  (↑↓ para navegar, ↵ para correr, esc para fechar)"
+          placeholder="comandos · tools…  (↑↓ para navegar, ↵ para correr, esc para fechar)"
           value={filter}
           onChange={(ev) => setFilter(ev.target.value)}
         />
         <ul className="gauntlet-capsule__palette-list" role="listbox">
           {visible.length === 0 ? (
-            <li className="gauntlet-capsule__palette-empty">sem comandos</li>
+            <li className="gauntlet-capsule__palette-empty">sem resultados</li>
           ) : (
             visible.map((a, i) => (
               <li
@@ -1223,10 +1395,45 @@ function CommandPalette({
                 }}
                 className={`gauntlet-capsule__palette-item${
                   i === cursor ? ' gauntlet-capsule__palette-item--active' : ''
-                }${a.disabled ? ' gauntlet-capsule__palette-item--disabled' : ''}`}
+                }${a.disabled ? ' gauntlet-capsule__palette-item--disabled' : ''}${
+                  a.group === 'tool' ? ' gauntlet-capsule__palette-item--tool' : ''
+                }`}
               >
-                <span className="gauntlet-capsule__palette-label">{a.label}</span>
-                <span className="gauntlet-capsule__palette-shortcut">{a.shortcut}</span>
+                <div className="gauntlet-capsule__palette-main">
+                  <span className="gauntlet-capsule__palette-label">{a.label}</span>
+                  {a.description && (
+                    <span className="gauntlet-capsule__palette-desc">{a.description}</span>
+                  )}
+                </div>
+                <div className="gauntlet-capsule__palette-meta">
+                  {a.mode && (
+                    <span
+                      className={`gauntlet-capsule__palette-badge gauntlet-capsule__palette-badge--mode-${a.mode}`}
+                      title={`mode: ${a.mode}`}
+                    >
+                      {a.mode}
+                    </span>
+                  )}
+                  {a.risk && a.risk !== 'low' && (
+                    <span
+                      className={`gauntlet-capsule__palette-badge gauntlet-capsule__palette-badge--risk-${a.risk}`}
+                      title={`risk: ${a.risk}`}
+                    >
+                      {a.risk}
+                    </span>
+                  )}
+                  {a.requiresApproval && (
+                    <span
+                      className="gauntlet-capsule__palette-badge gauntlet-capsule__palette-badge--approval"
+                      title="requires explicit approval before running"
+                    >
+                      approval
+                    </span>
+                  )}
+                  {a.shortcut && (
+                    <span className="gauntlet-capsule__palette-shortcut">{a.shortcut}</span>
+                  )}
+                </div>
               </li>
             ))
           )}
@@ -1303,6 +1510,8 @@ function SettingsDrawer({
   showScreenshot,
   prefs,
   showDismissedDomains,
+  theme,
+  onChangeTheme,
 }: {
   onClose: () => void;
   // Only the in-page surface has a real tab to screenshot. The popup
@@ -1313,6 +1522,8 @@ function SettingsDrawer({
   // Browser shows the per-domain hide list; desktop hides this whole
   // section because there are no domains.
   showDismissedDomains: boolean;
+  theme: CapsuleTheme;
+  onChangeTheme: (theme: CapsuleTheme) => void;
 }) {
   const [domains, setDomains] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1365,6 +1576,36 @@ function SettingsDrawer({
           ×
         </button>
       </header>
+
+      <div className="gauntlet-capsule__settings-section">
+        <span className="gauntlet-capsule__settings-subtitle">aparência</span>
+        <div className="gauntlet-capsule__theme-switch" role="radiogroup" aria-label="tema">
+          <button
+            type="button"
+            className={`gauntlet-capsule__theme-option${
+              theme === 'light' ? ' gauntlet-capsule__theme-option--active' : ''
+            }`}
+            onClick={() => onChangeTheme('light')}
+            role="radio"
+            aria-checked={theme === 'light'}
+          >
+            <span className="gauntlet-capsule__theme-swatch gauntlet-capsule__theme-swatch--light" aria-hidden />
+            <span>flagship light</span>
+          </button>
+          <button
+            type="button"
+            className={`gauntlet-capsule__theme-option${
+              theme === 'dark' ? ' gauntlet-capsule__theme-option--active' : ''
+            }`}
+            onClick={() => onChangeTheme('dark')}
+            role="radio"
+            aria-checked={theme === 'dark'}
+          >
+            <span className="gauntlet-capsule__theme-swatch gauntlet-capsule__theme-swatch--dark" aria-hidden />
+            <span>night premium</span>
+          </button>
+        </div>
+      </div>
 
       {showScreenshot && (
         <div className="gauntlet-capsule__settings-section">
@@ -1628,16 +1869,65 @@ export const CAPSULE_CSS = `
 }
 
 .gauntlet-capsule {
+  /* Flagship light is the new default surface. The cápsula is premium
+     daylight: cream paper, ink fg, ember accent. Dark stays available
+     as an alternative behind data-theme="dark"; existing operators
+     who prefer the night surface flip via the settings drawer. */
   --gx-ember: #d07a5a;
+  --gx-ember-soft: rgba(208, 122, 90, 0.14);
+  --gx-bg: #f7f3e8;
+  --gx-bg-solid: #fbf7ee;
+  --gx-surface: rgba(255, 255, 255, 0.78);
+  --gx-surface-strong: #ffffff;
+  --gx-border: rgba(15, 17, 22, 0.08);
+  --gx-border-mid: rgba(15, 17, 22, 0.16);
+  --gx-fg: #1a1d24;
+  --gx-fg-dim: #4a4f5b;
+  --gx-fg-muted: #7a808d;
+  --gx-tint-soft: rgba(15, 17, 22, 0.04);
+  --gx-tint-strong: rgba(15, 17, 22, 0.08);
+  --gx-sunken: rgba(15, 17, 22, 0.04);
+  --gx-shadow-rgb: 32, 24, 18;
+  /* Code block ink — purple keywords, rust strings, slate comments.
+     Mirrors the Codex/Claude-Code premium-light reference the operator
+     pinned for the flagship surface. */
+  --gx-code-bg: #f3edde;
+  --gx-code-fg: #2a2218;
+  --gx-code-keyword: #6e3aa8;
+  --gx-code-string: #b3501f;
+  --gx-code-number: #8c5a00;
+  --gx-code-comment: #8a8470;
+  --gx-code-fn: #2563a8;
+  --gx-code-meta-bg: rgba(15, 17, 22, 0.04);
+}
+
+/* Dark variant — premium night surface. Same ember accent, glass
+   mood, deep ink. Toggled via data-theme="dark" on the capsule root. */
+.gauntlet-capsule[data-theme="dark"] {
   --gx-bg: rgba(14, 16, 22, 0.92);
   --gx-bg-solid: #0e1016;
   --gx-surface: rgba(28, 30, 38, 0.70);
+  --gx-surface-strong: #1a1d26;
   --gx-border: rgba(255, 255, 255, 0.08);
   --gx-border-mid: rgba(255, 255, 255, 0.14);
   --gx-fg: #f0f2f7;
   --gx-fg-dim: #aab0bd;
   --gx-fg-muted: #6a7080;
+  --gx-tint-soft: rgba(255, 255, 255, 0.04);
+  --gx-tint-strong: rgba(255, 255, 255, 0.08);
+  --gx-sunken: rgba(8, 9, 13, 0.55);
+  --gx-shadow-rgb: 0, 0, 0;
+  --gx-code-bg: rgba(8, 9, 13, 0.7);
+  --gx-code-fg: #e6e8ee;
+  --gx-code-keyword: #c4a8ff;
+  --gx-code-string: #f4c4ad;
+  --gx-code-number: #f4d4c0;
+  --gx-code-comment: #6a7080;
+  --gx-code-fn: #a8c8ff;
+  --gx-code-meta-bg: rgba(255, 255, 255, 0.02);
+}
 
+.gauntlet-capsule {
   /* Floating, viewport-safe by default. Doutrina: cápsula leve, discreta,
      sempre presente — never a bottom dock, never a giant standalone
      window. The base shape is the only shape; --anchored / --centered
@@ -1652,12 +1942,12 @@ export const CAPSULE_CSS = `
   color: var(--gx-fg);
   border: 1px solid var(--gx-border-mid);
   border-radius: 16px;
-  backdrop-filter: saturate(1.4) blur(28px);
-  -webkit-backdrop-filter: saturate(1.4) blur(28px);
+  backdrop-filter: saturate(1.2) blur(20px);
+  -webkit-backdrop-filter: saturate(1.2) blur(20px);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 24px 60px rgba(0, 0, 0, 0.55),
-    0 8px 24px rgba(0, 0, 0, 0.35);
+    0 0 0 1px var(--gx-tint-soft),
+    0 24px 60px rgba(var(--gx-shadow-rgb), 0.18),
+    0 8px 24px rgba(var(--gx-shadow-rgb), 0.10);
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
   line-height: 1.45;
@@ -1840,7 +2130,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__close:hover {
   color: var(--gx-fg);
   border-color: var(--gx-border-mid);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gx-tint-soft);
 }
 
 /* ── Context ── */
@@ -1850,46 +2140,77 @@ export const CAPSULE_CSS = `
   display: flex;
   flex-direction: column;
 }
+/* Context chips — pill row above the input. Source / page-title /
+   re-read read as chips, like the reference flagship surface. Not a
+   metadata strip; a deliberate chip row that frames the cápsula's
+   ambient awareness. */
 .gauntlet-capsule__context-meta {
-  display: flex; gap: 8px; align-items: center;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--gx-fg-muted);
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  font-family: "JetBrains Mono", monospace;
+  display: flex; gap: 6px; align-items: center;
+  font-size: 11px;
+  color: var(--gx-fg-dim);
+  margin-bottom: 8px;
+  font-family: "Inter", system-ui, sans-serif;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .gauntlet-capsule__source {
-  background: rgba(208, 122, 90, 0.14);
-  color: #f4c4ad;
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(208, 122, 90, 0.28);
-  letter-spacing: 0.12em;
+  border: 1px solid var(--gx-border-mid);
+  background: var(--gx-surface-strong, var(--gx-tint-soft));
+  color: var(--gx-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+.gauntlet-capsule__source::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gx-ember);
+  box-shadow: 0 0 6px rgba(208, 122, 90, 0.65);
+  flex-shrink: 0;
 }
 .gauntlet-capsule__url {
   flex: 1;
+  min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  text-transform: none;
-  font-family: "Inter", system-ui, sans-serif;
-  letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-surface-strong, transparent);
   color: var(--gx-fg-dim);
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 11px;
+  letter-spacing: 0;
 }
 .gauntlet-capsule__refresh {
-  background: transparent; border: 1px solid var(--gx-border); color: var(--gx-fg-dim);
+  background: transparent;
+  border: 1px solid var(--gx-border);
+  color: var(--gx-fg-muted);
   font-family: "JetBrains Mono", monospace;
-  font-size: 9px; padding: 2px 8px; border-radius: 4px; cursor: pointer;
-  letter-spacing: 0.12em;
+  font-size: 9px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  flex-shrink: 0;
 }
 .gauntlet-capsule__refresh:hover {
   color: var(--gx-fg);
   border-color: var(--gx-border-mid);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gx-tint-soft);
 }
 .gauntlet-capsule__selection {
-  background: rgba(8, 9, 13, 0.6);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   padding: 8px 10px;
   border-radius: 8px;
@@ -1945,30 +2266,34 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__input {
   width: 100%;
-  background: rgba(8, 9, 13, 0.55);
+  background: var(--gx-surface-strong, var(--gx-sunken));
   color: var(--gx-fg);
-  border: 1px solid var(--gx-border);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 14px;
+  padding: 14px 16px;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 14.5px;
   resize: none;
-  min-height: 56px;
+  min-height: 64px;
   box-sizing: border-box;
-  line-height: 1.5;
-  transition: border-color 140ms ease, box-shadow 200ms ease;
+  line-height: 1.55;
+  transition: border-color 160ms ease, box-shadow 200ms ease, background 160ms ease;
+  caret-color: var(--gx-ember);
 }
-.gauntlet-capsule__input::placeholder { color: var(--gx-fg-muted); }
+.gauntlet-capsule__input::placeholder {
+  color: var(--gx-fg-muted);
+  font-style: normal;
+}
 .gauntlet-capsule__input:focus {
   outline: none;
   border-color: rgba(208, 122, 90, 0.55);
   box-shadow:
-    0 0 0 1px rgba(208, 122, 90, 0.30),
-    0 0 24px rgba(208, 122, 90, 0.18);
+    0 0 0 3px rgba(208, 122, 90, 0.14),
+    0 0 32px rgba(208, 122, 90, 0.10);
 }
 .gauntlet-capsule__actions {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; margin-top: 8px;
+  gap: 12px; margin-top: 10px;
 }
 .gauntlet-capsule__hint {
   display: inline-flex; gap: 4px; align-items: center;
@@ -1983,7 +2308,7 @@ export const CAPSULE_CSS = `
   padding: 0 4px;
   border: 1px solid var(--gx-border-mid);
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gx-tint-soft);
   color: var(--gx-fg-dim);
   font-size: 10px;
 }
@@ -1991,26 +2316,25 @@ export const CAPSULE_CSS = `
   position: relative;
   border: none;
   cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 9px 18px;
+  border-radius: 999px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.01em;
-  color: #0e1016;
-  background:
-    linear-gradient(180deg, #f0f2f7 0%, #d4d8e0 100%);
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(180deg, #d6855e 0%, #b65d3f 100%);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.20),
-    0 6px 18px rgba(208, 122, 90, 0.30);
-  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+    0 0 0 1px rgba(208, 122, 90, 0.45),
+    0 6px 18px rgba(208, 122, 90, 0.35);
+  transition: transform 120ms ease, box-shadow 160ms ease, opacity 120ms ease;
   display: inline-flex; align-items: center; gap: 8px;
 }
 .gauntlet-capsule__compose:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.32),
-    0 10px 24px rgba(208, 122, 90, 0.45);
+    0 0 0 1px rgba(208, 122, 90, 0.55),
+    0 10px 26px rgba(208, 122, 90, 0.50);
 }
 .gauntlet-capsule__compose:disabled {
   opacity: 0.45; cursor: not-allowed; transform: none;
@@ -2062,7 +2386,7 @@ export const CAPSULE_CSS = `
   padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid var(--gx-border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--gx-tint-soft);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   letter-spacing: 0.08em;
@@ -2079,7 +2403,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__preview-val { color: var(--gx-fg); }
 
 .gauntlet-capsule__artifact {
-  background: rgba(8, 9, 13, 0.65);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   padding: 10px 12px;
   border-radius: 10px;
@@ -2094,7 +2418,7 @@ export const CAPSULE_CSS = `
   display: flex; justify-content: flex-end; margin-top: 8px;
 }
 .gauntlet-capsule__copy {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gx-tint-soft);
   color: var(--gx-fg);
   border: 1px solid var(--gx-border-mid);
   border-radius: 8px;
@@ -2106,7 +2430,7 @@ export const CAPSULE_CSS = `
   transition: background 120ms ease, border-color 120ms ease;
 }
 .gauntlet-capsule__copy:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--gx-tint-soft);
   border-color: rgba(255, 255, 255, 0.22);
 }
 
@@ -2188,12 +2512,12 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__settings-btn:hover {
   color: var(--gx-fg);
   border-color: var(--gx-border-mid);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gx-tint-soft);
 }
 .gauntlet-capsule__settings {
   margin: 8px 0;
   padding: 10px 12px;
-  background: rgba(8, 9, 13, 0.55);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border-mid);
   border-radius: 10px;
   animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
@@ -2273,10 +2597,57 @@ export const CAPSULE_CSS = `
   gap: 8px;
   padding: 4px 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--gx-tint-soft);
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
   color: var(--gx-fg-dim);
+}
+
+/* Theme switch — flagship light vs night premium. Two pill buttons,
+   the active one carries the ember accent. The swatch previews the
+   destination so the operator picks visually, not by label alone. */
+.gauntlet-capsule__theme-switch {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.gauntlet-capsule__theme-option {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-tint-soft);
+  color: var(--gx-fg-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+.gauntlet-capsule__theme-option:hover {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+}
+.gauntlet-capsule__theme-option--active {
+  border-color: rgba(208, 122, 90, 0.55);
+  background: var(--gx-ember-soft, rgba(208, 122, 90, 0.12));
+  color: var(--gx-fg);
+}
+.gauntlet-capsule__theme-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--gx-border-mid);
+  flex-shrink: 0;
+}
+.gauntlet-capsule__theme-swatch--light {
+  background: linear-gradient(135deg, #fbf7ee 0%, #f3edde 100%);
+}
+.gauntlet-capsule__theme-swatch--dark {
+  background: linear-gradient(135deg, #1a1d26 0%, #0e1016 100%);
 }
 .gauntlet-capsule__settings-host {
   flex: 1;
@@ -2310,7 +2681,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__skeleton {
   margin-top: 10px;
   padding: 10px 12px;
-  background: rgba(8, 9, 13, 0.5);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   border-radius: 10px;
   animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
@@ -2349,7 +2720,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__compose-result {
   margin-top: 10px;
   padding: 10px 12px;
-  background: rgba(8, 9, 13, 0.5);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   border-radius: 10px;
   animation: gauntlet-cap-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
@@ -2409,7 +2780,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__plan {
   margin-top: 10px;
   padding: 10px 12px;
-  background: rgba(8, 9, 13, 0.5);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   border-radius: 10px;
   animation: gauntlet-cap-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
@@ -2449,7 +2820,7 @@ export const CAPSULE_CSS = `
   display: flex; align-items: flex-start; gap: 8px;
   padding: 6px 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--gx-tint-soft);
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
   color: var(--gx-fg-dim);
@@ -2470,7 +2841,7 @@ export const CAPSULE_CSS = `
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--gx-tint-soft);
   color: var(--gx-fg);
   font-size: 10px;
   font-weight: 600;
@@ -2667,7 +3038,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__copy--ghost:hover {
   border-color: var(--gx-border-mid);
   color: var(--gx-fg);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--gx-tint-soft);
 }
 
 /* ── Voice button (press-and-hold) ──────────────────────────────────────── */
@@ -2682,7 +3053,7 @@ export const CAPSULE_CSS = `
   padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid var(--gx-border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--gx-tint-soft);
   color: var(--gx-fg-dim);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
@@ -2697,7 +3068,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__voice:hover:not(:disabled) {
   color: var(--gx-fg);
   border-color: var(--gx-border-mid);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gx-tint-soft);
 }
 .gauntlet-capsule__voice:disabled {
   opacity: 0.4;
@@ -2734,7 +3105,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__palette-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(8, 9, 13, 0.55);
+  background: var(--gx-sunken);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   pointer-events: auto;
@@ -2816,6 +3187,81 @@ export const CAPSULE_CSS = `
   color: var(--gx-fg-dim);
 }
 
+/* Palette item — dual layout: label + description on the left, badges
+   and shortcut on the right. Tools carry mode/risk/approval pills. */
+.gauntlet-capsule__palette-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.gauntlet-capsule__palette-desc {
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--gx-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.gauntlet-capsule__palette-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__palette-item--tool .gauntlet-capsule__palette-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--gx-code-keyword);
+}
+.gauntlet-capsule__palette-item--tool.gauntlet-capsule__palette-item--active
+  .gauntlet-capsule__palette-label {
+  color: var(--gx-code-keyword);
+}
+.gauntlet-capsule__palette-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-tint-soft);
+  color: var(--gx-fg-muted);
+}
+.gauntlet-capsule__palette-badge--mode-read {
+  border-color: rgba(98, 130, 200, 0.30);
+  background: rgba(98, 130, 200, 0.10);
+  color: #4f6fb0;
+}
+.gauntlet-capsule__palette-badge--mode-write {
+  border-color: rgba(208, 122, 90, 0.40);
+  background: rgba(208, 122, 90, 0.12);
+  color: #b3501f;
+}
+.gauntlet-capsule__palette-badge--risk-medium {
+  border-color: rgba(212, 150, 60, 0.45);
+  background: rgba(212, 150, 60, 0.12);
+  color: #b3791f;
+}
+.gauntlet-capsule__palette-badge--risk-high {
+  border-color: rgba(212, 96, 60, 0.55);
+  background: rgba(212, 96, 60, 0.14);
+  color: #b3401f;
+}
+.gauntlet-capsule__palette-badge--approval {
+  border-color: rgba(212, 96, 60, 0.40);
+  background: rgba(212, 96, 60, 0.10);
+  color: #b3401f;
+}
+
 /* ── Toast flash (saved / code copied) ──────────────────────────────────── */
 @keyframes gauntlet-cap-flash-rise {
   0%   { opacity: 0; transform: translate(-50%, 8px); }
@@ -2871,19 +3317,19 @@ export const CAPSULE_CSS = `
 .gauntlet-md__h1 { font-size: 18px; }
 .gauntlet-md__h2 { font-size: 15px; }
 .gauntlet-md__h3 { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gx-fg-dim); }
-.gauntlet-md__strong { font-weight: 600; color: #f4d4c0; }
+.gauntlet-md__strong { font-weight: 600; color: var(--gx-fg); }
 .gauntlet-md__em { font-style: italic; color: var(--gx-fg-dim); }
 .gauntlet-md__inline-code {
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   font-size: 11.5px;
-  background: rgba(208, 122, 90, 0.10);
-  color: #f4c4ad;
+  background: var(--gx-ember-soft, rgba(208, 122, 90, 0.10));
+  color: var(--gx-code-keyword);
   padding: 1px 6px;
   border-radius: 4px;
-  border: 1px solid rgba(208, 122, 90, 0.18);
+  border: 1px solid rgba(208, 122, 90, 0.20);
 }
 .gauntlet-md__link {
-  color: #f4c4ad;
+  color: var(--gx-ember);
   text-decoration: underline;
   text-decoration-color: rgba(208, 122, 90, 0.45);
   text-underline-offset: 2px;
@@ -2927,8 +3373,8 @@ export const CAPSULE_CSS = `
 .gauntlet-md__code {
   margin: 0;
   border: 1px solid var(--gx-border);
-  border-radius: 8px;
-  background: rgba(8, 9, 13, 0.7);
+  border-radius: 10px;
+  background: var(--gx-code-bg);
   overflow: hidden;
 }
 .gauntlet-md__code-meta {
@@ -2937,7 +3383,7 @@ export const CAPSULE_CSS = `
   align-items: center;
   padding: 6px 10px;
   border-bottom: 1px solid var(--gx-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--gx-code-meta-bg);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   letter-spacing: 0.18em;
@@ -2965,11 +3411,11 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-md__code-body {
   margin: 0;
-  padding: 10px 12px;
+  padding: 12px 14px;
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-  font-size: 11.5px;
-  line-height: 1.55;
-  color: #e6e8ee;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--gx-code-fg);
   overflow-x: auto;
   white-space: pre;
 }
@@ -2980,4 +3426,14 @@ export const CAPSULE_CSS = `
   padding: 0;
   border: none;
 }
+/* Syntax tokens — keywords/strings/numbers/comments/fns picked by the
+   in-house tokenizer in markdown.tsx. Each kind binds to a --gx-code-*
+   custom property so the light flagship + night premium themes stay
+   in lockstep without forking the markdown.tsx logic. */
+.gauntlet-md__tok--k { color: var(--gx-code-keyword); font-weight: 500; }
+.gauntlet-md__tok--s { color: var(--gx-code-string); }
+.gauntlet-md__tok--n { color: var(--gx-code-number); }
+.gauntlet-md__tok--c { color: var(--gx-code-comment); font-style: italic; }
+.gauntlet-md__tok--f { color: var(--gx-code-fn); }
+.gauntlet-md__tok--p { color: inherit; }
 `;

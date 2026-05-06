@@ -18,6 +18,12 @@ import type { AmbientStorage } from './ambient';
 const KEY_POSITION = 'gauntlet:pill_position';
 const KEY_DISMISSED = 'gauntlet:dismissed_domains';
 const KEY_SCREENSHOT_ENABLED = 'gauntlet:screenshot_enabled';
+const KEY_THEME = 'gauntlet:theme';
+const KEY_PALETTE_RECENT = 'gauntlet:palette_recent';
+const PALETTE_RECENT_MAX = 8;
+
+export type CapsuleTheme = 'light' | 'dark';
+export const DEFAULT_CAPSULE_THEME: CapsuleTheme = 'light';
 
 export interface PillPosition {
   bottom: number;
@@ -51,6 +57,10 @@ export interface PillPrefs {
   isDomainDismissed(hostname: string): Promise<boolean>;
   readScreenshotEnabled(): Promise<boolean>;
   writeScreenshotEnabled(enabled: boolean): Promise<void>;
+  readTheme(): Promise<CapsuleTheme>;
+  writeTheme(theme: CapsuleTheme): Promise<void>;
+  readPaletteRecent(): Promise<string[]>;
+  notePaletteUse(id: string): Promise<void>;
 }
 
 export function createPillPrefs(store: AmbientStorage): PillPrefs {
@@ -101,6 +111,24 @@ export function createPillPrefs(store: AmbientStorage): PillPrefs {
     },
     async writeScreenshotEnabled(enabled) {
       await store.set(KEY_SCREENSHOT_ENABLED, !!enabled);
+    },
+    async readTheme() {
+      const raw = await store.get<CapsuleTheme>(KEY_THEME);
+      return raw === 'dark' || raw === 'light' ? raw : DEFAULT_CAPSULE_THEME;
+    },
+    async writeTheme(theme) {
+      await store.set(KEY_THEME, theme);
+    },
+    async readPaletteRecent() {
+      const raw = await store.get<string[]>(KEY_PALETTE_RECENT);
+      if (!Array.isArray(raw)) return [];
+      return raw.filter((x): x is string => typeof x === 'string').slice(0, PALETTE_RECENT_MAX);
+    },
+    async notePaletteUse(id) {
+      if (!id) return;
+      const current = await this.readPaletteRecent();
+      const next = [id, ...current.filter((x) => x !== id)].slice(0, PALETTE_RECENT_MAX);
+      await store.set(KEY_PALETTE_RECENT, next);
     },
   };
 }
