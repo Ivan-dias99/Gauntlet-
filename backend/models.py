@@ -668,6 +668,16 @@ class ActionPolicy(BaseModel):
     require_danger_ack: bool = False
 
 
+class ToolPolicy(BaseModel):
+    """Sprint 5 — per-tool governance gate. Lookup key is the tool name
+    (Tool.name). Missing entries default to allowed; the operator opts
+    OUT per-tool via the Control Center matrix. require_approval is
+    advisory in Sprint 5 — the agent loop currently honours `allowed`
+    only; the approval gate ships in Sprint 7."""
+    allowed: bool = True
+    require_approval: bool = False
+
+
 class ComposerSettings(BaseModel):
     """The full governance contract. Everything optional in the Update
     counterpart — this model is the canonical replace-payload form
@@ -679,6 +689,9 @@ class ComposerSettings(BaseModel):
     # Defaults for unmatched keys.
     default_domain_policy: DomainPolicy = Field(default_factory=DomainPolicy)
     default_action_policy: ActionPolicy = Field(default_factory=ActionPolicy)
+    # Sprint 5 — per-tool matrix. Lookup by Tool.name. Missing tools default
+    # to allowed=true; agent dispatcher consults this before each tool call.
+    tool_policies: dict[str, ToolPolicy] = Field(default_factory=dict)
     # Context caps applied at /composer/context to keep payloads bounded.
     # Char-based for honesty: backend can only count chars, not "DOM
     # elements" — the extension also pre-truncates and the server cap is
@@ -693,3 +706,16 @@ class ComposerSettings(BaseModel):
     updated_at: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
+
+
+class ToolManifest(BaseModel):
+    """Sprint 5 — declarative governance shape for a tool. Returned by
+    GET /tools/manifests and rendered in the Control Center matrix."""
+    name: str
+    description: str
+    mode: str  # read | draft | preview | execute_with_approval
+    risk: str  # low | medium | high
+    version: str
+    scopes: list[str] = Field(default_factory=list)
+    rollback_policy: str = "n/a"
+    timeout_s: float
