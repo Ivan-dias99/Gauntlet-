@@ -940,6 +940,11 @@ async def diagnostics():
     from config import MODEL_ID, TRIAD_TEMPERATURE, JUDGE_TEMPERATURE, TRIAD_COUNT
 
     mem_stats = await failure_memory.get_stats()
+    # Sprint 8 — surface the Sprint 4/7 stores' load + save error state
+    # so operators can see at a glance whether a deploy lost durability.
+    from composer_settings import settings_store
+    from memory_records import memory_records_store
+    memory_records_stats = await memory_records_store.stats()
 
     # Honest boot signal: how the process was configured, not how the
     # operator intended it. Mock-mode and missing API key are the two
@@ -1007,6 +1012,11 @@ async def diagnostics():
             "runs_last_load_error": run_store._last_load_error,
             "memory_last_save_error": failure_memory._last_save_error,
             "memory_last_load_error": failure_memory._last_load_error,
+            "composer_settings_last_save_error": settings_store.last_save_error,
+            "composer_settings_last_load_error": settings_store.last_load_error,
+            "memory_records_last_save_error": memory_records_store._last_save_error,
+            "memory_records_last_load_error": memory_records_store._last_load_error,
         },
+        "memory_records": memory_records_stats,
         "doctrine": "Conservative Intelligence — prefer refusal over error",
     }
