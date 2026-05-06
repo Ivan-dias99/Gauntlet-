@@ -79,12 +79,36 @@ export function resolveBackendUrl(): string | null {
   );
 }
 
+// Names checked, in order, by resolveBackendUrl. Surfaced in the
+// unreachable envelope when no env is set so the operator sees
+// exactly which variable to add on Vercel without grep'ing this file.
+const BACKEND_URL_ENV_NAMES = [
+  "GAUNTLET_BACKEND_URL",
+  "SIGNAL_BACKEND_URL",
+  "RUBERRA_BACKEND_URL",
+] as const;
+
+function envPresenceMessage(): string {
+  const env =
+    typeof process !== "undefined" && process.env ? process.env : undefined;
+  const presence = BACKEND_URL_ENV_NAMES.map(
+    (name) => `${name}=${env?.[name] ? "set" : "unset"}`,
+  ).join(", ");
+  return (
+    "No backend URL env var found. Set GAUNTLET_BACKEND_URL " +
+    "(or one of the legacy aliases) in your Vercel project settings " +
+    `and redeploy. Checked: ${presence}.`
+  );
+}
+
 export async function forward(
   req: Request,
   stripPrefix: RegExp,
 ): Promise<Response> {
   const backend = resolveBackendUrl();
-  if (!backend) return unreachable("backend_url_not_configured");
+  if (!backend) {
+    return unreachable("backend_url_not_configured", 503, envPresenceMessage());
+  }
 
   const url = new URL(req.url);
   const tail = url.pathname.replace(stripPrefix, "");
