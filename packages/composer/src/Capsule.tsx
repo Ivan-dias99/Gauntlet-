@@ -105,6 +105,16 @@ export function Capsule({
   // sees what's actually available; doctrine is "tudo à mão".
   const [toolManifests, setToolManifests] = useState<ToolManifest[]>([]);
   const [paletteRecent, setPaletteRecent] = useState<string[]>([]);
+  // Ripple counter — incremented on each submit so React keys the
+  // ripple element fresh, replaying the keyframe even when the user
+  // submits twice in quick succession.
+  const [submitRipple, setSubmitRipple] = useState(0);
+  // Context-pop pulse — fires once when the page selection transitions
+  // from empty → non-empty. The chip pops to confirm "context locked
+  // in" before the operator even looks at the meta strip. Cleared by
+  // a timer so the chip returns to rest.
+  const [contextJustArrived, setContextJustArrived] = useState(false);
+  const prevHadContextRef = useRef(false);
   // Multimodal: when the user opted in (via SettingsDrawer), capture
   // a viewport screenshot once per cápsula mount. The result is
   // attached to the next request's metadata so the planner can "see"
@@ -235,6 +245,22 @@ export function Capsule({
       cancelled = true;
     };
   }, [client, prefs]);
+
+  // Context-pop watcher — when snapshot.text flips empty → non-empty
+  // (e.g. iframe-harvest enriched the snapshot, or refreshSnapshot
+  // pulled in a fresh selection), pulse the source chip so the
+  // operator's eye catches the new context. One-shot, no infinite
+  // pulse loop.
+  useEffect(() => {
+    const has = !!snapshot.text;
+    if (has && !prevHadContextRef.current) {
+      setContextJustArrived(true);
+      const t = window.setTimeout(() => setContextJustArrived(false), 700);
+      prevHadContextRef.current = true;
+      return () => window.clearTimeout(t);
+    }
+    prevHadContextRef.current = has;
+  }, [snapshot.text]);
 
   // Theme — load persisted choice once at mount. While the storage
   // round-trip resolves the cápsula renders the default flagship light,
@@ -654,6 +680,10 @@ export function Capsule({
   const onSubmit = useCallback(
     (ev: React.FormEvent) => {
       ev.preventDefault();
+      // Trigger the submit ripple — visual confirmation that the
+      // gesture landed even before the network round-trip starts.
+      // Cleared by the keyframe's animationend listener below.
+      setSubmitRipple((n) => n + 1);
       void requestPlan();
     },
     [requestPlan],
@@ -832,7 +862,13 @@ export function Capsule({
 
           <section className="gauntlet-capsule__context">
             <div className="gauntlet-capsule__context-meta">
-              <span className="gauntlet-capsule__source">browser</span>
+              <span
+                className={`gauntlet-capsule__source${
+                  contextJustArrived ? ' gauntlet-capsule__source--popped' : ''
+                }`}
+              >
+                browser
+              </span>
               <span className="gauntlet-capsule__url" title={snapshot.url}>
                 {snapshot.pageTitle || snapshot.url}
               </span>
@@ -916,6 +952,17 @@ export function Capsule({
                 className="gauntlet-capsule__compose"
                 disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing' || !userInput.trim()}
               >
+                {/* Ripple — keyed on submitRipple so each submit
+                    replays the keyframe even if the previous ripple
+                    is still mid-animation. Pointer-events none so
+                    the underlying button still takes clicks. */}
+                {submitRipple > 0 && (
+                  <span
+                    key={submitRipple}
+                    className="gauntlet-capsule__compose-ripple"
+                    aria-hidden
+                  />
+                )}
                 {phase === 'planning' || phase === 'streaming' ? (
                   <>
                     <span className="gauntlet-capsule__compose-spinner" aria-hidden />
@@ -2273,6 +2320,22 @@ export const CAPSULE_CSS = `
   box-shadow: 0 0 6px rgba(208, 122, 90, 0.65);
   flex-shrink: 0;
 }
+/* Context pop — fires once when a fresh selection lands. The chip
+   bumps to 1.06 with an ember halo, settles back. The dot inside also
+   flashes brighter for the same window. */
+@keyframes gauntlet-cap-chip-pop {
+  0%   { transform: translateY(0)    scale(1);    box-shadow: 0 0 0 0 rgba(208, 122, 90, 0); }
+  35%  { transform: translateY(-2px) scale(1.06); box-shadow: 0 0 0 6px rgba(208, 122, 90, 0.18); }
+  70%  { transform: translateY(-1px) scale(1.02); box-shadow: 0 0 0 3px rgba(208, 122, 90, 0.10); }
+  100% { transform: translateY(0)    scale(1);    box-shadow: 0 0 0 0 rgba(208, 122, 90, 0); }
+}
+.gauntlet-capsule__source--popped {
+  animation: gauntlet-cap-chip-pop 700ms cubic-bezier(0.16, 1.05, 0.34, 1);
+}
+.gauntlet-capsule__source--popped::before {
+  background: #ffd2b6;
+  box-shadow: 0 0 12px rgba(208, 122, 90, 0.95);
+}
 .gauntlet-capsule__url {
   flex: 1;
   min-width: 0;
@@ -2420,6 +2483,39 @@ export const CAPSULE_CSS = `
   background: var(--gx-tint-soft);
   color: var(--gx-fg-dim);
   font-size: 10px;
+}
+/* Submit ripple — radiates from the compose button on every submit so
+   the operator's gesture has visible weight. Pure CSS animation, lives
+   inside the button (overflow stays clipped to the pill shape so the
+   ripple looks like an inner pulse expanding outward). */
+@keyframes gauntlet-cap-ripple {
+  0%   { opacity: 0.45; transform: translate(-50%, -50%) scale(0.2); }
+  60%  { opacity: 0.20; }
+  100% { opacity: 0;    transform: translate(-50%, -50%) scale(2.6); }
+}
+.gauntlet-capsule__compose {
+  position: relative;
+  overflow: hidden;
+}
+.gauntlet-capsule__compose-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.65) 0%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  pointer-events: none;
+  animation: gauntlet-cap-ripple 520ms cubic-bezier(0.2, 0, 0, 1) forwards;
+  z-index: 0;
+}
+.gauntlet-capsule__compose > *:not(.gauntlet-capsule__compose-ripple) {
+  position: relative;
+  z-index: 1;
 }
 .gauntlet-capsule__compose {
   position: relative;
