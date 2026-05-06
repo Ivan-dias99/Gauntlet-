@@ -28,6 +28,13 @@ export interface PillProps {
   // so it visually communicates work-in-progress even after dismiss.
   // Set by App via the gauntlet:phase event broadcast from Capsule.
   phase?: 'idle' | 'planning' | 'streaming' | 'plan_ready' | 'executing' | 'executed' | 'error' | null;
+  // True when the user has a non-empty selection on the page. The pill
+  // pulses slightly stronger so the operator senses "context is ready"
+  // before they even open the cápsula. Set by App via selectionchange.
+  hasContext?: boolean;
+  // True when the backend last failed — the pill carries a soft red ring
+  // so the operator knows summoning will land in a degraded state.
+  disconnected?: boolean;
 }
 
 // Drag is "armed" only after the pointer moves more than this many
@@ -43,9 +50,30 @@ const DRAG_THRESHOLD_PX = 4;
 // hovering over the pill cancels the idle state outright.
 const IDLE_AFTER_MS = 30_000;
 
-export function Pill({ position, onClick, onDismissDomain, flash, phase }: PillProps) {
+// Magnet — within this radius of the pill, the pill drifts toward the
+// cursor by up to MAGNET_PULL_PX. Outside the radius it returns to
+// rest. Doctrine: "alive and subtly magnetic, without being annoying"
+// — never chase the cursor, never aggressive bounce.
+const MAGNET_RADIUS_PX = 180;
+const MAGNET_PULL_MIN_PX = 8;
+const MAGNET_PULL_MAX_PX = 24;
+
+export function Pill({
+  position,
+  onClick,
+  onDismissDomain,
+  flash,
+  phase,
+  hasContext,
+  disconnected,
+}: PillProps) {
   const [pos, setPos] = useState<PillPosition>(position);
   const [idle, setIdle] = useState(false);
+  const [magnet, setMagnet] = useState<{ dx: number; dy: number; near: boolean }>({
+    dx: 0,
+    dy: 0,
+    near: false,
+  });
   const dragStateRef = useRef<{
     pressX: number;
     pressY: number;
@@ -55,6 +83,11 @@ export function Pill({ position, onClick, onDismissDomain, flash, phase }: PillP
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const idleTimerRef = useRef<number | null>(null);
+  // Magnet plumbing — rAF-throttled so we don't write transform on
+  // every mousemove, and the latest cursor coords are kept in a ref so
+  // the rAF callback closes over fresh data without re-binding.
+  const magnetRafRef = useRef<number | null>(null);
+  const cursorRef = useRef<{ x: number; y: number } | null>(null);
 
   // Sync incoming prop changes (e.g. App finished loading prefs from
   // storage after the initial render). Only when the prop actually
@@ -84,6 +117,54 @@ export function Pill({ position, onClick, onDismissDomain, flash, phase }: PillP
       window.removeEventListener('keydown', reset);
       if (idleTimerRef.current !== null) {
         window.clearTimeout(idleTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Magnet — passive pointermove updates the cursor ref; a single rAF
+  // pumps the React state at frame rate so we never thrash transforms.
+  // Effect bails out during drag (the dragger needs full control of
+  // the pill's position).
+  useEffect(() => {
+    function onPointer(ev: PointerEvent) {
+      cursorRef.current = { x: ev.clientX, y: ev.clientY };
+      if (magnetRafRef.current != null) return;
+      magnetRafRef.current = window.requestAnimationFrame(() => {
+        magnetRafRef.current = null;
+        if (dragStateRef.current) return;
+        const cursor = cursorRef.current;
+        if (!cursor) return;
+        const btn = buttonRef.current;
+        if (!btn) return;
+        const rect = btn.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = cursor.x - cx;
+        const dy = cursor.y - cy;
+        const dist = Math.hypot(dx, dy);
+        if (dist > MAGNET_RADIUS_PX || dist < 1) {
+          setMagnet((prev) =>
+            prev.dx === 0 && prev.dy === 0 && !prev.near
+              ? prev
+              : { dx: 0, dy: 0, near: false },
+          );
+          return;
+        }
+        // Linear pull from MIN at the radius edge to MAX at the centre.
+        const t = 1 - dist / MAGNET_RADIUS_PX;
+        const pull =
+          MAGNET_PULL_MIN_PX + (MAGNET_PULL_MAX_PX - MAGNET_PULL_MIN_PX) * t;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        setMagnet({ dx: ux * pull, dy: uy * pull, near: true });
+      });
+    }
+    window.addEventListener('pointermove', onPointer, { passive: true });
+    return () => {
+      window.removeEventListener('pointermove', onPointer);
+      if (magnetRafRef.current != null) {
+        cancelAnimationFrame(magnetRafRef.current);
+        magnetRafRef.current = null;
       }
     };
   }, []);
@@ -169,16 +250,42 @@ export function Pill({ position, onClick, onDismissDomain, flash, phase }: PillP
     [onDismissDomain],
   );
 
+  // Resolve flash → success/error class names. Both names exist in CSS
+  // so legacy --flash-* selectors still trigger the same animations.
+  const flashClass =
+    flash === 'ok'
+      ? 'gauntlet-pill--success'
+      : flash === 'fail'
+        ? 'gauntlet-pill--error'
+        : '';
+  const className = [
+    'gauntlet-pill',
+    idle ? 'gauntlet-pill--idle' : '',
+    magnet.near ? 'gauntlet-pill--near-cursor' : '',
+    hasContext ? 'gauntlet-pill--context' : '',
+    disconnected ? 'gauntlet-pill--disconnected' : '',
+    flashClass,
+    phase && phase !== 'idle' ? `gauntlet-pill--phase-${phase}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <button
       ref={buttonRef}
       type="button"
-      className={`gauntlet-pill${idle ? ' gauntlet-pill--idle' : ''}${
-        flash ? ` gauntlet-pill--flash-${flash}` : ''
-      }${
-        phase && phase !== 'idle' ? ` gauntlet-pill--phase-${phase}` : ''
-      }`}
-      style={{ bottom: `${pos.bottom}px`, right: `${pos.right}px` }}
+      className={className}
+      style={{
+        bottom: `${pos.bottom}px`,
+        right: `${pos.right}px`,
+        // Magnet offset via transform — never touches layout, stays on
+        // the compositor thread. Drag clears the offset implicitly by
+        // gating the rAF write.
+        transform:
+          magnet.dx !== 0 || magnet.dy !== 0
+            ? `translate3d(${magnet.dx}px, ${magnet.dy}px, 0)`
+            : undefined,
+      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -229,8 +336,10 @@ export const PILL_CSS = `
   justify-content: center;
   pointer-events: auto;
   z-index: 2147483647;
+  /* Transform transition tuned for the magnet — short enough to feel
+     responsive, long enough to read as motion rather than a snap. */
   transition:
-    transform 160ms cubic-bezier(0.2, 0, 0, 1),
+    transform 220ms cubic-bezier(0.2, 0, 0, 1),
     box-shadow 160ms cubic-bezier(0.2, 0, 0, 1),
     border-color 160ms ease,
     opacity 600ms ease,
@@ -279,17 +388,56 @@ export const PILL_CSS = `
   60%      { transform: translateX(-2px) rotate(-2deg); }
   80%      { transform: translateX(2px)  rotate(2deg); }
 }
-.gauntlet-pill--flash-ok {
+.gauntlet-pill--flash-ok,
+.gauntlet-pill--success {
   border-color: rgba(122, 180, 138, 0.85) !important;
   animation:
     gauntlet-pill-rise 320ms cubic-bezier(0.2, 0, 0, 1) both,
     gauntlet-pill-flash-ok 1400ms ease-out 1;
 }
-.gauntlet-pill--flash-fail {
+.gauntlet-pill--flash-fail,
+.gauntlet-pill--error {
   border-color: rgba(212, 96, 60, 0.85) !important;
   animation:
     gauntlet-pill-rise 320ms cubic-bezier(0.2, 0, 0, 1) both,
     gauntlet-pill-flash-fail 600ms ease-in-out 1;
+}
+
+/* Near-cursor — subtle visual confirmation when the pill drifts toward
+   the cursor. Brighter ring + slight upscale; never aggressive. */
+.gauntlet-pill--near-cursor {
+  border-color: rgba(208, 122, 90, 0.75);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 22px rgba(208, 122, 90, 0.55),
+    0 6px 18px rgba(0, 0, 0, 0.50);
+}
+.gauntlet-pill--near-cursor .gauntlet-pill__dot {
+  animation-duration: 1.6s;
+}
+
+/* Context detected — a non-empty selection on the page. Slightly
+   stronger pulse so the operator senses "ready" without reading. */
+.gauntlet-pill--context {
+  border-color: rgba(208, 122, 90, 0.80);
+}
+.gauntlet-pill--context .gauntlet-pill__dot {
+  animation-duration: 1.4s;
+  background: #ffd2b6;
+}
+
+/* Disconnected — backend last failed. A soft red ring states the pill
+   is "live" but the brain isn't reachable. Doctrine: never silent. */
+.gauntlet-pill--disconnected {
+  border-color: rgba(212, 96, 60, 0.65) !important;
+  box-shadow:
+    0 0 0 1px rgba(212, 96, 60, 0.25),
+    0 0 12px rgba(212, 96, 60, 0.40),
+    0 4px 12px rgba(0, 0, 0, 0.40);
+}
+.gauntlet-pill--disconnected .gauntlet-pill__dot {
+  background: #f1a4ad;
+  box-shadow: 0 0 6px rgba(241, 164, 173, 0.85);
 }
 .gauntlet-pill__mark {
   position: relative;

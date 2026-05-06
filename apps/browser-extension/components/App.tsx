@@ -67,6 +67,29 @@ export function App() {
   const [phase, setPhase] = useState<
     'idle' | 'planning' | 'streaming' | 'plan_ready' | 'executing' | 'executed' | 'error' | null
   >(null);
+  // Page-level selection presence — drives the pill's --context state
+  // so the operator senses "ready to summon" without opening it.
+  const [hasContext, setHasContext] = useState(false);
+
+  // selectionchange fires far more often than we need (every keystroke
+  // inside a contenteditable, every micro-drag of the caret). A simple
+  // boolean flip is cheap so we don't throttle, but we do guard against
+  // pointless re-renders by short-circuiting equal values.
+  useEffect(() => {
+    function update() {
+      let next = false;
+      try {
+        const sel = window.getSelection();
+        next = !!(sel && sel.toString().trim().length > 0);
+      } catch {
+        next = false;
+      }
+      setHasContext((prev) => (prev === next ? prev : next));
+    }
+    update();
+    document.addEventListener('selectionchange', update, { passive: true });
+    return () => document.removeEventListener('selectionchange', update);
+  }, []);
 
   useEffect(() => {
     function onResult(ev: Event) {
@@ -232,6 +255,8 @@ export function App() {
         onDismissDomain={dismissThisDomain}
         flash={pillFlash}
         phase={phase}
+        hasContext={hasContext}
+        disconnected={phase === 'error'}
       />
     );
   }

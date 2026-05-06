@@ -10,6 +10,11 @@ import { ComposerClient } from '../../lib/composer-client';
 // Keep it lean: same Capsule component, no page context — there is no
 // page to read.
 
+// Lifeboat fallback — the standalone window is compact (760x460 in
+// background.ts). The cápsula fills the window edge-to-edge here since
+// the window itself IS the surface, but the floating defaults are
+// kept so the layout stays single-column and viewport-safe. No bottom
+// dock, no two-panel split, no 1200x800 dashboard.
 const WINDOW_CSS = `
   html, body {
     margin: 0;
@@ -25,11 +30,14 @@ const WINDOW_CSS = `
   .gauntlet-capsule {
     position: static;
     width: 100%;
+    max-width: 100%;
     height: 100%;
+    max-height: 100%;
     min-height: 0;
     border-radius: 0;
     box-shadow: none;
     border: none;
+    transform: none;
   }
 `;
 

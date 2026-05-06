@@ -693,10 +693,8 @@ export function Capsule({
   //   1. Selection bbox — the user is pointing at specific text.
   //   2. Cursor position — no selection, but we know where the mouse
   //      was last seen on the page; treat that as a zero-size rect so
-  //      computeAnchorPosition's flip-up/flip-down + clamp logic keeps
-  //      working unchanged.
-  //   3. Null — the strip layout pinned to the bottom of the viewport
-  //      catches us as the last-resort orientation fallback.
+  //      computeCapsulePosition's flip + clamp logic keeps working.
+  //   3. Null — open compact centered capsule (NOT a bottom strip).
   const anchor = useMemo<SelectionRect | null>(() => {
     if (snapshot.bbox) return snapshot.bbox;
     if (cursorAnchor) {
@@ -709,9 +707,14 @@ export function Capsule({
     }
     return null;
   }, [snapshot.bbox, cursorAnchor]);
-  const anchoredStyle = useMemo<React.CSSProperties | undefined>(() => {
+  const placedStyle = useMemo<React.CSSProperties | undefined>(() => {
+    // Centered mode is positioned purely via CSS (translate(-50%,-50%))
+    // — returning undefined here keeps inline style out of the way.
     if (!anchor) return undefined;
-    const pos = computeAnchorPosition(anchor);
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const size = estimateCapsuleSize(vw, vh);
+    const pos = computeCapsulePosition(anchor, { width: vw, height: vh }, size);
     return {
       top: `${pos.top}px`,
       left: `${pos.left}px`,
@@ -723,7 +726,9 @@ export function Capsule({
   const phaseClass = `gauntlet-capsule--phase-${phase}`;
   const className = [
     'gauntlet-capsule',
-    anchor ? 'gauntlet-capsule--anchored' : null,
+    'gauntlet-capsule--floating',
+    anchor ? 'gauntlet-capsule--anchored' : 'gauntlet-capsule--centered',
+    snapshot.text ? null : 'gauntlet-capsule--no-selection',
     phaseClass,
   ].filter(Boolean).join(' ');
 
@@ -741,7 +746,7 @@ export function Capsule({
       className={className}
       role="dialog"
       aria-label="Gauntlet"
-      style={anchoredStyle}
+      style={placedStyle}
     >
       <div className="gauntlet-capsule__aurora" aria-hidden />
 
@@ -805,9 +810,10 @@ export function Capsule({
             {snapshot.text ? (
               <pre className="gauntlet-capsule__selection">{truncate(snapshot.text, 600)}</pre>
             ) : (
-              <p className="gauntlet-capsule__selection gauntlet-capsule__selection--empty">
-                no selection — input alone will be sent as context
-              </p>
+              <CompactContextSummary
+                snapshot={snapshot}
+                screenshotEnabled={screenshot !== null}
+              />
             )}
           </section>
         </div>
@@ -1255,6 +1261,57 @@ function truncate(s: string, max: number): string {
   return s.slice(0, max) + '…';
 }
 
+// Compact context summary for the no-selection state. Replaces a giant
+// empty-selection block with a tight bulleted readout — context still
+// visible, but it doesn't dominate the layout.
+function CompactContextSummary({
+  snapshot,
+  screenshotEnabled,
+}: {
+  snapshot: SelectionSnapshot;
+  screenshotEnabled: boolean;
+}) {
+  const domCount = (() => {
+    if (!snapshot.domSkeleton) return 0;
+    try {
+      const parsed = JSON.parse(snapshot.domSkeleton);
+      if (Array.isArray(parsed)) return parsed.length;
+    } catch {
+      // domSkeleton arrived as plain text — fall through to 0.
+    }
+    return 0;
+  })();
+  const pageCaptured = !!snapshot.pageText;
+  return (
+    <ul className="gauntlet-capsule__context-summary" aria-label="context">
+      <li>
+        <span className="gauntlet-capsule__context-key">selection</span>
+        <span className="gauntlet-capsule__context-val gauntlet-capsule__context-val--muted">
+          none
+        </span>
+      </li>
+      <li>
+        <span className="gauntlet-capsule__context-key">page captured</span>
+        <span className="gauntlet-capsule__context-val">
+          {pageCaptured ? 'yes' : 'no'}
+        </span>
+      </li>
+      <li>
+        <span className="gauntlet-capsule__context-key">DOM captured</span>
+        <span className="gauntlet-capsule__context-val">
+          {domCount > 0 ? `${domCount} elements` : '—'}
+        </span>
+      </li>
+      <li>
+        <span className="gauntlet-capsule__context-key">screenshot</span>
+        <span className="gauntlet-capsule__context-val">
+          {screenshotEnabled ? 'on' : 'off'}
+        </span>
+      </li>
+    </ul>
+  );
+}
+
 // Settings drawer — for now, the only knob is "domínios escondidos".
 // Reads the current dismiss list from chrome.storage and offers a
 // per-domain restore button. Lives inside the cápsula's left panel
@@ -1421,42 +1478,129 @@ function describeAction(action: DomAction): string {
   }
 }
 
-// Where to put the anchored capsule. Prefers below the selection; flips
-// above when there isn't enough room below; clamps inside the viewport
-// so the capsule never spills off-screen on small windows or selections
-// near the edges. The output is a top-left corner — width/height are
-// fixed via CSS so we don't need to know the rendered size to decide
-// the corner.
-const ANCHOR_WIDTH = 560;
+// Geometry — the capsule is always a floating, viewport-safe shape.
+// computeCapsulePosition picks the best side relative to the anchor
+// (below/above, right/left) and clamps the final corner so the capsule
+// never spills off-screen.
+//
+// The width/height come from CSS (clamp(560,72vw,820) × clamp(420,72vh,560))
+// so we estimate the rendered size from the viewport here. That's good
+// enough for placement: the precise final size is set by the browser
+// after layout, and the clamp leaves a 16px viewport pad on every side.
+const VIEWPORT_PAD = 16;
 const ANCHOR_GAP = 12;
-const ANCHOR_VIEWPORT_PAD = 8;
-const ANCHOR_MIN_BELOW_ROOM = 220;
 
-function computeAnchorPosition(bbox: SelectionRect): { top: number; left: number } {
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+function clamp(value: number, min: number, max: number): number {
+  if (max < min) return min;
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
 
-  const belowTop = bbox.y + bbox.height + ANCHOR_GAP;
-  const aboveBottom = bbox.y - ANCHOR_GAP;
+export interface ViewportSize {
+  width: number;
+  height: number;
+}
 
-  let top: number;
-  if (belowTop + ANCHOR_MIN_BELOW_ROOM <= vh - ANCHOR_VIEWPORT_PAD) {
-    top = belowTop;
-  } else if (aboveBottom > ANCHOR_MIN_BELOW_ROOM) {
-    // Flip above. Top edge sits N above the selection; the capsule's own
-    // max-height handles the lower edge.
-    top = Math.max(ANCHOR_VIEWPORT_PAD, aboveBottom - ANCHOR_MIN_BELOW_ROOM);
-  } else {
-    // No room either way — center vertically.
-    top = Math.max(ANCHOR_VIEWPORT_PAD, Math.floor((vh - ANCHOR_MIN_BELOW_ROOM) / 2));
+export interface CapsuleSize {
+  width: number;
+  height: number;
+}
+
+export type CapsulePlacement = 'above' | 'below' | 'right' | 'left' | 'center';
+
+export interface CapsulePosition {
+  top: number;
+  left: number;
+  placement: CapsulePlacement;
+}
+
+// Mirror of the CSS clamps in CAPSULE_CSS — kept in lockstep so the
+// placement maths matches the actually-rendered capsule. If you tweak
+// either, tweak both.
+export function estimateCapsuleSize(vw: number, vh: number): CapsuleSize {
+  const small = vw <= 600;
+  if (small) {
+    return {
+      width: Math.max(0, vw - 24),
+      height: Math.max(0, vh - 24),
+    };
+  }
+  const width = clamp(0.72 * vw, 560, 820);
+  const height = clamp(0.72 * vh, 420, 560);
+  return { width, height };
+}
+
+export function computeCapsulePosition(
+  anchor: SelectionRect | null,
+  viewport: ViewportSize,
+  capsule: CapsuleSize,
+): CapsulePosition {
+  // No anchor → center. Caller should use the centered class instead of
+  // the inline style, but we still return a sensible top/left so this
+  // function stays usable in tests / popup-window callers.
+  if (!anchor) {
+    return {
+      top: Math.max(VIEWPORT_PAD, Math.floor((viewport.height - capsule.height) / 2)),
+      left: Math.max(VIEWPORT_PAD, Math.floor((viewport.width - capsule.width) / 2)),
+      placement: 'center',
+    };
   }
 
-  let left = bbox.x;
-  const maxLeft = vw - ANCHOR_VIEWPORT_PAD - ANCHOR_WIDTH;
-  if (left > maxLeft) left = maxLeft;
-  if (left < ANCHOR_VIEWPORT_PAD) left = ANCHOR_VIEWPORT_PAD;
+  // Available space on each side of the anchor, accounting for the
+  // viewport padding.
+  const roomBelow = viewport.height - (anchor.y + anchor.height) - ANCHOR_GAP - VIEWPORT_PAD;
+  const roomAbove = anchor.y - ANCHOR_GAP - VIEWPORT_PAD;
+  const roomRight = viewport.width - (anchor.x + anchor.width) - ANCHOR_GAP - VIEWPORT_PAD;
+  const roomLeft = anchor.x - ANCHOR_GAP - VIEWPORT_PAD;
 
-  return { top, left };
+  const fitsBelow = roomBelow >= capsule.height;
+  const fitsAbove = roomAbove >= capsule.height;
+  const fitsRight = roomRight >= capsule.width;
+  const fitsLeft = roomLeft >= capsule.width;
+
+  let placement: CapsulePlacement;
+  let top: number;
+  let left: number;
+
+  if (fitsBelow) {
+    placement = 'below';
+    top = anchor.y + anchor.height + ANCHOR_GAP;
+    // Horizontal: prefer left-aligned with the anchor, but shift left
+    // when that would push past the right edge.
+    left = anchor.x;
+  } else if (fitsAbove) {
+    placement = 'above';
+    top = anchor.y - ANCHOR_GAP - capsule.height;
+    left = anchor.x;
+  } else if (fitsRight) {
+    placement = 'right';
+    left = anchor.x + anchor.width + ANCHOR_GAP;
+    // Centre vertically on the anchor so the capsule reads as
+    // "next to" rather than "below and to the right of".
+    top = Math.floor(anchor.y + anchor.height / 2 - capsule.height / 2);
+  } else if (fitsLeft) {
+    placement = 'left';
+    left = anchor.x - ANCHOR_GAP - capsule.width;
+    top = Math.floor(anchor.y + anchor.height / 2 - capsule.height / 2);
+  } else {
+    // No side fits — center the capsule. This happens on tight viewports
+    // or when the anchor sits dead-centre with the capsule larger than
+    // any quadrant. Internal scrolling handles the rest.
+    placement = 'center';
+    top = Math.floor((viewport.height - capsule.height) / 2);
+    left = Math.floor((viewport.width - capsule.width) / 2);
+  }
+
+  // Final clamp — never let the corner overflow the viewport. The CSS
+  // max-height/width keep the rendered size <= the viewport minus the
+  // pad, so this is safe even when the chosen side was tight.
+  const maxTop = viewport.height - capsule.height - VIEWPORT_PAD;
+  const maxLeft = viewport.width - capsule.width - VIEWPORT_PAD;
+  top = clamp(top, VIEWPORT_PAD, Math.max(VIEWPORT_PAD, maxTop));
+  left = clamp(left, VIEWPORT_PAD, Math.max(VIEWPORT_PAD, maxLeft));
+
+  return { top, left, placement };
 }
 
 // CSS colocated — content-script shadow root needs the styles in the bundle.
@@ -1490,24 +1634,26 @@ export const CAPSULE_CSS = `
   --gx-fg-dim: #aab0bd;
   --gx-fg-muted: #6a7080;
 
+  /* Floating, viewport-safe by default. Doutrina: cápsula leve, discreta,
+     sempre presente — never a bottom dock, never a giant standalone
+     window. The base shape is the only shape; --anchored / --centered
+     just decide where to drop it. */
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 25vh;
-  min-height: 180px;
+  width: clamp(560px, 72vw, 820px);
+  max-width: calc(100vw - 32px);
+  max-height: clamp(420px, 72vh, 560px);
+  height: auto;
   overflow: hidden;
   background: var(--gx-bg);
   color: var(--gx-fg);
-  border-top: 1px solid var(--gx-border-mid);
-  border-radius: 12px 12px 0 0;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 16px;
   backdrop-filter: saturate(1.4) blur(28px);
   -webkit-backdrop-filter: saturate(1.4) blur(28px);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.06),
-    0 -8px 40px rgba(0, 0, 0, 0.45),
-    0 -2px 12px rgba(0, 0, 0, 0.35);
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.35);
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
   line-height: 1.45;
@@ -1515,45 +1661,77 @@ export const CAPSULE_CSS = `
   padding: 0;
   isolation: isolate;
   pointer-events: auto;
-  animation: gauntlet-cap-rise 280ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: gauntlet-cap-rise 220ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
-/* Anchored mode — when the user has a selection on a web page, the
-   capsule pops next to the cursor instead of pinning to the bottom of
-   the viewport. The position itself is set via inline style by the
-   component (computeAnchorPosition). The shape, border, shadow and
-   max-height come from here so site CSS can never override them. */
-.gauntlet-capsule--anchored {
-  bottom: auto;
-  right: auto;
-  width: 560px;
-  max-width: calc(100vw - 16px);
-  height: auto;
-  min-height: 0;
-  max-height: 60vh;
-  border: 1px solid var(--gx-border-mid);
-  border-radius: 14px;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 24px 60px rgba(0, 0, 0, 0.55),
-    0 8px 24px rgba(0, 0, 0, 0.35);
+/* Tight viewports collapse to a near-fullscreen shape, but still
+   floating with margin — never an edge-to-edge dock. */
+@media (max-width: 600px), (max-height: 520px) {
+  .gauntlet-capsule {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+  }
 }
-.gauntlet-capsule--anchored .gauntlet-capsule__layout {
+
+/* Floating marker — every rendered capsule carries this. Composes with
+   --anchored / --centered for testability. */
+.gauntlet-capsule--floating {
+  /* shape inherited from .gauntlet-capsule */
+}
+
+/* Centered mode — no selection bbox, no cursor anchor. Pure CSS
+   positioning so the component doesn't have to measure itself. */
+.gauntlet-capsule--centered {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Anchored mode — top/left set inline via computeCapsulePosition. The
+   class is a marker for tests + a hook for any anchored-only tweaks
+   (e.g. a small tail/pointer in the future). */
+.gauntlet-capsule--anchored {
+  /* position set inline by the component */
+}
+
+/* Single-column layout — the floating capsule is too narrow for the
+   two-pane shape that the old bottom-strip used. Context becomes a
+   compact header, input + output own the rest of the height. */
+.gauntlet-capsule__layout {
   flex-direction: column;
 }
-.gauntlet-capsule--anchored .gauntlet-capsule__panel--left {
+.gauntlet-capsule__panel--left {
   width: 100%;
   max-width: none;
   min-width: 0;
   border-right: none;
   border-bottom: 1px solid var(--gx-border);
-  padding: 12px 14px;
+  padding: 10px 14px;
+  flex-shrink: 0;
 }
-.gauntlet-capsule--anchored .gauntlet-capsule__panel--right {
+.gauntlet-capsule__panel--right {
   padding: 12px 14px;
+  flex: 1;
+  min-height: 0;
+  /* Internal scrolling so plan + result + danger banner combos can
+     overflow without the capsule itself growing past the viewport. */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
-.gauntlet-capsule--anchored .gauntlet-capsule__selection {
+.gauntlet-capsule__selection {
   max-height: 90px;
+}
+
+/* No-selection mode — the empty selection block is dead weight; collapse
+   the left panel to its meta strip so the input dominates. */
+.gauntlet-capsule--no-selection .gauntlet-capsule__selection--empty {
+  display: none;
+}
+.gauntlet-capsule--no-selection .gauntlet-capsule__panel--left {
+  padding: 8px 14px;
+}
+.gauntlet-capsule--no-selection .gauntlet-capsule__context {
+  flex: 0 0 auto;
 }
 
 .gauntlet-capsule__aurora {
@@ -1569,34 +1747,18 @@ export const CAPSULE_CSS = `
   animation: gauntlet-cap-aurora 28s linear infinite;
 }
 
-/* ── Layout ── */
+/* ── Layout — single-column floating capsule ── */
 .gauntlet-capsule__layout {
   display: flex;
-  flex-direction: row;
-  height: 100%;
+  flex-direction: column;
+  max-height: inherit;
   overflow: hidden;
 }
 
 .gauntlet-capsule__panel {
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  height: 100%;
-}
-
-.gauntlet-capsule__panel--left {
-  width: 28%;
-  min-width: 200px;
-  max-width: 340px;
-  flex-shrink: 0;
-  padding: 14px 16px;
-  border-right: 1px solid var(--gx-border);
-}
-
-.gauntlet-capsule__panel--right {
-  flex: 1;
-  min-width: 0;
-  padding: 14px 18px;
+  min-height: 0;
 }
 
 /* ── Header ── */
@@ -1732,6 +1894,38 @@ export const CAPSULE_CSS = `
   color: var(--gx-fg-muted); font-style: italic;
   font-family: "Inter", sans-serif;
   font-size: 11px;
+}
+
+/* Compact context summary — no-selection state. Tight bulleted readout
+   so the operator sees what's being sent without giving up vertical
+   space the input/output need. */
+.gauntlet-capsule__context-summary {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 4px 14px;
+}
+.gauntlet-capsule__context-summary li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.gauntlet-capsule__context-key {
+  color: var(--gx-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.gauntlet-capsule__context-val {
+  color: var(--gx-fg-dim);
+}
+.gauntlet-capsule__context-val--muted {
+  color: var(--gx-fg-muted);
+  font-style: italic;
 }
 
 /* ── Form ── */
@@ -2177,8 +2371,12 @@ export const CAPSULE_CSS = `
   color: var(--gx-fg);
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 220px;
+  /* At least 220px when output exists; up to 40% of the viewport on
+     larger screens so long answers don't get crushed by the form. */
+  min-height: 0;
+  max-height: clamp(220px, 40vh, 380px);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .gauntlet-capsule__compose-actions {
   display: flex; justify-content: flex-end; margin-top: 8px;
@@ -2409,7 +2607,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule--phase-executed  { --gx-phase: rgba(122, 180, 138, 0.55); } /* green */
 .gauntlet-capsule--phase-error     { --gx-phase: rgba(212, 96, 60, 0.65); }  /* red */
 
-.gauntlet-capsule--anchored::before {
+.gauntlet-capsule--floating::before {
   content: '';
   position: absolute;
   inset: -1px;
