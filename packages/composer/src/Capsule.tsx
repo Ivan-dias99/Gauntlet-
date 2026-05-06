@@ -34,7 +34,12 @@ import {
   type DomActionResult,
 } from './dom-actions';
 import { type Ambient } from './ambient';
-import { createPillPrefs, type PillPrefs } from './pill-prefs';
+import {
+  createPillPrefs,
+  DEFAULT_CAPSULE_THEME,
+  type CapsuleTheme,
+  type PillPrefs,
+} from './pill-prefs';
 
 export interface CapsuleProps {
   // Single seam to the host shell — provides transport, storage,
@@ -89,6 +94,10 @@ export function Capsule({
   // once the `done` event fires, the full plan.compose replaces it.
   const [partialCompose, setPartialCompose] = useState<string>('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Flagship theme — light by default ("surface flagship"); dark stays
+  // available via the settings drawer toggle. Persisted in
+  // ambient.storage so the choice survives across sessions/tabs/shells.
+  const [theme, setTheme] = useState<CapsuleTheme>(DEFAULT_CAPSULE_THEME);
   // Multimodal: when the user opted in (via SettingsDrawer), capture
   // a viewport screenshot once per cápsula mount. The result is
   // attached to the next request's metadata so the planner can "see"
@@ -197,6 +206,19 @@ export function Capsule({
   useEffect(() => {
     setSnapshot(initialSnapshot);
   }, [initialSnapshot]);
+
+  // Theme — load persisted choice once at mount. While the storage
+  // round-trip resolves the cápsula renders the default flagship light,
+  // so there's no flash for the most common path.
+  useEffect(() => {
+    let cancelled = false;
+    void prefs.readTheme().then((t) => {
+      if (!cancelled) setTheme(t);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [prefs]);
 
   // Sprint 4 — fetch governance settings once at mount. Failure leaves
   // the defaults in place (open, generous caps) so a backend that's
@@ -722,6 +744,7 @@ export function Capsule({
   return (
     <div
       className={className}
+      data-theme={theme}
       role="dialog"
       aria-label="Gauntlet"
       style={placedStyle}
@@ -769,6 +792,11 @@ export function Capsule({
               showScreenshot={ambient.capabilities.screenshot}
               showDismissedDomains={ambient.capabilities.dismissDomain}
               prefs={prefs}
+              theme={theme}
+              onChangeTheme={(t) => {
+                setTheme(t);
+                void prefs.writeTheme(t);
+              }}
             />
           )}
 
@@ -1303,6 +1331,8 @@ function SettingsDrawer({
   showScreenshot,
   prefs,
   showDismissedDomains,
+  theme,
+  onChangeTheme,
 }: {
   onClose: () => void;
   // Only the in-page surface has a real tab to screenshot. The popup
@@ -1313,6 +1343,8 @@ function SettingsDrawer({
   // Browser shows the per-domain hide list; desktop hides this whole
   // section because there are no domains.
   showDismissedDomains: boolean;
+  theme: CapsuleTheme;
+  onChangeTheme: (theme: CapsuleTheme) => void;
 }) {
   const [domains, setDomains] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1365,6 +1397,36 @@ function SettingsDrawer({
           ×
         </button>
       </header>
+
+      <div className="gauntlet-capsule__settings-section">
+        <span className="gauntlet-capsule__settings-subtitle">aparência</span>
+        <div className="gauntlet-capsule__theme-switch" role="radiogroup" aria-label="tema">
+          <button
+            type="button"
+            className={`gauntlet-capsule__theme-option${
+              theme === 'light' ? ' gauntlet-capsule__theme-option--active' : ''
+            }`}
+            onClick={() => onChangeTheme('light')}
+            role="radio"
+            aria-checked={theme === 'light'}
+          >
+            <span className="gauntlet-capsule__theme-swatch gauntlet-capsule__theme-swatch--light" aria-hidden />
+            <span>flagship light</span>
+          </button>
+          <button
+            type="button"
+            className={`gauntlet-capsule__theme-option${
+              theme === 'dark' ? ' gauntlet-capsule__theme-option--active' : ''
+            }`}
+            onClick={() => onChangeTheme('dark')}
+            role="radio"
+            aria-checked={theme === 'dark'}
+          >
+            <span className="gauntlet-capsule__theme-swatch gauntlet-capsule__theme-swatch--dark" aria-hidden />
+            <span>night premium</span>
+          </button>
+        </div>
+      </div>
 
       {showScreenshot && (
         <div className="gauntlet-capsule__settings-section">
@@ -1628,16 +1690,65 @@ export const CAPSULE_CSS = `
 }
 
 .gauntlet-capsule {
+  /* Flagship light is the new default surface. The cápsula is premium
+     daylight: cream paper, ink fg, ember accent. Dark stays available
+     as an alternative behind data-theme="dark"; existing operators
+     who prefer the night surface flip via the settings drawer. */
   --gx-ember: #d07a5a;
+  --gx-ember-soft: rgba(208, 122, 90, 0.14);
+  --gx-bg: #f7f3e8;
+  --gx-bg-solid: #fbf7ee;
+  --gx-surface: rgba(255, 255, 255, 0.78);
+  --gx-surface-strong: #ffffff;
+  --gx-border: rgba(15, 17, 22, 0.08);
+  --gx-border-mid: rgba(15, 17, 22, 0.16);
+  --gx-fg: #1a1d24;
+  --gx-fg-dim: #4a4f5b;
+  --gx-fg-muted: #7a808d;
+  --gx-tint-soft: rgba(15, 17, 22, 0.04);
+  --gx-tint-strong: rgba(15, 17, 22, 0.08);
+  --gx-sunken: rgba(15, 17, 22, 0.04);
+  --gx-shadow-rgb: 32, 24, 18;
+  /* Code block ink — purple keywords, rust strings, slate comments.
+     Mirrors the Codex/Claude-Code premium-light reference the operator
+     pinned for the flagship surface. */
+  --gx-code-bg: #f3edde;
+  --gx-code-fg: #2a2218;
+  --gx-code-keyword: #6e3aa8;
+  --gx-code-string: #b3501f;
+  --gx-code-number: #8c5a00;
+  --gx-code-comment: #8a8470;
+  --gx-code-fn: #2563a8;
+  --gx-code-meta-bg: rgba(15, 17, 22, 0.04);
+}
+
+/* Dark variant — premium night surface. Same ember accent, glass
+   mood, deep ink. Toggled via data-theme="dark" on the capsule root. */
+.gauntlet-capsule[data-theme="dark"] {
   --gx-bg: rgba(14, 16, 22, 0.92);
   --gx-bg-solid: #0e1016;
   --gx-surface: rgba(28, 30, 38, 0.70);
+  --gx-surface-strong: #1a1d26;
   --gx-border: rgba(255, 255, 255, 0.08);
   --gx-border-mid: rgba(255, 255, 255, 0.14);
   --gx-fg: #f0f2f7;
   --gx-fg-dim: #aab0bd;
   --gx-fg-muted: #6a7080;
+  --gx-tint-soft: rgba(255, 255, 255, 0.04);
+  --gx-tint-strong: rgba(255, 255, 255, 0.08);
+  --gx-sunken: rgba(8, 9, 13, 0.55);
+  --gx-shadow-rgb: 0, 0, 0;
+  --gx-code-bg: rgba(8, 9, 13, 0.7);
+  --gx-code-fg: #e6e8ee;
+  --gx-code-keyword: #c4a8ff;
+  --gx-code-string: #f4c4ad;
+  --gx-code-number: #f4d4c0;
+  --gx-code-comment: #6a7080;
+  --gx-code-fn: #a8c8ff;
+  --gx-code-meta-bg: rgba(255, 255, 255, 0.02);
+}
 
+.gauntlet-capsule {
   /* Floating, viewport-safe by default. Doutrina: cápsula leve, discreta,
      sempre presente — never a bottom dock, never a giant standalone
      window. The base shape is the only shape; --anchored / --centered
@@ -1652,12 +1763,12 @@ export const CAPSULE_CSS = `
   color: var(--gx-fg);
   border: 1px solid var(--gx-border-mid);
   border-radius: 16px;
-  backdrop-filter: saturate(1.4) blur(28px);
-  -webkit-backdrop-filter: saturate(1.4) blur(28px);
+  backdrop-filter: saturate(1.2) blur(20px);
+  -webkit-backdrop-filter: saturate(1.2) blur(20px);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 24px 60px rgba(0, 0, 0, 0.55),
-    0 8px 24px rgba(0, 0, 0, 0.35);
+    0 0 0 1px var(--gx-tint-soft),
+    0 24px 60px rgba(var(--gx-shadow-rgb), 0.18),
+    0 8px 24px rgba(var(--gx-shadow-rgb), 0.10);
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
   line-height: 1.45;
@@ -1840,7 +1951,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__close:hover {
   color: var(--gx-fg);
   border-color: var(--gx-border-mid);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gx-tint-soft);
 }
 
 /* ── Context ── */
@@ -1886,10 +1997,10 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__refresh:hover {
   color: var(--gx-fg);
   border-color: var(--gx-border-mid);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gx-tint-soft);
 }
 .gauntlet-capsule__selection {
-  background: rgba(8, 9, 13, 0.6);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   padding: 8px 10px;
   border-radius: 8px;
@@ -1945,7 +2056,7 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__input {
   width: 100%;
-  background: rgba(8, 9, 13, 0.55);
+  background: var(--gx-sunken);
   color: var(--gx-fg);
   border: 1px solid var(--gx-border);
   border-radius: 10px;
@@ -1983,7 +2094,7 @@ export const CAPSULE_CSS = `
   padding: 0 4px;
   border: 1px solid var(--gx-border-mid);
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gx-tint-soft);
   color: var(--gx-fg-dim);
   font-size: 10px;
 }
@@ -2062,7 +2173,7 @@ export const CAPSULE_CSS = `
   padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid var(--gx-border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--gx-tint-soft);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   letter-spacing: 0.08em;
@@ -2079,7 +2190,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__preview-val { color: var(--gx-fg); }
 
 .gauntlet-capsule__artifact {
-  background: rgba(8, 9, 13, 0.65);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   padding: 10px 12px;
   border-radius: 10px;
@@ -2094,7 +2205,7 @@ export const CAPSULE_CSS = `
   display: flex; justify-content: flex-end; margin-top: 8px;
 }
 .gauntlet-capsule__copy {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gx-tint-soft);
   color: var(--gx-fg);
   border: 1px solid var(--gx-border-mid);
   border-radius: 8px;
@@ -2106,7 +2217,7 @@ export const CAPSULE_CSS = `
   transition: background 120ms ease, border-color 120ms ease;
 }
 .gauntlet-capsule__copy:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--gx-tint-soft);
   border-color: rgba(255, 255, 255, 0.22);
 }
 
@@ -2188,12 +2299,12 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__settings-btn:hover {
   color: var(--gx-fg);
   border-color: var(--gx-border-mid);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gx-tint-soft);
 }
 .gauntlet-capsule__settings {
   margin: 8px 0;
   padding: 10px 12px;
-  background: rgba(8, 9, 13, 0.55);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border-mid);
   border-radius: 10px;
   animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
@@ -2273,10 +2384,57 @@ export const CAPSULE_CSS = `
   gap: 8px;
   padding: 4px 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--gx-tint-soft);
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
   color: var(--gx-fg-dim);
+}
+
+/* Theme switch — flagship light vs night premium. Two pill buttons,
+   the active one carries the ember accent. The swatch previews the
+   destination so the operator picks visually, not by label alone. */
+.gauntlet-capsule__theme-switch {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.gauntlet-capsule__theme-option {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-tint-soft);
+  color: var(--gx-fg-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+.gauntlet-capsule__theme-option:hover {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+}
+.gauntlet-capsule__theme-option--active {
+  border-color: rgba(208, 122, 90, 0.55);
+  background: var(--gx-ember-soft, rgba(208, 122, 90, 0.12));
+  color: var(--gx-fg);
+}
+.gauntlet-capsule__theme-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--gx-border-mid);
+  flex-shrink: 0;
+}
+.gauntlet-capsule__theme-swatch--light {
+  background: linear-gradient(135deg, #fbf7ee 0%, #f3edde 100%);
+}
+.gauntlet-capsule__theme-swatch--dark {
+  background: linear-gradient(135deg, #1a1d26 0%, #0e1016 100%);
 }
 .gauntlet-capsule__settings-host {
   flex: 1;
@@ -2310,7 +2468,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__skeleton {
   margin-top: 10px;
   padding: 10px 12px;
-  background: rgba(8, 9, 13, 0.5);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   border-radius: 10px;
   animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
@@ -2349,7 +2507,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__compose-result {
   margin-top: 10px;
   padding: 10px 12px;
-  background: rgba(8, 9, 13, 0.5);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   border-radius: 10px;
   animation: gauntlet-cap-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
@@ -2409,7 +2567,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__plan {
   margin-top: 10px;
   padding: 10px 12px;
-  background: rgba(8, 9, 13, 0.5);
+  background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   border-radius: 10px;
   animation: gauntlet-cap-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
@@ -2449,7 +2607,7 @@ export const CAPSULE_CSS = `
   display: flex; align-items: flex-start; gap: 8px;
   padding: 6px 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--gx-tint-soft);
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
   color: var(--gx-fg-dim);
@@ -2470,7 +2628,7 @@ export const CAPSULE_CSS = `
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--gx-tint-soft);
   color: var(--gx-fg);
   font-size: 10px;
   font-weight: 600;
@@ -2667,7 +2825,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__copy--ghost:hover {
   border-color: var(--gx-border-mid);
   color: var(--gx-fg);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--gx-tint-soft);
 }
 
 /* ── Voice button (press-and-hold) ──────────────────────────────────────── */
@@ -2682,7 +2840,7 @@ export const CAPSULE_CSS = `
   padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid var(--gx-border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--gx-tint-soft);
   color: var(--gx-fg-dim);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
@@ -2697,7 +2855,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__voice:hover:not(:disabled) {
   color: var(--gx-fg);
   border-color: var(--gx-border-mid);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gx-tint-soft);
 }
 .gauntlet-capsule__voice:disabled {
   opacity: 0.4;
@@ -2734,7 +2892,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__palette-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(8, 9, 13, 0.55);
+  background: var(--gx-sunken);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   pointer-events: auto;
@@ -2871,19 +3029,19 @@ export const CAPSULE_CSS = `
 .gauntlet-md__h1 { font-size: 18px; }
 .gauntlet-md__h2 { font-size: 15px; }
 .gauntlet-md__h3 { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gx-fg-dim); }
-.gauntlet-md__strong { font-weight: 600; color: #f4d4c0; }
+.gauntlet-md__strong { font-weight: 600; color: var(--gx-fg); }
 .gauntlet-md__em { font-style: italic; color: var(--gx-fg-dim); }
 .gauntlet-md__inline-code {
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   font-size: 11.5px;
-  background: rgba(208, 122, 90, 0.10);
-  color: #f4c4ad;
+  background: var(--gx-ember-soft, rgba(208, 122, 90, 0.10));
+  color: var(--gx-code-keyword);
   padding: 1px 6px;
   border-radius: 4px;
-  border: 1px solid rgba(208, 122, 90, 0.18);
+  border: 1px solid rgba(208, 122, 90, 0.20);
 }
 .gauntlet-md__link {
-  color: #f4c4ad;
+  color: var(--gx-ember);
   text-decoration: underline;
   text-decoration-color: rgba(208, 122, 90, 0.45);
   text-underline-offset: 2px;
@@ -2927,8 +3085,8 @@ export const CAPSULE_CSS = `
 .gauntlet-md__code {
   margin: 0;
   border: 1px solid var(--gx-border);
-  border-radius: 8px;
-  background: rgba(8, 9, 13, 0.7);
+  border-radius: 10px;
+  background: var(--gx-code-bg);
   overflow: hidden;
 }
 .gauntlet-md__code-meta {
@@ -2937,7 +3095,7 @@ export const CAPSULE_CSS = `
   align-items: center;
   padding: 6px 10px;
   border-bottom: 1px solid var(--gx-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--gx-code-meta-bg);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   letter-spacing: 0.18em;
@@ -2965,11 +3123,11 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-md__code-body {
   margin: 0;
-  padding: 10px 12px;
+  padding: 12px 14px;
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-  font-size: 11.5px;
-  line-height: 1.55;
-  color: #e6e8ee;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--gx-code-fg);
   overflow-x: auto;
   white-space: pre;
 }

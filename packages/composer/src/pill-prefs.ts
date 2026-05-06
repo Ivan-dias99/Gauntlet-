@@ -18,6 +18,10 @@ import type { AmbientStorage } from './ambient';
 const KEY_POSITION = 'gauntlet:pill_position';
 const KEY_DISMISSED = 'gauntlet:dismissed_domains';
 const KEY_SCREENSHOT_ENABLED = 'gauntlet:screenshot_enabled';
+const KEY_THEME = 'gauntlet:theme';
+
+export type CapsuleTheme = 'light' | 'dark';
+export const DEFAULT_CAPSULE_THEME: CapsuleTheme = 'light';
 
 export interface PillPosition {
   bottom: number;
@@ -51,6 +55,8 @@ export interface PillPrefs {
   isDomainDismissed(hostname: string): Promise<boolean>;
   readScreenshotEnabled(): Promise<boolean>;
   writeScreenshotEnabled(enabled: boolean): Promise<void>;
+  readTheme(): Promise<CapsuleTheme>;
+  writeTheme(theme: CapsuleTheme): Promise<void>;
 }
 
 export function createPillPrefs(store: AmbientStorage): PillPrefs {
@@ -101,6 +107,13 @@ export function createPillPrefs(store: AmbientStorage): PillPrefs {
     },
     async writeScreenshotEnabled(enabled) {
       await store.set(KEY_SCREENSHOT_ENABLED, !!enabled);
+    },
+    async readTheme() {
+      const raw = await store.get<CapsuleTheme>(KEY_THEME);
+      return raw === 'dark' || raw === 'light' ? raw : DEFAULT_CAPSULE_THEME;
+    },
+    async writeTheme(theme) {
+      await store.set(KEY_THEME, theme);
     },
   };
 }
