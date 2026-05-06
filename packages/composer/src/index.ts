@@ -13,3 +13,5 @@ export * from './voice';
 export * from './markdown';
 export * from './types';
 export * from './dom-actions';
+export * from './ambient';
+export * from './composer-client';
