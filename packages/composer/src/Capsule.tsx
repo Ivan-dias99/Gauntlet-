@@ -820,6 +820,7 @@ export function Capsule({
               onClose={() => setSettingsOpen(false)}
               showScreenshot={ambient.capabilities.screenshot}
               showDismissedDomains={ambient.capabilities.dismissDomain}
+              showPillMode={ambient.capabilities.pillSurface}
               prefs={prefs}
               theme={theme}
               onChangeTheme={(t) => {
@@ -1512,6 +1513,7 @@ function SettingsDrawer({
   showDismissedDomains,
   theme,
   onChangeTheme,
+  showPillMode,
 }: {
   onClose: () => void;
   // Only the in-page surface has a real tab to screenshot. The popup
@@ -1524,10 +1526,13 @@ function SettingsDrawer({
   showDismissedDomains: boolean;
   theme: CapsuleTheme;
   onChangeTheme: (theme: CapsuleTheme) => void;
+  // Show the pill-mode toggle only on shells that actually render a pill.
+  showPillMode: boolean;
 }) {
   const [domains, setDomains] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [screenshotEnabled, setScreenshotEnabled] = useState(false);
+  const [pillMode, setPillModeState] = useState<'corner' | 'cursor'>('corner');
 
   useEffect(() => {
     let cancelled = false;
@@ -1542,10 +1547,25 @@ function SettingsDrawer({
       setScreenshotEnabled(enabled);
       setLoading(false);
     });
+    void prefs.readPillMode().then((m) => {
+      if (!cancelled) setPillModeState(m);
+    });
     return () => {
       cancelled = true;
     };
   }, [prefs, showDismissedDomains]);
+
+  const togglePillMode = useCallback(
+    async (next: 'corner' | 'cursor') => {
+      setPillModeState(next);
+      await prefs.writePillMode(next);
+      // Live broadcast so App.tsx flips the pill without a reload.
+      window.dispatchEvent(
+        new CustomEvent('gauntlet:pill-mode', { detail: { mode: next } }),
+      );
+    },
+    [prefs],
+  );
 
   const restore = useCallback(
     async (host: string) => {
@@ -1606,6 +1626,38 @@ function SettingsDrawer({
           </button>
         </div>
       </div>
+
+      {showPillMode && (
+        <div className="gauntlet-capsule__settings-section">
+          <span className="gauntlet-capsule__settings-subtitle">pill</span>
+          <div className="gauntlet-capsule__theme-switch" role="radiogroup" aria-label="pill mode">
+            <button
+              type="button"
+              className={`gauntlet-capsule__theme-option${
+                pillMode === 'corner' ? ' gauntlet-capsule__theme-option--active' : ''
+              }`}
+              onClick={() => void togglePillMode('corner')}
+              role="radio"
+              aria-checked={pillMode === 'corner'}
+            >
+              <span className="gauntlet-capsule__theme-swatch gauntlet-capsule__pill-mode-swatch--corner" aria-hidden />
+              <span>resting corner</span>
+            </button>
+            <button
+              type="button"
+              className={`gauntlet-capsule__theme-option${
+                pillMode === 'cursor' ? ' gauntlet-capsule__theme-option--active' : ''
+              }`}
+              onClick={() => void togglePillMode('cursor')}
+              role="radio"
+              aria-checked={pillMode === 'cursor'}
+            >
+              <span className="gauntlet-capsule__theme-swatch gauntlet-capsule__pill-mode-swatch--cursor" aria-hidden />
+              <span>cursor pill</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {showScreenshot && (
         <div className="gauntlet-capsule__settings-section">
@@ -2711,6 +2763,40 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__theme-swatch--dark {
   background: linear-gradient(135deg, #1a1d26 0%, #0e1016 100%);
+}
+/* Pill-mode swatches — visual hint for the toggle: corner shows a
+   resting dot in the bottom-right; cursor shows a small dot at the
+   centre to suggest "follows pointer". */
+.gauntlet-capsule__pill-mode-swatch--corner {
+  background: var(--gx-surface-strong, #ffffff);
+  position: relative;
+}
+.gauntlet-capsule__pill-mode-swatch--corner::after {
+  content: '';
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gx-ember);
+  box-shadow: 0 0 4px rgba(208, 122, 90, 0.55);
+}
+.gauntlet-capsule__pill-mode-swatch--cursor {
+  background: var(--gx-surface-strong, #ffffff);
+  position: relative;
+}
+.gauntlet-capsule__pill-mode-swatch--cursor::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--gx-ember);
+  box-shadow: 0 0 6px rgba(208, 122, 90, 0.65);
 }
 .gauntlet-capsule__settings-host {
   flex: 1;

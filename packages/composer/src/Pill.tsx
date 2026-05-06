@@ -11,7 +11,7 @@
 // remembers the hotkey, which is no different from a standalone app.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type PillPosition } from './pill-prefs';
+import { type PillMode, type PillPosition } from './pill-prefs';
 
 export interface PillProps {
   position: PillPosition;
@@ -36,6 +36,12 @@ export interface PillProps {
   // True when the backend last failed — the pill carries a soft red ring
   // so the operator knows summoning will land in a degraded state.
   disconnected?: boolean;
+  // 'corner' (default): pill rests at saved position, click summons,
+  // drag repositions, magnet attracts on proximity.
+  // 'cursor': OS cursor is hidden across the page; the pill becomes
+  // the visual pointer, follows the cursor 1:1, and the operator
+  // summons the cápsula via the keyboard shortcut.
+  mode?: PillMode;
 }
 
 // Drag is "armed" only after the pointer moves more than this many
@@ -68,6 +74,7 @@ export function Pill({
   phase,
   hasContext,
   disconnected,
+  mode = 'corner',
 }: PillProps) {
   const [pos, setPos] = useState<PillPosition>(position);
   const [idle, setIdle] = useState(false);
@@ -76,6 +83,12 @@ export function Pill({
     dy: 0,
     near: false,
   });
+  // Cursor-mode pointer position (viewport coords, top-left). Tracked
+  // separately from `pos` (which is the corner-mode bottom-right
+  // anchor) so flipping modes doesn't fight the existing drag/magnet.
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+  const [overInteractive, setOverInteractive] = useState(false);
+  const [cmdHeld, setCmdHeld] = useState(false);
   const dragStateRef = useRef<{
     pressX: number;
     pressY: number;
@@ -122,6 +135,80 @@ export function Pill({
       }
     };
   }, []);
+
+  // Cursor-mode — pill becomes the visual pointer.
+  //
+  // The OS cursor is hidden across the page via a global stylesheet;
+  // pointermove is tracked at frame rate and the pill renders at the
+  // cursor coordinates. Interactive elements under the pointer get a
+  // subtle morph so the operator senses click affordance even without
+  // the OS hand-cursor. cmd/ctrl held = "ready to invoke" expand.
+  //
+  // Drag and magnet are bypassed in this mode; the keyboard shortcut
+  // is the only summoning gesture.
+  useEffect(() => {
+    if (mode !== 'cursor') {
+      setCursorPos(null);
+      setOverInteractive(false);
+      setCmdHeld(false);
+      return;
+    }
+
+    // Inject a stylesheet that hides every cursor on the page. We
+    // attach it to the host page's <html>, not our shadow root, because
+    // `cursor: none` on the shadow host doesn't reach descendants in
+    // the host page.
+    const style = document.createElement('style');
+    style.id = 'gauntlet-pill-cursor-style';
+    style.textContent = `
+      html, body, * { cursor: none !important; }
+    `;
+    document.documentElement.appendChild(style);
+
+    let raf: number | null = null;
+    let latest: { x: number; y: number } | null = null;
+
+    function pump() {
+      raf = null;
+      if (!latest) return;
+      setCursorPos(latest);
+      // Detect interactive element under the pointer. document.elementFromPoint
+      // returns the topmost element including elements inside our own shadow
+      // host — but we've set pointer-events: none on the pill in cursor mode
+      // so the pill itself isn't picked.
+      const el = document.elementFromPoint(latest.x, latest.y) as Element | null;
+      const interactive = !!el?.closest(
+        'a, button, [role="button"], input, textarea, select, [contenteditable=""], [contenteditable="true"]',
+      );
+      setOverInteractive((prev) => (prev === interactive ? prev : interactive));
+    }
+
+    function onMove(ev: PointerEvent) {
+      latest = { x: ev.clientX, y: ev.clientY };
+      if (raf == null) raf = window.requestAnimationFrame(pump);
+    }
+    function onKeyDown(ev: KeyboardEvent) {
+      if (ev.metaKey || ev.ctrlKey) setCmdHeld(true);
+    }
+    function onKeyUp(ev: KeyboardEvent) {
+      if (!ev.metaKey && !ev.ctrlKey) setCmdHeld(false);
+    }
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('keydown', onKeyDown, { passive: true });
+    window.addEventListener('keyup', onKeyUp, { passive: true });
+
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      if (raf != null) cancelAnimationFrame(raf);
+      style.remove();
+      setCursorPos(null);
+      setOverInteractive(false);
+      setCmdHeld(false);
+    };
+  }, [mode]);
 
   // Magnet — passive pointermove updates the cursor ref; a single rAF
   // pumps the React state at frame rate so we never thrash transforms.
@@ -260,24 +347,46 @@ export function Pill({
       : flash === 'fail'
         ? 'gauntlet-pill--error'
         : '';
+  const isCursorMode = mode === 'cursor';
   const className = [
     'gauntlet-pill',
-    idle ? 'gauntlet-pill--idle' : '',
-    magnet.near ? 'gauntlet-pill--near-cursor' : '',
+    idle && !isCursorMode ? 'gauntlet-pill--idle' : '',
+    !isCursorMode && magnet.near ? 'gauntlet-pill--near-cursor' : '',
     hasContext ? 'gauntlet-pill--context' : '',
     disconnected ? 'gauntlet-pill--disconnected' : '',
     flashClass,
     phase && phase !== 'idle' ? `gauntlet-pill--phase-${phase}` : '',
+    isCursorMode ? 'gauntlet-pill--cursor-mode' : '',
+    isCursorMode && overInteractive ? 'gauntlet-pill--over-interactive' : '',
+    isCursorMode && cmdHeld ? 'gauntlet-pill--cmd-held' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
-  return (
-    <button
-      ref={buttonRef}
-      type="button"
-      className={className}
-      style={{
+  // Position style — corner mode uses bottom/right + magnet transform;
+  // cursor mode uses top/left from the latest pointer coords with a
+  // small offset so the pill points at the cursor tip rather than
+  // centring on it.
+  const styleProps: React.CSSProperties = isCursorMode
+    ? cursorPos
+      ? {
+          top: `${cursorPos.y - 6}px`,
+          left: `${cursorPos.x + 4}px`,
+          right: 'auto',
+          bottom: 'auto',
+          // Pill must not intercept page clicks — it IS the cursor.
+          // The keyboard shortcut summons the cápsula in this mode.
+          pointerEvents: 'none',
+        }
+      : {
+          // Pre-pointermove (just entered cursor mode): keep the pill
+          // visible at last-known corner so the operator sees it
+          // morphing instead of disappearing.
+          bottom: `${pos.bottom}px`,
+          right: `${pos.right}px`,
+          pointerEvents: 'none',
+        }
+    : {
         bottom: `${pos.bottom}px`,
         right: `${pos.right}px`,
         // Magnet offset via transform — never touches layout, stays on
@@ -287,7 +396,14 @@ export function Pill({
           magnet.dx !== 0 || magnet.dy !== 0
             ? `translate3d(${magnet.dx}px, ${magnet.dy}px, 0)`
             : undefined,
-      }}
+      };
+
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      className={className}
+      style={styleProps}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -528,5 +644,63 @@ export const PILL_CSS = `
 }
 .gauntlet-pill--summoning {
   animation: gauntlet-pill-summon 240ms ease-out;
+}
+
+/* ── Cursor-mode — pill becomes the visual cursor ────────────────────────
+   The component flips top/left + pointer-events: none in JS; CSS
+   tightens the visual: smaller resting size (cursor needs to feel
+   precise, not chunky), softer glow, transition tuned for follow
+   smoothness. The OS cursor itself is hidden via a stylesheet
+   injected on <html> by the component. */
+.gauntlet-pill--cursor-mode {
+  width: 14px;
+  height: 14px;
+  /* Position transitions are killed in cursor mode — top/left jumps
+     pixel-accurate per rAF tick, no easing. Other transitions stay so
+     the morph between states (interactive / cmd held) feels live. */
+  transition:
+    width 200ms cubic-bezier(0.2, 0, 0, 1),
+    height 200ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 160ms ease,
+    box-shadow 200ms ease,
+    opacity 200ms ease;
+  animation: none;
+}
+.gauntlet-pill--cursor-mode .gauntlet-pill__mark {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+}
+.gauntlet-pill--cursor-mode .gauntlet-pill__dot {
+  width: 2px;
+  height: 2px;
+}
+
+/* Over an interactive element — Pill morphs to a slightly larger ring
+   with stronger ember glow so the operator senses click affordance. */
+.gauntlet-pill--over-interactive {
+  width: 22px;
+  height: 22px;
+  border-color: rgba(208, 122, 90, 0.85);
+  box-shadow:
+    0 0 0 1px rgba(208, 122, 90, 0.35),
+    0 0 18px rgba(208, 122, 90, 0.55),
+    0 4px 10px rgba(0, 0, 0, 0.30);
+}
+
+/* Cmd / Ctrl held — "ready to invoke" expand. The keyboard shortcut
+   is the summon path in cursor mode; this state confirms the
+   modifier is registered before the operator commits. */
+.gauntlet-pill--cmd-held {
+  width: 26px;
+  height: 26px;
+  border-color: rgba(208, 122, 90, 1);
+  box-shadow:
+    0 0 0 2px rgba(208, 122, 90, 0.45),
+    0 0 28px rgba(208, 122, 90, 0.65);
+}
+.gauntlet-pill--cmd-held .gauntlet-pill__mark {
+  width: 10px;
+  height: 10px;
 }
 `;

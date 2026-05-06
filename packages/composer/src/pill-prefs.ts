@@ -20,10 +20,18 @@ const KEY_DISMISSED = 'gauntlet:dismissed_domains';
 const KEY_SCREENSHOT_ENABLED = 'gauntlet:screenshot_enabled';
 const KEY_THEME = 'gauntlet:theme';
 const KEY_PALETTE_RECENT = 'gauntlet:palette_recent';
+const KEY_PILL_MODE = 'gauntlet:pill_mode';
 const PALETTE_RECENT_MAX = 8;
 
 export type CapsuleTheme = 'light' | 'dark';
 export const DEFAULT_CAPSULE_THEME: CapsuleTheme = 'light';
+
+// Pill mode — corner is the safe legacy (bottom-right resting state,
+// click to summon). Cursor is the doctrine-literal mode where the OS
+// cursor is hidden and the pill becomes the visual pointer; the
+// operator summons the cápsula via the keyboard shortcut.
+export type PillMode = 'corner' | 'cursor';
+export const DEFAULT_PILL_MODE: PillMode = 'corner';
 
 export interface PillPosition {
   bottom: number;
@@ -61,6 +69,8 @@ export interface PillPrefs {
   writeTheme(theme: CapsuleTheme): Promise<void>;
   readPaletteRecent(): Promise<string[]>;
   notePaletteUse(id: string): Promise<void>;
+  readPillMode(): Promise<PillMode>;
+  writePillMode(mode: PillMode): Promise<void>;
 }
 
 export function createPillPrefs(store: AmbientStorage): PillPrefs {
@@ -129,6 +139,13 @@ export function createPillPrefs(store: AmbientStorage): PillPrefs {
       const current = await this.readPaletteRecent();
       const next = [id, ...current.filter((x) => x !== id)].slice(0, PALETTE_RECENT_MAX);
       await store.set(KEY_PALETTE_RECENT, next);
+    },
+    async readPillMode() {
+      const raw = await store.get<PillMode>(KEY_PILL_MODE);
+      return raw === 'cursor' || raw === 'corner' ? raw : DEFAULT_PILL_MODE;
+    },
+    async writePillMode(mode) {
+      await store.set(KEY_PILL_MODE, mode);
     },
   };
 }
