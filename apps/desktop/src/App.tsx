@@ -36,7 +36,17 @@ export function App() {
 
   useEffect(() => {
     injectCapsuleStyles();
-  }, []);
+    // Mirror the persisted theme onto html/body so the Tauri window's
+    // background matches the cápsula's resolved theme on first paint.
+    // Without this the window flashes whatever default styles.css has
+    // (cream) before the cápsula renders its dark-themed surface, or
+    // vice-versa.
+    void ambient.storage.get<string>("gauntlet:theme").then((t) => {
+      const theme = t === "dark" || t === "light" ? t : "light";
+      document.documentElement.setAttribute("data-theme", theme);
+      document.body.setAttribute("data-theme", theme);
+    });
+  }, [ambient]);
 
   const dismiss = useCallback(() => {
     void toggleCapsuleWindow();

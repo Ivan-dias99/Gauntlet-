@@ -1959,6 +1959,12 @@ export const CAPSULE_CSS = `
   --gx-sunken: rgba(15, 17, 22, 0.04);
   --gx-scrim: rgba(15, 17, 22, 0.32);
   --gx-shadow-rgb: 32, 24, 18;
+  /* Semantic ink — text on tinted accent backgrounds. Light needs
+     deeper hues to stay readable; dark uses paler hues. Each pairs
+     with its own --gx-{accent,success,danger}-bg tint above. */
+  --gx-accent-text: #b3501f;
+  --gx-success-text: #2f6e44;
+  --gx-danger-text: #9b2c2c;
   /* Code block ink — purple keywords, rust strings, slate comments.
      Mirrors the Codex/Claude-Code premium-light reference the operator
      pinned for the flagship surface. */
@@ -1989,6 +1995,9 @@ export const CAPSULE_CSS = `
   --gx-sunken: rgba(8, 9, 13, 0.55);
   --gx-scrim: rgba(8, 9, 13, 0.55);
   --gx-shadow-rgb: 0, 0, 0;
+  --gx-accent-text: #f4c4ad;
+  --gx-success-text: #cfe8d3;
+  --gx-danger-text: #f1a4ad;
   --gx-code-bg: rgba(8, 9, 13, 0.7);
   --gx-code-fg: #e6e8ee;
   --gx-code-keyword: #c4a8ff;
@@ -2463,7 +2472,7 @@ export const CAPSULE_CSS = `
   margin-top: 10px; padding: 8px 12px;
   background: rgba(212, 96, 60, 0.10);
   border: 1px solid rgba(212, 96, 60, 0.32);
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
   border-radius: 8px;
   font-size: 12px;
   display: flex; align-items: center; gap: 10px;
@@ -2473,7 +2482,7 @@ export const CAPSULE_CSS = `
   width: 18px; height: 18px;
   border-radius: 50%;
   background: rgba(212, 96, 60, 0.25);
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
   font-family: "JetBrains Mono", monospace;
   font-weight: 700;
   font-size: 11px;
@@ -2550,7 +2559,7 @@ export const CAPSULE_CSS = `
   border: 1px solid rgba(208, 122, 90, 0.25);
   border-radius: 10px;
   font-size: 12px;
-  color: #e8c8a4;
+  color: var(--gx-accent-text);
 }
 .gauntlet-capsule__refusal header {
   display: flex; align-items: center; gap: 10px;
@@ -2561,7 +2570,7 @@ export const CAPSULE_CSS = `
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #f4c4ad;
+  color: var(--gx-accent-text);
   padding: 2px 8px;
   background: rgba(208, 122, 90, 0.20);
   border: 1px solid rgba(208, 122, 90, 0.35);
@@ -2582,7 +2591,7 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__actuate {
   background: rgba(208, 122, 90, 0.12);
-  color: #f4c4ad;
+  color: var(--gx-accent-text);
   border: 1px solid rgba(208, 122, 90, 0.45);
   border-radius: 8px;
   padding: 8px 14px;
@@ -2806,7 +2815,7 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__settings-restore {
   background: rgba(208, 122, 90, 0.12);
-  color: #f4c4ad;
+  color: var(--gx-accent-text);
   border: 1px solid rgba(208, 122, 90, 0.45);
   border-radius: 4px;
   padding: 2px 8px;
@@ -2888,7 +2897,7 @@ export const CAPSULE_CSS = `
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #f4c4ad;
+  color: var(--gx-accent-text);
   padding: 2px 8px;
   background: rgba(208, 122, 90, 0.20);
   border: 1px solid rgba(208, 122, 90, 0.35);
@@ -2948,7 +2957,7 @@ export const CAPSULE_CSS = `
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #f4c4ad;
+  color: var(--gx-accent-text);
   padding: 2px 8px;
   background: rgba(208, 122, 90, 0.20);
   border: 1px solid rgba(208, 122, 90, 0.35);
@@ -2984,12 +2993,12 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__plan-item--ok {
   background: rgba(122, 180, 138, 0.10);
   border-color: rgba(122, 180, 138, 0.35);
-  color: #cfe8d3;
+  color: var(--gx-success-text);
 }
 .gauntlet-capsule__plan-item--fail {
   background: rgba(212, 96, 60, 0.10);
   border-color: rgba(212, 96, 60, 0.35);
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
 }
 .gauntlet-capsule__plan-step {
   display: inline-flex; align-items: center; justify-content: center;
@@ -3007,7 +3016,7 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__plan-err {
   font-size: 10px;
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
   font-style: italic;
 }
 .gauntlet-capsule__plan-actions {
@@ -3062,7 +3071,7 @@ export const CAPSULE_CSS = `
   font-size: 9px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
   background: rgba(212, 96, 60, 0.18);
   border: 1px solid rgba(212, 96, 60, 0.45);
   border-radius: 4px;
@@ -3098,12 +3107,12 @@ export const CAPSULE_CSS = `
   font-size: 11px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
 }
 .gauntlet-capsule__danger-list {
   margin: 0 0 8px 0; padding: 0 0 0 24px;
   font-size: 11px;
-  color: #f1a4ad;
+  color: var(--gx-danger-text);
   line-height: 1.6;
 }
 .gauntlet-capsule__danger-list li { margin: 0; }
@@ -3493,7 +3502,7 @@ export const CAPSULE_CSS = `
   padding: 6px 14px;
   border-radius: 999px;
   background: rgba(122, 180, 138, 0.14);
-  color: #a8d4b6;
+  color: var(--gx-success-text);
   border: 1px solid rgba(122, 180, 138, 0.32);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
