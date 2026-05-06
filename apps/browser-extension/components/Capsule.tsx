@@ -1619,6 +1619,16 @@ export const CAPSULE_CSS = `
   0%   { opacity: 0; transform: translateY(8px) scale(0.985); }
   100% { opacity: 1; transform: translateY(0)   scale(1); }
 }
+/* Centered-mode rise — keeps the same opacity + 8px lift motion but
+   bakes the centering translate into both keyframes. Without this the
+   base rise's end keyframe (transform: translateY(0) scale(1)) with
+   fill-mode: both overrides .gauntlet-capsule--centered's
+   translate(-50%, -50%), anchoring the capsule by its top-left at
+   50%/50% instead of truly centring it. */
+@keyframes gauntlet-cap-rise-centered {
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(0.985); }
+  100% { opacity: 1; transform: translate(-50%, -50%)             scale(1); }
+}
 @keyframes gauntlet-cap-spin {
   to { transform: rotate(360deg); }
 }
@@ -1680,11 +1690,17 @@ export const CAPSULE_CSS = `
 }
 
 /* Centered mode — no selection bbox, no cursor anchor. Pure CSS
-   positioning so the component doesn't have to measure itself. */
+   positioning so the component doesn't have to measure itself. The
+   animation override is intentional: gauntlet-cap-rise's end keyframe
+   resolves transform to translateY(0) scale(1) with fill-mode: both,
+   which would otherwise wipe out our centering translate after 220ms.
+   The centered variant keeps the same lift motion but ends at
+   translate(-50%, -50%) so the capsule stays truly centred. */
 .gauntlet-capsule--centered {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  animation: gauntlet-cap-rise-centered 220ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 /* Anchored mode — top/left set inline via computeCapsulePosition. The
