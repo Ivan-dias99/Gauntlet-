@@ -1846,26 +1846,44 @@ export const CAPSULE_CSS = `
   50%      { opacity: 1;   transform: scale(1.15); }
 }
 @keyframes gauntlet-cap-aurora {
-  0%   { transform: translate3d(-12%, -8%, 0) rotate(0deg); }
-  50%  { transform: translate3d(8%,    6%, 0) rotate(180deg); }
-  100% { transform: translate3d(-12%, -8%, 0) rotate(360deg); }
+  0%   { transform: translate3d(-12%, -8%, 0) rotate(0deg) scale(1); }
+  33%  { transform: translate3d(6%,   -4%, 0) rotate(120deg) scale(1.06); }
+  66%  { transform: translate3d(8%,    6%, 0) rotate(240deg) scale(0.96); }
+  100% { transform: translate3d(-12%, -8%, 0) rotate(360deg) scale(1); }
 }
+/* Capsule enter — layered choreography: the shell rises with a soft
+   spring (~360ms cubic), the aurora drifts in slightly later (200ms
+   delay), and the content panels stagger by 60ms each so the eye
+   reads the cápsula assembling itself instead of materialising as a
+   single slab. Doutrina: a cápsula respira ao chegar, não aparece. */
 @keyframes gauntlet-cap-rise {
-  0%   { opacity: 0; transform: translateY(8px) scale(0.985); }
-  100% { opacity: 1; transform: translateY(0)   scale(1); }
+  0%   { opacity: 0; transform: translateY(10px) scale(0.97); filter: blur(2px); }
+  60%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0)   scale(1); filter: blur(0); }
 }
-/* Centered-mode rise — keeps the same opacity + 8px lift motion but
-   bakes the centering translate into both keyframes. Without this the
-   base rise's end keyframe (transform: translateY(0) scale(1)) with
-   fill-mode: both overrides .gauntlet-capsule--centered's
-   translate(-50%, -50%), anchoring the capsule by its top-left at
-   50%/50% instead of truly centring it. */
 @keyframes gauntlet-cap-rise-centered {
-  0%   { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(0.985); }
-  100% { opacity: 1; transform: translate(-50%, -50%)             scale(1); }
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% + 10px)) scale(0.97); filter: blur(2px); }
+  60%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: translate(-50%, -50%)              scale(1); filter: blur(0); }
+}
+@keyframes gauntlet-cap-aurora-fade-in {
+  0%   { opacity: 0; }
+  100% { opacity: 0.6; }
+}
+@keyframes gauntlet-cap-stagger-in {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 @keyframes gauntlet-cap-spin {
   to { transform: rotate(360deg); }
+}
+/* Phase ring morph — when the active phase changes, the ring picks up
+   the new colour over 600ms with an easing curve so the operator
+   reads the transition as a state change, not a flicker. */
+@keyframes gauntlet-cap-phase-morph {
+  0%   { box-shadow: 0 0 0 1px transparent, 0 0 12px transparent; }
+  50%  { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 36px var(--gx-phase, transparent); }
+  100% { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 24px var(--gx-phase, transparent); }
 }
 
 .gauntlet-capsule {
@@ -1955,7 +1973,10 @@ export const CAPSULE_CSS = `
   padding: 0;
   isolation: isolate;
   pointer-events: auto;
-  animation: gauntlet-cap-rise 220ms cubic-bezier(0.2, 0, 0, 1) both;
+  /* Spring-shaped curve — slightly past the target, settles back. The
+     overshoot is ≤2px so the operator reads it as confidence, not
+     bounce. 360ms gives the layered stagger room to breathe. */
+  animation: gauntlet-cap-rise 360ms cubic-bezier(0.16, 1.05, 0.34, 1) both;
 }
 
 /* Tight viewports collapse to a near-fullscreen shape, but still
@@ -1984,7 +2005,7 @@ export const CAPSULE_CSS = `
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  animation: gauntlet-cap-rise-centered 220ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: gauntlet-cap-rise-centered 360ms cubic-bezier(0.16, 1.05, 0.34, 1) both;
 }
 
 /* Anchored mode — top/left set inline via computeCapsulePosition. The
@@ -2041,10 +2062,23 @@ export const CAPSULE_CSS = `
     radial-gradient(40% 40% at 30% 30%, rgba(208, 122, 90, 0.18), transparent 60%),
     radial-gradient(40% 40% at 70% 70%, rgba(98, 130, 200, 0.12), transparent 60%);
   filter: blur(40px);
-  opacity: 0.6;
+  opacity: 0;
   pointer-events: none;
   z-index: -1;
-  animation: gauntlet-cap-aurora 28s linear infinite;
+  /* Aurora fades in after the shell rise (200ms delay), then drifts
+     forever at a 28s loop. Two-layer animation = mount fade + ambient
+     drift; the comma syntax stacks them. */
+  animation:
+    gauntlet-cap-aurora-fade-in 600ms 200ms cubic-bezier(0.2, 0, 0, 1) forwards,
+    gauntlet-cap-aurora 28s linear infinite;
+}
+/* Layered staggered entrance — each panel rises ~60ms after the one
+   before it so the cápsula reads as composed, not stamped. */
+.gauntlet-capsule__panel--left {
+  animation: gauntlet-cap-stagger-in 320ms 120ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__panel--right {
+  animation: gauntlet-cap-stagger-in 320ms 200ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 /* ── Layout — single-column floating capsule ── */
@@ -2712,9 +2746,12 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__skeleton-tag   { width: 56px; height: 14px; border-radius: 4px; }
 .gauntlet-capsule__skeleton-meta  { width: 140px; height: 10px; border-radius: 3px; }
 .gauntlet-capsule__skeleton-line  { height: 11px; border-radius: 3px; }
+/* Wave-coordinated skeleton — three lines start the shimmer offset by
+   140ms each so the eye reads a cohesive wave moving down, not three
+   loose lines flickering independently. */
 .gauntlet-capsule__skeleton-line--w90 { width: 90%; animation-delay: 0ms; }
-.gauntlet-capsule__skeleton-line--w75 { width: 75%; animation-delay: 120ms; }
-.gauntlet-capsule__skeleton-line--w55 { width: 55%; animation-delay: 240ms; }
+.gauntlet-capsule__skeleton-line--w75 { width: 75%; animation-delay: 140ms; }
+.gauntlet-capsule__skeleton-line--w55 { width: 55%; animation-delay: 280ms; }
 
 /* ── Compose response (inline text answer) ── */
 .gauntlet-capsule__compose-result {
@@ -2996,14 +3033,32 @@ export const CAPSULE_CSS = `
   pointer-events: none;
   box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 24px var(--gx-phase, transparent);
   opacity: 0;
-  transition: opacity 280ms ease;
+  /* Both opacity AND box-shadow fade so a phase swap (planning → streaming
+     → done) reads as a colour morph, not a flicker. The cubic curve gives
+     a slight lead-in before the colour settles. */
+  transition:
+    opacity 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 480ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .gauntlet-capsule--phase-planning::before,
 .gauntlet-capsule--phase-streaming::before,
+.gauntlet-capsule--phase-plan_ready::before,
 .gauntlet-capsule--phase-executing::before,
 .gauntlet-capsule--phase-executed::before,
 .gauntlet-capsule--phase-error::before {
   opacity: 1;
+}
+/* Heartbeat pulse on long-running phases (planning + streaming +
+   executing) so the operator senses the cápsula "still thinking" even
+   when no text is changing. Softer + slower than a loading spinner. */
+@keyframes gauntlet-cap-phase-heartbeat {
+  0%, 100% { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 18px var(--gx-phase, transparent); }
+  50%      { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 36px var(--gx-phase, transparent); }
+}
+.gauntlet-capsule--phase-planning::before,
+.gauntlet-capsule--phase-streaming::before,
+.gauntlet-capsule--phase-executing::before {
+  animation: gauntlet-cap-phase-heartbeat 2.4s ease-in-out infinite;
 }
 
 /* Phase mark-dot tint — the brand mark itself communicates state */
