@@ -11,15 +11,16 @@
 // remembers the hotkey, which is no different from a standalone app.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  type PillPosition,
-  writePillPosition,
-} from '../lib/pill-prefs';
+import { type PillPosition } from './pill-prefs';
 
 export interface PillProps {
   position: PillPosition;
   onClick: () => void;
   onDismissDomain: () => void;
+  // Persist a new position after the user finished a drag. Wired by
+  // the host shell to ambient.storage via createPillPrefs — keeps the
+  // Pill component shell-agnostic.
+  onPersistPosition: (pos: PillPosition) => void;
   // Transient feedback after the cápsula closes following an
   // executed plan. The pill flashes green/red for ~1.4s so the user
   // gets ambient confirmation that the action actually landed.
@@ -62,6 +63,7 @@ export function Pill({
   position,
   onClick,
   onDismissDomain,
+  onPersistPosition,
   flash,
   phase,
   hasContext,
@@ -222,12 +224,12 @@ export function Pill({
       if (drag.armed) {
         // It was a real drag — persist the new position and skip the
         // click handler so the capsule doesn't pop on drop.
-        void writePillPosition(pos);
+        onPersistPosition(pos);
         return;
       }
       onClick();
     },
-    [pos, onClick],
+    [pos, onClick, onPersistPosition],
   );
 
   const onContextMenu = useCallback(

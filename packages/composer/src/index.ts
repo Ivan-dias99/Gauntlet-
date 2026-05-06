@@ -15,3 +15,6 @@ export * from './types';
 export * from './dom-actions';
 export * from './ambient';
 export * from './composer-client';
+export * from './pill-prefs';
+export * from './Capsule';
+export * from './Pill';

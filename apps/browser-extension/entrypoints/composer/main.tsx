@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Capsule, CAPSULE_CSS } from '../../components/Capsule';
-import { ComposerClient } from '../../lib/composer-client';
+import { Capsule, CAPSULE_CSS } from '@gauntlet/composer';
+import { createBrowserAmbient } from '../../lib/ambient';
 
 // composer.html is the FALLBACK surface. The doctrinal surface is the
 // in-page capsule mounted by content.tsx via shadow DOM. background.ts
@@ -9,6 +9,11 @@ import { ComposerClient } from '../../lib/composer-client';
 // script (chrome://, the Web Store, freshly opened blank tabs, etc.).
 // Keep it lean: same Capsule component, no page context — there is no
 // page to read.
+//
+// The standalone window has no host page, so we hand the cápsula a
+// "headless" ambient — same BrowserAmbient adapters but the screenshot
+// capture would shoot the popup window itself (useless and recursive),
+// so we strip it. domActions is also unavailable for the same reason.
 
 // Lifeboat fallback — the standalone window is compact (760x460 in
 // background.ts). The cápsula fills the window edge-to-edge here since
@@ -45,11 +50,28 @@ const style = document.createElement('style');
 style.textContent = CAPSULE_CSS + WINDOW_CSS;
 document.head.appendChild(style);
 
+const baseAmbient = createBrowserAmbient();
+// Strip page-bound capabilities so the cápsula renders the right UI:
+// no actuate button (no page DOM), no screenshot (would capture the
+// popup itself), no per-domain dismiss (no real domain).
+const popupAmbient = {
+  ...baseAmbient,
+  capabilities: {
+    ...baseAmbient.capabilities,
+    domExecution: false,
+    screenshot: false,
+    dismissDomain: false,
+    refreshSelection: false,
+  },
+  domActions: undefined,
+  screenshot: undefined,
+};
+
 const root = createRoot(document.getElementById('root')!);
 root.render(
   <StrictMode>
     <Capsule
-      client={new ComposerClient()}
+      ambient={popupAmbient}
       initialSnapshot={{
         text: '',
         url: 'window://composer',
