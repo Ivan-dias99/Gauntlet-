@@ -18,6 +18,12 @@ import {
   type ExecutionReportRequest,
   type ExecutionStatus,
 } from '../lib/composer-client';
+import { Markdown } from '../lib/markdown';
+import {
+  isVoiceSupported,
+  startVoice,
+  type VoiceSession,
+} from '../lib/voice';
 import {
   assessDanger,
   assessSequenceDanger,
@@ -107,6 +113,18 @@ export function Capsule({
   // against double-reporting when the user dismisses the cápsula after
   // already executing.
   const executionReportedRef = useRef<boolean>(false);
+  // Refining pass — tick counter for streaming. Refreshed on every
+  // delta so the operator sees the response materialise as a number,
+  // not just a wall of text. Resets at submit time.
+  const [tokensStreamed, setTokensStreamed] = useState(0);
+  // Voice input session (Web Speech API). Press-and-hold the mic
+  // button — feature-detected; the button just hides if the API isn't
+  // there. Kept as a ref so blur/release handlers reach the live
+  // session, not a stale closure.
+  const voiceRef = useRef<VoiceSession | null>(null);
+  const [voiceActive, setVoiceActive] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [savedFlash, setSavedFlash] = useState<string | null>(null);
 
   // Danger assessment runs in-page (where document.querySelector resolves
   // against the live DOM) so each action gets per-element classification
@@ -240,6 +258,132 @@ export function Capsule({
     setSnapshot(readSelectionSnapshot());
   }, []);
 
+  // Voice — press-and-hold the mic button. We start a session on
+  // pointerdown and stop on pointerup/pointerleave. Partial transcripts
+  // overwrite the input live; on commit the recogniser's final text
+  // becomes the new input. Feature-detected: the button only renders
+  // when the API exists so the cápsula stays slim on Firefox / Safari
+  // where SpeechRecognition is missing.
+  const startVoiceCapture = useCallback(() => {
+    if (voiceRef.current) return;
+    setError(null);
+    const baseline = userInput;
+    const session = startVoice({
+      onPartial: (text) => {
+        setUserInput(baseline ? `${baseline} ${text}`.trim() : text);
+      },
+      onCommit: (text) => {
+        setUserInput(baseline ? `${baseline} ${text}`.trim() : text);
+        setVoiceActive(false);
+        voiceRef.current = null;
+        // Pull focus back to the textarea so Enter works immediately.
+        inputRef.current?.focus();
+      },
+      onError: (msg) => {
+        setError(msg);
+        setVoiceActive(false);
+        voiceRef.current = null;
+      },
+    });
+    if (session) {
+      voiceRef.current = session;
+      setVoiceActive(true);
+    }
+  }, [userInput]);
+
+  const stopVoiceCapture = useCallback(() => {
+    voiceRef.current?.stop();
+  }, []);
+
+  const cancelVoiceCapture = useCallback(() => {
+    voiceRef.current?.abort();
+    voiceRef.current = null;
+    setVoiceActive(false);
+  }, []);
+
+  // Cleanup on unmount — releases mic permission promptly on dismiss.
+  useEffect(() => {
+    return () => {
+      voiceRef.current?.abort();
+    };
+  }, []);
+
+  // Command palette — Cmd+K (mac) / Ctrl+K (everyone else). Opens an
+  // overlay with operator-grade quick actions. Pure keyboard surface;
+  // no fixture-grade focus traps yet — Esc closes, arrow nav comes in
+  // a follow-up if the operator asks for it.
+  useEffect(() => {
+    function onPaletteKey(ev: KeyboardEvent) {
+      const isModK =
+        (ev.metaKey || ev.ctrlKey) && (ev.key === 'k' || ev.key === 'K');
+      if (isModK) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        setPaletteOpen((v) => !v);
+      }
+    }
+    window.addEventListener('keydown', onPaletteKey, true);
+    return () => window.removeEventListener('keydown', onPaletteKey, true);
+  }, []);
+
+  const flashSaved = useCallback((label: string) => {
+    setSavedFlash(label);
+    window.setTimeout(() => setSavedFlash(null), 1400);
+  }, []);
+
+  // Save the current compose response (or selection if no compose) to
+  // memory_records as a `note`. Backend writes through /memory/records;
+  // any failure becomes an inline error. Keeps the operator inside
+  // the cápsula — no need to switch to the Control Center.
+  const saveToMemory = useCallback(async () => {
+    const body = plan?.compose || snapshot.text || userInput.trim();
+    if (!body) {
+      setError('Nada para guardar — escreve um pedido ou recebe uma resposta.');
+      return;
+    }
+    const topic =
+      (userInput.trim() || snapshot.pageTitle || 'cápsula note').slice(0, 200);
+    try {
+      const url = `${client.backendUrl}/memory/records`;
+      // Reuse the background fetch path so we go through the
+      // chrome-extension origin and bypass page CORS.
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        const reply = (await chrome.runtime.sendMessage({
+          type: 'gauntlet:fetch',
+          url,
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            topic,
+            body,
+            kind: 'note',
+            scope: 'user',
+          }),
+        })) as { ok?: boolean; status?: number; error?: string } | undefined;
+        if (!reply?.ok || (reply.status ?? 0) >= 300) {
+          throw new Error(reply?.error ?? `HTTP ${reply?.status ?? '?'}`);
+        }
+      } else {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            topic,
+            body,
+            kind: 'note',
+            scope: 'user',
+          }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      }
+      flashSaved('saved');
+    } catch (err) {
+      setError(
+        err instanceof Error ? `memória: ${err.message}` : 'memória: falhou',
+      );
+    }
+  }, [client, plan, snapshot, userInput, flashSaved]);
+
   // Sprint 3 — execution contract. Fire-and-forget reporting after
   // executeDomActions resolves (executed/failed) or when the user
   // dismisses the cápsula with an action plan still pending (rejected).
@@ -337,12 +481,23 @@ export function Capsule({
       if (ev.key === 'Escape') {
         ev.preventDefault();
         ev.stopPropagation();
+        // Layered escape: palette first, voice next, then dismiss.
+        // Lets the operator close the overlay without losing the
+        // cápsula entirely — the same gesture for related concerns.
+        if (paletteOpen) {
+          setPaletteOpen(false);
+          return;
+        }
+        if (voiceRef.current) {
+          cancelVoiceCapture();
+          return;
+        }
         handleDismiss();
       }
     }
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [handleDismiss]);
+  }, [handleDismiss, paletteOpen, cancelVoiceCapture]);
 
   // The single send path, streaming. Backend's /composer/dom_plan_stream
   // emits delta chunks and a final `done` event with the parsed result.
@@ -378,6 +533,7 @@ export function Capsule({
     setDangerConfirmed(false);
     setCopied(false);
     setPartialCompose('');
+    setTokensStreamed(0);
     streamBufferRef.current = '';
     executionReportedRef.current = false;
     // Re-read the screenshot pref at submit time. The user may have
@@ -399,6 +555,10 @@ export function Capsule({
           onDelta: (text) => {
             if (ac.signal.aborted) return;
             streamBufferRef.current += text;
+            // Token tick — sensação de avanço real. We bump per delta
+            // chunk; precise token counting is the gateway's job, this
+            // is operator-facing UX, not billing.
+            setTokensStreamed((n) => n + 1);
             const partial = extractPartialCompose(streamBufferRef.current);
             if (partial !== null) {
               setPartialCompose(partial);
@@ -557,9 +717,24 @@ export function Capsule({
       left: `${pos.left}px`,
     };
   }, [anchor]);
-  const className = anchor
-    ? 'gauntlet-capsule gauntlet-capsule--anchored'
-    : 'gauntlet-capsule';
+  // Phase-aware semantic class — drives the ambient glow color so the
+  // cápsula visually reflects what the model is doing (and makes the
+  // pill carry the same color via the gauntlet:phase event below).
+  const phaseClass = `gauntlet-capsule--phase-${phase}`;
+  const className = [
+    'gauntlet-capsule',
+    anchor ? 'gauntlet-capsule--anchored' : null,
+    phaseClass,
+  ].filter(Boolean).join(' ');
+
+  // Broadcast the phase so the pill (rendered by App after dismiss)
+  // can mirror it. App listens to gauntlet:phase events and tints the
+  // pill accordingly.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('gauntlet:phase', { detail: { phase } }),
+    );
+  }, [phase]);
 
   return (
     <div
@@ -653,7 +828,45 @@ export function Capsule({
             <div className="gauntlet-capsule__actions">
               <span className="gauntlet-capsule__hint" aria-hidden>
                 <span className="gauntlet-capsule__kbd">↵</span>
+                <span className="gauntlet-capsule__kbd-sep">·</span>
+                <span className="gauntlet-capsule__kbd">⌘K</span>
               </span>
+              {isVoiceSupported() && (
+                <button
+                  type="button"
+                  className={`gauntlet-capsule__voice${
+                    voiceActive ? ' gauntlet-capsule__voice--active' : ''
+                  }`}
+                  onPointerDown={(ev) => {
+                    ev.preventDefault();
+                    startVoiceCapture();
+                  }}
+                  onPointerUp={() => stopVoiceCapture()}
+                  onPointerLeave={() => {
+                    if (voiceActive) stopVoiceCapture();
+                  }}
+                  aria-label={voiceActive ? 'A ouvir — solta para enviar' : 'Premer e falar'}
+                  title="Premir e falar"
+                  disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
+                    <path
+                      d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M19 11a7 7 0 0 1-14 0M12 18v3"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                  </svg>
+                  <span className="gauntlet-capsule__voice-label">
+                    {voiceActive ? 'a ouvir' : 'voz'}
+                  </span>
+                </button>
+              )}
               <button
                 type="submit"
                 className="gauntlet-capsule__compose"
@@ -675,9 +888,15 @@ export function Capsule({
             <section className="gauntlet-capsule__compose-result gauntlet-capsule__compose-result--streaming">
               <header className="gauntlet-capsule__compose-meta">
                 <span className="gauntlet-capsule__compose-tag">resposta</span>
-                <span className="gauntlet-capsule__compose-meta-text">a escrever…</span>
+                <span className="gauntlet-capsule__compose-meta-text">
+                  <span className="gauntlet-capsule__token-counter" aria-live="polite">
+                    {tokensStreamed} chunks
+                  </span>
+                  <span aria-hidden>·</span>
+                  <span>a escrever…</span>
+                </span>
               </header>
-              <div className="gauntlet-capsule__compose-text">
+              <div className="gauntlet-capsule__compose-text gauntlet-capsule__compose-text--streaming">
                 {partialCompose}
                 <span className="gauntlet-capsule__compose-caret" aria-hidden>▍</span>
               </div>
@@ -711,7 +930,12 @@ export function Capsule({
                   {plan.latency_ms} ms
                 </span>
               </header>
-              <div className="gauntlet-capsule__compose-text">{plan.compose}</div>
+              <div className="gauntlet-capsule__compose-text">
+                <Markdown
+                  source={plan.compose}
+                  onCopyBlock={() => flashSaved('code copied')}
+                />
+              </div>
               <div className="gauntlet-capsule__compose-actions">
                 <button
                   type="button"
@@ -719,6 +943,13 @@ export function Capsule({
                   onClick={() => void onCopyCompose()}
                 >
                   {copied ? 'copiado ✓' : 'Copy'}
+                </button>
+                <button
+                  type="button"
+                  className="gauntlet-capsule__copy gauntlet-capsule__copy--ghost"
+                  onClick={() => void saveToMemory()}
+                >
+                  {savedFlash === 'saved' ? 'guardado ✓' : 'Save'}
                 </button>
               </div>
             </section>
@@ -849,6 +1080,171 @@ export function Capsule({
             </div>
           )}
         </div>
+      </div>
+
+      {paletteOpen && (
+        <CommandPalette
+          onClose={() => setPaletteOpen(false)}
+          actions={[
+            {
+              id: 'focus',
+              label: 'Focar input',
+              shortcut: '↵',
+              run: () => {
+                setPaletteOpen(false);
+                window.setTimeout(() => inputRef.current?.focus(), 0);
+              },
+            },
+            {
+              id: 'copy',
+              label: 'Copiar resposta',
+              shortcut: '⌘C',
+              disabled: !plan?.compose,
+              run: () => {
+                setPaletteOpen(false);
+                void onCopyCompose();
+              },
+            },
+            {
+              id: 'save',
+              label: 'Guardar em memória',
+              shortcut: 'S',
+              disabled: !plan?.compose && !snapshot.text && !userInput.trim(),
+              run: () => {
+                setPaletteOpen(false);
+                void saveToMemory();
+              },
+            },
+            {
+              id: 'reread',
+              label: 'Re-ler contexto',
+              shortcut: 'R',
+              run: () => {
+                setPaletteOpen(false);
+                refreshSnapshot();
+              },
+            },
+            {
+              id: 'clear',
+              label: 'Limpar input',
+              shortcut: 'X',
+              disabled: !userInput,
+              run: () => {
+                setPaletteOpen(false);
+                setUserInput('');
+                inputRef.current?.focus();
+              },
+            },
+            {
+              id: 'dismiss',
+              label: 'Fechar cápsula',
+              shortcut: 'Esc',
+              run: () => {
+                setPaletteOpen(false);
+                handleDismiss();
+              },
+            },
+          ]}
+        />
+      )}
+
+      {savedFlash && (
+        <div className="gauntlet-capsule__flash" role="status" aria-live="polite">
+          {savedFlash}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface PaletteAction {
+  id: string;
+  label: string;
+  shortcut: string;
+  disabled?: boolean;
+  run: () => void;
+}
+
+function CommandPalette({
+  actions,
+  onClose,
+}: {
+  actions: PaletteAction[];
+  onClose: () => void;
+}) {
+  const [filter, setFilter] = useState('');
+  const [cursor, setCursor] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const visible = useMemo(
+    () =>
+      actions.filter((a) =>
+        a.label.toLowerCase().includes(filter.toLowerCase()),
+      ),
+    [actions, filter],
+  );
+
+  useEffect(() => {
+    if (cursor >= visible.length) setCursor(0);
+  }, [visible.length, cursor]);
+
+  const onKey = useCallback(
+    (ev: React.KeyboardEvent<HTMLDivElement>) => {
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        setCursor((c) => Math.min(c + 1, visible.length - 1));
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        setCursor((c) => Math.max(c - 1, 0));
+      } else if (ev.key === 'Enter') {
+        ev.preventDefault();
+        const action = visible[cursor];
+        if (action && !action.disabled) action.run();
+      }
+    },
+    [visible, cursor],
+  );
+
+  return (
+    <div className="gauntlet-capsule__palette" role="dialog" aria-label="Command palette">
+      <div className="gauntlet-capsule__palette-scrim" onClick={onClose} />
+      <div className="gauntlet-capsule__palette-panel" onKeyDown={onKey}>
+        <input
+          ref={inputRef}
+          className="gauntlet-capsule__palette-input"
+          type="text"
+          placeholder="comandos…  (↑↓ para navegar, ↵ para correr, esc para fechar)"
+          value={filter}
+          onChange={(ev) => setFilter(ev.target.value)}
+        />
+        <ul className="gauntlet-capsule__palette-list" role="listbox">
+          {visible.length === 0 ? (
+            <li className="gauntlet-capsule__palette-empty">sem comandos</li>
+          ) : (
+            visible.map((a, i) => (
+              <li
+                key={a.id}
+                role="option"
+                aria-selected={i === cursor}
+                aria-disabled={a.disabled}
+                onMouseEnter={() => setCursor(i)}
+                onClick={() => {
+                  if (!a.disabled) a.run();
+                }}
+                className={`gauntlet-capsule__palette-item${
+                  i === cursor ? ' gauntlet-capsule__palette-item--active' : ''
+                }${a.disabled ? ' gauntlet-capsule__palette-item--disabled' : ''}`}
+              >
+                <span className="gauntlet-capsule__palette-label">{a.label}</span>
+                <span className="gauntlet-capsule__palette-shortcut">{a.shortcut}</span>
+              </li>
+            ))
+          )}
+        </ul>
       </div>
     </div>
   );
@@ -1997,5 +2393,383 @@ export const CAPSULE_CSS = `
   width: 14px; height: 14px;
   accent-color: #d4603c;
   cursor: pointer;
+}
+
+/* ── Phase-aware semantic colors ──────────────────────────────────────────
+   Cores semânticas a representar estados e processo do trabalho.
+   The cápsula ambient glow ring shifts hue with the phase so the
+   operator senses progress without reading text. The pill (rendered by
+   App after dismiss) listens to gauntlet:phase events and mirrors
+   the same color. */
+.gauntlet-capsule--phase-idle      { --gx-phase: rgba(208, 122, 90, 0.0); }
+.gauntlet-capsule--phase-planning  { --gx-phase: rgba(244, 196, 86, 0.55); } /* amber */
+.gauntlet-capsule--phase-streaming { --gx-phase: rgba(208, 122, 90, 0.65); } /* ember */
+.gauntlet-capsule--phase-plan_ready{ --gx-phase: rgba(208, 122, 90, 0.45); }
+.gauntlet-capsule--phase-executing { --gx-phase: rgba(98, 130, 200, 0.55); } /* blue */
+.gauntlet-capsule--phase-executed  { --gx-phase: rgba(122, 180, 138, 0.55); } /* green */
+.gauntlet-capsule--phase-error     { --gx-phase: rgba(212, 96, 60, 0.65); }  /* red */
+
+.gauntlet-capsule--anchored::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 24px var(--gx-phase, transparent);
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+.gauntlet-capsule--phase-planning::before,
+.gauntlet-capsule--phase-streaming::before,
+.gauntlet-capsule--phase-executing::before,
+.gauntlet-capsule--phase-executed::before,
+.gauntlet-capsule--phase-error::before {
+  opacity: 1;
+}
+
+/* Phase mark-dot tint — the brand mark itself communicates state */
+.gauntlet-capsule--phase-error .gauntlet-capsule__mark {
+  border-color: rgba(212, 96, 60, 0.7);
+}
+.gauntlet-capsule--phase-executed .gauntlet-capsule__mark {
+  border-color: rgba(122, 180, 138, 0.7);
+}
+
+/* ── Token tick counter (refining: sensação de avanço) ─────────────────── */
+.gauntlet-capsule__token-counter {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: rgba(244, 196, 173, 0.85);
+  font-weight: 600;
+}
+.gauntlet-capsule__compose-text--streaming {
+  background: linear-gradient(
+    180deg,
+    rgba(208, 122, 90, 0.04) 0%,
+    transparent 60%
+  );
+}
+
+/* ── Save (ghost) button — sibling of Copy ──────────────────────────────── */
+.gauntlet-capsule__copy--ghost {
+  background: transparent;
+  border-color: var(--gx-border);
+  color: var(--gx-fg-dim);
+}
+.gauntlet-capsule__copy--ghost:hover {
+  border-color: var(--gx-border-mid);
+  color: var(--gx-fg);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Voice button (press-and-hold) ──────────────────────────────────────── */
+@keyframes gauntlet-cap-listen {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 96, 60, 0.45); }
+  50%      { box-shadow: 0 0 0 6px rgba(212, 96, 60, 0); }
+}
+.gauntlet-capsule__voice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gx-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--gx-fg-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.gauntlet-capsule__voice:hover:not(:disabled) {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+  background: rgba(255, 255, 255, 0.05);
+}
+.gauntlet-capsule__voice:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.gauntlet-capsule__voice--active {
+  color: #f4a08a;
+  border-color: rgba(208, 122, 90, 0.55);
+  background: rgba(208, 122, 90, 0.10);
+  animation: gauntlet-cap-listen 1.2s ease-in-out infinite;
+}
+.gauntlet-capsule__voice-label {
+  font-weight: 600;
+}
+.gauntlet-capsule__kbd-sep {
+  margin: 0 4px;
+  color: rgba(255,255,255,0.18);
+}
+
+/* ── Command palette overlay (Cmd+K) ────────────────────────────────────── */
+@keyframes gauntlet-cap-palette-rise {
+  from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.gauntlet-capsule__palette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: start center;
+  padding-top: 30px;
+  pointer-events: none;
+}
+.gauntlet-capsule__palette-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 9, 13, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: auto;
+  animation: gauntlet-cap-rise 160ms ease-out both;
+}
+.gauntlet-capsule__palette-panel {
+  position: relative;
+  width: min(420px, calc(100% - 36px));
+  background: rgba(20, 22, 30, 0.96);
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 24px 48px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  animation: gauntlet-cap-palette-rise 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__palette-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  color: var(--gx-fg);
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  outline: none;
+  border-bottom: 1px solid var(--gx-border);
+}
+.gauntlet-capsule__palette-input::placeholder {
+  color: var(--gx-fg-muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.gauntlet-capsule__palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.gauntlet-capsule__palette-empty {
+  padding: 14px;
+  text-align: center;
+  color: var(--gx-fg-muted);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.gauntlet-capsule__palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  color: var(--gx-fg-dim);
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
+}
+.gauntlet-capsule__palette-item--active {
+  background: rgba(208, 122, 90, 0.14);
+  color: var(--gx-fg);
+}
+.gauntlet-capsule__palette-item--disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.gauntlet-capsule__palette-shortcut {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--gx-fg-muted);
+  text-transform: uppercase;
+}
+.gauntlet-capsule__palette-item--active .gauntlet-capsule__palette-shortcut {
+  color: var(--gx-fg-dim);
+}
+
+/* ── Toast flash (saved / code copied) ──────────────────────────────────── */
+@keyframes gauntlet-cap-flash-rise {
+  0%   { opacity: 0; transform: translate(-50%, 8px); }
+  20%  { opacity: 1; transform: translate(-50%, 0); }
+  80%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -4px); }
+}
+.gauntlet-capsule__flash {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(122, 180, 138, 0.14);
+  color: #a8d4b6;
+  border: 1px solid rgba(122, 180, 138, 0.32);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 3;
+  animation: gauntlet-cap-flash-rise 1400ms ease-out both;
+}
+
+/* ── Markdown rendering ─────────────────────────────────────────────────── */
+.gauntlet-md {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gauntlet-md__prose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gauntlet-md__p {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  line-height: 1.62;
+  color: var(--gx-fg);
+}
+.gauntlet-md__h {
+  margin: 8px 0 2px;
+  font-family: "Charter", "New York", "Cambria", "Georgia", serif;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--gx-fg);
+  line-height: 1.25;
+}
+.gauntlet-md__h1 { font-size: 18px; }
+.gauntlet-md__h2 { font-size: 15px; }
+.gauntlet-md__h3 { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gx-fg-dim); }
+.gauntlet-md__strong { font-weight: 600; color: #f4d4c0; }
+.gauntlet-md__em { font-style: italic; color: var(--gx-fg-dim); }
+.gauntlet-md__inline-code {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 11.5px;
+  background: rgba(208, 122, 90, 0.10);
+  color: #f4c4ad;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(208, 122, 90, 0.18);
+}
+.gauntlet-md__link {
+  color: #f4c4ad;
+  text-decoration: underline;
+  text-decoration-color: rgba(208, 122, 90, 0.45);
+  text-underline-offset: 2px;
+}
+.gauntlet-md__link:hover { text-decoration-color: var(--gx-ember); }
+.gauntlet-md__quote {
+  margin: 0;
+  padding: 6px 12px;
+  border-left: 2px solid rgba(208, 122, 90, 0.55);
+  background: rgba(208, 122, 90, 0.04);
+  color: var(--gx-fg-dim);
+  font-style: italic;
+  font-size: 12.5px;
+  line-height: 1.6;
+  border-radius: 0 6px 6px 0;
+}
+.gauntlet-md__hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.10),
+    transparent
+  );
+  margin: 4px 0;
+}
+.gauntlet-md__list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.gauntlet-md__li::marker {
+  color: rgba(208, 122, 90, 0.55);
+}
+.gauntlet-md__code {
+  margin: 0;
+  border: 1px solid var(--gx-border);
+  border-radius: 8px;
+  background: rgba(8, 9, 13, 0.7);
+  overflow: hidden;
+}
+.gauntlet-md__code-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--gx-border);
+  background: rgba(255, 255, 255, 0.02);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.gauntlet-md__code-lang {
+  color: var(--gx-fg-muted);
+}
+.gauntlet-md__code-copy {
+  background: transparent;
+  border: 1px solid var(--gx-border);
+  color: var(--gx-fg-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.gauntlet-md__code-copy:hover {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+}
+.gauntlet-md__code-body {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #e6e8ee;
+  overflow-x: auto;
+  white-space: pre;
+}
+.gauntlet-md__code-body code {
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border: none;
 }
 `;

@@ -944,3 +944,381 @@ html, body, #root {
   accent-color: #d4603c;
   cursor: pointer;
 }
+
+/* ── Phase-aware semantic colors ──────────────────────────────────────────
+   Cores semânticas a representar estados e processo do trabalho.
+   The cápsula ambient glow ring shifts hue with the phase so the
+   operator senses progress without reading text. The pill (rendered by
+   App after dismiss) listens to gauntlet:phase events and mirrors
+   the same color. */
+.gauntlet-capsule--phase-idle      { --gx-phase: rgba(208, 122, 90, 0.0); }
+.gauntlet-capsule--phase-planning  { --gx-phase: rgba(244, 196, 86, 0.55); } /* amber */
+.gauntlet-capsule--phase-streaming { --gx-phase: rgba(208, 122, 90, 0.65); } /* ember */
+.gauntlet-capsule--phase-plan_ready{ --gx-phase: rgba(208, 122, 90, 0.45); }
+.gauntlet-capsule--phase-executing { --gx-phase: rgba(98, 130, 200, 0.55); } /* blue */
+.gauntlet-capsule--phase-executed  { --gx-phase: rgba(122, 180, 138, 0.55); } /* green */
+.gauntlet-capsule--phase-error     { --gx-phase: rgba(212, 96, 60, 0.65); }  /* red */
+
+.gauntlet-capsule--anchored::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 24px var(--gx-phase, transparent);
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+.gauntlet-capsule--phase-planning::before,
+.gauntlet-capsule--phase-streaming::before,
+.gauntlet-capsule--phase-executing::before,
+.gauntlet-capsule--phase-executed::before,
+.gauntlet-capsule--phase-error::before {
+  opacity: 1;
+}
+
+/* Phase mark-dot tint — the brand mark itself communicates state */
+.gauntlet-capsule--phase-error .gauntlet-capsule__mark {
+  border-color: rgba(212, 96, 60, 0.7);
+}
+.gauntlet-capsule--phase-executed .gauntlet-capsule__mark {
+  border-color: rgba(122, 180, 138, 0.7);
+}
+
+/* ── Token tick counter (refining: sensação de avanço) ─────────────────── */
+.gauntlet-capsule__token-counter {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: rgba(244, 196, 173, 0.85);
+  font-weight: 600;
+}
+.gauntlet-capsule__compose-text--streaming {
+  background: linear-gradient(
+    180deg,
+    rgba(208, 122, 90, 0.04) 0%,
+    transparent 60%
+  );
+}
+
+/* ── Save (ghost) button — sibling of Copy ──────────────────────────────── */
+.gauntlet-capsule__copy--ghost {
+  background: transparent;
+  border-color: var(--gx-border);
+  color: var(--gx-fg-dim);
+}
+.gauntlet-capsule__copy--ghost:hover {
+  border-color: var(--gx-border-mid);
+  color: var(--gx-fg);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Voice button (press-and-hold) ──────────────────────────────────────── */
+@keyframes gauntlet-cap-listen {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 96, 60, 0.45); }
+  50%      { box-shadow: 0 0 0 6px rgba(212, 96, 60, 0); }
+}
+.gauntlet-capsule__voice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gx-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--gx-fg-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.gauntlet-capsule__voice:hover:not(:disabled) {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+  background: rgba(255, 255, 255, 0.05);
+}
+.gauntlet-capsule__voice:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.gauntlet-capsule__voice--active {
+  color: #f4a08a;
+  border-color: rgba(208, 122, 90, 0.55);
+  background: rgba(208, 122, 90, 0.10);
+  animation: gauntlet-cap-listen 1.2s ease-in-out infinite;
+}
+.gauntlet-capsule__voice-label {
+  font-weight: 600;
+}
+.gauntlet-capsule__kbd-sep {
+  margin: 0 4px;
+  color: rgba(255,255,255,0.18);
+}
+
+/* ── Command palette overlay (Cmd+K) ────────────────────────────────────── */
+@keyframes gauntlet-cap-palette-rise {
+  from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.gauntlet-capsule__palette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: start center;
+  padding-top: 30px;
+  pointer-events: none;
+}
+.gauntlet-capsule__palette-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 9, 13, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: auto;
+  animation: gauntlet-cap-rise 160ms ease-out both;
+}
+.gauntlet-capsule__palette-panel {
+  position: relative;
+  width: min(420px, calc(100% - 36px));
+  background: rgba(20, 22, 30, 0.96);
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 24px 48px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  animation: gauntlet-cap-palette-rise 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__palette-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  color: var(--gx-fg);
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  outline: none;
+  border-bottom: 1px solid var(--gx-border);
+}
+.gauntlet-capsule__palette-input::placeholder {
+  color: var(--gx-fg-muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.gauntlet-capsule__palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.gauntlet-capsule__palette-empty {
+  padding: 14px;
+  text-align: center;
+  color: var(--gx-fg-muted);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.gauntlet-capsule__palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  color: var(--gx-fg-dim);
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
+}
+.gauntlet-capsule__palette-item--active {
+  background: rgba(208, 122, 90, 0.14);
+  color: var(--gx-fg);
+}
+.gauntlet-capsule__palette-item--disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.gauntlet-capsule__palette-shortcut {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--gx-fg-muted);
+  text-transform: uppercase;
+}
+.gauntlet-capsule__palette-item--active .gauntlet-capsule__palette-shortcut {
+  color: var(--gx-fg-dim);
+}
+
+/* ── Toast flash (saved / code copied) ──────────────────────────────────── */
+@keyframes gauntlet-cap-flash-rise {
+  0%   { opacity: 0; transform: translate(-50%, 8px); }
+  20%  { opacity: 1; transform: translate(-50%, 0); }
+  80%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -4px); }
+}
+.gauntlet-capsule__flash {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(122, 180, 138, 0.14);
+  color: #a8d4b6;
+  border: 1px solid rgba(122, 180, 138, 0.32);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 3;
+  animation: gauntlet-cap-flash-rise 1400ms ease-out both;
+}
+
+/* ── Markdown rendering ─────────────────────────────────────────────────── */
+.gauntlet-md {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gauntlet-md__prose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gauntlet-md__p {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  line-height: 1.62;
+  color: var(--gx-fg);
+}
+.gauntlet-md__h {
+  margin: 8px 0 2px;
+  font-family: "Charter", "New York", "Cambria", "Georgia", serif;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--gx-fg);
+  line-height: 1.25;
+}
+.gauntlet-md__h1 { font-size: 18px; }
+.gauntlet-md__h2 { font-size: 15px; }
+.gauntlet-md__h3 { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gx-fg-dim); }
+.gauntlet-md__strong { font-weight: 600; color: #f4d4c0; }
+.gauntlet-md__em { font-style: italic; color: var(--gx-fg-dim); }
+.gauntlet-md__inline-code {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 11.5px;
+  background: rgba(208, 122, 90, 0.10);
+  color: #f4c4ad;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(208, 122, 90, 0.18);
+}
+.gauntlet-md__link {
+  color: #f4c4ad;
+  text-decoration: underline;
+  text-decoration-color: rgba(208, 122, 90, 0.45);
+  text-underline-offset: 2px;
+}
+.gauntlet-md__link:hover { text-decoration-color: var(--gx-ember); }
+.gauntlet-md__quote {
+  margin: 0;
+  padding: 6px 12px;
+  border-left: 2px solid rgba(208, 122, 90, 0.55);
+  background: rgba(208, 122, 90, 0.04);
+  color: var(--gx-fg-dim);
+  font-style: italic;
+  font-size: 12.5px;
+  line-height: 1.6;
+  border-radius: 0 6px 6px 0;
+}
+.gauntlet-md__hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.10),
+    transparent
+  );
+  margin: 4px 0;
+}
+.gauntlet-md__list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.gauntlet-md__li::marker {
+  color: rgba(208, 122, 90, 0.55);
+}
+.gauntlet-md__code {
+  margin: 0;
+  border: 1px solid var(--gx-border);
+  border-radius: 8px;
+  background: rgba(8, 9, 13, 0.7);
+  overflow: hidden;
+}
+.gauntlet-md__code-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--gx-border);
+  background: rgba(255, 255, 255, 0.02);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.gauntlet-md__code-lang {
+  color: var(--gx-fg-muted);
+}
+.gauntlet-md__code-copy {
+  background: transparent;
+  border: 1px solid var(--gx-border);
+  color: var(--gx-fg-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.gauntlet-md__code-copy:hover {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+}
+.gauntlet-md__code-body {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #e6e8ee;
+  overflow-x: auto;
+  white-space: pre;
+}
+.gauntlet-md__code-body code {
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border: none;
+}
