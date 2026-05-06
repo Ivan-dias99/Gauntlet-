@@ -1,0 +1,25 @@
+[package]
+name = "gauntlet-desktop"
+version = "0.0.1"
+description = "Gauntlet — desktop cursor capsule (Tauri 2). Sprint 6."
+authors = ["Gauntlet"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "gauntlet_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-global-shortcut = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+# Default Tauri custom protocol — required for production builds.
+custom-protocol = ["tauri/custom-protocol"]

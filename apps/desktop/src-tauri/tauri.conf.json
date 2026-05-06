@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Gauntlet",
+  "version": "0.0.1",
+  "identifier": "dev.gauntlet.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5179",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Gauntlet",
+        "width": 720,
+        "height": 360,
+        "minWidth": 480,
+        "minHeight": 240,
+        "resizable": true,
+        "alwaysOnTop": true,
+        "decorations": true,
+        "transparent": false,
+        "center": true,
+        "visible": true,
+        "skipTaskbar": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src http://127.0.0.1:3002 http://localhost:3002; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32.png",
+      "icons/128.png",
+      "icons/icon.png"
+    ]
+  },
+  "plugins": {}
+}
