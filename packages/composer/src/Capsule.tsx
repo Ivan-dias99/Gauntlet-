@@ -1961,38 +1961,69 @@ export const CAPSULE_CSS = `
   display: flex;
   flex-direction: column;
 }
+/* Context chips — pill row above the input. Source / page-title /
+   re-read read as chips, like the reference flagship surface. Not a
+   metadata strip; a deliberate chip row that frames the cápsula's
+   ambient awareness. */
 .gauntlet-capsule__context-meta {
-  display: flex; gap: 8px; align-items: center;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--gx-fg-muted);
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  font-family: "JetBrains Mono", monospace;
+  display: flex; gap: 6px; align-items: center;
+  font-size: 11px;
+  color: var(--gx-fg-dim);
+  margin-bottom: 8px;
+  font-family: "Inter", system-ui, sans-serif;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .gauntlet-capsule__source {
-  background: rgba(208, 122, 90, 0.14);
-  color: #f4c4ad;
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(208, 122, 90, 0.28);
-  letter-spacing: 0.12em;
+  border: 1px solid var(--gx-border-mid);
+  background: var(--gx-surface-strong, var(--gx-tint-soft));
+  color: var(--gx-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+.gauntlet-capsule__source::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gx-ember);
+  box-shadow: 0 0 6px rgba(208, 122, 90, 0.65);
+  flex-shrink: 0;
 }
 .gauntlet-capsule__url {
   flex: 1;
+  min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  text-transform: none;
-  font-family: "Inter", system-ui, sans-serif;
-  letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-surface-strong, transparent);
   color: var(--gx-fg-dim);
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 11px;
+  letter-spacing: 0;
 }
 .gauntlet-capsule__refresh {
-  background: transparent; border: 1px solid var(--gx-border); color: var(--gx-fg-dim);
+  background: transparent;
+  border: 1px solid var(--gx-border);
+  color: var(--gx-fg-muted);
   font-family: "JetBrains Mono", monospace;
-  font-size: 9px; padding: 2px 8px; border-radius: 4px; cursor: pointer;
-  letter-spacing: 0.12em;
+  font-size: 9px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  flex-shrink: 0;
 }
 .gauntlet-capsule__refresh:hover {
   color: var(--gx-fg);
@@ -2056,30 +2087,34 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__input {
   width: 100%;
-  background: var(--gx-sunken);
+  background: var(--gx-surface-strong, var(--gx-sunken));
   color: var(--gx-fg);
-  border: 1px solid var(--gx-border);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 14px;
+  padding: 14px 16px;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 14.5px;
   resize: none;
-  min-height: 56px;
+  min-height: 64px;
   box-sizing: border-box;
-  line-height: 1.5;
-  transition: border-color 140ms ease, box-shadow 200ms ease;
+  line-height: 1.55;
+  transition: border-color 160ms ease, box-shadow 200ms ease, background 160ms ease;
+  caret-color: var(--gx-ember);
 }
-.gauntlet-capsule__input::placeholder { color: var(--gx-fg-muted); }
+.gauntlet-capsule__input::placeholder {
+  color: var(--gx-fg-muted);
+  font-style: normal;
+}
 .gauntlet-capsule__input:focus {
   outline: none;
   border-color: rgba(208, 122, 90, 0.55);
   box-shadow:
-    0 0 0 1px rgba(208, 122, 90, 0.30),
-    0 0 24px rgba(208, 122, 90, 0.18);
+    0 0 0 3px rgba(208, 122, 90, 0.14),
+    0 0 32px rgba(208, 122, 90, 0.10);
 }
 .gauntlet-capsule__actions {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; margin-top: 8px;
+  gap: 12px; margin-top: 10px;
 }
 .gauntlet-capsule__hint {
   display: inline-flex; gap: 4px; align-items: center;
@@ -2102,26 +2137,25 @@ export const CAPSULE_CSS = `
   position: relative;
   border: none;
   cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 9px 18px;
+  border-radius: 999px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.01em;
-  color: #0e1016;
-  background:
-    linear-gradient(180deg, #f0f2f7 0%, #d4d8e0 100%);
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(180deg, #d6855e 0%, #b65d3f 100%);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.20),
-    0 6px 18px rgba(208, 122, 90, 0.30);
-  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+    0 0 0 1px rgba(208, 122, 90, 0.45),
+    0 6px 18px rgba(208, 122, 90, 0.35);
+  transition: transform 120ms ease, box-shadow 160ms ease, opacity 120ms ease;
   display: inline-flex; align-items: center; gap: 8px;
 }
 .gauntlet-capsule__compose:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.32),
-    0 10px 24px rgba(208, 122, 90, 0.45);
+    0 0 0 1px rgba(208, 122, 90, 0.55),
+    0 10px 26px rgba(208, 122, 90, 0.50);
 }
 .gauntlet-capsule__compose:disabled {
   opacity: 0.45; cursor: not-allowed; transform: none;
