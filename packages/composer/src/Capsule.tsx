@@ -3138,4 +3138,14 @@ export const CAPSULE_CSS = `
   padding: 0;
   border: none;
 }
+/* Syntax tokens — keywords/strings/numbers/comments/fns picked by the
+   in-house tokenizer in markdown.tsx. Each kind binds to a --gx-code-*
+   custom property so the light flagship + night premium themes stay
+   in lockstep without forking the markdown.tsx logic. */
+.gauntlet-md__tok--k { color: var(--gx-code-keyword); font-weight: 500; }
+.gauntlet-md__tok--s { color: var(--gx-code-string); }
+.gauntlet-md__tok--n { color: var(--gx-code-number); }
+.gauntlet-md__tok--c { color: var(--gx-code-comment); font-style: italic; }
+.gauntlet-md__tok--f { color: var(--gx-code-fn); }
+.gauntlet-md__tok--p { color: inherit; }
 `;
