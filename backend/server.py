@@ -60,7 +60,15 @@ from config import (
     SIGNAL_API_KEY,
     TRUST_PROXY,
 )
-from models import SignalQuery, SignalResponse, SpineSnapshot, RunRecord
+from models import (
+    MemoryRecordCreate,
+    MemoryRecoverRequest,
+    MemoryRecoverResponse,
+    RunRecord,
+    SignalQuery,
+    SignalResponse,
+    SpineSnapshot,
+)
 from engine import SignalEngine
 from memory import failure_memory
 from runs import run_store
@@ -694,19 +702,18 @@ async def list_memory_records(
 
 
 @app.post("/memory/records")
-async def create_memory_record(req: dict):
+async def create_memory_record(req: MemoryRecordCreate):
     """Create or merge-by-fingerprint a memory entry. Operator + cápsula
-    + memory_save tool all funnel through here."""
+    + memory_save tool all funnel through here. Pydantic validates the
+    body so malformed payloads get a clean 422 instead of a 500."""
     from memory_records import memory_records_store
-    from models import MemoryRecordCreate
 
-    parsed = MemoryRecordCreate(**req)
     record = await memory_records_store.record(
-        topic=parsed.topic,
-        body=parsed.body,
-        kind=parsed.kind,
-        scope=parsed.scope,
-        project_id=parsed.project_id,
+        topic=req.topic,
+        body=req.body,
+        kind=req.kind,
+        scope=req.scope,
+        project_id=req.project_id,
     )
     return record.model_dump()
 
@@ -733,26 +740,24 @@ async def list_memory_projects():
     return {"projects": await memory_records_store.projects()}
 
 
-@app.post("/memory/recover")
-async def recover_memory(req: dict):
+@app.post("/memory/recover", response_model=MemoryRecoverResponse)
+async def recover_memory(req: MemoryRecoverRequest):
     """Sprint 7 — context recovery hook. Returns up to N similar prior
     records for a query, scoped to project_id when supplied. The composer
     pipeline calls this to inject continuity into model context; ad-hoc
     operator queries hit it too."""
     from memory_records import memory_records_store
-    from models import MemoryRecoverRequest, MemoryRecoverResponse
 
-    parsed = MemoryRecoverRequest(**req)
     matches = await memory_records_store.find_relevant(
-        query=parsed.query,
-        project_id=parsed.project_id,
-        max_results=parsed.max_results,
+        query=req.query,
+        project_id=req.project_id,
+        max_results=req.max_results,
     )
     return MemoryRecoverResponse(
         matches=matches,
-        query=parsed.query,
-        project_id=parsed.project_id,
-    ).model_dump()
+        query=req.query,
+        project_id=req.project_id,
+    )
 
 
 @app.get("/memory/records/stats")
@@ -776,7 +781,7 @@ async def get_tool_manifests():
     independent of which subset the active agent has filtered in.
     Surfacing them all here lets the operator opt-out of any tool even
     before the agent boots."""
-    from tools import ToolRegistry, default_tools
+    from tools import ToolRegistry
     return {"tools": ToolRegistry().manifests()}
 
 

@@ -14,8 +14,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  DEFAULT_COMPOSER_SETTINGS,
-  type ComposerSettings,
   type ContextCaptureRequest,
   type DomPlanResult,
   DesktopComposerClient,
@@ -34,26 +32,19 @@ export function Capsule({ onDismiss }: { onDismiss: () => void }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [plan, setPlan] = useState<DomPlanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [, setSettings] = useState<ComposerSettings>(DEFAULT_COMPOSER_SETTINGS);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Capture clipboard + window title at mount, refresh-able via the
-  // re-read button. Settings load is best-effort and falls back to
-  // defaults on failure.
+  // re-read button. Sprint 6 desktop is text-only and doesn't yet
+  // honour /composer/settings — when the desktop surface gains
+  // screenshot_default and execution_reporting_required, the GET will
+  // come back here.
   useEffect(() => {
     let cancelled = false;
     void captureContextSnapshot().then((snap) => {
       if (!cancelled) setSnapshot(snap);
     });
-    void clientRef.current
-      .getSettings()
-      .then((s) => {
-        if (!cancelled) setSettings(s);
-      })
-      .catch(() => {
-        // Backend down or settings unreachable — keep defaults.
-      });
     return () => {
       cancelled = true;
     };

@@ -11,10 +11,8 @@ import json
 import re
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Optional
 
-from config import FAILURE_MEMORY_FILE, MAX_FAILURE_ENTRIES, FAILURE_CONTEXT_WINDOW, MEMORY_DIR
+from config import FAILURE_MEMORY_FILE, MAX_FAILURE_ENTRIES, FAILURE_CONTEXT_WINDOW
 from models import FailureRecord, FailureMemory, RefusalReason
 from persistence import atomic_write_text_async, quarantine_corrupt_file
 

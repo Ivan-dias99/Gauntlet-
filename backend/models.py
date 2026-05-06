@@ -7,7 +7,7 @@ Confidence is binary: HIGH or LOW. No medium tier, no caveats.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal, Optional
 from uuid import UUID, uuid4

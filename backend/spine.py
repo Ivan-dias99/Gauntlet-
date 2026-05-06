@@ -14,7 +14,6 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from config import MEMORY_DIR
 from models import SpineSnapshot

@@ -784,6 +784,10 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
     if domain_blocked and actions:
         host = _hostname_of(ctx.url) or "this domain"
         policy_reason = f"domain '{host}' is disallowed by Composer policy"
+        logger.info(
+            "composer.policy.domain_blocked host=%s dropped_actions=%d",
+            host, len(actions),
+        )
         actions = []
     elif actions:
         actions, dropped = _filter_actions_by_policy(actions, settings)
@@ -791,6 +795,10 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
             uniq = sorted(set(dropped))
             policy_reason = (
                 f"action type(s) not permitted by policy: {', '.join(uniq)}"
+            )
+            logger.info(
+                "composer.policy.action_filtered dropped=%s remaining=%d",
+                uniq, len(actions),
             )
 
     # Compose is mutually exclusive with actions. If the model returned
@@ -933,6 +941,10 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
         if domain_blocked and actions_validated:
             host = _hostname_of(ctx.url) or "this domain"
             policy_reason = f"domain '{host}' is disallowed by Composer policy"
+            logger.info(
+                "composer.policy.domain_blocked host=%s dropped_actions=%d (stream)",
+                host, len(actions_validated),
+            )
             actions_validated = []
         elif actions_validated:
             actions_validated, dropped = _filter_actions_by_policy(
@@ -942,6 +954,10 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
                 uniq = sorted(set(dropped))
                 policy_reason = (
                     f"action type(s) not permitted by policy: {', '.join(uniq)}"
+                )
+                logger.info(
+                    "composer.policy.action_filtered dropped=%s remaining=%d (stream)",
+                    uniq, len(actions_validated),
                 )
         actions_data: list[dict] = [a.model_dump() for a in actions_validated]
 
