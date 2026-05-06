@@ -129,6 +129,20 @@ FAILURE_MEMORY_FILE: Path = MEMORY_DIR / "failure_memory.json"
 MAX_FAILURE_ENTRIES: int = 500
 FAILURE_CONTEXT_WINDOW: int = 10
 
+# Sprint 4 — Composer settings (governance lock). Single JSON document
+# storing per-domain / per-action policies, context caps, and the
+# execution-reporting requirement. Cápsula reads at boot, Control Center
+# edits via /composer/settings.
+COMPOSER_SETTINGS_FILE: Path = MEMORY_DIR / "composer_settings.json"
+
+# Sprint 7 — Memory / Canon Lock. Operator-callable memory store with
+# user / project scopes and 5 kinds (note, decision, failure_pattern,
+# preference, canon). The composer pipeline injects relevant prior
+# records into model context on every preview/dom_plan call. Distinct
+# from failure_memory (which records consensus failures).
+MEMORY_RECORDS_FILE: Path = MEMORY_DIR / "memory_records.json"
+MAX_MEMORY_RECORDS: int = 2000
+
 # Kill-switch for the prior_failure feedback loop. When false, the engine
 # skips the memory lookup and never records new failures, so the triad runs
 # without reinforced caution and the judge stops refusing on prior_failure.

@@ -38,12 +38,15 @@ from models import (
     ComposerArtifact,
     ComposerIntentRequest,
     ComposerPreviewRequest,
+    ComposerSettings,
     ContextCaptureRequest,
     ContextCaptureResponse,
     ContextPackage,
     DomAction,
     DomPlanRequest,
     DomPlanResult,
+    ExecutionReportRequest,
+    ExecutionReportResponse,
     IntentKind,
     IntentResult,
     ModelRoute,
@@ -53,9 +56,11 @@ from models import (
     SignalQuery,
     SuggestedAction,
 )
+from composer_settings import settings_store
 from model_gateway import GatewayCall, gateway
 from pydantic import TypeAdapter, ValidationError
 from runs import run_store
+from urllib.parse import urlparse
 
 logger = logging.getLogger("gauntlet.composer")
 
@@ -128,6 +133,79 @@ def _get_engine():
             },
         )
     return server.engine
+
+
+# ── Governance Lock (Sprint 4) — settings application helpers ──────────────
+
+def _hostname_of(url: Optional[str]) -> Optional[str]:
+    """Lower-case hostname for policy lookup. Returns None when the URL
+    is missing or unparseable; callers treat None as 'default policy'."""
+    if not url:
+        return None
+    try:
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        return host or None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _domain_policy_for(settings: ComposerSettings, url: Optional[str]):
+    """Resolve the effective DomainPolicy for a URL.
+
+    Lookup order:
+      1. Exact hostname match in settings.domains
+      2. settings.default_domain_policy
+    """
+    host = _hostname_of(url)
+    if host and host in settings.domains:
+        return settings.domains[host]
+    return settings.default_domain_policy
+
+
+def _action_policy_for(settings: ComposerSettings, action_type: str):
+    """Resolve the effective ActionPolicy for a DomAction.type."""
+    if action_type in settings.actions:
+        return settings.actions[action_type]
+    return settings.default_action_policy
+
+
+def _apply_context_caps(
+    metadata: dict,
+    settings: ComposerSettings,
+) -> dict:
+    """Truncate page_text + dom_skeleton on /composer/context per settings.
+
+    Defense-in-depth: the extension already pre-caps in selection.ts but
+    settings let the operator tighten further (or loosen, up to the
+    Pydantic max). Returns a new dict — never mutates the caller's."""
+    if not metadata:
+        return metadata
+    out = dict(metadata)
+    page_text = out.get("page_text")
+    if isinstance(page_text, str) and len(page_text) > settings.max_page_text_chars:
+        out["page_text"] = page_text[: settings.max_page_text_chars] + "…"
+    dom_skel = out.get("dom_skeleton")
+    if isinstance(dom_skel, str) and len(dom_skel) > settings.max_dom_skeleton_chars:
+        out["dom_skeleton"] = dom_skel[: settings.max_dom_skeleton_chars] + "…"
+    return out
+
+
+def _filter_actions_by_policy(
+    actions: list[DomAction],
+    settings: ComposerSettings,
+) -> tuple[list[DomAction], list[str]]:
+    """Drop actions whose type policy disallows them. Returns (kept, dropped_types)."""
+    kept: list[DomAction] = []
+    dropped: list[str] = []
+    for a in actions:
+        action_type = getattr(a, "type", None) or "unknown"
+        policy = _action_policy_for(settings, action_type)
+        if policy.allowed:
+            kept.append(a)
+        else:
+            dropped.append(action_type)
+    return kept, dropped
 
 
 # ── Intent classification (V0 heuristic) ───────────────────────────────────
@@ -251,6 +329,12 @@ async def capture_context(req: ContextCaptureRequest) -> ContextCaptureResponse:
     if not req.selection and not req.url and not req.app_name:
         confidence = 0.5  # weak context → downstream may need to clarify
 
+    # Sprint 4 — apply governance caps before stashing the context.
+    # max_page_text_chars / max_dom_skeleton_chars truncate metadata
+    # blobs at intake so downstream stages never see oversized payloads.
+    settings = await settings_store.get()
+    capped_metadata = _apply_context_caps(req.metadata or {}, settings)
+
     pkg = ContextPackage(
         source=req.source,
         url=req.url,
@@ -261,7 +345,7 @@ async def capture_context(req: ContextCaptureRequest) -> ContextCaptureResponse:
         clipboard=req.clipboard,
         screenshot_ref=req.screenshot_ref,
         files=req.files,
-        metadata=req.metadata,
+        metadata=capped_metadata,
         permission_scope=req.permission_scope,
         confidence=confidence,
     )
@@ -351,13 +435,18 @@ async def generate_preview(req: ComposerPreviewRequest) -> PreviewResult:
     tools_used: list[str] = []
     model_used = intent.model_route.primary_model
 
+    # Sprint 7 — memory recovery applies to both paths. Computed once
+    # here so the agent and triad branches share the same recovered
+    # context instead of querying twice.
+    memory_block = await _compose_memory_block(ctx, intent.user_input)
+
     try:
         if intent.intent in {"generate_code", "debug_code", "execute_plan"}:
             # Agent path — tool use
             engine = _get_engine()
             agent_query = SignalQuery(
                 question=_compose_agent_question(intent, req.intent_id),
-                context=_compose_context_blob(ctx),
+                context=_compose_context_blob(ctx, memory_block),
                 chamber="terminal",
             )
             agent_result = await engine.process_dev_query(agent_query)
@@ -383,7 +472,7 @@ async def generate_preview(req: ComposerPreviewRequest) -> PreviewResult:
             engine = _get_engine()
             triad_query = SignalQuery(
                 question=_compose_triad_question(intent, req.intent_id),
-                context=_compose_context_blob(ctx),
+                context=_compose_context_blob(ctx, memory_block),
             )
             signal_response = await engine.process_query(triad_query)
             judge_verdict = "high" if signal_response.confidence.value == "high" else "low"
@@ -522,7 +611,9 @@ def _provider_supports_images(engine) -> bool:
     return cls in ("AsyncAnthropic", "MockAsyncAnthropic")
 
 
-def _build_user_messages(ctx: ContextPackage, user_input: str, engine=None) -> list[dict]:
+async def _build_user_messages(
+    ctx: ContextPackage, user_input: str, engine=None,
+) -> list[dict]:
     """Compose the messages array for the planner, including a base64
     image block when the content script forwarded an opt-in viewport
     screenshot AND the active provider supports image inputs.
@@ -530,9 +621,14 @@ def _build_user_messages(ctx: ContextPackage, user_input: str, engine=None) -> l
     screenshot is absent we send a plain string content (the SDK
     accepts both shapes interchangeably). On Groq/Gemini adapters we
     quietly drop the image block — those adapters only do text and
-    would 502 on a list-shaped content with image blocks."""
+    would 502 on a list-shaped content with image blocks.
+
+    Sprint 7 — pulls memory records relevant to the request and prepends
+    them inside the context blob so the model sees prior decisions and
+    canon as authoritative context."""
+    memory_block = await _compose_memory_block(ctx, user_input)
     user_msg = (
-        f"Page context:\n{_compose_context_blob(ctx)}\n\n"
+        f"Page context:\n{_compose_context_blob(ctx, memory_block)}\n\n"
         f"Request: {user_input}"
     )
     raw_screenshot = ctx.metadata.get("screenshot_data_url") if ctx.metadata else None
@@ -606,11 +702,20 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
         )
     assert isinstance(ctx, ContextPackage)
 
+    # Sprint 4 — domain gate. Refuse to plan actions on a hostname the
+    # operator disallowed. Compose-only paths are NOT blocked by the
+    # domain policy — text answers about a page are read-only and don't
+    # touch the DOM. This short-circuits before the model call so we
+    # don't burn tokens on a request that would be filtered to nothing.
+    settings = await settings_store.get()
+    domain_policy = _domain_policy_for(settings, ctx.url)
+    domain_blocked = not domain_policy.allowed
+
     engine = _get_engine()
     choice = gateway.select("default")
     model_id = choice.model_id
 
-    messages = _build_user_messages(ctx, req.user_input, engine)
+    messages = await _build_user_messages(ctx, req.user_input, engine)
 
     started = time.perf_counter()
     raw_text = ""
@@ -672,6 +777,30 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
                 except ValidationError:
                     continue
 
+    # Sprint 4 — apply policy gates before returning. Order matters:
+    # domain block wins (everything dropped, reason carries the why),
+    # then per-action filter strips disallowed types.
+    policy_reason: Optional[str] = None
+    if domain_blocked and actions:
+        host = _hostname_of(ctx.url) or "this domain"
+        policy_reason = f"domain '{host}' is disallowed by Composer policy"
+        logger.info(
+            "composer.policy.domain_blocked host=%s dropped_actions=%d",
+            host, len(actions),
+        )
+        actions = []
+    elif actions:
+        actions, dropped = _filter_actions_by_policy(actions, settings)
+        if dropped:
+            uniq = sorted(set(dropped))
+            policy_reason = (
+                f"action type(s) not permitted by policy: {', '.join(uniq)}"
+            )
+            logger.info(
+                "composer.policy.action_filtered dropped=%s remaining=%d",
+                uniq, len(actions),
+            )
+
     # Compose is mutually exclusive with actions. If the model returned
     # both (against instructions), prefer the actions — they're the
     # higher-fidelity intent. The compose text is only kept when there
@@ -680,6 +809,11 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
     compose: Optional[str] = None
     if not actions and isinstance(raw_compose, str) and raw_compose.strip():
         compose = raw_compose.strip()
+    # Surface the policy filter reason when it fired and there's no
+    # other narrative to show — keep any model-supplied reason if the
+    # planner already had one.
+    if policy_reason and not reason:
+        reason = policy_reason
 
     logger.info(
         "composer.dom_plan model=%s latency_ms=%d actions=%d compose=%s reason=%r",
@@ -726,11 +860,20 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
         )
     assert isinstance(ctx, ContextPackage)
 
+    # Sprint 4 — domain gate (mirror of /composer/dom_plan). The
+    # streaming path can't short-circuit before opening the stream
+    # without breaking the SSE contract the cápsula expects, so we
+    # collect the policy here and apply it inside event_stream after
+    # the model finishes.
+    settings = await settings_store.get()
+    domain_policy = _domain_policy_for(settings, ctx.url)
+    domain_blocked = not domain_policy.allowed
+
     engine = _get_engine()
     choice = gateway.select("default")
     model_id = choice.model_id
 
-    messages = _build_user_messages(ctx, req.user_input, engine)
+    messages = await _build_user_messages(ctx, req.user_input, engine)
 
     async def event_stream():
         raw_text = ""
@@ -780,22 +923,49 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
         raw_compose = parsed.get("compose") if isinstance(parsed, dict) else None
         reason = parsed.get("reason") if isinstance(parsed, dict) else None
 
-        actions_data: list[dict] = []
+        actions_validated: list[DomAction] = []
         if isinstance(raw_actions, list):
             try:
-                validated = _DOM_ACTION_ADAPTER.validate_python(raw_actions)
-                actions_data = [a.model_dump() for a in validated]
+                actions_validated = _DOM_ACTION_ADAPTER.validate_python(raw_actions)
             except ValidationError:
                 for a in raw_actions:
                     try:
                         v = _DOM_ACTION_ADAPTER.validate_python([a])[0]
-                        actions_data.append(v.model_dump())
+                        actions_validated.append(v)
                     except ValidationError:
                         continue
+
+        # Sprint 4 — apply policy gates after parse, before yield.
+        # Mirror of /composer/dom_plan logic.
+        policy_reason: Optional[str] = None
+        if domain_blocked and actions_validated:
+            host = _hostname_of(ctx.url) or "this domain"
+            policy_reason = f"domain '{host}' is disallowed by Composer policy"
+            logger.info(
+                "composer.policy.domain_blocked host=%s dropped_actions=%d (stream)",
+                host, len(actions_validated),
+            )
+            actions_validated = []
+        elif actions_validated:
+            actions_validated, dropped = _filter_actions_by_policy(
+                actions_validated, settings,
+            )
+            if dropped:
+                uniq = sorted(set(dropped))
+                policy_reason = (
+                    f"action type(s) not permitted by policy: {', '.join(uniq)}"
+                )
+                logger.info(
+                    "composer.policy.action_filtered dropped=%s remaining=%d (stream)",
+                    uniq, len(actions_validated),
+                )
+        actions_data: list[dict] = [a.model_dump() for a in actions_validated]
 
         compose: Optional[str] = None
         if not actions_data and isinstance(raw_compose, str) and raw_compose.strip():
             compose = raw_compose.strip()
+        if policy_reason and not reason:
+            reason = policy_reason
 
         result_payload = json.dumps({
             "actions": actions_data,
@@ -902,6 +1072,153 @@ async def apply_preview(req: ComposerApplyRequest) -> ApplyResult:
         )
 
 
+# ── Governance Lock (Sprint 4) — settings routes ───────────────────────────
+#
+# /composer/settings — single document store. The Control Center always
+# PUTs the full ComposerSettings payload (no PATCH) because the document
+# is small and round-tripping it sidesteps three-way-merge headaches.
+# The cápsula GETs at mount and applies the screenshot_default + the
+# execution_reporting_required flag.
+
+@router.get("/settings", response_model=ComposerSettings)
+async def get_composer_settings() -> ComposerSettings:
+    """Read the current governance contract."""
+    return await settings_store.get()
+
+
+@router.put("/settings", response_model=ComposerSettings)
+async def put_composer_settings(req: ComposerSettings) -> ComposerSettings:
+    """Replace the governance contract. updated_at is overwritten."""
+    saved = await settings_store.replace(req)
+    return saved
+
+
+# ── Execution Contract (Sprint 3) ──────────────────────────────────────────
+#
+# After the cápsula runs the planner's actions on the live page, it
+# reports the outcome back here. We record one ledger row per call with
+# route="composer:execution" so the Control Center can show the full
+# lifecycle (context → plan → approval → execution → result) without a
+# second store. The cápsula is authoritative on what actually ran on the
+# page — the backend just records.
+
+@router.post("/execution", response_model=ExecutionReportResponse)
+async def report_execution(req: ExecutionReportRequest) -> ExecutionReportResponse:
+    """Stage 5 — record the outcome of executeDomActions on the live page."""
+    run_id = uuid4()
+    ledger_event = await _record_execution(run_id, req)
+    logger.info(
+        "composer.execution.recorded run_id=%s status=%s actions=%d url=%s",
+        run_id, req.status, len(req.results), req.url or "—",
+    )
+    return ExecutionReportResponse(
+        run_id=run_id,
+        ledger_event_id=ledger_event,
+    )
+
+
+async def _record_execution(
+    run_id: UUID,
+    req: ExecutionReportRequest,
+) -> Optional[str]:
+    """Append one execution row to runs.json with route='composer:execution'.
+
+    Layout intentional so the existing LedgerPage renders without a new
+    schema:
+      * tool_calls — one entry per executed action (name=type, ok,
+        selector, error). The Ledger table already shows tool_calls
+        count, so the action count surfaces for free.
+      * answer — JSON summary (URL, title, danger gate, full action+result
+        list) so the Run detail panel can render the full story.
+      * context — one-line header (status / url / context_id / plan_id)
+        for the table preview.
+      * refused — true on user rejection.
+      * terminated_early + termination_reason — true when execution
+        failed or any action failed.
+    """
+    failures = sum(1 for r in req.results if not r.ok)
+    refused = req.status == "rejected"
+    terminated = req.status == "failed" or (req.status == "executed" and failures > 0)
+    termination_reason: Optional[str] = None
+    if req.status == "failed":
+        termination_reason = req.error or "execution_failed"
+    elif req.status == "executed" and failures > 0:
+        termination_reason = f"{failures}/{len(req.results)} action(s) failed"
+    elif req.status == "rejected":
+        termination_reason = "user_rejected"
+
+    tool_calls: list[dict] = []
+    for ar in req.results:
+        action_dict = ar.action.model_dump()
+        tool_calls.append({
+            "name": action_dict.get("type", "unknown"),
+            "ok": ar.ok,
+            "selector": action_dict.get("selector"),
+            "error": ar.error,
+            "danger": ar.danger,
+        })
+
+    summary = {
+        "status": req.status,
+        "url": req.url,
+        "page_title": req.page_title,
+        "model_used": req.model_used,
+        "plan_latency_ms": req.plan_latency_ms,
+        "has_danger": req.has_danger,
+        "danger_acknowledged": req.danger_acknowledged,
+        "sequence_danger_reason": req.sequence_danger_reason,
+        "user_input": req.user_input,
+        "actions": [r.action.model_dump() for r in req.results],
+        "results": [
+            {
+                "ok": r.ok,
+                "error": r.error,
+                "danger": r.danger,
+                "danger_reason": r.danger_reason,
+            }
+            for r in req.results
+        ],
+    }
+
+    question = (
+        req.user_input
+        or f"composer:execution {req.status} on {req.url or 'unknown page'}"
+    )
+    context_parts: list[str] = [f"status={req.status}"]
+    if req.url:
+        context_parts.append(f"url={req.url}")
+    if req.context_id:
+        context_parts.append(f"context_id={req.context_id}")
+    if req.plan_id:
+        context_parts.append(f"plan_id={req.plan_id}")
+    if req.has_danger:
+        context_parts.append(
+            f"danger={'acknowledged' if req.danger_acknowledged else 'unacknowledged'}"
+        )
+
+    try:
+        record = RunRecord(
+            id=str(run_id),
+            route="composer:execution",
+            question=question,
+            context=" ".join(context_parts),
+            answer=json.dumps(summary, ensure_ascii=False, indent=2),
+            refused=refused,
+            confidence=None,
+            judge_reasoning=req.error or req.sequence_danger_reason,
+            tool_calls=tool_calls,
+            iterations=None,
+            processing_time_ms=req.plan_latency_ms or 0,
+            terminated_early=terminated,
+            termination_reason=termination_reason,
+        )
+        await run_store.record(record)
+        return str(run_id)
+    except Exception:  # noqa: BLE001
+        logger.exception("composer.execution.record_failed")
+        return None
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 async def _record_composer_run(
@@ -961,7 +1278,52 @@ def _compose_triad_question(intent: IntentResult, intent_id: UUID) -> str:
     return "\n".join(lines)
 
 
-def _compose_context_blob(ctx: ContextPackage) -> str:
+async def _compose_memory_block(ctx: ContextPackage, user_input: str) -> str:
+    """Sprint 7 — context recovery. Pull the top-N similar memory
+    records for the current request and format them into a compact
+    block the model treats as authoritative prior. Failures here
+    degrade silently: a missing memory store must not block the
+    composer flow."""
+    try:
+        from memory_records import memory_records_store
+        # Compose query: user input + selection prefix (the "what is the
+        # user pointing at" handle). Both inform similarity.
+        query_parts = [user_input]
+        if ctx.selection:
+            query_parts.append(ctx.selection[:200])
+        query = " ".join(query_parts).strip()
+        if not query:
+            return ""
+        # Project hint travels in metadata.project_id — set by the
+        # cápsula or the operator's tool call. None falls through to
+        # global user-scoped recovery.
+        project_id = None
+        if ctx.metadata:
+            pid = ctx.metadata.get("project_id")
+            if isinstance(pid, str) and pid:
+                project_id = pid
+        matches = await memory_records_store.find_relevant(
+            query=query, project_id=project_id, max_results=5,
+        )
+        if not matches:
+            return ""
+        lines = ["memory (prior context — authoritative when canon):"]
+        for m in matches:
+            tag = f"[{m.kind}/{m.scope}]"
+            head = f"  · {tag} {m.topic}"
+            if m.times_seen > 1:
+                head += f"  ×{m.times_seen}"
+            lines.append(head)
+            if m.body:
+                lines.append(f"    {m.body[:400]}")
+        return "\n".join(lines)
+    except Exception:  # noqa: BLE001
+        # Never break the composer flow over a memory store hiccup.
+        logger.exception("composer.memory_block.failed")
+        return ""
+
+
+def _compose_context_blob(ctx: ContextPackage, memory_block: str = "") -> str:
     lines: list[str] = [f"source: {ctx.source.value}"]
     if ctx.url:
         lines.append(f"url: {ctx.url}")
@@ -973,6 +1335,9 @@ def _compose_context_blob(ctx: ContextPackage) -> str:
         lines.append(f"window: {ctx.window_title}")
     if ctx.files:
         lines.append(f"files: {', '.join(ctx.files[:8])}")
+    if memory_block:
+        lines.append("---")
+        lines.append(memory_block)
     if ctx.selection:
         lines.append("---")
         lines.append("selection:")

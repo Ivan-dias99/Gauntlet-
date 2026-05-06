@@ -7,7 +7,7 @@ Confidence is binary: HIGH or LOW. No medium tier, no caveats.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
@@ -582,3 +582,214 @@ class DomPlanResult(BaseModel):
     latency_ms: int
     raw_response: Optional[str] = None  # kept for debugging when both empty
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── Execution Contract (Sprint 3) ──────────────────────────────────────────
+#
+# After the cápsula runs the planner's actions on the live page, it
+# reports the outcome back to the backend. The backend records each
+# execution as a ledger event (route="composer:execution") so the
+# Control Center can show the full lifecycle:
+#   context → plan → approval → execution → result
+#
+# Status:
+#   executed — user approved, executor ran. Per-action ok/err is in
+#              `results`; "executed" is the envelope status, not a
+#              guarantee that every step succeeded.
+#   rejected — user dismissed the cápsula with an action plan visible
+#              without executing. Records the *intent* to reject so the
+#              Control Center can show the lifecycle even when the user
+#              backed out.
+#   failed   — the executor itself threw before/across steps. `error`
+#              carries the message; `results` may be empty or partial.
+
+ExecutionStatus = Literal["executed", "rejected", "failed"]
+
+
+class ExecutedActionRecord(BaseModel):
+    """One DOM action and its outcome — wire shape used by the
+    /composer/execution endpoint and stored verbatim in the ledger."""
+    action: DomAction
+    ok: bool
+    error: Optional[str] = Field(default=None, max_length=2000)
+    danger: bool = False
+    danger_reason: Optional[str] = Field(default=None, max_length=500)
+
+
+class ExecutionReportRequest(BaseModel):
+    """Cápsula → backend payload after executeDomActions resolves
+    (or after user rejection of an action plan)."""
+    plan_id: Optional[UUID] = None
+    context_id: Optional[UUID] = None
+    url: Optional[str] = Field(default=None, max_length=2000)
+    page_title: Optional[str] = Field(default=None, max_length=500)
+    status: ExecutionStatus
+    results: list[ExecutedActionRecord] = Field(default_factory=list, max_length=64)
+    has_danger: bool = False
+    sequence_danger_reason: Optional[str] = Field(default=None, max_length=500)
+    danger_acknowledged: bool = False
+    error: Optional[str] = Field(default=None, max_length=2000)
+    model_used: Optional[str] = Field(default=None, max_length=200)
+    plan_latency_ms: Optional[int] = None
+    user_input: Optional[str] = Field(default=None, max_length=10_000)
+
+
+class ExecutionReportResponse(BaseModel):
+    run_id: UUID
+    ledger_event_id: Optional[str] = None
+    received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── Governance Lock (Sprint 4) — Composer Settings ─────────────────────────
+#
+# Single source of truth for how the Composer captures context, executes
+# actions, and requires approval. Persisted server-side so the Control
+# Center can edit and the cápsula can read on every summon. Defaults are
+# permissive (everything allowed, sane caps) so an empty settings file
+# still produces a working Composer.
+
+class DomainPolicy(BaseModel):
+    """Per-hostname rule. Hostname is the matrix key.
+
+    `allowed` is the hard gate — when false, no DOM action runs on this
+    domain regardless of type. `require_danger_ack` is opt-in stricter
+    behavior: when true, the cápsula forces the danger acknowledgement
+    even on plans that wouldn't otherwise trigger it. Default false so
+    Sprint 3 ergonomics survive the upgrade; operators tighten per-domain
+    via the Control Center matrix."""
+    allowed: bool = True
+    require_danger_ack: bool = False
+
+
+class ActionPolicy(BaseModel):
+    """Per-DomAction.type rule. Type ('click', 'fill', 'highlight',
+    'scroll_to') is the matrix key. Same semantics as DomainPolicy."""
+    allowed: bool = True
+    require_danger_ack: bool = False
+
+
+class ToolPolicy(BaseModel):
+    """Sprint 5 — per-tool governance gate. Lookup key is the tool name
+    (Tool.name). Missing entries default to allowed; the operator opts
+    OUT per-tool via the Control Center matrix. require_approval is
+    advisory in Sprint 5 — the agent loop currently honours `allowed`
+    only; the approval gate ships in Sprint 7."""
+    allowed: bool = True
+    require_approval: bool = False
+
+
+class ComposerSettings(BaseModel):
+    """The full governance contract. Everything optional in the Update
+    counterpart — this model is the canonical replace-payload form
+    used by GET / PUT /composer/settings."""
+    # Per-domain matrix. Lookup by hostname; missing → default_domain_policy.
+    domains: dict[str, DomainPolicy] = Field(default_factory=dict)
+    # Per-action matrix. Lookup by DomAction.type; missing → default_action_policy.
+    actions: dict[str, ActionPolicy] = Field(default_factory=dict)
+    # Defaults for unmatched keys.
+    default_domain_policy: DomainPolicy = Field(default_factory=DomainPolicy)
+    default_action_policy: ActionPolicy = Field(default_factory=ActionPolicy)
+    # Sprint 5 — per-tool matrix. Lookup by Tool.name. Missing tools default
+    # to allowed=true; agent dispatcher consults this before each tool call.
+    tool_policies: dict[str, ToolPolicy] = Field(default_factory=dict)
+    # Context caps applied at /composer/context to keep payloads bounded.
+    # Char-based for honesty: backend can only count chars, not "DOM
+    # elements" — the extension also pre-truncates and the server cap is
+    # defense-in-depth.
+    max_page_text_chars: int = Field(default=6000, ge=500, le=50_000)
+    max_dom_skeleton_chars: int = Field(default=4000, ge=500, le=20_000)
+    # Defaults the cápsula honors at mount time.
+    screenshot_default: bool = False
+    # When true, the cápsula awaits reportExecution and surfaces failure
+    # as an inline error — the lifecycle is mandatory, not best-effort.
+    execution_reporting_required: bool = False
+    updated_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+
+class ToolManifest(BaseModel):
+    """Sprint 5 — declarative governance shape for a tool. Returned by
+    GET /tools/manifests and rendered in the Control Center matrix."""
+    name: str
+    description: str
+    mode: str  # read | draft | preview | execute_with_approval
+    risk: str  # low | medium | high
+    version: str
+    scopes: list[str] = Field(default_factory=list)
+    rollback_policy: str = "n/a"
+    timeout_s: float
+
+
+# ── Memory / Canon Lock (Sprint 7) ─────────────────────────────────────────
+#
+# Three memory namespaces, one store. The cápsula's memory_save tool
+# writes into `note` by default; the composer pipeline injects relevant
+# prior records into the model context on every preview/dom_plan call so
+# the system carries continuity instead of starting from zero.
+#
+# kinds:
+#   note            — operator-saved free-form prose
+#   decision        — a decision made + the rationale (becomes canon
+#                     when ratified; until then it's just a note)
+#   failure_pattern — a known failure mode the operator wants surfaced
+#                     when similar topics come up
+#   preference      — user preference (style, tone, libraries to favour)
+#   canon           — ratified decision; treated as authoritative when
+#                     surfaced in context
+#
+# scope:
+#   user            — visible to all projects
+#   project         — scoped to project_id; only surfaces when that
+#                     project is the active context
+
+MemoryKind = Literal["note", "decision", "failure_pattern", "preference", "canon"]
+MemoryScope = Literal["user", "project"]
+
+
+class MemoryRecord(BaseModel):
+    """One entry in the operator-callable memory store."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    kind: MemoryKind = "note"
+    scope: MemoryScope = "user"
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    topic: str = Field(..., min_length=1, max_length=500)
+    body: str = Field(..., min_length=1, max_length=8000)
+    fingerprint: str = Field(default="")
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    updated_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    times_seen: int = 1
+
+
+class MemoryStoreSnapshot(BaseModel):
+    """On-disk shape for the JSON-backed store."""
+    records: list[MemoryRecord] = Field(default_factory=list)
+    last_updated: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+
+class MemoryRecordCreate(BaseModel):
+    """POST /memory/records body."""
+    kind: MemoryKind = "note"
+    scope: MemoryScope = "user"
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    topic: str = Field(..., min_length=1, max_length=500)
+    body: str = Field(..., min_length=1, max_length=8000)
+
+
+class MemoryRecoverRequest(BaseModel):
+    """POST /memory/recover body."""
+    query: str = Field(..., min_length=1, max_length=500)
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    max_results: int = Field(default=5, ge=1, le=20)
+
+
+class MemoryRecoverResponse(BaseModel):
+    matches: list[MemoryRecord] = Field(default_factory=list)
+    query: str
+    project_id: Optional[str] = None

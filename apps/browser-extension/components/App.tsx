@@ -61,6 +61,12 @@ export function App() {
   // by a timer so the pill returns to its resting state and doesn't
   // accumulate stale ambient feedback across multiple sessions.
   const [pillFlash, setPillFlash] = useState<'ok' | 'fail' | null>(null);
+  // Phase mirror — Capsule broadcasts gauntlet:phase events; the pill
+  // tints itself accordingly so the operator senses "still working"
+  // even after the cápsula closes. Only non-idle phases show.
+  const [phase, setPhase] = useState<
+    'idle' | 'planning' | 'streaming' | 'plan_ready' | 'executing' | 'executed' | 'error' | null
+  >(null);
 
   useEffect(() => {
     function onResult(ev: Event) {
@@ -69,8 +75,22 @@ export function App() {
       setPillFlash(kind);
       window.setTimeout(() => setPillFlash(null), 1500);
     }
+    function onPhase(ev: Event) {
+      const detail = (ev as CustomEvent<{ phase?: typeof phase }>).detail;
+      if (!detail?.phase) return;
+      setPhase(detail.phase);
+      // Auto-clear terminal phases after a few seconds so the pill
+      // doesn't keep glowing "executed" forever once the user moves on.
+      if (detail.phase === 'executed' || detail.phase === 'error') {
+        window.setTimeout(() => setPhase(null), 3500);
+      }
+    }
     window.addEventListener('gauntlet:execute-result', onResult);
-    return () => window.removeEventListener('gauntlet:execute-result', onResult);
+    window.addEventListener('gauntlet:phase', onPhase);
+    return () => {
+      window.removeEventListener('gauntlet:execute-result', onResult);
+      window.removeEventListener('gauntlet:phase', onPhase);
+    };
   }, []);
 
   // Last known cursor position on the page. The hotkey doesn't carry
@@ -211,6 +231,7 @@ export function App() {
         onClick={summon}
         onDismissDomain={dismissThisDomain}
         flash={pillFlash}
+        phase={phase}
       />
     );
   }

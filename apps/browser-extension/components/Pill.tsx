@@ -24,6 +24,10 @@ export interface PillProps {
   // executed plan. The pill flashes green/red for ~1.4s so the user
   // gets ambient confirmation that the action actually landed.
   flash?: 'ok' | 'fail' | null;
+  // Phase mirror — the pill carries the cápsula's current phase color
+  // so it visually communicates work-in-progress even after dismiss.
+  // Set by App via the gauntlet:phase event broadcast from Capsule.
+  phase?: 'idle' | 'planning' | 'streaming' | 'plan_ready' | 'executing' | 'executed' | 'error' | null;
 }
 
 // Drag is "armed" only after the pointer moves more than this many
@@ -39,7 +43,7 @@ const DRAG_THRESHOLD_PX = 4;
 // hovering over the pill cancels the idle state outright.
 const IDLE_AFTER_MS = 30_000;
 
-export function Pill({ position, onClick, onDismissDomain, flash }: PillProps) {
+export function Pill({ position, onClick, onDismissDomain, flash, phase }: PillProps) {
   const [pos, setPos] = useState<PillPosition>(position);
   const [idle, setIdle] = useState(false);
   const dragStateRef = useRef<{
@@ -171,6 +175,8 @@ export function Pill({ position, onClick, onDismissDomain, flash }: PillProps) {
       type="button"
       className={`gauntlet-pill${idle ? ' gauntlet-pill--idle' : ''}${
         flash ? ` gauntlet-pill--flash-${flash}` : ''
+      }${
+        phase && phase !== 'idle' ? ` gauntlet-pill--phase-${phase}` : ''
       }`}
       style={{ bottom: `${pos.bottom}px`, right: `${pos.right}px` }}
       onPointerDown={onPointerDown}
@@ -306,5 +312,71 @@ export const PILL_CSS = `
   background: #f4c4ad;
   box-shadow: 0 0 6px rgba(244, 196, 173, 0.85);
   animation: gauntlet-pill-pulse 2.4s ease-in-out infinite;
+}
+
+/* ── Breathing ring — sempre presente, never noisy ────────────────────────
+   A slow outward halo that doesn't compete with content. Different from
+   the dot pulse: this is the pill's "I am here" signal even in idle. */
+@keyframes gauntlet-pill-breathe {
+  0%, 100% { box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 14px rgba(208, 122, 90, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.40); }
+  50%      { box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 22px rgba(208, 122, 90, 0.42),
+    0 4px 14px rgba(0, 0, 0, 0.40); }
+}
+.gauntlet-pill {
+  animation:
+    gauntlet-pill-rise 320ms cubic-bezier(0.2, 0, 0, 1) both,
+    gauntlet-pill-breathe 4.6s ease-in-out 320ms infinite;
+}
+.gauntlet-pill--idle { animation-play-state: running, paused; }
+
+/* ── Phase-reactive ring — mirrors the cápsula's ambient glow ────────────
+   App listens to the gauntlet:phase event from Capsule and forwards
+   the value as a prop. Each non-idle phase paints a distinct halo so
+   the operator's eye catches "the model is working" from across the
+   page even after they dismissed the cápsula. */
+@keyframes gauntlet-pill-phase-spin {
+  to { transform: rotate(360deg); }
+}
+.gauntlet-pill--phase-planning,
+.gauntlet-pill--phase-streaming,
+.gauntlet-pill--phase-executing {
+  width: 22px;
+  height: 22px;
+}
+.gauntlet-pill--phase-planning::after,
+.gauntlet-pill--phase-streaming::after,
+.gauntlet-pill--phase-plan_ready::after,
+.gauntlet-pill--phase-executing::after,
+.gauntlet-pill--phase-executed::after,
+.gauntlet-pill--phase-error::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 2px solid var(--gauntlet-pill-phase-color, transparent);
+  animation: gauntlet-pill-phase-spin 6s linear infinite;
+  box-shadow: 0 0 12px var(--gauntlet-pill-phase-color, transparent);
+}
+.gauntlet-pill--phase-planning  { --gauntlet-pill-phase-color: rgba(244, 196, 86, 0.65); }
+.gauntlet-pill--phase-streaming { --gauntlet-pill-phase-color: rgba(208, 122, 90, 0.75); }
+.gauntlet-pill--phase-plan_ready{ --gauntlet-pill-phase-color: rgba(208, 122, 90, 0.45); }
+.gauntlet-pill--phase-executing { --gauntlet-pill-phase-color: rgba(98, 130, 200, 0.65); }
+.gauntlet-pill--phase-executed  { --gauntlet-pill-phase-color: rgba(122, 180, 138, 0.65); }
+.gauntlet-pill--phase-error     { --gauntlet-pill-phase-color: rgba(212, 96, 60, 0.75); }
+
+/* ── Summon swoop — click animation ────────────────────────────────────── */
+@keyframes gauntlet-pill-summon {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.78); box-shadow: 0 0 0 6px rgba(208, 122, 90, 0.35); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+}
+.gauntlet-pill--summoning {
+  animation: gauntlet-pill-summon 240ms ease-out;
 }
 `;

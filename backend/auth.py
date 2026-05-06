@@ -94,8 +94,9 @@ def _unauthorized(reason: str) -> JSONResponse:
                 "reason": reason,
                 "message": (
                     "Authorization: Bearer <key> required. Configure "
-                    "SIGNAL_API_KEY (or set VITE_SIGNAL_API_KEY on the "
-                    "frontend) to authenticate."
+                    "GAUNTLET_API_KEY (or VITE_GAUNTLET_API_KEY on the "
+                    "frontend) to authenticate. Legacy aliases "
+                    "SIGNAL_API_KEY / RUBERRA_API_KEY are still read."
                 ),
             }
         },

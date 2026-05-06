@@ -1,0 +1,1324 @@
+/* Tauri host reset — extension version targets shadow DOM and inherits
+   nothing; here the cápsula owns the whole window so we strip body
+   margin and pin html/body/#root to fill viewport. The .gauntlet-capsule
+   block below carries identical typography + glass identity. */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  background: transparent;
+  overflow: hidden;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@keyframes gauntlet-cap-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.15); }
+}
+@keyframes gauntlet-cap-aurora {
+  0%   { transform: translate3d(-12%, -8%, 0) rotate(0deg); }
+  50%  { transform: translate3d(8%,    6%, 0) rotate(180deg); }
+  100% { transform: translate3d(-12%, -8%, 0) rotate(360deg); }
+}
+@keyframes gauntlet-cap-rise {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.985); }
+  100% { opacity: 1; transform: translateY(0)   scale(1); }
+}
+@keyframes gauntlet-cap-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gauntlet-capsule {
+  --gx-ember: #d07a5a;
+  --gx-bg: rgba(14, 16, 22, 0.92);
+  --gx-bg-solid: #0e1016;
+  --gx-surface: rgba(28, 30, 38, 0.70);
+  --gx-border: rgba(255, 255, 255, 0.08);
+  --gx-border-mid: rgba(255, 255, 255, 0.14);
+  --gx-fg: #f0f2f7;
+  --gx-fg-dim: #aab0bd;
+  --gx-fg-muted: #6a7080;
+
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 25vh;
+  min-height: 180px;
+  overflow: hidden;
+  background: var(--gx-bg);
+  color: var(--gx-fg);
+  border-top: 1px solid var(--gx-border-mid);
+  border-radius: 12px 12px 0 0;
+  backdrop-filter: saturate(1.4) blur(28px);
+  -webkit-backdrop-filter: saturate(1.4) blur(28px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 -8px 40px rgba(0, 0, 0, 0.45),
+    0 -2px 12px rgba(0, 0, 0, 0.35);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  z-index: 2147483647;
+  padding: 0;
+  isolation: isolate;
+  pointer-events: auto;
+  animation: gauntlet-cap-rise 280ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+/* Anchored mode — when the user has a selection on a web page, the
+   capsule pops next to the cursor instead of pinning to the bottom of
+   the viewport. The position itself is set via inline style by the
+   component (computeAnchorPosition). The shape, border, shadow and
+   max-height come from here so site CSS can never override them. */
+.gauntlet-capsule--anchored {
+  bottom: auto;
+  right: auto;
+  width: 560px;
+  max-width: calc(100vw - 16px);
+  height: auto;
+  min-height: 0;
+  max-height: 60vh;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.gauntlet-capsule--anchored .gauntlet-capsule__layout {
+  flex-direction: column;
+}
+.gauntlet-capsule--anchored .gauntlet-capsule__panel--left {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  border-right: none;
+  border-bottom: 1px solid var(--gx-border);
+  padding: 12px 14px;
+}
+.gauntlet-capsule--anchored .gauntlet-capsule__panel--right {
+  padding: 12px 14px;
+}
+.gauntlet-capsule--anchored .gauntlet-capsule__selection {
+  max-height: 90px;
+}
+
+.gauntlet-capsule__aurora {
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(40% 40% at 30% 30%, rgba(208, 122, 90, 0.18), transparent 60%),
+    radial-gradient(40% 40% at 70% 70%, rgba(98, 130, 200, 0.12), transparent 60%);
+  filter: blur(40px);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: -1;
+  animation: gauntlet-cap-aurora 28s linear infinite;
+}
+
+/* ── Layout ── */
+.gauntlet-capsule__layout {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  overflow: hidden;
+}
+
+.gauntlet-capsule__panel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.gauntlet-capsule__panel--left {
+  width: 28%;
+  min-width: 200px;
+  max-width: 340px;
+  flex-shrink: 0;
+  padding: 14px 16px;
+  border-right: 1px solid var(--gx-border);
+}
+
+.gauntlet-capsule__panel--right {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 18px;
+}
+
+/* ── Header ── */
+.gauntlet-capsule__header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__brand-block {
+  display: flex; align-items: center; gap: 10px;
+}
+.gauntlet-capsule__mark {
+  position: relative;
+  width: 22px; height: 22px;
+  border-radius: 7px;
+  background:
+    radial-gradient(60% 60% at 30% 30%, rgba(208, 122, 90, 0.85), rgba(208, 122, 90, 0.35) 60%, transparent 100%),
+    #1a1d26;
+  border: 1px solid rgba(208, 122, 90, 0.45);
+  box-shadow:
+    0 0 18px rgba(208, 122, 90, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  display: flex; align-items: center; justify-content: center;
+}
+.gauntlet-capsule__mark-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #f4c4ad;
+  box-shadow: 0 0 10px rgba(244, 196, 173, 0.85);
+  animation: gauntlet-cap-pulse 2.4s ease-in-out infinite;
+}
+.gauntlet-capsule__brand-text {
+  display: flex; flex-direction: column; line-height: 1.05;
+}
+.gauntlet-capsule__brand {
+  /* Doutrina: glass + serif headline + mono labels. The headline is
+     the one place a serif earns its keep — distinguishes Gauntlet
+     from generic dev-tool aesthetics without bundling a custom font.
+     System serifs are surprisingly distinctive on macOS (New York /
+     Charter) and Windows (Cambria) and degrade gracefully elsewhere. */
+  font-family:
+    "Charter", "New York", "Cambria", "Georgia",
+    "Iowan Old Style", "Apple Garamond", serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--gx-fg);
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+.gauntlet-capsule__tagline {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--gx-fg-muted);
+  margin-top: 2px;
+}
+.gauntlet-capsule__close {
+  background: transparent;
+  border: 1px solid var(--gx-border);
+  color: var(--gx-fg-muted);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.gauntlet-capsule__close:hover {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Context ── */
+.gauntlet-capsule__context {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.gauntlet-capsule__context-meta {
+  display: flex; gap: 8px; align-items: center;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--gx-fg-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  font-family: "JetBrains Mono", monospace;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__source {
+  background: rgba(208, 122, 90, 0.14);
+  color: #f4c4ad;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(208, 122, 90, 0.28);
+  letter-spacing: 0.12em;
+}
+.gauntlet-capsule__url {
+  flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-transform: none;
+  font-family: "Inter", system-ui, sans-serif;
+  letter-spacing: 0;
+  color: var(--gx-fg-dim);
+  font-size: 11px;
+}
+.gauntlet-capsule__refresh {
+  background: transparent; border: 1px solid var(--gx-border); color: var(--gx-fg-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px; padding: 2px 8px; border-radius: 4px; cursor: pointer;
+  letter-spacing: 0.12em;
+}
+.gauntlet-capsule__refresh:hover {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+  background: rgba(255, 255, 255, 0.04);
+}
+.gauntlet-capsule__selection {
+  background: rgba(8, 9, 13, 0.6);
+  border: 1px solid var(--gx-border);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 11px;
+  white-space: pre-wrap; word-break: break-word;
+  flex: 1;
+  overflow: auto;
+  color: var(--gx-fg-dim); margin: 0;
+}
+.gauntlet-capsule__selection--empty {
+  color: var(--gx-fg-muted); font-style: italic;
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+}
+
+/* ── Form ── */
+.gauntlet-capsule__form {
+  position: relative;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__input {
+  width: 100%;
+  background: rgba(8, 9, 13, 0.55);
+  color: var(--gx-fg);
+  border: 1px solid var(--gx-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: none;
+  min-height: 56px;
+  box-sizing: border-box;
+  line-height: 1.5;
+  transition: border-color 140ms ease, box-shadow 200ms ease;
+}
+.gauntlet-capsule__input::placeholder { color: var(--gx-fg-muted); }
+.gauntlet-capsule__input:focus {
+  outline: none;
+  border-color: rgba(208, 122, 90, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(208, 122, 90, 0.30),
+    0 0 24px rgba(208, 122, 90, 0.18);
+}
+.gauntlet-capsule__actions {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 8px;
+}
+.gauntlet-capsule__hint {
+  display: inline-flex; gap: 4px; align-items: center;
+  color: var(--gx-fg-muted);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.gauntlet-capsule__kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--gx-fg-dim);
+  font-size: 10px;
+}
+.gauntlet-capsule__compose {
+  position: relative;
+  border: none;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #0e1016;
+  background:
+    linear-gradient(180deg, #f0f2f7 0%, #d4d8e0 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.20),
+    0 6px 18px rgba(208, 122, 90, 0.30);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.gauntlet-capsule__compose:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.32),
+    0 10px 24px rgba(208, 122, 90, 0.45);
+}
+.gauntlet-capsule__compose:disabled {
+  opacity: 0.45; cursor: not-allowed; transform: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.10);
+}
+.gauntlet-capsule__compose-spinner {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(14, 16, 22, 0.25);
+  border-top-color: #0e1016;
+  border-radius: 50%;
+  animation: gauntlet-cap-spin 0.7s linear infinite;
+}
+
+/* ── Error ── */
+.gauntlet-capsule__error {
+  margin-top: 10px; padding: 8px 12px;
+  background: rgba(212, 96, 60, 0.10);
+  border: 1px solid rgba(212, 96, 60, 0.32);
+  color: #f1a4ad;
+  border-radius: 8px;
+  font-size: 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.gauntlet-capsule__error-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(212, 96, 60, 0.25);
+  color: #f1a4ad;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* ── Preview ── */
+.gauntlet-capsule__preview {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gx-border);
+  animation: gauntlet-cap-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__preview-meta {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 8px;
+}
+.gauntlet-capsule__preview-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--gx-border);
+  background: rgba(255, 255, 255, 0.03);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.gauntlet-capsule__preview-pill[data-tone="high"] {
+  border-color: rgba(122, 180, 138, 0.35);
+  background: rgba(122, 180, 138, 0.10);
+}
+.gauntlet-capsule__preview-pill[data-tone="low"] {
+  border-color: rgba(212, 120, 90, 0.35);
+  background: rgba(212, 120, 90, 0.10);
+}
+.gauntlet-capsule__preview-key { color: var(--gx-fg-muted); }
+.gauntlet-capsule__preview-val { color: var(--gx-fg); }
+
+.gauntlet-capsule__artifact {
+  background: rgba(8, 9, 13, 0.65);
+  border: 1px solid var(--gx-border);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--gx-fg);
+  white-space: pre-wrap; word-break: break-word;
+  margin: 0;
+  line-height: 1.55;
+}
+.gauntlet-capsule__preview-actions {
+  display: flex; justify-content: flex-end; margin-top: 8px;
+}
+.gauntlet-capsule__copy {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--gx-fg);
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.gauntlet-capsule__copy:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.gauntlet-capsule__refusal {
+  padding: 12px;
+  background: rgba(208, 122, 90, 0.07);
+  border: 1px solid rgba(208, 122, 90, 0.25);
+  border-radius: 10px;
+  font-size: 12px;
+  color: #e8c8a4;
+}
+.gauntlet-capsule__refusal header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.gauntlet-capsule__refusal-mark {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f4c4ad;
+  padding: 2px 8px;
+  background: rgba(208, 122, 90, 0.20);
+  border: 1px solid rgba(208, 122, 90, 0.35);
+  border-radius: 4px;
+}
+.gauntlet-capsule__refusal-reason {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--gx-fg-dim);
+}
+.gauntlet-capsule__refusal p { margin: 0 0 8px; line-height: 1.5; }
+.gauntlet-capsule__refusal ul { margin: 8px 0 0; padding-left: 18px; }
+.gauntlet-capsule__refusal li { margin: 3px 0; }
+
+/* ── Action-buttons row ── */
+.gauntlet-capsule__action-buttons {
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.gauntlet-capsule__actuate {
+  background: rgba(208, 122, 90, 0.12);
+  color: #f4c4ad;
+  border: 1px solid rgba(208, 122, 90, 0.45);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: background 120ms ease, transform 120ms ease, opacity 120ms ease;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.gauntlet-capsule__actuate:hover:not(:disabled) {
+  background: rgba(208, 122, 90, 0.22);
+  transform: translateY(-1px);
+}
+.gauntlet-capsule__actuate:disabled {
+  opacity: 0.45; cursor: not-allowed;
+}
+
+/* ── Settings drawer (currently: dismissed-domain list) ── */
+.gauntlet-capsule__header-actions {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.gauntlet-capsule__settings-btn {
+  background: transparent;
+  border: 1px solid var(--gx-border);
+  color: var(--gx-fg-muted);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.gauntlet-capsule__settings-btn:hover {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+  background: rgba(255, 255, 255, 0.04);
+}
+.gauntlet-capsule__settings {
+  margin: 8px 0;
+  padding: 10px 12px;
+  background: rgba(8, 9, 13, 0.55);
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 10px;
+  animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__settings-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.gauntlet-capsule__settings-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gx-fg-dim);
+}
+.gauntlet-capsule__settings-close {
+  background: transparent; border: none;
+  color: var(--gx-fg-muted);
+  cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 0 4px;
+}
+.gauntlet-capsule__settings-close:hover { color: var(--gx-fg); }
+.gauntlet-capsule__settings-section {
+  margin-bottom: 10px;
+}
+.gauntlet-capsule__settings-section:last-child { margin-bottom: 0; }
+.gauntlet-capsule__settings-subtitle {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gx-fg-muted);
+  margin-bottom: 6px;
+}
+.gauntlet-capsule__settings-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  padding: 6px 0;
+  user-select: none;
+}
+.gauntlet-capsule__settings-toggle input[type="checkbox"] {
+  margin-top: 3px;
+  width: 14px; height: 14px;
+  accent-color: var(--gx-ember);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__settings-toggle-label {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.gauntlet-capsule__settings-toggle-label strong {
+  font-size: 12px;
+  color: var(--gx-fg);
+  font-weight: 500;
+}
+.gauntlet-capsule__settings-toggle-label small {
+  font-size: 10px;
+  color: var(--gx-fg-muted);
+  line-height: 1.4;
+}
+.gauntlet-capsule__settings-empty {
+  margin: 0;
+  font-size: 11px;
+  color: var(--gx-fg-muted);
+  font-style: italic;
+}
+.gauntlet-capsule__settings-list {
+  margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 180px; overflow-y: auto;
+}
+.gauntlet-capsule__settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--gx-fg-dim);
+}
+.gauntlet-capsule__settings-host {
+  flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gauntlet-capsule__settings-restore {
+  background: rgba(208, 122, 90, 0.12);
+  color: #f4c4ad;
+  border: 1px solid rgba(208, 122, 90, 0.45);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__settings-restore:hover {
+  background: rgba(208, 122, 90, 0.22);
+}
+
+/* ── Skeleton (perceived speed during the planning roundtrip) ──
+   We can't stream tokens yet (Sprint 1.4-A), but a shimmering
+   placeholder turns 1.5–4s of model latency from "spinner silence"
+   into "the capsule is thinking". The shimmer reads as activity even
+   if nothing else changes on screen. */
+@keyframes gauntlet-cap-shimmer {
+  0%   { background-position: -240px 0; }
+  100% { background-position:  240px 0; }
+}
+.gauntlet-capsule__skeleton {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(8, 9, 13, 0.5);
+  border: 1px solid var(--gx-border);
+  border-radius: 10px;
+  animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gauntlet-capsule__skeleton-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 2px;
+}
+.gauntlet-capsule__skeleton-tag,
+.gauntlet-capsule__skeleton-meta,
+.gauntlet-capsule__skeleton-line {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04) 0%,
+      rgba(208, 122, 90, 0.18) 50%,
+      rgba(255, 255, 255, 0.04) 100%
+    );
+  background-size: 240px 100%;
+  background-repeat: no-repeat;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  animation: gauntlet-cap-shimmer 1.4s ease-in-out infinite;
+}
+.gauntlet-capsule__skeleton-tag   { width: 56px; height: 14px; border-radius: 4px; }
+.gauntlet-capsule__skeleton-meta  { width: 140px; height: 10px; border-radius: 3px; }
+.gauntlet-capsule__skeleton-line  { height: 11px; border-radius: 3px; }
+.gauntlet-capsule__skeleton-line--w90 { width: 90%; animation-delay: 0ms; }
+.gauntlet-capsule__skeleton-line--w75 { width: 75%; animation-delay: 120ms; }
+.gauntlet-capsule__skeleton-line--w55 { width: 55%; animation-delay: 240ms; }
+
+/* ── Compose response (inline text answer) ── */
+.gauntlet-capsule__compose-result {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(8, 9, 13, 0.5);
+  border: 1px solid var(--gx-border);
+  border-radius: 10px;
+  animation: gauntlet-cap-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__compose-meta {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.gauntlet-capsule__compose-tag {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f4c4ad;
+  padding: 2px 8px;
+  background: rgba(208, 122, 90, 0.20);
+  border: 1px solid rgba(208, 122, 90, 0.35);
+  border-radius: 4px;
+}
+.gauntlet-capsule__compose-meta-text {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--gx-fg-muted);
+}
+.gauntlet-capsule__compose-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--gx-fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.gauntlet-capsule__compose-actions {
+  display: flex; justify-content: flex-end; margin-top: 8px;
+}
+@keyframes gauntlet-cap-caret {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.gauntlet-capsule__compose-caret {
+  display: inline-block;
+  margin-left: 1px;
+  color: var(--gx-ember);
+  animation: gauntlet-cap-caret 1s steps(1) infinite;
+}
+.gauntlet-capsule__compose-result--streaming {
+  border-color: rgba(208, 122, 90, 0.35);
+}
+
+/* ── Plan section ── */
+.gauntlet-capsule__plan {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(8, 9, 13, 0.5);
+  border: 1px solid var(--gx-border);
+  border-radius: 10px;
+  animation: gauntlet-cap-rise 240ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__plan-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.gauntlet-capsule__plan-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f4c4ad;
+  padding: 2px 8px;
+  background: rgba(208, 122, 90, 0.20);
+  border: 1px solid rgba(208, 122, 90, 0.35);
+  border-radius: 4px;
+}
+.gauntlet-capsule__plan-meta {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--gx-fg-muted);
+}
+.gauntlet-capsule__plan-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gx-fg-dim);
+  font-style: italic;
+}
+.gauntlet-capsule__plan-list {
+  margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.gauntlet-capsule__plan-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--gx-fg-dim);
+  border: 1px solid transparent;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.gauntlet-capsule__plan-item--ok {
+  background: rgba(122, 180, 138, 0.10);
+  border-color: rgba(122, 180, 138, 0.35);
+  color: #cfe8d3;
+}
+.gauntlet-capsule__plan-item--fail {
+  background: rgba(212, 96, 60, 0.10);
+  border-color: rgba(212, 96, 60, 0.35);
+  color: #f1a4ad;
+}
+.gauntlet-capsule__plan-step {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--gx-fg);
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__plan-desc {
+  flex: 1;
+  word-break: break-all;
+}
+.gauntlet-capsule__plan-err {
+  font-size: 10px;
+  color: #f1a4ad;
+  font-style: italic;
+}
+.gauntlet-capsule__plan-actions {
+  display: flex; justify-content: flex-end; margin-top: 8px;
+}
+.gauntlet-capsule__execute {
+  background: linear-gradient(180deg, #d07a5a 0%, #b65d3f 100%);
+  color: #0e1016;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 6px 18px rgba(208, 122, 90, 0.45);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+.gauntlet-capsule__execute:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.25),
+    0 10px 24px rgba(208, 122, 90, 0.55);
+}
+.gauntlet-capsule__execute:disabled {
+  opacity: 0.45; cursor: not-allowed; transform: none;
+}
+.gauntlet-capsule__execute--danger {
+  background: linear-gradient(180deg, #d4603c 0%, #a8401e 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 90, 60, 0.35),
+    0 6px 18px rgba(212, 96, 60, 0.55);
+  color: #fff;
+}
+.gauntlet-capsule__execute--danger:hover:not(:disabled) {
+  box-shadow:
+    0 0 0 1px rgba(255, 120, 90, 0.45),
+    0 10px 24px rgba(212, 96, 60, 0.65);
+}
+
+/* ── Per-item danger badge ── */
+.gauntlet-capsule__plan-item--danger {
+  background: rgba(212, 96, 60, 0.08);
+  border-color: rgba(212, 96, 60, 0.30);
+}
+.gauntlet-capsule__plan-danger {
+  flex-shrink: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #f1a4ad;
+  background: rgba(212, 96, 60, 0.18);
+  border: 1px solid rgba(212, 96, 60, 0.45);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* ── Danger gate — explicit confirmation before destructive execution ── */
+.gauntlet-capsule__danger-gate {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(212, 96, 60, 0.10);
+  border: 1px solid rgba(212, 96, 60, 0.40);
+  border-radius: 8px;
+  animation: gauntlet-cap-rise 220ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__danger-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px;
+}
+.gauntlet-capsule__danger-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(212, 96, 60, 0.30);
+  color: #fff;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.gauntlet-capsule__danger-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: #f1a4ad;
+}
+.gauntlet-capsule__danger-list {
+  margin: 0 0 8px 0; padding: 0 0 0 24px;
+  font-size: 11px;
+  color: #f1a4ad;
+  line-height: 1.6;
+}
+.gauntlet-capsule__danger-list li { margin: 0; }
+.gauntlet-capsule__danger-list strong {
+  color: #fff;
+  font-weight: 600;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  margin-right: 4px;
+}
+.gauntlet-capsule__danger-confirm {
+  display: inline-flex; align-items: center; gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--gx-fg);
+  user-select: none;
+}
+.gauntlet-capsule__danger-confirm input[type="checkbox"] {
+  width: 14px; height: 14px;
+  accent-color: #d4603c;
+  cursor: pointer;
+}
+
+/* ── Phase-aware semantic colors ──────────────────────────────────────────
+   Cores semânticas a representar estados e processo do trabalho.
+   The cápsula ambient glow ring shifts hue with the phase so the
+   operator senses progress without reading text. The pill (rendered by
+   App after dismiss) listens to gauntlet:phase events and mirrors
+   the same color. */
+.gauntlet-capsule--phase-idle      { --gx-phase: rgba(208, 122, 90, 0.0); }
+.gauntlet-capsule--phase-planning  { --gx-phase: rgba(244, 196, 86, 0.55); } /* amber */
+.gauntlet-capsule--phase-streaming { --gx-phase: rgba(208, 122, 90, 0.65); } /* ember */
+.gauntlet-capsule--phase-plan_ready{ --gx-phase: rgba(208, 122, 90, 0.45); }
+.gauntlet-capsule--phase-executing { --gx-phase: rgba(98, 130, 200, 0.55); } /* blue */
+.gauntlet-capsule--phase-executed  { --gx-phase: rgba(122, 180, 138, 0.55); } /* green */
+.gauntlet-capsule--phase-error     { --gx-phase: rgba(212, 96, 60, 0.65); }  /* red */
+
+.gauntlet-capsule--anchored::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 24px var(--gx-phase, transparent);
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+.gauntlet-capsule--phase-planning::before,
+.gauntlet-capsule--phase-streaming::before,
+.gauntlet-capsule--phase-executing::before,
+.gauntlet-capsule--phase-executed::before,
+.gauntlet-capsule--phase-error::before {
+  opacity: 1;
+}
+
+/* Phase mark-dot tint — the brand mark itself communicates state */
+.gauntlet-capsule--phase-error .gauntlet-capsule__mark {
+  border-color: rgba(212, 96, 60, 0.7);
+}
+.gauntlet-capsule--phase-executed .gauntlet-capsule__mark {
+  border-color: rgba(122, 180, 138, 0.7);
+}
+
+/* ── Token tick counter (refining: sensação de avanço) ─────────────────── */
+.gauntlet-capsule__token-counter {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: rgba(244, 196, 173, 0.85);
+  font-weight: 600;
+}
+.gauntlet-capsule__compose-text--streaming {
+  background: linear-gradient(
+    180deg,
+    rgba(208, 122, 90, 0.04) 0%,
+    transparent 60%
+  );
+}
+
+/* ── Save (ghost) button — sibling of Copy ──────────────────────────────── */
+.gauntlet-capsule__copy--ghost {
+  background: transparent;
+  border-color: var(--gx-border);
+  color: var(--gx-fg-dim);
+}
+.gauntlet-capsule__copy--ghost:hover {
+  border-color: var(--gx-border-mid);
+  color: var(--gx-fg);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Voice button (press-and-hold) ──────────────────────────────────────── */
+@keyframes gauntlet-cap-listen {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 96, 60, 0.45); }
+  50%      { box-shadow: 0 0 0 6px rgba(212, 96, 60, 0); }
+}
+.gauntlet-capsule__voice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gx-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--gx-fg-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.gauntlet-capsule__voice:hover:not(:disabled) {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+  background: rgba(255, 255, 255, 0.05);
+}
+.gauntlet-capsule__voice:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.gauntlet-capsule__voice--active {
+  color: #f4a08a;
+  border-color: rgba(208, 122, 90, 0.55);
+  background: rgba(208, 122, 90, 0.10);
+  animation: gauntlet-cap-listen 1.2s ease-in-out infinite;
+}
+.gauntlet-capsule__voice-label {
+  font-weight: 600;
+}
+.gauntlet-capsule__kbd-sep {
+  margin: 0 4px;
+  color: rgba(255,255,255,0.18);
+}
+
+/* ── Command palette overlay (Cmd+K) ────────────────────────────────────── */
+@keyframes gauntlet-cap-palette-rise {
+  from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.gauntlet-capsule__palette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: start center;
+  padding-top: 30px;
+  pointer-events: none;
+}
+.gauntlet-capsule__palette-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 9, 13, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: auto;
+  animation: gauntlet-cap-rise 160ms ease-out both;
+}
+.gauntlet-capsule__palette-panel {
+  position: relative;
+  width: min(420px, calc(100% - 36px));
+  background: rgba(20, 22, 30, 0.96);
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 24px 48px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  animation: gauntlet-cap-palette-rise 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.gauntlet-capsule__palette-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  color: var(--gx-fg);
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  outline: none;
+  border-bottom: 1px solid var(--gx-border);
+}
+.gauntlet-capsule__palette-input::placeholder {
+  color: var(--gx-fg-muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.gauntlet-capsule__palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.gauntlet-capsule__palette-empty {
+  padding: 14px;
+  text-align: center;
+  color: var(--gx-fg-muted);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.gauntlet-capsule__palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  color: var(--gx-fg-dim);
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
+}
+.gauntlet-capsule__palette-item--active {
+  background: rgba(208, 122, 90, 0.14);
+  color: var(--gx-fg);
+}
+.gauntlet-capsule__palette-item--disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.gauntlet-capsule__palette-shortcut {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--gx-fg-muted);
+  text-transform: uppercase;
+}
+.gauntlet-capsule__palette-item--active .gauntlet-capsule__palette-shortcut {
+  color: var(--gx-fg-dim);
+}
+
+/* ── Toast flash (saved / code copied) ──────────────────────────────────── */
+@keyframes gauntlet-cap-flash-rise {
+  0%   { opacity: 0; transform: translate(-50%, 8px); }
+  20%  { opacity: 1; transform: translate(-50%, 0); }
+  80%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -4px); }
+}
+.gauntlet-capsule__flash {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(122, 180, 138, 0.14);
+  color: #a8d4b6;
+  border: 1px solid rgba(122, 180, 138, 0.32);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 3;
+  animation: gauntlet-cap-flash-rise 1400ms ease-out both;
+}
+
+/* ── Markdown rendering ─────────────────────────────────────────────────── */
+.gauntlet-md {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gauntlet-md__prose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gauntlet-md__p {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  line-height: 1.62;
+  color: var(--gx-fg);
+}
+.gauntlet-md__h {
+  margin: 8px 0 2px;
+  font-family: "Charter", "New York", "Cambria", "Georgia", serif;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--gx-fg);
+  line-height: 1.25;
+}
+.gauntlet-md__h1 { font-size: 18px; }
+.gauntlet-md__h2 { font-size: 15px; }
+.gauntlet-md__h3 { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gx-fg-dim); }
+.gauntlet-md__strong { font-weight: 600; color: #f4d4c0; }
+.gauntlet-md__em { font-style: italic; color: var(--gx-fg-dim); }
+.gauntlet-md__inline-code {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 11.5px;
+  background: rgba(208, 122, 90, 0.10);
+  color: #f4c4ad;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(208, 122, 90, 0.18);
+}
+.gauntlet-md__link {
+  color: #f4c4ad;
+  text-decoration: underline;
+  text-decoration-color: rgba(208, 122, 90, 0.45);
+  text-underline-offset: 2px;
+}
+.gauntlet-md__link:hover { text-decoration-color: var(--gx-ember); }
+.gauntlet-md__quote {
+  margin: 0;
+  padding: 6px 12px;
+  border-left: 2px solid rgba(208, 122, 90, 0.55);
+  background: rgba(208, 122, 90, 0.04);
+  color: var(--gx-fg-dim);
+  font-style: italic;
+  font-size: 12.5px;
+  line-height: 1.6;
+  border-radius: 0 6px 6px 0;
+}
+.gauntlet-md__hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.10),
+    transparent
+  );
+  margin: 4px 0;
+}
+.gauntlet-md__list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.gauntlet-md__li::marker {
+  color: rgba(208, 122, 90, 0.55);
+}
+.gauntlet-md__code {
+  margin: 0;
+  border: 1px solid var(--gx-border);
+  border-radius: 8px;
+  background: rgba(8, 9, 13, 0.7);
+  overflow: hidden;
+}
+.gauntlet-md__code-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--gx-border);
+  background: rgba(255, 255, 255, 0.02);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.gauntlet-md__code-lang {
+  color: var(--gx-fg-muted);
+}
+.gauntlet-md__code-copy {
+  background: transparent;
+  border: 1px solid var(--gx-border);
+  color: var(--gx-fg-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.gauntlet-md__code-copy:hover {
+  color: var(--gx-fg);
+  border-color: var(--gx-border-mid);
+}
+.gauntlet-md__code-body {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #e6e8ee;
+  overflow-x: auto;
+  white-space: pre;
+}
+.gauntlet-md__code-body code {
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border: none;
+}

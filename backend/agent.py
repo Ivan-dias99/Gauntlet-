@@ -18,7 +18,6 @@ a different tool or terminate.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import logging
@@ -287,7 +286,31 @@ class AgentOrchestrator:
             if profile and profile.system_prompt
             else self._system_prompt
         )
-        full_schema = self._registry.anthropic_schema()
+        # Sprint 5 — apply operator tool policies before exposing the
+        # schema to the model. Disallowed tools are dropped both from the
+        # Anthropic schema (so the model never proposes them) and from
+        # the dispatch path (defence-in-depth: a stale schema cached by
+        # the model can't slip a banned call through).
+        active_registry = self._registry
+        try:
+            from composer_settings import settings_store
+            settings = await settings_store.get()
+            policies = {
+                name: {
+                    "allowed": p.allowed,
+                    "require_approval": p.require_approval,
+                }
+                for name, p in settings.tool_policies.items()
+            }
+            if policies:
+                active_registry = self._registry.with_policies(policies)
+        except Exception:  # noqa: BLE001
+            # Settings store unreachable — keep the unfiltered registry.
+            # Failure here must not crash the agent loop.
+            logger.warning(
+                "agent: could not load tool policies; using unfiltered registry"
+            )
+        full_schema = active_registry.anthropic_schema()
         if profile is not None and profile.allowed_tools is not None:
             allowed = set(profile.allowed_tools)
             effective_schema = [t for t in full_schema if t["name"] in allowed]
@@ -407,9 +430,23 @@ class AgentOrchestrator:
                         ),
                     )
                 else:
-                    result = await self._registry.dispatch(
-                        block.name, dict(block.input) if block.input else {}
-                    )
+                    # Sprint 5 — defence-in-depth: dispatch via the
+                    # policy-filtered registry, so a stale schema in the
+                    # model's context cannot route around the operator's
+                    # opt-out. Unknown / disallowed names short-circuit
+                    # to a refusal envelope.
+                    if block.name not in active_registry.names():
+                        result = ToolResult(
+                            ok=False,
+                            content=(
+                                f"[policy] tool '{block.name}' is not "
+                                "allowed by current Composer settings."
+                            ),
+                        )
+                    else:
+                        result = await active_registry.dispatch(
+                            block.name, dict(block.input) if block.input else {}
+                        )
 
                 tool_calls.append({
                     "name": block.name,

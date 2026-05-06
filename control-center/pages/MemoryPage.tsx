@@ -146,6 +146,8 @@ export default function MemoryPage() {
         />
       </section>
 
+      <MemoryRecordsPanel />
+
       <Panel title="Failures" hint={`${visible.length} of ${failures.length} record(s)`}>
         <div style={{ marginBottom: 14 }}>
           <input
@@ -384,3 +386,425 @@ function ErrorBlock({ msg }: { msg: string }) {
     </Panel>
   );
 }
+
+// ── Sprint 7 — Memory records inspector ────────────────────────────────────
+
+interface MemoryRecord {
+  id: string;
+  kind: string;
+  scope: string;
+  project_id: string | null;
+  topic: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  times_seen: number;
+}
+
+const MEMORY_KINDS = [
+  "all",
+  "note",
+  "decision",
+  "failure_pattern",
+  "preference",
+  "canon",
+] as const;
+type MemoryKindFilter = typeof MEMORY_KINDS[number];
+
+const KIND_TONE: Record<string, "ok" | "warn" | "neutral" | "ghost"> = {
+  canon: "ok",
+  decision: "ok",
+  preference: "neutral",
+  note: "ghost",
+  failure_pattern: "warn",
+};
+
+function MemoryRecordsPanel() {
+  const [records, setRecords] = useState<MemoryRecord[]>([]);
+  const [projects, setProjects] = useState<string[]>([]);
+  const [kindFilter, setKindFilter] = useState<MemoryKindFilter>("all");
+  const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [draftTopic, setDraftTopic] = useState("");
+  const [draftBody, setDraftBody] = useState("");
+  const [draftKind, setDraftKind] = useState<Exclude<MemoryKindFilter, "all">>(
+    "note",
+  );
+  const [draftScope, setDraftScope] = useState<"user" | "project">("user");
+  const [draftProject, setDraftProject] = useState("");
+
+  const reload = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (kindFilter !== "all") params.set("kind", kindFilter);
+      if (projectFilter !== "all") params.set("project_id", projectFilter);
+      if (search.trim()) params.set("search", search.trim());
+      const qs = params.toString();
+      const [recsRes, projsRes] = await Promise.all([
+        signalFetch(`/memory/records${qs ? "?" + qs : ""}`),
+        signalFetch("/memory/projects"),
+      ]);
+      if (!recsRes.ok) throw new Error(`/memory/records HTTP ${recsRes.status}`);
+      const recsBody = (await recsRes.json()) as { records?: MemoryRecord[] };
+      const projsBody = (await projsRes.json()) as { projects?: string[] };
+      setRecords(recsBody.records ?? []);
+      setProjects(projsBody.projects ?? []);
+      setError(null);
+    } catch (err) {
+      setError(isBackendUnreachable(err) ? err.message : String(err));
+    }
+  }, [kindFilter, projectFilter, search]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const onCreate = useCallback(async () => {
+    if (!draftTopic.trim() || !draftBody.trim()) return;
+    setBusy(true);
+    try {
+      const res = await signalFetch("/memory/records", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          topic: draftTopic.trim(),
+          body: draftBody.trim(),
+          kind: draftKind,
+          scope: draftScope,
+          project_id:
+            draftScope === "project" && draftProject.trim()
+              ? draftProject.trim()
+              : null,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setDraftTopic("");
+      setDraftBody("");
+      setDraftProject("");
+      await reload();
+    } catch (err) {
+      setError(isBackendUnreachable(err) ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }, [draftTopic, draftBody, draftKind, draftScope, draftProject, reload]);
+
+  const onDelete = useCallback(
+    async (id: string) => {
+      if (!window.confirm("Delete this memory record? This cannot be undone.")) {
+        return;
+      }
+      try {
+        const res = await signalFetch(`/memory/records/${id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await reload();
+      } catch (err) {
+        setError(isBackendUnreachable(err) ? err.message : String(err));
+      }
+    },
+    [reload],
+  );
+
+  return (
+    <Panel
+      title="Memory records (Sprint 7)"
+      hint={`user · project · canon · the composer injects relevant entries into model context`}
+    >
+      {/* Compose form */}
+      <div
+        style={{
+          padding: "12px 14px",
+          background: "var(--bg-elevated)",
+          border: "var(--border-soft)",
+          borderRadius: 10,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          marginBottom: 14,
+        }}
+      >
+        <span className="gx-eyebrow">save a new entry</span>
+        <input
+          type="text"
+          placeholder="topic (short handle)"
+          value={draftTopic}
+          onChange={(ev) => setDraftTopic(ev.target.value)}
+          style={inputStyle}
+        />
+        <textarea
+          placeholder="body — decision, preference, canon, note…"
+          value={draftBody}
+          onChange={(ev) => setDraftBody(ev.target.value)}
+          rows={3}
+          style={{ ...inputStyle, resize: "vertical", minHeight: 64 }}
+        />
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <select
+            value={draftKind}
+            onChange={(ev) =>
+              setDraftKind(ev.target.value as Exclude<MemoryKindFilter, "all">)
+            }
+            style={selectStyle}
+          >
+            {MEMORY_KINDS.filter((k) => k !== "all").map((k) => (
+              <option key={k} value={k}>
+                {k}
+              </option>
+            ))}
+          </select>
+          <select
+            value={draftScope}
+            onChange={(ev) => setDraftScope(ev.target.value as "user" | "project")}
+            style={selectStyle}
+          >
+            <option value="user">user (global)</option>
+            <option value="project">project</option>
+          </select>
+          {draftScope === "project" && (
+            <input
+              type="text"
+              placeholder="project_id"
+              value={draftProject}
+              onChange={(ev) => setDraftProject(ev.target.value)}
+              style={{ ...inputStyle, width: 200 }}
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => void onCreate()}
+            disabled={busy || !draftTopic.trim() || !draftBody.trim()}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border:
+                draftTopic.trim() && draftBody.trim()
+                  ? "1px solid color-mix(in oklab, var(--ember) 50%, var(--border-color-mid))"
+                  : "var(--border-soft)",
+              background:
+                draftTopic.trim() && draftBody.trim()
+                  ? "color-mix(in oklab, var(--ember) 10%, var(--bg-elevated))"
+                  : "var(--bg-elevated)",
+              color:
+                draftTopic.trim() && draftBody.trim()
+                  ? "var(--text-primary)"
+                  : "var(--text-muted)",
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+              letterSpacing: "var(--track-meta)",
+              textTransform: "uppercase",
+              cursor: busy ? "wait" : "pointer",
+              fontWeight: 600,
+            }}
+          >
+            {busy ? "saving…" : "save record"}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div
+          style={{
+            padding: "10px 12px",
+            borderRadius: 6,
+            background: "color-mix(in oklab, var(--cc-err) 8%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--cc-err) 28%, transparent)",
+            color: "color-mix(in oklab, var(--cc-err) 86%, var(--text-primary))",
+            fontFamily: "var(--mono)",
+            fontSize: 12,
+            marginBottom: 10,
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* Filters */}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          marginBottom: 12,
+          alignItems: "center",
+        }}
+      >
+        {MEMORY_KINDS.map((k) => {
+          const active = kindFilter === k;
+          return (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setKindFilter(k)}
+              style={{
+                padding: "5px 12px",
+                borderRadius: 999,
+                border: active
+                  ? "1px solid color-mix(in oklab, var(--ember) 50%, var(--border-color-mid))"
+                  : "var(--border-soft)",
+                background: active
+                  ? "color-mix(in oklab, var(--ember) 10%, var(--bg-elevated))"
+                  : "var(--bg-elevated)",
+                color: active ? "var(--text-primary)" : "var(--text-secondary)",
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                letterSpacing: "var(--track-meta)",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                fontWeight: active ? 600 : 400,
+              }}
+            >
+              {k}
+            </button>
+          );
+        })}
+        {projects.length > 0 && (
+          <select
+            value={projectFilter}
+            onChange={(ev) => setProjectFilter(ev.target.value)}
+            style={selectStyle}
+          >
+            <option value="all">all projects</option>
+            {projects.map((p) => (
+              <option key={p} value={p}>
+                project · {p}
+              </option>
+            ))}
+          </select>
+        )}
+        <input
+          type="search"
+          placeholder="search topic / body"
+          value={search}
+          onChange={(ev) => setSearch(ev.target.value)}
+          style={{ ...inputStyle, flex: 1, minWidth: 200 }}
+        />
+      </div>
+
+      {records.length === 0 ? (
+        <p
+          style={{
+            color: "var(--text-muted)",
+            fontSize: 12,
+            margin: 0,
+            padding: "12px 0",
+            fontFamily: "var(--mono)",
+            letterSpacing: "var(--track-meta)",
+            textTransform: "uppercase",
+          }}
+        >
+          no memory records yet
+        </p>
+      ) : (
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          {records.map((r) => (
+            <li
+              key={r.id}
+              style={{
+                padding: "12px 14px",
+                background: "var(--bg-surface)",
+                border: "var(--border-soft)",
+                borderRadius: 10,
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              <div
+                style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}
+              >
+                <Pill tone={KIND_TONE[r.kind] ?? "ghost"}>{r.kind}</Pill>
+                <Pill tone="ghost">{r.scope}</Pill>
+                {r.project_id && <Pill tone="ghost">project · {r.project_id}</Pill>}
+                {r.times_seen > 1 && <Pill tone="neutral">×{r.times_seen}</Pill>}
+                <span
+                  style={{
+                    color: "var(--text-muted)",
+                    fontFamily: "var(--mono)",
+                    fontSize: 10,
+                    letterSpacing: "var(--track-meta)",
+                  }}
+                >
+                  {r.updated_at.slice(0, 19).replace("T", " ")}
+                </span>
+                <span style={{ flex: 1 }} />
+                <button
+                  type="button"
+                  onClick={() => void onDelete(r.id)}
+                  style={{
+                    padding: "3px 9px",
+                    borderRadius: 6,
+                    border: "var(--border-soft)",
+                    background: "transparent",
+                    color: "var(--text-muted)",
+                    fontFamily: "var(--mono)",
+                    fontSize: 10,
+                    letterSpacing: "var(--track-meta)",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                  }}
+                >
+                  delete
+                </button>
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 13,
+                  color: "var(--text-primary)",
+                  fontWeight: 600,
+                }}
+              >
+                {r.topic}
+              </div>
+              <div
+                style={{
+                  color: "var(--text-secondary)",
+                  fontSize: 12,
+                  lineHeight: 1.55,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {r.body}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 8,
+  background: "var(--bg-input)",
+  border: "var(--border-soft)",
+  color: "var(--text-primary)",
+  fontFamily: "var(--mono)",
+  fontSize: 12,
+  outline: "none",
+};
+
+const selectStyle: React.CSSProperties = {
+  padding: "7px 10px",
+  borderRadius: 8,
+  background: "var(--bg-input)",
+  border: "var(--border-soft)",
+  color: "var(--text-primary)",
+  fontFamily: "var(--mono)",
+  fontSize: 12,
+  outline: "none",
+};

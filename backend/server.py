@@ -60,7 +60,15 @@ from config import (
     SIGNAL_API_KEY,
     TRUST_PROXY,
 )
-from models import SignalQuery, SignalResponse, SpineSnapshot, RunRecord
+from models import (
+    MemoryRecordCreate,
+    MemoryRecoverRequest,
+    MemoryRecoverResponse,
+    RunRecord,
+    SignalQuery,
+    SignalResponse,
+    SpineSnapshot,
+)
 from engine import SignalEngine
 from memory import failure_memory
 from runs import run_store
@@ -670,6 +678,113 @@ async def get_run(run_id: str):
     return record.model_dump()
 
 
+# ── Memory Records (Sprint 7) ──────────────────────────────────────────────
+
+@app.get("/memory/records")
+async def list_memory_records(
+    kind: Optional[str] = None,
+    scope: Optional[str] = None,
+    project_id: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 200,
+):
+    """Sprint 7 — list operator-callable memory entries. Filters compose:
+    pass kind, scope, project_id, search (substring on topic+body) to
+    narrow. Newest first."""
+    from memory_records import memory_records_store
+    records = await memory_records_store.list(
+        kind=kind, scope=scope, project_id=project_id, search=search, limit=limit,
+    )
+    return {
+        "count": len(records),
+        "records": [r.model_dump() for r in records],
+    }
+
+
+@app.post("/memory/records")
+async def create_memory_record(req: MemoryRecordCreate):
+    """Create or merge-by-fingerprint a memory entry. Operator + cápsula
+    + memory_save tool all funnel through here. Pydantic validates the
+    body so malformed payloads get a clean 422 instead of a 500."""
+    from memory_records import memory_records_store
+
+    record = await memory_records_store.record(
+        topic=req.topic,
+        body=req.body,
+        kind=req.kind,
+        scope=req.scope,
+        project_id=req.project_id,
+    )
+    return record.model_dump()
+
+
+@app.delete("/memory/records/{record_id}")
+async def delete_memory_record(record_id: str):
+    from memory_records import memory_records_store
+    deleted = await memory_records_store.delete(record_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "memory_record_not_found",
+                "reason": "KeyError",
+                "message": f"no record with id {record_id}",
+            },
+        )
+    return {"deleted": True, "id": record_id}
+
+
+@app.get("/memory/projects")
+async def list_memory_projects():
+    from memory_records import memory_records_store
+    return {"projects": await memory_records_store.projects()}
+
+
+@app.post("/memory/recover", response_model=MemoryRecoverResponse)
+async def recover_memory(req: MemoryRecoverRequest):
+    """Sprint 7 — context recovery hook. Returns up to N similar prior
+    records for a query, scoped to project_id when supplied. The composer
+    pipeline calls this to inject continuity into model context; ad-hoc
+    operator queries hit it too."""
+    from memory_records import memory_records_store
+
+    matches = await memory_records_store.find_relevant(
+        query=req.query,
+        project_id=req.project_id,
+        max_results=req.max_results,
+    )
+    return MemoryRecoverResponse(
+        matches=matches,
+        query=req.query,
+        project_id=req.project_id,
+    )
+
+
+@app.get("/memory/records/stats")
+async def memory_records_stats():
+    from memory_records import memory_records_store
+    return await memory_records_store.stats()
+
+
+# ── Tool Manifests (Sprint 5) ──────────────────────────────────────────────
+
+@app.get("/tools/manifests")
+async def get_tool_manifests():
+    """Sprint 5 — declarative governance shape for every registered tool.
+    Read by the Control Center to render the permissions matrix. The
+    agent's per-call gate consults ComposerSettings.tool_policies; this
+    endpoint is the read side that lets the operator know what tools
+    exist and their declared risk/mode/scopes.
+
+    Uses the canonical default_tools() bundle rather than the agent's
+    live registry — manifests are static, declared on the class, and
+    independent of which subset the active agent has filtered in.
+    Surfacing them all here lets the operator opt-out of any tool even
+    before the agent boots."""
+    from tools import ToolRegistry
+    return {"tools": ToolRegistry().manifests()}
+
+
 # ── Spine (Workspace) Endpoints ─────────────────────────────────────────────
 
 @app.get("/spine", response_model=SpineSnapshot)
@@ -830,6 +945,11 @@ async def diagnostics():
     from config import MODEL_ID, TRIAD_TEMPERATURE, JUDGE_TEMPERATURE, TRIAD_COUNT
 
     mem_stats = await failure_memory.get_stats()
+    # Sprint 8 — surface the Sprint 4/7 stores' load + save error state
+    # so operators can see at a glance whether a deploy lost durability.
+    from composer_settings import settings_store
+    from memory_records import memory_records_store
+    memory_records_stats = await memory_records_store.stats()
 
     # Honest boot signal: how the process was configured, not how the
     # operator intended it. Mock-mode and missing API key are the two
@@ -897,6 +1017,11 @@ async def diagnostics():
             "runs_last_load_error": run_store._last_load_error,
             "memory_last_save_error": failure_memory._last_save_error,
             "memory_last_load_error": failure_memory._last_load_error,
+            "composer_settings_last_save_error": settings_store.last_save_error,
+            "composer_settings_last_load_error": settings_store.last_load_error,
+            "memory_records_last_save_error": memory_records_store._last_save_error,
+            "memory_records_last_load_error": memory_records_store._last_load_error,
         },
+        "memory_records": memory_records_stats,
         "doctrine": "Conservative Intelligence — prefer refusal over error",
     }
