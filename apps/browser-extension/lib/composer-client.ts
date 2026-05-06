@@ -3,7 +3,7 @@
 // transport-level catch. Auth header wiring lands in Operação 4 with the
 // Control Center settings.
 
-import type { DomAction } from './dom-actions';
+import type { DomAction } from '@gauntlet/composer';
 
 // Production backend (Railway). For local dev against the FastAPI server
 // on http://localhost:3002, build the extension with:

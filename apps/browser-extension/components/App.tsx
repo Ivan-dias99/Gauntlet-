@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Capsule, CAPSULE_CSS } from './Capsule';
 import { Pill, PILL_CSS } from './Pill';
 import { ComposerClient } from '../lib/composer-client';
-import { executeDomActions } from '../lib/dom-actions';
+import { executeDomActions } from '@gauntlet/composer';
 import {
   DEFAULT_PILL_POSITION,
   dismissDomain,

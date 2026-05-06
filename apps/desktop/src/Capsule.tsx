@@ -23,8 +23,12 @@ import {
   captureScreenRegion,
   type DesktopContextSnapshot,
 } from "./adapters/tauri";
-import { Markdown } from "./markdown";
-import { isVoiceSupported, startVoice, type VoiceSession } from "./voice";
+import {
+  Markdown,
+  isVoiceSupported,
+  startVoice,
+  type VoiceSession,
+} from "@gauntlet/composer";
 
 type Phase = "idle" | "planning" | "ready" | "error";
 

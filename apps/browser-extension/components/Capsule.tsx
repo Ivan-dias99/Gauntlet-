@@ -18,19 +18,17 @@ import {
   type ExecutionReportRequest,
   type ExecutionStatus,
 } from '../lib/composer-client';
-import { Markdown } from '../lib/markdown';
 import {
+  Markdown,
   isVoiceSupported,
   startVoice,
   type VoiceSession,
-} from '../lib/voice';
-import {
   assessDanger,
   assessSequenceDanger,
   type DangerAssessment,
   type DomAction,
   type DomActionResult,
-} from '../lib/dom-actions';
+} from '@gauntlet/composer';
 import {
   readDismissedDomains,
   readScreenshotEnabled,
