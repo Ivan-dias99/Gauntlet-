@@ -271,12 +271,11 @@ pub fn run() {
             start_backend,
             stop_backend,
         ])
-        .setup(|app| {
+        .setup(|_app| {
             // Best-effort autostart at app launch when the operator
             // opted in. Errors here are logged but never block the
             // window from showing — the cápsula keeps working with a
             // pre-running backend.
-            let _ = app.handle();
             if std::env::var("GAUNTLET_DESKTOP_AUTOSTART_BACKEND")
                 .map(|v| v == "1" || v.to_lowercase() == "true")
                 .unwrap_or(false)

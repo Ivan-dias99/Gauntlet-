@@ -30,6 +30,7 @@ Safety posture (deny-by-default):
 from __future__ import annotations
 
 import asyncio
+import inspect
 import ipaddress
 import json
 import logging
@@ -328,9 +329,20 @@ class Tool:
         raise NotImplementedError
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        """Run the tool with timeout and error containment."""
+        """Run the tool with timeout and error containment.
+
+        Filters kwargs by the subclass's _run signature when _run lacks
+        **kwargs. Without this, tools with typed args crash with a
+        TypeError the moment the dispatcher (or a hallucinating model)
+        adds an extra key — most concretely the dispatcher's `approved`
+        flag for the require_approval gate. Tools that opt in to the
+        flexible shape (GitHubTool, VercelTool with `**kwargs`) bypass
+        the filter and see every key the caller passed."""
         try:
-            return await asyncio.wait_for(self._run(**kwargs), timeout=self.timeout_s)
+            forward = self._filter_run_kwargs(kwargs)
+            return await asyncio.wait_for(
+                self._run(**forward), timeout=self.timeout_s,
+            )
         except asyncio.TimeoutError:
             return ToolResult(
                 ok=False,
@@ -339,6 +351,36 @@ class Tool:
         except Exception as exc:  # noqa: BLE001
             logger.exception("Tool %s crashed", self.name)
             return ToolResult(ok=False, content=f"Tool '{self.name}' crashed: {exc}")
+
+    def _filter_run_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Drop kwargs the subclass's _run can't accept.
+
+        When _run declares **kwargs we forward everything verbatim.
+        Otherwise we keep only the names that are explicit parameters
+        of _run. Cached per-class because `inspect.signature` walks the
+        MRO every call and the registry dispatches a lot."""
+        cache = type(self).__dict__.get("_run_signature_cache")
+        if cache is None:
+            sig = inspect.signature(self._run)
+            params = sig.parameters
+            has_var_kw = any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
+            )
+            accepted = (
+                None
+                if has_var_kw
+                else frozenset(
+                    name
+                    for name, p in params.items()
+                    if name != "self" and p.kind != inspect.Parameter.VAR_POSITIONAL
+                )
+            )
+            cache = accepted
+            # Cache on the class so subclasses don't all rebuild it.
+            setattr(type(self), "_run_signature_cache", cache)
+        if cache is None:
+            return kwargs
+        return {k: v for k, v in kwargs.items() if k in cache}
 
     def to_anthropic(self) -> dict[str, Any]:
         """Anthropic tool-use descriptor."""
@@ -1310,9 +1352,18 @@ async def _github_get(token: str, path: str, subcommand: str) -> ToolResult:
             ok=False,
             content=f"github/{subcommand}: HTTP {resp.status_code} — {resp.text[:300]}",
         )
+    payload = _safe_json(resp)
+    if payload is None:
+        return ToolResult(
+            ok=False,
+            content=(
+                f"github/{subcommand}: HTTP {resp.status_code} but body was "
+                "not valid JSON; upstream may be misbehaving."
+            ),
+        )
     return ToolResult(
         ok=True,
-        content=_summarize_github_payload(subcommand, resp.json()),
+        content=_summarize_github_payload(subcommand, payload),
         metadata={"subcommand": subcommand, "channel": "rest", "path": path},
     )
 
@@ -1336,7 +1387,16 @@ async def _github_post(
             ok=False,
             content=f"github/{subcommand}: HTTP {resp.status_code} — {resp.text[:300]}",
         )
-    payload = resp.json() if resp.content else {}
+    payload = _safe_json(resp) if resp.content else {}
+    if payload is None:
+        return ToolResult(
+            ok=False,
+            content=(
+                f"github/{subcommand}: HTTP {resp.status_code} but body was "
+                "not valid JSON; the write may or may not have landed — "
+                "verify on github.com."
+            ),
+        )
     out = _summarize_github_payload(subcommand, payload)
     return ToolResult(
         ok=True,
@@ -1345,9 +1405,20 @@ async def _github_post(
             "subcommand": subcommand,
             "channel": "rest",
             "path": path,
-            "html_url": payload.get("html_url"),
+            "html_url": payload.get("html_url") if isinstance(payload, dict) else None,
         },
     )
+
+
+def _safe_json(resp: httpx.Response) -> Any:
+    """resp.json() but None on parse failure instead of an exception
+    that crashes the agent loop. Used by the REST helpers below — a
+    misbehaving upstream that returns HTML or a truncated body should
+    surface as a clean tool refusal, not a stack trace."""
+    try:
+        return resp.json()
+    except (ValueError, json.JSONDecodeError):
+        return None
 
 
 def _summarize_github_payload(subcommand: str, payload: Any) -> str:
@@ -1565,9 +1636,18 @@ async def _vercel_get(
             ok=False,
             content=f"vercel/{subcommand}: HTTP {resp.status_code} — {resp.text[:300]}",
         )
+    payload = _safe_json(resp)
+    if payload is None:
+        return ToolResult(
+            ok=False,
+            content=(
+                f"vercel/{subcommand}: HTTP {resp.status_code} but body was "
+                "not valid JSON; upstream may be misbehaving."
+            ),
+        )
     return ToolResult(
         ok=True,
-        content=_summarize_vercel_payload(subcommand, resp.json()),
+        content=_summarize_vercel_payload(subcommand, payload),
         metadata={"subcommand": subcommand, "path": path},
     )
 
@@ -1592,9 +1672,19 @@ async def _vercel_post(
             ok=False,
             content=f"vercel/{subcommand}: HTTP {resp.status_code} — {resp.text[:300]}",
         )
+    payload = _safe_json(resp)
+    if payload is None:
+        return ToolResult(
+            ok=False,
+            content=(
+                f"vercel/{subcommand}: HTTP {resp.status_code} but body was "
+                "not valid JSON; the write may or may not have landed — "
+                "verify on vercel.com."
+            ),
+        )
     return ToolResult(
         ok=True,
-        content=_summarize_vercel_payload(subcommand, resp.json()),
+        content=_summarize_vercel_payload(subcommand, payload),
         metadata={"subcommand": subcommand, "path": path},
     )
 
@@ -1651,6 +1741,11 @@ class ToolRegistry:
 
     def __init__(self, tools: Optional[list[Tool]] = None) -> None:
         self._tools: dict[str, Tool] = {}
+        # Set of tool names whose dispatch is gated by an explicit
+        # approved=true (or GAUNTLET_AUTO_APPROVE env). Initialised
+        # per-instance so a class-level mutable default can't leak
+        # across registries — bug 2 from the post-Sprint-8 audit.
+        self._approval_required: set[str] = set()
         # Use None sentinel — an explicit empty list means "start empty", it
         # must not fall through to the default bundle.
         effective = default_tools() if tools is None else tools
@@ -1711,12 +1806,6 @@ class ToolRegistry:
         out = ToolRegistry(tools=kept)
         out._approval_required = approval_required
         return out
-
-    # Tool names whose dispatch is gated by an explicit approved=true
-    # argument (or the GAUNTLET_AUTO_APPROVE env). Populated by
-    # with_policies(); empty by default so unfiltered registries keep
-    # their existing dispatch behavior.
-    _approval_required: set[str] = set()
 
     async def dispatch(self, name: str, arguments: dict[str, Any]) -> ToolResult:
         tool = self._tools.get(name)

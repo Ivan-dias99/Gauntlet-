@@ -188,7 +188,18 @@ class ComposerSettingsStore:
         if not target.exists():
             raise FileNotFoundError(f"snapshot not found: {file_name!r}")
         raw = target.read_text(encoding="utf-8")
-        restored = ComposerSettings(**json.loads(raw))
+        try:
+            restored = ComposerSettings(**json.loads(raw))
+        except (ValueError, json.JSONDecodeError) as exc:
+            # Quarantine the corrupt snapshot so subsequent list_snapshots
+            # doesn't keep offering it to the operator. Re-raise as
+            # ValueError so the route surfaces a typed 422 instead of a
+            # 500. JSONDecodeError is itself a ValueError subclass; we
+            # widen the catch to include schema mismatches too.
+            quarantine_corrupt_file(target)
+            raise ValueError(
+                f"snapshot {file_name!r} is corrupt or schema-mismatched: {exc}"
+            ) from exc
         # restore() goes through replace() so the current doc snapshots
         # first — operator can roll forward if the restore was wrong.
         return await self.replace(restored)

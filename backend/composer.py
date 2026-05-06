@@ -1130,6 +1130,17 @@ async def restore_settings_snapshot(req: dict):
                 "message": str(exc),
             },
         )
+    except ValueError as exc:
+        # Snapshot file exists but is corrupt or schema-mismatched.
+        # The store quarantined it; operator gets 422 with the cause.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "snapshot_corrupt",
+                "reason": "ValueError",
+                "message": str(exc),
+            },
+        )
     return restored
 
 
