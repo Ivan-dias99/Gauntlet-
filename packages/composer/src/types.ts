@@ -184,6 +184,29 @@ export const DEFAULT_COMPOSER_SETTINGS: ComposerSettings = {
   updated_at: '',
 };
 
+// Tool manifests (Sprint 5 governance shape) ----------------------------------
+// Surfaced by GET /tools/manifests. The cápsula's command palette renders
+// these so the operator sees every tool the agent CAN call, with risk +
+// mode badges, in one keyboard surface.
+
+export type ToolMode = 'read' | 'write' | string;
+export type ToolRisk = 'low' | 'medium' | 'high' | string;
+
+export interface ToolManifest {
+  name: string;
+  description: string;
+  mode: ToolMode;
+  risk: ToolRisk;
+  version: string;
+  scopes: string[];
+  rollback_policy: string;
+  timeout_s: number;
+}
+
+export interface ToolManifestsResponse {
+  tools: ToolManifest[];
+}
+
 export class ComposerError extends Error {
   status: number;
   body: unknown;

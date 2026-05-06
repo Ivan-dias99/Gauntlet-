@@ -17,6 +17,8 @@ import {
   type ExecutionReportResponse,
   type IntentResult,
   type PreviewResult,
+  type ToolManifest,
+  type ToolManifestsResponse,
 } from './types';
 
 // Production backend (Railway). Build-time override via VITE_BACKEND_URL.
@@ -102,6 +104,19 @@ export class ComposerClient {
       },
       signal,
     );
+  }
+
+  // Tool manifests — used by the command palette to surface every tool
+  // the agent CAN call, with mode/risk/version metadata. Static endpoint;
+  // backend computes it at startup. Cached by the cápsula on mount.
+  async getToolManifests(signal?: AbortSignal): Promise<ToolManifest[]> {
+    const reply = await this.ambient.transport.fetchJson<ToolManifestsResponse>(
+      'GET',
+      `${this.backendUrl}/tools/manifests`,
+      undefined,
+      signal,
+    );
+    return reply.tools ?? [];
   }
 
   getSettings(signal?: AbortSignal): Promise<ComposerSettings> {
