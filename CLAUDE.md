@@ -6,8 +6,11 @@ A camada de inteligência na ponta do cursor. Não é mais um chat, dashboard,
 sidebar ou IDE. É uma cápsula mínima que segue o cursor — o utilizador aponta,
 diz o que quer, e o sistema executa onde ele já está.
 
-- **Composer** (`apps/browser-extension/`) — o carro. Cápsula leve, discreta,
-  sempre presente. É a experiência principal.
+- **Composer** (`packages/composer/`) — o carro. **Um único** Capsule + Pill +
+  ComposerClient partilhado. Roda em duas shells: `apps/browser-extension/`
+  (web) e `apps/desktop/` (Tauri). Cada shell constrói um `Ambient` que
+  injeta transport, storage, selection, screenshot e domActions; a cápsula
+  lê `ambient.capabilities.*` para saber que UI mostrar.
 - **Control Center** (`control-center/`, ex `src/`) — a garagem. Só abre para
   configurar, tunar, ver histórico. Nunca compete com o Composer.
 - **Backend FastAPI** (`backend/`, ex `signal-backend/`) — o maestro. Faz todo
@@ -88,7 +91,8 @@ Quando avaliares qualquer mudança, passa-a pelas três lentes:
    contexto-fora-de-cursor são red flags.
 2. **Composer mínimo, backend gordo.** Lógica nova pertence ao backend
    (FastAPI). O Composer só apresenta. Se uma feature nova pede UI complexa
-   na cápsula, repensar.
+   na cápsula, repensar. Mudança ao Composer entra em `packages/composer/`,
+   não num shell — caso contrário voltamos a ter dois Composers.
 3. **Multimodelo via gateway.** Qualquer chamada a LLM passa pelo
    `model_gateway`. Frontend nunca chama Anthropic/Gemini/OpenAI direto.
 
@@ -98,5 +102,7 @@ Quando avaliares qualquer mudança, passa-a pelas três lentes:
   aliases legacy lidos como fallback (a remover quando o deploy estabilizar).
 - Rotas API: `/api/gauntlet/*` é canónico. `/api/signal/*` e `/api/ruberra/*`
   são aliases temporários durante o compat window.
-- Pastas: `backend/`, `control-center/`, `apps/browser-extension/`. Nada de
-  `signal-backend/`, `src/`, `_legacy/`, `chambers/` em código novo.
+- Pastas: `packages/composer/`, `apps/browser-extension/`, `apps/desktop/`,
+  `control-center/`, `backend/`. Nada de `signal-backend/`, `src/`,
+  `_legacy/`, `chambers/` em código novo. Capsule/Pill/ComposerClient só
+  existem em `packages/composer/src/` — duplicar num shell é regressão.

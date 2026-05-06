@@ -1,32 +1,39 @@
-# Gauntlet — Desktop Cápsula (Sprint 6)
+# Gauntlet — Desktop Cápsula
 
-The off-the-web composer surface. Tauri 2 shell + a TypeScript front end
-that mirrors the browser-extension cápsula in identity and wire
-contract. Same backend, same visual identity, different host adapter.
+The off-the-web composer surface. Tauri 2 shell that mounts the SAME
+Composer the browser extension mounts. Same backend, same visual
+identity, different host adapter.
 
 ## Doctrine
 
 > A cápsula é idêntica em tudo, só a alma muda — uma é para web,
 > outra é para local.
 
-The Capsule component, the CSS, the wire shape (`/composer/*`) are all
-shared with the browser-extension. The seam where they diverge is
-`src/adapters/tauri.ts` — clipboard, window title, global shortcut, and
-window show/hide.
+The Capsule + Pill + ComposerClient + utilities all live in
+`packages/composer/` (`@gauntlet/composer`). Both shells import the
+same component. Differences are expressed as capabilities on the
+Ambient adapter each shell constructs:
 
-## What lands in Sprint 6
+- `src/App.tsx` mounts `<Capsule ambient={createDesktopAmbient()}>`
+- `src/ambient.ts` declares the desktop capability vector
+  (no domExecution, no pillSurface, no per-domain dismiss) and wires
+  transport (direct fetch), selection (clipboard + window title),
+  storage (localStorage), and screenshot (Tauri command).
+- `src/adapters/tauri.ts` is where the seam lives — clipboard, window
+  title, global shortcut, window show/hide.
 
-- Tauri 2 scaffold (`src-tauri/`): Cargo.toml, tauri.conf.json,
-  capabilities/default.json, lib.rs, main.rs.
-- Vite + React front-end mirroring the cápsula UI from
-  `apps/browser-extension/components/Capsule.tsx`.
-- `composer-client.ts` — non-streaming subset of the extension's client
-  (Tauri webview can fetch local backend directly; SSE proxying through
-  the WebView2 / WKWebView shells lands later).
-- `adapters/tauri.ts` — clipboard read, active-window title, global
-  shortcut bind, capsule window toggle.
-- Global shortcut default: `Ctrl+Shift+Space`
-  (`Cmd+Shift+Space` on macOS).
+## Capabilities
+
+| | Browser shell | Desktop shell |
+|---|---|---|
+| `domExecution` | ✓ | ✗ (no host page DOM) |
+| `pillSurface` | ✓ | ✗ (the window IS the cápsula) |
+| `screenshot` | ✓ (chrome.tabs) | ✓ (Tauri command) |
+| `dismissDomain` | ✓ | ✗ (no domain) |
+| `voice` | depends on browser | depends on webview |
+| `streaming` | ✓ | ✗ (SSE not wired through Tauri yet) |
+
+Global shortcut default: `Ctrl+Shift+Space` (`Cmd+Shift+Space` on macOS).
 
 ## Out of scope this sprint (clearly)
 
