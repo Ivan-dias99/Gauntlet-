@@ -14,16 +14,13 @@
 // page's storage, scoped per-origin, which would partition the prefs
 // across sites and let pages snoop on what we wrote.
 
+import type { PillPosition } from '@gauntlet/composer';
+
+export type { PillPosition };
+
 const KEY_POSITION = 'gauntlet:pill_position';
 const KEY_DISMISSED = 'gauntlet:dismissed_domains';
 const KEY_SCREENSHOT_ENABLED = 'gauntlet:screenshot_enabled';
-
-export interface PillPosition {
-  // Distance from the bottom-right corner, in CSS pixels. Positive
-  // values pull the pill toward the centre of the viewport.
-  bottom: number;
-  right: number;
-}
 
 export const DEFAULT_PILL_POSITION: PillPosition = { bottom: 16, right: 16 };
 

@@ -12,6 +12,7 @@
     "entrypoints/**/*",
     "components/**/*",
     "lib/**/*",
+    "ambient/**/*",
     "wxt.config.ts"
   ]
 }

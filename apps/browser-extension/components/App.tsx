@@ -1,13 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Capsule, CAPSULE_CSS } from './Capsule';
-import { Pill, PILL_CSS } from './Pill';
-import { ComposerClient } from '../lib/composer-client';
-import { executeDomActions } from '../lib/dom-actions';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Capsule,
+  CAPSULE_CSS,
+  Pill,
+  PILL_CSS,
+  type ContextSnapshot,
+} from '@gauntlet/composer';
+import { buildWebInpageAmbient } from '../ambient/web-inpage';
 import {
   DEFAULT_PILL_POSITION,
   dismissDomain,
   isDomainDismissed,
   readPillPosition,
+  writePillPosition,
   type PillPosition,
 } from '../lib/pill-prefs';
 import {
@@ -15,11 +20,6 @@ import {
   readSelectionSnapshot,
   type SelectionSnapshot,
 } from '../lib/selection';
-
-// One ComposerClient per content script — connections are stateless
-// (HTTP), but reusing the instance keeps backend URL config in one
-// place per page.
-const client = new ComposerClient();
 
 // Single stylesheet injected into the shadow root by content.tsx.
 // Concatenating both CSS bodies into a single export means the script
@@ -36,17 +36,37 @@ type Surface =
   | { kind: 'pill' }
   | {
       kind: 'capsule';
-      snapshot: SelectionSnapshot;
+      snapshot: ContextSnapshot;
       cursor: CursorPoint | null;
       nonce: number;
     }
   | { kind: 'gone' };
 
+// Map the web-specific SelectionSnapshot (selection.ts) to the unified
+// ContextSnapshot the Composer consumes. The shapes overlap; only
+// `source` and a couple of optional fields differ. Doing the mapping at
+// the App boundary keeps the Composer ambient-agnostic.
+function snapshotToContext(s: SelectionSnapshot): ContextSnapshot {
+  return {
+    source: 'browser',
+    text: s.text,
+    url: s.url,
+    pageTitle: s.pageTitle,
+    pageText: s.pageText,
+    domSkeleton: s.domSkeleton,
+    bbox: s.bbox,
+  };
+}
+
 // App — the state container that lives in the content script's shadow
 // root. Owns the pill ↔ capsule transition, the runtime.onMessage
 // subscription so background.ts can summon/dismiss without us
 // reaching back through the DOM, and the persisted pill prefs.
+//
+// The Composer (Capsule + Pill) is ambient-agnostic; this App is the
+// web-inpage adapter shell that wires it to chrome.* APIs.
 export function App() {
+  const ambient = useMemo(() => buildWebInpageAmbient(), []);
   const [surface, setSurface] = useState<Surface>({ kind: 'pill' });
   const [pillPosition, setPillPosition] = useState<PillPosition>(
     DEFAULT_PILL_POSITION,
@@ -57,13 +77,7 @@ export function App() {
   // the dismiss callback closes over the latest value via the
   // dependency array.
   const [domainDismissed, setDomainDismissed] = useState(false);
-  // Transient flash state for the pill after a plan executes. Cleared
-  // by a timer so the pill returns to its resting state and doesn't
-  // accumulate stale ambient feedback across multiple sessions.
   const [pillFlash, setPillFlash] = useState<'ok' | 'fail' | null>(null);
-  // Phase mirror — Capsule broadcasts gauntlet:phase events; the pill
-  // tints itself accordingly so the operator senses "still working"
-  // even after the cápsula closes. Only non-idle phases show.
   const [phase, setPhase] = useState<
     'idle' | 'planning' | 'streaming' | 'plan_ready' | 'executing' | 'executed' | 'error' | null
   >(null);
@@ -79,8 +93,6 @@ export function App() {
       const detail = (ev as CustomEvent<{ phase?: typeof phase }>).detail;
       if (!detail?.phase) return;
       setPhase(detail.phase);
-      // Auto-clear terminal phases after a few seconds so the pill
-      // doesn't keep glowing "executed" forever once the user moves on.
       if (detail.phase === 'executed' || detail.phase === 'error') {
         window.setTimeout(() => setPhase(null), 3500);
       }
@@ -97,8 +109,7 @@ export function App() {
   // pointer coordinates, so without this ref we'd have nothing to
   // anchor to when the user summons without a text selection — and the
   // capsule would fall back to the bottom strip, far from where they
-  // were actually working. Keep it as a ref (not state) because we
-  // don't want to re-render on every mousemove.
+  // were actually working.
   const lastCursorRef = useRef<CursorPoint | null>(null);
 
   useEffect(() => {
@@ -109,11 +120,7 @@ export function App() {
     return () => window.removeEventListener('mousemove', track);
   }, []);
 
-  // Load persisted pill prefs once at mount. Until they resolve we
-  // render the pill at the default position — there's no flash because
-  // the default IS the most common position (bottom-right corner). A
-  // later setState swaps to the dragged position or hides the pill
-  // entirely if the domain is dismissed.
+  // Load persisted pill prefs once at mount.
   useEffect(() => {
     let cancelled = false;
     void readPillPosition().then((p) => {
@@ -130,11 +137,6 @@ export function App() {
       void isDomainDismissed(host).then((dismissed) => {
         if (cancelled || !dismissed) return;
         setDomainDismissed(true);
-        // Hide the pill the moment we know — the brief default render
-        // of the pill (a few ms before storage resolves) is acceptable
-        // and the only alternative is a "loading" state that flashes
-        // worse. setSurface only flips if we're still in the pill
-        // state — the hotkey could race and put us in capsule first.
         setSurface((prev) => (prev.kind === 'pill' ? { kind: 'gone' } : prev));
       });
     }
@@ -144,38 +146,26 @@ export function App() {
   }, []);
 
   const summon = useCallback(() => {
-    // Sync first: render the cápsula immediately with the top-frame
-    // snapshot — no perceptible delay for the user. Then async-enrich
-    // with a 50ms iframe selection harvest; if a subframe had a
-    // longer/non-empty selection (Notion, Reddit, embedded markdown),
-    // remount the cápsula with that snapshot. Cheap optimistic mount,
-    // best-effort upgrade.
     const cursor = lastCursorRef.current;
     setSurface((prev) => ({
       kind: 'capsule',
-      snapshot: readSelectionSnapshot(),
+      snapshot: snapshotToContext(readSelectionSnapshot()),
       cursor,
       nonce: prev.kind === 'capsule' ? prev.nonce + 1 : 1,
     }));
     void readSelectionAcrossFrames().then((enriched) => {
       setSurface((prev) => {
         if (prev.kind !== 'capsule') return prev;
-        // Only upgrade when the iframe round-trip actually found
-        // text the top frame didn't have. Avoids the user typing
-        // into the cápsula and having React swap snapshots out from
-        // under them for nothing.
         if (!enriched.text || enriched.text === prev.snapshot.text) return prev;
         return {
           ...prev,
-          snapshot: enriched,
+          snapshot: snapshotToContext(enriched),
         };
       });
     });
   }, []);
 
   const dismiss = useCallback(() => {
-    // After closing the capsule, return to the pill — unless the
-    // domain has been opted out, in which case stay invisible.
     setSurface(domainDismissed ? { kind: 'gone' } : { kind: 'pill' });
   }, [domainDismissed]);
 
@@ -189,8 +179,6 @@ export function App() {
     })();
     if (host) void dismissDomain(host);
     setDomainDismissed(true);
-    // Hide the surface immediately too — don't make the user wait for
-    // a reload to confirm their gesture worked.
     setSurface({ kind: 'gone' });
   }, []);
 
@@ -203,9 +191,6 @@ export function App() {
       if (!msg || typeof msg !== 'object') return false;
       const type = (msg as { type?: unknown }).type;
       if (type === 'gauntlet:summon') {
-        // A dismissed-domain user can still summon explicitly via
-        // hotkey — that's a deliberate invocation, not a violation of
-        // their preference. We just don't show the persistent pill.
         summon();
         sendResponse({ ok: true });
         return false;
@@ -230,6 +215,10 @@ export function App() {
         position={pillPosition}
         onClick={summon}
         onDismissDomain={dismissThisDomain}
+        onPositionChange={(next) => {
+          setPillPosition(next);
+          void writePillPosition(next);
+        }}
         flash={pillFlash}
         phase={phase}
       />
@@ -238,11 +227,10 @@ export function App() {
   return (
     <Capsule
       key={surface.nonce}
-      client={client}
+      ambient={ambient}
       initialSnapshot={surface.snapshot}
       cursorAnchor={surface.cursor}
       onDismiss={dismiss}
-      executor={executeDomActions}
     />
   );
 }

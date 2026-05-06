@@ -11,15 +11,23 @@
 // remembers the hotkey, which is no different from a standalone app.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  type PillPosition,
-  writePillPosition,
-} from '../lib/pill-prefs';
+
+// Pill position is anchored to the bottom-right corner so it follows
+// the right edge on resize. The host app owns persistence (chrome.storage
+// on web). Desktop does not mount a Pill — the resting surface there
+// is the OS taskbar / global shortcut.
+export interface PillPosition {
+  bottom: number;
+  right: number;
+}
 
 export interface PillProps {
   position: PillPosition;
   onClick: () => void;
   onDismissDomain: () => void;
+  // Persist a new pill position. App wires this to ambient.storage.
+  // When undefined, drags still move the pill but aren't saved.
+  onPositionChange?: (next: PillPosition) => void;
   // Transient feedback after the cápsula closes following an
   // executed plan. The pill flashes green/red for ~1.4s so the user
   // gets ambient confirmation that the action actually landed.
@@ -43,7 +51,14 @@ const DRAG_THRESHOLD_PX = 4;
 // hovering over the pill cancels the idle state outright.
 const IDLE_AFTER_MS = 30_000;
 
-export function Pill({ position, onClick, onDismissDomain, flash, phase }: PillProps) {
+export function Pill({
+  position,
+  onClick,
+  onDismissDomain,
+  onPositionChange,
+  flash,
+  phase,
+}: PillProps) {
   const [pos, setPos] = useState<PillPosition>(position);
   const [idle, setIdle] = useState(false);
   const dragStateRef = useRef<{
@@ -141,12 +156,12 @@ export function Pill({ position, onClick, onDismissDomain, flash, phase }: PillP
       if (drag.armed) {
         // It was a real drag — persist the new position and skip the
         // click handler so the capsule doesn't pop on drop.
-        void writePillPosition(pos);
+        onPositionChange?.(pos);
         return;
       }
       onClick();
     },
-    [pos, onClick],
+    [pos, onClick, onPositionChange],
   );
 
   const onContextMenu = useCallback(

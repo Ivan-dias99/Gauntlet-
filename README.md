@@ -6,13 +6,34 @@ Tu apontas. Dizes o que queres. O Gauntlet executa — sem abrires uma app de
 IA, sem mudares de tab, sem dashboards no caminho. A cápsula vive colada ao
 cursor, e o backend faz o trabalho sujo.
 
+## Product Law — um Composer, duas shells
+
+Existe **um único Gauntlet Composer**, com **duas shells de runtime**:
+
+1. **Web runtime** — `apps/browser-extension/` (WXT, Manifest V3). Cápsula
+   in-page (shadow DOM) + popup window de fallback (chrome-extension://) para
+   páginas onde o content script não monta (chrome://, web store, blank tabs).
+2. **Desktop runtime** — `apps/desktop/` (Tauri 2). Cápsula numa janela do SO,
+   ativada por global shortcut.
+
+Ambas as shells montam **o mesmo Composer** — `packages/composer/Capsule.tsx`.
+A identidade visual, o contrato de saída, a paleta, a voz, o markdown, a
+streaming UI são bit-a-bit idênticos. Só muda o que cada ambiente consegue
+fornecer (selection vs. clipboard, DOM exec vs. nenhum, screenshot da tab
+vs. screenshot de região), e isso é negociado via interface `Ambient` —
+o Composer pergunta `ambient.capabilities` e renderiza apenas o que a casa
+suporta.
+
+Drop um quarto runtime (mobile, IDE panel, terminal TUI) e basta escrever um
+quarto Ambient — o Composer não muda uma linha.
+
 ## Filosofia
 
 Três peças, três papéis:
 
-- **Composer** — `apps/browser-extension/`. A cápsula. É o carro. Discreta,
-  rápida, sempre presente. Press `Alt+Space` em qualquer página → escreves o
-  que queres → vês o resultado → cursor nunca sai do sítio.
+- **Composer** — `packages/composer/`. A cápsula. É o carro. Single source
+  of truth da UI/comportamento; ambient-agnostic. Montada em duas shells
+  (web extension e desktop Tauri) com paridade visual e comportamental 1:1.
 - **Control Center** — `control-center/`. A garagem. Só abre quando
   precisas configurar, ver histórico, inspecionar memórias ou trocar
   modelos. Nunca compete com o Composer como local de trabalho.
@@ -54,12 +75,31 @@ Duas linhas em `runs.json` por ciclo: `route="composer"` (envelope) e
 ## Layout
 
 ```
-apps/browser-extension/      WXT + Manifest V3 — a cápsula
+packages/composer/           THE Composer. Ambient-agnostic. Single source.
+  Capsule.tsx                input + Compor + preview + Copy + Esc + streaming
+  Pill.tsx                   resting surface (web only mounts it)
+  ComposerClient.ts          4-route HTTP client over AmbientTransport
+  ambient.ts                 the seam — what each runtime must provide
+  markdown.tsx · voice.ts · dom-actions.ts · selection-types.ts
+
+apps/browser-extension/      WXT + Manifest V3 — web shell
   wxt.config.ts              MV3 manifest, Alt+Space command, host_perms
-  lib/composer-client.ts     typed 4-route HTTP client
-  components/Capsule.tsx     input + Compor + preview + Copy + Esc
-  entrypoints/content.tsx    injects capsule via createShadowRootUi
+  ambient/web-inpage.ts      content-script ambient (selection + DOM exec)
+  ambient/web-popup.ts       popup-window ambient (fallback, no page)
+  ambient/web-shared.ts      chrome.runtime fetch proxy + SSE port + storage
+  components/App.tsx         pill ↔ capsule orchestration (web only)
+  lib/selection.ts           window.getSelection wrapper
+  lib/pill-prefs.ts          chrome.storage wrapper for pill position
+  entrypoints/content.tsx    injects capsule via shadow DOM
   entrypoints/background.ts  service worker (chrome.commands listener)
+  entrypoints/composer/      popup window (lifeboat for chrome:// pages)
+
+apps/desktop/                Tauri 2 — desktop shell
+  src-tauri/                 Rust side: global shortcut, screenshot, autostart
+  src/ambient/desktop.ts     Tauri ambient (clipboard + window title + region shot)
+  src/App.tsx                global shortcut binding + Capsule mount
+  src/main.tsx               injects CAPSULE_CSS, mounts <App />
+  src/adapters/tauri.ts      thin wrappers over @tauri-apps/api
 
 control-center/              React + Vite — a garagem (operator console)
   main.tsx · App.tsx · router.tsx

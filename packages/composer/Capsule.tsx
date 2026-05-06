@@ -17,40 +17,68 @@ import {
   type ExecutedActionRecord,
   type ExecutionReportRequest,
   type ExecutionStatus,
-} from '../lib/composer-client';
-import { Markdown } from '../lib/markdown';
+} from './ComposerClient';
+import { Markdown } from './markdown';
 import {
   isVoiceSupported,
   startVoice,
   type VoiceSession,
-} from '../lib/voice';
+} from './voice';
 import {
   assessDanger,
   assessSequenceDanger,
   type DangerAssessment,
   type DomAction,
   type DomActionResult,
-} from '../lib/dom-actions';
-import {
-  readDismissedDomains,
-  readScreenshotEnabled,
-  restoreDomain,
-  writeScreenshotEnabled,
-} from '../lib/pill-prefs';
-import {
-  readSelectionSnapshot,
-  type SelectionRect,
-  type SelectionSnapshot,
-} from '../lib/selection';
+} from './dom-actions';
+import type { Ambient, ContextSnapshot } from './ambient';
+import type { SelectionRect } from './selection-types';
+
+// Storage keys mirror the legacy pill-prefs.ts keys so the web ambient
+// reads the same chrome.storage rows that the previous extension build
+// wrote. The Composer never touches a platform storage API directly —
+// it goes through ambient.storage so each runtime supplies its own
+// backing (chrome.storage on web, localStorage / Tauri Store on desktop).
+const STORAGE_KEY_DISMISSED_DOMAINS = 'gauntlet:dismissed_domains';
+const STORAGE_KEY_SCREENSHOT_ENABLED = 'gauntlet:screenshot_enabled';
+
+async function ambientReadDismissedDomains(ambient: Ambient): Promise<string[]> {
+  const raw = await ambient.storage.get<unknown>(STORAGE_KEY_DISMISSED_DOMAINS);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((x): x is string => typeof x === 'string');
+}
+
+async function ambientRestoreDomain(
+  ambient: Ambient,
+  hostname: string,
+): Promise<void> {
+  if (!hostname) return;
+  const current = await ambientReadDismissedDomains(ambient);
+  const next = current.filter((h) => h !== hostname);
+  if (next.length === current.length) return;
+  await ambient.storage.set(STORAGE_KEY_DISMISSED_DOMAINS, next);
+}
+
+async function ambientReadScreenshotEnabled(ambient: Ambient): Promise<boolean> {
+  return (await ambient.storage.get<unknown>(STORAGE_KEY_SCREENSHOT_ENABLED)) === true;
+}
+
+async function ambientWriteScreenshotEnabled(
+  ambient: Ambient,
+  enabled: boolean,
+): Promise<void> {
+  await ambient.storage.set(STORAGE_KEY_SCREENSHOT_ENABLED, !!enabled);
+}
 
 export interface CapsuleProps {
-  client: ComposerClient;
-  initialSnapshot: SelectionSnapshot;
+  // The host runtime — web extension (in-page or popup) or desktop Tauri.
+  // Doctrine: o Composer é UM. As shells diferem; o Composer não. The
+  // Capsule asks the ambient for context, transport, storage, screenshot,
+  // and DOM execution. It never branches on `runtime` — it asks
+  // `capabilities` which buttons to render.
+  ambient: Ambient;
+  initialSnapshot: ContextSnapshot;
   onDismiss: () => void;
-  // Provided by the in-page content script. When undefined (popup
-  // window fallback) the "Acionar" button hides — the popup has no
-  // page to actuate against.
-  executor?: (actions: DomAction[]) => Promise<DomActionResult[]>;
   // Last known cursor position, in viewport coordinates. Used as the
   // anchor when there is no text selection — without it we'd fall
   // back to the bottom-of-screen strip, which is the opposite of
@@ -70,13 +98,26 @@ type Phase =
   | 'error';
 
 export function Capsule({
-  client,
+  ambient,
   initialSnapshot,
   onDismiss,
-  executor,
   cursorAnchor,
 }: CapsuleProps) {
-  const [snapshot, setSnapshot] = useState<SelectionSnapshot>(initialSnapshot);
+  // The ComposerClient is constructed from the ambient. Single source of
+  // truth for backend URL + transport, so swapping ambient at runtime
+  // (rare, but the Settings drawer can flip per-domain policies) doesn't
+  // leave a stale client behind.
+  const client = useMemo(
+    () =>
+      new ComposerClient({
+        backendUrl: ambient.backendUrl,
+        transport: ambient.transport,
+      }),
+    [ambient],
+  );
+  // Optional capability — only web-inpage runs DOM action plans.
+  const executor = ambient.executeActions;
+  const [snapshot, setSnapshot] = useState<ContextSnapshot>(initialSnapshot);
   const [userInput, setUserInput] = useState('');
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -220,30 +261,27 @@ export function Capsule({
 
   // Fire-and-forget screenshot capture on mount when the pref is on.
   // Pref source order:
-  //   1. Local toggle (chrome.storage.local) — explicit user choice wins.
+  //   1. Local toggle (ambient.storage) — explicit user choice wins.
   //   2. Backend settings.screenshot_default — operator-set default.
-  // Skipped in popup mode (no executor) — capturing there returns a
-  // screenshot of the popup window itself, which is useless and
-  // visually recursive.
+  // Skipped when the ambient doesn't expose captureScreenshot — the popup
+  // fallback would screenshot itself (useless and visually recursive)
+  // and a future no-screenshot ambient just opts out cleanly.
   useEffect(() => {
-    if (!executor) return;
+    if (!ambient.capabilities.showScreenshot || !ambient.captureScreenshot) {
+      return;
+    }
     let cancelled = false;
-    void readScreenshotEnabled().then((enabledLocal) => {
-      // The local pref defaults to false in pill-prefs.ts. If the
-      // operator-side default is true, we honor it as the boot value
-      // unless the user already toggled it locally. To avoid a third
-      // tri-state pref we treat "local was never set" the same as
-      // "local is false" — operator default only applies when local is
-      // false. That biases toward minimal screenshot capture (privacy
-      // wins on draws).
+    void ambientReadScreenshotEnabled(ambient).then((enabledLocal) => {
+      // Local was never set" gets treated the same as "local is false";
+      // operator default only applies when local is false. That biases
+      // toward minimal screenshot capture (privacy wins on draws).
       const enabled = enabledLocal || settings.screenshot_default;
       if (cancelled || !enabled) return;
-      if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) return;
-      void chrome.runtime
-        .sendMessage({ type: 'gauntlet:capture_screenshot' })
-        .then((reply: { ok?: boolean; dataUrl?: string } | undefined) => {
-          if (cancelled || !reply?.ok || !reply.dataUrl) return;
-          setScreenshot(reply.dataUrl);
+      void ambient
+        .captureScreenshot!()
+        .then((dataUrl) => {
+          if (cancelled || !dataUrl) return;
+          setScreenshot(dataUrl);
         })
         .catch(() => {
           // Silent — screenshot is opt-in and best-effort.
@@ -252,11 +290,12 @@ export function Capsule({
     return () => {
       cancelled = true;
     };
-  }, [executor, settings.screenshot_default]);
+  }, [ambient, settings.screenshot_default]);
 
   const refreshSnapshot = useCallback(() => {
-    setSnapshot(readSelectionSnapshot());
-  }, []);
+    if (!ambient.refreshContext) return;
+    void Promise.resolve(ambient.refreshContext()).then(setSnapshot);
+  }, [ambient]);
 
   // Voice — press-and-hold the mic button. We start a session on
   // pointerdown and stop on pointerup/pointerleave. Partial transcripts
@@ -344,38 +383,14 @@ export function Capsule({
     const topic =
       (userInput.trim() || snapshot.pageTitle || 'cápsula note').slice(0, 200);
     try {
-      const url = `${client.backendUrl}/memory/records`;
-      // Reuse the background fetch path so we go through the
-      // chrome-extension origin and bypass page CORS.
-      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
-        const reply = (await chrome.runtime.sendMessage({
-          type: 'gauntlet:fetch',
-          url,
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            topic,
-            body,
-            kind: 'note',
-            scope: 'user',
-          }),
-        })) as { ok?: boolean; status?: number; error?: string } | undefined;
-        if (!reply?.ok || (reply.status ?? 0) >= 300) {
-          throw new Error(reply?.error ?? `HTTP ${reply?.status ?? '?'}`);
-        }
-      } else {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            topic,
-            body,
-            kind: 'note',
-            scope: 'user',
-          }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      }
+      // Routes through ambient.transport so each runtime uses its own
+      // CORS-safe path (web: chrome.runtime fetch proxy; desktop: direct
+      // fetch via the Tauri capability allow-list).
+      await client.transport.requestJson(
+        'POST',
+        `${client.backendUrl}/memory/records`,
+        { topic, body, kind: 'note', scope: 'user' },
+      );
       flashSaved('saved');
     } catch (err) {
       setError(
@@ -540,7 +555,7 @@ export function Capsule({
     // toggled it off in the settings drawer between mount and submit;
     // the captured data URL is in our state but should not be sent
     // when the toggle is currently off.
-    const screenshotEnabled = await readScreenshotEnabled();
+    const screenshotEnabled = await ambientReadScreenshotEnabled(ambient);
     const capture = buildCapture(
       snapshot,
       screenshotEnabled ? screenshot : null,
@@ -755,20 +770,24 @@ export function Capsule({
               </span>
               <div className="gauntlet-capsule__brand-text">
                 <span className="gauntlet-capsule__brand">GAUNTLET</span>
-                <span className="gauntlet-capsule__tagline">cursor · capsule</span>
+                <span className="gauntlet-capsule__tagline">
+                  {ambient.runtime === 'desktop' ? 'desktop · capsule' : 'cursor · capsule'}
+                </span>
               </div>
             </div>
             <div className="gauntlet-capsule__header-actions">
-              <button
-                type="button"
-                className="gauntlet-capsule__settings-btn"
-                onClick={() => setSettingsOpen((v) => !v)}
-                aria-label="Definições"
-                aria-expanded={settingsOpen}
-                title="Definições"
-              >
-                <span aria-hidden>···</span>
-              </button>
+              {ambient.capabilities.showSettings && (
+                <button
+                  type="button"
+                  className="gauntlet-capsule__settings-btn"
+                  onClick={() => setSettingsOpen((v) => !v)}
+                  aria-label="Definições"
+                  aria-expanded={settingsOpen}
+                  title="Definições"
+                >
+                  <span aria-hidden>···</span>
+                </button>
+              )}
               <button
                 type="button"
                 className="gauntlet-capsule__close"
@@ -780,16 +799,16 @@ export function Capsule({
             </div>
           </header>
 
-          {settingsOpen && (
+          {settingsOpen && ambient.capabilities.showSettings && (
             <SettingsDrawer
+              ambient={ambient}
               onClose={() => setSettingsOpen(false)}
-              showScreenshot={!!executor}
             />
           )}
 
           <section className="gauntlet-capsule__context">
             <div className="gauntlet-capsule__context-meta">
-              <span className="gauntlet-capsule__source">browser</span>
+              <span className="gauntlet-capsule__source">{snapshot.source}</span>
               <span className="gauntlet-capsule__url" title={snapshot.url}>
                 {snapshot.pageTitle || snapshot.url}
               </span>
@@ -806,7 +825,9 @@ export function Capsule({
               <pre className="gauntlet-capsule__selection">{truncate(snapshot.text, 600)}</pre>
             ) : (
               <p className="gauntlet-capsule__selection gauntlet-capsule__selection--empty">
-                no selection — input alone will be sent as context
+                {snapshot.source === 'desktop'
+                  ? 'clipboard empty — input alone will be sent as context'
+                  : 'no selection — input alone will be sent as context'}
               </p>
             )}
           </section>
@@ -1255,33 +1276,34 @@ function truncate(s: string, max: number): string {
   return s.slice(0, max) + '…';
 }
 
-// Settings drawer — for now, the only knob is "domínios escondidos".
-// Reads the current dismiss list from chrome.storage and offers a
-// per-domain restore button. Lives inside the cápsula's left panel
-// because that's where context already lives; opening it doesn't
-// push the user into a separate Control Center surface (doctrine:
-// utilizador vive no Composer).
+// Settings drawer — for now, the knobs are "incluir screenshot" and
+// "domínios escondidos". Storage routes through ambient.storage so each
+// runtime supplies its own backing (chrome.storage on web,
+// localStorage / Tauri Store on desktop). What's rendered depends on
+// ambient.capabilities — a runtime that has no domain concept (desktop)
+// hides the dismiss list cleanly.
 function SettingsDrawer({
+  ambient,
   onClose,
-  showScreenshot,
 }: {
+  ambient: Ambient;
   onClose: () => void;
-  // Only the in-page surface has a real tab to screenshot. The popup
-  // window would capture itself, which is useless and visually
-  // recursive — hide the toggle there.
-  showScreenshot: boolean;
 }) {
+  const showScreenshot = ambient.capabilities.showScreenshot;
+  const showDomainDismiss = ambient.capabilities.showDomainDismiss;
   const [domains, setDomains] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [screenshotEnabled, setScreenshotEnabled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void readDismissedDomains().then((list) => {
-      if (cancelled) return;
-      setDomains(list);
-    });
-    void readScreenshotEnabled().then((enabled) => {
+    if (showDomainDismiss) {
+      void ambientReadDismissedDomains(ambient).then((list) => {
+        if (cancelled) return;
+        setDomains(list);
+      });
+    }
+    void ambientReadScreenshotEnabled(ambient).then((enabled) => {
       if (cancelled) return;
       setScreenshotEnabled(enabled);
       setLoading(false);
@@ -1289,17 +1311,23 @@ function SettingsDrawer({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [ambient, showDomainDismiss]);
 
-  const restore = useCallback(async (host: string) => {
-    await restoreDomain(host);
-    setDomains((prev) => prev.filter((h) => h !== host));
-  }, []);
+  const restore = useCallback(
+    async (host: string) => {
+      await ambientRestoreDomain(ambient, host);
+      setDomains((prev) => prev.filter((h) => h !== host));
+    },
+    [ambient],
+  );
 
-  const toggleScreenshot = useCallback(async (enabled: boolean) => {
-    setScreenshotEnabled(enabled);
-    await writeScreenshotEnabled(enabled);
-  }, []);
+  const toggleScreenshot = useCallback(
+    async (enabled: boolean) => {
+      setScreenshotEnabled(enabled);
+      await ambientWriteScreenshotEnabled(ambient, enabled);
+    },
+    [ambient],
+  );
 
   return (
     <section className="gauntlet-capsule__settings" role="region" aria-label="Definições">
@@ -1334,31 +1362,33 @@ function SettingsDrawer({
         </div>
       )}
 
-      <div className="gauntlet-capsule__settings-section">
-        <span className="gauntlet-capsule__settings-subtitle">domínios escondidos</span>
-        {loading ? (
-          <p className="gauntlet-capsule__settings-empty">a carregar…</p>
-        ) : domains.length === 0 ? (
-          <p className="gauntlet-capsule__settings-empty">
-            nenhum — clica direito no pill em qualquer site para o esconder.
-          </p>
-        ) : (
-          <ul className="gauntlet-capsule__settings-list">
-            {domains.map((host) => (
-              <li key={host} className="gauntlet-capsule__settings-row">
-                <span className="gauntlet-capsule__settings-host">{host}</span>
-                <button
-                  type="button"
-                  className="gauntlet-capsule__settings-restore"
-                  onClick={() => void restore(host)}
-                >
-                  restaurar
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {showDomainDismiss && (
+        <div className="gauntlet-capsule__settings-section">
+          <span className="gauntlet-capsule__settings-subtitle">domínios escondidos</span>
+          {loading ? (
+            <p className="gauntlet-capsule__settings-empty">a carregar…</p>
+          ) : domains.length === 0 ? (
+            <p className="gauntlet-capsule__settings-empty">
+              nenhum — clica direito no pill em qualquer site para o esconder.
+            </p>
+          ) : (
+            <ul className="gauntlet-capsule__settings-list">
+              {domains.map((host) => (
+                <li key={host} className="gauntlet-capsule__settings-row">
+                  <span className="gauntlet-capsule__settings-host">{host}</span>
+                  <button
+                    type="button"
+                    className="gauntlet-capsule__settings-restore"
+                    onClick={() => void restore(host)}
+                  >
+                    restaurar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -1391,7 +1421,7 @@ function extractPartialCompose(buffer: string): string | null {
 // has real selectors and live page context to work with. Backwards
 // compatible: /composer/context ignores unknown metadata keys.
 function buildCapture(
-  snapshot: SelectionSnapshot,
+  snapshot: ContextSnapshot,
   screenshotDataUrl?: string | null,
 ): ContextCaptureRequest {
   const metadata: Record<string, unknown> = {};
@@ -1399,11 +1429,18 @@ function buildCapture(
   if (snapshot.domSkeleton) metadata.dom_skeleton = snapshot.domSkeleton;
   if (snapshot.bbox) metadata.selection_bbox = snapshot.bbox;
   if (screenshotDataUrl) metadata.screenshot_data_url = screenshotDataUrl;
+  // Web ambients sourcing a page selection ship `selection`; desktop
+  // ambients sourcing the clipboard ship `clipboard` instead so the
+  // backend can scope context retention rules per surface.
+  const isDesktop = snapshot.source === 'desktop';
   return {
-    source: 'browser',
-    url: snapshot.url,
-    page_title: snapshot.pageTitle,
-    selection: snapshot.text || undefined,
+    source: snapshot.source,
+    url: snapshot.url || undefined,
+    page_title: snapshot.pageTitle || undefined,
+    selection: !isDesktop && snapshot.text ? snapshot.text : undefined,
+    clipboard: isDesktop && snapshot.text ? snapshot.text : undefined,
+    window_title: isDesktop ? snapshot.pageTitle || undefined : undefined,
+    app_name: snapshot.appName,
     metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
   };
 }
