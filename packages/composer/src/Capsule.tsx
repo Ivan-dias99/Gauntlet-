@@ -136,6 +136,124 @@ export function Capsule({
   // the page. If the request fires before capture finishes, we send
   // without the image — better than blocking the user.
   const [screenshot, setScreenshot] = useState<string | null>(null);
+  // Plan dispatcher — agent-emitted actions can target either the page
+  // DOM or the host ambient (shell, filesystem). DOM actions go through
+  // `ambient.domActions.execute` (browser shell only); ambient actions
+  // route to `ambient.shellExec` / `ambient.filesystem` directly. Each
+  // returns a typed `DomActionResult` so the existing renderer + ledger
+  // are unchanged.
+  const dispatchPlan = useCallback(
+    async (actions: DomAction[]): Promise<DomActionResult[]> => {
+      const out: DomActionResult[] = [];
+      // Group consecutive DOM actions to preserve the existing batch
+      // semantics (executor decides ordering across DOM actions). Mixed
+      // sequences just walk one at a time.
+      let domBatch: DomAction[] = [];
+      const flushDomBatch = async () => {
+        if (domBatch.length === 0) return;
+        if (!ambient.domActions?.execute) {
+          for (const a of domBatch) {
+            out.push({
+              action: a,
+              ok: false,
+              error: 'shell does not support DOM actions',
+            });
+          }
+          domBatch = [];
+          return;
+        }
+        const results = await ambient.domActions.execute(domBatch);
+        out.push(...results);
+        domBatch = [];
+      };
+      for (const action of actions) {
+        if (action.type === 'shell.run') {
+          await flushDomBatch();
+          if (!ambient.shellExec) {
+            out.push({
+              action,
+              ok: false,
+              error: 'shell.run requires a desktop ambient with shellExec',
+            });
+            continue;
+          }
+          try {
+            const r = await ambient.shellExec.run(action.cmd, action.args, action.cwd);
+            out.push({
+              action,
+              ok: r.exitCode === 0,
+              error: r.exitCode === 0 ? undefined : r.stderr || `exit ${r.exitCode}`,
+              output: {
+                stdout: r.stdout,
+                stderr: r.stderr,
+                exitCode: r.exitCode,
+                durationMs: r.durationMs,
+              },
+            });
+          } catch (err) {
+            out.push({
+              action,
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } else if (action.type === 'fs.read') {
+          await flushDomBatch();
+          if (!ambient.filesystem?.readTextFile) {
+            out.push({
+              action,
+              ok: false,
+              error: 'fs.read requires a desktop ambient with filesystem',
+            });
+            continue;
+          }
+          try {
+            const text = await ambient.filesystem.readTextFile(action.path);
+            out.push({
+              action,
+              ok: true,
+              output: { text, bytes: new TextEncoder().encode(text).length },
+            });
+          } catch (err) {
+            out.push({
+              action,
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } else if (action.type === 'fs.write') {
+          await flushDomBatch();
+          if (!ambient.filesystem?.writeTextFile) {
+            out.push({
+              action,
+              ok: false,
+              error: 'fs.write requires a desktop ambient with filesystem',
+            });
+            continue;
+          }
+          try {
+            const bytes = await ambient.filesystem.writeTextFile(
+              action.path,
+              action.content,
+            );
+            out.push({ action, ok: true, output: { bytes } });
+          } catch (err) {
+            out.push({
+              action,
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } else {
+          domBatch.push(action);
+        }
+      }
+      await flushDomBatch();
+      return out;
+    },
+    [ambient],
+  );
+
   // A1 — operator-pinned local files / screen captures. The desktop
   // shell exposes these via `ambient.filesystem` + `screenshot.captureScreen`;
   // the cápsula inlines text content into the prompt and keeps image
@@ -191,6 +309,21 @@ export function Capsule({
     () => (plan ? plan.actions.map(assessDanger) : []),
     [plan],
   );
+
+  // Per-action adapter check — used to gate the Executar button. The
+  // dispatcher would surface "no adapter" as a per-row error otherwise,
+  // but the operator deserves to see "this shell can't" before they
+  // click. True when at least one action in the plan has a working
+  // dispatch path in the current ambient.
+  const canDispatchAnyAction = useMemo(() => {
+    if (!plan || plan.actions.length === 0) return false;
+    return plan.actions.some((a) => {
+      if (a.type === 'shell.run') return !!ambient.shellExec;
+      if (a.type === 'fs.read') return !!ambient.filesystem?.readTextFile;
+      if (a.type === 'fs.write') return !!ambient.filesystem?.writeTextFile;
+      return !!ambient.domActions?.execute;
+    });
+  }, [plan, ambient]);
   const sequenceDanger = useMemo<DangerAssessment>(
     () => (plan ? assessSequenceDanger(plan.actions) : { danger: false }),
     [plan],
@@ -1171,7 +1304,11 @@ export function Capsule({
   }, [plan]);
 
   const executePlan = useCallback(async () => {
-    if (!executor || !plan || plan.actions.length === 0) return;
+    // The dispatcher handles missing adapters per-action — desktop has
+    // no DOM but has shell/fs; browser has DOM but no shell/fs. Any
+    // unsupported action becomes a typed `ok: false` result. We only
+    // bail when there's literally nothing to dispatch.
+    if (!plan || plan.actions.length === 0) return;
     // Belt-and-braces: the button is disabled when danger is unconfirmed,
     // but a stale render or an injected event could still fire onClick.
     // Refuse to execute here too so the gate isn't only UI-deep.
@@ -1179,7 +1316,7 @@ export function Capsule({
     setPhase('executing');
     setError(null);
     try {
-      const results = await executor(plan.actions);
+      const results = await dispatchPlan(plan.actions);
       setPlanResults(results);
       setPhase('executed');
       // Ambient feedback for the pill (rendered by App after the
@@ -1721,7 +1858,13 @@ export function Capsule({
                     const danger = dangers[i];
                     return (
                       <li
-                        key={`${i}-${a.type}-${a.selector}`}
+                        key={`${i}-${a.type}-${
+                          'selector' in a
+                            ? a.selector
+                            : 'path' in a
+                              ? a.path
+                              : a.cmd
+                        }`}
                         className={`gauntlet-capsule__plan-item gauntlet-capsule__plan-item--${status}${
                           danger?.danger ? ' gauntlet-capsule__plan-item--danger' : ''
                         }`}
@@ -1783,7 +1926,7 @@ export function Capsule({
                   </label>
                 </div>
               )}
-              {phase !== 'executed' && executor && (
+              {phase !== 'executed' && canDispatchAnyAction && (
                 <div className="gauntlet-capsule__plan-actions">
                   <button
                     type="button"
@@ -1803,10 +1946,10 @@ export function Capsule({
                   </button>
                 </div>
               )}
-              {phase !== 'executed' && !executor && (
+              {phase !== 'executed' && !canDispatchAnyAction && (
                 <p className="gauntlet-capsule__plan-empty">
-                  esta superfície não tem acesso a uma página viva — abre o
-                  Gauntlet num separador para executar acções.
+                  esta superfície não tem adapter para nenhuma destas acções
+                  — abre o Gauntlet num shell que as suporte.
                 </p>
               )}
             </section>
@@ -2565,6 +2708,15 @@ function describeAction(action: DomAction): string {
       return `highlight ${action.selector}`;
     case 'scroll_to':
       return `scroll to ${action.selector}`;
+    case 'shell.run': {
+      const argline = (action.args ?? []).join(' ');
+      const cwd = action.cwd ? ` (cwd: ${action.cwd})` : '';
+      return `shell: ${action.cmd}${argline ? ` ${argline}` : ''}${cwd}`;
+    }
+    case 'fs.read':
+      return `fs.read ${action.path}`;
+    case 'fs.write':
+      return `fs.write ${action.path} (${action.content.length} chars)`;
   }
 }
 
