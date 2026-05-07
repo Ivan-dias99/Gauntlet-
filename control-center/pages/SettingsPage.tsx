@@ -1,1058 +1,361 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  SIGNAL_API_BASE,
-  SIGNAL_API_KEY_PRESENT,
-  isBackendUnreachable,
-  signalFetch,
-} from "../lib/signalApi";
-import { Panel, SurfaceHeader } from "./ControlLayout";
-import Pill from "../components/atoms/Pill";
-
-const THEMES = ["dark", "light"] as const;
-type Theme = typeof THEMES[number];
-
-// ── Sprint 4 — Composer Settings (Governance Lock) ─────────────────────────
+// Operator Settings — control-center surface for per-operator
+// preferences (UI, voice, shortcuts, telemetry, danger zone).
 //
-// Mirrors backend/models.py::ComposerSettings. Kept in this file rather
-// than a shared library because the only consumers are this page and
-// the cápsula (which has its own typed copy in composer-client.ts).
+// This page is operator-scoped: every preference is a local choice,
+// persisted to localStorage so it survives reloads without a backend
+// round-trip. The cápsula's own theme/voice/tts prefs are stored under
+// the same `gauntlet:*` namespace so they read identically across
+// surfaces (browser-extension shadow root + Tauri shell + this
+// console).
+//
+// Composer governance (per-domain action policies, danger acks, page
+// caps) used to live here. It moved to /control/governance after the
+// scope split — this page is exclusively operator preferences now.
 
-const ACTION_TYPES = ["click", "fill", "highlight", "scroll_to"] as const;
-type ActionType = typeof ACTION_TYPES[number];
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { SurfaceHeader } from "./ControlLayout";
 
-interface DomainPolicy {
-  allowed: boolean;
-  require_danger_ack: boolean;
+// ── Pref namespace ──────────────────────────────────────────────────────────
+// All keys live under `gauntlet:*` so they share the namespace with the
+// cápsula's pill-prefs (which uses chrome.storage.local). Values are
+// JSON-encoded on write and parsed-with-fallback on read.
+
+const KEY = {
+  shortcutSummon:        "gauntlet:shortcut_summon",
+  shortcutPushToTalk:    "gauntlet:shortcut_push_to_talk",
+  shortcutStop:          "gauntlet:shortcut_stop",
+  shortcutApprove:       "gauntlet:shortcut_approve",
+  shortcutDeny:          "gauntlet:shortcut_deny",
+  shortcutControlCenter: "gauntlet:shortcut_control_center",
+
+  behaviorShowPlan:        "gauntlet:behavior_show_plan",
+  behaviorNarrate:         "gauntlet:behavior_narrate",
+  behaviorAutoStage:       "gauntlet:behavior_auto_stage",
+  behaviorReadAloud:       "gauntlet:tts_enabled",
+  behaviorInterruptOnInput:"gauntlet:behavior_interrupt_on_input",
+  behaviorDismissOnClickOut:"gauntlet:behavior_dismiss_on_click_out",
+
+  voiceSttProvider:    "gauntlet:voice_stt_provider",
+  voiceTtsProvider:    "gauntlet:voice_tts_provider",
+  voiceVoiceId:        "gauntlet:voice_id",
+  voicePushToTalkOnly: "gauntlet:voice_push_to_talk_only",
+  voiceNoiseSuppression:"gauntlet:voice_noise_suppression",
+
+  // Theme is special: gauntlet:theme is consumed by other surfaces as a
+  // RAW string ("light"|"dark") — see control-center/main.tsx boot
+  // hydration. We store the resolved value there + a separate
+  // theme_mode key for the picker's "auto" intent.
+  appearanceThemeMode:"gauntlet:theme_mode",
+  appearanceTheme:    "gauntlet:theme",
+  appearanceAccent:   "gauntlet:accent",
+  appearanceDensity:  "gauntlet:density",
+  appearanceGridBg:   "gauntlet:grid_bg",
+  appearanceAnimations:"gauntlet:animations",
+
+  telemetryCrash:      "gauntlet:telemetry_crash",
+  telemetryUsage:      "gauntlet:telemetry_usage",
+  telemetryPrompts:    "gauntlet:telemetry_prompts",
+  telemetryRedactPii:  "gauntlet:telemetry_redact_pii",
+} as const;
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
 }
 
-interface ActionPolicy {
-  allowed: boolean;
-  require_danger_ack: boolean;
+function writeJson<T>(key: string, value: T): void {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // localStorage quota exceeded / disabled — non-fatal, the next
+    // reload will fall back to defaults.
+  }
 }
 
-interface ComposerSettings {
-  domains: Record<string, DomainPolicy>;
-  actions: Record<string, ActionPolicy>;
-  default_domain_policy: DomainPolicy;
-  default_action_policy: ActionPolicy;
-  max_page_text_chars: number;
-  max_dom_skeleton_chars: number;
-  screenshot_default: boolean;
-  execution_reporting_required: boolean;
-  updated_at: string;
+// Raw string read/write — used for the keys that other surfaces
+// (control-center/main.tsx, cápsula prefs in pill-prefs) expect as
+// unquoted tokens, not JSON.stringify'd strings. JSON-encoding "light"
+// would persist the literal `"\"light\""` and break their guards.
+function readRaw(key: string, fallback: string): string {
+  try {
+    return window.localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+function writeRaw(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // non-fatal
+  }
 }
 
-const DEFAULT_SETTINGS: ComposerSettings = {
-  domains: {},
-  actions: {},
-  default_domain_policy: { allowed: true, require_danger_ack: false },
-  default_action_policy: { allowed: true, require_danger_ack: false },
-  max_page_text_chars: 6000,
-  max_dom_skeleton_chars: 4000,
-  screenshot_default: false,
-  execution_reporting_required: false,
-  updated_at: "",
+// ── Theme + accent + density ────────────────────────────────────────────────
+// Themes use the existing data-theme attribute on <html>; accent +
+// density set their own attributes which the appearance card's
+// inline style block consumes.
+
+// "auto" is a picker intent stored under gauntlet:theme_mode — the
+// resolved value (light/dark) is what lands in gauntlet:theme so
+// every other reader stays in the strict { light, dark } domain.
+type ThemeMode = "light" | "dark" | "auto";
+type ResolvedTheme = "light" | "dark";
+type Accent = "green" | "cyan" | "plum";
+// Density tokens MUST match tokens.css (cosy/comfortable/compact);
+// "spacious" was a copy edit slip — the CSS rules don't bind to it.
+type Density = "compact" | "comfortable" | "cosy";
+type AnimationLevel = "subtle" | "full" | "off";
+
+const DEFAULT_PREFS = {
+  shortcutSummon:        "Cmd+K",
+  shortcutPushToTalk:    "Cmd+Shift+M",
+  shortcutStop:          "Cmd+.",
+  shortcutApprove:       "Cmd+Enter",
+  shortcutDeny:          "Cmd+Backspace",
+  shortcutControlCenter: "Cmd+Shift+C",
+
+  behaviorShowPlan:        true,
+  behaviorNarrate:         true,
+  behaviorAutoStage:       true,
+  behaviorReadAloud:       false,
+  behaviorInterruptOnInput:true,
+  behaviorDismissOnClickOut:true,
+
+  voiceSttProvider:    "whisper-large-v3",
+  voiceTtsProvider:    "elevenlabs · turbo",
+  voiceVoiceId:        "soft · feminine · pt-pt",
+  voicePushToTalkOnly: true,
+  voiceNoiseSuppression:true,
+
+  appearanceThemeMode: "light" as ThemeMode,
+  appearanceAccent:    "green" as Accent,
+  appearanceDensity:   "comfortable" as Density,
+  appearanceGridBg:    true,
+  appearanceAnimations:"full" as AnimationLevel,
+
+  telemetryCrash:      true,
+  telemetryUsage:      false,
+  telemetryPrompts:    false,
+  telemetryRedactPii:  true,
 };
 
-function readTheme(): Theme {
+// Resolve a theme mode (light/dark/auto) to the concrete light|dark
+// the rest of the app understands. Auto follows the OS via
+// prefers-color-scheme; missing matchMedia (very old browsers) falls
+// back to light.
+function resolveTheme(mode: ThemeMode): ResolvedTheme {
+  if (mode === "auto") {
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return mode;
+}
+
+// Apply visual prefs to the document so the choice is visible
+// immediately. Theme uses data-theme on html+body. Accent / density /
+// grid / animations set their own attributes for component CSS hooks.
+// IMPORTANT: this also persists the resolved theme to gauntlet:theme
+// (raw, not JSON) so control-center/main.tsx's boot hydration picks
+// it up on the next reload.
+function applyAppearance(prefs: {
+  themeMode: ThemeMode;
+  accent: Accent;
+  density: Density;
+  gridBg: boolean;
+  animations: AnimationLevel;
+}): void {
   const html = document.documentElement;
-  const t = html.getAttribute("data-theme");
-  return t === "light" ? "light" : "dark";
+  const body = document.body;
+  const resolved = resolveTheme(prefs.themeMode);
+  html.setAttribute("data-theme", resolved);
+  body.setAttribute("data-theme", resolved);
+  html.setAttribute("data-accent", prefs.accent);
+  html.setAttribute("data-density", prefs.density);
+  html.setAttribute("data-grid", prefs.gridBg ? "on" : "off");
+  html.setAttribute("data-animations", prefs.animations);
+  // Persist the resolved theme as raw so the boot hydrator (which
+  // does `localStorage.getItem("gauntlet:theme")` and a strict
+  // `=== "light" | "dark"` guard) can rehydrate after a reload.
+  writeRaw(KEY.appearanceTheme, resolved);
 }
 
-export default function SettingsPage() {
-  const [theme, setTheme] = useState<Theme>(() => readTheme());
+// ── Subprimitives ───────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    try {
-      window.localStorage.setItem("gauntlet:theme", theme);
-    } catch {
-      // localStorage may be blocked; theme still applies for the session.
-    }
-  }, [theme]);
-
-  return (
-    <>
-      <SurfaceHeader
-        eyebrow="Settings"
-        title="Composer governance · runtime · theme"
-        subtitle="Operator-owned policy. The cápsula reads this on every summon."
-      />
-
-      <ComposerGovernancePanel />
-
-      <Panel title="Backend client" hint="from control-center/lib/signalApi.ts (Vite-inlined env)">
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
-            gap: 12,
-            marginBottom: 4,
-          }}
-        >
-          <ConfigField
-            label="base url"
-            value={
-              <code
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: 13,
-                  color: "var(--ember)",
-                  letterSpacing: 0.02,
-                }}
-              >
-                {SIGNAL_API_BASE}
-              </code>
-            }
-            sub="dev: vite proxy · prod: /api/gauntlet"
-          />
-          <ConfigField
-            label="api key"
-            value={
-              SIGNAL_API_KEY_PRESENT ? (
-                <Pill tone="ok">present</Pill>
-              ) : (
-                <Pill tone="ghost">none · open</Pill>
-              )
-            }
-            sub="bearer · attached to every call when set"
-          />
-          <ConfigField
-            label="set via"
-            value={
-              <code
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: 12,
-                  color: "var(--text-primary)",
-                  background: "var(--bg-elevated)",
-                  border: "var(--border-soft)",
-                  borderRadius: 4,
-                  padding: "2px 8px",
-                }}
-              >
-                VITE_GAUNTLET_API_BASE
-              </code>
-            }
-            sub="legacy: VITE_SIGNAL_*, VITE_RUBERRA_*"
-          />
-        </div>
-      </Panel>
-
-      <Panel title="Theme" hint="local to this browser; persists in localStorage">
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            padding: 4,
-            background: "var(--bg-elevated)",
-            borderRadius: 10,
-            border: "var(--border-soft)",
-            width: "fit-content",
-          }}
-        >
-          {THEMES.map((t) => {
-            const active = theme === t;
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTheme(t)}
-                style={{
-                  padding: "8px 22px",
-                  borderRadius: 7,
-                  border: "none",
-                  background: active
-                    ? "linear-gradient(180deg, var(--bg-surface) 0%, var(--bg) 100%)"
-                    : "transparent",
-                  color: active ? "var(--text-primary)" : "var(--text-secondary)",
-                  cursor: "pointer",
-                  fontFamily: "var(--mono)",
-                  fontSize: 12,
-                  letterSpacing: "var(--track-meta)",
-                  textTransform: "uppercase",
-                  fontWeight: active ? 600 : 400,
-                  boxShadow: active
-                    ? "0 0 0 1px var(--border-color-mid), 0 4px 12px rgba(0,0,0,0.15)"
-                    : "none",
-                  transition: "all 200ms var(--motion-easing-out)",
-                }}
-              >
-                {t}
-              </button>
-            );
-          })}
-        </div>
-      </Panel>
-
-      <Panel title="Composer hotkey" hint="lives in the browser extension manifest">
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-            padding: "12px 14px",
-            background: "var(--bg-elevated)",
-            border: "var(--border-soft)",
-            borderRadius: 8,
-          }}
-        >
-          <span
-            style={{
-              display: "inline-flex",
-              gap: 6,
-              alignItems: "center",
-            }}
-          >
-            <Kbd>Ctrl</Kbd>
-            <span style={{ color: "var(--text-muted)" }}>+</span>
-            <Kbd>Shift</Kbd>
-            <span style={{ color: "var(--text-muted)" }}>+</span>
-            <Kbd>Space</Kbd>
-          </span>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 13,
-              color: "var(--text-secondary)",
-              lineHeight: 1.55,
-            }}
-          >
-            Change in{" "}
-            <code style={inlineCode}>apps/browser-extension/wxt.config.ts</code> under{" "}
-            <code style={inlineCode}>commands.summon-capsule.suggested_key</code>. Re-run{" "}
-            <code style={inlineCode}>npm run build</code> after editing.
-          </p>
-        </div>
-      </Panel>
-    </>
-  );
-}
-
-// ── Composer governance panel ──────────────────────────────────────────────
-
-function ComposerGovernancePanel() {
-  const [settings, setSettings] = useState<ComposerSettings>(DEFAULT_SETTINGS);
-  const [original, setOriginal] = useState<ComposerSettings>(DEFAULT_SETTINGS);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await signalFetch("/composer/settings");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = (await res.json()) as ComposerSettings;
-      setSettings(body);
-      setOriginal(body);
-    } catch (err) {
-      setError(isBackendUnreachable(err) ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const save = useCallback(async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await signalFetch("/composer/settings", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(settings),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = (await res.json()) as ComposerSettings;
-      setSettings(body);
-      setOriginal(body);
-      setSavedAt(Date.now());
-    } catch (err) {
-      setError(isBackendUnreachable(err) ? err.message : String(err));
-    } finally {
-      setSaving(false);
-    }
-  }, [settings]);
-
-  const dirty = useMemo(
-    () => JSON.stringify(settings) !== JSON.stringify(original),
-    [settings, original],
-  );
-
-  return (
-    <Panel
-      title="Composer governance"
-      hint={`backend · /composer/settings · saved ${
-        original.updated_at
-          ? new Date(original.updated_at).toLocaleString()
-          : "never"
-      }`}
-    >
-      {error && (
-        <div
-          style={{
-            padding: "10px 12px",
-            borderRadius: 6,
-            background: "color-mix(in oklab, var(--cc-err) 8%, transparent)",
-            border: "1px solid color-mix(in oklab, var(--cc-err) 28%, transparent)",
-            color: "color-mix(in oklab, var(--cc-err) 86%, var(--text-primary))",
-            fontFamily: "var(--mono)",
-            fontSize: 12,
-            marginBottom: 14,
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <p style={{ color: "var(--text-muted)", fontSize: 12, fontFamily: "var(--mono)" }}>
-          loading…
-        </p>
-      ) : (
-        <>
-          <SectionHeader text="defaults" hint="applied when no explicit per-domain or per-action override matches" />
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-              marginBottom: 18,
-            }}
-          >
-            <PolicyCard
-              label="default domain policy"
-              policy={settings.default_domain_policy}
-              onChange={(p) =>
-                setSettings({ ...settings, default_domain_policy: p })
-              }
-            />
-            <PolicyCard
-              label="default action policy"
-              policy={settings.default_action_policy}
-              onChange={(p) =>
-                setSettings({ ...settings, default_action_policy: p })
-              }
-            />
-          </div>
-
-          <SectionHeader
-            text="domain matrix"
-            hint="explicit per-host overrides; missing hosts inherit the default above"
-          />
-          <DomainMatrix
-            domains={settings.domains}
-            onChange={(d) => setSettings({ ...settings, domains: d })}
-          />
-
-          <SectionHeader
-            text="action matrix"
-            hint="overrides per DomAction.type — any action whose policy is allowed=false is dropped server-side"
-          />
-          <ActionMatrix
-            actions={settings.actions}
-            onChange={(a) => setSettings({ ...settings, actions: a })}
-          />
-
-          <SectionHeader text="caps" hint="hard limits applied at /composer/context intake" />
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-              marginBottom: 18,
-            }}
-          >
-            <NumberField
-              label="max_page_text_chars"
-              value={settings.max_page_text_chars}
-              min={500}
-              max={50000}
-              hint="page innerText cap (chars)"
-              onChange={(v) =>
-                setSettings({ ...settings, max_page_text_chars: v })
-              }
-            />
-            <NumberField
-              label="max_dom_skeleton_chars"
-              value={settings.max_dom_skeleton_chars}
-              min={500}
-              max={20000}
-              hint="dom_skeleton cap (chars)"
-              onChange={(v) =>
-                setSettings({ ...settings, max_dom_skeleton_chars: v })
-              }
-            />
-          </div>
-
-          <SectionHeader text="cápsula defaults" hint="boot-time toggles read by the cápsula on every summon" />
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-              marginBottom: 18,
-            }}
-          >
-            <ToggleField
-              label="screenshot_default"
-              value={settings.screenshot_default}
-              hint="cápsula attaches a viewport screenshot when no local override is set"
-              onChange={(v) =>
-                setSettings({ ...settings, screenshot_default: v })
-              }
-            />
-            <ToggleField
-              label="execution_reporting_required"
-              value={settings.execution_reporting_required}
-              hint="cápsula awaits /composer/execution; failure surfaces as inline error"
-              onChange={(v) =>
-                setSettings({ ...settings, execution_reporting_required: v })
-              }
-            />
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              borderTop: "var(--border-soft)",
-              paddingTop: 14,
-            }}
-          >
-            <button
-              type="button"
-              disabled={!dirty || saving}
-              onClick={() => void save()}
-              style={{
-                padding: "8px 18px",
-                borderRadius: 8,
-                border: dirty
-                  ? "1px solid color-mix(in oklab, var(--ember) 50%, var(--border-color-mid))"
-                  : "var(--border-soft)",
-                background: dirty
-                  ? "color-mix(in oklab, var(--ember) 10%, var(--bg-elevated))"
-                  : "var(--bg-elevated)",
-                color: dirty ? "var(--text-primary)" : "var(--text-muted)",
-                fontFamily: "var(--mono)",
-                fontSize: 11,
-                letterSpacing: "var(--track-meta)",
-                textTransform: "uppercase",
-                cursor: dirty && !saving ? "pointer" : "not-allowed",
-                fontWeight: 600,
-              }}
-            >
-              {saving ? "saving…" : dirty ? "save policy" : "saved"}
-            </button>
-            <button
-              type="button"
-              disabled={!dirty || saving}
-              onClick={() => setSettings(original)}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 8,
-                border: "var(--border-soft)",
-                background: "var(--bg-elevated)",
-                color: "var(--text-secondary)",
-                fontFamily: "var(--mono)",
-                fontSize: 11,
-                letterSpacing: "var(--track-meta)",
-                textTransform: "uppercase",
-                cursor: dirty && !saving ? "pointer" : "not-allowed",
-              }}
-            >
-              revert
-            </button>
-            {savedAt && !dirty && !saving && (
-              <span
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: 11,
-                  color: "var(--cc-ok)",
-                  letterSpacing: "var(--track-meta)",
-                  textTransform: "uppercase",
-                }}
-              >
-                ✓ saved {new Date(savedAt).toLocaleTimeString()}
-              </span>
-            )}
-          </div>
-        </>
-      )}
-    </Panel>
-  );
-}
-
-function SectionHeader({ text, hint }: { text: string; hint: string }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <span className="gx-eyebrow">{text}</span>
-      <p
-        style={{
-          margin: "4px 0 0",
-          fontSize: 12,
-          color: "var(--text-muted)",
-          lineHeight: 1.5,
-        }}
-      >
-        {hint}
-      </p>
-    </div>
-  );
-}
-
-function PolicyCard({
+function Card({
   label,
-  policy,
-  onChange,
+  hint,
+  children,
+  tone,
 }: {
   label: string;
-  policy: DomainPolicy;
-  onChange: (p: DomainPolicy) => void;
+  hint: string;
+  children: ReactNode;
+  tone?: "danger";
 }) {
   return (
-    <div
+    <section
+      className="gx-card"
+      data-tone={tone === "danger" ? "danger" : undefined}
       style={{
-        padding: "12px 14px",
-        background: "var(--bg-elevated)",
-        border: "var(--border-soft)",
-        borderRadius: 10,
+        padding: "20px 22px 22px",
+        borderRadius: 14,
+        background: "var(--bg-surface)",
+        border: tone === "danger"
+          ? "1px solid color-mix(in oklab, var(--cc-err) 35%, transparent)"
+          : "var(--border-soft)",
+        boxShadow: "var(--shadow-soft)",
       }}
     >
-      <span className="gx-eyebrow">{label}</span>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-          marginTop: 10,
-        }}
-      >
-        <ToggleRow
-          label="allowed"
-          value={policy.allowed}
-          onChange={(v) => onChange({ ...policy, allowed: v })}
-        />
-        <ToggleRow
-          label="require_danger_ack"
-          value={policy.require_danger_ack}
-          onChange={(v) => onChange({ ...policy, require_danger_ack: v })}
-        />
-      </div>
-    </div>
-  );
-}
-
-function DomainMatrix({
-  domains,
-  onChange,
-}: {
-  domains: Record<string, DomainPolicy>;
-  onChange: (d: Record<string, DomainPolicy>) => void;
-}) {
-  const [newHost, setNewHost] = useState("");
-  const entries = Object.entries(domains);
-
-  const addHost = () => {
-    const host = newHost.trim().toLowerCase();
-    if (!host || domains[host]) return;
-    onChange({
-      ...domains,
-      [host]: { allowed: true, require_danger_ack: false },
-    });
-    setNewHost("");
-  };
-
-  const updateHost = (host: string, policy: DomainPolicy) => {
-    onChange({ ...domains, [host]: policy });
-  };
-
-  const removeHost = (host: string) => {
-    const next = { ...domains };
-    delete next[host];
-    onChange(next);
-  };
-
-  return (
-    <div style={{ marginBottom: 18 }}>
-      {entries.length === 0 ? (
-        <p
+      <header style={{ marginBottom: 14 }}>
+        <span
           style={{
-            margin: "0 0 10px",
-            color: "var(--text-muted)",
-            fontSize: 12,
-            fontFamily: "var(--mono)",
-            letterSpacing: "var(--track-meta)",
-            textTransform: "uppercase",
-          }}
-        >
-          no domain overrides — all hosts inherit the default
-        </p>
-      ) : (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: "0 0 10px",
-            border: "var(--border-soft)",
-            borderRadius: 8,
-            overflow: "hidden",
-          }}
-        >
-          {entries.map(([host, policy], i) => (
-            <li
-              key={host}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(0, 1fr) auto auto auto",
-                alignItems: "center",
-                gap: 12,
-                padding: "10px 12px",
-                borderTop: i === 0 ? "none" : "var(--border-soft)",
-                background: "var(--bg-elevated)",
-              }}
-            >
-              <code
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: 13,
-                  color: "var(--text-primary)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-                title={host}
-              >
-                {host}
-              </code>
-              <ToggleRow
-                label="allowed"
-                value={policy.allowed}
-                onChange={(v) => updateHost(host, { ...policy, allowed: v })}
-                compact
-              />
-              <ToggleRow
-                label="ack"
-                value={policy.require_danger_ack}
-                onChange={(v) =>
-                  updateHost(host, { ...policy, require_danger_ack: v })
-                }
-                compact
-              />
-              <button
-                type="button"
-                onClick={() => removeHost(host)}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  border: "var(--border-soft)",
-                  background: "transparent",
-                  color: "var(--text-muted)",
-                  fontFamily: "var(--mono)",
-                  fontSize: 10,
-                  letterSpacing: "var(--track-meta)",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                }}
-              >
-                remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          type="text"
-          placeholder="github.com"
-          value={newHost}
-          onChange={(ev) => setNewHost(ev.target.value)}
-          onKeyDown={(ev) => {
-            if (ev.key === "Enter") {
-              ev.preventDefault();
-              addHost();
-            }
-          }}
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            borderRadius: 8,
-            background: "var(--bg-input)",
-            border: "var(--border-soft)",
-            color: "var(--text-primary)",
-            fontFamily: "var(--mono)",
-            fontSize: 12,
-            outline: "none",
-          }}
-        />
-        <button
-          type="button"
-          onClick={addHost}
-          disabled={!newHost.trim()}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "var(--border-soft)",
-            background: "var(--bg-elevated)",
-            color: newHost.trim() ? "var(--text-primary)" : "var(--text-muted)",
             fontFamily: "var(--mono)",
             fontSize: 11,
             letterSpacing: "var(--track-meta)",
-            textTransform: "uppercase",
-            cursor: newHost.trim() ? "pointer" : "not-allowed",
+            textTransform: "lowercase",
+            color: tone === "danger" ? "var(--cc-err)" : "var(--text-primary)",
           }}
         >
-          add domain
-        </button>
+          / {label}
+        </span>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            letterSpacing: "var(--track-meta)",
+            color: "var(--text-muted)",
+            marginLeft: 8,
+          }}
+        >
+          {hint}
+        </span>
+      </header>
+      <div
+        style={{
+          borderTop: "1px dashed var(--border-color-soft)",
+          paddingTop: 12,
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function Row({
+  label,
+  control,
+}: {
+  label: string;
+  control: ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: "10px 0",
+        borderBottom: "1px dashed var(--border-color-soft)",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--sans)",
+          fontSize: 13,
+          color: "var(--text-secondary)",
+          letterSpacing: "0.02em",
+        }}
+      >
+        {label}
+      </span>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        {control}
       </div>
     </div>
   );
 }
 
-function ActionMatrix({
-  actions,
+function Toggle({
+  checked,
   onChange,
 }: {
-  actions: Record<string, ActionPolicy>;
-  onChange: (a: Record<string, ActionPolicy>) => void;
+  checked: boolean;
+  onChange: (v: boolean) => void;
 }) {
-  const updateAction = (type: ActionType, policy: ActionPolicy) => {
-    onChange({ ...actions, [type]: policy });
-  };
-
-  const removeAction = (type: ActionType) => {
-    const next = { ...actions };
-    delete next[type];
-    onChange(next);
-  };
-
   return (
-    <ul
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
       style={{
-        listStyle: "none",
+        position: "relative",
+        width: 38,
+        height: 22,
+        borderRadius: 999,
+        border: "1px solid var(--border-color-mid)",
+        background: checked
+          ? "var(--accent-green)"
+          : "var(--bg-sunken)",
+        cursor: "pointer",
+        transition:
+          "background 200ms var(--ease-swift), border-color 160ms ease",
         padding: 0,
-        margin: "0 0 18px",
-        border: "var(--border-soft)",
-        borderRadius: 8,
-        overflow: "hidden",
-      }}
-    >
-      {ACTION_TYPES.map((type, i) => {
-        const override = actions[type];
-        const policy = override ?? { allowed: true, require_danger_ack: false };
-        return (
-          <li
-            key={type}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) auto auto auto",
-              alignItems: "center",
-              gap: 12,
-              padding: "10px 12px",
-              borderTop: i === 0 ? "none" : "var(--border-soft)",
-              background: "var(--bg-elevated)",
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 13,
-                color: "var(--text-primary)",
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-              }}
-            >
-              {type}
-              {!override && (
-                <span
-                  style={{
-                    fontSize: 9,
-                    color: "var(--text-muted)",
-                    letterSpacing: "var(--track-meta)",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  · inherits default
-                </span>
-              )}
-            </span>
-            <ToggleRow
-              label="allowed"
-              value={policy.allowed}
-              onChange={(v) => updateAction(type, { ...policy, allowed: v })}
-              compact
-            />
-            <ToggleRow
-              label="ack"
-              value={policy.require_danger_ack}
-              onChange={(v) =>
-                updateAction(type, { ...policy, require_danger_ack: v })
-              }
-              compact
-            />
-            {override ? (
-              <button
-                type="button"
-                onClick={() => removeAction(type)}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  border: "var(--border-soft)",
-                  background: "transparent",
-                  color: "var(--text-muted)",
-                  fontFamily: "var(--mono)",
-                  fontSize: 10,
-                  letterSpacing: "var(--track-meta)",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                }}
-              >
-                clear
-              </button>
-            ) : (
-              <span style={{ width: 80 }} />
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function ToggleRow({
-  label,
-  value,
-  onChange,
-  compact,
-}: {
-  label: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-  compact?: boolean;
-}) {
-  return (
-    <label
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        fontFamily: "var(--mono)",
-        fontSize: compact ? 10 : 12,
-        letterSpacing: "var(--track-meta)",
-        textTransform: "uppercase",
-        color: "var(--text-secondary)",
-        cursor: "pointer",
-      }}
-    >
-      <input
-        type="checkbox"
-        checked={value}
-        onChange={(ev) => onChange(ev.target.checked)}
-        style={{ accentColor: "var(--ember)" }}
-      />
-      <span>{label}</span>
-    </label>
-  );
-}
-
-function ToggleField({
-  label,
-  value,
-  hint,
-  onChange,
-}: {
-  label: string;
-  value: boolean;
-  hint: string;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <label
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        padding: "12px 14px",
-        background: "var(--bg-elevated)",
-        border: "var(--border-soft)",
-        borderRadius: 10,
-        cursor: "pointer",
       }}
     >
       <span
+        aria-hidden
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          fontFamily: "var(--mono)",
-          fontSize: 12,
-          letterSpacing: "var(--track-meta)",
-          textTransform: "uppercase",
-          color: "var(--text-primary)",
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={value}
-          onChange={(ev) => onChange(ev.target.checked)}
-          style={{ accentColor: "var(--ember)" }}
-        />
-        {label}
-      </span>
-      <span
-        style={{
-          fontFamily: "var(--sans)",
-          fontSize: 12,
-          color: "var(--text-muted)",
-          lineHeight: 1.5,
-        }}
-      >
-        {hint}
-      </span>
-    </label>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  min,
-  max,
-  hint,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  hint: string;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div
-      style={{
-        padding: "12px 14px",
-        background: "var(--bg-elevated)",
-        border: "var(--border-soft)",
-        borderRadius: 10,
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-      }}
-    >
-      <span
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: 11,
-          letterSpacing: "var(--track-meta)",
-          textTransform: "uppercase",
-          color: "var(--text-muted)",
-        }}
-      >
-        {label}
-      </span>
-      <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        onChange={(ev) => {
-          const n = Number(ev.target.value);
-          if (!Number.isNaN(n)) onChange(Math.max(min, Math.min(max, n)));
-        }}
-        style={{
-          width: "100%",
-          padding: "6px 10px",
-          borderRadius: 6,
-          background: "var(--bg-input)",
-          border: "var(--border-soft)",
-          color: "var(--text-primary)",
-          fontFamily: "var(--mono)",
-          fontSize: 13,
-          outline: "none",
+          position: "absolute",
+          top: 2,
+          left: checked ? 18 : 2,
+          width: 16,
+          height: 16,
+          borderRadius: "50%",
+          background: "#ffffff",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
+          transition: "left 200ms var(--ease-swift)",
         }}
       />
-      <span
-        style={{
-          fontSize: 11,
-          color: "var(--text-muted)",
-          lineHeight: 1.4,
-        }}
-      >
-        range {min.toLocaleString()}–{max.toLocaleString()} · {hint}
-      </span>
-    </div>
+    </button>
   );
 }
 
-function ConfigField({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: React.ReactNode;
-  sub: string;
-}) {
-  return (
-    <div
-      style={{
-        padding: "14px 16px",
-        background: "var(--bg-elevated)",
-        border: "var(--border-soft)",
-        borderRadius: 10,
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        minWidth: 0,
-      }}
-    >
-      <span className="gx-eyebrow">{label}</span>
-      <div style={{ minHeight: 22, display: "flex", alignItems: "center" }}>{value}</div>
-      <span
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: 10,
-          letterSpacing: "var(--track-meta)",
-          color: "var(--text-muted)",
-          textTransform: "uppercase",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {sub}
-      </span>
-    </div>
-  );
-}
-
-function Kbd({ children }: { children: React.ReactNode }) {
+function Kbd({ children }: { children: ReactNode }) {
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        minWidth: 28,
-        height: 26,
-        padding: "0 8px",
+        minWidth: 22,
+        height: 22,
+        padding: "0 6px",
         fontFamily: "var(--mono)",
-        fontSize: 12,
-        background: "var(--bg-surface)",
-        border: "var(--border-soft)",
-        borderRadius: 6,
-        color: "var(--text-primary)",
-        boxShadow: "0 1px 0 rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+        fontSize: 10,
+        color: "var(--text-secondary)",
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-color-mid)",
+        borderRadius: 5,
+        boxShadow: "0 1px 0 rgba(0,0,0,0.04)",
       }}
     >
       {children}
@@ -1060,12 +363,468 @@ function Kbd({ children }: { children: React.ReactNode }) {
   );
 }
 
-const inlineCode: React.CSSProperties = {
-  fontFamily: "var(--mono)",
-  fontSize: 12,
-  background: "var(--bg-surface)",
-  border: "var(--border-soft)",
-  padding: "1px 6px",
-  borderRadius: 4,
-  color: "var(--text-primary)",
-};
+function ShortcutDisplay({ combo }: { combo: string }) {
+  // Splits "Cmd+K" → ["Cmd","K"] → renders one Kbd per token.
+  const parts = combo.split("+");
+  return (
+    <div style={{ display: "inline-flex", gap: 4 }}>
+      {parts.map((p, i) => (
+        <Kbd key={`${p}-${i}`}>{symbolize(p)}</Kbd>
+      ))}
+    </div>
+  );
+}
+
+function symbolize(token: string): string {
+  // Operator-friendly glyphs. Strict mapping; unknowns fall through.
+  const map: Record<string, string> = {
+    Cmd: "⌘",
+    Ctrl: "⌃",
+    Shift: "⇧",
+    Alt: "⌥",
+    Option: "⌥",
+    Enter: "↵",
+    Backspace: "⌫",
+    Tab: "⇥",
+    Esc: "esc",
+    ".": ".",
+    K: "K",
+    M: "M",
+    C: "C",
+  };
+  return map[token] ?? token;
+}
+
+function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      style={{
+        display: "inline-flex",
+        padding: 2,
+        borderRadius: 999,
+        background: "var(--bg-sunken)",
+        border: "1px solid var(--border-color-mid)",
+      }}
+    >
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(opt.value)}
+            style={{
+              padding: "5px 12px",
+              borderRadius: 999,
+              border: "none",
+              background: active ? "var(--text-primary)" : "transparent",
+              color: active ? "var(--bg-surface)" : "var(--text-secondary)",
+              fontFamily: "var(--sans)",
+              fontSize: 11,
+              letterSpacing: "0.02em",
+              cursor: "pointer",
+              transition: "background 160ms ease, color 160ms ease",
+            }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function AccentDot({
+  accent,
+  active,
+  onClick,
+}: {
+  accent: Accent;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const colour =
+    accent === "green"
+      ? "var(--accent-green)"
+      : accent === "cyan"
+        ? "var(--accent-cyan)"
+        : "var(--accent-plum)";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`accent ${accent}`}
+      style={{
+        width: 18,
+        height: 18,
+        borderRadius: "50%",
+        border: active
+          ? "2px solid var(--text-primary)"
+          : "1px solid var(--border-color-mid)",
+        padding: 0,
+        background: colour,
+        cursor: "pointer",
+        transition: "transform 160ms ease, border-color 160ms ease",
+        transform: active ? "scale(1.08)" : "scale(1)",
+      }}
+    />
+  );
+}
+
+function StaticValue({ children }: { children: ReactNode }) {
+  return (
+    <span
+      style={{
+        fontFamily: "var(--mono)",
+        fontSize: 11,
+        color: "var(--text-secondary)",
+        letterSpacing: "0.04em",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function DangerButton({
+  label,
+  onClick,
+  destructive,
+}: {
+  label: string;
+  onClick: () => void;
+  destructive?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "5px 14px",
+        borderRadius: 999,
+        border: destructive
+          ? "1px solid color-mix(in oklab, var(--cc-err) 65%, transparent)"
+          : "1px solid var(--border-color-mid)",
+        background: destructive
+          ? "color-mix(in oklab, var(--cc-err) 8%, transparent)"
+          : "transparent",
+        color: destructive ? "var(--cc-err)" : "var(--text-secondary)",
+        fontFamily: "var(--mono)",
+        fontSize: 10,
+        letterSpacing: "var(--track-meta)",
+        textTransform: "lowercase",
+        cursor: "pointer",
+        transition: "background 160ms ease, border-color 160ms ease",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ── Page ────────────────────────────────────────────────────────────────────
+
+export default function SettingsPage() {
+  // Hydrate from localStorage on mount; defaults match the mockup.
+  const [prefs, setPrefs] = useState(() => ({
+    shortcutSummon:        readJson(KEY.shortcutSummon,        DEFAULT_PREFS.shortcutSummon),
+    shortcutPushToTalk:    readJson(KEY.shortcutPushToTalk,    DEFAULT_PREFS.shortcutPushToTalk),
+    shortcutStop:          readJson(KEY.shortcutStop,          DEFAULT_PREFS.shortcutStop),
+    shortcutApprove:       readJson(KEY.shortcutApprove,       DEFAULT_PREFS.shortcutApprove),
+    shortcutDeny:          readJson(KEY.shortcutDeny,          DEFAULT_PREFS.shortcutDeny),
+    shortcutControlCenter: readJson(KEY.shortcutControlCenter, DEFAULT_PREFS.shortcutControlCenter),
+
+    behaviorShowPlan:         readJson(KEY.behaviorShowPlan,         DEFAULT_PREFS.behaviorShowPlan),
+    behaviorNarrate:          readJson(KEY.behaviorNarrate,          DEFAULT_PREFS.behaviorNarrate),
+    behaviorAutoStage:        readJson(KEY.behaviorAutoStage,        DEFAULT_PREFS.behaviorAutoStage),
+    behaviorReadAloud:        readJson(KEY.behaviorReadAloud,        DEFAULT_PREFS.behaviorReadAloud),
+    behaviorInterruptOnInput: readJson(KEY.behaviorInterruptOnInput, DEFAULT_PREFS.behaviorInterruptOnInput),
+    behaviorDismissOnClickOut:readJson(KEY.behaviorDismissOnClickOut,DEFAULT_PREFS.behaviorDismissOnClickOut),
+
+    voiceSttProvider:     readJson(KEY.voiceSttProvider,     DEFAULT_PREFS.voiceSttProvider),
+    voiceTtsProvider:     readJson(KEY.voiceTtsProvider,     DEFAULT_PREFS.voiceTtsProvider),
+    voiceVoiceId:         readJson(KEY.voiceVoiceId,         DEFAULT_PREFS.voiceVoiceId),
+    voicePushToTalkOnly:  readJson(KEY.voicePushToTalkOnly,  DEFAULT_PREFS.voicePushToTalkOnly),
+    voiceNoiseSuppression:readJson(KEY.voiceNoiseSuppression,DEFAULT_PREFS.voiceNoiseSuppression),
+
+    // Theme mode comes from its own raw key; the resolved theme is
+    // applied via applyAppearance and persisted to gauntlet:theme.
+    appearanceThemeMode: ((): ThemeMode => {
+      const raw = readRaw(KEY.appearanceThemeMode, DEFAULT_PREFS.appearanceThemeMode);
+      return raw === "light" || raw === "dark" || raw === "auto"
+        ? (raw as ThemeMode)
+        : DEFAULT_PREFS.appearanceThemeMode;
+    })(),
+    appearanceAccent:    readJson<Accent>(KEY.appearanceAccent,    DEFAULT_PREFS.appearanceAccent),
+    appearanceDensity:   readJson<Density>(KEY.appearanceDensity,   DEFAULT_PREFS.appearanceDensity),
+    appearanceGridBg:    readJson(KEY.appearanceGridBg,    DEFAULT_PREFS.appearanceGridBg),
+    appearanceAnimations:readJson<AnimationLevel>(KEY.appearanceAnimations,DEFAULT_PREFS.appearanceAnimations),
+
+    telemetryCrash:    readJson(KEY.telemetryCrash,    DEFAULT_PREFS.telemetryCrash),
+    telemetryUsage:    readJson(KEY.telemetryUsage,    DEFAULT_PREFS.telemetryUsage),
+    telemetryPrompts:  readJson(KEY.telemetryPrompts,  DEFAULT_PREFS.telemetryPrompts),
+    telemetryRedactPii:readJson(KEY.telemetryRedactPii,DEFAULT_PREFS.telemetryRedactPii),
+  }));
+
+  // One-shot bind: any pref change writes back to its key + applies
+  // visual prefs to the document. Centralised so each toggle below is
+  // a one-liner.
+  const update = useCallback(
+    <K extends keyof typeof prefs>(key: K, val: typeof prefs[K], storageKey: string) => {
+      setPrefs((p) => ({ ...p, [key]: val }));
+      writeJson(storageKey, val);
+    },
+    [],
+  );
+
+  // Apply appearance whenever it changes (mount + on every toggle).
+  useEffect(() => {
+    applyAppearance({
+      themeMode: prefs.appearanceThemeMode,
+      accent: prefs.appearanceAccent,
+      density: prefs.appearanceDensity,
+      gridBg: prefs.appearanceGridBg,
+      animations: prefs.appearanceAnimations,
+    });
+  }, [
+    prefs.appearanceThemeMode,
+    prefs.appearanceAccent,
+    prefs.appearanceDensity,
+    prefs.appearanceGridBg,
+    prefs.appearanceAnimations,
+  ]);
+
+  // When mode is "auto", react to OS theme changes mid-session. When
+  // mode is light/dark this listener is a no-op because resolveTheme
+  // ignores the media query.
+  useEffect(() => {
+    if (prefs.appearanceThemeMode !== "auto") return;
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    if (!mq) return;
+    function onChange() {
+      applyAppearance({
+        themeMode: "auto",
+        accent: prefs.appearanceAccent,
+        density: prefs.appearanceDensity,
+        gridBg: prefs.appearanceGridBg,
+        animations: prefs.appearanceAnimations,
+      });
+    }
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, [
+    prefs.appearanceThemeMode,
+    prefs.appearanceAccent,
+    prefs.appearanceDensity,
+    prefs.appearanceGridBg,
+    prefs.appearanceAnimations,
+  ]);
+
+  // Danger zone — confirmations are window.confirm for now; a custom
+  // modal lands in the same iteration that wires backend endpoints.
+  const onClearLedger = useCallback(() => {
+    if (!window.confirm("Clear ledger entries from the last 24h? This cannot be undone.")) return;
+    // TODO(server): POST /ledger/clear?since=24h
+    window.alert("Ledger clear is not yet wired to the backend.");
+  }, []);
+  const onForgetMemory = useCallback(() => {
+    if (!window.confirm("Forget all memory records? This cannot be undone.")) return;
+    // TODO(server): POST /memory/forget_all
+    window.alert("Memory forget is not yet wired to the backend.");
+  }, []);
+  const onRevokePermissions = useCallback(() => {
+    if (!window.confirm("Revoke all granted permissions? Operator must re-approve next use.")) return;
+    // TODO(server): POST /permissions/revoke_all
+    window.alert("Permission revoke is not yet wired to the backend.");
+  }, []);
+  const onUninstall = useCallback(() => {
+    window.alert(
+      "To uninstall: remove the browser extension via your browser's extension manager, " +
+      "then run `npm run uninstall` in the desktop folder. The cápsula leaves no system services running.",
+    );
+  }, []);
+
+  const noteText = useMemo(
+    () => "all changes saved automatically",
+    [],
+  );
+
+  return (
+    <div>
+      <SurfaceHeader
+        eyebrow="/ settings"
+        title="Tune the capsule."
+        subtitle="behavior, voice, shortcuts, theme, telemetry."
+        actions={
+          <span
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              letterSpacing: "var(--track-meta)",
+              color: "var(--text-muted)",
+            }}
+          >
+            {noteText}
+          </span>
+        }
+      />
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
+          gap: 16,
+        }}
+      >
+        {/* ── 1. Shortcuts ─────────────────────────────────────────────── */}
+        <Card label="shortcuts" hint="global">
+          <Row label="summon capsule"     control={<ShortcutDisplay combo={prefs.shortcutSummon} />} />
+          <Row label="push to talk"       control={<ShortcutDisplay combo={prefs.shortcutPushToTalk} />} />
+          <Row label="stop / interrupt"   control={<ShortcutDisplay combo={prefs.shortcutStop} />} />
+          <Row label="approve gate"       control={<ShortcutDisplay combo={prefs.shortcutApprove} />} />
+          <Row label="deny gate"          control={<ShortcutDisplay combo={prefs.shortcutDeny} />} />
+          <Row label="open control center" control={<ShortcutDisplay combo={prefs.shortcutControlCenter} />} />
+        </Card>
+
+        {/* ── 2. Behavior ──────────────────────────────────────────────── */}
+        <Card label="behavior" hint="how it acts">
+          <Row label="show plan before execute"
+               control={<Toggle checked={prefs.behaviorShowPlan}
+                                onChange={(v) => update("behaviorShowPlan", v, KEY.behaviorShowPlan)} />} />
+          <Row label="narrate actions inline"
+               control={<Toggle checked={prefs.behaviorNarrate}
+                                onChange={(v) => update("behaviorNarrate", v, KEY.behaviorNarrate)} />} />
+          <Row label="auto-stage diffs to git"
+               control={<Toggle checked={prefs.behaviorAutoStage}
+                                onChange={(v) => update("behaviorAutoStage", v, KEY.behaviorAutoStage)} />} />
+          <Row label="read aloud responses"
+               control={<Toggle checked={prefs.behaviorReadAloud}
+                                onChange={(v) => update("behaviorReadAloud", v, KEY.behaviorReadAloud)} />} />
+          <Row label="interrupt on user input"
+               control={<Toggle checked={prefs.behaviorInterruptOnInput}
+                                onChange={(v) => update("behaviorInterruptOnInput", v, KEY.behaviorInterruptOnInput)} />} />
+          <Row label="dismiss capsule on click-out"
+               control={<Toggle checked={prefs.behaviorDismissOnClickOut}
+                                onChange={(v) => update("behaviorDismissOnClickOut", v, KEY.behaviorDismissOnClickOut)} />} />
+        </Card>
+
+        {/* ── 3. Voice ─────────────────────────────────────────────────── */}
+        <Card label="voice" hint="stt + tts">
+          <Row label="stt provider"  control={<StaticValue>{prefs.voiceSttProvider}</StaticValue>} />
+          <Row label="tts provider"  control={<StaticValue>{prefs.voiceTtsProvider}</StaticValue>} />
+          <Row label="voice"         control={<StaticValue>{prefs.voiceVoiceId}</StaticValue>} />
+          <Row label="push-to-talk only"
+               control={<Toggle checked={prefs.voicePushToTalkOnly}
+                                onChange={(v) => update("voicePushToTalkOnly", v, KEY.voicePushToTalkOnly)} />} />
+          <Row label="noise suppression"
+               control={<Toggle checked={prefs.voiceNoiseSuppression}
+                                onChange={(v) => update("voiceNoiseSuppression", v, KEY.voiceNoiseSuppression)} />} />
+        </Card>
+
+        {/* ── 4. Appearance ────────────────────────────────────────────── */}
+        <Card label="appearance" hint="theme + density">
+          <Row label="theme"
+               control={
+                 <Segmented<ThemeMode>
+                   value={prefs.appearanceThemeMode}
+                   options={[
+                     { value: "light", label: "paper" },
+                     { value: "dark",  label: "graphite" },
+                     { value: "auto",  label: "auto" },
+                   ]}
+                   onChange={(v) => {
+                     // Mode key holds the operator's intent; the
+                     // resolved theme is written by applyAppearance.
+                     // Raw write (not JSON-encoded) so other readers
+                     // that expect a plain "light"/"dark"/"auto"
+                     // string see the value they expect.
+                     setPrefs((p) => ({ ...p, appearanceThemeMode: v }));
+                     writeRaw(KEY.appearanceThemeMode, v);
+                   }}
+                 />
+               } />
+          <Row label="accent"
+               control={
+                 <div style={{ display: "inline-flex", gap: 8 }}>
+                   {(["green", "cyan", "plum"] as Accent[]).map((a) => (
+                     <AccentDot
+                       key={a}
+                       accent={a}
+                       active={prefs.appearanceAccent === a}
+                       onClick={() => update("appearanceAccent", a, KEY.appearanceAccent)}
+                     />
+                   ))}
+                 </div>
+               } />
+          <Row label="density"
+               control={
+                 <Segmented<Density>
+                   value={prefs.appearanceDensity}
+                   options={[
+                     { value: "comfortable", label: "comfortable" },
+                     { value: "compact",     label: "compact" },
+                     { value: "cosy",        label: "cosy" },
+                   ]}
+                   onChange={(v) => update("appearanceDensity", v, KEY.appearanceDensity)}
+                 />
+               } />
+          <Row label="show grid background"
+               control={<Toggle checked={prefs.appearanceGridBg}
+                                onChange={(v) => update("appearanceGridBg", v, KEY.appearanceGridBg)} />} />
+          <Row label="animations"
+               control={
+                 <Segmented<AnimationLevel>
+                   value={prefs.appearanceAnimations}
+                   options={[
+                     { value: "subtle", label: "subtle" },
+                     { value: "full",   label: "full" },
+                     { value: "off",    label: "off" },
+                   ]}
+                   onChange={(v) => update("appearanceAnimations", v, KEY.appearanceAnimations)}
+                 />
+               } />
+        </Card>
+
+        {/* ── 5. Telemetry ─────────────────────────────────────────────── */}
+        <Card label="telemetry" hint="privacy · opt-in only">
+          <Row label="share crash reports"
+               control={<Toggle checked={prefs.telemetryCrash}
+                                onChange={(v) => update("telemetryCrash", v, KEY.telemetryCrash)} />} />
+          <Row label="share anonymous usage"
+               control={<Toggle checked={prefs.telemetryUsage}
+                                onChange={(v) => update("telemetryUsage", v, KEY.telemetryUsage)} />} />
+          <Row label="share prompt examples"
+               control={<Toggle checked={prefs.telemetryPrompts}
+                                onChange={(v) => update("telemetryPrompts", v, KEY.telemetryPrompts)} />} />
+          <Row label="redact pii from ledger"
+               control={<Toggle checked={prefs.telemetryRedactPii}
+                                onChange={(v) => update("telemetryRedactPii", v, KEY.telemetryRedactPii)} />} />
+        </Card>
+
+        {/* ── 6. Danger zone ───────────────────────────────────────────── */}
+        <Card label="danger zone" hint="irreversible" tone="danger">
+          <Row label="clear ledger (last 24h)"
+               control={<DangerButton label="clear" onClick={onClearLedger} />} />
+          <Row label="forget all memory"
+               control={<DangerButton label="forget" onClick={onForgetMemory} />} />
+          <Row label="revoke all permissions"
+               control={<DangerButton label="revoke" onClick={onRevokePermissions} />} />
+          <Row label="uninstall capsule"
+               control={<DangerButton label="uninstall" destructive onClick={onUninstall} />} />
+        </Card>
+      </div>
+    </div>
+  );
+}
+

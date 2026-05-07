@@ -18,12 +18,13 @@ interface NavEntry {
 }
 
 const NAV: NavEntry[] = [
-  { to: "/control",             label: "Overview",    hint: "Health · readiness",     glyph: "◐" },
-  { to: "/control/settings",    label: "Settings",    hint: "API · runtime · theme",  glyph: "◇" },
-  { to: "/control/models",      label: "Models",      hint: "Routing · gateway · cost", glyph: "◈" },
-  { to: "/control/permissions", label: "Permissions", hint: "Connector × scope",      glyph: "◉" },
-  { to: "/control/memory",      label: "Memory",      hint: "Failures · spine · search", glyph: "◍" },
-  { to: "/control/ledger",      label: "Ledger",      hint: "Runs · provenance",      glyph: "◎" },
+  { to: "/control",             label: "Overview",    hint: "Health · readiness",          glyph: "◐" },
+  { to: "/control/settings",    label: "Settings",    hint: "Shortcuts · voice · theme",   glyph: "◇" },
+  { to: "/control/models",      label: "Models",      hint: "Routing · gateway · cost",    glyph: "◈" },
+  { to: "/control/permissions", label: "Permissions", hint: "Connector × scope",           glyph: "◉" },
+  { to: "/control/governance",  label: "Governance",  hint: "Composer policy · domains",   glyph: "◊" },
+  { to: "/control/memory",      label: "Memory",      hint: "Failures · spine · search",   glyph: "◍" },
+  { to: "/control/ledger",      label: "Ledger",      hint: "Runs · provenance",           glyph: "◎" },
 ];
 
 export default function ControlLayout() {
