@@ -1471,11 +1471,20 @@ export function Capsule({
                   contextJustArrived ? ' gauntlet-capsule__source--popped' : ''
                 }`}
               >
-                browser
+                {ambient.shell}
               </span>
               <span className="gauntlet-capsule__url" title={snapshot.url}>
                 {snapshot.pageTitle || snapshot.url}
               </span>
+              {plan?.model_used && (
+                <span
+                  className="gauntlet-capsule__model-chip"
+                  title={`Modelo usado · ${plan.latency_ms} ms`}
+                >
+                  <span className="gauntlet-capsule__model-chip-dot" aria-hidden />
+                  {plan.model_used}
+                </span>
+              )}
               <button
                 type="button"
                 className="gauntlet-capsule__refresh"
@@ -1763,13 +1772,25 @@ export function Capsule({
               <header className="gauntlet-capsule__compose-meta">
                 <span className="gauntlet-capsule__compose-tag">resposta</span>
                 <span className="gauntlet-capsule__compose-meta-text">
-                  <span className="gauntlet-capsule__token-counter" aria-live="polite">
+                  <span
+                    key={tokensStreamed}
+                    className="gauntlet-capsule__token-counter gauntlet-capsule__token-counter--pulse"
+                    aria-live="polite"
+                  >
                     {tokensStreamed} chunks
                   </span>
                   <span aria-hidden>·</span>
                   <span>a escrever…</span>
                 </span>
               </header>
+              <div
+                className="gauntlet-capsule__progress-bar"
+                role="progressbar"
+                aria-label="A receber resposta"
+                aria-valuetext="indeterminate"
+              >
+                <span className="gauntlet-capsule__progress-bar-track" />
+              </div>
               <div className="gauntlet-capsule__compose-text gauntlet-capsule__compose-text--streaming">
                 {partialCompose}
                 <span className="gauntlet-capsule__compose-caret" aria-hidden>▍</span>
@@ -3253,6 +3274,74 @@ export const CAPSULE_CSS = `
   background: #ffd2b6;
   box-shadow: 0 0 12px rgba(208, 122, 90, 0.95);
 }
+/* B2 — model indicator chip. Persistent in the header meta strip
+   once the planner returns a model_used value, so the operator
+   always knows which brain answered. Dot is ember when the latency
+   was low (good), amber for slow. */
+.gauntlet-capsule__model-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--gx-border-mid);
+  background: var(--gx-tint-soft);
+  color: var(--gx-fg-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-transform: lowercase;
+}
+.gauntlet-capsule__model-chip-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gx-ember);
+  box-shadow: 0 0 6px color-mix(in oklab, var(--gx-ember) 60%, transparent);
+}
+
+/* B3 — streaming progress. Indeterminate bar that walks left→right
+   under the token counter so the operator senses the model is alive
+   even when the chunks come in bursts. Token counter pulses on each
+   delta (key change forces React to replay the keyframe). */
+@keyframes gauntlet-cap-progress-walk {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+@keyframes gauntlet-cap-token-pulse {
+  0%   { color: var(--gx-ember); transform: scale(1.04); }
+  100% { color: var(--gx-fg-dim); transform: scale(1); }
+}
+.gauntlet-capsule__progress-bar {
+  position: relative;
+  height: 2px;
+  margin: 6px 0 8px;
+  border-radius: 999px;
+  background: var(--gx-tint-soft);
+  overflow: hidden;
+}
+.gauntlet-capsule__progress-bar-track {
+  position: absolute;
+  inset: 0;
+  width: 33%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--gx-ember) 50%,
+    transparent 100%
+  );
+  animation: gauntlet-cap-progress-walk 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.gauntlet-capsule__token-counter--pulse {
+  animation: gauntlet-cap-token-pulse 320ms ease-out;
+  display: inline-block;
+}
+
 .gauntlet-capsule__url {
   flex: 1;
   min-width: 0;
