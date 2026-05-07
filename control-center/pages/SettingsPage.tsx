@@ -37,7 +37,7 @@ const KEY = {
   behaviorShowPlan:        "gauntlet:behavior_show_plan",
   behaviorNarrate:         "gauntlet:behavior_narrate",
   behaviorAutoStage:       "gauntlet:behavior_auto_stage",
-  behaviorReadAloud:       "gauntlet:tts_enabled", // shared with cápsula
+  behaviorReadAloud:       "gauntlet:tts_enabled",
   behaviorInterruptOnInput:"gauntlet:behavior_interrupt_on_input",
   behaviorDismissOnClickOut:"gauntlet:behavior_dismiss_on_click_out",
 
@@ -47,7 +47,12 @@ const KEY = {
   voicePushToTalkOnly: "gauntlet:voice_push_to_talk_only",
   voiceNoiseSuppression:"gauntlet:voice_noise_suppression",
 
-  appearanceTheme:    "gauntlet:theme",     // shared with cápsula
+  // Theme is special: gauntlet:theme is consumed by other surfaces as a
+  // RAW string ("light"|"dark") — see control-center/main.tsx boot
+  // hydration. We store the resolved value there + a separate
+  // theme_mode key for the picker's "auto" intent.
+  appearanceThemeMode:"gauntlet:theme_mode",
+  appearanceTheme:    "gauntlet:theme",
   appearanceAccent:   "gauntlet:accent",
   appearanceDensity:  "gauntlet:density",
   appearanceGridBg:   "gauntlet:grid_bg",
@@ -78,14 +83,39 @@ function writeJson<T>(key: string, value: T): void {
   }
 }
 
+// Raw string read/write — used for the keys that other surfaces
+// (control-center/main.tsx, cápsula prefs in pill-prefs) expect as
+// unquoted tokens, not JSON.stringify'd strings. JSON-encoding "light"
+// would persist the literal `"\"light\""` and break their guards.
+function readRaw(key: string, fallback: string): string {
+  try {
+    return window.localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+function writeRaw(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // non-fatal
+  }
+}
+
 // ── Theme + accent + density ────────────────────────────────────────────────
 // Themes use the existing data-theme attribute on <html>; accent +
 // density set their own attributes which the appearance card's
 // inline style block consumes.
 
-type Theme = "light" | "dark" | "auto";
+// "auto" is a picker intent stored under gauntlet:theme_mode — the
+// resolved value (light/dark) is what lands in gauntlet:theme so
+// every other reader stays in the strict { light, dark } domain.
+type ThemeMode = "light" | "dark" | "auto";
+type ResolvedTheme = "light" | "dark";
 type Accent = "green" | "cyan" | "plum";
-type Density = "compact" | "comfortable" | "spacious";
+// Density tokens MUST match tokens.css (cosy/comfortable/compact);
+// "spacious" was a copy edit slip — the CSS rules don't bind to it.
+type Density = "compact" | "comfortable" | "cosy";
 type AnimationLevel = "subtle" | "full" | "off";
 
 const DEFAULT_PREFS = {
@@ -109,7 +139,7 @@ const DEFAULT_PREFS = {
   voicePushToTalkOnly: true,
   voiceNoiseSuppression:true,
 
-  appearanceTheme:     "light" as Theme,
+  appearanceThemeMode: "light" as ThemeMode,
   appearanceAccent:    "green" as Accent,
   appearanceDensity:   "comfortable" as Density,
   appearanceGridBg:    true,
@@ -121,12 +151,27 @@ const DEFAULT_PREFS = {
   telemetryRedactPii:  true,
 };
 
+// Resolve a theme mode (light/dark/auto) to the concrete light|dark
+// the rest of the app understands. Auto follows the OS via
+// prefers-color-scheme; missing matchMedia (very old browsers) falls
+// back to light.
+function resolveTheme(mode: ThemeMode): ResolvedTheme {
+  if (mode === "auto") {
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return mode;
+}
+
 // Apply visual prefs to the document so the choice is visible
-// immediately. Theme uses data-theme; accent / density / grid /
-// animations set their own attributes that the appearance card +
-// component CSS read.
+// immediately. Theme uses data-theme on html+body. Accent / density /
+// grid / animations set their own attributes for component CSS hooks.
+// IMPORTANT: this also persists the resolved theme to gauntlet:theme
+// (raw, not JSON) so control-center/main.tsx's boot hydration picks
+// it up on the next reload.
 function applyAppearance(prefs: {
-  theme: Theme;
+  themeMode: ThemeMode;
   accent: Accent;
   density: Density;
   gridBg: boolean;
@@ -134,21 +179,17 @@ function applyAppearance(prefs: {
 }): void {
   const html = document.documentElement;
   const body = document.body;
-  // theme — "auto" follows the OS preference.
-  let resolvedTheme: "light" | "dark" = "light";
-  if (prefs.theme === "auto") {
-    resolvedTheme = window.matchMedia?.("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  } else {
-    resolvedTheme = prefs.theme;
-  }
-  html.setAttribute("data-theme", resolvedTheme);
-  body.setAttribute("data-theme", resolvedTheme);
+  const resolved = resolveTheme(prefs.themeMode);
+  html.setAttribute("data-theme", resolved);
+  body.setAttribute("data-theme", resolved);
   html.setAttribute("data-accent", prefs.accent);
   html.setAttribute("data-density", prefs.density);
   html.setAttribute("data-grid", prefs.gridBg ? "on" : "off");
   html.setAttribute("data-animations", prefs.animations);
+  // Persist the resolved theme as raw so the boot hydrator (which
+  // does `localStorage.getItem("gauntlet:theme")` and a strict
+  // `=== "light" | "dark"` guard) can rehydrate after a reload.
+  writeRaw(KEY.appearanceTheme, resolved);
 }
 
 // ── Subprimitives ───────────────────────────────────────────────────────────
@@ -517,7 +558,14 @@ export default function SettingsPage() {
     voicePushToTalkOnly:  readJson(KEY.voicePushToTalkOnly,  DEFAULT_PREFS.voicePushToTalkOnly),
     voiceNoiseSuppression:readJson(KEY.voiceNoiseSuppression,DEFAULT_PREFS.voiceNoiseSuppression),
 
-    appearanceTheme:     readJson<Theme>(KEY.appearanceTheme,     DEFAULT_PREFS.appearanceTheme),
+    // Theme mode comes from its own raw key; the resolved theme is
+    // applied via applyAppearance and persisted to gauntlet:theme.
+    appearanceThemeMode: ((): ThemeMode => {
+      const raw = readRaw(KEY.appearanceThemeMode, DEFAULT_PREFS.appearanceThemeMode);
+      return raw === "light" || raw === "dark" || raw === "auto"
+        ? (raw as ThemeMode)
+        : DEFAULT_PREFS.appearanceThemeMode;
+    })(),
     appearanceAccent:    readJson<Accent>(KEY.appearanceAccent,    DEFAULT_PREFS.appearanceAccent),
     appearanceDensity:   readJson<Density>(KEY.appearanceDensity,   DEFAULT_PREFS.appearanceDensity),
     appearanceGridBg:    readJson(KEY.appearanceGridBg,    DEFAULT_PREFS.appearanceGridBg),
@@ -543,14 +591,40 @@ export default function SettingsPage() {
   // Apply appearance whenever it changes (mount + on every toggle).
   useEffect(() => {
     applyAppearance({
-      theme: prefs.appearanceTheme,
+      themeMode: prefs.appearanceThemeMode,
       accent: prefs.appearanceAccent,
       density: prefs.appearanceDensity,
       gridBg: prefs.appearanceGridBg,
       animations: prefs.appearanceAnimations,
     });
   }, [
-    prefs.appearanceTheme,
+    prefs.appearanceThemeMode,
+    prefs.appearanceAccent,
+    prefs.appearanceDensity,
+    prefs.appearanceGridBg,
+    prefs.appearanceAnimations,
+  ]);
+
+  // When mode is "auto", react to OS theme changes mid-session. When
+  // mode is light/dark this listener is a no-op because resolveTheme
+  // ignores the media query.
+  useEffect(() => {
+    if (prefs.appearanceThemeMode !== "auto") return;
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    if (!mq) return;
+    function onChange() {
+      applyAppearance({
+        themeMode: "auto",
+        accent: prefs.appearanceAccent,
+        density: prefs.appearanceDensity,
+        gridBg: prefs.appearanceGridBg,
+        animations: prefs.appearanceAnimations,
+      });
+    }
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, [
+    prefs.appearanceThemeMode,
     prefs.appearanceAccent,
     prefs.appearanceDensity,
     prefs.appearanceGridBg,
@@ -662,14 +736,22 @@ export default function SettingsPage() {
         <Card label="appearance" hint="theme + density">
           <Row label="theme"
                control={
-                 <Segmented<Theme>
-                   value={prefs.appearanceTheme}
+                 <Segmented<ThemeMode>
+                   value={prefs.appearanceThemeMode}
                    options={[
                      { value: "light", label: "paper" },
                      { value: "dark",  label: "graphite" },
                      { value: "auto",  label: "auto" },
                    ]}
-                   onChange={(v) => update("appearanceTheme", v, KEY.appearanceTheme)}
+                   onChange={(v) => {
+                     // Mode key holds the operator's intent; the
+                     // resolved theme is written by applyAppearance.
+                     // Raw write (not JSON-encoded) so other readers
+                     // that expect a plain "light"/"dark"/"auto"
+                     // string see the value they expect.
+                     setPrefs((p) => ({ ...p, appearanceThemeMode: v }));
+                     writeRaw(KEY.appearanceThemeMode, v);
+                   }}
                  />
                } />
           <Row label="accent"
@@ -692,7 +774,7 @@ export default function SettingsPage() {
                    options={[
                      { value: "comfortable", label: "comfortable" },
                      { value: "compact",     label: "compact" },
-                     { value: "spacious",    label: "spacious" },
+                     { value: "cosy",        label: "cosy" },
                    ]}
                    onChange={(v) => update("appearanceDensity", v, KEY.appearanceDensity)}
                  />
