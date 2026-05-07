@@ -7,6 +7,13 @@ project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Fixed
+- **Backend default port** changed from `8080` to `3002` so local dev
+  matches the desktop Tauri CSP without exporting `GAUNTLET_PORT`.
+  Production deploys on Railway/Vercel/Fly continue to pick up `PORT`
+  from the platform, so this is a local-only convenience.
+  (`backend/config.py`, `docs/OPERATIONS.md`)
+
 ### Added
 - **Snapshot-before-destroy** for both `/ledger/clear` and
   `/memory/forget_all`. Each call writes a timestamped sidecar

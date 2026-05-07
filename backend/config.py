@@ -77,7 +77,7 @@ TRIAD_COUNT: int = 3
 SERVER_HOST: str = _env("GAUNTLET_HOST", default="127.0.0.1")
 SERVER_PORT: int = int(
     os.environ.get("PORT")
-    or _env("GAUNTLET_PORT", default="8080")
+    or _env("GAUNTLET_PORT", default="3002")
 )
 
 # GAUNTLET_ORIGIN accepts a single origin or a comma-separated list, so one

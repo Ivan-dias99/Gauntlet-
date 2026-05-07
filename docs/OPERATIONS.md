@@ -14,7 +14,7 @@
 ```
 ANTHROPIC_API_KEY          Anthropic key (sk-ant-…)         REQUIRED
 GAUNTLET_HOST              Bind host                        default 127.0.0.1
-GAUNTLET_PORT              Bind port (PORT also honored)    default 8080
+GAUNTLET_PORT              Bind port (PORT also honored)    default 3002
 GAUNTLET_DATA_DIR          Persistent data dir              REQUIRED in prod
 GAUNTLET_ORIGIN            CORS origin (comma list ok)      REQUIRED in prod
 ```
@@ -60,7 +60,7 @@ RUBERRA_ALLOW_CODE_EXEC  → GAUNTLET_ALLOW_CODE_EXEC
 
 ```
 DEV    cd backend && python main.py
-PROD   docker build -t gauntlet . && docker run -p 8080:8080 \
+PROD   docker build -t gauntlet . && docker run -p 3002:3002 \
          -e ANTHROPIC_API_KEY=… -v gauntlet-data:/data gauntlet
 ```
 
