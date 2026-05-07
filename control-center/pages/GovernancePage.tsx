@@ -135,7 +135,7 @@ export default function GovernancePage() {
                 VITE_GAUNTLET_API_BASE
               </code>
             }
-            sub="legacy: VITE_SIGNAL_*, VITE_RUBERRA_*"
+            sub="default: /api/gauntlet (Vite proxy in dev, edge forwarder in prod)"
           />
         </div>
       </Panel>

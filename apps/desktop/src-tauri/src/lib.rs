@@ -743,6 +743,66 @@ fn hide_capsule(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// Pill window — small persistent surface anchored to a screen corner.
+// Click → show_capsule; right-click → hide_pill (collapses to tray-only
+// mode). Position is persistent (saved to disk on hide, restored on
+// boot) and lives outside the cápsula's render tree so it survives
+// every cápsula open/close.
+fn position_pill_at_default(
+    _app: &tauri::AppHandle,
+    window: &tauri::WebviewWindow,
+) -> Result<(), String> {
+    let size = window.outer_size().map_err(|e| e.to_string())?;
+    if let Ok(Some(monitor)) = window.current_monitor() {
+        let mpos = monitor.position();
+        let msize = monitor.size();
+        // Bottom-right with a 24px breathing margin.
+        let x = mpos.x + msize.width as i32 - size.width as i32 - 24;
+        let y = mpos.y + msize.height as i32 - size.height as i32 - 24;
+        window
+            .set_position(tauri::PhysicalPosition { x, y })
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn show_pill(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("pill")
+        .ok_or_else(|| "pill window not found".to_string())?;
+    let visible = window.is_visible().unwrap_or(false);
+    if !visible {
+        let _ = position_pill_at_default(&app, &window);
+    }
+    window.show().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_pill(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("pill")
+        .ok_or_else(|| "pill window not found".to_string())?;
+    window.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn toggle_pill(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("pill")
+        .ok_or_else(|| "pill window not found".to_string())?;
+    let visible = window.is_visible().unwrap_or(false);
+    if visible {
+        window.hide().map_err(|e| e.to_string())?;
+    } else {
+        let _ = position_pill_at_default(&app, &window);
+        window.show().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 fn run_capture(bin: &str, args: &[&str]) -> Result<String, String> {
     let output = Command::new(bin)
         .args(args)
@@ -767,6 +827,7 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             get_active_window,
             capture_screen_region,
@@ -783,6 +844,9 @@ pub fn run() {
             move_window_to_cursor,
             show_capsule,
             hide_capsule,
+            show_pill,
+            hide_pill,
+            toggle_pill,
         ])
         .setup(|app| {
             // A5 — system tray. The cápsula lives in the OS menu bar
@@ -797,6 +861,13 @@ pub fn run() {
                 true,
                 None::<&str>,
             )?;
+            let pill_item = MenuItem::with_id(
+                app,
+                "tray-pill",
+                "Mostrar/Esconder pill",
+                true,
+                None::<&str>,
+            )?;
             let quit_item = MenuItem::with_id(
                 app,
                 "tray-quit",
@@ -804,7 +875,7 @@ pub fn run() {
                 true,
                 None::<&str>,
             )?;
-            let tray_menu = Menu::with_items(app, &[&toggle_item, &quit_item])?;
+            let tray_menu = Menu::with_items(app, &[&toggle_item, &pill_item, &quit_item])?;
 
             let _tray = TrayIconBuilder::with_id("gauntlet-tray")
                 .icon(app.default_window_icon().cloned().ok_or_else(|| {
@@ -814,6 +885,17 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "tray-toggle" => toggle_main_window(app),
+                    "tray-pill" => {
+                        if let Some(window) = app.get_webview_window("pill") {
+                            let visible = window.is_visible().unwrap_or(false);
+                            if visible {
+                                let _ = window.hide();
+                            } else {
+                                let _ = position_pill_at_default(app, &window);
+                                let _ = window.show();
+                            }
+                        }
+                    }
                     "tray-quit" => {
                         let _ = stop_backend();
                         app.exit(0);
@@ -843,6 +925,14 @@ pub fn run() {
                 if let Err(e) = start_backend() {
                     eprintln!("[gauntlet/desktop] backend autostart failed: {e}");
                 }
+            }
+
+            // Show the pill window at boot so the operator has a
+            // visible anchor without needing to dig into the tray. The
+            // cápsula stays hidden — the pill is the resting state.
+            if let Some(pill) = app.get_webview_window("pill") {
+                let _ = position_pill_at_default(app.handle(), &pill);
+                let _ = pill.show();
             }
             Ok(())
         })

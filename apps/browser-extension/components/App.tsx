@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Capsule,
   CAPSULE_CSS,
+  Onboarding,
+  ONBOARDING_CSS,
   Pill,
   PILL_CSS,
   createPillPrefs,
@@ -14,10 +16,10 @@ import {
 import { createBrowserAmbient } from '../lib/ambient';
 
 // Single stylesheet injected into the shadow root by content.tsx.
-// Concatenating both CSS bodies into a single export means the script
+// Concatenating the CSS bodies into a single export means the script
 // only has to insert one <style> regardless of which surface is
 // currently rendered.
-export const GAUNTLET_SHADOW_CSS = CAPSULE_CSS + PILL_CSS;
+export const GAUNTLET_SHADOW_CSS = CAPSULE_CSS + PILL_CSS + ONBOARDING_CSS;
 
 interface CursorPoint {
   x: number;
@@ -69,6 +71,21 @@ export function App() {
   // Page-level selection presence — drives the pill's --context state
   // so the operator senses "ready to summon" without opening it.
   const [hasContext, setHasContext] = useState(false);
+  // Onboarding — show on the very first cápsula open, never again.
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void prefs.readOnboardingDone().then((done) => {
+      if (!cancelled && !done) setShowOnboarding(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [prefs]);
+  const dismissOnboarding = useCallback(() => {
+    setShowOnboarding(false);
+    void prefs.markOnboardingDone();
+  }, [prefs]);
 
   // selectionchange fires far more often than we need (every keystroke
   // inside a contenteditable, every micro-drag of the caret). A simple
@@ -261,12 +278,15 @@ export function App() {
     );
   }
   return (
-    <Capsule
-      key={surface.nonce}
-      ambient={ambient}
-      initialSnapshot={surface.snapshot}
-      cursorAnchor={surface.cursor}
-      onDismiss={dismiss}
-    />
+    <>
+      <Capsule
+        key={surface.nonce}
+        ambient={ambient}
+        initialSnapshot={surface.snapshot}
+        cursorAnchor={surface.cursor}
+        onDismiss={dismiss}
+      />
+      {showOnboarding && <Onboarding onDone={dismissOnboarding} />}
+    </>
   );
 }

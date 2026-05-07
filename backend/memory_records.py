@@ -192,6 +192,18 @@ class MemoryRecordsStore:
             await self._write()
             return True
 
+    async def forget_all(self) -> int:
+        """Drop every record. Returns the count removed. Backs the
+        Settings page "memory forget all" button — irreversible by
+        design (no snapshotting, the operator confirmed twice client-side)."""
+        await self._ensure_loaded()
+        async with self._lock:
+            removed = len(self._snapshot.records)
+            self._snapshot.records = []
+            self._snapshot.last_updated = datetime.now(timezone.utc).isoformat()
+            await self._write()
+            return removed
+
     async def projects(self) -> list[str]:
         await self._ensure_loaded()
         seen: set[str] = set()

@@ -44,16 +44,9 @@ def fresh_app(monkeypatch: pytest.MonkeyPatch) -> Iterable[TestClient]:
         monkeypatch.setenv("GAUNTLET_DATA_DIR", tmp)
         monkeypatch.setenv("GAUNTLET_MOCK", "1")
         monkeypatch.setenv("GAUNTLET_RATE_LIMIT_DISABLED", "1")
-        # test_security.py writes SIGNAL_API_KEY via os.environ.update,
-        # which monkeypatch can't see and won't restore between files.
         # Force the auth gate off for our tests so Sprint 5/7 routes
-        # aren't 401'd by a leaked key.
-        for leaked in (
-            "GAUNTLET_API_KEY",
-            "SIGNAL_API_KEY",
-            "RUBERRA_API_KEY",
-        ):
-            monkeypatch.delenv(leaked, raising=False)
+        # aren't 401'd by a leaked key from another test file.
+        monkeypatch.delenv("GAUNTLET_API_KEY", raising=False)
         # Invalidate every Gauntlet module so fresh config picks up the
         # temp dir. Order matters: config first, then the modules that
         # import it.

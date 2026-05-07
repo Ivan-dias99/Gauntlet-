@@ -17,4 +17,6 @@ export * from './ambient';
 export * from './composer-client';
 export * from './pill-prefs';
 export * from './Capsule';
+export * from './capsule.css';
 export * from './Pill';
+export * from './Onboarding';

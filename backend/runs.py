@@ -136,6 +136,39 @@ class RunStore:
             "last_updated": self._log.last_updated,
         }
 
+    async def clear_since(self, hours_ago: int) -> dict:
+        """Drop runs whose timestamp falls within the last `hours_ago`
+        hours. Returns the count removed + remaining. Used by the
+        Settings page "danger zone" to wipe a noisy testing window
+        without nuking the whole ledger."""
+        await self._ensure_loaded()
+        if hours_ago <= 0:
+            return {"removed": 0, "remaining": len(self._log.records)}
+        cutoff = datetime.now(timezone.utc).timestamp() - (hours_ago * 3600)
+        async with self._lock:
+            kept: list[RunRecord] = []
+            removed = 0
+            for r in self._log.records:
+                try:
+                    ts = datetime.fromisoformat(
+                        str(r.timestamp).replace("Z", "+00:00")
+                    ).timestamp()
+                except Exception:
+                    ts = 0
+                if ts >= cutoff:
+                    removed += 1
+                else:
+                    kept.append(r)
+            self._log.records = kept
+            self._log.last_updated = datetime.now(timezone.utc).isoformat()
+            try:
+                await self._write_log()
+                self._last_save_error = None
+            except Exception as e:  # noqa: BLE001
+                self._last_save_error = f"{type(e).__name__}: {e}"
+                logger.error("Failed to save run log after clear: %s", e)
+        return {"removed": removed, "remaining": len(self._log.records)}
+
 
 # Module-level singleton
 run_store = RunStore()

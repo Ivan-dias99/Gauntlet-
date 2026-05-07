@@ -1,5 +1,4 @@
-// Shared edge-forwarder logic for api/gauntlet.ts and the legacy aliases
-// at api/signal.ts and api/ruberra.ts.
+// Shared edge-forwarder logic for api/gauntlet.ts.
 //
 // Underscore-prefixed file: Vercel's file-system routing excludes it from
 // the public /api/* surface, so it is safe to import from sibling route
@@ -7,19 +6,12 @@
 //
 // Contract:
 //   - status: 503 on unreachable
-//   - headers: x-gauntlet-backend / x-signal-backend / x-ruberra-backend
-//     all carry "unreachable" so clients written against any of the three
-//     contracts keep working during the compat window.
+//   - header: x-gauntlet-backend: unreachable
 //   - body: { error: "backend_unreachable", reason: "<kind>" }
 //
-// Env precedence for the upstream URL:
-//   GAUNTLET_BACKEND_URL (canonical)
-//   SIGNAL_BACKEND_URL   (legacy)
-//   RUBERRA_BACKEND_URL  (older legacy)
+// Env: GAUNTLET_BACKEND_URL.
 
 const HEADER_GAUNTLET = "x-gauntlet-backend";
-const HEADER_SIGNAL = "x-signal-backend";
-const HEADER_RUBERRA = "x-ruberra-backend";
 const UNREACHABLE_VALUE = "unreachable";
 
 export function unreachable(reason: string, status = 503, message?: string): Response {
@@ -31,8 +23,6 @@ export function unreachable(reason: string, status = 503, message?: string): Res
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
       [HEADER_GAUNTLET]: UNREACHABLE_VALUE,
-      [HEADER_SIGNAL]: UNREACHABLE_VALUE,
-      [HEADER_RUBERRA]: UNREACHABLE_VALUE,
     },
   });
 }
@@ -71,33 +61,13 @@ export function resolveBackendUrl(): string | null {
     typeof process !== "undefined" && process.env
       ? process.env
       : undefined;
-  return (
-    env?.GAUNTLET_BACKEND_URL ??
-    env?.SIGNAL_BACKEND_URL ??
-    env?.RUBERRA_BACKEND_URL ??
-    null
-  );
+  return env?.GAUNTLET_BACKEND_URL ?? null;
 }
 
-// Names checked, in order, by resolveBackendUrl. Surfaced in the
-// unreachable envelope when no env is set so the operator sees
-// exactly which variable to add on Vercel without grep'ing this file.
-const BACKEND_URL_ENV_NAMES = [
-  "GAUNTLET_BACKEND_URL",
-  "SIGNAL_BACKEND_URL",
-  "RUBERRA_BACKEND_URL",
-] as const;
-
 function envPresenceMessage(): string {
-  const env =
-    typeof process !== "undefined" && process.env ? process.env : undefined;
-  const presence = BACKEND_URL_ENV_NAMES.map(
-    (name) => `${name}=${env?.[name] ? "set" : "unset"}`,
-  ).join(", ");
   return (
-    "No backend URL env var found. Set GAUNTLET_BACKEND_URL " +
-    "(or one of the legacy aliases) in your Vercel project settings " +
-    `and redeploy. Checked: ${presence}.`
+    "No GAUNTLET_BACKEND_URL env var found. Set it in your Vercel " +
+    "project settings and redeploy."
   );
 }
 

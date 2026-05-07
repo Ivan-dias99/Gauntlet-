@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Gauntlet",
-  "version": "0.0.1",
+  "version": "1.0.0-rc.1",
   "identifier": "dev.gauntlet.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -14,6 +14,7 @@
       {
         "label": "main",
         "title": "Gauntlet",
+        "url": "index.html",
         "width": 720,
         "height": 480,
         "resizable": false,
@@ -25,6 +26,22 @@
         "visible": false,
         "skipTaskbar": true,
         "focus": true
+      },
+      {
+        "label": "pill",
+        "title": "Gauntlet pill",
+        "url": "pill.html",
+        "width": 220,
+        "height": 56,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "center": false,
+        "visible": false,
+        "skipTaskbar": true,
+        "focus": false
       }
     ],
     "security": {
@@ -40,5 +57,14 @@
       "icons/icon.png"
     ]
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/Ivan-dias99/Aiinterfaceshelldesign/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": ""
+    }
+  }
 }

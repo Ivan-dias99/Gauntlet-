@@ -10,8 +10,14 @@
 // (localStorage) to the Tauri runtime. The look + behaviour are
 // identical; capabilities decide which buttons render.
 
-import { useCallback, useEffect, useMemo } from "react";
-import { Capsule, CAPSULE_CSS } from "@gauntlet/composer";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Capsule,
+  CAPSULE_CSS,
+  Onboarding,
+  ONBOARDING_CSS,
+  createPillPrefs,
+} from "@gauntlet/composer";
 import { createDesktopAmbient } from "./ambient";
 import {
   bindGlobalShortcut,
@@ -19,34 +25,42 @@ import {
   toggleCapsuleWindow,
 } from "./adapters/tauri";
 
-// Inject the shared Capsule CSS once. styles.css carries the desktop-
-// specific html/body shell + the "fill the window" override; the rest
-// of the cápsula identity comes from the package so both shells share
-// one source of truth for typography, glass, motion, phase glow, etc.
+// Inject the shared Capsule + Onboarding CSS once. styles.css carries the
+// desktop-specific html/body shell; the rest of the cápsula identity
+// comes from the package so both shells share one source of truth for
+// typography, glass, motion, phase glow, etc.
 function injectCapsuleStyles() {
   if (document.getElementById("gauntlet-capsule-css")) return;
   const style = document.createElement("style");
   style.id = "gauntlet-capsule-css";
-  style.textContent = CAPSULE_CSS;
+  style.textContent = CAPSULE_CSS + ONBOARDING_CSS;
   document.head.appendChild(style);
 }
 
 export function App() {
   const ambient = useMemo(() => createDesktopAmbient(), []);
+  const prefs = useMemo(() => createPillPrefs(ambient.storage), [ambient]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     injectCapsuleStyles();
-    // Mirror the persisted theme onto html/body so the Tauri window's
-    // background matches the cápsula's resolved theme on first paint.
-    // Without this the window flashes whatever default styles.css has
-    // (cream) before the cápsula renders its dark-themed surface, or
-    // vice-versa.
+    // Mirror the persisted theme onto html/body so the Tauri window
+    // honours the operator's choice on first paint instead of flashing
+    // whatever default the OS gives us.
     void ambient.storage.get<string>("gauntlet:theme").then((t) => {
       const theme = t === "dark" || t === "light" ? t : "light";
       document.documentElement.setAttribute("data-theme", theme);
       document.body.setAttribute("data-theme", theme);
     });
-  }, [ambient]);
+    void prefs.readOnboardingDone().then((done) => {
+      if (!done) setShowOnboarding(true);
+    });
+  }, [ambient, prefs]);
+
+  const dismissOnboarding = useCallback(() => {
+    setShowOnboarding(false);
+    void prefs.markOnboardingDone();
+  }, [prefs]);
 
   const dismiss = useCallback(() => {
     void toggleCapsuleWindow();
@@ -65,10 +79,13 @@ export function App() {
   }, []);
 
   return (
-    <Capsule
-      ambient={ambient}
-      initialSnapshot={ambient.selection.read()}
-      onDismiss={dismiss}
-    />
+    <>
+      <Capsule
+        ambient={ambient}
+        initialSnapshot={ambient.selection.read()}
+        onDismiss={dismiss}
+      />
+      {showOnboarding && <Onboarding onDone={dismissOnboarding} />}
+    </>
   );
 }

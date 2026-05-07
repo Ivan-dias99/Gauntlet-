@@ -27,21 +27,21 @@ def _fresh_client(env: dict[str, str]):
     """Build a TestClient with the requested env in place. We reload
     config + server so middlewares pick up the new env values."""
     # Mock mode = no Anthropic key needed for boot.
-    env.setdefault("RUBERRA_MOCK", "1")
+    env.setdefault("GAUNTLET_MOCK", "1")
     # Default tests off the rate limiter unless the test asks for it.
-    env.setdefault("SIGNAL_RATE_LIMIT_DISABLED", "1")
-    env.setdefault("SIGNAL_LOG_REDACT", "0")  # don't pollute pytest captures
+    env.setdefault("GAUNTLET_RATE_LIMIT_DISABLED", "1")
+    env.setdefault("GAUNTLET_LOG_REDACT", "0")  # don't pollute pytest captures
 
     for key in (
-        "SIGNAL_API_KEY", "RUBERRA_API_KEY",
-        "SIGNAL_RATE_LIMIT_DISABLED", "RUBERRA_RATE_LIMIT_DISABLED",
-        "SIGNAL_HSTS", "RUBERRA_HSTS",
-        "SIGNAL_FRAME_OPTIONS", "RUBERRA_FRAME_OPTIONS",
-        "SIGNAL_CSP", "RUBERRA_CSP",
-        "SIGNAL_MAX_BODY_BYTES", "RUBERRA_MAX_BODY_BYTES",
-        "SIGNAL_LOG_REDACT", "RUBERRA_LOG_REDACT",
-        "SIGNAL_TRUST_PROXY", "RUBERRA_TRUST_PROXY",
-        "RUBERRA_MOCK", "SIGNAL_MOCK",
+        "GAUNTLET_API_KEY",
+        "GAUNTLET_RATE_LIMIT_DISABLED",
+        "GAUNTLET_HSTS",
+        "GAUNTLET_FRAME_OPTIONS",
+        "GAUNTLET_CSP",
+        "GAUNTLET_MAX_BODY_BYTES",
+        "GAUNTLET_LOG_REDACT",
+        "GAUNTLET_TRUST_PROXY",
+        "GAUNTLET_MOCK",
     ):
         os.environ.pop(key, None)
     os.environ.update(env)
@@ -69,7 +69,7 @@ def test_auth_disabled_when_key_unset():
 
 
 def test_auth_required_rejects_without_header():
-    client, _ = _fresh_client({"SIGNAL_API_KEY": "test-key-abc"})
+    client, _ = _fresh_client({"GAUNTLET_API_KEY": "test-key-abc"})
     r = client.get("/diagnostics")
     assert r.status_code == 401
     body = r.json()
@@ -77,36 +77,28 @@ def test_auth_required_rejects_without_header():
 
 
 def test_auth_accepts_valid_bearer():
-    client, _ = _fresh_client({"SIGNAL_API_KEY": "test-key-abc"})
+    client, _ = _fresh_client({"GAUNTLET_API_KEY": "test-key-abc"})
     r = client.get("/diagnostics", headers={"Authorization": "Bearer test-key-abc"})
     assert r.status_code == 200, r.text
 
 
 def test_auth_rejects_wrong_bearer():
-    client, _ = _fresh_client({"SIGNAL_API_KEY": "test-key-abc"})
+    client, _ = _fresh_client({"GAUNTLET_API_KEY": "test-key-abc"})
     r = client.get("/diagnostics", headers={"Authorization": "Bearer nope"})
     assert r.status_code == 401
     assert r.json()["detail"]["reason"] == "invalid_api_key"
 
 
 def test_auth_skips_health():
-    client, _ = _fresh_client({"SIGNAL_API_KEY": "test-key-abc"})
+    client, _ = _fresh_client({"GAUNTLET_API_KEY": "test-key-abc"})
     assert client.get("/health").status_code == 200
-
-
-def test_auth_legacy_env_alias():
-    client, _ = _fresh_client({"RUBERRA_API_KEY": "legacy-key-xyz"})
-    r = client.get("/diagnostics")
-    assert r.status_code == 401
-    r = client.get("/diagnostics", headers={"Authorization": "Bearer legacy-key-xyz"})
-    assert r.status_code == 200
 
 
 # ── Layer 2 — rate limiting ───────────────────────────────────────────────
 
 
 def test_rate_limit_burst_then_429():
-    client, _ = _fresh_client({"SIGNAL_RATE_LIMIT_DISABLED": "0"})
+    client, _ = _fresh_client({"GAUNTLET_RATE_LIMIT_DISABLED": "0"})
     # /diagnostics maps to the "read" class: burst 30. Hit it 35 times
     # quickly and expect at least one 429 in the tail.
     statuses = [client.get("/diagnostics").status_code for _ in range(35)]
@@ -114,7 +106,7 @@ def test_rate_limit_burst_then_429():
 
 
 def test_rate_limit_envelope_shape():
-    client, _ = _fresh_client({"SIGNAL_RATE_LIMIT_DISABLED": "0"})
+    client, _ = _fresh_client({"GAUNTLET_RATE_LIMIT_DISABLED": "0"})
     last = None
     for _ in range(40):
         r = client.get("/diagnostics")
@@ -129,7 +121,7 @@ def test_rate_limit_envelope_shape():
 
 
 def test_rate_limit_disabled_flag_works():
-    client, _ = _fresh_client({"SIGNAL_RATE_LIMIT_DISABLED": "1"})
+    client, _ = _fresh_client({"GAUNTLET_RATE_LIMIT_DISABLED": "1"})
     statuses = [client.get("/diagnostics").status_code for _ in range(50)]
     assert all(s == 200 for s in statuses), f"unexpected: {statuses}"
 
@@ -149,21 +141,21 @@ def test_security_headers_present_on_health():
 
 
 def test_security_headers_hsts_when_enabled():
-    client, _ = _fresh_client({"SIGNAL_HSTS": "1"})
+    client, _ = _fresh_client({"GAUNTLET_HSTS": "1"})
     r = client.get("/health")
     assert "Strict-Transport-Security" in r.headers
     assert "max-age=31536000" in r.headers["Strict-Transport-Security"]
 
 
 def test_security_headers_frame_options_override():
-    client, _ = _fresh_client({"SIGNAL_FRAME_OPTIONS": "SAMEORIGIN"})
+    client, _ = _fresh_client({"GAUNTLET_FRAME_OPTIONS": "SAMEORIGIN"})
     r = client.get("/health")
     assert r.headers.get("X-Frame-Options") == "SAMEORIGIN"
 
 
 def test_security_headers_present_on_4xx():
     # Even on auth-fail responses the security baseline must be stamped.
-    client, _ = _fresh_client({"SIGNAL_API_KEY": "test-key-abc"})
+    client, _ = _fresh_client({"GAUNTLET_API_KEY": "test-key-abc"})
     r = client.get("/diagnostics")
     assert r.status_code == 401
     assert r.headers.get("X-Content-Type-Options") == "nosniff"
@@ -173,7 +165,7 @@ def test_security_headers_present_on_4xx():
 
 
 def test_body_cap_rejects_oversized():
-    client, _ = _fresh_client({"SIGNAL_MAX_BODY_BYTES": str(1024)})
+    client, _ = _fresh_client({"GAUNTLET_MAX_BODY_BYTES": str(1024)})
     big = "x" * 4096
     r = client.post(
         "/telemetry/event",
@@ -278,7 +270,7 @@ def test_log_redaction_masks_known_shapes():
 
 
 def test_diagnostics_reports_security_layers():
-    client, _ = _fresh_client({"SIGNAL_API_KEY": "k"})
+    client, _ = _fresh_client({"GAUNTLET_API_KEY": "k"})
     r = client.get("/diagnostics", headers={"Authorization": "Bearer k"})
     assert r.status_code == 200
     body = r.json()

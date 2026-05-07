@@ -30,13 +30,13 @@ import {
 
 const CAPABILITIES: AmbientCapabilities = {
   domExecution: false, // there is no host page DOM to actuate
-  pillSurface: false, // the Tauri window itself is the cápsula container
+  pillSurface: true, // separate Tauri pill window owns the resting state
   screenshot: true, // capture_screen_region command exists
   dismissDomain: false, // no domain in this shell
   voice:
     typeof window !== "undefined" &&
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window),
-  streaming: false, // SSE bridge not wired through Tauri yet
+  streaming: true, // SSE bridge wired via fetch + ReadableStream below
   refreshSelection: true, // re-reads clipboard + window snapshot
   filesystemRead: true, // pick_file / read_*_at Tauri commands
   filesystemWrite: true, // pick_save_path + write_*_at Tauri commands
@@ -141,8 +141,125 @@ export function createDesktopAmbient(): Ambient {
         }
         return parsed as T;
       },
-      // No streaming yet — leave undefined; cápsula falls back to
-      // requestDomPlan automatically.
+      stream(url, body, callbacks) {
+        // Direct SSE consumer: open a POST stream, read line-buffered
+        // `event: <name>\ndata: <json>\n\n` frames produced by the
+        // backend's StreamingResponse. No service-worker hop because
+        // Tauri's webview can hold a long-lived fetch on its own.
+        const ctrl = new AbortController();
+        let settled = false;
+        const settle = () => {
+          settled = true;
+          try {
+            ctrl.abort();
+          } catch {
+            // already aborted
+          }
+        };
+
+        (async () => {
+          let res: Response;
+          try {
+            res = await fetch(url, {
+              method: "POST",
+              headers: { "content-type": "application/json", accept: "text/event-stream" },
+              body: JSON.stringify(body),
+              signal: ctrl.signal,
+            });
+          } catch (err) {
+            if (settled) return;
+            callbacks.onError(err instanceof Error ? err.message : String(err));
+            return;
+          }
+          if (!res.ok || !res.body) {
+            callbacks.onError(`stream: ${res.status} ${res.statusText}`);
+            return;
+          }
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = "";
+
+          const dispatch = (event: string | null, data: string) => {
+            if (!event || !data) return;
+            let parsed: unknown = null;
+            try {
+              parsed = JSON.parse(data);
+            } catch {
+              callbacks.onError("malformed SSE payload");
+              settle();
+              return;
+            }
+            if (event === "delta") {
+              const text = (parsed as { text?: string }).text ?? "";
+              callbacks.onDelta(text);
+            } else if (event === "done") {
+              const d = parsed as Record<string, unknown>;
+              callbacks.onDone({
+                plan_id: (d.plan_id as string) ?? "",
+                context_id: (d.context_id as string) ?? "",
+                actions: (d.actions as never[]) ?? [],
+                compose: (d.compose as string | null) ?? null,
+                reason: (d.reason as string | null) ?? null,
+                model_used: (d.model_used as string) ?? "",
+                latency_ms: (d.latency_ms as number) ?? 0,
+                raw_response: null,
+              });
+              settle();
+            } else if (event === "error") {
+              const err = (parsed as { error?: string }).error ?? "model error";
+              callbacks.onError(err);
+              settle();
+            }
+          };
+
+          try {
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              buf += decoder.decode(value, { stream: true });
+              // Frames end at a blank line (\n\n). Walk the buffer and
+              // dispatch as many complete frames as we have.
+              let sep = buf.indexOf("\n\n");
+              while (sep !== -1) {
+                const frame = buf.slice(0, sep);
+                buf = buf.slice(sep + 2);
+                let event: string | null = null;
+                let data = "";
+                for (const line of frame.split("\n")) {
+                  if (line.startsWith("event:")) event = line.slice(6).trim();
+                  else if (line.startsWith("data:")) data += (data ? "\n" : "") + line.slice(5).trim();
+                }
+                dispatch(event, data);
+                sep = buf.indexOf("\n\n");
+              }
+            }
+            if (!settled) {
+              callbacks.onDone({
+                plan_id: "",
+                context_id: "",
+                actions: [],
+                compose: null,
+                reason: "stream ended without result",
+                model_used: "",
+                latency_ms: 0,
+                raw_response: null,
+              });
+              settled = true;
+            }
+          } catch (err) {
+            if (settled) return;
+            if (err instanceof DOMException && err.name === "AbortError") return;
+            callbacks.onError(err instanceof Error ? err.message : String(err));
+          }
+        })();
+
+        return () => {
+          if (settled) return;
+          settle();
+        };
+      },
     },
     storage,
     selection: {
