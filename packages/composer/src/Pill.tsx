@@ -470,6 +470,31 @@ export const PILL_CSS = `
   0%   { opacity: 0; transform: translateY(8px) scale(0.85); }
   100% { opacity: 1; transform: translateY(0)   scale(1); }
 }
+/* C — pill como cursor evoluído. Breath: when there's selection
+   context, the pill pulses a warmer halo to telegraph "ready to be
+   summoned". Phase orbit: planning/streaming/executing get a
+   continuously growing+fading shadow that reads as life, not just a
+   static halo. Both run at low intensity by default and amplify when
+   the matching state is on so the pill never dominates the page. */
+@keyframes gauntlet-pill-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.04),
+      0 0 14px rgba(208, 122, 90, 0.32),
+      0 4px 12px rgba(0, 0, 0, 0.40);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 0 22px rgba(208, 122, 90, 0.55),
+      0 6px 18px rgba(0, 0, 0, 0.50);
+  }
+}
+@keyframes gauntlet-pill-phase-orbit {
+  0%   { box-shadow: 0 0 0 0 var(--gauntlet-pill-phase-color, transparent); opacity: 0.85; }
+  60%  { box-shadow: 0 0 0 6px transparent; opacity: 0.35; }
+  100% { box-shadow: 0 0 0 0 var(--gauntlet-pill-phase-color, transparent); opacity: 0.85; }
+}
 
 .gauntlet-pill {
   position: fixed;
@@ -575,6 +600,12 @@ export const PILL_CSS = `
    stronger pulse so the operator senses "ready" without reading. */
 .gauntlet-pill--context {
   border-color: rgba(208, 122, 90, 0.80);
+  /* Breath halo — runs on top of the static shadow rule above; the
+     keyframe paints all three layers so the override is total during
+     the cycle. 3.4s reads as breath, not strobe. */
+  animation:
+    gauntlet-pill-rise 320ms cubic-bezier(0.2, 0, 0, 1) both,
+    gauntlet-pill-breathe 3.4s ease-in-out 320ms infinite;
 }
 .gauntlet-pill--context .gauntlet-pill__dot {
   animation-duration: 1.4s;
@@ -663,8 +694,22 @@ export const PILL_CSS = `
   border-radius: 50%;
   pointer-events: none;
   border: 2px solid var(--gauntlet-pill-phase-color, transparent);
-  animation: gauntlet-pill-phase-spin 6s linear infinite;
+  /* Spin = ambient drift; orbit pulse = "the model is working RIGHT NOW".
+     Stacked animations: spin runs forever for slow ambient motion, the
+     orbit-pulse breathes shadow size in 1.4s cycles so the operator
+     reads "live" even from across the page. */
+  animation:
+    gauntlet-pill-phase-spin 6s linear infinite,
+    gauntlet-pill-phase-orbit 1.4s ease-in-out infinite;
   box-shadow: 0 0 12px var(--gauntlet-pill-phase-color, transparent);
+}
+/* Terminal phases (plan_ready / executed / error) don't pulse — once
+   the model is done, the orbit settles into a quiet halo so the
+   ambient noise doesn't mask the next interaction. */
+.gauntlet-pill--phase-plan_ready::after,
+.gauntlet-pill--phase-executed::after,
+.gauntlet-pill--phase-error::after {
+  animation: gauntlet-pill-phase-spin 6s linear infinite;
 }
 .gauntlet-pill--phase-planning  { --gauntlet-pill-phase-color: rgba(244, 196, 86, 0.65); }
 .gauntlet-pill--phase-streaming { --gauntlet-pill-phase-color: rgba(208, 122, 90, 0.75); }
