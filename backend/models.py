@@ -557,10 +557,43 @@ class DomActionScrollTo(BaseModel):
     selector: str = Field(min_length=1, max_length=500)
 
 
+# Frente A — agent autonomy. The desktop shell exposes filesystem +
+# shell capabilities; the agent gains action types that route through
+# the ambient instead of the page DOM. Browser-shell ambients silently
+# refuse these (capability flags are false), so the wire format is
+# uniform but the cápsula's executor dispatches to the right sub-system.
+class ShellRunAction(BaseModel):
+    type: Literal["shell.run"] = "shell.run"
+    cmd: str = Field(min_length=1, max_length=200)
+    args: list[str] = Field(default_factory=list, max_length=64)
+    cwd: Optional[str] = Field(default=None, max_length=1024)
+
+
+class FsReadAction(BaseModel):
+    type: Literal["fs.read"] = "fs.read"
+    path: str = Field(min_length=1, max_length=1024)
+
+
+class FsWriteAction(BaseModel):
+    type: Literal["fs.write"] = "fs.write"
+    path: str = Field(min_length=1, max_length=1024)
+    content: str = Field(max_length=1_000_000)
+
+
 # Discriminated union — pydantic uses the `type` field to pick the right
 # subclass during validation. Wire format on JSON:
 #   {"type":"fill","selector":"#email","value":"x@y.com"}
-DomAction = DomActionFill | DomActionClick | DomActionHighlight | DomActionScrollTo
+#   {"type":"shell.run","cmd":"git","args":["status"]}
+#   {"type":"fs.read","path":"/home/user/notes.md"}
+DomAction = (
+    DomActionFill
+    | DomActionClick
+    | DomActionHighlight
+    | DomActionScrollTo
+    | ShellRunAction
+    | FsReadAction
+    | FsWriteAction
+)
 
 
 class DomPlanRequest(BaseModel):

@@ -75,6 +75,7 @@ from runs import run_store
 from spine import spine_store
 from tools import TOOL_WORKSPACE_ROOT
 from composer import router as composer_router
+from voice import router as voice_router
 
 # Captured at import time so /diagnostics can report uptime honestly.
 _PROCESS_START_MONO = time.monotonic()
@@ -328,6 +329,11 @@ app.add_middleware(
 # Composer surface (Wave V0) — context · intent · preview · apply.
 # Mounted after middleware so the same defense-in-depth stack covers it.
 app.include_router(composer_router)
+
+# Voice (A1) — STT (Groq Whisper) + TTS (Microsoft Edge). Mounted after
+# middleware so body-size caps + CORS + rate-limit cover audio uploads
+# the same way they cover /composer/*.
+app.include_router(voice_router)
 
 
 # ── Endpoints ───────────────────────────────────────────────────────────────

@@ -182,6 +182,23 @@ async function trySendSummon(tabId: number): Promise<boolean> {
   }
 }
 
+// Retry sendMessage with exponential backoff. On heavy SPAs (Railway
+// dashboard, MSN feed, etc.) the content script's `executeScript` call
+// can return before React has hydrated and registered its
+// `runtime.onMessage.addListener`. The first sendMessage races against
+// the React effect; we burn a few hundred milliseconds across two
+// retries before falling back to the popup window.
+async function trySendSummonWithRetry(
+  tabId: number,
+  delaysMs: number[],
+): Promise<boolean> {
+  for (const wait of delaysMs) {
+    await new Promise<void>((resolve) => setTimeout(resolve, wait));
+    if (await trySendSummon(tabId)) return true;
+  }
+  return false;
+}
+
 async function tryInjectContentScript(tabId: number): Promise<boolean> {
   // WXT bundles the content script into `content-scripts/content.js`
   // (the default output) so we can re-inject on demand into pages that
@@ -220,13 +237,23 @@ async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
     return;
   }
 
-  // First attempt: assume the content script is already there.
-  if (await trySendSummon(tab.id)) {
+  // First attempts: the content script may already be there from the
+  // manifest's content_scripts[matches=<all_urls>] entry, but on heavy
+  // SPAs it can still be racing its first useEffect. One immediate
+  // try plus an 80ms catch covers the common case without waste.
+  if (await trySendSummonWithRetry(tab.id, [0, 80])) {
     recordSummon({ at: now, mode: 'in-page', url: tab.url });
     return;
   }
 
-  // Second attempt: inject the content script and retry once.
+  // Second attempt: inject the content script and retry with backoff.
+  // Heavy SPAs (Railway dashboard, MSN feed, GitHub PR pages, etc.)
+  // can take a few hundred milliseconds between executeScript and the
+  // useEffect that registers `runtime.onMessage.addListener`. We burn
+  // up to ~700 ms total over three attempts (60 → 200 → 450) before
+  // giving up on the in-page surface and opening the popup. A press
+  // perceptibly slower than instant on cold cursors is still vastly
+  // better than the lifeboat window taking over a normal page.
   const injected = await tryInjectContentScript(tab.id);
   if (!injected) {
     recordSummon({
@@ -238,11 +265,7 @@ async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
     await openComposerWindow();
     return;
   }
-  // Give the freshly mounted React tree a tick to register its
-  // runtime.onMessage listener. 80ms is comfortably above microtask
-  // turnaround on cold pages without being perceptible to the user.
-  await new Promise<void>((resolve) => setTimeout(resolve, 80));
-  if (await trySendSummon(tab.id)) {
+  if (await trySendSummonWithRetry(tab.id, [60, 200, 450])) {
     recordSummon({ at: now, mode: 'injected', url: tab.url });
     return;
   }
@@ -252,6 +275,7 @@ async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
     mode: 'fallback-window',
     url: tab.url,
     reason: 'injection-retry-failed',
+    detail: 'content script injected but onMessage listener never replied within 710ms',
   });
   await openComposerWindow();
 }

@@ -70,6 +70,7 @@ def fresh_app(monkeypatch: pytest.MonkeyPatch) -> Iterable[TestClient]:
             "agent",
             "engine",
             "composer",
+            "voice",
             "server",
         ]:
             sys.modules.pop(mod, None)
@@ -457,3 +458,242 @@ def test_health_ready_returns_status(fresh_app: TestClient):
     # Either path surfaces engine + persistence state.
     assert "engine" in payload
     assert "persistence_ephemeral" in payload
+
+
+# ── Frente A — ambient action types (shell.run / fs.read / fs.write) ───────
+
+def test_dom_action_union_accepts_ambient_variants():
+    """Pydantic discriminated union must validate all seven action shapes
+    so the cápsula's wire format is honoured end-to-end. Adding a new
+    type here is a matrix change — this test is the matrix's witness."""
+    from pydantic import TypeAdapter
+    from models import DomAction
+
+    ta = TypeAdapter(DomAction)
+    cases = [
+        {"type": "fill", "selector": "#email", "value": "a@b.com"},
+        {"type": "click", "selector": "button.submit"},
+        {"type": "highlight", "selector": ".x", "duration_ms": 800},
+        {"type": "scroll_to", "selector": ".y"},
+        {"type": "shell.run", "cmd": "git", "args": ["status"]},
+        {"type": "shell.run", "cmd": "ls", "cwd": "/tmp"},
+        {"type": "fs.read", "path": "/home/op/notes.md"},
+        {"type": "fs.write", "path": "/tmp/out.txt", "content": "hello"},
+    ]
+    for payload in cases:
+        action = ta.validate_python(payload)
+        rt = action.model_dump()
+        assert rt["type"] == payload["type"], f"type lost: {rt}"
+
+
+def test_dom_action_rejects_malformed_ambient_variants():
+    from pydantic import TypeAdapter, ValidationError
+    from models import DomAction
+
+    ta = TypeAdapter(DomAction)
+    bad_cases = [
+        {"type": "shell.run"},  # missing cmd
+        {"type": "shell.run", "cmd": ""},  # empty cmd
+        {"type": "fs.read", "path": ""},  # empty path
+        {"type": "fs.write", "path": "/x"},  # missing content
+        {"type": "unknown", "selector": ".x"},  # unknown discriminator
+    ]
+    for payload in bad_cases:
+        try:
+            ta.validate_python(payload)
+            raise AssertionError(f"should have rejected: {payload}")
+        except ValidationError:
+            pass
+
+
+def test_execution_ledger_accepts_ambient_action_results(fresh_app: TestClient):
+    """The ledger must round-trip shell.run / fs.* results so the
+    cápsula's reportExecution can record what the agent did on the
+    host system, not only DOM actions."""
+    r = fresh_app.post(
+        "/composer/execution",
+        json={
+            "status": "executed",
+            "url": "desktop://gauntlet",
+            "page_title": "Composer",
+            "results": [
+                {
+                    "action": {
+                        "type": "shell.run",
+                        "cmd": "git",
+                        "args": ["status", "--short"],
+                    },
+                    "ok": True,
+                    "danger": True,
+                },
+                {
+                    "action": {"type": "fs.read", "path": "/home/op/notes.md"},
+                    "ok": True,
+                    "danger": False,
+                },
+                {
+                    "action": {
+                        "type": "fs.write",
+                        "path": "/home/op/out.md",
+                        "content": "hello",
+                    },
+                    "ok": False,
+                    "error": "permission denied",
+                    "danger": True,
+                },
+            ],
+            "has_danger": True,
+        },
+    )
+    assert r.status_code == 200, r.json()
+
+
+# ── Frente "soberano" — planner prompt knows about ambient actions ─────────
+
+def test_planner_prompt_documents_ambient_action_types():
+    """The agent prompt is the source of truth for the LLM's behaviour;
+    if it loses the new action types, the LLM stops emitting them and
+    A1/A2/A3 silently regress to "manual only"."""
+    from composer import _DOM_PLAN_SYSTEM_PROMPT
+    for token in [
+        "shell.run",
+        "fs.read",
+        "fs.write",
+        "source: browser",
+        "source: desktop",
+        "allowlist",
+    ]:
+        assert token in _DOM_PLAN_SYSTEM_PROMPT, f"prompt missing: {token!r}"
+
+
+# ── Multimodal — image attachments survive the metadata round-trip ─────────
+
+def test_collect_image_blocks_accepts_attachments_metadata():
+    """The cápsula ships operator-pinned images via metadata.attachments;
+    the helper must convert them to Anthropic content blocks. Provider
+    gating + size caps are unit-checked here so they don't drift."""
+    import base64
+    from types import SimpleNamespace
+    from composer import _collect_image_blocks
+
+    class _FakeAnthropic:
+        pass
+    _FakeAnthropic.__name__ = "AsyncAnthropic"
+    fake_engine = SimpleNamespace(_client=_FakeAnthropic())
+
+    png_b64 = base64.b64encode(b"\x89PNG\r\n\x1a\nfake").decode()
+    ctx = SimpleNamespace(metadata={
+        "attachments": [
+            {"name": "a.png", "mime": "image/png", "base64": png_b64, "bytes": 12},
+            {"name": "b.jpg", "mime": "image/jpeg", "base64": png_b64, "bytes": 12},
+            # Non-image MIME — should be skipped silently.
+            {"name": "c.md", "mime": "text/markdown", "base64": "aGVsbG8=", "bytes": 5},
+        ],
+    })
+    blocks = _collect_image_blocks(ctx, fake_engine)
+    assert len(blocks) == 2
+    types = [b["source"]["media_type"] for b in blocks]
+    assert types == ["image/png", "image/jpeg"]
+
+
+def test_collect_image_blocks_drops_on_non_anthropic_provider():
+    """Groq/Gemini adapters can't ingest image content blocks. The
+    helper must drop them silently (with a log) so we don't 502 the
+    operator on a provider mismatch."""
+    import base64
+    from types import SimpleNamespace
+    from composer import _collect_image_blocks
+
+    class _FakeGroq:
+        pass
+    _FakeGroq.__name__ = "AsyncGroq"
+    groq_engine = SimpleNamespace(_client=_FakeGroq())
+
+    png_b64 = base64.b64encode(b"\x89PNG").decode()
+    ctx = SimpleNamespace(metadata={
+        "attachments": [
+            {"name": "a.png", "mime": "image/png", "base64": png_b64, "bytes": 5},
+        ],
+    })
+    blocks = _collect_image_blocks(ctx, groq_engine)
+    assert blocks == []
+
+
+def test_collect_image_blocks_caps_oversized_attachment():
+    """Per-image cap (1.5MB) protects the prompt token budget. An
+    oversized attachment must drop out instead of forcing Anthropic
+    to 500 on payload size."""
+    import base64
+    from types import SimpleNamespace
+    from composer import _collect_image_blocks
+
+    class _FakeAnthropic:
+        pass
+    _FakeAnthropic.__name__ = "AsyncAnthropic"
+    fake_engine = SimpleNamespace(_client=_FakeAnthropic())
+
+    oversize = base64.b64encode(b"x" * 1_500_001).decode()
+    ctx = SimpleNamespace(metadata={
+        "attachments": [
+            {"name": "big.png", "mime": "image/png", "base64": oversize, "bytes": 1_500_001},
+        ],
+    })
+    blocks = _collect_image_blocks(ctx, fake_engine)
+    assert blocks == []
+
+
+# ── Voice endpoints — fail soft when key/runtime missing ───────────────────
+#
+# These tests rely on the fresh_app fixture popping `voice` from
+# sys.modules so each test boots the server with the current env. Mutate
+# env BEFORE the fixture (i.e. via a parametrise / scope hack) is messy;
+# instead we test the post-boot behaviour at the route level.
+
+
+def test_voice_transcribe_503_without_groq_key(fresh_app: TestClient):
+    """No Groq key (mock-mode default) → 503 with typed envelope. The
+    cápsula reads the `error` field and falls back to Web Speech without
+    surfacing a cryptic transport error."""
+    import base64
+    r = fresh_app.post(
+        "/voice/transcribe",
+        json={"audio_base64": base64.b64encode(b"x").decode(), "mime": "audio/webm"},
+    )
+    assert r.status_code == 503
+    detail = r.json()["detail"]
+    assert detail["error"] == "voice_unavailable"
+    assert detail["reason"] == "no_groq_key"
+
+
+def test_voice_transcribe_400_on_malformed_base64(monkeypatch):
+    """When the operator HAS a Groq key but ships garbage base64 we
+    must reject at the validation layer (400), not blow through to
+    Groq's API and 502 the cápsula."""
+    import base64
+    import importlib
+    import sys
+    import tempfile
+    from fastapi.testclient import TestClient
+    monkeypatch.setenv("GAUNTLET_GROQ_API_KEY", "fake-for-validation-only")
+    monkeypatch.setenv("GAUNTLET_MOCK", "1")
+    monkeypatch.setenv("GAUNTLET_RATE_LIMIT_DISABLED", "1")
+    with tempfile.TemporaryDirectory() as tmp:
+        monkeypatch.setenv("GAUNTLET_DATA_DIR", tmp)
+        for mod in ("config", "voice", "composer", "server"):
+            sys.modules.pop(mod, None)
+        server = importlib.import_module("server")
+        with TestClient(server.app) as client:
+            r = client.post(
+                "/voice/transcribe",
+                json={"audio_base64": "!!notb64!!", "mime": "audio/webm"},
+            )
+            assert r.status_code == 400, r.json()
+            assert r.json()["detail"]["error"] == "bad_audio"
+
+
+def test_voice_synthesize_422_on_empty_text(fresh_app: TestClient):
+    """Pydantic's min_length=1 catches empty text before any network
+    work happens — operator gets 422 with the field name, not a 502
+    from a downstream surprise."""
+    r = fresh_app.post("/voice/synthesize", json={"text": ""})
+    assert r.status_code == 422

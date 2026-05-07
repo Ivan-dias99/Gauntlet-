@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ComposerClient } from './composer-client';
 import {
   DEFAULT_COMPOSER_SETTINGS,
+  type Attachment,
   type ComposerSettings,
   type ContextCaptureRequest,
   type DomPlanResult,
@@ -23,8 +24,10 @@ import {
 } from './types';
 import { Markdown } from './markdown';
 import {
+  isRemoteVoiceSupported,
   isVoiceSupported,
   startVoice,
+  startVoiceRemote,
   type VoiceSession,
 } from './voice';
 import {
@@ -133,6 +136,131 @@ export function Capsule({
   // the page. If the request fires before capture finishes, we send
   // without the image — better than blocking the user.
   const [screenshot, setScreenshot] = useState<string | null>(null);
+  // Plan dispatcher — agent-emitted actions can target either the page
+  // DOM or the host ambient (shell, filesystem). DOM actions go through
+  // `ambient.domActions.execute` (browser shell only); ambient actions
+  // route to `ambient.shellExec` / `ambient.filesystem` directly. Each
+  // returns a typed `DomActionResult` so the existing renderer + ledger
+  // are unchanged.
+  const dispatchPlan = useCallback(
+    async (actions: DomAction[]): Promise<DomActionResult[]> => {
+      const out: DomActionResult[] = [];
+      // Group consecutive DOM actions to preserve the existing batch
+      // semantics (executor decides ordering across DOM actions). Mixed
+      // sequences just walk one at a time.
+      let domBatch: DomAction[] = [];
+      const flushDomBatch = async () => {
+        if (domBatch.length === 0) return;
+        if (!ambient.domActions?.execute) {
+          for (const a of domBatch) {
+            out.push({
+              action: a,
+              ok: false,
+              error: 'shell does not support DOM actions',
+            });
+          }
+          domBatch = [];
+          return;
+        }
+        const results = await ambient.domActions.execute(domBatch);
+        out.push(...results);
+        domBatch = [];
+      };
+      for (const action of actions) {
+        if (action.type === 'shell.run') {
+          await flushDomBatch();
+          if (!ambient.shellExec) {
+            out.push({
+              action,
+              ok: false,
+              error: 'shell.run requires a desktop ambient with shellExec',
+            });
+            continue;
+          }
+          try {
+            const r = await ambient.shellExec.run(action.cmd, action.args, action.cwd);
+            out.push({
+              action,
+              ok: r.exitCode === 0,
+              error: r.exitCode === 0 ? undefined : r.stderr || `exit ${r.exitCode}`,
+              output: {
+                stdout: r.stdout,
+                stderr: r.stderr,
+                exitCode: r.exitCode,
+                durationMs: r.durationMs,
+              },
+            });
+          } catch (err) {
+            out.push({
+              action,
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } else if (action.type === 'fs.read') {
+          await flushDomBatch();
+          if (!ambient.filesystem?.readTextFile) {
+            out.push({
+              action,
+              ok: false,
+              error: 'fs.read requires a desktop ambient with filesystem',
+            });
+            continue;
+          }
+          try {
+            const text = await ambient.filesystem.readTextFile(action.path);
+            out.push({
+              action,
+              ok: true,
+              output: { text, bytes: new TextEncoder().encode(text).length },
+            });
+          } catch (err) {
+            out.push({
+              action,
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } else if (action.type === 'fs.write') {
+          await flushDomBatch();
+          if (!ambient.filesystem?.writeTextFile) {
+            out.push({
+              action,
+              ok: false,
+              error: 'fs.write requires a desktop ambient with filesystem',
+            });
+            continue;
+          }
+          try {
+            const bytes = await ambient.filesystem.writeTextFile(
+              action.path,
+              action.content,
+            );
+            out.push({ action, ok: true, output: { bytes } });
+          } catch (err) {
+            out.push({
+              action,
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } else {
+          domBatch.push(action);
+        }
+      }
+      await flushDomBatch();
+      return out;
+    },
+    [ambient],
+  );
+
+  // A1 — operator-pinned local files / screen captures. The desktop
+  // shell exposes these via `ambient.filesystem` + `screenshot.captureScreen`;
+  // the cápsula inlines text content into the prompt and keeps image
+  // payloads as chips so the operator can see what they shipped. Empty
+  // by default and reset on dismiss/new mount.
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
   // Sprint 4 — governance lock. Fetched once on mount; missing fields
   // fall through to DEFAULT_COMPOSER_SETTINGS. The cápsula honors
   // screenshot_default (when the local pref is unset), per-domain
@@ -164,6 +292,14 @@ export function Capsule({
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
 
+  // B1 — slash commands inline. When the input starts with `/`, surface
+  // the same action set as the palette in an inline dropdown above the
+  // textarea. Faster than ⌘K for the keyboard-driven flow: type `/an<Enter>`
+  // and the file picker opens. State stays trivial — derived from
+  // userInput in the render — but slashIndex is its own state so arrow
+  // keys can move the highlight without re-running the filter.
+  const [slashIndex, setSlashIndex] = useState(0);
+
   // Danger assessment runs in-page (where document.querySelector resolves
   // against the live DOM) so each action gets per-element classification
   // — submit buttons, password inputs, "Delete" labels. Recomputed only
@@ -173,6 +309,21 @@ export function Capsule({
     () => (plan ? plan.actions.map(assessDanger) : []),
     [plan],
   );
+
+  // Per-action adapter check — used to gate the Executar button. The
+  // dispatcher would surface "no adapter" as a per-row error otherwise,
+  // but the operator deserves to see "this shell can't" before they
+  // click. True when at least one action in the plan has a working
+  // dispatch path in the current ambient.
+  const canDispatchAnyAction = useMemo(() => {
+    if (!plan || plan.actions.length === 0) return false;
+    return plan.actions.some((a) => {
+      if (a.type === 'shell.run') return !!ambient.shellExec;
+      if (a.type === 'fs.read') return !!ambient.filesystem?.readTextFile;
+      if (a.type === 'fs.write') return !!ambient.filesystem?.writeTextFile;
+      return !!ambient.domActions?.execute;
+    });
+  }, [plan, ambient]);
   const sequenceDanger = useMemo<DangerAssessment>(
     () => (plan ? assessSequenceDanger(plan.actions) : { danger: false }),
     [plan],
@@ -433,28 +584,45 @@ export function Capsule({
     if (voiceRef.current) return;
     setError(null);
     const baseline = userInput;
-    const session = startVoice({
-      onPartial: (text) => {
+    const callbacks = {
+      onPartial: (text: string) => {
         setUserInput(baseline ? `${baseline} ${text}`.trim() : text);
       },
-      onCommit: (text) => {
+      onCommit: (text: string) => {
         setUserInput(baseline ? `${baseline} ${text}`.trim() : text);
         setVoiceActive(false);
         voiceRef.current = null;
         // Pull focus back to the textarea so Enter works immediately.
         inputRef.current?.focus();
       },
-      onError: (msg) => {
+      onError: (msg: string) => {
         setError(msg);
         setVoiceActive(false);
         voiceRef.current = null;
       },
-    });
+    };
+    // Prefer Groq Whisper via backend when the ambient signals support
+    // — better quality, language-agnostic, doesn't depend on Chromium's
+    // Web Speech entitlement. Fall back to the local Web Speech API
+    // when the backend isn't reachable or the runtime lacks
+    // MediaRecorder.
+    if (ambient.capabilities.remoteVoice && isRemoteVoiceSupported()) {
+      setVoiceActive(true);
+      void startVoiceRemote(client, callbacks).then((session) => {
+        if (session) {
+          voiceRef.current = session;
+        } else {
+          setVoiceActive(false);
+        }
+      });
+      return;
+    }
+    const session = startVoice(callbacks);
     if (session) {
       voiceRef.current = session;
       setVoiceActive(true);
     }
-  }, [userInput]);
+  }, [userInput, ambient, client]);
 
   const stopVoiceCapture = useCallback(() => {
     voiceRef.current?.stop();
@@ -646,6 +814,196 @@ export function Capsule({
   // buffer so the user sees text appear token-by-token instead of
   // staring at a spinner. Action plans still arrive in batch on `done`
   // (parsing partial action arrays is not worth the complexity yet).
+  // A1 helpers — operator-driven anexar. The dialog plugin (desktop)
+  // is the consent gate; on web `ambient.filesystem` is undefined and
+  // these buttons never render in the first place.
+  const attachLocalFile = useCallback(async () => {
+    const fs = ambient.filesystem;
+    if (!fs) return;
+    setAttachError(null);
+    try {
+      const picked = await fs.pickFile();
+      if (!picked) return; // operator cancelled
+      const lowerName = picked.name.toLowerCase();
+      const isImage = /\.(png|jpe?g|gif|webp|svg)$/.test(lowerName);
+      if (isImage) {
+        const { base64, mime } = await fs.readFileBase64(picked.path);
+        const bytes = Math.ceil((base64.length * 3) / 4);
+        setAttachments((prev) => [
+          ...prev,
+          {
+            id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            kind: 'image',
+            name: picked.name,
+            mime,
+            bytes,
+            base64,
+            path: picked.path,
+          },
+        ]);
+      } else {
+        const text = await fs.readTextFile(picked.path);
+        setAttachments((prev) => [
+          ...prev,
+          {
+            id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            kind: 'text',
+            name: picked.name,
+            mime: 'text/plain',
+            bytes: new TextEncoder().encode(text).length,
+            text,
+            path: picked.path,
+          },
+        ]);
+      }
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : String(err));
+    }
+  }, [ambient]);
+
+  const attachScreenCapture = useCallback(async () => {
+    const cap = ambient.screenshot?.captureScreen;
+    if (!cap) return;
+    setAttachError(null);
+    try {
+      const got = await cap();
+      if (!got) {
+        setAttachError('Captura de ecrã indisponível neste sistema.');
+        return;
+      }
+      const bytes = Math.ceil((got.base64.length * 3) / 4);
+      setAttachments((prev) => [
+        ...prev,
+        {
+          id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          kind: 'image',
+          name: `ecrã-${new Date().toISOString().slice(11, 19)}.png`,
+          mime: 'image/png',
+          bytes,
+          base64: got.base64,
+          path: got.path,
+        },
+      ]);
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : String(err));
+    }
+  }, [ambient]);
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  // B1 — slash quick actions. Computed inline in render so they capture
+  // current capability flags + handlers; the matched subset renders as
+  // a dropdown above the textarea when userInput starts with `/`.
+
+  // A2 — operator-driven save. The dialog IS the consent gate. We
+  // suggest a filename derived from the snapshot title (sanitised) and
+  // default the extension to .md since the cápsula's compose tends to
+  // be markdown. The operator can change either in the dialog.
+  const [savedToDiskFlash, setSavedToDiskFlash] = useState<string | null>(null);
+
+  // A3 — operator-driven shell. Toggle a compact panel below the
+  // textarea; operator types one command, hits run, sees output. The
+  // backend agent loop doesn't yet emit shell tool calls (A3+); this
+  // is the manual surface so the capability is at least exercisable.
+  const [shellPanelOpen, setShellPanelOpen] = useState(false);
+  const [shellCommand, setShellCommand] = useState('');
+  const [shellResult, setShellResult] = useState<{
+    cmd: string;
+    stdout: string;
+    stderr: string;
+    exitCode: number | null;
+    durationMs: number;
+  } | null>(null);
+  const [shellRunning, setShellRunning] = useState(false);
+  const runShellCommand = useCallback(async () => {
+    const sh = ambient.shellExec;
+    if (!sh) return;
+    const trimmed = shellCommand.trim();
+    if (!trimmed) return;
+    // Parse first token as binary, rest as args. Quotes are NOT
+    // honoured — this is intentionally simple. The Rust side enforces
+    // allowlist by basename, so quoted paths wouldn't help anyway.
+    const parts = trimmed.split(/\s+/);
+    const cmd = parts[0];
+    const args = parts.slice(1);
+    setShellRunning(true);
+    setShellResult(null);
+    try {
+      const r = await sh.run(cmd, args);
+      setShellResult({
+        cmd: trimmed,
+        stdout: r.stdout,
+        stderr: r.stderr,
+        exitCode: r.exitCode,
+        durationMs: r.durationMs,
+      });
+    } catch (err) {
+      setShellResult({
+        cmd: trimmed,
+        stdout: '',
+        stderr: err instanceof Error ? err.message : String(err),
+        exitCode: null,
+        durationMs: 0,
+      });
+    } finally {
+      setShellRunning(false);
+    }
+  }, [ambient, shellCommand]);
+  const saveComposeToDisk = useCallback(async () => {
+    const fs = ambient.filesystem;
+    if (!fs?.pickSavePath || !fs.writeTextFile) return;
+    const compose = plan?.compose ?? '';
+    if (!compose.trim()) return;
+    setAttachError(null);
+    try {
+      const titleSeed = (snapshot.pageTitle || 'gauntlet-compose')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60) || 'gauntlet-compose';
+      const suggested = `${titleSeed}.md`;
+      const path = await fs.pickSavePath(suggested, ['md', 'txt', 'json']);
+      if (!path) return; // operator cancelled
+      const bytes = await fs.writeTextFile(path, compose);
+      setSavedToDiskFlash(
+        `${path.split(/[\\/]/).pop() ?? 'ficheiro'} (${
+          bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`
+        })`,
+      );
+      window.setTimeout(() => setSavedToDiskFlash(null), 2500);
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : String(err));
+    }
+  }, [ambient, plan, snapshot.pageTitle]);
+
+  // Compose user_input with attachment blocks. Text files are inlined
+  // verbatim inside <file name="..."> tags so the agent can read them
+  // without backend changes. Image attachments travel as multimodal
+  // content blocks via `metadata.attachments` and DO NOT show up in
+  // user_input — the agent literally sees the picture, no placeholder
+  // needed (when the provider supports images; on Groq/Gemini the
+  // backend logs `images_dropped` and the operator sees the chip).
+  const composeUserInputWithAttachments = useCallback(
+    (raw: string): string => {
+      if (attachments.length === 0) return raw;
+      const blocks: string[] = [];
+      for (const a of attachments) {
+        if (a.kind === 'text' && a.text != null) {
+          blocks.push(
+            `<file name="${a.name}" path="${a.path ?? ''}">\n${a.text}\n</file>`,
+          );
+        }
+        // image attachments handled via metadata.attachments — see
+        // buildCapture + backend's _collect_image_blocks.
+      }
+      if (blocks.length === 0) return raw;
+      return `${blocks.join('\n\n')}\n\n${raw}`;
+    },
+    [attachments],
+  );
+
   const requestPlan = useCallback(async () => {
     if (!userInput.trim() || phase === 'planning' || phase === 'streaming' || phase === 'executing') {
       return;
@@ -685,13 +1043,16 @@ export function Capsule({
     const capture = buildCapture(
       snapshot,
       screenshotEnabled ? screenshot : null,
+      attachments,
+      ambient.shell,
     );
     try {
       const ctx = await client.captureContext(capture, ac.signal);
       if (ac.signal.aborted) return;
+      const inputForAgent = composeUserInputWithAttachments(userInput.trim());
       streamAbortRef.current = client.requestDomPlanStream(
         ctx.context_id,
-        userInput.trim(),
+        inputForAgent,
         {
           onDelta: (text) => {
             if (ac.signal.aborted) return;
@@ -731,7 +1092,7 @@ export function Capsule({
               try {
                 const planResult = await client.requestDomPlan(
                   ctx.context_id,
-                  userInput.trim(),
+                  inputForAgent,
                   ac.signal,
                 );
                 if (ac.signal.aborted) return;
@@ -761,7 +1122,7 @@ export function Capsule({
       setError(err instanceof Error ? err.message : String(err));
       setPhase('error');
     }
-  }, [client, snapshot, screenshot, userInput, phase, plan, reportExecution]);
+  }, [client, snapshot, screenshot, userInput, phase, plan, reportExecution, composeUserInputWithAttachments, prefs]);
 
   const onSubmit = useCallback(
     (ev: React.FormEvent) => {
@@ -787,16 +1148,150 @@ export function Capsule({
     [requestPlan],
   );
 
+  // Slash query: text after the leading `/`. Empty string means the
+  // user just typed `/` and hasn't filtered yet. null means no slash
+  // mode (input doesn't start with /).
+  const slashQuery = useMemo<string | null>(() => {
+    if (!userInput.startsWith('/')) return null;
+    // Multi-line input with /command on the first line is fine; only
+    // the first line is the query.
+    const firstLine = userInput.split('\n', 1)[0];
+    return firstLine.slice(1).toLowerCase();
+  }, [userInput]);
+
+  const slashActions = useMemo(() => {
+    type Action = { id: string; label: string; hint: string; run: () => void };
+    const list: Action[] = [];
+    if (ambient.capabilities.filesystemRead && ambient.filesystem) {
+      list.push({
+        id: 'anexar',
+        label: '/anexar',
+        hint: 'Anexar ficheiro local',
+        run: () => void attachLocalFile(),
+      });
+    }
+    if (
+      ambient.capabilities.screenCapture &&
+      ambient.screenshot?.captureScreen
+    ) {
+      list.push({
+        id: 'ecra',
+        label: '/ecrã',
+        hint: 'Capturar ecrã inteiro',
+        run: () => void attachScreenCapture(),
+      });
+    }
+    if (ambient.capabilities.shellExecute && ambient.shellExec) {
+      list.push({
+        id: 'shell',
+        label: '/shell',
+        hint: shellPanelOpen ? 'Fechar shell rápida' : 'Abrir shell rápida',
+        run: () => setShellPanelOpen((v) => !v),
+      });
+    }
+    if (
+      ambient.capabilities.filesystemWrite &&
+      ambient.filesystem?.writeTextFile &&
+      plan?.compose
+    ) {
+      list.push({
+        id: 'guardar',
+        label: '/guardar',
+        hint: 'Guardar resposta para ficheiro',
+        run: () => void saveComposeToDisk(),
+      });
+    }
+    list.push({
+      id: 'limpar',
+      label: '/limpar',
+      hint: 'Esvaziar input',
+      run: () => {
+        setUserInput('');
+        inputRef.current?.focus();
+      },
+    });
+    list.push({
+      id: 'fechar',
+      label: '/fechar',
+      hint: 'Dispensar cápsula',
+      run: () => handleDismiss(),
+    });
+    list.push({
+      id: 'palette',
+      label: '/palette',
+      hint: 'Abrir command palette completa (⌘K)',
+      run: () => {
+        setUserInput('');
+        setPaletteOpen(true);
+      },
+    });
+    return list;
+  }, [
+    ambient,
+    attachLocalFile,
+    attachScreenCapture,
+    handleDismiss,
+    plan,
+    saveComposeToDisk,
+    shellPanelOpen,
+  ]);
+
+  const slashMatches = useMemo(() => {
+    if (slashQuery === null) return [];
+    if (slashQuery === '') return slashActions;
+    return slashActions.filter((a) => a.id.startsWith(slashQuery) || a.label.includes(slashQuery));
+  }, [slashActions, slashQuery]);
+
+  // Reset highlight when the filter changes so the cursor never points
+  // past the end of the visible list.
+  useEffect(() => {
+    setSlashIndex(0);
+  }, [slashQuery]);
+
+  const runSlashAt = useCallback(
+    (idx: number) => {
+      const a = slashMatches[idx];
+      if (!a) return;
+      setUserInput('');
+      setSlashIndex(0);
+      a.run();
+    },
+    [slashMatches],
+  );
+
   // Plain Enter submits. Shift+Enter inserts a newline. Cmd/Ctrl+Enter
-  // also submits as a back-compat habit. Matches conventional chat UX.
+  // also submits as a back-compat habit. When the slash menu is open,
+  // arrow keys / Enter drive the menu instead.
   const onTextareaKey = useCallback(
     (ev: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (slashQuery !== null && slashMatches.length > 0) {
+        if (ev.key === 'ArrowDown') {
+          ev.preventDefault();
+          setSlashIndex((i) => (i + 1) % slashMatches.length);
+          return;
+        }
+        if (ev.key === 'ArrowUp') {
+          ev.preventDefault();
+          setSlashIndex((i) => (i - 1 + slashMatches.length) % slashMatches.length);
+          return;
+        }
+        if (ev.key === 'Enter' && !ev.shiftKey) {
+          ev.preventDefault();
+          runSlashAt(slashIndex);
+          return;
+        }
+        if (ev.key === 'Escape') {
+          ev.preventDefault();
+          setUserInput('');
+          return;
+        }
+      }
       if (ev.key !== 'Enter') return;
       if (ev.shiftKey) return;
       ev.preventDefault();
       void requestPlan();
     },
-    [requestPlan],
+    [requestPlan, runSlashAt, slashIndex, slashMatches, slashQuery],
   );
 
   const onCopyCompose = useCallback(async () => {
@@ -811,7 +1306,11 @@ export function Capsule({
   }, [plan]);
 
   const executePlan = useCallback(async () => {
-    if (!executor || !plan || plan.actions.length === 0) return;
+    // The dispatcher handles missing adapters per-action — desktop has
+    // no DOM but has shell/fs; browser has DOM but no shell/fs. Any
+    // unsupported action becomes a typed `ok: false` result. We only
+    // bail when there's literally nothing to dispatch.
+    if (!plan || plan.actions.length === 0) return;
     // Belt-and-braces: the button is disabled when danger is unconfirmed,
     // but a stale render or an injected event could still fire onClick.
     // Refuse to execute here too so the gate isn't only UI-deep.
@@ -819,7 +1318,7 @@ export function Capsule({
     setPhase('executing');
     setError(null);
     try {
-      const results = await executor(plan.actions);
+      const results = await dispatchPlan(plan.actions);
       setPlanResults(results);
       setPhase('executed');
       // Ambient feedback for the pill (rendered by App after the
@@ -829,6 +1328,15 @@ export function Capsule({
       const allOk = results.every((r) => r.ok);
       window.dispatchEvent(
         new CustomEvent('gauntlet:execute-result', { detail: { ok: allOk } }),
+      );
+      // A4 — OS notification. Only fires on shells that wired the
+      // capability (desktop today). The cápsula always shows its own
+      // executed banner; this is the "operator switched windows" path.
+      void ambient.notifications?.notify(
+        allOk ? 'Gauntlet — plano executado' : 'Gauntlet — plano com falhas',
+        allOk
+          ? `${results.length} ${results.length === 1 ? 'acção' : 'acções'} OK`
+          : `${results.filter((r) => !r.ok).length}/${results.length} falharam — revê na cápsula`,
       );
       // Sprint 3 — execution row in the ledger. Per-action ok/error is
       // in `results`; status="executed" only means the executor ran,
@@ -965,11 +1473,20 @@ export function Capsule({
                   contextJustArrived ? ' gauntlet-capsule__source--popped' : ''
                 }`}
               >
-                browser
+                {ambient.shell}
               </span>
               <span className="gauntlet-capsule__url" title={snapshot.url}>
                 {snapshot.pageTitle || snapshot.url}
               </span>
+              {plan?.model_used && (
+                <span
+                  className="gauntlet-capsule__model-chip"
+                  title={`Modelo usado · ${plan.latency_ms} ms`}
+                >
+                  <span className="gauntlet-capsule__model-chip-dot" aria-hidden />
+                  {plan.model_used}
+                </span>
+              )}
               <button
                 type="button"
                 className="gauntlet-capsule__refresh"
@@ -993,10 +1510,123 @@ export function Capsule({
         {/* Right panel: input + results */}
         <div className="gauntlet-capsule__panel gauntlet-capsule__panel--right">
           <form className="gauntlet-capsule__form" onSubmit={onSubmit}>
+            {attachments.length > 0 && (
+              <div className="gauntlet-capsule__attachments" aria-label="Anexos">
+                {attachments.map((a) => (
+                  <span
+                    key={a.id}
+                    className={`gauntlet-capsule__attachment gauntlet-capsule__attachment--${a.kind}`}
+                    title={a.path ?? a.name}
+                  >
+                    <span className="gauntlet-capsule__attachment-icon" aria-hidden>
+                      {a.kind === 'image' ? '◫' : '⌥'}
+                    </span>
+                    <span className="gauntlet-capsule__attachment-name">{a.name}</span>
+                    <span className="gauntlet-capsule__attachment-size">
+                      {a.bytes < 1024
+                        ? `${a.bytes} B`
+                        : a.bytes < 1024 * 1024
+                          ? `${Math.round(a.bytes / 1024)} KB`
+                          : `${(a.bytes / (1024 * 1024)).toFixed(1)} MB`}
+                    </span>
+                    <button
+                      type="button"
+                      className="gauntlet-capsule__attachment-remove"
+                      onClick={() => removeAttachment(a.id)}
+                      aria-label={`Remover ${a.name}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {attachError && (
+              <div className="gauntlet-capsule__attach-error" role="alert">
+                {attachError}
+              </div>
+            )}
+            {shellPanelOpen && ambient.shellExec && (
+              <div className="gauntlet-capsule__shell-panel">
+                <div className="gauntlet-capsule__shell-row">
+                  <span className="gauntlet-capsule__shell-prompt" aria-hidden>$</span>
+                  <input
+                    type="text"
+                    className="gauntlet-capsule__shell-input"
+                    placeholder="git status — comandos da allowlist"
+                    value={shellCommand}
+                    onChange={(ev) => setShellCommand(ev.target.value)}
+                    onKeyDown={(ev) => {
+                      if (ev.key === 'Enter' && !ev.shiftKey) {
+                        ev.preventDefault();
+                        void runShellCommand();
+                      }
+                    }}
+                    disabled={shellRunning}
+                    spellCheck={false}
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    className="gauntlet-capsule__shell-run"
+                    onClick={() => void runShellCommand()}
+                    disabled={shellRunning || !shellCommand.trim()}
+                  >
+                    {shellRunning ? '…' : 'Executar'}
+                  </button>
+                </div>
+                {shellResult && (
+                  <div className="gauntlet-capsule__shell-output">
+                    <div className="gauntlet-capsule__shell-meta">
+                      <span className="gauntlet-capsule__shell-meta-cmd">
+                        $ {shellResult.cmd}
+                      </span>
+                      <span className="gauntlet-capsule__shell-meta-stat">
+                        {shellResult.exitCode === null
+                          ? 'erro'
+                          : `exit ${shellResult.exitCode}`}
+                        {' · '}
+                        {shellResult.durationMs} ms
+                      </span>
+                    </div>
+                    {shellResult.stdout && (
+                      <pre className="gauntlet-capsule__shell-stdout">
+                        {shellResult.stdout}
+                      </pre>
+                    )}
+                    {shellResult.stderr && (
+                      <pre className="gauntlet-capsule__shell-stderr">
+                        {shellResult.stderr}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {slashQuery !== null && slashMatches.length > 0 && (
+              <div className="gauntlet-capsule__slash" role="listbox">
+                {slashMatches.map((a, i) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    role="option"
+                    aria-selected={i === slashIndex}
+                    className={`gauntlet-capsule__slash-item${
+                      i === slashIndex ? ' gauntlet-capsule__slash-item--active' : ''
+                    }`}
+                    onMouseEnter={() => setSlashIndex(i)}
+                    onClick={() => runSlashAt(i)}
+                  >
+                    <span className="gauntlet-capsule__slash-label">{a.label}</span>
+                    <span className="gauntlet-capsule__slash-hint">{a.hint}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <textarea
               ref={inputRef}
               className="gauntlet-capsule__input"
-              placeholder="O que queres? — Enter para enviar, Shift+Enter nova linha"
+              placeholder="O que queres? / abre comandos · Enter envia · Shift+Enter nova linha"
               value={userInput}
               onChange={(ev) => setUserInput(ev.target.value)}
               onKeyDown={onTextareaKey}
@@ -1009,7 +1639,73 @@ export function Capsule({
                 <span className="gauntlet-capsule__kbd-sep">·</span>
                 <span className="gauntlet-capsule__kbd">⌘K</span>
               </span>
-              {isVoiceSupported() && (
+              {ambient.capabilities.filesystemRead && ambient.filesystem && (
+                <button
+                  type="button"
+                  className="gauntlet-capsule__attach-btn"
+                  onClick={() => void attachLocalFile()}
+                  aria-label="Anexar ficheiro local"
+                  title="Anexar ficheiro do disco"
+                  disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
+                    <path
+                      d="M14 4l-2 0 0 8-3 0 4 5 4-5-3 0 0-8z"
+                      transform="rotate(45 12 12)"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="gauntlet-capsule__attach-label">anexar</span>
+                </button>
+              )}
+              {ambient.capabilities.screenCapture && ambient.screenshot?.captureScreen && (
+                <button
+                  type="button"
+                  className="gauntlet-capsule__attach-btn"
+                  onClick={() => void attachScreenCapture()}
+                  aria-label="Capturar ecrã inteiro"
+                  title="Capturar ecrã inteiro"
+                  disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
+                    <rect
+                      x="3" y="5" width="18" height="13" rx="2"
+                      fill="none" stroke="currentColor" strokeWidth="1.6"
+                    />
+                    <circle cx="12" cy="11.5" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                  </svg>
+                  <span className="gauntlet-capsule__attach-label">ecrã</span>
+                </button>
+              )}
+              {ambient.capabilities.shellExecute && ambient.shellExec && (
+                <button
+                  type="button"
+                  className={`gauntlet-capsule__attach-btn${
+                    shellPanelOpen ? ' gauntlet-capsule__attach-btn--active' : ''
+                  }`}
+                  onClick={() => setShellPanelOpen((v) => !v)}
+                  aria-label="Shell rápida"
+                  title="Shell rápida (allowlist + GAUNTLET_ALLOW_CODE_EXEC)"
+                  aria-expanded={shellPanelOpen}
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
+                    <path
+                      d="M5 7l4 4-4 4M11 16h7"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="gauntlet-capsule__attach-label">shell</span>
+                </button>
+              )}
+              {(isVoiceSupported() ||
+                (ambient.capabilities.remoteVoice && isRemoteVoiceSupported())) && (
                 <button
                   type="button"
                   className={`gauntlet-capsule__voice${
@@ -1078,13 +1774,25 @@ export function Capsule({
               <header className="gauntlet-capsule__compose-meta">
                 <span className="gauntlet-capsule__compose-tag">resposta</span>
                 <span className="gauntlet-capsule__compose-meta-text">
-                  <span className="gauntlet-capsule__token-counter" aria-live="polite">
+                  <span
+                    key={tokensStreamed}
+                    className="gauntlet-capsule__token-counter gauntlet-capsule__token-counter--pulse"
+                    aria-live="polite"
+                  >
                     {tokensStreamed} chunks
                   </span>
                   <span aria-hidden>·</span>
                   <span>a escrever…</span>
                 </span>
               </header>
+              <div
+                className="gauntlet-capsule__progress-bar"
+                role="progressbar"
+                aria-label="A receber resposta"
+                aria-valuetext="indeterminate"
+              >
+                <span className="gauntlet-capsule__progress-bar-track" />
+              </div>
               <div className="gauntlet-capsule__compose-text gauntlet-capsule__compose-text--streaming">
                 {partialCompose}
                 <span className="gauntlet-capsule__compose-caret" aria-hidden>▍</span>
@@ -1140,6 +1848,17 @@ export function Capsule({
                 >
                   {savedFlash === 'saved' ? 'guardado ✓' : 'Save'}
                 </button>
+                {ambient.capabilities.filesystemWrite &&
+                  ambient.filesystem?.writeTextFile && (
+                    <button
+                      type="button"
+                      className="gauntlet-capsule__copy gauntlet-capsule__copy--ghost"
+                      onClick={() => void saveComposeToDisk()}
+                      title="Guardar resposta para um ficheiro"
+                    >
+                      {savedToDiskFlash ? `→ ${savedToDiskFlash}` : 'Guardar como'}
+                    </button>
+                  )}
               </div>
             </section>
           )}
@@ -1171,7 +1890,13 @@ export function Capsule({
                     const danger = dangers[i];
                     return (
                       <li
-                        key={`${i}-${a.type}-${a.selector}`}
+                        key={`${i}-${a.type}-${
+                          'selector' in a
+                            ? a.selector
+                            : 'path' in a
+                              ? a.path
+                              : a.cmd
+                        }`}
                         className={`gauntlet-capsule__plan-item gauntlet-capsule__plan-item--${status}${
                           danger?.danger ? ' gauntlet-capsule__plan-item--danger' : ''
                         }`}
@@ -1233,7 +1958,7 @@ export function Capsule({
                   </label>
                 </div>
               )}
-              {phase !== 'executed' && executor && (
+              {phase !== 'executed' && canDispatchAnyAction && (
                 <div className="gauntlet-capsule__plan-actions">
                   <button
                     type="button"
@@ -1253,10 +1978,10 @@ export function Capsule({
                   </button>
                 </div>
               )}
-              {phase !== 'executed' && !executor && (
+              {phase !== 'executed' && !canDispatchAnyAction && (
                 <p className="gauntlet-capsule__plan-empty">
-                  esta superfície não tem acesso a uma página viva — abre o
-                  Gauntlet num separador para executar acções.
+                  esta superfície não tem adapter para nenhuma destas acções
+                  — abre o Gauntlet num shell que as suporte.
                 </p>
               )}
             </section>
@@ -1333,6 +2058,74 @@ export function Capsule({
                   void saveToMemory();
                 },
               },
+              // A1/A2/A3 — registar as novas capabilities no palette
+              // para que ⌘K liste mesmo "tudo à mão". Cada uma é
+              // gated pela mesma flag que o botão da toolbar usa.
+              ...(ambient.capabilities.filesystemRead && ambient.filesystem
+                ? [
+                    {
+                      id: 'attach-file',
+                      label: 'Anexar ficheiro local',
+                      description: 'Abre o file picker e anexa o conteúdo ao prompt',
+                      shortcut: '',
+                      group: 'action' as const,
+                      run: () => {
+                        noteUse('attach-file');
+                        setPaletteOpen(false);
+                        void attachLocalFile();
+                      },
+                    },
+                  ]
+                : []),
+              ...(ambient.capabilities.screenCapture && ambient.screenshot?.captureScreen
+                ? [
+                    {
+                      id: 'attach-screen',
+                      label: 'Capturar ecrã inteiro',
+                      description: 'Anexa um screenshot do ecrã primário',
+                      shortcut: '',
+                      group: 'action' as const,
+                      run: () => {
+                        noteUse('attach-screen');
+                        setPaletteOpen(false);
+                        void attachScreenCapture();
+                      },
+                    },
+                  ]
+                : []),
+              ...(ambient.capabilities.shellExecute && ambient.shellExec
+                ? [
+                    {
+                      id: 'shell-toggle',
+                      label: shellPanelOpen ? 'Fechar shell rápida' : 'Abrir shell rápida',
+                      description: 'Painel inline para correr comandos da allowlist',
+                      shortcut: '',
+                      group: 'action' as const,
+                      run: () => {
+                        noteUse('shell-toggle');
+                        setPaletteOpen(false);
+                        setShellPanelOpen((v) => !v);
+                      },
+                    },
+                  ]
+                : []),
+              ...(ambient.capabilities.filesystemWrite && ambient.filesystem?.writeTextFile
+                ? [
+                    {
+                      id: 'save-disk',
+                      label: 'Guardar resposta em ficheiro',
+                      description: 'Save dialog → escreve compose para o disco',
+                      shortcut: '',
+                      group: 'action' as const,
+                      disabled: !plan?.compose,
+                      run: () => {
+                        noteUse('save-disk');
+                        setPaletteOpen(false);
+                        void saveComposeToDisk();
+                      },
+                    },
+                  ]
+                : []),
               {
                 id: 'reread',
                 label: 'Re-ler contexto',
@@ -1921,15 +2714,32 @@ function extractPartialCompose(buffer: string): string | null {
 // compatible: /composer/context ignores unknown metadata keys.
 function buildCapture(
   snapshot: SelectionSnapshot,
-  screenshotDataUrl?: string | null,
+  screenshotDataUrl: string | null,
+  attachments: Attachment[],
+  shell: 'browser' | 'desktop',
 ): ContextCaptureRequest {
   const metadata: Record<string, unknown> = {};
   if (snapshot.pageText) metadata.page_text = snapshot.pageText;
   if (snapshot.domSkeleton) metadata.dom_skeleton = snapshot.domSkeleton;
   if (snapshot.bbox) metadata.selection_bbox = snapshot.bbox;
   if (screenshotDataUrl) metadata.screenshot_data_url = screenshotDataUrl;
+  // Multimodal — image attachments ship through metadata so the backend
+  // can reconstruct Anthropic content blocks. Text attachments stay
+  // inlined into user_input (composeUserInputWithAttachments) since
+  // they're already cheap to embed in a single string.
+  const imageAttachments = attachments.filter(
+    (a) => a.kind === 'image' && a.base64,
+  );
+  if (imageAttachments.length > 0) {
+    metadata.attachments = imageAttachments.map((a) => ({
+      name: a.name,
+      mime: a.mime,
+      base64: a.base64,
+      bytes: a.bytes,
+    }));
+  }
   return {
-    source: 'browser',
+    source: shell,
     url: snapshot.url,
     page_title: snapshot.pageTitle,
     selection: snapshot.text || undefined,
@@ -1947,6 +2757,15 @@ function describeAction(action: DomAction): string {
       return `highlight ${action.selector}`;
     case 'scroll_to':
       return `scroll to ${action.selector}`;
+    case 'shell.run': {
+      const argline = (action.args ?? []).join(' ');
+      const cwd = action.cwd ? ` (cwd: ${action.cwd})` : '';
+      return `shell: ${action.cmd}${argline ? ` ${argline}` : ''}${cwd}`;
+    }
+    case 'fs.read':
+      return `fs.read ${action.path}`;
+    case 'fs.write':
+      return `fs.write ${action.path} (${action.content.length} chars)`;
   }
 }
 
@@ -2474,6 +3293,74 @@ export const CAPSULE_CSS = `
   background: #ffd2b6;
   box-shadow: 0 0 12px rgba(208, 122, 90, 0.95);
 }
+/* B2 — model indicator chip. Persistent in the header meta strip
+   once the planner returns a model_used value, so the operator
+   always knows which brain answered. Dot is ember when the latency
+   was low (good), amber for slow. */
+.gauntlet-capsule__model-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--gx-border-mid);
+  background: var(--gx-tint-soft);
+  color: var(--gx-fg-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-transform: lowercase;
+}
+.gauntlet-capsule__model-chip-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gx-ember);
+  box-shadow: 0 0 6px color-mix(in oklab, var(--gx-ember) 60%, transparent);
+}
+
+/* B3 — streaming progress. Indeterminate bar that walks left→right
+   under the token counter so the operator senses the model is alive
+   even when the chunks come in bursts. Token counter pulses on each
+   delta (key change forces React to replay the keyframe). */
+@keyframes gauntlet-cap-progress-walk {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+@keyframes gauntlet-cap-token-pulse {
+  0%   { color: var(--gx-ember); transform: scale(1.04); }
+  100% { color: var(--gx-fg-dim); transform: scale(1); }
+}
+.gauntlet-capsule__progress-bar {
+  position: relative;
+  height: 2px;
+  margin: 6px 0 8px;
+  border-radius: 999px;
+  background: var(--gx-tint-soft);
+  overflow: hidden;
+}
+.gauntlet-capsule__progress-bar-track {
+  position: absolute;
+  inset: 0;
+  width: 33%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--gx-ember) 50%,
+    transparent 100%
+  );
+  animation: gauntlet-cap-progress-walk 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.gauntlet-capsule__token-counter--pulse {
+  animation: gauntlet-cap-token-pulse 320ms ease-out;
+  display: inline-block;
+}
+
 .gauntlet-capsule__url {
   flex: 1;
   min-width: 0;
@@ -3474,6 +4361,276 @@ export const CAPSULE_CSS = `
       0 0 0 12px rgba(212, 96, 60, 0);
   }
 }
+/* Anexar / Ecrã — sibling buttons to the voice button. Same shape so
+   the actions row reads as a coherent toolbar; the icon+label idiom
+   stays consistent. Hidden when the ambient doesn't support FS / screen
+   capture (web extension). */
+.gauntlet-capsule__attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-tint-soft);
+  color: var(--gx-fg-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms, border-color 160ms, color 160ms;
+}
+.gauntlet-capsule__attach-btn:hover:not(:disabled) {
+  background: var(--gx-tint-strong);
+  border-color: var(--gx-border-mid);
+  color: var(--gx-fg);
+}
+.gauntlet-capsule__attach-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.gauntlet-capsule__attach-label {
+  font-weight: 500;
+}
+
+/* Attachment chips — render above the textarea once the operator pins
+   a file or screenshot. Compact, dismissible, hierarchy-light so the
+   prompt remains the focus. */
+.gauntlet-capsule__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+.gauntlet-capsule__attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--gx-border-mid);
+  background: var(--gx-surface);
+  color: var(--gx-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  max-width: 260px;
+}
+.gauntlet-capsule__attachment--image {
+  border-color: color-mix(in oklab, var(--gx-ember) 32%, var(--gx-border-mid));
+}
+.gauntlet-capsule__attachment-icon {
+  color: var(--gx-fg-muted);
+  font-size: 11px;
+}
+.gauntlet-capsule__attachment-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.gauntlet-capsule__attachment-size {
+  color: var(--gx-fg-muted);
+  letter-spacing: 0.04em;
+}
+.gauntlet-capsule__attachment-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--gx-fg-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.gauntlet-capsule__attachment-remove:hover {
+  background: var(--gx-tint-strong);
+  color: var(--gx-fg);
+}
+
+/* Inline error band when pickFile / captureScreen rejects (permission,
+   missing binary, file too large). Same visual register as the model
+   error band — just below the chips so the operator sees it before they
+   submit. */
+.gauntlet-capsule__attach-error {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--gx-danger-text) 10%, transparent);
+  border: 1px solid color-mix(in oklab, var(--gx-danger-text) 30%, transparent);
+  color: var(--gx-danger-text);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* B1 — slash command dropdown. Sits above the textarea when the
+   operator opens with a slash. Highlight follows arrow keys + mouse
+   hover; Enter runs the highlighted entry. Same visual register as
+   the compact attachment chips so the form reads as one cohesive
+   surface. */
+.gauntlet-capsule__slash {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 6px;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 10px;
+  background: var(--gx-surface-strong);
+  box-shadow: 0 8px 20px rgba(var(--gx-shadow-rgb), 0.10);
+  max-height: 220px;
+  overflow: auto;
+}
+.gauntlet-capsule__slash-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gx-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.gauntlet-capsule__slash-item--active {
+  background: var(--gx-tint-strong);
+}
+.gauntlet-capsule__slash-item:hover {
+  background: var(--gx-tint-strong);
+}
+.gauntlet-capsule__slash-label {
+  font-weight: 500;
+  color: var(--gx-fg);
+  letter-spacing: 0.02em;
+}
+.gauntlet-capsule__slash-hint {
+  color: var(--gx-fg-muted);
+  font-size: 10px;
+  text-align: right;
+}
+
+/* Active state for the shell toggle button — highlights when the panel
+   is open so the operator knows which surface they're commanding. */
+.gauntlet-capsule__attach-btn--active {
+  background: var(--gx-tint-strong);
+  border-color: color-mix(in oklab, var(--gx-ember) 38%, var(--gx-border-mid));
+  color: var(--gx-fg);
+}
+
+/* Shell quick-run panel — collapsed by default, opens above the textarea
+   when the operator toggles the "shell" button. The output area scrolls
+   internally so a wall of git log doesn't push the cápsula off-screen. */
+.gauntlet-capsule__shell-panel {
+  margin: 0 0 8px;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 10px;
+  background: var(--gx-sunken);
+  padding: 8px;
+}
+.gauntlet-capsule__shell-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gauntlet-capsule__shell-prompt {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: var(--gx-ember);
+  width: 14px;
+  text-align: center;
+}
+.gauntlet-capsule__shell-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--gx-border);
+  border-radius: 6px;
+  background: var(--gx-surface);
+  color: var(--gx-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 160ms;
+}
+.gauntlet-capsule__shell-input:focus {
+  border-color: color-mix(in oklab, var(--gx-ember) 50%, var(--gx-border-mid));
+}
+.gauntlet-capsule__shell-run {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in oklab, var(--gx-ember) 40%, var(--gx-border-mid));
+  background: color-mix(in oklab, var(--gx-ember) 18%, var(--gx-surface));
+  color: var(--gx-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms, border-color 160ms;
+}
+.gauntlet-capsule__shell-run:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--gx-ember) 28%, var(--gx-surface));
+}
+.gauntlet-capsule__shell-run:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.gauntlet-capsule__shell-output {
+  margin-top: 8px;
+  border-top: 1px solid var(--gx-border);
+  padding-top: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+.gauntlet-capsule__shell-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: var(--gx-fg-muted);
+  margin-bottom: 4px;
+}
+.gauntlet-capsule__shell-meta-cmd {
+  color: var(--gx-fg-dim);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gauntlet-capsule__shell-stdout,
+.gauntlet-capsule__shell-stderr {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--gx-bg-solid);
+  border: 1px solid var(--gx-border);
+  border-radius: 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--gx-fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.gauntlet-capsule__shell-stderr {
+  border-color: color-mix(in oklab, var(--gx-danger-text) 30%, var(--gx-border));
+  color: var(--gx-danger-text);
+  margin-top: 6px;
+}
+
 .gauntlet-capsule__voice {
   display: inline-flex;
   align-items: center;

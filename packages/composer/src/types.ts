@@ -207,6 +207,37 @@ export interface ToolManifestsResponse {
   tools: ToolManifest[];
 }
 
+// Local file or screenshot the operator pulled into the cápsula via the
+// desktop shell's filesystem capability. The shared Composer treats it
+// as opaque payload that gets inlined into the prompt; the backend sees
+// the result through `user_input` (no schema change required for A1).
+//
+//   kind: 'text'   — UTF-8 file contents the operator wants the agent
+//                    to read or transform
+//   kind: 'image'  — base64 PNG/JPEG (screen capture or picked image)
+//   kind: 'binary' — base64 of arbitrary file the operator pinned
+//
+// `bytes` is the original file size before any base64 inflation, so
+// the cápsula can render "1.4 MB" without measuring the encoded blob.
+export type AttachmentKind = 'text' | 'image' | 'binary';
+
+export interface Attachment {
+  id: string;
+  kind: AttachmentKind;
+  name: string;
+  mime: string;
+  bytes: number;
+  // Present iff kind === 'text'. UTF-8 content with size cap enforced
+  // by the host shell (see desktop ambient's MAX_TEXT_BYTES).
+  text?: string;
+  // Present iff kind === 'image' | 'binary'. Raw base64 (no data: URL
+  // prefix) so the cápsula composes its own preview src.
+  base64?: string;
+  // Filesystem path the file was read from (when picked via dialog) or
+  // the screenshot was written to. Surfaced in the chip tooltip.
+  path?: string;
+}
+
 export class ComposerError extends Error {
   status: number;
   body: unknown;

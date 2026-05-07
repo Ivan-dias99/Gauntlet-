@@ -14,6 +14,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { readText as readClipboardText } from "@tauri-apps/plugin-clipboard-manager";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from "@tauri-apps/plugin-notification";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export const DEFAULT_DESKTOP_SHORTCUT = "CommandOrControl+Shift+Space";
@@ -106,6 +111,128 @@ export async function captureScreenRegion(): Promise<string | null> {
     return await invoke<string>("capture_screen_region");
   } catch {
     return null;
+  }
+}
+
+// A1 — full-screen capture (non-interactive). Wraps the Rust command
+// that writes a PNG to the temp dir and returns it base64-encoded so
+// the cápsula can preview without round-tripping the file:// URL
+// (Tauri's asset protocol is configurable but not enabled by default).
+export interface ScreenCaptureFull {
+  base64: string;
+  path: string;
+}
+
+export async function captureScreenFull(): Promise<ScreenCaptureFull | null> {
+  try {
+    return await invoke<ScreenCaptureFull>("capture_screen_full");
+  } catch (err) {
+    console.warn("[gauntlet/desktop] capture_screen_full failed:", err);
+    return null;
+  }
+}
+
+// A1 — file picker + read. The dialog plugin is the consent gate; once
+// the operator picks a file we read it via std::fs in Rust and stream
+// the result back to the cápsula.
+export interface PickedFile {
+  path: string;
+  name: string;
+}
+
+export async function pickFile(
+  accept?: string[],
+): Promise<PickedFile | null> {
+  try {
+    return await invoke<PickedFile | null>("pick_file", { accept });
+  } catch (err) {
+    console.warn("[gauntlet/desktop] pick_file failed:", err);
+    return null;
+  }
+}
+
+export async function readTextFileAt(path: string): Promise<string> {
+  return await invoke<string>("read_text_file_at", { path });
+}
+
+export interface Base64Payload {
+  base64: string;
+  mime: string;
+}
+
+export async function readFileBase64At(path: string): Promise<Base64Payload> {
+  return await invoke<Base64Payload>("read_file_base64_at", { path });
+}
+
+// A2 — operator-driven write. Save dialog is the consent gate; every
+// write is a path the operator just confirmed.
+export async function pickSavePath(
+  suggestedName?: string,
+  accept?: string[],
+): Promise<string | null> {
+  try {
+    return await invoke<string | null>("pick_save_path", {
+      suggestedName,
+      accept,
+    });
+  } catch (err) {
+    console.warn("[gauntlet/desktop] pick_save_path failed:", err);
+    return null;
+  }
+}
+
+export async function writeTextFileAt(
+  path: string,
+  content: string,
+): Promise<number> {
+  return await invoke<number>("write_text_file_at", { path, content });
+}
+
+export async function writeFileBase64At(
+  path: string,
+  base64: string,
+): Promise<number> {
+  return await invoke<number>("write_file_base64_at", { path, base64 });
+}
+
+// A3 — shell execute. The Rust side enforces both the env gate
+// (GAUNTLET_ALLOW_CODE_EXEC) and the binary allowlist; we just relay.
+export interface ShellResult {
+  stdout: string;
+  stderr: string;
+  exit_code: number | null;
+  duration_ms: number;
+}
+
+export async function runShell(
+  cmd: string,
+  args?: string[],
+  cwd?: string,
+): Promise<ShellResult> {
+  return await invoke<ShellResult>("run_shell", { cmd, args, cwd });
+}
+
+// A4 — native OS notifications. The first call may prompt the operator
+// for permission (macOS) or pop a system bubble immediately (Windows /
+// Linux). We treat denial as fatal: return false so the cápsula can
+// fall back to its in-window flash. The capability flag is set to true
+// at ambient construction; only the runtime permission can downgrade.
+export async function notify(
+  title: string,
+  body: string,
+): Promise<boolean> {
+  try {
+    let granted = await isPermissionGranted();
+    if (!granted) {
+      const reply = await requestPermission();
+      granted = reply === "granted";
+    }
+    if (!granted) return false;
+    await sendNotification({ title, body });
+    return true;
+  } catch (err) {
+    console.warn("[gauntlet/desktop] notify failed:", err);
+    return false;
   }
 }
 

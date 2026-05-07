@@ -14,12 +14,30 @@ export type DomAction =
   | { type: 'fill'; selector: string; value: string }
   | { type: 'click'; selector: string }
   | { type: 'highlight'; selector: string; duration_ms?: number }
-  | { type: 'scroll_to'; selector: string };
+  | { type: 'scroll_to'; selector: string }
+  // Agent autonomy — desktop-only at runtime. Browser ambient declines
+  // these (capability flags are false) and the executor returns a
+  // typed unsupported result so the operator can see why nothing
+  // happened. Wire shape mirrors backend/models.py.
+  | { type: 'shell.run'; cmd: string; args?: string[]; cwd?: string }
+  | { type: 'fs.read'; path: string }
+  | { type: 'fs.write'; path: string; content: string };
 
 export interface DomActionResult {
   action: DomAction;
   ok: boolean;
   error?: string;
+  // Optional payload — used by ambient actions to surface their output
+  // to the cápsula UI (shell stdout/stderr, fs read content). Static
+  // DOM actions leave this undefined.
+  output?: {
+    stdout?: string;
+    stderr?: string;
+    exitCode?: number | null;
+    durationMs?: number;
+    text?: string;
+    bytes?: number;
+  };
 }
 
 export interface DangerAssessment {
@@ -104,6 +122,25 @@ export function assessDanger(action: DomAction): DangerAssessment {
   if (action.type === 'highlight' || action.type === 'scroll_to') {
     return { danger: false };
   }
+  // Ambient (shell / fs) actions get a different risk model. fs.read is
+  // read-only, like highlight — safe. shell.run and fs.write are
+  // mutating by definition; force the danger gate so the operator
+  // confirms before the agent touches the host system.
+  if (action.type === 'fs.read') {
+    return { danger: false };
+  }
+  if (action.type === 'shell.run') {
+    return {
+      danger: true,
+      reason: `executa "${action.cmd}" no sistema local — cabe à allowlist e ao gate GAUNTLET_ALLOW_CODE_EXEC`,
+    };
+  }
+  if (action.type === 'fs.write') {
+    return {
+      danger: true,
+      reason: `grava em ${action.path} — sobrescreve o conteúdo existente`,
+    };
+  }
 
   const sel = action.selector;
   for (const re of DANGER_SELECTOR_PATTERNS) {
@@ -166,11 +203,36 @@ export function assessDanger(action: DomAction): DangerAssessment {
   return { danger: false };
 }
 
+export function isDomAction(action: DomAction): action is DomAction & {
+  selector: string;
+} {
+  const t = action.type;
+  return t === 'fill' || t === 'click' || t === 'highlight' || t === 'scroll_to';
+}
+
+export function isAmbientAction(action: DomAction): boolean {
+  const t = action.type;
+  return t === 'shell.run' || t === 'fs.read' || t === 'fs.write';
+}
+
 export async function executeDomActions(
   actions: DomAction[],
 ): Promise<DomActionResult[]> {
   const out: DomActionResult[] = [];
   for (const action of actions) {
+    if (!isDomAction(action)) {
+      // Ambient actions (shell.run / fs.*) belong to the cápsula's
+      // dispatcher, not this DOM-only executor. Return a typed
+      // unsupported result so the caller sees the gap instead of a
+      // silent skip — and so a browser shell that receives an
+      // ambient action from a misconfigured plan fails loud.
+      out.push({
+        action,
+        ok: false,
+        error: `executor: ${action.type} is an ambient action — route through the Capsule dispatcher`,
+      });
+      continue;
+    }
     try {
       assertSafe(action);
       await executeOne(action);
@@ -188,8 +250,9 @@ export async function executeDomActions(
 
 // Reject anything that targets the capsule's own shadow host. Without
 // this guard a misbehaving plan could try to click "Esc" on itself and
-// dismiss the very surface that is about to execute the action.
-function assertSafe(action: DomAction): void {
+// dismiss the very surface that is about to execute the action. Only
+// applies to DOM actions — ambient actions don't carry selectors.
+function assertSafe(action: DomAction & { selector: string }): void {
   const sel = action.selector;
   if (!sel || typeof sel !== 'string') {
     throw new Error('selector missing or not a string');
