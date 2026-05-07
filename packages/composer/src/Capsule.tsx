@@ -980,9 +980,11 @@ export function Capsule({
 
   // Compose user_input with attachment blocks. Text files are inlined
   // verbatim inside <file name="..."> tags so the agent can read them
-  // without backend changes; images become a placeholder note (the
-  // multimodal pipeline lands in A2 — for now the operator describes
-  // what they captured in the prompt).
+  // without backend changes. Image attachments travel as multimodal
+  // content blocks via `metadata.attachments` and DO NOT show up in
+  // user_input — the agent literally sees the picture, no placeholder
+  // needed (when the provider supports images; on Groq/Gemini the
+  // backend logs `images_dropped` and the operator sees the chip).
   const composeUserInputWithAttachments = useCallback(
     (raw: string): string => {
       if (attachments.length === 0) return raw;
@@ -992,13 +994,11 @@ export function Capsule({
           blocks.push(
             `<file name="${a.name}" path="${a.path ?? ''}">\n${a.text}\n</file>`,
           );
-        } else if (a.kind === 'image') {
-          const kb = Math.max(1, Math.round(a.bytes / 1024));
-          blocks.push(
-            `<image name="${a.name}" bytes="${a.bytes}" mime="${a.mime}">[${kb} KB image attached — describe in prompt; multimodal payload arrives in A2]</image>`,
-          );
         }
+        // image attachments handled via metadata.attachments — see
+        // buildCapture + backend's _collect_image_blocks.
       }
+      if (blocks.length === 0) return raw;
       return `${blocks.join('\n\n')}\n\n${raw}`;
     },
     [attachments],
@@ -1043,6 +1043,8 @@ export function Capsule({
     const capture = buildCapture(
       snapshot,
       screenshotEnabled ? screenshot : null,
+      attachments,
+      ambient.shell,
     );
     try {
       const ctx = await client.captureContext(capture, ac.signal);
@@ -2712,15 +2714,32 @@ function extractPartialCompose(buffer: string): string | null {
 // compatible: /composer/context ignores unknown metadata keys.
 function buildCapture(
   snapshot: SelectionSnapshot,
-  screenshotDataUrl?: string | null,
+  screenshotDataUrl: string | null,
+  attachments: Attachment[],
+  shell: 'browser' | 'desktop',
 ): ContextCaptureRequest {
   const metadata: Record<string, unknown> = {};
   if (snapshot.pageText) metadata.page_text = snapshot.pageText;
   if (snapshot.domSkeleton) metadata.dom_skeleton = snapshot.domSkeleton;
   if (snapshot.bbox) metadata.selection_bbox = snapshot.bbox;
   if (screenshotDataUrl) metadata.screenshot_data_url = screenshotDataUrl;
+  // Multimodal — image attachments ship through metadata so the backend
+  // can reconstruct Anthropic content blocks. Text attachments stay
+  // inlined into user_input (composeUserInputWithAttachments) since
+  // they're already cheap to embed in a single string.
+  const imageAttachments = attachments.filter(
+    (a) => a.kind === 'image' && a.base64,
+  );
+  if (imageAttachments.length > 0) {
+    metadata.attachments = imageAttachments.map((a) => ({
+      name: a.name,
+      mime: a.mime,
+      base64: a.base64,
+      bytes: a.bytes,
+    }));
+  }
   return {
-    source: 'browser',
+    source: shell,
     url: snapshot.url,
     page_title: snapshot.pageTitle,
     selection: snapshot.text || undefined,

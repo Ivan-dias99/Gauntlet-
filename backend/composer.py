@@ -657,42 +657,105 @@ async def _build_user_messages(
         f"Page context:\n{_compose_context_blob(ctx, memory_block)}\n\n"
         f"Request: {user_input}"
     )
-    raw_screenshot = ctx.metadata.get("screenshot_data_url") if ctx.metadata else None
+    image_blocks = _collect_image_blocks(ctx, engine)
+    if image_blocks:
+        return [
+            {
+                "role": "user",
+                "content": [*image_blocks, {"type": "text", "text": user_msg}],
+            }
+        ]
+    return [{"role": "user", "content": user_msg}]
+
+
+def _collect_image_blocks(ctx: ContextPackage, engine) -> list[dict]:
+    """Walk metadata for everything image-shaped that an Anthropic
+    content list can carry. Two sources today:
+
+      * `screenshot_data_url` — single viewport screenshot the content
+        script captured at summon time (legacy path, still used when the
+        operator opted in via SettingsDrawer).
+      * `attachments` — list of image files / screenshots the operator
+        pinned via the desktop ambient (A1). Shape:
+            [{name, mime, base64, bytes}, ...]
+        Text attachments stay inlined into user_input upstream and
+        never reach this path.
+
+    Both paths funnel through the same Anthropic image content shape.
+    Groq and Gemini adapters reject images; we drop the blocks with a
+    log line so the operator can see why the picture was ignored.
+    """
+    if not ctx.metadata:
+        return []
+    if engine is None or not _provider_supports_images(engine):
+        if (
+            ctx.metadata.get("screenshot_data_url")
+            or ctx.metadata.get("attachments")
+        ):
+            logger.info(
+                "composer.images_dropped provider=%s — adapter does not accept image blocks",
+                type(engine._client).__name__ if engine is not None else "<none>",
+            )
+        return []
+
+    blocks: list[dict] = []
+    # Total payload cap across ALL images. Anthropic's 5MB-per-image
+    # plus a soft global ceiling so a runaway batch doesn't burn 30 MB
+    # of input tokens.
+    PER_IMAGE_CAP = 1_500_000  # ~1 MB binary, fits 1280x800 PNG
+    TOTAL_CAP = 6_000_000  # ~4.5 MB total
+    used = 0
+
+    raw_screenshot = ctx.metadata.get("screenshot_data_url")
     if (
-        engine is not None
-        and _provider_supports_images(engine)
-        and isinstance(raw_screenshot, str)
+        isinstance(raw_screenshot, str)
         and raw_screenshot.startswith("data:image/")
         and ";base64," in raw_screenshot
     ):
         prefix, b64 = raw_screenshot.split(";base64,", 1)
-        media_type = prefix[len("data:") :] or "image/png"
-        # Cap raw payload size — runaway screenshots burn input tokens
-        # and hit Anthropic's 5MB-per-image limit. Roughly 1MB encoded
-        # is plenty for a 1280x800 PNG.
-        if len(b64) <= 1_500_000:
-            return [
+        if len(b64) <= PER_IMAGE_CAP and used + len(b64) <= TOTAL_CAP:
+            media_type = prefix[len("data:") :] or "image/png"
+            blocks.append(
                 {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": b64,
-                            },
-                        },
-                        {"type": "text", "text": user_msg},
-                    ],
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": b64,
+                    },
                 }
-            ]
-    if raw_screenshot and engine is not None and not _provider_supports_images(engine):
-        logger.info(
-            "composer.screenshot_dropped provider=%s — Groq/Gemini adapters don't accept image blocks",
-            type(engine._client).__name__,
-        )
-    return [{"role": "user", "content": user_msg}]
+            )
+            used += len(b64)
+
+    raw_attachments = ctx.metadata.get("attachments")
+    if isinstance(raw_attachments, list):
+        for att in raw_attachments:
+            if not isinstance(att, dict):
+                continue
+            mime = att.get("mime")
+            b64 = att.get("base64")
+            if not isinstance(mime, str) or not isinstance(b64, str):
+                continue
+            if not mime.startswith("image/"):
+                continue
+            if len(b64) > PER_IMAGE_CAP or used + len(b64) > TOTAL_CAP:
+                logger.info(
+                    "composer.attachment_skipped name=%r reason=size_cap",
+                    att.get("name"),
+                )
+                continue
+            blocks.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": mime,
+                        "data": b64,
+                    },
+                }
+            )
+            used += len(b64)
+    return blocks
 
 
 def _strip_json_fence(raw: str) -> str:
