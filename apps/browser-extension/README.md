@@ -39,12 +39,18 @@ no manifest change is required when switching.
 
 ## Run locally
 
+The repo is an npm workspace — install once at the repo root, then run
+the extension scripts from this directory.
+
 ```bash
-cd apps/browser-extension
+# from repo root, once
 npm install
+
+# from this directory
+cd apps/browser-extension
 npm run dev          # Chrome dev with auto-reload via WXT (talks to Railway)
 # or
-npm run build        # produces .output/chrome-mv3-prod
+npm run build        # produces .output/chrome-mv3
 ```
 
 For the smoke flow against a local backend, boot it and rebuild with the

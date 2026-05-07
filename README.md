@@ -133,6 +133,10 @@ docs/OPERATIONS.md           boot · cutover · rollback · backup · deploy
 
 ## Run locally
 
+A árvore JS é um único npm workspace (`packages/*`, `apps/*`). Faz-se
+um **único `npm install` no root** e cada shell corre a partir do seu
+diretório.
+
 ```bash
 # Terminal 1 — backend
 cd backend
@@ -141,12 +145,11 @@ export ANTHROPIC_API_KEY=sk-ant-...      # or GAUNTLET_MOCK=1
 python main.py                            # http://127.0.0.1:3002
 
 # Terminal 2 — Control Center (browser tab)
-npm install
+npm install                               # corre só uma vez, no root
 npm run dev                               # http://localhost:5173/control
 
 # Terminal 3 — cápsula (o produto)
 cd apps/browser-extension
-npm install
 npm run dev                               # carrega Chrome com a extension
                                           # press Alt+Space em qualquer página
 ```
