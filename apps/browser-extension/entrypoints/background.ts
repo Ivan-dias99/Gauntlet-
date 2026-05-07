@@ -2,37 +2,27 @@ import { defineBackground } from 'wxt/sandbox';
 
 // Background — service worker (Manifest V3).
 //
-// Doctrine: the capsule lives at the cursor, not in a separate window.
-// On hotkey or icon click we ask the active tab's content script to
-// mount the in-page overlay.
+// Doctrine: a cápsula vive na ponta do cursor. Ponto. Não há lifeboat,
+// não há fallback window, não há janela popup standalone. Carregar em
+// summon (ícone ou Ctrl+Shift+Space) faz uma de duas coisas:
 //
-// Restricted URLs (chrome://, edge://, the Web Store, PDF viewer, etc.)
-// cannot host an injected content script. Older builds fell back to a
-// standalone composer.html popup window in that case — but the popup
-// has no page context (no selection, no DOM, no screenshot) and lives
-// off the cursor, both red flags under lente 1 ("ponta do cursor").
-// We removed that fallback. Pressing summon on a restricted URL now
-// pulses the toolbar badge briefly so the operator gets a visual hint
-// to switch to a real tab. Lifeboat fica para o caso degenerado em que
-// o content script foi injectado mas nunca respondeu — aí ainda é o
-// menor mal versus silêncio total.
+//   1. Tab activa aceita content script → cápsula injecta como overlay.
+//   2. Tab activa não aceita (chrome://, edge://, Web Store, PDF, sem
+//      tab, content script preso, etc) → pulsa um '×' ember no badge
+//      durante 1.6s. Sinal mudo de "aqui não posso".
+//
+// Apple-quality bar: ou abre, ou não abre. Sem segunda janela, sem
+// surpresas, sem cápsula órfã. composer.html foi eliminado em 2026-05-08.
 //
 // All HTTP traffic from the extension also flows through here
 // (gauntlet:fetch) so requests originate from chrome-extension://<id>
 // instead of the host page, bypassing CORS rejection on non-deploy
 // origins.
 
-// Compact fallback window — the standalone composer is a lifeboat for
-// restricted surfaces (chrome://, edge://, the Web Store, PDF viewer).
-// On normal pages the in-page capsule must win; the fallback never
-// becomes a 1200x800 dashboard.
-const COMPOSER_WINDOW_WIDTH = 760;
-const COMPOSER_WINDOW_HEIGHT = 460;
-
 // Last-summon diagnostics — surfaced via gauntlet:debug message so the
 // operator (and tests) can see WHY the fallback opened. Ephemeral; only
 // the most recent decision is kept.
-type SummonMode = 'in-page' | 'injected' | 'restricted-skip' | 'fallback-window';
+type SummonMode = 'in-page' | 'injected' | 'restricted-skip';
 type FallbackReason =
   | 'restricted-url'
   | 'no-active-tab'
@@ -72,13 +62,8 @@ function recordSummon(d: SummonDiagnostics): void {
   lastSummonDiagnostics = d;
   // Console-visible to anyone with the service-worker devtools open.
   // No PII beyond the page URL — that's already in the operator's tab.
-  if (d.mode === 'fallback-window') {
-    // eslint-disable-next-line no-console
-    console.warn('[gauntlet] fallback-window opened', d);
-  } else {
-    // eslint-disable-next-line no-console
-    console.info('[gauntlet] summon', d);
-  }
+  // eslint-disable-next-line no-console
+  console.info('[gauntlet] summon', d);
 }
 
 interface FetchProxyRequest {
@@ -125,42 +110,8 @@ async function proxyFetch(req: FetchProxyRequest): Promise<FetchProxyResponse> {
   }
 }
 
-async function findExistingComposerWindow(): Promise<number | null> {
-  const expected = chrome.runtime.getURL('composer.html');
-  const wins = await chrome.windows.getAll({
-    populate: true,
-    windowTypes: ['popup'],
-  });
-  for (const w of wins) {
-    if (!w.id) continue;
-    for (const t of w.tabs ?? []) {
-      if (t.url === expected) return w.id;
-    }
-  }
-  return null;
-}
-
-async function openComposerWindow(): Promise<void> {
-  const existingId = await findExistingComposerWindow();
-  if (existingId !== null) {
-    try {
-      await chrome.windows.update(existingId, { focused: true });
-      return;
-    } catch {
-      // Window vanished between query and update — fall through.
-    }
-  }
-  await chrome.windows.create({
-    url: chrome.runtime.getURL('composer.html'),
-    type: 'popup',
-    width: COMPOSER_WINDOW_WIDTH,
-    height: COMPOSER_WINDOW_HEIGHT,
-    focused: true,
-  });
-}
-
-// Tabs the content script can never reach. We don't even attempt
-// sendMessage on these — go straight to the fallback window.
+// Tabs the content script can never reach. We pulse the badge and
+// stop — never open a separate window.
 function isInjectableUrl(url: string | undefined): boolean {
   if (!url) return false;
   if (url.startsWith('chrome://')) return false;
@@ -296,20 +247,18 @@ async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
     return;
   }
 
-  // Last-resort lifeboat: content script injected but its message
-  // listener never woke up within ~700ms. Truly rare (heavy SPA stuck
-  // mid-paint, extension storage quota exceeded, etc.). Without a
-  // surface here the operator gets nothing for a press, which is worse
-  // than a brief popup window. Doctrine accepts this as the only place
-  // where the standalone window may still appear.
+  // Content script foi injectado mas listener nunca acordou em 710ms.
+  // SPAs presas, storage cheio. Não abrimos janela separada — pulsamos
+  // o badge como em qualquer outro restricted-skip. Apple-quality bar:
+  // ou abre, ou não abre. Sem segunda janela como prémio de consolação.
   recordSummon({
     at: now,
-    mode: 'fallback-window',
+    mode: 'restricted-skip',
     url: tab.url,
     reason: 'injection-retry-failed',
     detail: 'content script injected but onMessage listener never replied within 710ms',
   });
-  await openComposerWindow();
+  pulseRestrictedHint();
 }
 
 // Port-based streaming fetch proxy. chrome.runtime.sendMessage is one

@@ -12,13 +12,20 @@ project follows [Semantic Versioning](https://semver.org).
   deixou de ser "mínimo" e passa a ser **denso, viciante, sofisticado**:
   o sítio onde o utilizador não quer sair, com tools/skills/commands na
   ponta do dedo. Backend continua gordo. Lente 2 do CLAUDE.md reescrita.
-- **Lifeboat popup eliminado em URLs restritas.** `chrome://`,
-  `edge://`, Web Store, PDF viewer, etc. — antes faziam abrir uma janela
-  Chrome separada com `composer.html` (vista vazia, sem contexto da
-  página, fora do cursor). Agora o ícone/`Ctrl+Shift+Space` faz pulsar
-  um `×` ember no badge da action durante 1.6s e silencia. Lifeboat fica
-  só para o caso degenerado de `injection-retry-failed`. Lente 1
-  ("ponta do cursor") reforçada.
+- **Janela popup standalone `composer.html` eliminada por completo.**
+  Apple-quality bar: a cápsula ou abre como overlay na página, ou não
+  abre. Sem janela de consolação, sem cápsula órfã sem contexto. Ícone
+  ou `Ctrl+Shift+Space` em URLs restritas (`chrome://`, `edge://`, Web
+  Store, PDF, etc) ou em SPAs onde o content script trava — pulsa um
+  `×` ember no badge da action durante 1.6s e silencia.
+
+  Removidos: `apps/browser-extension/entrypoints/composer/index.html`,
+  `apps/browser-extension/entrypoints/composer/main.tsx`, funções
+  `openComposerWindow` + `findExistingComposerWindow` em background.ts,
+  constantes `COMPOSER_WINDOW_*`, modo `'fallback-window'` do
+  `SummonDiagnostics`, e a pasta inteira `release/unpacked/` (snapshot
+  pré-build legacy que continha `composer.html` antigo). Lente 1
+  ("ponta do cursor") absoluta.
 - **Onboarding fica dentro da cápsula.** `Capsule` ganha slot `children`;
   ambos os shells (`apps/browser-extension/components/App.tsx` e
   `apps/desktop/src/App.tsx`) passam `<Onboarding>` como filho em vez de
