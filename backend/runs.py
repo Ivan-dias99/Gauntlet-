@@ -23,6 +23,7 @@ logger = logging.getLogger("gauntlet.runs")
 
 RUNS_FILE: Path = MEMORY_DIR / "runs.json"
 MAX_RUNS: int = 2000
+MAX_RUNS_SNAPSHOTS: int = 10
 
 
 class RunStore:
@@ -136,16 +137,48 @@ class RunStore:
             "last_updated": self._log.last_updated,
         }
 
+    def _snapshot_dir(self) -> Path:
+        return RUNS_FILE.parent / "runs_snapshots"
+
+    async def _snapshot_current(self, label: str) -> Optional[Path]:
+        """Atomic write of the current ledger to a timestamped sidecar
+        BEFORE a destructive mutation. Returns the snapshot path on
+        success (None on failure — never blocks the caller). Older
+        snapshots beyond MAX_RUNS_SNAPSHOTS are pruned chronologically."""
+        snap_dir = self._snapshot_dir()
+        try:
+            snap_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("runs.snapshot_dir_failed: %s", e)
+            return None
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        snap_path = snap_dir / f"runs-before-{label}-{ts}.json"
+        try:
+            await atomic_write_text_async(
+                snap_path, self._log.model_dump_json(indent=2)
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("runs.snapshot_failed: %s", e)
+            return None
+        try:
+            existing = sorted(snap_dir.glob("runs-before-*.json"))
+            for stale in existing[:-MAX_RUNS_SNAPSHOTS]:
+                stale.unlink(missing_ok=True)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("runs.snapshot_prune_failed: %s", e)
+        return snap_path
+
     async def clear_since(self, hours_ago: int) -> dict:
         """Drop runs whose timestamp falls within the last `hours_ago`
-        hours. Returns the count removed + remaining. Used by the
-        Settings page "danger zone" to wipe a noisy testing window
-        without nuking the whole ledger."""
+        hours. Snapshots the full ledger to a sidecar before mutation
+        so the operator can recover if the wrong window was nuked.
+        Returns the count removed + remaining + snapshot path."""
         await self._ensure_loaded()
         if hours_ago <= 0:
-            return {"removed": 0, "remaining": len(self._log.records)}
+            return {"removed": 0, "remaining": len(self._log.records), "snapshot": None}
         cutoff = datetime.now(timezone.utc).timestamp() - (hours_ago * 3600)
         async with self._lock:
+            snap = await self._snapshot_current(f"clear-{hours_ago}h")
             kept: list[RunRecord] = []
             removed = 0
             for r in self._log.records:
@@ -167,7 +200,11 @@ class RunStore:
             except Exception as e:  # noqa: BLE001
                 self._last_save_error = f"{type(e).__name__}: {e}"
                 logger.error("Failed to save run log after clear: %s", e)
-        return {"removed": removed, "remaining": len(self._log.records)}
+        return {
+            "removed": removed,
+            "remaining": len(self._log.records),
+            "snapshot": str(snap) if snap else None,
+        }
 
 
 # Module-level singleton

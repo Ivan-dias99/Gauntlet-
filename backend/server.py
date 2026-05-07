@@ -714,13 +714,14 @@ async def forget_all_memory(payload: DangerConfirmation):
     """Drop every memory record (notes, decisions, canon, preferences,
     failure_patterns). Failure memory (failure_memory.json) is wiped via
     the existing /memory/clear endpoint — this one targets the operator-
-    facing memory_records.json store. Requires `confirm: true`."""
+    facing memory_records.json store. Snapshots first; sidecar path
+    returned so the operator can recover from a misclick."""
     if not payload.confirm:
         return {"forgotten": False, "message": "Confirmation required (confirm=true)"}
     from memory_records import memory_records_store
 
-    removed = await memory_records_store.forget_all()
-    return {"forgotten": True, "removed": removed}
+    result = await memory_records_store.forget_all()
+    return {"forgotten": True, **result}
 
 
 @app.post("/permissions/revoke_all")

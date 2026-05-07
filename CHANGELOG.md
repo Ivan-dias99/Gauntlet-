@@ -7,6 +7,35 @@ project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+- **Snapshot-before-destroy** for both `/ledger/clear` and
+  `/memory/forget_all`. Each call writes a timestamped sidecar
+  (`runs-before-clear-{Nh}-{ts}.json` /
+  `memory-before-forget-all-{ts}.json`) before mutating, returns the
+  path in the response, and prunes after `MAX_*_SNAPSHOTS=10`. Settings
+  page can now surface the recovery path verbatim.
+- **Tray health indicator** — desktop spawns an async TCP probe to
+  `127.0.0.1:3002` every 5s and updates the tray tooltip
+  ("backend conectado" / "backend offline"). Pure stdlib; no reqwest.
+- **i18n catalogue (Rust)** — Tauri tray + health strings localised
+  via `GAUNTLET_LOCALE` (`pt` default, `en` available). Mirrors the
+  control-center's `Lang` switch.
+- **`test_engine_init.py`** — five pytest cases covering provider
+  selection precedence (mock > Anthropic > Groq > Gemini > error).
+- **Desktop smoke tests** — `apps/desktop/src-tauri/tests/smoke.rs`
+  exercises clamp + anchor + locale catalogue without a webview.
+  Wired into CI.
+- **E2E scaffold** — `apps/desktop/tests/e2e/README.md` documents the
+  `tauri-driver` setup pattern for when behaviour-level regressions
+  start slipping past smoke.
+
+### Changed
+- README updated to drop the compat-window section, reflect
+  `1.0.0-rc.1` status, document the new Tauri layout (cápsula + pill
+  windows), and surface the release / signing story.
+- CI matrix gained `desktop-smoke` (cargo test) + `pytest -q` for the
+  backend.
+
 ## [1.0.0-rc.1] — 2026-05-07
 
 First release candidate. The cápsula now matches the doctrine 1:1 across

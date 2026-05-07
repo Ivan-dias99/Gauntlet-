@@ -75,6 +75,45 @@ pub struct ShellResult {
 /// struct.
 static BACKEND_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
 
+/// Tray + health-probe localised strings. Read at boot from
+/// `GAUNTLET_LOCALE` (defaults to "pt"). Mirrors the operator-facing
+/// vocabulary of the control-center i18n catalogue: "pt" is the
+/// canonical voice, "en" is the polite-shell fallback.
+struct Strings {
+    tray_toggle: &'static str,
+    tray_pill: &'static str,
+    tray_quit: &'static str,
+    health_ok: &'static str,
+    health_off: &'static str,
+}
+
+const STRINGS_PT: Strings = Strings {
+    tray_toggle: "Mostrar/Esconder cápsula",
+    tray_pill: "Mostrar/Esconder pill",
+    tray_quit: "Sair do Gauntlet",
+    health_ok: "Gauntlet — backend conectado",
+    health_off: "Gauntlet — backend offline",
+};
+
+const STRINGS_EN: Strings = Strings {
+    tray_toggle: "Show / hide capsule",
+    tray_pill: "Show / hide pill",
+    tray_quit: "Quit Gauntlet",
+    health_ok: "Gauntlet — backend connected",
+    health_off: "Gauntlet — backend offline",
+};
+
+fn strings() -> &'static Strings {
+    match std::env::var("GAUNTLET_LOCALE")
+        .unwrap_or_default()
+        .to_lowercase()
+        .as_str()
+    {
+        "en" | "en-us" | "en-gb" => &STRINGS_EN,
+        _ => &STRINGS_PT,
+    }
+}
+
 #[tauri::command]
 fn get_active_window() -> Result<WindowInfo, String> {
     #[cfg(target_os = "macos")]
@@ -854,24 +893,25 @@ pub fn run() {
             // re-summon with one click instead of digging through Alt-Tab.
             // Two menu items: toggle (mirrors the global shortcut) and
             // quit. Left-click on the icon also toggles the window.
+            let s = strings();
             let toggle_item = MenuItem::with_id(
                 app,
                 "tray-toggle",
-                "Mostrar/Esconder cápsula",
+                s.tray_toggle,
                 true,
                 None::<&str>,
             )?;
             let pill_item = MenuItem::with_id(
                 app,
                 "tray-pill",
-                "Mostrar/Esconder pill",
+                s.tray_pill,
                 true,
                 None::<&str>,
             )?;
             let quit_item = MenuItem::with_id(
                 app,
                 "tray-quit",
-                "Sair do Gauntlet",
+                s.tray_quit,
                 true,
                 None::<&str>,
             )?;
@@ -934,6 +974,38 @@ pub fn run() {
                 let _ = position_pill_at_default(app.handle(), &pill);
                 let _ = pill.show();
             }
+
+            // Background health probe — every 5s we open a TCP socket
+            // to 127.0.0.1:3002 (default backend port). When it answers
+            // the tray tooltip says "backend conectado"; on failure it
+            // says "backend offline". Operator sees the state without
+            // opening the cápsula. Pure stdlib — no reqwest dep just
+            // for a connect() probe. Backend autostart already covers
+            // boot races; this just reports.
+            let probe_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                use std::net::{SocketAddr, TcpStream};
+                use std::time::Duration;
+                let target: SocketAddr = "127.0.0.1:3002".parse().expect("valid addr");
+                let mut last_state: Option<bool> = None;
+                loop {
+                    let healthy = tokio::task::spawn_blocking(move || {
+                        TcpStream::connect_timeout(&target, Duration::from_millis(800)).is_ok()
+                    })
+                    .await
+                    .unwrap_or(false);
+                    if last_state != Some(healthy) {
+                        if let Some(tray) = probe_handle.tray_by_id("gauntlet-tray") {
+                            let s = strings();
+                            let label = if healthy { s.health_ok } else { s.health_off };
+                            let _ = tray.set_tooltip(Some(label));
+                        }
+                        last_state = Some(healthy);
+                    }
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
+            });
+
             Ok(())
         })
         .on_window_event(|_window, event| {

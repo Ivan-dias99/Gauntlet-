@@ -92,10 +92,21 @@ apps/browser-extension/      WXT + Manifest V3 — web shell
   entrypoints/content.tsx    injects shadow-DOM host
   entrypoints/background.ts  service worker (chrome.commands listener)
 
-apps/desktop/                Tauri 2 — desktop shell
+apps/desktop/                Tauri 2 — desktop shell (two windows: cápsula + pill)
+  index.html                 capsule entry (main window, decoration-less, transparent)
+  pill.html                  pill entry (small bottom-right surface)
   src/App.tsx                mounts the same @gauntlet/composer Capsule
-  src/ambient.ts             createDesktopAmbient — Tauri adapters
-  src/adapters/tauri.ts      clipboard, window title, global shortcut
+  src/PillApp.tsx            slim pill component (click → show_capsule)
+  src/main.tsx · pill-main.tsx  React entries per window
+  src/ambient.ts             createDesktopAmbient — Tauri adapters + SSE stream
+  src/adapters/tauri.ts      clipboard, window title, global shortcut, updater
+  src-tauri/                 Rust binary
+    src/lib.rs               commands: show_capsule, hide_capsule,
+                             show_pill, hide_pill, move_window_to_cursor,
+                             run_shell (allowlisted), backend_health probe
+    tests/smoke.rs           pure-helper unit tests (no webview)
+    tauri.conf.json          window flags + updater endpoint config
+    capabilities/default.json  granular Tauri 2 permissions
 
 control-center/              React + Vite — a garagem (operator console)
   main.tsx · App.tsx · router.tsx
@@ -103,9 +114,10 @@ control-center/              React + Vite — a garagem (operator console)
                              Memory · Ledger · Composer
   spine/                     workspace state
   hooks/                     useBackendStatus, useGitStatus
-  lib/                       gauntletApi (canonical) + legacy shims
+  lib/                       signalApi.ts (canonical client; rename pending)
   design/                    typed token graph
   styles/tokens.css          design tokens
+  i18n/copy.ts               PT/EN catalogue (Lang in TweaksContext)
 
 backend/                     FastAPI — o maestro
   server.py                  HTTP endpoints
@@ -200,24 +212,25 @@ rotas Composer automaticamente:
 
 ## Deploy
 
-- **Control Center frontend** → Vercel. `api/gauntlet.ts` corre na edge e
-  faz forward `/api/gauntlet/*` para `$GAUNTLET_BACKEND_URL`.
-  `api/signal.ts` e `api/ruberra.ts` ficam como aliases legacy durante o
-  compat window.
-- **Backend** → Railway / Fly / Render / VM. Set `GAUNTLET_BACKEND_URL` no
-  Vercel a apontar para o URL público do backend.
-- **Browser extension** → `wxt build`, distribuído via `.zip`.
+- **Control Center frontend** → Vercel. `api/gauntlet.ts` corre na edge
+  e forwarda `/api/gauntlet/*` para `$GAUNTLET_BACKEND_URL`.
+- **Backend** → Railway / Fly / Render / VM. Set `GAUNTLET_BACKEND_URL`
+  no Vercel a apontar para o URL público do backend.
+- **Browser extension** → `npm run zip` em `apps/browser-extension/`
+  produz `.output/*.zip` para o Chrome Web Store. `npm run zip:firefox`
+  produz a build XPI.
+- **Desktop** → `npm run tauri:build` em `apps/desktop/` produz
+  installers nativos (`.msi`, `.dmg`, `.AppImage`, `.deb`). O CI
+  `.github/workflows/release.yml` corre em push de tag `v*` e anexa
+  todos os artefactos ao GitHub release. Assinatura via
+  `TAURI_SIGNING_PRIVATE_KEY` (GitHub Secret).
 
-## Compat window legacy
+## Releases
 
-A migração mantém o que estava vivo:
+Versão actual: **`1.0.0-rc.1`** (ver `CHANGELOG.md`). O compat window
+SIGNAL_/RUBERRA_ foi fechado. A surface canónica é exclusivamente
+`/api/gauntlet/*` + `GAUNTLET_*`.
 
-- `/api/signal/*` e `/api/ruberra/*` ainda routeiam ao lado de `/api/gauntlet/*`
-- `SIGNAL_*` e `RUBERRA_*` env vars ainda são lidas como fallback de
-  `GAUNTLET_*`
-- `signalApi`/`ruberraApi` shims em `control-center/lib/` continuam a
-  re-exportar a surface canónica
-
-Estes shims caem quando um smoke deployed confirmar paridade.
+Antes de tagar `v1.0.0`: caminhar pelo `docs/SECURITY_AUDIT.md`.
 
 Detalhes operacionais em `docs/OPERATIONS.md`.

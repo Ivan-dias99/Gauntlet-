@@ -31,6 +31,7 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
+      - run: pip install pytest pytest-asyncio
       # Syntax + import check without starting the server or hitting any provider.
       - run: python -m compileall -q .
       - env:
@@ -49,3 +50,23 @@ jobs:
               importlib.import_module(mod)
           print(f'all {len(mods)} modules import cleanly')
           "
+      - env:
+          GAUNTLET_MOCK: "1"
+          GAUNTLET_RATE_LIMIT_DISABLED: "1"
+        run: pytest -q
+
+  desktop-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - name: install linux deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - name: cargo test (smoke helpers)
+        working-directory: apps/desktop/src-tauri
+        run: cargo test --tests

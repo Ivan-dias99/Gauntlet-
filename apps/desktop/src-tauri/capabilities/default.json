@@ -24,6 +24,8 @@
     "notification:allow-request-permission",
     "updater:default",
     "updater:allow-check",
-    "updater:allow-download-and-install"
+    "updater:allow-download-and-install",
+    "core:tray:default",
+    "core:tray:allow-set-tooltip"
   ]
 }
