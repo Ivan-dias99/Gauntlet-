@@ -697,3 +697,60 @@ def test_voice_synthesize_422_on_empty_text(fresh_app: TestClient):
     from a downstream surprise."""
     r = fresh_app.post("/voice/synthesize", json={"text": ""})
     assert r.status_code == 422
+
+
+# ── Streaming gate — Groq/Gemini providers don't expose .stream() ──────────
+
+def test_provider_supports_streaming_predicate():
+    """Anthropic + mock pass; everything else (Groq, Gemini, future
+    providers) fails. Detection by class name keeps the predicate
+    cheap and import-free."""
+    from types import SimpleNamespace
+    from composer import _provider_supports_streaming
+
+    for cls_name in ("AsyncAnthropic", "MockAsyncAnthropic"):
+        cls = type(cls_name, (), {})
+        engine = SimpleNamespace(_client=cls())
+        assert _provider_supports_streaming(engine), cls_name
+
+    for cls_name in (
+        "AsyncGroqAnthropicAdapter",
+        "AsyncGeminiAnthropicAdapter",
+        "AsyncSomeFutureProvider",
+    ):
+        cls = type(cls_name, (), {})
+        engine = SimpleNamespace(_client=cls())
+        assert not _provider_supports_streaming(engine), cls_name
+
+
+def test_dom_plan_stream_501_on_non_anthropic_provider(fresh_app: TestClient, monkeypatch):
+    """When the engine runs on Groq or Gemini, /dom_plan_stream must
+    refuse with 501 BEFORE opening SSE. Otherwise the cápsula sees a
+    cryptic AttributeError mid-stream and the operator gets a useless
+    error band."""
+    # Capture a real context id first so the route doesn't bail on 410.
+    r = fresh_app.post(
+        "/composer/context",
+        json={"source": "browser", "url": "https://x.com"},
+    )
+    assert r.status_code == 200
+    ctx_id = r.json()["context_id"]
+
+    # Swap the engine's _client class name to look like a Groq adapter.
+    # Fresh_app's engine is mock (passes); we need to force the negative.
+    import server
+    real_client = server.engine._client
+    masked = type("AsyncGroqAnthropicAdapter", (), {})
+    server.engine._client = masked()
+    try:
+        r = fresh_app.post(
+            "/composer/dom_plan_stream",
+            json={"context_id": ctx_id, "user_input": "oi"},
+        )
+        assert r.status_code == 501, r.text
+        body = r.json()["detail"]
+        assert body["error"] == "streaming_not_supported"
+        assert body["reason"] == "provider_no_stream"
+        assert body["provider"] == "AsyncGroqAnthropicAdapter"
+    finally:
+        server.engine._client = real_client

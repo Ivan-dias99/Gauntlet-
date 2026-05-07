@@ -637,6 +637,18 @@ def _provider_supports_images(engine) -> bool:
     return cls in ("AsyncAnthropic", "MockAsyncAnthropic")
 
 
+def _provider_supports_streaming(engine) -> bool:
+    """True only when the underlying SDK client exposes the Anthropic
+    streaming surface (messages.stream). Groq and Gemini adapters
+    implement messages.create only — opening a stream against them
+    raises AttributeError mid-flight and burns the operator with a
+    cryptic error event. Detect up-front so /dom_plan_stream can
+    refuse cleanly and the cápsula falls back to /dom_plan immediately
+    instead of waiting for the SSE error."""
+    cls = type(engine._client).__name__
+    return cls in ("AsyncAnthropic", "MockAsyncAnthropic")
+
+
 async def _build_user_messages(
     ctx: ContextPackage, user_input: str, engine=None,
 ) -> list[dict]:
@@ -959,6 +971,26 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
     domain_blocked = not domain_policy.allowed
 
     engine = _get_engine()
+    if not _provider_supports_streaming(engine):
+        # Refuse cleanly before opening SSE. The cápsula recognises the
+        # 501 envelope and falls back to /composer/dom_plan immediately,
+        # which the Groq/Gemini adapters DO implement. Without this gate
+        # we'd open the stream, the first chunk would AttributeError on
+        # `messages.stream`, and the operator sees a cryptic error.
+        provider = type(engine._client).__name__
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail={
+                "error": "streaming_not_supported",
+                "reason": "provider_no_stream",
+                "provider": provider,
+                "message": (
+                    f"{provider} does not implement messages.stream. "
+                    "Use /composer/dom_plan instead."
+                ),
+            },
+        )
+
     choice = gateway.select("default")
     model_id = choice.model_id
 
