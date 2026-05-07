@@ -41,6 +41,7 @@ const CAPABILITIES: AmbientCapabilities = {
   filesystemWrite: false, // see filesystemRead — file:// writes belong to desktop
   screenCapture: false, // chrome.tabs.captureVisibleTab handles the viewport
   remoteVoice: true, // backend offers /voice/transcribe; Web Speech remains fallback
+  shellExecute: false, // <all_urls> is for HTTP, not bash
 };
 
 interface BackgroundFetchResponse {

@@ -57,6 +57,14 @@ pub struct ScreenCapture {
     pub path: String,
 }
 
+#[derive(Serialize, Clone, Debug)]
+pub struct ShellResult {
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_code: Option<i32>,
+    pub duration_ms: u64,
+}
+
 /// Backend child handle — global because lifetime is process-wide and
 /// only one autostarted backend is ever supported. Mutex over Option
 /// lets start_backend / stop_backend coordinate without a custom state
@@ -460,6 +468,95 @@ fn guess_mime(path: &std::path::Path, bytes: &[u8]) -> String {
     }
 }
 
+// A3 — operator-driven shell execution. Two layers of safety:
+//
+//   1. Env gate. `GAUNTLET_ALLOW_CODE_EXEC` must be exactly "1" or
+//      "true" (case-insensitive) — same gate the backend already uses
+//      for run_command in tools.py. No way to flip it from the JS side.
+//   2. Binary allowlist. Even with the env on, only a curated set of
+//      binaries can run. Anything else gets rejected before spawn.
+//
+// We do NOT pipe stdin and we cap output at 256 KB per stream so a
+// runaway command can't blow the cápsula's memory.
+const SHELL_ALLOWLIST: &[&str] = &[
+    "git", "ls", "dir", "pwd", "cat", "echo", "head", "tail",
+    "node", "npm", "npx", "python", "python3", "pip", "pip3",
+    "ps", "whoami", "uname", "hostname", "date", "df", "du",
+    "wc", "grep", "find", "which", "where", "rg",
+];
+const SHELL_OUTPUT_CAP: usize = 256 * 1024;
+
+#[tauri::command]
+fn run_shell(
+    cmd: String,
+    args: Option<Vec<String>>,
+    cwd: Option<String>,
+) -> Result<ShellResult, String> {
+    let env_gate = std::env::var("GAUNTLET_ALLOW_CODE_EXEC")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    if !env_gate {
+        return Err(
+            "shell execution disabled — set GAUNTLET_ALLOW_CODE_EXEC=1 to opt in".into(),
+        );
+    }
+    let cmd_trimmed = cmd.trim();
+    if cmd_trimmed.is_empty() {
+        return Err("empty command".into());
+    }
+    // Reject any path-shaped command — allowlist is by basename only.
+    if cmd_trimmed.contains('/') || cmd_trimmed.contains('\\') {
+        return Err(format!(
+            "{cmd_trimmed} is path-shaped — allowlist matches by basename only"
+        ));
+    }
+    let lower = cmd_trimmed.to_ascii_lowercase();
+    let is_allowed = SHELL_ALLOWLIST
+        .iter()
+        .any(|allowed| lower == *allowed || lower == format!("{allowed}.exe"));
+    if !is_allowed {
+        return Err(format!(
+            "{cmd_trimmed} is not in the shell allowlist ({} entries) — see SHELL_ALLOWLIST in src-tauri/src/lib.rs",
+            SHELL_ALLOWLIST.len()
+        ));
+    }
+
+    let started = std::time::Instant::now();
+    let mut command = Command::new(cmd_trimmed);
+    if let Some(args) = args {
+        command.args(args);
+    }
+    if let Some(cwd) = cwd.as_deref() {
+        if !cwd.is_empty() {
+            command.current_dir(cwd);
+        }
+    }
+    let output = command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|e| format!("spawn {cmd_trimmed}: {e}"))?;
+
+    let mut stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let mut stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    if stdout.len() > SHELL_OUTPUT_CAP {
+        stdout.truncate(SHELL_OUTPUT_CAP);
+        stdout.push_str("\n[gauntlet:truncated]");
+    }
+    if stderr.len() > SHELL_OUTPUT_CAP {
+        stderr.truncate(SHELL_OUTPUT_CAP);
+        stderr.push_str("\n[gauntlet:truncated]");
+    }
+
+    Ok(ShellResult {
+        stdout,
+        stderr,
+        exit_code: output.status.code(),
+        duration_ms: started.elapsed().as_millis() as u64,
+    })
+}
+
 // Full-screen capture (non-interactive). Sibling to capture_screen_region
 // — that one prompts the operator to drag-select; this one shoots the
 // primary display straight to a temp file and returns base64 + path so
@@ -588,6 +685,7 @@ pub fn run() {
             read_file_base64_at,
             write_text_file_at,
             write_file_base64_at,
+            run_shell,
             start_backend,
             stop_backend,
         ])

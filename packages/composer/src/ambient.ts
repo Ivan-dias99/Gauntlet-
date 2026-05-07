@@ -56,6 +56,11 @@ export interface AmbientCapabilities {
   // Whisper) instead of relying on Web Speech API? Both shells should
   // be true when the backend has GROQ_API_KEY; we read it once at boot.
   readonly remoteVoice: boolean;
+  // Can the cápsula run shell commands locally? Desktop only, and
+  // even there it's gated by `GAUNTLET_ALLOW_CODE_EXEC=1` env at
+  // launch + a binary allowlist enforced Rust-side. Browsers never
+  // get this — `<all_urls>` is for web origins, not bash.
+  readonly shellExecute: boolean;
 }
 
 // Transport — single-shot JSON for /composer/* and (optional) SSE for
@@ -140,6 +145,25 @@ export interface AmbientFilesystem {
   writeFileBase64?(path: string, base64: string): Promise<number>;
 }
 
+// Shell — operator-driven command execution. The desktop shell wires
+// this to a Rust command that double-gates: env var `GAUNTLET_ALLOW_CODE_EXEC=1`
+// AND a binary allowlist. We do NOT pipe stdin; output is capped at
+// 256 KB per stream so a runaway command can't exhaust the cápsula.
+export interface AmbientShellResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  durationMs: number;
+}
+
+export interface AmbientShell {
+  run(
+    cmd: string,
+    args?: string[],
+    cwd?: string,
+  ): Promise<AmbientShellResult>;
+}
+
 // Selection — synchronous "what is the user pointing at right now".
 // Browser reads window.getSelection() + bbox; desktop reads clipboard
 // + active window title and packs it into the same snapshot shape so
@@ -166,5 +190,6 @@ export interface Ambient {
   readonly domActions?: AmbientDomActions;
   readonly screenshot?: AmbientScreenshot;
   readonly filesystem?: AmbientFilesystem;
+  readonly shellExec?: AmbientShell;
   readonly debug?: AmbientDebug;
 }

@@ -757,6 +757,55 @@ export function Capsule({
   // default the extension to .md since the cápsula's compose tends to
   // be markdown. The operator can change either in the dialog.
   const [savedToDiskFlash, setSavedToDiskFlash] = useState<string | null>(null);
+
+  // A3 — operator-driven shell. Toggle a compact panel below the
+  // textarea; operator types one command, hits run, sees output. The
+  // backend agent loop doesn't yet emit shell tool calls (A3+); this
+  // is the manual surface so the capability is at least exercisable.
+  const [shellPanelOpen, setShellPanelOpen] = useState(false);
+  const [shellCommand, setShellCommand] = useState('');
+  const [shellResult, setShellResult] = useState<{
+    cmd: string;
+    stdout: string;
+    stderr: string;
+    exitCode: number | null;
+    durationMs: number;
+  } | null>(null);
+  const [shellRunning, setShellRunning] = useState(false);
+  const runShellCommand = useCallback(async () => {
+    const sh = ambient.shellExec;
+    if (!sh) return;
+    const trimmed = shellCommand.trim();
+    if (!trimmed) return;
+    // Parse first token as binary, rest as args. Quotes are NOT
+    // honoured — this is intentionally simple. The Rust side enforces
+    // allowlist by basename, so quoted paths wouldn't help anyway.
+    const parts = trimmed.split(/\s+/);
+    const cmd = parts[0];
+    const args = parts.slice(1);
+    setShellRunning(true);
+    setShellResult(null);
+    try {
+      const r = await sh.run(cmd, args);
+      setShellResult({
+        cmd: trimmed,
+        stdout: r.stdout,
+        stderr: r.stderr,
+        exitCode: r.exitCode,
+        durationMs: r.durationMs,
+      });
+    } catch (err) {
+      setShellResult({
+        cmd: trimmed,
+        stdout: '',
+        stderr: err instanceof Error ? err.message : String(err),
+        exitCode: null,
+        durationMs: 0,
+      });
+    } finally {
+      setShellRunning(false);
+    }
+  }, [ambient, shellCommand]);
   const saveComposeToDisk = useCallback(async () => {
     const fs = ambient.filesystem;
     if (!fs?.pickSavePath || !fs.writeTextFile) return;
@@ -1194,6 +1243,63 @@ export function Capsule({
                 {attachError}
               </div>
             )}
+            {shellPanelOpen && ambient.shellExec && (
+              <div className="gauntlet-capsule__shell-panel">
+                <div className="gauntlet-capsule__shell-row">
+                  <span className="gauntlet-capsule__shell-prompt" aria-hidden>$</span>
+                  <input
+                    type="text"
+                    className="gauntlet-capsule__shell-input"
+                    placeholder="git status — comandos da allowlist"
+                    value={shellCommand}
+                    onChange={(ev) => setShellCommand(ev.target.value)}
+                    onKeyDown={(ev) => {
+                      if (ev.key === 'Enter' && !ev.shiftKey) {
+                        ev.preventDefault();
+                        void runShellCommand();
+                      }
+                    }}
+                    disabled={shellRunning}
+                    spellCheck={false}
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    className="gauntlet-capsule__shell-run"
+                    onClick={() => void runShellCommand()}
+                    disabled={shellRunning || !shellCommand.trim()}
+                  >
+                    {shellRunning ? '…' : 'Executar'}
+                  </button>
+                </div>
+                {shellResult && (
+                  <div className="gauntlet-capsule__shell-output">
+                    <div className="gauntlet-capsule__shell-meta">
+                      <span className="gauntlet-capsule__shell-meta-cmd">
+                        $ {shellResult.cmd}
+                      </span>
+                      <span className="gauntlet-capsule__shell-meta-stat">
+                        {shellResult.exitCode === null
+                          ? 'erro'
+                          : `exit ${shellResult.exitCode}`}
+                        {' · '}
+                        {shellResult.durationMs} ms
+                      </span>
+                    </div>
+                    {shellResult.stdout && (
+                      <pre className="gauntlet-capsule__shell-stdout">
+                        {shellResult.stdout}
+                      </pre>
+                    )}
+                    {shellResult.stderr && (
+                      <pre className="gauntlet-capsule__shell-stderr">
+                        {shellResult.stderr}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <textarea
               ref={inputRef}
               className="gauntlet-capsule__input"
@@ -1249,6 +1355,30 @@ export function Capsule({
                     <circle cx="12" cy="11.5" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.6" />
                   </svg>
                   <span className="gauntlet-capsule__attach-label">ecrã</span>
+                </button>
+              )}
+              {ambient.capabilities.shellExecute && ambient.shellExec && (
+                <button
+                  type="button"
+                  className={`gauntlet-capsule__attach-btn${
+                    shellPanelOpen ? ' gauntlet-capsule__attach-btn--active' : ''
+                  }`}
+                  onClick={() => setShellPanelOpen((v) => !v)}
+                  aria-label="Shell rápida"
+                  title="Shell rápida (allowlist + GAUNTLET_ALLOW_CODE_EXEC)"
+                  aria-expanded={shellPanelOpen}
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
+                    <path
+                      d="M5 7l4 4-4 4M11 16h7"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="gauntlet-capsule__attach-label">shell</span>
                 </button>
               )}
               {(isVoiceSupported() ||
@@ -3835,6 +3965,116 @@ export const CAPSULE_CSS = `
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   letter-spacing: 0.04em;
+}
+
+/* Active state for the shell toggle button — highlights when the panel
+   is open so the operator knows which surface they're commanding. */
+.gauntlet-capsule__attach-btn--active {
+  background: var(--gx-tint-strong);
+  border-color: color-mix(in oklab, var(--gx-ember) 38%, var(--gx-border-mid));
+  color: var(--gx-fg);
+}
+
+/* Shell quick-run panel — collapsed by default, opens above the textarea
+   when the operator toggles the "shell" button. The output area scrolls
+   internally so a wall of git log doesn't push the cápsula off-screen. */
+.gauntlet-capsule__shell-panel {
+  margin: 0 0 8px;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 10px;
+  background: var(--gx-sunken);
+  padding: 8px;
+}
+.gauntlet-capsule__shell-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gauntlet-capsule__shell-prompt {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: var(--gx-ember);
+  width: 14px;
+  text-align: center;
+}
+.gauntlet-capsule__shell-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--gx-border);
+  border-radius: 6px;
+  background: var(--gx-surface);
+  color: var(--gx-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 160ms;
+}
+.gauntlet-capsule__shell-input:focus {
+  border-color: color-mix(in oklab, var(--gx-ember) 50%, var(--gx-border-mid));
+}
+.gauntlet-capsule__shell-run {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in oklab, var(--gx-ember) 40%, var(--gx-border-mid));
+  background: color-mix(in oklab, var(--gx-ember) 18%, var(--gx-surface));
+  color: var(--gx-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms, border-color 160ms;
+}
+.gauntlet-capsule__shell-run:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--gx-ember) 28%, var(--gx-surface));
+}
+.gauntlet-capsule__shell-run:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.gauntlet-capsule__shell-output {
+  margin-top: 8px;
+  border-top: 1px solid var(--gx-border);
+  padding-top: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+.gauntlet-capsule__shell-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: var(--gx-fg-muted);
+  margin-bottom: 4px;
+}
+.gauntlet-capsule__shell-meta-cmd {
+  color: var(--gx-fg-dim);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gauntlet-capsule__shell-stdout,
+.gauntlet-capsule__shell-stderr {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--gx-bg-solid);
+  border: 1px solid var(--gx-border);
+  border-radius: 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--gx-fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.gauntlet-capsule__shell-stderr {
+  border-color: color-mix(in oklab, var(--gx-danger-text) 30%, var(--gx-border));
+  color: var(--gx-danger-text);
+  margin-top: 6px;
 }
 
 .gauntlet-capsule__voice {

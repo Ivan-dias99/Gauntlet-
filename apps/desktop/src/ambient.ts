@@ -9,6 +9,7 @@ import {
   type Ambient,
   type AmbientCapabilities,
   type AmbientFilesystem,
+  type AmbientShell,
   type AmbientStorage,
   type SelectionSnapshot,
 } from "@gauntlet/composer";
@@ -20,6 +21,7 @@ import {
   pickSavePath,
   readFileBase64At,
   readTextFileAt,
+  runShell,
   writeFileBase64At,
   writeTextFileAt,
 } from "./adapters/tauri";
@@ -38,6 +40,7 @@ const CAPABILITIES: AmbientCapabilities = {
   filesystemWrite: true, // pick_save_path + write_*_at Tauri commands
   screenCapture: true, // capture_screen_full Tauri command
   remoteVoice: true, // backend can transcribe via /voice/transcribe
+  shellExecute: true, // run_shell Tauri command (env-gated + allowlisted)
 };
 
 // In-memory snapshot cache so the synchronous selection.read() can
@@ -157,6 +160,21 @@ export function createDesktopAmbient(): Ambient {
       },
     },
     filesystem: filesystem(),
+    shellExec: shellExec(),
+  };
+}
+
+function shellExec(): AmbientShell {
+  return {
+    async run(cmd, args, cwd) {
+      const r = await runShell(cmd, args, cwd);
+      return {
+        stdout: r.stdout,
+        stderr: r.stderr,
+        exitCode: r.exit_code,
+        durationMs: r.duration_ms,
+      };
+    },
   };
 }
 

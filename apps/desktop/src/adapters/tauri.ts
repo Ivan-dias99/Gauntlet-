@@ -190,6 +190,23 @@ export async function writeFileBase64At(
   return await invoke<number>("write_file_base64_at", { path, base64 });
 }
 
+// A3 — shell execute. The Rust side enforces both the env gate
+// (GAUNTLET_ALLOW_CODE_EXEC) and the binary allowlist; we just relay.
+export interface ShellResult {
+  stdout: string;
+  stderr: string;
+  exit_code: number | null;
+  duration_ms: number;
+}
+
+export async function runShell(
+  cmd: string,
+  args?: string[],
+  cwd?: string,
+): Promise<ShellResult> {
+  return await invoke<ShellResult>("run_shell", { cmd, args, cwd });
+}
+
 // Backend autostart — opt-in via env var checked Rust-side. Returns
 // the start error verbatim when the env isn't enabled OR the spawn
 // failed; caller surfaces it as a regular cápsula error band.
