@@ -154,10 +154,10 @@ export interface Copy {
   surfaceStudioDsBlockedHint: string;
   surfaceStudioRealBadge: string;
   surfaceStudioMockBadge: string;
-  // Wave 5: typed Surface error codes from backend agent.py /
-  // chambers/surface.py. Localized so the user sees a chamber-tone
-  // message instead of the raw English envelope. Anything outside
-  // this map falls back to the raw `message` field.
+  // Typed Surface error codes from backend agent.py. Localized so
+  // the user sees a localized message instead of the raw English
+  // envelope. Anything outside this map falls back to the raw
+  // `message` field.
   surfaceErrDesignSystemRequired: string;
   surfaceErrProvider: string;
   surfaceErrNoToolUse: string;
@@ -239,8 +239,6 @@ export interface Copy {
   // Read-only mirror of system state (Wave 5; editability lands Wave 7).
   coreWbLabel: string;
   coreWbStatusReadOnly: string;
-  coreWbChambersLabel: string;
-  coreWbChambersBody: string;
   coreWbToolsLabel: string;
   coreWbToolsBody: string;
   coreWbDoctrineLabel: string;
@@ -602,8 +600,6 @@ const PT: Copy = {
   insightWbValueIdle: "—",
   coreWbLabel: "CORE",
   coreWbStatusReadOnly: "governance read-only · edição chega em Wave 7",
-  coreWbChambersLabel: "chambers",
-  coreWbChambersBody: "Câmaras registadas: Insight, Surface, Terminal, Archive, Core. Cinco modos cognitivos, cinco perfis em chambers/profiles.py.",
   coreWbToolsLabel: "tools",
   coreWbToolsBody: "Allowlist do Terminal (read_file, list_directory, run_command, execute_python, git, web_fetch, web_search). Outras chambers herdam tuple vazia — triad-only path.",
   coreWbDoctrineLabel: "doctrine",
@@ -959,8 +955,6 @@ const EN: Copy = {
   insightWbValueIdle: "—",
   coreWbLabel: "CORE",
   coreWbStatusReadOnly: "governance read-only · editing lands in Wave 7",
-  coreWbChambersLabel: "chambers",
-  coreWbChambersBody: "Registered chambers: Insight, Surface, Terminal, Archive, Core. Five cognitive modes, five profiles in chambers/profiles.py.",
   coreWbToolsLabel: "tools",
   coreWbToolsBody: "Terminal allowlist (read_file, list_directory, run_command, execute_python, git, web_fetch, web_search). Other chambers inherit an empty tuple — triad-only path.",
   coreWbDoctrineLabel: "doctrine",
