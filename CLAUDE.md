@@ -89,10 +89,16 @@ Quando avaliares qualquer mudança, passa-a pelas três lentes:
 1. **Filosofia "ponta do cursor".** A mudança aproxima o utilizador do fluxo
    `apontar → pedir → executar`, ou afasta? Janelas grandes, cliques extra e
    contexto-fora-de-cursor são red flags.
-2. **Composer mínimo, backend gordo.** Lógica nova pertence ao backend
-   (FastAPI). O Composer só apresenta. Se uma feature nova pede UI complexa
-   na cápsula, repensar. Mudança ao Composer entra em `packages/composer/`,
-   não num shell — caso contrário voltamos a ter dois Composers.
+2. **Composer denso, backend gordo.** ⚠️ Doutrina actualizada 2026-05-07.
+   O Composer **deixou de ser "mínimo"**. Passa a ser **denso, viciante,
+   sofisticado** — o sítio onde o utilizador **não quer sair**. Tem todos os
+   connectores, plugins, tools, commands, skills embutidos: inteligência na
+   ponta do dedo. Backend continua gordo (model routing, tools server-side,
+   memória, segurança); composer é a interface densa que expõe tudo isso
+   na ponta do cursor — paridade com IDEs AI-nativas e sandboxes soberanas.
+   Mudança ao Composer entra em `packages/composer/`, **uma só implementação
+   partilhada por todos os shells (browser-extension + desktop)**. Divergência
+   visual ou funcional entre shells é regressão.
 3. **Multimodelo via gateway.** Qualquer chamada a LLM passa pelo
    `model_gateway`. Frontend nunca chama Anthropic/Gemini/OpenAI direto.
 

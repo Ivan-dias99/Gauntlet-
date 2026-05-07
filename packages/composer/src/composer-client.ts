@@ -22,19 +22,28 @@ import {
 } from './types';
 
 // Production backend (Railway). Build-time override via VITE_BACKEND_URL.
+// In dev mode (vite serve / tauri dev / wxt dev), default to the local
+// FastAPI on 127.0.0.1:3002 so smoke tests work without explicit env.
 const PRODUCTION_BACKEND =
   'https://ruberra-backend-jkpf-production.up.railway.app';
+const DEV_BACKEND = 'http://127.0.0.1:3002';
 
-const BUILD_TIME_BACKEND: string | undefined =
+const VITE_ENV =
   typeof import.meta !== 'undefined'
-    ? (import.meta as { env?: Record<string, string | undefined> }).env
-        ?.VITE_BACKEND_URL
+    ? (import.meta as { env?: Record<string, string | undefined | boolean> })
+        .env
     : undefined;
 
-const DEFAULT_BACKEND = (BUILD_TIME_BACKEND ?? PRODUCTION_BACKEND).replace(
-  /\/+$/,
-  '',
-);
+const BUILD_TIME_BACKEND: string | undefined =
+  typeof VITE_ENV?.VITE_BACKEND_URL === 'string'
+    ? (VITE_ENV.VITE_BACKEND_URL as string)
+    : undefined;
+
+const IS_DEV = Boolean(VITE_ENV?.DEV);
+
+const DEFAULT_BACKEND = (
+  BUILD_TIME_BACKEND ?? (IS_DEV ? DEV_BACKEND : PRODUCTION_BACKEND)
+).replace(/\/+$/, '');
 
 export interface ComposerClientOptions {
   backendUrl?: string;

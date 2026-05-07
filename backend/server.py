@@ -209,10 +209,15 @@ _cors_kwargs: dict = {
 }
 # Chrome / Edge / Firefox extensions ship with a non-deterministic origin
 # (chrome-extension://<id>, moz-extension://<uuid>) so they cannot be
-# enumerated in ALLOWED_ORIGINS. Match them via regex so the cursor
-# capsule can reach the local backend without per-install configuration.
+# enumerated in ALLOWED_ORIGINS. Tauri 2 uses tauri://localhost on
+# Linux/macOS/iOS and http(s)://tauri.localhost on Windows for the same
+# reason. Match all of them via regex so cápsulas em qualquer shell
+# alcancem o backend sem configuração por-instalação.
 # When the operator already supplied a regex, OR ours into theirs.
-_extension_regex = r"^(chrome-extension|moz-extension|safari-web-extension):\/\/.+$"
+_extension_regex = (
+    r"^(chrome-extension|moz-extension|safari-web-extension|tauri):\/\/.+$"
+    r"|^https?:\/\/tauri\.localhost(:\d+)?$"
+)
 if ALLOWED_ORIGIN_REGEX:
     _cors_kwargs["allow_origin_regex"] = (
         f"({ALLOWED_ORIGIN_REGEX})|({_extension_regex})"

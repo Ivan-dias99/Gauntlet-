@@ -7,12 +7,26 @@ project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Changed
+- **Doutrina actualizada — Composer denso, backend gordo.** O composer
+  deixou de ser "mínimo" e passa a ser **denso, viciante, sofisticado**:
+  o sítio onde o utilizador não quer sair, com tools/skills/commands na
+  ponta do dedo. Backend continua gordo. Lente 2 do CLAUDE.md reescrita.
+
 ### Fixed
 - **Backend default port** changed from `8080` to `3002` so local dev
   matches the desktop Tauri CSP without exporting `GAUNTLET_PORT`.
   Production deploys on Railway/Vercel/Fly continue to pick up `PORT`
   from the platform, so this is a local-only convenience.
   (`backend/config.py`, `docs/OPERATIONS.md`)
+- **`Failed to fetch` em dev** — `composer-client.ts` defaultava para a
+  URL Railway antiga (`ruberra-backend-jkpf-...`) mesmo em vite/wxt/tauri
+  dev. Agora detecta `import.meta.env.DEV` e usa `http://127.0.0.1:3002`
+  como fallback. `VITE_BACKEND_URL` continua a sobrepor.
+- **CORS para Tauri** — `backend/server.py` regex aceitava apenas
+  `chrome-extension://`, `moz-extension://`, `safari-web-extension://`.
+  Cápsula desktop bloqueava porque Tauri 2 emite `tauri://localhost`
+  (Linux/Mac) ou `http://tauri.localhost` (Windows). Regex estendido.
 
 ### Added
 - **Snapshot-before-destroy** for both `/ledger/clear` and
