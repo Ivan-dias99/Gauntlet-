@@ -61,6 +61,11 @@ export interface AmbientCapabilities {
   // launch + a binary allowlist enforced Rust-side. Browsers never
   // get this — `<all_urls>` is for web origins, not bash.
   readonly shellExecute: boolean;
+  // Can the cápsula raise an OS-level notification? Desktop has the
+  // tauri-plugin-notification path; browser shells could fall back to
+  // the Notification API but we leave that for the in-page surface
+  // until A5 lights up the tray story.
+  readonly notifications: boolean;
 }
 
 // Transport — single-shot JSON for /composer/* and (optional) SSE for
@@ -164,6 +169,14 @@ export interface AmbientShell {
   ): Promise<AmbientShellResult>;
 }
 
+// Notifications — OS-level pop-up the operator sees even when the
+// cápsula's window is hidden (desktop) or the operator switched tabs
+// (browser, future). Returns true when the notification was shown,
+// false when permission was denied or the runtime declined.
+export interface AmbientNotifications {
+  notify(title: string, body: string): Promise<boolean>;
+}
+
 // Selection — synchronous "what is the user pointing at right now".
 // Browser reads window.getSelection() + bbox; desktop reads clipboard
 // + active window title and packs it into the same snapshot shape so
@@ -191,5 +204,6 @@ export interface Ambient {
   readonly screenshot?: AmbientScreenshot;
   readonly filesystem?: AmbientFilesystem;
   readonly shellExec?: AmbientShell;
+  readonly notifications?: AmbientNotifications;
   readonly debug?: AmbientDebug;
 }

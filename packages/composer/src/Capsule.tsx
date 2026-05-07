@@ -1327,6 +1327,15 @@ export function Capsule({
       window.dispatchEvent(
         new CustomEvent('gauntlet:execute-result', { detail: { ok: allOk } }),
       );
+      // A4 — OS notification. Only fires on shells that wired the
+      // capability (desktop today). The cápsula always shows its own
+      // executed banner; this is the "operator switched windows" path.
+      void ambient.notifications?.notify(
+        allOk ? 'Gauntlet — plano executado' : 'Gauntlet — plano com falhas',
+        allOk
+          ? `${results.length} ${results.length === 1 ? 'acção' : 'acções'} OK`
+          : `${results.filter((r) => !r.ok).length}/${results.length} falharam — revê na cápsula`,
+      );
       // Sprint 3 — execution row in the ledger. Per-action ok/error is
       // in `results`; status="executed" only means the executor ran,
       // not that every action succeeded. Sprint 4 — when

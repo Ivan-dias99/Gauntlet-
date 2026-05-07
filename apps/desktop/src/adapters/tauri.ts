@@ -14,6 +14,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { readText as readClipboardText } from "@tauri-apps/plugin-clipboard-manager";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from "@tauri-apps/plugin-notification";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export const DEFAULT_DESKTOP_SHORTCUT = "CommandOrControl+Shift+Space";
@@ -205,6 +210,30 @@ export async function runShell(
   cwd?: string,
 ): Promise<ShellResult> {
   return await invoke<ShellResult>("run_shell", { cmd, args, cwd });
+}
+
+// A4 — native OS notifications. The first call may prompt the operator
+// for permission (macOS) or pop a system bubble immediately (Windows /
+// Linux). We treat denial as fatal: return false so the cápsula can
+// fall back to its in-window flash. The capability flag is set to true
+// at ambient construction; only the runtime permission can downgrade.
+export async function notify(
+  title: string,
+  body: string,
+): Promise<boolean> {
+  try {
+    let granted = await isPermissionGranted();
+    if (!granted) {
+      const reply = await requestPermission();
+      granted = reply === "granted";
+    }
+    if (!granted) return false;
+    await sendNotification({ title, body });
+    return true;
+  } catch (err) {
+    console.warn("[gauntlet/desktop] notify failed:", err);
+    return false;
+  }
 }
 
 // Backend autostart — opt-in via env var checked Rust-side. Returns

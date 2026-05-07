@@ -42,6 +42,7 @@ const CAPABILITIES: AmbientCapabilities = {
   screenCapture: false, // chrome.tabs.captureVisibleTab handles the viewport
   remoteVoice: true, // backend offers /voice/transcribe; Web Speech remains fallback
   shellExecute: false, // <all_urls> is for HTTP, not bash
+  notifications: false, // future: chrome.notifications when we surface a tray story
 };
 
 interface BackgroundFetchResponse {

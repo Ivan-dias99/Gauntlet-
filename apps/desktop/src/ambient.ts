@@ -9,6 +9,7 @@ import {
   type Ambient,
   type AmbientCapabilities,
   type AmbientFilesystem,
+  type AmbientNotifications,
   type AmbientShell,
   type AmbientStorage,
   type SelectionSnapshot,
@@ -17,6 +18,7 @@ import {
   captureContextSnapshot,
   captureScreenFull,
   captureScreenRegion,
+  notify,
   pickFile,
   pickSavePath,
   readFileBase64At,
@@ -41,6 +43,7 @@ const CAPABILITIES: AmbientCapabilities = {
   screenCapture: true, // capture_screen_full Tauri command
   remoteVoice: true, // backend can transcribe via /voice/transcribe
   shellExecute: true, // run_shell Tauri command (env-gated + allowlisted)
+  notifications: true, // tauri-plugin-notification (OS popup)
 };
 
 // In-memory snapshot cache so the synchronous selection.read() can
@@ -161,6 +164,15 @@ export function createDesktopAmbient(): Ambient {
     },
     filesystem: filesystem(),
     shellExec: shellExec(),
+    notifications: notifications(),
+  };
+}
+
+function notifications(): AmbientNotifications {
+  return {
+    async notify(title, body) {
+      return await notify(title, body);
+    },
   };
 }
 
