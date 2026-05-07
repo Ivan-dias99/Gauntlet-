@@ -24,7 +24,11 @@ use std::sync::Mutex;
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use serde::Serialize;
-use tauri::Manager;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Manager,
+};
 use tauri_plugin_dialog::DialogExt;
 
 // Caps for filesystem reads — anything bigger comes back as a head
@@ -652,6 +656,23 @@ fn capture_screen_full() -> Result<ScreenCapture, String> {
     })
 }
 
+// Shared toggle helper used by tray click + tray menu + the existing
+// global shortcut path (which lives in the JS adapter and calls
+// chrome.windows / Tauri's window APIs directly). Centralising the
+// "is the window currently visible?" check here means tray and
+// shortcut produce identical behaviour.
+fn toggle_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let visible = window.is_visible().unwrap_or(false);
+        if visible {
+            let _ = window.hide();
+        } else {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }
+}
+
 fn run_capture(bin: &str, args: &[&str]) -> Result<String, String> {
     let output = Command::new(bin)
         .args(args)
@@ -690,7 +711,54 @@ pub fn run() {
             start_backend,
             stop_backend,
         ])
-        .setup(|_app| {
+        .setup(|app| {
+            // A5 — system tray. The cápsula lives in the OS menu bar
+            // even when the window is hidden, so the operator can
+            // re-summon with one click instead of digging through Alt-Tab.
+            // Two menu items: toggle (mirrors the global shortcut) and
+            // quit. Left-click on the icon also toggles the window.
+            let toggle_item = MenuItem::with_id(
+                app,
+                "tray-toggle",
+                "Mostrar/Esconder cápsula",
+                true,
+                None::<&str>,
+            )?;
+            let quit_item = MenuItem::with_id(
+                app,
+                "tray-quit",
+                "Sair do Gauntlet",
+                true,
+                None::<&str>,
+            )?;
+            let tray_menu = Menu::with_items(app, &[&toggle_item, &quit_item])?;
+
+            let _tray = TrayIconBuilder::with_id("gauntlet-tray")
+                .icon(app.default_window_icon().cloned().ok_or_else(|| {
+                    tauri::Error::AssetNotFound("default window icon".to_string())
+                })?)
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "tray-toggle" => toggle_main_window(app),
+                    "tray-quit" => {
+                        let _ = stop_backend();
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        toggle_main_window(tray.app_handle());
+                    }
+                })
+                .build(app)?;
+
             // Best-effort autostart at app launch when the operator
             // opted in. Errors here are logged but never block the
             // window from showing — the cápsula keeps working with a
