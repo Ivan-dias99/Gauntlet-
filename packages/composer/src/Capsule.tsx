@@ -174,6 +174,14 @@ export function Capsule({
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
 
+  // B1 — slash commands inline. When the input starts with `/`, surface
+  // the same action set as the palette in an inline dropdown above the
+  // textarea. Faster than ⌘K for the keyboard-driven flow: type `/an<Enter>`
+  // and the file picker opens. State stays trivial — derived from
+  // userInput in the render — but slashIndex is its own state so arrow
+  // keys can move the highlight without re-running the filter.
+  const [slashIndex, setSlashIndex] = useState(0);
+
   // Danger assessment runs in-page (where document.querySelector resolves
   // against the live DOM) so each action gets per-element classification
   // — submit buttons, password inputs, "Delete" labels. Recomputed only
@@ -752,6 +760,10 @@ export function Capsule({
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
+  // B1 — slash quick actions. Computed inline in render so they capture
+  // current capability flags + handlers; the matched subset renders as
+  // a dropdown above the textarea when userInput starts with `/`.
+
   // A2 — operator-driven save. The dialog IS the consent gate. We
   // suggest a filename derived from the snapshot title (sanitised) and
   // default the extension to .md since the cápsula's compose tends to
@@ -1001,16 +1013,150 @@ export function Capsule({
     [requestPlan],
   );
 
+  // Slash query: text after the leading `/`. Empty string means the
+  // user just typed `/` and hasn't filtered yet. null means no slash
+  // mode (input doesn't start with /).
+  const slashQuery = useMemo<string | null>(() => {
+    if (!userInput.startsWith('/')) return null;
+    // Multi-line input with /command on the first line is fine; only
+    // the first line is the query.
+    const firstLine = userInput.split('\n', 1)[0];
+    return firstLine.slice(1).toLowerCase();
+  }, [userInput]);
+
+  const slashActions = useMemo(() => {
+    type Action = { id: string; label: string; hint: string; run: () => void };
+    const list: Action[] = [];
+    if (ambient.capabilities.filesystemRead && ambient.filesystem) {
+      list.push({
+        id: 'anexar',
+        label: '/anexar',
+        hint: 'Anexar ficheiro local',
+        run: () => void attachLocalFile(),
+      });
+    }
+    if (
+      ambient.capabilities.screenCapture &&
+      ambient.screenshot?.captureScreen
+    ) {
+      list.push({
+        id: 'ecra',
+        label: '/ecrã',
+        hint: 'Capturar ecrã inteiro',
+        run: () => void attachScreenCapture(),
+      });
+    }
+    if (ambient.capabilities.shellExecute && ambient.shellExec) {
+      list.push({
+        id: 'shell',
+        label: '/shell',
+        hint: shellPanelOpen ? 'Fechar shell rápida' : 'Abrir shell rápida',
+        run: () => setShellPanelOpen((v) => !v),
+      });
+    }
+    if (
+      ambient.capabilities.filesystemWrite &&
+      ambient.filesystem?.writeTextFile &&
+      plan?.compose
+    ) {
+      list.push({
+        id: 'guardar',
+        label: '/guardar',
+        hint: 'Guardar resposta para ficheiro',
+        run: () => void saveComposeToDisk(),
+      });
+    }
+    list.push({
+      id: 'limpar',
+      label: '/limpar',
+      hint: 'Esvaziar input',
+      run: () => {
+        setUserInput('');
+        inputRef.current?.focus();
+      },
+    });
+    list.push({
+      id: 'fechar',
+      label: '/fechar',
+      hint: 'Dispensar cápsula',
+      run: () => handleDismiss(),
+    });
+    list.push({
+      id: 'palette',
+      label: '/palette',
+      hint: 'Abrir command palette completa (⌘K)',
+      run: () => {
+        setUserInput('');
+        setPaletteOpen(true);
+      },
+    });
+    return list;
+  }, [
+    ambient,
+    attachLocalFile,
+    attachScreenCapture,
+    handleDismiss,
+    plan,
+    saveComposeToDisk,
+    shellPanelOpen,
+  ]);
+
+  const slashMatches = useMemo(() => {
+    if (slashQuery === null) return [];
+    if (slashQuery === '') return slashActions;
+    return slashActions.filter((a) => a.id.startsWith(slashQuery) || a.label.includes(slashQuery));
+  }, [slashActions, slashQuery]);
+
+  // Reset highlight when the filter changes so the cursor never points
+  // past the end of the visible list.
+  useEffect(() => {
+    setSlashIndex(0);
+  }, [slashQuery]);
+
+  const runSlashAt = useCallback(
+    (idx: number) => {
+      const a = slashMatches[idx];
+      if (!a) return;
+      setUserInput('');
+      setSlashIndex(0);
+      a.run();
+    },
+    [slashMatches],
+  );
+
   // Plain Enter submits. Shift+Enter inserts a newline. Cmd/Ctrl+Enter
-  // also submits as a back-compat habit. Matches conventional chat UX.
+  // also submits as a back-compat habit. When the slash menu is open,
+  // arrow keys / Enter drive the menu instead.
   const onTextareaKey = useCallback(
     (ev: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (slashQuery !== null && slashMatches.length > 0) {
+        if (ev.key === 'ArrowDown') {
+          ev.preventDefault();
+          setSlashIndex((i) => (i + 1) % slashMatches.length);
+          return;
+        }
+        if (ev.key === 'ArrowUp') {
+          ev.preventDefault();
+          setSlashIndex((i) => (i - 1 + slashMatches.length) % slashMatches.length);
+          return;
+        }
+        if (ev.key === 'Enter' && !ev.shiftKey) {
+          ev.preventDefault();
+          runSlashAt(slashIndex);
+          return;
+        }
+        if (ev.key === 'Escape') {
+          ev.preventDefault();
+          setUserInput('');
+          return;
+        }
+      }
       if (ev.key !== 'Enter') return;
       if (ev.shiftKey) return;
       ev.preventDefault();
       void requestPlan();
     },
-    [requestPlan],
+    [requestPlan, runSlashAt, slashIndex, slashMatches, slashQuery],
   );
 
   const onCopyCompose = useCallback(async () => {
@@ -1300,10 +1446,30 @@ export function Capsule({
                 )}
               </div>
             )}
+            {slashQuery !== null && slashMatches.length > 0 && (
+              <div className="gauntlet-capsule__slash" role="listbox">
+                {slashMatches.map((a, i) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    role="option"
+                    aria-selected={i === slashIndex}
+                    className={`gauntlet-capsule__slash-item${
+                      i === slashIndex ? ' gauntlet-capsule__slash-item--active' : ''
+                    }`}
+                    onMouseEnter={() => setSlashIndex(i)}
+                    onClick={() => runSlashAt(i)}
+                  >
+                    <span className="gauntlet-capsule__slash-label">{a.label}</span>
+                    <span className="gauntlet-capsule__slash-hint">{a.hint}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <textarea
               ref={inputRef}
               className="gauntlet-capsule__input"
-              placeholder="O que queres? — Enter para enviar, Shift+Enter nova linha"
+              placeholder="O que queres? / abre comandos · Enter envia · Shift+Enter nova linha"
               value={userInput}
               onChange={(ev) => setUserInput(ev.target.value)}
               onKeyDown={onTextareaKey}
@@ -1717,6 +1883,74 @@ export function Capsule({
                   void saveToMemory();
                 },
               },
+              // A1/A2/A3 — registar as novas capabilities no palette
+              // para que ⌘K liste mesmo "tudo à mão". Cada uma é
+              // gated pela mesma flag que o botão da toolbar usa.
+              ...(ambient.capabilities.filesystemRead && ambient.filesystem
+                ? [
+                    {
+                      id: 'attach-file',
+                      label: 'Anexar ficheiro local',
+                      description: 'Abre o file picker e anexa o conteúdo ao prompt',
+                      shortcut: '',
+                      group: 'action' as const,
+                      run: () => {
+                        noteUse('attach-file');
+                        setPaletteOpen(false);
+                        void attachLocalFile();
+                      },
+                    },
+                  ]
+                : []),
+              ...(ambient.capabilities.screenCapture && ambient.screenshot?.captureScreen
+                ? [
+                    {
+                      id: 'attach-screen',
+                      label: 'Capturar ecrã inteiro',
+                      description: 'Anexa um screenshot do ecrã primário',
+                      shortcut: '',
+                      group: 'action' as const,
+                      run: () => {
+                        noteUse('attach-screen');
+                        setPaletteOpen(false);
+                        void attachScreenCapture();
+                      },
+                    },
+                  ]
+                : []),
+              ...(ambient.capabilities.shellExecute && ambient.shellExec
+                ? [
+                    {
+                      id: 'shell-toggle',
+                      label: shellPanelOpen ? 'Fechar shell rápida' : 'Abrir shell rápida',
+                      description: 'Painel inline para correr comandos da allowlist',
+                      shortcut: '',
+                      group: 'action' as const,
+                      run: () => {
+                        noteUse('shell-toggle');
+                        setPaletteOpen(false);
+                        setShellPanelOpen((v) => !v);
+                      },
+                    },
+                  ]
+                : []),
+              ...(ambient.capabilities.filesystemWrite && ambient.filesystem?.writeTextFile
+                ? [
+                    {
+                      id: 'save-disk',
+                      label: 'Guardar resposta em ficheiro',
+                      description: 'Save dialog → escreve compose para o disco',
+                      shortcut: '',
+                      group: 'action' as const,
+                      disabled: !plan?.compose,
+                      run: () => {
+                        noteUse('save-disk');
+                        setPaletteOpen(false);
+                        void saveComposeToDisk();
+                      },
+                    },
+                  ]
+                : []),
               {
                 id: 'reread',
                 label: 'Re-ler contexto',
@@ -3965,6 +4199,57 @@ export const CAPSULE_CSS = `
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   letter-spacing: 0.04em;
+}
+
+/* B1 — slash command dropdown. Sits above the textarea when the
+   operator opens with a slash. Highlight follows arrow keys + mouse
+   hover; Enter runs the highlighted entry. Same visual register as
+   the compact attachment chips so the form reads as one cohesive
+   surface. */
+.gauntlet-capsule__slash {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 6px;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: 10px;
+  background: var(--gx-surface-strong);
+  box-shadow: 0 8px 20px rgba(var(--gx-shadow-rgb), 0.10);
+  max-height: 220px;
+  overflow: auto;
+}
+.gauntlet-capsule__slash-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gx-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.gauntlet-capsule__slash-item--active {
+  background: var(--gx-tint-strong);
+}
+.gauntlet-capsule__slash-item:hover {
+  background: var(--gx-tint-strong);
+}
+.gauntlet-capsule__slash-label {
+  font-weight: 500;
+  color: var(--gx-fg);
+  letter-spacing: 0.02em;
+}
+.gauntlet-capsule__slash-hint {
+  color: var(--gx-fg-muted);
+  font-size: 10px;
+  text-align: right;
 }
 
 /* Active state for the shell toggle button — highlights when the panel
