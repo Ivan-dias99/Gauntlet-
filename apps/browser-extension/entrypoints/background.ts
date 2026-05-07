@@ -4,10 +4,18 @@ import { defineBackground } from 'wxt/sandbox';
 //
 // Doctrine: the capsule lives at the cursor, not in a separate window.
 // On hotkey or icon click we ask the active tab's content script to
-// mount the in-page overlay. Only when that fails — chrome:// pages,
-// the Web Store, PDF viewer, freshly opened blank tabs where the
-// content script hasn't loaded — do we fall back to the standalone
-// composer.html window. The fallback is the lifeboat, not the surface.
+// mount the in-page overlay.
+//
+// Restricted URLs (chrome://, edge://, the Web Store, PDF viewer, etc.)
+// cannot host an injected content script. Older builds fell back to a
+// standalone composer.html popup window in that case — but the popup
+// has no page context (no selection, no DOM, no screenshot) and lives
+// off the cursor, both red flags under lente 1 ("ponta do cursor").
+// We removed that fallback. Pressing summon on a restricted URL now
+// pulses the toolbar badge briefly so the operator gets a visual hint
+// to switch to a real tab. Lifeboat fica para o caso degenerado em que
+// o content script foi injectado mas nunca respondeu — aí ainda é o
+// menor mal versus silêncio total.
 //
 // All HTTP traffic from the extension also flows through here
 // (gauntlet:fetch) so requests originate from chrome-extension://<id>
@@ -24,13 +32,31 @@ const COMPOSER_WINDOW_HEIGHT = 460;
 // Last-summon diagnostics — surfaced via gauntlet:debug message so the
 // operator (and tests) can see WHY the fallback opened. Ephemeral; only
 // the most recent decision is kept.
-type SummonMode = 'in-page' | 'injected' | 'fallback-window';
+type SummonMode = 'in-page' | 'injected' | 'restricted-skip' | 'fallback-window';
 type FallbackReason =
   | 'restricted-url'
   | 'no-active-tab'
   | 'content-script-unavailable'
   | 'injection-failed'
   | 'injection-retry-failed';
+
+// Badge pulse — a fugitive visual hint that the operator pressed summon
+// on a surface that can't host the cápsula. Single-character emoji on
+// the toolbar action, cleared after 1.6s. No notifications API needed
+// (would require a new permission); manifest already has 'tabs'.
+let badgeClearTimer: ReturnType<typeof setTimeout> | null = null;
+function pulseRestrictedHint(): void {
+  try {
+    void chrome.action.setBadgeBackgroundColor({ color: '#d07a5a' });
+    void chrome.action.setBadgeText({ text: '×' });
+    if (badgeClearTimer) clearTimeout(badgeClearTimer);
+    badgeClearTimer = setTimeout(() => {
+      void chrome.action.setBadgeText({ text: '' });
+    }, 1600);
+  } catch {
+    // chrome.action may not be available in some test harnesses.
+  }
+}
 
 interface SummonDiagnostics {
   at: number;
@@ -222,18 +248,18 @@ async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
 
   const tab = await resolveActiveTab(hint);
   if (!tab?.id) {
-    recordSummon({ at: now, mode: 'fallback-window', reason: 'no-active-tab' });
-    await openComposerWindow();
+    recordSummon({ at: now, mode: 'restricted-skip', reason: 'no-active-tab' });
+    pulseRestrictedHint();
     return;
   }
   if (!isInjectableUrl(tab.url)) {
     recordSummon({
       at: now,
-      mode: 'fallback-window',
+      mode: 'restricted-skip',
       url: tab.url,
       reason: 'restricted-url',
     });
-    await openComposerWindow();
+    pulseRestrictedHint();
     return;
   }
 
@@ -258,11 +284,11 @@ async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
   if (!injected) {
     recordSummon({
       at: now,
-      mode: 'fallback-window',
+      mode: 'restricted-skip',
       url: tab.url,
       reason: 'injection-failed',
     });
-    await openComposerWindow();
+    pulseRestrictedHint();
     return;
   }
   if (await trySendSummonWithRetry(tab.id, [60, 200, 450])) {
@@ -270,6 +296,12 @@ async function summonOnActiveTab(hint?: chrome.tabs.Tab): Promise<void> {
     return;
   }
 
+  // Last-resort lifeboat: content script injected but its message
+  // listener never woke up within ~700ms. Truly rare (heavy SPA stuck
+  // mid-paint, extension storage quota exceeded, etc.). Without a
+  // surface here the operator gets nothing for a press, which is worse
+  // than a brief popup window. Doctrine accepts this as the only place
+  // where the standalone window may still appear.
   recordSummon({
     at: now,
     mode: 'fallback-window',
