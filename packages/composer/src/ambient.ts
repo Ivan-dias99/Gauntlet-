@@ -44,6 +44,10 @@ export interface AmbientCapabilities {
   // intentionally web-only — file:// access in an extension popup is a
   // different conversation.
   readonly filesystemRead: boolean;
+  // Can the operator save the cápsula's response to disk via a save
+  // dialog? Desktop only. The dialog itself is the consent gate; the
+  // shell never auto-overwrites a path the operator didn't just confirm.
+  readonly filesystemWrite: boolean;
   // Can the cápsula capture the full desktop (not just the host page's
   // viewport)? Desktop only. The viewport-screenshot capability above
   // (`screenshot`) stays for browser tab captures.
@@ -119,6 +123,21 @@ export interface AmbientFilesystem {
   // (4 MB by default) for the same reason — the prompt can't carry a
   // 50 MB blob.
   readFileBase64(path: string): Promise<{ base64: string; mime: string }>;
+  // Save dialog — returns the path the operator confirmed, or null on
+  // cancel. `suggestedName` populates the dialog's filename field;
+  // `accept` filters the save type. Optional because the browser shell
+  // declines to expose write surfaces (file:// in an extension popup
+  // is a different conversation).
+  pickSavePath?(
+    suggestedName?: string,
+    accept?: string[],
+  ): Promise<string | null>;
+  // Write to a path the operator just picked. Returns bytes written.
+  // The shell trusts the path — it was confirmed via pickSavePath. We
+  // do NOT offer a generic write(any path) because the agent loop has
+  // no consent surface yet (A3 lands that with `GAUNTLET_ALLOW_CODE_EXEC`).
+  writeTextFile?(path: string, content: string): Promise<number>;
+  writeFileBase64?(path: string, base64: string): Promise<number>;
 }
 
 // Selection — synchronous "what is the user pointing at right now".

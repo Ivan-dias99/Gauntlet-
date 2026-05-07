@@ -159,6 +159,37 @@ export async function readFileBase64At(path: string): Promise<Base64Payload> {
   return await invoke<Base64Payload>("read_file_base64_at", { path });
 }
 
+// A2 — operator-driven write. Save dialog is the consent gate; every
+// write is a path the operator just confirmed.
+export async function pickSavePath(
+  suggestedName?: string,
+  accept?: string[],
+): Promise<string | null> {
+  try {
+    return await invoke<string | null>("pick_save_path", {
+      suggestedName,
+      accept,
+    });
+  } catch (err) {
+    console.warn("[gauntlet/desktop] pick_save_path failed:", err);
+    return null;
+  }
+}
+
+export async function writeTextFileAt(
+  path: string,
+  content: string,
+): Promise<number> {
+  return await invoke<number>("write_text_file_at", { path, content });
+}
+
+export async function writeFileBase64At(
+  path: string,
+  base64: string,
+): Promise<number> {
+  return await invoke<number>("write_file_base64_at", { path, base64 });
+}
+
 // Backend autostart — opt-in via env var checked Rust-side. Returns
 // the start error verbatim when the env isn't enabled OR the spawn
 // failed; caller surfaces it as a regular cápsula error band.

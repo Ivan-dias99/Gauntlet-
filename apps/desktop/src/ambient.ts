@@ -17,8 +17,11 @@ import {
   captureScreenFull,
   captureScreenRegion,
   pickFile,
+  pickSavePath,
   readFileBase64At,
   readTextFileAt,
+  writeFileBase64At,
+  writeTextFileAt,
 } from "./adapters/tauri";
 
 const CAPABILITIES: AmbientCapabilities = {
@@ -32,6 +35,7 @@ const CAPABILITIES: AmbientCapabilities = {
   streaming: false, // SSE bridge not wired through Tauri yet
   refreshSelection: true, // re-reads clipboard + window snapshot
   filesystemRead: true, // pick_file / read_*_at Tauri commands
+  filesystemWrite: true, // pick_save_path + write_*_at Tauri commands
   screenCapture: true, // capture_screen_full Tauri command
   remoteVoice: true, // backend can transcribe via /voice/transcribe
 };
@@ -171,6 +175,15 @@ function filesystem(): AmbientFilesystem {
     },
     async readFileBase64(path: string) {
       return await readFileBase64At(path);
+    },
+    async pickSavePath(suggestedName?: string, accept?: string[]) {
+      return await pickSavePath(suggestedName, accept);
+    },
+    async writeTextFile(path: string, content: string) {
+      return await writeTextFileAt(path, content);
+    },
+    async writeFileBase64(path: string, base64: string) {
+      return await writeFileBase64At(path, base64);
     },
   };
 }

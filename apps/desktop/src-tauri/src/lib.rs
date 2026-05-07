@@ -333,6 +333,82 @@ fn read_text_file_at(path: String) -> Result<String, String> {
     String::from_utf8(raw).map_err(|e| format!("not valid UTF-8: {e}"))
 }
 
+// A2 — operator-driven write. The dialog save IS the consent gate:
+// the operator chooses where the file goes, every time. We never
+// auto-overwrite a path the operator didn't just confirm.
+#[tauri::command]
+async fn pick_save_path(
+    app: tauri::AppHandle,
+    suggested_name: Option<String>,
+    accept: Option<Vec<String>>,
+) -> Result<Option<String>, String> {
+    let (tx, rx) = std::sync::mpsc::channel::<Option<tauri_plugin_dialog::FilePath>>();
+    let mut dialog = app.dialog().file();
+    if let Some(name) = suggested_name.as_deref() {
+        if !name.is_empty() {
+            dialog = dialog.set_file_name(name);
+        }
+    }
+    if let Some(exts) = accept {
+        let lifted: Vec<String> = exts
+            .into_iter()
+            .map(|e| e.trim_start_matches('.').to_string())
+            .filter(|e| !e.is_empty())
+            .collect();
+        if !lifted.is_empty() {
+            let refs: Vec<&str> = lifted.iter().map(|s| s.as_str()).collect();
+            dialog = dialog.add_filter("Filtered", &refs);
+        }
+    }
+    dialog.save_file(move |path| {
+        let _ = tx.send(path);
+    });
+    let picked = rx
+        .recv()
+        .map_err(|e| format!("save picker channel closed: {e}"))?;
+    let Some(file_path) = picked else {
+        return Ok(None);
+    };
+    let path_buf: PathBuf = file_path
+        .into_path()
+        .map_err(|e| format!("save picker returned a non-filesystem URI: {e}"))?;
+    Ok(Some(path_buf.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+fn write_text_file_at(path: String, content: String) -> Result<u64, String> {
+    let buf = PathBuf::from(&path);
+    if let Some(parent) = buf.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            return Err(format!(
+                "parent directory does not exist: {}",
+                parent.display()
+            ));
+        }
+    }
+    std::fs::write(&buf, content.as_bytes()).map_err(|e| format!("write {path}: {e}"))?;
+    let bytes = content.as_bytes().len() as u64;
+    Ok(bytes)
+}
+
+#[tauri::command]
+fn write_file_base64_at(path: String, base64: String) -> Result<u64, String> {
+    let buf = PathBuf::from(&path);
+    if let Some(parent) = buf.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            return Err(format!(
+                "parent directory does not exist: {}",
+                parent.display()
+            ));
+        }
+    }
+    let raw = B64
+        .decode(base64.as_bytes())
+        .map_err(|e| format!("base64 decode failed: {e}"))?;
+    std::fs::write(&buf, &raw).map_err(|e| format!("write {path}: {e}"))?;
+    Ok(raw.len() as u64)
+}
+
 #[tauri::command]
 fn read_file_base64_at(path: String) -> Result<Base64Payload, String> {
     let buf = PathBuf::from(&path);
@@ -507,8 +583,11 @@ pub fn run() {
             capture_screen_region,
             capture_screen_full,
             pick_file,
+            pick_save_path,
             read_text_file_at,
             read_file_base64_at,
+            write_text_file_at,
+            write_file_base64_at,
             start_backend,
             stop_backend,
         ])

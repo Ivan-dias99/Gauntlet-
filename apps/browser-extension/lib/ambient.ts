@@ -38,6 +38,7 @@ const CAPABILITIES: AmbientCapabilities = {
   // to the desktop shell. (A2 will add cross-shell drag-and-drop, which
   // routes through MediaSource and stays scoped to the dropped blob.)
   filesystemRead: false,
+  filesystemWrite: false, // see filesystemRead — file:// writes belong to desktop
   screenCapture: false, // chrome.tabs.captureVisibleTab handles the viewport
   remoteVoice: true, // backend offers /voice/transcribe; Web Speech remains fallback
 };

@@ -752,6 +752,38 @@ export function Capsule({
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
+  // A2 — operator-driven save. The dialog IS the consent gate. We
+  // suggest a filename derived from the snapshot title (sanitised) and
+  // default the extension to .md since the cápsula's compose tends to
+  // be markdown. The operator can change either in the dialog.
+  const [savedToDiskFlash, setSavedToDiskFlash] = useState<string | null>(null);
+  const saveComposeToDisk = useCallback(async () => {
+    const fs = ambient.filesystem;
+    if (!fs?.pickSavePath || !fs.writeTextFile) return;
+    const compose = plan?.compose ?? '';
+    if (!compose.trim()) return;
+    setAttachError(null);
+    try {
+      const titleSeed = (snapshot.pageTitle || 'gauntlet-compose')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60) || 'gauntlet-compose';
+      const suggested = `${titleSeed}.md`;
+      const path = await fs.pickSavePath(suggested, ['md', 'txt', 'json']);
+      if (!path) return; // operator cancelled
+      const bytes = await fs.writeTextFile(path, compose);
+      setSavedToDiskFlash(
+        `${path.split(/[\\/]/).pop() ?? 'ficheiro'} (${
+          bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`
+        })`,
+      );
+      window.setTimeout(() => setSavedToDiskFlash(null), 2500);
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : String(err));
+    }
+  }, [ambient, plan, snapshot.pageTitle]);
+
   // Compose user_input with attachment blocks. Text files are inlined
   // verbatim inside <file name="..."> tags so the agent can read them
   // without backend changes; images become a placeholder note (the
@@ -1351,6 +1383,17 @@ export function Capsule({
                 >
                   {savedFlash === 'saved' ? 'guardado ✓' : 'Save'}
                 </button>
+                {ambient.capabilities.filesystemWrite &&
+                  ambient.filesystem?.writeTextFile && (
+                    <button
+                      type="button"
+                      className="gauntlet-capsule__copy gauntlet-capsule__copy--ghost"
+                      onClick={() => void saveComposeToDisk()}
+                      title="Guardar resposta para um ficheiro"
+                    >
+                      {savedToDiskFlash ? `→ ${savedToDiskFlash}` : 'Guardar como'}
+                    </button>
+                  )}
               </div>
             </section>
           )}
