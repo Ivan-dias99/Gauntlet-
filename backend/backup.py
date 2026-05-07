@@ -204,7 +204,7 @@ def main() -> int:
         pg_ok, msg = _run_pg_dump(DATABASE_URL, pg_target)
         print(f"[backup] {msg}")
     else:
-        print("[backup] SIGNAL_DATABASE_URL not set — skipping PG dump")
+        print("[backup] GAUNTLET_DATABASE_URL not set — skipping PG dump")
 
     if pg_was_requested and not pg_ok:
         # Operator asked for a PG backup (DATABASE_URL was set) and we
@@ -246,6 +246,6 @@ if __name__ == "__main__":
     # Allow override of MEMORY_DIR via env at invocation time without
     # editing config — useful for ops scripts that target a mounted
     # volume different from the running container's.
-    if "SIGNAL_BACKUP_DIR" in os.environ:
-        MEMORY_DIR = Path(os.environ["SIGNAL_BACKUP_DIR"])  # noqa: F811
+    if "GAUNTLET_BACKUP_DIR" in os.environ:
+        MEMORY_DIR = Path(os.environ["GAUNTLET_BACKUP_DIR"])  # noqa: F811
     sys.exit(main())

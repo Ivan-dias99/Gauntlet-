@@ -1,11 +1,11 @@
 """
-Gauntlet — API key authentication middleware (Wave P-31, Layer 1).
+Gauntlet — API key authentication middleware (Layer 1).
 
-Reads `SIGNAL_API_KEY` (legacy alias `RUBERRA_API_KEY`) at module init via
-``config._env``. When the env var is unset, ``api_key_required`` is a
-no-op pass-through so local dev / unsecured deploys keep working with
-zero friction. When it is set, every request **except** the public probe
-paths and CORS preflight must carry ``Authorization: Bearer <key>``.
+Reads `GAUNTLET_API_KEY` at module init. When the env var is unset,
+``api_key_required`` is a no-op pass-through so local dev / unsecured
+deploys keep working with zero friction. When it is set, every request
+**except** the public probe paths and CORS preflight must carry
+``Authorization: Bearer <key>``.
 
 Why the design:
   - ``secrets.compare_digest`` is used to defeat timing-side-channel
@@ -95,8 +95,7 @@ def _unauthorized(reason: str) -> JSONResponse:
                 "message": (
                     "Authorization: Bearer <key> required. Configure "
                     "GAUNTLET_API_KEY (or VITE_GAUNTLET_API_KEY on the "
-                    "frontend) to authenticate. Legacy aliases "
-                    "SIGNAL_API_KEY / RUBERRA_API_KEY are still read."
+                    "frontend) to authenticate."
                 ),
             }
         },

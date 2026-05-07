@@ -684,6 +684,73 @@ async def get_run(run_id: str):
     return record.model_dump()
 
 
+# ── Danger zone (Settings page wires) ──────────────────────────────────────
+#
+# Three operator-driven destructive actions that the cápsula can no longer
+# trigger blind. Each endpoint requires {"confirm": true} in the body so a
+# misclick on the Control Center never wipes the operator's history /
+# memory / permission grants. The Settings page double-confirms with a
+# native window.confirm before posting; we don't trust the client.
+
+
+class DangerConfirmation(BaseModel):
+    confirm: bool = False
+    since_hours: int | None = None  # only used by /ledger/clear
+
+
+@app.post("/ledger/clear")
+async def clear_ledger(payload: DangerConfirmation):
+    """Drop runs in the last `since_hours` (default: 24). Requires
+    `confirm: true`. Returns counts so the UI can show a toast."""
+    if not payload.confirm:
+        return {"cleared": False, "message": "Confirmation required (confirm=true)"}
+    hours = payload.since_hours if payload.since_hours is not None else 24
+    result = await run_store.clear_since(hours)
+    return {"cleared": True, "since_hours": hours, **result}
+
+
+@app.post("/memory/forget_all")
+async def forget_all_memory(payload: DangerConfirmation):
+    """Drop every memory record (notes, decisions, canon, preferences,
+    failure_patterns). Failure memory (failure_memory.json) is wiped via
+    the existing /memory/clear endpoint — this one targets the operator-
+    facing memory_records.json store. Snapshots first; sidecar path
+    returned so the operator can recover from a misclick."""
+    if not payload.confirm:
+        return {"forgotten": False, "message": "Confirmation required (confirm=true)"}
+    from memory_records import memory_records_store
+
+    result = await memory_records_store.forget_all()
+    return {"forgotten": True, **result}
+
+
+@app.post("/permissions/revoke_all")
+async def revoke_all_permissions(payload: DangerConfirmation):
+    """Reset the per-domain, per-action and per-tool policy matrices to
+    an empty state. The cápsula will start asking again on next use.
+    Caps and screenshot defaults are preserved (operator UX, not
+    permission grants). Requires `confirm: true`."""
+    if not payload.confirm:
+        return {"revoked": False, "message": "Confirmation required (confirm=true)"}
+    from composer_settings import settings_store
+    from models import ComposerSettings, DomainPolicy, ActionPolicy
+
+    current = await settings_store.get()
+    cleared = ComposerSettings(
+        domains={},
+        actions={},
+        default_domain_policy=DomainPolicy(),
+        default_action_policy=ActionPolicy(),
+        tool_policies={},
+        max_page_text_chars=current.max_page_text_chars,
+        max_dom_skeleton_chars=current.max_dom_skeleton_chars,
+        screenshot_default=current.screenshot_default,
+        execution_reporting_required=current.execution_reporting_required,
+    )
+    await settings_store.replace(cleared)
+    return {"revoked": True}
+
+
 # ── Memory Records (Sprint 7) ──────────────────────────────────────────────
 
 @app.get("/memory/records")

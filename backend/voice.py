@@ -37,8 +37,6 @@ from pydantic import BaseModel, Field
 
 GROQ_API_KEY = (
     os.environ.get("GAUNTLET_GROQ_API_KEY")
-    or os.environ.get("SIGNAL_GROQ_API_KEY")
-    or os.environ.get("RUBERRA_GROQ_API_KEY")
     or os.environ.get("GROQ_API_KEY")
 )
 GROQ_WHISPER_MODEL = os.environ.get(

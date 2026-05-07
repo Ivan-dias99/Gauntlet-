@@ -288,17 +288,28 @@ export async function bindGlobalShortcut(
 }
 
 // The desktop window itself — show / hide for global shortcut toggling.
+// On show we route through the Rust `show_capsule` command which moves
+// the window to the OS cursor before unhiding it, so the cápsula opens
+// magnetic to whatever the operator was pointing at — same doctrine as
+// the browser pill, just at the OS level instead of inside a page.
 export async function toggleCapsuleWindow(): Promise<void> {
   try {
     const w = getCurrentWindow();
     const visible = await w.isVisible();
     if (visible) {
-      await w.hide();
+      await invoke<void>("hide_capsule");
     } else {
-      await w.show();
-      await w.setFocus();
+      await invoke<void>("show_capsule");
     }
   } catch (err) {
     console.warn("[gauntlet/desktop] toggle failed:", err);
+  }
+}
+
+export async function moveCapsuleToCursor(): Promise<void> {
+  try {
+    await invoke<void>("move_window_to_cursor");
+  } catch (err) {
+    console.warn("[gauntlet/desktop] move_window_to_cursor failed:", err);
   }
 }

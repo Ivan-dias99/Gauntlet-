@@ -30,6 +30,9 @@ from pathlib import Path
 from typing import Optional
 
 from config import MAX_MEMORY_RECORDS, MEMORY_RECORDS_FILE
+
+# Last 10 snapshots are kept; older ones are pruned chronologically.
+MAX_MEMORY_SNAPSHOTS: int = 10
 from models import MemoryRecord, MemoryStoreSnapshot
 from persistence import atomic_write_text_async, quarantine_corrupt_file
 
@@ -191,6 +194,50 @@ class MemoryRecordsStore:
             self._snapshot.last_updated = datetime.now(timezone.utc).isoformat()
             await self._write()
             return True
+
+    def _snapshot_dir(self) -> Path:
+        return self._file.parent / "memory_records_snapshots"
+
+    async def _snapshot_current(self, label: str) -> Optional[Path]:
+        """Atomic write of the current memory snapshot to a sidecar
+        BEFORE a destructive mutation. Returns the snapshot path on
+        success (None on failure — never blocks the caller). The dir
+        keeps the last MAX_MEMORY_SNAPSHOTS entries, oldest pruned."""
+        snap_dir = self._snapshot_dir()
+        try:
+            snap_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("memory_records.snapshot_dir_failed: %s", e)
+            return None
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        snap_path = snap_dir / f"memory-before-{label}-{ts}.json"
+        try:
+            await atomic_write_text_async(
+                snap_path, self._snapshot.model_dump_json(indent=2)
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("memory_records.snapshot_failed: %s", e)
+            return None
+        try:
+            existing = sorted(snap_dir.glob("memory-before-*.json"))
+            for stale in existing[:-MAX_MEMORY_SNAPSHOTS]:
+                stale.unlink(missing_ok=True)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("memory_records.snapshot_prune_failed: %s", e)
+        return snap_path
+
+    async def forget_all(self) -> dict:
+        """Drop every record. Snapshots first so the danger button is
+        recoverable. Returns {removed, snapshot} — the operator sees
+        which sidecar to restore from if the click was a mistake."""
+        await self._ensure_loaded()
+        async with self._lock:
+            snap = await self._snapshot_current("forget-all")
+            removed = len(self._snapshot.records)
+            self._snapshot.records = []
+            self._snapshot.last_updated = datetime.now(timezone.utc).isoformat()
+            await self._write()
+            return {"removed": removed, "snapshot": str(snap) if snap else None}
 
     async def projects(self) -> list[str]:
         await self._ensure_loaded()

@@ -2,7 +2,7 @@
   "name": "@gauntlet/browser-extension",
   "description": "Gauntlet — cursor capsule for the browser (Manifest V3, WXT).",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.0.0-rc.1",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -10,6 +10,8 @@
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "build:zip": "wxt zip",
     "compile": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",

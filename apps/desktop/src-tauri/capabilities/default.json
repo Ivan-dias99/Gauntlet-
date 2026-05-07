@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default permissions for the Gauntlet desktop cápsula.",
-  "windows": ["main"],
+  "windows": ["main", "pill"],
   "permissions": [
     "core:default",
     "core:window:default",
@@ -21,6 +21,11 @@
     "dialog:allow-save",
     "notification:default",
     "notification:allow-notify",
-    "notification:allow-request-permission"
+    "notification:allow-request-permission",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install",
+    "core:tray:default",
+    "core:tray:allow-set-tooltip"
   ]
 }

@@ -20,6 +20,7 @@ import {
   useState,
 } from "react";
 import { SurfaceHeader } from "./ControlLayout";
+import { signalFetch } from "../lib/signalApi";
 
 // ── Pref namespace ──────────────────────────────────────────────────────────
 // All keys live under `gauntlet:*` so they share the namespace with the
@@ -631,22 +632,59 @@ export default function SettingsPage() {
     prefs.appearanceAnimations,
   ]);
 
-  // Danger zone — confirmations are window.confirm for now; a custom
-  // modal lands in the same iteration that wires backend endpoints.
-  const onClearLedger = useCallback(() => {
+  // Danger zone — every action POSTs `{confirm: true}` to a backend
+  // endpoint that re-checks the flag server-side. The native confirm()
+  // is the operator gate; the network call is the irreversible one.
+  const onClearLedger = useCallback(async () => {
     if (!window.confirm("Clear ledger entries from the last 24h? This cannot be undone.")) return;
-    // TODO(server): POST /ledger/clear?since=24h
-    window.alert("Ledger clear is not yet wired to the backend.");
+    try {
+      const res = await signalFetch("/ledger/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true, since_hours: 24 }),
+      });
+      const body = (await res.json()) as { removed?: number; remaining?: number };
+      window.alert(
+        res.ok
+          ? `Ledger cleared. Removed ${body.removed ?? 0}, kept ${body.remaining ?? 0}.`
+          : `Ledger clear failed (${res.status}).`,
+      );
+    } catch (err) {
+      window.alert(`Ledger clear failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }, []);
-  const onForgetMemory = useCallback(() => {
+  const onForgetMemory = useCallback(async () => {
     if (!window.confirm("Forget all memory records? This cannot be undone.")) return;
-    // TODO(server): POST /memory/forget_all
-    window.alert("Memory forget is not yet wired to the backend.");
+    try {
+      const res = await signalFetch("/memory/forget_all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+      });
+      const body = (await res.json()) as { removed?: number };
+      window.alert(
+        res.ok
+          ? `Memory forgotten. Removed ${body.removed ?? 0} records.`
+          : `Memory forget failed (${res.status}).`,
+      );
+    } catch (err) {
+      window.alert(`Memory forget failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }, []);
-  const onRevokePermissions = useCallback(() => {
+  const onRevokePermissions = useCallback(async () => {
     if (!window.confirm("Revoke all granted permissions? Operator must re-approve next use.")) return;
-    // TODO(server): POST /permissions/revoke_all
-    window.alert("Permission revoke is not yet wired to the backend.");
+    try {
+      const res = await signalFetch("/permissions/revoke_all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+      });
+      window.alert(
+        res.ok ? "Permissions revoked. Operator will re-approve on next use." : `Revoke failed (${res.status}).`,
+      );
+    } catch (err) {
+      window.alert(`Revoke failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }, []);
   const onUninstall = useCallback(() => {
     window.alert(

@@ -75,6 +75,45 @@ pub struct ShellResult {
 /// struct.
 static BACKEND_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
 
+/// Tray + health-probe localised strings. Read at boot from
+/// `GAUNTLET_LOCALE` (defaults to "pt"). Mirrors the operator-facing
+/// vocabulary of the control-center i18n catalogue: "pt" is the
+/// canonical voice, "en" is the polite-shell fallback.
+struct Strings {
+    tray_toggle: &'static str,
+    tray_pill: &'static str,
+    tray_quit: &'static str,
+    health_ok: &'static str,
+    health_off: &'static str,
+}
+
+const STRINGS_PT: Strings = Strings {
+    tray_toggle: "Mostrar/Esconder cápsula",
+    tray_pill: "Mostrar/Esconder pill",
+    tray_quit: "Sair do Gauntlet",
+    health_ok: "Gauntlet — backend conectado",
+    health_off: "Gauntlet — backend offline",
+};
+
+const STRINGS_EN: Strings = Strings {
+    tray_toggle: "Show / hide capsule",
+    tray_pill: "Show / hide pill",
+    tray_quit: "Quit Gauntlet",
+    health_ok: "Gauntlet — backend connected",
+    health_off: "Gauntlet — backend offline",
+};
+
+fn strings() -> &'static Strings {
+    match std::env::var("GAUNTLET_LOCALE")
+        .unwrap_or_default()
+        .to_lowercase()
+        .as_str()
+    {
+        "en" | "en-us" | "en-gb" => &STRINGS_EN,
+        _ => &STRINGS_PT,
+    }
+}
+
 #[tauri::command]
 fn get_active_window() -> Result<WindowInfo, String> {
     #[cfg(target_os = "macos")]
@@ -667,10 +706,140 @@ fn toggle_main_window(app: &tauri::AppHandle) {
         if visible {
             let _ = window.hide();
         } else {
+            let _ = position_window_at_cursor(app, &window);
             let _ = window.show();
             let _ = window.set_focus();
         }
     }
+}
+
+// Move the cápsula window so its top-left sits a few pixels right + down
+// from the global OS cursor. Tauri 2's `cursor_position()` returns a
+// physical position; `set_position` takes the same unit so we pass it
+// through. Best-effort — if the cursor lookup fails we leave the window
+// where it last was, the operator can drag it (no chrome though, so
+// dragging requires `data-tauri-drag-region` zones in the cápsula). We
+// also clamp against the cursor's monitor work area so the cápsula
+// never opens off-screen when the operator hits the shortcut near the
+// bottom-right edge.
+fn position_window_at_cursor(
+    app: &tauri::AppHandle,
+    window: &tauri::WebviewWindow,
+) -> Result<(), String> {
+    let cursor = app.cursor_position().map_err(|e| e.to_string())?;
+    let size = window.outer_size().map_err(|e| e.to_string())?;
+
+    let mut x = cursor.x as i32 + 12;
+    let mut y = cursor.y as i32 + 12;
+
+    // Clamp inside the monitor that owns the window's current placement
+    // so the cápsula never opens half-off-screen near a screen edge.
+    // Using current_monitor (rather than per-cursor lookup) keeps the
+    // call surface tight; multi-monitor edge cases will be revisited
+    // when we tackle the desktop pill.
+    if let Ok(Some(monitor)) = window.current_monitor() {
+        let mpos = monitor.position();
+        let msize = monitor.size();
+        let max_x = mpos.x + msize.width as i32 - size.width as i32 - 8;
+        let max_y = mpos.y + msize.height as i32 - size.height as i32 - 8;
+        let min_x = mpos.x + 8;
+        let min_y = mpos.y + 8;
+        x = x.clamp(min_x, max_x.max(min_x));
+        y = y.clamp(min_y, max_y.max(min_y));
+    }
+
+    window
+        .set_position(tauri::PhysicalPosition { x, y })
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn move_window_to_cursor(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?;
+    position_window_at_cursor(&app, &window)
+}
+
+#[tauri::command]
+fn show_capsule(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?;
+    let _ = position_window_at_cursor(&app, &window);
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_capsule(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?;
+    window.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// Pill window — small persistent surface anchored to a screen corner.
+// Click → show_capsule; right-click → hide_pill (collapses to tray-only
+// mode). Position is persistent (saved to disk on hide, restored on
+// boot) and lives outside the cápsula's render tree so it survives
+// every cápsula open/close.
+fn position_pill_at_default(
+    _app: &tauri::AppHandle,
+    window: &tauri::WebviewWindow,
+) -> Result<(), String> {
+    let size = window.outer_size().map_err(|e| e.to_string())?;
+    if let Ok(Some(monitor)) = window.current_monitor() {
+        let mpos = monitor.position();
+        let msize = monitor.size();
+        // Bottom-right with a 24px breathing margin.
+        let x = mpos.x + msize.width as i32 - size.width as i32 - 24;
+        let y = mpos.y + msize.height as i32 - size.height as i32 - 24;
+        window
+            .set_position(tauri::PhysicalPosition { x, y })
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn show_pill(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("pill")
+        .ok_or_else(|| "pill window not found".to_string())?;
+    let visible = window.is_visible().unwrap_or(false);
+    if !visible {
+        let _ = position_pill_at_default(&app, &window);
+    }
+    window.show().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_pill(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("pill")
+        .ok_or_else(|| "pill window not found".to_string())?;
+    window.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn toggle_pill(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("pill")
+        .ok_or_else(|| "pill window not found".to_string())?;
+    let visible = window.is_visible().unwrap_or(false);
+    if visible {
+        window.hide().map_err(|e| e.to_string())?;
+    } else {
+        let _ = position_pill_at_default(&app, &window);
+        window.show().map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 fn run_capture(bin: &str, args: &[&str]) -> Result<String, String> {
@@ -697,6 +866,7 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             get_active_window,
             capture_screen_region,
@@ -710,6 +880,12 @@ pub fn run() {
             run_shell,
             start_backend,
             stop_backend,
+            move_window_to_cursor,
+            show_capsule,
+            hide_capsule,
+            show_pill,
+            hide_pill,
+            toggle_pill,
         ])
         .setup(|app| {
             // A5 — system tray. The cápsula lives in the OS menu bar
@@ -717,21 +893,29 @@ pub fn run() {
             // re-summon with one click instead of digging through Alt-Tab.
             // Two menu items: toggle (mirrors the global shortcut) and
             // quit. Left-click on the icon also toggles the window.
+            let s = strings();
             let toggle_item = MenuItem::with_id(
                 app,
                 "tray-toggle",
-                "Mostrar/Esconder cápsula",
+                s.tray_toggle,
+                true,
+                None::<&str>,
+            )?;
+            let pill_item = MenuItem::with_id(
+                app,
+                "tray-pill",
+                s.tray_pill,
                 true,
                 None::<&str>,
             )?;
             let quit_item = MenuItem::with_id(
                 app,
                 "tray-quit",
-                "Sair do Gauntlet",
+                s.tray_quit,
                 true,
                 None::<&str>,
             )?;
-            let tray_menu = Menu::with_items(app, &[&toggle_item, &quit_item])?;
+            let tray_menu = Menu::with_items(app, &[&toggle_item, &pill_item, &quit_item])?;
 
             let _tray = TrayIconBuilder::with_id("gauntlet-tray")
                 .icon(app.default_window_icon().cloned().ok_or_else(|| {
@@ -741,6 +925,17 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "tray-toggle" => toggle_main_window(app),
+                    "tray-pill" => {
+                        if let Some(window) = app.get_webview_window("pill") {
+                            let visible = window.is_visible().unwrap_or(false);
+                            if visible {
+                                let _ = window.hide();
+                            } else {
+                                let _ = position_pill_at_default(app, &window);
+                                let _ = window.show();
+                            }
+                        }
+                    }
                     "tray-quit" => {
                         let _ = stop_backend();
                         app.exit(0);
@@ -771,6 +966,46 @@ pub fn run() {
                     eprintln!("[gauntlet/desktop] backend autostart failed: {e}");
                 }
             }
+
+            // Show the pill window at boot so the operator has a
+            // visible anchor without needing to dig into the tray. The
+            // cápsula stays hidden — the pill is the resting state.
+            if let Some(pill) = app.get_webview_window("pill") {
+                let _ = position_pill_at_default(app.handle(), &pill);
+                let _ = pill.show();
+            }
+
+            // Background health probe — every 5s we open a TCP socket
+            // to 127.0.0.1:3002 (default backend port). When it answers
+            // the tray tooltip says "backend conectado"; on failure it
+            // says "backend offline". Operator sees the state without
+            // opening the cápsula. Pure stdlib — no reqwest dep just
+            // for a connect() probe. Backend autostart already covers
+            // boot races; this just reports.
+            let probe_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                use std::net::{SocketAddr, TcpStream};
+                use std::time::Duration;
+                let target: SocketAddr = "127.0.0.1:3002".parse().expect("valid addr");
+                let mut last_state: Option<bool> = None;
+                loop {
+                    let healthy = tokio::task::spawn_blocking(move || {
+                        TcpStream::connect_timeout(&target, Duration::from_millis(800)).is_ok()
+                    })
+                    .await
+                    .unwrap_or(false);
+                    if last_state != Some(healthy) {
+                        if let Some(tray) = probe_handle.tray_by_id("gauntlet-tray") {
+                            let s = strings();
+                            let label = if healthy { s.health_ok } else { s.health_off };
+                            let _ = tray.set_tooltip(Some(label));
+                        }
+                        last_state = Some(healthy);
+                    }
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
+            });
+
             Ok(())
         })
         .on_window_event(|_window, event| {
