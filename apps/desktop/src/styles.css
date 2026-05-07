@@ -1,37 +1,23 @@
-/* Tauri host reset — desktop is the only shell where the window IS the
-   cápsula container. The shared CAPSULE_CSS from @gauntlet/composer is
-   injected at runtime via App.tsx; only the html/body shell + the
-   "fill the window" override for .gauntlet-capsule live here. */
+/* Tauri host reset — the OS window is decoration-less + transparent, so
+   the cápsula floats over whatever is on the operator's screen. The
+   shared CAPSULE_CSS from @gauntlet/composer is injected at runtime via
+   App.tsx; this file only owns the html/body shell + the transparency
+   that lets the cápsula's rounded glass edge sit on top of the OS. */
 html, body, #root {
   margin: 0;
   padding: 0;
   height: 100vh;
   width: 100vw;
-  /* Default flagship light — the cápsula fills the window edge-to-edge,
-     so the body is only visible during the cold-load frame before the
-     React tree hydrates. Cream avoids the "black flash" the popup
-     window had on first paint. */
-  background: #fbf7ee;
+  background: transparent;
   overflow: hidden;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
-html[data-theme="dark"], body[data-theme="dark"] {
-  background: #0e1016;
-}
 
-/* Override the floating-capsule defaults: in this shell the Tauri
-   window is the surface, so the capsule fills it edge-to-edge. The
-   floating layout (single column, scrollable right panel) still
-   applies — only the position/border/shadow are stripped. */
+/* Centered mode in this shell — the cápsula sits in the middle of the
+   transparent Tauri window, which itself was moved to the OS cursor
+   before being shown. The shared --centered keyframe handles the rise,
+   we only nudge the surface so the rounded corners + drop shadow are
+   visible inside the window's transparent margin. */
 .gauntlet-capsule {
-  position: static !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  height: 100% !important;
-  max-height: 100% !important;
-  min-height: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  border: none !important;
-  transform: none !important;
+  margin: 0 auto;
 }

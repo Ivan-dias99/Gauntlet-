@@ -667,10 +667,80 @@ fn toggle_main_window(app: &tauri::AppHandle) {
         if visible {
             let _ = window.hide();
         } else {
+            let _ = position_window_at_cursor(app, &window);
             let _ = window.show();
             let _ = window.set_focus();
         }
     }
+}
+
+// Move the cápsula window so its top-left sits a few pixels right + down
+// from the global OS cursor. Tauri 2's `cursor_position()` returns a
+// physical position; `set_position` takes the same unit so we pass it
+// through. Best-effort — if the cursor lookup fails we leave the window
+// where it last was, the operator can drag it (no chrome though, so
+// dragging requires `data-tauri-drag-region` zones in the cápsula). We
+// also clamp against the cursor's monitor work area so the cápsula
+// never opens off-screen when the operator hits the shortcut near the
+// bottom-right edge.
+fn position_window_at_cursor(
+    app: &tauri::AppHandle,
+    window: &tauri::WebviewWindow,
+) -> Result<(), String> {
+    let cursor = app.cursor_position().map_err(|e| e.to_string())?;
+    let size = window.outer_size().map_err(|e| e.to_string())?;
+
+    let mut x = cursor.x as i32 + 12;
+    let mut y = cursor.y as i32 + 12;
+
+    // Clamp inside the monitor that owns the window's current placement
+    // so the cápsula never opens half-off-screen near a screen edge.
+    // Using current_monitor (rather than per-cursor lookup) keeps the
+    // call surface tight; multi-monitor edge cases will be revisited
+    // when we tackle the desktop pill.
+    if let Ok(Some(monitor)) = window.current_monitor() {
+        let mpos = monitor.position();
+        let msize = monitor.size();
+        let max_x = mpos.x + msize.width as i32 - size.width as i32 - 8;
+        let max_y = mpos.y + msize.height as i32 - size.height as i32 - 8;
+        let min_x = mpos.x + 8;
+        let min_y = mpos.y + 8;
+        x = x.clamp(min_x, max_x.max(min_x));
+        y = y.clamp(min_y, max_y.max(min_y));
+    }
+
+    window
+        .set_position(tauri::PhysicalPosition { x, y })
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn move_window_to_cursor(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?;
+    position_window_at_cursor(&app, &window)
+}
+
+#[tauri::command]
+fn show_capsule(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?;
+    let _ = position_window_at_cursor(&app, &window);
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_capsule(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?;
+    window.hide().map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 fn run_capture(bin: &str, args: &[&str]) -> Result<String, String> {
@@ -710,6 +780,9 @@ pub fn run() {
             run_shell,
             start_backend,
             stop_backend,
+            move_window_to_cursor,
+            show_capsule,
+            hide_capsule,
         ])
         .setup(|app| {
             // A5 — system tray. The cápsula lives in the OS menu bar
