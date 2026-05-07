@@ -18,3 +18,6 @@ google-genai>=0.3.0
 # OpenAI-compatible chat.completions surface in the same Anthropic-shaped
 # adapter as gemini_provider.py.
 groq>=0.11.0
+# Edge TTS — Microsoft's neural voices via the public Edge Online TTS
+# endpoint. Free, no API key, multilingual. Powers /voice/synthesize.
+edge-tts>=6.1.0

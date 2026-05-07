@@ -1,23 +1,22 @@
-// Voice input — Web Speech API wrapper.
+// Voice input — two paths, one shape:
 //
-// Press-and-hold the mic button; the recogniser streams partial
-// transcripts which the cápsula appends to the input. Releasing stops
-// the stream and commits the final transcript.
+//   * `startVoice` — Web Speech API. Zero round-trip, zero bundle, but
+//     Chromium-only and quality varies. Stays as fallback.
+//   * `startVoiceRemote` — MediaRecorder + Groq Whisper via the backend.
+//     Works in every shell that can ask for the microphone, gives us
+//     `whisper-large-v3-turbo` quality (PT/EN/etc), and frees us from
+//     Chrome's vendor lock. Preferred when `ambient.capabilities.remoteVoice`.
 //
-// Why Web Speech API instead of OpenAI Whisper / Anthropic / etc:
-//   * zero round-trip cost — Chrome ships it; Edge ships it; Safari
-//     ships it on macOS 14+.
-//   * zero added bundle size — it's a browser API.
-//   * privacy — Chrome routes to Google but the user already opted
-//     into the cápsula on the active page; this isn't an extra leak.
+// Both paths return the same `VoiceSession` shape so the cápsula's call
+// site doesn't branch on which one fired. The press-and-hold UX stays
+// the same: pointerdown → start, pointerup → stop, pointerleave →
+// abort. Web Speech streams partial transcripts; the remote path commits
+// once on stop (Whisper isn't a streaming API on Groq).
 //
-// Feature-detected. When the API isn't available the component
-// renders nothing (the cápsula keeps working without voice).
-//
-// Types: Web Speech API isn't yet in lib.dom.d.ts as a stable
-// surface — we declare the minimum we use. The runtime is
-// vendor-prefixed (webkitSpeechRecognition) on Chromium-based
-// browsers; getRecognitionCtor reaches both.
+// Types: Web Speech API isn't yet in lib.dom.d.ts as a stable surface —
+// we declare the minimum we use. The runtime is vendor-prefixed
+// (webkitSpeechRecognition) on Chromium-based browsers; getRecognitionCtor
+// reaches both.
 
 interface MinimalSpeechRecognitionAlternative {
   transcript: string;
@@ -174,4 +173,217 @@ export function startVoice(callbacks: VoiceCallbacks): VoiceSession | null {
       recognition = null;
     },
   };
+}
+
+// ── Remote voice (Groq Whisper via backend) ─────────────────────────────────
+
+export function isRemoteVoiceSupported(): boolean {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices) return false;
+  return (
+    typeof navigator.mediaDevices.getUserMedia === 'function' &&
+    typeof MediaRecorder !== 'undefined'
+  );
+}
+
+interface RemoteVoiceClient {
+  transcribeAudio(
+    audioBase64: string,
+    mime: string,
+    language?: string,
+  ): Promise<{ text: string }>;
+}
+
+export interface RemoteVoiceOptions {
+  language?: string;
+  // Preferred audio MIME hint for the recorder. Most engines accept
+  // webm/opus; we fall back to whatever the browser picks if the hint
+  // isn't supported.
+  preferredMime?: string;
+}
+
+export function startVoiceRemote(
+  client: RemoteVoiceClient,
+  callbacks: VoiceCallbacks,
+  opts: RemoteVoiceOptions = {},
+): Promise<VoiceSession | null> {
+  return (async (): Promise<VoiceSession | null> => {
+    if (!isRemoteVoiceSupported()) {
+      callbacks.onError('Voice: this runtime does not expose MediaRecorder.');
+      return null;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'microphone unavailable';
+      callbacks.onError(
+        `Voice: microphone permission denied or device missing (${msg}).`,
+      );
+      return null;
+    }
+
+    // Pick a MIME the browser actually supports. Chrome/Edge/Firefox all
+    // ship audio/webm;codecs=opus; Safari prefers audio/mp4. We fall
+    // back to undefined (let the browser decide) when neither matches.
+    let mime = opts.preferredMime ?? 'audio/webm;codecs=opus';
+    if (
+      typeof MediaRecorder.isTypeSupported === 'function' &&
+      !MediaRecorder.isTypeSupported(mime)
+    ) {
+      const candidates = ['audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+      const found = candidates.find((c) => MediaRecorder.isTypeSupported(c));
+      mime = found ?? '';
+    }
+
+    const recorder = mime
+      ? new MediaRecorder(stream, { mimeType: mime })
+      : new MediaRecorder(stream);
+    const chunks: Blob[] = [];
+    let aborted = false;
+
+    recorder.addEventListener('dataavailable', (ev) => {
+      if (ev.data && ev.data.size > 0) chunks.push(ev.data);
+    });
+
+    recorder.addEventListener('stop', () => {
+      // Cut the mic track regardless of the outcome — leaving it open
+      // keeps the OS recording indicator on and is creepy.
+      stream.getTracks().forEach((t) => t.stop());
+
+      if (aborted || chunks.length === 0) return;
+
+      const blob = new Blob(chunks, { type: mime || 'audio/webm' });
+      void blob
+        .arrayBuffer()
+        .then((buf) => {
+          const audioBase64 = arrayBufferToBase64(buf);
+          callbacks.onPartial('a transcrever…');
+          return client.transcribeAudio(
+            audioBase64,
+            blob.type || 'audio/webm',
+            opts.language,
+          );
+        })
+        .then((result) => {
+          if (aborted) return;
+          const text = (result?.text ?? '').trim();
+          if (text) {
+            callbacks.onCommit(text);
+          } else {
+            callbacks.onError('Voice: silence detected — nada para transcrever.');
+          }
+        })
+        .catch((err: unknown) => {
+          if (aborted) return;
+          const msg = err instanceof Error ? err.message : String(err);
+          callbacks.onError(`Voice: ${msg}`);
+        });
+    });
+
+    try {
+      recorder.start();
+    } catch (err) {
+      stream.getTracks().forEach((t) => t.stop());
+      callbacks.onError(
+        err instanceof Error ? err.message : 'recorder failed to start',
+      );
+      return null;
+    }
+
+    return {
+      stop: () => {
+        if (recorder.state === 'recording') {
+          try {
+            recorder.stop();
+          } catch {
+            // already stopped
+          }
+        }
+      },
+      abort: () => {
+        aborted = true;
+        if (recorder.state === 'recording') {
+          try {
+            recorder.stop();
+          } catch {
+            // ignore
+          }
+        }
+        stream.getTracks().forEach((t) => t.stop());
+      },
+    };
+  })();
+}
+
+function arrayBufferToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  // Walk in 32 KB chunks — applying String.fromCharCode to a 1 MB
+  // sequence at once exceeds JS engines' argument limit.
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
+    binary += String.fromCharCode.apply(null, Array.from(slice));
+  }
+  return btoa(binary);
+}
+
+// ── TTS playback (Edge TTS via backend) ─────────────────────────────────────
+
+interface RemoteTtsClient {
+  synthesizeSpeech(
+    text: string,
+    voice?: string,
+  ): Promise<{ audio_base64: string; mime: string }>;
+}
+
+export interface PlaySpeechOptions {
+  voice?: string;
+  // AbortSignal that, when fired, cancels playback mid-stream. The
+  // cápsula passes its existing abort controller so submitting a new
+  // prompt cuts the previous response's voice cleanly.
+  signal?: AbortSignal;
+}
+
+export async function playRemoteSpeech(
+  client: RemoteTtsClient,
+  text: string,
+  opts: PlaySpeechOptions = {},
+): Promise<void> {
+  const { audio_base64: audioBase64, mime } = await client.synthesizeSpeech(
+    text,
+    opts.voice,
+  );
+  if (opts.signal?.aborted) return;
+  const blob = base64ToBlob(audioBase64, mime || 'audio/mpeg');
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  const cleanup = () => {
+    URL.revokeObjectURL(url);
+  };
+  if (opts.signal) {
+    opts.signal.addEventListener(
+      'abort',
+      () => {
+        try {
+          audio.pause();
+        } catch {
+          // ignore
+        }
+        cleanup();
+      },
+      { once: true },
+    );
+  }
+  audio.addEventListener('ended', cleanup, { once: true });
+  audio.addEventListener('error', cleanup, { once: true });
+  await audio.play();
+}
+
+function base64ToBlob(b64: string, mime: string): Blob {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
 }

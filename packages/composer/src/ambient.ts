@@ -39,6 +39,19 @@ export interface AmbientCapabilities {
   // mid-session? Browser supports this (refresh from page DOM); desktop
   // refreshes the clipboard + window snapshot instead.
   readonly refreshSelection: boolean;
+  // Can the operator pin local files / screenshots into the cápsula via
+  // a native dialog? Desktop only. The browser's <all_urls> scope is
+  // intentionally web-only — file:// access in an extension popup is a
+  // different conversation.
+  readonly filesystemRead: boolean;
+  // Can the cápsula capture the full desktop (not just the host page's
+  // viewport)? Desktop only. The viewport-screenshot capability above
+  // (`screenshot`) stays for browser tab captures.
+  readonly screenCapture: boolean;
+  // Can the cápsula offload mic transcription to the backend (Groq
+  // Whisper) instead of relying on Web Speech API? Both shells should
+  // be true when the backend has GROQ_API_KEY; we read it once at boot.
+  readonly remoteVoice: boolean;
 }
 
 // Transport — single-shot JSON for /composer/* and (optional) SSE for
@@ -81,6 +94,31 @@ export interface AmbientDomActions {
 
 export interface AmbientScreenshot {
   capture(): Promise<string | null>; // returns a data URL or null
+  // Full-screen / multi-monitor capture — desktop only. Returns the
+  // image as a base64 PNG (no data: prefix) plus its on-disk path so
+  // the cápsula's chip can show "screen.png · /tmp/...". null when
+  // unavailable.
+  captureScreen?(): Promise<{ base64: string; path: string } | null>;
+}
+
+// Filesystem — only the desktop shell exposes this. Designed around
+// the doctrine "operator consents via native dialog, then the shell
+// reads"; we deliberately do NOT offer arbitrary `read(path)` from the
+// cápsula because the agent loop has no way of asking the operator
+// whether a path is okay to read. A2 will add gated agent reads.
+export interface AmbientFilesystem {
+  // Native file picker. `accept` is a list of extensions (".pdf",
+  // ".md", ".png") that filter the dialog; pass undefined for "any".
+  // Returns null when the operator cancelled.
+  pickFile(accept?: string[]): Promise<{ path: string; name: string } | null>;
+  // Read a file the operator just picked. Caps at MAX_TEXT_BYTES (1 MB
+  // by default) — anything larger returns the head with a marker.
+  readTextFile(path: string): Promise<string>;
+  // Same path, but returned as base64. Used for images / binaries the
+  // model can ingest as multimodal input. Caps at MAX_BINARY_BYTES
+  // (4 MB by default) for the same reason — the prompt can't carry a
+  // 50 MB blob.
+  readFileBase64(path: string): Promise<{ base64: string; mime: string }>;
 }
 
 // Selection — synchronous "what is the user pointing at right now".
@@ -108,5 +146,6 @@ export interface Ambient {
   // Optional adapters — present iff the matching capability is true.
   readonly domActions?: AmbientDomActions;
   readonly screenshot?: AmbientScreenshot;
+  readonly filesystem?: AmbientFilesystem;
   readonly debug?: AmbientDebug;
 }

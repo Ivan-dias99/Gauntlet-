@@ -152,6 +152,37 @@ export class ComposerClient {
     );
   }
 
+  // Voice — A1. We carry audio over the same JSON pipe so the in-page
+  // overlay (which can only fetch via the service-worker proxy that
+  // serializes bodies as strings) and the desktop webview share one
+  // path. Base64 inflation (~33%) is the cost of that uniformity.
+  transcribeAudio(
+    audioBase64: string,
+    mime: string,
+    language?: string,
+    signal?: AbortSignal,
+  ): Promise<{ text: string; model_used: string; duration_ms: number }> {
+    return this.ambient.transport.fetchJson(
+      'POST',
+      `${this.backendUrl}/voice/transcribe`,
+      { audio_base64: audioBase64, mime, language },
+      signal,
+    );
+  }
+
+  synthesizeSpeech(
+    text: string,
+    voice?: string,
+    signal?: AbortSignal,
+  ): Promise<{ audio_base64: string; mime: string }> {
+    return this.ambient.transport.fetchJson(
+      'POST',
+      `${this.backendUrl}/voice/synthesize`,
+      { text, voice },
+      signal,
+    );
+  }
+
   requestDomPlan(
     contextId: string,
     userInput: string,

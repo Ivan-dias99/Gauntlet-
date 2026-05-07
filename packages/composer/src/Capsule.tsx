@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ComposerClient } from './composer-client';
 import {
   DEFAULT_COMPOSER_SETTINGS,
+  type Attachment,
   type ComposerSettings,
   type ContextCaptureRequest,
   type DomPlanResult,
@@ -23,8 +24,10 @@ import {
 } from './types';
 import { Markdown } from './markdown';
 import {
+  isRemoteVoiceSupported,
   isVoiceSupported,
   startVoice,
+  startVoiceRemote,
   type VoiceSession,
 } from './voice';
 import {
@@ -133,6 +136,13 @@ export function Capsule({
   // the page. If the request fires before capture finishes, we send
   // without the image — better than blocking the user.
   const [screenshot, setScreenshot] = useState<string | null>(null);
+  // A1 — operator-pinned local files / screen captures. The desktop
+  // shell exposes these via `ambient.filesystem` + `screenshot.captureScreen`;
+  // the cápsula inlines text content into the prompt and keeps image
+  // payloads as chips so the operator can see what they shipped. Empty
+  // by default and reset on dismiss/new mount.
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
   // Sprint 4 — governance lock. Fetched once on mount; missing fields
   // fall through to DEFAULT_COMPOSER_SETTINGS. The cápsula honors
   // screenshot_default (when the local pref is unset), per-domain
@@ -433,28 +443,45 @@ export function Capsule({
     if (voiceRef.current) return;
     setError(null);
     const baseline = userInput;
-    const session = startVoice({
-      onPartial: (text) => {
+    const callbacks = {
+      onPartial: (text: string) => {
         setUserInput(baseline ? `${baseline} ${text}`.trim() : text);
       },
-      onCommit: (text) => {
+      onCommit: (text: string) => {
         setUserInput(baseline ? `${baseline} ${text}`.trim() : text);
         setVoiceActive(false);
         voiceRef.current = null;
         // Pull focus back to the textarea so Enter works immediately.
         inputRef.current?.focus();
       },
-      onError: (msg) => {
+      onError: (msg: string) => {
         setError(msg);
         setVoiceActive(false);
         voiceRef.current = null;
       },
-    });
+    };
+    // Prefer Groq Whisper via backend when the ambient signals support
+    // — better quality, language-agnostic, doesn't depend on Chromium's
+    // Web Speech entitlement. Fall back to the local Web Speech API
+    // when the backend isn't reachable or the runtime lacks
+    // MediaRecorder.
+    if (ambient.capabilities.remoteVoice && isRemoteVoiceSupported()) {
+      setVoiceActive(true);
+      void startVoiceRemote(client, callbacks).then((session) => {
+        if (session) {
+          voiceRef.current = session;
+        } else {
+          setVoiceActive(false);
+        }
+      });
+      return;
+    }
+    const session = startVoice(callbacks);
     if (session) {
       voiceRef.current = session;
       setVoiceActive(true);
     }
-  }, [userInput]);
+  }, [userInput, ambient, client]);
 
   const stopVoiceCapture = useCallback(() => {
     voiceRef.current?.stop();
@@ -646,6 +673,111 @@ export function Capsule({
   // buffer so the user sees text appear token-by-token instead of
   // staring at a spinner. Action plans still arrive in batch on `done`
   // (parsing partial action arrays is not worth the complexity yet).
+  // A1 helpers — operator-driven anexar. The dialog plugin (desktop)
+  // is the consent gate; on web `ambient.filesystem` is undefined and
+  // these buttons never render in the first place.
+  const attachLocalFile = useCallback(async () => {
+    const fs = ambient.filesystem;
+    if (!fs) return;
+    setAttachError(null);
+    try {
+      const picked = await fs.pickFile();
+      if (!picked) return; // operator cancelled
+      const lowerName = picked.name.toLowerCase();
+      const isImage = /\.(png|jpe?g|gif|webp|svg)$/.test(lowerName);
+      if (isImage) {
+        const { base64, mime } = await fs.readFileBase64(picked.path);
+        const bytes = Math.ceil((base64.length * 3) / 4);
+        setAttachments((prev) => [
+          ...prev,
+          {
+            id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            kind: 'image',
+            name: picked.name,
+            mime,
+            bytes,
+            base64,
+            path: picked.path,
+          },
+        ]);
+      } else {
+        const text = await fs.readTextFile(picked.path);
+        setAttachments((prev) => [
+          ...prev,
+          {
+            id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            kind: 'text',
+            name: picked.name,
+            mime: 'text/plain',
+            bytes: new TextEncoder().encode(text).length,
+            text,
+            path: picked.path,
+          },
+        ]);
+      }
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : String(err));
+    }
+  }, [ambient]);
+
+  const attachScreenCapture = useCallback(async () => {
+    const cap = ambient.screenshot?.captureScreen;
+    if (!cap) return;
+    setAttachError(null);
+    try {
+      const got = await cap();
+      if (!got) {
+        setAttachError('Captura de ecrã indisponível neste sistema.');
+        return;
+      }
+      const bytes = Math.ceil((got.base64.length * 3) / 4);
+      setAttachments((prev) => [
+        ...prev,
+        {
+          id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          kind: 'image',
+          name: `ecrã-${new Date().toISOString().slice(11, 19)}.png`,
+          mime: 'image/png',
+          bytes,
+          base64: got.base64,
+          path: got.path,
+        },
+      ]);
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : String(err));
+    }
+  }, [ambient]);
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  // Compose user_input with attachment blocks. Text files are inlined
+  // verbatim inside <file name="..."> tags so the agent can read them
+  // without backend changes; images become a placeholder note (the
+  // multimodal pipeline lands in A2 — for now the operator describes
+  // what they captured in the prompt).
+  const composeUserInputWithAttachments = useCallback(
+    (raw: string): string => {
+      if (attachments.length === 0) return raw;
+      const blocks: string[] = [];
+      for (const a of attachments) {
+        if (a.kind === 'text' && a.text != null) {
+          blocks.push(
+            `<file name="${a.name}" path="${a.path ?? ''}">\n${a.text}\n</file>`,
+          );
+        } else if (a.kind === 'image') {
+          const kb = Math.max(1, Math.round(a.bytes / 1024));
+          blocks.push(
+            `<image name="${a.name}" bytes="${a.bytes}" mime="${a.mime}">[${kb} KB image attached — describe in prompt; multimodal payload arrives in A2]</image>`,
+          );
+        }
+      }
+      return `${blocks.join('\n\n')}\n\n${raw}`;
+    },
+    [attachments],
+  );
+
   const requestPlan = useCallback(async () => {
     if (!userInput.trim() || phase === 'planning' || phase === 'streaming' || phase === 'executing') {
       return;
@@ -689,9 +821,10 @@ export function Capsule({
     try {
       const ctx = await client.captureContext(capture, ac.signal);
       if (ac.signal.aborted) return;
+      const inputForAgent = composeUserInputWithAttachments(userInput.trim());
       streamAbortRef.current = client.requestDomPlanStream(
         ctx.context_id,
-        userInput.trim(),
+        inputForAgent,
         {
           onDelta: (text) => {
             if (ac.signal.aborted) return;
@@ -731,7 +864,7 @@ export function Capsule({
               try {
                 const planResult = await client.requestDomPlan(
                   ctx.context_id,
-                  userInput.trim(),
+                  inputForAgent,
                   ac.signal,
                 );
                 if (ac.signal.aborted) return;
@@ -761,7 +894,7 @@ export function Capsule({
       setError(err instanceof Error ? err.message : String(err));
       setPhase('error');
     }
-  }, [client, snapshot, screenshot, userInput, phase, plan, reportExecution]);
+  }, [client, snapshot, screenshot, userInput, phase, plan, reportExecution, composeUserInputWithAttachments, prefs]);
 
   const onSubmit = useCallback(
     (ev: React.FormEvent) => {
@@ -993,6 +1126,42 @@ export function Capsule({
         {/* Right panel: input + results */}
         <div className="gauntlet-capsule__panel gauntlet-capsule__panel--right">
           <form className="gauntlet-capsule__form" onSubmit={onSubmit}>
+            {attachments.length > 0 && (
+              <div className="gauntlet-capsule__attachments" aria-label="Anexos">
+                {attachments.map((a) => (
+                  <span
+                    key={a.id}
+                    className={`gauntlet-capsule__attachment gauntlet-capsule__attachment--${a.kind}`}
+                    title={a.path ?? a.name}
+                  >
+                    <span className="gauntlet-capsule__attachment-icon" aria-hidden>
+                      {a.kind === 'image' ? '◫' : '⌥'}
+                    </span>
+                    <span className="gauntlet-capsule__attachment-name">{a.name}</span>
+                    <span className="gauntlet-capsule__attachment-size">
+                      {a.bytes < 1024
+                        ? `${a.bytes} B`
+                        : a.bytes < 1024 * 1024
+                          ? `${Math.round(a.bytes / 1024)} KB`
+                          : `${(a.bytes / (1024 * 1024)).toFixed(1)} MB`}
+                    </span>
+                    <button
+                      type="button"
+                      className="gauntlet-capsule__attachment-remove"
+                      onClick={() => removeAttachment(a.id)}
+                      aria-label={`Remover ${a.name}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {attachError && (
+              <div className="gauntlet-capsule__attach-error" role="alert">
+                {attachError}
+              </div>
+            )}
             <textarea
               ref={inputRef}
               className="gauntlet-capsule__input"
@@ -1009,7 +1178,49 @@ export function Capsule({
                 <span className="gauntlet-capsule__kbd-sep">·</span>
                 <span className="gauntlet-capsule__kbd">⌘K</span>
               </span>
-              {isVoiceSupported() && (
+              {ambient.capabilities.filesystemRead && ambient.filesystem && (
+                <button
+                  type="button"
+                  className="gauntlet-capsule__attach-btn"
+                  onClick={() => void attachLocalFile()}
+                  aria-label="Anexar ficheiro local"
+                  title="Anexar ficheiro do disco"
+                  disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
+                    <path
+                      d="M14 4l-2 0 0 8-3 0 4 5 4-5-3 0 0-8z"
+                      transform="rotate(45 12 12)"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="gauntlet-capsule__attach-label">anexar</span>
+                </button>
+              )}
+              {ambient.capabilities.screenCapture && ambient.screenshot?.captureScreen && (
+                <button
+                  type="button"
+                  className="gauntlet-capsule__attach-btn"
+                  onClick={() => void attachScreenCapture()}
+                  aria-label="Capturar ecrã inteiro"
+                  title="Capturar ecrã inteiro"
+                  disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
+                    <rect
+                      x="3" y="5" width="18" height="13" rx="2"
+                      fill="none" stroke="currentColor" strokeWidth="1.6"
+                    />
+                    <circle cx="12" cy="11.5" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                  </svg>
+                  <span className="gauntlet-capsule__attach-label">ecrã</span>
+                </button>
+              )}
+              {(isVoiceSupported() ||
+                (ambient.capabilities.remoteVoice && isRemoteVoiceSupported())) && (
                 <button
                   type="button"
                   className={`gauntlet-capsule__voice${
@@ -3474,6 +3685,115 @@ export const CAPSULE_CSS = `
       0 0 0 12px rgba(212, 96, 60, 0);
   }
 }
+/* Anexar / Ecrã — sibling buttons to the voice button. Same shape so
+   the actions row reads as a coherent toolbar; the icon+label idiom
+   stays consistent. Hidden when the ambient doesn't support FS / screen
+   capture (web extension). */
+.gauntlet-capsule__attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-tint-soft);
+  color: var(--gx-fg-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms, border-color 160ms, color 160ms;
+}
+.gauntlet-capsule__attach-btn:hover:not(:disabled) {
+  background: var(--gx-tint-strong);
+  border-color: var(--gx-border-mid);
+  color: var(--gx-fg);
+}
+.gauntlet-capsule__attach-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.gauntlet-capsule__attach-label {
+  font-weight: 500;
+}
+
+/* Attachment chips — render above the textarea once the operator pins
+   a file or screenshot. Compact, dismissible, hierarchy-light so the
+   prompt remains the focus. */
+.gauntlet-capsule__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+.gauntlet-capsule__attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--gx-border-mid);
+  background: var(--gx-surface);
+  color: var(--gx-fg);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  max-width: 260px;
+}
+.gauntlet-capsule__attachment--image {
+  border-color: color-mix(in oklab, var(--gx-ember) 32%, var(--gx-border-mid));
+}
+.gauntlet-capsule__attachment-icon {
+  color: var(--gx-fg-muted);
+  font-size: 11px;
+}
+.gauntlet-capsule__attachment-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.gauntlet-capsule__attachment-size {
+  color: var(--gx-fg-muted);
+  letter-spacing: 0.04em;
+}
+.gauntlet-capsule__attachment-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--gx-fg-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.gauntlet-capsule__attachment-remove:hover {
+  background: var(--gx-tint-strong);
+  color: var(--gx-fg);
+}
+
+/* Inline error band when pickFile / captureScreen rejects (permission,
+   missing binary, file too large). Same visual register as the model
+   error band — just below the chips so the operator sees it before they
+   submit. */
+.gauntlet-capsule__attach-error {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--gx-danger-text) 10%, transparent);
+  border: 1px solid color-mix(in oklab, var(--gx-danger-text) 30%, transparent);
+  color: var(--gx-danger-text);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
 .gauntlet-capsule__voice {
   display: inline-flex;
   align-items: center;

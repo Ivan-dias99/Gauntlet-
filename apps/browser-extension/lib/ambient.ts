@@ -33,6 +33,13 @@ const CAPABILITIES: AmbientCapabilities = {
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window),
   streaming: true,
   refreshSelection: true,
+  // Web shell never gets local filesystem — the operator's `<all_urls>`
+  // grant is for HTTP origins, not file://. Anexar local files belongs
+  // to the desktop shell. (A2 will add cross-shell drag-and-drop, which
+  // routes through MediaSource and stays scoped to the dropped blob.)
+  filesystemRead: false,
+  screenCapture: false, // chrome.tabs.captureVisibleTab handles the viewport
+  remoteVoice: true, // backend offers /voice/transcribe; Web Speech remains fallback
 };
 
 interface BackgroundFetchResponse {

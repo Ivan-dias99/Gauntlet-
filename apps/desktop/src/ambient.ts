@@ -8,10 +8,18 @@
 import {
   type Ambient,
   type AmbientCapabilities,
+  type AmbientFilesystem,
   type AmbientStorage,
   type SelectionSnapshot,
 } from "@gauntlet/composer";
-import { captureContextSnapshot, captureScreenRegion } from "./adapters/tauri";
+import {
+  captureContextSnapshot,
+  captureScreenFull,
+  captureScreenRegion,
+  pickFile,
+  readFileBase64At,
+  readTextFileAt,
+} from "./adapters/tauri";
 
 const CAPABILITIES: AmbientCapabilities = {
   domExecution: false, // there is no host page DOM to actuate
@@ -23,6 +31,9 @@ const CAPABILITIES: AmbientCapabilities = {
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window),
   streaming: false, // SSE bridge not wired through Tauri yet
   refreshSelection: true, // re-reads clipboard + window snapshot
+  filesystemRead: true, // pick_file / read_*_at Tauri commands
+  screenCapture: true, // capture_screen_full Tauri command
+  remoteVoice: true, // backend can transcribe via /voice/transcribe
 };
 
 // In-memory snapshot cache so the synchronous selection.read() can
@@ -130,14 +141,36 @@ export function createDesktopAmbient(): Ambient {
     },
     screenshot: {
       async capture(): Promise<string | null> {
-        // capture_screen_region returns a file path, not a data URL —
-        // surface it as-is via a `file://` URL the cápsula can ignore
-        // until the multimodal pipeline grows file-path support. For
-        // now, return null so the cápsula treats screenshot as
-        // unavailable.
+        // capture_screen_region is interactive (operator drag-selects).
+        // Browser-equivalent of "the viewport screenshot" — kept as a
+        // path-only reply for backward compat with the existing capsule
+        // flow; A1's full-screen path lives in captureScreen() below.
         const path = await captureScreenRegion();
         return path ? `file://${path}` : null;
       },
+      async captureScreen() {
+        return await captureScreenFull();
+      },
+    },
+    filesystem: filesystem(),
+  };
+}
+
+// AmbientFilesystem implementation — the dialog is the consent gate;
+// std::fs (in Rust) is the reader. We keep this as a thin wrapper so
+// the cápsula doesn't import Tauri APIs directly.
+function filesystem(): AmbientFilesystem {
+  return {
+    async pickFile(accept?: string[]) {
+      const got = await pickFile(accept);
+      if (!got) return null;
+      return { path: got.path, name: got.name };
+    },
+    async readTextFile(path: string) {
+      return await readTextFileAt(path);
+    },
+    async readFileBase64(path: string) {
+      return await readFileBase64At(path);
     },
   };
 }

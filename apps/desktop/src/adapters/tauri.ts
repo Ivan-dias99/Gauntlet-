@@ -109,6 +109,56 @@ export async function captureScreenRegion(): Promise<string | null> {
   }
 }
 
+// A1 — full-screen capture (non-interactive). Wraps the Rust command
+// that writes a PNG to the temp dir and returns it base64-encoded so
+// the cápsula can preview without round-tripping the file:// URL
+// (Tauri's asset protocol is configurable but not enabled by default).
+export interface ScreenCaptureFull {
+  base64: string;
+  path: string;
+}
+
+export async function captureScreenFull(): Promise<ScreenCaptureFull | null> {
+  try {
+    return await invoke<ScreenCaptureFull>("capture_screen_full");
+  } catch (err) {
+    console.warn("[gauntlet/desktop] capture_screen_full failed:", err);
+    return null;
+  }
+}
+
+// A1 — file picker + read. The dialog plugin is the consent gate; once
+// the operator picks a file we read it via std::fs in Rust and stream
+// the result back to the cápsula.
+export interface PickedFile {
+  path: string;
+  name: string;
+}
+
+export async function pickFile(
+  accept?: string[],
+): Promise<PickedFile | null> {
+  try {
+    return await invoke<PickedFile | null>("pick_file", { accept });
+  } catch (err) {
+    console.warn("[gauntlet/desktop] pick_file failed:", err);
+    return null;
+  }
+}
+
+export async function readTextFileAt(path: string): Promise<string> {
+  return await invoke<string>("read_text_file_at", { path });
+}
+
+export interface Base64Payload {
+  base64: string;
+  mime: string;
+}
+
+export async function readFileBase64At(path: string): Promise<Base64Payload> {
+  return await invoke<Base64Payload>("read_file_base64_at", { path });
+}
+
 // Backend autostart — opt-in via env var checked Rust-side. Returns
 // the start error verbatim when the env isn't enabled OR the spawn
 // failed; caller surfaces it as a regular cápsula error band.
