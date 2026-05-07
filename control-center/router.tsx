@@ -8,6 +8,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ControlLayout from "./pages/ControlLayout";
 import OverviewPage from "./pages/OverviewPage";
 import SettingsPage from "./pages/SettingsPage";
+import GovernancePage from "./pages/GovernancePage";
 import ModelsPage from "./pages/ModelsPage";
 import PermissionsPage from "./pages/PermissionsPage";
 import MemoryPage from "./pages/MemoryPage";
@@ -22,6 +23,7 @@ export default function AppRoutes() {
       <Route path="/control" element={<ControlLayout />}>
         <Route index element={<OverviewPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="governance" element={<GovernancePage />} />
         <Route path="models" element={<ModelsPage />} />
         <Route path="permissions" element={<PermissionsPage />} />
         <Route path="memory" element={<MemoryPage />} />

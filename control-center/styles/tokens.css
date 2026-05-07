@@ -114,6 +114,12 @@
   --accent-dim: #6a6a72;
   --accent-glow: rgba(255, 255, 255, 0.06);
   --ember: #d07a5a;
+  --accent-green: #6ab38a;
+  --accent-green-soft: rgba(106, 179, 138, 0.18);
+  --accent-cyan: #6ab3c4;
+  --accent-cyan-soft: rgba(106, 179, 196, 0.18);
+  --accent-plum: #b39ac4;
+  --accent-plum-soft: rgba(179, 154, 196, 0.18);
 
   --terminal-ok: #6aa882;
   --terminal-warn: #d8b058;
@@ -175,6 +181,17 @@
   --accent-dim: #8a8a90;
   --accent-glow: rgba(0, 0, 0, 0.04);
   --ember: #b8542a;
+  /* Semantic accents — pickable in Settings → appearance. Green is the
+     new flagship default (forest, calm, premium). Cyan + plum sit
+     beside it for variety. Each emits its own glow + subtle tint so
+     toggles, focus rings and active states pick the operator's choice
+     without us forking every component. */
+  --accent-green: #2a6a40;
+  --accent-green-soft: rgba(42, 106, 64, 0.14);
+  --accent-cyan: #2a7a8a;
+  --accent-cyan-soft: rgba(42, 122, 138, 0.14);
+  --accent-plum: #6a4a7a;
+  --accent-plum-soft: rgba(106, 74, 122, 0.14);
 
   --terminal-ok: #2a6a40;
   --terminal-warn: #a8742a;
