@@ -7,7 +7,7 @@
 //     the response is a text answer or a list of DOM actions — the
 //     user never has to choose between "Compor" and "Acionar".
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ComposerClient } from './composer-client';
 import {
   DEFAULT_COMPOSER_SETTINGS,
@@ -57,6 +57,13 @@ export interface CapsuleProps {
   // are absent (rare: hotkey before any pointer activity), the cápsula
   // opens as a centered floating capsule.
   cursorAnchor?: { x: number; y: number } | null;
+  // Optional overlays (e.g. Onboarding) rendered inside the cápsula
+  // root so position:absolute children anchor against the cápsula
+  // itself, not the host page. Without this slot, shells were rendering
+  // <Capsule/> and <Onboarding/> as siblings — the Onboarding ended up
+  // floating against the page body and visually clashed with the
+  // cápsula instead of taking it over as an in-cápsula tour.
+  children?: ReactNode;
 }
 
 type Phase =
@@ -73,6 +80,7 @@ export function Capsule({
   initialSnapshot,
   onDismiss,
   cursorAnchor,
+  children,
 }: CapsuleProps) {
   // Construct the client + prefs once per cápsula mount. Ambient is a
   // stable singleton built by the host shell's createXAmbient(); we
@@ -2192,6 +2200,11 @@ export function Capsule({
           {savedFlash}
         </div>
       )}
+
+      {/* Overlays (Onboarding, etc) injected by the host shell. Rendered
+          inside the cápsula root so position:absolute children anchor
+          against the cápsula instead of the host page. */}
+      {children}
     </div>
   );
 }

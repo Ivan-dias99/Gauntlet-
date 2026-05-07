@@ -19,6 +19,14 @@ project follows [Semantic Versioning](https://semver.org).
   um `×` ember no badge da action durante 1.6s e silencia. Lifeboat fica
   só para o caso degenerado de `injection-retry-failed`. Lente 1
   ("ponta do cursor") reforçada.
+- **Onboarding fica dentro da cápsula.** `Capsule` ganha slot `children`;
+  ambos os shells (`apps/browser-extension/components/App.tsx` e
+  `apps/desktop/src/App.tsx`) passam `<Onboarding>` como filho em vez de
+  irmão. Antes o `position:absolute; inset:0` da intro ancorava no body
+  da página → tour aparecia ao lado da cápsula, sobrepondo conteúdo
+  externo. Agora ancora no root da cápsula → toma-a por completo como
+  modal interno, exactamente como o comentário no Onboarding.tsx descreve
+  ("an in-cápsula tour beats…"). Visual coerente em ambos os shells.
 
 ### Fixed
 - **Backend default port** changed from `8080` to `3002` so local dev

@@ -285,8 +285,9 @@ export function App() {
         initialSnapshot={surface.snapshot}
         cursorAnchor={surface.cursor}
         onDismiss={dismiss}
-      />
-      {showOnboarding && <Onboarding onDone={dismissOnboarding} />}
+      >
+        {showOnboarding && <Onboarding onDone={dismissOnboarding} />}
+      </Capsule>
     </>
   );
 }
