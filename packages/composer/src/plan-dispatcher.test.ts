@@ -28,7 +28,7 @@ describe('dispatchPlan', () => {
     );
     const ambient = makeAmbient({
       domActions: { execute },
-    } as Partial<Ambient>);
+    } as unknown as Partial<Ambient>);
 
     const actions: DomAction[] = [
       { type: 'highlight', selector: '#a' },
@@ -97,7 +97,7 @@ describe('dispatchPlan', () => {
     const writeTextFile = vi.fn(async () => 5);
     const ambient = makeAmbient({
       filesystem: { readTextFile, writeTextFile },
-    } as Partial<Ambient>);
+    } as unknown as Partial<Ambient>);
     const out = await dispatchPlan(ambient, [
       { type: 'fs.read', path: '/a.txt' },
       { type: 'fs.write', path: '/b.txt', content: 'hello' },
@@ -124,7 +124,7 @@ describe('dispatchPlan', () => {
     const ambient = makeAmbient({
       domActions: { execute },
       shellExec: { run },
-    } as Partial<Ambient>);
+    } as unknown as Partial<Ambient>);
 
     await dispatchPlan(ambient, [
       { type: 'highlight', selector: '#a' },

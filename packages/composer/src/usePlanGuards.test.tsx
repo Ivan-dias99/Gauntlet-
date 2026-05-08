@@ -64,7 +64,7 @@ describe('usePlanGuards', () => {
         }),
         ambient: ambient({
           domActions: { execute: vi.fn() },
-        } as Partial<Ambient>),
+        } as unknown as Partial<Ambient>),
         url: 'https://example.com',
         settings: DEFAULT_COMPOSER_SETTINGS,
       }),
@@ -85,7 +85,7 @@ describe('usePlanGuards', () => {
         }),
         ambient: ambient({
           domActions: { execute: vi.fn() },
-        } as Partial<Ambient>),
+        } as unknown as Partial<Ambient>),
         url: 'https://example.com',
         settings: DEFAULT_COMPOSER_SETTINGS,
       }),
@@ -121,7 +121,7 @@ describe('usePlanGuards', () => {
         plan: plan({ actions: [{ type: 'highlight', selector: 'h1' }] }),
         ambient: ambient({
           domActions: { execute: vi.fn() },
-        } as Partial<Ambient>),
+        } as unknown as Partial<Ambient>),
         url: 'https://example.com',
         settings,
       }),
@@ -148,7 +148,7 @@ describe('usePlanGuards', () => {
         }),
         ambient: ambient({
           filesystem: { writeTextFile: vi.fn() },
-        } as Partial<Ambient>),
+        } as unknown as Partial<Ambient>),
         url: 'https://example.com',
         settings,
       }),

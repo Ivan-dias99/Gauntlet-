@@ -13,6 +13,8 @@ import { describeAction } from './helpers';
 import { type DomPlanResult } from './types';
 import { type PolicyAck } from './usePlanGuards';
 
+export { type PolicyAck };
+
 export type PlanPhase = 'plan_ready' | 'executing' | 'executed';
 
 export interface DangerInfo {

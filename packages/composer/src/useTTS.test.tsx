@@ -109,7 +109,7 @@ describe('useTTS', () => {
     const { rerender } = renderHook(
       (props: { isPlanReady: boolean; planCompose: string | undefined }) =>
         useTTS({ prefs, ...props }),
-      { initialProps: { isPlanReady: false, planCompose: undefined } },
+      { initialProps: { isPlanReady: false, planCompose: undefined as string | undefined } },
     );
     await act(async () => {
       await Promise.resolve();

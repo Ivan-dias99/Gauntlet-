@@ -22,7 +22,7 @@
 
 import { useCallback, useState } from 'react';
 import { type Ambient } from './ambient';
-import { type Attachment, type DomPlanResult, type SelectionSnapshot } from './types';
+import { type Attachment, type SelectionSnapshot } from './types';
 
 function newAttachmentId(): string {
   return `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -30,7 +30,6 @@ function newAttachmentId(): string {
 
 export interface UseAttachmentsArgs {
   ambient: Ambient;
-  plan: DomPlanResult | null;
   snapshot: SelectionSnapshot;
 }
 
@@ -41,13 +40,14 @@ export interface UseAttachmentsResult {
   attachLocalFile: () => Promise<void>;
   attachScreenCapture: () => Promise<void>;
   removeAttachment: (id: string) => void;
-  saveComposeToDisk: () => Promise<void>;
+  // Caller passes the current compose at click time so this hook
+  // doesn't need to track the streaming-plan state itself.
+  saveComposeToDisk: (compose: string | null | undefined) => Promise<void>;
   composeUserInputWithAttachments: (raw: string) => string;
 }
 
 export function useAttachments({
   ambient,
-  plan,
   snapshot,
 }: UseAttachmentsArgs): UseAttachmentsResult {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -137,11 +137,11 @@ export function useAttachments({
   // suggest a filename derived from the snapshot title (sanitised) and
   // default the extension to .md since the cápsula's compose tends to
   // be markdown. The operator can change either in the dialog.
-  const saveComposeToDisk = useCallback(async () => {
+  const saveComposeToDisk = useCallback(async (compose: string | null | undefined) => {
     const fs = ambient.filesystem;
     if (!fs?.pickSavePath || !fs.writeTextFile) return;
-    const compose = plan?.compose ?? '';
-    if (!compose.trim()) return;
+    const composeText = compose ?? '';
+    if (!composeText.trim()) return;
     setAttachError(null);
     try {
       const titleSeed = (snapshot.pageTitle || 'gauntlet-compose')
@@ -152,7 +152,7 @@ export function useAttachments({
       const suggested = `${titleSeed}.md`;
       const path = await fs.pickSavePath(suggested, ['md', 'txt', 'json']);
       if (!path) return; // operator cancelled
-      const bytes = await fs.writeTextFile(path, compose);
+      const bytes = await fs.writeTextFile(path, composeText);
       setSavedToDiskFlash(
         `${path.split(/[\\/]/).pop() ?? 'ficheiro'} (${
           bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`
@@ -162,7 +162,7 @@ export function useAttachments({
     } catch (err) {
       setAttachError(err instanceof Error ? err.message : String(err));
     }
-  }, [ambient, plan, snapshot.pageTitle]);
+  }, [ambient, snapshot.pageTitle]);
 
   // Compose user_input with attachment blocks. Text files are inlined
   // verbatim inside <file name="..."> tags so the agent can read them

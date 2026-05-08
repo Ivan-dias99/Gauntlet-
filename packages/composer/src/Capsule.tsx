@@ -27,6 +27,10 @@ import {
 } from './pill-prefs';
 import { buildPaletteActions, CommandPalette } from './CommandPalette';
 import { SettingsDrawer } from './SettingsDrawer';
+import { computeCapsulePosition, estimateCapsuleSize } from './placement';
+import { useTTS } from './useTTS';
+import { useVoiceCapture } from './useVoiceCapture';
+import { useAttachments } from './useAttachments';
 import { dispatchPlan as dispatchPlanCore } from './plan-dispatcher';
 import { ShellPanel } from './ShellPanel';
 import { AnswerPanel } from './AnswerPanel';
@@ -74,9 +78,8 @@ export function Capsule({
     () => createPillPrefs(ambient.storage),
     [ambient],
   );
-  // Executor mirror — desktop ambient has no domActions; the "Acionar"
-  // button hides via ambient.capabilities.domExecution.
-  const executor = ambient.domActions?.execute;
+  // ambient.domActions?.execute is consulted indirectly via
+  // canDispatchAnyAction inside useStreamingPlan; no local mirror needed.
   const [snapshot, setSnapshot] = useState<SelectionSnapshot>(initialSnapshot);
   const [userInput, setUserInput] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -134,7 +137,7 @@ export function Capsule({
     removeAttachment,
     saveComposeToDisk,
     composeUserInputWithAttachments,
-  } = useAttachments({ ambient, plan, snapshot });
+  } = useAttachments({ ambient, snapshot });
   // Sprint 4 — governance lock. Fetched once on mount; missing fields
   // fall through to DEFAULT_COMPOSER_SETTINGS. The cápsula honors
   // screenshot_default (when the local pref is unset), per-domain
@@ -208,7 +211,7 @@ export function Capsule({
   const tts = useTTS({
     prefs,
     isPlanReady: phase === 'plan_ready',
-    planCompose: plan?.compose,
+    planCompose: plan?.compose ?? undefined,
   });
   ttsRef.current = tts;
 
@@ -500,7 +503,7 @@ export function Capsule({
         shellPanelOpen,
         attachLocalFile: () => void attachLocalFile(),
         attachScreenCapture: () => void attachScreenCapture(),
-        saveComposeToDisk: () => void saveComposeToDisk(),
+        saveComposeToDisk: () => void saveComposeToDisk(plan?.compose),
         toggleShellPanel: () => setShellPanelOpen((v) => !v),
         clearInput: () => {
           setUserInput('');
@@ -758,7 +761,7 @@ export function Capsule({
               onSaveDisk={
                 ambient.capabilities.filesystemWrite &&
                 ambient.filesystem?.writeTextFile
-                  ? () => void saveComposeToDisk()
+                  ? () => void saveComposeToDisk(plan?.compose)
                   : undefined
               }
               onCopyBlock={() => flashSaved('code copied')}
@@ -827,7 +830,7 @@ export function Capsule({
             attachLocalFile: () => void attachLocalFile(),
             attachScreenCapture: () => void attachScreenCapture(),
             toggleShellPanel: () => setShellPanelOpen((v) => !v),
-            saveComposeToDisk: () => void saveComposeToDisk(),
+            saveComposeToDisk: () => void saveComposeToDisk(plan?.compose),
             refreshSnapshot,
             clearInput: () => {
               setUserInput('');
