@@ -7,6 +7,25 @@ project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Fixed
+- **Groq auto-fallback quando o modelo primário bate em rate limit.**
+  Antes: 429 do Groq propagava-se até à cápsula como `502 Bad Gateway —
+  rate_limit_exceeded`. O `model_gateway` tinha chains documentadas mas
+  nunca eram accionadas em runtime para erros de rate limit do provider
+  activo.
+  Agora: `groq_provider._MessagesNamespace.create()` e
+  `_StreamContext.__aenter__()` envolvem a chamada num retry-loop
+  através de `GROQ_FALLBACK_CHAIN` (`llama-3.3-70b-versatile` →
+  `llama-3.1-8b-instant` → `openai/gpt-oss-120b` → `mixtral-8x7b-32768`).
+  Cada modelo tem o seu pool de tokens, então 429 num não significa
+  429 noutro. Quando fallback é accionado, o `_Response.model` expõe
+  o modelo real que serviu (em vez do anthropic-shape) — cápsula
+  mostra `llama-3.1-8b-instant` no badge para o operador saber.
+  Cumpre a doutrina lente 3 do CLAUDE.md ("multimodelo via gateway")
+  que estava documentada mas não wired.
+
+
+
 ### Added
 - **Paridade visual COMPLETA entre desktop e browser (Fase 5).**
   Operador deixa de notar qual shell está activo. Tres convergências:

@@ -39,6 +39,52 @@ from typing import Any, Optional
 logger = logging.getLogger("gauntlet.groq_provider")
 
 
+# ── Auto-fallback chain ────────────────────────────────────────────────────
+#
+# Groq free tier impõe quotas separadas por modelo. Quando o primário
+# bate em rate limit (429), em vez de propagar o erro para o operador,
+# tentamos o próximo modelo da chain — cada um com o seu pool de tokens.
+# A chain é heurística: começa pelo modelo configurado pelo operador
+# (GAUNTLET_GROQ_MODEL), depois alternativas estáveis ordenadas por
+# capacidade descendente. O utilizador final só nota o fallback se o
+# modelo for diferente — a resposta vem na mesma, sem erro vermelho.
+#
+# Fonte de modelos válidos: https://console.groq.com/docs/models
+GROQ_FALLBACK_CHAIN: list[str] = [
+    "llama-3.3-70b-versatile",   # primário razoável (100k TPD free)
+    "llama-3.1-8b-instant",      # fallback rápido (quota separada)
+    "openai/gpt-oss-120b",       # fallback OSS GPT
+    "mixtral-8x7b-32768",        # último recurso (deprecated em alguns regions)
+]
+
+
+def _is_rate_limit_error(exc: BaseException) -> bool:
+    """Detecta erros 429 / rate-limit do Groq sem depender da SDK
+    expor um tipo concreto. groq SDK em versões diferentes usa
+    groq.RateLimitError, groq.APIError, ou simplesmente APIStatusError —
+    duck-type pelo status code + texto da mensagem."""
+    status = getattr(exc, "status_code", None)
+    if status == 429:
+        return True
+    msg = str(exc).lower()
+    return (
+        "rate_limit" in msg
+        or "rate limit" in msg
+        or "429" in msg
+        or "tokens per day" in msg
+        or "tpd" in msg
+    )
+
+
+def _build_fallback_chain(primary: str) -> list[str]:
+    """Chain começa pelo primário, depois alternativas únicas."""
+    chain = [primary]
+    for m in GROQ_FALLBACK_CHAIN:
+        if m != primary and m not in chain:
+            chain.append(m)
+    return chain
+
+
 # ── Anthropic-shaped response objects ──────────────────────────────────────
 #
 # Same minimal shape as gemini_provider — only the fields engine.py /
@@ -157,34 +203,79 @@ class _StreamContext:
         self._stop_reason: Optional[str] = None
         self._in_tokens = 0
         self._out_tokens = 0
+        # Preenchido em __aenter__ — quando fallback é accionado, este
+        # passa a ser o nome do modelo Groq actualmente em uso, para
+        # expor à cápsula via get_final_message().model.
+        self._actual_model: str = model
 
     async def __aenter__(self) -> "_StreamContext":
         client = self._parent._client
-        groq_model = self._parent._model_id
         groq_messages = _to_groq_messages(self._messages, self._system)
-        kwargs: dict[str, Any] = {
-            "model": groq_model,
-            "messages": groq_messages,
-            "max_tokens": self._max_tokens,
-            "stream": True,
-        }
-        if self._temperature is not None:
-            kwargs["temperature"] = self._temperature
-        # stream_options.include_usage permite o gateway ledger contar
-        # tokens em respostas streamadas, mas só foi adicionado em groq
-        # SDK ~0.13+. Em versões mais antigas o kwarg é rejeitado e a
-        # chamada cai antes do primeiro chunk. Tentamos primeiro com,
-        # caímos sem se a SDK não aceitar — perdemos só a contagem
-        # exacta de tokens (acceptable trade).
-        try:
-            self._stream = await client.chat.completions.create(
-                **kwargs, stream_options={"include_usage": True},
-            )
-        except TypeError as exc:
-            if "stream_options" not in str(exc):
+        chain = _build_fallback_chain(self._parent._model_id)
+
+        last_exc: Optional[BaseException] = None
+        for attempt_idx, attempt_model in enumerate(chain):
+            kwargs: dict[str, Any] = {
+                "model": attempt_model,
+                "messages": groq_messages,
+                "max_tokens": self._max_tokens,
+                "stream": True,
+            }
+            if self._temperature is not None:
+                kwargs["temperature"] = self._temperature
+
+            try:
+                # stream_options.include_usage só foi adicionado em
+                # groq SDK ~0.13+. Em versões mais antigas o kwarg é
+                # rejeitado com TypeError. Tentamos com e fall back sem.
+                try:
+                    self._stream = await client.chat.completions.create(
+                        **kwargs, stream_options={"include_usage": True},
+                    )
+                except TypeError as exc:
+                    if "stream_options" not in str(exc):
+                        raise
+                    self._stream = await client.chat.completions.create(
+                        **kwargs,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                # Codex P1 review: continuar em qualquer erro, não só
+                # rate-limit. Modelo intermédio com model_not_found / 400
+                # / region-restricted continua a tentar o próximo da
+                # chain em vez de abortar com candidatos restantes.
+                if attempt_idx < len(chain) - 1:
+                    next_model = chain[attempt_idx + 1]
+                    if _is_rate_limit_error(exc):
+                        logger.warning(
+                            "Groq stream model %s rate-limited; auto-fallback to %s",
+                            attempt_model, next_model,
+                        )
+                    else:
+                        logger.warning(
+                            "Groq stream model %s failed (%s: %s); "
+                            "auto-fallback to %s",
+                            attempt_model, type(exc).__name__,
+                            str(exc)[:160], next_model,
+                        )
+                    continue
+                logger.error(
+                    "Groq stream fallback chain exhausted; last model %s "
+                    "failed (%s). Operator will see error.",
+                    attempt_model, type(exc).__name__,
+                )
                 raise
-            self._stream = await client.chat.completions.create(**kwargs)
-        return self
+
+            # Quando fallback ocorre, regista o modelo real usado para
+            # o get_final_message() expor no campo .model.
+            self._actual_model = (
+                attempt_model if attempt_idx > 0 else self._model_anthropic
+            )
+            return self
+
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("Groq adapter: empty fallback chain")
 
     async def __aexit__(self, *exc_info: Any) -> None:
         # The Groq SDK closes the underlying connection when the iterator
@@ -218,9 +309,12 @@ class _StreamContext:
                 self._out_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
 
     async def get_final_message(self) -> _Response:
+        # _actual_model reflete o modelo que efectivamente serviu o
+        # stream — o anthropic-shape se primário deu, o nome Groq real
+        # se fallback foi accionado em __aenter__.
         return _Response(
             content=[_Block(type="text", text=self._final_text)],
-            model=self._model_anthropic,
+            model=self._actual_model,
             stop_reason=_stop_reason(self._stop_reason),
             usage=_Usage(
                 input_tokens=self._in_tokens, output_tokens=self._out_tokens,
@@ -258,43 +352,83 @@ class _MessagesNamespace:
         loop will not fire when running on Groq.
         """
         client = self._parent._client
-        groq_model = self._parent._model_id
         groq_messages = _to_groq_messages(messages, system)
+        chain = _build_fallback_chain(self._parent._model_id)
 
-        kwargs: dict[str, Any] = {
-            "model": groq_model,
-            "messages": groq_messages,
-            "max_tokens": max_tokens,
-        }
-        if temperature is not None:
-            kwargs["temperature"] = temperature
+        last_exc: Optional[BaseException] = None
+        for attempt_idx, attempt_model in enumerate(chain):
+            kwargs: dict[str, Any] = {
+                "model": attempt_model,
+                "messages": groq_messages,
+                "max_tokens": max_tokens,
+            }
+            if temperature is not None:
+                kwargs["temperature"] = temperature
 
-        # Groq SDK is OpenAI-compatible: chat.completions.create returns a
-        # ChatCompletion object with .choices[0].message.content and
-        # .usage.{prompt_tokens, completion_tokens}.
-        response = await client.chat.completions.create(**kwargs)
+            try:
+                # Groq SDK is OpenAI-compatible: chat.completions.create
+                # returns a ChatCompletion object with .choices[0].message
+                # .content and .usage.{prompt_tokens, completion_tokens}.
+                response = await client.chat.completions.create(**kwargs)
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                # Em qualquer erro de um modelo da chain (rate-limit,
+                # model_not_found, region-restricted, network blip),
+                # tentamos o próximo. Codex P1 review: limitar fallback
+                # só a rate-limit ignorava modelos potencialmente úteis
+                # quando o intermédio falhava por outra razão.
+                # Só propagamos quando esgotámos a chain inteira.
+                if attempt_idx < len(chain) - 1:
+                    next_model = chain[attempt_idx + 1]
+                    if _is_rate_limit_error(exc):
+                        logger.warning(
+                            "Groq model %s rate-limited; auto-fallback to %s",
+                            attempt_model, next_model,
+                        )
+                    else:
+                        logger.warning(
+                            "Groq model %s failed (%s: %s); auto-fallback to %s",
+                            attempt_model, type(exc).__name__,
+                            str(exc)[:160], next_model,
+                        )
+                    continue
+                # Esgotou a chain — propaga o último erro.
+                logger.error(
+                    "Groq fallback chain exhausted; last model %s failed "
+                    "(%s). Operator will see error.",
+                    attempt_model, type(exc).__name__,
+                )
+                raise
 
-        text = ""
-        finish: Optional[str] = None
-        choices = getattr(response, "choices", None) or []
-        if choices:
-            msg = getattr(choices[0], "message", None)
-            text = (getattr(msg, "content", None) or "") if msg else ""
-            finish = getattr(choices[0], "finish_reason", None)
+            text = ""
+            finish: Optional[str] = None
+            choices = getattr(response, "choices", None) or []
+            if choices:
+                msg = getattr(choices[0], "message", None)
+                text = (getattr(msg, "content", None) or "") if msg else ""
+                finish = getattr(choices[0], "finish_reason", None)
 
-        usage = getattr(response, "usage", None)
-        in_tok = int(getattr(usage, "prompt_tokens", 0) or 0)
-        out_tok = int(getattr(usage, "completion_tokens", 0) or 0)
+            usage = getattr(response, "usage", None)
+            in_tok = int(getattr(usage, "prompt_tokens", 0) or 0)
+            out_tok = int(getattr(usage, "completion_tokens", 0) or 0)
 
-        # Echo the caller's requested model id back on the response so the
-        # call ledger keeps the gateway's intent (e.g. claude-sonnet-4-6).
-        # The actual provider/model used is in the log via _model_id.
-        return _Response(
-            content=[_Block(type="text", text=text)],
-            model=model,
-            stop_reason=_stop_reason(finish),
-            usage=_Usage(input_tokens=in_tok, output_tokens=out_tok),
-        )
+            # Quando fallback ocorre (attempt_idx > 0), expõe o modelo
+            # real usado em vez do anthropic-shape — assim a cápsula
+            # mostra "llama-3.1-8b-instant" no badge em vez do modelo
+            # configurado, dando feedback transparente ao operador.
+            actual_model = attempt_model if attempt_idx > 0 else model
+            return _Response(
+                content=[_Block(type="text", text=text)],
+                model=actual_model,
+                stop_reason=_stop_reason(finish),
+                usage=_Usage(input_tokens=in_tok, output_tokens=out_tok),
+            )
+
+        # Inalcançável — o for-else acima ou retorna ou re-raise. Mas
+        # mypy/pylance precisam de algo aqui.
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("Groq adapter: empty fallback chain")
 
 
 class AsyncGroqAnthropicAdapter:
