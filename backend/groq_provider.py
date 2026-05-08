@@ -167,14 +167,23 @@ class _StreamContext:
             "messages": groq_messages,
             "max_tokens": self._max_tokens,
             "stream": True,
-            # Groq adds usage to the final SSE chunk when this flag is on.
-            # Without it stream.get_final_message() returns zeroed counters
-            # and the gateway ledger loses the row.
-            "stream_options": {"include_usage": True},
         }
         if self._temperature is not None:
             kwargs["temperature"] = self._temperature
-        self._stream = await client.chat.completions.create(**kwargs)
+        # stream_options.include_usage permite o gateway ledger contar
+        # tokens em respostas streamadas, mas só foi adicionado em groq
+        # SDK ~0.13+. Em versões mais antigas o kwarg é rejeitado e a
+        # chamada cai antes do primeiro chunk. Tentamos primeiro com,
+        # caímos sem se a SDK não aceitar — perdemos só a contagem
+        # exacta de tokens (acceptable trade).
+        try:
+            self._stream = await client.chat.completions.create(
+                **kwargs, stream_options={"include_usage": True},
+            )
+        except TypeError as exc:
+            if "stream_options" not in str(exc):
+                raise
+            self._stream = await client.chat.completions.create(**kwargs)
         return self
 
     async def __aexit__(self, *exc_info: Any) -> None:
