@@ -35,6 +35,7 @@ export * from './LeftPanel';
 export * from './ActionsRow';
 export * from './StreamingState';
 export * from './usePlanGuards';
+export * from './useStreamingPlan';
 export * from './capsule.css';
 export * from './Pill';
 export * from './Onboarding';

@@ -11,18 +11,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { ComposerClient } from './composer-client';
 import {
   DEFAULT_COMPOSER_SETTINGS,
-  type Attachment,
   type ComposerSettings,
-  type ContextCaptureRequest,
-  type DomPlanResult,
-  type ExecutedActionRecord,
-  type ExecutionReportRequest,
-  type ExecutionStatus,
   type SelectionRect,
   type SelectionSnapshot,
   type ToolManifest,
 } from './types';
-import { Markdown } from './markdown';
 import { isRemoteVoiceSupported, isVoiceSupported } from './voice';
 import { type DomAction, type DomActionResult } from './dom-actions';
 import { type Ambient } from './ambient';
@@ -34,12 +27,6 @@ import {
 } from './pill-prefs';
 import { buildPaletteActions, CommandPalette } from './CommandPalette';
 import { SettingsDrawer } from './SettingsDrawer';
-import { CompactContextSummary } from './CompactContextSummary';
-import { buildCapture, describeAction, extractPartialCompose, truncate } from './helpers';
-import { computeCapsulePosition, estimateCapsuleSize } from './placement';
-import { useTTS } from './useTTS';
-import { useVoiceCapture } from './useVoiceCapture';
-import { useAttachments } from './useAttachments';
 import { dispatchPlan as dispatchPlanCore } from './plan-dispatcher';
 import { ShellPanel } from './ShellPanel';
 import { AnswerPanel } from './AnswerPanel';
@@ -49,7 +36,7 @@ import { buildSlashActions, SlashMenu } from './SlashMenu';
 import { LeftPanel } from './LeftPanel';
 import { ActionsRow } from './ActionsRow';
 import { StreamingState } from './StreamingState';
-import { usePlanGuards } from './usePlanGuards';
+import { useStreamingPlan } from './useStreamingPlan';
 
 export interface CapsuleProps {
   // Single seam to the host shell — provides transport, storage,
@@ -72,15 +59,6 @@ export interface CapsuleProps {
   children?: ReactNode;
 }
 
-type Phase =
-  | 'idle'
-  | 'planning'    // request sent, no deltas yet → skeleton showing
-  | 'streaming'   // first delta arrived → partial compose rendering
-  | 'plan_ready'  // `done` event received → final plan/compose visible
-  | 'executing'
-  | 'executed'
-  | 'error';
-
 export function Capsule({
   ambient,
   initialSnapshot,
@@ -101,16 +79,6 @@ export function Capsule({
   const executor = ambient.domActions?.execute;
   const [snapshot, setSnapshot] = useState<SelectionSnapshot>(initialSnapshot);
   const [userInput, setUserInput] = useState('');
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [plan, setPlan] = useState<DomPlanResult | null>(null);
-  const [planResults, setPlanResults] = useState<DomActionResult[] | null>(null);
-  const [dangerConfirmed, setDangerConfirmed] = useState(false);
-  // partialCompose holds whatever text we've extracted from the
-  // streaming JSON buffer so far. It's only visible in phase 'streaming';
-  // once the `done` event fires, the full plan.compose replaces it.
-  const [partialCompose, setPartialCompose] = useState<string>('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Flagship theme — light by default ("surface flagship"); dark stays
   // available via the settings drawer toggle. Persisted in
@@ -177,18 +145,10 @@ export function Capsule({
     DEFAULT_COMPOSER_SETTINGS,
   );
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const streamAbortRef = useRef<(() => void) | null>(null);
-  const streamBufferRef = useRef<string>('');
-  // Sprint 3 — every action plan ends in exactly one execution row in
-  // the backend ledger (executed | rejected | failed). This ref guards
-  // against double-reporting when the user dismisses the cápsula after
-  // already executing.
-  const executionReportedRef = useRef<boolean>(false);
-  // Refining pass — tick counter for streaming. Refreshed on every
-  // delta so the operator sees the response materialise as a number,
-  // not just a wall of text. Resets at submit time.
-  const [tokensStreamed, setTokensStreamed] = useState(0);
+  // Refining pass — tick counter for streaming sit inside useStreamingPlan
+  // alongside the rest of the request lifecycle (phase, plan, partialCompose,
+  // abortRef, streamAbortRef, executionReportedRef). The hook also wraps
+  // the plan-guards memo so the Capsule sees a single object.
   // Voice input — owned by useVoiceCapture. The hook keeps the
   // VoiceSession ref + active flag inside; we only call start() with
   // baseline-aware callbacks when the operator presses the mic.
@@ -204,20 +164,56 @@ export function Capsule({
   // keys can move the highlight without re-running the filter.
   const [slashIndex, setSlashIndex] = useState(0);
 
-  // Danger assessment runs in-page (where document.querySelector resolves
-  // against the live DOM) so each action gets per-element classification
-  // — submit buttons, password inputs, "Delete" labels. Recomputed only
-  // when the plan changes; the result feeds the warning banner and the
-  // danger badges in the action list.
-  const { dangers, sequenceDanger, policyForcesAck, hasDanger, canDispatchAnyAction } =
-    usePlanGuards({ plan, ambient, url: snapshot.url, settings });
+  // Danger assessment + streaming submit/execute lifecycle live in
+  // Streaming submit/execute lifecycle + plan-guard memos live in
+  // useStreamingPlan. TTS pre-emption hooks in via a ref so the
+  // streaming hook can cancel speech without taking useTTS as a
+  // dependency (which would create a cycle: tts needs phase, phase
+  // is owned by streaming).
+  const ttsRef = useRef<{ cancel: () => void } | null>(null);
+  const stream = useStreamingPlan({
+    client,
+    ambient,
+    prefs,
+    snapshot,
+    screenshot,
+    attachments,
+    userInput,
+    settings,
+    composeUserInput: composeUserInputWithAttachments,
+    dispatchPlan,
+    onSubmit: () => ttsRef.current?.cancel(),
+  });
+  const {
+    phase,
+    plan,
+    planResults,
+    partialCompose,
+    tokensStreamed,
+    error,
+    copied,
+    dangerConfirmed,
+    dangers,
+    sequenceDanger,
+    policyForcesAck,
+    hasDanger,
+    canDispatchAnyAction,
+    setCopied,
+    setDangerConfirmed,
+    setError,
+    submit: requestPlan,
+    executePlan,
+    reportRejection,
+  } = stream;
+  const tts = useTTS({
+    prefs,
+    isPlanReady: phase === 'plan_ready',
+    planCompose: plan?.compose,
+  });
+  ttsRef.current = tts;
 
   useEffect(() => {
     inputRef.current?.focus();
-    return () => {
-      abortRef.current?.abort();
-      streamAbortRef.current?.();
-    };
   }, []);
 
   // App may upgrade initialSnapshot after mount (iframe selection
@@ -250,12 +246,6 @@ export function Capsule({
       cancelled = true;
     };
   }, [client, prefs]);
-
-  const tts = useTTS({
-    prefs,
-    isPlanReady: phase === 'plan_ready',
-    planCompose: plan?.compose,
-  });
 
   // Theme — load persisted choice once at mount. While the storage
   // round-trip resolves the cápsula renders the default flagship light,
@@ -420,91 +410,15 @@ export function Capsule({
   // Compose-only plans (plan.actions.length === 0) are NOT reported —
   // the contract is about DOM-action outcomes, not about every cápsula
   // interaction. Failure of the report itself never propagates.
-  const reportExecution = useCallback(
-    async (
-      status: ExecutionStatus,
-      results: DomActionResult[] = [],
-      errorMsg?: string,
-    ) => {
-      if (!plan || plan.actions.length === 0) return;
-      executionReportedRef.current = true;
-      const records: ExecutedActionRecord[] = plan.actions.map((action, i) => {
-        const r = results[i];
-        const d = dangers[i];
-        return {
-          action,
-          ok: r ? r.ok : false,
-          error: r?.error ?? null,
-          danger: d?.danger ?? false,
-          danger_reason: d?.reason ?? null,
-        };
-      });
-      const payload: ExecutionReportRequest = {
-        plan_id: plan.plan_id || null,
-        context_id: plan.context_id || null,
-        url: snapshot.url || null,
-        page_title: snapshot.pageTitle || null,
-        status,
-        results: records,
-        has_danger: hasDanger,
-        sequence_danger_reason: sequenceDanger.danger
-          ? sequenceDanger.reason ?? null
-          : null,
-        danger_acknowledged: dangerConfirmed,
-        error: errorMsg ?? null,
-        model_used: plan.model_used || null,
-        plan_latency_ms: plan.latency_ms || null,
-        user_input: userInput.trim() || null,
-      };
-      // Sprint 4 — when execution_reporting_required is true, the
-      // operator declared the ledger row part of the contract. We
-      // await + surface failure inline. When it's false, fire-and-
-      // forget keeps Sprint 3 ergonomics: the action already happened
-      // on the page; reporting is best-effort.
-      if (settings.execution_reporting_required) {
-        try {
-          await client.reportExecution(payload);
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          setError(`policy: execution report rejected — ${msg}`);
-          setPhase('error');
-        }
-      } else {
-        void client.reportExecution(payload).catch(() => {
-          // Best-effort; ledger fidelity comes second to UX.
-        });
-      }
-    },
-    [
-      client,
-      plan,
-      snapshot,
-      dangers,
-      hasDanger,
-      sequenceDanger,
-      dangerConfirmed,
-      userInput,
-      settings.execution_reporting_required,
-    ],
-  );
-
   // Wrap onDismiss so a pending action plan that was never executed
   // gets recorded as rejected before the cápsula tears down. Used by
   // every dismiss surface (close button, Esc keypress, dismissThisDomain
-  // through the parent App).
+  // through the parent App). The streaming hook owns the dedup ref so
+  // a "rejected" row is filed at most once per plan.
   const handleDismiss = useCallback(() => {
-    if (
-      plan &&
-      plan.actions.length > 0 &&
-      !executionReportedRef.current
-    ) {
-      // Rejection is housekeeping — fire-and-forget regardless of the
-      // execution_reporting_required flag. The user is already gone;
-      // no UI to surface a failure to.
-      void reportExecution('rejected');
-    }
+    reportRejection();
     onDismiss();
-  }, [plan, onDismiss, reportExecution]);
+  }, [onDismiss, reportRejection]);
 
   useEffect(() => {
     function onKey(ev: KeyboardEvent) {
@@ -546,125 +460,7 @@ export function Capsule({
   // when the ambient supports it.
   const [shellPanelOpen, setShellPanelOpen] = useState(false);
 
-  const requestPlan = useCallback(async () => {
-    if (!userInput.trim() || phase === 'planning' || phase === 'streaming' || phase === 'executing') {
-      return;
-    }
-    // If the previous plan had actions and was never executed/rejected,
-    // record it as rejected before the new plan replaces it. Without
-    // this the ledger would show a planned set of actions that just
-    // vanishes when the user submits a new prompt.
-    if (
-      plan &&
-      plan.actions.length > 0 &&
-      !executionReportedRef.current
-    ) {
-      // Implicit rejection — fire-and-forget. New plan is already on
-      // the way; we don't await the ledger row.
-      void reportExecution('rejected');
-    }
-    abortRef.current?.abort();
-    streamAbortRef.current?.();
-    const ac = new AbortController();
-    abortRef.current = ac;
-    setPhase('planning');
-    setError(null);
-    setPlan(null);
-    setPlanResults(null);
-    setDangerConfirmed(false);
-    setCopied(false);
-    setPartialCompose('');
-    setTokensStreamed(0);
-    streamBufferRef.current = '';
-    executionReportedRef.current = false;
-    // Re-read the screenshot pref at submit time. The user may have
-    // toggled it off in the settings drawer between mount and submit;
-    // the captured data URL is in our state but should not be sent
-    // when the toggle is currently off.
-    const screenshotEnabled = await prefs.readScreenshotEnabled();
-    const capture = buildCapture(
-      snapshot,
-      screenshotEnabled ? screenshot : null,
-      attachments,
-      ambient.shell,
-    );
-    try {
-      const ctx = await client.captureContext(capture, ac.signal);
-      if (ac.signal.aborted) return;
-      const inputForAgent = composeUserInputWithAttachments(userInput.trim());
-      streamAbortRef.current = client.requestDomPlanStream(
-        ctx.context_id,
-        inputForAgent,
-        {
-          onDelta: (text) => {
-            if (ac.signal.aborted) return;
-            streamBufferRef.current += text;
-            // Token tick — sensação de avanço real. We bump per delta
-            // chunk; precise token counting is the gateway's job, this
-            // is operator-facing UX, not billing.
-            setTokensStreamed((n) => n + 1);
-            const partial = extractPartialCompose(streamBufferRef.current);
-            if (partial !== null) {
-              setPartialCompose(partial);
-              setPhase((p) => (p === 'planning' ? 'streaming' : p));
-            } else {
-              // No compose yet — could be an action plan being built.
-              // Just transition out of skeleton on first delta so the
-              // user knows we're alive.
-              setPhase((p) => (p === 'planning' ? 'streaming' : p));
-            }
-          },
-          onDone: (planResult) => {
-            if (ac.signal.aborted) return;
-            setPlan(planResult);
-            setPhase('plan_ready');
-            setPartialCompose('');
-            streamBufferRef.current = '';
-          },
-          onError: (err) => {
-            if (ac.signal.aborted) return;
-            // The streaming endpoint can fail for transient reasons
-            // (provider doesn't support .messages.stream, e.g.
-            // Groq/Gemini adapters; CORS preflight hiccup; SSE
-            // proxy buffering). Fall back to the non-streaming
-            // endpoint once before surfacing the failure — the user
-            // gets a slower but complete response instead of an
-            // error toast.
-            void (async () => {
-              try {
-                const planResult = await client.requestDomPlan(
-                  ctx.context_id,
-                  inputForAgent,
-                  ac.signal,
-                );
-                if (ac.signal.aborted) return;
-                setPlan(planResult);
-                setPhase('plan_ready');
-                setPartialCompose('');
-                streamBufferRef.current = '';
-              } catch (fallbackErr: unknown) {
-                if (ac.signal.aborted) return;
-                const fbMsg =
-                  fallbackErr instanceof Error
-                    ? fallbackErr.message
-                    : String(fallbackErr);
-                // Surface the original streaming error too so the
-                // operator can see both paths failed.
-                setError(`stream: ${err} · fallback: ${fbMsg}`);
-                setPhase('error');
-                setPartialCompose('');
-                streamBufferRef.current = '';
-              }
-            })();
-          },
-        },
-      );
-    } catch (err: unknown) {
-      if (ac.signal.aborted) return;
-      setError(err instanceof Error ? err.message : String(err));
-      setPhase('error');
-    }
-  }, [client, snapshot, screenshot, userInput, phase, plan, reportExecution, composeUserInputWithAttachments, prefs]);
+  // requestPlan + executePlan + reportRejection live in useStreamingPlan.
 
   const onSubmit = useCallback(
     (ev: React.FormEvent) => {
@@ -796,54 +592,7 @@ export function Capsule({
     }
   }, [plan]);
 
-  const executePlan = useCallback(async () => {
-    // The dispatcher handles missing adapters per-action — desktop has
-    // no DOM but has shell/fs; browser has DOM but no shell/fs. Any
-    // unsupported action becomes a typed `ok: false` result. We only
-    // bail when there's literally nothing to dispatch.
-    if (!plan || plan.actions.length === 0) return;
-    // Belt-and-braces: the button is disabled when danger is unconfirmed,
-    // but a stale render or an injected event could still fire onClick.
-    // Refuse to execute here too so the gate isn't only UI-deep.
-    if (hasDanger && !dangerConfirmed) return;
-    setPhase('executing');
-    setError(null);
-    try {
-      const results = await dispatchPlan(plan.actions);
-      setPlanResults(results);
-      setPhase('executed');
-      // Ambient feedback for the pill (rendered by App after the
-      // capsule closes). All steps OK → green pulse; any fail →
-      // red shake. The user gets confirmation even if they Esc out
-      // before reading the per-step status.
-      const allOk = results.every((r) => r.ok);
-      window.dispatchEvent(
-        new CustomEvent('gauntlet:execute-result', { detail: { ok: allOk } }),
-      );
-      // A4 — OS notification. Only fires on shells that wired the
-      // capability (desktop today). The cápsula always shows its own
-      // executed banner; this is the "operator switched windows" path.
-      void ambient.notifications?.notify(
-        allOk ? 'Gauntlet — plano executado' : 'Gauntlet — plano com falhas',
-        allOk
-          ? `${results.length} ${results.length === 1 ? 'acção' : 'acções'} OK`
-          : `${results.filter((r) => !r.ok).length}/${results.length} falharam — revê na cápsula`,
-      );
-      // Sprint 3 — execution row in the ledger. Per-action ok/error is
-      // in `results`; status="executed" only means the executor ran,
-      // not that every action succeeded. Sprint 4 — when
-      // execution_reporting_required is true, await + surface failure.
-      await reportExecution('executed', results);
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      setError(errMsg);
-      setPhase('error');
-      window.dispatchEvent(
-        new CustomEvent('gauntlet:execute-result', { detail: { ok: false } }),
-      );
-      await reportExecution('failed', [], errMsg);
-    }
-  }, [executor, plan, hasDanger, dangerConfirmed, reportExecution]);
+  // executePlan also lives in useStreamingPlan now.
 
   // Where to anchor the capsule, in priority order:
   //   1. Selection bbox — the user is pointing at specific text.
