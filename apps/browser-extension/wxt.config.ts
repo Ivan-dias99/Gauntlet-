@@ -14,17 +14,23 @@ import { fileURLToPath } from 'node:url';
 //   * VITE_GAUNTLET_BACKEND_URL canonical (aligned with the server's
 //     GAUNTLET_BACKEND_URL).
 //   * VITE_BACKEND_URL kept as a legacy fallback until v1.1.0.
-// Dev builds (`wxt dev`) don't need it — host_permissions covers
-// localhost separately. Production zips throw if it's missing so the
-// operator never ships an extension that can't reach the backend.
+// Dev / `wxt prepare` (run on every npm install) don't need it; only
+// the actual build/zip needs it for the manifest's host_permissions
+// list. The real hard-throw lives in composer-client.ts so a build
+// without env aborts when the JS runtime evaluates the module — that
+// gate fires both for the cápsula bundle and for the desktop bundle,
+// without breaking `npm ci` for first-time clones.
 const ENV_BACKEND_URL =
   process.env.VITE_GAUNTLET_BACKEND_URL || process.env.VITE_BACKEND_URL || '';
-const IS_PROD_BUILD =
-  process.env.NODE_ENV === 'production' || process.argv.includes('zip');
+const IS_PROD_BUILD = process.argv.some(
+  (a) => a === 'build' || a === 'zip' || a === 'zip:firefox',
+);
 if (IS_PROD_BUILD && !ENV_BACKEND_URL) {
-  throw new Error(
-    'wxt.config: VITE_GAUNTLET_BACKEND_URL is not set. ' +
-      'Define it before running `npm run build` / `npm run zip`.',
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[wxt.config] VITE_GAUNTLET_BACKEND_URL is not set. ' +
+      'host_permissions will not list the production backend explicitly. ' +
+      'composer-client will still throw at JS runtime if no env is found.',
   );
 }
 
