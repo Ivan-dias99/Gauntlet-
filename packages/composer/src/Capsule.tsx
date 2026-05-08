@@ -1476,16 +1476,27 @@ export function Capsule({
 
           <section className="gauntlet-capsule__context">
             <div className="gauntlet-capsule__context-meta">
-              <span
-                className={`gauntlet-capsule__source${
-                  contextJustArrived ? ' gauntlet-capsule__source--popped' : ''
-                }`}
-              >
-                {ambient.shell}
-              </span>
-              <span className="gauntlet-capsule__url" title={snapshot.url}>
-                {snapshot.pageTitle || snapshot.url}
-              </span>
+              {/* Shell label removido por doutrina de paridade — o
+                  utilizador não deve nunca sentir que está em "dois
+                  composers diferentes". Chrome igual em ambos os
+                  shells; ambient.shell mantém-se internamente para
+                  diagnostics, só não é renderizado.
+                  URL placeholder do desktop (`desktop://capsule`,
+                  `desktop://unknown`) também não aparece — esconde
+                  contexto vazio em vez de o expor como UI. Quando há
+                  um app real em foco o pageTitle preenche-se sozinho. */}
+              {(() => {
+                const isDesktopPlaceholder = snapshot.url.startsWith('desktop://');
+                const display = isDesktopPlaceholder
+                  ? snapshot.pageTitle?.trim() || ''
+                  : snapshot.pageTitle || snapshot.url;
+                if (!display) return null;
+                return (
+                  <span className="gauntlet-capsule__url" title={snapshot.url}>
+                    {display}
+                  </span>
+                );
+              })()}
               {plan?.model_used && (
                 <span
                   className="gauntlet-capsule__model-chip"

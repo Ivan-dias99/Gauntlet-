@@ -26,6 +26,16 @@ project follows [Semantic Versioning](https://semver.org).
   `SummonDiagnostics`, e a pasta inteira `release/unpacked/` (snapshot
   pré-build legacy que continha `composer.html` antigo). Lente 1
   ("ponta do cursor") absoluta.
+- **Paridade visual desktop ↔ browser.** O chip que rendia
+  `{ambient.shell}` ('desktop' / 'browser') na barra de contexto da
+  cápsula foi removido — era uma marca de água que entregava ao
+  utilizador qual shell estava em uso. Doutrina (lente 2 — "uma só
+  implementação partilhada por todos os shells, divergência visual é
+  regressão") aplicada. URL placeholder `desktop://capsule` /
+  `desktop://unknown` também deixa de aparecer no chrome — quando o
+  pageTitle não está preenchido por um app real em foco, o slot fica
+  simplesmente vazio. Operador deixa de sentir "modos diferentes" ao
+  trocar de ambiente; é a mesma cápsula com contextos diferentes.
 - **Onboarding fica dentro da cápsula.** `Capsule` ganha slot `children`;
   ambos os shells (`apps/browser-extension/components/App.tsx` e
   `apps/desktop/src/App.tsx`) passam `<Onboarding>` como filho em vez de
