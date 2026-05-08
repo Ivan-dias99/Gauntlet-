@@ -1,4 +1,4 @@
-// ComposeResult — renders the textual answer when the agent emits
+// AnswerPanel — renders the textual answer when the agent emits
 // `compose` instead of (or alongside) DOM actions.
 //
 // Pure presentational component. Capsule passes the compose string,
@@ -6,10 +6,14 @@
 // savedToDiskFlash) and the action callbacks. The optional
 // "Guardar como" button only renders when the caller passes
 // `onSaveDisk` (Capsule decides based on ambient capabilities).
+//
+// Named AnswerPanel (not ComposeResult) to avoid colliding with the
+// `ComposeResult` wire type that composer-client exports for the
+// composeOnce() return shape.
 
 import { Markdown } from './markdown';
 
-export interface ComposeResultProps {
+export interface AnswerPanelProps {
   compose: string;
   modelUsed: string;
   latencyMs: number;
@@ -22,7 +26,7 @@ export interface ComposeResultProps {
   onCopyBlock: () => void;
 }
 
-export function ComposeResult({
+export function AnswerPanel({
   compose,
   modelUsed,
   latencyMs,
@@ -33,7 +37,7 @@ export function ComposeResult({
   onSaveMemory,
   onSaveDisk,
   onCopyBlock,
-}: ComposeResultProps) {
+}: AnswerPanelProps) {
   return (
     <section className="gauntlet-capsule__compose-result">
       <header className="gauntlet-capsule__compose-meta">

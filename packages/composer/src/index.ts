@@ -27,7 +27,7 @@ export * from './useVoiceCapture';
 export * from './useAttachments';
 export * from './plan-dispatcher';
 export * from './ShellPanel';
-export * from './ComposeResult';
+export * from './AnswerPanel';
 export * from './PlanRenderer';
 export * from './AttachmentChips';
 export * from './SlashMenu';

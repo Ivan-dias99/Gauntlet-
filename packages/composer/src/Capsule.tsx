@@ -42,7 +42,7 @@ import { useVoiceCapture } from './useVoiceCapture';
 import { useAttachments } from './useAttachments';
 import { dispatchPlan as dispatchPlanCore } from './plan-dispatcher';
 import { ShellPanel } from './ShellPanel';
-import { ComposeResult } from './ComposeResult';
+import { AnswerPanel } from './AnswerPanel';
 import { PlanRenderer } from './PlanRenderer';
 import { AttachmentChips } from './AttachmentChips';
 import { buildSlashActions, SlashMenu } from './SlashMenu';
@@ -518,7 +518,7 @@ export function Capsule({
           setPaletteOpen(false);
           return;
         }
-        if (voiceRef.current) {
+        if (voice.active) {
           cancelVoiceCapture();
           return;
         }
@@ -527,7 +527,7 @@ export function Capsule({
     }
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [handleDismiss, paletteOpen, cancelVoiceCapture]);
+  }, [handleDismiss, paletteOpen, cancelVoiceCapture, voice.active]);
 
   // The single send path, streaming. Backend's /composer/dom_plan_stream
   // emits delta chunks and a final `done` event with the parsed result.
@@ -997,7 +997,7 @@ export function Capsule({
           )}
 
           {plan?.compose && phase === 'plan_ready' && (
-            <ComposeResult
+            <AnswerPanel
               compose={plan.compose}
               modelUsed={plan.model_used}
               latencyMs={plan.latency_ms}
