@@ -91,39 +91,49 @@ class SignalEngine:
         if RUBERRA_MOCK:
             self._client = MockAsyncAnthropic()
             logger.warning("Engine initialized in MOCK mode — no network calls")
-        elif ANTHROPIC_API_KEY:
-            self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         elif GROQ_API_KEY:
-            # Free-tier fallback (preferred over Gemini). Triad + judge run
-            # against Groq Llama; the agent loop (tools, streaming) degrades
-            # because the v1 adapter does not implement those Anthropic-only
-            # paths — same scope as the Gemini adapter.
+            # Primary path. Anthropic + Gemini estão em pausa: a operação
+            # corre sobre Groq free tier (Llama 3.x, RPM/RPD generosos,
+            # latência muito baixa). Triad + judge funcionam; agent loop
+            # com tools/streaming degrada (mesma limitação documentada
+            # em groq_provider.py — adaptador v1).
             from groq_provider import AsyncGroqAnthropicAdapter
             self._client = AsyncGroqAnthropicAdapter(
                 api_key=GROQ_API_KEY, model=GROQ_MODEL,
             )
             logger.warning(
-                "Engine initialised on Groq (model=%s). Anthropic key not set.",
+                "Running on Groq provider (model=%s). "
+                "Agent loop and streaming are not supported on this path.",
                 GROQ_MODEL,
             )
+        elif ANTHROPIC_API_KEY:
+            # Anthropic em PAUSA — só corre quando o operador setá
+            # explicitamente ANTHROPIC_API_KEY sem ter GAUNTLET_GROQ_API_KEY.
+            # Pausa motivada por custo / falta de créditos no projeto;
+            # o código permanece compatível para quando voltar a abrir.
+            self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+            logger.warning(
+                "Running on Anthropic (paused path — operator opted in via "
+                "ANTHROPIC_API_KEY without GAUNTLET_GROQ_API_KEY)."
+            )
         elif GEMINI_API_KEY:
-            # Free-tier fallback. Triad + judge run against Gemini; the
-            # agent loop (tools, streaming) degrades because the v1
-            # adapter does not implement those Anthropic-only paths.
+            # Gemini em PAUSA — segundo fallback, só roda quando nenhum
+            # dos anteriores está disponível. Adaptador v1 também não
+            # cobre tools/streaming (mesma limitação que Groq).
             from gemini_provider import AsyncGeminiAnthropicAdapter
             self._client = AsyncGeminiAnthropicAdapter(
                 api_key=GEMINI_API_KEY, model=GEMINI_MODEL,
             )
             logger.warning(
-                "Engine initialised on Gemini (model=%s). Anthropic key not set.",
+                "Running on Gemini (paused fallback path, model=%s).",
                 GEMINI_MODEL,
             )
         else:
             raise RuntimeError(
                 "No provider key set and GAUNTLET_MOCK is off. Set one of: "
-                "ANTHROPIC_API_KEY (Claude), GAUNTLET_GROQ_API_KEY (Groq free), "
-                "GAUNTLET_GEMINI_API_KEY (Gemini free), or GAUNTLET_MOCK=1 "
-                "for canned responses."
+                "GAUNTLET_GROQ_API_KEY (primary, Groq free tier), "
+                "ANTHROPIC_API_KEY (paused), GAUNTLET_GEMINI_API_KEY (paused), "
+                "or GAUNTLET_MOCK=1 for canned responses."
             )
         # Detached run-log tasks. PR #214 moved _log_triad_run after the
         # `done` yield for stream tail latency parity with agent/crew/

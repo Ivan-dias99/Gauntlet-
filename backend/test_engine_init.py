@@ -2,11 +2,12 @@
 Gauntlet — engine boot-time provider selection tests.
 
 The Engine constructor picks one of four code paths based on which env
-vars are set, in this precedence:
+vars are set, in this precedence (Groq agora é primário; Anthropic e
+Gemini estão em pausa desde 2026-05-08, sessão hora-seria):
   1. GAUNTLET_MOCK=1            → MockAsyncAnthropic
-  2. ANTHROPIC_API_KEY          → AsyncAnthropic
-  3. GAUNTLET_GROQ_API_KEY      → AsyncGroqAnthropicAdapter
-  4. GAUNTLET_GEMINI_API_KEY    → AsyncGeminiAnthropicAdapter
+  2. GAUNTLET_GROQ_API_KEY      → AsyncGroqAnthropicAdapter (PRIMARY)
+  3. ANTHROPIC_API_KEY          → AsyncAnthropic (paused path)
+  4. GAUNTLET_GEMINI_API_KEY    → AsyncGeminiAnthropicAdapter (paused)
   5. nothing set                → RuntimeError on init
 
 Without these tests a regression in the conditional ladder (e.g. moving
@@ -123,30 +124,36 @@ def test_mock_wins_over_every_other_key(stubbed_engine, monkeypatch):
     )
 
 
-def test_anthropic_wins_when_set(stubbed_engine, monkeypatch):
+def test_groq_wins_when_set(stubbed_engine, monkeypatch):
+    """Groq é primário desde 2026-05-08. Mesmo com Anthropic + Gemini
+    setados, Groq ganha quando GAUNTLET_GROQ_API_KEY está presente."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-real")
     monkeypatch.setenv("GAUNTLET_GROQ_API_KEY", "gsk_real")
     monkeypatch.setenv("GAUNTLET_GEMINI_API_KEY", "AIza_real")
     eng = _build_engine()
-    assert isinstance(eng._client, stubbed_engine["Anthropic"]), (
-        "ANTHROPIC_API_KEY must take precedence over Groq + Gemini"
+    assert isinstance(eng._client, stubbed_engine["Groq"]), (
+        "GAUNTLET_GROQ_API_KEY must take precedence over Anthropic + Gemini"
     )
 
 
-def test_groq_picked_when_anthropic_missing(stubbed_engine, monkeypatch):
-    monkeypatch.setenv("GAUNTLET_GROQ_API_KEY", "gsk_real")
+def test_anthropic_picked_when_groq_missing(stubbed_engine, monkeypatch):
+    """Anthropic em PAUSA — só corre se o operador a escolher
+    explicitamente sem ter chave Groq."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-real")
     monkeypatch.setenv("GAUNTLET_GEMINI_API_KEY", "AIza_real")
     eng = _build_engine()
-    assert isinstance(eng._client, stubbed_engine["Groq"]), (
-        "Groq must beat Gemini when Anthropic is absent"
+    assert isinstance(eng._client, stubbed_engine["Anthropic"]), (
+        "Anthropic must beat Gemini when Groq is absent"
     )
 
 
 def test_gemini_picked_when_only_gemini_set(stubbed_engine, monkeypatch):
+    """Gemini é o último fallback (também pausado). Só corre quando
+    nem Groq nem Anthropic têm chave."""
     monkeypatch.setenv("GAUNTLET_GEMINI_API_KEY", "AIza_real")
     eng = _build_engine()
     assert isinstance(eng._client, stubbed_engine["Gemini"]), (
-        "Gemini fires only when neither Anthropic nor Groq are set"
+        "Gemini fires only when neither Groq nor Anthropic are set"
     )
 
 

@@ -21,13 +21,24 @@ def _env(canonical: str, *_legacy: str, default: str = "") -> str:
 
 
 # ── API ─────────────────────────────────────────────────────────────────────
+#
+# Provider precedence (engine.py): MOCK > Groq > Anthropic > Gemini > error.
+#
+# Groq é o caminho primário desde 2026-05-08 (sessão hora-seria). Anthropic
+# e Gemini estão em PAUSA — código compatível mantém-se para quando
+# voltarem a abrir, mas só correm se o operador as escolher explicitamente
+# (sem GROQ_API_KEY definida). Motivo da pausa: custo / falta de créditos
+# Anthropic, e Gemini fica como segundo fallback opcional. Groq free tier
+# (Llama 3.x) cobre todo o desenvolvimento/teste com latência muito baixa.
+
 ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 
-# Gemini (optional free-tier fallback). Used when ANTHROPIC_API_KEY is empty
-# and GEMINI_API_KEY is set. gemini_provider.AsyncGeminiAnthropicAdapter
-# wraps the google-genai SDK in an Anthropic-compatible shape so engine.py
-# / agent.py do not need provider branching. Default free model:
-# gemini-2.5-flash (AI Studio free tier: 15 RPM / 1500 RPD as of 2025).
+# Gemini — PAUSADO. Segundo fallback opcional. Usado quando Groq +
+# Anthropic não têm chave e GEMINI_API_KEY estiver setado.
+# gemini_provider.AsyncGeminiAnthropicAdapter envolve o google-genai
+# SDK numa forma Anthropic-compatible para engine.py / agent.py não
+# precisarem de branching. Default: gemini-2.5-flash (AI Studio free
+# tier: 15 RPM / 1500 RPD em 2025).
 GEMINI_API_KEY: str = (
     os.environ.get("GAUNTLET_GEMINI_API_KEY")
     or os.environ.get("GEMINI_API_KEY")
@@ -40,13 +51,11 @@ GEMINI_MODEL: str = (
     or "gemini-2.5-flash"
 )
 
-# Groq (optional free-tier fallback). Used when ANTHROPIC_API_KEY is empty
-# and GAUNTLET_GROQ_API_KEY is set. groq_provider.AsyncGroqAnthropicAdapter
-# wraps the groq SDK in an Anthropic-compatible shape so engine.py does not
-# need provider branching. Free-tier default model: llama-3.3-70b-versatile
-# (Groq free tier as of 2025 — generous RPM, very high throughput).
-# Selected ahead of Gemini in the engine init chain because the free tier
-# limits are typically less restrictive for chat workloads.
+# Groq — PRIMÁRIO. Adapter (groq_provider.AsyncGroqAnthropicAdapter)
+# envolve o groq SDK numa shape Anthropic-compatible. Default model:
+# llama-3.3-70b-versatile. Free tier 2025 — RPM generoso, throughput
+# alto, latência sub-segundo. Substituiu Anthropic como caminho default
+# enquanto a Anthropic está em pausa.
 GROQ_API_KEY: str = (
     os.environ.get("GAUNTLET_GROQ_API_KEY")
     or os.environ.get("GROQ_API_KEY")

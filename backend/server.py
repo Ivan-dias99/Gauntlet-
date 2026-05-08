@@ -116,9 +116,9 @@ async def lifespan(app: FastAPI):
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
             "  No provider key found!\n"
-            "  Set ANTHROPIC_API_KEY for Claude, or\n"
-            "  GAUNTLET_GROQ_API_KEY for Groq (free tier, preferred), or\n"
-            "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY for Gemini (free tier).\n"
+            "  Set GAUNTLET_GROQ_API_KEY for Groq (PRIMARY, free tier), or\n"
+            "  ANTHROPIC_API_KEY for Anthropic (paused), or\n"
+            "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY for Gemini (paused).\n"
             "  Or set GAUNTLET_MOCK=1 for canned responses.\n"
             "═══════════════════════════════════════════════════════════"
         )

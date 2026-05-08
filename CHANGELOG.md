@@ -8,6 +8,15 @@ project follows [Semantic Versioning](https://semver.org).
 ## [Unreleased]
 
 ### Changed
+- **Provider precedence — Groq passa a primário.** Engine agora
+  resolve providers nesta ordem: `MOCK > Groq > Anthropic > Gemini >
+  error`. Anthropic e Gemini ficam em PAUSA — código mantém-se
+  compatível, só correm quando o operador escolhe explicitamente
+  (sem `GAUNTLET_GROQ_API_KEY` setada). Motivo: custo / falta de
+  créditos Anthropic; Groq free tier (Llama 3.x) cobre todo o
+  desenvolvimento e teste com latência sub-segundo. `engine.py`,
+  `config.py`, `server.py`, `.env.example`, `test_engine_init.py`
+  actualizados em conjunto.
 - **Doutrina actualizada — Composer denso, backend gordo.** O composer
   deixou de ser "mínimo" e passa a ser **denso, viciante, sofisticado**:
   o sítio onde o utilizador não quer sair, com tools/skills/commands na
