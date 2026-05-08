@@ -116,12 +116,12 @@ _previews: _TTLStore = _TTLStore(_PREVIEW_TTL_SECONDS)
 
 
 # ── Engine bridge ──────────────────────────────────────────────────────────
-# The server's SignalEngine instance is created in lifespan; we read it
+# The server's Engine instance is created in lifespan; we read it
 # at request time so the composer module loads even before lifespan runs
 # (e.g. during pytest collection or `import server`).
 
 def _get_engine():
-    """Return the live SignalEngine instance from server, or 503."""
+    """Return the live Engine instance from server, or 503."""
     import server  # local import — server imports composer, mutual avoidance
     if server.engine is None:
         raise HTTPException(
@@ -405,8 +405,8 @@ async def detect_intent(req: ComposerIntentRequest) -> IntentResult:
 async def generate_preview(req: ComposerPreviewRequest) -> PreviewResult:
     """Stage 3 — run the model, produce the artifact, do NOT apply yet.
 
-    Routes through SignalEngine.process_query for synthesis intents
-    (triad+judge) and SignalEngine.process_dev_query for code intents
+    Routes through Engine.process_query for synthesis intents
+    (triad+judge) and Engine.process_dev_query for code intents
     (agent loop). Refusals come back as `refused=True` with
     `judge_verdict="low"` — the capsule UI shows DEFAULT_REFUSAL,
     not fluent invention.

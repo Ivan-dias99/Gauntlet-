@@ -69,7 +69,7 @@ from models import (
     SignalResponse,
     SpineSnapshot,
 )
-from engine import SignalEngine
+from engine import Engine
 from memory import failure_memory
 from runs import run_store
 from spine import spine_store
@@ -92,7 +92,7 @@ logger = logging.getLogger("gauntlet.server")
 
 # ── App Lifecycle ───────────────────────────────────────────────────────────
 
-engine: SignalEngine | None = None
+engine: Engine | None = None
 
 
 @asynccontextmanager
@@ -136,7 +136,7 @@ async def lifespan(app: FastAPI):
             GEMINI_MODEL,
         )
 
-    engine = SignalEngine()
+    engine = Engine()
     memory_label = "EPHEMERAL (volume not configured)" if PERSISTENCE_EPHEMERAL else "PERSISTENT"
     if RUBERRA_MOCK:
         _provider_label = "MOCK (canned)"
