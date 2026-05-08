@@ -23,6 +23,7 @@ import {
   readSelectionAcrossFrames,
   readSelectionSnapshot,
 } from './selection';
+import { pickFile, readTextFile, readFileBase64 } from './web-filesystem';
 
 const CAPABILITIES: AmbientCapabilities = {
   domExecution: true,
@@ -33,13 +34,21 @@ const CAPABILITIES: AmbientCapabilities = {
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window),
   streaming: true,
   refreshSelection: true,
-  // Web shell never gets local filesystem — the operator's `<all_urls>`
-  // grant is for HTTP origins, not file://. Anexar local files belongs
-  // to the desktop shell. (A2 will add cross-shell drag-and-drop, which
-  // routes through MediaSource and stays scoped to the dropped blob.)
-  filesystemRead: false,
-  filesystemWrite: false, // see filesystemRead — file:// writes belong to desktop
-  screenCapture: false, // chrome.tabs.captureVisibleTab handles the viewport
+  // Web shell ganha filesystem via File API (web-filesystem.ts) para
+  // paridade visual com desktop. Sem paths reais — proxy via
+  // 'web://<uuid>' resolvido em memória. Operador anexa via input
+  // picker, exactamente como em desktop com Tauri filesystem.
+  filesystemRead: true,
+  // Write não tem analogue prático no browser sem fs-access API
+  // (que ainda não está em todos os browsers e pede permissão por
+  // ficheiro). Mantido off; /guardar slash command continua só
+  // disponível em desktop.
+  filesystemWrite: false,
+  // Tab capture cobre o "screen" do browser. captureScreen()
+  // em createBrowserAmbient envolve chrome.tabs.captureVisibleTab
+  // na shape { base64, path } esperada pela cápsula. Paridade com
+  // desktop screen.png.
+  screenCapture: true,
   remoteVoice: true, // backend offers /voice/transcribe; Web Speech remains fallback
   shellExecute: false, // <all_urls> is for HTTP, not bash
   notifications: false, // future: chrome.notifications when we surface a tray story
@@ -263,6 +272,36 @@ export function createBrowserAmbient(): Ambient {
           return null;
         }
       },
+      // Universal screen capture na browser shell — wraps
+      // chrome.tabs.captureVisibleTab na shape { base64, path }.
+      // Paridade com desktop: a cápsula chama captureScreen() em
+      // ambos os shells, recebe um objecto idêntico, anexa um chip
+      // "ecrã-XX:XX:XX.png" igual.
+      async captureScreen(): Promise<{ base64: string; path: string } | null> {
+        if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) {
+          return null;
+        }
+        try {
+          const reply = (await chrome.runtime.sendMessage({
+            type: 'gauntlet:capture_screenshot',
+          })) as { ok?: boolean; dataUrl?: string } | undefined;
+          if (!reply?.ok || !reply.dataUrl) return null;
+          // Tira o prefixo `data:image/png;base64,` deixando só o base64.
+          const idx = reply.dataUrl.indexOf(',');
+          const base64 = idx >= 0 ? reply.dataUrl.slice(idx + 1) : reply.dataUrl;
+          return { base64, path: 'web://tab-capture.png' };
+        } catch {
+          return null;
+        }
+      },
+    },
+    // Filesystem na shell web — usa File API por baixo, expõe a mesma
+    // interface AmbientFilesystem que o desktop expõe via Tauri. Path
+    // proxy 'web://<uuid>' para o cache em memória.
+    filesystem: {
+      pickFile,
+      readTextFile,
+      readFileBase64,
     },
     debug: {
       async lastSummon(): Promise<unknown | null> {

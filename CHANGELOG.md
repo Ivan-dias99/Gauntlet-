@@ -8,6 +8,27 @@ project follows [Semantic Versioning](https://semver.org).
 ## [Unreleased]
 
 ### Added
+- **Paridade visual COMPLETA entre desktop e browser (Fase 5).**
+  Operador deixa de notar qual shell está activo. Tres convergências:
+  1. **Web ganha filesystem** via novo `web-filesystem.ts` (File API
+     com path proxy `web://<uuid>` resolvido em cache em memória).
+     `pickFile` abre `<input type="file">`, `readTextFile` /
+     `readFileBase64` lêem do blob. Botão ANEXAR aparece em ambos
+     os shells e funciona em ambos.
+  2. **Web ganha screen capture** via `screenshot.captureScreen()`
+     que envolve `chrome.tabs.captureVisibleTab` na shape
+     `{ base64, path }` que o desktop expõe via Tauri. Botão ECRÃ
+     aparece em ambos os shells.
+  3. **Botão SHELL removido do row em ambos os shells.** Era só
+     desktop e entregava qual shell estava activo. Funcionalidade
+     mantém-se via slash command `/shell` (slashActions continua
+     a gating por capability). Visualmente os dois shells mostram
+     agora um row idêntico: ANEXAR · ECRÃ · VOZ · ENVIAR.
+
+  Doutrina (lente 2 do CLAUDE.md): "uma só implementação partilhada
+  por todos os shells; divergência visual é regressão". Operador vende
+  como produto único universal — implementação subjacente difere
+  (Tauri vs File API) mas user experience é indistinguível.
 - **Streaming SSE no Groq adapter.** `groq_provider._StreamContext`
   envolve `client.chat.completions.create(stream=True)` na shape
   anthropic (`async with client.messages.stream(...)` + `text_stream` +

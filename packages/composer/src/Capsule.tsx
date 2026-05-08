@@ -1653,30 +1653,13 @@ export function Capsule({
                   <span className="gauntlet-capsule__attach-label">ecrã</span>
                 </button>
               )}
-              {ambient.capabilities.shellExecute && ambient.shellExec && (
-                <button
-                  type="button"
-                  className={`gauntlet-capsule__attach-btn${
-                    shellPanelOpen ? ' gauntlet-capsule__attach-btn--active' : ''
-                  }`}
-                  onClick={() => setShellPanelOpen((v) => !v)}
-                  aria-label="Shell rápida"
-                  title="Shell rápida (allowlist + GAUNTLET_ALLOW_CODE_EXEC)"
-                  aria-expanded={shellPanelOpen}
-                >
-                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
-                    <path
-                      d="M5 7l4 4-4 4M11 16h7"
-                      stroke="currentColor"
-                      strokeWidth="1.7"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="gauntlet-capsule__attach-label">shell</span>
-                </button>
-              )}
+              {/* Botão SHELL removido do row para paridade visual entre
+                  shells — só desktop tinha o capability shellExecute, o
+                  que entregava ao operador "estás em desktop". A
+                  funcionalidade fica acessível via slash command
+                  /shell (slashActions[] continua a expô-la quando o
+                  ambient suporta). Browser shell mantém o painel
+                  oculto (não há shellExec). */}
               {(isVoiceSupported() ||
                 (ambient.capabilities.remoteVoice && isRemoteVoiceSupported())) && (
                 <button
