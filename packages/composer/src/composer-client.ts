@@ -21,11 +21,16 @@ import {
   type ToolManifestsResponse,
 } from './types';
 
-// Production backend (Railway). Build-time override via VITE_BACKEND_URL.
-// In dev mode (vite serve / tauri dev / wxt dev), default to the local
-// FastAPI on 127.0.0.1:3002 so smoke tests work without explicit env.
-const PRODUCTION_BACKEND =
-  'https://ruberra-backend-jkpf-production.up.railway.app';
+// Backend URL is build-time env-driven, no hardcoded production host.
+//   * VITE_GAUNTLET_BACKEND_URL is canonical (aligned with the
+//     server-side GAUNTLET_BACKEND_URL).
+//   * VITE_BACKEND_URL is honoured as a legacy fallback so existing
+//     build pipelines keep working until v1.1.0.
+//   * In dev mode (vite/wxt/tauri dev) we default to localhost:3002
+//     so smoke tests work without explicit env.
+//   * In a production build we THROW when neither var is set —
+//     a hardcoded fallback would silently ship the wrong URL once
+//     the Railway service is renamed.
 const DEV_BACKEND = 'http://127.0.0.1:3002';
 
 const VITE_ENV =
@@ -34,16 +39,26 @@ const VITE_ENV =
         .env
     : undefined;
 
-const BUILD_TIME_BACKEND: string | undefined =
-  typeof VITE_ENV?.VITE_BACKEND_URL === 'string'
-    ? (VITE_ENV.VITE_BACKEND_URL as string)
-    : undefined;
+function readEnvUrl(key: string): string | undefined {
+  const raw = VITE_ENV?.[key];
+  return typeof raw === 'string' && raw.length > 0 ? raw : undefined;
+}
+
+const ENV_BACKEND_URL: string | undefined =
+  readEnvUrl('VITE_GAUNTLET_BACKEND_URL') ?? readEnvUrl('VITE_BACKEND_URL');
 
 const IS_DEV = Boolean(VITE_ENV?.DEV);
 
-const DEFAULT_BACKEND = (
-  BUILD_TIME_BACKEND ?? (IS_DEV ? DEV_BACKEND : PRODUCTION_BACKEND)
-).replace(/\/+$/, '');
+function resolveDefaultBackend(): string {
+  if (ENV_BACKEND_URL) return ENV_BACKEND_URL;
+  if (IS_DEV) return DEV_BACKEND;
+  throw new Error(
+    'composer-client: VITE_GAUNTLET_BACKEND_URL is not set in this build. ' +
+      'Define it in your build env (Vercel / GitHub Actions / Tauri release / wxt zip).',
+  );
+}
+
+const DEFAULT_BACKEND = resolveDefaultBackend().replace(/\/+$/, '');
 
 export interface ComposerClientOptions {
   backendUrl?: string;

@@ -8,6 +8,30 @@ import { fileURLToPath } from 'node:url';
 //   - global hotkey (Alt+Space — Cmd+Space is reserved by macOS Spotlight)
 //   - minimal capsule: input + Compor + preview + Copy
 //   - calls the four /composer/* routes on the local backend
+
+// Production backend — read from build env so the URL is not hardcoded
+// and the manifest can follow a Railway rename without a code edit.
+//   * VITE_GAUNTLET_BACKEND_URL canonical (aligned with the server's
+//     GAUNTLET_BACKEND_URL).
+//   * VITE_BACKEND_URL kept as a legacy fallback until v1.1.0.
+// Dev builds (`wxt dev`) don't need it — host_permissions covers
+// localhost separately. Production zips throw if it's missing so the
+// operator never ships an extension that can't reach the backend.
+const ENV_BACKEND_URL =
+  process.env.VITE_GAUNTLET_BACKEND_URL || process.env.VITE_BACKEND_URL || '';
+const IS_PROD_BUILD =
+  process.env.NODE_ENV === 'production' || process.argv.includes('zip');
+if (IS_PROD_BUILD && !ENV_BACKEND_URL) {
+  throw new Error(
+    'wxt.config: VITE_GAUNTLET_BACKEND_URL is not set. ' +
+      'Define it before running `npm run build` / `npm run zip`.',
+  );
+}
+
+const PROD_BACKEND_HOST_PERM = ENV_BACKEND_URL
+  ? [`${ENV_BACKEND_URL.replace(/\/+$/, '')}/*`]
+  : [];
+
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   // Single Composer — vite alias resolves @gauntlet/composer to the
@@ -32,7 +56,7 @@ export default defineConfig({
       // of any page the user invokes the capsule on. Without it, the
       // composer is blind to everything outside the popup window.
       '<all_urls>',
-      'https://ruberra-backend-jkpf-production.up.railway.app/*',
+      ...PROD_BACKEND_HOST_PERM,
       'http://127.0.0.1:3002/*',
       'http://localhost:3002/*',
     ],

@@ -65,6 +65,11 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Composer's build throws if VITE_GAUNTLET_BACKEND_URL is
+          # unset. Pull from a repo secret so the URL can rotate
+          # without a code edit; falls back to the current Railway
+          # host if the secret is missing (legacy compat).
+          VITE_GAUNTLET_BACKEND_URL: ${{ secrets.GAUNTLET_BACKEND_URL || 'https://ruberra-backend-jkpf-production.up.railway.app' }}
         working-directory: apps/desktop
         run: |
           if [ -n "${{ matrix.tauri-target }}" ]; then
@@ -98,9 +103,14 @@ jobs:
       - run: npm ci
       - name: build chrome zip
         working-directory: apps/browser-extension
+        env:
+          # See note in the desktop job — same env-driven URL.
+          VITE_GAUNTLET_BACKEND_URL: ${{ secrets.GAUNTLET_BACKEND_URL || 'https://ruberra-backend-jkpf-production.up.railway.app' }}
         run: npm run zip
       - name: build firefox zip
         working-directory: apps/browser-extension
+        env:
+          VITE_GAUNTLET_BACKEND_URL: ${{ secrets.GAUNTLET_BACKEND_URL || 'https://ruberra-backend-jkpf-production.up.railway.app' }}
         run: npm run zip:firefox
       - name: upload zips
         uses: softprops/action-gh-release@v2
