@@ -2,7 +2,7 @@
 Gauntlet — Postgres connection pool + spine mirror writer (Wave O / P-6).
 
 Read path is JSON (spine.py). This module ships the **mirror writer**
-that, when SIGNAL_DUAL_WRITE_PG is on, replicates the spine snapshot
+that, when GAUNTLET_DUAL_WRITE_PG is on, replicates the spine snapshot
 into Postgres tables defined by migrations/0001_initial_schema.sql.
 
 The mirror is fire-and-forget from the JSON path's perspective: it
@@ -11,7 +11,7 @@ Failures are logged once per session (we don't spam) and don't raise
 to the caller — JSON is canonical until the cutover wave flips reads.
 
 Two-week dual-write doctrine:
-  1. SIGNAL_DATABASE_URL set + SIGNAL_DUAL_WRITE_PG=1     → mirror on
+  1. GAUNTLET_DATABASE_URL set + GAUNTLET_DUAL_WRITE_PG=1     → mirror on
   2. After parity is observed (spot-check) → flip read flag (future)
   3. Drop JSON paths in a final cleanup wave
 """
@@ -32,7 +32,7 @@ logger = logging.getLogger("gauntlet.db")
 # ── Lazy connection pool ─────────────────────────────────────────────────
 #
 # asyncpg is imported only when the dual-writer actually needs it so a
-# deployment without SIGNAL_DATABASE_URL never pays the import cost and
+# deployment without GAUNTLET_DATABASE_URL never pays the import cost and
 # absent-on-pip environments boot cleanly.
 
 _pool: Optional[Any] = None
@@ -123,7 +123,7 @@ async def write_spine_snapshot(pool: Any, snapshot: dict) -> None:
     Bypasses the dual-write gate (``is_enabled()``) and propagates any
     exception. Used by the one-shot backfill so the operator sees a
     non-zero exit if the seed fails, and so a backfill works even when
-    ``SIGNAL_DUAL_WRITE_PG`` is still off (the documented pre-window
+    ``GAUNTLET_DUAL_WRITE_PG`` is still off (the documented pre-window
     flow).
     """
     missions = snapshot.get("missions") or []

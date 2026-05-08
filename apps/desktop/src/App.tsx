@@ -84,8 +84,9 @@ export function App() {
         ambient={ambient}
         initialSnapshot={ambient.selection.read()}
         onDismiss={dismiss}
-      />
-      {showOnboarding && <Onboarding onDone={dismissOnboarding} />}
+      >
+        {showOnboarding && <Onboarding onDone={dismissOnboarding} />}
+      </Capsule>
     </>
   );
 }

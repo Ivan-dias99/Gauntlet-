@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
+import { gauntletFetch, isBackendUnreachable } from "../lib/gauntletApi";
 import { Panel, SurfaceHeader } from "./ControlLayout";
 import Pill from "../components/atoms/Pill";
 
@@ -35,7 +35,7 @@ export default function ModelsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await signalFetch("/gateway/summary");
+        const res = await gauntletFetch("/gateway/summary");
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const body = (await res.json()) as GatewaySummary;
         if (!cancelled) setData(body);

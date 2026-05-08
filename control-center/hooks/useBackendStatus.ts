@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
+import { gauntletFetch, isBackendUnreachable } from "../lib/gauntletApi";
 
 // Honest surface for the two backend truths every chamber cares about:
 //   - mode: "mock" | "real"  (is the brain running canned responses?)
@@ -67,7 +67,7 @@ export function useBackendStatus(): UseBackendStatus {
     const ac = new AbortController();
     (async () => {
       try {
-        const res = await signalFetch("/health", { signal: ac.signal });
+        const res = await gauntletFetch("/health", { signal: ac.signal });
         if (!res.ok) {
           setStatus({ ...INITIAL, reachable: true, engine: "not_initialized" });
           return;
@@ -76,7 +76,7 @@ export function useBackendStatus(): UseBackendStatus {
         let readiness: BackendStatus["readiness"] = "degraded";
         let readinessReasons: string[] = [];
         try {
-          const readyRes = await signalFetch("/health/ready", { signal: ac.signal });
+          const readyRes = await gauntletFetch("/health/ready", { signal: ac.signal });
           if (readyRes.ok) {
             readiness = "ready";
           } else {

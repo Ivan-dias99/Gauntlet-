@@ -52,12 +52,12 @@ from config import (
     MEMORY_DIR,
     PERSISTENCE_EPHEMERAL,
     RATE_LIMIT_DISABLED,
-    RUBERRA_MOCK,
+    GAUNTLET_MOCK,
     SECURITY_CSP,
     SECURITY_HSTS,
     SERVER_HOST,
     SERVER_PORT,
-    SIGNAL_API_KEY,
+    GAUNTLET_API_KEY,
     TRUST_PROXY,
 )
 from models import (
@@ -111,14 +111,14 @@ async def lifespan(app: FastAPI):
         not ANTHROPIC_API_KEY
         and not GROQ_API_KEY
         and not GEMINI_API_KEY
-        and not RUBERRA_MOCK
+        and not GAUNTLET_MOCK
     ):
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
             "  No provider key found!\n"
-            "  Set ANTHROPIC_API_KEY for Claude, or\n"
-            "  GAUNTLET_GROQ_API_KEY for Groq (free tier, preferred), or\n"
-            "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY for Gemini (free tier).\n"
+            "  Set GAUNTLET_GROQ_API_KEY for Groq (PRIMARY, free tier), or\n"
+            "  ANTHROPIC_API_KEY for Anthropic (paused), or\n"
+            "  GAUNTLET_GEMINI_API_KEY / GEMINI_API_KEY for Gemini (paused).\n"
             "  Or set GAUNTLET_MOCK=1 for canned responses.\n"
             "═══════════════════════════════════════════════════════════"
         )
@@ -138,7 +138,7 @@ async def lifespan(app: FastAPI):
 
     engine = Engine()
     memory_label = "EPHEMERAL (volume not configured)" if PERSISTENCE_EPHEMERAL else "PERSISTENT"
-    if RUBERRA_MOCK:
+    if GAUNTLET_MOCK:
         _provider_label = "MOCK (canned)"
     elif ANTHROPIC_API_KEY:
         _provider_label = "Anthropic Claude"
@@ -162,7 +162,7 @@ async def lifespan(app: FastAPI):
         "═══════════════════════════════════════════════════════════"
     )
 
-    if PERSISTENCE_EPHEMERAL and not RUBERRA_MOCK:
+    if PERSISTENCE_EPHEMERAL and not GAUNTLET_MOCK:
         logger.warning(
             "═══════════════════════════════════════════════════════════\n"
             "  PERSISTENCE EPHEMERAL\n"
@@ -209,10 +209,19 @@ _cors_kwargs: dict = {
 }
 # Chrome / Edge / Firefox extensions ship with a non-deterministic origin
 # (chrome-extension://<id>, moz-extension://<uuid>) so they cannot be
-# enumerated in ALLOWED_ORIGINS. Match them via regex so the cursor
-# capsule can reach the local backend without per-install configuration.
+# enumerated in ALLOWED_ORIGINS. Tauri 2 uses tauri://localhost on
+# Linux/macOS/iOS and http(s)://tauri.localhost on Windows for the same
+# reason. Em `tauri dev` o webview carrega via Vite a `http://localhost:<port>`
+# (5179 em apps/desktop/vite.config.ts mas a porta pode variar). Match
+# todos via regex para cápsula em qualquer shell + dev mode falar com
+# o backend sem configuração por-instalação. localhost/127.0.0.1 sem
+# porta fixa é seguro: o browser e o OS tratam ambas como loopback.
 # When the operator already supplied a regex, OR ours into theirs.
-_extension_regex = r"^(chrome-extension|moz-extension|safari-web-extension):\/\/.+$"
+_extension_regex = (
+    r"^(chrome-extension|moz-extension|safari-web-extension|tauri):\/\/.+$"
+    r"|^https?:\/\/tauri\.localhost(:\d+)?$"
+    r"|^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$"
+)
 if ALLOWED_ORIGIN_REGEX:
     _cors_kwargs["allow_origin_regex"] = (
         f"({ALLOWED_ORIGIN_REGEX})|({_extension_regex})"
@@ -306,8 +315,8 @@ app.add_middleware(
     disabled=RATE_LIMIT_DISABLED,
     trust_proxy=TRUST_PROXY,
 )
-# 2) Auth gate — reads SIGNAL_API_KEY at install time. Empty key = no-op.
-app.add_middleware(APIKeyAuthMiddleware, api_key=SIGNAL_API_KEY)
+# 2) Auth gate — reads GAUNTLET_API_KEY at install time. Empty key = no-op.
+app.add_middleware(APIKeyAuthMiddleware, api_key=GAUNTLET_API_KEY)
 # 3) CORS — must sit OUTSIDE auth so preflight gets the right headers
 #    even when the inner gates would otherwise reject the request.
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
@@ -387,7 +396,7 @@ async def health_check():
         "system": "Gauntlet",
         "doctrine": "active",
         "engine": "ready" if engine else "not_initialized",
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if GAUNTLET_MOCK else "real",
         "persistence_degraded": bool(_collect_load_errors()),
         "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
     }
@@ -408,7 +417,7 @@ async def health_ready():
     reasons: list[str] = []
     if not engine:
         reasons.append("engine_not_initialized")
-    if RUBERRA_MOCK:
+    if GAUNTLET_MOCK:
         reasons.append("mock_mode")
     if load_errors:
         reasons.append("persistence_degraded")
@@ -419,7 +428,7 @@ async def health_ready():
         "ready": not reasons,
         "reasons": reasons,
         "engine": "ready" if engine else "not_initialized",
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if GAUNTLET_MOCK else "real",
         "load_errors": load_errors,
         "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
     }
@@ -1031,12 +1040,12 @@ async def diagnostics():
     boot = {
         "start_iso": _PROCESS_START_ISO,
         "uptime_seconds": int(time.monotonic() - _PROCESS_START_MONO),
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if GAUNTLET_MOCK else "real",
         "anthropic_api_key_present": bool(ANTHROPIC_API_KEY),
         "groq_api_key_present": bool(GROQ_API_KEY),
         "gemini_api_key_present": bool(GEMINI_API_KEY),
         "active_provider": (
-            "mock" if RUBERRA_MOCK
+            "mock" if GAUNTLET_MOCK
             else "anthropic" if ANTHROPIC_API_KEY
             else "groq" if GROQ_API_KEY
             else "gemini" if GEMINI_API_KEY
@@ -1063,7 +1072,7 @@ async def diagnostics():
     # whether the auth gate is on, whether HSTS is being stamped, etc.
     # We never reveal the API key value — only the boolean.
     security = {
-        "auth_required": bool(SIGNAL_API_KEY),
+        "auth_required": bool(GAUNTLET_API_KEY),
         "rate_limit_enabled": not RATE_LIMIT_DISABLED,
         "trust_proxy": TRUST_PROXY,
         "hsts": SECURITY_HSTS,

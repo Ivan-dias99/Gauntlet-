@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
+import { gauntletFetch, isBackendUnreachable } from "../lib/gauntletApi";
 
 // Live repo/branch state from the workspace the brain is running over.
 // Replaces the build-time env reads (VITE_SIGNAL_REPO / VITE_SIGNAL_BRANCH)
@@ -51,7 +51,7 @@ export function useGitStatus(): GitStatus {
     const ac = new AbortController();
     (async () => {
       try {
-        const res = await signalFetch("/git/status", { signal: ac.signal });
+        const res = await gauntletFetch("/git/status", { signal: ac.signal });
         if (!res.ok) {
           setStatus({ ...INITIAL, error: `git_status:${res.status}` });
           return;

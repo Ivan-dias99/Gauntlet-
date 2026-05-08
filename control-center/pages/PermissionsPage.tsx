@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   isBackendUnreachable,
-  signalFetch,
-} from "../lib/signalApi";
+  gauntletFetch,
+} from "../lib/gauntletApi";
 import { Panel, SurfaceHeader } from "./ControlLayout";
 import Pill from "../components/atoms/Pill";
 
@@ -79,8 +79,8 @@ export default function PermissionsPage() {
     setState({ kind: "loading" });
     try {
       const [manifestsRes, settingsRes] = await Promise.all([
-        signalFetch("/tools/manifests"),
-        signalFetch("/composer/settings"),
+        gauntletFetch("/tools/manifests"),
+        gauntletFetch("/composer/settings"),
       ]);
       if (!manifestsRes.ok) throw new Error(`manifests HTTP ${manifestsRes.status}`);
       if (!settingsRes.ok) throw new Error(`settings HTTP ${settingsRes.status}`);
@@ -128,7 +128,7 @@ export default function PermissionsPage() {
         ...state.settings,
         tool_policies: draftPolicies,
       };
-      const res = await signalFetch("/composer/settings", {
+      const res = await gauntletFetch("/composer/settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(next),

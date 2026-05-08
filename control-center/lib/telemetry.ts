@@ -15,14 +15,14 @@
 // The 5th event (truth_distillation_generated) is fired server-side
 // from /insight/distill/stream when a `done` frame lands.
 
-import { signalFetch } from "./signalApi";
+import { gauntletFetch } from "./gauntletApi";
 
 export function fireTelemetry(
   event: string,
   missionId: string | null | undefined,
   payload: Record<string, unknown> = {},
 ): void {
-  void signalFetch("/telemetry/event", {
+  void gauntletFetch("/telemetry/event", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ event, mission_id: missionId ?? undefined, payload }),

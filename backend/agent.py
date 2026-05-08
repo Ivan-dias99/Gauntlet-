@@ -29,7 +29,7 @@ from typing import Any, AsyncIterator, Optional
 
 from anthropic import AsyncAnthropic
 
-from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, RUBERRA_MOCK
+from config import ANTHROPIC_API_KEY, MODEL_ID, MAX_TOKENS, GAUNTLET_MOCK
 from mock_client import MockAsyncAnthropic
 from doctrine import AGENT_SYSTEM_PROMPT, build_principles_context
 from models import SignalQuery
@@ -69,10 +69,10 @@ _DEV_PATTERN = re.compile(
 
 # ── Structured gate/diff signal extraction ──────────────────────────────────
 #
-# T085 — replaces the regex-on-tool-preview derivation that used to live
-# in the Terminal chamber (src/chambers/terminal/index.tsx). The agent
-# already runs every tool result; we inspect that result here once and
-# emit typed events so the shell can render gates/diff without scraping.
+# T085 — replaces the regex-on-tool-preview derivation that lived in the
+# legacy Terminal surface before the cápsula. The agent already runs every
+# tool result; we inspect that result here once and emit typed events so
+# the cápsula can render gates/diff without scraping.
 # Keep it small: false positives are worse than silence — when the
 # signals are ambiguous we yield nothing.
 
@@ -190,7 +190,7 @@ class AgentOrchestrator:
     ) -> None:
         if client is not None:
             self._client = client
-        elif RUBERRA_MOCK:
+        elif GAUNTLET_MOCK:
             self._client = MockAsyncAnthropic()
             logger.warning("AgentOrchestrator initialized in MOCK mode")
         else:

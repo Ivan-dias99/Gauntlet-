@@ -7,6 +7,140 @@ project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Changed (consolidação canónica · 2026-05-08)
+- **Identifiers Python alinhados com a doutrina GAUNTLET_*.**
+  `RUBERRA_MOCK` (declaração + 12 usos em config/engine/agent/server)
+  → `GAUNTLET_MOCK`. `SIGNAL_API_KEY` → `GAUNTLET_API_KEY`.
+  `SIGNAL_DUAL_WRITE_PG` / `SIGNAL_DATABASE_URL` / `SIGNAL_PG_CANONICAL`
+  / `SIGNAL_HSTS` / `SIGNAL_CSP` em docstrings + error messages →
+  `GAUNTLET_*`. **Env vars continuam a aceitar os aliases legacy** via
+  `_env()` helper (compat preservada — operadores com SIGNAL_*
+  setados continuam a funcionar). `db.py`, `spine.py`, `migrate.py`,
+  `security_headers.py`, `tools.py`, `engine.py`, `agent.py`,
+  `server.py`, `config.py`.
+- **Front-end alinhado**. `control-center/lib/signalApi.ts` →
+  `gauntletApi.ts`. Exports: `signalFetch` → `gauntletFetch`,
+  `SIGNAL_API_BASE` → `GAUNTLET_API_BASE`,
+  `SIGNAL_API_KEY_PRESENT` → `GAUNTLET_API_KEY_PRESENT`. 13 ficheiros
+  actualizados (hooks, pages, spine, telemetry, lib).
+- **Terminologia "chamber" eliminada de forward-references**.
+  `agent.py` deixa de referenciar `src/chambers/terminal/index.tsx`
+  (path morto). `model_gateway.py` reescreve docstring para falar de
+  "callers" (engine + composer + agent) em vez de "chambers".
+  Mantidas referências históricas em comentários que documentam a
+  migração Signal→Gauntlet — são úteis para entender porque o código
+  parece como parece.
+- **TODOs vivos resolvidos**. `tools.py:1467` (gate de aprovação
+  agora aponta para o danger gate da cápsula). Restantes "TODO" no
+  repo são milestones históricos fechados (`docs/COMPOSER_V0.md`).
+
+### Added
+- **`docs/canon/COMPOSER_SURFACE_SPEC.md`** — spec canónica do
+  Composer, resolve [#315](https://github.com/Ivan-dias99/Aiinterfaceshelldesign/issues/315).
+  Documenta paridade visual, state machine, labels, capabilities matrix,
+  provider precedence, e o histórico de commits da Fase 5 que tornaram
+  a doutrina executável.
+- **README run-locally actualizado**. Provider precedence visível,
+  Groq como primário, ambos os shells (browser + desktop) listados
+  com pré-requisitos, ambos os hotkeys (`Ctrl+Shift+Space` canónico).
+- **Paridade visual COMPLETA entre desktop e browser (Fase 5).**
+  Operador deixa de notar qual shell está activo. Tres convergências:
+  1. **Web ganha filesystem** via novo `web-filesystem.ts` (File API
+     com path proxy `web://<uuid>` resolvido em cache em memória).
+     `pickFile` abre `<input type="file">`, `readTextFile` /
+     `readFileBase64` lêem do blob. Botão ANEXAR aparece em ambos
+     os shells e funciona em ambos.
+  2. **Web ganha screen capture** via `screenshot.captureScreen()`
+     que envolve `chrome.tabs.captureVisibleTab` na shape
+     `{ base64, path }` que o desktop expõe via Tauri. Botão ECRÃ
+     aparece em ambos os shells.
+  3. **Botão SHELL removido do row em ambos os shells.** Era só
+     desktop e entregava qual shell estava activo. Funcionalidade
+     mantém-se via slash command `/shell` (slashActions continua
+     a gating por capability). Visualmente os dois shells mostram
+     agora um row idêntico: ANEXAR · ECRÃ · VOZ · ENVIAR.
+
+  Doutrina (lente 2 do CLAUDE.md): "uma só implementação partilhada
+  por todos os shells; divergência visual é regressão". Operador vende
+  como produto único universal — implementação subjacente difere
+  (Tauri vs File API) mas user experience é indistinguível.
+- **Streaming SSE no Groq adapter.** `groq_provider._StreamContext`
+  envolve `client.chat.completions.create(stream=True)` na shape
+  anthropic (`async with client.messages.stream(...)` + `text_stream` +
+  `get_final_message()`). `dom_plan_stream` no composer deixa de bater
+  com `'_MessagesNamespace' object has no attribute 'stream'` em Groq;
+  cápsula recebe deltas token-a-token como em Anthropic. Usage tokens
+  vêm do tail-chunk via `stream_options.include_usage=True` para o
+  ledger do gateway manter contagem.
+- **Erros do backend visíveis na cápsula.** Ambos os shells
+  (apps/desktop/src/ambient.ts e apps/browser-extension/lib/ambient.ts)
+  passam a extrair `detail.message` / `detail.error` da resposta JSON
+  do FastAPI quando a HTTP status não é 2xx. Operador vê
+  `composer: 502 Bad Gateway — Error code: 401 - Invalid API Key` em
+  vez do "502" genérico que esconde a causa real.
+
+### Changed
+- **Provider precedence — Groq passa a primário.** Engine agora
+  resolve providers nesta ordem: `MOCK > Groq > Anthropic > Gemini >
+  error`. Anthropic e Gemini ficam em PAUSA — código mantém-se
+  compatível, só correm quando o operador escolhe explicitamente
+  (sem `GAUNTLET_GROQ_API_KEY` setada). Motivo: custo / falta de
+  créditos Anthropic; Groq free tier (Llama 3.x) cobre todo o
+  desenvolvimento e teste com latência sub-segundo. `engine.py`,
+  `config.py`, `server.py`, `.env.example`, `test_engine_init.py`
+  actualizados em conjunto.
+- **Doutrina actualizada — Composer denso, backend gordo.** O composer
+  deixou de ser "mínimo" e passa a ser **denso, viciante, sofisticado**:
+  o sítio onde o utilizador não quer sair, com tools/skills/commands na
+  ponta do dedo. Backend continua gordo. Lente 2 do CLAUDE.md reescrita.
+- **Janela popup standalone `composer.html` eliminada por completo.**
+  Apple-quality bar: a cápsula ou abre como overlay na página, ou não
+  abre. Sem janela de consolação, sem cápsula órfã sem contexto. Ícone
+  ou `Ctrl+Shift+Space` em URLs restritas (`chrome://`, `edge://`, Web
+  Store, PDF, etc) ou em SPAs onde o content script trava — pulsa um
+  `×` ember no badge da action durante 1.6s e silencia.
+
+  Removidos: `apps/browser-extension/entrypoints/composer/index.html`,
+  `apps/browser-extension/entrypoints/composer/main.tsx`, funções
+  `openComposerWindow` + `findExistingComposerWindow` em background.ts,
+  constantes `COMPOSER_WINDOW_*`, modo `'fallback-window'` do
+  `SummonDiagnostics`, e a pasta inteira `release/unpacked/` (snapshot
+  pré-build legacy que continha `composer.html` antigo). Lente 1
+  ("ponta do cursor") absoluta.
+- **Paridade visual desktop ↔ browser.** O chip que rendia
+  `{ambient.shell}` ('desktop' / 'browser') na barra de contexto da
+  cápsula foi removido — era uma marca de água que entregava ao
+  utilizador qual shell estava em uso. Doutrina (lente 2 — "uma só
+  implementação partilhada por todos os shells, divergência visual é
+  regressão") aplicada. URL placeholder `desktop://capsule` /
+  `desktop://unknown` também deixa de aparecer no chrome — quando o
+  pageTitle não está preenchido por um app real em foco, o slot fica
+  simplesmente vazio. Operador deixa de sentir "modos diferentes" ao
+  trocar de ambiente; é a mesma cápsula com contextos diferentes.
+- **Onboarding fica dentro da cápsula.** `Capsule` ganha slot `children`;
+  ambos os shells (`apps/browser-extension/components/App.tsx` e
+  `apps/desktop/src/App.tsx`) passam `<Onboarding>` como filho em vez de
+  irmão. Antes o `position:absolute; inset:0` da intro ancorava no body
+  da página → tour aparecia ao lado da cápsula, sobrepondo conteúdo
+  externo. Agora ancora no root da cápsula → toma-a por completo como
+  modal interno, exactamente como o comentário no Onboarding.tsx descreve
+  ("an in-cápsula tour beats…"). Visual coerente em ambos os shells.
+
+### Fixed
+- **Backend default port** changed from `8080` to `3002` so local dev
+  matches the desktop Tauri CSP without exporting `GAUNTLET_PORT`.
+  Production deploys on Railway/Vercel/Fly continue to pick up `PORT`
+  from the platform, so this is a local-only convenience.
+  (`backend/config.py`, `docs/OPERATIONS.md`)
+- **`Failed to fetch` em dev** — `composer-client.ts` defaultava para a
+  URL Railway antiga (`ruberra-backend-jkpf-...`) mesmo em vite/wxt/tauri
+  dev. Agora detecta `import.meta.env.DEV` e usa `http://127.0.0.1:3002`
+  como fallback. `VITE_BACKEND_URL` continua a sobrepor.
+- **CORS para Tauri** — `backend/server.py` regex aceitava apenas
+  `chrome-extension://`, `moz-extension://`, `safari-web-extension://`.
+  Cápsula desktop bloqueava porque Tauri 2 emite `tauri://localhost`
+  (Linux/Mac) ou `http://tauri.localhost` (Windows). Regex estendido.
+
 ### Added
 - **Snapshot-before-destroy** for both `/ledger/clear` and
   `/memory/forget_all`. Each call writes a timestamped sidecar

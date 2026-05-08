@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
+import { gauntletFetch, isBackendUnreachable } from "../lib/gauntletApi";
 import { Panel, SurfaceHeader } from "./ControlLayout";
 import Pill from "../components/atoms/Pill";
 
@@ -87,7 +87,7 @@ export default function LedgerPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await signalFetch("/runs?limit=200");
+      const res = await gauntletFetch("/runs?limit=200");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = (await res.json()) as RunsList;
       setRuns(body.records ?? []);

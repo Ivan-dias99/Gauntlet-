@@ -21,7 +21,7 @@ Sections:
   - runs.json    → runs
   - failure_memory.json → failure_records
 
-Designed to run once before the SIGNAL_DUAL_WRITE_PG window opens, so
+Designed to run once before the GAUNTLET_DUAL_WRITE_PG window opens, so
 parity checks during dual-write start from a known seed. Safe to run
 again any time — the replace-all strategy keeps the DB in step with
 JSON.
@@ -76,7 +76,7 @@ async def _migrate_spine(pool: Any, snapshot: dict) -> None:
     """Mirror the spine snapshot using the migration pool directly.
 
     Bypasses ``db.mirror_spine_snapshot`` because that helper is gated on
-    ``SIGNAL_DUAL_WRITE_PG`` (it returns immediately when the toggle is
+    ``GAUNTLET_DUAL_WRITE_PG`` (it returns immediately when the toggle is
     off) and swallows DB exceptions. The backfill is the documented
     pre-window seed: it must write regardless of the dual-write toggle
     and must surface failures so the operator sees a non-zero exit.
@@ -182,7 +182,7 @@ async def _migrate_failure(pool: Any, body: dict) -> None:
 async def main() -> int:
     if not DATABASE_URL:
         logger.error(
-            "SIGNAL_DATABASE_URL is not set — cannot run backfill. "
+            "GAUNTLET_DATABASE_URL is not set — cannot run backfill. "
             "Export it before running this script."
         )
         return 2

@@ -1,22 +1,22 @@
 """
-Gauntlet — Model Gateway (Wave H).
+Gauntlet — Model Gateway.
 
-Today every chamber calls Anthropic directly with the global MODEL_ID.
-Wave H introduces a thin routing layer so the chambers can:
+Thin routing layer so callers can:
 
 1. Pick a model by **role** (triad / judge / agent / distill / surface
    / compress) instead of hard-coding model ids.
-2. Fall back gracefully when a model is unavailable (rate limited,
+2. Fall back gracefully when a provider is unavailable (rate limited,
    network blip, region outage).
-3. Track per-call cost approximations for the run log + Archive
-   diagnostics.
+3. Track per-call cost approximations for the run log + ledger.
 
-This is the "Model Gateway" connector from the V3.1 stack.
+The architecture permits adding alternative providers without changing
+caller code — engines/composer keep calling `gateway.create(role=..., ...)`
+and the gateway picks a route. Activamente em uso: Groq (primário),
+Anthropic (pausa), Gemini (pausa) — ver engine.py para precedência.
 
-Wave H v1 is **single-provider** (Anthropic). The architecture
-permits adding alternative providers later without changing chamber
-code — chambers will keep calling `gateway.create(role=..., ...)` and
-the gateway picks a route.
+Histórico: nasceu em Wave H quando havia "chambers" como callers; após
+a migração Signal→Gauntlet o termo desapareceu, callers agora são o
+engine + composer + agent.
 """
 
 from __future__ import annotations
@@ -222,5 +222,6 @@ class ModelGateway:
         }
 
 
-# Module-level singleton — chambers import this and call select/fallback.
+# Module-level singleton — engine + composer + agent import this and call
+# select/fallback. (Histórico: chamado por "chambers" pré-migração.)
 gateway = ModelGateway()

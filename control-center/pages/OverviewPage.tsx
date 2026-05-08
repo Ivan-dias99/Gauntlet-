@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
+import { gauntletFetch, isBackendUnreachable } from "../lib/gauntletApi";
 import { useBackendStatus } from "../hooks/useBackendStatus";
 import { Panel, SurfaceHeader } from "./ControlLayout";
 import Pill from "../components/atoms/Pill";
@@ -41,7 +41,7 @@ export default function OverviewPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await signalFetch("/diagnostics");
+        const res = await gauntletFetch("/diagnostics");
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as Diagnostics;
         if (!cancelled) setDiag(data);

@@ -20,7 +20,7 @@ import {
   useState,
 } from "react";
 import { SurfaceHeader } from "./ControlLayout";
-import { signalFetch } from "../lib/signalApi";
+import { gauntletFetch } from "../lib/gauntletApi";
 
 // ── Pref namespace ──────────────────────────────────────────────────────────
 // All keys live under `gauntlet:*` so they share the namespace with the
@@ -638,7 +638,7 @@ export default function SettingsPage() {
   const onClearLedger = useCallback(async () => {
     if (!window.confirm("Clear ledger entries from the last 24h? This cannot be undone.")) return;
     try {
-      const res = await signalFetch("/ledger/clear", {
+      const res = await gauntletFetch("/ledger/clear", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirm: true, since_hours: 24 }),
@@ -656,7 +656,7 @@ export default function SettingsPage() {
   const onForgetMemory = useCallback(async () => {
     if (!window.confirm("Forget all memory records? This cannot be undone.")) return;
     try {
-      const res = await signalFetch("/memory/forget_all", {
+      const res = await gauntletFetch("/memory/forget_all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirm: true }),
@@ -674,7 +674,7 @@ export default function SettingsPage() {
   const onRevokePermissions = useCallback(async () => {
     if (!window.confirm("Revoke all granted permissions? Operator must re-approve next use.")) return;
     try {
-      const res = await signalFetch("/permissions/revoke_all", {
+      const res = await gauntletFetch("/permissions/revoke_all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirm: true }),

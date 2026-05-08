@@ -7,7 +7,7 @@
 //     the response is a text answer or a list of DOM actions — the
 //     user never has to choose between "Compor" and "Acionar".
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ComposerClient } from './composer-client';
 import {
   DEFAULT_COMPOSER_SETTINGS,
@@ -57,6 +57,13 @@ export interface CapsuleProps {
   // are absent (rare: hotkey before any pointer activity), the cápsula
   // opens as a centered floating capsule.
   cursorAnchor?: { x: number; y: number } | null;
+  // Optional overlays (e.g. Onboarding) rendered inside the cápsula
+  // root so position:absolute children anchor against the cápsula
+  // itself, not the host page. Without this slot, shells were rendering
+  // <Capsule/> and <Onboarding/> as siblings — the Onboarding ended up
+  // floating against the page body and visually clashed with the
+  // cápsula instead of taking it over as an in-cápsula tour.
+  children?: ReactNode;
 }
 
 type Phase =
@@ -73,6 +80,7 @@ export function Capsule({
   initialSnapshot,
   onDismiss,
   cursorAnchor,
+  children,
 }: CapsuleProps) {
   // Construct the client + prefs once per cápsula mount. Ambient is a
   // stable singleton built by the host shell's createXAmbient(); we
@@ -112,17 +120,6 @@ export function Capsule({
   // ripple element fresh, replaying the keyframe even when the user
   // submits twice in quick succession.
   const [submitRipple, setSubmitRipple] = useState(0);
-  // Context-pop pulse — fires once when the page selection transitions
-  // from empty → non-empty. The chip pops to confirm "context locked
-  // in" before the operator even looks at the meta strip. Cleared by
-  // a timer so the chip returns to rest. The timer lives in a ref so
-  // it survives effect re-runs (e.g. iframe-harvest enriches snapshot
-  // mid-pop) — without that the cleanup would clear the timer and the
-  // re-run path wouldn't re-arm it (prev is already true), leaving
-  // contextJustArrived stuck on permanently.
-  const [contextJustArrived, setContextJustArrived] = useState(false);
-  const prevHadContextRef = useRef(false);
-  const contextPopTimerRef = useRef<number | null>(null);
   // TTS — when enabled in settings, the cápsula speaks the compose
   // response as soon as plan_ready fires. Persisted via prefs;
   // synthesizer instance lives on the window.speechSynthesis singleton
@@ -408,41 +405,6 @@ export function Capsule({
       cancelled = true;
     };
   }, [client, prefs]);
-
-  // Context-pop watcher — when snapshot.text flips empty → non-empty
-  // (e.g. iframe-harvest enriched the snapshot, or refreshSnapshot
-  // pulled in a fresh selection), pulse the source chip so the
-  // operator's eye catches the new context. One-shot, no infinite
-  // pulse loop. Timer is held in a ref so subsequent snapshot updates
-  // (non-empty → other-non-empty during incremental enrichment) don't
-  // tear down the running pop: the effect re-runs, sees prev === true,
-  // doesn't re-arm; if the timer were inside the closure cleanup it
-  // would die here and the pop would freeze indefinitely (Codex P2).
-  useEffect(() => {
-    const has = !!snapshot.text;
-    if (has && !prevHadContextRef.current) {
-      setContextJustArrived(true);
-      if (contextPopTimerRef.current !== null) {
-        window.clearTimeout(contextPopTimerRef.current);
-      }
-      contextPopTimerRef.current = window.setTimeout(() => {
-        setContextJustArrived(false);
-        contextPopTimerRef.current = null;
-      }, 700);
-    }
-    prevHadContextRef.current = has;
-  }, [snapshot.text]);
-
-  // Tear down the context-pop timer on unmount only — see comment
-  // above for why effect re-runs must NOT clear it.
-  useEffect(() => {
-    return () => {
-      if (contextPopTimerRef.current !== null) {
-        window.clearTimeout(contextPopTimerRef.current);
-        contextPopTimerRef.current = null;
-      }
-    };
-  }, []);
 
   // TTS — load persisted toggle. Speak when plan_ready arrives with a
   // compose answer. The Web Speech API is feature-detected at speak
@@ -1468,16 +1430,27 @@ export function Capsule({
 
           <section className="gauntlet-capsule__context">
             <div className="gauntlet-capsule__context-meta">
-              <span
-                className={`gauntlet-capsule__source${
-                  contextJustArrived ? ' gauntlet-capsule__source--popped' : ''
-                }`}
-              >
-                {ambient.shell}
-              </span>
-              <span className="gauntlet-capsule__url" title={snapshot.url}>
-                {snapshot.pageTitle || snapshot.url}
-              </span>
+              {/* Shell label removido por doutrina de paridade — o
+                  utilizador não deve nunca sentir que está em "dois
+                  composers diferentes". Chrome igual em ambos os
+                  shells; ambient.shell mantém-se internamente para
+                  diagnostics, só não é renderizado.
+                  URL placeholder do desktop (`desktop://capsule`,
+                  `desktop://unknown`) também não aparece — esconde
+                  contexto vazio em vez de o expor como UI. Quando há
+                  um app real em foco o pageTitle preenche-se sozinho. */}
+              {(() => {
+                const isDesktopPlaceholder = snapshot.url.startsWith('desktop://');
+                const display = isDesktopPlaceholder
+                  ? snapshot.pageTitle?.trim() || ''
+                  : snapshot.pageTitle || snapshot.url;
+                if (!display) return null;
+                return (
+                  <span className="gauntlet-capsule__url" title={snapshot.url}>
+                    {display}
+                  </span>
+                );
+              })()}
               {plan?.model_used && (
                 <span
                   className="gauntlet-capsule__model-chip"
@@ -1680,30 +1653,13 @@ export function Capsule({
                   <span className="gauntlet-capsule__attach-label">ecrã</span>
                 </button>
               )}
-              {ambient.capabilities.shellExecute && ambient.shellExec && (
-                <button
-                  type="button"
-                  className={`gauntlet-capsule__attach-btn${
-                    shellPanelOpen ? ' gauntlet-capsule__attach-btn--active' : ''
-                  }`}
-                  onClick={() => setShellPanelOpen((v) => !v)}
-                  aria-label="Shell rápida"
-                  title="Shell rápida (allowlist + GAUNTLET_ALLOW_CODE_EXEC)"
-                  aria-expanded={shellPanelOpen}
-                >
-                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
-                    <path
-                      d="M5 7l4 4-4 4M11 16h7"
-                      stroke="currentColor"
-                      strokeWidth="1.7"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="gauntlet-capsule__attach-label">shell</span>
-                </button>
-              )}
+              {/* Botão SHELL removido do row para paridade visual entre
+                  shells — só desktop tinha o capability shellExecute, o
+                  que entregava ao operador "estás em desktop". A
+                  funcionalidade fica acessível via slash command
+                  /shell (slashActions[] continua a expô-la quando o
+                  ambient suporta). Browser shell mantém o painel
+                  oculto (não há shellExec). */}
               {(isVoiceSupported() ||
                 (ambient.capabilities.remoteVoice && isRemoteVoiceSupported())) && (
                 <button
@@ -2192,6 +2148,11 @@ export function Capsule({
           {savedFlash}
         </div>
       )}
+
+      {/* Overlays (Onboarding, etc) injected by the host shell. Rendered
+          inside the cápsula root so position:absolute children anchor
+          against the cápsula instead of the host page. */}
+      {children}
     </div>
   );
 }
