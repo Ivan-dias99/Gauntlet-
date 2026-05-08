@@ -18,6 +18,8 @@
 // manifests) and have no business living here.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type Ambient } from './ambient';
+import { type DomPlanResult, type SelectionSnapshot, type ComposerSettings, type ToolManifest } from './types';
 
 export interface PaletteAction {
   id: string;
@@ -32,6 +34,186 @@ export interface PaletteAction {
   risk?: string;
   requiresApproval?: boolean;
   run: () => void;
+}
+
+export interface BuildPaletteActionsArgs {
+  ambient: Ambient;
+  plan: DomPlanResult | null;
+  snapshot: SelectionSnapshot;
+  userInput: string;
+  settings: ComposerSettings;
+  toolManifests: ToolManifest[];
+  shellPanelOpen: boolean;
+  // Callbacks — Capsule wraps each in `noteUse` + `setPaletteOpen(false)`
+  // before invoking the underlying handler so the palette closes and
+  // the recents list updates uniformly across every entry.
+  noteUse: (id: string) => void;
+  closePalette: () => void;
+  insertToolPrefix: (toolName: string) => void;
+  focusInput: () => void;
+  copyCompose: () => void;
+  saveToMemory: () => void;
+  attachLocalFile: () => void;
+  attachScreenCapture: () => void;
+  toggleShellPanel: () => void;
+  saveComposeToDisk: () => void;
+  refreshSnapshot: () => void;
+  clearInput: () => void;
+  dismiss: () => void;
+}
+
+// Build the palette's action list. Mirrors `buildSlashActions` in
+// SlashMenu.tsx — pulls the giant inline IIFE out of Capsule.tsx so
+// the rendering logic for the palette and the action assembly live
+// next to each other.
+export function buildPaletteActions(args: BuildPaletteActionsArgs): PaletteAction[] {
+  const {
+    ambient,
+    plan,
+    snapshot,
+    userInput,
+    settings,
+    toolManifests,
+    shellPanelOpen,
+    noteUse,
+    closePalette,
+    insertToolPrefix,
+    focusInput,
+    copyCompose,
+    saveToMemory,
+    attachLocalFile,
+    attachScreenCapture,
+    toggleShellPanel,
+    saveComposeToDisk,
+    refreshSnapshot,
+    clearInput,
+    dismiss,
+  } = args;
+
+  // Wrap each entry's run() to fold in the close + noteUse housekeeping
+  // so the call sites below stay readable.
+  const wrap = (id: string, fn: () => void) => () => {
+    noteUse(id);
+    closePalette();
+    fn();
+  };
+
+  const builtIns: PaletteAction[] = [
+    {
+      id: 'focus',
+      label: 'Focar input',
+      shortcut: '↵',
+      group: 'action',
+      run: wrap('focus', focusInput),
+    },
+    {
+      id: 'copy',
+      label: 'Copiar resposta',
+      shortcut: '⌘C',
+      group: 'action',
+      disabled: !plan?.compose,
+      run: wrap('copy', copyCompose),
+    },
+    {
+      id: 'save',
+      label: 'Guardar em memória',
+      shortcut: 'S',
+      group: 'action',
+      disabled: !plan?.compose && !snapshot.text && !userInput.trim(),
+      run: wrap('save', saveToMemory),
+    },
+    // A1/A2/A3 — capability-gated so ⌘K only lists what the current
+    // shell actually supports.
+    ...(ambient.capabilities.filesystemRead && ambient.filesystem
+      ? [
+          {
+            id: 'attach-file',
+            label: 'Anexar ficheiro local',
+            description: 'Abre o file picker e anexa o conteúdo ao prompt',
+            shortcut: '',
+            group: 'action' as const,
+            run: wrap('attach-file', attachLocalFile),
+          },
+        ]
+      : []),
+    ...(ambient.capabilities.screenCapture && ambient.screenshot?.captureScreen
+      ? [
+          {
+            id: 'attach-screen',
+            label: 'Capturar ecrã inteiro',
+            description: 'Anexa um screenshot do ecrã primário',
+            shortcut: '',
+            group: 'action' as const,
+            run: wrap('attach-screen', attachScreenCapture),
+          },
+        ]
+      : []),
+    ...(ambient.capabilities.shellExecute && ambient.shellExec
+      ? [
+          {
+            id: 'shell-toggle',
+            label: shellPanelOpen ? 'Fechar shell rápida' : 'Abrir shell rápida',
+            description: 'Painel inline para correr comandos da allowlist',
+            shortcut: '',
+            group: 'action' as const,
+            run: wrap('shell-toggle', toggleShellPanel),
+          },
+        ]
+      : []),
+    ...(ambient.capabilities.filesystemWrite && ambient.filesystem?.writeTextFile
+      ? [
+          {
+            id: 'save-disk',
+            label: 'Guardar resposta em ficheiro',
+            description: 'Save dialog → escreve compose para o disco',
+            shortcut: '',
+            group: 'action' as const,
+            disabled: !plan?.compose,
+            run: wrap('save-disk', saveComposeToDisk),
+          },
+        ]
+      : []),
+    {
+      id: 'reread',
+      label: 'Re-ler contexto',
+      shortcut: 'R',
+      group: 'action',
+      run: wrap('reread', refreshSnapshot),
+    },
+    {
+      id: 'clear',
+      label: 'Limpar input',
+      shortcut: 'X',
+      group: 'action',
+      disabled: !userInput,
+      run: wrap('clear', clearInput),
+    },
+    {
+      id: 'dismiss',
+      label: 'Fechar cápsula',
+      shortcut: 'Esc',
+      group: 'action',
+      run: wrap('dismiss', dismiss),
+    },
+  ];
+
+  const allowedTools = toolManifests.filter((t) => {
+    const policy = settings.tool_policies?.[t.name];
+    return !policy || policy.allowed !== false;
+  });
+  const toolEntries: PaletteAction[] = allowedTools.map((t) => ({
+    id: `tool:${t.name}`,
+    label: t.name,
+    description: t.description,
+    shortcut: '',
+    group: 'tool',
+    mode: t.mode,
+    risk: t.risk,
+    requiresApproval: settings.tool_policies?.[t.name]?.require_approval === true,
+    run: wrap(`tool:${t.name}`, () => insertToolPrefix(t.name)),
+  }));
+
+  return [...builtIns, ...toolEntries];
 }
 
 // Fuzzy scorer — substring match wins; otherwise score by how cheaply

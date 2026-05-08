@@ -32,7 +32,7 @@ import {
   type CapsuleTheme,
   type PillPrefs,
 } from './pill-prefs';
-import { CommandPalette, type PaletteAction } from './CommandPalette';
+import { buildPaletteActions, CommandPalette } from './CommandPalette';
 import { SettingsDrawer } from './SettingsDrawer';
 import { CompactContextSummary } from './CompactContextSummary';
 import { buildCapture, describeAction, extractPartialCompose, truncate } from './helpers';
@@ -1045,15 +1045,20 @@ export function Capsule({
         <CommandPalette
           onClose={() => setPaletteOpen(false)}
           recentIds={paletteRecent}
-          actions={(() => {
-            const noteUse = (id: string) => {
-              setPaletteRecent((prev) => {
-                const next = [id, ...prev.filter((x) => x !== id)].slice(0, 8);
-                return next;
-              });
+          actions={buildPaletteActions({
+            ambient,
+            plan,
+            snapshot,
+            userInput,
+            settings,
+            toolManifests,
+            shellPanelOpen,
+            noteUse: (id) => {
+              setPaletteRecent((prev) => [id, ...prev.filter((x) => x !== id)].slice(0, 8));
               void prefs.notePaletteUse(id);
-            };
-            const insertToolPrefix = (toolName: string) => {
+            },
+            closePalette: () => setPaletteOpen(false),
+            insertToolPrefix: (toolName) => {
               setUserInput((prev) => {
                 const trimmed = prev.trimEnd();
                 const head = `usa a tool ${toolName} para `;
@@ -1066,169 +1071,21 @@ export function Capsule({
                 el.focus();
                 el.setSelectionRange(el.value.length, el.value.length);
               }, 0);
-            };
-            const builtIns: PaletteAction[] = [
-              {
-                id: 'focus',
-                label: 'Focar input',
-                shortcut: '↵',
-                group: 'action',
-                run: () => {
-                  noteUse('focus');
-                  setPaletteOpen(false);
-                  window.setTimeout(() => inputRef.current?.focus(), 0);
-                },
-              },
-              {
-                id: 'copy',
-                label: 'Copiar resposta',
-                shortcut: '⌘C',
-                group: 'action',
-                disabled: !plan?.compose,
-                run: () => {
-                  noteUse('copy');
-                  setPaletteOpen(false);
-                  void onCopyCompose();
-                },
-              },
-              {
-                id: 'save',
-                label: 'Guardar em memória',
-                shortcut: 'S',
-                group: 'action',
-                disabled: !plan?.compose && !snapshot.text && !userInput.trim(),
-                run: () => {
-                  noteUse('save');
-                  setPaletteOpen(false);
-                  void saveToMemory();
-                },
-              },
-              // A1/A2/A3 — registar as novas capabilities no palette
-              // para que ⌘K liste mesmo "tudo à mão". Cada uma é
-              // gated pela mesma flag que o botão da toolbar usa.
-              ...(ambient.capabilities.filesystemRead && ambient.filesystem
-                ? [
-                    {
-                      id: 'attach-file',
-                      label: 'Anexar ficheiro local',
-                      description: 'Abre o file picker e anexa o conteúdo ao prompt',
-                      shortcut: '',
-                      group: 'action' as const,
-                      run: () => {
-                        noteUse('attach-file');
-                        setPaletteOpen(false);
-                        void attachLocalFile();
-                      },
-                    },
-                  ]
-                : []),
-              ...(ambient.capabilities.screenCapture && ambient.screenshot?.captureScreen
-                ? [
-                    {
-                      id: 'attach-screen',
-                      label: 'Capturar ecrã inteiro',
-                      description: 'Anexa um screenshot do ecrã primário',
-                      shortcut: '',
-                      group: 'action' as const,
-                      run: () => {
-                        noteUse('attach-screen');
-                        setPaletteOpen(false);
-                        void attachScreenCapture();
-                      },
-                    },
-                  ]
-                : []),
-              ...(ambient.capabilities.shellExecute && ambient.shellExec
-                ? [
-                    {
-                      id: 'shell-toggle',
-                      label: shellPanelOpen ? 'Fechar shell rápida' : 'Abrir shell rápida',
-                      description: 'Painel inline para correr comandos da allowlist',
-                      shortcut: '',
-                      group: 'action' as const,
-                      run: () => {
-                        noteUse('shell-toggle');
-                        setPaletteOpen(false);
-                        setShellPanelOpen((v) => !v);
-                      },
-                    },
-                  ]
-                : []),
-              ...(ambient.capabilities.filesystemWrite && ambient.filesystem?.writeTextFile
-                ? [
-                    {
-                      id: 'save-disk',
-                      label: 'Guardar resposta em ficheiro',
-                      description: 'Save dialog → escreve compose para o disco',
-                      shortcut: '',
-                      group: 'action' as const,
-                      disabled: !plan?.compose,
-                      run: () => {
-                        noteUse('save-disk');
-                        setPaletteOpen(false);
-                        void saveComposeToDisk();
-                      },
-                    },
-                  ]
-                : []),
-              {
-                id: 'reread',
-                label: 'Re-ler contexto',
-                shortcut: 'R',
-                group: 'action',
-                run: () => {
-                  noteUse('reread');
-                  setPaletteOpen(false);
-                  refreshSnapshot();
-                },
-              },
-              {
-                id: 'clear',
-                label: 'Limpar input',
-                shortcut: 'X',
-                group: 'action',
-                disabled: !userInput,
-                run: () => {
-                  noteUse('clear');
-                  setPaletteOpen(false);
-                  setUserInput('');
-                  inputRef.current?.focus();
-                },
-              },
-              {
-                id: 'dismiss',
-                label: 'Fechar cápsula',
-                shortcut: 'Esc',
-                group: 'action',
-                run: () => {
-                  noteUse('dismiss');
-                  setPaletteOpen(false);
-                  handleDismiss();
-                },
-              },
-            ];
-            const allowedTools = toolManifests.filter((t) => {
-              const policy = settings.tool_policies?.[t.name];
-              return !policy || policy.allowed !== false;
-            });
-            const toolEntries: PaletteAction[] = allowedTools.map((t) => ({
-              id: `tool:${t.name}`,
-              label: t.name,
-              description: t.description,
-              shortcut: '',
-              group: 'tool',
-              mode: t.mode,
-              risk: t.risk,
-              requiresApproval:
-                settings.tool_policies?.[t.name]?.require_approval === true,
-              run: () => {
-                noteUse(`tool:${t.name}`);
-                setPaletteOpen(false);
-                insertToolPrefix(t.name);
-              },
-            }));
-            return [...builtIns, ...toolEntries];
-          })()}
+            },
+            focusInput: () => window.setTimeout(() => inputRef.current?.focus(), 0),
+            copyCompose: () => void onCopyCompose(),
+            saveToMemory: () => void saveToMemory(),
+            attachLocalFile: () => void attachLocalFile(),
+            attachScreenCapture: () => void attachScreenCapture(),
+            toggleShellPanel: () => setShellPanelOpen((v) => !v),
+            saveComposeToDisk: () => void saveComposeToDisk(),
+            refreshSnapshot,
+            clearInput: () => {
+              setUserInput('');
+              inputRef.current?.focus();
+            },
+            dismiss: handleDismiss,
+          })}
         />
       )}
 
