@@ -94,16 +94,16 @@ class SignalEngine:
         elif GROQ_API_KEY:
             # Primary path. Anthropic + Gemini estão em pausa: a operação
             # corre sobre Groq free tier (Llama 3.x, RPM/RPD generosos,
-            # latência muito baixa). Triad + judge funcionam; agent loop
-            # com tools/streaming degrada (mesma limitação documentada
-            # em groq_provider.py — adaptador v1).
+            # latência muito baixa). Triad + judge + streaming SSE
+            # funcionam; agent loop com tools continua fora do escopo
+            # v1 do adaptador (groq_provider.py).
             from groq_provider import AsyncGroqAnthropicAdapter
             self._client = AsyncGroqAnthropicAdapter(
                 api_key=GROQ_API_KEY, model=GROQ_MODEL,
             )
             logger.warning(
                 "Running on Groq provider (model=%s). "
-                "Agent loop and streaming are not supported on this path.",
+                "Streaming SSE supported; agent loop with tools is not.",
                 GROQ_MODEL,
             )
         elif ANTHROPIC_API_KEY:

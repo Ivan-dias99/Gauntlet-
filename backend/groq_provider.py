@@ -128,11 +128,108 @@ def _stop_reason(finish: Optional[str]) -> str:
 # ── Adapter ────────────────────────────────────────────────────────────────
 
 
+class _StreamContext:
+    """Mimics anthropic's MessageStream context manager.
+
+    The composer's /dom_plan_stream endpoint uses
+    ``async with client.messages.stream(...) as stream:`` and consumes
+    ``stream.text_stream`` (token-by-token deltas) plus
+    ``stream.get_final_message()`` (usage tokens + stop_reason). We
+    wrap Groq's ``client.chat.completions.create(stream=True)`` async
+    iterator to fit that shape so the cápsula gets real streaming on
+    Groq instead of the v1 adapter's hard-fail.
+    """
+
+    def __init__(
+        self, parent: "AsyncGroqAnthropicAdapter", *, model: str,
+        max_tokens: int, messages: list[dict[str, Any]],
+        system: Optional[str] = None,
+        temperature: Optional[float] = None, **_unused: Any,
+    ) -> None:
+        self._parent = parent
+        self._model_anthropic = model
+        self._max_tokens = max_tokens
+        self._messages = messages
+        self._system = system
+        self._temperature = temperature
+        self._stream: Any = None
+        self._final_text = ""
+        self._stop_reason: Optional[str] = None
+        self._in_tokens = 0
+        self._out_tokens = 0
+
+    async def __aenter__(self) -> "_StreamContext":
+        client = self._parent._client
+        groq_model = self._parent._model_id
+        groq_messages = _to_groq_messages(self._messages, self._system)
+        kwargs: dict[str, Any] = {
+            "model": groq_model,
+            "messages": groq_messages,
+            "max_tokens": self._max_tokens,
+            "stream": True,
+            # Groq adds usage to the final SSE chunk when this flag is on.
+            # Without it stream.get_final_message() returns zeroed counters
+            # and the gateway ledger loses the row.
+            "stream_options": {"include_usage": True},
+        }
+        if self._temperature is not None:
+            kwargs["temperature"] = self._temperature
+        self._stream = await client.chat.completions.create(**kwargs)
+        return self
+
+    async def __aexit__(self, *exc_info: Any) -> None:
+        # The Groq SDK closes the underlying connection when the iterator
+        # exhausts; nothing to clean up here.
+        return None
+
+    @property
+    def text_stream(self) -> Any:
+        # Returned as an async generator the caller iterates with
+        # ``async for text in stream.text_stream``. Same shape as anthropic.
+        return self._iterate_text()
+
+    async def _iterate_text(self) -> Any:
+        async for chunk in self._stream:
+            choices = getattr(chunk, "choices", None) or []
+            if choices:
+                delta = getattr(choices[0], "delta", None)
+                content = getattr(delta, "content", None) if delta else None
+                if content:
+                    self._final_text += content
+                    yield content
+                finish = getattr(choices[0], "finish_reason", None)
+                if finish and not self._stop_reason:
+                    self._stop_reason = finish
+            # Groq emits a tail chunk with usage (no choices, no delta) when
+            # stream_options.include_usage=True. Capture it for parity with
+            # anthropic's get_final_message().
+            usage = getattr(chunk, "usage", None)
+            if usage is not None:
+                self._in_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+                self._out_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+
+    async def get_final_message(self) -> _Response:
+        return _Response(
+            content=[_Block(type="text", text=self._final_text)],
+            model=self._model_anthropic,
+            stop_reason=_stop_reason(self._stop_reason),
+            usage=_Usage(
+                input_tokens=self._in_tokens, output_tokens=self._out_tokens,
+            ),
+        )
+
+
 class _MessagesNamespace:
-    """Mimics anthropic.AsyncAnthropic().messages — exposes create()."""
+    """Mimics anthropic.AsyncAnthropic().messages — exposes create() + stream()."""
 
     def __init__(self, parent: "AsyncGroqAnthropicAdapter") -> None:
         self._parent = parent
+
+    def stream(self, **kwargs: Any) -> _StreamContext:
+        """Return an async context manager that mimics
+        anthropic's ``messages.stream(...)``. Synchronous return — the
+        actual network call happens in __aenter__."""
+        return _StreamContext(self._parent, **kwargs)
 
     async def create(
         self,
@@ -192,9 +289,9 @@ class _MessagesNamespace:
 
 
 class AsyncGroqAnthropicAdapter:
-    """Drop-in replacement for AsyncAnthropic for the non-streaming, no-tool
-    code paths. Triad + judge work; agent loop falls back to mock prompt
-    advice (no tool execution) — same scope as the Gemini adapter."""
+    """Drop-in replacement for AsyncAnthropic. Streaming agora é suportado
+    (messages.stream) via Groq SSE; só falta a tool-use / agent loop, que
+    requer o protocolo anthropic-tool-call e fica fora do v1 adapter."""
 
     def __init__(
         self, *, api_key: str, model: str = "llama-3.3-70b-versatile"
@@ -210,7 +307,6 @@ class AsyncGroqAnthropicAdapter:
         self._model_id = model
         self.messages = _MessagesNamespace(self)
         logger.info(
-            "Groq adapter initialised (model=%s). Streaming and tool use "
-            "are not supported on this provider — agent / SSE routes will "
-            "degrade.", model,
+            "Groq adapter initialised (model=%s). Streaming SSE supported; "
+            "tool use / agent loop continua fora do escopo v1.", model,
         )

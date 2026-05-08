@@ -137,7 +137,26 @@ export function createDesktopAmbient(): Ambient {
           parsed = await res.text().catch(() => null);
         }
         if (!res.ok) {
-          throw new Error(`composer: ${res.status} ${res.statusText}`);
+          // Surfacing the backend's structured detail (FastAPI returns
+          // {"detail": {"error": "...", "message": "..."}}) so the
+          // operator vê o erro real (ex: "401 Unauthorized" da Groq)
+          // em vez do genérico "502 Bad Gateway" da camada HTTP.
+          let detailMsg: string | undefined;
+          if (parsed && typeof parsed === "object") {
+            const d = (parsed as { detail?: unknown }).detail;
+            if (typeof d === "string") {
+              detailMsg = d;
+            } else if (d && typeof d === "object") {
+              const obj = d as { message?: unknown; error?: unknown };
+              if (typeof obj.message === "string") detailMsg = obj.message;
+              else if (typeof obj.error === "string") detailMsg = obj.error;
+            }
+          }
+          throw new Error(
+            `composer: ${res.status} ${res.statusText}${
+              detailMsg ? ` — ${detailMsg}` : ""
+            }`,
+          );
         }
         return parsed as T;
       },

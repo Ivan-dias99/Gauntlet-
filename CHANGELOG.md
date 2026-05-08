@@ -7,6 +7,22 @@ project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+- **Streaming SSE no Groq adapter.** `groq_provider._StreamContext`
+  envolve `client.chat.completions.create(stream=True)` na shape
+  anthropic (`async with client.messages.stream(...)` + `text_stream` +
+  `get_final_message()`). `dom_plan_stream` no composer deixa de bater
+  com `'_MessagesNamespace' object has no attribute 'stream'` em Groq;
+  cápsula recebe deltas token-a-token como em Anthropic. Usage tokens
+  vêm do tail-chunk via `stream_options.include_usage=True` para o
+  ledger do gateway manter contagem.
+- **Erros do backend visíveis na cápsula.** Ambos os shells
+  (apps/desktop/src/ambient.ts e apps/browser-extension/lib/ambient.ts)
+  passam a extrair `detail.message` / `detail.error` da resposta JSON
+  do FastAPI quando a HTTP status não é 2xx. Operador vê
+  `composer: 502 Bad Gateway — Error code: 401 - Invalid API Key` em
+  vez do "502" genérico que esconde a causa real.
+
 ### Changed
 - **Provider precedence — Groq passa a primário.** Engine agora
   resolve providers nesta ordem: `MOCK > Groq > Anthropic > Gemini >
