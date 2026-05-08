@@ -45,7 +45,7 @@ import { ShellPanel } from './ShellPanel';
 import { ComposeResult } from './ComposeResult';
 import { PlanRenderer } from './PlanRenderer';
 import { AttachmentChips } from './AttachmentChips';
-import { SlashMenu, type SlashAction } from './SlashMenu';
+import { buildSlashActions, SlashMenu } from './SlashMenu';
 import { LeftPanel } from './LeftPanel';
 import { ActionsRow } from './ActionsRow';
 import { StreamingState } from './StreamingState';
@@ -696,81 +696,36 @@ export function Capsule({
     return firstLine.slice(1).toLowerCase();
   }, [userInput]);
 
-  const slashActions = useMemo(() => {
-    const list: SlashAction[] = [];
-    if (ambient.capabilities.filesystemRead && ambient.filesystem) {
-      list.push({
-        id: 'anexar',
-        label: '/anexar',
-        hint: 'Anexar ficheiro local',
-        run: () => void attachLocalFile(),
-      });
-    }
-    if (
-      ambient.capabilities.screenCapture &&
-      ambient.screenshot?.captureScreen
-    ) {
-      list.push({
-        id: 'ecra',
-        label: '/ecrã',
-        hint: 'Capturar ecrã inteiro',
-        run: () => void attachScreenCapture(),
-      });
-    }
-    if (ambient.capabilities.shellExecute && ambient.shellExec) {
-      list.push({
-        id: 'shell',
-        label: '/shell',
-        hint: shellPanelOpen ? 'Fechar shell rápida' : 'Abrir shell rápida',
-        run: () => setShellPanelOpen((v) => !v),
-      });
-    }
-    if (
-      ambient.capabilities.filesystemWrite &&
-      ambient.filesystem?.writeTextFile &&
-      plan?.compose
-    ) {
-      list.push({
-        id: 'guardar',
-        label: '/guardar',
-        hint: 'Guardar resposta para ficheiro',
-        run: () => void saveComposeToDisk(),
-      });
-    }
-    list.push({
-      id: 'limpar',
-      label: '/limpar',
-      hint: 'Esvaziar input',
-      run: () => {
-        setUserInput('');
-        inputRef.current?.focus();
-      },
-    });
-    list.push({
-      id: 'fechar',
-      label: '/fechar',
-      hint: 'Dispensar cápsula',
-      run: () => handleDismiss(),
-    });
-    list.push({
-      id: 'palette',
-      label: '/palette',
-      hint: 'Abrir command palette completa (⌘K)',
-      run: () => {
-        setUserInput('');
-        setPaletteOpen(true);
-      },
-    });
-    return list;
-  }, [
-    ambient,
-    attachLocalFile,
-    attachScreenCapture,
-    handleDismiss,
-    plan,
-    saveComposeToDisk,
-    shellPanelOpen,
-  ]);
+  const slashActions = useMemo(
+    () =>
+      buildSlashActions({
+        ambient,
+        plan,
+        shellPanelOpen,
+        attachLocalFile: () => void attachLocalFile(),
+        attachScreenCapture: () => void attachScreenCapture(),
+        saveComposeToDisk: () => void saveComposeToDisk(),
+        toggleShellPanel: () => setShellPanelOpen((v) => !v),
+        clearInput: () => {
+          setUserInput('');
+          inputRef.current?.focus();
+        },
+        dismiss: () => handleDismiss(),
+        openPalette: () => {
+          setUserInput('');
+          setPaletteOpen(true);
+        },
+      }),
+    [
+      ambient,
+      attachLocalFile,
+      attachScreenCapture,
+      handleDismiss,
+      plan,
+      saveComposeToDisk,
+      shellPanelOpen,
+    ],
+  );
 
   const slashMatches = useMemo(() => {
     if (slashQuery === null) return [];
