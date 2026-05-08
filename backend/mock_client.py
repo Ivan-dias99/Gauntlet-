@@ -39,6 +39,20 @@ MOCK_CRITIC_VERDICT = {
     "issues": [],
     "summary": "mock critic accepted by default",
 }
+# Composer dom_plan — quando GAUNTLET_MOCK=1 a cápsula não pode receber
+# uma string literal "Resposta de mock..." porque o composer espera JSON
+# estruturado e refusa-se a executar. Devolvemos a forma case B (compose
+# text) — o mais inócuo dos três casos. Mantém o smoke desktop / browser
+# útil sem chave Anthropic real.
+MOCK_COMPOSER_PLAN = {
+    "compose": (
+        "Resposta de mock do composer.\n\n"
+        "Sistema em modo offline — `GAUNTLET_MOCK=1`. Em produção esta "
+        "resposta vem de Anthropic / Groq / Gemini através do model_gateway.\n\n"
+        "Para testar com modelos reais define `ANTHROPIC_API_KEY` e relança "
+        "o backend sem o flag MOCK."
+    ),
+}
 
 
 @dataclass
@@ -74,6 +88,13 @@ class _MockMessages:
         **_: Any,
     ) -> _Response:
         head = system.lstrip()
+        # Composer dom_plan — must return JSON {"compose": "..."} for
+        # the cápsula's plan dispatcher to accept the response. Plain
+        # text triggers "model returned non-JSON; refusing to execute".
+        if head.startswith("You are Gauntlet's planner"):
+            return _Response(
+                content=[_Block(type="text", text=json.dumps(MOCK_COMPOSER_PLAN))],
+            )
         # Crew: structured roles (no tools)
         if head.startswith("You are the Signal Planner"):
             return _Response(
