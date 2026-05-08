@@ -49,7 +49,11 @@ def fresh_app(monkeypatch: pytest.MonkeyPatch) -> Iterable[TestClient]:
         monkeypatch.delenv("GAUNTLET_API_KEY", raising=False)
         # Invalidate every Gauntlet module so fresh config picks up the
         # temp dir. Order matters: config first, then the modules that
-        # import it.
+        # import it. The routers package + its submodules + runtime
+        # bind store singletons at import time too, so they have to be
+        # popped alongside the stores they reference — otherwise the
+        # cached routers keep using stale run_store / memory_records_store
+        # bindings while the freshly-imported `server` writes to new ones.
         for mod in [
             "config",
             "persistence",
@@ -64,6 +68,18 @@ def fresh_app(monkeypatch: pytest.MonkeyPatch) -> Iterable[TestClient]:
             "engine",
             "composer",
             "voice",
+            "runtime",
+            "routers",
+            "routers.health",
+            "routers.ask",
+            "routers.agent",
+            "routers.runs",
+            "routers.memory",
+            "routers.spine",
+            "routers.tools",
+            "routers.git",
+            "routers.permissions",
+            "routers.observability",
             "server",
         ]:
             sys.modules.pop(mod, None)

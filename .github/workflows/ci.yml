@@ -61,6 +61,11 @@ jobs:
               'composer','runs','spine','auth','rate_limit',
               'security_headers','log_redaction','model_gateway',
               'gemini_provider','mock_client','observability',
+              'runtime',
+              'routers.health','routers.ask','routers.agent',
+              'routers.runs','routers.memory','routers.spine',
+              'routers.tools','routers.git','routers.permissions',
+              'routers.observability',
           )
           for mod in mods:
               importlib.import_module(mod)
