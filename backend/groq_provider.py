@@ -239,20 +239,30 @@ class _StreamContext:
                         **kwargs,
                     )
             except Exception as exc:  # noqa: BLE001
-                if not _is_rate_limit_error(exc):
-                    raise
                 last_exc = exc
+                # Codex P1 review: continuar em qualquer erro, não só
+                # rate-limit. Modelo intermédio com model_not_found / 400
+                # / region-restricted continua a tentar o próximo da
+                # chain em vez de abortar com candidatos restantes.
                 if attempt_idx < len(chain) - 1:
                     next_model = chain[attempt_idx + 1]
-                    logger.warning(
-                        "Groq stream model %s rate-limited; auto-fallback to %s",
-                        attempt_model, next_model,
-                    )
+                    if _is_rate_limit_error(exc):
+                        logger.warning(
+                            "Groq stream model %s rate-limited; auto-fallback to %s",
+                            attempt_model, next_model,
+                        )
+                    else:
+                        logger.warning(
+                            "Groq stream model %s failed (%s: %s); "
+                            "auto-fallback to %s",
+                            attempt_model, type(exc).__name__,
+                            str(exc)[:160], next_model,
+                        )
                     continue
                 logger.error(
                     "Groq stream fallback chain exhausted; last model %s "
-                    "also rate-limited. Operator will see error.",
-                    attempt_model,
+                    "failed (%s). Operator will see error.",
+                    attempt_model, type(exc).__name__,
                 )
                 raise
 
@@ -361,21 +371,32 @@ class _MessagesNamespace:
                 # .content and .usage.{prompt_tokens, completion_tokens}.
                 response = await client.chat.completions.create(**kwargs)
             except Exception as exc:  # noqa: BLE001
-                if not _is_rate_limit_error(exc):
-                    raise
                 last_exc = exc
+                # Em qualquer erro de um modelo da chain (rate-limit,
+                # model_not_found, region-restricted, network blip),
+                # tentamos o próximo. Codex P1 review: limitar fallback
+                # só a rate-limit ignorava modelos potencialmente úteis
+                # quando o intermédio falhava por outra razão.
+                # Só propagamos quando esgotámos a chain inteira.
                 if attempt_idx < len(chain) - 1:
                     next_model = chain[attempt_idx + 1]
-                    logger.warning(
-                        "Groq model %s rate-limited; auto-fallback to %s",
-                        attempt_model, next_model,
-                    )
+                    if _is_rate_limit_error(exc):
+                        logger.warning(
+                            "Groq model %s rate-limited; auto-fallback to %s",
+                            attempt_model, next_model,
+                        )
+                    else:
+                        logger.warning(
+                            "Groq model %s failed (%s: %s); auto-fallback to %s",
+                            attempt_model, type(exc).__name__,
+                            str(exc)[:160], next_model,
+                        )
                     continue
-                # Esgotou a chain — nada feito, propaga o último erro.
+                # Esgotou a chain — propaga o último erro.
                 logger.error(
-                    "Groq fallback chain exhausted; last model %s also "
-                    "rate-limited. Operator will see error.",
-                    attempt_model,
+                    "Groq fallback chain exhausted; last model %s failed "
+                    "(%s). Operator will see error.",
+                    attempt_model, type(exc).__name__,
                 )
                 raise
 
