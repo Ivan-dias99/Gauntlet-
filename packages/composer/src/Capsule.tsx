@@ -23,13 +23,7 @@ import {
   type ToolManifest,
 } from './types';
 import { Markdown } from './markdown';
-import {
-  isRemoteVoiceSupported,
-  isVoiceSupported,
-  startVoice,
-  startVoiceRemote,
-  type VoiceSession,
-} from './voice';
+import { isRemoteVoiceSupported, isVoiceSupported } from './voice';
 import {
   assessDanger,
   assessSequenceDanger,
@@ -49,6 +43,8 @@ import { SettingsDrawer } from './SettingsDrawer';
 import { CompactContextSummary } from './CompactContextSummary';
 import { buildCapture, describeAction, extractPartialCompose, truncate } from './helpers';
 import { computeCapsulePosition, estimateCapsuleSize } from './placement';
+import { useTTS } from './useTTS';
+import { useVoiceCapture } from './useVoiceCapture';
 
 export interface CapsuleProps {
   // Single seam to the host shell — provides transport, storage,
@@ -125,13 +121,11 @@ export function Capsule({
   // ripple element fresh, replaying the keyframe even when the user
   // submits twice in quick succession.
   const [submitRipple, setSubmitRipple] = useState(0);
-  // TTS — when enabled in settings, the cápsula speaks the compose
-  // response as soon as plan_ready fires. Persisted via prefs;
-  // synthesizer instance lives on the window.speechSynthesis singleton
-  // so we cancel any in-flight utterance when the operator submits a
-  // new request or dismisses the cápsula.
-  const [ttsEnabled, setTtsEnabled] = useState(false);
-  const lastSpokenRef = useRef<string>('');
+  // TTS — owned by useTTS. Hook handles persisted toggle, live sync
+  // with SettingsDrawer, the speak-on-plan_ready effect and unmount
+  // cleanup. We only need `cancel()` here for the submit path that
+  // pre-empts an in-flight utterance.
+  // Wired below once `phase` and `plan` are declared.
   // Multimodal: when the user opted in (via SettingsDrawer), capture
   // a viewport screenshot once per cápsula mount. The result is
   // attached to the next request's metadata so the planner can "see"
@@ -285,12 +279,10 @@ export function Capsule({
   // delta so the operator sees the response materialise as a number,
   // not just a wall of text. Resets at submit time.
   const [tokensStreamed, setTokensStreamed] = useState(0);
-  // Voice input session (Web Speech API). Press-and-hold the mic
-  // button — feature-detected; the button just hides if the API isn't
-  // there. Kept as a ref so blur/release handlers reach the live
-  // session, not a stale closure.
-  const voiceRef = useRef<VoiceSession | null>(null);
-  const [voiceActive, setVoiceActive] = useState(false);
+  // Voice input — owned by useVoiceCapture. The hook keeps the
+  // VoiceSession ref + active flag inside; we only call start() with
+  // baseline-aware callbacks when the operator presses the mic.
+  const voice = useVoiceCapture({ client, ambient });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
 
@@ -411,60 +403,11 @@ export function Capsule({
     };
   }, [client, prefs]);
 
-  // TTS — load persisted toggle. Speak when plan_ready arrives with a
-  // compose answer. The Web Speech API is feature-detected at speak
-  // time; an unsupported browser silently does nothing.
-  useEffect(() => {
-    let cancelled = false;
-    void prefs.readTtsEnabled().then((enabled) => {
-      if (!cancelled) setTtsEnabled(enabled);
-    });
-    // Live sync — the settings drawer broadcasts gauntlet:tts when the
-    // operator flips the toggle. Without this listener the cápsula's
-    // own state would stay stale and continue speaking after the
-    // operator turned TTS off.
-    function onTts(ev: Event) {
-      const detail = (ev as CustomEvent<{ enabled?: boolean }>).detail;
-      if (typeof detail?.enabled === 'boolean') setTtsEnabled(detail.enabled);
-    }
-    window.addEventListener('gauntlet:tts', onTts);
-    return () => {
-      cancelled = true;
-      window.removeEventListener('gauntlet:tts', onTts);
-    };
-  }, [prefs]);
-
-  useEffect(() => {
-    if (!ttsEnabled) return;
-    if (phase !== 'plan_ready') return;
-    const text = plan?.compose;
-    if (!text) return;
-    if (text === lastSpokenRef.current) return;
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    try {
-      window.speechSynthesis.cancel();
-      const utt = new SpeechSynthesisUtterance(text);
-      utt.rate = 1.05;
-      utt.pitch = 1;
-      window.speechSynthesis.speak(utt);
-      lastSpokenRef.current = text;
-    } catch {
-      // SpeechSynthesisUtterance constructor or .speak can throw on
-      // hostile shadow contexts; swallow — TTS is a bonus, not core.
-    }
-  }, [ttsEnabled, phase, plan?.compose]);
-
-  // Cancel any in-flight utterance when the cápsula unmounts so the
-  // voice doesn't keep reading after dismiss.
-  useEffect(() => {
-    return () => {
-      try {
-        window.speechSynthesis?.cancel();
-      } catch {
-        // ignore
-      }
-    };
-  }, []);
+  const tts = useTTS({
+    prefs,
+    isPlanReady: phase === 'plan_ready',
+    planCompose: plan?.compose,
+  });
 
   // Theme — load persisted choice once at mount. While the storage
   // round-trip resolves the cápsula renders the default flagship light,
@@ -544,69 +487,32 @@ export function Capsule({
   // Voice — press-and-hold the mic button. We start a session on
   // pointerdown and stop on pointerup/pointerleave. Partial transcripts
   // overwrite the input live; on commit the recogniser's final text
-  // becomes the new input. Feature-detected: the button only renders
-  // when the API exists so the cápsula stays slim on Firefox / Safari
-  // where SpeechRecognition is missing.
+  // becomes the new input. The session itself + active flag + cleanup
+  // live in useVoiceCapture; we only build baseline-aware callbacks
+  // here so each press starts from the textarea's current contents.
   const startVoiceCapture = useCallback(() => {
-    if (voiceRef.current) return;
     setError(null);
     const baseline = userInput;
-    const callbacks = {
-      onPartial: (text: string) => {
+    voice.start({
+      onPartial: (text) => {
         setUserInput(baseline ? `${baseline} ${text}`.trim() : text);
       },
-      onCommit: (text: string) => {
+      onCommit: (text) => {
         setUserInput(baseline ? `${baseline} ${text}`.trim() : text);
-        setVoiceActive(false);
-        voiceRef.current = null;
         // Pull focus back to the textarea so Enter works immediately.
         inputRef.current?.focus();
       },
-      onError: (msg: string) => {
-        setError(msg);
-        setVoiceActive(false);
-        voiceRef.current = null;
-      },
-    };
-    // Prefer Groq Whisper via backend when the ambient signals support
-    // — better quality, language-agnostic, doesn't depend on Chromium's
-    // Web Speech entitlement. Fall back to the local Web Speech API
-    // when the backend isn't reachable or the runtime lacks
-    // MediaRecorder.
-    if (ambient.capabilities.remoteVoice && isRemoteVoiceSupported()) {
-      setVoiceActive(true);
-      void startVoiceRemote(client, callbacks).then((session) => {
-        if (session) {
-          voiceRef.current = session;
-        } else {
-          setVoiceActive(false);
-        }
-      });
-      return;
-    }
-    const session = startVoice(callbacks);
-    if (session) {
-      voiceRef.current = session;
-      setVoiceActive(true);
-    }
-  }, [userInput, ambient, client]);
+      onError: (msg) => setError(msg),
+    });
+  }, [userInput, voice]);
 
   const stopVoiceCapture = useCallback(() => {
-    voiceRef.current?.stop();
-  }, []);
+    voice.stop();
+  }, [voice]);
 
   const cancelVoiceCapture = useCallback(() => {
-    voiceRef.current?.abort();
-    voiceRef.current = null;
-    setVoiceActive(false);
-  }, []);
-
-  // Cleanup on unmount — releases mic permission promptly on dismiss.
-  useEffect(() => {
-    return () => {
-      voiceRef.current?.abort();
-    };
-  }, []);
+    voice.cancel();
+  }, [voice]);
 
   // Command palette — Cmd+K (mac) / Ctrl+K (everyone else). Opens an
   // overlay with operator-grade quick actions. Pure keyboard surface;
@@ -1101,18 +1007,13 @@ export function Capsule({
       // Cancel any in-flight TTS utterance from the previous response
       // so the operator's new submit doesn't compete with stale audio.
       // The settings drawer's description promises "cancela ao submeter
-      // outro pedido" — this is the cancel hook. Also reset the spoken
-      // ref so the next plan_ready (even if it produces the same text)
+      // outro pedido" — this is the cancel hook. Also resets the spoken
+      // guard so the next plan_ready (even if it produces the same text)
       // gets read again.
-      try {
-        window.speechSynthesis?.cancel();
-      } catch {
-        // ignore — TTS is a bonus, not core
-      }
-      lastSpokenRef.current = '';
+      tts.cancel();
       void requestPlan();
     },
-    [requestPlan],
+    [requestPlan, tts],
   );
 
   // Slash query: text after the leading `/`. Empty string means the
@@ -1670,7 +1571,7 @@ export function Capsule({
                 <button
                   type="button"
                   className={`gauntlet-capsule__voice${
-                    voiceActive ? ' gauntlet-capsule__voice--active' : ''
+                    voice.active ? ' gauntlet-capsule__voice--active' : ''
                   }`}
                   onPointerDown={(ev) => {
                     ev.preventDefault();
@@ -1678,9 +1579,9 @@ export function Capsule({
                   }}
                   onPointerUp={() => stopVoiceCapture()}
                   onPointerLeave={() => {
-                    if (voiceActive) stopVoiceCapture();
+                    if (voice.active) stopVoiceCapture();
                   }}
-                  aria-label={voiceActive ? 'A ouvir — solta para enviar' : 'Premer e falar'}
+                  aria-label={voice.active ? 'A ouvir — solta para enviar' : 'Premer e falar'}
                   title="Premir e falar"
                   disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
                 >
@@ -1698,7 +1599,7 @@ export function Capsule({
                     />
                   </svg>
                   <span className="gauntlet-capsule__voice-label">
-                    {voiceActive ? 'a ouvir' : 'voz'}
+                    {voice.active ? 'a ouvir' : 'voz'}
                   </span>
                 </button>
               )}

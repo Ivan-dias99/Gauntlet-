@@ -22,6 +22,8 @@ export * from './SettingsDrawer';
 export * from './CompactContextSummary';
 export * from './placement';
 export * from './helpers';
+export * from './useTTS';
+export * from './useVoiceCapture';
 export * from './capsule.css';
 export * from './Pill';
 export * from './Onboarding';
