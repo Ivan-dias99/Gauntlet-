@@ -26,7 +26,7 @@ jobs:
       # Wave 2. See CLAUDE.md "Lei do Capsule".
       - name: capsule size budget
         run: |
-          BUDGET=1900
+          BUDGET=1600
           LINES=$(wc -l < packages/composer/src/Capsule.tsx | tr -d ' ')
           echo "Capsule.tsx: $LINES lines (budget: $BUDGET)"
           if [ "$LINES" -gt "$BUDGET" ]; then

@@ -47,6 +47,11 @@ import { useTTS } from './useTTS';
 import { useVoiceCapture } from './useVoiceCapture';
 import { useAttachments } from './useAttachments';
 import { dispatchPlan as dispatchPlanCore } from './plan-dispatcher';
+import { ShellPanel } from './ShellPanel';
+import { ComposeResult } from './ComposeResult';
+import { PlanRenderer } from './PlanRenderer';
+import { AttachmentChips } from './AttachmentChips';
+import { SlashMenu, type SlashAction } from './SlashMenu';
 
 export interface CapsuleProps {
   // Single seam to the host shell — provides transport, storage,
@@ -599,54 +604,11 @@ export function Capsule({
   // current capability flags + handlers; the matched subset renders as
   // a dropdown above the textarea when userInput starts with `/`.
 
-  // A3 — operator-driven shell. Toggle a compact panel below the
-  // textarea; operator types one command, hits run, sees output. The
-  // backend agent loop doesn't yet emit shell tool calls (A3+); this
-  // is the manual surface so the capability is at least exercisable.
+  // A3 — operator-driven shell. Mount control only; the panel itself
+  // (input, result, runShellCommand) lives in ShellPanel. The cápsula
+  // toggles the mount via shellPanelOpen and only passes the shellExec
+  // when the ambient supports it.
   const [shellPanelOpen, setShellPanelOpen] = useState(false);
-  const [shellCommand, setShellCommand] = useState('');
-  const [shellResult, setShellResult] = useState<{
-    cmd: string;
-    stdout: string;
-    stderr: string;
-    exitCode: number | null;
-    durationMs: number;
-  } | null>(null);
-  const [shellRunning, setShellRunning] = useState(false);
-  const runShellCommand = useCallback(async () => {
-    const sh = ambient.shellExec;
-    if (!sh) return;
-    const trimmed = shellCommand.trim();
-    if (!trimmed) return;
-    // Parse first token as binary, rest as args. Quotes are NOT
-    // honoured — this is intentionally simple. The Rust side enforces
-    // allowlist by basename, so quoted paths wouldn't help anyway.
-    const parts = trimmed.split(/\s+/);
-    const cmd = parts[0];
-    const args = parts.slice(1);
-    setShellRunning(true);
-    setShellResult(null);
-    try {
-      const r = await sh.run(cmd, args);
-      setShellResult({
-        cmd: trimmed,
-        stdout: r.stdout,
-        stderr: r.stderr,
-        exitCode: r.exitCode,
-        durationMs: r.durationMs,
-      });
-    } catch (err) {
-      setShellResult({
-        cmd: trimmed,
-        stdout: '',
-        stderr: err instanceof Error ? err.message : String(err),
-        exitCode: null,
-        durationMs: 0,
-      });
-    } finally {
-      setShellRunning(false);
-    }
-  }, [ambient, shellCommand]);
 
   const requestPlan = useCallback(async () => {
     if (!userInput.trim() || phase === 'planning' || phase === 'streaming' || phase === 'executing') {
@@ -799,8 +761,7 @@ export function Capsule({
   }, [userInput]);
 
   const slashActions = useMemo(() => {
-    type Action = { id: string; label: string; hint: string; run: () => void };
-    const list: Action[] = [];
+    const list: SlashAction[] = [];
     if (ambient.capabilities.filesystemRead && ambient.filesystem) {
       list.push({
         id: 'anexar',
@@ -1160,118 +1121,22 @@ export function Capsule({
         {/* Right panel: input + results */}
         <div className="gauntlet-capsule__panel gauntlet-capsule__panel--right">
           <form className="gauntlet-capsule__form" onSubmit={onSubmit}>
-            {attachments.length > 0 && (
-              <div className="gauntlet-capsule__attachments" aria-label="Anexos">
-                {attachments.map((a) => (
-                  <span
-                    key={a.id}
-                    className={`gauntlet-capsule__attachment gauntlet-capsule__attachment--${a.kind}`}
-                    title={a.path ?? a.name}
-                  >
-                    <span className="gauntlet-capsule__attachment-icon" aria-hidden>
-                      {a.kind === 'image' ? '◫' : '⌥'}
-                    </span>
-                    <span className="gauntlet-capsule__attachment-name">{a.name}</span>
-                    <span className="gauntlet-capsule__attachment-size">
-                      {a.bytes < 1024
-                        ? `${a.bytes} B`
-                        : a.bytes < 1024 * 1024
-                          ? `${Math.round(a.bytes / 1024)} KB`
-                          : `${(a.bytes / (1024 * 1024)).toFixed(1)} MB`}
-                    </span>
-                    <button
-                      type="button"
-                      className="gauntlet-capsule__attachment-remove"
-                      onClick={() => removeAttachment(a.id)}
-                      aria-label={`Remover ${a.name}`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
+            <AttachmentChips attachments={attachments} onRemove={removeAttachment} />
             {attachError && (
               <div className="gauntlet-capsule__attach-error" role="alert">
                 {attachError}
               </div>
             )}
             {shellPanelOpen && ambient.shellExec && (
-              <div className="gauntlet-capsule__shell-panel">
-                <div className="gauntlet-capsule__shell-row">
-                  <span className="gauntlet-capsule__shell-prompt" aria-hidden>$</span>
-                  <input
-                    type="text"
-                    className="gauntlet-capsule__shell-input"
-                    placeholder="git status — comandos da allowlist"
-                    value={shellCommand}
-                    onChange={(ev) => setShellCommand(ev.target.value)}
-                    onKeyDown={(ev) => {
-                      if (ev.key === 'Enter' && !ev.shiftKey) {
-                        ev.preventDefault();
-                        void runShellCommand();
-                      }
-                    }}
-                    disabled={shellRunning}
-                    spellCheck={false}
-                    autoComplete="off"
-                  />
-                  <button
-                    type="button"
-                    className="gauntlet-capsule__shell-run"
-                    onClick={() => void runShellCommand()}
-                    disabled={shellRunning || !shellCommand.trim()}
-                  >
-                    {shellRunning ? '…' : 'Executar'}
-                  </button>
-                </div>
-                {shellResult && (
-                  <div className="gauntlet-capsule__shell-output">
-                    <div className="gauntlet-capsule__shell-meta">
-                      <span className="gauntlet-capsule__shell-meta-cmd">
-                        $ {shellResult.cmd}
-                      </span>
-                      <span className="gauntlet-capsule__shell-meta-stat">
-                        {shellResult.exitCode === null
-                          ? 'erro'
-                          : `exit ${shellResult.exitCode}`}
-                        {' · '}
-                        {shellResult.durationMs} ms
-                      </span>
-                    </div>
-                    {shellResult.stdout && (
-                      <pre className="gauntlet-capsule__shell-stdout">
-                        {shellResult.stdout}
-                      </pre>
-                    )}
-                    {shellResult.stderr && (
-                      <pre className="gauntlet-capsule__shell-stderr">
-                        {shellResult.stderr}
-                      </pre>
-                    )}
-                  </div>
-                )}
-              </div>
+              <ShellPanel shellExec={ambient.shellExec} />
             )}
-            {slashQuery !== null && slashMatches.length > 0 && (
-              <div className="gauntlet-capsule__slash" role="listbox">
-                {slashMatches.map((a, i) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    role="option"
-                    aria-selected={i === slashIndex}
-                    className={`gauntlet-capsule__slash-item${
-                      i === slashIndex ? ' gauntlet-capsule__slash-item--active' : ''
-                    }`}
-                    onMouseEnter={() => setSlashIndex(i)}
-                    onClick={() => runSlashAt(i)}
-                  >
-                    <span className="gauntlet-capsule__slash-label">{a.label}</span>
-                    <span className="gauntlet-capsule__slash-hint">{a.hint}</span>
-                  </button>
-                ))}
-              </div>
+            {slashQuery !== null && (
+              <SlashMenu
+                matches={slashMatches}
+                activeIndex={slashIndex}
+                onHover={setSlashIndex}
+                onPick={runSlashAt}
+              />
             )}
             <textarea
               ref={inputRef}
@@ -1451,173 +1316,39 @@ export function Capsule({
           )}
 
           {plan?.compose && phase === 'plan_ready' && (
-            <section className="gauntlet-capsule__compose-result">
-              <header className="gauntlet-capsule__compose-meta">
-                <span className="gauntlet-capsule__compose-tag">resposta</span>
-                <span className="gauntlet-capsule__compose-meta-text">
-                  {plan.model_used}
-                  {' · '}
-                  {plan.latency_ms} ms
-                </span>
-              </header>
-              <div className="gauntlet-capsule__compose-text">
-                <Markdown
-                  source={plan.compose}
-                  onCopyBlock={() => flashSaved('code copied')}
-                />
-              </div>
-              <div className="gauntlet-capsule__compose-actions">
-                <button
-                  type="button"
-                  className="gauntlet-capsule__copy"
-                  onClick={() => void onCopyCompose()}
-                >
-                  {copied ? 'copiado ✓' : 'Copy'}
-                </button>
-                <button
-                  type="button"
-                  className="gauntlet-capsule__copy gauntlet-capsule__copy--ghost"
-                  onClick={() => void saveToMemory()}
-                >
-                  {savedFlash === 'saved' ? 'guardado ✓' : 'Save'}
-                </button>
-                {ambient.capabilities.filesystemWrite &&
-                  ambient.filesystem?.writeTextFile && (
-                    <button
-                      type="button"
-                      className="gauntlet-capsule__copy gauntlet-capsule__copy--ghost"
-                      onClick={() => void saveComposeToDisk()}
-                      title="Guardar resposta para um ficheiro"
-                    >
-                      {savedToDiskFlash ? `→ ${savedToDiskFlash}` : 'Guardar como'}
-                    </button>
-                  )}
-              </div>
-            </section>
+            <ComposeResult
+              compose={plan.compose}
+              modelUsed={plan.model_used}
+              latencyMs={plan.latency_ms}
+              copied={copied}
+              savedFlash={savedFlash}
+              savedToDiskFlash={savedToDiskFlash}
+              onCopy={() => void onCopyCompose()}
+              onSaveMemory={() => void saveToMemory()}
+              onSaveDisk={
+                ambient.capabilities.filesystemWrite &&
+                ambient.filesystem?.writeTextFile
+                  ? () => void saveComposeToDisk()
+                  : undefined
+              }
+              onCopyBlock={() => flashSaved('code copied')}
+            />
           )}
 
-          {plan && plan.actions.length === 0 && !plan.compose && phase === 'plan_ready' && (
-            <section className="gauntlet-capsule__plan">
-              <p className="gauntlet-capsule__plan-empty">
-                {plan.reason ?? 'Modelo não conseguiu planear.'}
-              </p>
-            </section>
-          )}
-
-          {plan && plan.actions.length > 0 && (phase === 'plan_ready' || phase === 'executing' || phase === 'executed') && (
-            <section className="gauntlet-capsule__plan">
-              <header className="gauntlet-capsule__plan-header">
-                <span className="gauntlet-capsule__plan-title">plano</span>
-                <span className="gauntlet-capsule__plan-meta">
-                  {plan.actions.length} action{plan.actions.length === 1 ? '' : 's'}
-                  {' · '}
-                  {plan.model_used}
-                  {' · '}
-                  {plan.latency_ms} ms
-                </span>
-              </header>
-              <ol className="gauntlet-capsule__plan-list">
-                  {plan.actions.map((a, i) => {
-                    const r = planResults?.[i];
-                    const status = r ? (r.ok ? 'ok' : 'fail') : 'pending';
-                    const danger = dangers[i];
-                    return (
-                      <li
-                        key={`${i}-${a.type}-${
-                          'selector' in a
-                            ? a.selector
-                            : 'path' in a
-                              ? a.path
-                              : a.cmd
-                        }`}
-                        className={`gauntlet-capsule__plan-item gauntlet-capsule__plan-item--${status}${
-                          danger?.danger ? ' gauntlet-capsule__plan-item--danger' : ''
-                        }`}
-                      >
-                        <span className="gauntlet-capsule__plan-step">{i + 1}</span>
-                        <span className="gauntlet-capsule__plan-desc">{describeAction(a)}</span>
-                        {danger?.danger && (
-                          <span
-                            className="gauntlet-capsule__plan-danger"
-                            title={danger.reason}
-                          >
-                            sensível
-                          </span>
-                        )}
-                        {r && !r.ok && (
-                          <span className="gauntlet-capsule__plan-err" title={r.error}>
-                            {r.error}
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-              </ol>
-              {phase !== 'executed' && hasDanger && (
-                <div className="gauntlet-capsule__danger-gate" role="alert">
-                  <header className="gauntlet-capsule__danger-header">
-                    <span className="gauntlet-capsule__danger-mark" aria-hidden>!</span>
-                    <span className="gauntlet-capsule__danger-title">
-                      Acções sensíveis no plano
-                    </span>
-                  </header>
-                  <ul className="gauntlet-capsule__danger-list">
-                    {policyForcesAck.forced && policyForcesAck.reason && (
-                      <li key="danger-policy">
-                        <strong>governança:</strong> {policyForcesAck.reason}
-                      </li>
-                    )}
-                    {sequenceDanger.danger && (
-                      <li key="danger-sequence">
-                        <strong>cadeia:</strong> {sequenceDanger.reason ?? 'flagged'}
-                      </li>
-                    )}
-                    {dangers.map((d, i) =>
-                      d.danger ? (
-                        <li key={`danger-${i}`}>
-                          <strong>step {i + 1}:</strong> {d.reason ?? 'flagged'}
-                        </li>
-                      ) : null,
-                    )}
-                  </ul>
-                  <label className="gauntlet-capsule__danger-confirm">
-                    <input
-                      type="checkbox"
-                      checked={dangerConfirmed}
-                      onChange={(ev) => setDangerConfirmed(ev.target.checked)}
-                      disabled={phase === 'executing'}
-                    />
-                    <span>Confirmo, executar mesmo assim.</span>
-                  </label>
-                </div>
-              )}
-              {phase !== 'executed' && canDispatchAnyAction && (
-                <div className="gauntlet-capsule__plan-actions">
-                  <button
-                    type="button"
-                    className={`gauntlet-capsule__execute${
-                      hasDanger ? ' gauntlet-capsule__execute--danger' : ''
-                    }`}
-                    onClick={() => void executePlan()}
-                    disabled={
-                      phase === 'executing' || (hasDanger && !dangerConfirmed)
-                    }
-                  >
-                    {phase === 'executing'
-                      ? 'executando…'
-                      : hasDanger
-                        ? 'Executar com cuidado'
-                        : 'Executar'}
-                  </button>
-                </div>
-              )}
-              {phase !== 'executed' && !canDispatchAnyAction && (
-                <p className="gauntlet-capsule__plan-empty">
-                  esta superfície não tem adapter para nenhuma destas acções
-                  — abre o Gauntlet num shell que as suporte.
-                </p>
-              )}
-            </section>
+          {plan && (phase === 'plan_ready' || phase === 'executing' || phase === 'executed') && (
+            <PlanRenderer
+              plan={plan}
+              planResults={planResults}
+              phase={phase}
+              dangers={dangers}
+              hasDanger={hasDanger}
+              sequenceDanger={sequenceDanger}
+              policyForcesAck={policyForcesAck}
+              dangerConfirmed={dangerConfirmed}
+              onConfirmDanger={setDangerConfirmed}
+              canDispatchAnyAction={canDispatchAnyAction}
+              onExecute={() => void executePlan()}
+            />
           )}
 
           {phase === 'error' && error && (
