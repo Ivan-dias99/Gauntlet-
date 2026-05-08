@@ -45,6 +45,7 @@ import { buildCapture, describeAction, extractPartialCompose, truncate } from '.
 import { computeCapsulePosition, estimateCapsuleSize } from './placement';
 import { useTTS } from './useTTS';
 import { useVoiceCapture } from './useVoiceCapture';
+import { useAttachments } from './useAttachments';
 
 export interface CapsuleProps {
   // Single seam to the host shell — provides transport, storage,
@@ -255,8 +256,20 @@ export function Capsule({
   // the cápsula inlines text content into the prompt and keeps image
   // payloads as chips so the operator can see what they shipped. Empty
   // by default and reset on dismiss/new mount.
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [attachError, setAttachError] = useState<string | null>(null);
+  // Attachments — owned by useAttachments. Hook handles the chip list,
+  // error message, on-disk-save flash and the operator-driven actions
+  // (pickFile / captureScreen / removeAttachment / saveComposeToDisk /
+  // composeUserInputWithAttachments).
+  const {
+    attachments,
+    attachError,
+    savedToDiskFlash,
+    attachLocalFile,
+    attachScreenCapture,
+    removeAttachment,
+    saveComposeToDisk,
+    composeUserInputWithAttachments,
+  } = useAttachments({ ambient, plan, snapshot });
   // Sprint 4 — governance lock. Fetched once on mount; missing fields
   // fall through to DEFAULT_COMPOSER_SETTINGS. The cápsula honors
   // screenshot_default (when the local pref is unset), per-domain
@@ -687,94 +700,10 @@ export function Capsule({
   // buffer so the user sees text appear token-by-token instead of
   // staring at a spinner. Action plans still arrive in batch on `done`
   // (parsing partial action arrays is not worth the complexity yet).
-  // A1 helpers — operator-driven anexar. The dialog plugin (desktop)
-  // is the consent gate; on web `ambient.filesystem` is undefined and
-  // these buttons never render in the first place.
-  const attachLocalFile = useCallback(async () => {
-    const fs = ambient.filesystem;
-    if (!fs) return;
-    setAttachError(null);
-    try {
-      const picked = await fs.pickFile();
-      if (!picked) return; // operator cancelled
-      const lowerName = picked.name.toLowerCase();
-      const isImage = /\.(png|jpe?g|gif|webp|svg)$/.test(lowerName);
-      if (isImage) {
-        const { base64, mime } = await fs.readFileBase64(picked.path);
-        const bytes = Math.ceil((base64.length * 3) / 4);
-        setAttachments((prev) => [
-          ...prev,
-          {
-            id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            kind: 'image',
-            name: picked.name,
-            mime,
-            bytes,
-            base64,
-            path: picked.path,
-          },
-        ]);
-      } else {
-        const text = await fs.readTextFile(picked.path);
-        setAttachments((prev) => [
-          ...prev,
-          {
-            id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            kind: 'text',
-            name: picked.name,
-            mime: 'text/plain',
-            bytes: new TextEncoder().encode(text).length,
-            text,
-            path: picked.path,
-          },
-        ]);
-      }
-    } catch (err) {
-      setAttachError(err instanceof Error ? err.message : String(err));
-    }
-  }, [ambient]);
-
-  const attachScreenCapture = useCallback(async () => {
-    const cap = ambient.screenshot?.captureScreen;
-    if (!cap) return;
-    setAttachError(null);
-    try {
-      const got = await cap();
-      if (!got) {
-        setAttachError('Captura de ecrã indisponível neste sistema.');
-        return;
-      }
-      const bytes = Math.ceil((got.base64.length * 3) / 4);
-      setAttachments((prev) => [
-        ...prev,
-        {
-          id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          kind: 'image',
-          name: `ecrã-${new Date().toISOString().slice(11, 19)}.png`,
-          mime: 'image/png',
-          bytes,
-          base64: got.base64,
-          path: got.path,
-        },
-      ]);
-    } catch (err) {
-      setAttachError(err instanceof Error ? err.message : String(err));
-    }
-  }, [ambient]);
-
-  const removeAttachment = useCallback((id: string) => {
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, []);
 
   // B1 — slash quick actions. Computed inline in render so they capture
   // current capability flags + handlers; the matched subset renders as
   // a dropdown above the textarea when userInput starts with `/`.
-
-  // A2 — operator-driven save. The dialog IS the consent gate. We
-  // suggest a filename derived from the snapshot title (sanitised) and
-  // default the extension to .md since the cápsula's compose tends to
-  // be markdown. The operator can change either in the dialog.
-  const [savedToDiskFlash, setSavedToDiskFlash] = useState<string | null>(null);
 
   // A3 — operator-driven shell. Toggle a compact panel below the
   // textarea; operator types one command, hits run, sees output. The
@@ -824,58 +753,6 @@ export function Capsule({
       setShellRunning(false);
     }
   }, [ambient, shellCommand]);
-  const saveComposeToDisk = useCallback(async () => {
-    const fs = ambient.filesystem;
-    if (!fs?.pickSavePath || !fs.writeTextFile) return;
-    const compose = plan?.compose ?? '';
-    if (!compose.trim()) return;
-    setAttachError(null);
-    try {
-      const titleSeed = (snapshot.pageTitle || 'gauntlet-compose')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 60) || 'gauntlet-compose';
-      const suggested = `${titleSeed}.md`;
-      const path = await fs.pickSavePath(suggested, ['md', 'txt', 'json']);
-      if (!path) return; // operator cancelled
-      const bytes = await fs.writeTextFile(path, compose);
-      setSavedToDiskFlash(
-        `${path.split(/[\\/]/).pop() ?? 'ficheiro'} (${
-          bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`
-        })`,
-      );
-      window.setTimeout(() => setSavedToDiskFlash(null), 2500);
-    } catch (err) {
-      setAttachError(err instanceof Error ? err.message : String(err));
-    }
-  }, [ambient, plan, snapshot.pageTitle]);
-
-  // Compose user_input with attachment blocks. Text files are inlined
-  // verbatim inside <file name="..."> tags so the agent can read them
-  // without backend changes. Image attachments travel as multimodal
-  // content blocks via `metadata.attachments` and DO NOT show up in
-  // user_input — the agent literally sees the picture, no placeholder
-  // needed (when the provider supports images; on Groq/Gemini the
-  // backend logs `images_dropped` and the operator sees the chip).
-  const composeUserInputWithAttachments = useCallback(
-    (raw: string): string => {
-      if (attachments.length === 0) return raw;
-      const blocks: string[] = [];
-      for (const a of attachments) {
-        if (a.kind === 'text' && a.text != null) {
-          blocks.push(
-            `<file name="${a.name}" path="${a.path ?? ''}">\n${a.text}\n</file>`,
-          );
-        }
-        // image attachments handled via metadata.attachments — see
-        // buildCapture + backend's _collect_image_blocks.
-      }
-      if (blocks.length === 0) return raw;
-      return `${blocks.join('\n\n')}\n\n${raw}`;
-    },
-    [attachments],
-  );
 
   const requestPlan = useCallback(async () => {
     if (!userInput.trim() || phase === 'planning' || phase === 'streaming' || phase === 'executing') {
