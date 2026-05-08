@@ -1,0 +1,44 @@
+# Gauntlet — Git attributes
+#
+# Resolve de vez a porcaria de Windows-CRLF a fazer ficheiros parecerem
+# "modificados" depois de cada `npm install` / `cargo build`. Repo guarda
+# tudo com LF; working tree em Windows pode ter CRLF, mas Git nunca volta
+# a registar isso como diff.
+
+# Default — Git detecta texto vs binário e normaliza texto para LF no repo.
+* text=auto eol=lf
+
+# Lockfiles e manifestos — sempre LF, nunca renormalizados por engano.
+# Mesmo motivo das linhas acima, só explícito porque são os que mais
+# atormentavam o operador no Windows.
+package-lock.json    text eol=lf
+yarn.lock            text eol=lf
+pnpm-lock.yaml       text eol=lf
+Cargo.lock           text eol=lf
+Cargo.toml           text eol=lf
+*.toml               text eol=lf
+
+# Shell scripts — bash não corre com CRLF. Forçar LF mesmo em checkouts
+# Windows (caso alguém clone com autocrlf=true).
+*.sh                 text eol=lf
+*.bash               text eol=lf
+
+# Binários — Git não toca, não normaliza, não diffa.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.webp   binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.eot    binary
+*.pdf    binary
+*.zip    binary
+*.gz     binary
+*.tar    binary
+*.7z     binary
+*.mp3    binary
+*.mp4    binary
+*.wav    binary
