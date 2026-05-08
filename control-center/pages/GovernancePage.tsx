@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SIGNAL_API_BASE,
-  SIGNAL_API_KEY_PRESENT,
+  GAUNTLET_API_BASE,
+  GAUNTLET_API_KEY_PRESENT,
   isBackendUnreachable,
-  signalFetch,
-} from "../lib/signalApi";
+  gauntletFetch,
+} from "../lib/gauntletApi";
 import { Panel, SurfaceHeader } from "./ControlLayout";
 import Pill from "../components/atoms/Pill";
 
@@ -82,7 +82,7 @@ export default function GovernancePage() {
 
       <ComposerGovernancePanel />
 
-      <Panel title="Backend client" hint="from control-center/lib/signalApi.ts (Vite-inlined env)">
+      <Panel title="Backend client" hint="from control-center/lib/gauntletApi.ts (Vite-inlined env)">
         <div
           style={{
             display: "grid",
@@ -102,7 +102,7 @@ export default function GovernancePage() {
                   letterSpacing: 0.02,
                 }}
               >
-                {SIGNAL_API_BASE}
+                {GAUNTLET_API_BASE}
               </code>
             }
             sub="dev: vite proxy · prod: /api/gauntlet"
@@ -110,7 +110,7 @@ export default function GovernancePage() {
           <ConfigField
             label="api key"
             value={
-              SIGNAL_API_KEY_PRESENT ? (
+              GAUNTLET_API_KEY_PRESENT ? (
                 <Pill tone="ok">present</Pill>
               ) : (
                 <Pill tone="ghost">none · open</Pill>
@@ -244,7 +244,7 @@ function ComposerGovernancePanel() {
     setLoading(true);
     setError(null);
     try {
-      const res = await signalFetch("/composer/settings");
+      const res = await gauntletFetch("/composer/settings");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = (await res.json()) as ComposerSettings;
       setSettings(body);
@@ -264,7 +264,7 @@ function ComposerGovernancePanel() {
     setSaving(true);
     setError(null);
     try {
-      const res = await signalFetch("/composer/settings", {
+      const res = await gauntletFetch("/composer/settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(settings),

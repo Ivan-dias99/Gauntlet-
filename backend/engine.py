@@ -26,7 +26,7 @@ from config import (
     JUDGE_TEMPERATURE,
     MAX_TOKENS,
     TRIAD_COUNT,
-    RUBERRA_MOCK,
+    GAUNTLET_MOCK,
 )
 from mock_client import MockAsyncAnthropic
 from doctrine import (
@@ -88,7 +88,7 @@ class SignalEngine:
     """
     
     def __init__(self) -> None:
-        if RUBERRA_MOCK:
+        if GAUNTLET_MOCK:
             self._client = MockAsyncAnthropic()
             logger.warning("Engine initialized in MOCK mode — no network calls")
         elif GROQ_API_KEY:

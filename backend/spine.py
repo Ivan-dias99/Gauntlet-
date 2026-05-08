@@ -86,7 +86,7 @@ class SpineStore:
 
     async def _load(self) -> None:
         # Wave P-22 — Postgres read cutover.
-        # When SIGNAL_PG_CANONICAL=1 + dual-write is enabled, prefer the
+        # When GAUNTLET_PG_CANONICAL=1 + dual-write is enabled, prefer the
         # database as source-of-truth. Fall back to JSON automatically
         # if PG returns None (driver missing, pool failure, exception)
         # — that lets a deploy unset the flag for instant rollback
@@ -217,7 +217,7 @@ class SpineStore:
             self._last_save_error = None
             self._snapshot = snapshot
         # Wave O / P-6 — serialized mirror to Postgres when
-        # SIGNAL_DUAL_WRITE_PG=1 + SIGNAL_DATABASE_URL is set. We stash
+        # GAUNTLET_DUAL_WRITE_PG=1 + GAUNTLET_DATABASE_URL is set. We stash
         # the freshest snapshot and ensure one worker is running; bursts
         # collapse to "in-flight + latest" so older snapshots can never
         # overwrite a newer commit. db.mirror_spine_snapshot is a no-op

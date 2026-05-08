@@ -19,19 +19,19 @@ const RAW_BASE =
 
 const BASE = RAW_BASE.replace(/\/+$/, "");
 
-export const SIGNAL_API_BASE = BASE;
+export const GAUNTLET_API_BASE = BASE;
 export const UNREACHABLE_HEADER = "x-gauntlet-backend";
 export const UNREACHABLE_VALUE = "unreachable";
 
 // Opt-in API key. Build-time env (Vite inlines at build).
-// When set, signalFetch automatically attaches `Authorization: Bearer <key>`
+// When set, gauntletFetch automatically attaches `Authorization: Bearer <key>`
 // to every backend call. When unset, no header is added — local dev /
 // unsecured deploys keep working unchanged.
 const RAW_API_KEY =
   (import.meta.env.VITE_GAUNTLET_API_KEY as string | undefined) ?? "";
 const API_KEY = RAW_API_KEY.trim();
 
-export const SIGNAL_API_KEY_PRESENT = API_KEY.length > 0;
+export const GAUNTLET_API_KEY_PRESENT = API_KEY.length > 0;
 
 export function apiUrl(path: string): string {
   const tail = path.startsWith("/") ? path : `/${path}`;
@@ -157,7 +157,7 @@ async function unreachableFromResponse(res: Response): Promise<BackendUnreachabl
 //   - responses carrying an unreachable header (new or legacy)
 // Every other response — including normal 4xx/5xx from the upstream — is
 // returned to the caller to handle with the usual error path.
-export async function signalFetch(
+export async function gauntletFetch(
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
@@ -211,7 +211,7 @@ export async function pauseTask(
   taskId: string,
   opts?: { reason?: string | null; missionId?: string | null },
 ): Promise<PauseAck> {
-  const res = await signalFetch("/dev/pause", {
+  const res = await gauntletFetch("/dev/pause", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -228,7 +228,7 @@ export async function pauseTask(
 }
 
 export async function resumeTask(taskId: string): Promise<ResumeAck> {
-  const res = await signalFetch("/dev/resume", {
+  const res = await gauntletFetch("/dev/resume", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ task_id: taskId }),
@@ -241,7 +241,7 @@ export async function resumeTask(taskId: string): Promise<ResumeAck> {
 }
 
 export async function listPausedTasks(): Promise<PauseEntry[]> {
-  const res = await signalFetch("/dev/paused");
+  const res = await gauntletFetch("/dev/paused");
   if (!res.ok) {
     const env = await parseBackendError(res);
     throw new BackendError(res.status, env, `HTTP ${res.status} from /dev/paused`);
@@ -329,7 +329,7 @@ export async function compareScreenshots(
   const path = typeof threshold === "number"
     ? `/visual-diff?threshold=${encodeURIComponent(String(threshold))}`
     : "/visual-diff";
-  const res = await signalFetch(path, { method: "POST", body: fd });
+  const res = await gauntletFetch(path, { method: "POST", body: fd });
   if (!res.ok) {
     const env = await parseBackendError(res);
     throw new BackendError(res.status, env, `HTTP ${res.status} from /visual-diff`);

@@ -52,12 +52,12 @@ from config import (
     MEMORY_DIR,
     PERSISTENCE_EPHEMERAL,
     RATE_LIMIT_DISABLED,
-    RUBERRA_MOCK,
+    GAUNTLET_MOCK,
     SECURITY_CSP,
     SECURITY_HSTS,
     SERVER_HOST,
     SERVER_PORT,
-    SIGNAL_API_KEY,
+    GAUNTLET_API_KEY,
     TRUST_PROXY,
 )
 from models import (
@@ -111,7 +111,7 @@ async def lifespan(app: FastAPI):
         not ANTHROPIC_API_KEY
         and not GROQ_API_KEY
         and not GEMINI_API_KEY
-        and not RUBERRA_MOCK
+        and not GAUNTLET_MOCK
     ):
         logger.error(
             "═══════════════════════════════════════════════════════════\n"
@@ -138,7 +138,7 @@ async def lifespan(app: FastAPI):
 
     engine = SignalEngine()
     memory_label = "EPHEMERAL (volume not configured)" if PERSISTENCE_EPHEMERAL else "PERSISTENT"
-    if RUBERRA_MOCK:
+    if GAUNTLET_MOCK:
         _provider_label = "MOCK (canned)"
     elif ANTHROPIC_API_KEY:
         _provider_label = "Anthropic Claude"
@@ -162,7 +162,7 @@ async def lifespan(app: FastAPI):
         "═══════════════════════════════════════════════════════════"
     )
 
-    if PERSISTENCE_EPHEMERAL and not RUBERRA_MOCK:
+    if PERSISTENCE_EPHEMERAL and not GAUNTLET_MOCK:
         logger.warning(
             "═══════════════════════════════════════════════════════════\n"
             "  PERSISTENCE EPHEMERAL\n"
@@ -315,8 +315,8 @@ app.add_middleware(
     disabled=RATE_LIMIT_DISABLED,
     trust_proxy=TRUST_PROXY,
 )
-# 2) Auth gate — reads SIGNAL_API_KEY at install time. Empty key = no-op.
-app.add_middleware(APIKeyAuthMiddleware, api_key=SIGNAL_API_KEY)
+# 2) Auth gate — reads GAUNTLET_API_KEY at install time. Empty key = no-op.
+app.add_middleware(APIKeyAuthMiddleware, api_key=GAUNTLET_API_KEY)
 # 3) CORS — must sit OUTSIDE auth so preflight gets the right headers
 #    even when the inner gates would otherwise reject the request.
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
@@ -396,7 +396,7 @@ async def health_check():
         "system": "Gauntlet",
         "doctrine": "active",
         "engine": "ready" if engine else "not_initialized",
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if GAUNTLET_MOCK else "real",
         "persistence_degraded": bool(_collect_load_errors()),
         "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
     }
@@ -417,7 +417,7 @@ async def health_ready():
     reasons: list[str] = []
     if not engine:
         reasons.append("engine_not_initialized")
-    if RUBERRA_MOCK:
+    if GAUNTLET_MOCK:
         reasons.append("mock_mode")
     if load_errors:
         reasons.append("persistence_degraded")
@@ -428,7 +428,7 @@ async def health_ready():
         "ready": not reasons,
         "reasons": reasons,
         "engine": "ready" if engine else "not_initialized",
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if GAUNTLET_MOCK else "real",
         "load_errors": load_errors,
         "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
     }
@@ -1040,12 +1040,12 @@ async def diagnostics():
     boot = {
         "start_iso": _PROCESS_START_ISO,
         "uptime_seconds": int(time.monotonic() - _PROCESS_START_MONO),
-        "mode": "mock" if RUBERRA_MOCK else "real",
+        "mode": "mock" if GAUNTLET_MOCK else "real",
         "anthropic_api_key_present": bool(ANTHROPIC_API_KEY),
         "groq_api_key_present": bool(GROQ_API_KEY),
         "gemini_api_key_present": bool(GEMINI_API_KEY),
         "active_provider": (
-            "mock" if RUBERRA_MOCK
+            "mock" if GAUNTLET_MOCK
             else "anthropic" if ANTHROPIC_API_KEY
             else "groq" if GROQ_API_KEY
             else "gemini" if GEMINI_API_KEY
@@ -1072,7 +1072,7 @@ async def diagnostics():
     # whether the auth gate is on, whether HSTS is being stamped, etc.
     # We never reveal the API key value — only the boolean.
     security = {
-        "auth_required": bool(SIGNAL_API_KEY),
+        "auth_required": bool(GAUNTLET_API_KEY),
         "rate_limit_enabled": not RATE_LIMIT_DISABLED,
         "trust_proxy": TRUST_PROXY,
         "hsts": SECURITY_HSTS,

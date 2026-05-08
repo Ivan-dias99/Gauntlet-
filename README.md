@@ -149,26 +149,50 @@ A árvore JS é um único npm workspace (`packages/*`, `apps/*`). Faz-se
 um **único `npm install` no root** e cada shell corre a partir do seu
 diretório.
 
+### Provider precedence (engine.py)
+
+```
+MOCK > Groq > Anthropic > Gemini > error
+        ↑       paused      paused
+     primary
+```
+
+**Groq é o caminho primário** (free tier, Llama 3.x / gpt-oss, latência
+sub-segundo, streaming SSE). Anthropic e Gemini ficam em pausa — código
+mantém-se compatível, só correm se o operador escolher explicitamente.
+
 ```bash
-# Terminal 1 — backend
+# Terminal 1 — backend (Groq, recomendado)
 cd backend
+python -m venv .venv && .\.venv\Scripts\Activate.ps1   # Windows
+# source .venv/bin/activate                            # macOS/Linux
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...      # or GAUNTLET_MOCK=1
+export GAUNTLET_GROQ_API_KEY=gsk_...      # https://console.groq.com/keys
+# OR para testes sem rede:
+# export GAUNTLET_MOCK=1
 python main.py                            # http://127.0.0.1:3002
 
-# Terminal 2 — Control Center (browser tab)
+# Terminal 2 — Control Center (opcional, garagem de configs)
 npm install                               # corre só uma vez, no root
 npm run dev                               # http://localhost:5173/control
 
-# Terminal 3 — cápsula (o produto)
+# Terminal 3 — cápsula browser
 cd apps/browser-extension
 npm run dev                               # carrega Chrome com a extension
-                                          # press Alt+Space em qualquer página
+                                          # press Ctrl+Shift+Space em qualquer página
+
+# Terminal 4 — cápsula desktop (Tauri)
+cd apps/desktop
+npm run tauri:dev                         # 5-15 min na primeira vez (compila Rust)
+                                          # press Ctrl+Shift+Space em qualquer app
 ```
 
+Pré-requisitos desktop: Rust toolchain (rustup.rs), Visual C++ Build
+Tools (Windows). Sem isso o `npm run tauri:dev` falha.
+
 A cápsula fala diretamente com `http://127.0.0.1:3002/composer/*` em dev
-(declarado em `apps/browser-extension/wxt.config.ts` em `host_permissions`).
-O Control Center fala via proxy do Vite.
+(o composer-client detecta `import.meta.env.DEV` e usa localhost; em
+produção usa a URL Railway). O Control Center fala via proxy do Vite.
 
 ## Backend endpoints
 

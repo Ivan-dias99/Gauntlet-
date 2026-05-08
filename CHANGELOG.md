@@ -7,7 +7,42 @@ project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Changed (consolidação canónica · 2026-05-08)
+- **Identifiers Python alinhados com a doutrina GAUNTLET_*.**
+  `RUBERRA_MOCK` (declaração + 12 usos em config/engine/agent/server)
+  → `GAUNTLET_MOCK`. `SIGNAL_API_KEY` → `GAUNTLET_API_KEY`.
+  `SIGNAL_DUAL_WRITE_PG` / `SIGNAL_DATABASE_URL` / `SIGNAL_PG_CANONICAL`
+  / `SIGNAL_HSTS` / `SIGNAL_CSP` em docstrings + error messages →
+  `GAUNTLET_*`. **Env vars continuam a aceitar os aliases legacy** via
+  `_env()` helper (compat preservada — operadores com SIGNAL_*
+  setados continuam a funcionar). `db.py`, `spine.py`, `migrate.py`,
+  `security_headers.py`, `tools.py`, `engine.py`, `agent.py`,
+  `server.py`, `config.py`.
+- **Front-end alinhado**. `control-center/lib/signalApi.ts` →
+  `gauntletApi.ts`. Exports: `signalFetch` → `gauntletFetch`,
+  `SIGNAL_API_BASE` → `GAUNTLET_API_BASE`,
+  `SIGNAL_API_KEY_PRESENT` → `GAUNTLET_API_KEY_PRESENT`. 13 ficheiros
+  actualizados (hooks, pages, spine, telemetry, lib).
+- **Terminologia "chamber" eliminada de forward-references**.
+  `agent.py` deixa de referenciar `src/chambers/terminal/index.tsx`
+  (path morto). `model_gateway.py` reescreve docstring para falar de
+  "callers" (engine + composer + agent) em vez de "chambers".
+  Mantidas referências históricas em comentários que documentam a
+  migração Signal→Gauntlet — são úteis para entender porque o código
+  parece como parece.
+- **TODOs vivos resolvidos**. `tools.py:1467` (gate de aprovação
+  agora aponta para o danger gate da cápsula). Restantes "TODO" no
+  repo são milestones históricos fechados (`docs/COMPOSER_V0.md`).
+
 ### Added
+- **`docs/canon/COMPOSER_SURFACE_SPEC.md`** — spec canónica do
+  Composer, resolve [#315](https://github.com/Ivan-dias99/Aiinterfaceshelldesign/issues/315).
+  Documenta paridade visual, state machine, labels, capabilities matrix,
+  provider precedence, e o histórico de commits da Fase 5 que tornaram
+  a doutrina executável.
+- **README run-locally actualizado**. Provider precedence visível,
+  Groq como primário, ambos os shells (browser + desktop) listados
+  com pré-requisitos, ambos os hotkeys (`Ctrl+Shift+Space` canónico).
 - **Paridade visual COMPLETA entre desktop e browser (Fase 5).**
   Operador deixa de notar qual shell está activo. Tres convergências:
   1. **Web ganha filesystem** via novo `web-filesystem.ts` (File API

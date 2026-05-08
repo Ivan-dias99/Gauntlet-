@@ -1,9 +1,9 @@
 import {
-  signalFetch,
+  gauntletFetch,
   isBackendUnreachable,
   parseBackendError,
   BackendError,
-} from "../lib/signalApi";
+} from "../lib/gauntletApi";
 import { SpineState, Mission } from "./types";
 import { normalizeMission, normalizePrinciples, enforceSingleActive } from "./store";
 
@@ -17,7 +17,7 @@ const PATH = "/spine";
 // fixed, older persisted snapshots on a mounted volume may still be skinny.
 export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | null> {
   try {
-    const res = await signalFetch(PATH, { signal });
+    const res = await gauntletFetch(PATH, { signal });
     if (!res.ok) return null;
     const raw = (await res.json()) as {
       missions?: unknown;
@@ -54,7 +54,7 @@ export async function fetchSpine(signal?: AbortSignal): Promise<SpineState | nul
 // caller (SpineContext) can surface a sync-state indicator instead of
 // swallowing silent data-loss risk. Non-unreachable HTTP failures also throw.
 export async function pushSpine(state: SpineState, signal?: AbortSignal): Promise<boolean> {
-  const res = await signalFetch(PATH, {
+  const res = await gauntletFetch(PATH, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

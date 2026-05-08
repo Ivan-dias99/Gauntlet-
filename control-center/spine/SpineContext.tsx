@@ -23,7 +23,7 @@ import {
   isBackendUnreachable,
   isBackendError,
   type BackendErrorEnvelope,
-} from "../lib/signalApi";
+} from "../lib/gauntletApi";
 
 export type SpineSyncState = "synced" | "syncing" | "unsynced";
 

@@ -1463,8 +1463,9 @@ def _auto_approved() -> bool:
     """Sprint 5 close — when GAUNTLET_AUTO_APPROVE is truthy, tools that
     declare require_approval=true treat every call as approved. Useful
     for trusted single-operator deploys; otherwise the agent must pass
-    approved=true (which the operator-driven UI sets after explicit
-    confirmation, currently a TODO surface)."""
+    approved=true (which the cápsula's danger gate sets after operator
+    confirmation — see Capsule.tsx:executeDomActions and the
+    'Confirmo, executar mesmo assim' checkbox)."""
     raw = _env("GAUNTLET_AUTO_APPROVE", default="").strip().lower()
     return raw in ("1", "true", "yes", "on")
 

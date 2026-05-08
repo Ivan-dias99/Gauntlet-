@@ -21,7 +21,7 @@ knows what they would be tearing down.
       cross-origin (no path/query leak to third parties).
 
   Strict-Transport-Security: max-age=31536000; includeSubDomains
-      OPT-IN via SIGNAL_HSTS=1. Pins the browser to HTTPS for one year.
+      OPT-IN via GAUNTLET_HSTS=1. Pins the browser to HTTPS for one year.
       Catastrophic if accidentally enabled on a dev origin (browsers
       cache HSTS even after the header goes away), so we keep it off
       by default and only flip on for prod https deploys.
@@ -35,7 +35,7 @@ knows what they would be tearing down.
       bundle), inline styles allowed because Tailwind's runtime injects
       them, images allowed from data:/blob:/https for the Surface mock
       previews and visual-diff thumbnails. Override the whole header
-      via SIGNAL_CSP when the deploy needs a different policy (e.g.
+      via GAUNTLET_CSP when the deploy needs a different policy (e.g.
       adding a CDN or analytics origin).
 
   Permissions-Policy: geolocation=(), microphone=(), camera=()

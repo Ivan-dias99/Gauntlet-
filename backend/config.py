@@ -68,8 +68,11 @@ GROQ_MODEL: str = (
 )
 
 # Offline mock mode — bypasses every provider API call with canned responses.
-# Enable for end-to-end validation without an API key.
-RUBERRA_MOCK: bool = _env("GAUNTLET_MOCK").strip().lower() in (
+# Enable for end-to-end validation without an API key. Identifier renomeado
+# de RUBERRA_MOCK em 2026-05-08 (sessão hora-seria) para alinhar com a
+# canónica GAUNTLET_*. Env continua a ler GAUNTLET_MOCK + SIGNAL_MOCK +
+# RUBERRA_MOCK como aliases via _env() — compat preservada.
+GAUNTLET_MOCK: bool = _env("GAUNTLET_MOCK").strip().lower() in (
     "1", "true", "yes", "on",
 )
 
@@ -188,7 +191,10 @@ def _truthy(value: str) -> bool:
 
 # Layer 1 — API key gate. When set, every endpoint except /health,
 # /health/ready and CORS preflight requires `Authorization: Bearer <key>`.
-SIGNAL_API_KEY: str = _env("GAUNTLET_API_KEY", default="")
+# Identifier renomeado de SIGNAL_API_KEY em 2026-05-08 (sessão hora-seria)
+# para alinhar com canónica GAUNTLET_*. Env aceita GAUNTLET_API_KEY +
+# legacy aliases via _env(). Compat preservada.
+GAUNTLET_API_KEY: str = _env("GAUNTLET_API_KEY", default="")
 
 # Layer 2 — rate limiter.
 RATE_LIMIT_DISABLED: bool = _truthy(_env("GAUNTLET_RATE_LIMIT_DISABLED", default=""))

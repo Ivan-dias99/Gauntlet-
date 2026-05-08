@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { signalFetch, isBackendUnreachable } from "../lib/signalApi";
+import { gauntletFetch, isBackendUnreachable } from "../lib/gauntletApi";
 import { Panel, SurfaceHeader } from "./ControlLayout";
 import Pill from "../components/atoms/Pill";
 
@@ -29,8 +29,8 @@ export default function MemoryPage() {
   const reload = useCallback(async () => {
     try {
       const [statsRes, failuresRes] = await Promise.all([
-        signalFetch("/memory/stats"),
-        signalFetch("/memory/failures"),
+        gauntletFetch("/memory/stats"),
+        gauntletFetch("/memory/failures"),
       ]);
       if (!statsRes.ok) throw new Error(`/memory/stats HTTP ${statsRes.status}`);
       if (!failuresRes.ok) throw new Error(`/memory/failures HTTP ${failuresRes.status}`);
@@ -52,7 +52,7 @@ export default function MemoryPage() {
     if (!window.confirm("Clear failure memory? This cannot be undone.")) return;
     setBusy(true);
     try {
-      const res = await signalFetch("/memory/clear", {
+      const res = await gauntletFetch("/memory/clear", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirm: true }),
@@ -443,8 +443,8 @@ function MemoryRecordsPanel() {
       if (search.trim()) params.set("search", search.trim());
       const qs = params.toString();
       const [recsRes, projsRes] = await Promise.all([
-        signalFetch(`/memory/records${qs ? "?" + qs : ""}`),
-        signalFetch("/memory/projects"),
+        gauntletFetch(`/memory/records${qs ? "?" + qs : ""}`),
+        gauntletFetch("/memory/projects"),
       ]);
       if (!recsRes.ok) throw new Error(`/memory/records HTTP ${recsRes.status}`);
       const recsBody = (await recsRes.json()) as { records?: MemoryRecord[] };
@@ -465,7 +465,7 @@ function MemoryRecordsPanel() {
     if (!draftTopic.trim() || !draftBody.trim()) return;
     setBusy(true);
     try {
-      const res = await signalFetch("/memory/records", {
+      const res = await gauntletFetch("/memory/records", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -497,7 +497,7 @@ function MemoryRecordsPanel() {
         return;
       }
       try {
-        const res = await signalFetch(`/memory/records/${id}`, {
+        const res = await gauntletFetch(`/memory/records/${id}`, {
           method: "DELETE",
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
