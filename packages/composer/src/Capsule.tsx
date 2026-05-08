@@ -24,13 +24,7 @@ import {
 } from './types';
 import { Markdown } from './markdown';
 import { isRemoteVoiceSupported, isVoiceSupported } from './voice';
-import {
-  assessDanger,
-  assessSequenceDanger,
-  type DangerAssessment,
-  type DomAction,
-  type DomActionResult,
-} from './dom-actions';
+import { type DomAction, type DomActionResult } from './dom-actions';
 import { type Ambient } from './ambient';
 import {
   createPillPrefs,
@@ -52,6 +46,10 @@ import { ComposeResult } from './ComposeResult';
 import { PlanRenderer } from './PlanRenderer';
 import { AttachmentChips } from './AttachmentChips';
 import { SlashMenu, type SlashAction } from './SlashMenu';
+import { LeftPanel } from './LeftPanel';
+import { ActionsRow } from './ActionsRow';
+import { StreamingState } from './StreamingState';
+import { usePlanGuards } from './usePlanGuards';
 
 export interface CapsuleProps {
   // Single seam to the host shell — provides transport, storage,
@@ -211,70 +209,8 @@ export function Capsule({
   // — submit buttons, password inputs, "Delete" labels. Recomputed only
   // when the plan changes; the result feeds the warning banner and the
   // danger badges in the action list.
-  const dangers = useMemo<DangerAssessment[]>(
-    () => (plan ? plan.actions.map(assessDanger) : []),
-    [plan],
-  );
-
-  // Per-action adapter check — used to gate the Executar button. The
-  // dispatcher would surface "no adapter" as a per-row error otherwise,
-  // but the operator deserves to see "this shell can't" before they
-  // click. True when at least one action in the plan has a working
-  // dispatch path in the current ambient.
-  const canDispatchAnyAction = useMemo(() => {
-    if (!plan || plan.actions.length === 0) return false;
-    return plan.actions.some((a) => {
-      if (a.type === 'shell.run') return !!ambient.shellExec;
-      if (a.type === 'fs.read') return !!ambient.filesystem?.readTextFile;
-      if (a.type === 'fs.write') return !!ambient.filesystem?.writeTextFile;
-      return !!ambient.domActions?.execute;
-    });
-  }, [plan, ambient]);
-  const sequenceDanger = useMemo<DangerAssessment>(
-    () => (plan ? assessSequenceDanger(plan.actions) : { danger: false }),
-    [plan],
-  );
-  // Sprint 4 — policy-forced ack. When the active domain policy or any
-  // action's type policy carries require_danger_ack=true, force the
-  // danger gate even on plans that look benign. Lets the operator
-  // tighten beyond the heuristic-driven flagging.
-  const policyForcesAck = useMemo<{ forced: boolean; reason: string | null }>(
-    () => {
-      if (!plan || plan.actions.length === 0) {
-        return { forced: false, reason: null };
-      }
-      let host = '';
-      try {
-        host = new URL(snapshot.url).hostname.toLowerCase();
-      } catch {
-        // Invalid URL on a hostile page — fall through to defaults.
-      }
-      const domainPolicy = settings.domains[host] ?? settings.default_domain_policy;
-      if (domainPolicy.require_danger_ack) {
-        return {
-          forced: true,
-          reason: host
-            ? `policy: domain '${host}' requires explicit confirmation`
-            : 'policy: default domain policy requires explicit confirmation',
-        };
-      }
-      for (const a of plan.actions) {
-        const policy = settings.actions[a.type] ?? settings.default_action_policy;
-        if (policy.require_danger_ack) {
-          return {
-            forced: true,
-            reason: `policy: action type '${a.type}' requires explicit confirmation`,
-          };
-        }
-      }
-      return { forced: false, reason: null };
-    },
-    [plan, snapshot.url, settings],
-  );
-  const hasDanger =
-    dangers.some((d) => d.danger) ||
-    sequenceDanger.danger ||
-    policyForcesAck.forced;
+  const { dangers, sequenceDanger, policyForcesAck, hasDanger, canDispatchAnyAction } =
+    usePlanGuards({ plan, ambient, url: snapshot.url, settings });
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -1017,41 +953,14 @@ export function Capsule({
       <div className="gauntlet-capsule__aurora" aria-hidden />
 
       <div className="gauntlet-capsule__layout">
-        {/* Left panel: brand + context */}
-        <div className="gauntlet-capsule__panel gauntlet-capsule__panel--left">
-          <header className="gauntlet-capsule__header">
-            <div className="gauntlet-capsule__brand-block">
-              <span className="gauntlet-capsule__mark" aria-hidden>
-                <span className="gauntlet-capsule__mark-dot" />
-              </span>
-              <div className="gauntlet-capsule__brand-text">
-                <span className="gauntlet-capsule__brand">GAUNTLET</span>
-                <span className="gauntlet-capsule__tagline">cursor · capsule</span>
-              </div>
-            </div>
-            <div className="gauntlet-capsule__header-actions">
-              <button
-                type="button"
-                className="gauntlet-capsule__settings-btn"
-                onClick={() => setSettingsOpen((v) => !v)}
-                aria-label="Definições"
-                aria-expanded={settingsOpen}
-                title="Definições"
-              >
-                <span aria-hidden>···</span>
-              </button>
-              <button
-                type="button"
-                className="gauntlet-capsule__close"
-                onClick={handleDismiss}
-                aria-label="Dismiss capsule (Esc)"
-              >
-                <span aria-hidden>esc</span>
-              </button>
-            </div>
-          </header>
-
-          {settingsOpen && (
+        <LeftPanel
+          snapshot={snapshot}
+          modelUsed={plan?.model_used}
+          latencyMs={plan?.latency_ms}
+          settingsOpen={settingsOpen}
+          onToggleSettings={() => setSettingsOpen((v) => !v)}
+          onDismiss={handleDismiss}
+          settingsDrawer={
             <SettingsDrawer
               onClose={() => setSettingsOpen(false)}
               showScreenshot={ambient.capabilities.screenshot}
@@ -1064,59 +973,10 @@ export function Capsule({
                 void prefs.writeTheme(t);
               }}
             />
-          )}
-
-          <section className="gauntlet-capsule__context">
-            <div className="gauntlet-capsule__context-meta">
-              {/* Shell label removido por doutrina de paridade — o
-                  utilizador não deve nunca sentir que está em "dois
-                  composers diferentes". Chrome igual em ambos os
-                  shells; ambient.shell mantém-se internamente para
-                  diagnostics, só não é renderizado.
-                  URL placeholder do desktop (`desktop://capsule`,
-                  `desktop://unknown`) também não aparece — esconde
-                  contexto vazio em vez de o expor como UI. Quando há
-                  um app real em foco o pageTitle preenche-se sozinho. */}
-              {(() => {
-                const isDesktopPlaceholder = snapshot.url.startsWith('desktop://');
-                const display = isDesktopPlaceholder
-                  ? snapshot.pageTitle?.trim() || ''
-                  : snapshot.pageTitle || snapshot.url;
-                if (!display) return null;
-                return (
-                  <span className="gauntlet-capsule__url" title={snapshot.url}>
-                    {display}
-                  </span>
-                );
-              })()}
-              {plan?.model_used && (
-                <span
-                  className="gauntlet-capsule__model-chip"
-                  title={`Modelo usado · ${plan.latency_ms} ms`}
-                >
-                  <span className="gauntlet-capsule__model-chip-dot" aria-hidden />
-                  {plan.model_used}
-                </span>
-              )}
-              <button
-                type="button"
-                className="gauntlet-capsule__refresh"
-                onClick={refreshSnapshot}
-                title="Re-read current selection"
-              >
-                re-read
-              </button>
-            </div>
-            {snapshot.text ? (
-              <pre className="gauntlet-capsule__selection">{truncate(snapshot.text, 600)}</pre>
-            ) : (
-              <CompactContextSummary
-                snapshot={snapshot}
-                screenshotEnabled={screenshot !== null}
-              />
-            )}
-          </section>
-        </div>
+          }
+          screenshotEnabled={screenshot !== null}
+          onRefreshSnapshot={refreshSnapshot}
+        />
 
         {/* Right panel: input + results */}
         <div className="gauntlet-capsule__panel gauntlet-capsule__panel--right">
@@ -1148,171 +1008,37 @@ export function Capsule({
               rows={2}
               disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
             />
-            <div className="gauntlet-capsule__actions">
-              <span className="gauntlet-capsule__hint" aria-hidden>
-                <span className="gauntlet-capsule__kbd">↵</span>
-                <span className="gauntlet-capsule__kbd-sep">·</span>
-                <span className="gauntlet-capsule__kbd">⌘K</span>
-              </span>
-              {ambient.capabilities.filesystemRead && ambient.filesystem && (
-                <button
-                  type="button"
-                  className="gauntlet-capsule__attach-btn"
-                  onClick={() => void attachLocalFile()}
-                  aria-label="Anexar ficheiro local"
-                  title="Anexar ficheiro do disco"
-                  disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
-                >
-                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
-                    <path
-                      d="M14 4l-2 0 0 8-3 0 4 5 4-5-3 0 0-8z"
-                      transform="rotate(45 12 12)"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="gauntlet-capsule__attach-label">anexar</span>
-                </button>
-              )}
-              {ambient.capabilities.screenCapture && ambient.screenshot?.captureScreen && (
-                <button
-                  type="button"
-                  className="gauntlet-capsule__attach-btn"
-                  onClick={() => void attachScreenCapture()}
-                  aria-label="Capturar ecrã inteiro"
-                  title="Capturar ecrã inteiro"
-                  disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
-                >
-                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
-                    <rect
-                      x="3" y="5" width="18" height="13" rx="2"
-                      fill="none" stroke="currentColor" strokeWidth="1.6"
-                    />
-                    <circle cx="12" cy="11.5" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.6" />
-                  </svg>
-                  <span className="gauntlet-capsule__attach-label">ecrã</span>
-                </button>
-              )}
-              {/* Botão SHELL removido do row para paridade visual entre
-                  shells — só desktop tinha o capability shellExecute, o
-                  que entregava ao operador "estás em desktop". A
-                  funcionalidade fica acessível via slash command
-                  /shell (slashActions[] continua a expô-la quando o
-                  ambient suporta). Browser shell mantém o painel
-                  oculto (não há shellExec). */}
-              {(isVoiceSupported() ||
-                (ambient.capabilities.remoteVoice && isRemoteVoiceSupported())) && (
-                <button
-                  type="button"
-                  className={`gauntlet-capsule__voice${
-                    voice.active ? ' gauntlet-capsule__voice--active' : ''
-                  }`}
-                  onPointerDown={(ev) => {
-                    ev.preventDefault();
-                    startVoiceCapture();
-                  }}
-                  onPointerUp={() => stopVoiceCapture()}
-                  onPointerLeave={() => {
-                    if (voice.active) stopVoiceCapture();
-                  }}
-                  aria-label={voice.active ? 'A ouvir — solta para enviar' : 'Premer e falar'}
-                  title="Premir e falar"
-                  disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
-                >
-                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden>
-                    <path
-                      d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z"
-                      fill="currentColor"
-                    />
-                    <path
-                      d="M19 11a7 7 0 0 1-14 0M12 18v3"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      fill="none"
-                    />
-                  </svg>
-                  <span className="gauntlet-capsule__voice-label">
-                    {voice.active ? 'a ouvir' : 'voz'}
-                  </span>
-                </button>
-              )}
-              <button
-                type="submit"
-                className="gauntlet-capsule__compose"
-                disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing' || !userInput.trim()}
-              >
-                {/* Ripple — keyed on submitRipple so each submit
-                    replays the keyframe even if the previous ripple
-                    is still mid-animation. Pointer-events none so
-                    the underlying button still takes clicks. */}
-                {submitRipple > 0 && (
-                  <span
-                    key={submitRipple}
-                    className="gauntlet-capsule__compose-ripple"
-                    aria-hidden
-                  />
-                )}
-                {phase === 'planning' || phase === 'streaming' ? (
-                  <>
-                    <span className="gauntlet-capsule__compose-spinner" aria-hidden />
-                    <span>{phase === 'planning' ? 'a pensar' : 'a escrever'}</span>
-                  </>
-                ) : (
-                  'Enviar'
-                )}
-              </button>
-            </div>
+            <ActionsRow
+              busy={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
+              canSubmit={!(phase === 'planning' || phase === 'streaming' || phase === 'executing') && !!userInput.trim()}
+              submitRipple={submitRipple}
+              submitLabel={
+                phase === 'planning' ? 'thinking' : phase === 'streaming' ? 'streaming' : 'idle'
+              }
+              showAttachFile={!!(ambient.capabilities.filesystemRead && ambient.filesystem)}
+              showAttachScreen={!!(ambient.capabilities.screenCapture && ambient.screenshot?.captureScreen)}
+              showVoice={
+                isVoiceSupported() ||
+                (ambient.capabilities.remoteVoice && isRemoteVoiceSupported())
+              }
+              voiceActive={voice.active}
+              onAttachFile={() => void attachLocalFile()}
+              onAttachScreen={() => void attachScreenCapture()}
+              onVoiceStart={startVoiceCapture}
+              onVoiceStop={stopVoiceCapture}
+            />
           </form>
 
           {phase === 'streaming' && partialCompose && (
-            <section className="gauntlet-capsule__compose-result gauntlet-capsule__compose-result--streaming">
-              <header className="gauntlet-capsule__compose-meta">
-                <span className="gauntlet-capsule__compose-tag">resposta</span>
-                <span className="gauntlet-capsule__compose-meta-text">
-                  <span
-                    key={tokensStreamed}
-                    className="gauntlet-capsule__token-counter gauntlet-capsule__token-counter--pulse"
-                    aria-live="polite"
-                  >
-                    {tokensStreamed} chunks
-                  </span>
-                  <span aria-hidden>·</span>
-                  <span>a escrever…</span>
-                </span>
-              </header>
-              <div
-                className="gauntlet-capsule__progress-bar"
-                role="progressbar"
-                aria-label="A receber resposta"
-                aria-valuetext="indeterminate"
-              >
-                <span className="gauntlet-capsule__progress-bar-track" />
-              </div>
-              <div className="gauntlet-capsule__compose-text gauntlet-capsule__compose-text--streaming">
-                {partialCompose}
-                <span className="gauntlet-capsule__compose-caret" aria-hidden>▍</span>
-              </div>
-            </section>
+            <StreamingState
+              mode="streaming-compose"
+              partialCompose={partialCompose}
+              tokensStreamed={tokensStreamed}
+            />
           )}
 
           {(phase === 'planning' || (phase === 'streaming' && !partialCompose)) && (
-            <section
-              className="gauntlet-capsule__skeleton"
-              role="status"
-              aria-live="polite"
-              aria-label="A pensar..."
-            >
-              <header className="gauntlet-capsule__skeleton-header">
-                <span className="gauntlet-capsule__skeleton-tag" />
-                <span className="gauntlet-capsule__skeleton-meta" />
-              </header>
-              <div className="gauntlet-capsule__skeleton-line gauntlet-capsule__skeleton-line--w90" />
-              <div className="gauntlet-capsule__skeleton-line gauntlet-capsule__skeleton-line--w75" />
-              <div className="gauntlet-capsule__skeleton-line gauntlet-capsule__skeleton-line--w55" />
-            </section>
+            <StreamingState mode="skeleton" />
           )}
 
           {plan?.compose && phase === 'plan_ready' && (
