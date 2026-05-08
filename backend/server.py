@@ -102,7 +102,7 @@ async def lifespan(app: FastAPI):
 
     # Wave P-31, Layer 5 — log redaction. Installed first so any
     # subsequent boot logs (engine init, missing-key warnings) are
-    # already filtered. Default ON; SIGNAL_LOG_REDACT=0 disables for
+    # already filtered. Default ON; GAUNTLET_LOG_REDACT=0 disables for
     # local debugging of a real false-positive.
     if LOG_REDACT:
         install_redaction(("", "gauntlet", "signal", "uvicorn", "uvicorn.error", "uvicorn.access"))

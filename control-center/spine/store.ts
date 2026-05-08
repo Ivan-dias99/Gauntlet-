@@ -6,12 +6,12 @@ import {
   normalizeMissionStatus,
 } from "./types";
 
-// Wave-0 rename: signal:spine:v1 is canonical. ruberra:spine:v1 is still
-// read as a silent legacy fallback so existing users keep their missions,
-// tasks, notes, artifacts and principles across the rename. Writes always
-// target the new key; the legacy key is left in place until Wave 8.
-const KEY = "signal:spine:v1";
-const LEGACY_KEY = "ruberra:spine:v1";
+// Storage rename: `gauntlet:spine:v1` is canonical. `signal:spine:v1` and
+// `ruberra:spine:v1` are read once as legacy migration fallbacks, then
+// rewritten under the canonical key on the next save and the legacy keys
+// are deleted. The legacy reads will be removed in v1.1.0.
+const KEY = "gauntlet:spine:v1";
+const LEGACY_KEYS = ["signal:spine:v1", "ruberra:spine:v1"] as const;
 const ARTIFACT_LEDGER_CAP = 12;
 
 function uid(): string {
@@ -388,9 +388,25 @@ export function enforceSingleActive(
 
 export function loadState(): SpineState {
   try {
-    const raw =
-      localStorage.getItem(KEY) ??
-      localStorage.getItem(LEGACY_KEY);
+    let raw = localStorage.getItem(KEY);
+    if (!raw) {
+      for (const key of LEGACY_KEYS) {
+        const legacy = localStorage.getItem(key);
+        if (legacy) {
+          raw = legacy;
+          // Migrate forward — write under the canonical key and drop the
+          // legacy ones so the next boot does not touch them again.
+          try {
+            localStorage.setItem(KEY, legacy);
+            for (const k of LEGACY_KEYS) localStorage.removeItem(k);
+          } catch {
+            // Quota or private mode — fall through. We still loaded the
+            // legacy snapshot, just will keep reading it next boot.
+          }
+          break;
+        }
+      }
+    }
     if (!raw) return EMPTY;
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return EMPTY;

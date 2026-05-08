@@ -54,15 +54,49 @@ require a human to drive.
 - [ ] `LEGACY_UNREACHABLE_HEADER` exports gone from
       `control-center/lib/signalApi.ts`.
 
-## 5. Updater chain (Tauri 2)
+## 5. Updater chain (Tauri 2) — **HARD-BLOCKER for v1.0.0**
+
+`tauri.conf.json` ships with `plugins.updater.pubkey: ""`. Until that field
+holds the production public key, the installed app will accept **any**
+payload served by the updater endpoint — a remote-code-execution vector.
+Release builds are blocked in CI by the `assert updater pubkey is present`
+step in `.github/workflows/release.yml`; do not bypass it.
+
+### Recipe (one-time, ~10 min)
+
+```bash
+# 1. Generate the key pair locally. The CLI prompts for a password;
+#    use a strong one and store it in your password manager.
+cd apps/desktop
+npx @tauri-apps/cli signer generate -w ~/.tauri/gauntlet.key
+
+# 2. Show the public key (single line, base64).
+cat ~/.tauri/gauntlet.key.pub
+
+# 3. Paste the public key string into apps/desktop/src-tauri/tauri.conf.json
+#    at plugins.updater.pubkey. Commit that change.
+
+# 4. Show the private key (multi-line, base64-armoured).
+cat ~/.tauri/gauntlet.key
+
+# 5. In GitHub → repo Settings → Secrets and variables → Actions, add:
+#      TAURI_SIGNING_PRIVATE_KEY            ← paste the private key contents
+#      TAURI_SIGNING_PRIVATE_KEY_PASSWORD   ← paste the password from step 1
+```
+
+### Verification
 
 - [ ] **Public key set** — `tauri.conf.json` `plugins.updater.pubkey`
-      contains the production public key (NOT empty). [manual]
+      contains the production public key (NOT empty). The CI guard fails
+      the build when empty. [automated: release.yml]
 - [ ] **Private key in CI secret** — `TAURI_SIGNING_PRIVATE_KEY` /
       `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` are set as GitHub secrets,
       never committed. [manual: GitHub repo secrets page]
 - [ ] **Endpoint reachable** — `https://github.com/.../releases/latest/download/latest.json`
       returns a valid latest.json after the first signed release. [manual]
+- [ ] **Tampering rejected** — install a signed release, hand-edit the
+      `latest.json` to point at a payload signed with a different key,
+      confirm the updater refuses to apply it. [manual]
 
 ## 6. Browser extension
 

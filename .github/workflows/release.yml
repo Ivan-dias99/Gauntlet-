@@ -25,6 +25,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Hard-block release builds when the Tauri updater pubkey is empty.
+      # An empty pubkey means the installed app accepts any signed payload
+      # served by the endpoint — a remote-code-execution vector. Generate
+      # a key pair with `npx @tauri-apps/cli signer generate`, paste the
+      # PUBLIC key into apps/desktop/src-tauri/tauri.conf.json's
+      # plugins.updater.pubkey, and store the PRIVATE key + password as
+      # GitHub Secrets TAURI_SIGNING_PRIVATE_KEY{,_PASSWORD}.
+      # See docs/SECURITY_AUDIT.md section 5.
+      - name: assert updater pubkey is present
+        shell: bash
+        run: |
+          PUBKEY=$(node -e "console.log(JSON.parse(require('fs').readFileSync('apps/desktop/src-tauri/tauri.conf.json','utf8')).plugins.updater.pubkey || '')")
+          if [ -z "$PUBKEY" ]; then
+            echo "::error::tauri.conf.json plugins.updater.pubkey is empty — generate a signing key pair and fix it before tagging a release. See docs/SECURITY_AUDIT.md §5."
+            exit 1
+          fi
+
       - name: install linux deps
         if: matrix.platform == 'ubuntu-22.04'
         run: |
