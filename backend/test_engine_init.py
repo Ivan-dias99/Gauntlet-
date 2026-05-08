@@ -31,12 +31,14 @@ import pytest
 
 
 def _reset_modules():
+    # NÃO incluir groq_provider / gemini_provider aqui — esses são
+    # injectados pela fixture stubbed_engine como sentinelas, e remover
+    # do sys.modules força o engine a re-importar do disco a versão real,
+    # quebrando os asserts de isinstance contra os sentinelas.
     for mod in (
         "config",
         "engine",
         "model_gateway",
-        "groq_provider",
-        "gemini_provider",
     ):
         sys.modules.pop(mod, None)
 
@@ -108,7 +110,9 @@ def _build_engine():
     """Re-import engine so config snapshots the freshly-set env."""
     _reset_modules()
     engine_mod = importlib.import_module("engine")
-    return engine_mod.Engine()
+    # Class name is SignalEngine (legacy from Signal pre-rename window —
+    # never officially renamed despite GAUNTLET_* canon for env vars).
+    return engine_mod.SignalEngine()
 
 
 def test_mock_wins_over_every_other_key(stubbed_engine, monkeypatch):
