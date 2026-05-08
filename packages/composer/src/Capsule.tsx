@@ -120,17 +120,6 @@ export function Capsule({
   // ripple element fresh, replaying the keyframe even when the user
   // submits twice in quick succession.
   const [submitRipple, setSubmitRipple] = useState(0);
-  // Context-pop pulse — fires once when the page selection transitions
-  // from empty → non-empty. The chip pops to confirm "context locked
-  // in" before the operator even looks at the meta strip. Cleared by
-  // a timer so the chip returns to rest. The timer lives in a ref so
-  // it survives effect re-runs (e.g. iframe-harvest enriches snapshot
-  // mid-pop) — without that the cleanup would clear the timer and the
-  // re-run path wouldn't re-arm it (prev is already true), leaving
-  // contextJustArrived stuck on permanently.
-  const [contextJustArrived, setContextJustArrived] = useState(false);
-  const prevHadContextRef = useRef(false);
-  const contextPopTimerRef = useRef<number | null>(null);
   // TTS — when enabled in settings, the cápsula speaks the compose
   // response as soon as plan_ready fires. Persisted via prefs;
   // synthesizer instance lives on the window.speechSynthesis singleton
@@ -416,41 +405,6 @@ export function Capsule({
       cancelled = true;
     };
   }, [client, prefs]);
-
-  // Context-pop watcher — when snapshot.text flips empty → non-empty
-  // (e.g. iframe-harvest enriched the snapshot, or refreshSnapshot
-  // pulled in a fresh selection), pulse the source chip so the
-  // operator's eye catches the new context. One-shot, no infinite
-  // pulse loop. Timer is held in a ref so subsequent snapshot updates
-  // (non-empty → other-non-empty during incremental enrichment) don't
-  // tear down the running pop: the effect re-runs, sees prev === true,
-  // doesn't re-arm; if the timer were inside the closure cleanup it
-  // would die here and the pop would freeze indefinitely (Codex P2).
-  useEffect(() => {
-    const has = !!snapshot.text;
-    if (has && !prevHadContextRef.current) {
-      setContextJustArrived(true);
-      if (contextPopTimerRef.current !== null) {
-        window.clearTimeout(contextPopTimerRef.current);
-      }
-      contextPopTimerRef.current = window.setTimeout(() => {
-        setContextJustArrived(false);
-        contextPopTimerRef.current = null;
-      }, 700);
-    }
-    prevHadContextRef.current = has;
-  }, [snapshot.text]);
-
-  // Tear down the context-pop timer on unmount only — see comment
-  // above for why effect re-runs must NOT clear it.
-  useEffect(() => {
-    return () => {
-      if (contextPopTimerRef.current !== null) {
-        window.clearTimeout(contextPopTimerRef.current);
-        contextPopTimerRef.current = null;
-      }
-    };
-  }, []);
 
   // TTS — load persisted toggle. Speak when plan_ready arrives with a
   // compose answer. The Web Speech API is feature-detected at speak
