@@ -49,6 +49,23 @@ project follows [Semantic Versioning](https://semver.org).
   agora aponta para o danger gate da cápsula). Restantes "TODO" no
   repo são milestones históricos fechados (`docs/COMPOSER_V0.md`).
 
+### Fixed
+- **Groq auto-fallback quando o modelo primário bate em rate limit.**
+  Antes: 429 do Groq propagava-se até à cápsula como `502 Bad Gateway —
+  rate_limit_exceeded`. O `model_gateway` tinha chains documentadas mas
+  nunca eram accionadas em runtime para erros de rate limit do provider
+  activo.
+  Agora: `groq_provider._MessagesNamespace.create()` e
+  `_StreamContext.__aenter__()` envolvem a chamada num retry-loop
+  através de `GROQ_FALLBACK_CHAIN` (`llama-3.3-70b-versatile` →
+  `llama-3.1-8b-instant` → `openai/gpt-oss-120b` → `mixtral-8x7b-32768`).
+  Cada modelo tem o seu pool de tokens, então 429 num não significa
+  429 noutro. Quando fallback é accionado, o `_Response.model` expõe
+  o modelo real que serviu (em vez do anthropic-shape) — cápsula
+  mostra `llama-3.1-8b-instant` no badge para o operador saber.
+  Cumpre a doutrina lente 3 do CLAUDE.md ("multimodelo via gateway")
+  que estava documentada mas não wired.
+
 ### Added
 - **`docs/canon/COMPOSER_SURFACE_SPEC.md`** — spec canónica do
   Composer, resolve [#315](https://github.com/Ivan-dias99/Aiinterfaceshelldesign/issues/315).
