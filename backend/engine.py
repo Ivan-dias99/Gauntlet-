@@ -68,7 +68,7 @@ def _get_agent() -> "AgentOrchestrator":  # type: ignore[name-defined]
     return _agent_singleton
 
 
-class SignalEngine:
+class Engine:
     """
     The sovereign intelligence engine.
     

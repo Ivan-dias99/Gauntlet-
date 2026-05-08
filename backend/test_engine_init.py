@@ -30,12 +30,15 @@ import pytest
 
 
 def _reset_modules():
+    # Only the engine + its config sources. groq_provider and gemini_provider
+    # are NOT popped here because the fixture installs stubbed versions in
+    # sys.modules — re-running _reset_modules() inside _build_engine() would
+    # wipe those stubs, and engine's lazy `import groq_provider` would then
+    # resolve to the real adapter (which the test isn't asserting against).
     for mod in (
         "config",
         "engine",
         "model_gateway",
-        "groq_provider",
-        "gemini_provider",
     ):
         sys.modules.pop(mod, None)
 

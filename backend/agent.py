@@ -4,7 +4,7 @@ Signal Dev — Agent Orchestrator
 Routes a query along one of two paths:
 
   * Dev intent detected  →  agentic loop with tool use
-  * Everything else      →  existing ``SignalEngine.process_query`` (triad + judge)
+  * Everything else      →  existing ``Engine.process_query`` (triad + judge)
 
 The agent loop is a faithful implementation of Claude's native tool-use contract:
 the model emits ``tool_use`` blocks, we execute them locally, append ``tool_result``
