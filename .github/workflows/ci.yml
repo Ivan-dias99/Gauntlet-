@@ -18,6 +18,11 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
 
+      # Pure-module unit tests for the composer package (placement,
+      # helpers, dom-actions). Runs under happy-dom so the DOM-touching
+      # branches work without a real browser.
+      - run: npm run test --workspace=@gauntlet/composer
+
       # Lei do Capsule: packages/composer/src/Capsule.tsx is allowed to
       # shrink, never grow. Wave 2 of the refactor extracts features to
       # sub-components (CommandPalette, SettingsDrawer, PlanRenderer,
