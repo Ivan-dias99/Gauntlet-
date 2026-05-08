@@ -25,6 +25,7 @@ export * from './helpers';
 export * from './useTTS';
 export * from './useVoiceCapture';
 export * from './useAttachments';
+export * from './plan-dispatcher';
 export * from './capsule.css';
 export * from './Pill';
 export * from './Onboarding';
