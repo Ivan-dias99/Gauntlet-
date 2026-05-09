@@ -11,6 +11,8 @@
 // wrapped here with their own implementation when the upstream is
 // `pub(crate)`).
 
+use gauntlet_desktop_lib::{parse_cu_button, parse_cu_key};
+
 #[test]
 fn locale_resolution_defaults_to_pt() {
     // No env var set → PT (canonical voice). We can't directly call
@@ -74,6 +76,50 @@ fn pill_default_position_is_bottom_right() {
     let (x, y) = pill_anchor((0, 0, 1920, 1080), (220, 56));
     assert_eq!(x, 1920 - 220 - 24);
     assert_eq!(y, 1080 - 56 - 24);
+}
+
+#[test]
+fn cu_mouse_button_parses_canonical_names() {
+    // Canonical + short aliases all accepted, case-insensitive.
+    for name in ["left", "Left", "LEFT", "l", "right", "R", "middle", "m"] {
+        assert!(parse_cu_button(name).is_ok(), "should accept '{name}'");
+    }
+    // Unknown buttons bubble a typed error (not a panic, not a silent
+    // no-op) so the JS gate can render a "scroll wheel not supported".
+    for bad in ["scroll", "wheel", "x1", ""] {
+        assert!(parse_cu_button(bad).is_err(), "should reject '{bad}'");
+    }
+}
+
+#[test]
+fn cu_key_parses_special_names_case_insensitive() {
+    // Named keys use a case-insensitive match — operators don't think
+    // about capitalization when describing "Enter" or "tab".
+    for name in [
+        "Enter", "return", "Tab", "escape", "esc", "backspace", "Delete",
+        "space", "up", "DOWN", "left", "right", "home", "end",
+        "PageUp", "pagedown",
+    ] {
+        assert!(parse_cu_key(name).is_ok(), "should accept '{name}'");
+    }
+}
+
+#[test]
+fn cu_key_single_char_falls_through_to_unicode() {
+    // Single-char fallthrough keeps case (Unicode('A') ≠ Unicode('a'))
+    // because enigo types 'A' with shift, 'a' without.
+    for ch in ["a", "A", "1", "Z", "/", " "] {
+        assert!(parse_cu_key(ch).is_ok(), "should accept '{ch}' as Unicode");
+    }
+}
+
+#[test]
+fn cu_key_rejects_multi_char_unknowns() {
+    // Multi-character names that aren't in the special-key table get
+    // rejected — silent typing would surprise the operator.
+    for bad in ["hello", "ctrl+a", "f99", ""] {
+        assert!(parse_cu_key(bad).is_err(), "should reject '{bad}'");
+    }
 }
 
 #[test]
