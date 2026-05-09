@@ -24,18 +24,22 @@ Out of scope here (lands in Wave 1+):
 
 ## Backend URL
 
-By default the extension targets the production Railway backend
-(`https://ruberra-backend-jkpf-production.up.railway.app`). For local
-dev, override at build time:
+The backend URL is **build-time env-driven** — there is no hardcoded
+production host. Set `VITE_GAUNTLET_BACKEND_URL` before `npm run build`
+or `npm run zip`. Production builds **throw** if it's unset so a zip
+never ships pointing at the wrong host.
 
 ```bash
-VITE_BACKEND_URL=http://localhost:3002 npm run build
-# or for the dev server with HMR:
-VITE_BACKEND_URL=http://localhost:3002 npm run dev
+# Production zip:
+VITE_GAUNTLET_BACKEND_URL=https://your-backend.up.railway.app npm run zip
+
+# Local dev (the dev server defaults to 127.0.0.1:3002 if unset):
+VITE_GAUNTLET_BACKEND_URL=http://localhost:3002 npm run dev
 ```
 
-`host_permissions` in `wxt.config.ts` already allow-lists both URLs, so
-no manifest change is required when switching.
+`VITE_BACKEND_URL` is honoured as a legacy fallback until v1.1.0.
+`host_permissions` in `wxt.config.ts` is generated from the same env
+so the manifest follows automatically.
 
 ## Run locally
 
@@ -61,7 +65,7 @@ cd ../../backend
 GAUNTLET_MOCK=1 python main.py    # http://127.0.0.1:3002
 
 cd ../apps/browser-extension
-VITE_BACKEND_URL=http://localhost:3002 npm run dev
+VITE_GAUNTLET_BACKEND_URL=http://localhost:3002 npm run dev
 ```
 
 ## Manual validation gate (Portão de Validação 2)

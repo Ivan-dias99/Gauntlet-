@@ -1,7 +1,7 @@
 {
   "name": "@gauntlet/desktop",
   "private": true,
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Gauntlet — desktop cursor capsule (Tauri 2).",
   "scripts": {

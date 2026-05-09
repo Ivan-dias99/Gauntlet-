@@ -99,18 +99,34 @@ const Ctx = createContext<TweaksCtx>({
   reset: () => {},
 });
 
-// Wave-0 rename: signal:tweaks is canonical; ruberra:tweaks is read as a
-// silent legacy fallback so existing users keep their theme / density /
-// layout preferences across the rename. Writes always target the new key;
-// the legacy key is left in place until Wave 8.
-const STORAGE_KEY = "signal:tweaks";
-const LEGACY_STORAGE_KEY = "ruberra:tweaks";
+// Storage rename: `gauntlet:tweaks` is canonical. `signal:tweaks` and
+// `ruberra:tweaks` are read once as legacy migration fallbacks, then
+// rewritten under the canonical key on the next save and the legacy keys
+// are deleted. The legacy reads will be removed in v1.1.0.
+const STORAGE_KEY = "gauntlet:tweaks";
+const LEGACY_STORAGE_KEYS = ["signal:tweaks", "ruberra:tweaks"] as const;
 
 function load(): Tweaks {
   try {
-    const raw =
-      localStorage.getItem(STORAGE_KEY) ??
-      localStorage.getItem(LEGACY_STORAGE_KEY);
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      for (const key of LEGACY_STORAGE_KEYS) {
+        const legacy = localStorage.getItem(key);
+        if (legacy) {
+          raw = legacy;
+          // Migrate forward — write under the canonical key and drop the
+          // legacy ones so the next boot does not touch them again.
+          try {
+            localStorage.setItem(STORAGE_KEY, legacy);
+            for (const k of LEGACY_STORAGE_KEYS) localStorage.removeItem(k);
+          } catch {
+            // Migration write failed (quota, private mode). Fine — we
+            // still loaded the legacy value, just keeps reading it next time.
+          }
+          break;
+        }
+      }
+    }
     if (!raw) return DEFAULTS;
     const parsed = JSON.parse(raw) as Partial<Omit<Tweaks, "density">> & { density?: string };
     // Wave P-37 — migrate legacy density vocabulary (compact/comfortable/

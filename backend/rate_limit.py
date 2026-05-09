@@ -31,8 +31,9 @@ Route classes (matched against the request path prefix):
 
   ``default`` — anything else. burst 20, refill 5/s.
 
-Disable globally via ``SIGNAL_RATE_LIMIT_DISABLED=1`` (dev escape hatch).
-``SIGNAL_TRUST_PROXY=1`` switches the IP source from
+Disable globally via ``GAUNTLET_RATE_LIMIT_DISABLED=1`` (dev escape hatch;
+legacy ``SIGNAL_RATE_LIMIT_DISABLED`` still honoured as fallback, removed
+in v1.1.0). ``GAUNTLET_TRUST_PROXY=1`` switches the IP source from
 ``request.client.host`` to the leftmost ``X-Forwarded-For`` entry — only
 flip this on when the deploy actually sits behind a trusted proxy
 (Vercel edge, Railway router), otherwise any client can spoof itself

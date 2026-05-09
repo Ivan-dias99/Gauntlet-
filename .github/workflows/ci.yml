@@ -16,7 +16,44 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npm run build
+
+      # Desktop tsconfig is stricter than the root (noUnusedLocals,
+      # noUnusedParameters) and includes the composer source under its
+      # `include`. The release.yml `tauri:build` runs this exact check
+      # via `apps/desktop/package.json`'s build script — running it
+      # here catches drift before a release tag.
+      - name: desktop typecheck
+        working-directory: apps/desktop
+        run: npx tsc --noEmit
+
+      - env:
+          # Composer's build throws when this is unset in a production
+          # build. CI is not a real release — point it at the current
+          # Railway service URL so `vite build` succeeds. Replace the
+          # value here when the backend host is renamed.
+          VITE_GAUNTLET_BACKEND_URL: https://ruberra-backend-jkpf-production.up.railway.app
+        run: npm run build
+
+      # Pure-module unit tests for the composer package (placement,
+      # helpers, dom-actions). Runs under happy-dom so the DOM-touching
+      # branches work without a real browser.
+      - run: npm run test --workspace=@gauntlet/composer
+
+      # Lei do Capsule: packages/composer/src/Capsule.tsx is allowed to
+      # shrink, never grow. Wave 2 of the refactor extracts features to
+      # sub-components (CommandPalette, SettingsDrawer, PlanRenderer,
+      # voice/TTS hooks). Each PR that lands in that sequence lowers
+      # this budget — never raises it. Target: <= 800 lines by end of
+      # Wave 2. See CLAUDE.md "Lei do Capsule".
+      - name: capsule size budget
+        run: |
+          BUDGET=880
+          LINES=$(wc -l < packages/composer/src/Capsule.tsx | tr -d ' ')
+          echo "Capsule.tsx: $LINES lines (budget: $BUDGET)"
+          if [ "$LINES" -gt "$BUDGET" ]; then
+            echo "::error::Capsule.tsx grew past budget ($LINES > $BUDGET). Extract a sub-component before merging — see CLAUDE.md 'Lei do Capsule'."
+            exit 1
+          fi
 
   backend:
     runs-on: ubuntu-latest
@@ -45,6 +82,11 @@ jobs:
               'composer','runs','spine','auth','rate_limit',
               'security_headers','log_redaction','model_gateway',
               'gemini_provider','mock_client','observability',
+              'runtime',
+              'routers.health','routers.ask','routers.agent',
+              'routers.runs','routers.memory','routers.spine',
+              'routers.tools','routers.git','routers.permissions',
+              'routers.observability',
           )
           for mod in mods:
               importlib.import_module(mod)

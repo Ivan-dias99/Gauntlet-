@@ -166,22 +166,6 @@ JUDGE_ENABLED: bool = _env(
 ).strip().lower() in ("1", "true", "yes", "on")
 
 
-# ── Postgres dual-write ───────────────────────────────────────────────────
-DATABASE_URL: str = _env("GAUNTLET_DATABASE_URL", default="")
-DUAL_WRITE_PG: bool = (
-    bool(DATABASE_URL)
-    and _env("GAUNTLET_DUAL_WRITE_PG", default="").strip().lower()
-    in ("1", "true", "yes", "on")
-)
-
-# ── Postgres read cutover ─────────────────────────────────────────────────
-PG_CANONICAL: bool = (
-    DUAL_WRITE_PG
-    and _env("GAUNTLET_PG_CANONICAL", default="").strip().lower()
-    in ("1", "true", "yes", "on")
-)
-
-
 # ── Security: defense-in-depth ────────────────────────────────────────────
 
 

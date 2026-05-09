@@ -1,10 +1,8 @@
 # Gauntlet
 
-**Inteligência na ponta do cursor.**
-
-Tu apontas. Dizes o que queres. O Gauntlet executa — sem abrires uma app de
-IA, sem mudares de tab, sem dashboards no caminho. A cápsula vive colada ao
-cursor, e o backend faz o trabalho sujo.
+**Inteligência na ponta do cursor.** O Composer é o centro de experiência —
+denso, completo, viciante. É onde o utilizador passa a maior parte do tempo
+a trabalhar com IA. O Control Center existe só quando é preciso configurar.
 
 ## Product Law
 
@@ -23,18 +21,21 @@ A diferença é só ambiental:
 - Desktop runtime atua no contexto do sistema operativo/apps
 
 O backend FastAPI continua a ser o cérebro de execução (context, routing,
-tools, memory, execution). O Control Center é a garagem/pit stop, e o
-landing do Composer pertence ao Control Center como superfície principal
-(home).
+tools, memory, execution). O Control Center é a garagem/pit stop — o
+utilizador não vive lá.
 
 ## Filosofia
 
 Três peças, três papéis:
 
-- **Composer** — `apps/browser-extension/` + `apps/desktop/`. A cápsula
-  única em duas shells. Discreta, rápida, sempre presente. Press
-  `Alt+Space` em qualquer página (web) ou abre no runtime desktop →
-  escreves o que queres → vês o resultado.
+- **Composer** — `packages/composer/` montado em `apps/browser-extension/`
+  + `apps/desktop/`. A cápsula única em duas shells. Discreta na presença
+  visual quando inactiva (cápsula colada ao cursor); densa, completa e
+  sofisticada quando aberta — IDE-grade na ponta do cursor. Press
+  `Ctrl+Shift+Space` em qualquer página (web) ou em qualquer app
+  (desktop) → escreves o que queres → executas sem sair do sítio.
+  Densidade no produto é virtude, **god-component no código é regressão**:
+  cada feature tem de viver no seu sub-componente, hook ou skill.
 - **Control Center** — `control-center/`. A garagem. Só abre quando
   precisas configurar, ver histórico, inspecionar memórias ou trocar
   modelos. Nunca compete com o Composer como local de trabalho.
@@ -251,10 +252,15 @@ rotas Composer automaticamente:
 
 ## Releases
 
-Versão actual: **`1.0.0-rc.1`** (ver `CHANGELOG.md`). O compat window
-SIGNAL_/RUBERRA_ foi fechado. A surface canónica é exclusivamente
-`/api/gauntlet/*` + `GAUNTLET_*`.
+Versão actual: **`1.0.0-rc.1`** (ver `CHANGELOG.md`). A surface canónica é
+`/api/gauntlet/*` + `GAUNTLET_*`. Os aliases legacy `SIGNAL_*` / `RUBERRA_*`
+e as storage keys `signal:*` / `ruberra:*` ainda são lidos como fallback
+silencioso para não partir installs antigos; emitem deprecation warning
+quando usados e serão **removidos em v1.1.0**. Código novo escreve sempre
+no nome canónico.
 
-Antes de tagar `v1.0.0`: caminhar pelo `docs/SECURITY_AUDIT.md`.
+Antes de tagar `v1.0.0`: caminhar pelo `docs/SECURITY_AUDIT.md`. O ponto
+crítico em aberto é o `pubkey` do updater Tauri — sem chave pública fixada,
+não há release público.
 
 Detalhes operacionais em `docs/OPERATIONS.md`.

@@ -8,6 +8,36 @@ import { fileURLToPath } from 'node:url';
 //   - global hotkey (Alt+Space — Cmd+Space is reserved by macOS Spotlight)
 //   - minimal capsule: input + Compor + preview + Copy
 //   - calls the four /composer/* routes on the local backend
+
+// Production backend — read from build env so the URL is not hardcoded
+// and the manifest can follow a Railway rename without a code edit.
+//   * VITE_GAUNTLET_BACKEND_URL canonical (aligned with the server's
+//     GAUNTLET_BACKEND_URL).
+//   * VITE_BACKEND_URL kept as a legacy fallback until v1.1.0.
+// Dev / `wxt prepare` (run on every npm install) don't need it; only
+// the actual build/zip needs it for the manifest's host_permissions
+// list. The real hard-throw lives in composer-client.ts so a build
+// without env aborts when the JS runtime evaluates the module — that
+// gate fires both for the cápsula bundle and for the desktop bundle,
+// without breaking `npm ci` for first-time clones.
+const ENV_BACKEND_URL =
+  process.env.VITE_GAUNTLET_BACKEND_URL || process.env.VITE_BACKEND_URL || '';
+const IS_PROD_BUILD = process.argv.some(
+  (a) => a === 'build' || a === 'zip' || a === 'zip:firefox',
+);
+if (IS_PROD_BUILD && !ENV_BACKEND_URL) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[wxt.config] VITE_GAUNTLET_BACKEND_URL is not set. ' +
+      'host_permissions will not list the production backend explicitly. ' +
+      'composer-client will still throw at JS runtime if no env is found.',
+  );
+}
+
+const PROD_BACKEND_HOST_PERM = ENV_BACKEND_URL
+  ? [`${ENV_BACKEND_URL.replace(/\/+$/, '')}/*`]
+  : [];
+
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   // Single Composer — vite alias resolves @gauntlet/composer to the
@@ -32,7 +62,7 @@ export default defineConfig({
       // of any page the user invokes the capsule on. Without it, the
       // composer is blind to everything outside the popup window.
       '<all_urls>',
-      'https://ruberra-backend-jkpf-production.up.railway.app/*',
+      ...PROD_BACKEND_HOST_PERM,
       'http://127.0.0.1:3002/*',
       'http://localhost:3002/*',
     ],

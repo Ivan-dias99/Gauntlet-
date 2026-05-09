@@ -2,48 +2,48 @@
 Gauntlet — FastAPI Server
 HTTP interface for the Gauntlet backend (the maestro).
 
-Endpoints:
-  POST /ask, /route, /route/stream  — triad+judge / auto-router
-  POST /dev, /dev/stream            — agent loop (tool-use)
-  POST /composer/{context,intent,preview,apply}
-  GET  /runs, /runs/stats, /runs/{id}
-  GET  /memory/stats, /memory/failures
-  POST /memory/clear
-  GET  /spine — POST /spine
-  GET  /health, /diagnostics
+This module owns the application object, middleware pipeline and
+lifespan. The route definitions themselves live under ``backend/routers/``,
+one module per domain. New routes go into the matching router (or a new
+one) — never back into this file.
+
+Endpoint domains (one router each):
+  health         — /health, /health/ready, /diagnostics
+  ask            — /ask, /ask/batch, /route, /route/stream
+  agent          — /dev, /dev/stream
+  runs           — /runs, /runs/stats, /runs/{id}, /ledger/clear
+  memory         — /memory/{stats,failures,clear,forget_all,records,recover}
+  spine          — /spine
+  tools          — /tools/manifests
+  git            — /git/status
+  permissions    — /permissions/revoke_all
+  observability  — /telemetry/event, /observability/snapshot, /gateway/summary
+  composer       — /composer/* (composer.py)
+  voice          — /voice/* (voice.py)
 """
 
 from __future__ import annotations
 
-import asyncio as _asyncio
-import json as _json
 import logging
-import os
 import sys
-import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+import runtime
 from auth import APIKeyAuthMiddleware
-from log_redaction import install_redaction
-from rate_limit import RateLimitMiddleware
-from security_headers import SecurityHeadersMiddleware
-
+from composer import router as composer_router
 from config import (
-    ALLOWED_ORIGIN,
     ALLOWED_ORIGIN_REGEX,
     ALLOWED_ORIGINS,
     ANTHROPIC_API_KEY,
     BODY_SIZE_LIMIT_BYTES,
     FRAME_OPTIONS,
+    GAUNTLET_API_KEY,
+    GAUNTLET_MOCK,
     GEMINI_API_KEY,
     GEMINI_MODEL,
     GROQ_API_KEY,
@@ -52,34 +52,27 @@ from config import (
     MEMORY_DIR,
     PERSISTENCE_EPHEMERAL,
     RATE_LIMIT_DISABLED,
-    GAUNTLET_MOCK,
     SECURITY_CSP,
     SECURITY_HSTS,
     SERVER_HOST,
     SERVER_PORT,
-    GAUNTLET_API_KEY,
     TRUST_PROXY,
 )
-from models import (
-    MemoryRecordCreate,
-    MemoryRecoverRequest,
-    MemoryRecoverResponse,
-    RunRecord,
-    SignalQuery,
-    SignalResponse,
-    SpineSnapshot,
-)
 from engine import Engine
-from memory import failure_memory
-from runs import run_store
-from spine import spine_store
-from tools import TOOL_WORKSPACE_ROOT
-from composer import router as composer_router
+from log_redaction import install_redaction
+from rate_limit import RateLimitMiddleware
+from routers.agent import router as agent_router
+from routers.ask import router as ask_router
+from routers.git import router as git_router
+from routers.health import router as health_router
+from routers.memory import router as memory_router
+from routers.observability import router as observability_router
+from routers.permissions import router as permissions_router
+from routers.runs import router as runs_router
+from routers.spine import router as spine_router
+from routers.tools import router as tools_router
+from security_headers import SecurityHeadersMiddleware
 from voice import router as voice_router
-
-# Captured at import time so /diagnostics can report uptime honestly.
-_PROCESS_START_MONO = time.monotonic()
-_PROCESS_START_ISO = datetime.now(timezone.utc).isoformat()
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -90,19 +83,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("gauntlet.server")
 
-# ── App Lifecycle ───────────────────────────────────────────────────────────
 
-engine: Engine | None = None
+# ── App Lifecycle ───────────────────────────────────────────────────────────
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize engine on startup, cleanup on shutdown."""
-    global engine
 
     # Wave P-31, Layer 5 — log redaction. Installed first so any
     # subsequent boot logs (engine init, missing-key warnings) are
-    # already filtered. Default ON; SIGNAL_LOG_REDACT=0 disables for
+    # already filtered. Default ON; GAUNTLET_LOG_REDACT=0 disables for
     # local debugging of a real false-positive.
     if LOG_REDACT:
         install_redaction(("", "gauntlet", "signal", "uvicorn", "uvicorn.error", "uvicorn.access"))
@@ -136,7 +127,7 @@ async def lifespan(app: FastAPI):
             GEMINI_MODEL,
         )
 
-    engine = Engine()
+    runtime.set_engine(Engine())
     memory_label = "EPHEMERAL (volume not configured)" if PERSISTENCE_EPHEMERAL else "PERSISTENT"
     if GAUNTLET_MOCK:
         _provider_label = "MOCK (canned)"
@@ -166,14 +157,15 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "═══════════════════════════════════════════════════════════\n"
             "  PERSISTENCE EPHEMERAL\n"
-            "  SIGNAL_DATA_DIR is not set. failure_memory.json, runs.json,\n"
+            "  GAUNTLET_DATA_DIR is not set. failure_memory.json, runs.json,\n"
             "  and spine.json will be WIPED on every container restart.\n"
-            "  Mount a Railway volume and set SIGNAL_DATA_DIR=/data\n"
+            "  Mount a Railway volume and set GAUNTLET_DATA_DIR=/data\n"
             "═══════════════════════════════════════════════════════════"
         )
 
     yield
 
+    runtime.set_engine(None)
     logger.info("Gauntlet backend shutting down.")
 
 
@@ -191,11 +183,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — production origins come from SIGNAL_ORIGIN (comma-separated), with
+# CORS — production origins come from GAUNTLET_ORIGIN (comma-separated), with
 # localhost dev origins always appended so the backend stays usable locally.
-# SIGNAL_ORIGIN_REGEX (default ^https://[a-z0-9-]+\.vercel\.app$) covers every
-# Vercel preview/production subdomain without requiring a manual env edit per
-# deploy. Either match path admits the request.
+# GAUNTLET_ORIGIN_REGEX (default ^https://[a-z0-9-]+\.vercel\.app$) covers
+# every Vercel preview/production subdomain without requiring a manual env
+# edit per deploy. Either match path admits the request.
 _cors_origins = sorted({
     *ALLOWED_ORIGINS,
     "http://localhost:5173",
@@ -335,775 +327,25 @@ app.add_middleware(
     overrides=LARGE_BODY_ROUTES,
 )
 
-# Composer surface (Wave V0) — context · intent · preview · apply.
-# Mounted after middleware so the same defense-in-depth stack covers it.
-app.include_router(composer_router)
 
-# Voice (A1) — STT (Groq Whisper) + TTS (Microsoft Edge). Mounted after
-# middleware so body-size caps + CORS + rate-limit cover audio uploads
-# the same way they cover /composer/*.
+# ── Routers ─────────────────────────────────────────────────────────────────
+#
+# Mounted after middleware so the same defense-in-depth stack covers them.
+# Order is cosmetic — FastAPI dispatches by path, not by mount sequence.
+
+# Cápsula surface (Wave V0) — context · intent · preview · apply.
+app.include_router(composer_router)
+# Voice (A1) — STT (Groq Whisper) + TTS (Microsoft Edge).
 app.include_router(voice_router)
 
-
-# ── Endpoints ───────────────────────────────────────────────────────────────
-
-def _error_envelope(kind: str, exc: BaseException) -> dict:
-    """Typed error body — `{error, reason, message}`. One shape across all endpoints."""
-    return {
-        "error": kind,
-        "reason": type(exc).__name__,
-        "message": str(exc),
-    }
-
-
-def _engine_unavailable_envelope() -> dict:
-    """Typed body for the pre-call readiness gate — same shape as /health/ready reasons."""
-    return {
-        "error": "engine_not_initialized",
-        "reason": "EngineNotInitialized",
-        "message": "Engine not initialized",
-    }
-
-
-def _collect_load_errors() -> list[dict]:
-    """Per-store load errors as visible to /health and /diagnostics."""
-    out: list[dict] = []
-    for name, store_attr in (
-        ("spine", spine_store._last_load_error),
-        ("runs", run_store._last_load_error),
-        ("memory", failure_memory._last_load_error),
-    ):
-        if store_attr:
-            out.append({"store": name, "error": store_attr})
-    return out
-
-
-@app.get("/health")
-async def health_check():
-    """
-    Liveness probe. Always returns 200 as long as the HTTP layer is up —
-    Railway / Vercel need a stable yes/no to keep routing traffic, and
-    flipping this to 5xx on a degraded engine would trigger a
-    crash-restart loop that never resolves.
-
-    The body carries the real signal: engine readiness, run mode
-    (mock vs real), and whether any store booted on a quarantined
-    sidecar. Callers that need a hard yes/no for degraded state must
-    use `/health/ready`.
-    """
-    return {
-        "status": "operational",
-        "system": "Gauntlet",
-        "doctrine": "active",
-        "engine": "ready" if engine else "not_initialized",
-        "mode": "mock" if GAUNTLET_MOCK else "real",
-        "persistence_degraded": bool(_collect_load_errors()),
-        "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
-    }
-
-
-@app.get("/health/ready")
-async def health_ready():
-    """
-    Readiness probe. Returns 503 if the system is degraded in any way
-    that would make its answers untrustworthy — engine uninitialised,
-    running in mock mode, or a store booted on a quarantined file.
-
-    Never flipped to the Railway healthcheck path: `/health` keeps the
-    deploy alive; `/health/ready` is the honest yes/no for clients and
-    operators.
-    """
-    load_errors = _collect_load_errors()
-    reasons: list[str] = []
-    if not engine:
-        reasons.append("engine_not_initialized")
-    if GAUNTLET_MOCK:
-        reasons.append("mock_mode")
-    if load_errors:
-        reasons.append("persistence_degraded")
-    if PERSISTENCE_EPHEMERAL:
-        reasons.append("persistence_ephemeral")
-
-    body = {
-        "ready": not reasons,
-        "reasons": reasons,
-        "engine": "ready" if engine else "not_initialized",
-        "mode": "mock" if GAUNTLET_MOCK else "real",
-        "load_errors": load_errors,
-        "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
-    }
-    if reasons:
-        raise HTTPException(status_code=503, detail=body)
-    return body
-
-
-@app.post("/ask", response_model=SignalResponse)
-async def ask_ruberra(query: SignalQuery):
-    """
-    Submit a question to Signal.
-    
-    The system will:
-    1. Check failure memory for prior failures on similar questions
-    2. Fire 3 parallel calls to Claude Sonnet (self-consistency)
-    3. Send responses to the implacable Judge
-    4. Return answer (high confidence) or refusal (low confidence)
-    """
-    if not engine:
-        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-
-    try:
-        response = await engine.process_query(query)
-        return response
-    except Exception as e:
-        logger.error(f"Engine error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=_error_envelope("engine_error", e))
-
-
-@app.post("/dev")
-async def ask_ruberra_dev(query: SignalQuery):
-    """
-    Force the agent (tool-use) pipeline.
-
-    Skips the triad/judge and runs an agentic loop where Claude may call
-    ``read_file``, ``git``, ``run_command``, ``web_search`` and friends. The
-    response includes the final answer plus the full tool-call trace.
-    """
-    if not engine:
-        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-    try:
-        agent_response = await engine.process_dev_query(query)
-        return agent_response.to_dict()
-    except Exception as e:
-        logger.error(f"Agent error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=_error_envelope("agent_error", e))
-
-
-@app.post("/route/stream")
-async def ask_ruberra_auto_stream(query: SignalQuery):
-    """
-    Streaming variant of ``/route``. Emits the ``route`` decision first, then
-    either agent events (``tool_use``, ``tool_result``, ...) or triad events
-    (``triad_done``, ``judge_done``, ...) and finally ``done``.
-    """
-    if not engine:
-        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-
-    async def event_source():
-        try:
-            async for event in engine.process_auto_streaming(query):
-                yield f"data: {_json.dumps(event)}\n\n"
-        except Exception as e:
-            logger.error(f"Route stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('router_error', e)})}\n\n"
-
-    return StreamingResponse(
-        event_source(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
-
-@app.post("/dev/stream")
-async def ask_ruberra_dev_stream(query: SignalQuery):
-    """
-    Streaming variant of ``/dev``. Emits one SSE event per agent step:
-    ``start``, ``iteration``, ``assistant_text``, ``tool_use``, ``tool_result``,
-    ``done`` (final). The run is recorded once ``done`` fires.
-    """
-    if not engine:
-        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-
-    async def event_source():
-        try:
-            async for event in engine.process_dev_query_streaming(query):
-                yield f"data: {_json.dumps(event)}\n\n"
-        except Exception as e:
-            logger.error(f"Agent stream error: {e}", exc_info=True)
-            yield f"data: {_json.dumps({'type': 'error', **_error_envelope('agent_error', e)})}\n\n"
-
-    return StreamingResponse(
-        event_source(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
-
-@app.post("/route")
-async def ask_ruberra_auto(query: SignalQuery):
-    """
-    Auto-router: dev-intent questions go through the agent loop; the rest
-    go through the triad + judge. Response shape is ``{route, result}``.
-    """
-    if not engine:
-        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-    try:
-        return await engine.process_auto(query)
-    except Exception as e:
-        logger.error(f"Router error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=_error_envelope("router_error", e))
-
-
-
-class BatchQuery(BaseModel):
-    """Multiple questions in one request."""
-    questions: list[SignalQuery] = Field(..., max_length=5)
-
-
-@app.post("/ask/batch")
-async def ask_ruberra_batch(batch: BatchQuery):
-    """Submit up to 5 questions in batch."""
-    if not engine:
-        raise HTTPException(status_code=503, detail=_engine_unavailable_envelope())
-
-    import asyncio
-    results = await asyncio.gather(
-        *[engine.process_query(q) for q in batch.questions],
-        return_exceptions=True,
-    )
-
-    responses = []
-    for r in results:
-        if isinstance(r, Exception):
-            responses.append(_error_envelope("engine_error", r))
-        else:
-            responses.append(r.model_dump())
-
-    return {"results": responses}
-
-
-# ── Telemetry ───────────────────────────────────────────────────────────────
-
-
-class TelemetryEvent(BaseModel):
-    """Lightweight client-fired telemetry event. Lands in the run log
-    under a dedicated `route` so the Archive ledger can filter without
-    a new store. Wave 6a minimum — the 4 consumer-side events that the
-    backend cannot observe by itself."""
-    event: str = Field(..., min_length=1, max_length=64)
-    mission_id: Optional[str] = Field(None, max_length=128)
-    payload: dict[str, Any] = Field(default_factory=dict)
-
-
-@app.post("/telemetry/event")
-async def telemetry_event(ev: TelemetryEvent):
-    """Wave 6a Tier-1 Addition #3 — client-side event capture.
-
-    Used for events the backend doesn't fire itself: distillation
-    accepted (user clicked accept), surface_seed_consumed (Surface
-    saw the seed and the user kept/edited/ignored), terminal_seed_consumed
-    (same for Terminal), intent_switch_guard_fired (when implemented).
-    """
-    try:
-        await run_store.record(RunRecord(
-            route=f"telemetry:{ev.event}",
-            mission_id=ev.mission_id,
-            question=ev.event,
-            context=None,
-            answer=_json.dumps(ev.payload) if ev.payload else None,
-            processing_time_ms=0,
-            input_tokens=0,
-            output_tokens=0,
-            terminated_early=False,
-            termination_reason=None,
-        ))
-        return {"ok": True}
-    except Exception as e:  # noqa: BLE001
-        logger.warning("telemetry record failed: %s", e)
-        # Telemetry failures must never break the chamber. Return ok=false
-        # so client can log locally if it cares; never surface as an error.
-        return {"ok": False, "reason": str(e)}
-
-
-# ── Memory Endpoints ────────────────────────────────────────────────────────
-
-@app.get("/memory/stats")
-async def memory_stats():
-    """Get failure memory statistics."""
-    stats = await failure_memory.get_stats()
-    return stats
-
-
-@app.get("/memory/failures")
-async def list_failures(limit: int = 20):
-    """List recent failure records."""
-    await failure_memory._ensure_loaded()
-    records = failure_memory._memory.records[-limit:]
-    return {
-        "count": len(records),
-        "records": [r.model_dump() for r in records],
-    }
-
-
-class ClearConfirmation(BaseModel):
-    confirm: bool = Field(..., description="Must be true to clear memory")
-
-
-@app.post("/memory/clear")
-async def clear_memory(confirmation: ClearConfirmation):
-    """Clear all failure memory. Requires explicit confirmation."""
-    if not confirmation.confirm:
-        return {"cleared": False, "message": "Confirmation required (confirm=true)"}
-    
-    async with failure_memory._lock:
-        from models import FailureMemory
-        failure_memory._memory = FailureMemory()
-        await failure_memory._save_to_disk()
-    
-    return {"cleared": True, "message": "Failure memory cleared"}
-
-
-# ── Runs Endpoints ──────────────────────────────────────────────────────────
-
-@app.get("/runs")
-async def list_runs(mission_id: str | None = None, limit: int = 50):
-    """List recent runs, optionally filtered by mission_id."""
-    records = await run_store.list(mission_id=mission_id, limit=limit)
-    return {
-        "count": len(records),
-        "mission_id": mission_id,
-        "records": [r.model_dump() for r in records],
-    }
-
-
-@app.get("/runs/stats")
-async def runs_stats(mission_id: str | None = None):
-    """Aggregate stats, optionally filtered by mission_id."""
-    return await run_store.stats(mission_id=mission_id)
-
-
-@app.get("/runs/{run_id}")
-async def get_run(run_id: str):
-    """Fetch a single run record by id."""
-    record = await run_store.get(run_id)
-    if not record:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": "run_not_found",
-                "reason": "KeyError",
-                "message": f"run {run_id} not found",
-            },
-        )
-    return record.model_dump()
-
-
-# ── Danger zone (Settings page wires) ──────────────────────────────────────
-#
-# Three operator-driven destructive actions that the cápsula can no longer
-# trigger blind. Each endpoint requires {"confirm": true} in the body so a
-# misclick on the Control Center never wipes the operator's history /
-# memory / permission grants. The Settings page double-confirms with a
-# native window.confirm before posting; we don't trust the client.
-
-
-class DangerConfirmation(BaseModel):
-    confirm: bool = False
-    since_hours: int | None = None  # only used by /ledger/clear
-
-
-@app.post("/ledger/clear")
-async def clear_ledger(payload: DangerConfirmation):
-    """Drop runs in the last `since_hours` (default: 24). Requires
-    `confirm: true`. Returns counts so the UI can show a toast."""
-    if not payload.confirm:
-        return {"cleared": False, "message": "Confirmation required (confirm=true)"}
-    hours = payload.since_hours if payload.since_hours is not None else 24
-    result = await run_store.clear_since(hours)
-    return {"cleared": True, "since_hours": hours, **result}
-
-
-@app.post("/memory/forget_all")
-async def forget_all_memory(payload: DangerConfirmation):
-    """Drop every memory record (notes, decisions, canon, preferences,
-    failure_patterns). Failure memory (failure_memory.json) is wiped via
-    the existing /memory/clear endpoint — this one targets the operator-
-    facing memory_records.json store. Snapshots first; sidecar path
-    returned so the operator can recover from a misclick."""
-    if not payload.confirm:
-        return {"forgotten": False, "message": "Confirmation required (confirm=true)"}
-    from memory_records import memory_records_store
-
-    result = await memory_records_store.forget_all()
-    return {"forgotten": True, **result}
-
-
-@app.post("/permissions/revoke_all")
-async def revoke_all_permissions(payload: DangerConfirmation):
-    """Reset the per-domain, per-action and per-tool policy matrices to
-    an empty state. The cápsula will start asking again on next use.
-    Caps and screenshot defaults are preserved (operator UX, not
-    permission grants). Requires `confirm: true`."""
-    if not payload.confirm:
-        return {"revoked": False, "message": "Confirmation required (confirm=true)"}
-    from composer_settings import settings_store
-    from models import ComposerSettings, DomainPolicy, ActionPolicy
-
-    current = await settings_store.get()
-    cleared = ComposerSettings(
-        domains={},
-        actions={},
-        default_domain_policy=DomainPolicy(),
-        default_action_policy=ActionPolicy(),
-        tool_policies={},
-        max_page_text_chars=current.max_page_text_chars,
-        max_dom_skeleton_chars=current.max_dom_skeleton_chars,
-        screenshot_default=current.screenshot_default,
-        execution_reporting_required=current.execution_reporting_required,
-    )
-    await settings_store.replace(cleared)
-    return {"revoked": True}
-
-
-# ── Memory Records (Sprint 7) ──────────────────────────────────────────────
-
-@app.get("/memory/records")
-async def list_memory_records(
-    kind: Optional[str] = None,
-    scope: Optional[str] = None,
-    project_id: Optional[str] = None,
-    search: Optional[str] = None,
-    limit: int = 200,
-):
-    """Sprint 7 — list operator-callable memory entries. Filters compose:
-    pass kind, scope, project_id, search (substring on topic+body) to
-    narrow. Newest first."""
-    from memory_records import memory_records_store
-    records = await memory_records_store.list(
-        kind=kind, scope=scope, project_id=project_id, search=search, limit=limit,
-    )
-    return {
-        "count": len(records),
-        "records": [r.model_dump() for r in records],
-    }
-
-
-@app.post("/memory/records")
-async def create_memory_record(req: MemoryRecordCreate):
-    """Create or merge-by-fingerprint a memory entry. Operator + cápsula
-    + memory_save tool all funnel through here. Pydantic validates the
-    body so malformed payloads get a clean 422 instead of a 500."""
-    from memory_records import memory_records_store
-
-    record = await memory_records_store.record(
-        topic=req.topic,
-        body=req.body,
-        kind=req.kind,
-        scope=req.scope,
-        project_id=req.project_id,
-    )
-    return record.model_dump()
-
-
-@app.delete("/memory/records/{record_id}")
-async def delete_memory_record(record_id: str):
-    from memory_records import memory_records_store
-    deleted = await memory_records_store.delete(record_id)
-    if not deleted:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": "memory_record_not_found",
-                "reason": "KeyError",
-                "message": f"no record with id {record_id}",
-            },
-        )
-    return {"deleted": True, "id": record_id}
-
-
-@app.get("/memory/projects")
-async def list_memory_projects():
-    from memory_records import memory_records_store
-    return {"projects": await memory_records_store.projects()}
-
-
-@app.post("/memory/recover", response_model=MemoryRecoverResponse)
-async def recover_memory(req: MemoryRecoverRequest):
-    """Sprint 7 — context recovery hook. Returns up to N similar prior
-    records for a query, scoped to project_id when supplied. The composer
-    pipeline calls this to inject continuity into model context; ad-hoc
-    operator queries hit it too."""
-    from memory_records import memory_records_store
-
-    matches = await memory_records_store.find_relevant(
-        query=req.query,
-        project_id=req.project_id,
-        max_results=req.max_results,
-    )
-    return MemoryRecoverResponse(
-        matches=matches,
-        query=req.query,
-        project_id=req.project_id,
-    )
-
-
-@app.get("/memory/records/stats")
-async def memory_records_stats():
-    from memory_records import memory_records_store
-    return await memory_records_store.stats()
-
-
-# ── Tool Manifests (Sprint 5) ──────────────────────────────────────────────
-
-@app.get("/tools/manifests")
-async def get_tool_manifests():
-    """Sprint 5 — declarative governance shape for every registered tool.
-    Read by the Control Center to render the permissions matrix. The
-    agent's per-call gate consults ComposerSettings.tool_policies; this
-    endpoint is the read side that lets the operator know what tools
-    exist and their declared risk/mode/scopes.
-
-    Uses the canonical default_tools() bundle rather than the agent's
-    live registry — manifests are static, declared on the class, and
-    independent of which subset the active agent has filtered in.
-    Surfacing them all here lets the operator opt-out of any tool even
-    before the agent boots."""
-    from tools import ToolRegistry
-    return {"tools": ToolRegistry().manifests()}
-
-
-# ── Spine (Workspace) Endpoints ─────────────────────────────────────────────
-
-@app.get("/spine", response_model=SpineSnapshot)
-async def get_spine():
-    """Return the full mission workspace snapshot."""
-    return await spine_store.get()
-
-
-@app.post("/spine", response_model=SpineSnapshot)
-async def put_spine(snapshot: SpineSnapshot):
-    """Replace the full mission workspace snapshot. Full-state sync."""
-    try:
-        return await spine_store.put(snapshot)
-    except OSError as e:
-        # Disk full, permission denied, read-only volume, missing mount…
-        # Never claim the spine was saved when the filesystem said no.
-        logger.error("Spine persist failed: %s", e, exc_info=True)
-        raise HTTPException(
-            status_code=503,
-            detail=_error_envelope("spine_persist_failed", e),
-        )
-
-
-# ── Git Status Endpoint ─────────────────────────────────────────────────────
-#
-# Frontend composer reads repo + branch live instead of relying on
-# build-time env vars (VITE_SIGNAL_REPO / VITE_SIGNAL_BRANCH). The
-# endpoint is a thin wrapper around the same `git --no-pager` invocation
-# the GitTool uses, scoped to TOOL_WORKSPACE_ROOT. Read-only by design:
-# only `rev-parse`, `symbolic-ref`, `status --porcelain`, `rev-list`. No
-# subcommand args from the request body — there is no body. If the
-# workspace is not a git repo (or git is missing), the endpoint returns
-# a populated envelope with `repo: null`, `branch: null`, `error` set.
-# The shell renders that as "REPO unavailable / BRANCH unavailable" —
-# same legacy behaviour, but now driven by reality not a missing env var.
-
-async def _git(args: list[str]) -> tuple[int, str, str]:
-    """Run `git --no-pager <args>` inside TOOL_WORKSPACE_ROOT. Returns
-    (exit_code, stdout, stderr)."""
-    proc = await _asyncio.create_subprocess_exec(
-        "git", "--no-pager", *args,
-        stdout=_asyncio.subprocess.PIPE,
-        stderr=_asyncio.subprocess.PIPE,
-        cwd=str(TOOL_WORKSPACE_ROOT),
-    )
-    out, err = await proc.communicate()
-    return (
-        proc.returncode if proc.returncode is not None else -1,
-        out.decode(errors="replace").strip(),
-        err.decode(errors="replace").strip(),
-    )
-
-
-@app.get("/git/status")
-async def git_status():
-    """Live repo/branch state for the workspace. Read-only."""
-    try:
-        rc, _, _ = await _git(["rev-parse", "--is-inside-work-tree"])
-    except FileNotFoundError as exc:
-        return {
-            "repo": None,
-            "branch": None,
-            "head": None,
-            "dirty": False,
-            "ahead": 0,
-            "behind": 0,
-            "error": "git_not_installed",
-            "message": str(exc),
-        }
-    if rc != 0:
-        return {
-            "repo": None,
-            "branch": None,
-            "head": None,
-            "dirty": False,
-            "ahead": 0,
-            "behind": 0,
-            "error": "not_a_repository",
-            "message": f"workspace at {TOOL_WORKSPACE_ROOT} is not a git work tree",
-        }
-
-    # Repo identifier: prefer remote origin URL → derive owner/name slug;
-    # fall back to the workspace folder name. Branch: symbolic-ref short
-    # form, falling back to "DETACHED@<sha>" when in detached HEAD.
-    _, top, _ = await _git(["rev-parse", "--show-toplevel"])
-    workspace_name = Path(top).name if top else TOOL_WORKSPACE_ROOT.name
-
-    _, origin, _ = await _git(["config", "--get", "remote.origin.url"])
-    repo_label = workspace_name
-    if origin:
-        slug = origin.rstrip("/")
-        if slug.endswith(".git"):
-            slug = slug[:-4]
-        # Normalise SSH (git@host:owner/name) and HTTPS (https://host/owner/name)
-        if "@" in slug and ":" in slug and not slug.startswith("http"):
-            slug = slug.split(":", 1)[1]
-        elif "://" in slug:
-            slug = slug.split("://", 1)[1].split("/", 1)[1] if "/" in slug.split("://", 1)[1] else slug
-        repo_label = slug or workspace_name
-
-    rc_branch, branch, _ = await _git(["symbolic-ref", "--short", "HEAD"])
-    head_sha = ""
-    _, head_sha, _ = await _git(["rev-parse", "--short", "HEAD"])
-    if rc_branch != 0 or not branch:
-        branch = f"DETACHED@{head_sha}" if head_sha else "DETACHED"
-
-    _, porcelain, _ = await _git(["status", "--porcelain"])
-    dirty = bool(porcelain)
-
-    ahead, behind = 0, 0
-    rc_ab, ab, _ = await _git([
-        "rev-list", "--left-right", "--count", "HEAD...@{upstream}",
-    ])
-    if rc_ab == 0 and ab:
-        try:
-            a_str, b_str = ab.split()
-            ahead, behind = int(a_str), int(b_str)
-        except ValueError:
-            ahead, behind = 0, 0
-
-    return {
-        "repo": repo_label,
-        "branch": branch,
-        "head": head_sha or None,
-        "dirty": dirty,
-        "ahead": ahead,
-        "behind": behind,
-        "error": None,
-        "message": None,
-    }
-
-
-# ── Observability + Gateway endpoints (Wave H + I integration) ────────────
-
-
-@app.get("/observability/snapshot")
-async def observability_snapshot():
-    """Per-route p50/p95/error_rate/in_flight rolled from the in-process
-    ring buffer. Live; resets on backend restart."""
-    import observability
-    return observability.snapshot()
-
-
-@app.get("/gateway/summary")
-async def gateway_summary():
-    """Per-model + per-role call counts, token totals, estimated cost.
-    Lives next to /diagnostics so the operator has a single place to
-    audit routing + cost without scraping the run log."""
-    from model_gateway import gateway as _gateway
-    return _gateway.summary()
-
-
-# ── Diagnostic Endpoint ─────────────────────────────────────────────────────
-
-@app.get("/diagnostics")
-async def diagnostics():
-    """Full system diagnostics."""
-    from config import MODEL_ID, TRIAD_TEMPERATURE, JUDGE_TEMPERATURE, TRIAD_COUNT
-
-    mem_stats = await failure_memory.get_stats()
-    # Sprint 8 — surface the Sprint 4/7 stores' load + save error state
-    # so operators can see at a glance whether a deploy lost durability.
-    from composer_settings import settings_store
-    from memory_records import memory_records_store
-    memory_records_stats = await memory_records_store.stats()
-
-    # Honest boot signal: how the process was configured, not how the
-    # operator intended it. Mock-mode and missing API key are the two
-    # most common reasons the deployed brain silently returns canned
-    # answers — both are surfaced here without exposing the key itself.
-    boot = {
-        "start_iso": _PROCESS_START_ISO,
-        "uptime_seconds": int(time.monotonic() - _PROCESS_START_MONO),
-        "mode": "mock" if GAUNTLET_MOCK else "real",
-        "anthropic_api_key_present": bool(ANTHROPIC_API_KEY),
-        "groq_api_key_present": bool(GROQ_API_KEY),
-        "gemini_api_key_present": bool(GEMINI_API_KEY),
-        "active_provider": (
-            "mock" if GAUNTLET_MOCK
-            else "anthropic" if ANTHROPIC_API_KEY
-            else "groq" if GROQ_API_KEY
-            else "gemini" if GEMINI_API_KEY
-            else "none"
-        ),
-        "groq_model": (
-            GROQ_MODEL if GROQ_API_KEY and not ANTHROPIC_API_KEY else None
-        ),
-        "gemini_model": (
-            GEMINI_MODEL
-            if GEMINI_API_KEY and not ANTHROPIC_API_KEY and not GROQ_API_KEY
-            else None
-        ),
-        "data_dir": str(MEMORY_DIR),
-        "persistence_ephemeral": PERSISTENCE_EPHEMERAL,
-        "allowed_origins": ALLOWED_ORIGINS,
-        "allowed_origin_regex": ALLOWED_ORIGIN_REGEX,
-        "host": SERVER_HOST,
-        "port": SERVER_PORT,
-    }
-
-    # Wave P-31 — visibility on which security layers are ACTIVE on this
-    # process. Operators auditing a deploy need a single place to see
-    # whether the auth gate is on, whether HSTS is being stamped, etc.
-    # We never reveal the API key value — only the boolean.
-    security = {
-        "auth_required": bool(GAUNTLET_API_KEY),
-        "rate_limit_enabled": not RATE_LIMIT_DISABLED,
-        "trust_proxy": TRUST_PROXY,
-        "hsts": SECURITY_HSTS,
-        "frame_options": FRAME_OPTIONS,
-        "csp_overridden": bool(SECURITY_CSP),
-        "body_size_limit_bytes": BODY_SIZE_LIMIT_BYTES,
-        "log_redaction": LOG_REDACT,
-    }
-
-    return {
-        "system": "Gauntlet",
-        "model": MODEL_ID,
-        "triad_temperature": TRIAD_TEMPERATURE,
-        "judge_temperature": JUDGE_TEMPERATURE,
-        "triad_count": TRIAD_COUNT,
-        "engine_status": "ready" if engine else "not_initialized",
-        "boot": boot,
-        "security": security,
-        "failure_memory": mem_stats,
-        "persistence": {
-            "spine_last_save_error": spine_store._last_save_error,
-            "spine_last_load_error": spine_store._last_load_error,
-            "runs_last_save_error": run_store._last_save_error,
-            "runs_last_load_error": run_store._last_load_error,
-            "memory_last_save_error": failure_memory._last_save_error,
-            "memory_last_load_error": failure_memory._last_load_error,
-            "composer_settings_last_save_error": settings_store.last_save_error,
-            "composer_settings_last_load_error": settings_store.last_load_error,
-            "memory_records_last_save_error": memory_records_store._last_save_error,
-            "memory_records_last_load_error": memory_records_store._last_load_error,
-        },
-        "memory_records": memory_records_stats,
-        "doctrine": "Conservative Intelligence — prefer refusal over error",
-    }
+# Domain routers — moved out of this module in the Wave 3 server split.
+app.include_router(health_router)
+app.include_router(ask_router)
+app.include_router(agent_router)
+app.include_router(runs_router)
+app.include_router(memory_router)
+app.include_router(spine_router)
+app.include_router(tools_router)
+app.include_router(git_router)
+app.include_router(permissions_router)
+app.include_router(observability_router)

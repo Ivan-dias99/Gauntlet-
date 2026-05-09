@@ -7,6 +7,21 @@ project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Removed (Postgres dual-write · 2026-05-08)
+- **Dropped the entire Postgres cutover scaffold.** `backend/db.py`,
+  `backend/migrate.py`, `backend/parity_check.py`, `backend/migrations/`
+  (schema + README) deleted. `spine.py` cleaned of the dual-write
+  worker + read cutover. `backup.py` no longer shells out to `pg_dump`
+  — JSON-only backup. `requirements.txt` drops `asyncpg`. `config.py`
+  drops `DATABASE_URL`, `DUAL_WRITE_PG`, `PG_CANONICAL`. Operations doc
+  updated.
+- Rationale: nobody read from PG in production, the dual-write made
+  the stores harder to reason about, and the parity-check infra was
+  dead weight. JSON-on-disk is now the canonical (and only) source of
+  truth for runs / spine / failure memory. Re-introduce when load
+  actually justifies it, with a clean design under a single feature
+  flag — not as speculative dual-write left to rot.
+
 ### Changed (consolidação canónica · 2026-05-08)
 - **Identifiers Python alinhados com a doutrina GAUNTLET_*.**
   `RUBERRA_MOCK` (declaração + 12 usos em config/engine/agent/server)

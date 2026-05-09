@@ -47,9 +47,17 @@ def _fresh_client(env: dict[str, str]):
     os.environ.update(env)
 
     # Drop cached modules so middleware constructors re-run.
+    # Routers + runtime are also dropped because they bind store
+    # singletons + the engine accessor at import time — keeping them
+    # cached would split state across the freshly-imported server.
     for mod in (
         "config", "server",
         "auth", "rate_limit", "security_headers", "log_redaction",
+        "runtime", "routers",
+        "routers.health", "routers.ask", "routers.agent",
+        "routers.runs", "routers.memory", "routers.spine",
+        "routers.tools", "routers.git", "routers.permissions",
+        "routers.observability",
     ):
         sys.modules.pop(mod, None)
 

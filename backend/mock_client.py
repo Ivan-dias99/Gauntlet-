@@ -1,13 +1,14 @@
 """
 Gauntlet — Mock Anthropic Client
 Zero-network stand-in for ``AsyncAnthropic`` used when
-``SIGNAL_MOCK=1``. Emits deterministic canned responses so the full
-pipeline (triad → judge, agent loop) can be exercised end-to-end without
-an API key.
+``GAUNTLET_MOCK=1`` (legacy ``SIGNAL_MOCK=1`` still honoured as fallback,
+will be removed in v1.1.0). Emits deterministic canned responses so the
+full pipeline (triad → judge, agent loop) can be exercised end-to-end
+without an API key.
 
 Detection rules:
   * ``tools`` present  →  agent loop → single text block, no tool calls
-  * system starts with ``"You are the Signal Judge"``  →  JSON verdict
+  * system starts with ``"You are the Gauntlet Judge"``  →  JSON verdict
   * otherwise  →  triad call → identical canned answer (HIGH consensus)
 """
 
@@ -105,11 +106,11 @@ class _MockMessages:
                 content=[_Block(type="text", text=json.dumps(MOCK_CRITIC_VERDICT))],
             )
         # Crew: execution roles (with tools) — detect by system prompt
-        if tools and head.startswith("You are the Signal Researcher"):
+        if tools and head.startswith("You are the Gauntlet Researcher"):
             return _Response(
                 content=[_Block(type="text", text=MOCK_RESEARCHER_ANSWER)],
             )
-        if tools and head.startswith("You are the Signal Coder"):
+        if tools and head.startswith("You are the Gauntlet Coder"):
             return _Response(
                 content=[_Block(type="text", text=MOCK_CODER_ANSWER)],
             )
@@ -119,7 +120,7 @@ class _MockMessages:
                 content=[_Block(type="text", text=MOCK_AGENT_ANSWER)],
             )
         # Judge path
-        if head.startswith("You are the Signal Judge"):
+        if head.startswith("You are the Gauntlet Judge"):
             verdict = json.dumps({
                 "confidence": "high",
                 "should_refuse": False,
