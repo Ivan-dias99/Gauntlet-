@@ -183,14 +183,38 @@ class Engine:
         model_id = choice.model_id
 
         # Wave P-7 — fallback chain. When the primary fails with a
-        # recoverable Anthropic error (rate limit, capacity, network
-        # blip), retry once with the next model in ROUTING. Each
-        # GatewayCall recorded carries fallback_from so /gateway/summary
-        # shows when failover kicked in.
+        # recoverable error (rate limit, capacity, network blip),
+        # retry once with the next model in ROUTING. Each GatewayCall
+        # recorded carries fallback_from so /gateway/summary shows when
+        # failover kicked in.
+        #
+        # The recoverable set mixes isinstance and class-name matching
+        # because the engine works across providers whose SDKs don't
+        # share a common base class:
+        #   * anthropic: RateLimitError, APIConnectionError, …
+        #   * groq:      groq.RateLimitError, groq.APIError, …
+        #   * gemini:    google.api_core.exceptions.ResourceExhausted,
+        #                DeadlineExceeded, ServiceUnavailable, …
+        # Matching only on Anthropic types meant a Groq 429 was treated
+        # as terminal and skipped the failover — the operator most needs
+        # it on the primary path. The class-name fallback is exact-match
+        # (not substring) so unrelated exceptions still bubble as
+        # terminal.
         from anthropic import (
             RateLimitError, APIConnectionError, APITimeoutError, InternalServerError,
         )
-        recoverable = (RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)
+        recoverable_types = (RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)
+        recoverable_names = frozenset({
+            "RateLimitError", "APIConnectionError", "APITimeoutError",
+            "InternalServerError", "APIError", "APIStatusError",
+            "ResourceExhausted", "DeadlineExceeded", "ServiceUnavailable",
+            "TooManyRequests", "ConnectionError", "ReadTimeout",
+        })
+
+        def _is_recoverable(exc: BaseException) -> bool:
+            if isinstance(exc, recoverable_types):
+                return True
+            return type(exc).__name__ in recoverable_names
 
         async def _attempt(_choice, _model_id, _from: str | None):
             import time as _t
@@ -241,7 +265,7 @@ class Engine:
                     succeeded=False, error_kind=type(exc).__name__,
                 )
                 _obs_finalized = True
-                return None, exc, isinstance(exc, recoverable)
+                return None, exc, _is_recoverable(exc)
             finally:
                 if not _obs_finalized:
                     observability.end(
