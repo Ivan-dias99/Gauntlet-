@@ -348,7 +348,11 @@ export function Capsule({
     snapshot,
     userInput,
     onSaved: flashSaved,
-    onError: setError,
+    // Wrap setError so the hook's narrow `(message: string) => void`
+    // contract isn't fed a Dispatch<SetStateAction<string | null>>
+    // directly — strict TS checks the parameter shapes and rejects
+    // the broader signature in some workspace tsconfigs.
+    onError: (msg: string) => setError(msg),
   });
 
   // Sprint 3 — execution contract. Fire-and-forget reporting after
