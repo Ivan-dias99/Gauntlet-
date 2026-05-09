@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 // scripts/check-voice.mjs
 //
-// Voice ban-list lint. Greps banned tokens in control-center/ and reports every hit
-// with file · line · matched fragment. Exits 1 on any hit so CI fails
-// before broken voice reaches main. Honours the doctrine in docs/VOICE.md.
+// Voice ban-list lint. Greps banned tokens across every operator-facing
+// surface (control-center, composer package, browser-extension and
+// desktop shells) and reports every hit with file · line · matched
+// fragment. Exits 1 on any hit so CI fails before broken voice reaches
+// main. Honours the doctrine in docs/VOICE.md.
+//
+// Scope rationale: the cápsula is the first thing the operator sees;
+// linting only control-center while letting the composer package +
+// shells slip would let banned tokens land in the Composer's UI strings
+// without anyone noticing.
 //
 // Run: node scripts/check-voice.mjs   (or  npm run check:voice)
 //
@@ -59,7 +66,14 @@ const SKIP_PATHS = new Set([
   join("docs", "VOICE.md"),
 ]);
 
-const SCAN_ROOTS = ["control-center"];
+const SCAN_ROOTS = [
+  "control-center",
+  "packages/composer/src",
+  "apps/browser-extension/components",
+  "apps/browser-extension/entrypoints",
+  "apps/browser-extension/lib",
+  "apps/desktop/src",
+];
 
 async function* walk(dir) {
   let entries;
@@ -131,7 +145,7 @@ async function main() {
   }
 
   if (allHits.length === 0) {
-    console.log("voice: clean (zero banned tokens in control-center/)");
+    console.log(`voice: clean (zero banned tokens across ${SCAN_ROOTS.length} roots)`);
     process.exit(0);
   }
 
