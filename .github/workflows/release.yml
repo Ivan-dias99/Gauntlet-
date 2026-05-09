@@ -16,11 +16,11 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-22.04
-            tauri-target: ""
+            args: ""
           - platform: windows-latest
-            tauri-target: ""
+            args: ""
           - platform: macos-latest
-            tauri-target: "universal-apple-darwin"
+            args: "--target universal-apple-darwin"
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -69,8 +69,16 @@ jobs:
 
       - run: npm ci
 
-      - name: tauri build
+      # tauri-action does the build + bundle + sign + upload + latest.json
+      # in one step. `includeUpdaterJson: true` is the critical flag —
+      # without it `tauri build` writes only `.sig` files; the manifest
+      # the updater plugin reads at https://.../releases/latest/download/
+      # latest.json is not produced. Each matrix leg uploads its slice of
+      # the manifest and the action merges them on the GitHub release so
+      # the final `latest.json` exposes all platforms.
+      - uses: tauri-apps/tauri-action@v0
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           # Composer's build throws if VITE_GAUNTLET_BACKEND_URL is
@@ -78,32 +86,15 @@ jobs:
           # without a code edit; falls back to the current Railway
           # host if the secret is missing (legacy compat).
           VITE_GAUNTLET_BACKEND_URL: ${{ secrets.GAUNTLET_BACKEND_URL || 'https://ruberra-backend-jkpf-production.up.railway.app' }}
-        working-directory: apps/desktop
-        run: |
-          if [ -n "${{ matrix.tauri-target }}" ]; then
-            npm run tauri:build -- --target ${{ matrix.tauri-target }}
-          else
-            npm run tauri:build
-          fi
-        shell: bash
-
-      - name: upload installers
-        uses: softprops/action-gh-release@v2
         with:
-          # Path uses `target/**/release/bundle/**` rather than
-          # `target/release/bundle/**` so the macOS universal build
-          # (which writes to target/universal-apple-darwin/release/bundle/...)
-          # is included alongside the default-target Linux + Windows
-          # outputs. Without the extra `**` the .dmg + latest.json + .sig
-          # for macOS were silently dropped from the GitHub release.
-          files: |
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.msi
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.exe
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.dmg
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.AppImage
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.deb
-            apps/desktop/src-tauri/target/**/release/bundle/**/latest.json
-            apps/desktop/src-tauri/target/**/release/bundle/**/*.sig
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: "Gauntlet ${{ github.ref_name }}"
+          releaseBody: "See CHANGELOG.md for release notes. Auto-update via tauri-plugin-updater."
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+          includeUpdaterJson: true
 
   extension:
     name: browser-extension

@@ -185,6 +185,37 @@ project follows [Semantic Versioning](https://semver.org).
 - CI matrix gained `desktop-smoke` (cargo test) + `pytest -q` for the
   backend.
 
+## [1.0.1] — 2026-05-09
+
+Hotfix that closes the auto-update loop and lands the desktop pill on
+the cursor.
+
+### Fixed
+- **Auto-update was effectively broken in 1.0.0.** `release.yml` was
+  uploading a `**/latest.json` glob, but `tauri build` does not generate
+  that manifest — only the `.sig` companions. The updater endpoint
+  configured in `tauri.conf.json`
+  (`releases/latest/download/latest.json`) therefore 404'd and every
+  1.0.0 install had no upgrade path. The desktop matrix job now uses
+  `tauri-apps/tauri-action@v0` with `includeUpdaterJson: true`, which
+  builds + signs + uploads + emits the manifest with per-platform
+  signatures and URLs, merging matrix legs into a single release asset.
+
+### Added
+- **Pill follows the cursor on desktop** (`apps/desktop/src-tauri/`).
+  A `tauri::async_runtime` ticker repositions the pill window to track
+  the OS cursor at ~30Hz while the pill is visible and the cápsula is
+  hidden; sleeps 500ms when idle so CPU stays near zero. Honours the
+  doctrine "ponta do cursor" — the pill is no longer pinned to a
+  corner. Two new Tauri commands expose the behaviour to the JS
+  bridge: `set_pill_follow_cursor(enabled)` and
+  `get_pill_follow_cursor()`. Default: on.
+
+### Changed
+- Version bumped to `1.0.1` across the workspace: root `package.json`,
+  `@gauntlet/composer`, `@gauntlet/browser-extension`, `@gauntlet/desktop`,
+  `tauri.conf.json`, and the `gauntlet-desktop` crate.
+
 ## [1.0.0-rc.1] — 2026-05-07
 
 First release candidate. The cápsula now matches the doctrine 1:1 across
