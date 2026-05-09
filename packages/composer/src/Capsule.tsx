@@ -105,14 +105,7 @@ export function Capsule({
   // cleanup. We only need `cancel()` here for the submit path that
   // pre-empts an in-flight utterance.
   // Wired below once `phase` and `plan` are declared.
-  // Multimodal: when the user opted in (via SettingsDrawer), capture
-  // a viewport screenshot once per cápsula mount. Hook owns the state
-  // + effect; we only consume the value here (passed to the streaming
-  // hook + read for the screenshotEnabled prop on LeftPanel). Pref
-  // source order + capability gating live in useCapsuleScreenshot.
-  // Wired below once `settings` is declared (the operator-side default
-  // comes from there; passing a primitive boolean keeps the effect
-  // dep narrow).
+  // Multimodal screenshot bootstrap — see useCapsuleScreenshot.
   // Computer-use consent gate — hook owns the queue state + executor;
   // capsule just renders its props. Doctrine: gate is the single shape
   // that survives a future MCP migration; adapter primitives never run
@@ -157,6 +150,13 @@ export function Capsule({
   const [settings, setSettings] = useState<ComposerSettings>(
     DEFAULT_COMPOSER_SETTINGS,
   );
+  // Declared before useStreamingPlan — that hook attaches `screenshot`
+  // to the request payload. Hook owns the capture effect.
+  const screenshot = useCapsuleScreenshot({
+    ambient,
+    prefs,
+    screenshotDefault: settings.screenshot_default,
+  });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // Refining pass — tick counter for streaming sit inside useStreamingPlan
   // alongside the rest of the request lifecycle (phase, plan, partialCompose,
@@ -252,9 +252,15 @@ export function Capsule({
         // Manifests endpoint unreachable — keep palette working with
         // built-in actions only.
       });
-    void prefs.readPaletteRecent().then((recent) => {
-      if (!cancelled) setPaletteRecent(recent);
-    });
+    void prefs
+      .readPaletteRecent()
+      .then((recent) => {
+        if (!cancelled) setPaletteRecent(recent);
+      })
+      .catch(() => {
+        // Storage corrupted / blocked — palette still renders, just
+        // without the recent-first ordering.
+      });
     return () => {
       cancelled = true;
     };
@@ -265,9 +271,14 @@ export function Capsule({
   // so there's no flash for the most common path.
   useEffect(() => {
     let cancelled = false;
-    void prefs.readTheme().then((t) => {
-      if (!cancelled) setTheme(t);
-    });
+    void prefs
+      .readTheme()
+      .then((t) => {
+        if (!cancelled) setTheme(t);
+      })
+      .catch(() => {
+        // Storage failure — stay on the default light theme.
+      });
     return () => {
       cancelled = true;
     };
@@ -293,11 +304,6 @@ export function Capsule({
     };
   }, [client]);
 
-  const screenshot = useCapsuleScreenshot({
-    ambient,
-    prefs,
-    screenshotDefault: settings.screenshot_default,
-  });
 
   const refreshSnapshot = useCallback(() => {
     setSnapshot(ambient.selection.read());

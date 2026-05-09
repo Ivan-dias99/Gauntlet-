@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { readWithLegacyMigration } from "../lib/migrateLocalStorage";
 
 export type Theme = "dark" | "light" | "sepia";
 export type Mono = "jetbrains" | "ibm";
@@ -108,25 +109,7 @@ const LEGACY_STORAGE_KEYS = ["signal:tweaks", "ruberra:tweaks"] as const;
 
 function load(): Tweaks {
   try {
-    let raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      for (const key of LEGACY_STORAGE_KEYS) {
-        const legacy = localStorage.getItem(key);
-        if (legacy) {
-          raw = legacy;
-          // Migrate forward — write under the canonical key and drop the
-          // legacy ones so the next boot does not touch them again.
-          try {
-            localStorage.setItem(STORAGE_KEY, legacy);
-            for (const k of LEGACY_STORAGE_KEYS) localStorage.removeItem(k);
-          } catch {
-            // Migration write failed (quota, private mode). Fine — we
-            // still loaded the legacy value, just keeps reading it next time.
-          }
-          break;
-        }
-      }
-    }
+    const raw = readWithLegacyMigration(STORAGE_KEY, LEGACY_STORAGE_KEYS);
     if (!raw) return DEFAULTS;
     const parsed = JSON.parse(raw) as Partial<Omit<Tweaks, "density">> & { density?: string };
     // Wave P-37 — migrate legacy density vocabulary (compact/comfortable/

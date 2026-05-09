@@ -48,14 +48,26 @@ export function App() {
     // Mirror the persisted theme onto html/body so the Tauri window
     // honours the operator's choice on first paint instead of flashing
     // whatever default the OS gives us.
-    void ambient.storage.get<string>("gauntlet:theme").then((t) => {
-      const theme = t === "dark" || t === "light" ? t : "light";
-      document.documentElement.setAttribute("data-theme", theme);
-      document.body.setAttribute("data-theme", theme);
-    });
-    void prefs.readOnboardingDone().then((done) => {
-      if (!done) setShowOnboarding(true);
-    });
+    void ambient.storage
+      .get<string>("gauntlet:theme")
+      .then((t) => {
+        const theme = t === "dark" || t === "light" ? t : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+        document.body.setAttribute("data-theme", theme);
+      })
+      .catch(() => {
+        // Storage unreachable — stay on the default theme attribute
+        // already set by the index.html's pre-React script.
+      });
+    void prefs
+      .readOnboardingDone()
+      .then((done) => {
+        if (!done) setShowOnboarding(true);
+      })
+      .catch(() => {
+        // First-run guard fails closed — skip onboarding rather than
+        // re-showing it on every load when the storage is broken.
+      });
   }, [ambient, prefs]);
 
   const dismissOnboarding = useCallback(() => {
@@ -71,9 +83,15 @@ export function App() {
     let unbind: (() => Promise<void>) | null = null;
     void bindGlobalShortcut(DEFAULT_DESKTOP_SHORTCUT, () => {
       void toggleCapsuleWindow();
-    }).then((u) => {
-      unbind = u;
-    });
+    })
+      .then((u) => {
+        unbind = u;
+      })
+      .catch(() => {
+        // Shortcut bind already swallows internally; this catch is
+        // belt-and-suspenders so a hot-reload scenario where the
+        // returned promise rejects doesn't crash React's effect.
+      });
     return () => {
       if (unbind) void unbind();
     };

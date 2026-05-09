@@ -14,7 +14,6 @@
 import { useEffect, useState } from 'react';
 import { type Ambient } from './ambient';
 import { type PillPrefs } from './pill-prefs';
-import { type ComposerSettings } from './types';
 
 export interface UseCapsuleScreenshotArgs {
   ambient: Ambient;
@@ -39,26 +38,32 @@ export function useCapsuleScreenshot({
     // screenshot adapter must be present.
     if (!ambient.capabilities.screenshot || !ambient.screenshot) return;
     let cancelled = false;
-    void prefs.readScreenshotEnabled().then((enabledLocal) => {
-      // The local pref defaults to false in pill-prefs. If the
-      // operator-side default is true, we honor it as the boot value
-      // unless the user already toggled it locally. To avoid a third
-      // tri-state pref we treat "local was never set" the same as
-      // "local is false" — operator default only applies when local is
-      // false. That biases toward minimal screenshot capture (privacy
-      // wins on draws).
-      const enabled = enabledLocal || screenshotDefault;
-      if (cancelled || !enabled) return;
-      void ambient
-        .screenshot!.capture()
-        .then((dataUrl) => {
-          if (cancelled || !dataUrl) return;
-          setScreenshot(dataUrl);
-        })
-        .catch(() => {
-          // Silent — screenshot is opt-in and best-effort.
-        });
-    });
+    void prefs
+      .readScreenshotEnabled()
+      .then((enabledLocal) => {
+        // The local pref defaults to false in pill-prefs. If the
+        // operator-side default is true, we honor it as the boot value
+        // unless the user already toggled it locally. To avoid a third
+        // tri-state pref we treat "local was never set" the same as
+        // "local is false" — operator default only applies when local
+        // is false. That biases toward minimal screenshot capture
+        // (privacy wins on draws).
+        const enabled = enabledLocal || screenshotDefault;
+        if (cancelled || !enabled) return;
+        void ambient
+          .screenshot!.capture()
+          .then((dataUrl) => {
+            if (cancelled || !dataUrl) return;
+            setScreenshot(dataUrl);
+          })
+          .catch(() => {
+            // Silent — screenshot is opt-in and best-effort.
+          });
+      })
+      .catch(() => {
+        // Pref read failed (storage unavailable / corrupted) — stay
+        // off so privacy wins on draws.
+      });
     return () => {
       cancelled = true;
     };

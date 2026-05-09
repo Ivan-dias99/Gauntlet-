@@ -59,11 +59,11 @@ interface SummonDiagnostics {
 let lastSummonDiagnostics: SummonDiagnostics | null = null;
 
 function recordSummon(d: SummonDiagnostics): void {
+  // Stored only — extracted via the diagnostics message channel below.
+  // The previous `console.info` ran on every summon, which is service-
+  // worker DevTools spam in production; the in-memory record is what
+  // /diagnostics actually consults.
   lastSummonDiagnostics = d;
-  // Console-visible to anyone with the service-worker devtools open.
-  // No PII beyond the page URL — that's already in the operator's tab.
-  // eslint-disable-next-line no-console
-  console.info('[gauntlet] summon', d);
 }
 
 interface FetchProxyRequest {
