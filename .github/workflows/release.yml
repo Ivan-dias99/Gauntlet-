@@ -55,6 +55,14 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      # macOS universal binary needs both architectures explicitly —
+      # the runner only ships aarch64-apple-darwin by default, so the
+      # x86_64 half has to be added or `tauri build --target
+      # universal-apple-darwin` aborts. Other matrix legs ignore this.
+      - name: install macos targets
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri

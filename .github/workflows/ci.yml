@@ -16,6 +16,16 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+
+      # Desktop tsconfig is stricter than the root (noUnusedLocals,
+      # noUnusedParameters) and includes the composer source under its
+      # `include`. The release.yml `tauri:build` runs this exact check
+      # via `apps/desktop/package.json`'s build script — running it
+      # here catches drift before a release tag.
+      - name: desktop typecheck
+        working-directory: apps/desktop
+        run: npx tsc --noEmit
+
       - env:
           # Composer's build throws when this is unset in a production
           # build. CI is not a real release — point it at the current

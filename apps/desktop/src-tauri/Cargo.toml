@@ -1,6 +1,6 @@
 [package]
 name = "gauntlet-desktop"
-version = "1.0.0-rc.1"
+version = "1.0.0"
 description = "Gauntlet — desktop cursor capsule (Tauri 2)."
 authors = ["Gauntlet"]
 edition = "2021"

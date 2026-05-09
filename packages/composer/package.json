@@ -1,7 +1,7 @@
 {
   "name": "@gauntlet/composer",
   "private": true,
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0",
   "description": "Gauntlet — single Composer (cápsula + pill + client + utilities) shared across the browser-extension and desktop runtime shells.",
   "type": "module",
   "main": "./src/index.ts",
