@@ -1,7 +1,7 @@
 anthropic>=0.100.0
 fastapi>=0.136.1
 uvicorn[standard]>=0.46.0
-pydantic>=2.10.0
+pydantic>=2.13.4
 httpx>=0.28.1
 # Visual diff legacy / file uploads on multipart endpoints.
 Pillow>=12.2.0
