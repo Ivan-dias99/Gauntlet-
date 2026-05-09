@@ -128,6 +128,53 @@ describe('<ComputerUseGate />', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onReject).toHaveBeenCalled();
   });
+
+  it('renders the error banner alone when lastError is set and pending is null', () => {
+    render(
+      <ComputerUseGate
+        pending={null}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        lastError="Wayland sessions do not support synthetic input"
+      />,
+    );
+    // Both the surrounding gate root and the banner inside render so
+    // the operator sees the Wayland diagnosis without a queued action.
+    expect(screen.getByText(/falha no computer-use/i)).toBeTruthy();
+    expect(screen.getByText(/Wayland sessions/)).toBeTruthy();
+  });
+
+  it('dismiss button calls onDismissError', () => {
+    const onDismissError = vi.fn();
+    render(
+      <ComputerUseGate
+        pending={null}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        lastError="boom"
+        onDismissError={onDismissError}
+      />,
+    );
+    fireEvent.click(screen.getByText(/fechar/i));
+    expect(onDismissError).toHaveBeenCalled();
+  });
+
+  it('Esc dismisses lastError when there is no pending action', () => {
+    const onDismissError = vi.fn();
+    const onReject = vi.fn();
+    render(
+      <ComputerUseGate
+        pending={null}
+        onApprove={vi.fn()}
+        onReject={onReject}
+        lastError="boom"
+        onDismissError={onDismissError}
+      />,
+    );
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onDismissError).toHaveBeenCalled();
+    expect(onReject).not.toHaveBeenCalled();
+  });
 });
 
 describe('useComputerUseGate', () => {
@@ -186,5 +233,61 @@ describe('useComputerUseGate', () => {
       });
     });
     expect(result.current.gateProps.pending).toBeNull();
+  });
+
+  it('approve sets lastError on adapter throw and clears pending', async () => {
+    const adapter: AmbientComputerUse = {
+      moveCursor: vi.fn().mockRejectedValue(
+        new Error('Wayland not supported'),
+      ),
+      click: vi.fn().mockResolvedValue(undefined),
+      typeText: vi.fn().mockResolvedValue(undefined),
+      pressKey: vi.fn().mockResolvedValue(undefined),
+    };
+    const { result } = renderHook(() => useComputerUseGate(adapter));
+
+    act(() => {
+      result.current.enqueue({ kind: 'move', x: 1, y: 1 });
+    });
+    await act(async () => {
+      await result.current.gateProps.onApprove({
+        kind: 'move',
+        x: 1,
+        y: 1,
+      });
+    });
+    expect(result.current.gateProps.pending).toBeNull();
+    expect(result.current.gateProps.lastError).toBe('Wayland not supported');
+  });
+
+  it('enqueue clears stale lastError so a new attempt starts clean', async () => {
+    const adapter: AmbientComputerUse = {
+      moveCursor: vi.fn().mockRejectedValue(new Error('boom')),
+      click: vi.fn().mockResolvedValue(undefined),
+      typeText: vi.fn().mockResolvedValue(undefined),
+      pressKey: vi.fn().mockResolvedValue(undefined),
+    };
+    const { result } = renderHook(() => useComputerUseGate(adapter));
+
+    // First attempt fails — lastError populated.
+    act(() => {
+      result.current.enqueue({ kind: 'move', x: 1, y: 1 });
+    });
+    await act(async () => {
+      await result.current.gateProps.onApprove({
+        kind: 'move',
+        x: 1,
+        y: 1,
+      });
+    });
+    expect(result.current.gateProps.lastError).toBe('boom');
+
+    // Second enqueue clears the banner before the operator decides
+    // again — a stale "boom" banner haunting the next gate would be
+    // confusing.
+    act(() => {
+      result.current.enqueue({ kind: 'click', button: 'left' });
+    });
+    expect(result.current.gateProps.lastError).toBeNull();
   });
 });

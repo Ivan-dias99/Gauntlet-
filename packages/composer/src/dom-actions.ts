@@ -6,6 +6,8 @@
 // `type`). Keep the two in sync — adding a new action means touching
 // both.
 
+import { type ComputerUseAction } from './ComputerUseGate';
+
 const ANCHOR_OUTLINE = '2px solid #d07a5a';
 const ANCHOR_OUTLINE_OFFSET = '2px';
 const FORBIDDEN_PREFIX = '#gauntlet-capsule-host';
@@ -21,7 +23,17 @@ export type DomAction =
   // happened. Wire shape mirrors backend/models.py.
   | { type: 'shell.run'; cmd: string; args?: string[]; cwd?: string }
   | { type: 'fs.read'; path: string }
-  | { type: 'fs.write'; path: string; content: string };
+  | { type: 'fs.write'; path: string; content: string }
+  // Phase 3 MVP — computer_use action, desktop-only. Each entry maps
+  // to a single primitive (move / click / type / press); the cápsula's
+  // `useComputerUseGate.enqueue` queues it for operator approval before
+  // any synthetic input reaches the OS. The inner `action` shape matches
+  // backend `_ComputerUseInner` and `ComputerUseAction` (the JS one)
+  // 1:1 — same kind discriminator, same per-kind fields. Browser-shell
+  // ambients have no `computerUse` adapter, so the dispatcher will
+  // route through the consent gate but the executor will surface a
+  // typed unsupported result.
+  | { type: 'computer_use'; action: ComputerUseAction };
 
 export interface DomActionResult {
   action: DomAction;
@@ -141,6 +153,18 @@ export function assessDanger(action: DomAction): DangerAssessment {
       reason: `grava em ${action.path} — sobrescreve o conteúdo existente`,
     };
   }
+  // Computer-use actions are *always* dangerous by doctrine — the
+  // ComputerUseGate is the single shape that gates them and assesses
+  // danger here is informational. The dispatcher routes through the
+  // gate regardless of this verdict; surfacing it true keeps the
+  // danger banner consistent with the actual UX (operator confirmation
+  // is mandatory before the OS event fires).
+  if (action.type === 'computer_use') {
+    return {
+      danger: true,
+      reason: `actua o rato/teclado do operador (${action.action.kind}) — gated pela cápsula`,
+    };
+  }
 
   const sel = action.selector;
   for (const re of DANGER_SELECTOR_PATTERNS) {
@@ -212,7 +236,12 @@ export function isDomAction(action: DomAction): action is DomAction & {
 
 export function isAmbientAction(action: DomAction): boolean {
   const t = action.type;
-  return t === 'shell.run' || t === 'fs.read' || t === 'fs.write';
+  return (
+    t === 'shell.run' ||
+    t === 'fs.read' ||
+    t === 'fs.write' ||
+    t === 'computer_use'
+  );
 }
 
 export async function executeDomActions(
