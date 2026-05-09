@@ -4,7 +4,7 @@ uvicorn[standard]>=0.34.0
 pydantic>=2.10.0
 httpx>=0.27.0
 # Visual diff legacy / file uploads on multipart endpoints.
-Pillow>=10.0.0
+Pillow>=12.2.0
 python-multipart>=0.0.9
 # Gemini provider — used as a free-tier fallback when ANTHROPIC_API_KEY
 # is unset and GEMINI_API_KEY is provided. The wrapper in
