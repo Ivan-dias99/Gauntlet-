@@ -23,17 +23,33 @@ import time
 import pytest
 
 
-def _fresh_client(env: dict[str, str]):
+def _fresh_client(env: dict[str, str], *, leave_auth_unconfigured: bool = False):
     """Build a TestClient with the requested env in place. We reload
-    config + server so middlewares pick up the new env values."""
+    config + server so middlewares pick up the new env values.
+
+    v1 polish — auth is fail-CLOSED in production. Tests that don't
+    explicitly drive the auth layer (rate-limit, headers, body-cap)
+    default to GAUNTLET_AUTH_DISABLED=1 so they still hit gated
+    routes without 503'ing. Auth-specific tests either pass
+    GAUNTLET_API_KEY (real auth on) or set GAUNTLET_AUTH_DISABLED=1.
+    The single test that exercises the misconfigured-default path
+    (key empty AND disable flag empty) passes
+    ``leave_auth_unconfigured=True``."""
     # Mock mode = no Anthropic key needed for boot.
     env.setdefault("GAUNTLET_MOCK", "1")
     # Default tests off the rate limiter unless the test asks for it.
     env.setdefault("GAUNTLET_RATE_LIMIT_DISABLED", "1")
     env.setdefault("GAUNTLET_LOG_REDACT", "0")  # don't pollute pytest captures
+    if (
+        not leave_auth_unconfigured
+        and "GAUNTLET_API_KEY" not in env
+        and "GAUNTLET_AUTH_DISABLED" not in env
+    ):
+        env.setdefault("GAUNTLET_AUTH_DISABLED", "1")
 
     for key in (
         "GAUNTLET_API_KEY",
+        "GAUNTLET_AUTH_DISABLED",
         "GAUNTLET_RATE_LIMIT_DISABLED",
         "GAUNTLET_HSTS",
         "GAUNTLET_FRAME_OPTIONS",
@@ -69,9 +85,27 @@ def _fresh_client(env: dict[str, str]):
 # ── Layer 1 — API key gate ────────────────────────────────────────────────
 
 
-def test_auth_disabled_when_key_unset():
-    client, _ = _fresh_client({})
-    # /diagnostics is gated when key IS set; with no key it's open.
+def test_auth_misconfigured_when_key_and_disable_both_unset():
+    """v1 polish — security audit P0. Was: empty key = wide-open
+    (fail-OPEN). Is: empty key + no GAUNTLET_AUTH_DISABLED = 503
+    auth_misconfigured on every gated route. /health stays public so
+    Railway/Vercel probes don't flap."""
+    client, _ = _fresh_client({}, leave_auth_unconfigured=True)
+    r = client.get("/diagnostics")
+    assert r.status_code == 503, r.text
+    body = r.json()
+    assert body["detail"]["error"] == "auth_misconfigured"
+    assert body["detail"]["reason"] == "missing_gauntlet_api_key"
+    # Health probes still pass — Railway must keep routing traffic
+    # so the operator sees the breadcrumb in the next request.
+    assert client.get("/health").status_code == 200
+
+
+def test_auth_disabled_explicit_opt_out():
+    """The dev opt-out: GAUNTLET_AUTH_DISABLED=1 — flag is named after
+    the consequence so an operator copy-pasting prod env doesn't
+    inherit it silently."""
+    client, _ = _fresh_client({"GAUNTLET_AUTH_DISABLED": "1"})
     r = client.get("/diagnostics")
     assert r.status_code == 200, r.text
 

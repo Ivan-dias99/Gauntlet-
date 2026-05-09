@@ -173,12 +173,21 @@ def _truthy(value: str) -> bool:
     return value.strip().lower() in ("1", "true", "yes", "on")
 
 
-# Layer 1 — API key gate. When set, every endpoint except /health,
-# /health/ready and CORS preflight requires `Authorization: Bearer <key>`.
+# Layer 1 — API key gate. When `GAUNTLET_AUTH_DISABLED` is unset and
+# `GAUNTLET_API_KEY` is also unset, the middleware refuses every gated
+# request with 503 (`auth_misconfigured`). Set GAUNTLET_API_KEY to a
+# real bearer token in production; set GAUNTLET_AUTH_DISABLED=1 in
+# local/dev only to opt-out explicitly. Public paths (/health,
+# /health/ready) and CORS preflight bypass the gate either way.
 # Identifier renomeado de SIGNAL_API_KEY em 2026-05-08 (sessão hora-seria)
 # para alinhar com canónica GAUNTLET_*. Env aceita GAUNTLET_API_KEY +
 # legacy aliases via _env(). Compat preservada.
 GAUNTLET_API_KEY: str = _env("GAUNTLET_API_KEY", default="")
+# v1 polish — security audit P0: explicit dev opt-out so a fresh
+# Railway deploy that forgot to set GAUNTLET_API_KEY refuses every
+# request instead of accidentally serving the API wide-open. The flag
+# name names the consequence.
+GAUNTLET_AUTH_DISABLED: bool = _truthy(_env("GAUNTLET_AUTH_DISABLED", default=""))
 
 # Layer 2 — rate limiter.
 RATE_LIMIT_DISABLED: bool = _truthy(_env("GAUNTLET_RATE_LIMIT_DISABLED", default=""))

@@ -44,9 +44,13 @@ def fresh_app(monkeypatch: pytest.MonkeyPatch) -> Iterable[TestClient]:
         monkeypatch.setenv("GAUNTLET_DATA_DIR", tmp)
         monkeypatch.setenv("GAUNTLET_MOCK", "1")
         monkeypatch.setenv("GAUNTLET_RATE_LIMIT_DISABLED", "1")
-        # Force the auth gate off for our tests so Sprint 5/7 routes
-        # aren't 401'd by a leaked key from another test file.
+        # Force the auth gate off for our tests. v1 polish: empty
+        # GAUNTLET_API_KEY is now fail-CLOSED (503), so tests that
+        # don't care about auth must set GAUNTLET_AUTH_DISABLED=1
+        # explicitly. Also defensively clear any key leaked from
+        # another test file.
         monkeypatch.delenv("GAUNTLET_API_KEY", raising=False)
+        monkeypatch.setenv("GAUNTLET_AUTH_DISABLED", "1")
         # Invalidate every Gauntlet module so fresh config picks up the
         # temp dir. Order matters: config first, then the modules that
         # import it. The routers package + its submodules + runtime
@@ -686,6 +690,9 @@ def test_voice_transcribe_400_on_malformed_base64(monkeypatch):
     monkeypatch.setenv("GAUNTLET_GROQ_API_KEY", "fake-for-validation-only")
     monkeypatch.setenv("GAUNTLET_MOCK", "1")
     monkeypatch.setenv("GAUNTLET_RATE_LIMIT_DISABLED", "1")
+    # v1 polish — auth is fail-CLOSED; explicit dev opt-out so the
+    # validation 400 path is exercised, not the 401 gate.
+    monkeypatch.setenv("GAUNTLET_AUTH_DISABLED", "1")
     with tempfile.TemporaryDirectory() as tmp:
         monkeypatch.setenv("GAUNTLET_DATA_DIR", tmp)
         for mod in ("config", "voice", "composer", "server"):

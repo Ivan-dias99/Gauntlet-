@@ -534,9 +534,21 @@ fn guess_mime(path: &std::path::Path, bytes: &[u8]) -> String {
 //
 // We do NOT pipe stdin and we cap output at 256 KB per stream so a
 // runaway command can't blow the cápsula's memory.
+//
+// **v1 polish, security audit P0 (2026-05-09)**: removed `npm`, `npx`,
+// `node`, `python`, `python3`, `pip`, `pip3`. Each of these is a
+// generic code-exec primitive — `npx <anything>` fetches and executes
+// arbitrary code from npm; `python -c '<arbitrary>'` is the same on
+// pip's side. Listing them gave the appearance of an allowlist while
+// every entry was a wildcard. The remaining set is observability +
+// version-control + read-only filesystem inspection. Operators who
+// genuinely need a runtime spawn it via shell.run from the agent flow
+// where the danger gate intercepts; the cápsula's slash menu does
+// not. If a future feature really needs `node`/`python` here,
+// re-add it explicitly with a code comment justifying why and a
+// matching governance manifest entry.
 const SHELL_ALLOWLIST: &[&str] = &[
     "git", "ls", "dir", "pwd", "cat", "echo", "head", "tail",
-    "node", "npm", "npx", "python", "python3", "pip", "pip3",
     "ps", "whoami", "uname", "hostname", "date", "df", "du",
     "wc", "grep", "find", "which", "where", "rg",
 ];
@@ -924,6 +936,17 @@ fn get_pill_follow_cursor() -> bool {
 // the gate UI must reflect doctrine ("denso, viciante") + survive future
 // MCP migration; pinning it inside Rust would freeze it to one shape.
 //
+// **v1 polish, security audit P0 (2026-05-09)** — origin gate added
+// here in Rust. Antes: qualquer página carregada num webview do app
+// (incluindo iframes embedidos por outras features) podia chamar
+// `__TAURI__.invoke('cu_type', {text: 'rm -rf ~'})` e bypassar a
+// `ComputerUseGate` JS por completo. Agora cada `cu_*` exige um
+// `Webview` argument e verifica que o label é "main" — o webview da
+// cápsula que aloja a gate. Os webviews "pill" (sem chat) e qualquer
+// futuro embedded webview são rejeitados com `cu_origin_denied`.
+// A gate JS continua a ser a fonte de UX (ela é que mostra o modal,
+// regista a fila etc); o Rust só impede que outro webview a contorne.
+//
 // Caps (defensive):
 // * cu_type: 10k chars max — typical paste size, stops a runaway loop
 //   from holding the keyboard for minutes.
@@ -935,13 +958,32 @@ fn get_pill_follow_cursor() -> bool {
 //   back to "this OS not supported".
 
 const CU_MAX_TEXT_LEN: usize = 10_000;
+const CU_ALLOWED_WEBVIEW: &str = "main";
 
 fn cu_new_enigo() -> Result<Enigo, String> {
     Enigo::new(&CuSettings::default()).map_err(|e| e.to_string())
 }
 
+/// Reject any caller webview that is not the cápsula's main shell.
+/// Returns Err with a typed string so the JS gate can render a
+/// diagnostic banner if a future feature mistakenly invokes from a
+/// non-main webview.
+fn cu_assert_main_webview(webview: &tauri::Webview) -> Result<(), String> {
+    let label = webview.label();
+    if label == CU_ALLOWED_WEBVIEW {
+        Ok(())
+    } else {
+        Err(format!(
+            "cu_origin_denied: caller webview '{label}' is not authorised \
+             to invoke computer-use primitives (only '{CU_ALLOWED_WEBVIEW}' \
+             can — that is where the consent gate lives)"
+        ))
+    }
+}
+
 #[tauri::command]
-fn cu_mouse_move(x: i32, y: i32) -> Result<(), String> {
+fn cu_mouse_move(webview: tauri::Webview, x: i32, y: i32) -> Result<(), String> {
+    cu_assert_main_webview(&webview)?;
     let mut enigo = cu_new_enigo()?;
     enigo
         .move_mouse(x, y, CuCoordinate::Abs)
@@ -949,7 +991,8 @@ fn cu_mouse_move(x: i32, y: i32) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn cu_mouse_click(button: String) -> Result<(), String> {
+fn cu_mouse_click(webview: tauri::Webview, button: String) -> Result<(), String> {
+    cu_assert_main_webview(&webview)?;
     let btn = parse_cu_button(&button)?;
     let mut enigo = cu_new_enigo()?;
     enigo
@@ -958,15 +1001,19 @@ fn cu_mouse_click(button: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn cu_type(text: String) -> Result<(), String> {
+fn cu_type(webview: tauri::Webview, text: String) -> Result<(), String> {
+    cu_assert_main_webview(&webview)?;
     if text.is_empty() {
         return Err("cu_type: empty text".to_string());
     }
-    if text.len() > CU_MAX_TEXT_LEN {
+    // chars().count() walks scalars, NOT UTF-8 bytes — `text.len()`
+    // would over-reject CJK / emoji input (a single CJK glyph is
+    // 3 bytes, emoji 4+) long before the documented 10 000-char cap.
+    let char_count = text.chars().count();
+    if char_count > CU_MAX_TEXT_LEN {
         return Err(format!(
             "cu_type: text too long ({} chars > {} max)",
-            text.len(),
-            CU_MAX_TEXT_LEN
+            char_count, CU_MAX_TEXT_LEN
         ));
     }
     let mut enigo = cu_new_enigo()?;
@@ -974,7 +1021,8 @@ fn cu_type(text: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn cu_press(key: String) -> Result<(), String> {
+fn cu_press(webview: tauri::Webview, key: String) -> Result<(), String> {
+    cu_assert_main_webview(&webview)?;
     let k = parse_cu_key(&key)?;
     let mut enigo = cu_new_enigo()?;
     enigo

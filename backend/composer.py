@@ -587,11 +587,15 @@ Desktop actions (only when source: desktop). Each action is one of:
   {"type":"shell.run","cmd":"<binary>","args":[<string>,...],"cwd":"<path or null>"}
   {"type":"fs.read","path":"<absolute path>"}
   {"type":"fs.write","path":"<absolute path>","content":"<full new file content>"}
-Use shell.run for commands the operator's request implies (running
-tests, listing files, git status, etc.). The cápsula enforces a
-binary allowlist — common entries: git, ls, pwd, cat, echo, head,
-tail, node, npm, npx, python, python3, pip, pip3, ps, whoami,
-uname, hostname, date, df, du, wc, grep, find, which, where, rg.
+Use shell.run for commands the operator's request implies (listing
+files, git status, etc.). The cápsula's allowlist is OBSERVABILITY +
+VERSION CONTROL + READ-ONLY filesystem inspection: git, ls, pwd,
+cat, echo, head, tail, ps, whoami, uname, hostname, date, df, du,
+wc, grep, find, which, where, rg. Generic interpreters (node, npm,
+npx, python, pip, …) are NOT in the cápsula allowlist — they are
+wildcard code-exec primitives. If the operator's request needs a
+runtime, refuse (case C) and explain that interpreter exec belongs
+in the agent flow (Control Center), not the cápsula.
 Use fs.read to inspect a single file before transforming it. Use
 fs.write to save the operator's requested output to disk. Paths
 should be absolute. The cápsula will surface a confirmation gate

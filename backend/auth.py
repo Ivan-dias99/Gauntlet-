@@ -1,11 +1,17 @@
 """
 Gauntlet — API key authentication middleware (Layer 1).
 
-Reads `GAUNTLET_API_KEY` at module init. When the env var is unset,
-``api_key_required`` is a no-op pass-through so local dev / unsecured
-deploys keep working with zero friction. When it is set, every request
-**except** the public probe paths and CORS preflight must carry
-``Authorization: Bearer <key>``.
+**Doutrina actualizada 2026-05-09 (v1 polish, security audit P0):**
+fail-CLOSED is the default. Reads `GAUNTLET_API_KEY` at module init;
+when the env var is unset the middleware refuses every non-public
+request with 503 (`auth_misconfigured`) so a fresh deploy that forgot
+to set the key cannot accidentally expose `/composer/*`, `/agent/*`,
+`/memory/*` or `/permissions/*` to the public internet. The previous
+fail-OPEN default ("inactive when key empty") was a footgun for a
+public production backend in 2026.
+
+Local dev / unsecured smoke envs opt out **explicitly** via
+`GAUNTLET_AUTH_DISABLED=1` — single env, named after the consequence.
 
 Why the design:
   - ``secrets.compare_digest`` is used to defeat timing-side-channel
@@ -16,7 +22,7 @@ Why the design:
     health probes keep routing traffic; ``OPTIONS`` is preflight which
     carries no auth header by spec. Everything else — including
     ``/diagnostics`` (which leaks env shape) — is gated by default.
-  - The 401 body is a typed envelope (``{error, reason, message}``)
+  - The 401 / 503 body is a typed envelope (``{error, reason, message}``)
     matching the rest of the FastAPI surface so the frontend's
     ``parseBackendError`` path keeps working without a special case.
 """
@@ -42,17 +48,39 @@ PUBLIC_PATHS: frozenset[str] = frozenset({
 
 
 class APIKeyAuthMiddleware(BaseHTTPMiddleware):
-    """Bearer-token gate. Inactive when ``api_key`` is empty."""
+    """Bearer-token gate. Fail-closed by default; explicit
+    ``auth_disabled=True`` opt-out for local dev."""
 
-    def __init__(self, app, api_key: str = "") -> None:
+    def __init__(
+        self,
+        app,
+        api_key: str = "",
+        *,
+        auth_disabled: bool = False,
+    ) -> None:
         super().__init__(app)
         # Snapshot at construction. Operators rotating keys must restart
         # the process — middleware-level hot-reload is more risk than value.
         self._api_key = (api_key or "").strip()
-        self._enabled = bool(self._api_key)
+        self._disabled = bool(auth_disabled)
+        if self._disabled:
+            # Loud breadcrumb so the operator sees this on stdout — there
+            # is no secondary gate beyond the env var so misconfiguration
+            # has to be visible in logs.
+            logger.warning(
+                "auth.disabled GAUNTLET_AUTH_DISABLED=1 — every non-public "
+                "route is reachable without Authorization. Use this only "
+                "for local dev."
+            )
+        elif not self._api_key:
+            logger.error(
+                "auth.misconfigured GAUNTLET_API_KEY is empty AND "
+                "GAUNTLET_AUTH_DISABLED is not set — all gated routes "
+                "will return 503 until one of the two is configured."
+            )
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        if not self._enabled:
+        if self._disabled:
             return await call_next(request)
 
         # CORS preflight — never carries auth headers; CORSMiddleware
@@ -64,6 +92,13 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
         # Public probes.
         if request.url.path in PUBLIC_PATHS:
             return await call_next(request)
+
+        # Fail-CLOSED: no key configured → refuse every gated request
+        # with 503 instead of letting it through. The audit P0 finding
+        # was that the previous "no-op when empty" default exposed a
+        # fresh deploy completely.
+        if not self._api_key:
+            return _misconfigured()
 
         header = request.headers.get("authorization") or request.headers.get("Authorization")
         if not header:
@@ -100,4 +135,26 @@ def _unauthorized(reason: str) -> JSONResponse:
             }
         },
         headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def _misconfigured() -> JSONResponse:
+    """Backend started without a key AND without the explicit dev opt-out.
+    Refuse all gated routes loudly so the operator notices on the first
+    request rather than discovering a wide-open API the hard way."""
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": {
+                "error": "auth_misconfigured",
+                "reason": "missing_gauntlet_api_key",
+                "message": (
+                    "Backend started without GAUNTLET_API_KEY. Set "
+                    "GAUNTLET_API_KEY=<key> in production, or "
+                    "GAUNTLET_AUTH_DISABLED=1 to acknowledge an "
+                    "unauthenticated dev deploy. Refusing requests "
+                    "until one of the two is configured."
+                ),
+            }
+        },
     )
