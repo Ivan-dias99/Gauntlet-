@@ -66,6 +66,14 @@ export interface AmbientCapabilities {
   // the Notification API but we leave that for the in-page surface
   // until A5 lights up the tray story.
   readonly notifications: boolean;
+  // Can the cápsula drive the user's mouse + keyboard through synthetic
+  // input? Desktop only (Rust enigo). Browser is sandboxed by the user
+  // agent — there is no path to inject input into another tab/window.
+  // **Doctrine: every actuation MUST flow through the consent gate UI**;
+  // adapter methods are primitives that assume the gate already approved.
+  // macOS users will see the Accessibility permission prompt on the first
+  // call; Wayland sessions return an error from `Enigo::new`.
+  readonly computerUse: boolean;
 }
 
 // Transport — single-shot JSON for /composer/* and (optional) SSE for
@@ -193,6 +201,40 @@ export interface AmbientDebug {
   lastSummon(): Promise<unknown | null>;
 }
 
+// ComputerUse — synthetic mouse + keyboard input on the user's host.
+// Desktop only; the browser shell never injects this adapter because
+// the sandbox forbids it. The interface deliberately stays small
+// (4 primitives) so the consent gate UI in Capsule has one shape to
+// review per action; richer composites (drag, scroll, hotkey combos)
+// can layer on top in JS without touching Rust.
+//
+// **Each method bypasses no consent gate of its own.** Callers
+// (Capsule's gate UI) are responsible for prompting the operator
+// before invoking; adapter methods assume approval has already been
+// recorded. Errors thrown by Tauri (Wayland not supported, macOS
+// Accessibility denied, etc.) bubble verbatim.
+export type ComputerUseButton = 'left' | 'right' | 'middle';
+
+export interface AmbientComputerUse {
+  // Move cursor to absolute screen coordinate. Caller is expected to
+  // clamp to the monitor work area before calling — off-screen
+  // requests are also safely no-op on most platforms.
+  moveCursor(x: number, y: number): Promise<void>;
+  // Click at the current cursor position. Pair with moveCursor() for
+  // "click at (x, y)" semantics; we keep the two split so the gate UI
+  // can show the move + click as separate approvable steps.
+  click(button: ComputerUseButton): Promise<void>;
+  // Type plain text. Capped Rust-side at 10 000 chars; longer payloads
+  // throw before any keystroke reaches the OS.
+  typeText(text: string): Promise<void>;
+  // Press a single named key (Enter, Tab, Escape, arrows, …) or a
+  // single Unicode character (case preserved — 'A' types A with shift,
+  // 'a' types a). Compound combos (Ctrl+C) are out of scope for v0;
+  // callers can simulate via typeText for printable shortcuts or
+  // chain pressKey + a future modifier API.
+  pressKey(key: string): Promise<void>;
+}
+
 export interface Ambient {
   readonly shell: 'browser' | 'desktop';
   readonly capabilities: AmbientCapabilities;
@@ -205,5 +247,6 @@ export interface Ambient {
   readonly filesystem?: AmbientFilesystem;
   readonly shellExec?: AmbientShell;
   readonly notifications?: AmbientNotifications;
+  readonly computerUse?: AmbientComputerUse;
   readonly debug?: AmbientDebug;
 }

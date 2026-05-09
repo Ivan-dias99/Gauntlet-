@@ -8,16 +8,22 @@
 import {
   type Ambient,
   type AmbientCapabilities,
+  type AmbientComputerUse,
   type AmbientFilesystem,
   type AmbientNotifications,
   type AmbientShell,
   type AmbientStorage,
+  type ComputerUseButton,
   type SelectionSnapshot,
 } from "@gauntlet/composer";
 import {
   captureContextSnapshot,
   captureScreenFull,
   captureScreenRegion,
+  cuMouseClick,
+  cuMouseMove,
+  cuPress,
+  cuType,
   notify,
   pickFile,
   pickSavePath,
@@ -44,6 +50,7 @@ const CAPABILITIES: AmbientCapabilities = {
   remoteVoice: true, // backend can transcribe via /voice/transcribe
   shellExecute: true, // run_shell Tauri command (env-gated + allowlisted)
   notifications: true, // tauri-plugin-notification (OS popup)
+  computerUse: true, // cu_* Tauri commands (enigo); gated UI-side, not env-side
 };
 
 // In-memory snapshot cache so the synchronous selection.read() can
@@ -301,6 +308,24 @@ export function createDesktopAmbient(): Ambient {
     filesystem: filesystem(),
     shellExec: shellExec(),
     notifications: notifications(),
+    computerUse: computerUse(),
+  };
+}
+
+function computerUse(): AmbientComputerUse {
+  return {
+    async moveCursor(x: number, y: number) {
+      await cuMouseMove(Math.round(x), Math.round(y));
+    },
+    async click(button: ComputerUseButton) {
+      await cuMouseClick(button);
+    },
+    async typeText(text: string) {
+      await cuType(text);
+    },
+    async pressKey(key: string) {
+      await cuPress(key);
+    },
   };
 }
 

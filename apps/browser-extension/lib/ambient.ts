@@ -52,6 +52,7 @@ const CAPABILITIES: AmbientCapabilities = {
   remoteVoice: true, // backend offers /voice/transcribe; Web Speech remains fallback
   shellExecute: false, // <all_urls> is for HTTP, not bash
   notifications: false, // future: chrome.notifications when we surface a tray story
+  computerUse: false, // browser sandbox forbids synthetic mouse/keyboard input — desktop only
 };
 
 interface BackgroundFetchResponse {
