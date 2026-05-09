@@ -710,3 +710,87 @@ def test_voice_synthesize_422_on_empty_text(fresh_app: TestClient):
     from a downstream surprise."""
     r = fresh_app.post("/voice/synthesize", json={"text": ""})
     assert r.status_code == 422
+
+
+# ── Engine bridge — composer routes that need the live Engine ──────────────
+#
+# Pre-fix, composer.py read `server.engine` (a name that doesn't exist on the
+# server module — the lifespan stores the engine in runtime._engine). Every
+# route that called _get_engine() would AttributeError → 500. The three
+# routes below exercise the bridge end-to-end so a regression cannot land
+# silently again.
+
+
+def test_preview_route_does_not_crash_on_engine_bridge(fresh_app: TestClient):
+    """Full chain: context → intent → preview. Pre-fix this raised
+    AttributeError on `server.engine` and surfaced as 500. With the
+    runtime.require_engine() bridge it returns 200 in mock mode."""
+    ctx = fresh_app.post(
+        "/composer/context",
+        json={
+            "source": "browser",
+            "url": "https://example.com",
+            "selection": "summarise this",
+        },
+    )
+    assert ctx.status_code == 200
+    intent = fresh_app.post(
+        "/composer/intent",
+        json={"context_id": ctx.json()["context_id"], "user_input": "summarise"},
+    )
+    assert intent.status_code == 200
+    preview = fresh_app.post(
+        "/composer/preview",
+        json={"intent_id": intent.json()["intent_id"]},
+    )
+    # Mock mode answers HIGH consensus → 200 with PreviewResult shape.
+    assert preview.status_code == 200, preview.json()
+    body = preview.json()
+    assert "artifact" in body
+    assert "preview_id" in body
+
+
+def test_dom_plan_route_does_not_crash_on_engine_bridge(fresh_app: TestClient):
+    """/composer/dom_plan calls engine._client.messages.create through the
+    same _get_engine() that used to AttributeError. Mock mode returns a
+    canned `{"compose": "..."}` plan so the route should reach 200."""
+    ctx = fresh_app.post(
+        "/composer/context",
+        json={"source": "browser", "url": "https://example.com"},
+    )
+    assert ctx.status_code == 200
+    plan = fresh_app.post(
+        "/composer/dom_plan",
+        json={"context_id": ctx.json()["context_id"], "user_input": "explain this page"},
+    )
+    # 200 = plan parsed; 502 = mock returned non-JSON. Either way the
+    # bridge worked. Anything 5xx other than 502 means the engine
+    # accessor regressed.
+    assert plan.status_code in (200, 502), plan.json()
+    if plan.status_code == 200:
+        assert "plan_id" in plan.json()
+
+
+def test_dom_plan_stream_route_does_not_crash_on_engine_bridge(fresh_app: TestClient):
+    """/composer/dom_plan_stream is the SSE variant. Mock client doesn't
+    implement messages.stream (no _StreamContext on MockAsyncAnthropic),
+    so the stream itself yields an `error` event — but the route must
+    still open and emit headers, not 500 on the engine accessor."""
+    ctx = fresh_app.post(
+        "/composer/context",
+        json={"source": "browser", "url": "https://example.com"},
+    )
+    assert ctx.status_code == 200
+    with fresh_app.stream(
+        "POST",
+        "/composer/dom_plan_stream",
+        json={"context_id": ctx.json()["context_id"], "user_input": "hi"},
+    ) as r:
+        assert r.status_code == 200
+        # Drain a couple of events to confirm the stream body is real.
+        body_chunks = []
+        for chunk in r.iter_text():
+            body_chunks.append(chunk)
+            if len("".join(body_chunks)) > 32:
+                break
+        assert any(b for b in body_chunks)
