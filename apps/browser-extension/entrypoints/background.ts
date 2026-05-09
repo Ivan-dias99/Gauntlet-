@@ -60,10 +60,6 @@ let lastSummonDiagnostics: SummonDiagnostics | null = null;
 
 function recordSummon(d: SummonDiagnostics): void {
   lastSummonDiagnostics = d;
-  // Console-visible to anyone with the service-worker devtools open.
-  // No PII beyond the page URL — that's already in the operator's tab.
-  // eslint-disable-next-line no-console
-  console.info('[gauntlet] summon', d);
 }
 
 interface FetchProxyRequest {

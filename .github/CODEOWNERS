@@ -1,0 +1,26 @@
+# Gauntlet — code ownership. GitHub auto-requests reviews on PRs that
+# touch the listed paths. Repo owner is the fallback for everything;
+# specific paths name additional reviewers as the team grows.
+
+# Default owner — every PR.
+*                                   @Ivan-dias99
+
+# Security-sensitive — auth, rate limiting, security headers,
+# log redaction, the Tauri capability + lib.rs. Any change here
+# should be reviewed by the maintainer above plus a future
+# security-focused reviewer once that role exists.
+/backend/auth.py                    @Ivan-dias99
+/backend/rate_limit.py              @Ivan-dias99
+/backend/security_headers.py        @Ivan-dias99
+/backend/log_redaction.py           @Ivan-dias99
+/apps/desktop/src-tauri/            @Ivan-dias99
+/apps/desktop/src-tauri/capabilities/  @Ivan-dias99
+
+# Release pipeline — signing keys, tauri-action, latest.json.
+# Tag-gated workflow; only maintainers should be able to land
+# changes here.
+/.github/workflows/release.yml      @Ivan-dias99
+/.github/workflows/ci.yml           @Ivan-dias99
+/.github/CODEOWNERS                 @Ivan-dias99
+/.github/dependabot.yml             @Ivan-dias99
+/SECURITY.md                        @Ivan-dias99

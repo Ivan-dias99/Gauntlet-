@@ -18,6 +18,7 @@ import {
   Onboarding,
   ONBOARDING_CSS,
   createPillPrefs,
+  swallow,
 } from "@gauntlet/composer";
 import { createDesktopAmbient } from "./ambient";
 import {
@@ -48,14 +49,22 @@ export function App() {
     // Mirror the persisted theme onto html/body so the Tauri window
     // honours the operator's choice on first paint instead of flashing
     // whatever default the OS gives us.
-    void ambient.storage.get<string>("gauntlet:theme").then((t) => {
-      const theme = t === "dark" || t === "light" ? t : "light";
-      document.documentElement.setAttribute("data-theme", theme);
-      document.body.setAttribute("data-theme", theme);
-    });
-    void prefs.readOnboardingDone().then((done) => {
-      if (!done) setShowOnboarding(true);
-    });
+    void ambient.storage
+      .get<string>("gauntlet:theme")
+      .then((t) => {
+        const theme = t === "dark" || t === "light" ? t : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+        document.body.setAttribute("data-theme", theme);
+      })
+      .catch(swallow);
+    // First-run guard fails closed: storage broken → skip onboarding
+    // rather than looping the tour on every load.
+    void prefs
+      .readOnboardingDone()
+      .then((done) => {
+        if (!done) setShowOnboarding(true);
+      })
+      .catch(swallow);
   }, [ambient, prefs]);
 
   const dismissOnboarding = useCallback(() => {
@@ -71,9 +80,11 @@ export function App() {
     let unbind: (() => Promise<void>) | null = null;
     void bindGlobalShortcut(DEFAULT_DESKTOP_SHORTCUT, () => {
       void toggleCapsuleWindow();
-    }).then((u) => {
-      unbind = u;
-    });
+    })
+      .then((u) => {
+        unbind = u;
+      })
+      .catch(swallow);
     return () => {
       if (unbind) void unbind();
     };

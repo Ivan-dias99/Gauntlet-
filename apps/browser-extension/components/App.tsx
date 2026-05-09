@@ -8,6 +8,7 @@ import {
   Pill,
   PILL_CSS,
   createPillPrefs,
+  swallow,
   DEFAULT_PILL_POSITION,
   DEFAULT_PILL_MODE,
   type PillMode,
@@ -80,9 +81,14 @@ export function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    void prefs.readOnboardingDone().then((done) => {
-      if (!cancelled && !done) setShowOnboarding(true);
-    });
+    // Storage unreachable → fail closed: skip onboarding, do not loop
+    // the tour every time the storage layer is broken.
+    void prefs
+      .readOnboardingDone()
+      .then((done) => {
+        if (!cancelled && !done) setShowOnboarding(true);
+      })
+      .catch(swallow);
     return () => {
       cancelled = true;
     };
@@ -156,12 +162,18 @@ export function App() {
   // Load persisted pill prefs once at mount.
   useEffect(() => {
     let cancelled = false;
-    void prefs.readPillPosition().then((p) => {
-      if (!cancelled) setPillPosition(p);
-    });
-    void prefs.readPillMode().then((m) => {
-      if (!cancelled) setPillMode(m);
-    });
+    void prefs
+      .readPillPosition()
+      .then((p) => {
+        if (!cancelled) setPillPosition(p);
+      })
+      .catch(swallow);
+    void prefs
+      .readPillMode()
+      .then((m) => {
+        if (!cancelled) setPillMode(m);
+      })
+      .catch(swallow);
     // Listen for live pill-mode changes broadcast from the cápsula's
     // settings drawer so flipping mode takes effect without reloading.
     function onPillMode(ev: Event) {
@@ -179,11 +191,16 @@ export function App() {
       }
     })();
     if (host) {
-      void prefs.isDomainDismissed(host).then((dismissed) => {
-        if (cancelled || !dismissed) return;
-        setDomainDismissed(true);
-        setSurface((prev) => (prev.kind === 'pill' ? { kind: 'gone' } : prev));
-      });
+      void prefs
+        .isDomainDismissed(host)
+        .then((dismissed) => {
+          if (cancelled || !dismissed) return;
+          setDomainDismissed(true);
+          setSurface((prev) =>
+            prev.kind === 'pill' ? { kind: 'gone' } : prev,
+          );
+        })
+        .catch(swallow);
     }
     return () => {
       cancelled = true;

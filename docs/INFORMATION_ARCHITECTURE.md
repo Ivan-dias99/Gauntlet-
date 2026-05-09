@@ -119,9 +119,8 @@ src/
   pages do. Settings/profile use it. This keeps the chamber workspace
   immersive (no top nav competing with CanonRibbon).
 - Direct links to chamber sub-tabs: `/chambers/terminal` deep-linkable.
-  The page passes the param through a `signal:chamber` CustomEvent so
-  the existing Shell switcher reacts. P-39c removes the bridge by
-  making the param the actual driver.
+  P-39c collapsed the `signal:chamber` bridge — the URL param drives
+  the Shell switcher directly; the CustomEvent no longer exists in code.
 - 404 must be navigable; never blank. Skip-link + visible nav so
   keyboard users can bail out.
 - Settings sections are stable URLs. Operators bookmark them.

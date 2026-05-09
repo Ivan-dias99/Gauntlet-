@@ -1,0 +1,59 @@
+# Dependabot — automated dependency PRs across the four ecosystems
+# the Gauntlet stack uses (npm, cargo, pip, github-actions). Weekly
+# Monday cadence; open-PR caps keep the queue reviewable while CVEs
+# still surface fast.
+
+version: 2
+updates:
+  # Frontend monorepo + tooling. Touches every package.json under
+  # the workspace root + apps/* + packages/*.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "javascript"
+
+  # Tauri desktop shell. The desktop crate is the surface that
+  # holds enigo + the cu_* primitives — security CVEs here go
+  # straight to the cápsula's mouse/keyboard control path.
+  - package-ecosystem: "cargo"
+    directory: "/apps/desktop/src-tauri"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "rust"
+
+  # FastAPI backend. anthropic/groq SDKs + httpx + the rest live
+  # here. Pinned with >= today; a lock file would be belt-and-
+  # suspenders but Dependabot will surface advisories regardless.
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "python"
+
+  # GitHub Actions workflows. release.yml uses tauri-apps/tauri-action
+  # and softprops/action-gh-release; supply-chain incidents in either
+  # would be Bad. Dependabot pins to SHAs when the workflow uses tag
+  # references — paired with the manual SHA-pin polish in a follow-up
+  # this gives a defensible chain.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"

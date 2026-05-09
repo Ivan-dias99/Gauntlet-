@@ -173,12 +173,12 @@ def _truthy(value: str) -> bool:
     return value.strip().lower() in ("1", "true", "yes", "on")
 
 
-# Layer 1 — API key gate. When set, every endpoint except /health,
-# /health/ready and CORS preflight requires `Authorization: Bearer <key>`.
-# Identifier renomeado de SIGNAL_API_KEY em 2026-05-08 (sessão hora-seria)
-# para alinhar com canónica GAUNTLET_*. Env aceita GAUNTLET_API_KEY +
-# legacy aliases via _env(). Compat preservada.
+# Layer 1 — API key gate. Empty `GAUNTLET_API_KEY` without
+# `GAUNTLET_AUTH_DISABLED=1` is fail-CLOSED (503 on every gated route).
+# Set the key in production; set `GAUNTLET_AUTH_DISABLED=1` only in
+# local dev. `/health` and CORS preflight bypass the gate either way.
 GAUNTLET_API_KEY: str = _env("GAUNTLET_API_KEY", default="")
+GAUNTLET_AUTH_DISABLED: bool = _truthy(_env("GAUNTLET_AUTH_DISABLED", default=""))
 
 # Layer 2 — rate limiter.
 RATE_LIMIT_DISABLED: bool = _truthy(_env("GAUNTLET_RATE_LIMIT_DISABLED", default=""))

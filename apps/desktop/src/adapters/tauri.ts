@@ -123,11 +123,12 @@ export interface ScreenCaptureFull {
   path: string;
 }
 
+// Failures bubble to the caller as `null` (useAttachments surfaces
+// them via attachError); the in-cápsula UI is the only error channel.
 export async function captureScreenFull(): Promise<ScreenCaptureFull | null> {
   try {
     return await invoke<ScreenCaptureFull>("capture_screen_full");
-  } catch (err) {
-    console.warn("[gauntlet/desktop] capture_screen_full failed:", err);
+  } catch {
     return null;
   }
 }
@@ -145,8 +146,7 @@ export async function pickFile(
 ): Promise<PickedFile | null> {
   try {
     return await invoke<PickedFile | null>("pick_file", { accept });
-  } catch (err) {
-    console.warn("[gauntlet/desktop] pick_file failed:", err);
+  } catch {
     return null;
   }
 }
@@ -175,8 +175,7 @@ export async function pickSavePath(
       suggestedName,
       accept,
     });
-  } catch (err) {
-    console.warn("[gauntlet/desktop] pick_save_path failed:", err);
+  } catch {
     return null;
   }
 }
@@ -230,8 +229,7 @@ export async function notify(
     if (!granted) return false;
     await sendNotification({ title, body });
     return true;
-  } catch (err) {
-    console.warn("[gauntlet/desktop] notify failed:", err);
+  } catch {
     return false;
   }
 }
@@ -266,17 +264,15 @@ export async function bindGlobalShortcut(
 ): Promise<() => Promise<void>> {
   try {
     await register(spec, (event) => {
-      // The plugin emits both keydown and keyup; only fire the handler
-      // on press so a hold doesn't repeat-summon.
+      // Plugin emits both keydown + keyup; only fire on press so a
+      // hold doesn't repeat-summon.
       if (event.state === "Pressed") {
         handler();
       }
     });
-  } catch (err) {
+  } catch {
     // Common cause: another app already bound the same shortcut.
-    // Surface a console warning but don't propagate — the cápsula is
-    // still summonable via the tray icon (Sprint 7+ scope).
-    console.warn("[gauntlet/desktop] failed to bind global shortcut:", err);
+    // Don't propagate — the cápsula is still summonable via the tray.
   }
   return async () => {
     try {
@@ -301,16 +297,18 @@ export async function toggleCapsuleWindow(): Promise<void> {
     } else {
       await invoke<void>("show_capsule");
     }
-  } catch (err) {
-    console.warn("[gauntlet/desktop] toggle failed:", err);
+  } catch {
+    // Window torn down or runtime not ready — best-effort UX.
   }
 }
 
 export async function moveCapsuleToCursor(): Promise<void> {
   try {
     await invoke<void>("move_window_to_cursor");
-  } catch (err) {
-    console.warn("[gauntlet/desktop] move_window_to_cursor failed:", err);
+  } catch {
+    // Best-effort positioning; the cápsula opens at its last known
+    // location if the move fails. Cursor coordinates only matter
+    // for the magnetic-summon UX.
   }
 }
 

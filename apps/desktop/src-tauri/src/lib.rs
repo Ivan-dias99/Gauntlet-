@@ -534,9 +534,15 @@ fn guess_mime(path: &std::path::Path, bytes: &[u8]) -> String {
 //
 // We do NOT pipe stdin and we cap output at 256 KB per stream so a
 // runaway command can't blow the cápsula's memory.
+//
+// Allowlist is observability + VCS + read-only fs only. Generic
+// interpreters (npm/npx/node/python/pip) are wildcard code-exec —
+// `npx <anything>` fetches and runs arbitrary code from npm, same
+// for `python -c`. They live in the agent flow (backend
+// `_GATED_COMMANDS`, gated by `AGENT_ALLOW_CODE_EXEC`), not here.
+// See SECURITY.md.
 const SHELL_ALLOWLIST: &[&str] = &[
     "git", "ls", "dir", "pwd", "cat", "echo", "head", "tail",
-    "node", "npm", "npx", "python", "python3", "pip", "pip3",
     "ps", "whoami", "uname", "hostname", "date", "df", "du",
     "wc", "grep", "find", "which", "where", "rg",
 ];
@@ -924,24 +930,34 @@ fn get_pill_follow_cursor() -> bool {
 // the gate UI must reflect doctrine ("denso, viciante") + survive future
 // MCP migration; pinning it inside Rust would freeze it to one shape.
 //
-// Caps (defensive):
-// * cu_type: 10k chars max — typical paste size, stops a runaway loop
-//   from holding the keyboard for minutes.
-// * cu_mouse_move: no clamp here. Caller (Composer gate) clamps to the
-//   monitor work area before submitting; off-screen requests are also
-//   safely no-op on most platforms.
-// * Wayland sessions return a NewConError from `Enigo::new`; the JS
-//   side surfaces it as the typed error string so the gate can fall
-//   back to "this OS not supported".
+// Each cu_* asserts the caller webview label is "main" — only that
+// webview hosts the consent gate. Other webviews (pill, future
+// embeds) cannot bypass the JS gate by invoking these primitives
+// directly. See SECURITY.md.
 
 const CU_MAX_TEXT_LEN: usize = 10_000;
+const CU_ALLOWED_WEBVIEW: &str = "main";
+const CU_ORIGIN_DENIED: &str = "cu_origin_denied";
 
 fn cu_new_enigo() -> Result<Enigo, String> {
     Enigo::new(&CuSettings::default()).map_err(|e| e.to_string())
 }
 
+fn cu_assert_main_webview(label: &str) -> Result<(), String> {
+    if label == CU_ALLOWED_WEBVIEW {
+        Ok(())
+    } else {
+        Err(format!(
+            "{CU_ORIGIN_DENIED}: caller webview '{label}' is not authorised \
+             to invoke computer-use primitives (only '{CU_ALLOWED_WEBVIEW}' \
+             can — that is where the consent gate lives)"
+        ))
+    }
+}
+
 #[tauri::command]
-fn cu_mouse_move(x: i32, y: i32) -> Result<(), String> {
+fn cu_mouse_move(webview: tauri::Webview, x: i32, y: i32) -> Result<(), String> {
+    cu_assert_main_webview(webview.label())?;
     let mut enigo = cu_new_enigo()?;
     enigo
         .move_mouse(x, y, CuCoordinate::Abs)
@@ -949,7 +965,8 @@ fn cu_mouse_move(x: i32, y: i32) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn cu_mouse_click(button: String) -> Result<(), String> {
+fn cu_mouse_click(webview: tauri::Webview, button: String) -> Result<(), String> {
+    cu_assert_main_webview(webview.label())?;
     let btn = parse_cu_button(&button)?;
     let mut enigo = cu_new_enigo()?;
     enigo
@@ -958,15 +975,19 @@ fn cu_mouse_click(button: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn cu_type(text: String) -> Result<(), String> {
+fn cu_type(webview: tauri::Webview, text: String) -> Result<(), String> {
+    cu_assert_main_webview(webview.label())?;
     if text.is_empty() {
         return Err("cu_type: empty text".to_string());
     }
-    if text.len() > CU_MAX_TEXT_LEN {
+    // chars().count() walks scalars, NOT UTF-8 bytes — `text.len()`
+    // would over-reject CJK / emoji input (a single CJK glyph is
+    // 3 bytes, emoji 4+) long before the documented 10 000-char cap.
+    let char_count = text.chars().count();
+    if char_count > CU_MAX_TEXT_LEN {
         return Err(format!(
             "cu_type: text too long ({} chars > {} max)",
-            text.len(),
-            CU_MAX_TEXT_LEN
+            char_count, CU_MAX_TEXT_LEN
         ));
     }
     let mut enigo = cu_new_enigo()?;
@@ -974,7 +995,8 @@ fn cu_type(text: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn cu_press(key: String) -> Result<(), String> {
+fn cu_press(webview: tauri::Webview, key: String) -> Result<(), String> {
+    cu_assert_main_webview(webview.label())?;
     let k = parse_cu_key(&key)?;
     let mut enigo = cu_new_enigo()?;
     enigo
