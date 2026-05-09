@@ -7,13 +7,21 @@ import logging
 from typing import Any, Optional
 
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from models import RunRecord
 from runs import run_store
 
 router = APIRouter()
 logger = logging.getLogger("gauntlet.routers.observability")
+
+
+# Telemetry payload is operator-controlled and lands in runs.json. Without
+# a cap, a single client can post a multi-MB JSON blob (intentional or
+# bug) and balloon the ledger / log surface. 64 KB serialised covers
+# every legitimate Wave-6a event with room to spare.
+_TELEMETRY_PAYLOAD_MAX_BYTES = 64 * 1024
+_TELEMETRY_PAYLOAD_MAX_KEYS = 100
 
 
 class TelemetryEvent(BaseModel):
@@ -24,6 +32,23 @@ class TelemetryEvent(BaseModel):
     event: str = Field(..., min_length=1, max_length=64)
     mission_id: Optional[str] = Field(None, max_length=128)
     payload: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("payload")
+    @classmethod
+    def _cap_payload(cls, v: dict[str, Any]) -> dict[str, Any]:
+        if len(v) > _TELEMETRY_PAYLOAD_MAX_KEYS:
+            raise ValueError(
+                f"payload has {len(v)} keys (max {_TELEMETRY_PAYLOAD_MAX_KEYS})"
+            )
+        try:
+            serialised = _json.dumps(v, default=str)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"payload is not JSON-serialisable: {exc}") from exc
+        if len(serialised.encode("utf-8")) > _TELEMETRY_PAYLOAD_MAX_BYTES:
+            raise ValueError(
+                f"payload exceeds {_TELEMETRY_PAYLOAD_MAX_BYTES} bytes serialised"
+            )
+        return v
 
 
 @router.post("/telemetry/event")

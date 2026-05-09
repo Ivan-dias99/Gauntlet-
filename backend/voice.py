@@ -54,10 +54,28 @@ EDGE_TTS_DEFAULT_VOICE = os.environ.get(
 # ── Schemas ─────────────────────────────────────────────────────────────────
 
 
+# 50 MB base64 ≈ 37 MB raw audio. The cápsula records compressed webm at
+# ~24 kbps; this cap admits ~3.5 hours of speech, which is more than the
+# triad ever needs in one shot. Anything larger almost certainly means
+# the operator is uploading wrongly-encoded audio (or attacking).
+_MAX_AUDIO_BASE64_BYTES = 50 * 1024 * 1024
+
+# Edge TTS voice ids look like `pt-PT-RaquelNeural` / `en-US-AriaNeural`.
+# The pattern below admits the published voice family while rejecting
+# anything that could be interpreted as a flag, path, or shell fragment.
+_VOICE_PATTERN = r"^[A-Za-z]{2,3}-[A-Za-z]{2,4}-[A-Za-z]+Neural$"
+# Edge accepts rate/pitch as "+10%" / "-5Hz" / "default"; pattern keeps
+# inputs ASCII-printable and within Edge's documented grammar.
+_RATE_PATTERN = r"^([+-]?\d{1,3}%|default)$"
+_PITCH_PATTERN = r"^([+-]?\d{1,3}Hz|default)$"
+
+
 class TranscribeRequest(BaseModel):
-    audio_base64: str = Field(..., min_length=1)
-    mime: str = "audio/webm"
-    language: Optional[str] = None
+    audio_base64: str = Field(
+        ..., min_length=1, max_length=_MAX_AUDIO_BASE64_BYTES,
+    )
+    mime: str = Field(default="audio/webm", max_length=64)
+    language: Optional[str] = Field(default=None, max_length=16)
 
 
 class TranscribeResponse(BaseModel):
@@ -68,9 +86,9 @@ class TranscribeResponse(BaseModel):
 
 class SynthesizeRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=4000)
-    voice: Optional[str] = None
-    rate: Optional[str] = None  # "+10%" / "-5%"
-    pitch: Optional[str] = None  # "+2Hz"
+    voice: Optional[str] = Field(default=None, max_length=64, pattern=_VOICE_PATTERN)
+    rate: Optional[str] = Field(default=None, max_length=16, pattern=_RATE_PATTERN)
+    pitch: Optional[str] = Field(default=None, max_length=16, pattern=_PITCH_PATTERN)
 
 
 class SynthesizeResponse(BaseModel):

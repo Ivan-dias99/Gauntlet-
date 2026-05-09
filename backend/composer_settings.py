@@ -185,9 +185,17 @@ class ComposerSettingsStore:
                 f"snapshot name rejected (must be a bare basename): {file_name!r}"
             )
         target = snap_dir / file_name
-        if not target.exists():
-            raise FileNotFoundError(f"snapshot not found: {file_name!r}")
-        raw = target.read_text(encoding="utf-8")
+        # Read with a single open() call to avoid the TOCTOU window
+        # between exists() and read_text() — another worker (or the
+        # operator's own cleanup script) could remove the snapshot
+        # between the two calls. We surface a clean FileNotFoundError
+        # in either case so the route returns 404, not 500.
+        try:
+            raw = target.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(
+                f"snapshot not found: {file_name!r}"
+            ) from exc
         try:
             restored = ComposerSettings(**json.loads(raw))
         except (ValueError, json.JSONDecodeError) as exc:
