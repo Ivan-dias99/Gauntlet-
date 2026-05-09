@@ -44,6 +44,7 @@ import { StreamingState } from './StreamingState';
 import { useStreamingPlan } from './useStreamingPlan';
 import { useCapsuleScreenshot } from './useCapsuleScreenshot';
 import { useCapsuleKeyboard } from './useCapsuleKeyboard';
+import { useSaveToMemory } from './useSaveToMemory';
 import { swallow } from './helpers';
 
 export interface CapsuleProps {
@@ -338,33 +339,17 @@ export function Capsule({
   }, []);
 
   // Save the current compose response (or selection if no compose) to
-  // memory_records as a `note`. Backend writes through /memory/records;
-  // any failure becomes an inline error. Keeps the operator inside
-  // the cápsula — no need to switch to the Control Center.
-  const saveToMemory = useCallback(async () => {
-    const body = plan?.compose || snapshot.text || userInput.trim();
-    if (!body) {
-      setError('Nada para guardar — escreve um pedido ou recebe uma resposta.');
-      return;
-    }
-    const topic =
-      (userInput.trim() || snapshot.pageTitle || 'cápsula note').slice(0, 200);
-    try {
-      // Goes through ambient.transport so the request originates from
-      // the right origin in each shell (chrome-extension:// proxied
-      // through the service worker; direct fetch on desktop).
-      await ambient.transport.fetchJson(
-        'POST',
-        `${client.backendUrl}/memory/records`,
-        { topic, body, kind: 'note', scope: 'user' },
-      );
-      flashSaved('saved');
-    } catch (err) {
-      setError(
-        err instanceof Error ? `memória: ${err.message}` : 'memória: falhou',
-      );
-    }
-  }, [ambient, client, plan, snapshot, userInput, flashSaved]);
+  // memory_records as a `note`. Implementation extracted to useSaveToMemory
+  // so Capsule.tsx stays an orchestrator, not a god-component.
+  const saveToMemory = useSaveToMemory({
+    ambient,
+    client,
+    plan,
+    snapshot,
+    userInput,
+    onSaved: flashSaved,
+    onError: setError,
+  });
 
   // Sprint 3 — execution contract. Fire-and-forget reporting after
   // executeDomActions resolves (executed/failed) or when the user

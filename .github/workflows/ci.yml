@@ -56,7 +56,7 @@ jobs:
       # merging.
       - name: capsule size budget
         run: |
-          BUDGET=807
+          BUDGET=792
           LINES=$(wc -l < packages/composer/src/Capsule.tsx | tr -d ' ')
           echo "Capsule.tsx: $LINES lines (budget: $BUDGET)"
           if [ "$LINES" -gt "$BUDGET" ]; then
