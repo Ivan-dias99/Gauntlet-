@@ -138,12 +138,20 @@ def test_governance_metadata_marks_high_risk_with_approval() -> None:
     assert tool.scopes == ("computer.use",)
 
 
-def test_default_tools_bundle_includes_computer_use() -> None:
-    """The standard registry bundle ships computer_use so the operator
-    sees it on /tools/manifests immediately, not after a config opt-in."""
+def test_default_tools_bundle_excludes_computer_use_until_dispatcher_lands() -> None:
+    """Codex P1 review on PR #338 — the agent flow has no consumer
+    for `metadata.client_action`, so registering ComputerUseTool in
+    `default_tools()` would tell the model the action queued/succeeded
+    while no gate actually shows + no OS event fires. The tool stays
+    importable from `tools.py` (Control Center surfaces it for visibility)
+    but the standard registry bundle does NOT include it. Re-enable when
+    an agent flow gains a real client-side dispatcher.
+
+    The cápsula's plan-action wire (DomAction type='computer_use') is
+    the path actually wired today and does NOT depend on this registry."""
     bundle = default_tools()
     names = [t.name for t in bundle]
-    assert "computer_use" in names
+    assert "computer_use" not in names
 
 
 # ── ComputerUseAction Pydantic wire-format validation ─────────────────────

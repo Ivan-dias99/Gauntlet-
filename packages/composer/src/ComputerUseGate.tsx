@@ -71,32 +71,45 @@ export async function runComputerUseAction(
 }
 
 // Hook the cápsula uses to wire the gate. Owns the pending-action
-// state, the approve→execute pipeline AND the last-error surface so
+// QUEUE, the approve→execute pipeline AND the last-error surface so
 // the cápsula's body stays thin (Lei do Capsule). Returns:
 //   * `enqueue(action)` — call from anywhere (slash, agent plan-action)
-//     to queue an action for operator review.
+//     to queue an action for operator review. Multiple calls in a
+//     single tick (e.g. plan-dispatcher iterating a [move, click]
+//     sequence) all queue; the operator approves each in FIFO order.
 //   * `gateProps` — spread directly on `<ComputerUseGate {...} />`.
 //   * `lastError` — most recent error from the adapter (Wayland not
 //     supported, macOS Accessibility denied, etc). Surfaced in the
 //     gate UI so the operator sees WHY nothing happened instead of
 //     a console.warn no-one reads.
 // `adapter` may be undefined (browser shell, computerUse capability
-// off); enqueue becomes a no-op in that case so callers don't need to
-// guard, but the slash builder already gates on capability for UX.
+// off); enqueue still queues so the visible state matches what the
+// model planned, but onApprove becomes a no-op (no OS event fires).
+//
+// Doctrine on reject: rejecting a single action CLEARS THE WHOLE
+// QUEUE. A model that planned `move(400,300)` then `click(left)` and
+// gets the move rejected would otherwise click at the cursor's
+// current position — almost certainly NOT what the operator wanted.
+// Rejecting one means cancelling the sequence; if the operator wants
+// finer control they reject everything and re-prompt.
 export function useComputerUseGate(adapter: AmbientComputerUse | undefined) {
-  const [pending, setPending] = useState<ComputerUseAction | null>(null);
+  const [queue, setQueue] = useState<ComputerUseAction[]>([]);
   const [lastError, setLastError] = useState<string | null>(null);
 
   const enqueue = useCallback((action: ComputerUseAction) => {
     // Clear stale error on new enqueue so a previous Wayland-fail
     // banner doesn't haunt the next attempt.
     setLastError(null);
-    setPending(action);
+    setQueue((q) => [...q, action]);
   }, []);
 
   const onApprove = useCallback(
     async (action: ComputerUseAction) => {
-      setPending(null);
+      // Pop the head — even if the caller passed a stale reference,
+      // we always drain the FIFO front so the gate advances. Mismatch
+      // is impossible in normal flow because the gate only ever shows
+      // queue[0]; passing it back is a stable round-trip.
+      setQueue((q) => q.slice(1));
       if (!adapter) return;
       try {
         await runComputerUseAction(adapter, action);
@@ -109,7 +122,10 @@ export function useComputerUseGate(adapter: AmbientComputerUse | undefined) {
   );
 
   const onReject = useCallback(() => {
-    setPending(null);
+    // Clear ALL queued actions, not just the head. Model-planned
+    // sequences (move + click) lose their meaning when a step is
+    // skipped; cancel the whole batch and let the model re-plan.
+    setQueue([]);
     setLastError(null);
   }, []);
 
@@ -118,7 +134,8 @@ export function useComputerUseGate(adapter: AmbientComputerUse | undefined) {
   return {
     enqueue,
     gateProps: {
-      pending,
+      pending: queue[0] ?? null,
+      queueLength: queue.length,
       onApprove,
       onReject,
       lastError,
@@ -129,6 +146,10 @@ export function useComputerUseGate(adapter: AmbientComputerUse | undefined) {
 
 export interface ComputerUseGateProps {
   pending: ComputerUseAction | null;
+  // Total queued actions including the visible one. Lets the gate
+  // surface "1 de 3" so the operator knows more approvals are coming
+  // and that "rejeitar" cancels all of them.
+  queueLength?: number;
   onApprove: (action: ComputerUseAction) => void;
   onReject: () => void;
   // Optional — when present, the gate renders an error banner (for
@@ -141,6 +162,7 @@ export interface ComputerUseGateProps {
 
 export function ComputerUseGate({
   pending,
+  queueLength,
   onApprove,
   onReject,
   lastError,
@@ -205,6 +227,12 @@ export function ComputerUseGate({
         <div className="gauntlet-cu-gate__card">
           <div className="gauntlet-cu-gate__title">
             confirma a acção do computer-use
+            {typeof queueLength === 'number' && queueLength > 1 && (
+              <span className="gauntlet-cu-gate__queue">
+                {' '}
+                · 1 de {queueLength}
+              </span>
+            )}
           </div>
           {pending.reason && (
             <div className="gauntlet-cu-gate__reason">{pending.reason}</div>
@@ -215,6 +243,11 @@ export function ComputerUseGate({
               type="button"
               className="gauntlet-cu-gate__reject"
               onClick={onReject}
+              title={
+                typeof queueLength === 'number' && queueLength > 1
+                  ? `rejeita esta acção e cancela as ${queueLength - 1} seguintes`
+                  : 'rejeita a acção'
+              }
             >
               rejeitar (Esc)
             </button>
@@ -268,6 +301,10 @@ export const COMPUTER_USE_GATE_CSS = `
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(190, 200, 220, 0.6);
+}
+.gauntlet-cu-gate__queue {
+  color: rgba(186, 212, 255, 0.85);
+  letter-spacing: 0.04em;
 }
 .gauntlet-cu-gate__reason {
   font-size: 13px;

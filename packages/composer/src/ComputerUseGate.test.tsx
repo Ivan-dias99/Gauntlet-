@@ -183,6 +183,7 @@ describe('useComputerUseGate', () => {
     const { result } = renderHook(() => useComputerUseGate(adapter));
 
     expect(result.current.gateProps.pending).toBeNull();
+    expect(result.current.gateProps.queueLength).toBe(0);
 
     act(() => {
       result.current.enqueue({ kind: 'move', x: 5, y: 5 });
@@ -192,6 +193,7 @@ describe('useComputerUseGate', () => {
       x: 5,
       y: 5,
     });
+    expect(result.current.gateProps.queueLength).toBe(1);
 
     await act(async () => {
       await result.current.gateProps.onApprove({
@@ -201,23 +203,78 @@ describe('useComputerUseGate', () => {
       });
     });
     expect(result.current.gateProps.pending).toBeNull();
+    expect(result.current.gateProps.queueLength).toBe(0);
     expect(adapter.moveCursor).toHaveBeenCalledWith(5, 5);
   });
 
-  it('reject clears the pending action without invoking the adapter', () => {
+  it('queues multiple actions in FIFO order; head is what the gate shows', () => {
+    // Codex P1 — enqueue used to overwrite the single pending slot,
+    // dropping earlier actions silently. The fix is a queue: a model
+    // that plans `move(400,300)` then `click(left)` enqueues both,
+    // and the operator sees them one at a time in order.
+    const { result } = renderHook(() => useComputerUseGate(fakeAdapter()));
+
+    act(() => {
+      result.current.enqueue({ kind: 'move', x: 100, y: 200 });
+      result.current.enqueue({ kind: 'click', button: 'left' });
+      result.current.enqueue({ kind: 'press', key: 'Enter' });
+    });
+
+    expect(result.current.gateProps.pending).toEqual({
+      kind: 'move',
+      x: 100,
+      y: 200,
+    });
+    expect(result.current.gateProps.queueLength).toBe(3);
+  });
+
+  it('approve advances FIFO — head pops, next becomes visible', async () => {
     const adapter = fakeAdapter();
     const { result } = renderHook(() => useComputerUseGate(adapter));
 
     act(() => {
-      result.current.enqueue({ kind: 'click', button: 'middle' });
+      result.current.enqueue({ kind: 'move', x: 1, y: 2 });
+      result.current.enqueue({ kind: 'click', button: 'left' });
     });
-    expect(result.current.gateProps.pending).not.toBeNull();
+    expect(result.current.gateProps.queueLength).toBe(2);
+
+    await act(async () => {
+      await result.current.gateProps.onApprove({ kind: 'move', x: 1, y: 2 });
+    });
+
+    // Head moved to the click.
+    expect(result.current.gateProps.pending).toEqual({
+      kind: 'click',
+      button: 'left',
+    });
+    expect(result.current.gateProps.queueLength).toBe(1);
+    expect(adapter.moveCursor).toHaveBeenCalledWith(1, 2);
+    expect(adapter.click).not.toHaveBeenCalled();
+  });
+
+  it('reject clears THE WHOLE QUEUE — sequence cancels', () => {
+    // Doctrine: rejecting `move` makes a follow-up `click` meaningless
+    // (it would click at the cursor's current position). One reject
+    // cancels every queued step; operator re-prompts if they want
+    // partial execution.
+    const adapter = fakeAdapter();
+    const { result } = renderHook(() => useComputerUseGate(adapter));
+
+    act(() => {
+      result.current.enqueue({ kind: 'move', x: 1, y: 2 });
+      result.current.enqueue({ kind: 'click', button: 'left' });
+      result.current.enqueue({ kind: 'press', key: 'Enter' });
+    });
+    expect(result.current.gateProps.queueLength).toBe(3);
 
     act(() => {
       result.current.gateProps.onReject();
     });
     expect(result.current.gateProps.pending).toBeNull();
+    expect(result.current.gateProps.queueLength).toBe(0);
     expect(adapter.click).not.toHaveBeenCalled();
+    expect(adapter.moveCursor).not.toHaveBeenCalled();
+    expect(adapter.pressKey).not.toHaveBeenCalled();
   });
 
   it('approve is a no-op (no throw) when adapter is undefined', async () => {

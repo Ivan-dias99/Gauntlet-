@@ -2006,6 +2006,17 @@ def default_tools() -> list[Tool]:
     from 8 to 13 — added write_file, memory_save, memory_search, github
     (read-only), and vercel (stub). Operators turn off individual tools
     via ComposerSettings.tool_policies in the Control Center."""
+    # NOTE: ComputerUseTool is intentionally NOT registered here. The
+    # tool's `_run` returns a `client_action` envelope that requires
+    # cápsula-side dispatch (the `useComputerUseGate` consent gate);
+    # no agent flow currently consumes that metadata, so registering
+    # it would tell the agent the action queued/succeeded when in
+    # fact NOTHING happens (operator never sees a gate, no OS event
+    # fires). Codex P1 review on PR #338 surfaced this — re-enable
+    # the registration here when an agent flow gains a real client-
+    # side dispatcher. The cápsula's plan-action wire (DomAction
+    # type='computer_use' in models.py) is the path actually wired
+    # today; that path does NOT touch this tool registry.
     return [
         WebSearchTool(),
         ExecutePythonTool(),
@@ -2020,5 +2031,4 @@ def default_tools() -> list[Tool]:
         MemorySearchTool(),
         GitHubTool(),
         VercelTool(),
-        ComputerUseTool(),
     ]
