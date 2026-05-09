@@ -118,11 +118,103 @@ def _stop_reason(finish: Optional[str]) -> str:
 # ── Adapter ────────────────────────────────────────────────────────────────
 
 
+class _StreamContext:
+    """Mimics anthropic's MessageStream context manager.
+
+    The composer's /dom_plan_stream endpoint uses
+    ``async with client.messages.stream(...) as stream:`` and consumes
+    ``stream.text_stream`` (token-by-token deltas) plus
+    ``stream.get_final_message()`` (usage tokens + stop_reason). We
+    wrap google-genai's ``client.aio.models.generate_content_stream`` so
+    callers running on the Gemini fallback don't AttributeError when
+    they reach for messages.stream(...).
+    """
+
+    def __init__(
+        self, parent: "AsyncGeminiAnthropicAdapter", *, model: str,
+        max_tokens: int, messages: list[dict[str, Any]],
+        system: Optional[str] = None,
+        temperature: Optional[float] = None, **_unused: Any,
+    ) -> None:
+        self._parent = parent
+        self._model_anthropic = model
+        self._max_tokens = max_tokens
+        self._messages = messages
+        self._system = system
+        self._temperature = temperature
+        self._iter: Any = None
+        self._final_text = ""
+        self._stop_reason: Optional[str] = None
+        self._in_tokens = 0
+        self._out_tokens = 0
+
+    async def __aenter__(self) -> "_StreamContext":
+        client = self._parent._client
+        gemini_model = _resolve_gemini_model(self._model_anthropic, self._parent._model_id)
+        contents = _to_gemini_contents(self._messages)
+        gen_config: dict[str, Any] = {"max_output_tokens": self._max_tokens}
+        if self._temperature is not None:
+            gen_config["temperature"] = self._temperature
+        if self._system:
+            gen_config["system_instruction"] = self._system
+        # google-genai exposes a streaming variant under aio.models.
+        # We collect the async iterator here; iteration happens inside
+        # text_stream so the caller's `async for` shape matches anthropic.
+        self._iter = await client.aio.models.generate_content_stream(
+            model=gemini_model,
+            contents=contents,
+            config=gen_config,
+        )
+        return self
+
+    async def __aexit__(self, *exc_info: Any) -> None:
+        # google-genai's stream is closed when the async iterator
+        # exhausts; nothing to clean up here.
+        return None
+
+    @property
+    def text_stream(self) -> Any:
+        return self._iterate_text()
+
+    async def _iterate_text(self) -> Any:
+        async for chunk in self._iter:
+            text = getattr(chunk, "text", None)
+            if text:
+                self._final_text += text
+                yield text
+            # Gemini emits a tail chunk with usage_metadata and
+            # finish_reason. Capture both for parity with
+            # anthropic.get_final_message().
+            usage_meta = getattr(chunk, "usage_metadata", None)
+            if usage_meta is not None:
+                self._in_tokens = int(getattr(usage_meta, "prompt_token_count", 0) or 0)
+                self._out_tokens = int(getattr(usage_meta, "candidates_token_count", 0) or 0)
+            cands = getattr(chunk, "candidates", None) or []
+            if cands and not self._stop_reason:
+                self._stop_reason = getattr(cands[0], "finish_reason", None)
+
+    async def get_final_message(self) -> _Response:
+        return _Response(
+            content=[_Block(type="text", text=self._final_text)],
+            model=self._model_anthropic,
+            stop_reason=_stop_reason(self._stop_reason),
+            usage=_Usage(
+                input_tokens=self._in_tokens, output_tokens=self._out_tokens,
+            ),
+        )
+
+
 class _MessagesNamespace:
-    """Mimics anthropic.AsyncAnthropic().messages — exposes create()."""
+    """Mimics anthropic.AsyncAnthropic().messages — exposes create() + stream()."""
 
     def __init__(self, parent: "AsyncGeminiAnthropicAdapter") -> None:
         self._parent = parent
+
+    def stream(self, **kwargs: Any) -> _StreamContext:
+        """Return an async context manager that mimics anthropic's
+        ``messages.stream(...)``. The actual network call happens in
+        __aenter__."""
+        return _StreamContext(self._parent, **kwargs)
 
     async def create(
         self,
@@ -142,7 +234,7 @@ class _MessagesNamespace:
         loop will not fire when running on Gemini.
         """
         client = self._parent._client
-        gemini_model = self._parent._model_id
+        gemini_model = _resolve_gemini_model(model, self._parent._model_id)
         contents = _to_gemini_contents(messages)
         gen_config: dict[str, Any] = {
             "max_output_tokens": max_tokens,
@@ -189,10 +281,26 @@ class _MessagesNamespace:
         )
 
 
+# Map gateway-emitted model ids (Anthropic-shaped) to Gemini ids. Same
+# rationale as groq_provider: ROUTING speaks Claude-language; we
+# translate so the haiku fallback lands on a different (smaller/faster)
+# Gemini model rather than re-hitting the same one.
+_GEMINI_FALLBACK_MODEL = "gemini-2.5-flash-lite"
+
+
+def _resolve_gemini_model(requested: str, configured: str) -> str:
+    """Translate a gateway-emitted Anthropic id into a Gemini id."""
+    if requested.startswith("claude-haiku"):
+        return _GEMINI_FALLBACK_MODEL
+    if requested.startswith("claude-"):
+        return configured
+    return requested
+
+
 class AsyncGeminiAnthropicAdapter:
-    """Drop-in replacement for AsyncAnthropic for the non-streaming, no-tool
-    code paths. Triad + judge work; agent loop falls back to mock prompt
-    advice (no tool execution)."""
+    """Drop-in replacement for AsyncAnthropic. Streaming agora é
+    suportado via google-genai's generate_content_stream; tool-use /
+    agent loop continua fora do escopo v1."""
 
     def __init__(self, *, api_key: str, model: str = "gemini-2.5-flash") -> None:
         try:
@@ -206,7 +314,7 @@ class AsyncGeminiAnthropicAdapter:
         self._model_id = model
         self.messages = _MessagesNamespace(self)
         logger.info(
-            "Gemini adapter initialised (model=%s). Streaming and tool use "
-            "are not supported on this provider — agent / SSE routes will "
-            "degrade.", model,
+            "Gemini adapter initialised (model=%s, fallback=%s). Streaming "
+            "supported; tool use / agent loop continua fora do escopo v1.",
+            model, _GEMINI_FALLBACK_MODEL,
         )

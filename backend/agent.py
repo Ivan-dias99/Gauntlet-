@@ -40,11 +40,31 @@ logger = logging.getLogger("gauntlet.agent")
 
 # ── Tunables ────────────────────────────────────────────────────────────────
 
+import os as _os
+
 MAX_AGENT_ITERATIONS: int = 10       # outer loop: model turns
 MAX_TOOL_CALLS: int = 20             # across the whole run
 MAX_REPEATS: int = 3                 # same tool+input within a run
 AGENT_TEMPERATURE: float = 0.2
 AGENT_WALL_CLOCK_S: float = 90.0
+
+# Cumulative token budget — sum of input + output across the run. Stops
+# a runaway loop from quietly burning the operator's quota when the
+# wall-clock and iteration caps both stay green (e.g. very fast model
+# producing huge contexts). 200K matches the working window of a single
+# Claude Sonnet session and is comfortably above any legitimate run we
+# have seen. Override via GAUNTLET_AGENT_TOKEN_BUDGET.
+def _read_token_budget() -> int:
+    raw = _os.environ.get("GAUNTLET_AGENT_TOKEN_BUDGET", "").strip()
+    if not raw:
+        return 200_000
+    try:
+        value = int(raw)
+        return value if value > 0 else 200_000
+    except ValueError:
+        return 200_000
+
+AGENT_TOKEN_BUDGET: int = _read_token_budget()
 
 DEV_KEYWORDS: tuple[str, ...] = (
     # English
@@ -379,6 +399,29 @@ class AgentOrchestrator:
             total_in += response.usage.input_tokens
             total_out += response.usage.output_tokens
             stop_reason = response.stop_reason or "end_turn"
+
+            # Cumulative token budget. Iteration + tool-call caps catch
+            # most loops, but a model emitting huge contexts can stay
+            # under both while burning quota. Check after each turn so
+            # the operator's bill never grows past the configured ceiling.
+            if total_in + total_out > AGENT_TOKEN_BUDGET:
+                terminated_early = True
+                termination_reason = (
+                    f"token budget exceeded "
+                    f"({total_in + total_out} > {AGENT_TOKEN_BUDGET})"
+                )
+                break
+
+            if stop_reason == "max_tokens":
+                # Model truncated its own output mid-stream — surface it
+                # explicitly so the caller doesn't treat the partial
+                # answer as authoritative. This was previously folded
+                # into the generic "non tool_use" branch and looked like
+                # a clean completion.
+                logger.warning(
+                    "agent stop_reason=max_tokens at iter=%d (in=%d out=%d)",
+                    iteration, total_in, total_out,
+                )
 
             # Surface any interim reasoning text the model emitted before
             # deciding on tool calls (or as its final answer).

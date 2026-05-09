@@ -63,6 +63,13 @@ async def route_auto_stream(query: SignalQuery):
         try:
             async for event in engine.process_auto_streaming(query):
                 yield f"data: {_json.dumps(event)}\n\n"
+        except asyncio.CancelledError:
+            # Client disconnected mid-stream. Starlette cancels the
+            # generator; let the cancel propagate so the engine's own
+            # finally blocks run (release locks, decrement in_flight).
+            # Suppressing here would leak observability state.
+            logger.info("client disconnected from /route/stream")
+            raise
         except Exception as e:
             logger.error(f"Route stream error: {e}", exc_info=True)
             yield f"data: {_json.dumps({'type': 'error', **error_envelope('router_error', e)})}\n\n"

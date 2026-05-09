@@ -60,6 +60,7 @@ from composer_settings import settings_store
 from model_gateway import GatewayCall, gateway
 from pydantic import TypeAdapter, ValidationError
 from runs import run_store
+from runtime import require_engine
 from urllib.parse import urlparse
 
 logger = logging.getLogger("gauntlet.composer")
@@ -116,23 +117,14 @@ _previews: _TTLStore = _TTLStore(_PREVIEW_TTL_SECONDS)
 
 
 # ── Engine bridge ──────────────────────────────────────────────────────────
-# The server's Engine instance is created in lifespan; we read it
-# at request time so the composer module loads even before lifespan runs
-# (e.g. during pytest collection or `import server`).
+# Lifespan in server.py constructs the Engine and stores it in runtime
+# via runtime.set_engine(...). require_engine raises a typed 503 when the
+# engine isn't ready, matching what every other router (ask/agent/runs/…)
+# uses. Kept as a thin alias so existing call sites stay untouched.
 
 def _get_engine():
-    """Return the live Engine instance from server, or 503."""
-    import server  # local import — server imports composer, mutual avoidance
-    if server.engine is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "error": "engine_not_initialized",
-                "reason": "EngineNotInitialized",
-                "message": "Composer cannot run before the engine is up.",
-            },
-        )
-    return server.engine
+    """Return the live Engine instance, or raise 503."""
+    return require_engine()
 
 
 # ── Governance Lock (Sprint 4) — settings application helpers ──────────────
@@ -836,13 +828,13 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
             if getattr(block, "type", None) == "text":
                 raw_text += block.text
         gateway.record(GatewayCall(
-            role="default", model_id=model_id, provider=choice.provider,
+            role="default", model_id=model_id, provider=engine._provider_name,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,
         ))
     except Exception as exc:  # noqa: BLE001
         gateway.record(GatewayCall(
-            role="default", model_id=model_id, provider=choice.provider,
+            role="default", model_id=model_id, provider=engine._provider_name,
             succeeded=False, error_kind=type(exc).__name__,
         ))
         raise HTTPException(
@@ -1002,7 +994,7 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
                 out_tokens = final.usage.output_tokens
         except Exception as exc:  # noqa: BLE001
             gateway.record(GatewayCall(
-                role="default", model_id=model_id, provider=choice.provider,
+                role="default", model_id=model_id, provider=engine._provider_name,
                 succeeded=False, error_kind=type(exc).__name__,
             ))
             err_payload = json.dumps({
@@ -1013,7 +1005,7 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
             return
 
         gateway.record(GatewayCall(
-            role="default", model_id=model_id, provider=choice.provider,
+            role="default", model_id=model_id, provider=engine._provider_name,
             input_tokens=in_tokens, output_tokens=out_tokens,
         ))
 

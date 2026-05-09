@@ -86,5 +86,17 @@ export default defineConfig({
       // capped at 800x600 by the browser, which is too small to host the
       // capsule's two-panel layout — a separate window has no such cap.
     },
+    // Manifest V3 CSP for extension pages (popup, options, sidepanel).
+    // Default Chrome MV3 already locks scripts to 'self', but stating it
+    // explicitly:
+    //   * blocks any future package that tries to inline-execute scripts
+    //   * declares the connect-src baseline so a CSP-aware reviewer can
+    //     audit network surface from one place.
+    // Wasm is dropped from the default 'unsafe-eval' allowance — none of
+    // the composer's hot path needs it; if a future feature does, it
+    // lands in a separate CSP edit, not as ambient slack.
+    content_security_policy: {
+      extension_pages: "script-src 'self'; object-src 'self'; base-uri 'self'",
+    },
   },
 });

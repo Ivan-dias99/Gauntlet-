@@ -115,16 +115,20 @@ async def lifespan(app: FastAPI):
             "═══════════════════════════════════════════════════════════"
         )
         sys.exit(1)
-    if not ANTHROPIC_API_KEY and GROQ_API_KEY:
+    # Engine precedence (engine.py): MOCK > Groq > Anthropic > Gemini.
+    # Banner + warnings must mirror that order — labelling the provider
+    # by which key is *set first* would lie when the operator has both
+    # ANTHROPIC_API_KEY and GROQ_API_KEY and Groq wins.
+    if GROQ_API_KEY and not GAUNTLET_MOCK:
         logger.warning(
             "Running on Groq provider (model=%s). "
-            "Agent loop and streaming are not supported on this path.",
+            "Streaming SSE supported; tool-use / agent loop is text-only on this path.",
             GROQ_MODEL,
         )
-    elif not ANTHROPIC_API_KEY and GEMINI_API_KEY:
+    elif GEMINI_API_KEY and not ANTHROPIC_API_KEY and not GAUNTLET_MOCK:
         logger.warning(
             "Running on Gemini provider (model=%s). "
-            "Agent loop and streaming are not supported on this path.",
+            "Streaming and tool-use are not supported on this path.",
             GEMINI_MODEL,
         )
 
@@ -132,10 +136,10 @@ async def lifespan(app: FastAPI):
     memory_label = "EPHEMERAL (volume not configured)" if PERSISTENCE_EPHEMERAL else "PERSISTENT"
     if GAUNTLET_MOCK:
         _provider_label = "MOCK (canned)"
-    elif ANTHROPIC_API_KEY:
-        _provider_label = "Anthropic Claude"
     elif GROQ_API_KEY:
         _provider_label = f"Groq ({GROQ_MODEL})"
+    elif ANTHROPIC_API_KEY:
+        _provider_label = "Anthropic Claude"
     else:
         _provider_label = f"Gemini ({GEMINI_MODEL})"
     logger.info(

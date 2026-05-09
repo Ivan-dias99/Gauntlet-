@@ -47,9 +47,14 @@ _PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"github_pat_[A-Za-z0-9_]{20,}"), "github_pat_****"),
     (re.compile(r"sk-[A-Za-z0-9_\-]{16,}"), "sk-****"),
     (re.compile(r"sk-ant-[A-Za-z0-9_\-]{16,}"), "sk-ant-****"),
-    # Generic "thing=<32+ char secret>". Bound the value to printable
-    # secret-shaped chars so we don't eat regular sentence punctuation.
-    (re.compile(r"=([A-Fa-f0-9]{32,}|[A-Za-z0-9+/_\-]{32,}=*)"), "=****"),
+    # Generic "thing=<40+ char secret>". The minimum length floor was 32
+    # but caught legit values like long numeric IDs and SHA-1 digests
+    # (40 hex chars exactly — kept covered by tightening to 40, not 41,
+    # because a SHA1 in a config string is still secret-shaped). 40 is
+    # also the JWT minimum + AWS access key minimum — anything shorter
+    # is almost never a real credential, so the false-positive cost on
+    # numeric IDs in INFO logs goes away.
+    (re.compile(r"=([A-Fa-f0-9]{40,}|[A-Za-z0-9+/_\-]{40,}=*)"), "=****"),
 )
 
 

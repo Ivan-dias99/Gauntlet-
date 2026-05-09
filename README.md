@@ -121,25 +121,26 @@ control-center/              React + Vite — a garagem (operator console)
   i18n/copy.ts               PT/EN catalogue (Lang in TweaksContext)
 
 backend/                     FastAPI — o maestro
-  server.py                  HTTP endpoints
-  composer.py                /composer/{context,intent,preview,apply}
+  server.py                  HTTP endpoints + middleware pipeline
+  routers/                   one router module per domain (ask, agent, runs, memory, …)
+  composer.py                /composer/{context,intent,preview,apply,…}
   engine.py                  triad + judge pipeline + auto-router
   agent.py                   tool-using agent loop
   tools.py                   tool registry
   model_gateway.py           multimodelo routing + cost summary
-  memory.py                  failure memory (JSON on disk)
+  memory.py · memory_records.py   failure + operator memory (JSON on disk)
   doctrine.py                prompt assembly
   models.py                  Pydantic contracts
   spine.py                   workspace snapshot store
   runs.py                    append-only run log
-  config.py                  env-driven settings
+  config.py · runtime.py     env-driven settings + shared engine accessor
   main.py                    uvicorn entry
   auth.py · rate_limit.py · security_headers.py · log_redaction.py
-  db.py · migrate.py · backup.py · parity_check.py    (PG cutover)
+  backup.py · persistence.py · pause_registry.py · context_router.py · observability.py
 
-api/                         Vercel edge forwarders
+api/                         Vercel edge forwarder
   gauntlet.ts                /api/gauntlet/* (canonical)
-  signal.ts · ruberra.ts     legacy aliases
+  _forwarder.ts              shared fetch + header sanitisation
 
 docs/OPERATIONS.md           boot · cutover · rollback · backup · deploy
 ```

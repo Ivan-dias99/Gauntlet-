@@ -488,8 +488,19 @@ class ExecutePythonTool(Tool):
     input_schema = {
         "type": "object",
         "properties": {
-            "code": {"type": "string", "description": "Python source to execute"},
-            "stdin": {"type": "string", "description": "Optional stdin payload"},
+            "code": {
+                "type": "string",
+                "description": "Python source to execute",
+                # Cap parse-time work. The 15 s wall-clock timeout bounds
+                # execution; without a length cap, a 1 MB script could
+                # spend most of that budget being parsed.
+                "maxLength": 50_000,
+            },
+            "stdin": {
+                "type": "string",
+                "description": "Optional stdin payload",
+                "maxLength": 50_000,
+            },
         },
         "required": ["code"],
     }
@@ -699,11 +710,37 @@ class RunCommandTool(Tool):
             "command": {
                 "type": "string",
                 "description": "Full command line; parsed with shlex.split",
+                # Bound input size — a 4 KB command line is more than
+                # any vetted binary needs.
+                "maxLength": 4096,
             },
         },
         "required": ["command"],
     }
     timeout_s = 20.0
+
+    @staticmethod
+    def _check_argv_paths(argv: list[str]) -> Optional[str]:
+        """shlex.split protects against shell metacharacter injection but
+        doesn't validate argument *values*. ``cat ../../etc/passwd`` parses
+        to ``["cat", "../../etc/passwd"]``; both tokens are individually
+        clean, yet the path argument escapes the workspace. Reject any
+        argument that contains a parent-dir traversal segment or a leading
+        absolute path. Operators who legitimately need an absolute path
+        should use the dedicated file tools (read_file / write_file),
+        which go through ``_resolve_within_workspace``."""
+        for arg in argv[1:]:
+            if not arg:
+                continue
+            # Leading slash on POSIX or `X:\` on Windows-style paths.
+            if arg.startswith("/") or (len(arg) > 2 and arg[1] == ":" and arg[2] in ("\\", "/")):
+                return f"Argument escapes workspace (absolute path): {arg!r}"
+            # Parent traversal anywhere in the value, including the
+            # `./../foo` form that the workspace check on its own
+            # would happily resolve outside.
+            if ".." in arg.replace("\\", "/").split("/"):
+                return f"Argument contains parent traversal: {arg!r}"
+        return None
 
     async def _run(self, command: str) -> ToolResult:
         try:
@@ -713,6 +750,9 @@ class RunCommandTool(Tool):
         rejection = _check_command_policy(argv)
         if rejection is not None:
             return ToolResult(ok=False, content=rejection)
+        path_rejection = self._check_argv_paths(argv)
+        if path_rejection is not None:
+            return ToolResult(ok=False, content=path_rejection)
         proc = await asyncio.create_subprocess_exec(
             *argv,
             stdout=asyncio.subprocess.PIPE,
@@ -956,8 +996,18 @@ class MemorySaveTool(Tool):
             "topic": {
                 "type": "string",
                 "description": "Short topic / handle (becomes the fingerprint key)",
+                # Topic is a handle, not a body. Cap so the agent can't
+                # smuggle a 10 MB blob through the topic field and bypass
+                # the body cap.
+                "maxLength": 256,
             },
-            "body": {"type": "string", "description": "Free-form note body"},
+            "body": {
+                "type": "string",
+                "description": "Free-form note body",
+                # 10 KB covers every legitimate operator memory; anything
+                # longer is the agent leaking context, not recording it.
+                "maxLength": 10_000,
+            },
             "kind": {
                 "type": "string",
                 "description": "note | decision | failure_pattern | preference | canon",
@@ -971,6 +1021,7 @@ class MemorySaveTool(Tool):
             "project_id": {
                 "type": "string",
                 "description": "Required when scope=project; ignored otherwise",
+                "maxLength": 128,
             },
         },
         "required": ["topic", "body"],

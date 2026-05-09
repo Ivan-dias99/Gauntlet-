@@ -88,8 +88,14 @@ class Engine:
     """
     
     def __init__(self) -> None:
+        # Provider name flows into every GatewayCall the engine records.
+        # /gateway/summary then groups + costs by the actual provider that
+        # billed (or didn't bill, in the case of free-tier Groq/Gemini),
+        # rather than by the Anthropic-shaped model id the gateway emits.
+        self._provider_name = "anthropic"
         if GAUNTLET_MOCK:
             self._client = MockAsyncAnthropic()
+            self._provider_name = "mock"
             logger.warning("Engine initialized in MOCK mode — no network calls")
         elif GROQ_API_KEY:
             # Primary path. Anthropic + Gemini estão em pausa: a operação
@@ -101,6 +107,7 @@ class Engine:
             self._client = AsyncGroqAnthropicAdapter(
                 api_key=GROQ_API_KEY, model=GROQ_MODEL,
             )
+            self._provider_name = "groq"
             logger.warning(
                 "Running on Groq provider (model=%s). "
                 "Streaming SSE supported; agent loop with tools is not.",
@@ -111,7 +118,13 @@ class Engine:
             # explicitamente ANTHROPIC_API_KEY sem ter GAUNTLET_GROQ_API_KEY.
             # Pausa motivada por custo / falta de créditos no projeto;
             # o código permanece compatível para quando voltar a abrir.
-            self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+            #
+            # 30 s HTTP timeout: anthropic SDK's default is 10 min, way
+            # longer than any triad call should ever need. A hung
+            # provider was blocking workers indefinitely; 30 s is a
+            # comfortable ceiling for the longest legitimate call
+            # (large judge synthesis) plus headroom.
+            self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY, timeout=30.0)
             logger.warning(
                 "Running on Anthropic (paused path — operator opted in via "
                 "ANTHROPIC_API_KEY without GAUNTLET_GROQ_API_KEY)."
@@ -124,6 +137,7 @@ class Engine:
             self._client = AsyncGeminiAnthropicAdapter(
                 api_key=GEMINI_API_KEY, model=GEMINI_MODEL,
             )
+            self._provider_name = "gemini"
             logger.warning(
                 "Running on Gemini (paused fallback path, model=%s).",
                 GEMINI_MODEL,
@@ -183,14 +197,38 @@ class Engine:
         model_id = choice.model_id
 
         # Wave P-7 — fallback chain. When the primary fails with a
-        # recoverable Anthropic error (rate limit, capacity, network
-        # blip), retry once with the next model in ROUTING. Each
-        # GatewayCall recorded carries fallback_from so /gateway/summary
-        # shows when failover kicked in.
+        # recoverable error (rate limit, capacity, network blip),
+        # retry once with the next model in ROUTING. Each GatewayCall
+        # recorded carries fallback_from so /gateway/summary shows when
+        # failover kicked in.
+        #
+        # The recoverable set mixes isinstance and class-name matching
+        # because the engine works across providers whose SDKs don't
+        # share a common base class:
+        #   * anthropic: RateLimitError, APIConnectionError, …
+        #   * groq:      groq.RateLimitError, groq.APIError, …
+        #   * gemini:    google.api_core.exceptions.ResourceExhausted,
+        #                DeadlineExceeded, ServiceUnavailable, …
+        # Matching only on Anthropic types meant a Groq 429 was treated
+        # as terminal and skipped the failover — the operator most needs
+        # it on the primary path. The class-name fallback is exact-match
+        # (not substring) so unrelated exceptions still bubble as
+        # terminal.
         from anthropic import (
             RateLimitError, APIConnectionError, APITimeoutError, InternalServerError,
         )
-        recoverable = (RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)
+        recoverable_types = (RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)
+        recoverable_names = frozenset({
+            "RateLimitError", "APIConnectionError", "APITimeoutError",
+            "InternalServerError", "APIError", "APIStatusError",
+            "ResourceExhausted", "DeadlineExceeded", "ServiceUnavailable",
+            "TooManyRequests", "ConnectionError", "ReadTimeout",
+        })
+
+        def _is_recoverable(exc: BaseException) -> bool:
+            if isinstance(exc, recoverable_types):
+                return True
+            return type(exc).__name__ in recoverable_names
 
         async def _attempt(_choice, _model_id, _from: str | None):
             import time as _t
@@ -212,7 +250,7 @@ class Engine:
                 in_tok = response.usage.input_tokens
                 out_tok = response.usage.output_tokens
                 gateway.record(GatewayCall(
-                    role="triad", model_id=_model_id, provider=_choice.provider,
+                    role="triad", model_id=_model_id, provider=self._provider_name,
                     input_tokens=in_tok, output_tokens=out_tok,
                     fallback_from=_from,
                 ))
@@ -231,7 +269,7 @@ class Engine:
                 # Always record + close observability so any failure
                 # (recoverable or not) decrements in_flight.
                 gateway.record(GatewayCall(
-                    role="triad", model_id=_model_id, provider=_choice.provider,
+                    role="triad", model_id=_model_id, provider=self._provider_name,
                     succeeded=False, error_kind=type(exc).__name__,
                     fallback_from=_from,
                 ))
@@ -241,7 +279,7 @@ class Engine:
                     succeeded=False, error_kind=type(exc).__name__,
                 )
                 _obs_finalized = True
-                return None, exc, isinstance(exc, recoverable)
+                return None, exc, _is_recoverable(exc)
             finally:
                 if not _obs_finalized:
                     observability.end(
@@ -328,7 +366,7 @@ class Engine:
                 f"should_refuse={verdict.should_refuse}"
             )
             gateway.record(GatewayCall(
-                role="judge", model_id=model_id, provider=choice.provider,
+                role="judge", model_id=model_id, provider=self._provider_name,
                 input_tokens=response.usage.input_tokens,
                 output_tokens=response.usage.output_tokens,
             ))
@@ -343,7 +381,7 @@ class Engine:
         except Exception as e:
             logger.error(f"Judge invocation failed: {e}")
             gateway.record(GatewayCall(
-                role="judge", model_id=model_id, provider=choice.provider,
+                role="judge", model_id=model_id, provider=self._provider_name,
                 succeeded=False, error_kind=type(e).__name__,
             ))
             observability.end(

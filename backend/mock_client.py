@@ -97,11 +97,11 @@ class _MockMessages:
                 content=[_Block(type="text", text=json.dumps(MOCK_COMPOSER_PLAN))],
             )
         # Crew: structured roles (no tools)
-        if head.startswith("You are the Signal Planner"):
+        if head.startswith("You are the Gauntlet Planner"):
             return _Response(
                 content=[_Block(type="text", text=json.dumps(MOCK_PLAN))],
             )
-        if head.startswith("You are the Signal Critic"):
+        if head.startswith("You are the Gauntlet Critic"):
             return _Response(
                 content=[_Block(type="text", text=json.dumps(MOCK_CRITIC_VERDICT))],
             )
