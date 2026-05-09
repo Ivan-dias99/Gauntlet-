@@ -15,7 +15,7 @@ google-genai>=2.0.1
 # unset and GAUNTLET_GROQ_API_KEY is provided. groq_provider.py wraps the
 # OpenAI-compatible chat.completions surface in the same Anthropic-shaped
 # adapter as gemini_provider.py.
-groq>=0.11.0
+groq>=1.2.0
 # Edge TTS — Microsoft's neural voices via the public Edge Online TTS
 # endpoint. Free, no API key, multilingual. Powers /voice/synthesize.
 edge-tts>=7.2.8
