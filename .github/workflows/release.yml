@@ -118,7 +118,7 @@ jobs:
           VITE_GAUNTLET_BACKEND_URL: ${{ secrets.GAUNTLET_BACKEND_URL || 'https://ruberra-backend-jkpf-production.up.railway.app' }}
         run: npm run zip:firefox
       - name: upload zips
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             apps/browser-extension/.output/*.zip
