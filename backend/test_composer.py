@@ -44,11 +44,8 @@ def fresh_app(monkeypatch: pytest.MonkeyPatch) -> Iterable[TestClient]:
         monkeypatch.setenv("GAUNTLET_DATA_DIR", tmp)
         monkeypatch.setenv("GAUNTLET_MOCK", "1")
         monkeypatch.setenv("GAUNTLET_RATE_LIMIT_DISABLED", "1")
-        # Force the auth gate off for our tests. v1 polish: empty
-        # GAUNTLET_API_KEY is now fail-CLOSED (503), so tests that
-        # don't care about auth must set GAUNTLET_AUTH_DISABLED=1
-        # explicitly. Also defensively clear any key leaked from
-        # another test file.
+        # Auth gate is fail-CLOSED on empty key; explicit dev opt-out
+        # so these tests hit gated routes without a 503.
         monkeypatch.delenv("GAUNTLET_API_KEY", raising=False)
         monkeypatch.setenv("GAUNTLET_AUTH_DISABLED", "1")
         # Invalidate every Gauntlet module so fresh config picks up the
@@ -690,8 +687,8 @@ def test_voice_transcribe_400_on_malformed_base64(monkeypatch):
     monkeypatch.setenv("GAUNTLET_GROQ_API_KEY", "fake-for-validation-only")
     monkeypatch.setenv("GAUNTLET_MOCK", "1")
     monkeypatch.setenv("GAUNTLET_RATE_LIMIT_DISABLED", "1")
-    # v1 polish — auth is fail-CLOSED; explicit dev opt-out so the
-    # validation 400 path is exercised, not the 401 gate.
+    # Auth fail-closed; explicit opt-out so the validation 400 path
+    # is exercised instead of the 401 gate.
     monkeypatch.setenv("GAUNTLET_AUTH_DISABLED", "1")
     with tempfile.TemporaryDirectory() as tmp:
         monkeypatch.setenv("GAUNTLET_DATA_DIR", tmp)

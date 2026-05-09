@@ -123,11 +123,12 @@ export interface ScreenCaptureFull {
   path: string;
 }
 
+// Failures bubble to the caller as `null` (useAttachments surfaces
+// them via attachError); the in-cápsula UI is the only error channel.
 export async function captureScreenFull(): Promise<ScreenCaptureFull | null> {
   try {
     return await invoke<ScreenCaptureFull>("capture_screen_full");
   } catch {
-    // Caller (useAttachments → attachError) renders the failure to UI.
     return null;
   }
 }
@@ -146,7 +147,6 @@ export async function pickFile(
   try {
     return await invoke<PickedFile | null>("pick_file", { accept });
   } catch {
-    // Caller (useAttachments → attachError) renders the failure to UI.
     return null;
   }
 }
@@ -176,8 +176,6 @@ export async function pickSavePath(
       accept,
     });
   } catch {
-    // Caller (useAttachments saveComposeToDisk) sees the null and
-    // renders the failure as a savedToDiskFlash with an error tone.
     return null;
   }
 }
@@ -232,8 +230,6 @@ export async function notify(
     await sendNotification({ title, body });
     return true;
   } catch {
-    // Native notify is best-effort; cápsula falls back to in-window
-    // flash when this returns false.
     return false;
   }
 }
@@ -268,17 +264,15 @@ export async function bindGlobalShortcut(
 ): Promise<() => Promise<void>> {
   try {
     await register(spec, (event) => {
-      // The plugin emits both keydown and keyup; only fire the handler
-      // on press so a hold doesn't repeat-summon.
+      // Plugin emits both keydown + keyup; only fire on press so a
+      // hold doesn't repeat-summon.
       if (event.state === "Pressed") {
         handler();
       }
     });
   } catch {
     // Common cause: another app already bound the same shortcut.
-    // Don't propagate — the cápsula is still summonable via the tray
-    // icon (Sprint 7+ scope). The caller (App init) chains a .catch
-    // and surfaces a one-time toast when this happens.
+    // Don't propagate — the cápsula is still summonable via the tray.
   }
   return async () => {
     try {
@@ -304,8 +298,7 @@ export async function toggleCapsuleWindow(): Promise<void> {
       await invoke<void>("show_capsule");
     }
   } catch {
-    // Window already torn down, runtime not yet ready, etc — toggle
-    // is best-effort UX; user notices the no-op and re-presses.
+    // Window torn down or runtime not ready — best-effort UX.
   }
 }
 

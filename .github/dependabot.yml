@@ -1,11 +1,7 @@
-# Dependabot — automated dependency PRs across every ecosystem the
-# Gauntlet stack uses. The audit (v1 polish, 2026-05-09) flagged that
-# 4 ecosystems were unmonitored — npm, cargo, pip, github-actions —
-# despite the repo being public with two releases shipped.
-#
-# Schedule: weekly on Monday morning (Lisbon time = UTC). Limits kept
-# generous so CVEs surface fast; routine version bumps still respect
-# the open-prs cap so the queue stays reviewable.
+# Dependabot — automated dependency PRs across the four ecosystems
+# the Gauntlet stack uses (npm, cargo, pip, github-actions). Weekly
+# Monday cadence; open-PR caps keep the queue reviewable while CVEs
+# still surface fast.
 
 version: 2
 updates:

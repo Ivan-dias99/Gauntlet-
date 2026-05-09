@@ -1,7 +1,6 @@
-# Gauntlet — code ownership. GitHub uses this file to auto-request
-# reviews on PRs that touch the listed paths. The repo owner is the
-# fallback for everything; specific paths name additional reviewers
-# as the team grows. v1 polish (audit P1).
+# Gauntlet — code ownership. GitHub auto-requests reviews on PRs that
+# touch the listed paths. Repo owner is the fallback for everything;
+# specific paths name additional reviewers as the team grows.
 
 # Default owner — every PR.
 *                                   @Ivan-dias99

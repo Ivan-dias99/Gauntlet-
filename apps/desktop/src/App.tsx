@@ -18,6 +18,7 @@ import {
   Onboarding,
   ONBOARDING_CSS,
   createPillPrefs,
+  swallow,
 } from "@gauntlet/composer";
 import { createDesktopAmbient } from "./ambient";
 import {
@@ -55,19 +56,15 @@ export function App() {
         document.documentElement.setAttribute("data-theme", theme);
         document.body.setAttribute("data-theme", theme);
       })
-      .catch(() => {
-        // Storage unreachable — stay on the default theme attribute
-        // already set by the index.html's pre-React script.
-      });
+      .catch(swallow);
+    // First-run guard fails closed: storage broken → skip onboarding
+    // rather than looping the tour on every load.
     void prefs
       .readOnboardingDone()
       .then((done) => {
         if (!done) setShowOnboarding(true);
       })
-      .catch(() => {
-        // First-run guard fails closed — skip onboarding rather than
-        // re-showing it on every load when the storage is broken.
-      });
+      .catch(swallow);
   }, [ambient, prefs]);
 
   const dismissOnboarding = useCallback(() => {
@@ -87,11 +84,7 @@ export function App() {
       .then((u) => {
         unbind = u;
       })
-      .catch(() => {
-        // Shortcut bind already swallows internally; this catch is
-        // belt-and-suspenders so a hot-reload scenario where the
-        // returned promise rejects doesn't crash React's effect.
-      });
+      .catch(swallow);
     return () => {
       if (unbind) void unbind();
     };

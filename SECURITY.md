@@ -36,19 +36,18 @@ findings. Lower-severity issues land in the next minor release.
 
 ## Surfaces of particular interest
 
-* **Auth gate** (`backend/auth.py`). v1 polish flipped the default to
-  fail-closed; pre-flip deploys were wide-open without a key. Probe
-  for any path that bypasses the gate.
+* **Auth gate** (`backend/auth.py`). Fail-closed by default; missing
+  `GAUNTLET_API_KEY` without `GAUNTLET_AUTH_DISABLED=1` returns 503 on
+  every gated route. Probe for any path that bypasses the gate.
 * **CSP / CORS** (`backend/server.py`,
-  `apps/desktop/src-tauri/tauri.conf.json`). The CSP `connect-src`
-  was tightened from `*.up.railway.app` wildcards to the canonical
-  Railway hostname; CORS regex was tightened from `tauri://.+` to
-  `tauri://localhost`.
+  `apps/desktop/src-tauri/tauri.conf.json`). CSP `connect-src` is
+  pinned to the canonical Railway hostname; CORS regex matches
+  `tauri://localhost` exactly and extension UUIDs only.
 * **Computer-use commands** (`apps/desktop/src-tauri/src/lib.rs`).
   `cu_mouse_move`, `cu_mouse_click`, `cu_type`, `cu_press` drive the
-  operator's input devices. v1 polish added `cu_assert_main_webview`
-  so non-main webviews get a typed origin denial. Probe for ways to
-  invoke from another webview / iframe / external page.
+  operator's input devices. `cu_assert_main_webview` rejects calls
+  from any webview other than `main`; probe for ways to invoke from
+  another webview / iframe / external page.
 * **Shell allowlist** (`apps/desktop/src-tauri/src/lib.rs`). v1
   polish removed generic interpreters (npm, npx, node, python, pip)
   from the cápsula allowlist; the agent flow's separate allowlist

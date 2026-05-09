@@ -194,21 +194,16 @@ _cors_origins = sorted({
     "http://localhost:5173",
     "http://localhost:3000",
 })
-# v1 polish — security audit P0: apertar CORS. Antes:
-#   - allow_methods: ["*"]   (any verb)
-#   - allow_headers: ["*"]   (any header)
-#   - allow_credentials=True (com cookies)
-# combinava-se com regex permissiva e auth fail-open num footgun.
-# Now: enumerar verbos + headers que o frontend de facto usa. Quem
-# precisar de mais escreve em GAUNTLET_ORIGIN/REGEX, não amplia o
-# wildcard. credentials=True mantém-se para a cápsula browser-extension
-# que envia o token via Authorization header.
+# Methods + headers are enumerated (no wildcards) — credentials=True
+# is incompatible with `*` and the cápsula browser-extension passes
+# the bearer in the Authorization header. Operators who need a wider
+# surface widen `GAUNTLET_ORIGIN` / `GAUNTLET_ORIGIN_REGEX`, not these.
 _CORS_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 _CORS_HEADERS = [
     "Authorization",
     "Content-Type",
     "X-Requested-With",
-    # Cápsula manda este para correlation logging do model_gateway.
+    # Cápsula sends this for model_gateway correlation logging.
     "X-Gauntlet-Request-Id",
     "X-Gauntlet-Backend",
 ]
@@ -218,29 +213,14 @@ _cors_kwargs: dict = {
     "allow_methods": _CORS_METHODS,
     "allow_headers": _CORS_HEADERS,
 }
-# Chrome / Edge / Firefox extensions ship with a non-deterministic origin
-# (chrome-extension://<id>, moz-extension://<uuid>) so they cannot be
-# enumerated in ALLOWED_ORIGINS. Tauri 2 uses tauri://localhost on
-# Linux/macOS/iOS and http(s)://tauri.localhost on Windows for the same
-# reason. Em `tauri dev` o webview carrega via Vite a `http://localhost:<port>`
-# (5179 em apps/desktop/vite.config.ts mas a porta pode variar). Match
-# todos via regex para cápsula em qualquer shell + dev mode falar com
-# o backend sem configuração por-instalação. localhost/127.0.0.1 sem
-# porta fixa é seguro: o browser e o OS tratam ambas como loopback.
-# When the operator already supplied a regex, OR ours into theirs.
-# v1 polish — security audit P0: apertar o regex tauri.
-# Was: `tauri://.+` admitia qualquer caminho/host.
-# Is: `tauri://localhost` exacto + tauri.localhost (Windows). O scheme
-# `tauri://` só é gerado pela própria runtime do Tauri 2 e o host é
-# sempre `localhost`; permitir mais era desnecessário e abria espaço
-# para origens não-Tauri spoofarem o scheme.
-# Browser extensions: chrome-extension://<id> e equivalentes mantêm
-# `.+` no path porque o ID é gerado no install e não se enumera.
+# Browser-extension and Tauri origins cannot be enumerated (extension
+# IDs are install-time, Tauri uses tauri://localhost). Regex matches
+# Chrome / Mozilla / Safari extensions (Mozilla + Safari use UUID
+# IDs — hyphens admitted) and tauri://localhost only. Localhost
+# fallback covers `tauri dev` (Vite-served) and pure browser dev.
+# Operators who need broader matching set GAUNTLET_ORIGIN_REGEX —
+# the two regexes OR together.
 _extension_regex = (
-    # Chrome extension IDs are 32 lowercase letters; Mozilla + Safari
-    # use UUID-format IDs with hyphens. The character class admits both
-    # so a Firefox preflight (moz-extension://<uuid>) doesn't get
-    # rejected by CORS.
     r"^(chrome-extension|moz-extension|safari-web-extension):\/\/[a-zA-Z0-9-]+(\/.*)?$"
     r"|^tauri:\/\/localhost(\/.*)?$"
     r"|^https?:\/\/tauri\.localhost(:\d+)?$"
@@ -339,9 +319,8 @@ app.add_middleware(
     disabled=RATE_LIMIT_DISABLED,
     trust_proxy=TRUST_PROXY,
 )
-# 2) Auth gate — fail-CLOSED by default (v1 polish, security audit P0).
-#    Empty GAUNTLET_API_KEY without explicit GAUNTLET_AUTH_DISABLED=1
-#    means every gated route returns 503 instead of being wide-open.
+# 2) Auth gate — fail-CLOSED. Empty GAUNTLET_API_KEY without explicit
+#    GAUNTLET_AUTH_DISABLED=1 means every gated route returns 503.
 app.add_middleware(
     APIKeyAuthMiddleware,
     api_key=GAUNTLET_API_KEY,

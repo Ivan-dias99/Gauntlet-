@@ -70,9 +70,8 @@ Triggered ONLY by pushing a `vX.Y.Z` tag. The release workflow:
 4. Runs the backend suite.
 5. Uploads everything + `latest.json` for auto-update.
 
-Do NOT push `v*` tags casually. The audit (v1 polish) flagged
-restricted-tag-push as a P1; until a branch ruleset is in place, the
-maintainer is the de-facto gate.
+Do NOT push `v*` tags casually. Until a branch ruleset locks tag
+pushes to maintainers, the convention is the only gate.
 
 ## Reporting security issues
 

@@ -59,10 +59,6 @@ interface SummonDiagnostics {
 let lastSummonDiagnostics: SummonDiagnostics | null = null;
 
 function recordSummon(d: SummonDiagnostics): void {
-  // Stored only — extracted via the diagnostics message channel below.
-  // The previous `console.info` ran on every summon, which is service-
-  // worker DevTools spam in production; the in-memory record is what
-  // /diagnostics actually consults.
   lastSummonDiagnostics = d;
 }
 

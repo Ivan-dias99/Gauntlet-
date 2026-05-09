@@ -24,17 +24,14 @@ import pytest
 
 
 def _fresh_client(env: dict[str, str], *, leave_auth_unconfigured: bool = False):
-    """Build a TestClient with the requested env in place. We reload
-    config + server so middlewares pick up the new env values.
+    """Build a TestClient with the requested env in place. Reloads
+    config + server so middlewares pick up the patched env.
 
-    v1 polish — auth is fail-CLOSED in production. Tests that don't
-    explicitly drive the auth layer (rate-limit, headers, body-cap)
-    default to GAUNTLET_AUTH_DISABLED=1 so they still hit gated
-    routes without 503'ing. Auth-specific tests either pass
-    GAUNTLET_API_KEY (real auth on) or set GAUNTLET_AUTH_DISABLED=1.
-    The single test that exercises the misconfigured-default path
-    (key empty AND disable flag empty) passes
-    ``leave_auth_unconfigured=True``."""
+    Auth defaults: tests that don't explicitly drive the auth layer
+    default to ``GAUNTLET_AUTH_DISABLED=1`` so they hit gated routes
+    without 503'ing. Pass ``GAUNTLET_API_KEY`` to exercise the real
+    bearer flow, or ``leave_auth_unconfigured=True`` for the
+    misconfigured-default path (key empty AND disable flag empty)."""
     # Mock mode = no Anthropic key needed for boot.
     env.setdefault("GAUNTLET_MOCK", "1")
     # Default tests off the rate limiter unless the test asks for it.
@@ -86,10 +83,9 @@ def _fresh_client(env: dict[str, str], *, leave_auth_unconfigured: bool = False)
 
 
 def test_auth_misconfigured_when_key_and_disable_both_unset():
-    """v1 polish — security audit P0. Was: empty key = wide-open
-    (fail-OPEN). Is: empty key + no GAUNTLET_AUTH_DISABLED = 503
-    auth_misconfigured on every gated route. /health stays public so
-    Railway/Vercel probes don't flap."""
+    """Empty key + no `GAUNTLET_AUTH_DISABLED` returns 503
+    `auth_misconfigured` on every gated route. `/health` stays public
+    so Railway/Vercel probes keep routing traffic."""
     client, _ = _fresh_client({}, leave_auth_unconfigured=True)
     r = client.get("/diagnostics")
     assert r.status_code == 503, r.text

@@ -118,6 +118,5 @@ Content-Type: application/json
 The control-center client (`control-center/lib/gauntletApi.ts`) reads
 the header and surfaces the dormant state. Do NOT regex the body.
 Only the canonical `x-gauntlet-backend` header is emitted today —
-the previous `x-signal-backend` and `x-ruberra-backend` legacy
-emitters were removed in v1.0.0-rc.1 along with the matching route
-prefixes (audit doc honesty fix, 2026-05-09).
+the legacy `x-signal-backend` and `x-ruberra-backend` emitters were
+removed in v1.0.0-rc.1 along with the matching route prefixes.

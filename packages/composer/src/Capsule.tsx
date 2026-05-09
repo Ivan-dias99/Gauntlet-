@@ -44,6 +44,7 @@ import { StreamingState } from './StreamingState';
 import { useStreamingPlan } from './useStreamingPlan';
 import { useCapsuleScreenshot } from './useCapsuleScreenshot';
 import { useCapsuleKeyboard } from './useCapsuleKeyboard';
+import { swallow } from './helpers';
 
 export interface CapsuleProps {
   // Single seam to the host shell — provides transport, storage,
@@ -248,27 +249,18 @@ export function Capsule({
       .then((tools) => {
         if (!cancelled) setToolManifests(tools);
       })
-      .catch(() => {
-        // Manifests endpoint unreachable — keep palette working with
-        // built-in actions only.
-      });
+      .catch(swallow);
     void prefs
       .readPaletteRecent()
       .then((recent) => {
         if (!cancelled) setPaletteRecent(recent);
       })
-      .catch(() => {
-        // Storage corrupted / blocked — palette still renders, just
-        // without the recent-first ordering.
-      });
+      .catch(swallow);
     return () => {
       cancelled = true;
     };
   }, [client, prefs]);
 
-  // Theme — load persisted choice once at mount. While the storage
-  // round-trip resolves the cápsula renders the default flagship light,
-  // so there's no flash for the most common path.
   useEffect(() => {
     let cancelled = false;
     void prefs
@@ -276,9 +268,7 @@ export function Capsule({
       .then((t) => {
         if (!cancelled) setTheme(t);
       })
-      .catch(() => {
-        // Storage failure — stay on the default light theme.
-      });
+      .catch(swallow);
     return () => {
       cancelled = true;
     };

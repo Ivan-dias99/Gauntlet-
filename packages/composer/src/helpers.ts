@@ -10,6 +10,11 @@ export function truncate(s: string, max: number): string {
   return s.slice(0, max) + '…';
 }
 
+// Use as `.catch(swallow)` for read-side promises whose only failure
+// mode is "keep the existing default". Centralised so future telemetry
+// (Sentry, OpenTelemetry) gets one hook to wire.
+export function swallow(_e: unknown): void {}
+
 // Pull a partial `compose` value out of a streaming JSON buffer.
 // Returns null if the response does not look like a compose case
 // (e.g., the model started with `{"actions":[…`). Handles the most
