@@ -42,6 +42,8 @@ import { LeftPanel } from './LeftPanel';
 import { ActionsRow } from './ActionsRow';
 import { StreamingState } from './StreamingState';
 import { useStreamingPlan } from './useStreamingPlan';
+import { useCapsuleScreenshot } from './useCapsuleScreenshot';
+import { useCapsuleKeyboard } from './useCapsuleKeyboard';
 
 export interface CapsuleProps {
   // Single seam to the host shell — provides transport, storage,
@@ -104,11 +106,13 @@ export function Capsule({
   // pre-empts an in-flight utterance.
   // Wired below once `phase` and `plan` are declared.
   // Multimodal: when the user opted in (via SettingsDrawer), capture
-  // a viewport screenshot once per cápsula mount. The result is
-  // attached to the next request's metadata so the planner can "see"
-  // the page. If the request fires before capture finishes, we send
-  // without the image — better than blocking the user.
-  const [screenshot, setScreenshot] = useState<string | null>(null);
+  // a viewport screenshot once per cápsula mount. Hook owns the state
+  // + effect; we only consume the value here (passed to the streaming
+  // hook + read for the screenshotEnabled prop on LeftPanel). Pref
+  // source order + capability gating live in useCapsuleScreenshot.
+  // Wired below once `settings` is declared (the operator-side default
+  // comes from there; passing a primitive boolean keeps the effect
+  // dep narrow).
   // Computer-use consent gate — hook owns the queue state + executor;
   // capsule just renders its props. Doctrine: gate is the single shape
   // that survives a future MCP migration; adapter primitives never run
@@ -289,43 +293,11 @@ export function Capsule({
     };
   }, [client]);
 
-  // Fire-and-forget screenshot capture on mount when the pref is on.
-  // Pref source order:
-  //   1. Local toggle (chrome.storage.local) — explicit user choice wins.
-  //   2. Backend settings.screenshot_default — operator-set default.
-  // Skipped in popup mode (no executor) — capturing there returns a
-  // screenshot of the popup window itself, which is useless and
-  // visually recursive.
-  useEffect(() => {
-    // Skip when the host shell can't capture (desktop default, browser
-    // popup window) — both screenshot capability and a working
-    // screenshot adapter must be present.
-    if (!ambient.capabilities.screenshot || !ambient.screenshot) return;
-    let cancelled = false;
-    void prefs.readScreenshotEnabled().then((enabledLocal) => {
-      // The local pref defaults to false in pill-prefs. If the
-      // operator-side default is true, we honor it as the boot value
-      // unless the user already toggled it locally. To avoid a third
-      // tri-state pref we treat "local was never set" the same as
-      // "local is false" — operator default only applies when local is
-      // false. That biases toward minimal screenshot capture (privacy
-      // wins on draws).
-      const enabled = enabledLocal || settings.screenshot_default;
-      if (cancelled || !enabled) return;
-      void ambient
-        .screenshot!.capture()
-        .then((dataUrl) => {
-          if (cancelled || !dataUrl) return;
-          setScreenshot(dataUrl);
-        })
-        .catch(() => {
-          // Silent — screenshot is opt-in and best-effort.
-        });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [ambient, prefs, settings.screenshot_default]);
+  const screenshot = useCapsuleScreenshot({
+    ambient,
+    prefs,
+    screenshotDefault: settings.screenshot_default,
+  });
 
   const refreshSnapshot = useCallback(() => {
     setSnapshot(ambient.selection.read());
@@ -360,24 +332,6 @@ export function Capsule({
   const cancelVoiceCapture = useCallback(() => {
     voice.cancel();
   }, [voice]);
-
-  // Command palette — Cmd+K (mac) / Ctrl+K (everyone else). Opens an
-  // overlay with operator-grade quick actions. Pure keyboard surface;
-  // no fixture-grade focus traps yet — Esc closes, arrow nav comes in
-  // a follow-up if the operator asks for it.
-  useEffect(() => {
-    function onPaletteKey(ev: KeyboardEvent) {
-      const isModK =
-        (ev.metaKey || ev.ctrlKey) && (ev.key === 'k' || ev.key === 'K');
-      if (isModK) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        setPaletteOpen((v) => !v);
-      }
-    }
-    window.addEventListener('keydown', onPaletteKey, true);
-    return () => window.removeEventListener('keydown', onPaletteKey, true);
-  }, []);
 
   const flashSaved = useCallback((label: string) => {
     setSavedFlash(label);
@@ -429,28 +383,13 @@ export function Capsule({
     onDismiss();
   }, [onDismiss, reportRejection]);
 
-  useEffect(() => {
-    function onKey(ev: KeyboardEvent) {
-      if (ev.key === 'Escape') {
-        ev.preventDefault();
-        ev.stopPropagation();
-        // Layered escape: palette first, voice next, then dismiss.
-        // Lets the operator close the overlay without losing the
-        // cápsula entirely — the same gesture for related concerns.
-        if (paletteOpen) {
-          setPaletteOpen(false);
-          return;
-        }
-        if (voice.active) {
-          cancelVoiceCapture();
-          return;
-        }
-        handleDismiss();
-      }
-    }
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [handleDismiss, paletteOpen, cancelVoiceCapture, voice.active]);
+  useCapsuleKeyboard({
+    paletteOpen,
+    setPaletteOpen,
+    voiceActive: voice.active,
+    cancelVoiceCapture,
+    handleDismiss,
+  });
 
   // The single send path, streaming. Backend's /composer/dom_plan_stream
   // emits delta chunks and a final `done` event with the parsed result.
