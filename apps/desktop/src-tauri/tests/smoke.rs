@@ -75,3 +75,41 @@ fn pill_default_position_is_bottom_right() {
     assert_eq!(x, 1920 - 220 - 24);
     assert_eq!(y, 1080 - 56 - 24);
 }
+
+#[test]
+fn pill_near_cursor_offset_keeps_cursor_clear() {
+    // Mirrors position_pill_near_cursor — the pill lands 18px down-right
+    // from the cursor (larger than the cápsula's 12px because at 220x56
+    // the cursor would visibly overlap the pill at the smaller offset),
+    // clamped inside the monitor work area so the pill never spills past
+    // an edge when the cursor is parked near a corner.
+    fn near(
+        cursor: (i32, i32),
+        pill: (i32, i32),
+        monitor: (i32, i32, i32, i32),
+    ) -> (i32, i32) {
+        let (mx, my, mw, mh) = monitor;
+        let (pw, ph) = pill;
+        let mut x = cursor.0 + 18;
+        let mut y = cursor.1 + 18;
+        let max_x = mx + mw - pw - 8;
+        let max_y = my + mh - ph - 8;
+        let min_x = mx + 8;
+        let min_y = my + 8;
+        x = x.clamp(min_x, max_x.max(min_x));
+        y = y.clamp(min_y, max_y.max(min_y));
+        (x, y)
+    }
+    // Centre cursor — pill lands 18px down-right of it.
+    let (x, y) = near((100, 100), (220, 56), (0, 0, 1920, 1080));
+    assert_eq!((x, y), (118, 118));
+
+    // Bottom-right corner cursor — pill must not leak off-screen.
+    let (x, y) = near((1900, 1060), (220, 56), (0, 0, 1920, 1080));
+    assert!(x + 220 + 8 <= 1920, "x clamp leaks: x={x}");
+    assert!(y + 56 + 8 <= 1080, "y clamp leaks: y={y}");
+
+    // Top-left cursor — pill respects the 8px min margin.
+    let (x, y) = near((0, 0), (220, 56), (0, 0, 1920, 1080));
+    assert_eq!((x, y), (18, 18));
+}

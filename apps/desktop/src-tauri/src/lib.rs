@@ -20,7 +20,9 @@
 
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::time::Duration;
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use serde::Serialize;
@@ -74,6 +76,13 @@ pub struct ShellResult {
 /// lets start_backend / stop_backend coordinate without a custom state
 /// struct.
 static BACKEND_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
+
+/// Pill cursor-follow flag. When true, a background ticker repositions
+/// the pill window to track the OS cursor at ~30Hz. Doctrine — "ponta
+/// do cursor": the pill is the persistent anchor that lives where the
+/// operator's attention is. Default on; the operator can flip it via
+/// the `set_pill_follow_cursor` command (control-center setting).
+static PILL_FOLLOW_CURSOR: AtomicBool = AtomicBool::new(true);
 
 /// Tray + health-probe localised strings. Read at boot from
 /// `GAUNTLET_LOCALE` (defaults to "pt"). Mirrors the operator-facing
@@ -782,11 +791,11 @@ fn hide_capsule(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-// Pill window — small persistent surface anchored to a screen corner.
-// Click → show_capsule; right-click → hide_pill (collapses to tray-only
-// mode). Position is persistent (saved to disk on hide, restored on
-// boot) and lives outside the cápsula's render tree so it survives
-// every cápsula open/close.
+// Pill window — small persistent surface that follows the cursor (or
+// anchors to a screen corner when follow mode is off). Click →
+// show_capsule; right-click → hide_pill (collapses to tray-only
+// mode). The pill lives outside the cápsula's render tree so it
+// survives every cápsula open/close.
 fn position_pill_at_default(
     _app: &tauri::AppHandle,
     window: &tauri::WebviewWindow,
@@ -805,6 +814,53 @@ fn position_pill_at_default(
     Ok(())
 }
 
+// Same shape as position_window_at_cursor but with an 18px offset
+// (larger than the cápsula's 12px because the pill is small enough
+// that the cursor would visibly overlap it at the smaller offset, and
+// the cursor must remain clickable next to the pill — not under it).
+// Best-effort — when cursor lookup fails the caller falls back to
+// position_pill_at_default.
+fn position_pill_near_cursor(
+    app: &tauri::AppHandle,
+    window: &tauri::WebviewWindow,
+) -> Result<(), String> {
+    let cursor = app.cursor_position().map_err(|e| e.to_string())?;
+    let size = window.outer_size().map_err(|e| e.to_string())?;
+
+    let mut x = cursor.x as i32 + 18;
+    let mut y = cursor.y as i32 + 18;
+
+    if let Ok(Some(monitor)) = window.current_monitor() {
+        let mpos = monitor.position();
+        let msize = monitor.size();
+        let max_x = mpos.x + msize.width as i32 - size.width as i32 - 8;
+        let max_y = mpos.y + msize.height as i32 - size.height as i32 - 8;
+        let min_x = mpos.x + 8;
+        let min_y = mpos.y + 8;
+        x = x.clamp(min_x, max_x.max(min_x));
+        y = y.clamp(min_y, max_y.max(min_y));
+    }
+
+    window
+        .set_position(tauri::PhysicalPosition { x, y })
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// Place the pill at the right anchor for the current mode: cursor
+// when follow is on (and the OS cursor lookup works), otherwise the
+// bottom-right corner default. Used at every entry point that turns
+// the pill visible (boot, show, toggle, tray, ticker init) so the
+// behaviour stays consistent across surfaces.
+fn place_pill(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
+    if PILL_FOLLOW_CURSOR.load(Ordering::Relaxed)
+        && position_pill_near_cursor(app, window).is_ok()
+    {
+        return;
+    }
+    let _ = position_pill_at_default(app, window);
+}
+
 #[tauri::command]
 fn show_pill(app: tauri::AppHandle) -> Result<(), String> {
     let window = app
@@ -812,7 +868,7 @@ fn show_pill(app: tauri::AppHandle) -> Result<(), String> {
         .ok_or_else(|| "pill window not found".to_string())?;
     let visible = window.is_visible().unwrap_or(false);
     if !visible {
-        let _ = position_pill_at_default(&app, &window);
+        place_pill(&app, &window);
     }
     window.show().map_err(|e| e.to_string())?;
     Ok(())
@@ -836,10 +892,20 @@ fn toggle_pill(app: tauri::AppHandle) -> Result<(), String> {
     if visible {
         window.hide().map_err(|e| e.to_string())?;
     } else {
-        let _ = position_pill_at_default(&app, &window);
+        place_pill(&app, &window);
         window.show().map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+#[tauri::command]
+fn set_pill_follow_cursor(enabled: bool) {
+    PILL_FOLLOW_CURSOR.store(enabled, Ordering::Relaxed);
+}
+
+#[tauri::command]
+fn get_pill_follow_cursor() -> bool {
+    PILL_FOLLOW_CURSOR.load(Ordering::Relaxed)
 }
 
 fn run_capture(bin: &str, args: &[&str]) -> Result<String, String> {
@@ -886,6 +952,8 @@ pub fn run() {
             show_pill,
             hide_pill,
             toggle_pill,
+            set_pill_follow_cursor,
+            get_pill_follow_cursor,
         ])
         .setup(|app| {
             // A5 — system tray. The cápsula lives in the OS menu bar
@@ -931,7 +999,7 @@ pub fn run() {
                             if visible {
                                 let _ = window.hide();
                             } else {
-                                let _ = position_pill_at_default(app, &window);
+                                place_pill(app, &window);
                                 let _ = window.show();
                             }
                         }
@@ -971,9 +1039,48 @@ pub fn run() {
             // visible anchor without needing to dig into the tray. The
             // cápsula stays hidden — the pill is the resting state.
             if let Some(pill) = app.get_webview_window("pill") {
-                let _ = position_pill_at_default(app.handle(), &pill);
+                place_pill(app.handle(), &pill);
                 let _ = pill.show();
             }
+
+            // Pill cursor-follow ticker. Repositions the pill to track
+            // the OS cursor at ~30Hz when the pill is visible, the
+            // cápsula is hidden, and PILL_FOLLOW_CURSOR is on. Sleeps
+            // 500ms on idle so the CPU stays near zero when the pill
+            // is dormant. This is what closes the "ponta do cursor"
+            // doctrine on the desktop shell — the pill is no longer
+            // pinned to a corner, it lives where the operator's
+            // attention is.
+            let follow_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    let mut painted = false;
+                    if PILL_FOLLOW_CURSOR.load(Ordering::Relaxed) {
+                        let pill = follow_handle.get_webview_window("pill");
+                        let capsule = follow_handle.get_webview_window("main");
+                        let pill_visible = pill
+                            .as_ref()
+                            .and_then(|w| w.is_visible().ok())
+                            .unwrap_or(false);
+                        let capsule_visible = capsule
+                            .as_ref()
+                            .and_then(|w| w.is_visible().ok())
+                            .unwrap_or(false);
+                        if pill_visible && !capsule_visible {
+                            if let Some(window) = pill {
+                                let _ = position_pill_near_cursor(&follow_handle, &window);
+                                painted = true;
+                            }
+                        }
+                    }
+                    let nap = if painted {
+                        Duration::from_millis(33)
+                    } else {
+                        Duration::from_millis(500)
+                    };
+                    tokio::time::sleep(nap).await;
+                }
+            });
 
             // Background health probe — every 5s we open a TCP socket
             // to 127.0.0.1:3002 (default backend port). When it answers
