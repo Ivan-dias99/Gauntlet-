@@ -183,12 +183,29 @@ class ModelGateway:
         # timeout after first byte). Skipping cost on failure caused
         # summary() to underreport spend on the fallback path, exactly
         # where the operator most needs accurate numbers.
-        choice = CATALOGUE.get(call.model_id)
-        if choice is not None:
-            call.cost_usd_estimate = (
-                call.input_tokens * choice.cost_per_1m_input_usd / 1_000_000
-                + call.output_tokens * choice.cost_per_1m_output_usd / 1_000_000
-            )
+        #
+        # Provider gating: ROUTING speaks Claude-language because the
+        # gateway grew out of an Anthropic-only deployment. The Groq
+        # and Gemini adapters translate the model id to their own
+        # vocabulary at call-time, but the GatewayCall still carries
+        # the Anthropic-shaped id (so the operator sees the *role*
+        # mapping in /gateway/summary, not the provider's internal
+        # name). That meant a Groq call on the free tier was reported
+        # at Claude pricing — pure fiction. Costs are now scoped to
+        # the provider that actually billed:
+        #   * anthropic: catalogue pricing (real spend).
+        #   * groq, gemini: free tier today; record 0 so the summary
+        #     doesn't lie. When a paid tier lands, swap in a per-
+        #     provider table.
+        if call.provider == "anthropic":
+            choice = CATALOGUE.get(call.model_id)
+            if choice is not None:
+                call.cost_usd_estimate = (
+                    call.input_tokens * choice.cost_per_1m_input_usd / 1_000_000
+                    + call.output_tokens * choice.cost_per_1m_output_usd / 1_000_000
+                )
+        else:
+            call.cost_usd_estimate = 0.0
         self.calls.append(call)
         # max_call_history <= 0 means "disabled" — drop everything.
         # Naively slicing self.calls[-0:] would return the full list

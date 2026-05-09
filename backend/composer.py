@@ -828,13 +828,13 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
             if getattr(block, "type", None) == "text":
                 raw_text += block.text
         gateway.record(GatewayCall(
-            role="default", model_id=model_id, provider=choice.provider,
+            role="default", model_id=model_id, provider=engine._provider_name,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,
         ))
     except Exception as exc:  # noqa: BLE001
         gateway.record(GatewayCall(
-            role="default", model_id=model_id, provider=choice.provider,
+            role="default", model_id=model_id, provider=engine._provider_name,
             succeeded=False, error_kind=type(exc).__name__,
         ))
         raise HTTPException(
@@ -994,7 +994,7 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
                 out_tokens = final.usage.output_tokens
         except Exception as exc:  # noqa: BLE001
             gateway.record(GatewayCall(
-                role="default", model_id=model_id, provider=choice.provider,
+                role="default", model_id=model_id, provider=engine._provider_name,
                 succeeded=False, error_kind=type(exc).__name__,
             ))
             err_payload = json.dumps({
@@ -1005,7 +1005,7 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
             return
 
         gateway.record(GatewayCall(
-            role="default", model_id=model_id, provider=choice.provider,
+            role="default", model_id=model_id, provider=engine._provider_name,
             input_tokens=in_tokens, output_tokens=out_tokens,
         ))
 

@@ -160,7 +160,7 @@ class _StreamContext:
 
     async def __aenter__(self) -> "_StreamContext":
         client = self._parent._client
-        groq_model = self._parent._model_id
+        groq_model = _resolve_groq_model(self._model_anthropic, self._parent._model_id)
         groq_messages = _to_groq_messages(self._messages, self._system)
         kwargs: dict[str, Any] = {
             "model": groq_model,
@@ -249,7 +249,7 @@ class _MessagesNamespace:
         loop will not fire when running on Groq.
         """
         client = self._parent._client
-        groq_model = self._parent._model_id
+        groq_model = _resolve_groq_model(model, self._parent._model_id)
         groq_messages = _to_groq_messages(messages, system)
 
         kwargs: dict[str, Any] = {
@@ -288,6 +288,30 @@ class _MessagesNamespace:
         )
 
 
+# Map gateway-emitted model ids (Anthropic-shaped) to actual Groq model
+# ids. The gateway ROUTING speaks Claude-language because it grew out of
+# an Anthropic-only deployment; the Groq adapter translates here so the
+# fallback chain ("primary" claude-sonnet → "smaller" claude-haiku) does
+# something meaningful on the Groq path:
+#   * primary (sonnet-4-6) -> the operator's chosen Groq model (default
+#     llama-3.3-70b-versatile)
+#   * fallback (haiku-4-5) -> a smaller, faster Groq model so a 429 on
+#     the big model can roll forward instead of dying terminally.
+# Unknown ids fall through to the configured default — same behaviour
+# as before this map landed.
+_GROQ_FALLBACK_MODEL = "llama-3.1-8b-instant"
+
+def _resolve_groq_model(requested: str, configured: str) -> str:
+    """Translate a gateway-emitted Anthropic id into a Groq id."""
+    if requested.startswith("claude-haiku"):
+        return _GROQ_FALLBACK_MODEL
+    if requested.startswith("claude-"):
+        return configured
+    # Already a Groq id (operator pinned via GAUNTLET_GROQ_MODEL or the
+    # gateway grew a real Groq route) — pass through.
+    return requested
+
+
 class AsyncGroqAnthropicAdapter:
     """Drop-in replacement for AsyncAnthropic. Streaming agora é suportado
     (messages.stream) via Groq SSE; só falta a tool-use / agent loop, que
@@ -307,6 +331,7 @@ class AsyncGroqAnthropicAdapter:
         self._model_id = model
         self.messages = _MessagesNamespace(self)
         logger.info(
-            "Groq adapter initialised (model=%s). Streaming SSE supported; "
-            "tool use / agent loop continua fora do escopo v1.", model,
+            "Groq adapter initialised (model=%s, fallback=%s). Streaming SSE "
+            "supported; tool use / agent loop continua fora do escopo v1.",
+            model, _GROQ_FALLBACK_MODEL,
         )
