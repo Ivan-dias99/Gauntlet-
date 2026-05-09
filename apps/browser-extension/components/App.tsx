@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Capsule,
   CAPSULE_CSS,
+  COMPUTER_USE_GATE_CSS,
   Onboarding,
   ONBOARDING_CSS,
   Pill,
@@ -18,8 +19,12 @@ import { createBrowserAmbient } from '../lib/ambient';
 // Single stylesheet injected into the shadow root by content.tsx.
 // Concatenating the CSS bodies into a single export means the script
 // only has to insert one <style> regardless of which surface is
-// currently rendered.
-export const GAUNTLET_SHADOW_CSS = CAPSULE_CSS + PILL_CSS + ONBOARDING_CSS;
+// currently rendered. COMPUTER_USE_GATE_CSS is included even though the
+// browser shell sets `computerUse: false` — the gate selectors are
+// inert without the capability, and bundling the CSS once keeps both
+// shells on a single style payload (Lei: divergência visual é regressão).
+export const GAUNTLET_SHADOW_CSS =
+  CAPSULE_CSS + PILL_CSS + ONBOARDING_CSS + COMPUTER_USE_GATE_CSS;
 
 interface CursorPoint {
   x: number;
