@@ -14,8 +14,12 @@ import type { ComposerClient } from './composer-client';
 import type { Ambient } from './ambient';
 import type { SelectionSnapshot } from './types';
 
+// Mirrors the `compose` field shape of DomPlanResult (string | null,
+// always present) instead of declaring it optional + non-nullable —
+// strict TS rejects the assignment otherwise because `string | null`
+// can't widen to `string | undefined`.
 export interface SaveableComposePlan {
-  compose?: string;
+  compose: string | null;
 }
 
 export interface UseSaveToMemoryArgs {
