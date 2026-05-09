@@ -115,7 +115,9 @@ Content-Type: application/json
 {"error": "backend_unreachable", "reason": "<kind>"}
 ```
 
-The control-center client (`control-center/lib/signalApi.ts`) reads the
-header and surfaces the dormant state. Do NOT regex the body. The legacy
-`x-signal-backend` and `x-ruberra-backend` headers are emitted alongside
-during the compat window so older clients keep working.
+The control-center client (`control-center/lib/gauntletApi.ts`) reads
+the header and surfaces the dormant state. Do NOT regex the body.
+Only the canonical `x-gauntlet-backend` header is emitted today —
+the previous `x-signal-backend` and `x-ruberra-backend` legacy
+emitters were removed in v1.0.0-rc.1 along with the matching route
+prefixes (audit doc honesty fix, 2026-05-09).

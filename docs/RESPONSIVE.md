@@ -15,8 +15,10 @@ Three densities. Default is comfortable.
 | `compact`     | `0.750`           | dense ledgers, dashboards, small laptops        |
 
 The active density is written as `:root[data-density="..."]` by
-`TweaksContext` (`src/tweaks/TweaksContext.tsx`). It is persisted to
-`localStorage` under `signal:tweaks` and read on boot. Legacy values
+`TweaksContext` (`control-center/tweaks/TweaksContext.tsx`). It is
+persisted to `localStorage` under `gauntlet:tweaks` (canonical) and
+read on boot; `signal:tweaks` and `ruberra:tweaks` are read as
+silent migration fallbacks until v1.1.0. Legacy density values
 (`spacious`, `compact`, `comfortable`) are migrated transparently:
 `spacious → cosy`, the others map by name.
 

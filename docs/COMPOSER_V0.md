@@ -84,7 +84,8 @@ Surviving in `src/` (Control Center seed): `spine/`, `tweaks/`,
 - `npm run build` 29 modules, 149 KB JS gz (down from full chamber
   bundle — proof `_legacy/` is no longer in the active graph)
 - `apps/browser-extension` rebuild still 340 KB (independent toolchain)
-- `signal-backend` untouched
+- `backend` untouched (folder was renamed from the legacy `signal-backend`
+  in v1.0.0-rc.1; this note is preserved historically)
 
 Reversibility: `git revert 15ac30f` restores the old shell as the
 active surface in one step.
@@ -110,8 +111,10 @@ new state primitives, no new backend surface).
 **Validation gate 4:**
 - `npm run typecheck` zero errors
 - `npm run build` 52 modules, 239 KB JS / 76 KB gz
-- Backend endpoint shapes spot-checked against live `signal-backend`
-  in mock mode — types corrected after the spot-check (initial draft
+- Backend endpoint shapes spot-checked against live `backend` (the
+  folder was named `signal-backend` at the time of this draft; renamed
+  in v1.0.0-rc.1) in mock mode — types corrected after the spot-check
+  (initial draft
   assumed wrong shape for `/diagnostics` and `/gateway/summary`)
 - Operator tasks reachable in ≤ 3 clicks each (key/last-10/failure/
   connector)

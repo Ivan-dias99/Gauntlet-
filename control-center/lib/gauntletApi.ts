@@ -183,7 +183,7 @@ export async function gauntletFetch(
 // pause mid-stream lets the next iteration emit `paused` and bail with
 // `terminated_early=true, termination_reason="paused"` — partial tool work
 // is preserved, the run record still closes honestly. See server.py and
-// signal-backend/pause_registry.py.
+// backend/pause_registry.py.
 
 export interface PauseEntry {
   task_id: string;
@@ -254,9 +254,9 @@ export async function listPausedTasks(): Promise<PauseEntry[]> {
 // ── Visual diff (Wave P-28) ────────────────────────────────────────────────
 //
 // Posts two image buffers (PNG/JPEG) as multipart form-data to
-// /visual-diff and returns the typed DiffResult. Mirrors the backend
-// dataclass in signal-backend/visual_diff.py — kept inline here
-// because the chamber only needs the response shape, not the full
+// /visual-diff and returns the typed DiffResult. The shape is
+// declared inline here because the chamber only needs the response
+// shape, not the full
 // VisualDiff schema.
 
 export interface DiffRegion {

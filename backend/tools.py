@@ -49,9 +49,11 @@ logger = logging.getLogger("gauntlet.tools")
 
 
 # ── Configuration ───────────────────────────────────────────────────────────
-# Env precedence: SIGNAL_* is canonical; RUBERRA_* is honored as a silent
-# legacy fallback so existing deploys keep working until operators flip
-# to the new variable names.
+# Env precedence: GAUNTLET_* is canonical (per CLAUDE.md doctrine).
+# SIGNAL_* and RUBERRA_* are honored as silent legacy fallbacks so
+# existing deploys keep working through the v1.x compat window;
+# scheduled for removal in v1.1.0. The _env() helper below reads
+# GAUNTLET_FOO first, then SIGNAL_FOO, then RUBERRA_FOO.
 
 
 def _env(*names: str, default: str = "") -> str:

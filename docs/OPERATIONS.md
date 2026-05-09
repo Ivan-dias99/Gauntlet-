@@ -41,8 +41,10 @@ clean design under a single feature flag.
 ### Legacy aliases (transition window)
 
 `SIGNAL_*` and `RUBERRA_*` are still read as silent fallbacks if the matching
-`GAUNTLET_*` is unset. Plan: remove the aliases once the canonical names land
-in every deployed env.
+`GAUNTLET_*` is unset. **Scheduled for removal in v1.1.0** — this is the
+last release that reads them. Audit every deploy's env now and rename to
+`GAUNTLET_*` before the v1.1.0 cut so production doesn't drop offline
+silently.
 
 ```
 SIGNAL_HOST              → GAUNTLET_HOST

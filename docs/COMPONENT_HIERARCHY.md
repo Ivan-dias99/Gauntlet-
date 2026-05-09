@@ -125,7 +125,7 @@ Currently exposed sets:
 |-------|--------------------------------------------------|--------|
 | P-39a | Router + page scaffolds                          | merged |
 | P-39b | PageShell + TopNav + Footer + AvatarDropdown     | open   |
-| P-39c | URL-driven Shell (collapse signal:chamber bridge)| open   |
+| P-39c | URL-driven Shell (collapsed signal:chamber bridge)| done  |
 | P-40  | Landing flagship                                 | open   |
 | P-41  | Composer real (route mode + tools allowlist)     | open   |
 | P-42  | Workbench tool inspector                         | open   |
