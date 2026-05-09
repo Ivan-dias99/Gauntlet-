@@ -1737,6 +1737,170 @@ def _summarize_vercel_payload(subcommand: str, payload: Any) -> str:
     return text[:1500] + ("…" if len(text) > 1500 else "")
 
 
+# ── ComputerUseTool ─────────────────────────────────────────────────────────
+#
+# Phase 3 MVP (commit 4/N). The agent declares the *intent* to actuate the
+# user's mouse / keyboard; the actual side effect happens client-side, gated
+# by the cápsula's ComputerUseGate. This shape gives the operator one place
+# to disable computer-use for the agent (Control Center → tool_policies →
+# computer_use → off) without touching desktop binaries — same governance
+# surface as every other tool.
+#
+# Why no server-side execution: the backend can run on Railway (no display,
+# no input devices) or locally (could shell out to xdotool / pyautogui), and
+# we want a single contract regardless. The tool returns a marker `ToolResult`
+# whose `metadata.client_action` carries the action shape; the cápsula's
+# plan-dispatcher (follow-up commit 5/N) intercepts the tool_use frame in the
+# SSE stream and routes it through `enqueueComputerUseAction` BEFORE the
+# tool ever reaches `_run`. When the cápsula does not intercept (e.g. the
+# operator is testing the tool from a non-cápsula client), `_run` returns
+# the marker so the agent loop can continue without a hang.
+#
+# `mode = "execute_with_approval"` and `risk = "high"` because nothing about
+# moving a mouse or sending keystrokes on the operator's host is low-risk;
+# the gate UI is the approval path (operator inspects + clicks "aprovar").
+# `scopes = ("computer.use",)` is informational — Control Center surfaces it.
+class ComputerUseTool(Tool):
+    name = "computer_use"
+    mode = "execute_with_approval"
+    risk = "high"
+    scopes = ("computer.use",)
+    rollback_policy = (
+        "no automatic rollback — the operator's host OS owns the resulting "
+        "state (cursor position, focused window, typed text). Rollback is "
+        "the operator's job (Ctrl+Z, etc)."
+    )
+    description = (
+        "Drive the operator's mouse and keyboard on the desktop shell. "
+        "Each call describes ONE primitive action; chain calls for "
+        "click-after-move, type-after-focus, etc. Every call is gated "
+        "client-side: the cápsula renders a consent modal showing the "
+        "described action and only fires the OS event after the operator "
+        "approves. Available actions:\n"
+        "  - move(x, y)          — absolute screen coordinate\n"
+        "  - click(button)       — left | right | middle (current cursor)\n"
+        "  - type(text)          — type plain text (≤ 10 000 chars)\n"
+        "  - press(key)          — single named key (Enter, Tab, Escape, "
+        "arrows, …) or single Unicode character\n"
+        "Browser shells return an error envelope; this tool only operates "
+        "on the desktop. macOS prompts for Accessibility permission on "
+        "first call; Wayland sessions return 'not supported'."
+    )
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["move", "click", "type", "press"],
+                "description": "Which primitive to invoke",
+            },
+            "x": {
+                "type": "integer",
+                "description": "Absolute screen X (action=move only)",
+            },
+            "y": {
+                "type": "integer",
+                "description": "Absolute screen Y (action=move only)",
+            },
+            "button": {
+                "type": "string",
+                "enum": ["left", "right", "middle"],
+                "description": "Mouse button (action=click only)",
+            },
+            "text": {
+                "type": "string",
+                "description": "Text payload (action=type only, ≤ 10 000 chars)",
+            },
+            "key": {
+                "type": "string",
+                "description": "Key name or single char (action=press only)",
+            },
+            "reason": {
+                "type": "string",
+                "description": (
+                    "One-line human justification surfaced verbatim on the "
+                    "consent gate ('clicking the Send button')."
+                ),
+            },
+        },
+        "required": ["action"],
+    }
+    timeout_s = 5.0
+
+    async def _run(self, **kwargs: Any) -> ToolResult:
+        action = (kwargs.get("action") or "").strip()
+        if action not in {"move", "click", "type", "press"}:
+            return ToolResult(
+                ok=False,
+                content=f"computer_use: unknown action '{action}'",
+            )
+
+        # Build the client-action envelope. Each shape mirrors the JS
+        # `ComputerUseAction` discriminated union 1:1 so the cápsula
+        # dispatcher (commit 5/N) can hand it to `enqueueComputerUseAction`
+        # without remapping.
+        envelope: dict[str, Any] = {"kind": action}
+        if action == "move":
+            x = kwargs.get("x")
+            y = kwargs.get("y")
+            if not isinstance(x, int) or not isinstance(y, int):
+                return ToolResult(
+                    ok=False,
+                    content="computer_use(move): integer 'x' and 'y' are required",
+                )
+            envelope["x"] = x
+            envelope["y"] = y
+        elif action == "click":
+            button = kwargs.get("button") or "left"
+            if button not in {"left", "right", "middle"}:
+                return ToolResult(
+                    ok=False,
+                    content=f"computer_use(click): bad button '{button}'",
+                )
+            envelope["button"] = button
+        elif action == "type":
+            text = kwargs.get("text")
+            if not isinstance(text, str) or not text:
+                return ToolResult(
+                    ok=False,
+                    content="computer_use(type): non-empty 'text' string is required",
+                )
+            if len(text) > 10_000:
+                return ToolResult(
+                    ok=False,
+                    content=(
+                        f"computer_use(type): text too long ({len(text)} > 10000)"
+                    ),
+                )
+            envelope["text"] = text
+        elif action == "press":
+            key = kwargs.get("key")
+            if not isinstance(key, str) or not key:
+                return ToolResult(
+                    ok=False,
+                    content="computer_use(press): non-empty 'key' string is required",
+                )
+            envelope["key"] = key
+
+        reason = kwargs.get("reason")
+        if isinstance(reason, str) and reason:
+            envelope["reason"] = reason
+
+        # Marker result — when the cápsula intercepts (commit 5/N) it
+        # never sees this body because the tool_use frame is handled
+        # before reaching _run. When the agent runs against a non-cápsula
+        # client (CLI test, future MCP host), the body is informational
+        # so the agent loop can continue.
+        return ToolResult(
+            ok=True,
+            content=(
+                f"queued computer-use {action}; awaiting operator approval "
+                "via the cápsula consent gate"
+            ),
+            metadata={"client_action": envelope},
+        )
+
+
 class ToolRegistry:
     """Dispatches tool-use requests coming from the agent loop."""
 
@@ -1854,4 +2018,5 @@ def default_tools() -> list[Tool]:
         MemorySearchTool(),
         GitHubTool(),
         VercelTool(),
+        ComputerUseTool(),
     ]

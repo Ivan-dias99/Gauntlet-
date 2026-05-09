@@ -7,6 +7,7 @@
 // caller decides which entry to run on Enter via `activeIndex`.
 
 import { type Ambient } from './ambient';
+import { type ComputerUseAction } from './ComputerUseGate';
 import { type DomPlanResult } from './types';
 
 export interface SlashAction {
@@ -27,6 +28,11 @@ export interface BuildSlashActionsArgs {
   clearInput: () => void;
   dismiss: () => void;
   openPalette: () => void;
+  // Optional — present iff the shell exposes ambient.computerUse.
+  // The slash item is hidden otherwise (browser shell, Wayland-only
+  // desktop session). Calling enqueues an action through the Capsule's
+  // ComputerUseGate; nothing fires before the operator approves.
+  enqueueComputerUseAction?: (action: ComputerUseAction) => void;
 }
 
 // Build the slash action list given the current capabilities + plan.
@@ -44,6 +50,7 @@ export function buildSlashActions({
   clearInput,
   dismiss,
   openPalette,
+  enqueueComputerUseAction,
 }: BuildSlashActionsArgs): SlashAction[] {
   const list: SlashAction[] = [];
   if (ambient.capabilities.filesystemRead && ambient.filesystem) {
@@ -100,6 +107,28 @@ export function buildSlashActions({
     hint: 'Abrir command palette completa (⌘K)',
     run: openPalette,
   });
+  if (
+    ambient.capabilities.computerUse &&
+    ambient.computerUse &&
+    enqueueComputerUseAction
+  ) {
+    // Smoke test trigger — enqueues a known-safe move-to-(400,300)
+    // action so the operator can verify the gate end-to-end before
+    // the agent is plugged into computer-use. Removed once the agent
+    // path lands.
+    list.push({
+      id: 'cu-test',
+      label: '/cu',
+      hint: 'Teste computer-use: mover cursor para (400, 300)',
+      run: () =>
+        enqueueComputerUseAction({
+          kind: 'move',
+          x: 400,
+          y: 300,
+          reason: 'Smoke test do gate de computer-use (slash /cu).',
+        }),
+    });
+  }
   return list;
 }
 

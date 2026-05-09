@@ -39,3 +39,4 @@ export * from './useStreamingPlan';
 export * from './capsule.css';
 export * from './Pill';
 export * from './Onboarding';
+export * from './ComputerUseGate';

@@ -37,6 +37,7 @@ import { AnswerPanel } from './AnswerPanel';
 import { PlanRenderer } from './PlanRenderer';
 import { AttachmentChips } from './AttachmentChips';
 import { buildSlashActions, SlashMenu } from './SlashMenu';
+import { ComputerUseGate, useComputerUseGate } from './ComputerUseGate';
 import { LeftPanel } from './LeftPanel';
 import { ActionsRow } from './ActionsRow';
 import { StreamingState } from './StreamingState';
@@ -108,6 +109,11 @@ export function Capsule({
   // the page. If the request fires before capture finishes, we send
   // without the image — better than blocking the user.
   const [screenshot, setScreenshot] = useState<string | null>(null);
+  // Computer-use consent gate — hook owns the queue state + executor;
+  // capsule just renders its props. Doctrine: gate is the single shape
+  // that survives a future MCP migration; adapter primitives never run
+  // until the operator approves.
+  const cuGate = useComputerUseGate(ambient.computerUse);
   // Plan dispatcher — agent-emitted actions can target either the page
   // DOM or the host ambient (shell, filesystem). DOM actions go through
   // `ambient.domActions.execute` (browser shell only); ambient actions
@@ -514,6 +520,9 @@ export function Capsule({
           setUserInput('');
           setPaletteOpen(true);
         },
+        enqueueComputerUseAction: ambient.computerUse
+          ? cuGate.enqueue
+          : undefined,
       }),
     [
       ambient,
@@ -846,6 +855,8 @@ export function Capsule({
           {savedFlash}
         </div>
       )}
+
+      {ambient.computerUse && <ComputerUseGate {...cuGate.gateProps} />}
 
       {/* Overlays (Onboarding, etc) injected by the host shell. Rendered
           inside the cápsula root so position:absolute children anchor

@@ -313,3 +313,28 @@ export async function moveCapsuleToCursor(): Promise<void> {
     console.warn("[gauntlet/desktop] move_window_to_cursor failed:", err);
   }
 }
+
+// Computer-use primitives — thin invoke wrappers around the cu_*
+// Tauri commands. We deliberately do NOT swallow errors here: the
+// gate UI in Capsule must surface "Wayland not supported" or "macOS
+// Accessibility denied" so the operator knows why nothing happened.
+// Compare with moveCapsuleToCursor() above which warns-and-continues
+// — that helper is best-effort UX; these are user-initiated input
+// and silent failure would be hostile.
+export async function cuMouseMove(x: number, y: number): Promise<void> {
+  await invoke<void>("cu_mouse_move", { x, y });
+}
+
+export async function cuMouseClick(
+  button: "left" | "right" | "middle",
+): Promise<void> {
+  await invoke<void>("cu_mouse_click", { button });
+}
+
+export async function cuType(text: string): Promise<void> {
+  await invoke<void>("cu_type", { text });
+}
+
+export async function cuPress(key: string): Promise<void> {
+  await invoke<void>("cu_press", { key });
+}

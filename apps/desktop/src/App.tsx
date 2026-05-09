@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Capsule,
   CAPSULE_CSS,
+  COMPUTER_USE_GATE_CSS,
   Onboarding,
   ONBOARDING_CSS,
   createPillPrefs,
@@ -33,7 +34,7 @@ function injectCapsuleStyles() {
   if (document.getElementById("gauntlet-capsule-css")) return;
   const style = document.createElement("style");
   style.id = "gauntlet-capsule-css";
-  style.textContent = CAPSULE_CSS + ONBOARDING_CSS;
+  style.textContent = CAPSULE_CSS + ONBOARDING_CSS + COMPUTER_USE_GATE_CSS;
   document.head.appendChild(style);
 }
 

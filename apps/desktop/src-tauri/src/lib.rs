@@ -25,6 +25,10 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
+use enigo::{
+    Button as CuButton, Coordinate as CuCoordinate, Direction as CuDirection, Enigo, Key as CuKey,
+    Keyboard as _, Mouse as _, Settings as CuSettings,
+};
 use serde::Serialize;
 use tauri::{
     menu::{Menu, MenuItem},
@@ -908,6 +912,117 @@ fn get_pill_follow_cursor() -> bool {
     PILL_FOLLOW_CURSOR.load(Ordering::Relaxed)
 }
 
+// ── Computer-use primitives (Phase 3 MVP) ─────────────────────────────────
+//
+// Four narrow Tauri commands wrapping `enigo` for cross-platform mouse +
+// keyboard control. Naming uses the `cu_` prefix so the JS bridge can
+// search-and-find the family without grepping every Tauri command.
+//
+// Doctrine: these are PRIMITIVES — they do exactly what the caller asks
+// and nothing else. The consent gate (modal asking the operator "click
+// here?" before each action) lives in the Composer, not here. Reason:
+// the gate UI must reflect doctrine ("denso, viciante") + survive future
+// MCP migration; pinning it inside Rust would freeze it to one shape.
+//
+// Caps (defensive):
+// * cu_type: 10k chars max — typical paste size, stops a runaway loop
+//   from holding the keyboard for minutes.
+// * cu_mouse_move: no clamp here. Caller (Composer gate) clamps to the
+//   monitor work area before submitting; off-screen requests are also
+//   safely no-op on most platforms.
+// * Wayland sessions return a NewConError from `Enigo::new`; the JS
+//   side surfaces it as the typed error string so the gate can fall
+//   back to "this OS not supported".
+
+const CU_MAX_TEXT_LEN: usize = 10_000;
+
+fn cu_new_enigo() -> Result<Enigo, String> {
+    Enigo::new(&CuSettings::default()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn cu_mouse_move(x: i32, y: i32) -> Result<(), String> {
+    let mut enigo = cu_new_enigo()?;
+    enigo
+        .move_mouse(x, y, CuCoordinate::Abs)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn cu_mouse_click(button: String) -> Result<(), String> {
+    let btn = parse_cu_button(&button)?;
+    let mut enigo = cu_new_enigo()?;
+    enigo
+        .button(btn, CuDirection::Click)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn cu_type(text: String) -> Result<(), String> {
+    if text.is_empty() {
+        return Err("cu_type: empty text".to_string());
+    }
+    if text.len() > CU_MAX_TEXT_LEN {
+        return Err(format!(
+            "cu_type: text too long ({} chars > {} max)",
+            text.len(),
+            CU_MAX_TEXT_LEN
+        ));
+    }
+    let mut enigo = cu_new_enigo()?;
+    enigo.text(&text).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn cu_press(key: String) -> Result<(), String> {
+    let k = parse_cu_key(&key)?;
+    let mut enigo = cu_new_enigo()?;
+    enigo
+        .key(k, CuDirection::Click)
+        .map_err(|e| e.to_string())
+}
+
+pub fn parse_cu_button(name: &str) -> Result<CuButton, String> {
+    match name.to_lowercase().as_str() {
+        "left" | "l" => Ok(CuButton::Left),
+        "right" | "r" => Ok(CuButton::Right),
+        "middle" | "m" => Ok(CuButton::Middle),
+        other => Err(format!("cu_mouse_click: unknown button '{other}'")),
+    }
+}
+
+pub fn parse_cu_key(name: &str) -> Result<CuKey, String> {
+    // Named-key match is case-insensitive ("Enter" == "enter") because
+    // operator-typed names shouldn't care about case.
+    match name.to_lowercase().as_str() {
+        "enter" | "return" => return Ok(CuKey::Return),
+        "tab" => return Ok(CuKey::Tab),
+        "escape" | "esc" => return Ok(CuKey::Escape),
+        "backspace" => return Ok(CuKey::Backspace),
+        "delete" | "del" => return Ok(CuKey::Delete),
+        "space" => return Ok(CuKey::Space),
+        "up" | "uparrow" => return Ok(CuKey::UpArrow),
+        "down" | "downarrow" => return Ok(CuKey::DownArrow),
+        "left" | "leftarrow" => return Ok(CuKey::LeftArrow),
+        "right" | "rightarrow" => return Ok(CuKey::RightArrow),
+        "home" => return Ok(CuKey::Home),
+        "end" => return Ok(CuKey::End),
+        "pageup" => return Ok(CuKey::PageUp),
+        "pagedown" => return Ok(CuKey::PageDown),
+        _ => {}
+    }
+    // Single-character keys (a, b, 1, 2, … plus uppercase) → Unicode
+    // variant. Case is preserved here so `Key::Unicode('A')` types 'A'
+    // (with shift) while `Key::Unicode('a')` types 'a'. Anything longer
+    // than one char is rejected so the JS side gets a clean error
+    // rather than a silent no-op.
+    let mut chars = name.chars();
+    match (chars.next(), chars.next()) {
+        (Some(c), None) => Ok(CuKey::Unicode(c)),
+        _ => Err(format!("cu_press: unknown key '{name}'")),
+    }
+}
+
 fn run_capture(bin: &str, args: &[&str]) -> Result<String, String> {
     let output = Command::new(bin)
         .args(args)
@@ -954,6 +1069,10 @@ pub fn run() {
             toggle_pill,
             set_pill_follow_cursor,
             get_pill_follow_cursor,
+            cu_mouse_move,
+            cu_mouse_click,
+            cu_type,
+            cu_press,
         ])
         .setup(|app| {
             // A5 — system tray. The cápsula lives in the OS menu bar
