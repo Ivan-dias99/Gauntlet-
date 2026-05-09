@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ── Enums ───────────────────────────────────────────────────────────────────
@@ -580,11 +580,70 @@ class FsWriteAction(BaseModel):
     content: str = Field(max_length=1_000_000)
 
 
+# Phase 3 MVP — agent-emitted plan to drive the operator's mouse +
+# keyboard on the desktop shell. The cápsula's `useComputerUseGate`
+# intercepts these actions BEFORE any synthetic input reaches the OS;
+# the gate UI shows the action description and waits for explicit
+# operator approval. Browser-shell ambients refuse (capability is
+# false), so the wire format is uniform across shells.
+#
+# Two-level shape: outer `type=computer_use` is the discriminator the
+# `DomAction` union picks on; inner `action.kind` discriminates between
+# the four primitives. Mirrors the JS `ComputerUseAction` union in
+# `packages/composer/src/ComputerUseGate.tsx` 1:1 — keep both in sync.
+class _ComputerUseInner(BaseModel):
+    kind: Literal["move", "click", "type", "press"]
+    # Per-kind fields. Validator below enforces "x/y required for move",
+    # "button required for click" (default left if omitted), etc. We keep
+    # them Optional at the field level so a missing field is a 422 with a
+    # readable message rather than a Pydantic-internal "discriminator
+    # missing" error.
+    x: Optional[int] = Field(default=None, ge=-100_000, le=100_000)
+    y: Optional[int] = Field(default=None, ge=-100_000, le=100_000)
+    button: Optional[Literal["left", "right", "middle"]] = None
+    text: Optional[str] = Field(default=None, max_length=10_000)
+    key: Optional[str] = Field(default=None, max_length=64)
+    # Operator-facing justification surfaced verbatim on the consent
+    # gate ("clicking the Send button"). Optional — when absent the
+    # gate falls back to the auto-generated description.
+    reason: Optional[str] = Field(default=None, max_length=240)
+
+    @model_validator(mode="after")
+    def _per_kind_fields(self) -> "_ComputerUseInner":
+        if self.kind == "move":
+            if self.x is None or self.y is None:
+                raise ValueError(
+                    "computer_use(move) requires integer 'x' and 'y'"
+                )
+        elif self.kind == "click":
+            # Default to left when omitted — mirrors the Rust + tool
+            # default. We don't reject missing button here.
+            if self.button is None:
+                self.button = "left"
+        elif self.kind == "type":
+            if not isinstance(self.text, str) or not self.text:
+                raise ValueError(
+                    "computer_use(type) requires non-empty 'text'"
+                )
+        elif self.kind == "press":
+            if not isinstance(self.key, str) or not self.key:
+                raise ValueError(
+                    "computer_use(press) requires non-empty 'key'"
+                )
+        return self
+
+
+class ComputerUseAction(BaseModel):
+    type: Literal["computer_use"] = "computer_use"
+    action: _ComputerUseInner
+
+
 # Discriminated union — pydantic uses the `type` field to pick the right
 # subclass during validation. Wire format on JSON:
 #   {"type":"fill","selector":"#email","value":"x@y.com"}
 #   {"type":"shell.run","cmd":"git","args":["status"]}
 #   {"type":"fs.read","path":"/home/user/notes.md"}
+#   {"type":"computer_use","action":{"kind":"move","x":400,"y":300}}
 DomAction = (
     DomActionFill
     | DomActionClick
@@ -593,6 +652,7 @@ DomAction = (
     | ShellRunAction
     | FsReadAction
     | FsWriteAction
+    | ComputerUseAction
 )
 
 

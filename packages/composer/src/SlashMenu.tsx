@@ -119,14 +119,28 @@ export function buildSlashActions({
     list.push({
       id: 'cu-test',
       label: '/cu',
-      hint: 'Teste computer-use: mover cursor para (400, 300)',
-      run: () =>
+      hint: 'Teste computer-use: mover cursor para o centro do ecrã',
+      run: () => {
+        // Adaptativo ao viewport — antes era hardcoded em (400, 300)
+        // que assume ecrã ≥ 800x600. `window.innerWidth / 2` faz a
+        // pill aterrar no centro independentemente da resolução.
+        // Fallback de segurança caso `window` não esteja disponível
+        // (SSR / happy-dom edge case): (400, 300) original.
+        const cx =
+          typeof window !== 'undefined' && window.innerWidth
+            ? Math.round(window.innerWidth / 2)
+            : 400;
+        const cy =
+          typeof window !== 'undefined' && window.innerHeight
+            ? Math.round(window.innerHeight / 2)
+            : 300;
         enqueueComputerUseAction({
           kind: 'move',
-          x: 400,
-          y: 300,
+          x: cx,
+          y: cy,
           reason: 'Smoke test do gate de computer-use (slash /cu).',
-        }),
+        });
+      },
     });
   }
   return list;

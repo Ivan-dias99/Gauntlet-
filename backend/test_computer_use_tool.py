@@ -138,9 +138,117 @@ def test_governance_metadata_marks_high_risk_with_approval() -> None:
     assert tool.scopes == ("computer.use",)
 
 
-def test_default_tools_bundle_includes_computer_use() -> None:
-    """The standard registry bundle ships computer_use so the operator
-    sees it on /tools/manifests immediately, not after a config opt-in."""
+def test_default_tools_bundle_excludes_computer_use_until_dispatcher_lands() -> None:
+    """Codex P1 review on PR #338 — the agent flow has no consumer
+    for `metadata.client_action`, so registering ComputerUseTool in
+    `default_tools()` would tell the model the action queued/succeeded
+    while no gate actually shows + no OS event fires. The tool stays
+    importable from `tools.py` (Control Center surfaces it for visibility)
+    but the standard registry bundle does NOT include it. Re-enable when
+    an agent flow gains a real client-side dispatcher.
+
+    The cápsula's plan-action wire (DomAction type='computer_use') is
+    the path actually wired today and does NOT depend on this registry."""
     bundle = default_tools()
     names = [t.name for t in bundle]
-    assert "computer_use" in names
+    assert "computer_use" not in names
+
+
+# ── ComputerUseAction Pydantic wire-format validation ─────────────────────
+# These tests pin the contract the cápsula's plan-dispatcher relies on
+# when the model emits `{"type":"computer_use","action":{...}}` as part
+# of its DomPlanResult JSON. Mirrors the JS `ComputerUseAction` union
+# 1:1 — drift here breaks end-to-end actuation.
+
+import pytest as _pytest_for_models  # noqa: E402  (kept local to avoid
+                                     #  reordering existing imports)
+from pydantic import TypeAdapter, ValidationError
+
+from models import ComputerUseAction, DomAction
+
+
+_DOM_ADAPTER = TypeAdapter(list[DomAction])
+
+
+def test_dom_action_union_accepts_computer_use_move() -> None:
+    raw = [
+        {
+            "type": "computer_use",
+            "action": {
+                "kind": "move",
+                "x": 400,
+                "y": 300,
+                "reason": "centre of viewport",
+            },
+        }
+    ]
+    parsed = _DOM_ADAPTER.validate_python(raw)
+    assert isinstance(parsed[0], ComputerUseAction)
+    assert parsed[0].action.kind == "move"
+    assert parsed[0].action.x == 400
+    assert parsed[0].action.y == 300
+    assert parsed[0].action.reason == "centre of viewport"
+
+
+def test_dom_action_union_accepts_computer_use_click_with_default_button() -> None:
+    raw = [{"type": "computer_use", "action": {"kind": "click"}}]
+    parsed = _DOM_ADAPTER.validate_python(raw)
+    # Validator fills in the default 'left' so downstream consumers
+    # don't have to second-guess.
+    assert parsed[0].action.button == "left"
+
+
+def test_dom_action_union_accepts_computer_use_type_and_press() -> None:
+    raw = [
+        {"type": "computer_use", "action": {"kind": "type", "text": "hello"}},
+        {"type": "computer_use", "action": {"kind": "press", "key": "Enter"}},
+    ]
+    parsed = _DOM_ADAPTER.validate_python(raw)
+    assert parsed[0].action.text == "hello"
+    assert parsed[1].action.key == "Enter"
+
+
+def test_computer_use_move_rejects_missing_coordinates() -> None:
+    with _pytest_for_models.raises(ValidationError):
+        _DOM_ADAPTER.validate_python(
+            [{"type": "computer_use", "action": {"kind": "move", "x": 1}}]
+        )
+
+
+def test_computer_use_type_rejects_empty_text() -> None:
+    with _pytest_for_models.raises(ValidationError):
+        _DOM_ADAPTER.validate_python(
+            [{"type": "computer_use", "action": {"kind": "type", "text": ""}}]
+        )
+
+
+def test_computer_use_press_rejects_empty_key() -> None:
+    with _pytest_for_models.raises(ValidationError):
+        _DOM_ADAPTER.validate_python(
+            [{"type": "computer_use", "action": {"kind": "press", "key": ""}}]
+        )
+
+
+def test_computer_use_text_capped_at_10000_chars() -> None:
+    # Cap mirrors the Rust CU_MAX_TEXT_LEN exactly — runaway loop on one
+    # side stays consistent with the other.
+    payload = [
+        {
+            "type": "computer_use",
+            "action": {"kind": "type", "text": "x" * 10_001},
+        }
+    ]
+    with _pytest_for_models.raises(ValidationError):
+        _DOM_ADAPTER.validate_python(payload)
+
+
+def test_computer_use_button_must_be_canonical() -> None:
+    with _pytest_for_models.raises(ValidationError):
+        _DOM_ADAPTER.validate_python(
+            [
+                {
+                    "type": "computer_use",
+                    "action": {"kind": "click", "button": "x1"},
+                }
+            ]
+        )

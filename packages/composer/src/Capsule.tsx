@@ -119,8 +119,11 @@ export function Capsule({
   // returns a typed `DomActionResult` so the existing renderer + ledger
   // are unchanged.
   const dispatchPlan = useCallback(
-    (actions: DomAction[]): Promise<DomActionResult[]> => dispatchPlanCore(ambient, actions),
-    [ambient],
+    (actions: DomAction[]): Promise<DomActionResult[]> =>
+      dispatchPlanCore(ambient, actions, {
+        enqueueComputerUseAction: cuGate.enqueue,
+      }),
+    [ambient, cuGate.enqueue],
   );
 
   // A1 — operator-pinned local files / screen captures. The desktop

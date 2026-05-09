@@ -587,6 +587,10 @@ Desktop actions (only when source: desktop). Each action is one of:
   {"type":"shell.run","cmd":"<binary>","args":[<string>,...],"cwd":"<path or null>"}
   {"type":"fs.read","path":"<absolute path>"}
   {"type":"fs.write","path":"<absolute path>","content":"<full new file content>"}
+  {"type":"computer_use","action":{"kind":"move","x":<int>,"y":<int>,"reason":"<short why>"}}
+  {"type":"computer_use","action":{"kind":"click","button":"left|right|middle","reason":"<short why>"}}
+  {"type":"computer_use","action":{"kind":"type","text":"<plain text up to 10000 chars>","reason":"<short why>"}}
+  {"type":"computer_use","action":{"kind":"press","key":"Enter|Tab|Escape|Backspace|<single char>|...","reason":"<short why>"}}
 Use shell.run for commands the operator's request implies (listing
 files, git status, etc.). The cápsula's allowlist is OBSERVABILITY +
 VERSION CONTROL + READ-ONLY filesystem inspection: git, ls, pwd,
@@ -598,9 +602,16 @@ runtime, refuse (case C) and explain that interpreter exec belongs
 in the agent flow (Control Center), not the cápsula.
 Use fs.read to inspect a single file before transforming it. Use
 fs.write to save the operator's requested output to disk. Paths
-should be absolute. The cápsula will surface a confirmation gate
-before any shell.run / fs.write executes — the operator approves
-each batch.
+should be absolute. Use computer_use to drive the OS-level mouse
+and keyboard — useful when the user asks to interact with an app
+that has no DOM (native windows, IDEs, video calls, etc.). Each
+computer_use action is gated CLIENT-SIDE: the cápsula renders a
+modal showing the described action and only fires the OS event
+after explicit approval, so the `reason` field is what the operator
+reads to decide. The cápsula will surface a confirmation gate
+before any shell.run / fs.write / computer_use executes — the
+operator approves each batch. Pair move + click as TWO actions
+in sequence (the operator approves each separately).
 
 Case B — emit a compose text:
   {"compose":"<your answer in the user's language, markdown ok>"}
@@ -620,9 +631,10 @@ Hard rules:
   * Refuse (case C) for: payment confirmations, account deletion,
     sending money, posting on someone's behalf without an explicit
     instruction to do so.
-  * NEVER emit shell.run / fs.read / fs.write when source is browser
-    — those actions will be rejected by the cápsula's dispatcher.
-    Refuse (case C) and explain that desktop is required.
+  * NEVER emit shell.run / fs.read / fs.write / computer_use when
+    source is browser — those actions will be rejected by the
+    cápsula's dispatcher. Refuse (case C) and explain that desktop
+    is required.
   * NEVER emit shell.run for binaries outside the documented allowlist
     above. Anything else gets refused at the cápsula gate. If the
     operator's request needs an unsupported binary, refuse (case C)

@@ -110,6 +110,123 @@ describe('dispatchPlan', () => {
     expect(out[1].output?.bytes).toBe(5);
   });
 
+  it('routes computer_use through the consent gate enqueue callback', async () => {
+    // computer_use never executes synchronously inside dispatchPlan —
+    // the dispatcher hands the inner action to `enqueueComputerUseAction`
+    // (provided by `useComputerUseGate(ambient.computerUse).enqueue`)
+    // and returns a "queued" result. The actual OS event fires later
+    // when the operator approves the gate; that path is covered by
+    // ComputerUseGate.test.tsx.
+    const enqueue = vi.fn();
+    const ambient = makeAmbient({
+      computerUse: {
+        moveCursor: vi.fn(),
+        click: vi.fn(),
+        typeText: vi.fn(),
+        pressKey: vi.fn(),
+      },
+    } as unknown as Partial<Ambient>);
+
+    const out = await dispatchPlan(
+      ambient,
+      [
+        {
+          type: 'computer_use',
+          action: { kind: 'move', x: 100, y: 200, reason: 'centre' },
+        },
+      ],
+      { enqueueComputerUseAction: enqueue },
+    );
+
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledWith({
+      kind: 'move',
+      x: 100,
+      y: 200,
+      reason: 'centre',
+    });
+    // None of the adapter primitives ran — the gate has not approved
+    // anything yet at this point in the pipeline.
+    expect(ambient.computerUse?.moveCursor).not.toHaveBeenCalled();
+    expect(out[0].ok).toBe(true);
+    expect(out[0].output?.text).toContain('queued');
+  });
+
+  it('returns typed ok:false for computer_use when no enqueue callback is provided', async () => {
+    // Capsule passes `enqueueComputerUseAction` only when the gate is
+    // wired; if it is missing the dispatcher should NOT silently skip
+    // the action — it should surface so the operator sees the gap.
+    const ambient = makeAmbient({
+      computerUse: {
+        moveCursor: vi.fn(),
+        click: vi.fn(),
+        typeText: vi.fn(),
+        pressKey: vi.fn(),
+      },
+    } as unknown as Partial<Ambient>);
+    const out = await dispatchPlan(ambient, [
+      { type: 'computer_use', action: { kind: 'click', button: 'left' } },
+    ]);
+    expect(out[0].ok).toBe(false);
+    expect(out[0].error).toContain('computer_use');
+  });
+
+  it('returns typed ok:false for computer_use when ambient has no computerUse adapter', async () => {
+    // Browser shell — capability is false, no adapter injected. The
+    // enqueue callback may still arrive (Capsule passes one only when
+    // ambient.computerUse exists, but a misconfigured caller might),
+    // so guard against that too.
+    const enqueue = vi.fn();
+    const ambient = makeAmbient();
+    const out = await dispatchPlan(
+      ambient,
+      [
+        {
+          type: 'computer_use',
+          action: { kind: 'press', key: 'Enter' },
+        },
+      ],
+      { enqueueComputerUseAction: enqueue },
+    );
+    expect(out[0].ok).toBe(false);
+    expect(out[0].error).toContain('computer_use');
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it('flushes the DOM batch when a computer_use action interleaves', async () => {
+    const execute = vi.fn(
+      async (acts: DomAction[]): Promise<DomActionResult[]> =>
+        acts.map((a) => ({ action: a, ok: true })),
+    );
+    const enqueue = vi.fn();
+    const ambient = makeAmbient({
+      domActions: { execute },
+      computerUse: {
+        moveCursor: vi.fn(),
+        click: vi.fn(),
+        typeText: vi.fn(),
+        pressKey: vi.fn(),
+      },
+    } as unknown as Partial<Ambient>);
+
+    await dispatchPlan(
+      ambient,
+      [
+        { type: 'highlight', selector: '#a' },
+        {
+          type: 'computer_use',
+          action: { kind: 'click', button: 'left' },
+        },
+        { type: 'click', selector: '#b' },
+      ],
+      { enqueueComputerUseAction: enqueue },
+    );
+
+    // Two DOM batches around the computer_use enqueue.
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
   it('flushes the DOM batch when an ambient action interleaves', async () => {
     const execute = vi.fn(
       async (acts: DomAction[]): Promise<DomActionResult[]> =>

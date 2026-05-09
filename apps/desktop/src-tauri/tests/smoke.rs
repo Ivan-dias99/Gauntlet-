@@ -123,6 +123,33 @@ fn cu_key_rejects_multi_char_unknowns() {
 }
 
 #[test]
+fn cu_type_caps_by_unicode_chars_not_utf8_bytes() {
+    // Codex P2 review on PR #339 — the `cu_type` guard counted UTF-8
+    // bytes via `text.len()`, rejecting CJK + emoji input long before
+    // the documented 10 000-char cap. This mirrors the corrected
+    // contract: chars().count() walks scalars, the cap allows 10 000
+    // glyphs regardless of byte width. The actual function lives in
+    // lib.rs and can't run without a display; the maths is the
+    // critical part.
+    fn would_reject(text: &str) -> bool {
+        text.chars().count() > 10_000
+    }
+
+    // 10 000 ASCII glyphs (10 000 bytes too) — passes.
+    let ascii = "x".repeat(10_000);
+    assert!(!would_reject(&ascii), "10k ASCII should pass");
+
+    // 5 000 CJK glyphs (15 000 bytes, 3 per char) — passes. Pre-fix
+    // this would have been REJECTED because 15 000 bytes > 10 000.
+    let cjk = "中".repeat(5_000);
+    assert!(!would_reject(&cjk), "5k CJK glyphs (15k bytes) should pass");
+
+    // 10 001 ASCII glyphs — rejected.
+    let too_long = "x".repeat(10_001);
+    assert!(would_reject(&too_long), "10 001 chars must reject");
+}
+
+#[test]
 fn pill_near_cursor_offset_keeps_cursor_clear() {
     // Mirrors position_pill_near_cursor — the pill lands 18px down-right
     // from the cursor (larger than the cápsula's 12px because at 220x56

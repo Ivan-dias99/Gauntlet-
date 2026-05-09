@@ -86,7 +86,9 @@ export function PlanRenderer({
                   ? a.selector
                   : 'path' in a
                     ? a.path
-                    : a.cmd
+                    : 'cmd' in a
+                      ? a.cmd
+                      : a.action.kind
               }`}
               className={`gauntlet-capsule__plan-item gauntlet-capsule__plan-item--${status}${
                 danger?.danger ? ' gauntlet-capsule__plan-item--danger' : ''

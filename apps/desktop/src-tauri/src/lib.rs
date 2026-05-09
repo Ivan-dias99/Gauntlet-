@@ -981,8 +981,9 @@ fn cu_type(webview: tauri::Webview, text: String) -> Result<(), String> {
         return Err("cu_type: empty text".to_string());
     }
     // chars().count() walks scalars, NOT UTF-8 bytes — `text.len()`
-    // would over-reject CJK / emoji input (a single CJK glyph is
-    // 3 bytes, emoji 4+) long before the documented 10 000-char cap.
+    // would over-reject CJK / emoji input long before the documented
+    // 10 000-char cap. Backend Pydantic validation uses Python's
+    // `len()` (chars too), so both sides stay aligned.
     let char_count = text.chars().count();
     if char_count > CU_MAX_TEXT_LEN {
         return Err(format!(

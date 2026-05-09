@@ -96,5 +96,18 @@ export function describeAction(action: DomAction): string {
       return `fs.read ${action.path}`;
     case 'fs.write':
       return `fs.write ${action.path} (${action.content.length} chars)`;
+    case 'computer_use': {
+      const inner = action.action;
+      switch (inner.kind) {
+        case 'move':
+          return `cu.move (${inner.x}, ${inner.y})`;
+        case 'click':
+          return `cu.click ${inner.button ?? 'left'}`;
+        case 'type':
+          return `cu.type "${truncate(inner.text ?? '', 40)}"`;
+        case 'press':
+          return `cu.press ${inner.key ?? '?'}`;
+      }
+    }
   }
 }
