@@ -23,7 +23,7 @@ jobs:
             args: "--target universal-apple-darwin"
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Hard-block release builds when the Tauri updater pubkey is empty.
       # An empty pubkey means the installed app accepts any signed payload
@@ -100,7 +100,7 @@ jobs:
     name: browser-extension
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -127,7 +127,7 @@ jobs:
     name: backend tests
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
