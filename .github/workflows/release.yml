@@ -90,14 +90,20 @@ jobs:
       - name: upload installers
         uses: softprops/action-gh-release@v2
         with:
+          # Path uses `target/**/release/bundle/**` rather than
+          # `target/release/bundle/**` so the macOS universal build
+          # (which writes to target/universal-apple-darwin/release/bundle/...)
+          # is included alongside the default-target Linux + Windows
+          # outputs. Without the extra `**` the .dmg + latest.json + .sig
+          # for macOS were silently dropped from the GitHub release.
           files: |
-            apps/desktop/src-tauri/target/release/bundle/**/*.msi
-            apps/desktop/src-tauri/target/release/bundle/**/*.exe
-            apps/desktop/src-tauri/target/release/bundle/**/*.dmg
-            apps/desktop/src-tauri/target/release/bundle/**/*.AppImage
-            apps/desktop/src-tauri/target/release/bundle/**/*.deb
-            apps/desktop/src-tauri/target/release/bundle/**/latest.json
-            apps/desktop/src-tauri/target/release/bundle/**/*.sig
+            apps/desktop/src-tauri/target/**/release/bundle/**/*.msi
+            apps/desktop/src-tauri/target/**/release/bundle/**/*.exe
+            apps/desktop/src-tauri/target/**/release/bundle/**/*.dmg
+            apps/desktop/src-tauri/target/**/release/bundle/**/*.AppImage
+            apps/desktop/src-tauri/target/**/release/bundle/**/*.deb
+            apps/desktop/src-tauri/target/**/release/bundle/**/latest.json
+            apps/desktop/src-tauri/target/**/release/bundle/**/*.sig
 
   extension:
     name: browser-extension
