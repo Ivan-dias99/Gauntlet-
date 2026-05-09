@@ -203,7 +203,7 @@ _cors_origins = sorted({
 # precisar de mais escreve em GAUNTLET_ORIGIN/REGEX, não amplia o
 # wildcard. credentials=True mantém-se para a cápsula browser-extension
 # que envia o token via Authorization header.
-_CORS_METHODS = ["GET", "POST", "DELETE", "OPTIONS"]
+_CORS_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 _CORS_HEADERS = [
     "Authorization",
     "Content-Type",
@@ -237,7 +237,11 @@ _cors_kwargs: dict = {
 # Browser extensions: chrome-extension://<id> e equivalentes mantêm
 # `.+` no path porque o ID é gerado no install e não se enumera.
 _extension_regex = (
-    r"^(chrome-extension|moz-extension|safari-web-extension):\/\/[a-zA-Z0-9]+(\/.*)?$"
+    # Chrome extension IDs are 32 lowercase letters; Mozilla + Safari
+    # use UUID-format IDs with hyphens. The character class admits both
+    # so a Firefox preflight (moz-extension://<uuid>) doesn't get
+    # rejected by CORS.
+    r"^(chrome-extension|moz-extension|safari-web-extension):\/\/[a-zA-Z0-9-]+(\/.*)?$"
     r"|^tauri:\/\/localhost(\/.*)?$"
     r"|^https?:\/\/tauri\.localhost(:\d+)?$"
     r"|^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$"
