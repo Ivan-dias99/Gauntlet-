@@ -1059,7 +1059,10 @@ export const CAPSULE_CSS = `
   flex-shrink: 0;
 }
 .gauntlet-capsule__theme-swatch--light {
-  background: linear-gradient(135deg, var(--gx-bg-solid) 0%, #f3edde 100%);
+  /* Literal hex on purpose — the swatch must always preview the light
+     surface, even when the drawer is opened from dark mode. Token
+     would resolve to whatever the current theme renders. */
+  background: linear-gradient(135deg, #fbf7ee 0%, #f3edde 100%);
 }
 .gauntlet-capsule__theme-swatch--dark {
   background: linear-gradient(135deg, #1a1d26 0%, #0e1016 100%);
