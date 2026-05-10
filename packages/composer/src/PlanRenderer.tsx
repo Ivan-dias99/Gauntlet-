@@ -62,10 +62,18 @@ export function PlanRenderer({
 
   if (plan.actions.length === 0) return null;
 
+  let okCount = 0;
+  let failCount = 0;
+  if (phase === 'executed' && planResults) {
+    for (const r of planResults) r.ok ? okCount++ : failCount++;
+  }
+
   return (
     <section className="gauntlet-capsule__plan">
       <header className="gauntlet-capsule__plan-header">
-        <span className="gauntlet-capsule__plan-title">plano</span>
+        <span className="gauntlet-capsule__plan-title">
+          {phase === 'executed' ? 'resultado' : 'plano'}
+        </span>
         <span className="gauntlet-capsule__plan-meta">
           {plan.actions.length} action{plan.actions.length === 1 ? '' : 's'}
           {' · '}
@@ -73,8 +81,17 @@ export function PlanRenderer({
           {' · '}
           {plan.latency_ms} ms
         </span>
+        {phase === 'executed' && (
+          // Live region scoped to the result badge — danger gate already
+          // owns role="alert" below; announcing the whole section would
+          // double-announce on transitions.
+          <span className="gx-success-badge" role="status" aria-live="polite">
+            <span aria-hidden>✓</span>
+            executado · {okCount} ok{failCount > 0 ? ` · ${failCount} falhou` : ''}
+          </span>
+        )}
       </header>
-      <ol className="gauntlet-capsule__plan-list">
+      <ol className="gauntlet-capsule__plan-list gx-stagger">
         {plan.actions.map((a, i) => {
           const r = planResults?.[i];
           const status = r ? (r.ok ? 'ok' : 'fail') : 'pending';

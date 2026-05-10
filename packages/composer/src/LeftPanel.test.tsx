@@ -28,6 +28,8 @@ function defaults(over: Record<string, unknown> = {}) {
     settingsDrawer: <div data-testid="drawer">drawer-here</div>,
     screenshotEnabled: false,
     onRefreshSnapshot: vi.fn(),
+    theme: 'light' as const,
+    onChangeTheme: vi.fn(),
     ...over,
   };
 }

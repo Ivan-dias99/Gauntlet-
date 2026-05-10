@@ -39,7 +39,7 @@ export function AnswerPanel({
   onCopyBlock,
 }: AnswerPanelProps) {
   return (
-    <section className="gauntlet-capsule__compose-result">
+    <section className="gauntlet-capsule__compose-result gx-anim-fade" aria-live="polite">
       <header className="gauntlet-capsule__compose-meta">
         <span className="gauntlet-capsule__compose-tag">resposta</span>
         <span className="gauntlet-capsule__compose-meta-text">

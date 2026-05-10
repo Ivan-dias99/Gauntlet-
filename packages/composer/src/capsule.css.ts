@@ -37,14 +37,10 @@ export const CAPSULE_CSS = `
 @keyframes gauntlet-cap-spin {
   to { transform: rotate(360deg); }
 }
-/* Phase ring morph — when the active phase changes, the ring picks up
-   the new colour over 600ms with an easing curve so the operator
-   reads the transition as a state change, not a flicker. */
-@keyframes gauntlet-cap-phase-morph {
-  0%   { box-shadow: 0 0 0 1px transparent, 0 0 12px transparent; }
-  50%  { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 36px var(--gx-phase, transparent); }
-  100% { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 24px var(--gx-phase, transparent); }
-}
+/* Phase ring morph is handled via transition on .gauntlet-capsule--
+   floating::before (line ~1450) — when --gx-phase swaps, opacity +
+   box-shadow ease into the new colour over 320/480ms. No keyframe
+   needed; a parallel @keyframes was removed for being dead code. */
 
 .gauntlet-capsule {
   /* Flagship light is the new default surface. The cápsula is premium
@@ -61,7 +57,7 @@ export const CAPSULE_CSS = `
   --gx-border-mid: rgba(15, 17, 22, 0.16);
   --gx-fg: #1a1d24;
   --gx-fg-dim: #4a4f5b;
-  --gx-fg-muted: #7a808d;
+  --gx-fg-muted: #646874;
   --gx-tint-soft: rgba(15, 17, 22, 0.04);
   --gx-tint-strong: rgba(15, 17, 22, 0.08);
   --gx-sunken: rgba(15, 17, 22, 0.04);
@@ -84,6 +80,62 @@ export const CAPSULE_CSS = `
   --gx-code-comment: #8a8470;
   --gx-code-fn: #2563a8;
   --gx-code-meta-bg: rgba(15, 17, 22, 0.04);
+
+  /* Aether v2 port — preview Lovable parity. Aliases map onto canon
+     tokens where the semantics already overlap; new tokens fill the
+     gaps the canon never exposed (text-ghost, ember-2, peach, semantic
+     ok/warn/err/info, sizing scale, motion + shadow primitives). */
+  --gx-bg-sunken: var(--gx-sunken);
+  --gx-bg-surface: var(--gx-surface);
+  --gx-bg-elevated: var(--gx-surface-strong);
+  --gx-bg-input: #fbf7ef;
+  --gx-text: var(--gx-fg);
+  --gx-text-2: var(--gx-fg-dim);
+  --gx-text-muted: var(--gx-fg-muted);
+  --gx-text-ghost: #c8bba6;
+  --gx-border-soft: var(--gx-border);
+  --gx-border-strong: rgba(15, 17, 22, 0.22);
+  --gx-ember-2: #b8542a;
+  --gx-peach: #f4c4ad;
+  --gx-ember-glow: rgba(208, 122, 90, 0.32);
+  --gx-ok: #4a8a4a;
+  --gx-warn: #a8742a;
+  --gx-err: #b04428;
+  --gx-info: #2a6a8a;
+  --gx-danger-bg: #fbeae3;
+  --gx-danger-bd: #d07a5a;
+  --gx-r-xs: 4px;
+  --gx-r-sm: 6px;
+  --gx-r-md: 10px;
+  --gx-r-lg: 14px;
+  --gx-r-xl: 20px;
+  --gx-r-pill: 999px;
+  --gx-s-1: 4px;
+  --gx-s-2: 6px;
+  --gx-s-3: 10px;
+  --gx-s-4: 14px;
+  --gx-s-5: 20px;
+  --gx-s-6: 28px;
+  --gx-font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --gx-font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+  --gx-font-display: "Fraunces", Georgia, serif;
+  --gx-t-micro: 10px;
+  --gx-t-meta: 11px;
+  --gx-t-body: 13px;
+  --gx-t-prom: 15px;
+  --gx-t-title: 20px;
+  --gx-t-display: 28px;
+  --gx-track-kicker: 0.26em;
+  --gx-track-meta: 0.12em;
+  --gx-dur-fast: 120ms;
+  --gx-dur-normal: 200ms;
+  --gx-dur-slow: 360ms;
+  --gx-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --gx-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --gx-ease-spring: cubic-bezier(0.5, 1.5, 0.5, 1);
+  --gx-shadow-soft: 0 1px 2px rgba(60, 40, 20, 0.06), 0 0 0 1px rgba(60, 40, 20, 0.03);
+  --gx-shadow-panel: 0 2px 8px rgba(60, 40, 20, 0.08), 0 18px 48px rgba(60, 40, 20, 0.12);
+  --gx-shadow-pill: 0 1px 2px rgba(208, 122, 90, 0.25), 0 6px 18px rgba(208, 122, 90, 0.30);
 }
 
 /* Dark variant — premium night surface. Same ember accent, glass
@@ -97,7 +149,7 @@ export const CAPSULE_CSS = `
   --gx-border-mid: rgba(255, 255, 255, 0.14);
   --gx-fg: #f0f2f7;
   --gx-fg-dim: #aab0bd;
-  --gx-fg-muted: #6a7080;
+  --gx-fg-muted: #8b91a0;
   --gx-tint-soft: rgba(255, 255, 255, 0.04);
   --gx-tint-strong: rgba(255, 255, 255, 0.08);
   --gx-sunken: rgba(8, 9, 13, 0.55);
@@ -114,6 +166,18 @@ export const CAPSULE_CSS = `
   --gx-code-comment: #6a7080;
   --gx-code-fn: #a8c8ff;
   --gx-code-meta-bg: rgba(255, 255, 255, 0.02);
+
+  /* Aether v2 port — dark overrides. Aliased tokens
+     (--gx-bg-sunken, --gx-text, --gx-border-soft, etc.) inherit dark
+     values via their target tokens; only the literals need overriding. */
+  --gx-bg-input: rgba(8, 9, 13, 0.55);
+  --gx-text-ghost: rgba(255, 255, 255, 0.20);
+  --gx-border-strong: rgba(255, 255, 255, 0.22);
+  --gx-ember-glow: rgba(208, 122, 90, 0.45);
+  --gx-danger-bg: #2a1612;
+  --gx-shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.30), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --gx-shadow-panel: 0 2px 4px rgba(0, 0, 0, 0.30), 0 10px 28px rgba(0, 0, 0, 0.40);
+  --gx-shadow-pill: 0 1px 2px rgba(208, 122, 90, 0.40), 0 8px 24px rgba(208, 122, 90, 0.45);
 }
 
 .gauntlet-capsule {
@@ -146,8 +210,8 @@ export const CAPSULE_CSS = `
   pointer-events: auto;
   /* Spring-shaped curve — slightly past the target, settles back. The
      overshoot is ≤2px so the operator reads it as confidence, not
-     bounce. 360ms gives the layered stagger room to breathe. */
-  animation: gauntlet-cap-rise 360ms cubic-bezier(0.16, 1.05, 0.34, 1) both;
+     bounce. var(--gx-dur-slow) gives the layered stagger room to breathe. */
+  animation: gauntlet-cap-rise var(--gx-dur-slow) cubic-bezier(0.16, 1.05, 0.34, 1) both;
 }
 
 /* Tight viewports collapse to a near-fullscreen shape, but still
@@ -176,7 +240,7 @@ export const CAPSULE_CSS = `
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  animation: gauntlet-cap-rise-centered 360ms cubic-bezier(0.16, 1.05, 0.34, 1) both;
+  animation: gauntlet-cap-rise-centered var(--gx-dur-slow) cubic-bezier(0.16, 1.05, 0.34, 1) both;
 }
 
 /* Anchored mode — top/left set inline via computeCapsulePosition. The
@@ -236,20 +300,20 @@ export const CAPSULE_CSS = `
   opacity: 0;
   pointer-events: none;
   z-index: -1;
-  /* Aurora fades in after the shell rise (200ms delay), then drifts
+  /* Aurora fades in after the shell rise (var(--gx-dur-normal) delay), then drifts
      forever at a 28s loop. Two-layer animation = mount fade + ambient
      drift; the comma syntax stacks them. */
   animation:
-    gauntlet-cap-aurora-fade-in 600ms 200ms cubic-bezier(0.2, 0, 0, 1) forwards,
+    gauntlet-cap-aurora-fade-in 600ms var(--gx-dur-normal) cubic-bezier(0.2, 0, 0, 1) forwards,
     gauntlet-cap-aurora 28s linear infinite;
 }
 /* Layered staggered entrance — each panel rises ~60ms after the one
    before it so the cápsula reads as composed, not stamped. */
 .gauntlet-capsule__panel--left {
-  animation: gauntlet-cap-stagger-in 320ms 120ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: gauntlet-cap-stagger-in 320ms var(--gx-dur-fast) cubic-bezier(0.2, 0, 0, 1) both;
 }
 .gauntlet-capsule__panel--right {
-  animation: gauntlet-cap-stagger-in 320ms 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: gauntlet-cap-stagger-in 320ms var(--gx-dur-normal) cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 /* ── Layout — single-column floating capsule ── */
@@ -363,13 +427,13 @@ export const CAPSULE_CSS = `
   align-items: center;
   gap: 6px;
   padding: 4px 10px 4px 8px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: 1px solid var(--gx-border-mid);
   background: var(--gx-surface-strong, var(--gx-tint-soft));
   color: var(--gx-fg);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
-  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), border-color 180ms ease, box-shadow 200ms ease;
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), border-color 180ms ease, box-shadow var(--gx-dur-normal) ease;
   letter-spacing: 0.10em;
   text-transform: uppercase;
 }
@@ -408,7 +472,7 @@ export const CAPSULE_CSS = `
   margin-left: auto;
   margin-right: 6px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: 1px solid var(--gx-border-mid);
   background: var(--gx-tint-soft);
   color: var(--gx-fg-dim);
@@ -443,7 +507,7 @@ export const CAPSULE_CSS = `
   position: relative;
   height: 2px;
   margin: 6px 0 8px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   background: var(--gx-tint-soft);
   overflow: hidden;
 }
@@ -451,7 +515,7 @@ export const CAPSULE_CSS = `
   position: absolute;
   inset: 0;
   width: 33%;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -472,7 +536,7 @@ export const CAPSULE_CSS = `
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: 1px solid var(--gx-border);
   background: var(--gx-surface-strong, transparent);
   color: var(--gx-fg-dim);
@@ -497,7 +561,7 @@ export const CAPSULE_CSS = `
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   cursor: pointer;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -578,7 +642,7 @@ export const CAPSULE_CSS = `
   min-height: 64px;
   box-sizing: border-box;
   line-height: 1.55;
-  transition: border-color 160ms ease, box-shadow 200ms ease, background 160ms ease;
+  transition: border-color 160ms ease, box-shadow var(--gx-dur-normal) ease, background 160ms ease;
   caret-color: var(--gx-ember);
 }
 .gauntlet-capsule__input::placeholder {
@@ -651,7 +715,7 @@ export const CAPSULE_CSS = `
   border: none;
   cursor: pointer;
   padding: 9px 18px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -661,7 +725,7 @@ export const CAPSULE_CSS = `
   box-shadow:
     0 0 0 1px rgba(208, 122, 90, 0.45),
     0 6px 18px rgba(208, 122, 90, 0.35);
-  transition: transform 120ms ease, box-shadow 160ms ease, opacity 120ms ease;
+  transition: transform var(--gx-dur-fast) ease, box-shadow 160ms ease, opacity var(--gx-dur-fast) ease;
   display: inline-flex; align-items: center; gap: 8px;
 }
 .gauntlet-capsule__compose:hover:not(:disabled) {
@@ -728,7 +792,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__preview-pill {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 3px 8px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: 1px solid var(--gx-border);
   background: var(--gx-tint-soft);
   font-family: "JetBrains Mono", monospace;
@@ -771,7 +835,7 @@ export const CAPSULE_CSS = `
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background var(--gx-dur-fast) ease, border-color var(--gx-dur-fast) ease;
 }
 .gauntlet-capsule__copy:hover {
   background: var(--gx-tint-soft);
@@ -825,7 +889,7 @@ export const CAPSULE_CSS = `
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  transition: background 120ms ease, transform 120ms ease, opacity 120ms ease;
+  transition: background var(--gx-dur-fast) ease, transform var(--gx-dur-fast) ease, opacity var(--gx-dur-fast) ease;
   display: inline-flex; align-items: center; gap: 8px;
 }
 .gauntlet-capsule__actuate:hover:not(:disabled) {
@@ -1069,7 +1133,7 @@ export const CAPSULE_CSS = `
   background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   border-radius: 10px;
-  animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: gauntlet-cap-rise var(--gx-dur-normal) cubic-bezier(0.2, 0, 0, 1) both;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1213,7 +1277,7 @@ export const CAPSULE_CSS = `
   font-size: 11px;
   color: var(--gx-fg-dim);
   border: 1px solid transparent;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background var(--gx-dur-fast) ease, border-color var(--gx-dur-fast) ease;
 }
 .gauntlet-capsule__plan-item--ok {
   background: rgba(122, 180, 138, 0.10);
@@ -1261,7 +1325,7 @@ export const CAPSULE_CSS = `
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.15),
     0 6px 18px rgba(208, 122, 90, 0.45);
-  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  transition: transform var(--gx-dur-fast) ease, box-shadow var(--gx-dur-fast) ease, opacity var(--gx-dur-fast) ease;
 }
 .gauntlet-capsule__execute:hover:not(:disabled) {
   transform: translateY(-1px);
@@ -1412,12 +1476,31 @@ export const CAPSULE_CSS = `
   animation: gauntlet-cap-phase-heartbeat 2.4s ease-in-out infinite;
 }
 
-/* Phase mark-dot tint — the brand mark itself communicates state */
+/* Phase mark-dot tint — the brand mark itself communicates state.
+   Wired to the .gx-* tokens so light/dark inherit cleanly. The dot
+   carries the active rhythm; the border carries the resting tint. */
 .gauntlet-capsule--phase-error .gauntlet-capsule__mark {
   border-color: rgba(212, 96, 60, 0.7);
 }
 .gauntlet-capsule--phase-executed .gauntlet-capsule__mark {
   border-color: rgba(122, 180, 138, 0.7);
+}
+.gauntlet-capsule--phase-planning .gauntlet-capsule__mark-dot,
+.gauntlet-capsule--phase-streaming .gauntlet-capsule__mark-dot,
+.gauntlet-capsule--phase-executing .gauntlet-capsule__mark-dot {
+  background: var(--gx-ember);
+  box-shadow: 0 0 14px var(--gx-ember-glow);
+  animation: gx-breathe 1.6s var(--gx-ease-in-out) infinite;
+}
+.gauntlet-capsule--phase-error .gauntlet-capsule__mark-dot {
+  background: var(--gx-err);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--gx-err) 40%, transparent);
+  animation: gx-breathe 1s var(--gx-ease-in-out) infinite;
+}
+.gauntlet-capsule--phase-executed .gauntlet-capsule__mark-dot {
+  background: var(--gx-ok);
+  box-shadow: 0 0 14px color-mix(in oklab, var(--gx-ok) 50%, transparent);
+  animation: gx-success-flash 700ms var(--gx-ease-out);
 }
 
 /* ── Token tick counter (refining: sensação de avanço) ─────────────────── */
@@ -1512,7 +1595,7 @@ export const CAPSULE_CSS = `
   align-items: center;
   gap: 6px;
   padding: 4px 6px 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: 1px solid var(--gx-border-mid);
   background: var(--gx-surface);
   color: var(--gx-fg);
@@ -1544,7 +1627,7 @@ export const CAPSULE_CSS = `
   justify-content: center;
   width: 18px;
   height: 18px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: none;
   background: transparent;
   color: var(--gx-fg-muted);
@@ -1606,7 +1689,7 @@ export const CAPSULE_CSS = `
   font-size: 11px;
   text-align: left;
   cursor: pointer;
-  transition: background 120ms;
+  transition: background var(--gx-dur-fast);
 }
 .gauntlet-capsule__slash-item--active {
   background: var(--gx-tint-strong);
@@ -1948,7 +2031,7 @@ export const CAPSULE_CSS = `
   display: inline-flex;
   align-items: center;
   padding: 2px 7px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   letter-spacing: 0.12em;
@@ -1996,7 +2079,7 @@ export const CAPSULE_CSS = `
   left: 50%;
   transform: translateX(-50%);
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   background: rgba(122, 180, 138, 0.14);
   color: var(--gx-success-text);
   border: 1px solid rgba(122, 180, 138, 0.32);
@@ -2157,4 +2240,261 @@ export const CAPSULE_CSS = `
 .gauntlet-md__tok--c { color: var(--gx-code-comment); font-style: italic; }
 .gauntlet-md__tok--f { color: var(--gx-code-fn); }
 .gauntlet-md__tok--p { color: inherit; }
+
+/* ── Aether v2 port (preview Lovable parity) ─────────────────────────
+   Classes prefixed .gx-* live alongside .gauntlet-capsule__* — both
+   consume the same --gx-* tokens. Scoped under the capsule via the
+   parent .gauntlet-capsule, so token resolution stays predictable.
+   See docs/canon/COMPOSER_SURFACE_SPEC.md and the preview at
+   /tmp/aether_v2/src/styles/aether.css for the source. */
+
+@keyframes gx-rise {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.985); }
+  100% { opacity: 1; transform: translateY(0)   scale(1);     }
+}
+@keyframes gx-fade-up {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes gx-pop {
+  0%   { opacity: 0; transform: scale(0.94); }
+  60%  { transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes gx-glide {
+  0%   { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes gx-sheen {
+  0%   { background-position: -150% 0; }
+  100% { background-position: 150% 0; }
+}
+@keyframes gx-success-flash {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--gx-ok) 50%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+@keyframes gx-breathe {
+  0%, 100% { transform: scale(1);    opacity: 0.92; }
+  50%      { transform: scale(1.06); opacity: 1;    }
+}
+
+.gx-anim-rise  { animation: gx-rise    var(--gx-dur-slow)   var(--gx-ease-spring) both; }
+.gx-anim-fade  { animation: gx-fade-up var(--gx-dur-normal) var(--gx-ease-out) both; }
+.gx-anim-pop   { animation: gx-pop     var(--gx-dur-normal) var(--gx-ease-spring) both; }
+.gx-anim-glide { animation: gx-glide   var(--gx-dur-fast)   var(--gx-ease-out) both; }
+.gx-stagger > * { animation: gx-fade-up var(--gx-dur-normal) var(--gx-ease-out) both; }
+.gx-stagger > *:nth-child(1) { animation-delay:  20ms; }
+.gx-stagger > *:nth-child(2) { animation-delay:  60ms; }
+.gx-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.gx-stagger > *:nth-child(4) { animation-delay: 140ms; }
+.gx-stagger > *:nth-child(5) { animation-delay: 180ms; }
+.gx-stagger > *:nth-child(6) { animation-delay: 220ms; }
+/* Plans of 7+ actions still feel ordered — late items share the last
+   bucket instead of all firing simultaneously. */
+.gx-stagger > *:nth-child(n+7) { animation-delay: 260ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gauntlet-capsule *,
+  .gauntlet-capsule *::before,
+  .gauntlet-capsule *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ShortcutBar — persistent contextual hint strip at the foot of the
+   right panel. Status dot on the left signals the system breathing
+   state; hint set on the right narrows to what matters per phase. */
+.gx-shortcut-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--gx-s-3);
+  padding: 6px var(--gx-s-5);
+  border-top: 1px solid var(--gx-border-soft);
+  background: color-mix(in oklab, var(--gx-bg-sunken) 18%, transparent);
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-micro);
+  letter-spacing: var(--gx-track-meta);
+  text-transform: uppercase;
+  color: var(--gx-text-muted);
+  min-height: 28px;
+}
+.gx-shortcut-bar__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gx-text-2);
+}
+.gx-shortcut-bar__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gx-text-muted);
+  box-shadow: 0 0 0 0 transparent;
+}
+.gx-shortcut-bar__status[data-tone="thinking"] .gx-shortcut-bar__dot {
+  background: var(--gx-ember);
+  animation: gx-breathe 1.6s var(--gx-ease-in-out) infinite;
+}
+.gx-shortcut-bar__status[data-tone="ok"]     .gx-shortcut-bar__dot { background: var(--gx-ok); }
+.gx-shortcut-bar__status[data-tone="err"]    .gx-shortcut-bar__dot { background: var(--gx-err); }
+.gx-shortcut-bar__status[data-tone="danger"] .gx-shortcut-bar__dot {
+  background: var(--gx-ember-2);
+  animation: gx-breathe 1s var(--gx-ease-in-out) infinite;
+}
+.gx-shortcut-bar__sep {
+  width: 1px;
+  height: 14px;
+  background: var(--gx-border-soft);
+}
+.gx-shortcut-bar__hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gx-s-3);
+  flex: 1;
+  justify-content: flex-end;
+}
+.gx-shortcut-bar__hint { display: inline-flex; align-items: center; gap: 4px; }
+.gx-shortcut-bar__hint[data-tone="primary"] { color: var(--gx-ember-2); }
+.gx-shortcut-bar__hint[data-tone="danger"]  { color: var(--gx-err); }
+.gx-shortcut-bar__kbd {
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-micro);
+  padding: 2px 5px;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: var(--gx-r-xs);
+  color: var(--gx-text-muted);
+}
+
+/* ThemeToggle — light/dark toggle pill. Sits in the header actions
+   beside the settings + close buttons. Visual: 52×26 track with a
+   peach→ember thumb (light) or indigo (dark). */
+.gx-theme-toggle {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.gx-theme-toggle__track {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  width: 52px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: var(--gx-r-pill);
+  background: var(--gx-bg-input);
+  border: 1px solid var(--gx-border-mid);
+  transition: background var(--gx-dur-normal) var(--gx-ease-out),
+              border-color var(--gx-dur-normal);
+}
+.gx-theme-toggle__icon {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--gx-text-muted);
+  z-index: 1;
+  user-select: none;
+  transition: color var(--gx-dur-fast);
+}
+.gx-theme-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--gx-peach), var(--gx-ember));
+  box-shadow: 0 2px 6px var(--gx-ember-glow);
+  transition: transform var(--gx-dur-normal) var(--gx-ease-spring);
+}
+.gx-theme-toggle[data-theme="dark"] .gx-theme-toggle__thumb {
+  transform: translateX(26px);
+  background: radial-gradient(circle at 30% 30%, #8a8aff, #2a2a5a);
+}
+.gx-theme-toggle:hover .gx-theme-toggle__track { border-color: var(--gx-ember); }
+.gx-theme-toggle:focus-visible { outline: 2px solid var(--gx-ember); outline-offset: 2px; border-radius: var(--gx-r-pill); }
+
+/* Success badge — fires on entering executed phase, 700ms flash. */
+.gx-success-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--gx-r-pill);
+  background: color-mix(in oklab, var(--gx-ok) 12%, var(--gx-bg-elevated));
+  border: 1px solid color-mix(in oklab, var(--gx-ok) 40%, transparent);
+  color: var(--gx-ok);
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-micro);
+  letter-spacing: var(--gx-track-meta);
+  text-transform: uppercase;
+  animation: gx-success-flash 700ms var(--gx-ease-out) both;
+}
+
+/* Empty state — "O que queres fazer?" + ritual list. Display title in
+   serif Fraunces; rituals are ghost rows that bloom on hover/focus. */
+.gx-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gx-s-4);
+  padding: var(--gx-s-2) 0;
+}
+.gx-empty__title {
+  font-family: var(--gx-font-display);
+  font-size: var(--gx-t-title);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--gx-text);
+  margin: 0;
+  line-height: 1.2;
+}
+.gx-empty__sub {
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-meta);
+  letter-spacing: var(--gx-track-meta);
+  text-transform: uppercase;
+  color: var(--gx-text-muted);
+  margin: 0;
+}
+.gx-empty__rituals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.gx-empty__ritual {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: 2px solid var(--gx-border-soft);
+  border-radius: var(--gx-r-sm);
+  font-family: var(--gx-font-sans);
+  font-size: var(--gx-t-body);
+  color: var(--gx-text-2);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--gx-dur-fast) var(--gx-ease-out);
+}
+.gx-empty__ritual:hover {
+  background: var(--gx-bg-elevated);
+  border-left-color: var(--gx-ember);
+  color: var(--gx-text);
+  transform: translateX(2px);
+}
+.gx-empty__ritual:focus-visible {
+  outline: none;
+  border-left-color: var(--gx-ember);
+  background: var(--gx-bg-elevated);
+}
+.gx-empty__ritual-icon  { color: var(--gx-ember); width: 16px; }
+.gx-empty__ritual-label { flex: 1; }
+.gx-empty__ritual-kbd {
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-micro);
+  color: var(--gx-text-muted);
+}
 `;

@@ -46,6 +46,14 @@ export type Phase =
   | 'executed'
   | 'error';
 
+// Busy phases — the agent is mid-flight or running actions. Used by
+// the composer chrome to disable submit, advertise breathing signals
+// and pick the right copy. Co-located with Phase so adding a new busy
+// phase is a one-file change.
+export function isBusy(phase: Phase): boolean {
+  return phase === 'planning' || phase === 'streaming' || phase === 'executing';
+}
+
 export interface UseStreamingPlanArgs {
   client: ComposerClient;
   ambient: Ambient;
