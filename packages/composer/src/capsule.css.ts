@@ -37,14 +37,10 @@ export const CAPSULE_CSS = `
 @keyframes gauntlet-cap-spin {
   to { transform: rotate(360deg); }
 }
-/* Phase ring morph — when the active phase changes, the ring picks up
-   the new colour over 600ms with an easing curve so the operator
-   reads the transition as a state change, not a flicker. */
-@keyframes gauntlet-cap-phase-morph {
-  0%   { box-shadow: 0 0 0 1px transparent, 0 0 12px transparent; }
-  50%  { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 36px var(--gx-phase, transparent); }
-  100% { box-shadow: 0 0 0 1px var(--gx-phase, transparent), 0 0 24px var(--gx-phase, transparent); }
-}
+/* Phase ring morph is handled via transition on .gauntlet-capsule--
+   floating::before (line ~1450) — when --gx-phase swaps, opacity +
+   box-shadow ease into the new colour over 320/480ms. No keyframe
+   needed; a parallel @keyframes was removed for being dead code. */
 
 .gauntlet-capsule {
   /* Flagship light is the new default surface. The cápsula is premium
@@ -214,8 +210,8 @@ export const CAPSULE_CSS = `
   pointer-events: auto;
   /* Spring-shaped curve — slightly past the target, settles back. The
      overshoot is ≤2px so the operator reads it as confidence, not
-     bounce. 360ms gives the layered stagger room to breathe. */
-  animation: gauntlet-cap-rise 360ms cubic-bezier(0.16, 1.05, 0.34, 1) both;
+     bounce. var(--gx-dur-slow) gives the layered stagger room to breathe. */
+  animation: gauntlet-cap-rise var(--gx-dur-slow) cubic-bezier(0.16, 1.05, 0.34, 1) both;
 }
 
 /* Tight viewports collapse to a near-fullscreen shape, but still
@@ -244,7 +240,7 @@ export const CAPSULE_CSS = `
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  animation: gauntlet-cap-rise-centered 360ms cubic-bezier(0.16, 1.05, 0.34, 1) both;
+  animation: gauntlet-cap-rise-centered var(--gx-dur-slow) cubic-bezier(0.16, 1.05, 0.34, 1) both;
 }
 
 /* Anchored mode — top/left set inline via computeCapsulePosition. The
@@ -304,20 +300,20 @@ export const CAPSULE_CSS = `
   opacity: 0;
   pointer-events: none;
   z-index: -1;
-  /* Aurora fades in after the shell rise (200ms delay), then drifts
+  /* Aurora fades in after the shell rise (var(--gx-dur-normal) delay), then drifts
      forever at a 28s loop. Two-layer animation = mount fade + ambient
      drift; the comma syntax stacks them. */
   animation:
-    gauntlet-cap-aurora-fade-in 600ms 200ms cubic-bezier(0.2, 0, 0, 1) forwards,
+    gauntlet-cap-aurora-fade-in 600ms var(--gx-dur-normal) cubic-bezier(0.2, 0, 0, 1) forwards,
     gauntlet-cap-aurora 28s linear infinite;
 }
 /* Layered staggered entrance — each panel rises ~60ms after the one
    before it so the cápsula reads as composed, not stamped. */
 .gauntlet-capsule__panel--left {
-  animation: gauntlet-cap-stagger-in 320ms 120ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: gauntlet-cap-stagger-in 320ms var(--gx-dur-fast) cubic-bezier(0.2, 0, 0, 1) both;
 }
 .gauntlet-capsule__panel--right {
-  animation: gauntlet-cap-stagger-in 320ms 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: gauntlet-cap-stagger-in 320ms var(--gx-dur-normal) cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 /* ── Layout — single-column floating capsule ── */
@@ -431,13 +427,13 @@ export const CAPSULE_CSS = `
   align-items: center;
   gap: 6px;
   padding: 4px 10px 4px 8px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: 1px solid var(--gx-border-mid);
   background: var(--gx-surface-strong, var(--gx-tint-soft));
   color: var(--gx-fg);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
-  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), border-color 180ms ease, box-shadow 200ms ease;
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), border-color 180ms ease, box-shadow var(--gx-dur-normal) ease;
   letter-spacing: 0.10em;
   text-transform: uppercase;
 }
@@ -476,7 +472,7 @@ export const CAPSULE_CSS = `
   margin-left: auto;
   margin-right: 6px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: 1px solid var(--gx-border-mid);
   background: var(--gx-tint-soft);
   color: var(--gx-fg-dim);
@@ -511,7 +507,7 @@ export const CAPSULE_CSS = `
   position: relative;
   height: 2px;
   margin: 6px 0 8px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   background: var(--gx-tint-soft);
   overflow: hidden;
 }
@@ -519,7 +515,7 @@ export const CAPSULE_CSS = `
   position: absolute;
   inset: 0;
   width: 33%;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -540,7 +536,7 @@ export const CAPSULE_CSS = `
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: 1px solid var(--gx-border);
   background: var(--gx-surface-strong, transparent);
   color: var(--gx-fg-dim);
@@ -565,7 +561,7 @@ export const CAPSULE_CSS = `
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   cursor: pointer;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -646,7 +642,7 @@ export const CAPSULE_CSS = `
   min-height: 64px;
   box-sizing: border-box;
   line-height: 1.55;
-  transition: border-color 160ms ease, box-shadow 200ms ease, background 160ms ease;
+  transition: border-color 160ms ease, box-shadow var(--gx-dur-normal) ease, background 160ms ease;
   caret-color: var(--gx-ember);
 }
 .gauntlet-capsule__input::placeholder {
@@ -719,7 +715,7 @@ export const CAPSULE_CSS = `
   border: none;
   cursor: pointer;
   padding: 9px 18px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -729,7 +725,7 @@ export const CAPSULE_CSS = `
   box-shadow:
     0 0 0 1px rgba(208, 122, 90, 0.45),
     0 6px 18px rgba(208, 122, 90, 0.35);
-  transition: transform 120ms ease, box-shadow 160ms ease, opacity 120ms ease;
+  transition: transform var(--gx-dur-fast) ease, box-shadow 160ms ease, opacity var(--gx-dur-fast) ease;
   display: inline-flex; align-items: center; gap: 8px;
 }
 .gauntlet-capsule__compose:hover:not(:disabled) {
@@ -796,7 +792,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__preview-pill {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 3px 8px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: 1px solid var(--gx-border);
   background: var(--gx-tint-soft);
   font-family: "JetBrains Mono", monospace;
@@ -839,7 +835,7 @@ export const CAPSULE_CSS = `
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background var(--gx-dur-fast) ease, border-color var(--gx-dur-fast) ease;
 }
 .gauntlet-capsule__copy:hover {
   background: var(--gx-tint-soft);
@@ -893,7 +889,7 @@ export const CAPSULE_CSS = `
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  transition: background 120ms ease, transform 120ms ease, opacity 120ms ease;
+  transition: background var(--gx-dur-fast) ease, transform var(--gx-dur-fast) ease, opacity var(--gx-dur-fast) ease;
   display: inline-flex; align-items: center; gap: 8px;
 }
 .gauntlet-capsule__actuate:hover:not(:disabled) {
@@ -1137,7 +1133,7 @@ export const CAPSULE_CSS = `
   background: var(--gx-sunken);
   border: 1px solid var(--gx-border);
   border-radius: 10px;
-  animation: gauntlet-cap-rise 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: gauntlet-cap-rise var(--gx-dur-normal) cubic-bezier(0.2, 0, 0, 1) both;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1281,7 +1277,7 @@ export const CAPSULE_CSS = `
   font-size: 11px;
   color: var(--gx-fg-dim);
   border: 1px solid transparent;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background var(--gx-dur-fast) ease, border-color var(--gx-dur-fast) ease;
 }
 .gauntlet-capsule__plan-item--ok {
   background: rgba(122, 180, 138, 0.10);
@@ -1329,7 +1325,7 @@ export const CAPSULE_CSS = `
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.15),
     0 6px 18px rgba(208, 122, 90, 0.45);
-  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  transition: transform var(--gx-dur-fast) ease, box-shadow var(--gx-dur-fast) ease, opacity var(--gx-dur-fast) ease;
 }
 .gauntlet-capsule__execute:hover:not(:disabled) {
   transform: translateY(-1px);
@@ -1599,7 +1595,7 @@ export const CAPSULE_CSS = `
   align-items: center;
   gap: 6px;
   padding: 4px 6px 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: 1px solid var(--gx-border-mid);
   background: var(--gx-surface);
   color: var(--gx-fg);
@@ -1631,7 +1627,7 @@ export const CAPSULE_CSS = `
   justify-content: center;
   width: 18px;
   height: 18px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   border: none;
   background: transparent;
   color: var(--gx-fg-muted);
@@ -1693,7 +1689,7 @@ export const CAPSULE_CSS = `
   font-size: 11px;
   text-align: left;
   cursor: pointer;
-  transition: background 120ms;
+  transition: background var(--gx-dur-fast);
 }
 .gauntlet-capsule__slash-item--active {
   background: var(--gx-tint-strong);
@@ -2035,7 +2031,7 @@ export const CAPSULE_CSS = `
   display: inline-flex;
   align-items: center;
   padding: 2px 7px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   letter-spacing: 0.12em;
@@ -2083,7 +2079,7 @@ export const CAPSULE_CSS = `
   left: 50%;
   transform: translateX(-50%);
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: var(--gx-r-pill);
   background: rgba(122, 180, 138, 0.14);
   color: var(--gx-success-text);
   border: 1px solid rgba(122, 180, 138, 0.32);
