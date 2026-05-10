@@ -61,7 +61,7 @@ export const CAPSULE_CSS = `
   --gx-border-mid: rgba(15, 17, 22, 0.16);
   --gx-fg: #1a1d24;
   --gx-fg-dim: #4a4f5b;
-  --gx-fg-muted: #7a808d;
+  --gx-fg-muted: #646874;
   --gx-tint-soft: rgba(15, 17, 22, 0.04);
   --gx-tint-strong: rgba(15, 17, 22, 0.08);
   --gx-sunken: rgba(15, 17, 22, 0.04);
@@ -153,7 +153,7 @@ export const CAPSULE_CSS = `
   --gx-border-mid: rgba(255, 255, 255, 0.14);
   --gx-fg: #f0f2f7;
   --gx-fg-dim: #aab0bd;
-  --gx-fg-muted: #6a7080;
+  --gx-fg-muted: #8b91a0;
   --gx-tint-soft: rgba(255, 255, 255, 0.04);
   --gx-tint-strong: rgba(255, 255, 255, 0.08);
   --gx-sunken: rgba(8, 9, 13, 0.55);
@@ -1480,12 +1480,31 @@ export const CAPSULE_CSS = `
   animation: gauntlet-cap-phase-heartbeat 2.4s ease-in-out infinite;
 }
 
-/* Phase mark-dot tint — the brand mark itself communicates state */
+/* Phase mark-dot tint — the brand mark itself communicates state.
+   Wired to the .gx-* tokens so light/dark inherit cleanly. The dot
+   carries the active rhythm; the border carries the resting tint. */
 .gauntlet-capsule--phase-error .gauntlet-capsule__mark {
   border-color: rgba(212, 96, 60, 0.7);
 }
 .gauntlet-capsule--phase-executed .gauntlet-capsule__mark {
   border-color: rgba(122, 180, 138, 0.7);
+}
+.gauntlet-capsule--phase-planning .gauntlet-capsule__mark-dot,
+.gauntlet-capsule--phase-streaming .gauntlet-capsule__mark-dot,
+.gauntlet-capsule--phase-executing .gauntlet-capsule__mark-dot {
+  background: var(--gx-ember);
+  box-shadow: 0 0 14px var(--gx-ember-glow);
+  animation: gx-breathe 1.6s var(--gx-ease-in-out) infinite;
+}
+.gauntlet-capsule--phase-error .gauntlet-capsule__mark-dot {
+  background: var(--gx-err);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--gx-err) 40%, transparent);
+  animation: gx-breathe 1s var(--gx-ease-in-out) infinite;
+}
+.gauntlet-capsule--phase-executed .gauntlet-capsule__mark-dot {
+  background: var(--gx-ok);
+  box-shadow: 0 0 14px color-mix(in oklab, var(--gx-ok) 50%, transparent);
+  animation: gx-success-flash 700ms var(--gx-ease-out);
 }
 
 /* ── Token tick counter (refining: sensação de avanço) ─────────────────── */

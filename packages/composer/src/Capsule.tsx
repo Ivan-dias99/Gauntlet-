@@ -14,7 +14,6 @@ import {
   type ComposerSettings,
   type SelectionRect,
   type SelectionSnapshot,
-  type ToolManifest,
 } from './types';
 import { isRemoteVoiceSupported, isVoiceSupported } from './voice';
 import { type DomAction, type DomActionResult } from './dom-actions';
@@ -41,7 +40,9 @@ import { ComputerUseGate, useComputerUseGate } from './ComputerUseGate';
 import { LeftPanel } from './LeftPanel';
 import { ActionsRow } from './ActionsRow';
 import { ShortcutBar } from './ShortcutBar';
+import { EmptyState } from './EmptyState';
 import { usePhaseBroadcast } from './usePhaseBroadcast';
+import { useToolManifests } from './useToolManifests';
 import { StreamingState } from './StreamingState';
 import { useStreamingPlan } from './useStreamingPlan';
 import { useCapsuleScreenshot } from './useCapsuleScreenshot';
@@ -98,8 +99,7 @@ export function Capsule({
   // the command palette can list every tool the agent CAN call (with
   // mode + risk + version), not just the ad-hoc UI shortcuts. Operator
   // sees what's actually available; doctrine is "tudo à mão".
-  const [toolManifests, setToolManifests] = useState<ToolManifest[]>([]);
-  const [paletteRecent, setPaletteRecent] = useState<string[]>([]);
+  const { toolManifests, paletteRecent, setPaletteRecent } = useToolManifests(client, prefs);
   // Ripple counter — incremented on each submit so React keys the
   // ripple element fresh, replaying the keyframe even when the user
   // submits twice in quick succession.
@@ -244,28 +244,6 @@ export function Capsule({
   useEffect(() => {
     setSnapshot(initialSnapshot);
   }, [initialSnapshot]);
-
-  // Tool manifests — load on mount; failure leaves the list empty so
-  // the palette still shows the built-in actions. Recently-used tool
-  // ids load in parallel so the palette renders ordered from the start.
-  useEffect(() => {
-    let cancelled = false;
-    void client
-      .getToolManifests()
-      .then((tools) => {
-        if (!cancelled) setToolManifests(tools);
-      })
-      .catch(swallow);
-    void prefs
-      .readPaletteRecent()
-      .then((recent) => {
-        if (!cancelled) setPaletteRecent(recent);
-      })
-      .catch(swallow);
-    return () => {
-      cancelled = true;
-    };
-  }, [client, prefs]);
 
   useEffect(() => {
     let cancelled = false;
@@ -666,6 +644,15 @@ export function Capsule({
               onVoiceStop={stopVoiceCapture}
             />
           </form>
+
+          {phase === 'idle' && !userInput.trim() && !plan && !partialCompose && (
+            <EmptyState
+              onPick={(hint) => {
+                setUserInput(hint);
+                inputRef.current?.focus();
+              }}
+            />
+          )}
 
           {phase === 'streaming' && partialCompose && (
             <StreamingState
