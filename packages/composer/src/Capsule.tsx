@@ -40,6 +40,8 @@ import { buildSlashActions, SlashMenu } from './SlashMenu';
 import { ComputerUseGate, useComputerUseGate } from './ComputerUseGate';
 import { LeftPanel } from './LeftPanel';
 import { ActionsRow } from './ActionsRow';
+import { ShortcutBar } from './ShortcutBar';
+import { usePhaseBroadcast } from './usePhaseBroadcast';
 import { StreamingState } from './StreamingState';
 import { useStreamingPlan } from './useStreamingPlan';
 import { useCapsuleScreenshot } from './useCapsuleScreenshot';
@@ -367,6 +369,11 @@ export function Capsule({
     onDismiss();
   }, [onDismiss, reportRejection]);
 
+  const onChangeTheme = useCallback((next: CapsuleTheme) => {
+    setTheme(next);
+    void prefs.writeTheme(next);
+  }, [prefs]);
+
   useCapsuleKeyboard({
     paletteOpen,
     setPaletteOpen,
@@ -572,14 +579,7 @@ export function Capsule({
     phaseClass,
   ].filter(Boolean).join(' ');
 
-  // Broadcast the phase so the pill (rendered by App after dismiss)
-  // can mirror it. App listens to gauntlet:phase events and tints the
-  // pill accordingly.
-  useEffect(() => {
-    window.dispatchEvent(
-      new CustomEvent('gauntlet:phase', { detail: { phase } }),
-    );
-  }, [phase]);
+  usePhaseBroadcast(phase);
 
   return (
     <div
@@ -599,6 +599,8 @@ export function Capsule({
           settingsOpen={settingsOpen}
           onToggleSettings={() => setSettingsOpen((v) => !v)}
           onDismiss={handleDismiss}
+          theme={theme}
+          onChangeTheme={onChangeTheme}
           settingsDrawer={
             <SettingsDrawer
               onClose={() => setSettingsOpen(false)}
@@ -607,10 +609,7 @@ export function Capsule({
               showPillMode={ambient.capabilities.pillSurface}
               prefs={prefs}
               theme={theme}
-              onChangeTheme={(t) => {
-                setTheme(t);
-                void prefs.writeTheme(t);
-              }}
+              onChangeTheme={onChangeTheme}
             />
           }
           screenshotEnabled={screenshot !== null}
@@ -722,6 +721,8 @@ export function Capsule({
               <span>{error}</span>
             </div>
           )}
+
+          <ShortcutBar phase={phase} dangerGateOpen={cuGate.gateProps.pending !== null} />
         </div>
       </div>
 

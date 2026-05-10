@@ -84,6 +84,62 @@ export const CAPSULE_CSS = `
   --gx-code-comment: #8a8470;
   --gx-code-fn: #2563a8;
   --gx-code-meta-bg: rgba(15, 17, 22, 0.04);
+
+  /* Aether v2 port — preview Lovable parity. Aliases map onto canon
+     tokens where the semantics already overlap; new tokens fill the
+     gaps the canon never exposed (text-ghost, ember-2, peach, semantic
+     ok/warn/err/info, sizing scale, motion + shadow primitives). */
+  --gx-bg-sunken: var(--gx-sunken);
+  --gx-bg-surface: var(--gx-surface);
+  --gx-bg-elevated: var(--gx-surface-strong);
+  --gx-bg-input: rgba(255, 255, 255, 0.6);
+  --gx-text: var(--gx-fg);
+  --gx-text-2: var(--gx-fg-dim);
+  --gx-text-muted: var(--gx-fg-muted);
+  --gx-text-ghost: rgba(15, 17, 22, 0.32);
+  --gx-border-soft: var(--gx-border);
+  --gx-border-strong: rgba(15, 17, 22, 0.22);
+  --gx-ember-2: #b8542a;
+  --gx-peach: #f4c4ad;
+  --gx-ember-glow: rgba(208, 122, 90, 0.32);
+  --gx-ok: #4a8a4a;
+  --gx-warn: #a8742a;
+  --gx-err: #b04428;
+  --gx-info: #2a6a8a;
+  --gx-danger-bg: #fbeae3;
+  --gx-danger-bd: #d07a5a;
+  --gx-r-xs: 4px;
+  --gx-r-sm: 6px;
+  --gx-r-md: 10px;
+  --gx-r-lg: 14px;
+  --gx-r-xl: 20px;
+  --gx-r-pill: 999px;
+  --gx-s-1: 4px;
+  --gx-s-2: 6px;
+  --gx-s-3: 10px;
+  --gx-s-4: 14px;
+  --gx-s-5: 20px;
+  --gx-s-6: 28px;
+  --gx-font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --gx-font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+  --gx-font-display: "Fraunces", Georgia, serif;
+  --gx-t-micro: 10px;
+  --gx-t-meta: 11px;
+  --gx-t-body: 13px;
+  --gx-t-prom: 15px;
+  --gx-t-title: 20px;
+  --gx-t-display: 28px;
+  --gx-track-kicker: 0.26em;
+  --gx-track-meta: 0.12em;
+  --gx-dur-fast: 120ms;
+  --gx-dur-normal: 200ms;
+  --gx-dur-slow: 360ms;
+  --gx-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --gx-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --gx-ease-spring: cubic-bezier(0.5, 1.5, 0.5, 1);
+  --gx-shadow-soft: 0 1px 2px rgba(60, 40, 20, 0.06), 0 0 0 1px rgba(60, 40, 20, 0.03);
+  --gx-shadow-panel: 0 2px 8px rgba(60, 40, 20, 0.08), 0 18px 48px rgba(60, 40, 20, 0.12);
+  --gx-shadow-pill: 0 1px 2px rgba(208, 122, 90, 0.25), 0 6px 18px rgba(208, 122, 90, 0.30);
 }
 
 /* Dark variant — premium night surface. Same ember accent, glass
@@ -114,6 +170,18 @@ export const CAPSULE_CSS = `
   --gx-code-comment: #6a7080;
   --gx-code-fn: #a8c8ff;
   --gx-code-meta-bg: rgba(255, 255, 255, 0.02);
+
+  /* Aether v2 port — dark overrides. Aliased tokens
+     (--gx-bg-sunken, --gx-text, --gx-border-soft, etc.) inherit dark
+     values via their target tokens; only the literals need overriding. */
+  --gx-bg-input: rgba(8, 9, 13, 0.55);
+  --gx-text-ghost: rgba(255, 255, 255, 0.20);
+  --gx-border-strong: rgba(255, 255, 255, 0.22);
+  --gx-ember-glow: rgba(208, 122, 90, 0.45);
+  --gx-danger-bg: #2a1612;
+  --gx-shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.30), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --gx-shadow-panel: 0 2px 4px rgba(0, 0, 0, 0.30), 0 10px 28px rgba(0, 0, 0, 0.40);
+  --gx-shadow-pill: 0 1px 2px rgba(208, 122, 90, 0.40), 0 8px 24px rgba(208, 122, 90, 0.45);
 }
 
 .gauntlet-capsule {
@@ -2157,4 +2225,321 @@ export const CAPSULE_CSS = `
 .gauntlet-md__tok--c { color: var(--gx-code-comment); font-style: italic; }
 .gauntlet-md__tok--f { color: var(--gx-code-fn); }
 .gauntlet-md__tok--p { color: inherit; }
+
+/* ── Aether v2 port (preview Lovable parity) ─────────────────────────
+   Classes prefixed .gx-* live alongside .gauntlet-capsule__* — both
+   consume the same --gx-* tokens. Scoped under the capsule via the
+   parent .gauntlet-capsule, so token resolution stays predictable.
+   See docs/canon/COMPOSER_SURFACE_SPEC.md and the preview at
+   /tmp/aether_v2/src/styles/aether.css for the source. */
+
+@keyframes gx-fade-up {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes gx-pop {
+  0%   { opacity: 0; transform: scale(0.94); }
+  60%  { transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes gx-glide {
+  0%   { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes gx-sheen {
+  0%   { background-position: -150% 0; }
+  100% { background-position: 150% 0; }
+}
+@keyframes gx-success-flash {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--gx-ok) 50%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+@keyframes gx-breathe {
+  0%, 100% { transform: scale(1);    opacity: 0.92; }
+  50%      { transform: scale(1.06); opacity: 1;    }
+}
+
+.gx-anim-fade  { animation: gx-fade-up var(--gx-dur-normal) var(--gx-ease-out) both; }
+.gx-anim-pop   { animation: gx-pop     var(--gx-dur-normal) var(--gx-ease-spring) both; }
+.gx-anim-glide { animation: gx-glide   var(--gx-dur-fast)   var(--gx-ease-out) both; }
+.gx-stagger > * { animation: gx-fade-up var(--gx-dur-normal) var(--gx-ease-out) both; }
+.gx-stagger > *:nth-child(1) { animation-delay:  20ms; }
+.gx-stagger > *:nth-child(2) { animation-delay:  60ms; }
+.gx-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.gx-stagger > *:nth-child(4) { animation-delay: 140ms; }
+.gx-stagger > *:nth-child(5) { animation-delay: 180ms; }
+.gx-stagger > *:nth-child(6) { animation-delay: 220ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gauntlet-capsule *,
+  .gauntlet-capsule *::before,
+  .gauntlet-capsule *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ShortcutBar — persistent contextual hint strip. Sits between body and
+   ActionsRow, exposing only the shortcuts that matter for the current
+   phase. The status dot on the left is the system breathing signal. */
+.gx-shortcut-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--gx-s-3);
+  padding: 6px var(--gx-s-5);
+  border-top: 1px solid var(--gx-border-soft);
+  background: color-mix(in oklab, var(--gx-bg-sunken) 18%, transparent);
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-micro);
+  letter-spacing: var(--gx-track-meta);
+  text-transform: uppercase;
+  color: var(--gx-text-muted);
+  min-height: 28px;
+}
+.gx-shortcut-bar__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gx-text-2);
+}
+.gx-shortcut-bar__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gx-text-muted);
+  box-shadow: 0 0 0 0 transparent;
+}
+.gx-shortcut-bar__status[data-tone="thinking"] .gx-shortcut-bar__dot {
+  background: var(--gx-ember);
+  animation: gx-breathe 1.6s var(--gx-ease-in-out) infinite;
+}
+.gx-shortcut-bar__status[data-tone="ok"]     .gx-shortcut-bar__dot { background: var(--gx-ok); }
+.gx-shortcut-bar__status[data-tone="err"]    .gx-shortcut-bar__dot { background: var(--gx-err); }
+.gx-shortcut-bar__status[data-tone="danger"] .gx-shortcut-bar__dot {
+  background: var(--gx-ember-2);
+  animation: gx-breathe 1s var(--gx-ease-in-out) infinite;
+}
+.gx-shortcut-bar__sep {
+  width: 1px;
+  height: 14px;
+  background: var(--gx-border-soft);
+}
+.gx-shortcut-bar__hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gx-s-3);
+  flex: 1;
+  justify-content: flex-end;
+}
+.gx-shortcut-bar__hint { display: inline-flex; align-items: center; gap: 4px; }
+.gx-shortcut-bar__hint[data-tone="primary"] { color: var(--gx-ember-2); }
+.gx-shortcut-bar__hint[data-tone="danger"]  { color: var(--gx-err); }
+.gx-shortcut-bar__kbd {
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-micro);
+  padding: 2px 5px;
+  border: 1px solid var(--gx-border-mid);
+  border-radius: var(--gx-r-xs);
+  color: var(--gx-text-muted);
+}
+
+/* ThemeToggle — light/dark toggle pill. Sits in the header actions
+   beside the settings + close buttons. Visual: 52×26 track with a
+   peach→ember thumb (light) or indigo (dark). */
+.gx-theme-toggle {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.gx-theme-toggle__track {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  width: 52px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: var(--gx-r-pill);
+  background: var(--gx-bg-input);
+  border: 1px solid var(--gx-border-mid);
+  transition: background var(--gx-dur-normal) var(--gx-ease-out),
+              border-color var(--gx-dur-normal);
+}
+.gx-theme-toggle__icon {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--gx-text-muted);
+  z-index: 1;
+  user-select: none;
+  transition: color var(--gx-dur-fast);
+}
+.gx-theme-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--gx-peach), var(--gx-ember));
+  box-shadow: 0 2px 6px var(--gx-ember-glow);
+  transition: transform var(--gx-dur-normal) var(--gx-ease-spring);
+}
+.gx-theme-toggle[data-theme="dark"] .gx-theme-toggle__thumb {
+  transform: translateX(26px);
+  background: radial-gradient(circle at 30% 30%, #8a8aff, #2a2a5a);
+}
+.gx-theme-toggle:hover .gx-theme-toggle__track { border-color: var(--gx-ember); }
+.gx-theme-toggle:focus-visible { outline: 2px solid var(--gx-ember); outline-offset: 2px; border-radius: var(--gx-r-pill); }
+
+/* Capsule breath dot — header status signal. Visible in every screenshot
+   as the small ember dot near the brand. Idle = ghost; busy = ember +
+   breathe. Wires to phase via data-busy on the dot itself. */
+.gx-capsule__breath {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gx-text-ghost);
+  transition: background var(--gx-dur-normal);
+}
+.gx-capsule__breath[data-busy="true"] {
+  background: var(--gx-ember);
+  animation: gx-breathe 1.6s var(--gx-ease-in-out) infinite;
+}
+
+/* Success badge — fires on entering executed phase, 700ms flash. */
+.gx-success-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--gx-r-pill);
+  background: color-mix(in oklab, var(--gx-ok) 12%, var(--gx-bg-elevated));
+  border: 1px solid color-mix(in oklab, var(--gx-ok) 40%, transparent);
+  color: var(--gx-ok);
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-micro);
+  letter-spacing: var(--gx-track-meta);
+  text-transform: uppercase;
+  animation: gx-success-flash 700ms var(--gx-ease-out) both;
+}
+
+/* Empty state — "O que queres fazer?" + ritual list. Display title in
+   serif Fraunces; rituals are ghost rows that bloom on hover/focus. */
+.gx-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gx-s-4);
+  padding: var(--gx-s-2) 0;
+}
+.gx-empty__title {
+  font-family: var(--gx-font-display);
+  font-size: var(--gx-t-title);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--gx-text);
+  margin: 0;
+  line-height: 1.2;
+}
+.gx-empty__sub {
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-meta);
+  letter-spacing: var(--gx-track-meta);
+  text-transform: uppercase;
+  color: var(--gx-text-muted);
+  margin: 0;
+}
+.gx-empty__rituals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.gx-empty__ritual {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: 2px solid var(--gx-border-soft);
+  border-radius: var(--gx-r-sm);
+  font-family: var(--gx-font-sans);
+  font-size: var(--gx-t-body);
+  color: var(--gx-text-2);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--gx-dur-fast) var(--gx-ease-out);
+}
+.gx-empty__ritual:hover {
+  background: var(--gx-bg-elevated);
+  border-left-color: var(--gx-ember);
+  color: var(--gx-text);
+  transform: translateX(2px);
+}
+.gx-empty__ritual:focus-visible {
+  outline: none;
+  border-left-color: var(--gx-ember);
+  background: var(--gx-bg-elevated);
+}
+.gx-empty__ritual-icon  { color: var(--gx-ember); width: 16px; }
+.gx-empty__ritual-label { flex: 1; }
+.gx-empty__ritual-kbd {
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-micro);
+  color: var(--gx-text-muted);
+}
+
+/* PhaseDrawer — QA-only toggle for cycling capsule phases. Hidden by
+   default; shells flip data-debug on the capsule root to reveal it. */
+.gx-phase-drawer {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 50;
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-t-micro);
+}
+.gauntlet-capsule[data-debug="true"] .gx-phase-drawer { display: flex; }
+.gx-phase-drawer__toggle {
+  align-self: flex-end;
+  padding: 4px 8px;
+  background: var(--gx-bg-elevated);
+  border: 1px solid var(--gx-border-mid);
+  border-radius: var(--gx-r-sm);
+  color: var(--gx-text-muted);
+  letter-spacing: var(--gx-track-meta);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.gx-phase-drawer__toggle:hover { color: var(--gx-text); border-color: var(--gx-ember); }
+.gx-phase-drawer__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--gx-bg-elevated);
+  border: 1px solid var(--gx-border-mid);
+  border-radius: var(--gx-r-md);
+  box-shadow: var(--gx-shadow-panel);
+  max-width: 220px;
+  animation: gx-glide 160ms var(--gx-ease-out) both;
+}
+.gx-phase-drawer__item {
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--gx-r-xs);
+  color: var(--gx-text-muted);
+  cursor: pointer;
+  text-align: left;
+  letter-spacing: var(--gx-track-meta);
+  text-transform: uppercase;
+  transition: all var(--gx-dur-fast);
+}
+.gx-phase-drawer__item:hover { background: var(--gx-bg-surface); color: var(--gx-text); }
+.gx-phase-drawer__item[data-active="true"] { background: var(--gx-ember); color: #fff; }
 `;

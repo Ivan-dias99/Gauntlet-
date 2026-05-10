@@ -11,6 +11,8 @@
 import { type ReactNode } from 'react';
 import { CompactContextSummary } from './CompactContextSummary';
 import { truncate } from './helpers';
+import { type CapsuleTheme } from './pill-prefs';
+import { ThemeToggle } from './ThemeToggle';
 import { type SelectionSnapshot } from './types';
 
 export interface LeftPanelProps {
@@ -26,6 +28,8 @@ export interface LeftPanelProps {
   settingsDrawer: ReactNode;
   screenshotEnabled: boolean;
   onRefreshSnapshot: () => void;
+  theme: CapsuleTheme;
+  onChangeTheme: (next: CapsuleTheme) => void;
 }
 
 export function LeftPanel({
@@ -38,6 +42,8 @@ export function LeftPanel({
   settingsDrawer,
   screenshotEnabled,
   onRefreshSnapshot,
+  theme,
+  onChangeTheme,
 }: LeftPanelProps) {
   return (
     <div className="gauntlet-capsule__panel gauntlet-capsule__panel--left">
@@ -52,6 +58,10 @@ export function LeftPanel({
           </div>
         </div>
         <div className="gauntlet-capsule__header-actions">
+          <ThemeToggle
+            theme={theme}
+            onToggle={() => onChangeTheme(theme === 'light' ? 'dark' : 'light')}
+          />
           <button
             type="button"
             className="gauntlet-capsule__settings-btn"
