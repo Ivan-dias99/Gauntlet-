@@ -92,11 +92,11 @@ export const CAPSULE_CSS = `
   --gx-bg-sunken: var(--gx-sunken);
   --gx-bg-surface: var(--gx-surface);
   --gx-bg-elevated: var(--gx-surface-strong);
-  --gx-bg-input: rgba(255, 255, 255, 0.6);
+  --gx-bg-input: #fbf7ef;
   --gx-text: var(--gx-fg);
   --gx-text-2: var(--gx-fg-dim);
   --gx-text-muted: var(--gx-fg-muted);
-  --gx-text-ghost: rgba(15, 17, 22, 0.32);
+  --gx-text-ghost: #c8bba6;
   --gx-border-soft: var(--gx-border);
   --gx-border-strong: rgba(15, 17, 22, 0.22);
   --gx-ember-2: #b8542a;
@@ -2233,6 +2233,10 @@ export const CAPSULE_CSS = `
    See docs/canon/COMPOSER_SURFACE_SPEC.md and the preview at
    /tmp/aether_v2/src/styles/aether.css for the source. */
 
+@keyframes gx-rise {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.985); }
+  100% { opacity: 1; transform: translateY(0)   scale(1);     }
+}
 @keyframes gx-fade-up {
   0%   { opacity: 0; transform: translateY(6px); }
   100% { opacity: 1; transform: translateY(0); }
@@ -2259,6 +2263,7 @@ export const CAPSULE_CSS = `
   50%      { transform: scale(1.06); opacity: 1;    }
 }
 
+.gx-anim-rise  { animation: gx-rise    var(--gx-dur-slow)   var(--gx-ease-spring) both; }
 .gx-anim-fade  { animation: gx-fade-up var(--gx-dur-normal) var(--gx-ease-out) both; }
 .gx-anim-pop   { animation: gx-pop     var(--gx-dur-normal) var(--gx-ease-spring) both; }
 .gx-anim-glide { animation: gx-glide   var(--gx-dur-fast)   var(--gx-ease-out) both; }
