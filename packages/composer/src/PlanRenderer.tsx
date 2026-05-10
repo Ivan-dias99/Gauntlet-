@@ -69,7 +69,7 @@ export function PlanRenderer({
   }
 
   return (
-    <section className="gauntlet-capsule__plan" aria-live="polite">
+    <section className="gauntlet-capsule__plan">
       <header className="gauntlet-capsule__plan-header">
         <span className="gauntlet-capsule__plan-title">
           {phase === 'executed' ? 'resultado' : 'plano'}
@@ -82,7 +82,10 @@ export function PlanRenderer({
           {plan.latency_ms} ms
         </span>
         {phase === 'executed' && (
-          <span className="gx-success-badge" role="status">
+          // Live region scoped to the result badge — danger gate already
+          // owns role="alert" below; announcing the whole section would
+          // double-announce on transitions.
+          <span className="gx-success-badge" role="status" aria-live="polite">
             <span aria-hidden>✓</span>
             executado · {okCount} ok{failCount > 0 ? ` · ${failCount} falhou` : ''}
           </span>

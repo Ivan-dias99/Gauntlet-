@@ -44,7 +44,7 @@ import { EmptyState } from './EmptyState';
 import { usePhaseBroadcast } from './usePhaseBroadcast';
 import { useToolManifests } from './useToolManifests';
 import { StreamingState } from './StreamingState';
-import { useStreamingPlan } from './useStreamingPlan';
+import { isBusy, useStreamingPlan } from './useStreamingPlan';
 import { useCapsuleScreenshot } from './useCapsuleScreenshot';
 import { useCapsuleKeyboard } from './useCapsuleKeyboard';
 import { useSaveToMemory } from './useSaveToMemory';
@@ -622,11 +622,11 @@ export function Capsule({
               onChange={(ev) => setUserInput(ev.target.value)}
               onKeyDown={onTextareaKey}
               rows={2}
-              disabled={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
+              disabled={isBusy(phase)}
             />
             <ActionsRow
-              busy={phase === 'planning' || phase === 'streaming' || phase === 'executing'}
-              canSubmit={!(phase === 'planning' || phase === 'streaming' || phase === 'executing') && !!userInput.trim()}
+              busy={isBusy(phase)}
+              canSubmit={!isBusy(phase) && !!userInput.trim()}
               submitRipple={submitRipple}
               submitLabel={
                 phase === 'planning' ? 'thinking' : phase === 'streaming' ? 'streaming' : 'idle'

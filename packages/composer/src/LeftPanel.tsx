@@ -58,7 +58,7 @@ export function LeftPanel({
           </div>
         </div>
         <div className="gauntlet-capsule__header-actions">
-          <ThemeToggle theme={theme} onChange={onChangeTheme} />
+          <ThemeToggle theme={theme} onChangeTheme={onChangeTheme} />
           <button
             type="button"
             className="gauntlet-capsule__settings-btn"

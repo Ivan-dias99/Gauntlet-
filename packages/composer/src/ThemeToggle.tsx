@@ -2,17 +2,17 @@ import { type CapsuleTheme } from './pill-prefs';
 
 interface ThemeToggleProps {
   theme: CapsuleTheme;
-  onChange: (next: CapsuleTheme) => void;
+  onChangeTheme: (next: CapsuleTheme) => void;
 }
 
-export function ThemeToggle({ theme, onChange }: ThemeToggleProps) {
+export function ThemeToggle({ theme, onChangeTheme }: ThemeToggleProps) {
   const next: CapsuleTheme = theme === 'light' ? 'dark' : 'light';
   return (
     <button
       type="button"
       className="gx-theme-toggle"
       data-theme={theme}
-      onClick={() => onChange(next)}
+      onClick={() => onChangeTheme(next)}
       aria-label={`Tema ${theme === 'light' ? 'claro' : 'escuro'} — alternar`}
       title={`Tema · ${theme}`}
     >

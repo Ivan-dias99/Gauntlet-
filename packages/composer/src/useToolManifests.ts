@@ -11,7 +11,8 @@ export interface UseToolManifestsResult {
 }
 
 // Failure leaves the lists empty so the palette still renders the
-// built-in actions.
+// built-in actions. Lives outside Capsule.tsx so the orchestrator stays
+// under the Lei do Capsule budget (CLAUDE.md).
 export function useToolManifests(
   client: ComposerClient,
   prefs: PillPrefs,
@@ -24,7 +25,7 @@ export function useToolManifests(
     void client
       .getToolManifests()
       .then((tools) => {
-        if (!cancelled) setToolManifests(tools);
+        if (!cancelled) setToolManifests(sanitizeToolManifests(tools));
       })
       .catch(swallow);
     void prefs
@@ -39,4 +40,15 @@ export function useToolManifests(
   }, [client, prefs]);
 
   return { toolManifests, paletteRecent, setPaletteRecent };
+}
+
+// Defensive shape check — backend can be older, mocked, or compromised;
+// the palette renders these strings as labels and we don't want a bad
+// payload to crash render or surface arbitrary content from a non-typed
+// field. Drops anything without a string `name`; keeps the rest as-is.
+function sanitizeToolManifests(tools: unknown): ToolManifest[] {
+  if (!Array.isArray(tools)) return [];
+  return tools.filter(
+    (t): t is ToolManifest => !!t && typeof t === 'object' && typeof (t as ToolManifest).name === 'string',
+  );
 }

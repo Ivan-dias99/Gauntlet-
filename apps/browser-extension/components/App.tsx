@@ -119,6 +119,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    // Trust note: gauntlet:* events use window.dispatchEvent so a host
+    // page script can forge them. Impact is purely cosmetic (pill tint
+    // for a few seconds) — no data flow or capability is gated on
+    // these. If we later wire any privileged action to a phase/result
+    // event, swap to chrome.runtime messaging or an in-shadow-root
+    // EventTarget instead.
     function onResult(ev: Event) {
       const detail = (ev as CustomEvent<{ ok?: boolean }>).detail;
       const kind: 'ok' | 'fail' = detail?.ok === false ? 'fail' : 'ok';

@@ -28,13 +28,13 @@ describe('<EmptyState />', () => {
     expect(title?.textContent).toBe('O que queres fazer?');
   });
 
-  it('exposes each ritual as a list item button', () => {
+  it('exposes each ritual as a button (no role override)', () => {
     const { container } = render(<EmptyState onPick={vi.fn()} />);
     const rituals = container.querySelectorAll('.gx-empty__ritual');
     expect(rituals.length).toBe(4);
     rituals.forEach((r) => {
       expect(r.tagName).toBe('BUTTON');
-      expect(r.getAttribute('role')).toBe('listitem');
+      expect(r.getAttribute('role')).toBeNull();
     });
   });
 });

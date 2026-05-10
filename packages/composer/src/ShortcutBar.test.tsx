@@ -36,10 +36,14 @@ describe('<ShortcutBar />', () => {
     ).toBe('danger');
   });
 
-  it('exposes a polite live region for assistive tech', () => {
+  it('scopes the polite live region to the status text only', () => {
     const { container } = render(<ShortcutBar phase="streaming" />);
     const root = container.querySelector('.gx-shortcut-bar');
-    expect(root?.getAttribute('role')).toBe('status');
-    expect(root?.getAttribute('aria-live')).toBe('polite');
+    const status = container.querySelector('.gx-shortcut-bar__status');
+    const hints = container.querySelector('.gx-shortcut-bar__hints');
+    expect(root?.getAttribute('aria-live')).toBeNull();
+    expect(status?.getAttribute('role')).toBe('status');
+    expect(status?.getAttribute('aria-live')).toBe('polite');
+    expect(hints?.getAttribute('aria-live')).toBeNull();
   });
 });
