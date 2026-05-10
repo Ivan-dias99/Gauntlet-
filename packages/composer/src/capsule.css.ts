@@ -2293,6 +2293,9 @@ export const CAPSULE_CSS = `
 .gx-stagger > *:nth-child(4) { animation-delay: 140ms; }
 .gx-stagger > *:nth-child(5) { animation-delay: 180ms; }
 .gx-stagger > *:nth-child(6) { animation-delay: 220ms; }
+/* Plans of 7+ actions still feel ordered — late items share the last
+   bucket instead of all firing simultaneously. */
+.gx-stagger > *:nth-child(n+7) { animation-delay: 260ms; }
 
 @media (prefers-reduced-motion: reduce) {
   .gauntlet-capsule *,
@@ -2303,9 +2306,9 @@ export const CAPSULE_CSS = `
   }
 }
 
-/* ShortcutBar — persistent contextual hint strip. Sits between body and
-   ActionsRow, exposing only the shortcuts that matter for the current
-   phase. The status dot on the left is the system breathing signal. */
+/* ShortcutBar — persistent contextual hint strip at the foot of the
+   right panel. Status dot on the left signals the system breathing
+   state; hint set on the right narrows to what matters per phase. */
 .gx-shortcut-bar {
   display: flex;
   align-items: center;
@@ -2416,21 +2419,6 @@ export const CAPSULE_CSS = `
 .gx-theme-toggle:hover .gx-theme-toggle__track { border-color: var(--gx-ember); }
 .gx-theme-toggle:focus-visible { outline: 2px solid var(--gx-ember); outline-offset: 2px; border-radius: var(--gx-r-pill); }
 
-/* Capsule breath dot — header status signal. Visible in every screenshot
-   as the small ember dot near the brand. Idle = ghost; busy = ember +
-   breathe. Wires to phase via data-busy on the dot itself. */
-.gx-capsule__breath {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--gx-text-ghost);
-  transition: background var(--gx-dur-normal);
-}
-.gx-capsule__breath[data-busy="true"] {
-  background: var(--gx-ember);
-  animation: gx-breathe 1.6s var(--gx-ease-in-out) infinite;
-}
-
 /* Success badge — fires on entering executed phase, 700ms flash. */
 .gx-success-badge {
   display: inline-flex;
@@ -2513,57 +2501,4 @@ export const CAPSULE_CSS = `
   font-size: var(--gx-t-micro);
   color: var(--gx-text-muted);
 }
-
-/* PhaseDrawer — QA-only toggle for cycling capsule phases. Hidden by
-   default; shells flip data-debug on the capsule root to reveal it. */
-.gx-phase-drawer {
-  position: fixed;
-  right: 14px;
-  bottom: 14px;
-  display: none;
-  flex-direction: column;
-  gap: 4px;
-  z-index: 50;
-  font-family: var(--gx-font-mono);
-  font-size: var(--gx-t-micro);
-}
-.gauntlet-capsule[data-debug="true"] .gx-phase-drawer { display: flex; }
-.gx-phase-drawer__toggle {
-  align-self: flex-end;
-  padding: 4px 8px;
-  background: var(--gx-bg-elevated);
-  border: 1px solid var(--gx-border-mid);
-  border-radius: var(--gx-r-sm);
-  color: var(--gx-text-muted);
-  letter-spacing: var(--gx-track-meta);
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.gx-phase-drawer__toggle:hover { color: var(--gx-text); border-color: var(--gx-ember); }
-.gx-phase-drawer__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px;
-  background: var(--gx-bg-elevated);
-  border: 1px solid var(--gx-border-mid);
-  border-radius: var(--gx-r-md);
-  box-shadow: var(--gx-shadow-panel);
-  max-width: 220px;
-  animation: gx-glide 160ms var(--gx-ease-out) both;
-}
-.gx-phase-drawer__item {
-  padding: 4px 8px;
-  background: transparent;
-  border: none;
-  border-radius: var(--gx-r-xs);
-  color: var(--gx-text-muted);
-  cursor: pointer;
-  text-align: left;
-  letter-spacing: var(--gx-track-meta);
-  text-transform: uppercase;
-  transition: all var(--gx-dur-fast);
-}
-.gx-phase-drawer__item:hover { background: var(--gx-bg-surface); color: var(--gx-text); }
-.gx-phase-drawer__item[data-active="true"] { background: var(--gx-ember); color: #fff; }
 `;

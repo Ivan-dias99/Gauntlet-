@@ -95,10 +95,9 @@ export function Capsule({
   // available via the settings drawer toggle. Persisted in
   // ambient.storage so the choice survives across sessions/tabs/shells.
   const [theme, setTheme] = useState<CapsuleTheme>(DEFAULT_CAPSULE_THEME);
-  // Tool manifests — fetched once on mount via GET /tools/manifests so
-  // the command palette can list every tool the agent CAN call (with
-  // mode + risk + version), not just the ad-hoc UI shortcuts. Operator
-  // sees what's actually available; doctrine is "tudo à mão".
+  // Tool manifests carry the agent's full callable surface (mode + risk
+  // + version) so the palette obeys "tudo à mão" — not just ad-hoc UI
+  // shortcuts.
   const { toolManifests, paletteRecent, setPaletteRecent } = useToolManifests(client, prefs);
   // Ripple counter — incremented on each submit so React keys the
   // ripple element fresh, replaying the keyframe even when the user
@@ -558,6 +557,7 @@ export function Capsule({
   ].filter(Boolean).join(' ');
 
   usePhaseBroadcast(phase);
+  const showEmptyState = phase === 'idle' && !userInput.trim() && !plan && !partialCompose;
 
   return (
     <div
@@ -645,10 +645,10 @@ export function Capsule({
             />
           </form>
 
-          {phase === 'idle' && !userInput.trim() && !plan && !partialCompose && (
+          {showEmptyState && (
             <EmptyState
-              onPick={(hint) => {
-                setUserInput(hint);
+              onPick={(prompt) => {
+                setUserInput(prompt);
                 inputRef.current?.focus();
               }}
             />

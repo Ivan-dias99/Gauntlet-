@@ -10,10 +10,8 @@ export interface UseToolManifestsResult {
   setPaletteRecent: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
-// useToolManifests — fetches the tool manifests + recently-used ids on
-// mount. Failure leaves the lists empty so the palette still renders
-// the built-in actions. Extracted from Capsule to keep the orchestrator
-// under the Lei do Capsule budget.
+// Failure leaves the lists empty so the palette still renders the
+// built-in actions.
 export function useToolManifests(
   client: ComposerClient,
   prefs: PillPrefs,

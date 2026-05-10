@@ -2,18 +2,17 @@ import { type CapsuleTheme } from './pill-prefs';
 
 interface ThemeToggleProps {
   theme: CapsuleTheme;
-  onToggle: () => void;
+  onChange: (next: CapsuleTheme) => void;
 }
 
-// ThemeToggle — light/dark switch pill. Sits in the LeftPanel header
-// actions beside settings + close. Aether v2 port from preview Lovable.
-export function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
+export function ThemeToggle({ theme, onChange }: ThemeToggleProps) {
+  const next: CapsuleTheme = theme === 'light' ? 'dark' : 'light';
   return (
     <button
       type="button"
       className="gx-theme-toggle"
       data-theme={theme}
-      onClick={onToggle}
+      onClick={() => onChange(next)}
       aria-label={`Tema ${theme === 'light' ? 'claro' : 'escuro'} — alternar`}
       title={`Tema · ${theme}`}
     >

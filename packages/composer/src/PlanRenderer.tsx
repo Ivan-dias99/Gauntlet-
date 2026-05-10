@@ -62,8 +62,11 @@ export function PlanRenderer({
 
   if (plan.actions.length === 0) return null;
 
-  const okCount = (planResults ?? []).filter((r) => r.ok).length;
-  const failCount = (planResults ?? []).filter((r) => !r.ok).length;
+  let okCount = 0;
+  let failCount = 0;
+  if (phase === 'executed' && planResults) {
+    for (const r of planResults) r.ok ? okCount++ : failCount++;
+  }
 
   return (
     <section className="gauntlet-capsule__plan" aria-live="polite">

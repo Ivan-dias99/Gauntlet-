@@ -1,27 +1,24 @@
 interface Ritual {
   id: string;
   label: string;
+  // Visual cue showing the slash form a future command would take.
+  // Cosmetic — onPick prefills `label`, not `hint`, because the canon
+  // SlashMenu does not register these as real actions.
   hint: string;
   icon?: string;
 }
 
 interface EmptyStateProps {
-  // Picked ritual fires the slash hint as user input. Capsule wires
-  // this to setUserInput + focus, so the operator gets a head-start
-  // on the most common flows when there's nothing on-screen yet.
-  onPick: (hint: string) => void;
+  onPick: (prompt: string) => void;
 }
 
 const RITUALS: Ritual[] = [
-  { id: 'resumir', label: 'Resumir página em 3 bullets',     hint: '/resumir', icon: '+' },
-  { id: 'traduz',  label: 'Traduzir seleção para EN',        hint: '/traduz',  icon: '+' },
+  { id: 'resumir', label: 'Resumir página em 3 bullets',         hint: '/resumir', icon: '+' },
+  { id: 'traduz',  label: 'Traduzir seleção para EN',            hint: '/traduz',  icon: '+' },
   { id: 'explica', label: 'Explicar como se eu tivesse 12 anos', hint: '/explica', icon: '+' },
-  { id: 'click',   label: 'Clicar elemento por selector',    hint: '/click',   icon: '▸' },
+  { id: 'click',   label: 'Clicar elemento por selector',        hint: '/click',   icon: '▸' },
 ];
 
-// EmptyState — first-look surface when phase=idle and nothing is on
-// screen yet. Display title in serif Fraunces, mono kicker, four
-// rituals as ghost rows that bloom on hover/focus. Aether v2 port.
 export function EmptyState({ onPick }: EmptyStateProps) {
   return (
     <section className="gx-empty" aria-labelledby="gx-empty-title">
@@ -34,7 +31,7 @@ export function EmptyState({ onPick }: EmptyStateProps) {
             type="button"
             role="listitem"
             className="gx-empty__ritual"
-            onClick={() => onPick(r.hint)}
+            onClick={() => onPick(r.label)}
           >
             <span className="gx-empty__ritual-icon" aria-hidden>{r.icon}</span>
             <span className="gx-empty__ritual-label">{r.label}</span>

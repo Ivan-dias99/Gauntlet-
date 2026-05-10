@@ -13,11 +13,11 @@ describe('<EmptyState />', () => {
     expect(screen.getByText('Clicar elemento por selector')).toBeTruthy();
   });
 
-  it('fires onPick with the slash hint when a ritual is clicked', () => {
+  it('fires onPick with the natural-language label so the agent gets a real prompt', () => {
     const onPick = vi.fn();
     render(<EmptyState onPick={onPick} />);
     fireEvent.click(screen.getByText('Resumir página em 3 bullets'));
-    expect(onPick).toHaveBeenCalledWith('/resumir');
+    expect(onPick).toHaveBeenCalledWith('Resumir página em 3 bullets');
   });
 
   it('connects the title to the section via aria-labelledby', () => {
