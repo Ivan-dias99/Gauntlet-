@@ -12,8 +12,11 @@ export function ThemeToggle({ theme, onChangeTheme }: ThemeToggleProps) {
       type="button"
       className="gx-theme-toggle"
       data-theme={theme}
+      // aria-pressed exposes the on/off state machine-readably so AT
+      // doesn't have to parse the label. true = dark is active.
+      aria-pressed={theme === 'dark'}
       onClick={() => onChangeTheme(next)}
-      aria-label={`Tema ${theme === 'light' ? 'claro' : 'escuro'} — alternar`}
+      aria-label={`Mudar para tema ${next === 'light' ? 'claro' : 'escuro'}`}
       title={`Tema · ${theme}`}
     >
       <span className="gx-theme-toggle__track">

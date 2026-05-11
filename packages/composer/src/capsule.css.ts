@@ -354,7 +354,7 @@ export const CAPSULE_CSS = `
 }
 .gauntlet-capsule__mark-dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: #f4c4ad;
+  background: var(--gx-peach);
   box-shadow: 0 0 10px rgba(244, 196, 173, 0.85);
   animation: gauntlet-cap-pulse 2.4s ease-in-out infinite;
 }
@@ -1059,6 +1059,9 @@ export const CAPSULE_CSS = `
   flex-shrink: 0;
 }
 .gauntlet-capsule__theme-swatch--light {
+  /* Literal hex on purpose — the swatch must always preview the light
+     surface, even when the drawer is opened from dark mode. Token
+     would resolve to whatever the current theme renders. */
   background: linear-gradient(135deg, #fbf7ee 0%, #f3edde 100%);
 }
 .gauntlet-capsule__theme-swatch--dark {
@@ -1312,7 +1315,7 @@ export const CAPSULE_CSS = `
   display: flex; justify-content: flex-end; margin-top: 8px;
 }
 .gauntlet-capsule__execute {
-  background: linear-gradient(180deg, #d07a5a 0%, #b65d3f 100%);
+  background: linear-gradient(180deg, var(--gx-ember) 0%, #b65d3f 100%);
   color: #0e1016;
   border: none;
   border-radius: 8px;
@@ -2048,7 +2051,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__palette-badge--mode-write {
   border-color: rgba(208, 122, 90, 0.40);
   background: rgba(208, 122, 90, 0.12);
-  color: #b3501f;
+  color: var(--gx-accent-text);
 }
 .gauntlet-capsule__palette-badge--risk-medium {
   border-color: rgba(212, 150, 60, 0.45);

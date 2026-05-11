@@ -39,9 +39,15 @@ export function AnswerPanel({
   onCopyBlock,
 }: AnswerPanelProps) {
   return (
-    <section className="gauntlet-capsule__compose-result gx-anim-fade" aria-live="polite">
+    <section className="gauntlet-capsule__compose-result gx-anim-fade">
       <header className="gauntlet-capsule__compose-meta">
-        <span className="gauntlet-capsule__compose-tag">resposta</span>
+        {/* Live region scoped to the short status tag only — putting it
+            on the <section> would make AT announce the entire markdown
+            answer on every update. The tag flips visible the moment the
+            answer mounts, which is the actual "ready" signal. */}
+        <span className="gauntlet-capsule__compose-tag" role="status" aria-live="polite">
+          resposta
+        </span>
         <span className="gauntlet-capsule__compose-meta-text">
           {modelUsed}
           {' · '}
