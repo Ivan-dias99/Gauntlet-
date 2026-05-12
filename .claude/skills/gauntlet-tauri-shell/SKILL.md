@@ -1,6 +1,6 @@
 ---
 name: gauntlet-tauri-shell
-description: Sovereign desktop-shell law for the Gauntlet product (Tauri 2 binary at apps/desktop/). Use whenever the user is editing, reviewing, designing, or refactoring desktop-shell code — including any file under apps/desktop/, src-tauri/, tauri.conf.json, capabilities/default.json, the Rust binary (lib.rs, main.rs, smoke.rs), TS adapters in src/adapters/, the desktop ambient at src/ambient.ts, the desktop App.tsx (mounts shared Capsule), the desktop PillApp.tsx (intentionally divergent per ADR-0004 — does NOT mount shared Pill), the two-window entries (index.html / pill.html), or the Tauri-side build / signing / updater pipeline. Trigger this skill whenever a .rs file is touched, whenever Cargo.toml or capabilities/*.json is modified, whenever a Tauri command (24 in catalogue below) is added or invoked, whenever global shortcut / clipboard / window-decoration / OS-integration is discussed, whenever the desktop installer (.msi, .dmg, .AppImage, .deb), TAURI_SIGNING_PRIVATE_KEY, or updater pubkey appears (currently pinned in tauri.conf.json — 248 chars base64, verified 2026-05-12), and whenever the conversation crosses the desktop ↔ shared-composer boundary. This skill enforces capability-grant discipline (plugin permissions in capabilities/; dangerous custom commands need explicit scoping; computer-use commands are the highest-risk surface), the two-window pattern (cápsula window mounts shared Capsule via DesktopAmbient; pill window mounts custom PillApp because page-DOM abstractions don't translate to OS windows — see ADR-0004), the signing + updater law (pubkey IS pinned today; release requires signed binary from CI), the OS-leak rule (no Tauri-specific imports inside packages/composer/src/), and the capabilities matrix (which Composer features ship desktop vs browser). Composes with gauntlet-design-system (shared Capsule + Pill divergence rationale), gauntlet-backend-spine (the desktop shell talks to the backend), gauntlet-release-discipline (signing assets gate), and references ADRs 0001, 0004, 0006.
+description: Sovereign desktop-shell law for the Gauntlet product (Tauri 2 binary at apps/desktop/). Use whenever the user is editing, reviewing, designing, or refactoring desktop-shell code — including any file under apps/desktop/, src-tauri/, tauri.conf.json, capabilities/default.json, the Rust binary (lib.rs, main.rs, smoke.rs), TS adapters in src/adapters/, the desktop ambient at src/ambient.ts, the desktop App.tsx (mounts shared Capsule), the desktop PillApp.tsx (intentionally divergent per ADR-0004 — does NOT mount shared Pill), the two-window entries (index.html / pill.html), or the Tauri-side build / signing / updater pipeline. Trigger this skill whenever a .rs file is touched, whenever Cargo.toml or capabilities/*.json is modified, whenever a Tauri command (24 in catalogue below) is added or invoked, whenever global shortcut / clipboard / window-decoration / OS-integration is discussed, whenever the desktop installer (.msi, .dmg, .AppImage, .deb), TAURI_SIGNING_PRIVATE_KEY, or updater pubkey appears (currently pinned in tauri.conf.json — 152 chars base64, verified 2026-05-12), and whenever the conversation crosses the desktop ↔ shared-composer boundary. This skill enforces capability-grant discipline (plugin permissions in capabilities/; dangerous custom commands need explicit scoping; computer-use commands are the highest-risk surface), the two-window pattern (cápsula window mounts shared Capsule via DesktopAmbient; pill window mounts custom PillApp because page-DOM abstractions don't translate to OS windows — see ADR-0004), the signing + updater law (pubkey IS pinned today; release requires signed binary from CI), the OS-leak rule (no Tauri-specific imports inside packages/composer/src/), and the capabilities matrix (which Composer features ship desktop vs browser). Composes with gauntlet-design-system (shared Capsule + Pill divergence rationale), gauntlet-backend-spine (the desktop shell talks to the backend), gauntlet-release-discipline (signing assets gate), and references ADRs 0001, 0004, 0006.
 ---
 
 # Gauntlet Tauri Shell
@@ -124,7 +124,7 @@ apps/desktop/
       lib.rs                 ← 24 commands (catalogue below) · verified count
       main.rs                ← entry
     tests/                   ← cargo tests (no webview required)
-    tauri.conf.json          ← window flags + updater config + pubkey PINNED (248 chars)
+    tauri.conf.json          ← window flags + updater config + pubkey PINNED (152 chars)
     capabilities/
       default.json           ← plugin permissions scoped to ["main", "pill"]
     Cargo.toml
@@ -215,7 +215,7 @@ This matrix is the contract between this shell and `gauntlet-design-system`. New
 | Asset | Where it lives | Where it does NOT live |
 |---|---|---|
 | `TAURI_SIGNING_PRIVATE_KEY` | GitHub Secret only | Repo. Local `.env`. Documentation. Slack. |
-| Updater pubkey | **Pinned in `tauri.conf.json`** · 248 chars base64 minisign · verified 2026-05-12 | Loose, "we'll add it later" |
+| Updater pubkey | **Pinned in `tauri.conf.json`** · 152 chars base64 minisign · verified 2026-05-12 | Loose, "we'll add it later" |
 | Notarization credentials (macOS) | GitHub Secret | Repo |
 
 Hard rules:
@@ -301,7 +301,7 @@ If any fails: `não tenho evidência suficiente`.
 - `/docs/canon/COMPOSER_SURFACE_SPEC.md` — capabilities matrix authoritative
 - `apps/desktop/src-tauri/capabilities/default.json`
 - `apps/desktop/src-tauri/src/lib.rs` — command source
-- `apps/desktop/src-tauri/tauri.conf.json` — pubkey pinned (248 chars)
+- `apps/desktop/src-tauri/tauri.conf.json` — pubkey pinned (152 chars)
 - `backend/test_computer_use_tool.py` — `cu_*` test
 - `packages/composer/src/ComputerUseGate.tsx` — gate UI
 - Companion skills: `gauntlet-design-system`, `gauntlet-backend-spine`, `gauntlet-release-discipline`

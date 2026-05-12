@@ -327,7 +327,7 @@ If any fails: `não tenho evidência suficiente`.
 
 - ADR-0002 — gateway-as-catalogue (authoritative)
 - ADR-0003 — provider precedence (authoritative)
-- ADR-0005 — Aether v1 canon (for canonical labels)
+- ADR-0005 — Aether v2 canon (for canonical labels)
 - ADR-0006 — deprecation timeline (for naming)
 - `/CLAUDE.md` — universal doctrine
 - `/README.md` — provider precedence table, endpoint catalog, security table

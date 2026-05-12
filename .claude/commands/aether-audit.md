@@ -9,7 +9,7 @@ allowed-tools:
 
 # /aether-audit
 
-Find hard-coded visual values in the shared Composer that should be reading Aether v1 tokens (`--gx-*` or `--gauntlet-*`). Per ADR-0005, every visual constant in `packages/composer/src/` reads from a token — no hex, no `px`, no `rem`, no `cubic-bezier`, no font family inline.
+Find hard-coded visual values in the shared Composer that should be reading Aether v2 tokens (`--gx-*` or `--gauntlet-*`). Per ADR-0005, every visual constant in `packages/composer/src/` reads from a token — no hex, no `px`, no `rem`, no `cubic-bezier`, no font family inline.
 
 ## What gets flagged
 

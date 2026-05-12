@@ -9,7 +9,7 @@ allowed-tools:
 
 # /voice-check
 
-Enforce the canonical label set from ADR-0005 (Aether v1 visual canon). Banned labels are checked by `scripts/check-voice.mjs`, wired as `npm run check:voice`.
+Enforce the canonical label set from ADR-0005 (Aether v2 visual canon). Banned labels are checked by `scripts/check-voice.mjs`, wired as `npm run check:voice`.
 
 ## The canonical / banned contract
 

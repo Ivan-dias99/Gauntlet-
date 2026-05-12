@@ -90,7 +90,7 @@ The walk covers:
 
 ### 4. Tauri updater pubkey IS pinned (ADR-0006)
 
-Verified 2026-05-12 in `apps/desktop/src-tauri/tauri.conf.json`: pubkey is 248 chars base64 minisign public key.
+Verified 2026-05-12 in `apps/desktop/src-tauri/tauri.conf.json`: pubkey is 152 chars base64 minisign public key.
 
 Earlier audit draft incorrectly stated "not pinned". That was wrong. The skill `gauntlet-tauri-shell` v1.2 and ADR-0006 both correct this.
 
