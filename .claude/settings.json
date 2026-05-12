@@ -1,17 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
 
-  "_comment_about_this_file": [
-    "MERGED settings.json — preserves the existing memory-log hooks that were",
-    "already in main (SessionStart + PostToolUse via jq) and ADDS permissions",
-    "allowlist/denylist + env vars for the agentic spine v2.",
-    "",
-    "If your .claude/settings.json on main differs from this, MERGE the keys",
-    "manually — do NOT overwrite. Specifically: keep your existing hooks.",
-    "",
-    "The hooks below replicate what was found on main (commit 7ea3b20)."
-  ],
-
   "permissions": {
     "allow": [
       "Read(./**)",
@@ -107,11 +96,9 @@
       "Bash(rm -fr:*)",
       "Bash(rm -r /:*)",
       "Bash(sudo:*)",
-      "Bash(:(){:|:&};:)",
       "Bash(dd:*)",
       "Bash(mkfs:*)",
       "Bash(fdisk:*)",
-      "Bash(:>:*)",
 
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
@@ -128,11 +115,6 @@
 
       "Bash(gh repo delete:*)",
       "Bash(gh release delete:*)",
-
-      "Bash(curl:*|sh:*)",
-      "Bash(curl:*|bash:*)",
-      "Bash(wget:*|sh:*)",
-      "Bash(wget:*|bash:*)",
 
       "Bash(chmod 777:*)",
       "Bash(chown:*)",
@@ -166,7 +148,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "mkdir -p .claude && jq -r --arg ts \"$(date -Iseconds)\" '\"[\\($ts)] \\(.tool_name): \\(.tool_input | tostring | .[0:200])\"' >> .claude/memory.log 2>/dev/null || true"
+            "command": "jq -r --arg ts \"$(date -Iseconds)\" '\"[\\($ts)] \\(.tool_name): \\(.tool_input | tostring | .[0:200])\"' >> .claude/memory.log 2>/dev/null || true"
           }
         ]
       },
@@ -175,7 +157,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/post-edit.sh 2>/dev/null || true"
+            "command": "bash .claude/hooks/post-edit.sh || true"
           }
         ]
       }
@@ -186,7 +168,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/pre-tool-use.sh 2>/dev/null || true"
+            "command": "bash .claude/hooks/pre-tool-use.sh"
           }
         ]
       }

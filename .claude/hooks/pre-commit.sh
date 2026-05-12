@@ -16,9 +16,9 @@
 #   (c) Manual invocation:
 #       bash .claude/hooks/pre-commit.sh
 
-set -uo pipefail
+set -euo pipefail
 
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+REPO_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "$REPO_ROOT"
 
 FAIL=0
@@ -29,9 +29,11 @@ echo "── PRE-COMMIT · $(date '+%H:%M:%S') ──"
 # ─── Gate 1 · Voice ban-list ──────────────────────────────────────
 if [ -f scripts/check-voice.mjs ] || grep -q '"check:voice"' package.json 2>/dev/null; then
   echo "[1/2] voice ban-list"
-  if npm run check:voice --silent 2>&1 | tail -20; then
+  voice_out=$(npm run check:voice --silent 2>&1) && rc=0 || rc=$?
+  if [ "$rc" -eq 0 ]; then
     echo "      ✓ pass"
   else
+    printf '%s\n' "$voice_out" | tail -20
     echo "      ✗ FAIL — banned label found. See ADR-0005 for canonical replacements."
     FAIL=1
   fi
@@ -46,7 +48,7 @@ CI_PATH=".github/workflows/ci.yml"
 if [ -f "$CAPSULE_PATH" ] && [ -f "$CI_PATH" ]; then
   echo "[2/2] capsule budget"
   current=$(wc -l < "$CAPSULE_PATH")
-  budget=$(grep -oE 'BUDGET=[0-9]+' "$CI_PATH" | head -1 | cut -d= -f2)
+  budget=$(grep -oE 'BUDGET=[0-9]+' "$CI_PATH" | head -1 | cut -d= -f2 || true)
 
   if [ -z "$budget" ]; then
     echo "      ? BUDGET=N not found in $CI_PATH — skipping"
