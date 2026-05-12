@@ -5,7 +5,7 @@ pydantic>=2.13.4
 httpx>=0.28.1
 # Visual diff legacy / file uploads on multipart endpoints.
 Pillow>=12.2.0
-python-multipart>=0.0.27
+python-multipart>=0.0.28
 # Gemini provider — used as a free-tier fallback when ANTHROPIC_API_KEY
 # is unset and GEMINI_API_KEY is provided. The wrapper in
 # gemini_provider.py exposes an Anthropic-compatible messages.create()
