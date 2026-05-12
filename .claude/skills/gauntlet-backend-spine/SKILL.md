@@ -1,87 +1,91 @@
 ---
 name: gauntlet-backend-spine
-description: Sovereign backend law for the Gauntlet product (FastAPI maestro at backend/). Use whenever the user is editing, reviewing, designing, or refactoring server-side code — including HTTP endpoints, the /composer/{context,intent,preview,apply} pipeline, model_gateway, engine.py, agent.py, tools.py, runs.py, memory.py, security middleware (auth, rate_limit, security_headers, log_redaction), Pydantic contracts in models.py, doctrine.py prompts, or any router module under backend/routers/. Trigger this skill whenever a .py file under backend/ is touched, whenever an env var prefixed GAUNTLET_ / SIGNAL_ / RUBERRA_ is added or read, whenever a new HTTP route is proposed, whenever provider routing or model selection is discussed, whenever runs.json or failure_memory.json is involved, whenever the conversation crosses the frontend ↔ backend boundary (the Composer surface calls /composer/*), and whenever response shapes for the cápsula are designed (the 4 canonical preview/result layouts: resposta texto, plano, acção sensível, resultado). This skill enforces the gateway-as-catalogue rule (model_gateway is the routing/policy/recording layer; designated client modules — engine.py, agent.py, mock_client.py, groq_provider.py, gemini_provider.py — call providers; everyone else asks the gateway), runs ledger append-only law, the four-stage Composer contract, provider precedence (MOCK > Groq > Anthropic > Gemini), 5-layer defense-in-depth security, canonical naming (GAUNTLET_*, /api/gauntlet/*), and the canonical-labels contract (backend never returns banned voice words like "Submit", "Run", "Magic" in user-facing strings). It composes with — and does not replace — gauntlet-design-system (UI surface law, visual canon) and CLAUDE.md (universal doutrina).
+description: Sovereign backend law for the Gauntlet product (FastAPI maestro at backend/). Use whenever the user is editing, reviewing, designing, or refactoring server-side code — including HTTP endpoints, the /composer/{context,intent,preview,apply} pipeline, model_gateway, engine.py, agent.py, tools.py, runs.py, memory.py, security middleware (auth, rate_limit, security_headers, log_redaction), Pydantic contracts in models.py, doctrine.py prompts, or any router module under backend/routers/. Trigger this skill whenever a .py file under backend/ is touched, whenever an env var prefixed GAUNTLET_ / SIGNAL_ / RUBERRA_ is added or read, whenever a new HTTP route is proposed, whenever provider routing or model selection is discussed (per ADR-0002 and ADR-0003), whenever runs.json or failure_memory.json is involved, and whenever response shapes for the cápsula are designed (the 4 canonical preview/result layouts). This skill enforces the gateway-as-catalogue rule per ADR-0002 (model_gateway is the routing/policy/recording layer; 5 designated client modules — engine.py, agent.py, mock_client.py, groq_provider.py, gemini_provider.py — call providers; everyone else asks the gateway), runs ledger append-only law, the four-stage Composer contract, provider precedence per ADR-0003 (MOCK > Groq > Anthropic paused > Gemini paused), 5-layer defense-in-depth security, canonical naming per ADR-0006 (GAUNTLET_*, /api/gauntlet/*), and the canonical-labels contract (backend never returns banned voice words in user-facing strings, per ADR-0005). Composes with gauntlet-design-system (frontend boundary, Aether canon), CLAUDE.md (universal doctrine), and references ADRs 0002, 0003, 0005, 0006.
 ---
 
 # Gauntlet Backend Spine
 
-This skill is the local constitution for backend work in the Gauntlet repository. It does not re-litigate FastAPI patterns Claude already knows; it does not duplicate the universal doutrina that lives in `/CLAUDE.md`. It encodes the rules that are **specific to this backend** — the contract with the Composer, the gateway-as-catalogue model, the ledger and memory discipline, the security envelope, and the closure shape that a backend change has to take before it is real.
+Local constitution for backend work. Does not re-litigate FastAPI patterns; does not duplicate `/CLAUDE.md`. Encodes rules **specific to this backend** — the gateway-as-catalogue model (ADR-0002), provider precedence (ADR-0003), the Composer contract, the ledger discipline, the security envelope, and closure shape.
 
-The backend is **the maestro**. It owns the contract, the memory, and the ledger. The model is a swappable engine, never the authority. Read this skill in full whenever you touch `backend/`. Every rule maps to a concrete failure mode that has already cost time or trust.
-
----
-
-## When to use this skill
-
-Trigger this skill whenever any of these are true:
-
-- The change touches a file under `backend/`.
-- The user is editing or reviewing `server.py`, `composer.py`, `composer_settings.py`, `engine.py`, `agent.py`, `tools.py`, `model_gateway.py`, `memory.py`, `runs.py`, `models.py`, `doctrine.py`, `spine.py`, `auth.py`, `rate_limit.py`, `security_headers.py`, `log_redaction.py`, `gemini_provider.py`, `groq_provider.py`, `mock_client.py`, `runtime.py`, `voice.py`, or any router module under `backend/routers/`.
-- A new HTTP route is being proposed, added, or modified — anywhere.
-- An env var prefixed `GAUNTLET_*`, `SIGNAL_*`, or `RUBERRA_*` is being added or read.
-- The user mentions provider routing, model selection, Groq, Anthropic, Gemini, MOCK mode, or `model_gateway`.
-- The work involves `runs.json`, `failure_memory.json`, or any ledger / memory persistence.
-- The conversation crosses the frontend ↔ backend boundary (e.g. the Composer is making a call to `/composer/*`).
-- Response shapes for the cápsula are being designed — including the 4 canonical preview/result layouts (resposta texto, plano, acção sensível, resultado).
-- The user is touching CI, deployment, or release work that affects backend env vars or routes (defer the release-specific parts to `gauntlet-release-discipline`, but stay loaded).
-
-When you trigger, **also obey `/CLAUDE.md`** for universal doutrina. This skill does not relax those rules; it adds territory-specific ones.
-
-## When NOT to use this skill
-
-- Pure UI work that does not cross the API boundary — `gauntlet-design-system`'s territory.
-- Tauri shell concerns (Rust under `src-tauri/`, OS integration) — `gauntlet-tauri-shell`.
-- Markdown / documentation edits that do not touch endpoint contracts.
-- Generic Python questions not anchored in this codebase.
+The backend is **the maestro**. Owns contract, memory, and ledger. The model is a swappable engine, never the authority.
 
 ---
 
-## How this skill composes with others
+## When to use
 
-| Concern | Owner | What this skill adds |
+- File under `backend/` is touched
+- Editing or reviewing `server.py`, `composer.py`, `composer_settings.py`, `engine.py`, `agent.py`, `tools.py`, `model_gateway.py`, `memory.py`, `runs.py`, `models.py`, `doctrine.py`, `spine.py`, `auth.py`, `rate_limit.py`, `security_headers.py`, `log_redaction.py`, `gemini_provider.py`, `groq_provider.py`, `mock_client.py`, `runtime.py`, `voice.py`, or any `backend/routers/*.py`
+- New HTTP route proposed, added, or modified
+- Env var `GAUNTLET_*`, `SIGNAL_*`, `RUBERRA_*` added or read
+- Provider routing / model selection / Groq / Anthropic / Gemini / MOCK / `model_gateway` mentioned
+- `runs.json` or `failure_memory.json` involved
+- Frontend ↔ backend boundary (`/composer/*` calls)
+- Response shapes for the cápsula being designed (4 canonical layouts)
+- CI / deploy work affects backend env vars or routes (defers release-specific to `gauntlet-release-discipline`)
+
+Always also obey `/CLAUDE.md` and reference the relevant ADRs.
+
+## When NOT to use
+
+- UI work not crossing API boundary → `gauntlet-design-system`
+- Tauri shell concerns → `gauntlet-tauri-shell`
+- Markdown / documentation edits that don't touch endpoint contracts
+- Generic Python questions not anchored in this codebase
+
+---
+
+## How this skill composes
+
+| Concern | Owner | Adds |
 |---|---|---|
-| Universal doutrina (anti-teimosia, missão concluída, multi-file plan) | `/CLAUDE.md` | Always-on. This skill does not duplicate. |
-| UI surface law, dual-shell parity, Capsule budget, Aether visual canon, canonical labels | `gauntlet-design-system` | This skill enforces canonical labels **on write** in user-facing response strings. |
-| Tauri 2 capabilities, Rust commands, two-window pattern | `gauntlet-tauri-shell` | Defer fully on the desktop shell. |
-| Versioning, deprecations, GAUNTLET_* migration timeline | `gauntlet-release-discipline` | This skill enforces the **canonical name on write**; release skill owns the **migration plan**. |
+| Universal doctrine | `/CLAUDE.md` | Always-on; not duplicated |
+| UI surface law, Aether canon, canonical labels | `gauntlet-design-system` | Enforces canonical labels **on write** in response strings |
+| Tauri capabilities, Rust commands | `gauntlet-tauri-shell` | Defers fully |
+| Versioning, deprecation timeline | `gauntlet-release-discipline` | Canonical name on write; release skill owns migration plan |
 
 ---
 
-## Product law (backend lens)
+## Product law
 
-### 1. The model gateway is a catalogue, not an HTTP funnel
+### 1. Model gateway is catalogue, not HTTP funnel (ADR-0002)
 
-`backend/model_gateway.py` is **not** a single funnel that intercepts every HTTP call to providers. It is a **routing / policy / recording layer** with three responsibilities:
+`backend/model_gateway.py` has three responsibilities:
 
-1. **Catalogue** — `CATALOGUE` dict in `model_gateway.py` is the single source of truth for which model_ids the system is allowed to use, with cost approximations.
-2. **Selection** — `gateway.select(role)` maps a role (`triad`, `judge`, `agent`, `distill`, `surface`, `compress`, `validate`, `default`) to a `ModelChoice`. Callers ask for a role; the gateway picks a model.
-3. **Recording + fallback** — `gateway.record(GatewayCall)` writes a structured row for `/diagnostics` and the run log. `gateway.fallback(role, failed_model_id)` returns the next-best choice when a provider fails.
+1. **Catalogue** — `CATALOGUE` dict is single source of truth for allowed model_ids with cost approximations
+2. **Selection** — `gateway.select(role)` maps a semantic role to a `ModelChoice`. Callers ask for a role; gateway picks the model
+3. **Recording + fallback** — `gateway.record(GatewayCall)` writes structured row used by `/diagnostics` and runs ledger. `gateway.fallback(role, failed_model_id)` returns next-best when a provider fails
 
-Provider HTTP calls happen in **designated client modules**, not in the gateway:
+**Provider HTTP calls happen in 5 designated client modules**:
 
 | Module | Purpose | May import provider SDK |
 |---|---|---|
-| `engine.py` | Triad + judge orchestration | ✅ `from anthropic import AsyncAnthropic` |
-| `agent.py` | Tool-using agent loop | ✅ `from anthropic import AsyncAnthropic` |
-| `mock_client.py` | Deterministic responses for `GAUNTLET_MOCK=1` and CI | ✅ ambient (no external SDK) |
-| `groq_provider.py` | Groq adapter | ✅ Groq SDK / HTTP client |
-| `gemini_provider.py` | Gemini adapter | ✅ Gemini SDK / HTTP client |
+| `engine.py` | Triad + judge orchestration | `from anthropic import AsyncAnthropic` |
+| `agent.py` | Tool-using agent loop | `from anthropic import AsyncAnthropic` |
+| `mock_client.py` | Deterministic for `GAUNTLET_MOCK=1` | ambient (no external SDK) |
+| `groq_provider.py` | Groq adapter | Groq SDK |
+| `gemini_provider.py` | Gemini adapter | Gemini SDK |
 
-Every other module — `composer.py`, `routers/*.py`, `tools.py`, anywhere else — asks the gateway and consumes one of the designated clients above. Direct provider imports outside the designated list are forbidden.
+Every other module — `composer.py`, `routers/*.py`, `tools.py` — asks the gateway and consumes one of the 5 above. **Direct provider SDK imports outside this list are forbidden.**
 
-The rule: **if you are about to add `from anthropic import …` (or any provider SDK) to a file outside the designated client list, stop.** The work belongs in an existing client, or you need an explicit ADR justifying a new client module.
+Verifier:
+```bash
+grep -rE "(from anthropic|from groq|from openai|from google\\.generativeai|import anthropic|import groq|import openai)" \
+  backend/ --include="*.py" \
+  | grep -v -E "(engine|agent|mock_client|groq_provider|gemini_provider)\\.py:"
+```
+Must return zero matches.
 
 ### 2. "Don't be wrong"
 
-Refusal is the default; response is the exception. The failure memory makes the system more cautious in topics where it has already been wrong. New endpoints and tools must respect this — adding a new code path that produces an answer without consulting `memory.failures` for prior failures on the same fingerprint is a regression.
+Refusal is default; response is exception. Failure memory makes the system more cautious in topics where it has been wrong. New code paths that produce answers without consulting `memory.failures` for the request fingerprint = regression.
 
 ### 3. The maestro never works in the cabin
 
-The backend does not host UI. It does not render pages. It serves contracts. If a feature creep proposes server-rendered HTML, embedded admin panels, or response payloads that include presentational hints (CSS, layout instructions), reject. The Control Center is the cabin. The backend is the maestro.
+Backend does not host UI. Does not render pages. Serves contracts. Server-rendered HTML, embedded admin panels, response payloads with presentational hints (CSS, layout instructions) → reject. Control Center is the cabin. Backend is the maestro.
 
-### 4. User-facing strings honor the canonical labels
+### 4. User-facing strings honor canonical labels (ADR-0005)
 
-The cápsula renders strings the backend returns. If the backend response includes user-facing labels — header strings, button text, error messages, voice synthesis output — those strings must use the canonical Aether labels (Enviar · Resposta · Plano · Executar · Executar com cuidado · Executado · Anexar · Ecrã · Voz · Copy · Save · Re-read · Erro) and must not contain banned labels (~~Compor · Submit · Run · Magic · Assistant · Preview~~). The voice ban-list lint runs against the frontend, but the backend can leak banned words via response payloads — guard against this when shaping responses or composing voice output. See `gauntlet-design-system` for the full label list.
+The cápsula renders strings the backend returns. Response headers, button text, error messages, voice synthesis output must use canonical Aether labels (Enviar · Resposta · Plano · Executar · Executar com cuidado · Executado · Anexar · Ecrã · Voz · Copy · Save · Re-read · Erro). Must NOT contain banned labels (~~Compor · Submit · Run · Magic · Assistant · Preview~~). The voice ban-list lint runs against frontend, but backend can leak banned words via response payloads.
 
 ---
 
@@ -89,257 +93,250 @@ The cápsula renders strings the backend returns. If the backend response includ
 
 ```
 backend/
-  server.py                     ← HTTP endpoints + middleware pipeline
+  server.py                     ← HTTP endpoints + middleware
   main.py                       ← uvicorn entry
   routers/                      ← per-domain modules
     health.py · ask.py · agent.py · runs.py · memory.py · spine.py
     tools.py · git.py · permissions.py · observability.py
-  composer.py                   ← /composer/{context,intent,preview,apply,…} (large file ~61 KB)
-  composer_settings.py          ← composer-side settings
-  engine.py                     ← triad + judge pipeline + auto-router (designated client)
-  agent.py                      ← tool-using agent loop (designated client)
-  tools.py                      ← tool registry (large file ~85 KB)
-  model_gateway.py              ← CATALOGUE + select + record + fallback ← NOT a funnel
+  composer.py                   ← /composer/{context,intent,preview,apply,…}
+  composer_settings.py
+  engine.py                     ← triad + judge (designated client)
+  agent.py                      ← tool-using loop (designated client)
+  tools.py                      ← tool registry
+  model_gateway.py              ← CATALOGUE + select + record + fallback
   groq_provider.py              ← Groq adapter (designated client)
   gemini_provider.py            ← Gemini adapter (designated client)
-  mock_client.py                ← MockAsyncAnthropic for GAUNTLET_MOCK=1 (designated client)
-  memory.py · memory_records.py ← failure + operator memory (JSON on disk)
-  runs.py                       ← append-only run log (run_store API)
-  doctrine.py                   ← prompt assembly (SYSTEM_PROMPT, JUDGE_PROMPT, AGENT_SYSTEM_PROMPT)
-  models.py                     ← Pydantic contracts (large; ~35 KB)
+  mock_client.py                ← MOCK (designated client)
+  memory.py · memory_records.py ← failure + operator memory
+  runs.py                       ← append-only ledger (run_store API)
+  doctrine.py                   ← prompts (SYSTEM_PROMPT, JUDGE_PROMPT, AGENT_SYSTEM_PROMPT)
+  models.py                     ← Pydantic contracts
   spine.py                      ← workspace snapshot store
   config.py · runtime.py        ← env-driven settings + shared engine accessor
   auth.py                       ← API key gate (Bearer)
-  rate_limit.py                 ← rate limiter
-  security_headers.py           ← security headers + HSTS
-  log_redaction.py              ← log token redaction
+  rate_limit.py
+  security_headers.py
+  log_redaction.py
   voice.py                      ← TTS / voice surface
   backup.py · persistence.py · pause_registry.py · context_router.py · observability.py
-  test_*.py                     ← test_composer, test_engine_init, test_provider_fallback,
-                                  test_security, test_computer_use_tool
-  Dockerfile · railway.json · requirements.txt · .env.example · README.md
+  test_*.py                     ← 5 suites (composer, computer_use, engine_init, provider_fallback, security)
 ```
 
 Three non-obvious rules:
 
-- **`runtime.py` is the shared engine accessor.** Routers import the engine through `runtime.py`, never by instantiating their own. Multiple engine instances split state.
-- **`models.py` is the contract surface.** Every request and response body is a Pydantic model declared there. Inline `dict` payloads on a route handler are a regression — they become silent contract drift when the frontend changes shape.
-- **CI's exhaustive module list** in `.github/workflows/ci.yml` (the `python -c "import ..."` step) is the canonical inventory of every backend module the runtime touches. **When adding a new `.py` to `backend/`, add it to that list** or its syntax errors will pass CI silently.
+- **`runtime.py` is shared engine accessor** — routers import engine through `runtime.py`, never instantiate own. Multiple engine instances split state.
+- **`models.py` is contract surface** — every request/response body is Pydantic in `models.py`. Inline `dict` payloads = silent contract drift.
+- **CI's exhaustive module list** in `.github/workflows/ci.yml` (`python -c "import ..."` step) is canonical inventory. **Adding a new `.py` to `backend/` → add to that list** or syntax errors slip through.
 
 ---
 
-## The /composer pipeline
+## /composer pipeline contract
 
-The Composer pipeline is canonical and ordered. Each stage is a separate endpoint with a single responsibility.
+Canonical and ordered. Each stage has single responsibility:
 
 | Stage | Endpoint | Owns | May NOT |
 |---|---|---|---|
-| 1. Context | `POST /composer/context` | Capture authorized context (selection, URL, screenshot, dom snapshot) | Call any model. Mutate any state outside the context buffer. |
-| 2. Intent | `POST /composer/intent` | Classify the intent, decide route, commit a model selection | Generate the artifact. Apply side effects. |
-| 3. Preview | `POST /composer/preview` | Generate the artifact via gateway + designated client | Apply any side effect. Touch the user's host page or filesystem. |
-| 4. Apply | `POST /composer/apply` | Apply the artifact (clipboard, dom action, file write) and record the run | Re-generate. Re-route. Skip the run record. |
+| 1. Context | `POST /composer/context` | Capture authorized context (selection, URL, screenshot, DOM) | Call any model. Mutate state outside context buffer. |
+| 2. Intent | `POST /composer/intent` | Classify intent, decide route, commit model selection | Generate artifact. Apply side effects. |
+| 3. Preview | `POST /composer/preview` | Generate artifact via gateway + designated client | Apply any side effect. Touch host page / filesystem. |
+| 4. Apply | `POST /composer/apply` | Apply artifact (clipboard / DOM / file) + record run | Re-generate. Re-route. Skip run record. |
 
-Each cycle writes **two lines to `runs.json`**:
+Each cycle writes **two rows to `runs.json`**:
+1. `route="composer"` — envelope with `composer:intent_id`
+2. `route="agent"` or `route="triad"` — internal call, same `composer:intent_id`
 
-1. `route="composer"` — the envelope, with `composer:intent_id`.
-2. `route="agent"` or `route="triad"` — the internal call that produced the artifact, with the same `composer:intent_id` for correlation.
+Side effect in `/composer/preview` = reject. Skipping envelope row = reject.
 
-If a change introduces a stage that performs side effects in `/composer/preview`, reject. If a change skips writing the envelope row in `runs.json`, reject.
+### 4 canonical preview/result response shapes (ADR-0005)
 
-### The 4 canonical preview/result response shapes
+| Shape | Backend returns | Cápsula renders |
+|---|---|---|
+| **A** | `{kind:"text", model, latency_ms, content}` | `RESPOSTA · {model} · {latency}ms` header + content + `[Copy] [Save]` |
+| **B** | `{kind:"plan", model, latency_ms, actions:[{step,op,target,args,sensitive:bool}]}` | `PLANO · {N} actions` + numbered steps + `[Executar] [Rejeitar]` |
+| **C** | Plan with `actions.some(a => a.sensitive)` | Plan B + DangerGate UI (per phase grammar `danger_gate`) |
+| **D** | `{kind:"result", model, latency_ms, steps:[{step,status:"ok"|"err"|"skip",message}]}` | `RESULTADO · {ok} ok · {fail} falhou` + color-coded lines + `[Copy] [Save]` |
 
-The cápsula renders one of four layouts based on response shape (`docs/canon/COMPOSER_SURFACE_SPEC.md`):
+Pick one of the four. Inventing a fifth requires an ADR.
 
-- **A. Resposta texto** — backend returns `{kind: "text", model, latency_ms, content}`. Cápsula renders header `RESPOSTA · {model} · {latency_ms}ms` + content + `[Copy] [Save] [Guardar como…]`.
-- **B. Plano de DOM actions** — backend returns `{kind: "plan", model, latency_ms, actions: [{step, op, target, args, sensitive: bool}]}`. Cápsula renders header `PLANO · {N} actions · {model} · {latency_ms}ms` + numbered steps + `[Executar] [Executar com cuidado]`. Steps with `sensitive: true` are visually flagged and gated.
-- **C. Acção sensível (alarme)** — when `actions.some(a => a.sensitive)`, the cápsula injects the gate: ⚠️ ACÇÕES SENSÍVEIS NO PLANO + list + checkbox "Confirmo, executar mesmo assim" + `[Executar com cuidado]`. Backend marks `sensitive: true` on actions that match the heuristic in `tools.py`.
-- **D. Resultado de execução** — after `/composer/apply` returns `{kind: "result", model, latency_ms, steps: [{step, status: "ok"|"err"|"skip", message}]}`, the cápsula renders header `RESULTADO · {ok_count} ok · {fail_count} falhou` + color-coded lines.
+### Known anti-pattern: `composer.py` `_route_model`
 
-When designing a new response shape: pick one of the four. Don't invent a fifth without an ADR. Backend and frontend evolve the canonical shapes together.
+`composer.py` `_route_model(intent, ctx)` (lines ~243-285) hard-codes `primary_model="claude-opus-4-7"`. **Duplicates gateway policy** (ADR-0002 violation). Two remediation options:
 
-### Intent → role mapping (open work)
+- **Option A** — Add intent-aware roles to `CATALOGUE`: `select("composer-code")`, `select("composer-summarize")`. composer.py calls these.
+- **Option B** — Map composer intents to existing gateway roles: `code` → `agent`, `summarize` → `compress`, `analyze` → `triad`. composer.py calls `gateway.select(<mapped>)`.
 
-Today, `composer.py` has a private `_route_model(intent, ctx)` function that maps intent (`generate_code`, `summarize`, `analyze`, etc.) to `ModelRoute` with **hard-coded `primary_model="claude-opus-4-7"`** values. **This duplicates gateway policy and is the largest doctrine drift in the backend.** The fix is one of:
-
-- **Option A**: Add intent-aware roles to the gateway `CATALOGUE` (e.g. `select("composer-code")`, `select("composer-summarize")`) and have composer.py call `gateway.select(role)`.
-- **Option B**: Map composer intents to existing gateway roles at the composer site (e.g. `code` → `agent`, `summarize` → `compress`, `analyze` → `triad`) and call `gateway.select(role)` without naming model_ids.
-
-Either is acceptable; pick one and write the ADR. Until then, treat composer.py's `_route_model` as a **known anti-pattern with an open remediation plan**, not a green-light pattern to copy.
+Closure for either: no `claude-opus-4-7` or `primary_model="…"` string in `composer.py` after patch.
 
 ---
 
-## Provider precedence
+## Provider precedence (ADR-0003)
 
 ```
-MOCK > Groq > Anthropic > Gemini > error
-        ↑       paused      paused
+MOCK > Groq > Anthropic (paused) > Gemini (paused) > error
+        ↑
      primary
 ```
 
-Rules:
+- **MOCK** — `GAUNTLET_MOCK=1` short-circuits gateway with deterministic responses via `MockAsyncAnthropic`. CI + offline dev. Never production default.
+- **Groq** — production primary. `GAUNTLET_GROQ_API_KEY`. `llama-3.3-70b-versatile`, sub-second SSE streaming.
+- **Anthropic** — paused; code compatible; activate via explicit env opt-in.
+- **Gemini** — paused; same activation path.
 
-- **Groq is the primary path.** Free tier, Llama 3.x / gpt-oss, sub-second latency, SSE streaming.
-- **Anthropic and Gemini are paused.** Code stays compatible. They run only if the operator explicitly opts in via env or per-request override.
-- **`MOCK` is the test path.** `GAUNTLET_MOCK=1` short-circuits the gateway with deterministic responses via `MockAsyncAnthropic`. Used in CI (`pytest -q` runs with this set in `ci.yml`) and offline dev. Never the default in production.
-- **No hard-coded provider in route handlers or non-client modules.** Provider SDK imports are scoped to the designated client list above. Hard-coding a provider name as a string in a handler is also a smell — pass intents through.
+No hard-coded provider in route handlers or non-client modules. Hard-coding a provider name as string in a handler is a smell.
 
-When adding a new provider: add to `model_gateway.py` `CATALOGUE` first, declare cost in `gateway.summary()`, register provider precedence rules in one place. Add a new designated client module for the SDK. Never scatter SDK imports.
+New provider? Add to `CATALOGUE`, declare cost in `gateway.summary()`, create designated client. Never scatter SDK imports.
 
 ---
 
 ## Security envelope (5 layers, defense-in-depth)
 
-All five layers are middleware, all wrap the Composer routes automatically. None is optional in production.
+All five are middleware; all wrap Composer routes; none optional in production.
 
 | # | Layer | Module | Toggle | Default |
 |---|---|---|---|---|
-| 1 | API key gate (Bearer) | `auth.py` | `GAUNTLET_API_KEY=…` | off (set in prod) |
+| 1 | API key gate (Bearer) | `auth.py` | `GAUNTLET_API_KEY=…` | off in dev, set in prod |
 | 2 | Rate limiter | `rate_limit.py` | `GAUNTLET_RATE_LIMIT_DISABLED=1` to disable | on |
-| 3 | Security headers | `security_headers.py` | `GAUNTLET_HSTS=1` for HSTS | on (HSTS off until cert is real) |
+| 3 | Security headers | `security_headers.py` | `GAUNTLET_HSTS=1` for HSTS | on (HSTS off until cert real) |
 | 4 | Body-size cap | `server.py` middleware | `GAUNTLET_MAX_BODY_BYTES=…` | 1 MiB |
-| 5 | Log token redaction | `log_redaction.py` | `GAUNTLET_LOG_REDACT=1` | on |
+| 5 | Log redaction | `log_redaction.py` | `GAUNTLET_LOG_REDACT=1` | on |
 
 Rules:
 
-- **Every new endpoint inherits all five layers** by being declared in `backend/routers/*.py` and registered through the standard pipeline in `server.py`. If a route is added with `@app.post(...)` directly in `server.py` outside the standard router pipeline and bypasses middleware, reject.
-- **Logs never contain raw tokens, API keys, or message contents.** If you add a log line that prints a request body, run it through `log_redaction.redact(...)` first.
-- **Bearer auth is the gate, not the only line.** Rate limit + body cap + redaction apply even when auth is off (dev mode). Removing them "for testing" leaves footguns in main.
-- **Tool execution gate.** `GAUNTLET_ALLOW_CODE_EXEC` (default false) gates `run_command`'s ability to invoke package managers and interpreters, plus `execute_python`. Don't flip this for "testing in production".
+- New endpoint inherits all 5 by being declared in `backend/routers/*.py` and registered through standard pipeline. Direct `@app.post(...)` in `server.py` outside the standard router pipeline = reject.
+- Logs never contain raw tokens, API keys, message contents. Use `log_redaction.redact(body)` before logging request body.
+- Bearer auth is gate, not only line. Rate limit + body cap + redaction apply even when auth off (dev). Don't disable for "testing".
+- `GAUNTLET_ALLOW_CODE_EXEC` (default false) gates `run_command` and `execute_python`. Don't flip in production.
 
 ---
 
 ## Run ledger discipline
 
-`runs.json` is **append-only**, accessed exclusively through the `run_store` API in `runs.py`. Every execution writes one or more rows. Rows are never edited. Rows are never deleted from code paths. Operator-driven cleanup happens through explicit admin tooling, not through normal endpoints.
+`runs.json` is **append-only**, accessed exclusively through `run_store` API in `runs.py`. Never edited. Never deleted from code paths. Operator-driven cleanup via explicit admin tooling only.
 
-Required fields per row (canonical shape, declared in `models.py`):
-
-- `id`, `ts`, `route` (`composer` | `agent` | `triad` | …), `provider`, `model`, `latency_ms`, `tokens_in`, `tokens_out`, `cost_usd`, `outcome` (`ok` | `error` | `refused`), `error_class` (nullable), `composer:intent_id` (nullable), `fingerprint` (anti-loop hash).
+Required fields (Pydantic in `models.py`):
+`id, ts, route (composer|agent|triad|…), provider, model, latency_ms, tokens_in, tokens_out, cost_usd, outcome (ok|error|refused), error_class (nullable), composer:intent_id (nullable), fingerprint (anti-loop hash)`
 
 Rules:
-
-- **Every endpoint that consults the gateway writes a row.** No silent calls.
-- **Every refusal writes a row** with `outcome="refused"` and the reason. Refusal is product truth, not absence.
-- **Every error writes a row** with `outcome="error"` and a stable `error_class`. Stack traces go to logs (redacted), not the ledger.
-- **The two-row Composer envelope is non-negotiable.** Stage 4 (`/composer/apply`) writes the envelope; the internal route writes its own row; both share `composer:intent_id`.
+- Every endpoint that consults the gateway writes a row. No silent calls.
+- Every refusal writes a row with `outcome="refused"` and reason. Refusal is product truth.
+- Every error writes a row with `outcome="error"` and stable `error_class`. Stack traces → logs (redacted), not ledger.
+- Two-row Composer envelope is non-negotiable. Stage 4 writes envelope; internal route writes own row; share `composer:intent_id`.
 
 ---
 
 ## Failure memory and anti-loop
 
-`failure_memory.json` records perguntas that failed. The tool chain carries an anti-loop **fingerprint** so the system does not retry blindly.
+`failure_memory.json` records failed questions. Tool chain carries anti-loop **fingerprint**.
 
-Rules:
-
-- **Before answering, consult `memory.failures` for the request fingerprint.** If a recent failure exists on the same fingerprint, the system is more cautious — escalates the route, lowers confidence, or refuses.
-- **Fingerprint is a stable hash** of (intent class + canonicalized inputs). It must be deterministic across restarts. If a fingerprint changes when nothing meaningful changed, the canonicalizer is wrong — fix it.
-- **Failure memory is bounded.** It does not grow forever. `memory.py` enforces retention; do not add unbounded growth in new failure paths.
-- **`POST /memory/clear` is operator-only.** It must be behind the API key gate, even in dev.
+- Before answering, consult `memory.failures.lookup(fingerprint)`. Recent failure on same fingerprint → more cautious (escalate route, lower confidence, refuse).
+- Fingerprint = stable hash of (intent class + canonicalized inputs). Must be deterministic across restarts.
+- Failure memory is bounded. `memory.py` enforces retention. No unbounded growth.
+- `POST /memory/clear` is operator-only. API key gate even in dev.
 
 ---
 
-## Capabilities awareness (capsule capabilities matrix)
+## Capabilities-aware response shaping
 
-The cápsula renders different action buttons per shell based on the `Ambient.capabilities` object the shell provides at construction time. The matrix lives in `docs/canon/COMPOSER_SURFACE_SPEC.md`:
+`Ambient.capabilities` matrix (from `gauntlet-tauri-shell` skill + ADR-0001 dual-shell):
 
-| Capability | Browser | Desktop | Backend implications |
-|---|---|---|---|
-| `domExecution` | ✅ | ❌ | DOM action plans only ship to browser shell |
-| `screenshot` | ✅ | ✅ | `/composer/context` accepts base64 from both |
-| `filesystemRead` | ✅ | ✅ | both shells can attach files |
-| `filesystemWrite` | ❌ | ✅ | `/composer/apply` returns file-write actions only when origin is desktop |
-| `voice` | ✅ | ✅ | `/voice/transcribe` serves both |
-| `shellExecute` | ❌ | ✅ | shell-execute tools gated by request origin |
-
-Backend implications: when `composer.py` shapes a plan, it must consider the requesting shell's capabilities (the request body carries this in the `ambient` field). A plan that includes `filesystemWrite` actions returned to a browser shell would be unrenderable. Don't return it. Validate plan shapes against the requesting shell's capabilities.
-
----
-
-## Canonical naming
-
-`GAUNTLET_*` is canonical. `SIGNAL_*` and `RUBERRA_*` are aliases — read as silent fallback for migration only, **removed in v1.1.0**. New code writes `GAUNTLET_*` always.
-
-| Surface | Canonical | Legacy (read-only fallback, removed v1.1.0) |
+| Capability | Browser | Desktop |
 |---|---|---|
-| Env vars | `GAUNTLET_*`, `VITE_GAUNTLET_*` | `SIGNAL_*`, `RUBERRA_*`, `VITE_BACKEND_URL` |
+| `domExecution` | ✅ | ❌ |
+| `filesystemWrite` | ❌ | ✅ |
+| `shellExecute` | ❌ | ✅ |
+| `computerUse` | ❌ | ✅ |
+
+When `composer.py` shapes a plan, must consider requesting shell's capabilities (request body carries `ambient` field). Plan with `filesystemWrite` returned to browser shell = unrenderable. Don't return it. Validate plan shapes against requesting shell.
+
+---
+
+## Canonical naming (ADR-0006)
+
+`GAUNTLET_*` canonical. `SIGNAL_*`/`RUBERRA_*` read-only fallback until v1.1.0.
+
+| Surface | Canonical | Legacy fallback |
+|---|---|---|
+| Env vars | `GAUNTLET_*`, `VITE_GAUNTLET_*` | `SIGNAL_*`, `RUBERRA_*` |
 | API routes | `/api/gauntlet/*` | `/api/signal/*`, `/api/ruberra/*` |
 | Storage / disk paths | `gauntlet/` | `signal/`, `ruberra/` |
 
-When `config.py` reads an env var, it looks first for `GAUNTLET_X`, then falls back to `SIGNAL_X` / `RUBERRA_X` with a deprecation warning. **Never write to the legacy names from new code.**
+`config.py` reads `GAUNTLET_X` first, falls back to `SIGNAL_X` / `RUBERRA_X` with deprecation warning. **Never write to legacy names from new code.**
 
 ---
 
 ## Closure check
 
-A backend change is **not closed** until all of these are true. Verify each before saying `missão concluída`.
+Not closed until all true:
 
-1. **Builder landed.** `python -m backend.main` starts; `GET /health` returns 200; `GET /health/ready` returns honest yes (or 503 with reason).
-2. **CI module list updated.** If a new `.py` file was added to `backend/`, it appears in the exhaustive `mods` tuple in `.github/workflows/ci.yml`.
-3. **Pydantic contracts validate.** `models.py` types declared; route handlers reference them; no inline `dict` payloads on new routes.
-4. **Gateway integrity.** Provider SDK imports stay confined to the designated client modules: `engine.py`, `agent.py`, `mock_client.py`, `groq_provider.py`, `gemini_provider.py`. `grep -rE "(from anthropic|from groq|from openai|from google\.generativeai|import anthropic|import groq|import openai)" backend/ --include="*.py"` returns no matches outside that list.
-5. **Security envelope applied.** New endpoint inherits auth, rate limit, body cap, security headers, log redaction by being placed under `backend/routers/`. None bypassed.
-6. **Append-only honored.** Any code that writes `runs.json` uses the `run_store` API in `runs.py`, not direct file writes.
-7. **Failure memory consulted.** New answer paths call `memory.failures.lookup(fingerprint)` before generating. New failure paths call `memory.failures.record(...)` before returning.
-8. **Canonical naming.** `grep -rE "(SIGNAL_|RUBERRA_)" backend/ --include="*.py"` returns no new writes (reads as fallback are OK and have deprecation warnings).
-9. **Composer two-row contract.** If the change touches the Composer pipeline, both envelope and internal rows are written and share `composer:intent_id`.
-10. **Canonical labels.** New user-facing strings (response payloads, error messages, voice synthesis output) honor the Aether label set. No "Submit", "Run", "Magic", "Assistant", "Preview" returned to the frontend.
-11. **Shell-aware response shaping.** If the change touches `/composer/preview` or `/composer/apply`, it considers the requesting shell's capabilities. No `filesystemWrite` actions returned to browser shells; no `domExecution` actions returned to desktop shells.
-12. **Tests pass under MOCK.** `GAUNTLET_MOCK=1 GAUNTLET_RATE_LIMIT_DISABLED=1 pytest -q` is green.
-13. **Owned residue closed.** No new `# TODO`, `# FIXME`, or commented-out code. No print statements left in. No keys hard-coded.
+1. **Builder landed** — `python -m backend.main` starts; `GET /health` returns 200; `GET /health/ready` returns honest yes (or 503 with reason)
+2. **CI module list updated** — new `.py` in `backend/` appears in `mods` tuple in `ci.yml`
+3. **Pydantic contracts validate** — `models.py` types declared; route handlers reference them; no inline `dict` payloads
+4. **Gateway integrity (ADR-0002)** — provider SDK imports stay in 5 designated clients only. `grep` returns no matches outside that list
+5. **Security envelope applied** — new endpoint inherits 5 layers via `backend/routers/`
+6. **Append-only honored** — any `runs.json` write uses `run_store` API
+7. **Failure memory consulted** — new answer paths call `memory.failures.lookup(fingerprint)`; new failure paths call `memory.failures.record(...)`
+8. **Canonical naming** — `grep -rE "(SIGNAL_|RUBERRA_)" backend/ --include="*.py"` returns no new writes
+9. **Composer two-row contract** — both envelope and internal rows written, share `composer:intent_id`
+10. **Canonical labels (ADR-0005)** — new user-facing strings honor Aether labels; no banned label returned to frontend
+11. **Shell-aware response shaping** — changes to `/composer/preview` or `/composer/apply` consider requesting shell's capabilities
+12. **Tests pass under MOCK** — `GAUNTLET_MOCK=1 GAUNTLET_RATE_LIMIT_DISABLED=1 pytest -q` green
+13. **Owned residue closed** — no new `# TODO`, `# FIXME`, no commented-out code, no print statements, no hard-coded keys
 
-If any check fails or was not run, the correct response is `não tenho evidência suficiente`.
+If any fails: `não tenho evidência suficiente`.
 
 ---
 
 ## Anti-patterns (reject on sight)
 
-| Anti-pattern | Why it's wrong | Correct shape |
-|---|---|---|
-| `from anthropic import Anthropic` in a file outside the designated client list | Bypasses the gateway-as-catalogue contract | Use an existing designated client or write an ADR |
-| New code in `composer.py` using hard-coded `primary_model="claude-opus-4-7"` | Duplicates gateway policy; mirrors the existing `_route_model` anti-pattern | Map intent → role and call `gateway.select(role)` |
-| Side effect inside `POST /composer/preview` | Stage 3 must be read-only | Move side effect to `POST /composer/apply` |
-| Direct `runs.json.write(...)` | Breaks append-only contract | Use `run_store.append(...)` from `runs.py` |
-| New `@app.post(...)` declared in `server.py` outside the router pipeline | Bypasses middleware (auth, rate limit, cap) | Add to a router module under `backend/routers/` |
-| `os.getenv("SIGNAL_API_KEY")` in new code | Writes to legacy name surface | Use `GAUNTLET_API_KEY` (config reads SIGNAL_* as fallback) |
-| Inline `dict` body on a route handler | Silent contract drift | Declare a Pydantic model in `models.py`, reference it |
-| Hard-coded model name in `routers/`, `tools.py`, or any new code | Breaks provider precedence | Pass intent + context to `gateway.select(role)` |
-| New endpoint that does not write to `runs.json` | Silent execution; ledger lies | Always write a row, even on refusal or error |
-| Logging `request.body` directly | Token / key leak risk | `log_redaction.redact(body)` first |
-| New backend module not added to CI's `mods` tuple | Silent failure path | Append to `.github/workflows/ci.yml` `mods` list in same PR |
-| Multiple engine instances (each router builds its own) | Splits state, breaks failure memory | Use shared accessor in `runtime.py` |
-| Response payload containing banned label like `"Submit"`, `"Run"`, `"Preview"` | Voice contract leaks via API | Use canonical labels (Enviar, Executar, Resposta) |
-| Returning a `filesystemWrite` plan to a browser shell | Plan unrenderable; shell silently drops it | Inspect `ambient.capabilities`; shape plan to match |
-| New retry path without fingerprint check | Anti-loop bypassed | Compute fingerprint; consult `memory.failures` first |
-| `POST /memory/clear` exposed without auth | Operator-only surface left open | Apply API key gate explicitly |
+| Anti-pattern | Correct shape |
+|---|---|
+| `from anthropic import Anthropic` outside 5 designated clients | Use existing client or write ADR |
+| New code in `composer.py` with hard-coded `primary_model="claude-opus-4-7"` | Use `gateway.select(role)` per ADR-0002 |
+| Side effect in `POST /composer/preview` | Move to `POST /composer/apply` |
+| Direct `runs.json.write(...)` | Use `run_store.append(...)` |
+| New `@app.post(...)` in `server.py` outside router pipeline | Add to `backend/routers/` |
+| `os.getenv("SIGNAL_API_KEY")` in new code | Use `GAUNTLET_API_KEY` (config reads legacy as fallback) |
+| Inline `dict` body on route handler | Declare Pydantic in `models.py` |
+| Hard-coded model name in `routers/`, `tools.py`, new code | Pass through `gateway.select(role)` |
+| New endpoint not writing `runs.json` | Always write row, even on refusal/error |
+| `logger.info(request.body)` | `log_redaction.redact(body)` first |
+| New backend module not in CI's `mods` tuple | Append in same PR |
+| Multiple engine instances (each router builds own) | Use shared accessor in `runtime.py` |
+| Response payload with banned label ("Submit", "Run", "Preview") | Use canonical labels (ADR-0005) |
+| `filesystemWrite` plan returned to browser shell | Inspect `ambient.capabilities`; shape plan to match |
+| Retry path without fingerprint check | Compute fingerprint; consult `memory.failures` first |
+| `POST /memory/clear` without auth | Apply API key gate |
 
 ---
 
-## Example invocations (how a user might trigger this skill)
+## Example invocations
 
-- "Add a new `/composer/refine` endpoint that re-runs preview with operator feedback."
-- "Wire OpenAI as a fourth provider in the gateway."
-- "The agent loop is calling Anthropic directly somewhere — find it."
-- "Add a tool to the registry that reads a local file."
-- "I want a new field `cost_usd` in `runs.json`."
+- "Add `/composer/refine` endpoint for re-run preview with operator feedback"
+- "Wire OpenAI as fourth provider in gateway"
+- "The agent loop is calling Anthropic directly somewhere — find it" (engine/agent legit; elsewhere not)
+- "Add tool to registry that reads local file"
+- "Add `cost_usd` field to `runs.json`"
 - "Why is `failure_memory.json` growing without bound?"
-- "Add rate-limit overrides per-route."
-- "Migrate this endpoint from `SIGNAL_API_KEY` to `GAUNTLET_API_KEY`."
-- "Refactor `composer.py` `_route_model` to use the gateway."
-- "The Composer says 'Submit' on a button — find it." (likely backend response payload)
+- "Migrate endpoint from `SIGNAL_API_KEY` to `GAUNTLET_API_KEY`"
+- "Refactor `composer.py` `_route_model` to use gateway"
+- "Composer shows 'Submit' on button — find it" (likely backend response payload)
 
 ---
 
 ## Reference
 
-- Project doutrina: `/CLAUDE.md`.
-- Public README: `/README.md` (provider precedence, endpoint catalog, security table).
-- Backend README: `backend/README.md`.
-- Operations: `/docs/OPERATIONS.md`.
-- Security audit: `/docs/SECURITY_AUDIT.md`.
-- Composer canonical surface spec: `/docs/canon/COMPOSER_SURFACE_SPEC.md`.
-- Composer flow contract: `/README.md` § "Fluxo Composer (canónico)".
-- CI canonical module list + test config: `.github/workflows/ci.yml`.
-- Backend source: `backend/`.
-- Companion skills: `gauntlet-design-system` (frontend boundary, Aether canon), `gauntlet-tauri-shell` (desktop shell), `gauntlet-release-discipline` (versioning + canonical naming timeline).
+- ADR-0002 — gateway-as-catalogue (authoritative)
+- ADR-0003 — provider precedence (authoritative)
+- ADR-0005 — Aether v1 canon (for canonical labels)
+- ADR-0006 — deprecation timeline (for naming)
+- `/CLAUDE.md` — universal doctrine
+- `/README.md` — provider precedence table, endpoint catalog, security table
+- `backend/README.md`
+- `/docs/OPERATIONS.md`
+- `/docs/SECURITY_AUDIT.md`
+- `/docs/canon/COMPOSER_SURFACE_SPEC.md`
+- `.github/workflows/ci.yml` — canonical module list + test config
+- `backend/` — implementation
+- Companion skills: `gauntlet-design-system`, `gauntlet-tauri-shell`, `gauntlet-release-discipline`
 
-If something in this skill conflicts with `/CLAUDE.md` or with the actual backend code on main, the **code wins**. Repo truth beats narrative.
+When skill conflicts with `/CLAUDE.md`, ADRs, or actual code on main: **code wins**. Repo truth beats narrative.

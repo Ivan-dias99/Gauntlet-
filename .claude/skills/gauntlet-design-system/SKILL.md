@@ -1,494 +1,265 @@
 ---
 name: gauntlet-design-system
-description: Sovereign design-system law for the Gauntlet product (Composer cápsula + Pill, Control Center garagem, browser-extension shell, Tauri desktop shell). Use whenever the user is editing, reviewing, designing, refactoring, or adding UI inside this repository — including Capsule.tsx, Pill.tsx, PillApp.tsx (desktop), ComposerClient, ambient adapters, control-center pages, design tokens, capsule.css.ts, or any component under packages/composer/, apps/browser-extension/, apps/desktop/, or control-center/. Trigger this skill even when the user does not say "design system" — any change to a .tsx file, tokens.css, the typed token graph, the visual hierarchy, copy/voice, or motion is in scope. This skill enforces the Aether v1 visual canon (cream surfaces + single ember accent + Fraunces display + Inter sans + JetBrains Mono + 6-step type scale), dual-shell parity for the Capsule (browser ↔ desktop), the documented Pill divergence (Capsule is shared single-source-of-truth; Pill is intentionally re-implemented in apps/desktop/src/PillApp.tsx because page-DOM abstractions don't translate to OS windows), the Capsule budget law (line count must descend; current high-water-mark is 778 enforced in ci.yml), the cursor-edge philosophy (point → ask → execute), the 7-state phase grammar (idle → planning → streaming → plan_ready → executing → executed → error), the canonical label set (Enviar · Resposta · Plano · Executar · Executar com cuidado · Executado · Anexar · Ecrã · Voz · Copy · Save · Re-read · Erro), the banned label set (~Compor · Submit · Run · Magic · Assistant · Preview~ enforced via scripts/check-voice.mjs), and the gateway-only LLM rule on the frontend (frontend never imports provider SDKs — backend gateway only). It composes with — and does not replace — the upstream skills `frontend-design` (creative direction, anti-slop), `web-interface-guidelines` (correctness review), and `design-system-ops` (token drift, governance audits).
+description: Sovereign visual + UX law for the Gauntlet Composer surface (packages/composer/ and both shells consuming it). Use whenever the user is editing, reviewing, designing, or refactoring any pixel, motion, label, slash command, keyboard shortcut, capability surface, slot, or copy on the Composer — including the Capsule, the Pill, the Onboarding ritual, the ShortcutBar, the LeftPanel, the ActionsRow, the SlashMenu, the SlashMenuRender, the PlanRenderer, the AnswerPanel, the StreamingState, the EmptyState, the ThemeToggle, the SettingsDrawer, the CommandPalette, the ComputerUseGate, the AttachmentChips, or any of the 18 sub-components of the Composer. Trigger this skill when any .tsx file under packages/composer/src/ is opened, when capsule.css.ts (the Aether token registry) is touched, when shell adapters under apps/browser-extension/ or apps/desktop/src/ are wired to ambient capabilities (because the Capsule surface contract depends on capability shape), when docs/canon/COMPOSER_SURFACE_SPEC.md is referenced, when docs/design-system/AETHER.md is touched (operational design system reference), when slash commands, slash voice, prompt placeholders, or any user-facing string is added or modified, when phase states (3 PILL + 8 CAPSULE = 11 total) are debugged, when the 7-step phase loop is discussed, when accessibility (kbd, aria-live, focus order, motion-reduction) is the topic, when the 778-line Capsule.tsx CI budget is mentioned or risked, and whenever the conversation crosses the boundary between shared composer and shell adapter. This skill enforces the Aether v2 visual canon (cream surfaces, single ember accent, Fraunces/Inter/JetBrains Mono trio, named keyframes, 6-step type scale), the 11-state phase grammar (PILL machine: idle/active/offline + CAPSULE machine: idle/planning/streaming/plan_ready/danger_gate/executing/executed/error), the dual-shell parity 1:1 (browser-extension and desktop must render the Capsule identically, divergence is regression), the BUDGET=778 CI gate on Capsule.tsx, the voice ban-list (Compor, Acionar, Submit, Run, Magic, Assistant, Preview banned; Enviar, Resposta, Plano, Executar canonical), and the Pill divergence rule (Capsule shared, Pill divergent on desktop per ADR-0004). Composes with gauntlet-backend-spine (capability shape contract), gauntlet-tauri-shell (desktop adapter), and gauntlet-release-discipline (visual regression as release gate), and references ADRs 0001, 0004, 0005, 0006.
 ---
 
 # Gauntlet Design System
 
-This skill is the local constitution for UI work in the Gauntlet repository. It does not invent aesthetics — `frontend-design` already governs taste. It does not re-litigate WCAG — `web-interface-guidelines` covers correctness. It does not audit token drift — `design-system-ops` does that. This skill enforces the rules that are **specific to Gauntlet** and that the upstream skills cannot know: the Aether v1 visual canon, where things live, what may not split, what may not grow, what is intentionally divergent, and what shape closure has to take before a change is real.
+Local constitution for Composer UI work. Does not re-teach React, CSS, or accessibility fundamentals; encodes **what is specific to the Composer surface** — the Aether v2 visual canon, the 11-state phase grammar, dual-shell parity, the voice ban-list, and closure shape.
 
-Read this skill in full whenever you touch UI in this repo. The rules are short on purpose — every one of them maps to a concrete failure mode that has already cost time.
+The Composer is **the product**. Anything else (Control Center, backend, browser ext shell, desktop shell) is staging. Visual or behavioural divergence in the Capsule between shells = regression. Divergence in the Pill is intentional (ADR-0004).
 
------
+---
 
-## When to use this skill
+## When to use
 
-Trigger this skill whenever any of these are true:
+- File under `packages/composer/src/` touched
+- `capsule.css.ts` (token registry) modified
+- New component added to `packages/composer/src/`
+- Slash command, slash voice, prompt placeholder, or user-facing string changed
+- Phase state debugged (3 PILL + 8 CAPSULE = 11 total)
+- 7-step phase loop discussed (idle → planning → streaming → plan_ready → [danger_gate] → executing → executed)
+- Accessibility (kbd hints, aria-live, focus order, motion-reduction)
+- Capsule.tsx BUDGET=778 risked (CI gate)
+- Shell adapter wired to ambient capability (browser-extension/, desktop/src/)
+- Reviewing PR that touches any of the above
 
-- The change touches a file under `packages/composer/`, `apps/browser-extension/`, `apps/desktop/src/`, or `control-center/`.
-- The user is editing or reviewing `Capsule.tsx`, `Pill.tsx`, `PillApp.tsx` (desktop), `ComposerClient`, `ambient.ts` (in either shell), or any sub-component / hook in `packages/composer/src/`.
-- The change involves design tokens (`control-center/styles/tokens.css`, `control-center/design/`, or any new `--gx-*` reference).
-- The user mentions cápsula, pill, composer, control center, garagem, Aether, ember, cream, or any chamber-equivalent surface (Memory ledger, Runs, Permissions, Models, Settings, Governance).
-- The user asks to "improve the UI", "make it premium", "polish", "fix the layout", "match the Aether spec", or any visual / structural request scoped to this product.
-- The user is wiring a new feature into the Composer and needs to decide where the code lives.
-- Any change adds, edits, or removes user-facing copy in the Composer — labels, placeholder text, error messages, status strings.
+Always also obey `/CLAUDE.md`. Load `gauntlet-tauri-shell` if change crosses into Tauri shell. Load `gauntlet-backend-spine` if capability shape changes.
 
-When you trigger, **also read the body of `frontend-design`** for taste, and consult `web-interface-guidelines` before declaring closure. Those are upstream — they do not know about this product, but they are the floor.
+## When NOT to use
 
-## When NOT to use this skill
+- Pure backend Python edits → `gauntlet-backend-spine`
+- Tauri/desktop shell internals → `gauntlet-tauri-shell`
+- Control Center work (`control-center/`) — not Composer
+- Release tagging, versioning, signing → `gauntlet-release-discipline`
 
-- Pure backend work in `backend/` (FastAPI), unless the change crosses into the API contract that the Composer consumes — `gauntlet-backend-spine` covers that side.
-- Documentation-only edits to `docs/`.
-- CI / release workflow files, unless they touch the Capsule line-count budget gate or the voice ban-list lint.
-- Generic frontend questions that are not anchored in this repo.
-
-If in doubt, prefer to load the skill. The cost is small; the cost of missing the Capsule Law, the Pill divergence rule, or the Aether canon is large.
-
------
-
-## How this skill composes with others
-
-|Concern                                                        |Owner skill                        |What this skill adds                                                                                                |
-|---------------------------------------------------------------|-----------------------------------|--------------------------------------------------------------------------------------------------------------------|
-|Anti-AI-slop, font/color taste                                 |`frontend-design` (Anthropic)      |Defer for taste; this skill *names* the chosen typefaces (Fraunces+Inter+JetBrains Mono) so they aren't relitigated.|
-|WCAG, ARIA, semantic HTML, contrast                            |`web-interface-guidelines` (Vercel)|Defer fully.                                                                                                        |
-|Token drift, naming audit, deprecation                         |`design-system-ops`                |Where Gauntlet's tokens live, what tier they belong to, what `--gx-*` means.                                        |
-|shadcn/ui block selection                                      |`Shadcnblocks-Skill` (optional)    |Permission to use blocks only inside `control-center/`, never inside the Composer surface.                          |
-|Where code lives, what may not grow, parity rules, visual canon|**this skill**                     |Everything below.                                                                                                   |
-
-Conflict resolution: if `frontend-design` says "no Inter" but this skill names Inter as part of the Aether canon, **this skill wins** within the Gauntlet repo — the typeface choice is deliberate (Inter combined with Fraunces+JetBrains Mono escapes the SaaS-template feel that the upstream rule guards against). Surface the conflict to the user once; do not relitigate it on every PR.
-
------
+---
 
 ## Product law
 
-There are exactly three pillars. Every UI decision must survive all three.
+### 1. The Composer is the work surface (ADR-0001)
 
-### 1. Cursor-edge philosophy
+The Capsule + Pill are the product. Everything else exists to serve them. Visual or behavioural divergence between the browser-extension Capsule and the desktop Capsule is **regression**. They mount the same `@gauntlet/composer` package.
 
-The product lives at the tip of the cursor. The user points at something, says what they want, the system executes where the user already is. Any change that pulls the user out of their flow — a large window, an extra click, a context that lives elsewhere — is a regression. Test every change with this lens: does this approach the `point → ask → execute` arc, or does it move away from it?
+The Pill diverges intentionally on desktop (ADR-0004): the browser Pill is a page-DOM component with viewport magnetism and per-domain dismiss; the desktop Pill is a Tauri window with OS-handled drag. Visual identity (ember dot, breath, halo) is shared. Container differs; identity doesn't.
 
-### 2. Composer is the work surface; Control Center is the garage
+### 2. Aether v2 is the canon (ADR-0005)
 
-The Composer (`packages/composer/`) is dense, complete, IDE-grade — the place the user spends most of their time. Density at the product level is a virtue. **Density at the code level is not.** Every new feature lives in its own sub-component or hook. The package today contains 60+ files: Capsule.tsx (orchestrator) + Pill.tsx (shared, browser-mounted) + ~20 panel/component files (CommandPalette, SettingsDrawer, PlanRenderer, ShellPanel, AnswerPanel, LeftPanel, ComputerUseGate, AttachmentChips, EmptyState, SlashMenu, ShortcutBar, ThemeToggle, StreamingState, …) + ~12 hooks. Capsule.tsx orchestrates and mounts; it never absorbs the implementation of a feature.
+Cream surfaces. Single ember accent. Fraunces (display) + Inter (sans) + JetBrains Mono (mono). Three motion durations × three easings. 11-state phase grammar.
 
-The Control Center (`control-center/`) is the garagem. It exists for configuration, history, model selection, memory inspection, governance. It must never compete with the Composer as a place the user works.
+**Aether v2 shipped via PR #367 + #368.** It is documented in three places that stay aligned:
 
-### 3. Multimodel via gateway only (frontend lens)
+- `docs/canon/COMPOSER_SURFACE_SPEC.md` — authoritative visual spec (329 linhas)
+- `docs/design-system/AETHER.md` — operational design system reference (363 linhas, status: operational)
+- `packages/composer/src/capsule.css.ts` — implementation tokens
 
-The frontend never imports a provider SDK. No `@anthropic-ai/sdk`, no `@google/generative-ai`, no `groq-sdk`, no `openai` anywhere in `packages/composer/`, `apps/`, or `control-center/`. The shared composer talks to the backend through `composer-client.ts`; the backend (`backend/model_gateway.py` + designated clients) handles all provider calls. If you find a frontend file importing a provider SDK, reject the change.
+Don't restate the values here — ADR-0005 is the source. This skill enforces compliance.
 
-(Backend-side rules for who imports providers there live in `gauntlet-backend-spine`.)
+### 3. The 11-state phase grammar (ADR-0005)
 
------
-
-## Aether v1 — the visual canon
-
-This is the visual identity Ivan has confirmed as the look-and-feel for the cápsula. It is documented at `docs/canon/COMPOSER_SURFACE_SPEC.md` (authoritative) and mirrored in the Lovable export at `docs/design-system/AETHER.md` of the prototype project. **When in conflict, the canon repo's spec wins.**
-
-### Surfaces — cream, not white
+The phase grammar is **11 states across 2 parallel machines**:
 
 ```
---gx-bg          #f4efe6   (page background, warm cream)
---gx-bg-sunken   #ece5d8   (left-panel context background)
---gx-bg-surface  #fbf7ef   (capsule surface)
---gx-bg-elevated #ffffff   (chips, cards, elevated panels)
---gx-bg-input    #fbf7ef   (input fields)
+PILL machine (always-on resting chrome):
+  idle · active · offline
+
+CAPSULE machine (on-demand work surface):
+  idle → planning → streaming → plan_ready
+                                      ↓ (sensitive actions present)
+                                  danger_gate → executing → executed
+                                      ↓ (rejected)
+                                   plan_ready
+
+         any state ────→ error
 ```
 
-Default is light cream. Pure white (`#ffffff`) is reserved for the elevated tier (chips, cards) — never the page or capsule background. There is also a `[data-gx-theme="dark"]` set with near-black surfaces for dark mode.
+Each state has visible representation. Silent transitions = regression.
 
-### Ink
+**`danger_gate` is its own phase**, not a sub-state of `plan_ready`. Reject any code path that proceeds from `plan_ready` to `executing` without passing through `danger_gate` when sensitive actions are present.
 
-```
---gx-text       #1a1714   (primary)
---gx-text-2     #4a3f33   (secondary)
---gx-text-muted #8a7a66   (metadata, kicker labels)
---gx-text-ghost #c8bba6   (placeholder, idle)
-```
+### 4. ShortcutBar is product surface (ADR-0005)
 
-### Single brand accent — ember
+The bottom shortcut bar is product, not decoration. It always reflects current phase. 8 distinct tonal states map 1:1 to capsule phase (see ADR-0005 table). Implementation: `packages/composer/src/ShortcutBar.tsx`.
 
-```
---gx-ember      #d07a5a   (active dot, primary button, slash bullets)
---gx-ember-2    #b8542a   (hover, sensitive label)
---gx-peach      #f4c4ad   (pill highlight)
---gx-ember-glow color-mix(in oklab, #d07a5a 32%, transparent)
-```
+### 5. Capsule.tsx BUDGET = 778 (CI gate)
 
-**One brand accent. No second color.** Color in chrome is a regression — color belongs in *data* (e.g. an Aether peach-to-ember gradient on the active pill, an ember underline on a focused input). Other accents in the canon are semantic only:
-
-```
---gx-ok    #2a6a40   (executed ok, page captured yes)
---gx-warn  #a8742a   (warnings)
---gx-err   #b04428   (executed failure, errors)
---gx-info  #2a6a8a   (informational)
+```yaml
+# .github/workflows/ci.yml
+BUDGET=778
+LINES=$(wc -l < packages/composer/src/Capsule.tsx)
+if [ "$LINES" -gt "$BUDGET" ]; then
+  echo "::error::Capsule.tsx grew past budget"
+fi
 ```
 
-Sensitive actions get their own pair: `--gx-danger-bg #fbeae3`, `--gx-danger-bd #d07a5a`.
+Capsule.tsx is currently **at the exact budget (778)**. Any net addition without extraction triggers CI failure. Adding rendering logic? Extract a sub-component first (`PlanRenderer`, `AnswerPanel`, `StreamingState`, `EmptyState` are the existing pattern). 24 `.test.*` files in `packages/composer/src/` show the extraction pattern works.
 
-### Type — three families, six sizes
+### 6. Dual-shell parity 1:1 (ADR-0001)
 
-```
---gx-font-display "Fraunces", Georgia, serif        ← titles, capsule brand, empty-state
---gx-font-sans    "Inter", system-ui, sans-serif    ← body, input, answer text
---gx-font-mono    "JetBrains Mono", monospace       ← labels, kickers, plan steps, kbd hints
+The Capsule in `apps/browser-extension/` and `apps/desktop/` must render identically. The `ambient.capabilities.*` shape decides which buttons render (e.g. `filesystemWrite` is desktop-only, `domExecution` is browser-only). The action row stays visually identical: `ANEXAR · ECRÃ · VOZ · ENVIAR`. Missing capability → button does not appear.
 
---gx-t-micro    10px     letters / kbd / kickers (uppercase, tracked)
---gx-t-meta     11px     section labels (uppercase, tracked)
---gx-t-body     13px     plan steps, chips, secondary
---gx-t-prom     15px     input, answer body
---gx-t-title    20px     empty-state question, section titles
---gx-t-display  28px     "Composer Surface" headline
+If you find a visual divergence between shells: **fix the shell, not the Capsule.**
 
---gx-track-kicker 0.26em
---gx-track-meta   0.12em
-```
+---
 
-Inter is named here despite the upstream `frontend-design` ban because Inter combined with Fraunces (display) and JetBrains Mono (mono) escapes the generic SaaS feel the upstream rule guards against. Do not substitute Inter with Roboto / Space Grotesk / Poppins. Do not substitute Fraunces with Playfair / Lora / IBM Plex Serif.
+## Voice ban-list (ADR-0005)
 
-### Motion — three durations, three easings
-
-```
---gx-dur-fast    120ms   (hover, focus, micro-interactions)
---gx-dur-normal  200ms   (panel transitions, fade-in)
---gx-dur-slow    360ms   (capsule rise, success badge)
-
---gx-ease-out      cubic-bezier(0.2, 0, 0, 1)
---gx-ease-in-out   cubic-bezier(0.4, 0, 0.2, 1)
---gx-ease-spring   cubic-bezier(0.5, 1.5, 0.5, 1)
-```
-
-Named keyframes from the canon: `gx-breathe` (idle pulse, 3.2s), `gx-pulse-once` (active pill, 600ms spring), `gx-rise` (capsule entry, 360ms spring), `gx-aurora` (background drift, 24s linear), `gx-shimmer` (streaming skeleton, 1.4s linear), `gx-caret` (streaming cursor, 1s steps).
-
-`@media (prefers-reduced-motion: reduce)` collapses all animations to 1ms — already in the spec; do not bypass.
-
-### Phase grammar — 7 states
-
-The cápsula state machine is canonical:
-
-```
-idle → planning → streaming → plan_ready
-                                  ↓ (operator approves)
-                                executing → executed
-                                  ↓ (rejected)
-                                plan_ready
-
-         any state ───→ error
-```
-
-The Pill carries its **own** micro-states (`idle / active / offline`) that sit *outside* the Capsule machine — the Pill is always-on chrome, the Capsule is the on-demand surface. Don't conflate them.
-
-Every state must have a visible representation in the cápsula. Silent transitions are regressions.
-
-### Canonical labels (write these)
+Canonical labels (write these):
 
 ```
 Enviar · Resposta · Plano · Executar · Executar com cuidado ·
-Executado · Anexar · Ecrã · Voz · Copy · Save · Re-read · Erro
+Executado · Anexar · Ecrã · Voz · Copy · Save · Re-read · Erro ·
+Confirmo, executar mesmo assim · Rejeitar · Cancelar · Pronto ·
+A planear · A responder · A executar · Concluído · Novo prompt ·
+Tentar de novo · Comandos · Último prompt · Palette · Recolher · Fechar
 ```
 
-### Banned labels (never write these)
+Banned labels (never write these):
 
 ```
-~~Compor~~  ~~Acionar~~  ~~Submit~~  ~~Run~~
-~~Magic~~  ~~Assistant~~  ~~Preview~~ (use RESPOSTA)
+Compor · Acionar · Submit · Run · Magic · Assistant · Preview
 ```
 
-The voice ban-list is enforced by `scripts/check-voice.mjs` in CI (`npm run check:voice`). Don't reintroduce banned words anywhere — including comments, error messages, accessibility labels, button text, or analytics events.
+Enforced by `scripts/check-voice.mjs` (CI gate, `npm run check:voice`).
 
------
+---
 
 ## Architectural truth
 
 ```
-packages/composer/src/        ← the single shared Composer (60+ files)
-  Capsule.tsx                 ← orchestrator only (budget: 778 lines, descending)
-  Pill.tsx                    ← cursor-magnetic resting state (browser-mounted)
-  composer-client.ts          ← transport layer (ComposerClient class + composeOnce helper)
-  ambient.ts                  ← capability + adapter contract per shell
-  pill-prefs.ts               ← createPillPrefs(store) factory
-  voice.ts · markdown.tsx · dom-actions.ts · types.ts · helpers.ts
-  CommandPalette.tsx · SettingsDrawer.tsx · PlanRenderer.tsx
-  ShellPanel.tsx · AnswerPanel.tsx · LeftPanel.tsx
-  ComputerUseGate.tsx · AttachmentChips.tsx · EmptyState.tsx
-  SlashMenu.tsx · ShortcutBar.tsx · ThemeToggle.tsx · StreamingState.tsx
-  Onboarding.tsx · CompactContextSummary.tsx
-  useTTS.ts · useVoiceCapture.ts · useStreamingPlan.ts · useAttachments.ts
-  useCapsuleKeyboard.ts · useCapsuleScreenshot.ts · useToolManifests.ts
-  useSaveToMemory.ts · usePlanGuards.ts · usePhaseBroadcast.ts
-  plan-dispatcher.ts · placement.ts
-  capsule.css.ts              ← stylesheet (consumes Aether tokens)
-  *.test.ts · *.test.tsx      ← co-located tests for each unit
-
-apps/browser-extension/       ← web shell
-  components/App.tsx          ← mounts shared <Capsule> + shared <Pill>
-  lib/ambient.ts              ← createBrowserAmbient (chrome.* adapters)
-  entrypoints/content.tsx     ← shadow DOM injection per page
-
-apps/desktop/                 ← Tauri shell
-  src/App.tsx                 ← mounts shared <Capsule> (cápsula window)
-  src/PillApp.tsx             ← custom desktop pill (intentionally divergent — see below)
-  src/ambient.ts              ← createDesktopAmbient (Tauri adapters)
-  src-tauri/                  ← Rust binary (see gauntlet-tauri-shell)
-
-control-center/               ← garage / operator console
-  pages/                      ← Overview, Settings, Models, Permissions, Memory, Ledger, Composer, Governance
-  components/atoms/           ← generic atoms (Pill.tsx here is a UI atom — NOT the cápsula Pill)
-  design/                     ← typed token graph
-  styles/tokens.css           ← canonical CSS tokens
-  i18n/copy.ts                ← PT/EN catalogue
-  spine/, hooks/, lib/, tools/, trust/, tweaks/
+packages/composer/
+  src/
+    Capsule.tsx                ← canonical 778 lines · CI gate
+    Pill.tsx                   ← shared Pill (browser only mounts this)
+    Onboarding.tsx             ← 3-step ritual on first run
+    
+    ShortcutBar.tsx            ← 8 tonal states · landed PR #367 (Aether v2)
+    ThemeToggle.tsx            ← light/dark · landed PR #367
+    
+    LeftPanel.tsx              ← context chips · provider · URL · selection
+    ActionsRow.tsx             ← ANEXAR · ECRÃ · VOZ · ENVIAR
+    SlashMenu.tsx              ← / commands list
+    SlashMenuRender.tsx        ← rendering layer
+    CommandPalette.tsx         ← ⌘K
+    
+    PlanRenderer.tsx           ← plan_ready + executing states
+    AnswerPanel.tsx            ← streaming + executed states
+    StreamingState.tsx         ← streaming caret + shimmer
+    EmptyState.tsx             ← idle state
+    ComputerUseGate.tsx        ← danger_gate UI
+    AttachmentChips.tsx        ← attachments rendering
+    SettingsDrawer.tsx         ← config panel
+    CompactContextSummary.tsx  ← cápsula header context
+    
+    ShellPanel.tsx             ← optional shell view (desktop only via slash)
+    
+    ambient.ts                 ← Ambient type · capability contract
+    composer-client.ts         ← talks to backend
+    dom-actions.ts             ← DOM action plumbing (browser)
+    capsule.css.ts             ← Aether v2 token registry
+    
+  + 24 .test.* files (test coverage of all components)
 ```
 
-**Disambiguation note**: `control-center/components/atoms/Pill.tsx` is a generic UI atom (badge / tag / status dot). It is **not** the cápsula's Pill component, which lives only at `packages/composer/src/Pill.tsx`. Don't classify the atom as a duplication violation.
+The Composer is a **single React tree**. Both shells (`apps/browser-extension/`, `apps/desktop/`) import this package and mount `<Capsule />` with a shell-specific `Ambient`. The `Ambient` injects transport, storage, selection, screenshot, domActions; the Capsule reads `ambient.capabilities.*` to decide what UI to render.
 
------
+---
 
-## The Capsule is shared. The Pill is intentionally divergent.
+## The 7-step phase loop (canonical product ritual)
 
-This is the most important nuance in the skill, because it gets misread easily.
-
-### Capsule — single source of truth, both shells
-
-Both shells mount the **same** `<Capsule>` from `@gauntlet/composer`:
-
-- Browser: `apps/browser-extension/components/App.tsx` imports `Capsule` and passes `createBrowserAmbient()`.
-- Desktop: `apps/desktop/src/App.tsx` imports `Capsule` and passes `createDesktopAmbient()`.
-
-Capsule duplication anywhere outside `packages/composer/src/` is a regression. Reject any change that re-implements the cápsula in a shell.
-
-### Pill — shared in browser, custom in desktop, by design
-
-The browser shell mounts the shared `<Pill>` from `@gauntlet/composer`, which owns:
-
-- Viewport-magnetism (drift toward cursor on hover proximity)
-- Drag-from-pill repositioning (saved per-domain in chrome.storage)
-- Per-domain dismiss (right-click → `chrome.storage` flag)
-- `mode: 'corner' | 'cursor'` (cursor mode hides the OS pointer and uses the pill as the visual cursor)
-- Phase mirror (listens to `gauntlet:phase` CustomEvent broadcast from Capsule)
-- Idle fade after 30s of no pointer movement
-
-The desktop shell does **not** use the shared `<Pill>`. It has its own `apps/desktop/src/PillApp.tsx`, with this comment in the file:
-
-> *"We intentionally do NOT reuse the shared `<Pill />` from `@gauntlet/composer` here: that component owns viewport-magnetism, drag, and per-domain dismiss, all of which are page-DOM concepts. On desktop the WINDOW is the pill; the OS handles drag (via `data-tauri-drag-region`) and there is no domain to dismiss against."*
-
-This divergence is correct. The desktop pill window (220×56 transparent always-on-top window, see `gauntlet-tauri-shell`) is itself the magnetic surface — the OS positions it, the OS handles drag, there is no per-domain concept. Re-binding to the shared `<Pill>` would force an abstraction that does not match the runtime.
-
-**Rule**: when adding behavior to the Pill, ask first *which abstraction owns it*:
-
-- Page-DOM behavior (selection awareness, host-page event listening, per-domain state) → shared `<Pill>` only. Desktop does not get it.
-- Resting-state visual identity (color, breath animation, halo, label) → shared identity, both pills should look the same. If the desktop pill's visual drifts from the browser pill's, that **is** regression. The container differs; the visual identity does not.
-- Window-level concern (resize, position, always-on-top, tray integration) → desktop only via Tauri commands. Browser does not get it.
-
-If a new behavior crosses categories, it probably needs to live in two places — once in the shared Pill for browser, once in PillApp.tsx for desktop, with the *visual* part extracted to a shared sub-component if possible.
-
------
-
-## Dual-shell parity (Capsule)
-
-The browser cápsula and the desktop cápsula are the **same product object** running in different environments. Visual or behavioral divergence in the **Capsule** between the two shells is a regression.
-
-Allowed differences are environmental only — surfaced via the capabilities matrix (also documented in `docs/canon/COMPOSER_SURFACE_SPEC.md`):
-
-|Capability       |Browser|Desktop|Why                         |
-|-----------------|-------|-------|----------------------------|
-|`domExecution`   |✅      |❌      |DOM only exists in pages    |
-|`screenshot`     |✅      |✅      |tab-capture · capture_screen|
-|`screenCapture`  |✅      |✅      |same shape `{base64, path}` |
-|`filesystemRead` |✅      |✅      |File API · Tauri filesystem |
-|`filesystemWrite`|❌      |✅      |desktop only (security)     |
-|`voice`          |✅      |✅      |Web Speech API              |
-|`remoteVoice`    |✅      |✅      |backend `/voice/transcribe` |
-|`streaming`      |✅      |✅      |SSE · ReadableStream        |
-|`shellExecute`   |❌      |✅      |desktop only · allowlist    |
-|`notifications`  |❌      |✅      |tauri-plugin-notification   |
-
-Where a capability is missing, the corresponding button **does not appear**. The action row stays visually identical (`ANEXAR · ECRÃ · VOZ · ENVIAR`); SHELL is reachable only via `/shell` slash command on desktop, never as a button.
-
-Tactical rule: if you are about to write `if (Platform.isDesktop)` inside a Capsule sub-component in `packages/composer/src/`, stop. That branch belongs in the shell's `ambient.ts` adapter, surfaced to the Composer as `ambient.capabilities.*`.
-
------
-
-## The Capsule Law
-
-`packages/composer/src/Capsule.tsx` has a **line-count budget that descends, never grows**. The current budget on main is `778 lines`, enforced by `.github/workflows/ci.yml` (job `frontend`, step `capsule size budget`). CI fails if the file grows past the budget.
-
-Before any PR that touches `Capsule.tsx`:
-
-1. Measure: `wc -l packages/composer/src/Capsule.tsx`.
-1. If your change grows it, first extract a sub-component or hook that compensates the gain — or justify in the PR body why extraction is impossible.
-1. If your change shrinks it, **lower `BUDGET` in `ci.yml`** to the new high-water-mark in the same PR. The ratchet is one-way down.
-
-Extraction patterns (already practiced in this repo):
-
-- Stateful sub-feature → its own component file (`SettingsDrawer.tsx`, `ComputerUseGate.tsx`).
-- Cross-cutting concern with no UI → a hook (`useVoiceCapture.ts`, `useStreamingPlan.ts`).
-- Pure formatter / parser → a utility (`markdown.tsx`, `dom-actions.ts`, `placement.ts`).
-- Ambient-shaped capability that differs per shell → goes through `ambient.capabilities.*`, never branched inside the Capsule.
-
-If you cannot place a new piece into one of those four shapes, the design is wrong — not the budget.
-
------
-
-## Canonical naming
-
-`GAUNTLET_*` is canonical. `SIGNAL_*` and `RUBERRA_*` are aliases — read as silent fallback for migration only, removed in v1.1.0. New code writes `GAUNTLET_*` always.
-
-|Surface         |Canonical                                                        |Legacy (read-only fallback)                                   |
-|----------------|-----------------------------------------------------------------|--------------------------------------------------------------|
-|Env vars        |`GAUNTLET_*`, `VITE_GAUNTLET_*`                                  |`SIGNAL_*`, `RUBERRA_*`, `VITE_BACKEND_URL`                   |
-|API routes      |`/api/gauntlet/*`                                                |`/api/signal/*`, `/api/ruberra/*`                             |
-|Storage keys    |`gauntlet:*`                                                     |`signal:*`, `ruberra:*`                                       |
-|CustomEvents    |`gauntlet:phase`, `gauntlet:pill-mode`, `gauntlet:execute-result`|(none — these are new)                                        |
-|CSS class prefix|`gauntlet-*` (in `capsule.css.ts`)                               |(the Aether export uses `gx-*`; do not migrate without an ADR)|
-|CSS token prefix|`--gx-*` (Aether)                                                |(this is the canonical token vocabulary)                      |
-
-When a write happens to a legacy storage key during migration, also delete the old key. Do not leave both. Reading both keeps backward compatibility; writing both creates split truth.
-
------
-
-## Design tokens
-
-The canonical token surface is:
-
-- `control-center/styles/tokens.css` — CSS custom properties, the runtime source of truth.
-- `control-center/design/` — typed token graph (TypeScript), the type-checked authority that components import.
-- `docs/DESIGN_TOKENS.md` — the canonical written reference. Read this before adding new tokens.
-- `docs/canon/COMPOSER_SURFACE_SPEC.md` — the visual spec; tokens listed there are the Aether canon.
-
-Rules:
-
-1. Every visual constant in a shared-composer component (color, spacing, radius, shadow, font size, z-index, motion duration) reads from a token. No hard-coded hex, no hard-coded `rem`, no hard-coded `cubic-bezier`.
-1. New tokens are added to the typed token graph first, then surfaced in `tokens.css`. Never the other way around.
-1. When you find a hard-coded value in a shared-composer component, the closure rule is: extract it to a token if used twice; document why if used once and unique.
-1. Token drift between shells (the same semantic role bound to different values in browser vs desktop) is forbidden. Run `design-system-ops` token-audit before declaring closure on any token-touching change.
-1. **Control Center pages have a softer rule** — they are the operator garage, density there is acceptable. Hard-coded `gap: 8` / `padding: 12` in a Control Center page is a LOW-severity cleanup item, not a doctrine violation. The shared composer is held to the strict rule.
-
------
-
-## Composer flow surfaces
-
-The Composer pipeline is canonical:
+The user-facing experience flows through these 7 steps. Each renders distinctly:
 
 ```
-context → intent → preview → apply
+1. point        user is on a page · cápsula is closed · Pill resting
+2. invoke       user clicks Pill / Ctrl+Shift+Space / Alt+Space / "/"
+3. open         cápsula appears (gx-rise spring, 360ms) · phase = idle
+4. ask          user types / selects slash command · ENTER
+5. plan         backend classifies intent · phase = planning → streaming OR plan_ready
+6. confirm      if sensitive: danger_gate · user confirms
+7. execute      side effects applied · phase = executing → executed
+                runs.json appended · cápsula collapses
 ```
 
-Each stage maps to one HTTP endpoint and to one visual state in the cápsula:
+Reject any state transition that skips a step (e.g. `idle → executing` directly).
 
-|Stage                                          |Endpoint                |Cápsula state                                   |
-|-----------------------------------------------|------------------------|------------------------------------------------|
-|1. Capture authorized context (selection + URL)|`POST /composer/context`|input becomes active, context chip appears      |
-|2. Classify + route to model                   |`POST /composer/intent` |model badge appears, route is committed         |
-|3. Generate artifact (no side effects)         |`POST /composer/preview`|preview renders inside the cápsula              |
-|4. Apply or reject + record run                |`POST /composer/apply`  |Copy / Apply succeeds, run is appended to ledger|
-
-Each cycle writes two lines to `runs.json`: one with `route="composer"` (envelope), one with `route="agent"` or `route="triad"` (internal call). They correlate via `composer:intent_id`.
-
-Preview / Result has four canonical layouts (per `docs/canon/COMPOSER_SURFACE_SPEC.md`):
-
-- **A. Resposta texto** — header `RESPOSTA · model · Nms`, content, `[Copy] [Save] [Guardar como…]`.
-- **B. Plano de DOM actions** — header `PLANO · N actions · model · Nms`, numbered steps, `[Executar] [Executar com cuidado]`. Sensitive steps tagged `[SENSÍVEL]`.
-- **C. Acção sensível (alarme)** — danger-tinted card, ⚠️ ACÇÕES SENSÍVEIS NO PLANO, list, checkbox "Confirmo, executar mesmo assim", `[Executar com cuidado]`.
-- **D. Resultado de execução** — header `RESULTADO · N ok · N falhou`, color-coded lines (✓ green / ✕ red / · gray for skipped).
-
-UI-side rules:
-
-- A preview with side effects is a contract violation. Stage 3 is read-only.
-- The cápsula must surface every stage transition visibly — no silent state changes.
-- Errors at any stage produce an explicit error state in the cápsula. Empty / loading / error states are product surface, not afterthought. See `docs/EMPTY_STATES.md` for canonical patterns.
-
------
-
-## Anti-slop discipline (Gauntlet-specific)
-
-Defer to `frontend-design` for the general anti-slop laws. On top of that, this product specifically rejects:
-
-- **Decorative motion in the cápsula.** Motion exists only when it carries information (state transition, focus shift, attention anchor). A spring on hover for vibe is regression. See `docs/MOTION.md` for the motion contract.
-- **Round-corner everything.** Radii follow the Aether scale (`xs 4 · sm 6 · md 10 · lg 14 · xl 20 · pill 999`). The cápsula uses `xl 20`; sub-surfaces step down. They do not all share the same value. See `docs/COMPONENT_HIERARCHY.md`.
-- **Toast pile-ups.** Notifications belong in the ledger / runs surface, not in floating stacks. The cápsula's job is to do the work, not to announce it.
-- **Settings sprawl in the Composer.** Toggles, knobs, model selectors, permission switches — those belong in the Control Center. The Composer hosts only the controls the user needs *during* the work.
-- **Banned voice words.** `npm run check:voice` is the gate. The voice contract is in `docs/VOICE.md`.
-- **Multiple brand colors.** One ember. Color in chrome is regression — color belongs in data.
-
------
+---
 
 ## Closure check
 
-A UI change is **not closed** until all of these are true. Verify each before saying `missão concluída`.
+Not closed until all true:
 
-1. **Builder landed.** `npm run typecheck`, `npm run build`, `npx tsc --noEmit` from `apps/desktop/` (the strict desktop typecheck), and the relevant shell's dev server start without error.
-1. **Verifier checked.** Run `web-interface-guidelines` review on the changed files. Surface any HIGH or CRITICAL findings to the user before claiming closure.
-1. **Capsule budget honored.** If `Capsule.tsx` was touched, `wc -l` shows it stayed at or below the current `BUDGET` in `ci.yml`. If it shrank, the PR also lowers `BUDGET` to match.
-1. **Dual-shell Capsule parity.** The change was tested or reasoned through in *both* shells. If only one was tested, say so explicitly.
-1. **Pill divergence respected.** If the change touches Pill behavior, you decided correctly: page-DOM behavior → shared `<Pill>` only; visual identity → both must match; window-level concern → desktop only.
-1. **Tokens, not constants** (in shared composer). No hard-coded visual values were introduced inside `packages/composer/src/`. Hex / rem / px / cubic-bezier values come from tokens.
-1. **Aether canon honored.** No new fonts (other than Fraunces / Inter / JetBrains Mono). No new brand colors (only ember + semantic ok/warn/err/info). Type sizes use the 6-step scale. Motion uses the named durations + easings.
-1. **Frontend gateway integrity.** No new direct provider imports in frontend. `grep -rE "@anthropic-ai/sdk|@google/generative-ai|groq-sdk|openai" packages/ apps/ control-center/` returns nothing new.
-1. **Voice ban-list.** `npm run check:voice` passes. No banned word reintroduced anywhere — code, copy, comments, error messages.
-1. **Canonical labels.** New user-facing strings use the canonical label set. No "Submit", "Run", "Magic", "Assistant", "Preview" reintroduced.
-1. **Phase grammar.** New cápsula behaviors surface a visible state for every transition. No silent state change.
-1. **Co-located tests updated.** If a behavior changed, the matching `*.test.ts` / `*.test.tsx` reflects it.
-1. **Legacy surface untouched.** No new code wrote to `signal:*`, `ruberra:*`, `SIGNAL_*`, `RUBERRA_*`, or `/api/signal/*`, `/api/ruberra/*`.
-1. **Owned residue closed.** No `// TODO`, `// FIXME`, or commented-out experimental code left behind in changed files.
+1. **Builder landed** — change compiles; `npm run dev` shows correct rendering
+2. **Capsule.tsx within budget** — `wc -l < packages/composer/src/Capsule.tsx ≤ 778`
+3. **Voice check passes** — `npm run check:voice` exits 0
+4. **Aether tokens compliance** — no hard-coded hex, no raw pixel values bypassing `capsule.css.ts`
+5. **Phase state respected** — new UI maps to one of 11 canonical states; new state requires ADR amendment
+6. **Tests landed** — `.test.tsx` covering new component; existing `.test.*` files updated if affected
+7. **Dual-shell parity** — change visible in both browser and desktop, OR explicitly gated by `ambient.capabilities.X`
+8. **Aria-live + kbd** — new interactive element has keyboard path + aria-live where async
+9. **No motion-reduction violation** — `@media (prefers-reduced-motion: reduce)` collapses animations
+10. **No Tauri/extension API leak** — `grep -rE "@tauri-apps|chrome\\." packages/composer/src/` returns nothing new
+11. **Owned residue closed** — no `// TODO`, no `console.log`
 
-If any check fails or was not run, the correct response is `não tenho evidência suficiente` — not `missão concluída`. False closure is a real failure under the Ruberra truth law.
+If any fails: `não tenho evidência suficiente`.
 
------
+---
 
 ## Anti-patterns (reject on sight)
 
-|Anti-pattern                                                                                    |Why it's wrong                                |Correct shape                                                               |
-|------------------------------------------------------------------------------------------------|----------------------------------------------|----------------------------------------------------------------------------|
-|New feature implemented inline in `Capsule.tsx`                                                 |Violates Capsule Law; god-component           |Sub-component or hook in `packages/composer/src/`                           |
-|`if (Platform.isDesktop)` inside the shared Composer                                            |Breaks dual-shell parity; leaks shell concerns|Capability surfaced via `ambient.capabilities.*`                            |
-|Re-implemented `Capsule` in `apps/desktop/src/`                                                 |Breaks single-source-of-truth                 |Mount the shared `<Capsule>` via the shell's Ambient                        |
-|Re-implemented `<Pill>` in browser shell                                                        |Breaks single-source-of-truth                 |Mount the shared `<Pill>` from `@gauntlet/composer`                         |
-|`import Pill from '@gauntlet/composer'` in `apps/desktop/src/PillApp.tsx`                       |Forces page-DOM abstraction onto an OS window |Keep the custom `PillApp.tsx`; this divergence is intentional and documented|
-|Desktop pill visual drifts from browser pill (different color, different size, different breath)|Visual identity must match across shells      |Identity is shared (cream + ember + breath); only behavior diverges         |
-|`import { Anthropic }` in any frontend file                                                     |Frontend gateway integrity broken             |Use `composer-client.ts`; backend handles providers                         |
-|`style={{ color: "#7c3aed" }}` in a shared-composer component                                   |Breaks tokens; introduces non-Aether color    |Token reference (`var(--gx-ember)` or equivalent)                           |
-|Settings toggle added to the Capsule                                                            |Composer surface bloat                        |Add to Control Center page; expose state via shared store                   |
-|Toast notifying every run                                                                       |Composer is for doing, not announcing         |Append to `runs.json`; surface in Memory chamber                            |
-|Hover spring "for polish"                                                                       |Decorative motion, not informational          |Remove. Motion only on state change.                                        |
-|Writing to both `signal:*` and `gauntlet:*` on save                                             |Creates split truth                           |Read both for migration; write only `gauntlet:*`                            |
-|Banned voice words re-introduced                                                                |Voice contract broken                         |`npm run check:voice` is the gate; rewrite per `docs/VOICE.md`              |
-|New typeface added (Roboto, Space Grotesk, Lora, etc.)                                          |Aether canon broken                           |Use Fraunces / Inter / JetBrains Mono only                                  |
-|Second brand color introduced                                                                   |Aether canon broken                           |One ember. Use semantic ok/warn/err/info for state                          |
-|Hard-coded `font-size: 14px` in a Capsule sub-component                                         |Bypasses the 6-step type scale                |Use one of `--gx-t-{micro,meta,body,prom,title,display}`                    |
-|Custom motion duration (e.g. `transition: 250ms`)                                               |Bypasses the 3-step motion grammar            |Use `var(--gx-dur-{fast,normal,slow})`                                      |
-|Silent phase transition in the cápsula                                                          |Phase grammar violated                        |Every state change has a visible representation                             |
+| Anti-pattern | Correct shape |
+|---|---|
+| Hex value in component (e.g. `color: #d07a5a`) | `var(--gx-ember)` from `capsule.css.ts` |
+| `font-family: "Inter"` hardcoded | `var(--gx-font-sans)` token |
+| New "magic" state name like `awaiting_user` | Map to canonical 11 states or amend ADR-0005 |
+| Skip danger_gate when sensitive: true | All sensitive plans pass through `<ComputerUseGate>` |
+| Button "Submit" / "Send" / "Compor" | "Enviar" (canonical) |
+| New component bloats Capsule.tsx past 778 | Extract sub-component first |
+| `if (Platform.isDesktop)` inside Composer | Use `ambient.capabilities.X` |
+| Re-implement `<Pill>` in `apps/desktop/src/PillApp.tsx` mounting shared | ADR-0004: keep PillApp custom (intentional divergence) |
+| Use shared `<Pill>` in desktop App.tsx | Same: PillApp is custom; only Capsule is shared |
+| Pixel values bypass scale | Use `--gx-t-{micro,meta,body,prom,title,display}` |
+| New keyframe in component file | Add to canonical set in `capsule.css.ts`; rename if collision |
+| Aria-live region missing on streaming output | Add `aria-live="polite"` with proper `aria-atomic` |
+| `console.log` left in shipping code | Strip; use `observability.py` boundary on backend |
+| Sub-component without `.test.*` | Tests land in same PR (24 .test.* coverage shows pattern) |
+| Hardcoded label not in voice canonical list | Add to ADR-0005 voice section or use existing |
 
------
+---
 
-## Example invocations (how a user might trigger this skill)
+## Example invocations
 
-These should reliably load this skill:
+- "Add a 'Save as draft' button to ActionsRow" → no, see ADR-0005 voice (only canonical 4 actions)
+- "The streaming caret doesn't blink on Firefox" → debug `gx-caret` keyframe; check vendor prefix
+- "Make the cápsula 20px larger" → check `clamp()` in `capsule.css.ts`; container scale, not content
+- "Add a third color for 'info' states" → ADR-0005 forbids; semantic state colors (ok/warn/err/info) are bounded
+- "Why does desktop pill look different from browser pill?" → ADR-0004 + visual identity is shared
+- "Capsule.tsx is at 780 lines, refactor" → extract a sub-component; budget = 778 is hard CI gate
+- "Add new slash command /benchmark" → update SlashMenu, SlashMenuRender, add label to ADR-0005 canonical list
+- "Voice says 'Submit' on action button" → ban-list violation; use 'Enviar'
+- "Theme toggle is missing on browser extension" → both shells must show ThemeToggle (parity 1:1)
 
-- "Add a model selector dropdown to the Composer."
-- "The cápsula looks different on Tauri than on the browser extension — fix it."
-- "Refactor `Capsule.tsx` — it's getting close to budget."
-- "Wire a new sub-feature: a /commands palette inside the Composer."
-- "Audit my tokens.css for drift."
-- "Add a Permissions page to the Control Center."
-- "Polish the Memory ledger view."
-- "Build the empty state for the runs list."
-- "Why is the desktop pill different from the browser pill?"
-- "Match the cápsula to the Aether v1 spec."
-- "Add a new motion duration for a hover effect."
-
-For any of these, the skill's job is to: (a) place the work in the right file, (b) keep dual-shell Capsule parity, (c) honor the documented Pill divergence, (d) honor the Aether canon (cream + ember + 3 fonts + 6 sizes + 3 motion durations), (e) honor the Capsule budget, (f) defer taste to `frontend-design`, (g) verify against `web-interface-guidelines` before closure.
-
------
+---
 
 ## Reference
 
-- Project doutrina: `/CLAUDE.md` at repo root.
-- **Visual canon (authoritative)**: `/docs/canon/COMPOSER_SURFACE_SPEC.md`.
-- Public README: `/README.md` at repo root.
-- Operations: `/docs/OPERATIONS.md`.
-- Composer V0 reference: `/docs/COMPOSER_V0.md`.
-- Component hierarchy: `/docs/COMPONENT_HIERARCHY.md`.
-- Design tokens: `/docs/DESIGN_TOKENS.md`.
-- Empty states: `/docs/EMPTY_STATES.md`.
-- Motion contract: `/docs/MOTION.md`.
-- Voice contract: `/docs/VOICE.md`.
-- Information architecture: `/docs/INFORMATION_ARCHITECTURE.md`.
-- Keyboard contract: `/docs/KEYBOARD.md`.
-- Responsive: `/docs/RESPONSIVE.md`.
-- A11Y audit: `/docs/A11Y_AUDIT.md`.
-- Composer source: `packages/composer/src/`.
-- CI budget gate + voice lint: `.github/workflows/ci.yml`.
+- ADR-0001 — three pillars (Composer is the product)
+- ADR-0004 — Capsule shared / Pill divergent
+- ADR-0005 — Aether v2 visual canon (authoritative)
+- ADR-0006 — deprecation status
+- `/CLAUDE.md` — universal doctrine
+- `/docs/canon/COMPOSER_SURFACE_SPEC.md` — visual spec (329 linhas, authoritative)
+- `/docs/design-system/AETHER.md` — operational reference (363 linhas, status: operational)
+- `/docs/MOTION.md`, `/docs/RESPONSIVE.md`, `/docs/KEYBOARD.md`, `/docs/A11Y_AUDIT.md`, `/docs/VOICE.md`, `/docs/EMPTY_STATES.md`
+- `packages/composer/src/capsule.css.ts` — token registry
+- `packages/composer/src/Capsule.tsx` — canonical 778 LOC
+- `scripts/check-voice.mjs` — ban-list lint
+- `.github/workflows/ci.yml` — BUDGET=778 + voice gate
+- Companion skills: `gauntlet-backend-spine`, `gauntlet-tauri-shell`, `gauntlet-release-discipline`
 
-If something in this skill conflicts with `/CLAUDE.md` or any of the canonical `docs/` references, those win — they are closer to the canonical doutrina. Surface the conflict to the user so the skill can be updated.
+When skill conflicts with `/CLAUDE.md`, ADRs, or actual code on main: **code wins**.
+
+## Changelog
+
+- **v1.0** (PR #369) — initial pack, referenced Aether v1
+- **v1.1** (this pack v1) — added 11-state phase grammar explicit, ShortcutBar canonical
+- **v1.2** (this pack v2) — Aether v1 → v2 references; AETHER.md operational reference added; PRs #367 #368 cited as canonical landing

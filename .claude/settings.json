@@ -1,5 +1,154 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "_comment_about_this_file": [
+    "MERGED settings.json — preserves the existing memory-log hooks that were",
+    "already in main (SessionStart + PostToolUse via jq) and ADDS permissions",
+    "allowlist/denylist + env vars for the agentic spine v2.",
+    "",
+    "If your .claude/settings.json on main differs from this, MERGE the keys",
+    "manually — do NOT overwrite. Specifically: keep your existing hooks.",
+    "",
+    "The hooks below replicate what was found on main (commit 7ea3b20)."
+  ],
+
+  "permissions": {
+    "allow": [
+      "Read(./**)",
+
+      "Bash(npm test:*)",
+      "Bash(npm run check:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run format:*)",
+      "Bash(npm install)",
+      "Bash(npm ci)",
+
+      "Bash(pnpm test:*)",
+      "Bash(pnpm run check:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm install)",
+
+      "Bash(pytest:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python -m mypy:*)",
+      "Bash(python -m ruff:*)",
+      "Bash(uv run:*)",
+      "Bash(uv sync)",
+
+      "Bash(cargo test:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo run:*)",
+
+      "Bash(playwright test:*)",
+      "Bash(npx playwright:*)",
+      "Bash(vitest:*)",
+      "Bash(npx vitest:*)",
+
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git remote:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git fetch)",
+      "Bash(git pull)",
+
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr status)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh release list)",
+      "Bash(gh release view:*)",
+
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(awk:*)",
+      "Bash(sed:*)",
+      "Bash(tree:*)",
+      "Bash(du:*)",
+      "Bash(stat:*)",
+
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(touch:*)",
+      "Bash(chmod +x:*)",
+
+      "Bash(jq:*)",
+      "Bash(echo:*)",
+      "Bash(printf:*)",
+      "Bash(date:*)",
+      "Bash(test:*)"
+    ],
+
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(rm -fr:*)",
+      "Bash(rm -r /:*)",
+      "Bash(sudo:*)",
+      "Bash(:(){:|:&};:)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(fdisk:*)",
+      "Bash(:>:*)",
+
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push origin :*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git clean -fdx:*)",
+
+      "Bash(npm publish:*)",
+      "Bash(pnpm publish:*)",
+      "Bash(yarn publish:*)",
+      "Bash(cargo publish:*)",
+      "Bash(twine upload:*)",
+
+      "Bash(gh repo delete:*)",
+      "Bash(gh release delete:*)",
+
+      "Bash(curl:*|sh:*)",
+      "Bash(curl:*|bash:*)",
+      "Bash(wget:*|sh:*)",
+      "Bash(wget:*|bash:*)",
+
+      "Bash(chmod 777:*)",
+      "Bash(chown:*)",
+
+      "Bash(docker system prune:*)",
+      "Bash(docker rm -f:*)"
+    ]
+  },
+
+  "env": {
+    "GAUNTLET_MOCK": "0",
+    "GAUNTLET_TELEMETRY_DISABLED": "0",
+    "TAURI_DEV_HOST": "localhost",
+    "RAILWAY_DEPLOY_BLOCKED": "false"
+  },
+
   "hooks": {
     "SessionStart": [
       {
@@ -18,6 +167,26 @@
           {
             "type": "command",
             "command": "mkdir -p .claude && jq -r --arg ts \"$(date -Iseconds)\" '\"[\\($ts)] \\(.tool_name): \\(.tool_input | tostring | .[0:200])\"' >> .claude/memory.log 2>/dev/null || true"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-edit.sh 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pre-tool-use.sh 2>/dev/null || true"
           }
         ]
       }
