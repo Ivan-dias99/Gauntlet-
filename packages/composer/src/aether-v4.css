@@ -1,0 +1,334 @@
+/*
+ * Aether v4 — Gauntlet canon design system
+ * ─────────────────────────────────────────
+ * Canonical path in repo: packages/composer/src/aether-v4.css
+ * Spec:                   docs/canon/AETHER_V4.md
+ *
+ * Lineage:
+ *   - Phase grammar + motion: Aether v2 spec (preserved verbatim)
+ *   - Palette + typography:   Gauntlet v3 mockup theme.css
+ *   - Terracotta callback:    v1 ember soul, preserved as --gx-accent-warm only
+ *
+ * This file is Phase A of the v4 migration (token plumbing, no visual change).
+ * It must be imported FIRST in capsule.css.ts so v1 styles still win until
+ * Phase B rewrites capsule.css.ts to consume these tokens.
+ *
+ * Never inline hex / duration / easing in a component. Always reference --gx-*.
+ */
+
+:root {
+  /* ─── 4.1 Surface ──────────────────────────────────────────────────── */
+  --gx-bg:           #f6f4ef;
+  --gx-bg-sunken:    #efece4;
+  --gx-bg-surface:   #fbfaf6;
+  --gx-bg-elevated:  #fefdfa;
+  --gx-bg-input:     #f6f4ef;
+  --gx-bg-terminal:  #14130f;
+
+  /* ─── 4.2 Ink ──────────────────────────────────────────────────────── */
+  --gx-text:        #1c1a16;
+  --gx-text-2:      #2a261f;
+  --gx-text-muted:  #6b6358;
+  --gx-text-ghost:  #9b9285;
+
+  /* ─── 4.3 Border ───────────────────────────────────────────────────── */
+  --gx-border-soft:    rgba(28, 26, 22, 0.06);
+  --gx-border-mid:     rgba(28, 26, 22, 0.10);
+  --gx-border-strong:  rgba(28, 26, 22, 0.18);
+  --gx-border-focus:   #0EA5C7;
+
+  /* ─── 4.4 Accent system (multi-slot, semantic) ─────────────────────── */
+  --gx-accent:        #0EA5C7;   /* cyan · brand primary · focus · links */
+  --gx-accent-hover:  #0c93b3;
+  --gx-accent-glow:   color-mix(in srgb, #0EA5C7 32%, transparent);
+
+  --gx-accent-ok:     #5d8c5a;   /* moss · success states */
+  --gx-accent-warn:   #c98c42;   /* amber · caution */
+  --gx-accent-danger: #b85a5a;   /* red · error + danger_gate */
+  --gx-accent-warm:   #c96442;   /* terracotta · success warmth (v1 ember soul) */
+  --gx-accent-mark:   #b85a9b;   /* magenta · phase highlights · attention */
+
+  /* ─── 4.6 Radii ────────────────────────────────────────────────────── */
+  --gx-radius-sm:   6px;
+  --gx-radius:      10px;
+  --gx-radius-lg:   16px;
+  --gx-radius-pill: 999px;
+
+  /* ─── 4.7 Spacing (8px base grid) ──────────────────────────────────── */
+  --gx-space-1:  4px;
+  --gx-space-2:  8px;
+  --gx-space-3:  12px;
+  --gx-space-4:  16px;
+  --gx-space-5:  20px;
+  --gx-space-6:  24px;
+  --gx-space-7:  32px;
+  --gx-space-8:  40px;
+  --gx-space-9:  48px;
+  --gx-space-10: 64px;
+  --gx-space-11: 80px;
+  --gx-space-12: 96px;
+
+  /* ─── 4.8 Shadow ───────────────────────────────────────────────────── */
+  --gx-shadow-pill: 0 1px 2px rgba(28, 26, 22, 0.08), 0 4px 14px rgba(28, 26, 22, 0.10);
+  --gx-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 1px 2px rgba(28, 26, 22, 0.04), 0 8px 30px rgba(28, 26, 22, 0.06);
+  --gx-shadow-pop:  0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 12px 40px rgba(28, 26, 22, 0.16);
+  --gx-shadow-key:  0 1px 0 rgba(28, 26, 22, 0.18), 0 0 0 1px rgba(28, 26, 22, 0.10) inset;
+
+  /* ─── 5 Typography stacks ──────────────────────────────────────────── */
+  --gx-font-serif: "Newsreader", "Source Serif Pro", Georgia, serif;
+  --gx-font-sans:  "Inter Tight", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --gx-font-mono:  "JetBrains Mono", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  /* ─── 5.3 Type scale ───────────────────────────────────────────────── */
+  --gx-text-display-size: 36px;
+  --gx-text-display-lh:   1.05;
+  --gx-text-h1-size:      26px;
+  --gx-text-h1-lh:        1.1;
+  --gx-text-h2-size:      22px;
+  --gx-text-h2-lh:        1.2;
+  --gx-text-h3-size:      18px;
+  --gx-text-h3-lh:        1.3;
+  --gx-text-h4-size:      16px;
+  --gx-text-h4-lh:        1.4;
+  --gx-text-body-size:    14px;
+  --gx-text-body-lh:      1.5;
+  --gx-text-meta-size:    11px;
+  --gx-text-meta-lh:      1.4;
+  --gx-text-code-size:    12px;
+  --gx-text-code-lh:      1.4;
+
+  /* ─── 7 Motion ─────────────────────────────────────────────────────── */
+  --gx-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --gx-ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --gx-ease-linear: linear;
+
+  --gx-dur-fast:    120ms;
+  --gx-dur-base:    240ms;
+  --gx-dur-rise:    360ms;
+  --gx-dur-shimmer: 1400ms;
+  --gx-dur-pulse:   2400ms;
+  --gx-dur-pulse-slow: 4000ms;
+}
+
+/* ─── 4.5 Graphite (dark) variant ────────────────────────────────────── */
+[data-gx-theme="graphite"] {
+  --gx-bg:           #14130f;
+  --gx-bg-sunken:    #1a1813;
+  --gx-bg-surface:   #1d1b15;
+  --gx-bg-elevated:  #232017;
+  --gx-bg-input:     #14130f;
+
+  --gx-text:         #efece4;
+  --gx-text-2:       #d8d3c6;
+  --gx-text-muted:   #8f877a;
+  --gx-text-ghost:   #5e574c;
+
+  --gx-border-soft:   rgba(239, 236, 228, 0.05);
+  --gx-border-mid:    rgba(239, 236, 228, 0.10);
+  --gx-border-strong: rgba(239, 236, 228, 0.20);
+
+  --gx-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 30px rgba(0, 0, 0, 0.45);
+  --gx-shadow-pop:  0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* ─── 5.1 Type primitives ────────────────────────────────────────────── */
+
+.gx-display {
+  font-family: var(--gx-font-serif);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: var(--gx-text-display-lh);
+  font-size: var(--gx-text-display-size);
+}
+
+.gx-display-it {
+  font-family: var(--gx-font-serif);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.gx-h1 { font-family: var(--gx-font-serif); font-size: var(--gx-text-h1-size); line-height: var(--gx-text-h1-lh); font-weight: 500; }
+.gx-h2 { font-family: var(--gx-font-sans);  font-size: var(--gx-text-h2-size); line-height: var(--gx-text-h2-lh); font-weight: 600; }
+.gx-h3 { font-family: var(--gx-font-sans);  font-size: var(--gx-text-h3-size); line-height: var(--gx-text-h3-lh); font-weight: 600; }
+.gx-h4 { font-family: var(--gx-font-sans);  font-size: var(--gx-text-h4-size); line-height: var(--gx-text-h4-lh); font-weight: 500; }
+
+.gx-body { font-family: var(--gx-font-sans); font-size: var(--gx-text-body-size); line-height: var(--gx-text-body-lh); font-weight: 400; }
+.gx-meta { font-family: var(--gx-font-mono); font-size: var(--gx-text-meta-size); line-height: var(--gx-text-meta-lh); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.gx-mono { font-family: var(--gx-font-mono); font-size: var(--gx-text-code-size); line-height: var(--gx-text-code-lh); font-weight: 400; }
+
+/* ─── 6 Phase grammar — base classes (visual treatment only) ─────────── */
+
+/* Pill states */
+.gx-state-pill-idle {
+  background: var(--gx-bg-surface);
+  border: 1px solid var(--gx-border-mid);
+  box-shadow: var(--gx-shadow-pill);
+  animation: gauntlet-cap-pulse var(--gx-dur-pulse) var(--gx-ease-out) infinite;
+}
+
+.gx-state-pill-active {
+  background: var(--gx-bg-surface);
+  border-color: var(--gx-accent-hover);
+  animation: gauntlet-cap-chip-pop var(--gx-dur-fast) var(--gx-ease-spring);
+}
+
+.gx-state-pill-offline {
+  opacity: 0.55;
+  color: var(--gx-text-ghost);
+  animation: gauntlet-cap-pulse var(--gx-dur-pulse-slow) var(--gx-ease-linear) infinite;
+}
+
+/* Capsule states */
+.gx-state-idle {
+  background: var(--gx-bg-surface);
+  border: 1px solid var(--gx-border-mid);
+  box-shadow: var(--gx-shadow-card);
+  animation: gauntlet-cap-rise var(--gx-dur-base) var(--gx-ease-spring);
+}
+
+.gx-state-planning {
+  border-color: var(--gx-accent);
+  box-shadow: var(--gx-shadow-card), 0 0 0 4px var(--gx-accent-glow);
+}
+
+.gx-state-planning::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--gx-radius-pill);
+  background: var(--gx-accent);
+  animation: gauntlet-cap-phase-heartbeat 1400ms var(--gx-ease-out) infinite;
+}
+
+.gx-state-streaming {
+  background: linear-gradient(
+    90deg,
+    var(--gx-bg-sunken) 0%,
+    var(--gx-bg-surface) 50%,
+    var(--gx-bg-sunken) 100%
+  );
+  background-size: 200% 100%;
+  animation: gauntlet-cap-shimmer var(--gx-dur-shimmer) var(--gx-ease-linear) infinite;
+}
+
+.gx-state-plan-ready {
+  border-color: var(--gx-accent);
+}
+
+.gx-state-plan-ready > * {
+  animation: gauntlet-cap-stagger-in var(--gx-dur-base) var(--gx-ease-spring) backwards;
+}
+
+.gx-state-plan-ready > *:nth-child(1) { animation-delay: 0ms; }
+.gx-state-plan-ready > *:nth-child(2) { animation-delay: 60ms; }
+.gx-state-plan-ready > *:nth-child(3) { animation-delay: 120ms; }
+.gx-state-plan-ready > *:nth-child(4) { animation-delay: 180ms; }
+.gx-state-plan-ready > *:nth-child(5) { animation-delay: 240ms; }
+
+.gx-state-danger {
+  background: color-mix(in srgb, var(--gx-accent-danger) 6%, var(--gx-bg-surface));
+  border-color: var(--gx-accent-danger);
+  animation: gauntlet-cap-phase-morph var(--gx-dur-rise) var(--gx-ease-out);
+}
+
+.gx-state-executing {
+  border-color: var(--gx-accent-hover);
+}
+
+.gx-state-executing .gx-progress {
+  background: linear-gradient(
+    90deg,
+    var(--gx-accent-hover) 0%,
+    var(--gx-accent) 50%,
+    var(--gx-accent-hover) 100%
+  );
+  background-size: 200% 100%;
+  animation: gauntlet-cap-progress-walk var(--gx-dur-shimmer) var(--gx-ease-linear) infinite;
+}
+
+/* v4 nuance — executed is editorial-warm, not compiler-loud */
+.gx-state-executed {
+  border-color: var(--gx-accent-warm);
+  animation: gauntlet-cap-flash-rise var(--gx-dur-rise) var(--gx-ease-spring);
+}
+
+.gx-state-executed .gx-badge {
+  color: var(--gx-accent-warm);
+}
+
+.gx-state-error {
+  border-color: var(--gx-accent-danger);
+  background: color-mix(in srgb, var(--gx-accent-danger) 4%, var(--gx-bg-surface));
+  animation: none;
+  transition: opacity 200ms var(--gx-ease-out);
+}
+
+/* ─── 7 Keyframes ────────────────────────────────────────────────────── */
+
+@keyframes gauntlet-cap-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.10); }
+}
+
+@keyframes gauntlet-cap-chip-pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+@keyframes gauntlet-cap-rise {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.97); filter: blur(2px); }
+  60%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@keyframes gauntlet-cap-phase-heartbeat {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.35); opacity: 0.6; }
+}
+
+@keyframes gauntlet-cap-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes gauntlet-cap-stagger-in {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gauntlet-cap-phase-morph {
+  0%   { transform: scale(1);    filter: hue-rotate(0deg); }
+  40%  { transform: scale(1.02); }
+  100% { transform: scale(1);    filter: hue-rotate(0deg); }
+}
+
+@keyframes gauntlet-cap-progress-walk {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes gauntlet-cap-flash-rise {
+  0%   { opacity: 0.6; transform: translateY(4px) scale(0.98); }
+  60%  { opacity: 1;   transform: translateY(0) scale(1.02); }
+  100% { opacity: 1;   transform: translateY(0) scale(1); }
+}
+
+/* ─── Reduced-motion collapse (per §7) ───────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .gx-state-pill-idle,
+  .gx-state-pill-active,
+  .gx-state-pill-offline,
+  .gx-state-idle,
+  .gx-state-planning::before,
+  .gx-state-streaming,
+  .gx-state-plan-ready > *,
+  .gx-state-danger,
+  .gx-state-executing .gx-progress,
+  .gx-state-executed,
+  .gx-state-error {
+    animation: none !important;
+    transition: opacity 80ms var(--gx-ease-out) !important;
+  }
+}
