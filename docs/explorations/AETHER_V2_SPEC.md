@@ -1,3 +1,32 @@
+> # ARCHIVED · ANCESTOR · NOT CANON
+>
+> This document is the **Aether v2 spec**, archived. It is preserved as the direct ancestor of Aether v4 — it is the source of v4's phase grammar, motion choreography, and token discipline.
+>
+> **Active canon:** `/docs/canon/AETHER_V4.md`
+> **Active CSS tokens:** `/packages/composer/src/aether-v4.css`
+>
+> Do not migrate code from this document. Everything in it that survived into canon is reflected in `AETHER_V4.md` §1 (Lineage). Everything not reflected there was deliberately killed during the v4 synthesis — see §1.2 of v4 for the kill-list and reasons.
+>
+> Reasons to consult this archive:
+>
+> - **Understanding why a phase exists.** v2 defined the original 8-state grammar; v4 inherits it verbatim. The reasoning for `danger_gate` as a separate state from `error` is here.
+> - **Understanding why we have a motion vocabulary instead of ad-hoc `transition` calls.** v2 §5.10 is the original argument for nominated keyframes; v4 inherits the rule and its keyframe set.
+> - **Reading the original v1 → v2 migration table.** v4's §8 (Migration from v1 shipped) follows the same pattern; cross-reference here for the v2-era rationale.
+>
+> Reasons **not** to consult this archive:
+>
+> - **Picking colors, accents, or fonts.** v2's palette (slate + Terminal Green) was rejected during the v4 synthesis. Use `AETHER_V4.md` §4 instead.
+> - **Defining new visual states.** New phases pass through Ivan as Sovereign Architect via PR against `AETHER_V4.md`. This archive is read-only.
+> - **Implementing components.** This document predates the v3 mockup; it does not reflect the typography or accent system v4 actually uses.
+>
+> Archived: 2026-05-13
+> Archived by: Claude Code session (branch `claude/archive-aether-v2-spec-0U4W0`)
+> Move command applied: `git mv docs/design-system/AETHER.md docs/explorations/AETHER_V2_SPEC.md`
+>
+> ---
+
+[Original AETHER.md content begins below]
+
 # Aether — Gauntlet Composer Design System
 
 **Status:** operational. Wave 1 + Wave 2 + Aether v2 port shipped on
