@@ -80,6 +80,32 @@ CATALOGUE: dict[str, ModelChoice] = {
         cost_per_1m_output_usd=75.0,
         notes="Heaviest model. Reserved for complex distillation if budget allows.",
     ),
+    # Groq free-tier roster. Listed for /gateway/summary visibility and
+    # operator selection via GAUNTLET_GROQ_MODEL. Not referenced by ROUTING
+    # — engine still routes by Anthropic-shaped role ids; the Groq adapter
+    # translates at call-time. Costs intentionally 0: the record() path
+    # already zeros non-anthropic providers, so the summary stays honest.
+    "llama-3.3-70b-versatile": ModelChoice(
+        model_id="llama-3.3-70b-versatile",
+        provider="groq",
+        notes="Meta Llama 3.3 70B. Default Groq model.",
+    ),
+    "openai/gpt-oss-120b": ModelChoice(
+        model_id="openai/gpt-oss-120b",
+        provider="groq",
+        notes="OpenAI open-weights 120B, hosted by Groq.",
+    ),
+    "qwen/qwen3-32b": ModelChoice(
+        model_id="qwen/qwen3-32b",
+        provider="groq",
+        notes="Alibaba Qwen 3 32B.",
+    ),
+    "meta-llama/llama-4-scout-17b-16e-instruct": ModelChoice(
+        model_id="meta-llama/llama-4-scout-17b-16e-instruct",
+        provider="groq",
+        notes="Meta Llama 4 Scout 17B — VISION-CAPABLE. Required for "
+              "screenshot-aware computer_use planning on the Groq path.",
+    ),
 }
 
 

@@ -96,3 +96,56 @@ async def gateway_summary():
     audit routing + cost without scraping the run log."""
     from model_gateway import gateway as _gateway
     return _gateway.summary()
+
+
+@router.get("/gateway/catalogue")
+async def gateway_catalogue():
+    """Read-only snapshot of every model the gateway knows about, with
+    provider attribution, cost hints, and a boolean `available` that
+    reflects whether the corresponding provider key is set on this
+    process. Consumed by the cápsula's ModelSelector — the user picks
+    among models that will actually run, not against the full superset.
+
+    Active provider gating mirrors engine.py's precedence
+    (MOCK > Groq > Anthropic > Gemini). Missing api keys → available=false
+    so the selector can render the model greyed/disabled instead of
+    silently routing to a dead provider."""
+    from config import (
+        ANTHROPIC_API_KEY, GAUNTLET_MOCK, GEMINI_API_KEY, GROQ_API_KEY,
+    )
+    from model_gateway import CATALOGUE as _CATALOGUE
+
+    if GAUNTLET_MOCK:
+        active_provider = "mock"
+    elif GROQ_API_KEY:
+        active_provider = "groq"
+    elif ANTHROPIC_API_KEY:
+        active_provider = "anthropic"
+    elif GEMINI_API_KEY:
+        active_provider = "gemini"
+    else:
+        active_provider = "none"
+
+    def _available(provider: str) -> bool:
+        if GAUNTLET_MOCK:
+            return True
+        if provider == "anthropic":
+            return bool(ANTHROPIC_API_KEY)
+        if provider == "groq":
+            return bool(GROQ_API_KEY)
+        if provider == "gemini":
+            return bool(GEMINI_API_KEY)
+        return False
+
+    models = [
+        {
+            "model_id": choice.model_id,
+            "provider": choice.provider,
+            "cost_per_1m_input_usd": choice.cost_per_1m_input_usd,
+            "cost_per_1m_output_usd": choice.cost_per_1m_output_usd,
+            "notes": choice.notes,
+            "available": _available(choice.provider),
+        }
+        for choice in _CATALOGUE.values()
+    ]
+    return {"active_provider": active_provider, "models": models}

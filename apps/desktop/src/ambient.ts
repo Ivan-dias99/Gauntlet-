@@ -19,7 +19,6 @@ import {
 import {
   captureContextSnapshot,
   captureScreenFull,
-  captureScreenRegion,
   cuMouseClick,
   cuMouseMove,
   cuPress,
@@ -294,14 +293,22 @@ export function createDesktopAmbient(): Ambient {
     },
     screenshot: {
       async capture(): Promise<string | null> {
-        // capture_screen_region is interactive (operator drag-selects).
-        // Browser-equivalent of "the viewport screenshot" — kept as a
-        // path-only reply for backward compat with the existing capsule
-        // flow; A1's full-screen path lives in captureScreen() below.
-        const path = await captureScreenRegion();
-        return path ? `file://${path}` : null;
+        // Auto-capture for context (cápsula open, planning). On desktop
+        // "the viewport" = the full screen — the model needs this to
+        // reason about computer_use coordinates and active windows.
+        // capture_screen_region is the *interactive* path reserved for
+        // the explicit "ANEXAR ECRÃ" attach button (captureScreen()
+        // below); using it for auto-capture would prompt the operator
+        // every time the cápsula opens — broken UX and a hard block on
+        // computer_use vision.
+        const cap = await captureScreenFull();
+        if (!cap?.base64) return null;
+        return `data:image/png;base64,${cap.base64}`;
       },
       async captureScreen() {
+        // Explicit operator action ("ANEXAR ECRÃ") — full-screen,
+        // structured payload (base64 + path) so useAttachments can
+        // surface the file path next to the chip.
         return await captureScreenFull();
       },
     },

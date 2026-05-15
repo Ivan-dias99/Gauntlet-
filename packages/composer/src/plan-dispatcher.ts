@@ -15,17 +15,22 @@
 // useCallback bound to the current ambient.
 
 import { type Ambient } from './ambient';
-import { type ComputerUseAction } from './ComputerUseGate';
+import {
+  type ComputerUseAction,
+  type ComputerUseOutcome,
+} from './ComputerUseGate';
 import { type DomAction, type DomActionResult } from './dom-actions';
 
 export interface DispatchPlanOptions {
-  // Phase 3 MVP — the consent gate's enqueue callback (returned by
-  // `useComputerUseGate(ambient.computerUse).enqueue`). When undefined
-  // the dispatcher emits a typed unsupported result for any
-  // computer_use action; when present, each action is enqueued and the
-  // result reflects "queued for operator approval" (the actual OS
-  // event fires later, when the operator approves the gate).
-  enqueueComputerUseAction?: (action: ComputerUseAction) => void;
+  // Wave 4 — the consent gate's enqueue callback (returned by
+  // `useComputerUseGate(ambient.computerUse).enqueue`). Returns a
+  // Promise that resolves once the operator decides AND the adapter
+  // fires (or fails). The dispatcher awaits per action so the run
+  // ledger row carries the actual OS-level outcome — not a stale
+  // "queued" stamp written before the actuation.
+  enqueueComputerUseAction?: (
+    action: ComputerUseAction,
+  ) => Promise<ComputerUseOutcome>;
 }
 
 export async function dispatchPlan(
@@ -147,20 +152,40 @@ export async function dispatchPlan(
         });
         continue;
       }
-      // Enqueue through the gate. The gate is fire-and-forget from the
-      // dispatcher's view: it stores the action in pending state and
-      // the operator's approve/reject controls whether the OS event
-      // fires. The dispatcher returns "queued" so the plan ledger
-      // shows the action progressed even though the actuation is
-      // deferred behind operator consent.
-      options.enqueueComputerUseAction(action.action);
-      out.push({
-        action,
-        ok: true,
-        output: {
-          text: `queued ${action.action.kind} — awaiting operator approval`,
-        },
-      });
+      // Enqueue through the gate and AWAIT the verdict. The gate
+      // resolves the promise on approve+adapter-fire (ok:true), on
+      // approve+adapter-throw (ok:false with error), or on reject
+      // (ok:false, error: "rejected by operator"). The ledger row
+      // therefore reflects the actual OS-level outcome. A rejected
+      // sequence early-terminates: the gate's onReject already drained
+      // ALL pending entries, so subsequent enqueues for this batch
+      // would block forever — we mark the rest as cancelled and bail.
+      const outcome = await options.enqueueComputerUseAction(action.action);
+      if (outcome.ok) {
+        out.push({
+          action,
+          ok: true,
+          output: { text: `${action.action.kind} executed via consent gate` },
+        });
+      } else {
+        out.push({ action, ok: false, error: outcome.error ?? 'gate denied' });
+        if (outcome.error === 'rejected by operator') {
+          // Cancel the remainder of THIS plan — model planned a
+          // sequence and the operator broke it; running follow-ups
+          // (a click after a rejected move, e.g.) would land at the
+          // wrong cursor position. Stamp every skipped entry so the
+          // ledger + cápsula result list show WHY they didn't run.
+          const idx = actions.indexOf(action);
+          for (let j = idx + 1; j < actions.length; j++) {
+            out.push({
+              action: actions[j],
+              ok: false,
+              error: 'cancelled — sequence rejected at earlier action',
+            });
+          }
+          break;
+        }
+      }
     } else {
       domBatch.push(action);
     }

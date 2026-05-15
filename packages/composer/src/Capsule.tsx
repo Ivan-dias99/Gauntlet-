@@ -45,6 +45,7 @@ import { usePhaseBroadcast } from './usePhaseBroadcast';
 import { useToolManifests } from './useToolManifests';
 import { StreamingState } from './StreamingState';
 import { isBusy, useStreamingPlan } from './useStreamingPlan';
+import { ModelSelector, usePinnedModel } from './ModelSelector';
 import { useCapsuleScreenshot } from './useCapsuleScreenshot';
 import { useCapsuleKeyboard } from './useCapsuleKeyboard';
 import { useSaveToMemory } from './useSaveToMemory';
@@ -190,17 +191,11 @@ export function Capsule({
   // dependency (which would create a cycle: tts needs phase, phase
   // is owned by streaming).
   const ttsRef = useRef<{ cancel: () => void } | null>(null);
+  const [pinnedModel, setPinnedModel] = usePinnedModel(ambient.storage);
   const stream = useStreamingPlan({
-    client,
-    ambient,
-    prefs,
-    snapshot,
-    screenshot,
-    attachments,
-    userInput,
-    settings,
+    client, ambient, prefs, snapshot, screenshot, attachments,
+    userInput, settings, dispatchPlan, pinnedModel,
     composeUserInput: composeUserInputWithAttachments,
-    dispatchPlan,
     onSubmit: () => ttsRef.current?.cancel(),
   });
   const {
@@ -544,16 +539,13 @@ export function Capsule({
       left: `${pos.left}px`,
     };
   }, [anchor]);
-  // Phase-aware semantic class — drives the ambient glow color so the
-  // cápsula visually reflects what the model is doing (and makes the
-  // pill carry the same color via the gauntlet:phase event below).
-  const phaseClass = `gauntlet-capsule--phase-${phase}`;
+  // Phase-aware className drives the ambient glow color (mirrored to the
+  // pill via the gauntlet:phase event below).
   const className = [
-    'gauntlet-capsule',
-    'gauntlet-capsule--floating',
+    'gauntlet-capsule', 'gauntlet-capsule--floating',
     anchor ? 'gauntlet-capsule--anchored' : 'gauntlet-capsule--centered',
     snapshot.text ? null : 'gauntlet-capsule--no-selection',
-    phaseClass,
+    `gauntlet-capsule--phase-${phase}`,
   ].filter(Boolean).join(' ');
 
   usePhaseBroadcast(phase);
@@ -590,6 +582,7 @@ export function Capsule({
               onChangeTheme={onChangeTheme}
             />
           }
+          modelSelector={<ModelSelector client={client} pinned={pinnedModel} onPin={setPinnedModel} />}
           screenshotEnabled={screenshot !== null}
           onRefreshSnapshot={refreshSnapshot}
         />

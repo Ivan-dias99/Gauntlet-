@@ -7,6 +7,17 @@ project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added (Groq model roster · 2026-05-15)
+- **Curated Groq model set em `groq_provider.KNOWN_GROQ_MODELS`**:
+  `llama-3.3-70b-versatile` (default), `openai/gpt-oss-120b`,
+  `qwen/qwen3-32b`. Os três entram no `model_gateway.CATALOGUE`
+  com `provider="groq"` para aparecerem em `/gateway/summary`.
+  O adapter loga aviso à boot se `GAUNTLET_GROQ_MODEL` não estiver
+  no set curado — typos surfaceiam imediatamente em vez de como
+  404 em runtime. Comentários em `config.py` documentam os ids
+  para o operador. ROUTING continua Anthropic-shaped; o adapter
+  Groq traduz no call-time como antes.
+
 ### Removed (Postgres dual-write · 2026-05-08)
 - **Dropped the entire Postgres cutover scaffold.** `backend/db.py`,
   `backend/migrate.py`, `backend/parity_check.py`, `backend/migrations/`

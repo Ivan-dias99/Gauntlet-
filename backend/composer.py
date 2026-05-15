@@ -369,6 +369,27 @@ async def detect_intent(req: ComposerIntentRequest) -> IntentResult:
         ctx, req.user_input, req.chamber_hint
     )
     route = _route_model(intent, ctx)
+    # Operator override from the cápsula's ModelSelector — only honored
+    # when the id exists in the gateway catalogue. The heuristic route
+    # stays the default; the override layers on top so the intent log
+    # still shows the heuristic's reasoning when the operator hasn't
+    # pinned a model.
+    if req.model_override:
+        from model_gateway import CATALOGUE as _CATALOGUE
+        if req.model_override in _CATALOGUE:
+            route = ModelRoute(
+                primary_model=req.model_override,
+                fallback_models=route.fallback_models,
+                reason=f"operator override (was: {route.primary_model})",
+                expected_latency_ms=route.expected_latency_ms,
+                tool_requirements=route.tool_requirements,
+            )
+        else:
+            logger.warning(
+                "composer.intent.override.rejected unknown model_id=%r — "
+                "falling back to heuristic route %s",
+                req.model_override, route.primary_model,
+            )
     risk, requires_approval = _risk_for(intent, ctx)
     actions = _suggested_actions_for(intent, ctx)
 
@@ -594,16 +615,45 @@ runtime, refuse (case C) and explain that interpreter exec belongs
 in the agent flow (Control Center), not the cápsula.
 Use fs.read to inspect a single file before transforming it. Use
 fs.write to save the operator's requested output to disk. Paths
-should be absolute. Use computer_use to drive the OS-level mouse
-and keyboard — useful when the user asks to interact with an app
-that has no DOM (native windows, IDEs, video calls, etc.). Each
-computer_use action is gated CLIENT-SIDE: the cápsula renders a
-modal showing the described action and only fires the OS event
-after explicit approval, so the `reason` field is what the operator
-reads to decide. The cápsula will surface a confirmation gate
-before any shell.run / fs.write / computer_use executes — the
-operator approves each batch. Pair move + click as TWO actions
-in sequence (the operator approves each separately).
+should be absolute.
+
+Use computer_use to drive the OS-level mouse and keyboard — the
+only path when the target has no DOM and no shell-friendly CLI
+(native windows, IDEs without CLI, video calls, OS-level menus).
+Decision order, hardest to softest:
+  1. Prefer shell.run / fs.* when the task is observable / file-based.
+  2. Prefer keyboard-driven computer_use over mouse: `press` Cmd+Space
+     → `type` "VS Code" → `press` Enter beats hunting coordinates.
+     Common reliable sequences:
+       * launch app          press Cmd+Space, type name, press Enter
+       * switch app          press Cmd+Tab (hold)/Alt+Tab
+       * close window        press Cmd+W
+       * copy / paste        press Cmd+C / Cmd+V
+       * undo                press Cmd+Z
+       * open command palette  press Cmd+Shift+P / Ctrl+Shift+P
+     (Linux/Windows: substitute Cmd→Ctrl. Read source/page_title
+      cues to infer the platform.)
+  3. Mouse `move`+`click` is the LAST resort. When no screenshot
+     image block precedes this message you have NO vision — DO NOT
+     invent coordinates. Either refuse (case C) and ask the operator
+     to enable screenshot, or use a keyboard sequence above.
+     When a screenshot IS present, read it carefully and place
+     coordinates from what you SEE; round to the nearest 10 px.
+
+Sequencing rules for computer_use:
+  * Each action is gated CLIENT-SIDE (the cápsula shows a modal per
+    action; the operator approves one-by-one). Rejecting any single
+    action cancels the entire queue, so plan the SHORTEST sequence
+    that achieves the goal — never pad.
+  * Always populate `reason` in every cu_* action; the operator reads
+    only that string before approving. Be concrete: "abrir Spotlight",
+    "escrever query no campo de pesquisa", not "do thing".
+  * A move + click pair is TWO actions — emit them as ordered entries.
+  * After `type`, do NOT auto-emit `press Enter` unless the operator
+    asked to submit; many fields just need text, not submission.
+
+The cápsula's confirmation gate fires before any shell.run /
+fs.write / computer_use executes — the operator approves each.
 
 Case B — emit a compose text:
   {"compose":"<your answer in the user's language, markdown ok>"}
@@ -634,19 +684,34 @@ Hard rules:
 """
 
 
-def _provider_supports_images(engine) -> bool:
-    """True only when the underlying SDK client is the real Anthropic
-    one. Groq and Gemini adapters reject Anthropic's image content
-    blocks; sending one would 502 on the user. We detect by class
-    name to avoid importing the Anthropic SDK just for an isinstance
-    check (also: in MOCK mode the client is MockAsyncAnthropic which
-    we treat as image-capable for parity testing)."""
+def _provider_supports_images(engine, model_id: Optional[str] = None) -> bool:
+    """True when the active provider+model accepts image content blocks.
+
+    * Anthropic / Mock — always vision-capable.
+    * Groq — only when the routed model_id is in
+      groq_provider.GROQ_VISION_MODELS (Llama 4 Scout/Maverick today).
+      The Groq adapter's _to_groq_messages translates Anthropic image
+      blocks into OpenAI-shape image_url; older models would 400 on
+      the unknown block type.
+    * Gemini — text-only path today; would 502 with images.
+
+    Detected by class name to avoid importing the Anthropic SDK just
+    for an isinstance check.
+    """
     cls = type(engine._client).__name__
-    return cls in ("AsyncAnthropic", "MockAsyncAnthropic")
+    if cls in ("AsyncAnthropic", "MockAsyncAnthropic"):
+        return True
+    if cls == "AsyncGroqAnthropicAdapter":
+        if not model_id:
+            return False
+        from groq_provider import GROQ_VISION_MODELS
+        return model_id in GROQ_VISION_MODELS
+    return False
 
 
 async def _build_user_messages(
     ctx: ContextPackage, user_input: str, engine=None,
+    model_id: Optional[str] = None,
 ) -> list[dict]:
     """Compose the messages array for the planner, including a base64
     image block when the content script forwarded an opt-in viewport
@@ -665,7 +730,7 @@ async def _build_user_messages(
         f"Page context:\n{_compose_context_blob(ctx, memory_block)}\n\n"
         f"Request: {user_input}"
     )
-    image_blocks = _collect_image_blocks(ctx, engine)
+    image_blocks = _collect_image_blocks(ctx, engine, model_id)
     if image_blocks:
         return [
             {
@@ -676,7 +741,9 @@ async def _build_user_messages(
     return [{"role": "user", "content": user_msg}]
 
 
-def _collect_image_blocks(ctx: ContextPackage, engine) -> list[dict]:
+def _collect_image_blocks(
+    ctx: ContextPackage, engine, model_id: Optional[str] = None,
+) -> list[dict]:
     """Walk metadata for everything image-shaped that an Anthropic
     content list can carry. Two sources today:
 
@@ -695,14 +762,15 @@ def _collect_image_blocks(ctx: ContextPackage, engine) -> list[dict]:
     """
     if not ctx.metadata:
         return []
-    if engine is None or not _provider_supports_images(engine):
+    if engine is None or not _provider_supports_images(engine, model_id):
         if (
             ctx.metadata.get("screenshot_data_url")
             or ctx.metadata.get("attachments")
         ):
             logger.info(
-                "composer.images_dropped provider=%s — adapter does not accept image blocks",
+                "composer.images_dropped provider=%s model=%s — adapter/model does not accept image blocks",
                 type(engine._client).__name__ if engine is not None else "<none>",
+                model_id or "<unknown>",
             )
         return []
 
@@ -811,8 +879,21 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
     engine = _get_engine()
     choice = gateway.select("default")
     model_id = choice.model_id
+    # Operator override from the cápsula's ModelSelector. Only honored
+    # when the id exists in the gateway catalogue — unknown ids fall
+    # through silently to the gateway's pick so a stale localStorage
+    # value never derails the request.
+    if req.model_override:
+        from model_gateway import CATALOGUE as _CATALOGUE
+        if req.model_override in _CATALOGUE:
+            model_id = req.model_override
+        else:
+            logger.warning(
+                "composer.dom_plan.override.rejected unknown model_id=%r",
+                req.model_override,
+            )
 
-    messages = await _build_user_messages(ctx, req.user_input, engine)
+    messages = await _build_user_messages(ctx, req.user_input, engine, model_id)
 
     started = time.perf_counter()
     raw_text = ""
@@ -969,8 +1050,19 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
     engine = _get_engine()
     choice = gateway.select("default")
     model_id = choice.model_id
+    # Mirror of /composer/dom_plan: honor the cápsula's ModelSelector
+    # override when the id is in the gateway catalogue.
+    if req.model_override:
+        from model_gateway import CATALOGUE as _CATALOGUE
+        if req.model_override in _CATALOGUE:
+            model_id = req.model_override
+        else:
+            logger.warning(
+                "composer.dom_plan_stream.override.rejected unknown model_id=%r",
+                req.model_override,
+            )
 
-    messages = await _build_user_messages(ctx, req.user_input, engine)
+    messages = await _build_user_messages(ctx, req.user_input, engine, model_id)
 
     async def event_stream():
         raw_text = ""
@@ -1483,6 +1575,15 @@ def _compose_context_blob(ctx: ContextPackage, memory_block: str = "") -> str:
         lines.append(f"window: {ctx.window_title}")
     if ctx.files:
         lines.append(f"files: {', '.join(ctx.files[:8])}")
+    # screen_size — present on desktop captures (helpers.buildCapture
+    # reads window.screen). Lets the planner clamp computer_use(move)
+    # coordinates to the actual display rather than guessing 1920×1080.
+    screen_size = ctx.metadata.get("screen_size") if ctx.metadata else None
+    if isinstance(screen_size, dict):
+        w = screen_size.get("width")
+        h = screen_size.get("height")
+        if isinstance(w, int) and isinstance(h, int):
+            lines.append(f"screen_size: {w}x{h} px")
     if memory_block:
         lines.append("---")
         lines.append(memory_block)

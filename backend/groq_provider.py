@@ -81,9 +81,18 @@ def _to_groq_messages(
 ) -> list[dict[str, Any]]:
     """Convert Anthropic messages list to Groq/OpenAI `messages` shape.
 
-    Anthropic shape:  [{role: 'user'|'assistant', content: str | list[block]}]
+    Anthropic shape:  [{role: 'user'|'assistant',
+                        content: str | list[text|image block]}]
                       + a separate `system` arg
-    Groq shape:       [{role: 'system'|'user'|'assistant', content: str}]
+    Groq shape:       [{role: 'system'|'user'|'assistant',
+                        content: str | list[{type:'text'|'image_url',...}]}]
+
+    Vision-capable Groq models (Llama 4 Scout/Maverick) accept the
+    OpenAI-style `image_url` block; we translate Anthropic's
+    `image.source.base64` → `image_url.url = data:<mime>;base64,<b64>`.
+    Older / text-only Groq models silently get the image dropped at the
+    composer layer (_provider_supports_images = False), so this branch
+    only fires when the operator pinned a vision id.
     """
     out: list[dict[str, Any]] = []
     if system:
@@ -96,18 +105,42 @@ def _to_groq_messages(
         groq_role = "assistant" if role == "assistant" else "user"
         raw = m.get("content", "")
         if isinstance(raw, str):
-            text = raw
-        elif isinstance(raw, list):
-            parts = []
+            out.append({"role": groq_role, "content": raw})
+            continue
+        if isinstance(raw, list):
+            blocks: list[dict[str, Any]] = []
             for block in raw:
-                if isinstance(block, dict) and block.get("type") == "text":
-                    parts.append(block.get("text", ""))
-                elif isinstance(block, str):
-                    parts.append(block)
-            text = "\n".join(p for p in parts if p)
-        else:
-            text = str(raw)
-        out.append({"role": groq_role, "content": text})
+                if isinstance(block, str):
+                    blocks.append({"type": "text", "text": block})
+                    continue
+                if not isinstance(block, dict):
+                    continue
+                btype = block.get("type")
+                if btype == "text":
+                    text = block.get("text", "")
+                    if text:
+                        blocks.append({"type": "text", "text": text})
+                elif btype == "image":
+                    src = block.get("source") or {}
+                    if src.get("type") != "base64":
+                        continue
+                    mime = src.get("media_type") or "image/png"
+                    data = src.get("data") or ""
+                    if not data:
+                        continue
+                    blocks.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{data}"},
+                    })
+            # Single-text-block payloads collapse back to a string so the
+            # request looks identical to the pre-vision path on Groq SDKs
+            # that handle string content faster.
+            if len(blocks) == 1 and blocks[0].get("type") == "text":
+                out.append({"role": groq_role, "content": blocks[0]["text"]})
+            else:
+                out.append({"role": groq_role, "content": blocks})
+            continue
+        out.append({"role": groq_role, "content": str(raw)})
     return out
 
 
@@ -174,7 +207,24 @@ class _StreamContext:
         }
         if self._temperature is not None:
             kwargs["temperature"] = self._temperature
-        self._stream = await client.chat.completions.create(**kwargs)
+        try:
+            self._stream = await client.chat.completions.create(**kwargs)
+        except TypeError as exc:
+            # Older groq SDKs (< ~0.20) don't accept `stream_options` and
+            # raise TypeError before the network call. Retry without it
+            # so the user gets a successful stream — the cost is that the
+            # ledger row for this turn shows 0 input/output tokens until
+            # the operator upgrades the SDK. Better partial telemetry than
+            # a hard fail at the cápsula.
+            if "stream_options" not in str(exc):
+                raise
+            logger.warning(
+                "Groq SDK rejected stream_options (likely outdated); "
+                "retrying without — token counters will be 0 for this call. "
+                "Upgrade with: pip install --upgrade 'groq>=0.20'.",
+            )
+            kwargs.pop("stream_options", None)
+            self._stream = await client.chat.completions.create(**kwargs)
         return self
 
     async def __aexit__(self, *exc_info: Any) -> None:
@@ -301,6 +351,29 @@ class _MessagesNamespace:
 # as before this map landed.
 _GROQ_FALLBACK_MODEL = "llama-3.1-8b-instant"
 
+# Curated set of Groq production model ids the operator can pin via
+# GAUNTLET_GROQ_MODEL. Not enforced — any id Groq accepts will still
+# run — but the startup log warns when the pinned id isn't on the list
+# so a typo surfaces immediately instead of as a runtime 404. Mix of
+# Llama (Meta), Qwen (Alibaba), and gpt-oss (OpenAI weights, hosted by
+# Groq); all three are on the free tier in 2026-05.
+_GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+KNOWN_GROQ_MODELS: tuple[str, ...] = (
+    "llama-3.3-70b-versatile",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3-32b",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+)
+
+# Vision-capable Groq model ids. The composer layer consults this set
+# (via composer._provider_supports_images) to decide whether to attach
+# a screenshot block to the planning request — pinning a non-vision
+# Groq model means the cápsula plans blind on computer_use coords.
+GROQ_VISION_MODELS: frozenset[str] = frozenset({
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+})
+
+
 def _resolve_groq_model(requested: str, configured: str) -> str:
     """Translate a gateway-emitted Anthropic id into a Groq id."""
     if requested.startswith("claude-haiku"):
@@ -318,7 +391,7 @@ class AsyncGroqAnthropicAdapter:
     requer o protocolo anthropic-tool-call e fica fora do v1 adapter."""
 
     def __init__(
-        self, *, api_key: str, model: str = "llama-3.3-70b-versatile"
+        self, *, api_key: str, model: str = _GROQ_DEFAULT_MODEL,
     ) -> None:
         try:
             from groq import AsyncGroq  # type: ignore
@@ -330,8 +403,16 @@ class AsyncGroqAnthropicAdapter:
         self._client = AsyncGroq(api_key=api_key)
         self._model_id = model
         self.messages = _MessagesNamespace(self)
+        if model not in KNOWN_GROQ_MODELS:
+            logger.warning(
+                "GAUNTLET_GROQ_MODEL=%s is not in the known set %s — "
+                "passing through to Groq, but a typo will only surface as a "
+                "runtime 404. Pick one of the curated ids if unsure.",
+                model, KNOWN_GROQ_MODELS,
+            )
         logger.info(
-            "Groq adapter initialised (model=%s, fallback=%s). Streaming SSE "
-            "supported; tool use / agent loop continua fora do escopo v1.",
-            model, _GROQ_FALLBACK_MODEL,
+            "Groq adapter initialised (model=%s, fallback=%s, known=%s). "
+            "Streaming SSE supported; tool use / agent loop continua fora do "
+            "escopo v1.",
+            model, _GROQ_FALLBACK_MODEL, KNOWN_GROQ_MODELS,
         )

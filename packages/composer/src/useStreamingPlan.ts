@@ -65,6 +65,10 @@ export interface UseStreamingPlanArgs {
   settings: ComposerSettings;
   composeUserInput: (raw: string) => string;
   dispatchPlan: (actions: DomAction[]) => Promise<DomActionResult[]>;
+  // Operator's pinned model (cápsula's ModelSelector). When set, the
+  // streaming request carries it as model_override so the backend
+  // bypasses gateway.select for this turn.
+  pinnedModel?: string | null;
   // Hook a side-effect into every submit (e.g. TTS cancel) without
   // baking it into the hook itself.
   onSubmit?: () => void;
@@ -104,6 +108,7 @@ export function useStreamingPlan(args: UseStreamingPlanArgs): UseStreamingPlanRe
     settings,
     composeUserInput,
     dispatchPlan,
+    pinnedModel,
     onSubmit,
   } = args;
 
@@ -309,6 +314,7 @@ export function useStreamingPlan(args: UseStreamingPlanArgs): UseStreamingPlanRe
                   ctx.context_id,
                   inputForAgent,
                   ac.signal,
+                  pinnedModel ?? null,
                 );
                 if (ac.signal.aborted) return;
                 setPlan(planResult);
@@ -331,6 +337,7 @@ export function useStreamingPlan(args: UseStreamingPlanArgs): UseStreamingPlanRe
             })();
           },
         },
+        pinnedModel ?? null,
       );
     } catch (err: unknown) {
       if (ac.signal.aborted) return;
@@ -350,6 +357,7 @@ export function useStreamingPlan(args: UseStreamingPlanArgs): UseStreamingPlanRe
     onSubmit,
     ambient,
     attachments,
+    pinnedModel,
   ]);
 
   const executePlan = useCallback(async () => {

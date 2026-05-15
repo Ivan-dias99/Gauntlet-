@@ -457,6 +457,12 @@ class ComposerIntentRequest(BaseModel):
     context_id: UUID
     user_input: str = Field(..., min_length=1, max_length=10_000)
     chamber_hint: Optional[str] = None
+    # Operator override (cápsula's ModelSelector). When set + valid (in
+    # model_gateway.CATALOGUE), the intent stage forces this id as
+    # primary_model instead of running the heuristic _route_model().
+    # Unknown ids are dropped silently and the heuristic wins — invalid
+    # input never derails the pipeline.
+    model_override: Optional[str] = Field(default=None, max_length=128)
 
 
 class IntentResult(BaseModel):
@@ -659,6 +665,11 @@ DomAction = (
 class DomPlanRequest(BaseModel):
     context_id: UUID
     user_input: str = Field(min_length=1, max_length=4000)
+    # Operator override from the cápsula's ModelSelector. When set + valid
+    # (in model_gateway.CATALOGUE), the dom_plan handler bypasses
+    # gateway.select() and uses this id directly. Unknown ids are dropped
+    # silently and the heuristic route wins.
+    model_override: Optional[str] = Field(default=None, max_length=128)
 
 
 class DomPlanResult(BaseModel):

@@ -110,14 +110,13 @@ describe('dispatchPlan', () => {
     expect(out[1].output?.bytes).toBe(5);
   });
 
-  it('routes computer_use through the consent gate enqueue callback', async () => {
-    // computer_use never executes synchronously inside dispatchPlan —
-    // the dispatcher hands the inner action to `enqueueComputerUseAction`
-    // (provided by `useComputerUseGate(ambient.computerUse).enqueue`)
-    // and returns a "queued" result. The actual OS event fires later
-    // when the operator approves the gate; that path is covered by
-    // ComputerUseGate.test.tsx.
-    const enqueue = vi.fn();
+  it('records ok:true when the consent gate approves and the adapter fires', async () => {
+    // Wave 4 contract: enqueueComputerUseAction returns a Promise that
+    // resolves with the gate's verdict (ok=true after approve+adapter
+    // success). The dispatcher awaits it so the row in `out` reflects
+    // the actual OS-level outcome — not the old "queued" stamp written
+    // before the actuation.
+    const enqueue = vi.fn().mockResolvedValue({ ok: true });
     const ambient = makeAmbient({
       computerUse: {
         moveCursor: vi.fn(),
@@ -140,16 +139,64 @@ describe('dispatchPlan', () => {
 
     expect(enqueue).toHaveBeenCalledTimes(1);
     expect(enqueue).toHaveBeenCalledWith({
-      kind: 'move',
-      x: 100,
-      y: 200,
-      reason: 'centre',
+      kind: 'move', x: 100, y: 200, reason: 'centre',
     });
-    // None of the adapter primitives ran — the gate has not approved
-    // anything yet at this point in the pipeline.
-    expect(ambient.computerUse?.moveCursor).not.toHaveBeenCalled();
     expect(out[0].ok).toBe(true);
-    expect(out[0].output?.text).toContain('queued');
+    expect(out[0].output?.text).toContain('move executed');
+  });
+
+  it('records ok:false with the gate error when the adapter throws', async () => {
+    const enqueue = vi.fn().mockResolvedValue({
+      ok: false, error: 'enigo: Wayland not supported',
+    });
+    const ambient = makeAmbient({
+      computerUse: {
+        moveCursor: vi.fn(), click: vi.fn(),
+        typeText: vi.fn(), pressKey: vi.fn(),
+      },
+    } as unknown as Partial<Ambient>);
+
+    const out = await dispatchPlan(
+      ambient,
+      [{ type: 'computer_use', action: { kind: 'click', button: 'left' } }],
+      { enqueueComputerUseAction: enqueue },
+    );
+    expect(out[0].ok).toBe(false);
+    expect(out[0].error).toContain('Wayland');
+  });
+
+  it('cancels the remainder of the plan when the operator rejects mid-sequence', async () => {
+    // Sequence: move → click → type. Operator rejects the move; click +
+    // type get stamped as cancelled so the run ledger shows them as
+    // "did not run because the operator rejected an earlier step".
+    const enqueue = vi.fn()
+      .mockResolvedValueOnce({ ok: false, error: 'rejected by operator' });
+    const ambient = makeAmbient({
+      computerUse: {
+        moveCursor: vi.fn(), click: vi.fn(),
+        typeText: vi.fn(), pressKey: vi.fn(),
+      },
+    } as unknown as Partial<Ambient>);
+
+    const out = await dispatchPlan(
+      ambient,
+      [
+        { type: 'computer_use', action: { kind: 'move', x: 1, y: 2 } },
+        { type: 'computer_use', action: { kind: 'click', button: 'left' } },
+        { type: 'computer_use', action: { kind: 'type', text: 'hi' } },
+      ],
+      { enqueueComputerUseAction: enqueue },
+    );
+    // Only the first action hit the gate — onReject in the gate drained
+    // the queue, so the dispatcher must not even await for #2 / #3.
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(out).toHaveLength(3);
+    expect(out[0].ok).toBe(false);
+    expect(out[0].error).toBe('rejected by operator');
+    expect(out[1].ok).toBe(false);
+    expect(out[1].error).toContain('cancelled');
+    expect(out[2].ok).toBe(false);
+    expect(out[2].error).toContain('cancelled');
   });
 
   it('returns typed ok:false for computer_use when no enqueue callback is provided', async () => {
@@ -176,16 +223,11 @@ describe('dispatchPlan', () => {
     // enqueue callback may still arrive (Capsule passes one only when
     // ambient.computerUse exists, but a misconfigured caller might),
     // so guard against that too.
-    const enqueue = vi.fn();
+    const enqueue = vi.fn().mockResolvedValue({ ok: true });
     const ambient = makeAmbient();
     const out = await dispatchPlan(
       ambient,
-      [
-        {
-          type: 'computer_use',
-          action: { kind: 'press', key: 'Enter' },
-        },
-      ],
+      [{ type: 'computer_use', action: { kind: 'press', key: 'Enter' } }],
       { enqueueComputerUseAction: enqueue },
     );
     expect(out[0].ok).toBe(false);
@@ -198,7 +240,7 @@ describe('dispatchPlan', () => {
       async (acts: DomAction[]): Promise<DomActionResult[]> =>
         acts.map((a) => ({ action: a, ok: true })),
     );
-    const enqueue = vi.fn();
+    const enqueue = vi.fn().mockResolvedValue({ ok: true });
     const ambient = makeAmbient({
       domActions: { execute },
       computerUse: {

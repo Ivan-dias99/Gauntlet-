@@ -347,4 +347,62 @@ describe('useComputerUseGate', () => {
     });
     expect(result.current.gateProps.lastError).toBeNull();
   });
+
+  // Wave 4 contract — enqueue returns a Promise that resolves with the
+  // gate's verdict so plan-dispatcher can await per-action outcomes
+  // and write honest rows to the run ledger.
+  it('enqueue resolves ok:true after approve + adapter success', async () => {
+    const adapter = fakeAdapter();
+    const { result } = renderHook(() => useComputerUseGate(adapter));
+
+    let pending: Promise<{ ok: boolean; error?: string }> | null = null;
+    act(() => {
+      pending = result.current.enqueue({ kind: 'move', x: 5, y: 5 });
+    });
+    expect(pending).toBeInstanceOf(Promise);
+
+    await act(async () => {
+      await result.current.gateProps.onApprove({ kind: 'move', x: 5, y: 5 });
+    });
+    const outcome = await pending!;
+    expect(outcome).toEqual({ ok: true });
+    expect(adapter.moveCursor).toHaveBeenCalledWith(5, 5);
+  });
+
+  it('enqueue resolves ok:false with error when reject drains the queue', async () => {
+    const { result } = renderHook(() => useComputerUseGate(fakeAdapter()));
+    let p1: Promise<{ ok: boolean; error?: string }> | null = null;
+    let p2: Promise<{ ok: boolean; error?: string }> | null = null;
+    act(() => {
+      p1 = result.current.enqueue({ kind: 'move', x: 1, y: 2 });
+      p2 = result.current.enqueue({ kind: 'click', button: 'left' });
+    });
+    act(() => {
+      result.current.gateProps.onReject();
+    });
+    const o1 = await p1!;
+    const o2 = await p2!;
+    expect(o1.ok).toBe(false);
+    expect(o1.error).toBe('rejected by operator');
+    expect(o2.ok).toBe(false);
+    expect(o2.error).toBe('rejected by operator');
+  });
+
+  it('enqueue resolves ok:false with adapter error when the adapter throws', async () => {
+    const adapter: AmbientComputerUse = {
+      moveCursor: vi.fn().mockRejectedValue(new Error('Accessibility denied')),
+      click: vi.fn(), typeText: vi.fn(), pressKey: vi.fn(),
+    };
+    const { result } = renderHook(() => useComputerUseGate(adapter));
+    let pending: Promise<{ ok: boolean; error?: string }> | null = null;
+    act(() => {
+      pending = result.current.enqueue({ kind: 'move', x: 1, y: 1 });
+    });
+    await act(async () => {
+      await result.current.gateProps.onApprove({ kind: 'move', x: 1, y: 1 });
+    });
+    const outcome = await pending!;
+    expect(outcome.ok).toBe(false);
+    expect(outcome.error).toContain('Accessibility');
+  });
 });

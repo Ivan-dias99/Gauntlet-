@@ -91,11 +91,29 @@ export class ComposerClient {
     contextId: string,
     userInput: string,
     signal?: AbortSignal,
+    modelOverride?: string | null,
   ): Promise<IntentResult> {
+    const body: Record<string, unknown> = {
+      context_id: contextId,
+      user_input: userInput,
+    };
+    if (modelOverride) body.model_override = modelOverride;
     return this.ambient.transport.fetchJson(
       'POST',
       `${this.backendUrl}/composer/intent`,
-      { context_id: contextId, user_input: userInput },
+      body,
+      signal,
+    );
+  }
+
+  // Read-only catalogue of models the backend gateway knows about.
+  // ModelSelector consumes this to render the popover; the cápsula
+  // itself does not call it.
+  getModelCatalogue(signal?: AbortSignal): Promise<ModelCatalogueResponse> {
+    return this.ambient.transport.fetchJson(
+      'GET',
+      `${this.backendUrl}/gateway/catalogue`,
+      undefined,
       signal,
     );
   }
@@ -211,11 +229,17 @@ export class ComposerClient {
     contextId: string,
     userInput: string,
     signal?: AbortSignal,
+    modelOverride?: string | null,
   ): Promise<DomPlanResult> {
+    const body: Record<string, unknown> = {
+      context_id: contextId,
+      user_input: userInput,
+    };
+    if (modelOverride) body.model_override = modelOverride;
     return this.ambient.transport.fetchJson(
       'POST',
       `${this.backendUrl}/composer/dom_plan`,
-      { context_id: contextId, user_input: userInput },
+      body,
       signal,
     );
   }
@@ -224,21 +248,46 @@ export class ComposerClient {
   // support SSE. Returns an `abort` function the caller invokes to stop
   // early. Mirrors the previous extension-only API so the cápsula's
   // call site doesn't need to know which shell it's running in.
+  // `modelOverride` (when set + valid in the gateway catalogue) forces
+  // the backend to bypass gateway.select for this single request; the
+  // cápsula's ModelSelector is the primary caller.
   requestDomPlanStream(
     contextId: string,
     userInput: string,
     callbacks: StreamCallbacks,
+    modelOverride?: string | null,
   ): () => void {
     if (!this.ambient.transport.stream) {
       callbacks.onError('streaming not supported by this ambient');
       return () => {};
     }
+    const body: Record<string, unknown> = {
+      context_id: contextId,
+      user_input: userInput,
+    };
+    if (modelOverride) body.model_override = modelOverride;
     return this.ambient.transport.stream(
       `${this.backendUrl}/composer/dom_plan_stream`,
-      { context_id: contextId, user_input: userInput },
+      body,
       callbacks,
     );
   }
+}
+
+// Gateway catalogue surface — consumed by the cápsula's ModelSelector.
+// Mirrors backend/routers/observability.py::gateway_catalogue.
+export interface ModelCatalogueEntry {
+  model_id: string;
+  provider: string;
+  cost_per_1m_input_usd: number;
+  cost_per_1m_output_usd: number;
+  notes: string;
+  available: boolean;
+}
+
+export interface ModelCatalogueResponse {
+  active_provider: string;
+  models: ModelCatalogueEntry[];
 }
 
 // Convenience: end-to-end one-shot.

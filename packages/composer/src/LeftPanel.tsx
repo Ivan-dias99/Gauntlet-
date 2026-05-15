@@ -26,6 +26,11 @@ export interface LeftPanelProps {
   // which props to pass to the drawer; we just mount whatever it
   // hands over.
   settingsDrawer: ReactNode;
+  // Slot for the ModelSelector chip. Lives in the header-actions row
+  // next to ThemeToggle/Settings. Optional so older shells without
+  // the selector wired keep rendering — the chip simply doesn't
+  // appear.
+  modelSelector?: ReactNode;
   screenshotEnabled: boolean;
   onRefreshSnapshot: () => void;
   theme: CapsuleTheme;
@@ -40,6 +45,7 @@ export function LeftPanel({
   onToggleSettings,
   onDismiss,
   settingsDrawer,
+  modelSelector,
   screenshotEnabled,
   onRefreshSnapshot,
   theme,
@@ -58,6 +64,7 @@ export function LeftPanel({
           </div>
         </div>
         <div className="gauntlet-capsule__header-actions">
+          {modelSelector}
           <ThemeToggle theme={theme} onChangeTheme={onChangeTheme} />
           <button
             type="button"
