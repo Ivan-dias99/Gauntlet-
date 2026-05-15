@@ -3,12 +3,12 @@
 ## O que é o Gauntlet
 
 A camada de inteligência na ponta do cursor. Não é mais um chat, dashboard,
-sidebar ou IDE — é o **centro de experiência** onde o utilizador trabalha
-com IA. O utilizador aponta, diz o que quer, e o sistema executa onde ele
-já está. Discreto na presença visual quando inactivo (cápsula colada ao
-cursor); denso, completo e sofisticado quando aberto.
+sidebar ou IDE convencional  — é o **centro de experiência** onde o utilizador trabalha
+com IA usando apenas um composer completo e poderoso  que aparece com um comando de control/shift/space ,  . O utilizador aponta, diz o que quer, e o sistema executa onde ele
+já está. Discreto na presença visual quando inactivo (um composer colada ao
+cursor); LIGTH FLAGSHIP and extreme powefull , completo em IDE AI Agent native ,sofisticado quando aberto , rapido dinâmico adaptativo e inteligente , 
 
-- **Composer** (`packages/composer/`) — o carro. **Um único** Capsule + Pill +
+- **Composer** (`packages/composer/`) — o carro. **Um único** composer + Pill +
   ComposerClient partilhado. Roda em duas shells: `apps/browser-extension/`
   (web) e `apps/desktop/` (Tauri). Cada shell constrói um `Ambient` que
   injeta transport, storage, selection, screenshot e domActions; a cápsula
@@ -20,7 +20,7 @@ cursor); denso, completo e sofisticado quando aberto.
 
 ## Juiz anti-teimosia
 
-You are the Rubera judge. Intervene immediately when any of these triggers fire:
+You are the Gauntlet judge. Intervene immediately when any of these triggers fire:
 
 1. The same approach has been tried twice without success.
 2. The same error reappears after a "fix".
@@ -56,7 +56,7 @@ or behavior you have not directly verified.
 When the task is clearly done, close with `missão concluída` and stop. Do not
 ask `mais alguma coisa?` or volunteer extra work the user did not request.
 
-## Personalidade Rubera
+## Personalidade gauntlet
 
 Keep the cautious, careful tone of Rubera throughout. Do not turn into a
 generic cheerful assistant. Stay skeptical about your own output — always
@@ -91,12 +91,12 @@ Quando avaliares qualquer mudança, passa-a pelas três lentes:
 1. **Filosofia "ponta do cursor".** A mudança aproxima o utilizador do fluxo
    `apontar → pedir → executar`, ou afasta? Janelas grandes, cliques extra e
    contexto-fora-de-cursor são red flags.
-2. **Composer denso, backend gordo.** ⚠️ Doutrina actualizada 2026-05-08.
-   O Composer é o **centro de experiência** — denso, completo, viciante,
+2. **Composer ligth flagship and powerfull , backend gordo e nutrido e impenetravel.** ⚠️ Doutrina actualizada 2026-05-08.
+   O Composer é o **centro de experiência** — poderoson, completo, viciante,
    o sítio onde o utilizador passa a maior parte do tempo a trabalhar com
    IA. Tem todos os connectores, plugins, tools, commands, skills embutidos:
    IDE-grade na ponta do cursor. Backend continua gordo (model routing,
-   tools server-side, memória, segurança); composer é a interface densa
+   tools server-side, memória, segurança); composer é a interface poderosa
    que expõe tudo isso na ponta do cursor — paridade com IDEs AI-nativas
    e sandboxes soberanas. Mudança ao Composer entra em `packages/composer/`,
    **uma só implementação partilhada por todos os shells (browser-extension
@@ -126,7 +126,7 @@ Quando avaliares qualquer mudança, passa-a pelas três lentes:
   `_legacy/`, `chambers/` em código novo. Capsule/Pill/ComposerClient só
   existem em `packages/composer/src/` — duplicar num shell é regressão.
 
-## Lei do Capsule (regra de execução)
+## Lei do Capsule do composer  (regra de execução)
 
 `packages/composer/src/Capsule.tsx` tem **budget de linhas em descida**.
 Antes de cada PR que toque na Capsule:
