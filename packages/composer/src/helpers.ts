@@ -53,6 +53,19 @@ export function buildCapture(
   if (snapshot.domSkeleton) metadata.dom_skeleton = snapshot.domSkeleton;
   if (snapshot.bbox) metadata.selection_bbox = snapshot.bbox;
   if (screenshotDataUrl) metadata.screenshot_data_url = screenshotDataUrl;
+  // Screen dimensions (desktop computer_use planning). On browser
+  // shells `window.screen` returns the host display too; the planner
+  // only acts on it when source: desktop, so it's a free hint either
+  // way. Wrapped in a try in case some sandbox strips `screen`.
+  if (typeof window !== 'undefined' && shell === 'desktop') {
+    try {
+      const w = (window.screen as Screen | undefined)?.width;
+      const h = (window.screen as Screen | undefined)?.height;
+      if (typeof w === 'number' && typeof h === 'number' && w > 0 && h > 0) {
+        metadata.screen_size = { width: w, height: h };
+      }
+    } catch { /* swallow — screen access blocked */ }
+  }
   // Multimodal — image attachments ship through metadata so the backend
   // can reconstruct Anthropic content blocks. Text attachments stay
   // inlined into user_input (composeUserInputWithAttachments) since

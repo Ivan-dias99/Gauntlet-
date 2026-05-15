@@ -1575,6 +1575,15 @@ def _compose_context_blob(ctx: ContextPackage, memory_block: str = "") -> str:
         lines.append(f"window: {ctx.window_title}")
     if ctx.files:
         lines.append(f"files: {', '.join(ctx.files[:8])}")
+    # screen_size — present on desktop captures (helpers.buildCapture
+    # reads window.screen). Lets the planner clamp computer_use(move)
+    # coordinates to the actual display rather than guessing 1920×1080.
+    screen_size = ctx.metadata.get("screen_size") if ctx.metadata else None
+    if isinstance(screen_size, dict):
+        w = screen_size.get("width")
+        h = screen_size.get("height")
+        if isinstance(w, int) and isinstance(h, int):
+            lines.append(f"screen_size: {w}x{h} px")
     if memory_block:
         lines.append("---")
         lines.append(memory_block)
