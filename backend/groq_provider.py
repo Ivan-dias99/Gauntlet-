@@ -174,7 +174,24 @@ class _StreamContext:
         }
         if self._temperature is not None:
             kwargs["temperature"] = self._temperature
-        self._stream = await client.chat.completions.create(**kwargs)
+        try:
+            self._stream = await client.chat.completions.create(**kwargs)
+        except TypeError as exc:
+            # Older groq SDKs (< ~0.20) don't accept `stream_options` and
+            # raise TypeError before the network call. Retry without it
+            # so the user gets a successful stream — the cost is that the
+            # ledger row for this turn shows 0 input/output tokens until
+            # the operator upgrades the SDK. Better partial telemetry than
+            # a hard fail at the cápsula.
+            if "stream_options" not in str(exc):
+                raise
+            logger.warning(
+                "Groq SDK rejected stream_options (likely outdated); "
+                "retrying without — token counters will be 0 for this call. "
+                "Upgrade with: pip install --upgrade 'groq>=0.20'.",
+            )
+            kwargs.pop("stream_options", None)
+            self._stream = await client.chat.completions.create(**kwargs)
         return self
 
     async def __aexit__(self, *exc_info: Any) -> None:
