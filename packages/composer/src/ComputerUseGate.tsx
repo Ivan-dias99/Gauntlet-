@@ -12,7 +12,7 @@
 // once the agent end-to-end exists. Premature richness here would
 // freeze decisions before we know what the operator actually needs.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   type AmbientComputerUse,
@@ -92,30 +92,59 @@ export async function runComputerUseAction(
 // current position — almost certainly NOT what the operator wanted.
 // Rejecting one means cancelling the sequence; if the operator wants
 // finer control they reject everything and re-prompt.
+// Outcome the gate resolves once the operator decides + the adapter
+// fires. Wave 4 contract change: enqueue returns a Promise so the
+// plan-dispatcher can await per-action verdicts and write honest rows
+// to the run ledger ("queued" was a lie — the OS event hadn't fired
+// yet when the dispatcher wrote that result).
+export interface ComputerUseOutcome {
+  ok: boolean;
+  error?: string;
+}
+
+interface PendingEntry {
+  action: ComputerUseAction;
+  resolve: (outcome: ComputerUseOutcome) => void;
+}
+
 export function useComputerUseGate(adapter: AmbientComputerUse | undefined) {
+  // Queue carries the pending action AND its resolver so approve/reject
+  // can settle the awaiting dispatcher promise. State holds only the
+  // visible projection; the resolvers ride along in a ref to avoid a
+  // re-render loop on every gate transition.
   const [queue, setQueue] = useState<ComputerUseAction[]>([]);
+  const pendingRef = useRef<PendingEntry[]>([]);
   const [lastError, setLastError] = useState<string | null>(null);
 
-  const enqueue = useCallback((action: ComputerUseAction) => {
-    // Clear stale error on new enqueue so a previous Wayland-fail
-    // banner doesn't haunt the next attempt.
-    setLastError(null);
-    setQueue((q) => [...q, action]);
-  }, []);
+  const enqueue = useCallback(
+    (action: ComputerUseAction): Promise<ComputerUseOutcome> => {
+      setLastError(null);
+      return new Promise<ComputerUseOutcome>((resolve) => {
+        pendingRef.current.push({ action, resolve });
+        setQueue((q) => [...q, action]);
+      });
+    },
+    [],
+  );
 
   const onApprove = useCallback(
     async (action: ComputerUseAction) => {
-      // Pop the head — even if the caller passed a stale reference,
-      // we always drain the FIFO front so the gate advances. Mismatch
-      // is impossible in normal flow because the gate only ever shows
-      // queue[0]; passing it back is a stable round-trip.
+      // Pop both the visible projection AND the resolver-bearing entry.
+      // The two arrays stay in lockstep because we only mutate them
+      // together (enqueue/approve/reject).
       setQueue((q) => q.slice(1));
-      if (!adapter) return;
+      const head = pendingRef.current.shift();
+      if (!adapter) {
+        head?.resolve({ ok: false, error: 'no computerUse adapter on this shell' });
+        return;
+      }
       try {
         await runComputerUseAction(adapter, action);
+        head?.resolve({ ok: true });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setLastError(message);
+        head?.resolve({ ok: false, error: message });
       }
     },
     [adapter],
@@ -125,6 +154,12 @@ export function useComputerUseGate(adapter: AmbientComputerUse | undefined) {
     // Clear ALL queued actions, not just the head. Model-planned
     // sequences (move + click) lose their meaning when a step is
     // skipped; cancel the whole batch and let the model re-plan.
+    // Each pending resolver fires with rejected so the dispatcher's
+    // await unwinds cleanly and the ledger row reflects the truth.
+    const drained = pendingRef.current.splice(0);
+    drained.forEach((p) => p.resolve({
+      ok: false, error: 'rejected by operator',
+    }));
     setQueue([]);
     setLastError(null);
   }, []);
