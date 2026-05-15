@@ -427,7 +427,7 @@ export const CAPSULE_CSS = `
   align-items: center;
   gap: 6px;
   padding: 4px 10px 4px 8px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   border: 1px solid var(--gx-border-mid);
   background: var(--gx-surface-strong, var(--gx-tint-soft));
   color: var(--gx-fg);
@@ -472,7 +472,7 @@ export const CAPSULE_CSS = `
   margin-left: auto;
   margin-right: 6px;
   padding: 2px 8px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   border: 1px solid var(--gx-border-mid);
   background: var(--gx-tint-soft);
   color: var(--gx-fg-dim);
@@ -507,7 +507,7 @@ export const CAPSULE_CSS = `
   position: relative;
   height: 2px;
   margin: 6px 0 8px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   background: var(--gx-tint-soft);
   overflow: hidden;
 }
@@ -515,7 +515,7 @@ export const CAPSULE_CSS = `
   position: absolute;
   inset: 0;
   width: 33%;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -536,7 +536,7 @@ export const CAPSULE_CSS = `
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   border: 1px solid var(--gx-border);
   background: var(--gx-surface-strong, transparent);
   color: var(--gx-fg-dim);
@@ -561,7 +561,7 @@ export const CAPSULE_CSS = `
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   padding: 4px 10px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   cursor: pointer;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -715,7 +715,7 @@ export const CAPSULE_CSS = `
   border: none;
   cursor: pointer;
   padding: 9px 18px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -792,7 +792,7 @@ export const CAPSULE_CSS = `
 .gauntlet-capsule__preview-pill {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 3px 8px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   border: 1px solid var(--gx-border);
   background: var(--gx-tint-soft);
   font-family: "JetBrains Mono", monospace;
@@ -1598,7 +1598,7 @@ export const CAPSULE_CSS = `
   align-items: center;
   gap: 6px;
   padding: 4px 6px 4px 10px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   border: 1px solid var(--gx-border-mid);
   background: var(--gx-surface);
   color: var(--gx-fg);
@@ -1630,7 +1630,7 @@ export const CAPSULE_CSS = `
   justify-content: center;
   width: 18px;
   height: 18px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   border: none;
   background: transparent;
   color: var(--gx-fg-muted);
@@ -2034,7 +2034,7 @@ export const CAPSULE_CSS = `
   display: inline-flex;
   align-items: center;
   padding: 2px 7px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   letter-spacing: 0.12em;
@@ -2082,7 +2082,7 @@ export const CAPSULE_CSS = `
   left: 50%;
   transform: translateX(-50%);
   padding: 6px 14px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   background: rgba(122, 180, 138, 0.14);
   color: var(--gx-success-text);
   border: 1px solid rgba(122, 180, 138, 0.32);
@@ -2316,8 +2316,8 @@ export const CAPSULE_CSS = `
   border-top: 1px solid var(--gx-border-soft);
   background: color-mix(in oklab, var(--gx-bg-sunken) 18%, transparent);
   font-family: var(--gx-font-mono);
-  font-size: var(--gx-t-micro);
-  letter-spacing: var(--gx-track-meta);
+  font-size: 10px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gx-text-muted);
   min-height: 28px;
@@ -2362,7 +2362,7 @@ export const CAPSULE_CSS = `
 .gx-shortcut-bar__hint[data-tone="danger"]  { color: var(--gx-err); }
 .gx-shortcut-bar__kbd {
   font-family: var(--gx-font-mono);
-  font-size: var(--gx-t-micro);
+  font-size: 10px;
   padding: 2px 5px;
   border: 1px solid var(--gx-border-mid);
   border-radius: var(--gx-r-xs);
@@ -2386,7 +2386,7 @@ export const CAPSULE_CSS = `
   width: 52px;
   height: 26px;
   padding: 0 6px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   background: var(--gx-bg-input);
   border: 1px solid var(--gx-border-mid);
   transition: background var(--gx-dur-normal) var(--gx-ease-out),
@@ -2416,7 +2416,7 @@ export const CAPSULE_CSS = `
   background: radial-gradient(circle at 30% 30%, #8a8aff, #2a2a5a);
 }
 .gx-theme-toggle:hover .gx-theme-toggle__track { border-color: var(--gx-ember); }
-.gx-theme-toggle:focus-visible { outline: 2px solid var(--gx-ember); outline-offset: 2px; border-radius: var(--gx-r-pill); }
+.gx-theme-toggle:focus-visible { outline: 2px solid var(--gx-ember); outline-offset: 2px; border-radius: var(--gx-radius-pill); }
 
 /* Success badge — fires on entering executed phase, 700ms flash. */
 .gx-success-badge {
@@ -2424,13 +2424,13 @@ export const CAPSULE_CSS = `
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: var(--gx-r-pill);
+  border-radius: var(--gx-radius-pill);
   background: color-mix(in oklab, var(--gx-ok) 12%, var(--gx-bg-elevated));
   border: 1px solid color-mix(in oklab, var(--gx-ok) 40%, transparent);
   color: var(--gx-ok);
   font-family: var(--gx-font-mono);
-  font-size: var(--gx-t-micro);
-  letter-spacing: var(--gx-track-meta);
+  font-size: 10px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   animation: gx-success-flash 700ms var(--gx-ease-out) both;
 }
@@ -2454,8 +2454,8 @@ export const CAPSULE_CSS = `
 }
 .gx-empty__sub {
   font-family: var(--gx-font-mono);
-  font-size: var(--gx-t-meta);
-  letter-spacing: var(--gx-track-meta);
+  font-size: var(--gx-text-meta-size);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gx-text-muted);
   margin: 0;
@@ -2474,9 +2474,9 @@ export const CAPSULE_CSS = `
   background: transparent;
   border: 1px solid transparent;
   border-left: 2px solid var(--gx-border-soft);
-  border-radius: var(--gx-r-sm);
+  border-radius: var(--gx-radius-sm);
   font-family: var(--gx-font-sans);
-  font-size: var(--gx-t-body);
+  font-size: var(--gx-text-body-size);
   color: var(--gx-text-2);
   text-align: left;
   cursor: pointer;
@@ -2497,7 +2497,227 @@ export const CAPSULE_CSS = `
 .gx-empty__ritual-label { flex: 1; }
 .gx-empty__ritual-kbd {
   font-family: var(--gx-font-mono);
-  font-size: var(--gx-t-micro);
+  font-size: 10px;
   color: var(--gx-text-muted);
+}
+
+/* ── ModelSelector ───────────────────────────────────────────────────── */
+/* Compact chip in the cápsula header showing the active model's
+   provider mark + short name. Click expands a popover grid of every
+   model the gateway exposes. Selected card carries a cyan glow + slow
+   breath via the canonical gauntlet-cap-pulse keyframe (collapses to
+   opacity fade under prefers-reduced-motion). All values reference
+   --gx-* tokens — no inline hex / px / cubic-bezier. */
+.gauntlet-model-selector {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.gauntlet-model-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 6px;
+  border-radius: var(--gx-radius-pill);
+  background: var(--gx-bg-elevated);
+  border: 1px solid var(--gx-border-soft);
+  color: var(--gx-text-muted);
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-text-meta-size);
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  cursor: pointer;
+  transition:
+    background var(--gx-dur-fast) var(--gx-ease-out),
+    border-color var(--gx-dur-fast) var(--gx-ease-out),
+    color var(--gx-dur-fast) var(--gx-ease-out),
+    transform var(--gx-dur-fast) var(--gx-ease-out);
+}
+.gauntlet-model-chip:hover {
+  background: var(--gx-bg-surface);
+  border-color: var(--gx-border-mid);
+  color: var(--gx-text-2);
+  transform: translateY(-0.5px);
+}
+.gauntlet-model-chip:focus-visible {
+  outline: none;
+  border-color: var(--gx-border-focus);
+  box-shadow: 0 0 0 3px var(--gx-accent-glow);
+}
+.gauntlet-model-chip--pinned {
+  color: var(--gx-accent);
+  border-color: color-mix(in srgb, var(--gx-accent) 32%, transparent);
+  background: color-mix(in srgb, var(--gx-accent) 5%, var(--gx-bg-elevated));
+}
+.gauntlet-model-chip__mark {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+.gauntlet-model-chip--pinned .gauntlet-model-chip__mark {
+  animation: gauntlet-cap-pulse var(--gx-dur-pulse) var(--gx-ease-linear) infinite;
+}
+.gauntlet-model-chip__label { font-weight: 500; }
+.gauntlet-model-chip__caret {
+  font-size: 9px;
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+.gauntlet-model-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  width: min(420px, 92vw);
+  padding: 10px;
+  background: var(--gx-bg-elevated);
+  border: 1px solid var(--gx-border-mid);
+  border-radius: var(--gx-radius-lg);
+  box-shadow:
+    0 1px 0 rgba(28, 26, 22, 0.04),
+    0 16px 40px -18px rgba(28, 26, 22, 0.32);
+  animation: gauntlet-cap-rise var(--gx-dur-rise) var(--gx-ease-out);
+}
+.gauntlet-model-pop__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 8px;
+  border-bottom: 1px solid var(--gx-border-soft);
+  margin-bottom: 8px;
+}
+.gauntlet-model-pop__eyebrow {
+  font-family: var(--gx-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gx-text-muted);
+}
+.gauntlet-model-pop__auto {
+  background: transparent;
+  border: 1px solid var(--gx-border-soft);
+  border-radius: var(--gx-radius-pill);
+  padding: 3px 10px;
+  font-family: var(--gx-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--gx-text-2);
+  cursor: pointer;
+  transition: all var(--gx-dur-fast) var(--gx-ease-out);
+}
+.gauntlet-model-pop__auto:hover {
+  border-color: var(--gx-border-focus);
+  color: var(--gx-accent);
+}
+.gauntlet-model-pop__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.gauntlet-model-pop__empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 18px 8px;
+  font-family: var(--gx-font-mono);
+  font-size: var(--gx-text-meta-size);
+  color: var(--gx-text-muted);
+  text-align: center;
+}
+.gauntlet-model-pop__foot {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--gx-border-soft);
+  font-family: var(--gx-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--gx-text-muted);
+}
+.gauntlet-model-pop__foot strong {
+  color: var(--gx-accent);
+  font-weight: 500;
+}
+
+.gauntlet-model-card {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  grid-template-rows: auto auto;
+  grid-column-gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--gx-bg-surface);
+  border: 1px solid var(--gx-border-soft);
+  border-radius: var(--gx-radius);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--gx-dur-fast) var(--gx-ease-out),
+    border-color var(--gx-dur-fast) var(--gx-ease-out),
+    transform var(--gx-dur-fast) var(--gx-ease-out);
+}
+.gauntlet-model-card:hover:not(:disabled) {
+  background: var(--gx-bg-elevated);
+  border-color: var(--gx-border-mid);
+  transform: translateY(-1px);
+}
+.gauntlet-model-card:focus-visible {
+  outline: none;
+  border-color: var(--gx-border-focus);
+  box-shadow: 0 0 0 3px var(--gx-accent-glow);
+}
+.gauntlet-model-card--pinned {
+  border-color: color-mix(in srgb, var(--gx-accent) 38%, transparent);
+  background: color-mix(in srgb, var(--gx-accent) 6%, var(--gx-bg-surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gx-accent) 18%, transparent);
+}
+.gauntlet-model-card--pinned .gauntlet-model-card__mark {
+  color: var(--gx-accent);
+  animation: gauntlet-cap-pulse var(--gx-dur-pulse) var(--gx-ease-linear) infinite;
+}
+.gauntlet-model-card--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.gauntlet-model-card__mark {
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  color: var(--gx-text-2);
+}
+.gauntlet-model-card__name {
+  font-family: var(--gx-font-sans);
+  font-size: var(--gx-text-body-size);
+  font-weight: 500;
+  color: var(--gx-text);
+  line-height: 1.2;
+  word-break: break-word;
+}
+.gauntlet-model-card__provider {
+  font-family: var(--gx-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--gx-text-muted);
+  text-transform: uppercase;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gauntlet-model-chip,
+  .gauntlet-model-card,
+  .gauntlet-model-pop__auto {
+    transition: opacity 80ms linear;
+    transform: none !important;
+  }
+  .gauntlet-model-chip--pinned .gauntlet-model-chip__mark,
+  .gauntlet-model-card--pinned .gauntlet-model-card__mark {
+    animation: none;
+  }
+  .gauntlet-model-pop {
+    animation: none;
+  }
 }
 `;

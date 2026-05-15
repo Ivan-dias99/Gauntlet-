@@ -369,6 +369,27 @@ async def detect_intent(req: ComposerIntentRequest) -> IntentResult:
         ctx, req.user_input, req.chamber_hint
     )
     route = _route_model(intent, ctx)
+    # Operator override from the cápsula's ModelSelector — only honored
+    # when the id exists in the gateway catalogue. The heuristic route
+    # stays the default; the override layers on top so the intent log
+    # still shows the heuristic's reasoning when the operator hasn't
+    # pinned a model.
+    if req.model_override:
+        from model_gateway import CATALOGUE as _CATALOGUE
+        if req.model_override in _CATALOGUE:
+            route = ModelRoute(
+                primary_model=req.model_override,
+                fallback_models=route.fallback_models,
+                reason=f"operator override (was: {route.primary_model})",
+                expected_latency_ms=route.expected_latency_ms,
+                tool_requirements=route.tool_requirements,
+            )
+        else:
+            logger.warning(
+                "composer.intent.override.rejected unknown model_id=%r — "
+                "falling back to heuristic route %s",
+                req.model_override, route.primary_model,
+            )
     risk, requires_approval = _risk_for(intent, ctx)
     actions = _suggested_actions_for(intent, ctx)
 
@@ -811,6 +832,19 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
     engine = _get_engine()
     choice = gateway.select("default")
     model_id = choice.model_id
+    # Operator override from the cápsula's ModelSelector. Only honored
+    # when the id exists in the gateway catalogue — unknown ids fall
+    # through silently to the gateway's pick so a stale localStorage
+    # value never derails the request.
+    if req.model_override:
+        from model_gateway import CATALOGUE as _CATALOGUE
+        if req.model_override in _CATALOGUE:
+            model_id = req.model_override
+        else:
+            logger.warning(
+                "composer.dom_plan.override.rejected unknown model_id=%r",
+                req.model_override,
+            )
 
     messages = await _build_user_messages(ctx, req.user_input, engine)
 
@@ -969,6 +1003,17 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
     engine = _get_engine()
     choice = gateway.select("default")
     model_id = choice.model_id
+    # Mirror of /composer/dom_plan: honor the cápsula's ModelSelector
+    # override when the id is in the gateway catalogue.
+    if req.model_override:
+        from model_gateway import CATALOGUE as _CATALOGUE
+        if req.model_override in _CATALOGUE:
+            model_id = req.model_override
+        else:
+            logger.warning(
+                "composer.dom_plan_stream.override.rejected unknown model_id=%r",
+                req.model_override,
+            )
 
     messages = await _build_user_messages(ctx, req.user_input, engine)
 
