@@ -684,19 +684,34 @@ Hard rules:
 """
 
 
-def _provider_supports_images(engine) -> bool:
-    """True only when the underlying SDK client is the real Anthropic
-    one. Groq and Gemini adapters reject Anthropic's image content
-    blocks; sending one would 502 on the user. We detect by class
-    name to avoid importing the Anthropic SDK just for an isinstance
-    check (also: in MOCK mode the client is MockAsyncAnthropic which
-    we treat as image-capable for parity testing)."""
+def _provider_supports_images(engine, model_id: Optional[str] = None) -> bool:
+    """True when the active provider+model accepts image content blocks.
+
+    * Anthropic / Mock — always vision-capable.
+    * Groq — only when the routed model_id is in
+      groq_provider.GROQ_VISION_MODELS (Llama 4 Scout/Maverick today).
+      The Groq adapter's _to_groq_messages translates Anthropic image
+      blocks into OpenAI-shape image_url; older models would 400 on
+      the unknown block type.
+    * Gemini — text-only path today; would 502 with images.
+
+    Detected by class name to avoid importing the Anthropic SDK just
+    for an isinstance check.
+    """
     cls = type(engine._client).__name__
-    return cls in ("AsyncAnthropic", "MockAsyncAnthropic")
+    if cls in ("AsyncAnthropic", "MockAsyncAnthropic"):
+        return True
+    if cls == "AsyncGroqAnthropicAdapter":
+        if not model_id:
+            return False
+        from groq_provider import GROQ_VISION_MODELS
+        return model_id in GROQ_VISION_MODELS
+    return False
 
 
 async def _build_user_messages(
     ctx: ContextPackage, user_input: str, engine=None,
+    model_id: Optional[str] = None,
 ) -> list[dict]:
     """Compose the messages array for the planner, including a base64
     image block when the content script forwarded an opt-in viewport
@@ -715,7 +730,7 @@ async def _build_user_messages(
         f"Page context:\n{_compose_context_blob(ctx, memory_block)}\n\n"
         f"Request: {user_input}"
     )
-    image_blocks = _collect_image_blocks(ctx, engine)
+    image_blocks = _collect_image_blocks(ctx, engine, model_id)
     if image_blocks:
         return [
             {
@@ -726,7 +741,9 @@ async def _build_user_messages(
     return [{"role": "user", "content": user_msg}]
 
 
-def _collect_image_blocks(ctx: ContextPackage, engine) -> list[dict]:
+def _collect_image_blocks(
+    ctx: ContextPackage, engine, model_id: Optional[str] = None,
+) -> list[dict]:
     """Walk metadata for everything image-shaped that an Anthropic
     content list can carry. Two sources today:
 
@@ -745,14 +762,15 @@ def _collect_image_blocks(ctx: ContextPackage, engine) -> list[dict]:
     """
     if not ctx.metadata:
         return []
-    if engine is None or not _provider_supports_images(engine):
+    if engine is None or not _provider_supports_images(engine, model_id):
         if (
             ctx.metadata.get("screenshot_data_url")
             or ctx.metadata.get("attachments")
         ):
             logger.info(
-                "composer.images_dropped provider=%s — adapter does not accept image blocks",
+                "composer.images_dropped provider=%s model=%s — adapter/model does not accept image blocks",
                 type(engine._client).__name__ if engine is not None else "<none>",
+                model_id or "<unknown>",
             )
         return []
 
@@ -875,7 +893,7 @@ async def dom_plan(req: DomPlanRequest) -> DomPlanResult:
                 req.model_override,
             )
 
-    messages = await _build_user_messages(ctx, req.user_input, engine)
+    messages = await _build_user_messages(ctx, req.user_input, engine, model_id)
 
     started = time.perf_counter()
     raw_text = ""
@@ -1044,7 +1062,7 @@ async def dom_plan_stream(req: DomPlanRequest) -> StreamingResponse:
                 req.model_override,
             )
 
-    messages = await _build_user_messages(ctx, req.user_input, engine)
+    messages = await _build_user_messages(ctx, req.user_input, engine, model_id)
 
     async def event_stream():
         raw_text = ""

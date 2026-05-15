@@ -81,9 +81,18 @@ def _to_groq_messages(
 ) -> list[dict[str, Any]]:
     """Convert Anthropic messages list to Groq/OpenAI `messages` shape.
 
-    Anthropic shape:  [{role: 'user'|'assistant', content: str | list[block]}]
+    Anthropic shape:  [{role: 'user'|'assistant',
+                        content: str | list[text|image block]}]
                       + a separate `system` arg
-    Groq shape:       [{role: 'system'|'user'|'assistant', content: str}]
+    Groq shape:       [{role: 'system'|'user'|'assistant',
+                        content: str | list[{type:'text'|'image_url',...}]}]
+
+    Vision-capable Groq models (Llama 4 Scout/Maverick) accept the
+    OpenAI-style `image_url` block; we translate Anthropic's
+    `image.source.base64` → `image_url.url = data:<mime>;base64,<b64>`.
+    Older / text-only Groq models silently get the image dropped at the
+    composer layer (_provider_supports_images = False), so this branch
+    only fires when the operator pinned a vision id.
     """
     out: list[dict[str, Any]] = []
     if system:
@@ -96,18 +105,42 @@ def _to_groq_messages(
         groq_role = "assistant" if role == "assistant" else "user"
         raw = m.get("content", "")
         if isinstance(raw, str):
-            text = raw
-        elif isinstance(raw, list):
-            parts = []
+            out.append({"role": groq_role, "content": raw})
+            continue
+        if isinstance(raw, list):
+            blocks: list[dict[str, Any]] = []
             for block in raw:
-                if isinstance(block, dict) and block.get("type") == "text":
-                    parts.append(block.get("text", ""))
-                elif isinstance(block, str):
-                    parts.append(block)
-            text = "\n".join(p for p in parts if p)
-        else:
-            text = str(raw)
-        out.append({"role": groq_role, "content": text})
+                if isinstance(block, str):
+                    blocks.append({"type": "text", "text": block})
+                    continue
+                if not isinstance(block, dict):
+                    continue
+                btype = block.get("type")
+                if btype == "text":
+                    text = block.get("text", "")
+                    if text:
+                        blocks.append({"type": "text", "text": text})
+                elif btype == "image":
+                    src = block.get("source") or {}
+                    if src.get("type") != "base64":
+                        continue
+                    mime = src.get("media_type") or "image/png"
+                    data = src.get("data") or ""
+                    if not data:
+                        continue
+                    blocks.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{data}"},
+                    })
+            # Single-text-block payloads collapse back to a string so the
+            # request looks identical to the pre-vision path on Groq SDKs
+            # that handle string content faster.
+            if len(blocks) == 1 and blocks[0].get("type") == "text":
+                out.append({"role": groq_role, "content": blocks[0]["text"]})
+            else:
+                out.append({"role": groq_role, "content": blocks})
+            continue
+        out.append({"role": groq_role, "content": str(raw)})
     return out
 
 
@@ -329,7 +362,16 @@ KNOWN_GROQ_MODELS: tuple[str, ...] = (
     "llama-3.3-70b-versatile",
     "openai/gpt-oss-120b",
     "qwen/qwen3-32b",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
 )
+
+# Vision-capable Groq model ids. The composer layer consults this set
+# (via composer._provider_supports_images) to decide whether to attach
+# a screenshot block to the planning request — pinning a non-vision
+# Groq model means the cápsula plans blind on computer_use coords.
+GROQ_VISION_MODELS: frozenset[str] = frozenset({
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+})
 
 
 def _resolve_groq_model(requested: str, configured: str) -> str:

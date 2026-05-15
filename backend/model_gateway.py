@@ -100,6 +100,12 @@ CATALOGUE: dict[str, ModelChoice] = {
         provider="groq",
         notes="Alibaba Qwen 3 32B.",
     ),
+    "meta-llama/llama-4-scout-17b-16e-instruct": ModelChoice(
+        model_id="meta-llama/llama-4-scout-17b-16e-instruct",
+        provider="groq",
+        notes="Meta Llama 4 Scout 17B — VISION-CAPABLE. Required for "
+              "screenshot-aware computer_use planning on the Groq path.",
+    ),
 }
 
 
