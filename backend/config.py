@@ -56,6 +56,12 @@ GEMINI_MODEL: str = (
 # llama-3.3-70b-versatile. Free tier 2025 — RPM generoso, throughput
 # alto, latência sub-segundo. Substituiu Anthropic como caminho default
 # enquanto a Anthropic está em pausa.
+#
+# Modelos curados (groq_provider.KNOWN_GROQ_MODELS):
+#   * llama-3.3-70b-versatile  — Meta Llama 3.3 70B (default).
+#   * openai/gpt-oss-120b      — OpenAI open weights 120B, hosted by Groq.
+#   * qwen/qwen3-32b           — Alibaba Qwen 3 32B.
+# Outros ids passam, mas o adapter loga aviso à boot.
 GROQ_API_KEY: str = (
     os.environ.get("GAUNTLET_GROQ_API_KEY")
     or os.environ.get("GROQ_API_KEY")

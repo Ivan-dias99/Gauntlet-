@@ -301,6 +301,20 @@ class _MessagesNamespace:
 # as before this map landed.
 _GROQ_FALLBACK_MODEL = "llama-3.1-8b-instant"
 
+# Curated set of Groq production model ids the operator can pin via
+# GAUNTLET_GROQ_MODEL. Not enforced — any id Groq accepts will still
+# run — but the startup log warns when the pinned id isn't on the list
+# so a typo surfaces immediately instead of as a runtime 404. Mix of
+# Llama (Meta), Qwen (Alibaba), and gpt-oss (OpenAI weights, hosted by
+# Groq); all three are on the free tier in 2026-05.
+_GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+KNOWN_GROQ_MODELS: tuple[str, ...] = (
+    "llama-3.3-70b-versatile",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3-32b",
+)
+
+
 def _resolve_groq_model(requested: str, configured: str) -> str:
     """Translate a gateway-emitted Anthropic id into a Groq id."""
     if requested.startswith("claude-haiku"):
@@ -318,7 +332,7 @@ class AsyncGroqAnthropicAdapter:
     requer o protocolo anthropic-tool-call e fica fora do v1 adapter."""
 
     def __init__(
-        self, *, api_key: str, model: str = "llama-3.3-70b-versatile"
+        self, *, api_key: str, model: str = _GROQ_DEFAULT_MODEL,
     ) -> None:
         try:
             from groq import AsyncGroq  # type: ignore
@@ -330,8 +344,16 @@ class AsyncGroqAnthropicAdapter:
         self._client = AsyncGroq(api_key=api_key)
         self._model_id = model
         self.messages = _MessagesNamespace(self)
+        if model not in KNOWN_GROQ_MODELS:
+            logger.warning(
+                "GAUNTLET_GROQ_MODEL=%s is not in the known set %s — "
+                "passing through to Groq, but a typo will only surface as a "
+                "runtime 404. Pick one of the curated ids if unsure.",
+                model, KNOWN_GROQ_MODELS,
+            )
         logger.info(
-            "Groq adapter initialised (model=%s, fallback=%s). Streaming SSE "
-            "supported; tool use / agent loop continua fora do escopo v1.",
-            model, _GROQ_FALLBACK_MODEL,
+            "Groq adapter initialised (model=%s, fallback=%s, known=%s). "
+            "Streaming SSE supported; tool use / agent loop continua fora do "
+            "escopo v1.",
+            model, _GROQ_FALLBACK_MODEL, KNOWN_GROQ_MODELS,
         )
