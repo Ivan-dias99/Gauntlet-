@@ -1,5 +1,7 @@
 // CSS colocated — content-script shadow root needs the styles in the bundle.
 // Aesthetic: glass morphism, ember accent, mono+serif typography, motion.
+import { COMPUTER_USE_GATE_CSS } from './ComputerUseGate';
+
 export const CAPSULE_CSS = `
 @keyframes gauntlet-cap-pulse {
   0%, 100% { opacity: 0.7; transform: scale(1); }
@@ -2720,4 +2722,9 @@ export const CAPSULE_CSS = `
     animation: none;
   }
 }
+
+/* Computer-use consent gate — defined alongside ComputerUseGate.tsx and
+   appended here so the shadow-root bundle carries it. Without this the
+   gate renders unstyled (no overlay, no card, no buttons visible). */
+${COMPUTER_USE_GATE_CSS}
 `;
