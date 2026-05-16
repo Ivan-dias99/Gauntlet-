@@ -66,9 +66,10 @@ railway variables set GAUNTLET_ALLOW_CODE_EXEC=false
 railway variables set GAUNTLET_DATA_DIR=/data
 ```
 
-`SIGNAL_*` and `RUBERRA_*` are still read as silent fallbacks during
-the transition window — see `docs/OPERATIONS.md` for the full alias
-table.
+Legacy `SIGNAL_*` / `RUBERRA_*` aliases were removed in the v1.1.0
+alias-cleanup pass. Any deploy still setting them must re-flash to
+the canonical `GAUNTLET_*` names — `docs/OPERATIONS.md` retains the
+historical mapping for reference.
 
 ### Volume — REQUIRED
 

@@ -1,9 +1,8 @@
 """
 Gauntlet — Mock Anthropic Client
 Zero-network stand-in for ``AsyncAnthropic`` used when
-``GAUNTLET_MOCK=1`` (legacy ``SIGNAL_MOCK=1`` still honoured as fallback,
-will be removed in v1.1.0). Emits deterministic canned responses so the
-full pipeline (triad → judge, agent loop) can be exercised end-to-end
+``GAUNTLET_MOCK=1``. Emits deterministic canned responses so the full
+pipeline (triad → judge, agent loop) can be exercised end-to-end
 without an API key.
 
 Detection rules:

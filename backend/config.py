@@ -2,22 +2,18 @@
 Gauntlet — Configuration
 All environment-driven settings. No hardcoded secrets.
 
-Env: GAUNTLET_* is canonical. (Legacy SIGNAL_* / RUBERRA_* fallbacks
-were dropped at v1.0.0-rc.1 — reflash your env vars before upgrading.)
+Env: GAUNTLET_* is canonical. Legacy SIGNAL_* / RUBERRA_* fallbacks
+were dropped at v1.0.0-rc.1; the variadic helper that read them was
+retired in the v1.1.0 alias-cleanup pass.
 """
 
 import os
 from pathlib import Path
 
 
-def _env(canonical: str, *_legacy: str, default: str = "") -> str:
-    """Read a canonical GAUNTLET_* env var. Extra positional args were
-    legacy aliases (SIGNAL_*, RUBERRA_*) and are now ignored — kept in
-    the signature so existing call sites compile until they are tidied."""
-    value = os.environ.get(canonical)
-    if value:
-        return value
-    return default
+def _env(canonical: str, default: str = "") -> str:
+    """Read a canonical GAUNTLET_* env var."""
+    return os.environ.get(canonical) or default
 
 
 # ── API ─────────────────────────────────────────────────────────────────────
@@ -74,10 +70,9 @@ GROQ_MODEL: str = (
 )
 
 # Offline mock mode — bypasses every provider API call with canned responses.
-# Enable for end-to-end validation without an API key. Identifier renomeado
-# de RUBERRA_MOCK em 2026-05-08 (sessão hora-seria) para alinhar com a
-# canónica GAUNTLET_*. Env continua a ler GAUNTLET_MOCK + SIGNAL_MOCK +
-# RUBERRA_MOCK como aliases via _env() — compat preservada.
+# Enable for end-to-end validation without an API key. Reads only
+# GAUNTLET_MOCK; the SIGNAL_MOCK / RUBERRA_MOCK fallbacks were dropped
+# in the v1.1.0 alias-cleanup pass.
 GAUNTLET_MOCK: bool = _env("GAUNTLET_MOCK").strip().lower() in (
     "1", "true", "yes", "on",
 )
