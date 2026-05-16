@@ -50,17 +50,19 @@ logger = logging.getLogger("gauntlet.tools")
 
 # ── Configuration ───────────────────────────────────────────────────────────
 # Env precedence: GAUNTLET_* is canonical (per CLAUDE.md doctrine).
-# SIGNAL_* and RUBERRA_* are honored as silent legacy fallbacks so
-# existing deploys keep working through the v1.x compat window;
-# scheduled for removal in v1.1.0. The _env() helper below reads
-# GAUNTLET_FOO first, then SIGNAL_FOO, then RUBERRA_FOO.
+# Legacy SIGNAL_* / RUBERRA_* fallbacks were removed in the v1.1.0
+# alias-cleanup pass — re-flash any deploy that still set them. The
+# variadic _env() below now serves only the dual-canonical pattern
+# where a third-party convention (GITHUB_TOKEN, VERCEL_TOKEN) coexists
+# with our own GAUNTLET_-prefixed override.
 
 
 def _env(*names: str, default: str = "") -> str:
     """Return the first non-empty value among ``names`` from the env, else
-    ``default``. Variadic so transition envs can read the canonical
-    ``GAUNTLET_*`` first and fall back to ``SIGNAL_*`` / ``RUBERRA_*``
-    in priority order."""
+    ``default``. Variadic to support dual-canonical lookups such as
+    ``GITHUB_TOKEN`` / ``GAUNTLET_GITHUB_TOKEN`` where both names are
+    legitimate. NOT for legacy SIGNAL_*/RUBERRA_* aliases — those are
+    gone."""
     for name in names:
         v = os.environ.get(name)
         if v:
@@ -70,13 +72,13 @@ def _env(*names: str, default: str = "") -> str:
 
 TOOL_WORKSPACE_ROOT: Path = Path(
     _env(
-        "GAUNTLET_WORKSPACE", "SIGNAL_WORKSPACE", "RUBERRA_WORKSPACE",
+        "GAUNTLET_WORKSPACE",
         default=str(Path(__file__).resolve().parent.parent),
     )
 ).resolve()
 
 AGENT_ALLOW_CODE_EXEC: bool = _env(
-    "GAUNTLET_ALLOW_CODE_EXEC", "SIGNAL_ALLOW_CODE_EXEC", "RUBERRA_ALLOW_CODE_EXEC",
+    "GAUNTLET_ALLOW_CODE_EXEC",
     default="false",
 ).strip().lower() in ("1", "true", "yes", "on")
 
