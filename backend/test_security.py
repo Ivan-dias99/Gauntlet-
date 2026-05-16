@@ -470,6 +470,42 @@ def test_argv_paths_allows_dotted_filename():
 # ── Per-API-key rate limit (Layer 2 extension) ───────────────────────────────
 
 
+def test_rate_limit_ip_reject_skips_per_key_bucket_creation():
+    """When the IP bucket already denies, the limiter must NOT allocate
+    a per-key bucket. Closes a memory-DoS where a client whose IP is
+    already capped rotates bearer tokens to force unbounded growth of
+    the bucket map. Verified by inspecting the bucket store directly
+    after the rejection."""
+    from rate_limit import RateLimiter, _hash_key
+    limiter = RateLimiter()
+    klass = "read"  # /diagnostics — burst 30
+    ip = "10.1.2.3"
+    # Drain the IP bucket without any API key.
+    for _ in range(40):
+        allowed, _retry, k, scope = limiter.check(ip, "/diagnostics")
+        if not allowed:
+            assert scope == "ip"
+            assert k == klass
+            break
+    # Verify the IP bucket exists, then send a request WITH a rotating
+    # bearer token: the per-key bucket must NOT be created.
+    assert ("ip", ip, klass) in limiter._buckets
+    rotated_keys = [f"attacker-token-{i}" for i in range(50)]
+    for tok in rotated_keys:
+        allowed, _retry, _k, scope = limiter.check(
+            ip, "/diagnostics", api_key=tok,
+        )
+        assert not allowed
+        assert scope == "ip"
+    # Bucket map must hold only the one IP bucket and nothing per-key.
+    per_key_entries = [
+        k for k in limiter._buckets.keys() if k[0] == "api_key"
+    ]
+    assert per_key_entries == [], (
+        f"per-key buckets created despite IP rejection: {per_key_entries}"
+    )
+
+
 def test_rate_limit_per_api_key_caps_across_ips():
     """A leaked key cycling through synthetic IPs must still be capped
     on the per-key bucket. Drives the limiter directly so we can vary

@@ -220,33 +220,41 @@ class RateLimiter:
     ) -> tuple[bool, float, str, str]:
         """Return ``(allowed, retry_after_ms, route_class, scope)``.
 
-        Evaluates the IP bucket and (when ``api_key`` is non-empty) the
-        per-key bucket. BOTH must permit. ``scope`` is the dimension
-        that tripped on rejection, or ``"ok"`` when allowed. The
-        rejected bucket gets its token back from the un-tripped check
-        so a deny on one dimension does not silently drain the other —
-        the limiter is a gate, not an accounting log.
+        Evaluates the IP bucket first; only consults the per-key bucket
+        when the IP bucket admitted the request AND ``api_key`` is
+        non-empty. BOTH dimensions must permit. ``scope`` is the
+        dimension that tripped on rejection, or ``"ok"`` when allowed.
+        If the per-key check trips after the IP check passed, the IP
+        token is refunded so a deny on one dimension does not silently
+        drain the other.
+
+        The IP-first short-circuit also closes a memory-DoS vector: a
+        client whose IP bucket is already empty cannot force creation
+        of new ``(api_key, route_class)`` entries by rotating bearer
+        tokens — the per-key bucket is only allocated for requests we
+        were going to evaluate anyway. ``_buckets`` therefore grows at
+        the rate of *admitted* IPs × keys × route classes, not at the
+        rate of incoming requests.
         """
         klass = classify(path)
         ip_bucket = self._bucket_for("ip", ip, klass)
         ip_allowed, ip_retry = ip_bucket.take()
-        if api_key:
-            key_bucket = self._bucket_for("api_key", _hash_key(api_key), klass)
-            key_allowed, key_retry = key_bucket.take()
-        else:
-            key_bucket = None
-            key_allowed, key_retry = True, 0.0
-        if ip_allowed and key_allowed:
+        if not ip_allowed:
+            # IP already over budget — do not allocate or touch the
+            # per-key bucket. Scope reports "ip" because that is the
+            # dimension that tripped; the caller is not being charged
+            # for a key bucket that was never created.
+            return False, ip_retry, klass, "ip"
+        if not api_key:
             return True, 0.0, klass, "ok"
-        # One dimension tripped — refund the other so a partial reject
-        # does not double-count against the caller.
-        if ip_allowed:
-            ip_bucket.refund()
-        if key_allowed and key_bucket is not None:
-            key_bucket.refund()
-        if not key_allowed:
-            return False, key_retry, klass, "api_key"
-        return False, ip_retry, klass, "ip"
+        key_bucket = self._bucket_for("api_key", _hash_key(api_key), klass)
+        key_allowed, key_retry = key_bucket.take()
+        if key_allowed:
+            return True, 0.0, klass, "ok"
+        # Key bucket tripped — refund the IP token we just consumed so
+        # this one rejection only costs one bucket's worth of tokens.
+        ip_bucket.refund()
+        return False, key_retry, klass, "api_key"
 
     def reset(self) -> None:
         """Test hook — drop all buckets."""
