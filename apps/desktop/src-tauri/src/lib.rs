@@ -43,6 +43,30 @@ use tauri_plugin_dialog::DialogExt;
 const MAX_TEXT_BYTES: usize = 1024 * 1024;
 const MAX_BINARY_BYTES: usize = 4 * 1024 * 1024;
 
+// Tier-2/3 (Medium/High) command-origin gate. Tauri 2 custom commands
+// are ambient by default — any window in the app can invoke them. The
+// product law (see ``.claude/skills/gauntlet-tauri-shell``) is that
+// only the ``main`` webview, where the consent UI lives, may invoke
+// Medium- or High-risk commands. The ``pill`` window is intentionally
+// limited to Low-tier (show_capsule, hide_pill). Computer-use uses its
+// own ``cu_assert_main_webview`` with a distinct error label so the JS
+// gate can distinguish "wrong origin" from "rate limited".
+const WEBVIEW_ORIGIN_DENIED: &str = "webview_origin_denied";
+const MAIN_WEBVIEW_LABEL: &str = "main";
+
+fn assert_main_webview(label: &str) -> Result<(), String> {
+    if label == MAIN_WEBVIEW_LABEL {
+        Ok(())
+    } else {
+        Err(format!(
+            "{WEBVIEW_ORIGIN_DENIED}: caller webview '{label}' is not authorised \
+             to invoke this command (only '{MAIN_WEBVIEW_LABEL}' may — Medium- \
+             and High-tier commands are scoped to the cápsula window where the \
+             operator consent UI lives)"
+        ))
+    }
+}
+
 // Picker-consent ledger. ``pick_file`` / ``pick_save_path`` are the
 // only legitimate way a path lands here; every read_*/write_* command
 // validates the canonicalised request path is present before touching
@@ -278,7 +302,8 @@ fn get_active_window() -> Result<WindowInfo, String> {
 }
 
 #[tauri::command]
-fn capture_screen_region() -> Result<String, String> {
+fn capture_screen_region(webview: tauri::Webview) -> Result<String, String> {
+    assert_main_webview(webview.label())?;
     let mut path: PathBuf = std::env::temp_dir();
     path.push(format!(
         "gauntlet-shot-{}.png",
@@ -343,8 +368,10 @@ fn capture_screen_region() -> Result<String, String> {
     Err("screen region capture not implemented for this OS".into())
 }
 
-#[tauri::command]
-fn start_backend() -> Result<(), String> {
+// Inner implementation — usable by both the tauri-command wrapper
+// (with webview gate) and the system-level callsites (tray "Quit",
+// app boot autostart) that have no webview context.
+fn start_backend_inner() -> Result<(), String> {
     if std::env::var("GAUNTLET_DESKTOP_AUTOSTART_BACKEND")
         .map(|v| v != "1" && v.to_lowercase() != "true")
         .unwrap_or(true)
@@ -388,7 +415,12 @@ fn start_backend() -> Result<(), String> {
 }
 
 #[tauri::command]
-fn stop_backend() -> Result<(), String> {
+fn start_backend(webview: tauri::Webview) -> Result<(), String> {
+    assert_main_webview(webview.label())?;
+    start_backend_inner()
+}
+
+fn stop_backend_inner() -> Result<(), String> {
     let mut guard = BACKEND_PROCESS
         .lock()
         .map_err(|e| format!("backend mutex poisoned: {e}"))?;
@@ -405,6 +437,12 @@ fn stop_backend() -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn stop_backend(webview: tauri::Webview) -> Result<(), String> {
+    assert_main_webview(webview.label())?;
+    stop_backend_inner()
+}
+
 // Filesystem — operator-driven access. The dialog plugin provides the
 // consent ("operator picked this file"); std::fs reads it. We bypass
 // plugin-fs scopes intentionally because the picker IS the gate, not a
@@ -412,9 +450,11 @@ fn stop_backend() -> Result<(), String> {
 // flooded by a 50 MB blob.
 #[tauri::command]
 async fn pick_file(
+    webview: tauri::Webview,
     app: tauri::AppHandle,
     accept: Option<Vec<String>>,
 ) -> Result<Option<PickedFile>, String> {
+    assert_main_webview(webview.label())?;
     let (tx, rx) = std::sync::mpsc::channel::<Option<tauri_plugin_dialog::FilePath>>();
     let mut dialog = app.dialog().file();
     if let Some(exts) = accept {
@@ -454,7 +494,8 @@ async fn pick_file(
 }
 
 #[tauri::command]
-fn read_text_file_at(path: String) -> Result<String, String> {
+fn read_text_file_at(webview: tauri::Webview, path: String) -> Result<String, String> {
+    assert_main_webview(webview.label())?;
     // ``picker_authorised`` canonicalises the request path (resolving
     // symlinks + ``..``) before checking the consent ledger AND returns
     // the canonical path we'll actually read — that closes both H2
@@ -482,10 +523,12 @@ fn read_text_file_at(path: String) -> Result<String, String> {
 // auto-overwrite a path the operator didn't just confirm.
 #[tauri::command]
 async fn pick_save_path(
+    webview: tauri::Webview,
     app: tauri::AppHandle,
     suggested_name: Option<String>,
     accept: Option<Vec<String>>,
 ) -> Result<Option<String>, String> {
+    assert_main_webview(webview.label())?;
     let (tx, rx) = std::sync::mpsc::channel::<Option<tauri_plugin_dialog::FilePath>>();
     let mut dialog = app.dialog().file();
     if let Some(name) = suggested_name.as_deref() {
@@ -523,7 +566,8 @@ async fn pick_save_path(
 }
 
 #[tauri::command]
-fn write_text_file_at(path: String, content: String) -> Result<u64, String> {
+fn write_text_file_at(webview: tauri::Webview, path: String, content: String) -> Result<u64, String> {
+    assert_main_webview(webview.label())?;
     let buf = picker_authorised(&PathBuf::from(&path))?;
     if let Some(parent) = buf.parent() {
         if !parent.as_os_str().is_empty() && !parent.exists() {
@@ -539,7 +583,8 @@ fn write_text_file_at(path: String, content: String) -> Result<u64, String> {
 }
 
 #[tauri::command]
-fn write_file_base64_at(path: String, base64: String) -> Result<u64, String> {
+fn write_file_base64_at(webview: tauri::Webview, path: String, base64: String) -> Result<u64, String> {
+    assert_main_webview(webview.label())?;
     let buf = picker_authorised(&PathBuf::from(&path))?;
     if let Some(parent) = buf.parent() {
         if !parent.as_os_str().is_empty() && !parent.exists() {
@@ -557,7 +602,8 @@ fn write_file_base64_at(path: String, base64: String) -> Result<u64, String> {
 }
 
 #[tauri::command]
-fn read_file_base64_at(path: String) -> Result<Base64Payload, String> {
+fn read_file_base64_at(webview: tauri::Webview, path: String) -> Result<Base64Payload, String> {
+    assert_main_webview(webview.label())?;
     let buf = picker_authorised(&PathBuf::from(&path))?;
     let metadata = std::fs::metadata(&buf).map_err(|e| format!("stat {path}: {e}"))?;
     if !metadata.is_file() {
@@ -686,10 +732,12 @@ fn shell_arg_rejected(binary: &str, arg: &str) -> bool {
 
 #[tauri::command]
 fn run_shell(
+    webview: tauri::Webview,
     cmd: String,
     args: Option<Vec<String>>,
     cwd: Option<String>,
 ) -> Result<ShellResult, String> {
+    assert_main_webview(webview.label())?;
     let env_gate = std::env::var("GAUNTLET_ALLOW_CODE_EXEC")
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
         .unwrap_or(false);
@@ -773,7 +821,8 @@ fn run_shell(
 // primary display straight to a temp file and returns base64 + path so
 // the cápsula can both preview the image and reference it on disk.
 #[tauri::command]
-fn capture_screen_full() -> Result<ScreenCapture, String> {
+fn capture_screen_full(webview: tauri::Webview) -> Result<ScreenCapture, String> {
+    assert_main_webview(webview.label())?;
     let mut path: PathBuf = std::env::temp_dir();
     path.push(format!(
         "gauntlet-screen-{}.png",
@@ -1351,7 +1400,7 @@ pub fn run() {
                         }
                     }
                     "tray-quit" => {
-                        let _ = stop_backend();
+                        let _ = stop_backend_inner();
                         app.exit(0);
                     }
                     _ => {}
@@ -1376,7 +1425,7 @@ pub fn run() {
                 .map(|v| v == "1" || v.to_lowercase() == "true")
                 .unwrap_or(false)
             {
-                if let Err(e) = start_backend() {
+                if let Err(e) = start_backend_inner() {
                     eprintln!("[gauntlet/desktop] backend autostart failed: {e}");
                 }
             }
@@ -1465,7 +1514,7 @@ pub fn run() {
             // Reap the backend process on app exit so we don't leak a
             // zombie listening on :3002 across reloads.
             if let tauri::WindowEvent::Destroyed = event {
-                let _ = stop_backend();
+                let _ = stop_backend_inner();
             }
         })
         .run(tauri::generate_context!())
@@ -1548,6 +1597,22 @@ mod tests {
         picker_remember(&temp);
         let resolved = picker_authorised(&temp).expect("should accept");
         assert!(resolved.is_absolute());
+    }
+
+    // assert_main_webview — Tier-2/3 webview-origin gate.
+
+    #[test]
+    fn assert_main_webview_admits_main() {
+        assert!(assert_main_webview("main").is_ok());
+    }
+
+    #[test]
+    fn assert_main_webview_rejects_pill_and_others() {
+        for label in &["pill", "settings", "debug", "", "MAIN"] {
+            let err = assert_main_webview(label)
+                .expect_err(&format!("should reject webview '{label}'"));
+            assert!(err.contains("webview_origin_denied"), "wrong error: {err}");
+        }
     }
 
     // cu_take_token — M7 / computer-use rate budget.
