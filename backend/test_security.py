@@ -318,3 +318,219 @@ def test_diagnostics_reports_security_layers():
     assert "rate_limit_enabled" in sec
     assert "frame_options" in sec
     assert "body_size_limit_bytes" in sec
+
+
+# ── Tool sandbox — SSRF policy (_validate_fetch_url) ─────────────────────────
+
+
+def _import_tools():
+    """Import ``tools`` with a scoped workspace so the module-level
+    ``_resolve_workspace_root`` does not refuse on machines where the
+    backend's parent happens to be ``/``."""
+    import importlib
+    import tempfile
+    os.environ.setdefault("GAUNTLET_WORKSPACE", tempfile.gettempdir())
+    sys.modules.pop("tools", None)
+    return importlib.import_module("tools")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/admin",          # IPv4 loopback literal
+        "http://[::1]/",                    # IPv6 loopback literal
+        "http://10.0.0.1/internal",         # RFC1918
+        "http://192.168.1.1/router",        # RFC1918
+        "http://169.254.169.254/latest",    # AWS / GCP metadata
+        "http://2130706433/",               # 127.0.0.1 in decimal
+        "http://0177.0.0.1/",               # 127.0.0.1 in octal
+        "ftp://example.com/",               # disallowed scheme
+        "file:///etc/passwd",               # disallowed scheme
+        "gopher://example.com/",            # disallowed scheme
+        "http://user:pass@example.com/",    # userinfo
+        "http:///no-host",                  # missing hostname
+    ],
+)
+def test_ssrf_validate_fetch_url_rejects(url: str):
+    """Every literal-private / metadata / weird-scheme / userinfo URL
+    must trip the deny-by-default fetch policy. Adding a case here is
+    the canonical way to extend the SSRF contract."""
+    tools = _import_tools()
+    with pytest.raises(tools._UrlRejected):
+        tools._validate_fetch_url(url)
+
+
+def test_ssrf_validate_fetch_url_accepts_public_literal():
+    tools = _import_tools()
+    # Cloudflare's public DNS — stable, public, IPv4.
+    host, port = tools._validate_fetch_url("https://1.1.1.1/")
+    assert host == "1.1.1.1"
+    assert port == 443
+
+
+# ── Tool sandbox — command policy (_check_command_policy) ────────────────────
+
+
+def test_command_policy_empty_argv_rejected():
+    tools = _import_tools()
+    err = tools._check_command_policy([])
+    assert err is not None and "empty" in err
+
+
+def test_command_policy_unknown_binary_rejected():
+    tools = _import_tools()
+    err = tools._check_command_policy(["curl", "https://example.com"])
+    assert err is not None
+    assert "deny-by-default" in err
+
+
+def test_command_policy_safe_binary_admitted():
+    tools = _import_tools()
+    assert tools._check_command_policy(["ls", "-la"]) is None
+    assert tools._check_command_policy(["grep", "-r", "x", "."]) is None
+
+
+def test_command_policy_gated_requires_flag(monkeypatch):
+    tools = _import_tools()
+    monkeypatch.setattr(tools, "AGENT_ALLOW_CODE_EXEC", False)
+    err = tools._check_command_policy(["python3", "-c", "print(1)"])
+    assert err is not None
+    assert "GAUNTLET_ALLOW_CODE_EXEC" in err
+
+
+def test_command_policy_gated_admitted_when_flag_on(monkeypatch):
+    tools = _import_tools()
+    monkeypatch.setattr(tools, "AGENT_ALLOW_CODE_EXEC", True)
+    assert tools._check_command_policy(["python3", "-c", "print(1)"]) is None
+
+
+def test_command_policy_find_exec_rejected_even_when_gated(monkeypatch):
+    """``find -exec`` is the canonical escape from a read-only file
+    walker into arbitrary code execution. Even with the gate flipped
+    on, the per-binary forbidden-arg check must veto it."""
+    tools = _import_tools()
+    monkeypatch.setattr(tools, "AGENT_ALLOW_CODE_EXEC", True)
+    for variant in (
+        ["find", ".", "-exec", "rm", "{}", ";"],
+        ["find", ".", "-execdir", "rm", "{}", ";"],
+        ["find", ".", "-delete"],
+        ["find", ".", "-fprint", "/tmp/x"],
+    ):
+        err = tools._check_command_policy(variant)
+        assert err is not None, f"find escape leaked: {variant}"
+        assert "not allowed" in err
+
+
+# ── Tool sandbox — argv path guard (_check_argv_paths) ───────────────────────
+
+
+def test_argv_paths_rejects_absolute():
+    tools = _import_tools()
+    err = tools.RunCommandTool._check_argv_paths(["cat", "/etc/passwd"])
+    assert err is not None and "absolute" in err.lower()
+
+
+def test_argv_paths_rejects_parent_traversal():
+    tools = _import_tools()
+    for variant in (
+        ["cat", "../etc/passwd"],
+        ["cat", "./../etc/passwd"],
+        ["cat", "foo/../../bar"],
+    ):
+        err = tools.RunCommandTool._check_argv_paths(variant)
+        assert err is not None, f"traversal leaked: {variant}"
+        assert "parent traversal" in err
+
+
+def test_argv_paths_rejects_windows_absolute():
+    tools = _import_tools()
+    err = tools.RunCommandTool._check_argv_paths(["cat", r"C:\Windows\System32"])
+    assert err is not None and "absolute" in err.lower()
+
+
+def test_argv_paths_allows_workspace_relative():
+    tools = _import_tools()
+    assert (
+        tools.RunCommandTool._check_argv_paths(
+            ["grep", "-r", "TODO", "src/"]
+        )
+        is None
+    )
+
+
+def test_argv_paths_allows_dotted_filename():
+    """A file literally named ``..foo`` is unusual but legal and not
+    a traversal. Make sure the split-based check does not over-reject."""
+    tools = _import_tools()
+    assert (
+        tools.RunCommandTool._check_argv_paths(["cat", "..foo"]) is None
+    )
+
+
+# ── Per-API-key rate limit (Layer 2 extension) ───────────────────────────────
+
+
+def test_rate_limit_per_api_key_caps_across_ips():
+    """A leaked key cycling through synthetic IPs must still be capped
+    on the per-key bucket. Drives the limiter directly so we can vary
+    the IP without the TestClient's fixed source address."""
+    from rate_limit import RateLimiter
+    limiter = RateLimiter()
+    key = "leaked-key-xyz"
+    # /diagnostics → "read" class: burst 30, refill 10/s.
+    saw_api_key_reject = False
+    for i in range(60):
+        allowed, _retry, _klass, scope = limiter.check(
+            ip=f"10.0.0.{i % 250}",   # rotate IPs so per-IP never trips
+            path="/diagnostics",
+            api_key=key,
+        )
+        if not allowed and scope == "api_key":
+            saw_api_key_reject = True
+            break
+    assert saw_api_key_reject, (
+        "per-key bucket failed to cap a key cycling through IPs"
+    )
+
+
+def test_rate_limit_scope_in_envelope():
+    client, _ = _fresh_client(
+        {"GAUNTLET_RATE_LIMIT_DISABLED": "0", "GAUNTLET_API_KEY": "k"}
+    )
+    last = None
+    for _ in range(60):
+        r = client.get("/diagnostics", headers={"Authorization": "Bearer k"})
+        if r.status_code == 429:
+            last = r
+            break
+    assert last is not None, "rate limiter never tripped"
+    body = last.json()
+    assert body["detail"]["scope"] in ("ip", "api_key")
+    assert last.headers.get("X-RateLimit-Scope") in ("ip", "api_key")
+
+
+# ── Workspace-root fail-closed guard ─────────────────────────────────────────
+
+
+def test_workspace_root_refuses_filesystem_root(monkeypatch):
+    """``_resolve_workspace_root`` must refuse to resolve to ``/``
+    (or any other anchor) so a Dockerfile that forgets
+    ``GAUNTLET_WORKSPACE`` cannot silently expose the container root
+    to SAFE commands. Import the module under a safe env first
+    (otherwise the module-level ``TOOL_WORKSPACE_ROOT = _resolve...()``
+    would crash the import); then patch the env and re-call the
+    resolver, which reads env at call time."""
+    tools_mod = _import_tools()
+    for bad in ("/", "C:\\", "C:/"):
+        monkeypatch.setenv("GAUNTLET_WORKSPACE", bad)
+        try:
+            tools_mod._resolve_workspace_root()
+        except RuntimeError as exc:
+            assert "filesystem root" in str(exc), exc
+        else:
+            # On non-Windows hosts the Windows anchors won't round-trip
+            # through Path(..).resolve() to their own anchor; skip those
+            # cases when they resolve elsewhere rather than failing the
+            # test. The ``/`` case is the one that matters in CI.
+            if bad == "/":
+                pytest.fail(f"resolver accepted {bad!r}")

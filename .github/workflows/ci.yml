@@ -78,16 +78,17 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - run: pip install pytest pytest-asyncio
-      # Known-CVE check on the resolved tree. Reports any open advisory
-      # so the operator can triage on the next pass; warn-only because
-      # blocking on every transient PyPI advisory ratholes velocity.
-      # Tighten to a hard fail (drop the `|| true`) once the operator
-      # has signed off on the open-advisory list and pinned waivers.
+      # Known-CVE check on the resolved tree. Hard fail — a published
+      # advisory in a runtime dep is a release blocker; the right
+      # response is to bump or pin a waiver, not to merge a
+      # known-vulnerable tree. To temporarily allow a transient PyPI
+      # advisory through, append ``--ignore-vuln=<GHSA-id>`` with a
+      # comment pointing at the tracking issue — never re-loosen the
+      # gate for every dep.
       - name: pip-audit
-        continue-on-error: true
         run: |
           pip install pip-audit
-          pip-audit || echo "::warning::pip-audit reported one or more advisories; triage in a follow-up PR"
+          pip-audit
       # Syntax + import check without starting the server or hitting any provider.
       - run: python -m compileall -q .
       - env:

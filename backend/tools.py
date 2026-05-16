@@ -68,12 +68,33 @@ def _env(*names: str, default: str = "") -> str:
     return default
 
 
-TOOL_WORKSPACE_ROOT: Path = Path(
-    _env(
+def _resolve_workspace_root() -> Path:
+    """Resolve the tool workspace root with a fail-closed guard.
+
+    The default — repo root via ``Path(__file__).resolve().parent.parent`` —
+    is fine on a developer checkout where the parent is the repo. Inside
+    the production container the package ships under ``/app`` and the
+    parent is ``/``: every SAFE command (ls/cat/grep) would then cwd into
+    the container root and ``_resolve_within_workspace`` would happily
+    admit any path under ``/``. The Dockerfile pins ``GAUNTLET_WORKSPACE``
+    to ``/data`` to prevent that, but a deploy that forgets the env
+    must not silently fall back to ``/``. So we refuse to import.
+    """
+    raw = _env(
         "GAUNTLET_WORKSPACE", "SIGNAL_WORKSPACE", "RUBERRA_WORKSPACE",
         default=str(Path(__file__).resolve().parent.parent),
     )
-).resolve()
+    resolved = Path(raw).resolve()
+    if resolved == Path(resolved.anchor):
+        raise RuntimeError(
+            f"TOOL_WORKSPACE_ROOT resolved to filesystem root ({resolved}); "
+            "refusing to start. Set GAUNTLET_WORKSPACE=/data (or another "
+            "scoped directory) before launching the backend."
+        )
+    return resolved
+
+
+TOOL_WORKSPACE_ROOT: Path = _resolve_workspace_root()
 
 AGENT_ALLOW_CODE_EXEC: bool = _env(
     "GAUNTLET_ALLOW_CODE_EXEC", "SIGNAL_ALLOW_CODE_EXEC", "RUBERRA_ALLOW_CODE_EXEC",

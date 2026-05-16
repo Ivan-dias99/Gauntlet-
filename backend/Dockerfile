@@ -46,6 +46,12 @@ COPY --chown=gauntlet:gauntlet . .
 # volume (Railway volume, Fly volume, etc.) — otherwise every restart
 # wipes failure memory, run log, and spine snapshot.
 ENV GAUNTLET_DATA_DIR=/data
+# Tool workspace root. Without this, ``Path(__file__).resolve().parent.parent``
+# under /app resolves to ``/`` — turning every SAFE command (ls/cat/grep)
+# into a container-wide reader. Pin to /data so SAFE reads and file ops
+# are scoped to the persistent volume; tools.py also fails closed if the
+# resolved root is ``/`` as a belt-and-braces against a misconfigured deploy.
+ENV GAUNTLET_WORKSPACE=/data
 RUN mkdir -p /data && chown gauntlet:gauntlet /data
 
 USER gauntlet
